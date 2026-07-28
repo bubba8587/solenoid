@@ -5,6 +5,7 @@ import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, pa
 import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
+import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
@@ -668,6 +669,17 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "MODE.MULT": { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "statistics" },
   FREQUENCY:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], family: "statistics" },
   RANDARRAY:   { returns: "number", rank: "matrix", listArgs: true, arity: [0, 5], native: true },
+
+  // ── D23 lambda tranche. LAMBDA is a special form (see the stub); the hosts
+  // receive arrays whole at every rank.
+  LAMBDA:    { returns: "number", listArgs: true, arity: [1, 255], native: true },
+  MAP:       { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
+  BYROW:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
+  BYCOL:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
+  REDUCE:    { returns: "number", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
+  SCAN:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
+  MAKEARRAY: { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
+  GROUPBY:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1588,3 +1600,131 @@ registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
   if (c === 1) return flat;
   return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
 });
+
+// ── D23 lambda tranche: the host functions ────────────────────────────────────
+// LAMBDA itself is a SPECIAL FORM in the evaluator (excelFormula.ts) — its
+// parameters and body must not be evaluated as expressions, so it cannot be a
+// registration. The hosts CAN be: each receives its arrays whole (listArgs +
+// matrixArgs) and the tagged LambdaValue — the SAME currency the LAMBDA node
+// emits and the host NODES consume, so a formula lambda and a wired lambda run
+// the identical fn (FX-1: compilePositional / evalAst is the one core).
+//
+// Argument shapes mirror the host NODES' positional calls (tableLambda.ts), so a
+// multi-parameter lambda binds identically on both surfaces: MAP passes
+// (v, v2, v3, row, col); BYROW/BYCOL pass (values); REDUCE/SCAN pass
+// (acc, value, step); MAKEARRAY passes (row, col) — 1-based throughout.
+
+const needLambda = (v: unknown, host: string): LambdaValue | SolError =>
+  isLambdaValue(v) ? v : solError("#VALUE!", `${host} needs a LAMBDA as its last argument`);
+/** Rank-preserving cell walk: a list is one ROW (SOCK-2's convention). */
+const asRows = (v: unknown): unknown[][] | null => {
+  if (v == null) return null;
+  if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
+  return [[v]];
+};
+const likeInput = (v: unknown, rows: unknown[][]): unknown =>
+  Array.isArray(v) && v.length > 0 && Array.isArray((v as unknown[])[0]) ? rows : rows.length === 1 ? rows[0] : rows;
+
+registerInternal("MAP", (...args: unknown[]) => {
+  const lam = needLambda(args[args.length - 1], "MAP");
+  if (isSolError(lam)) return lam;
+  const arrays = args.slice(0, -1);
+  if (arrays.length < 1 || arrays.length > 3) return solError("#VALUE!", "MAP takes 1–3 arrays and a LAMBDA");
+  if (arrays.some((a) => a == null)) return null;
+  const shaped = arrays.map((a) => asRows(a)!);
+  const rows = Math.max(...shaped.map((m) => m.length));
+  const cols = Math.max(...shaped.flatMap((m) => m.map((r) => r.length)));
+  const cellAt = (m: unknown[][], i: number, j: number) => (i < m.length && j < m[i].length ? m[i][j] : null);
+  const out = Array.from({ length: rows }, (_, i) =>
+    Array.from({ length: cols }, (_, j) =>
+      lam.fn(cellAt(shaped[0], i, j), cellAt(shaped[1] ?? [], i, j), cellAt(shaped[2] ?? [], i, j), i + 1, j + 1)));
+  return likeInput(arrays[0], out);
+});
+
+registerInternal("BYROW", (v, fn) => {
+  const lam = needLambda(fn, "BYROW");
+  if (isSolError(lam)) return lam;
+  const m = asRows(v);
+  return m === null ? null : m.map((row) => lam.fn([...row]));
+});
+registerInternal("BYCOL", (v, fn) => {
+  const lam = needLambda(fn, "BYCOL");
+  if (isSolError(lam)) return lam;
+  const m = asRows(v);
+  if (m === null) return null;
+  const cols = Math.max(...m.map((r) => r.length), 0);
+  return Array.from({ length: cols }, (_, j) => lam.fn(m.map((r) => (j < r.length ? r[j] : null))));
+});
+
+// REDUCE/SCAN walk cells row-major, calling (acc, value, step). A cell ERROR
+// stops the fold and propagates (aggregator policy); a null cell reaches the
+// lambda — its body's operators already carry the P6 null contract.
+registerInternal("REDUCE", (init, v, fn) => {
+  const lam = needLambda(fn, "REDUCE");
+  if (isSolError(lam)) return lam;
+  const m = asRows(v);
+  if (m === null) return null;
+  let acc: unknown = init ?? null;
+  let step = 0;
+  for (const row of m) for (const cell of row) {
+    if (isSolError(cell)) return cell;
+    acc = lam.fn(acc, cell, ++step);
+    if (isSolError(acc)) return acc;
+  }
+  return acc;
+});
+registerInternal("SCAN", (init, v, fn) => {
+  const lam = needLambda(fn, "SCAN");
+  if (isSolError(lam)) return lam;
+  const m = asRows(v);
+  if (m === null) return null;
+  let acc: unknown = init ?? null;
+  let step = 0;
+  let poisoned: SolError | null = null;
+  const out = m.map((row) => row.map((cell) => {
+    if (poisoned) return poisoned;
+    if (isSolError(cell)) { poisoned = cell; return cell; }
+    acc = lam.fn(acc, cell, ++step);
+    if (isSolError(acc)) poisoned = acc as SolError;
+    return acc;
+  }));
+  return likeInput(v, out);
+});
+
+registerInternal("MAKEARRAY", (rows, cols, fn) => {
+  const lam = needLambda(fn, "MAKEARRAY");
+  if (isSolError(lam)) return lam;
+  if (rows == null || cols == null) return null;
+  const r = Math.max(0, Math.floor(Number(rows)));
+  const c = Math.max(0, Math.floor(Number(cols)));
+  if (r * c > MAX_GENERATED) {
+    return solError("#OVERFLOW!", `MAKEARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
+  }
+  const out = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => lam.fn(i + 1, j + 1)));
+  return c === 1 && r > 0 ? out.map((row) => row[0]) : out; // an n×1 result reads as a LIST
+});
+
+// GROUPBY(keys, values, lambda): group by key (first-seen order, VALUE-keyed via
+// setKey), apply the lambda to each group's value LIST. Returns the two parallel
+// lists as a 2-column matrix [key, result] — the Group Lists node's keys/values
+// outputs, side by side.
+registerInternal("GROUPBY", (keys, values, fn) => {
+  const lam = needLambda(fn, "GROUPBY");
+  if (isSolError(lam)) return lam;
+  if (keys == null || values == null) return null;
+  const ks = toList(keys), vs = toList(values);
+  const groups = new Map<unknown, { key: unknown; vals: unknown[] }>();
+  const n = Math.min(ks.length, vs.length);
+  for (let i = 0; i < n; i++) {
+    const k = setKey(ks[i]);
+    const g = groups.get(k);
+    if (g) g.vals.push(vs[i]); else groups.set(k, { key: ks[i], vals: [vs[i]] });
+  }
+  return [...groups.values()].map((g) => [g.key, lam.fn(g.vals)]);
+});
+
+// LAMBDA is intercepted as a special form BEFORE dispatch ever runs — this stub
+// exists so the name is REGISTERED (autocomplete, the parity measurement, the
+// meta contract) and so a direct resolveExcelFunction caller gets an honest
+// answer instead of a Formula.js fallthrough.
+registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));

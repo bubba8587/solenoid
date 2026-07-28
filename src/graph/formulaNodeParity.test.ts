@@ -23,21 +23,13 @@ import { measureParity, excelNamedGapNames } from "./formulaNodeParity";
 // D23 opened this list: the cap lifted, and the matrix tranche closed the
 // 2-D-shaped registrations (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/
 // SEQUENCE — `formulaMatrix.test.ts`). What remains splits in two:
-// Tranche 2 closed the array-returning registrations (FILTER/SORTBY/RANDARRAY/
-// TAKE — formulaMatrix.test.ts). What remains is ONE family: the lambda
-// META-functions (LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE) plus SCAN and
-// GROUPBY, which take a function argument — a language feature
-// (compilePositional at rank 2), the last tranche.
-const EXCEL_NAMED_GAP: string[] = [
-  "BYCOL",
-  "BYROW",
-  "GROUPBY",
-  "LAMBDA",
-  "MAKEARRAY",
-  "MAP",
-  "REDUCE",
-  "SCAN",
-];
+// EMPTY — and keep it that way. The D23 lambda tranche (2026-07-28) closed the
+// last eight: LAMBDA became the evaluator's one special form and the hosts
+// (MAP/BYROW/BYCOL/REDUCE/SCAN/MAKEARRAY/GROUPBY) registered against the same
+// LambdaValue currency the nodes use (formulaLambda.test.ts). Every Excel name a
+// node carries now dispatches. A name appearing here again is a NEW node shipped
+// without its registration — close it the FX-1 way before pinning it.
+const EXCEL_NAMED_GAP: string[] = [];
 
 // GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a
 // deliberately registered native: names Formula.js drags in that nobody decided to

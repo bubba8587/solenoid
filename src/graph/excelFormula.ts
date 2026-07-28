@@ -16,6 +16,7 @@ import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
+import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -410,6 +411,9 @@ const NULLABLE_SCALARS_OK = new Set([
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
   // Tranche 2, same contract: each registration decides blank-by-blank.
   "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY",
+  // The lambda tranche: hosts validate their own arguments (a non-lambda is a
+  // typed #VALUE!, a blank array propagates null).
+  "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
 ]);
 
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to
@@ -752,6 +756,29 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     }
     case "call": {
       const name = n.name.toUpperCase();
+      // ── LAMBDA — the one SPECIAL FORM (D23 lambda tranche) ─────────────────
+      // Its parameters and body must NOT be evaluated as expressions (the params
+      // are unbound names, the body waits for arguments), so it is handled before
+      // the generic evaluate-args-then-dispatch path — the single place the
+      // language grows a binding construct. The value is the SAME tagged
+      // LambdaValue the LAMBDA node emits (lambdaValue.ts): one function
+      // currency across the node surface, the host nodes and the formula
+      // language (FX-1).
+      if (name === "LAMBDA") {
+        if (n.args.length < 1) return solError("#VALUE!", "LAMBDA needs a body: LAMBDA(param…, body)");
+        const bodyAst = n.args[n.args.length - 1];
+        const params: string[] = [];
+        for (const a of n.args.slice(0, -1)) {
+          if (a.t !== "name") return solError("#VALUE!", "LAMBDA parameters must be plain names");
+          params.push(a.name);
+        }
+        const fn = (...args: unknown[]): unknown => {
+          const inner: Record<string, unknown> = { ...env };
+          params.forEach((p, i) => { inner[p] = args[i]; });
+          return evalAst(bodyAst, inner);
+        };
+        return { __lambda: true, params, fn, expr: "" } satisfies LambdaValue;
+      }
       // A BLOCKED spelling answers before its arguments are even shaped (D19
       // decision 1). It has to short-circuit here rather than resolve like any
       // other name: the redirect stub ignores its arguments, so letting a list
@@ -827,7 +854,13 @@ export function compileEvaluator(expr: string): ExprEvaluator | null {
   // Normalize a top-level Formula.js Error → SolError at the final boundary (the
   // shared P5 mapping). `compilePositional` builds on this, so the whole LAMBDA
   // family (MAP / BYROW / BYCOL / REDUCE / MAKEARRAY) inherits it for free.
-  return (env) => normalizeFxResult(evalAst(ast, env));
+  // An UNAPPLIED lambda at the top level is not a value the graph can carry out
+  // of an Expression — Excel shows #CALC! for the same thing; ours says why.
+  return (env) => {
+    const r = evalAst(ast, env);
+    if (isLambdaValue(r)) return solError("#VALUE!", "LAMBDA needs arguments — apply it inside MAP / REDUCE / BYROW / SCAN / MAKEARRAY");
+    return normalizeFxResult(r);
+  };
 }
 
 /**
