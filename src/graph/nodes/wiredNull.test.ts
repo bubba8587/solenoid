@@ -5,6 +5,8 @@ import { BooleanOpNode, NotNode } from "./logic";
 import { SliderInputNode } from "./input";
 import { ExpressionNode } from "./expression";
 import { ClampNode } from "./scalar";
+import { MirrNode, TBillNode } from "./finance";
+import { solError, isSolError } from "../errorValue";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -192,6 +194,35 @@ describe("\"absent\" is not \"unknown\" — the optional-input trap", () => {
   it("Clamp: a WIRED min still clamps", () => {
     const node = new ClampNode();
     expect(node.data({ value: [-5], min: [0] }).result).toBe(0);
+  });
+});
+
+describe("where the blank check GOES", () => {
+  // Both of these typecheck and take the RIGHT disposition — in the wrong place.
+  it("an error outranks an unknown: MIRR reports the error, not blank", () => {
+    const node = new MirrNode();
+    node.literals.finrate = 0.1;
+    const err = solError("#DIV/0!", "divide by zero");
+    const out = node.data({
+      list: [[100, err, -50]],
+      finrate: [null as unknown as number],
+    }).result;
+    expect(isSolError(out), `expected the error to win, got ${String(out)}`).toBe(true);
+  });
+
+  it("the guard is scoped to the ACTIVE op: TBILLYIELD ignores a blank discount", () => {
+    // `discount` belongs to TBILLEQ/TBILLPRICE. A guard hoisted above the switch would
+    // have nulled this, because it ANDs together inputs this op never reads.
+    const node = new TBillNode({ op: "tbillyield" });
+    node.literals.price = 97.5;
+    const out = node.data({
+      settle: [46096], maturity: [46187], discount: [null as unknown as number],
+    }).result;
+    expect(typeof out).toBe("number");
+    // Its OWN input still propagates.
+    expect(node.data({
+      settle: [46096], maturity: [46187], price: [null as unknown as number],
+    }).result).toBeNull();
   });
 });
 

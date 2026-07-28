@@ -1,5 +1,5 @@
 ﻿import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, dateIn } from "./shared";
+import { numIn, numOut, listIn, dateIn, readInput } from "./shared";
 import { serialToJsDate } from "./date";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
@@ -64,8 +64,12 @@ export class BitwiseNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: number[]; b?: number[] }) {
-    const a = Math.trunc(inputs.a?.[0] ?? this.literals.a ?? 0);
-    const b = Math.trunc(inputs.b?.[0] ?? this.literals.b ?? 0);
+    const aRaw = readInput(inputs.a, this.literals.a ?? 0);
+    const bRaw = readInput(inputs.b, this.literals.b ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (aRaw === null || bRaw === null) { this.cachedResult = null; return { result: null }; }
+    const a = Math.trunc(aRaw);
+    const b = Math.trunc(bRaw);
     let result: number | null = null;
     switch (this.op) {
       case "bitand":    result = a & b; break;
@@ -109,11 +113,11 @@ export class DepreciationNode extends ClassicPreset.Node {
   }
 
   data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[] }) {
-    const cost    = inputs.cost?.[0]    ?? this.literals.cost    ?? null;
-    const salvage = inputs.salvage?.[0] ?? this.literals.salvage ?? null;
-    const life    = inputs.life?.[0]    ?? this.literals.life    ?? null;
-    const per     = inputs.per?.[0]     ?? this.literals.per     ?? null;
-    const factor  = inputs.factor?.[0]  ?? this.literals.factor  ?? 2;
+    const cost    = readInput(inputs.cost, this.literals.cost ?? null);
+    const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
+    const life    = readInput(inputs.life, this.literals.life ?? null);
+    const per     = readInput(inputs.per, this.literals.per ?? null);
+    const factor  = readInput(inputs.factor, this.literals.factor ?? 2);
     // SLN/SYD/DDB/DB are closed-form and verified byte-identical to Formula.js across
     // the domain this node allows — the domain GUARDS above stay hand-rolled (they gate
     // which op even runs), only the actual depreciation formula routes through the seam.
@@ -125,7 +129,9 @@ export class DepreciationNode extends ClassicPreset.Node {
         if (this.op === "syd") {
           result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
         } else if (this.op === "ddb") {
-          result = resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
+          // A wired blank factor leaves the result unknown (value-semantics.md,
+          // "Reading an input") — the other operands already null-guard above.
+          result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
         } else if (this.op === "db") {
           result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
         }
@@ -228,11 +234,13 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }) {
-    const rate = inputs.rate?.[0] ?? this.literals.rate ?? 0;
-    const per  = inputs.per?.[0]  ?? this.literals.per  ?? 1;
-    const nper = inputs.nper?.[0] ?? this.literals.nper ?? 0;
-    const pv   = inputs.pv?.[0]   ?? this.literals.pv   ?? 0;
-    const fv   = inputs.fv?.[0]   ?? this.literals.fv   ?? 0;
+    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
+    const per  = readInput(inputs.per, this.literals.per ?? 1);
+    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
+    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
+    const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || per === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { result: null }; }
     const type = this.paymentTiming === "beg" ? 1 : 0;
 
     let result: number | null = null;
@@ -289,9 +297,12 @@ export class NpvNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rate?: number[]; list?: (number | null | SolError)[][] }) {
-    const rate = inputs.rate?.[0] ?? this.literals.rate ?? 0.1;
+    const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
+    // An error outranks an unknown — same precedence installErrorGuards gives it.
     if (error) { this.cachedResult = error; return { result: error }; }
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (cashflows.length > 0) {
       const npv = resolveExcelFunction("NPV")!(rate, ...cashflows) as number;
@@ -383,9 +394,12 @@ export class MirrNode extends ClassicPreset.Node {
 
   data(inputs: { list?: (number | null | SolError)[][]; finrate?: number[]; reinrate?: number[] }): { result: number | SolError | null } {
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
-    const finrate    = inputs.finrate?.[0]  ?? this.literals.finrate  ?? 0.1;
-    const reinrate   = inputs.reinrate?.[0] ?? this.literals.reinrate ?? 0.12;
+    const finrate    = readInput(inputs.finrate, this.literals.finrate ?? 0.1);
+    const reinrate   = readInput(inputs.reinrate, this.literals.reinrate ?? 0.12);
+    // An error outranks an unknown — same precedence installErrorGuards gives it.
     if (error) { this.cachedResult = error; return { result: error }; }
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (finrate === null || reinrate === null) { this.cachedResult = null; return { result: null }; }
     if (cashflows.length <= 1) {
       this.cachedResult = null;
       return { result: null }; // not wired / too few points — a blank, not an error
@@ -444,9 +458,12 @@ export class FvScheduleNode extends ClassicPreset.Node {
   }
 
   data(inputs: { pv?: number[]; schedule?: (number | null | SolError)[][] }) {
-    const pv    = inputs.pv?.[0]       ?? this.literals.pv ?? 1000;
+    const pv    = readInput(inputs.pv, this.literals.pv ?? 1000);
     const { error, nums: rates } = cashPrep(inputs.schedule?.[0] ?? null);
+    // An error outranks an unknown — same precedence installErrorGuards gives it.
     if (error) { this.cachedResult = error; return { result: error }; }
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (pv === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     {
       let fv = pv;
@@ -481,10 +498,12 @@ export class IspmtNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[] }) {
-    const rate = inputs.rate?.[0] ?? this.literals.rate ?? 0;
-    const per  = inputs.per?.[0]  ?? this.literals.per  ?? 1;
-    const nper = inputs.nper?.[0] ?? this.literals.nper ?? 0;
-    const pv   = inputs.pv?.[0]   ?? this.literals.pv   ?? 0;
+    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
+    const per  = readInput(inputs.per, this.literals.per ?? 1);
+    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
+    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || per === null || nper === null || pv === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (nper > 0) {
       result = pv * rate * (1 - per / nper);
@@ -520,8 +539,11 @@ export class DollarNode extends ClassicPreset.Node {
   }
 
   data(inputs: { dollar?: number[]; fraction?: number[] }) {
-    const dollar   = inputs.dollar?.[0]   ?? this.literals.dollar   ?? 0;
-    const fraction = Math.floor(inputs.fraction?.[0] ?? this.literals.fraction ?? 32);
+    const dollar      = readInput(inputs.dollar, this.literals.dollar ?? 0);
+    const fractionRaw = readInput(inputs.fraction, this.literals.fraction ?? 32);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (dollar === null || fractionRaw === null) { this.cachedResult = null; return { result: null }; }
+    const fraction = Math.floor(fractionRaw);
     let result: number | null = null;
     if (fraction > 0) {
       const intPart = Math.trunc(dollar);
@@ -563,12 +585,16 @@ export class VdbNode extends ClassicPreset.Node {
   }
 
   data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; start?: number[]; end?: number[]; factor?: number[] }) {
-    const cost    = inputs.cost?.[0]    ?? this.literals.cost    ?? 0;
-    const salvage = inputs.salvage?.[0] ?? this.literals.salvage ?? 0;
-    const life    = inputs.life?.[0]    ?? this.literals.life    ?? 0;
-    const start   = inputs.start?.[0]   ?? this.literals.start   ?? 0;
-    const end     = inputs.end?.[0]     ?? this.literals.end     ?? 0;
-    const factor  = inputs.factor?.[0]  ?? this.literals.factor  ?? 2;
+    const cost    = readInput(inputs.cost, this.literals.cost ?? 0);
+    const salvage = readInput(inputs.salvage, this.literals.salvage ?? 0);
+    const life    = readInput(inputs.life, this.literals.life ?? 0);
+    const start   = readInput(inputs.start, this.literals.start ?? 0);
+    const end     = readInput(inputs.end, this.literals.end ?? 0);
+    const factor  = readInput(inputs.factor, this.literals.factor ?? 2);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (cost === null || salvage === null || life === null || start === null || end === null || factor === null) {
+      this.cachedResult = null; return { result: null };
+    }
     const result = vdb(cost, salvage, life, start, end, factor);
     this.cachedResult = result;
     return { result };
@@ -605,11 +631,17 @@ export class CumPmtNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; start?: number[]; end?: number[] }) {
-    const rate  = inputs.rate?.[0]  ?? this.literals.rate  ?? 0;
-    const nper  = inputs.nper?.[0]  ?? this.literals.nper  ?? 0;
-    const pv    = inputs.pv?.[0]    ?? this.literals.pv    ?? 0;
-    const start = Math.round(inputs.start?.[0] ?? this.literals.start ?? 1);
-    const end   = Math.round(inputs.end?.[0]   ?? this.literals.end   ?? 1);
+    const rate  = readInput(inputs.rate, this.literals.rate ?? 0);
+    const nper  = readInput(inputs.nper, this.literals.nper ?? 0);
+    const pv    = readInput(inputs.pv, this.literals.pv ?? 0);
+    const startRaw = readInput(inputs.start, this.literals.start ?? 1);
+    const endRaw   = readInput(inputs.end, this.literals.end ?? 1);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
+      this.cachedResult = null; return { result: null };
+    }
+    const start = Math.round(startRaw);
+    const end   = Math.round(endRaw);
     const type  = this.paymentTiming === "beg" ? 1 : 0;
 
     let result: number | null = null;
@@ -689,17 +721,23 @@ export class TBillNode extends ClassicPreset.Node {
     let result: number;
     switch (this.op) {
       case "tbilleq": {
-        const d = inputs.discount?.[0] ?? this.literals.discount ?? 0.05;
+        const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
+        // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+        if (d === null) { this.cachedResult = null; return { result: null }; }
         result = (365 * d) / (360 - d * dsm);
         break;
       }
       case "tbillprice": {
-        const d = inputs.discount?.[0] ?? this.literals.discount ?? 0.05;
+        const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
+        // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+        if (d === null) { this.cachedResult = null; return { result: null }; }
         result = 100 * (1 - d * dsm / 360);
         break;
       }
       case "tbillyield": {
-        const pr = inputs.price?.[0] ?? this.literals.price ?? 97.5;
+        const pr = readInput(inputs.price, this.literals.price ?? 97.5);
+        // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+        if (pr === null) { this.cachedResult = null; return { result: null }; }
         result = ((100 - pr) / pr) * (365 / dsm);
         break;
       }
@@ -748,15 +786,18 @@ export class SecurityDiscNode extends ClassicPreset.Node {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis = inputs.basis?.[0] ?? this.literals.basis ?? 0;
+    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (basis === null) { this.cachedResult = null; return { result: null }; }
     // `a` is the price (DISC) or the investment (INTRATE/RECEIVED); `b` the
     // redemption (DISC/INTRATE) or the discount rate (RECEIVED).
     const a = this.op === "disc"
-      ? (inputs.pr?.[0] ?? this.literals.pr ?? 95)
-      : (inputs.investment?.[0] ?? this.literals.investment ?? 1000);
+      ? (readInput(inputs.pr, this.literals.pr ?? 95))
+      : (readInput(inputs.investment, this.literals.investment ?? 1000));
     const b = this.op === "received"
-      ? (inputs.discount?.[0] ?? this.literals.discount ?? 0.05)
-      : (inputs.redemption?.[0] ?? this.literals.redemption ?? 100);
+      ? (readInput(inputs.discount, this.literals.discount ?? 0.05))
+      : (readInput(inputs.redemption, this.literals.redemption ?? 100));
+    if (a === null || b === null) { this.cachedResult = null; return { result: null }; }
     const result = securityDisc(this.op, s, m, a, b, basis);
     this.cachedResult = result;
     return { result };
@@ -796,8 +837,10 @@ export class CouponNode extends ClassicPreset.Node {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const freq  = inputs.frequency?.[0] ?? this.literals.frequency ?? 2;
-    const basis = inputs.basis?.[0]     ?? this.literals.basis     ?? 0;
+    const freq  = readInput(inputs.frequency, this.literals.frequency ?? 2);
+    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (freq === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = couponValue(this.op, s, m, freq, basis);
     this.cachedResult = result;
     return { result };
@@ -828,10 +871,14 @@ export class AccrintNode extends ClassicPreset.Node {
     const is = inputs.issue?.[0];
     const ss = inputs.settle?.[0];
     if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = inputs.rate?.[0]      ?? this.literals.rate      ?? 0.06;
-    const par   = inputs.par?.[0]       ?? this.literals.par       ?? 1000;
-    const freq  = Math.round(inputs.frequency?.[0] ?? this.literals.frequency ?? 2);
-    const basis = Math.round(inputs.basis?.[0]     ?? this.literals.basis     ?? 0);
+    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
+    const par   = readInput(inputs.par, this.literals.par ?? 1000);
+    const freqRaw = readInput(inputs.frequency, this.literals.frequency ?? 2);
+    const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || par === null || freqRaw === null || basisRaw === null) { this.cachedResult = null; return { result: null }; }
+    const freq = Math.round(freqRaw);
+    const basis = Math.round(basisRaw);
     if (![1, 2, 4].includes(freq)) { this.cachedResult = null; return { result: null }; }
     const issue  = serialToJsDate(is);
     const settle = serialToJsDate(ss);
@@ -866,9 +913,11 @@ export class AccrintMNode extends ClassicPreset.Node {
   data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; basis?: number[] }): { result: number | null } {
     const is = inputs.issue?.[0], ss = inputs.settle?.[0];
     if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = inputs.rate?.[0]  ?? this.literals.rate  ?? 0.06;
-    const par   = inputs.par?.[0]   ?? this.literals.par   ?? 1000;
-    const basis = inputs.basis?.[0] ?? this.literals.basis ?? 0;
+    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
+    const par   = readInput(inputs.par, this.literals.par ?? 1000);
+    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || par === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = accrintM(is, ss, rate, par, basis);
     this.cachedResult = result;
     return { result };
@@ -905,12 +954,15 @@ export class PriceDiscNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; discount?: number[]; pr?: number[]; redemption?: number[]; basis?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis      = inputs.basis?.[0]      ?? this.literals.basis      ?? 0;
-    const redemption = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
+    const basis      = readInput(inputs.basis, this.literals.basis ?? 0);
+    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (basis === null || redemption === null) { this.cachedResult = null; return { result: null }; }
     // The discount rate for PRICEDISC, the market price for YIELDDISC.
     const rateOrPrice = this.op === "pricedisc"
-      ? (inputs.discount?.[0] ?? this.literals.discount ?? 0.05)
-      : (inputs.pr?.[0]       ?? this.literals.pr       ?? 97);
+      ? (readInput(inputs.discount, this.literals.discount ?? 0.05))
+      : (readInput(inputs.pr, this.literals.pr ?? 97));
+    if (rateOrPrice === null) { this.cachedResult = null; return { result: null }; }
     const result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
     this.cachedResult = result;
     return { result };
@@ -948,12 +1000,15 @@ export class PriceMatNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; basis?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0], is = inputs.issue?.[0];
     if (s == null || m == null || is == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = inputs.rate?.[0]  ?? this.literals.rate  ?? 0.06;
-    const basis = inputs.basis?.[0] ?? this.literals.basis ?? 0;
+    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
+    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || basis === null) { this.cachedResult = null; return { result: null }; }
     // The yield for PRICEMAT, the market price for YIELDMAT.
     const yldOrPrice = this.op === "pricemat"
-      ? (inputs.yld?.[0] ?? this.literals.yld ?? 0.065)
-      : (inputs.pr?.[0]  ?? this.literals.pr  ?? 99);
+      ? (readInput(inputs.yld, this.literals.yld ?? 0.065))
+      : (readInput(inputs.pr, this.literals.pr ?? 99));
+    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
     const result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
     this.cachedResult = result;
     return { result };
@@ -990,10 +1045,12 @@ export class DurationNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; coupon?: number[]; yld?: number[]; frequency?: number[]; basis?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const coupon = inputs.coupon?.[0]    ?? this.literals.coupon    ?? 0.08;
-    const yld    = inputs.yld?.[0]       ?? this.literals.yld       ?? 0.09;
-    const freq   = inputs.frequency?.[0] ?? this.literals.frequency ?? 2;
-    const basis  = inputs.basis?.[0]     ?? this.literals.basis     ?? 0;
+    const coupon = readInput(inputs.coupon, this.literals.coupon ?? 0.08);
+    const yld    = readInput(inputs.yld, this.literals.yld ?? 0.09);
+    const freq   = readInput(inputs.frequency, this.literals.frequency ?? 2);
+    const basis  = readInput(inputs.basis, this.literals.basis ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (coupon === null || yld === null || freq === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = durationValue(this.op, s, m, coupon, yld, freq, basis);
     this.cachedResult = result;
     return { result };
@@ -1031,13 +1088,16 @@ export class BondPriceNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; redemption?: number[]; frequency?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const rate       = inputs.rate?.[0]       ?? this.literals.rate       ?? 0.065;
-    const redemption = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
-    const freq       = inputs.frequency?.[0]  ?? this.literals.frequency  ?? 2;
+    const rate       = readInput(inputs.rate, this.literals.rate ?? 0.065);
+    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
+    const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
     // The yield for PRICE, the market price for YIELD.
     const yldOrPrice = this.op === "price"
-      ? (inputs.yld?.[0] ?? this.literals.yld ?? 0.07)
-      : (inputs.pr?.[0]  ?? this.literals.pr  ?? 97.5);
+      ? (readInput(inputs.yld, this.literals.yld ?? 0.07))
+      : (readInput(inputs.pr, this.literals.pr ?? 97.5));
+    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
     const result = bondPriceYield(this.op, s, m, rate, yldOrPrice, redemption, freq);
     this.cachedResult = result;
     return { result };
@@ -1133,15 +1193,18 @@ export class OddCouponNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; firstlast?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; redemption?: number[]; frequency?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0], fl = inputs.firstlast?.[0];
     if (s == null || m == null || fl == null) { this.cachedResult = null; return { result: null }; }
-    const rate       = inputs.rate?.[0]       ?? this.literals.rate       ?? 0.0775;
-    const redemption = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
-    const freq       = inputs.frequency?.[0]  ?? this.literals.frequency  ?? 2;
+    const rate       = readInput(inputs.rate, this.literals.rate ?? 0.0775);
+    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
+    const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
     // The yield for the *PRICE ops, the market price for the *YIELD ops (which
     // Newton-solve for the yield that reproduces it).
     const isPrice = this.op === "oddfprice" || this.op === "oddlprice";
     const yldOrPrice = isPrice
-      ? (inputs.yld?.[0] ?? this.literals.yld ?? 0.085)
-      : (inputs.pr?.[0]  ?? this.literals.pr  ?? 99.5);
+      ? (readInput(inputs.yld, this.literals.yld ?? 0.085))
+      : (readInput(inputs.pr, this.literals.pr ?? 99.5));
+    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
     const result = oddCoupon(this.op, s, m, inputs.issue?.[0] ?? s, fl, rate, yldOrPrice, redemption, freq);
     this.cachedResult = result;
     return { result: this.cachedResult };
@@ -1166,7 +1229,9 @@ export class XnpvNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rate?: number[]; values?: number[][]; dates?: number[][] }): { result: number | null } {
-    const rate   = inputs.rate?.[0]   ?? this.literals.rate ?? 0.1;
+    const rate   = readInput(inputs.rate, this.literals.rate ?? 0.1);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (rate === null) { this.cachedResult = null; return { result: null }; }
     const values = inputs.values?.[0] ?? [];
     const dates  = inputs.dates?.[0]  ?? [];
     if (values.length === 0 || dates.length === 0) { this.cachedResult = null; return { result: null }; }
