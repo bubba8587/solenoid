@@ -389,9 +389,9 @@ export type ExcelReturn = "number" | "string" | "logical" | "date" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
  *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name.
- *  Only the two ranks D2 allows are spellable — `list` is 1-D, and there is
- *  deliberately no `matrix` until the Tier 4 decision reopens the cap. */
-export type ExcelRank = "scalar" | "list";
+ *  `matrix` (2-D) is spellable since D23 lifted the cap — before that only the two
+ *  D2 ranks existed, with `matrix` deliberately reserved for the Tier 4 decision. */
+export type ExcelRank = "scalar" | "list" | "matrix";
 
 export interface ExcelImplMeta {
   returns: ExcelReturn;
@@ -404,6 +404,13 @@ export interface ExcelImplMeta {
    *  place, so dropping nulls or hoisting an error would be wrong. See
    *  `takesWholeArgs` in excelFormula.ts. */
   listArgs?: boolean;
+  /** The function takes a whole 2-D MATRIX as an argument (D23). This is the ONLY
+   *  gate through which a rank-2 value reaches a dispatch whole: an undeclared
+   *  owned impl answers #SHAPE!, a range aggregate flattens row-major first, and
+   *  Formula.js NEVER sees a matrix (the D23 containment rule — its array
+   *  functions are written against 2-D ranges with unvetted quirks, and it has
+   *  been caught mutating arguments in place). */
+  matrixArgs?: boolean;
   arity: [number, number]; // [min, max]
   family?: FuncFamily;
   /** true = Solenoid-only (no Formula.js equivalent) — the registry ADDS the

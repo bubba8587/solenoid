@@ -514,6 +514,35 @@ the drill-in add menu), mirroring the load path.
 (a value box per verb inside the chain already gives most of this) or query-specific
 boundary typing that adoption can't express — either would argue for a real subclass.
 
+### D23 — Formulas accept matrices (Tier 4 resolved: the D2 cap lifts, matrices-only)
+**When:** 2026-07-28 (author, with the `v2.0/17-matrix-formulas.md` packet on the
+table: "Yes — lift the limit").
+**The decision:** Expression / LAMBDA formulas will accept 2-D MATRICES with Excel
+dynamic-array semantics. The scope is matrices-ONLY: frames, cubes and complex stay
+out of formulas permanently (rung 4 was rejected on record — no Excel semantics to
+copy, competes with the verb engine, breaks lazy-FrameRef economics). This
+supersedes the "permanent" reading of the D2 formula cap; D2's OTHER half (the
+composite toolbar reroute) is untouched.
+**The criteria that decided it** (fixed 2026-07-14): correctness + coherence only —
+the identity objection was retired by the author. What made it decidable now:
+registry unification is real through Tier 3 (one shared impl per function,
+node-equality-tested), and the VAL-15 complex rebrand removed the recorded
+shape-branding blocker, so `Array.isArray` at two depths IS the rank test — no
+branded-value wrapper, no type pass.
+**Bound rules (the packet, now normative):**
+- **Containment:** Formula.js never sees a matrix — a rank-2 argument dispatches
+  only to a declared, owned registration; the fallthrough stays 1-D permanently.
+- **Broadcast:** the eleven-row table in `v2.0/17-matrix-formulas.md` Part 2,
+  transcribed into `broadcastRules.test.ts` as one literal (SSOT-6).
+- **PAD:** split by operation kind, per the standing rulings — element-wise ragged
+  ops pad `null` (P3), shape CONSTRUCTION pads `#N/A` (D15). No new rule.
+- **Orientation:** a list is a ROW where orientation matters (SOCK-2's convention);
+  a column is spelled TRANSPOSE(list).
+**What would reverse it:** the broadcast table proving unimplementable without a
+grid (spill/`@` complications leaking in after all), or the transpiler (bundle 08)
+demonstrating the semantics diverge from Excel in ways users hit — either would
+argue for re-capping to 1-D, recorded as a new decision, not a silent revert.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
