@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import {
   useConnectedInputs,
@@ -14,6 +14,7 @@ import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import "./nodeCard.css";
+import { dropInputCables } from "./cablePrune";
 
 /**
  * A node with a variable number of input PAIRS the user can add/remove — e.g.
@@ -87,14 +88,7 @@ export function PairedExtensibleInputs({
   }
 
   async function removePair(aKey: string, bKey: string) {
-    const editor = getActiveEditor(); // active graph: pairs edited inside a drill-in
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === node.id && (c.targetInput === aKey || c.targetInput === bKey)) {
-          await editor.removeConnection(c.id);
-        }
-      }
-    }
+    await dropInputCables(node.id, [aKey, bKey]);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     pushRowRemovalUndo(node, [aKey, bKey], () => node.removeValuePair(aKey));
     node.removeValuePair(aKey);

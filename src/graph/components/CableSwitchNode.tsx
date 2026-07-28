@@ -26,6 +26,7 @@ import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import "./CableSwitchNode.css";
+import { dropInputCables } from "./cablePrune";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -172,12 +173,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await processGraph();
   }
   async function removeRow(key: string) {
-    const editor = getActiveEditor();
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && c.targetInput === key) await editor.removeConnection(c.id);
-      }
-    }
+    await dropInputCables(data.id, [key]);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);

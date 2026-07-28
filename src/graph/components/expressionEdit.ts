@@ -1,6 +1,7 @@
 import type { ExpressionNode, LambdaNode, EquationNode } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { dropInputCables } from "./cablePrune";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
 // Default card height for an Expression node: header + the (now taller) formula
@@ -22,15 +23,9 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   node.expr = newExpr;
   const { removed } = node._rebuild();
 
-  const editor = getActiveEditor(); // active graph: Expression/LAMBDA edited inside a drill-in
   const area = getActiveArea();
 
-  if (editor && removed.length > 0) {
-    const conns = editor.getConnections().filter(
-      (c) => c.target === node.id && removed.includes(c.targetInput as string),
-    );
-    for (const c of conns) await editor.removeConnection(c.id);
-  }
+  if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
 
   node.height = computeExprHeight(node.varNames.length);
@@ -68,6 +63,8 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   const editor = getActiveEditor();
   const area = getActiveArea();
 
+  // NOT dropInputCables: an Equation variable owns an OUTPUT socket too (the
+  // acausal pair), so the prune covers both directions — the one place it does.
   if (editor && removed.length > 0) {
     const conns = editor.getConnections().filter(
       (c) =>
@@ -99,15 +96,9 @@ export async function applyLambdaChange(
   if (change.params !== undefined) node.params = change.params;
   const { removed } = node._rebuild();
 
-  const editor = getActiveEditor(); // active graph: Expression/LAMBDA edited inside a drill-in
   const area = getActiveArea();
 
-  if (editor && removed.length > 0) {
-    const conns = editor.getConnections().filter(
-      (c) => c.target === node.id && removed.includes(c.targetInput as string),
-    );
-    for (const c of conns) await editor.removeConnection(c.id);
-  }
+  if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
 
   // One extra row vs Expression: the λ(params) field above the formula box.

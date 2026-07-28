@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FilterNode as FilterNodeType } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -13,6 +13,7 @@ import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { stopDragStart } from "../coarse";
+import { dropInputCables } from "./cablePrune";
 
 // The 1-D Filter card (D16): the frame Filter's condition rows minus the
 // column picker — a list has no lanes, so each row is just op + value (+ Match
@@ -44,12 +45,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   }
 
   async function removeRow(key: string) {
-    const editor = getActiveEditor();
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && c.targetInput === key) await editor.removeConnection(c.id);
-      }
-    }
+    await dropInputCables(data.id, [key]);
     pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);
     await getActiveArea()?.update("node", data.id);
