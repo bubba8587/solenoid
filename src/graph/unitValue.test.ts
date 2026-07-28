@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,
-  mulUnits, divUnits, addUnits, subUnits, powUnits, compareUnits,
+  arithmeticCell, compareUnits,
   forAggregateUnits, sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
   adoptMagnitude, type UnitCell,
@@ -46,59 +46,62 @@ describe("tagged cell — construction & storage invariant", () => {
 
 describe("dimensional algebra at the ops", () => {
   it("5 m ÷ 1 s = 5 m/s (the exit-criterion)", () => {
-    const r = divUnits(cell(5, "m"), cell(1, "s")) as UnitCell;
+    const r = arithmeticCell("div", cell(5, "m"), cell(1, "s")) as UnitCell;
     expect(r.value).toBe(5);
     expect(r.dim).toEqual({ length: 1, time: -1 });
     expect(unitLabelOf(r)).toBe("m/s");
   });
   it("km ÷ h normalises to base m/s", () => {
-    const r = divUnits(cell(2, "km"), cell(1, "h")) as UnitCell;
+    const r = arithmeticCell("div", cell(2, "km"), cell(1, "h")) as UnitCell;
     // 2000 m / 3600 s
     expect(r.value).toBeCloseTo(2000 / 3600, 9);
     expect(unitLabelOf(r)).toBe("m/s");
   });
   it("mass · accel → N (derived-unit display)", () => {
-    const force = mulUnits(cell(2, "kg"), cell(3, "m/s^2")) as UnitCell;
+    const force = arithmeticCell("mul", cell(2, "kg"), cell(3, "m/s^2")) as UnitCell;
     expect(force.value).toBe(6);
     expect(unitLabelOf(force)).toBe("N");
   });
-  it("cancellation is free: 5 m ÷ 1 m is a bare 5", () => {
-    const r = divUnits(cell(5, "m"), cell(1, "m"));
-    expect(isUnitCell(r)).toBe(false);
-    expect(r).toBe(5);
+  it("cancellation mints a PURE RATIO: 5 m ÷ 1 m is 5:1, not a re-labelable bare 5", () => {
+    // (The dead per-op combinator this test once pinned returned a bare 5 — stale
+    // against the live rule: known-dimensionless, so an FC can't re-label it.)
+    const r = arithmeticCell("div", cell(5, "m"), cell(1, "m")) as UnitCell;
+    expect(isUnitCell(r)).toBe(true);
+    expect(r.ratio).toBe(true);
+    expect(magnitudeOf(r)).toBe(5);
   });
   it("+ / − require commensurability; km + m works (base-SI add)", () => {
-    const r = addUnits(cell(1, "km"), cell(500, "m")) as UnitCell;
+    const r = arithmeticCell("add", cell(1, "km"), cell(500, "m")) as UnitCell;
     expect(r.value).toBe(1500); // 1000 + 500 m
     expect(dimOf(r)).toEqual({ length: 1 });
   });
   it("+ across dimensions → #UNIT!", () => {
-    const r = addUnits(cell(1, "m"), cell(1, "s"));
+    const r = arithmeticCell("add", cell(1, "m"), cell(1, "s"));
     expect(isSolError(r)).toBe(true);
     if (isSolError(r)) expect(r.code).toBe("#UNIT!");
   });
   it("− across dimensions → #UNIT!", () => {
-    const r = subUnits(cell(1, "m"), cell(1, "kg"));
+    const r = arithmeticCell("sub", cell(1, "m"), cell(1, "kg"));
     expect(isSolError(r)).toBe(true);
   });
   it("a bare number ADOPTS the dimensioned side's unit (spreadsheet reading)", () => {
     // author decision 2026-07-13: `$5 + 2 = $7` — a dimensionless operand takes the
     // other's dimension (at base-SI scale) + keeps its display id, rather than #UNIT!.
-    const r = addUnits(cell(5, "m"), 2) as UnitCell;
+    const r = arithmeticCell("add", cell(5, "m"), 2) as UnitCell;
     expect(isSolError(r)).toBe(false);
     expect(r.value).toBe(7);
     expect(r.dim).toEqual({ length: 1 });
     // (display preservation through the real FC path is covered in unitCoercion.test.ts)
     // symmetric: bare number on the left
-    const l = subUnits(10, cell(3, "m")) as UnitCell;
+    const l = arithmeticCell("sub", 10, cell(3, "m")) as UnitCell;
     expect(l.value).toBe(7);
     expect(l.dim).toEqual({ length: 1 });
   });
   it("power scales the dimension; a dimensioned exponent errors", () => {
-    const area = powUnits(cell(3, "m"), 2) as UnitCell;
+    const area = arithmeticCell("pow", cell(3, "m"), 2) as UnitCell;
     expect(area.value).toBe(9);
     expect(area.dim).toEqual({ length: 2 });
-    expect(isSolError(powUnits(cell(3, "m"), cell(2, "m")))).toBe(true);
+    expect(isSolError(arithmeticCell("pow", cell(3, "m"), cell(2, "m")))).toBe(true);
   });
   it("compareUnits returns base magnitudes when commensurable, else #UNIT!", () => {
     const ok = compareUnits(cell(1, "km"), cell(900, "m"));
@@ -125,8 +128,8 @@ describe("currency: no exchange rate → different codes are incommensurable", (
     expect(compareUnits(money(5, "usd"), bare)).toEqual({ l: 5, r: 5 });
   });
   it("addUnits: $5 + 5€ → #UNIT! (can't combine currencies)", () => {
-    expect(isSolError(addUnits(money(5, "usd"), money(5, "eur")))).toBe(true);
-    expect((addUnits(money(5, "usd"), money(2, "usd")) as UnitCell).value).toBe(7);
+    expect(isSolError(arithmeticCell("add", money(5, "usd"), money(5, "eur")))).toBe(true);
+    expect((arithmeticCell("add", money(5, "usd"), money(2, "usd")) as UnitCell).value).toBe(7);
   });
   it("forAggregateUnits: mixed currency codes → #UNIT!", () => {
     const r = forAggregateUnits([money(5, "usd"), money(5, "eur")]);

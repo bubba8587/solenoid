@@ -187,62 +187,98 @@ export function unitError(detail = ""): SolError {
   );
 }
 
-// ─── Per-cell dimensional algebra ────────────────────────────────────────────────
-// Operands are `number | UnitCell` (a bare number is dimensionless). These are the
+// ─── Per-cell dimensional algebra: arithmeticCell ────────────────────────────────
+// THE arithmetic unit algebra — one implementation for all seven ops (it moved
+// here from nodes/scalar.ts, 2026-07-28, replacing a stale parallel set of per-op
+// combinators that had already drifted: they lacked the adoption-scaling author
+// call AND were dead code, while the live copy lacked the currency check the dead
+// one carried — the exact both-directions drift SSOT-1 exists for).
+//
+// Operands are `number | UnitCell` (a bare number is dimensionless). This is the
 // dimensional half of an element-wise op — the caller's per-cell error/null
-// contract (`cellShortCircuit` in valueKinds.ts) runs FIRST, so these only ever see
-// present, finite, dimensioned operands. Each returns a tagged result (or a bare
-// number when the result is dimensionless) OR a `#UNIT!` `SolError`.
+// contract (`cellShortCircuit` in valueKinds.ts) runs FIRST, so it only ever sees
+// present operands. Returns a tagged result (or a bare number when the result is
+// dimensionless) OR a `#UNIT!`/`#DIV/0!` `SolError`.
 
 type Operand = number | UnitCell;
 
-/** `a × b`: magnitudes multiply, dimensions add. Total (never a unit error). */
-export function mulUnits(a: Operand, b: Operand): UnitCell | number {
-  return tagDim(magnitudeOf(a) * magnitudeOf(b), dimMul(dimOf(a), dimOf(b)));
-}
+export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
 
-/** `a ÷ b`: magnitudes divide, dimensions subtract. `5 m ÷ 1 s = 5 m/s`. */
-export function divUnits(a: Operand, b: Operand): UnitCell | number {
-  return tagDim(magnitudeOf(a) / magnitudeOf(b), dimDiv(dimOf(a), dimOf(b)));
-}
-
-/** `a + b`: commensurable dimensions add directly (both already base SI); a
- *  DIMENSIONLESS operand ADOPTS the other's unit (`$5 + 2 = $7`, the spreadsheet
- *  reading — author decision 2026-07-13); two genuinely different dimensions are a
- *  `#UNIT!`. Keeps the dimensioned side's display id. */
-export function addUnits(a: Operand, b: Operand): UnitCell | number | SolError {
-  return combineAdditive(a, b, magnitudeOf(a) + magnitudeOf(b), "add");
-}
-
-/** `a − b`: same commensurable-or-adopt rule as `addUnits`. */
-export function subUnits(a: Operand, b: Operand): UnitCell | number | SolError {
-  return combineAdditive(a, b, magnitudeOf(a) - magnitudeOf(b), "subtract");
-}
-
-/** The shared +/− rule: commensurable → keep the dim; one dimensionless → adopt the
- *  other's dim + display; two different dims → `#UNIT!`. */
-function combineAdditive(a: Operand, b: Operand, r: number, verb: "add" | "subtract"): UnitCell | number | SolError {
+// Per-cell arithmetic WITH dimensional algebra (Bundle 05: FC A4, step 2). Every
+// op does the numeric math on the base-SI magnitudes and combines the dimension
+// vectors per its rule:
+//   × adds exponents · ÷ subtracts · +/− require commensurability (else #UNIT!) ·
+//   pow scales by the (dimensionless) exponent · cancellation collapses to a bare
+//   number via tagDim. QUOTIENT divides dimensionally; MOD keeps the dividend's
+//   unit (commensurable divisor required, like subtraction).
+export function arithmeticCell(
+  op: ArithmeticOp,
+  a: Operand,
+  b: Operand,
+): number | UnitCell | SolError {
   const da = dimOf(a), db = dimOf(b);
+  const x = magnitudeOf(a), y = magnitudeOf(b);
   const dispA = isUnitCell(a) ? a.display : undefined;
   const dispB = isUnitCell(b) ? b.display : undefined;
-  // Two different currencies share the `currency` dimension but can't be combined
-  // (no exchange rate) — a real #UNIT!, even though dimEqual would pass.
-  if (currencyMismatch(a, b))
-    return unitError(`Can't ${verb} ${dispA} and ${dispB} — different currencies, no exchange rate.`);
-  if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
-  if (isDimensionless(da)) return tagDim(r, db, dispB);
-  if (isDimensionless(db)) return tagDim(r, da, dispA);
-  return verb === "add"
-    ? unitError(`Can't add ${formatDim(da) || "a number"} to ${formatDim(db) || "a number"}.`)
-    : unitError(`Can't subtract ${formatDim(db) || "a number"} from ${formatDim(da) || "a number"}.`);
-}
-
-/** `a ^ n`: `n` must be a plain (dimensionless) number — a dimensioned exponent is
- *  meaningless. Magnitude powers, dimension scales by `n`. */
-export function powUnits(a: Operand, n: Operand): UnitCell | number | SolError {
-  if (isUnitCell(n)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
-  const e = magnitudeOf(n);
-  return tagDim(magnitudeOf(a) ** e, dimPow(dimOf(a), e));
+  const divZero = () => solError("#DIV/0!", "Division by zero");
+  // Two DIFFERENT currencies are incommensurable in EVERY op (no exchange rate):
+  // +/−/mod can't combine them, and ×/÷ would FABRICATE a rate — the ÷ path mints
+  // a pure RATIO, so $10 ÷ 5€ would answer a unitless 2:1, which IS an FX claim.
+  // Guarded up front so no op below can forget it (the currency policy sweep in
+  // unitCurrencyPolicy.test.ts quantifies over all seven).
+  if (currencyMismatch(a, b)) {
+    return unitError(`Can't combine ${dispA} and ${dispB} — different currencies, no exchange rate. Convert one side first.`);
+  }
+  // +/−/mod need commensurable dimensions — BUT a dimensionless operand ADOPTS the
+  // other side's unit, read in that side's DISPLAY unit (author 2026-07-16:
+  // `5 km + 3 = 8 km` — the bare 3 means 3 km, so it scales to base by the display
+  // factor; `$5 + 2 = $7` unchanged, currency scale is 1). The result keeps the
+  // dimensioned side's display id so `$` survives. Only two genuinely different
+  // dimensions (meters + seconds) are a `#UNIT!`. xc/yc are the adoption-scaled
+  // magnitudes for these commensurable ops ONLY — ×/÷ keep the face value (a bare
+  // factor is a factor: `$5 × 2 = $10`, never "×2 km").
+  const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;
+  const yc = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(y, dispA) : y;
+  const combine = (r: number): number | UnitCell | SolError => {
+    if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
+    if (isDimensionless(da)) return tagDim(r, db, dispB);
+    if (isDimensionless(db)) return tagDim(r, da, dispA);
+    return unitError();
+  };
+  // ×/÷ keep the display unit ONLY when the result stays in an operand's dimension
+  // (i.e. the other side was dimensionless): `$5 × 2 = $10` keeps `$`, but
+  // `5 m × 3 s = 15 m·s` reverts to the derived symbol (neither operand's unit fits).
+  const carry = (rd: Dim): string | undefined =>
+    dispA && dimEqual(rd, da) ? dispA : dispB && dimEqual(rd, db) ? dispB : undefined;
+  switch (op) {
+    case "add":
+      return combine(xc + yc);
+    case "sub":
+      return combine(xc - yc);
+    case "mul": {
+      const rd = dimMul(da, db);
+      return tagDim(x * y, rd, carry(rd));
+    }
+    case "div": {
+      if (y === 0) return divZero();
+      const rd = dimDiv(da, db);
+      // Cancellation mints a PURE RATIO (10 m ÷ 2 m = 5:1) — known-dimensionless,
+      // so an FC can't re-label it with a physical unit. Bare ÷ bare stays bare.
+      if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(x / y);
+      return tagDim(x / y, rd, carry(rd));
+    }
+    case "mod":
+      return yc === 0 ? divZero() : combine(xc - yc * Math.floor(xc / yc));
+    case "quotient": {
+      if (y === 0) return divZero();
+      const rd = dimDiv(da, db);
+      if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(Math.trunc(x / y));
+      return tagDim(Math.trunc(x / y), rd, carry(rd));
+    }
+    case "pow":
+      if (!isDimensionless(db)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
+      return tagDim(Math.pow(x, y), dimPow(da, y));
+  }
 }
 
 /** Compare two dimensioned values (`<`, `>`, `=`): requires commensurable

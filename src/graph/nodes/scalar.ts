@@ -3,8 +3,8 @@ import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numL
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { type UnitCell, isUnitCell, dimOf, magnitudeOf, tagDim, tagRatio, unitError, adoptMagnitude } from "../unitValue";
-import { type Dim, DIMENSIONLESS, dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
+import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, type ArithmeticOp } from "../unitValue";
+import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
 
@@ -94,7 +94,10 @@ function _besselK(x: number, n: number): number {
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
 
-export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
+// The op union + the per-cell dimensional algebra live in ../unitValue (rete-free,
+// beside the rest of the unit layer) — re-exported here because this is the
+// family's home module and existing importers read them from here.
+export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 export const ARITHMETIC_OP_META = {
   add:      { label: "+ Add",      description: "A + B" },
@@ -105,75 +108,6 @@ export const ARITHMETIC_OP_META = {
   quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero. Excel: QUOTIENT." },
   pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention; Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
 } satisfies Record<ArithmeticOp, { label: string; description: string }>;
-
-// Per-cell arithmetic WITH dimensional algebra (Bundle 05: FC A4, step 2). Runs
-// only when an operand carries a unit; every op does the numeric math on the
-// base-SI magnitudes and combines the dimension vectors per its rule:
-//   × adds exponents · ÷ subtracts · +/− require commensurability (else #UNIT!) ·
-//   pow scales by the (dimensionless) exponent · cancellation collapses to a bare
-//   number via tagDim. QUOTIENT divides dimensionally; MOD keeps the dividend's
-//   unit (commensurable divisor required, like subtraction).
-export function arithmeticCell(
-  op: ArithmeticOp,
-  a: UnitOperand,
-  b: UnitOperand,
-): number | UnitCell | SolError {
-  const da = dimOf(a), db = dimOf(b);
-  const x = magnitudeOf(a), y = magnitudeOf(b);
-  const dispA = isUnitCell(a) ? a.display : undefined;
-  const dispB = isUnitCell(b) ? b.display : undefined;
-  const divZero = () => solError("#DIV/0!", "Division by zero");
-  // +/−/mod need commensurable dimensions — BUT a dimensionless operand ADOPTS the
-  // other side's unit, read in that side's DISPLAY unit (author 2026-07-16:
-  // `5 km + 3 = 8 km` — the bare 3 means 3 km, so it scales to base by the display
-  // factor; `$5 + 2 = $7` unchanged, currency scale is 1). The result keeps the
-  // dimensioned side's display id so `$` survives. Only two genuinely different
-  // dimensions (meters + seconds) are a `#UNIT!`. xc/yc are the adoption-scaled
-  // magnitudes for these commensurable ops ONLY — ×/÷ keep the face value (a bare
-  // factor is a factor: `$5 × 2 = $10`, never "×2 km").
-  const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;
-  const yc = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(y, dispA) : y;
-  const combine = (r: number): number | UnitCell | SolError => {
-    if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
-    if (isDimensionless(da)) return tagDim(r, db, dispB);
-    if (isDimensionless(db)) return tagDim(r, da, dispA);
-    return unitError();
-  };
-  // ×/÷ keep the display unit ONLY when the result stays in an operand's dimension
-  // (i.e. the other side was dimensionless): `$5 × 2 = $10` keeps `$`, but
-  // `5 m × 3 s = 15 m·s` reverts to the derived symbol (neither operand's unit fits).
-  const carry = (rd: Dim): string | undefined =>
-    dispA && dimEqual(rd, da) ? dispA : dispB && dimEqual(rd, db) ? dispB : undefined;
-  switch (op) {
-    case "add":
-      return combine(xc + yc);
-    case "sub":
-      return combine(xc - yc);
-    case "mul": {
-      const rd = dimMul(da, db);
-      return tagDim(x * y, rd, carry(rd));
-    }
-    case "div": {
-      if (y === 0) return divZero();
-      const rd = dimDiv(da, db);
-      // Cancellation mints a PURE RATIO (10 m ÷ 2 m = 5:1) — known-dimensionless,
-      // so an FC can't re-label it with a physical unit. Bare ÷ bare stays bare.
-      if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(x / y);
-      return tagDim(x / y, rd, carry(rd));
-    }
-    case "mod":
-      return yc === 0 ? divZero() : combine(xc - yc * Math.floor(xc / yc));
-    case "quotient": {
-      if (y === 0) return divZero();
-      const rd = dimDiv(da, db);
-      if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(Math.trunc(x / y));
-      return tagDim(Math.trunc(x / y), rd, carry(rd));
-    }
-    case "pow":
-      if (!isDimensionless(db)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
-      return tagDim(Math.pow(x, y), dimPow(da, y));
-  }
-}
 
 export class ArithmeticNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */

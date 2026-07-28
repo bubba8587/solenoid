@@ -774,6 +774,27 @@ blanket-erroring hides a good answer, under-propagating hides a bad one.
 aggregate-still-propagates case). This is the per-cell refinement of `VAL-3`'s
 whole-node rule.
 
+### VAL-19 — Two different currency codes are incommensurable in EVERY combinator **[INFERRED]**
+**MUST:** FX is out of scope, so every currency shares one `currency` axis at scale 1 —
+$5 and 5€ store the same base magnitude, and the display CODE is the real unit identity.
+Every unit combinator (`arithmeticCell` — all seven ops — `compareUnits`,
+`forAggregateUnits`) refuses two operands carrying different explicit codes with a
+`#UNIT!` ("no exchange rate"). ×/÷ refuse too: division would mint a RATIO, and a
+unitless $/€ number IS a fabricated exchange rate. An UNCODED currency cell (a computed
+result) adopts leniently. A new combinator must register in the policy sweep.
+
+*Why:* the check lived in some combinators and not others, and the split was the worst
+one possible: the currency-aware copies of +/−/×/÷ were DEAD CODE (also stale — they
+lacked the adoption-scaling author call) while the LIVE path answered `$5 + 5€ = $10`
+and `$10 ÷ 5€ = 2:1`. Consolidated to one implementation (`arithmeticCell`, moved
+rete-free into unitValue.ts) with the guard up front where no op can miss it — SSOT-1
+applied to an algebra.
+*Enforced by:* `unitCurrencyPolicy.test.ts` — the per-op policy table (completeness:
+every `ArithmeticOp` must appear), the non-arithmetic combinators, and the
+combinator-surface check (a new `*Units` export fails until it joins the sweep).
+*Origin:* the 2026-07-28 completeness queue ("currency-mismatch across every unit
+combinator"); the sweep's first run found the four live wrong answers above.
+
 ---
 
 # PERSIST — The save path
@@ -963,11 +984,11 @@ carry-over bug (switch into an already-met condition).
 
 # Enforcement summary
 
-64 rules.
+65 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 60 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
+| Enforced | 61 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
