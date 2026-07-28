@@ -3,13 +3,14 @@ import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
 import { COND_AGG_OP_META } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
 import { stopDragStart } from "../coarse";
+import { dropInputCables } from "./cablePrune";
 
 const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   value: op,
@@ -49,14 +50,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   }
 
   async function removePair(colKey: string, valKey: string) {
-    const editor = getActiveEditor();
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && (c.targetInput === colKey || c.targetInput === valKey)) {
-          await editor.removeConnection(c.id);
-        }
-      }
-    }
+    await dropInputCables(data.id, [colKey, valKey]);
     pushRowRemovalUndo(data, [colKey, valKey], () => data.removeValuePair(colKey));
     data.removeValuePair(colKey);
     await getActiveArea()?.update("node", data.id);

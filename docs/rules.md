@@ -204,6 +204,26 @@ contract.
 `ERF.PRECISE`, `ERFC.PRECISE`, `VALUETOTEXT` — each declared against a real node while
 the formula surface answered `#NAME?`.
 
+### SSOT-9 — Input-cable pruning is ONE loop (`dropInputCables`) **[INFERRED]**
+**MUST:** every "these input sockets are going away" moment — a mode/op switch hiding
+inputs, a variadic row being deleted, a formula variable disappearing — drops the
+affected cables through `components/cablePrune.ts` `dropInputCables`, BEFORE the socket
+is hidden or removed. A component calls `editor.removeConnection` directly only for a
+genuinely different shape (cross-graph port sync, both-direction prunes, type-compat
+filters, single user-selected cable), each sanctioned with its reason in the sweep.
+
+*Why:* eleven hand-rolled copies of the loop had drifted on the details that matter —
+some snapshotted the connection list before removing, some iterated it LIVE while
+awaiting removals; some remembered the active-graph seam (a drill-in edits its own
+graph), the next copy wouldn't have. The helper also carries the ordering rule the
+copies each half-remembered: prune before the socket goes (removeInput while a cable
+references the socket is unsafe — the Interpolate variant-switch lesson), and a hidden
+socket with a live cable is an invisible wire.
+*Enforced by:* `sourceInvariants.test.ts` → "no component hand-rolls an input-cable
+pruning loop" (+ the sanctioned-list honesty check).
+*Origin:* the 2026-07-28 spec-promotion queue — recorded there as six copies; the
+unification sweep found eleven.
+
 ---
 
 # SOCK — The socket lattice
@@ -943,15 +963,17 @@ carry-over bug (switch into an already-met condition).
 
 # Enforcement summary
 
-63 rules.
+64 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 59 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
+| Enforced | 60 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
-**The partially-enforced set is EMPTY** (first time). The original six were the
+**The ORIGINAL partially-enforced six all closed** (EFFECT-1, which arrived later with
+its own domain, is the one current partial — its data()-never-writes half is per-class).
+The original six were the
 highest-value gap: in each, the rule was tested for the cases that existed and nothing
 failed when a NEW case forgot it — precisely the shape of every bug in the Origin notes.
 Two of them (SOCK-5, VAL-8) had been written here as "enforced" on the strength of a

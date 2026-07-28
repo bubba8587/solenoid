@@ -2,6 +2,7 @@ import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../rete-nodes
 import { getColumnOutput, addColumnInput, splitMatrixOutput, type GetColumnReadAs, type AddColumnAddAs, type SplitColType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables, reconcileFcTypes } from "../fcReconcile";
 
 /**
@@ -38,12 +39,7 @@ export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnA
 
   const editor = getActiveEditor(); // active graph: frame-node retype inside a drill-in
   const area = getActiveArea();
-  if (editor) {
-    const conns = editor.getConnections().filter(
-      (c) => c.target === node.id && c.targetInput === "values",
-    );
-    for (const c of conns) await editor.removeConnection(c.id);
-  }
+  await dropInputCables(node.id, ["values"]);
   const inp = node.inputs.values;
   if (inp) inp.socket = addColumnInput(addAs).socket;
 

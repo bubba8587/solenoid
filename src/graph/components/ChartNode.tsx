@@ -9,9 +9,10 @@ import { ChartExpandButton } from "./ChartExpandButton";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import type { ChartValue } from "../chartValue";
+import { dropInputCables } from "./cablePrune";
 
 // A Chart reads ONE data input per op: the 2-D `series` matrix for composed/bubble,
 // the 1-D `values` list for everything else. Both ports stay defined on the node,
@@ -24,11 +25,7 @@ async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> 
   node.op = newOp;
   if (wasMatrix !== nowMatrix) {
     const inactive = nowMatrix ? "values" : "series";
-    const editor = getActiveEditor(); // active graph: a Chart inside a drill-in edits its own graph
-    if (editor) {
-      const conns = editor.getConnections().filter((c) => c.target === node.id && c.targetInput === inactive);
-      for (const c of conns) await editor.removeConnection(c.id);
-    }
+    await dropInputCables(node.id, [inactive]);
     const area = getActiveArea();
     if (area) await area.update("node", node.id);
   }

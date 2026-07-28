@@ -120,6 +120,28 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SSOT-9: the input-cable pruning loop unifies — eleven copies, one helper (2026-07-28aa)
+
+The spec-promotion queue's top refactor. `components/cablePrune.ts` is now THE
+loop: `dropInputCables(nodeId, keys | predicate)` — snapshot the connection
+list, filter to the node's departing target inputs, await each removal (undo
+entries), through the ACTIVE editor (drill-ins edit their own graph). The
+queue recorded six copies; the sweep found ELEVEN: Alert (mode keep-set
+complement), Chart (matrix↔list swap), DateDiff (basis), Filter/CableSwitch/
+ExtensibleInputs (row delete), SumIfs/BuildFrame/PairedExtensibleInputs (pair
+delete), Expression + LAMBDA variable removal (expressionEdit), Add Column
+read-as (frameEdit). The drifted detail the unification fixed in passing: four
+of them iterated the LIVE connection list while awaiting removals.
+
+Kept direct, each sanctioned with its reason in the new source sweep
+(sourceInvariants "no component hand-rolls an input-cable pruning loop"):
+ConnectionDialog (one user-selected cable), CompositeEditorOverlay
+(cross-graph port sync with a user-facing tally), Interpolate (variant switch
+prunes BOTH directions), ListInput (type-compat filter via canConnect),
+ReportOverlay (deliberately the MAIN editor), Equation (a variable owns an
+output socket too), RendererSpike (dev harness). New rule SSOT-9 records the
+contract; 64 rules, 60 enforced.
+
 ### Spec tranche 2: ENGINE domain + the queue's promotable half (2026-07-28z)
 
 Ten more rules from the remainder queue — rules.md is **63 rules, 59/1/3**:

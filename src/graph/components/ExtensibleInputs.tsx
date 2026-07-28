@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { SolenoidSocket } from "../sockets";
 import {
@@ -15,6 +15,7 @@ import {
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
+import { dropInputCables } from "./cablePrune";
 
 /**
  * A node with a variable number of value inputs the user can add/remove,
@@ -147,12 +148,7 @@ export function ExtensibleInputs({
   }
 
   async function removeRow(key: string) {
-    const editor = getActiveEditor(); // active graph: rows edited inside a drill-in
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === node.id && c.targetInput === key) await editor.removeConnection(c.id);
-      }
-    }
+    await dropInputCables(node.id, [key]);
     // AFTER the connection removals (undo restores the row before the cable),
     // BEFORE the removal itself (captures the live Input object + key order).
     pushRowRemovalUndo(node, [key], () => node.removeValueInput(key));

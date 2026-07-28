@@ -418,3 +418,52 @@ describe("VAL-13 — components never call node.data()", () => {
     ).toEqual([]);
   });
 });
+
+describe("SSOT — input-cable pruning goes through dropInputCables", () => {
+  // Ten components hand-rolled "drop every cable into these target inputs"
+  // before a socket was hidden (mode switch) or removed (row delete, formula
+  // variable gone), with drifting details — some snapshotted the connection
+  // list, some iterated it LIVE while awaiting removals. cablePrune.ts is now
+  // the one loop; a component may still call `editor.removeConnection` directly
+  // only for a genuinely different shape, each sanctioned with its reason.
+  const SANCTIONED: Record<string, string> = {
+    "components/cablePrune.ts": "the helper itself",
+    "components/ConnectionDialog.tsx": "deletes ONE user-selected cable (and its edit-replace predecessor) — not an input-key prune",
+    "components/CompositeEditorOverlay.tsx": "port-sync prunes span the PARENT editor and the internal editor (cross-graph), and sever by port identity with a user-facing tally",
+    "components/InterpolateNode.tsx": "the List↔Grid variant switch swaps the ENTIRE socket set — prunes both directions (inputs AND outputs)",
+    "components/ListInputNode.tsx": "type-compatibility prune: keeps cables the new element type still accepts (canConnect), drops the rest — a filter, not a key set",
+    "components/ReportOverlay.tsx": "targets the MAIN editor explicitly (getEditor) — a Report edits main-graph refs even while a drill-in is active",
+    "components/RendererSpike.tsx": "the dev-only renderer spike harness",
+    "components/expressionEdit.ts": "the Equation prune covers both directions (a variable owns an OUTPUT socket too); Expression/LAMBDA already use the helper",
+  };
+
+  it("no component hand-rolls an input-cable pruning loop (use dropInputCables)", () => {
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      const lines = codeLines(file);
+      if (!lines.some((l) => /\.removeConnection\(/.test(l))) continue;
+      const r = rel(file);
+      if (r in SANCTIONED) continue;
+      offenders.push(r);
+    }
+    expect(
+      offenders,
+      `These components call editor.removeConnection directly — the input-key ` +
+      `pruning loop lives in cablePrune.ts (dropInputCables). Use it, or add the ` +
+      `file to SANCTIONED with the reason its shape is genuinely different:\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("the sanctioned list stays honest — every entry still exists and still removes connections", () => {
+    for (const [r, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, r);
+      expect(fs.existsSync(file), `${r} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      const lines = codeLines(file);
+      expect(
+        lines.some((l) => /\.removeConnection\(/.test(l)),
+        `${r} no longer calls removeConnection — drop the stale sanction`,
+      ).toBe(true);
+    }
+  });
+});

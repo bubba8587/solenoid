@@ -16,10 +16,11 @@ import {
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { dropInputCables } from "./cablePrune";
 
 // Date nodes don't format their own serials: ValueDisplay does it for any
 // node whose OUTPUT socket is a date type (see valueDisplayFormat.ts), so the
@@ -134,12 +135,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
     // (removeInput while a cable references the socket is unsafe — the
     // Interpolate variant-switch rule).
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
-      const editor = getActiveEditor();
-      if (editor) {
-        const conns = editor.getConnections()
-          .filter((c) => c.target === data.id && c.targetInput === "basis");
-        for (const c of conns) await editor.removeConnection(c.id);
-      }
+      await dropInputCables(data.id, ["basis"]);
     }
     setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
     setLabel(DATE_DIFF_OP_META[next].label);

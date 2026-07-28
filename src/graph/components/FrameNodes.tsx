@@ -48,7 +48,7 @@ import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame"
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
 import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveEditor, getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
+import { getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
@@ -66,6 +66,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
 import { stopDragStart } from "../coarse";
+import { dropInputCables } from "./cablePrune";
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 // Like Table Input: the single result box doubles as the editor. The chip opens
@@ -227,14 +228,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
   }
 
   async function removePair(aKey: string, bKey: string) {
-    const editor = getActiveEditor(); // active graph: Build Frame rows edited inside a drill-in
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && (c.targetInput === aKey || c.targetInput === bKey)) {
-          await editor.removeConnection(c.id);
-        }
-      }
-    }
+    await dropInputCables(data.id, [aKey, bKey]);
     pushRowRemovalUndo(data, [aKey, bKey], () => data.removeValuePair(aKey));
     data.removeValuePair(aKey);
     await getActiveArea()?.update("node", data.id);
