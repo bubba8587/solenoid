@@ -130,20 +130,34 @@ describe("Kleene logic — a wired blank is UNKNOWN, not FALSE", () => {
   });
 });
 
-describe("a SOURCE keeps emitting — Slider skips the undeterminable clamp", () => {
-  // Third policy, alongside propagate and skip: a Slider is a source, so a wired
-  // blank BOUND must not null its output. That would drop the value the user set in
-  // order to report a constraint that couldn't be evaluated. The bound simply stops
-  // constraining — the same reading as Expect's undeterminable check.
-  it("keeps its value when a bound is a wired blank", () => {
+describe("a CONTROL needs a usable bound — Slider keeps the card's", () => {
+  // The one case in this sweep where falling back to the literal is RIGHT. A Slider
+  // is a source whose control cannot exist without finite bounds, so a wired blank
+  // bound honours the value printed on the card. Both alternatives are worse:
+  // propagating null drops the value the user set, and "stop constraining"
+  // (±Infinity) breaks the range input, the play loop's wrap, and tornado's sweep.
+  it("bounds stay FINITE when a wired bound is blank", () => {
     const node = new SliderInputNode();
-    node.value = 250;
+    node.literals.min = 0;
     node.literals.max = 100;
-    // Unwired max clamps to the literal...
-    expect(node.data({}).value).toBe(100);
+    node.data({ max: [null as unknown as number], min: [null as unknown as number] });
+    expect(Number.isFinite(node.effectiveMin)).toBe(true);
+    expect(Number.isFinite(node.effectiveMax)).toBe(true);
+    expect(node.effectiveMax).toBe(100);
+  });
+
+  it("still emits its value, and still clamps to the card's bound", () => {
+    const node = new SliderInputNode();
+    node.literals.max = 100;
     node.value = 250;
-    // ...but a WIRED blank max means "no upper bound right now", not "clamp to 100".
-    expect(node.data({ max: [null as unknown as number] }).value).toBe(250);
+    expect(node.data({ max: [null as unknown as number] }).value).toBe(100);
+  });
+
+  it("a WIRED bound still wins over the card's", () => {
+    const node = new SliderInputNode();
+    node.literals.max = 100;
+    node.value = 250;
+    expect(node.data({ max: [500] }).value).toBe(250);
   });
 });
 
