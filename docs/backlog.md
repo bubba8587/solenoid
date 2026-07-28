@@ -13,9 +13,10 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed (2026-07-28:
   PERSIST ×8, EFFECT ×2, ENGINE ×3, SOCK-10/11/12, FX-11, VAL-17/18; **63 rules**).
   Still queued, roughly by value:
-  - **VAL completeness pair**: guardFinite (no producer emits bare NaN — needs a
-    producer sweep, behaviour tests exist); currency-mismatch across every unit
-    combinator (matrixUnitPolicy-style completeness sweep).
+  - **guardFinite completeness** — no producer emits bare NaN; needs a producer
+    sweep (behaviour tests exist). (The pair's currency half LANDED as VAL-19:
+    arithmeticCell consolidated into unitValue with the mismatch guard up front,
+    unitCurrencyPolicy.test.ts sweeps every combinator.)
   - **FX: backend parity corpus** — the Polars/JS-oracle pair needs a shared fixture
     corpus run by both vitest and cargo + an every-verb completeness guard. The
     largest single build in the queue.
@@ -127,6 +128,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
   call-on-call). (The regression quartet TREND/GROWTH/LINEST/LOGEST left this
   list: owned over the nodes' fitting kernels, rangeRouting.test.ts pins.)
+  Also formula-shaped: **Expression can still combine two currencies** — the
+  evaluator runs on stripped magnitudes and dimEval on dims, so the display
+  CODE (the real currency identity, VAL-19) never reaches the formula path;
+  `a + b` over $5 and 5€ answers 10. Node-side arithmetic refuses (VAL-19).
+  Fix shape: carry the code alongside the dim in dimEval, or strip to a
+  code-aware operand.
   **Split view (author call 2026-07-28): count packs separately — and the
   preset-formula detection changed both numbers.** The measurement now detects a
   locked preset-formula leaf mechanically (its own `expr` IS its formula

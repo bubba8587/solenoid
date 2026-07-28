@@ -120,6 +120,34 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### VAL-19: currency is guarded in EVERY combinator — four live wrong answers die (2026-07-28bb)
+
+The completeness queue's currency half. Probing before building found the worst
+split possible: unitValue's currency-aware arithmetic combinators
+(add/sub/mul/div/powUnits) were DEAD CODE — no caller anywhere — and also STALE
+(they lacked the 2026-07-16 adoption-scaling call), while the LIVE path
+(`arithmeticCell`, inlined in scalar.ts) had the adoption call but NO currency
+check. Live wrong answers, all pinned then fixed: **$5 + 5€ = $10**,
+**$5 − 5€ = $0**, **$5 mod 5€ = $0**, and **$10 ÷ 5€ = 2:1** — that last one
+mints a pure RATIO, i.e. a fabricated exchange rate.
+
+The consolidation (SSOT-1 applied to an algebra): `arithmeticCell` moved
+rete-free into unitValue.ts (scalar.ts re-exports; the op union moved with it),
+the dead combinators deleted, and the `currencyMismatch` guard placed UP FRONT
+in the one implementation where no op can miss it — ×/÷/quotient refuse too
+(division across codes IS an FX claim). Same-code ÷ still mints its honest
+ratio; an uncoded computed currency cell still adopts leniently. One stale pin
+surfaced in the port: the dead divUnits returned a BARE 5 on cancellation where
+the live rule mints 5:1 — the test had been guarding the wrong behavior.
+
+`unitCurrencyPolicy.test.ts` is the matrixUnitPolicy-shaped sweep: a per-op
+policy table with an every-ArithmeticOp completeness check, the non-arithmetic
+combinators (compareUnits / forAggregateUnits, already currency-aware), and a
+combinator-surface check so a new `*Units` export fails until it registers.
+New rule VAL-19; 65 rules, 61 enforced. Known gap recorded: the Expression
+surface strips tags to magnitudes, so a two-currency formula can still combine
+them — the formula surface has no per-cell display id to check (backlog knows).
+
 ### SSOT-9: the input-cable pruning loop unifies — eleven copies, one helper (2026-07-28aa)
 
 The spec-promotion queue's top refactor. `components/cablePrune.ts` is now THE
