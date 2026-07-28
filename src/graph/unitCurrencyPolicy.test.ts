@@ -82,3 +82,45 @@ describe("completeness — a new combinator must join this sweep", () => {
     expect(combinators.sort()).toEqual([...SWEPT].sort());
   });
 });
+
+describe("the formula surface — codes ride the dim pass (the Expression gap, closed)", () => {
+  // The numeric evaluator computes on stripped magnitudes and can't see codes,
+  // so `$5 + 5€` answered 10 in an Expression while arithmeticCell refused.
+  // The codes now ride the DIMENSIONAL pass (unitDimExpr CodeEnv): operators
+  // refuse a mismatch with the same #UNIT!, and a coded result carries its
+  // code's dim. CALLS drop codes — the recorded limitation (SUM over two coded
+  // inputs still combines in a formula; the node-side aggregators refuse).
+  const mkUsd = (v: number): UnitCell => money(v, "usd");
+  const mkEur = (v: number): UnitCell => money(v, "eur");
+
+  it("operators refuse mismatched codes in an Expression", async () => {
+    const { ExpressionNode } = await import("./nodes/expression");
+    for (const expr of ["a + b", "a - b", "a * b", "a / b", "a > b"]) {
+      const n = new ExpressionNode({ expr });
+      const r = n.data({ a: [mkUsd(5)], b: [mkEur(5)] }).result;
+      expect(isSolError(r), `${expr} combined mismatched currencies`).toBe(true);
+      expect((r as { code: string }).code).toBe("#UNIT!");
+    }
+  });
+
+  it("same-code and dimensionless-adopt still compute", async () => {
+    const { ExpressionNode } = await import("./nodes/expression");
+    const sum = new ExpressionNode({ expr: "a + b" });
+    expect((sum.data({ a: [mkUsd(5)], b: [mkUsd(2)] }).result as UnitCell).value).toBe(7);
+    const scale = new ExpressionNode({ expr: "a * 2" });
+    const scaled = scale.data({ a: [mkUsd(5)] }).result as UnitCell;
+    expect(scaled.value).toBe(10);
+    expect(scaled.dim).toEqual({ currency: 1 });
+  });
+
+  it("dimEval refuses codes directly (the pure pass)", async () => {
+    const { dimEval } = await import("./unitDimExpr");
+    const { parseFormula } = await import("./excelFormula");
+    const env = { a: { currency: 1 }, b: { currency: 1 } };
+    const mismatch = dimEval(parseFormula("a + b")!, env, { a: "usd", b: "eur" });
+    expect(isSolError(mismatch) && mismatch.code === "#UNIT!").toBe(true);
+    // Same code passes; an uncoded computed currency adopts leniently.
+    expect(dimEval(parseFormula("a + b")!, env, { a: "usd", b: "usd" })).toEqual({ currency: 1 });
+    expect(dimEval(parseFormula("a + b")!, env, { a: "usd" })).toEqual({ currency: 1 });
+  });
+});

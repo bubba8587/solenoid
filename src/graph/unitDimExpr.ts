@@ -182,37 +182,77 @@ function constNum(node: Ast): number | null {
   }
 }
 
-export function dimEval(node: Ast, env: DimEnv): DimResult {
+// ─── Currency codes on the dim pass (VAL-19's formula-surface half) ───────────
+// Currency is the one dimension whose IDENTITY is the display CODE (unitValue's
+// currencyMismatch): $5 and 5€ share `{currency: 1}` at the same base magnitude,
+// so the DIMENSIONS agree while the values are incommensurable. The numeric
+// evaluator computes on stripped magnitudes and can't see codes — so `$5 + 5€`
+// answered 10 in an Expression while the node-side arithmeticCell refused. The
+// codes ride THIS pass: the caller supplies each currency input's code, the
+// operators refuse a mismatch exactly like arithmeticCell, and the code carries
+// with the same display-carry rule. CALLS drop codes — a recorded limitation
+// (SUM over two coded inputs still combines in a formula; the node-side
+// aggregators refuse), scoped to operators where the wound was live.
+export type CodeEnv = Record<string, string>;
+
+/** Internal operand: a determined dim plus, for pure-currency operands, the
+ *  display code that IS the currency's identity. */
+type Op = { dim: Dim; code?: string };
+type OpResult = Op | SolError | null;
+
+const codeClash = (l: Op, r: Op): boolean =>
+  l.code !== undefined && r.code !== undefined && l.code !== r.code;
+const clashError = (l: Op, r: Op): SolError =>
+  unitError(`Can't combine ${l.code} and ${r.code} — different currencies, no exchange rate. Convert one side first.`);
+
+function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
   switch (node.t) {
     case "num":
     case "bool":
     case "str":
     case "blank": // an omitted argument is a bare missing value
-      return DIMENSIONLESS; // literals carry no unit (a string result is unitless)
+      return { dim: DIMENSIONLESS }; // literals carry no unit (a string result is unitless)
     case "name":
-      return env[node.name] ?? DIMENSIONLESS;
+      return { dim: env[node.name] ?? DIMENSIONLESS, code: codes[node.name] };
     case "unary":
-      return dimEval(node.arg, env); // ±x keeps x's dimension
+      return opEval(node.arg, env, codes); // ±x keeps x's dimension
     case "percent":
-      return dimEval(node.arg, env); // x% = x/100 — same dimension
-    case "call":
-      return callDim(node.name, node.args.map((a) => dimEval(a, env)));
+      return opEval(node.arg, env, codes); // x% = x/100 — same dimension
+    case "call": {
+      // Codes DROP at calls (see the header note); dims flow as before.
+      const d = callDim(node.name, node.args.map((a) => {
+        const r = opEval(a, env, codes);
+        return r === null || isSolError(r) ? r : r.dim;
+      }));
+      return d === null || isSolError(d) ? d : { dim: d };
+    }
     case "bin": {
-      const l = dimEval(node.l, env);
-      const r = dimEval(node.r, env);
+      const l = opEval(node.l, env, codes);
+      const r = opEval(node.r, env, codes);
       if (isSolError(l)) return l;
       if (isSolError(r)) return r;
       switch (node.op) {
-        case "*": return l === null || r === null ? null : dimMul(l, r);
-        case "/": return l === null || r === null ? null : dimDiv(l, r);
+        case "*":
+        case "/": {
+          if (l === null || r === null) return null;
+          // Different currencies refuse here too (÷ would fabricate an exchange
+          // rate — VAL-19); the code carries only while the result stays in the
+          // coded operand's dimension (arithmeticCell's display-carry rule).
+          if (codeClash(l, r)) return clashError(l, r);
+          const rd = node.op === "*" ? dimMul(l.dim, r.dim) : dimDiv(l.dim, r.dim);
+          const code = l.code && dimEqual(rd, l.dim) ? l.code
+            : r.code && dimEqual(rd, r.dim) ? r.code : undefined;
+          return { dim: rd, code };
+        }
         case "+":
         case "-": {
           if (l === null || r === null) return null;
           // A dimensionless operand ADOPTS the other's unit (`price + 2` keeps the
           // price's unit — author decision 2026-07-13); two different dims → #UNIT!.
-          if (dimEqual(l, r)) return l;
-          if (isDimensionless(l)) return r;
-          if (isDimensionless(r)) return l;
+          if (codeClash(l, r)) return clashError(l, r);
+          if (dimEqual(l.dim, r.dim)) return { dim: l.dim, code: l.code ?? r.code };
+          if (isDimensionless(l.dim)) return r;
+          if (isDimensionless(r.dim)) return l;
           return unitError(`Can't ${node.op === "+" ? "add" : "subtract"} values with different units.`);
         }
         case "^": {
@@ -221,23 +261,30 @@ export function dimEval(node: Ast, env: DimEnv): DimResult {
           // halves) — or a dimensionless base. Anything else → indeterminate.
           if (l === null) return null;
           const k = constNum(node.r);
-          if (k !== null) return dimPow(l, k);
-          return isDimensionless(l) ? DIMENSIONLESS : null;
+          if (k !== null) return { dim: dimPow(l.dim, k) };
+          return isDimensionless(l.dim) ? { dim: DIMENSIONLESS } : null;
         }
-        case "&": return DIMENSIONLESS; // string concatenation → unitless
+        case "&": return { dim: DIMENSIONLESS }; // string concatenation → unitless
         default: {
           // Comparison operators (= <> < > <= >=): a boolean result (dimensionless).
           // A dimensionless side is allowed against a dimensioned one (`price > 3`);
-          // only two genuinely different dimensions are a #UNIT!.
-          if (l === null || r === null) return DIMENSIONLESS;
-          if (!dimEqual(l, r) && !isDimensionless(l) && !isDimensionless(r)) {
+          // only two genuinely different dimensions — or two different currency
+          // CODES (no exchange rate) — are a #UNIT!.
+          if (l === null || r === null) return { dim: DIMENSIONLESS };
+          if (codeClash(l, r)) return clashError(l, r);
+          if (!dimEqual(l.dim, r.dim) && !isDimensionless(l.dim) && !isDimensionless(r.dim)) {
             return unitError("Can't compare values with different units.");
           }
-          return DIMENSIONLESS;
+          return { dim: DIMENSIONLESS };
         }
       }
     }
   }
+}
+
+export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult {
+  const r = opEval(node, env, codes);
+  return r === null || isSolError(r) ? r : r.dim;
 }
 
 /** Convenience: the result dim as a plain `Dim | null`, folding a `#UNIT!` conflict

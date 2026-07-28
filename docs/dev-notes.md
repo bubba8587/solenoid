@@ -120,6 +120,23 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The Expression two-currency gap closes — codes ride the dim pass (2026-07-28ii)
+
+The last recorded formula-surface wrong answer. The numeric evaluator computes
+on stripped magnitudes and can't see display codes, so `$5 + 5€` answered 10 in
+an Expression while the node-side arithmeticCell refused (VAL-19). The fix
+rides the existing DIMENSIONAL pass: `unitDimExpr` gains an optional `CodeEnv`
+(variable → currency code), the internal walk carries `{dim, code}` operands,
+and every OPERATOR refuses a code mismatch with the same #UNIT! — including
+×/÷, which would fabricate an exchange rate. The code carries by
+arithmeticCell's display-carry rule (only while the result stays in the coded
+operand's dimension); an uncoded computed currency adopts leniently; a
+dimEval #UNIT! already overrides the numeric result in expression.ts, so the
+wrong 10 becomes the right refusal with no new plumbing. Codes DROP at
+function calls — the recorded limitation (a formula's SUM over two coded
+inputs still combines; the node-side aggregators refuse), noted in VAL-19.
+Pins live in unitCurrencyPolicy.test.ts ("the formula surface").
+
 ### Parity corpus step 1 BUILT — the loop exists end to end (2026-07-28hh)
 
 The bundle's step 1, same day as the design. `FRAME_OP_KINDS` in frameVerbs.ts
