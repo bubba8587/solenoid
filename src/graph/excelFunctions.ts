@@ -5,6 +5,11 @@ import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit } f
 import { convertValue } from "./nodes/convert";
 import { splitText, textAfterBefore, urlEncode, regexApply } from "./nodes/textOps";
 import {
+  reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
+  cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
+  geometric, fibonacci, MAX_GENERATED, type Cell as ListCell,
+} from "./nodes/listOps";
+import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
   durationValue, bondPriceYield, oddCoupon, vdb,
 } from "./nodes/financeOps";
@@ -372,17 +377,44 @@ export function internalFunctionNames(): string[] {
 // date extractors (Solenoid's serial model). `EOMONTH` returns a `date`, the rest a
 // `number` — a spread of output socket types for tests + future result inference.
 
-/** Declared scalar output element type (a SocketDataType subset) — metadata for
- *  tests + a future result-type inference, not yet wired to the result socket. */
+/** Declared output ELEMENT type (a SocketDataType subset) — metadata for tests + a
+ *  future result-type inference, not yet wired to the result socket. */
 export type ExcelReturn = "number" | "string" | "logical" | "date";
+
+/** Output RANK, split from the element type the same way the socket lattice splits
+ *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name.
+ *  Only the two ranks D2 allows are spellable — `list` is 1-D, and there is
+ *  deliberately no `matrix` until the Tier 4 decision reopens the cap. */
+export type ExcelRank = "scalar" | "list";
 
 export interface ExcelImplMeta {
   returns: ExcelReturn;
+  /** Defaults to "scalar". `list` means the function returns a 1-D list of `returns`. */
+  rank?: ExcelRank;
+  /** The function takes a whole 1-D LIST as an argument, so the evaluator must hand
+   *  the vector over intact instead of mapping the call element-wise. It also skips
+   *  the aggregator arg-prep: these ops are position-preserving (REVERSE of
+   *  `[1,null,3]` is `[3,null,1]`, never `[3,1]`) and carry a cell error along in
+   *  place, so dropping nulls or hoisting an error would be wrong. See
+   *  `takesWholeArgs` in excelFormula.ts. */
+  listArgs?: boolean;
   arity: [number, number]; // [min, max]
   family?: FuncFamily;
   /** true = Solenoid-only (no Formula.js equivalent) — the registry ADDS the
    *  function to the formula language; without it `dispatch` would throw. */
   native?: boolean;
+}
+
+/** Registered names whose result is a 1-D list rather than a scalar. */
+export function listReturningNames(): string[] {
+  return Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.rank === "list").map(([n]) => n);
+}
+
+/** Registered names that take a whole list argument. The evaluator derives its
+ *  routing from this rather than a hand-kept parallel set, so a new registration
+ *  cannot declare one and forget the other. */
+export function wholeArgNames(): string[] {
+  return Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.listArgs).map(([n]) => n);
 }
 
 /** Output-type + arity + family for each REGISTERED native impl. */
@@ -450,6 +482,42 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
   ODDLYIELD:  { returns: "number", arity: [5, 7], family: "finance", native: true },
+
+  // ── Tier 3 (D19): the Solenoid-native data-op core. `listArgs` routes the call
+  // past the element-wise broadcaster; `rank: "list"` declares a 1-D result.
+  // Shape — list in, list out:
+  REVERSE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  SLICE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
+  NTHELEMENT:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  INTERLEAVE:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  PADRIGHT:        { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
+  PADLEFT:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
+  DIFF:            { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  NORMALIZE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  RUNNINGSUM:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  RUNNINGPRODUCT:  { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  RUNNINGMAX:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  RUNNINGMIN:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  ROLLINGSUM:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  ROLLINGAVG:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  ROLLINGMIN:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  ROLLINGMAX:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  ROLLINGSTDEV:    { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  ROLLINGMEDIAN:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  // Find / aggregate — list in, scalar out:
+  LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
+  ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
+  ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
+  CONTAINS:        { returns: "number", listArgs: true, arity: [2, 2], native: true },
+  WAVG:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
+  WVAR:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
+  WSTDEV:          { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
+  // Build — scalars in, list out. `listArgs` here says "never broadcast me": without
+  // it LINSPACE(list, 1, 5) would map element-wise into a 2-D result, which D2 bans.
+  LINSPACE:        { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
+  REPEAT:          { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  GEOMETRIC:       { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
+  FIBONACCI:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -973,3 +1041,72 @@ registerInternal("BETWEEN", (x, lo, hi) => {
   const n = toNum(x), a = toNum(lo), b = toNum(hi);
   return badNum(n, a, b) ? VALUE("BETWEEN") : n >= a && n <= b;
 });
+
+// ── Tier 3 (D19): the Solenoid-native data-op core ────────────────────────────
+// The list ops the node surface has always had, now callable from a formula. Every
+// one delegates to `nodes/listOps.ts` — the SAME function the node's `data()` calls,
+// so `REVERSE(x)` in a formula and a REVERSE node cannot answer differently
+// (`formulaTier3.test.ts` pins that equality op by op).
+//
+// NAMING (D19 decision 2(a), per-op and uniform): the formula name is the node's
+// LABEL despaced, taken from the family's OP_META table rather than reinvented here —
+// so "Rolling SUM" is ROLLINGSUM and "Running MAX" is RUNNINGMAX. The tables are the
+// same ones the dropdown and the Add-menu search rows read.
+//
+// Every one of these declares `listArgs` and/or `rank: "list"`, which is what routes
+// the call past the element-wise broadcaster (see `takesWholeArgs` in excelFormula).
+
+/** A formula argument that should be a 1-D list. A bare scalar widens to a 1-element
+ *  list — the same scalar→list widening the socket lattice does on a cable, so
+ *  `REVERSE(5)` behaves like wiring a Number into a list input rather than erroring. */
+function toList(x: unknown): unknown[] {
+  return Array.isArray(x) ? x : x == null ? [] : [x];
+}
+const numList = (x: unknown) => toList(x) as ListCell[];
+/** Guard the generators at the formula boundary. A node's Count is a spinner the user
+ *  watches; a formula field is where a typo asks for ten million elements, so the
+ *  existing RANDARRAY/SEQUENCE overflow convention applies here too. */
+function capped(fn: string, count: number, make: () => unknown[]): unknown[] | SolError {
+  if (!Number.isFinite(count)) return VALUE(fn);
+  if (count > MAX_GENERATED) {
+    return solError("#OVERFLOW!", `${fn} count ${Math.round(count)} exceeds the ${MAX_GENERATED} element limit`);
+  }
+  return make();
+}
+
+// Shape: list in, list out.
+registerInternal("REVERSE",    (list) => reverseList(toList(list)));
+registerInternal("SLICE",      (list, start, end) =>
+  sliceList(toList(list), Number(start), end == null ? undefined : Number(end)));
+registerInternal("NTHELEMENT", (list, n) => nthElement(toList(list), Number(n)));
+registerInternal("INTERLEAVE", (a, b) => interleave(toList(a), toList(b)));
+registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "right"));
+registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
+registerInternal("DIFF",       (list) => diffList(numList(list) as number[]));
+registerInternal("NORMALIZE",  (list) => normalizeList(numList(list) as number[]));
+registerInternal("RUNNINGSUM",     (list) => cumulative("cumsum",  numList(list) as number[]));
+registerInternal("RUNNINGPRODUCT", (list) => cumulative("cumprod", numList(list) as number[]));
+registerInternal("RUNNINGMAX",     (list) => cumulative("cummax",  numList(list) as number[]));
+registerInternal("RUNNINGMIN",     (list) => cumulative("cummin",  numList(list) as number[]));
+registerInternal("ROLLINGSUM",    (list, w) => rolling("sum",    numList(list), Number(w)));
+registerInternal("ROLLINGAVG",    (list, w) => rolling("avg",    numList(list), Number(w)));
+registerInternal("ROLLINGMIN",    (list, w) => rolling("min",    numList(list), Number(w)));
+registerInternal("ROLLINGMAX",    (list, w) => rolling("max",    numList(list), Number(w)));
+registerInternal("ROLLINGSTDEV",  (list, w) => rolling("stdev",  numList(list), Number(w)));
+registerInternal("ROLLINGMEDIAN", (list, w) => rolling("median", numList(list), Number(w)));
+
+// Find / aggregate: list in, scalar out. LENGTH counts every slot including the
+// missing ones, which is exactly why these need the raw whole-list routing.
+registerInternal("LENGTH",   (list) => toList(list).length);
+registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list) as number[]));
+registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list) as number[]));
+registerInternal("CONTAINS", (list, v) => containsValue(toList(list), v));
+registerInternal("WAVG",     (x, w) => weighted("wavg",   numList(x), numList(w)));
+registerInternal("WVAR",     (x, w) => weighted("wvar",   numList(x), numList(w)));
+registerInternal("WSTDEV",   (x, w) => weighted("wstdev", numList(x), numList(w)));
+
+// Build: scalars in, list out.
+registerInternal("LINSPACE",  (a, b, n) => capped("LINSPACE", Number(n), () => linspace(Number(a), Number(b), Number(n))));
+registerInternal("REPEAT",    (v, n) => capped("REPEAT", Number(n), () => repeatValue(v, Number(n))));
+registerInternal("GEOMETRIC", (a, r, n) => capped("GEOMETRIC", Number(n), () => geometric(Number(a), Number(r), Number(n))));
+registerInternal("FIBONACCI", (n) => fibonacci(Number(n)));

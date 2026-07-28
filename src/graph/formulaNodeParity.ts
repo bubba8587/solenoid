@@ -33,6 +33,11 @@ export interface ParityRow {
 
 // A leaf's `type` is a free-form node type, so `e.type === "category"` doesn't
 // discriminate the union on its own — the same predicates AddNodeMenu uses.
+/** The D19 2(a) formula name for a node label: despaced and uppercased, so
+ *  "Rolling SUM" is ROLLINGSUM and "COUNT DISTINCT" is COUNTDISTINCT. The Tier 3
+ *  registrations derive their names the same way, from the family OP_META tables. */
+export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
+
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
@@ -43,7 +48,11 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     const leaf: NodeCatalogEntry = e;
     if (leaf.hidden) continue;
     const excel = (leaf.excel ?? NODE_EXCEL[leaf.type] ?? []).map((x) => x.excel.toUpperCase());
-    const inFormula = excel.some((x) => formulaNames.has(x)) || formulaNames.has(leaf.label.toUpperCase());
+    // A Solenoid-native leaf is matched by its LABEL DESPACED — D19 decision 2(a),
+    // which is how "Rolling SUM" becomes ROLLINGSUM. Without the despace this
+    // under-reports every multi-word native the Tier 3 registrations cover.
+    const inFormula = excel.some((x) => formulaNames.has(x))
+      || formulaNames.has(despace(leaf.label));
     out.push({ cat: path.join(" › ") || "(top)", type: leaf.type, label: leaf.label, excel, inFormula });
   }
 }
