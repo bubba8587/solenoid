@@ -120,6 +120,34 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### D23 step 3, the lambda tranche: gap A reaches ZERO (2026-07-28l)
+
+LAMBDA is now the evaluator's one SPECIAL FORM — handled before the generic
+evaluate-args-then-dispatch path, because its parameters are unbound names and
+its body waits for arguments. It constructs the SAME tagged LambdaValue the
+LAMBDA node emits (extracted to `lambdaValue.ts`, rete-free, the cxValue
+pattern), so a formula lambda and a wired lambda are one currency and one
+evaluation core (FX-1). An unapplied lambda at the top level answers a typed
+#VALUE! (Excel shows #CALC!) rather than leaking the object into the graph.
+
+The seven hosts registered against that currency: MAP (the node's exact
+(value, value2, value3, row, col) positional binding, 1–3 arrays), BYROW/BYCOL
+(whole row/column as a list), REDUCE/SCAN ((acc, value, step) row-major; a cell
+error stops the fold), MAKEARRAY ((row, col) 1-based, n×1 reads as a list,
+MAX_GENERATED at the boundary), GROUPBY (first-seen groups, setKey-keyed, lambda
+per group's value list, [key, result] rows — the Group Lists node's two outputs
+side by side). formulaLambda.test.ts pins node-equality host by host, plus
+SCAN(0,x,add) ≡ RUNNINGSUM(x) — the old gap-A alias made literal.
+
+**EXCEL_NAMED_GAP is []** — every Excel name a node carries now dispatches.
+357/646 leaves callable. The ratchet's empty-list comment says what a
+reappearance means: a new node shipped without its registration.
+
+Recorded deviations (backlog): eta-lambdas (bare SUM as a function argument) and
+immediately-invoked lambdas (call-on-call in the parser) are not supported;
+GROUPBY is the (keys, values, lambda) three-arg form, not Excel's full
+field-spec signature.
+
 ### D23 step 3, tranche 2: the array-returning core (2026-07-28k)
 
 UNIQUE, SORT, SORTBY, FILTER, TAKE, DROP, MODE.MULT, FREQUENCY, RANDARRAY.

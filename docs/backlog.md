@@ -108,13 +108,14 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   gap C is 0. Left: **the Tier 4 BUILD's last tranches**
   (D23; spec = `v2.0/17-matrix-formulas.md`). Engine, socket lift and the matrix
   core (TRANSPOSE/MMULT/MUNIT/MDETERM/MINVERSE/WRAPROWS/WRAPCOLS/TOCOL/TOROW/
-  SEQUENCE) are BUILT; gap A is 8 names, ONE tranche left:
-  **the LAMBDA family** — LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE plus SCAN and
-  GROUPBY (both take a function argument) — a language feature (compilePositional
-  at rank 2), deliberately last. Tranche 2 closed the array-returning set
-  (FILTER/SORTBY/RANDARRAY/TAKE/DROP + the formerly-garbage UNIQUE/SORT/
-  MODE.MULT/FREQUENCY). rangeRouting's DEFERRED is down to the regression quartet
-  (TREND/GROWTH/LINEST/LOGEST) — real fitting math, its own tranche.
+  SEQUENCE) are BUILT; **gap A is ZERO** — the lambda
+  tranche closed the last eight (LAMBDA as the evaluator's special form, the seven
+  hosts on the shared LambdaValue currency). Remaining formula work, none of it
+  gap-shaped: the regression quartet (TREND/GROWTH/LINEST/LOGEST — rangeRouting's
+  DEFERRED, real fitting math), eta-lambdas (passing SUM bare as a function
+  argument — Excel allows it, we require LAMBDA(g, SUM(g))), and
+  immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
+  call-on-call).
   Stragglers, each parked for a stated reason rather than effort:
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.
