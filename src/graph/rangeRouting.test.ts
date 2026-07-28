@@ -55,6 +55,43 @@ describe("whole-sample functions are range-routed, not broadcast", () => {
   });
 });
 
+describe("a range RESULT classifies non-finite — the last bare-NaN producer (guardFinite)", () => {
+  // broadcastCall has always classified its results; the RANGE branch returned
+  // dispatch results raw, so every degenerate whole-sample call leaked a bare
+  // NaN into the graph — where it renders as an empty cell and poisons nothing
+  // visibly (the exact silent class VAL-20 exists for). The 2026-07-28 producer
+  // sweep probed the kernels (clean — they carry their own conventions: quiet
+  // null, tagged errors, IMDIV's cx(NaN,NaN)) and found the leak HERE.
+  const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+  const codeOf = (v: unknown) => (v as { code?: string })?.code;
+
+  /** The probe battery: whole-sample calls whose degenerate input made
+   *  Formula.js / the internal stats answer bare NaN. Each is #DOMAIN! now. */
+  const DEGENERATE: Array<[string, string, Record<string, unknown>]> = [
+    ["STDEV of one value", "STDEV(x)", { x: [5] }],
+    ["VAR of one value", "VAR(x)", { x: [5] }],
+    ["CORREL of a constant", "CORREL(a, b)", { a: [1, 1, 1], b: [1, 2, 3] }],
+    ["SLOPE of constant xs", "SLOPE(y, x)", { y: [1, 2], x: [3, 3] }],
+    ["RSQ of constants", "RSQ(y, x)", { y: [1, 1], x: [1, 1] }],
+    ["SKEW below n=3", "SKEW(x)", { x: [1, 2] }],
+    ["KURT below n=4", "KURT(x)", { x: [1, 2, 3] }],
+    ["GEOMEAN of a negative", "GEOMEAN(x)", { x: [-4, 9] }],
+    ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }],
+  ];
+  it.each(DEGENERATE)("%s → #DOMAIN!, never bare NaN", (_label, expr, env) => {
+    const r = ev(expr, env);
+    expect(typeof r === "number" && Number.isNaN(r), "bare NaN leaked").toBe(false);
+    expect(codeOf(r)).toBe("#DOMAIN!");
+  });
+
+  it("a first-class ∞ INPUT still passes through (the Constant node's ∞)", () => {
+    expect(ev("SUM(x)", { x: [Infinity, 1] })).toBe(Infinity);
+  });
+  it("a deliberate quiet-null stays a null, not an error (tTestP's undefined test)", () => {
+    expect(ev("T.TEST(a, b, 2, 1)", { a: [1, 1], b: [1, 1] })).toBeNull();
+  });
+});
+
 describe("the regression quartet — owned, not routed (the last DEFERRED closed)", () => {
   // The former DEFERRED list. Like UNIQUE/SORT/TRANSPOSE before them, the fix
   // shape is OWNERSHIP (a listArgs registration over the nodes' fitting kernels,

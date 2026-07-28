@@ -13,10 +13,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed (2026-07-28:
   PERSIST ×8, EFFECT ×2, ENGINE ×3, SOCK-10/11/12, FX-11, VAL-17/18; **63 rules**).
   Still queued, roughly by value:
-  - **guardFinite completeness** — no producer emits bare NaN; needs a producer
-    sweep (behaviour tests exist). (The pair's currency half LANDED as VAL-19:
-    arithmeticCell consolidated into unitValue with the mismatch guard up front,
-    unitCurrencyPolicy.test.ts sweeps every combinator.)
   - **FX: backend parity corpus** — the Polars/JS-oracle pair needs a shared fixture
     corpus run by both vitest and cargo + an every-verb completeness guard. The
     largest single build in the queue.
