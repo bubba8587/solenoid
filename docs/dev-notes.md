@@ -120,16 +120,34 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
-### Datedif rename + the spec-promotion sweep queued (2026-07-28u)
+### ONE date-difference family — the Datedif/DateDiff split dies (2026-07-28u/v)
 
-**DateIfNode → DatedifNode** (author catch): DATEDIF is a date-DIFFERENCE
-function, and the old class name parsed it as "Date If" — which leaked to the
-user as the Navigator's generated `DateIf_1`. The card label was already
-DATEDIF; the class, unit type, meta table, component and rete label now spell
-it as the one-word Excel name (`Datedif_1` in the Navigator). One-word rather
-than DateDifNode because DateDiffNode (the op family) already exists and a
-one-f/two-f pair is a reading trap. No aliases per pre-alpha; an old save's
-DateIfNode loads as a Placeholder.
+The arc: the author caught `DateIfNode` misreading DATEDIF ("Date If" leaked as
+the Navigator's `DateIf_1`); the first fix renamed it `DatedifNode` — which put
+`Datedif_1` beside `DateDiff_1`, and the author then asked the right question:
+why are there TWO date-difference nodes at all? My "the merge needs the
+deferred variant-switch socket work" objection was WRONG — deferrals.md scopes
+that item to PACK variant dropdowns and Interpolate's LIST↔GRID already
+rebuilds socket sets live — so the split was history, not design, and the
+merge landed one commit after the rename (the Datedif class lived one commit).
+
+**The merged DateDiffNode**: eight ops — the day-count functions (DAYS,
+DAYS360, YEARFRAC) plus DATEDIF's units flattened to first-class ops
+(Whole years / Whole months / Months ignoring years / Days ignoring months /
+Days ignoring years; grouped in the dropdown). DATEDIF "D" was deleted as a
+duplicate of DAYS (the math-fn `round` precedent); the formula surface still
+dispatches all six unit strings via Formula.js, unchanged. Reversed-range
+semantics stay per-op: DAYS signed, DATEDIF ops null. The `basis` input exists
+ONLY while the op uses it (`syncBasisInput` — the Interpolate pattern narrowed
+to one socket; the component drops a basis cable before switching away). The
+NODE_OPS decl moved its host to the DATEDIF leaf so hidden units search as
+"DATEDIF: Whole months"; leafOps = days/days360/yearfrac/years. An old save's
+DateIfNode OR DatedifNode loads as a Placeholder; DateDiffNode saves load
+unchanged (old op keys still valid).
+
+**rules.md ripple**: VAL-12's recorded borderline (DATEDIF's `unit` — op
+dropdown by mechanism, argument by semantics) is DISSOLVED, not settled — the
+units are now genuine ops. The rule text says so.
 
 **Backlog gains the spec-promotion sweep** (author queue): walk code + tests
 for invariants worth promoting into rules.md — comment/folklore rules, tests

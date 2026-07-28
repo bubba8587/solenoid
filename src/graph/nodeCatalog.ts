@@ -33,7 +33,7 @@ import {
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateValueNode, TimeValueNode, DatePartNode, WeekInfoNode,
-  DateDiffNode, DateAddNode, WorkdayNode, NetworkdaysNode, DatedifNode,
+  DateDiffNode, DateAddNode, WorkdayNode, NetworkdaysNode,
   RandArrayNode, SequenceNode,
   SortByNode, XMatchNode,
   TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
@@ -880,7 +880,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "date-workday",     label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported).", create: () => new WorkdayNode(),     parity: false },
         { type: "date-networkdays", label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported).", create: () => new NetworkdaysNode(), parity: false },
       ]},
-      { type: "date-datedif",     label: "DATEDIF",     description: "Difference between two dates in Years, Months, or Days; unit selector on the node. Excel: DATEDIF.", create: () => new DatedifNode(),      parity: false },
+      { type: "date-datedif",     label: "DATEDIF",     description: "Difference between two dates as whole years or months, or day remainders ignoring larger units; pick on the node. Excel: DATEDIF.", create: () => new DateDiffNode({ op: "years" }), parity: false },
     ],
   },
 
