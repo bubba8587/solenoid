@@ -120,6 +120,72 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-28c — the adversarial review walk over the post-1.2 work)
+
+Author instruction: walk the post-1.2 commits newest→oldest assuming everything is wrong;
+review, fix, push. Seven parallel review agents covered HEAD..cde8a8c by topic (rules.md,
+formula surface, wired-null sweep, nodeOps, popups, copy pass, type-resolution) plus one
+over the 07-22..25 tail. Six fix batches landed; suite grew 3433 → ~3500, all green.
+
+**Wrong answers found live and fixed (the headline set):**
+- `triBool` read a coerced boolean with `x !== 0`, so every WIRED FALSE in the Boolean
+  family computed TRUE — AND(false, true) was TRUE, NOT(false) FALSE. Invisible because
+  typed literals bypass coercion and the Kleene tests called bare `data()`. Now pinned
+  through wrapNodeData.
+- CHISQ.TEST corrupted upstream cached arrays IN PLACE (Formula.js mutates its args;
+  prepRangeArgs returned them by reference). Range args now cloned at the FX boundary.
+- F.TEST answered the variance ratio and T.TEST ignored tails/type entirely under the
+  same names as correct nodes; PROB's null range cells coerced to 0. All three now share
+  the node impls via mathUtils (tTestP/fTestP/probBetween).
+- The wired-null sweep's own misses: Alert fired against the card's bound on a wired
+  blank; Head/Join/Regex/OddCoupon guards not scoped to the active op; the column-LIST
+  references (`?? []`) returned the UNFILTERED frame for a wired blank; Regex stringified
+  null/SolError cells; XIRR reported an upstream error as #CONV!; IFS/SWITCH matched
+  unset rows on null; Histogram/SevenSeg/Contour clobbered typed literals with wired
+  values. The ratchet regex now catches `||`, line breaks and trailing comments — and
+  immediately caught three more live swallows.
+- Tier-3 registrations fabricated answers on blank scalars (Number(null)=0: ROLLINGSUM
+  window-1, CONTAINS "found" a blank); RUNNING*/DIFF/NORMALIZE/ARGMAX were null/error
+  blind ("0[object Object]"); SERIESSUM's pooled null-drop shifted coefficient powers;
+  INTERPOLATE fabricated an x=0 point; RANGE silently truncated at 1000 on BOTH surfaces
+  (now #OVERFLOW!/#DOMAIN!); REGEX* read JS flag strings where Excel's args were
+  documented; TINV/TDIST redirected to the wrong-shaped T.INV/T.DIST.
+- Sockets: `any`/`anycombo` bases adopted a `trueany` wire verbatim (SWITCH row became
+  accept-anything — Bug C only half-fixed); the agree vote conflated unwired with
+  wired-unknowable, so IF(cond, XLOOKUP…, date) typed as date (the fa3565a bug back
+  through another door) — three-state vote now: unwired no-vote, wired trueany VETOES,
+  NA() abstains via `errorOnlyOutput`; `anycombo` output couldn't reach an `any` input
+  (Regex→SWITCH cables silently refused AND silently dropped on load); combo/auto
+  Result socket was the `any` lying dot.
+- Popups: editable cells committed per keystroke (sorted rows moved under the caret —
+  now draft-commit like everything else); stale sort keys re-attached to new columns;
+  header text-selection drags fired sorts; the mixed-type comparator was intransitive
+  (−2 sorted after −1 next to "-1a"-style strings).
+- Copy: the lint's collector couldn't see ternary/template titles (ArrayChip's
+  "Click to view" — the highest-traffic tooltip — survived the purge), stems-only
+  spelling ("penalises", "kilometres" shipped), LinSpace's description said the node
+  COUNTS values, Comparison's claimed 1/0 after the logical migration, Report claimed
+  charts embed as objects. Collector + rules widened; strings fixed.
+
+**Structural: rules.md made true.** financeOps/excelFunctions were NOT rete-free (via
+nodes/date.ts and nodes/convert.ts) — extracted `dateSerial.ts` + `convertUnits.ts`, and
+FX-2 is now ENFORCED by `formulaPathIsReteFree.test.ts` (import-graph walk). FX-3's 53
+undeclared registrations declared + the registered→declared test; FX-7's blocklist swept
+whole (redirect/advertise/routing); VAL-8 was ALREADY pinned (doc corrected); VAL-12's
+five misnamed op fields renamed + declared (IFERROR/IFNA now searchable); `rules.test.ts`
+pins the mechanical half of the doc itself. Summary now 28/6/4.
+
+**nodeOps:** generated op rows no longer inherit the `{ }` marker; the operation accent
+edge skips secondary ARGUMENT selects (OpSelect `arg` prop — SUMIFS comparators, payment
+timing); Chart/Sparkline/Regex/GroupBy dropdowns now derive from their OP_META tables
+(Chart's groups moved INTO the meta); the parity metric's ops-rule is operation-kind
+only (Group Lists no longer counts "callable" via SUM label collisions).
+
+**Reviewed-sound (no action):** CappedZoom/pointerGesture (read directly), the
+extraction fidelity of listOps/textOps/financeOps, LEGACY_ALIASES mechanics, SHUFFLE's
+volatility split, the a657a58 tap-select ordering, seed loadability, 324b665's derived
+family list, socket-shade HSV math, contrastInk baking, c133823's reconcile coverage.
+
 ### The label-less op families get their OP_META tables (2026-07-28b)
 
 Closes the last of the op-selector items. Comparison, IS.TEST, Cumulative, GCD/LCM and
