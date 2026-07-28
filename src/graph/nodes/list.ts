@@ -15,7 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -461,19 +461,7 @@ export class SortNode extends ClassicPreset.Node {
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    // Nulls and per-cell errors sort LAST in both directions, stably — the
-    // frame sort's blanks-last policy (frameVerbs.sortByColumn / engine.rs
-    // with_nulls_last, Excel's blanks-last). A bare numeric compare would
-    // coerce null to 0 and an error to NaN, scattering both mid-list.
-    const isTail = (v: unknown) => isMissing(v) || isSolError(v);
-    const idx = arr.map((_, i) => i);
-    idx.sort((i, j) => {
-      const ti = isTail(arr[i]), tj = isTail(arr[j]);
-      if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
-      const c = (arr[i] as number) - (arr[j] as number);
-      return c !== 0 ? (this.op === "desc" ? -c : c) : i - j; // stable on ties
-    });
-    const sorted = idx.map((i) => arr[i]) as number[];
+    const sorted = sortNumericList(arr, this.op === "desc") as number[];
     this.cachedList = sorted;
     return { result: sorted };
   }
@@ -865,20 +853,10 @@ export class UniqueNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = (inputs.list?.[0] ?? []) as unknown[];
-    // Values dedupe normally (nulls collapse to one), but EVERY error cell
-    // survives — deterministically. Identity-dedup is a lottery for errors (three
-    // independent failures survive as 3, but one error fanned into three cells
-    // collapses to 1); the Excel-user sanity check is "10 values + 3 errors = 3
-    // fixes to make". Set-clean output has a sanctioned path (IFERROR/Fill upstream).
-    const seen = new Set<unknown>();
-    const out: unknown[] = [];
-    for (const v of arr) {
-      if (isSolError(v)) { out.push(v); continue; }
-      if (seen.has(v)) continue;
-      seen.add(v);
-      out.push(v);
-    }
-    this.cachedList = out as number[];
+    // Kernel: first-seen dedupe by VALUE (setKey — VAL-8; the old raw Set here
+    // keyed by identity, harmless only because the socket is numeric), with every
+    // error cell surviving deterministically ("10 values + 3 errors = 3 fixes").
+    this.cachedList = uniqueList(arr) as number[];
     return { result: this.cachedList };
   }
 }
@@ -1097,7 +1075,7 @@ export class TakeNode extends ClassicPreset.Node {
     if (nRaw === null) { this.cachedList = null; return { result: null }; }
     const n = Math.round(nRaw);
     if (n <= 0) { this.cachedList = []; return { result: [] }; }
-    this.cachedList = this.op === "first" ? arr.slice(0, n) : arr.slice(-n);
+    this.cachedList = takeSlice(arr, this.op === "first" ? n : -n);
     return { result: this.cachedList };
   }
 }
@@ -1132,7 +1110,7 @@ export class DropNode extends ClassicPreset.Node {
     const n = Math.round(nRaw);
     if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
     if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
-    this.cachedList = this.op === "first" ? arr.slice(n) : arr.slice(0, -n);
+    this.cachedList = dropSlice(arr, this.op === "first" ? n : -n);
     return { result: this.cachedList };
   }
 }
@@ -1939,17 +1917,7 @@ export class SortByNode extends ClassicPreset.Node {
     // a null/error KEY sends its row to the tail, stably, matching the frame
     // sort's blanks-last policy — so a value whose key is missing still comes
     // through, just last.
-    const n = Math.max(arr.length, by.length);
-    const isTail = (v: unknown) => isMissing(v) || isSolError(v);
-    const idx = Array.from({ length: n }, (_, i) => i);
-    idx.sort((i, j) => {
-      const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
-      const ti = isTail(ki), tj = isTail(kj);
-      if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
-      const c = (ki as number) - (kj as number);
-      return c !== 0 ? c : i - j; // stable on ties
-    });
-    const list = idx.map((i) => (i < arr.length ? arr[i] : null));
+    const list = sortByKeys(arr, by);
     this.cachedList = list;
     return { list };
   }

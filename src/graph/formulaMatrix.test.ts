@@ -101,3 +101,58 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     }
   });
 });
+
+describe("D23 tranche 2 — the array-returning core, node-equals-formula", () => {
+  it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
+    const { UniqueNode, SortNode, SortByNode } = await import("./nodes/list");
+    const x = [3, 1, 3, null, 2];
+    expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode().data({ list: [[3, 1, 3, 2]] }).result);
+    expect(ev("SORT(x)", { x })).toEqual(new SortNode({ op: "asc" }).data({ list: [x] }).result);
+    expect(ev("SORT(x,,-1)", { x })).toEqual(new SortNode({ op: "desc" }).data({ list: [x] }).result);
+    const a = ["x", "y", "z"], by = [3, 1, 2];
+    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortByNode().data({ array: [a], by_array: [by] }).list);
+  });
+
+  it("TAKE / DROP share the signed kernel with all three nodes", async () => {
+    const { TakeNode, DropNode } = await import("./nodes/list");
+    const { TableTakeDropNode } = await import("./nodes/matrix");
+    const x = [1, 2, 3, 4];
+    expect(ev("TAKE(x, 2)", { x })).toEqual(new TakeNode({ op: "first" }).data({ list: [x], count: [2] }).result);
+    expect(ev("TAKE(x, -2)", { x })).toEqual(new TakeNode({ op: "last" }).data({ list: [x], count: [2] }).result);
+    expect(ev("DROP(x, 1)", { x })).toEqual(new DropNode({ op: "first" }).data({ list: [x], count: [1] }).result);
+    const m = [[1, 2, 3], [4, 5, 6]];
+    expect(ev("TAKE(m, 1, 2)", { m }))
+      .toEqual(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [1], cols: [2] }).result);
+    expect(ev("DROP(m, 1, -1)", { m }))
+      .toEqual(new TableTakeDropNode({ op: "drop" }).data({ matrix: [m], rows: [1], cols: [-1] }).result);
+  });
+
+  it("FILTER by mask — Excel's include-array form", () => {
+    // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
+    // with wired comparison values) — a different mechanism from Excel's computed
+    // boolean mask, so FX-1's node-equality doesn't apply term-for-term here; the
+    // shared ground is filterByMask (listOps), which this pins directly.
+    const x = [1, 5, 2, 9];
+    expect(ev("FILTER(x, x > 2)", { x })).toEqual([5, 9]);
+    expect(ev("FILTER(x, m)", { x, m: [true, false, true, false] })).toEqual([1, 2]);
+    expect(ev("FILTER(x, x > 99, 0)", { x })).toBe(0);      // if_empty
+    expect(ev("FILTER(x, x > 99)", { x })).toEqual([]);      // no if_empty → empty list
+    const r = ev("FILTER(x, y)", { x, y: [1, 0] });          // size mismatch
+    expect((r as { code?: string }).code).toBe("#SHAPE!");
+  });
+
+  it("MODE.MULT and FREQUENCY are owned — no more element-wise garbage", () => {
+    expect(ev("MODE.MULT(x)", { x: [1, 1, 2, 2, 3] })).toEqual([1, 2]);
+    expect(ev("FREQUENCY(x, b)", { x: [1, 5, 9, 3], b: [4, 8] })).toEqual([2, 1, 1]);
+    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]].
+    expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
+  });
+
+  it("RANDARRAY is volatile and shape-correct (the SHUFFLE precedent)", () => {
+    const r = ev("RANDARRAY(2, 3, 0, 10)") as number[][];
+    expect(r.length).toBe(2);
+    expect(r[0].length).toBe(3);
+    expect(r.flat().every((v) => v >= 0 && v <= 10)).toBe(true);
+    expect((ev("RANDARRAY(5,, 1, 6, TRUE)") as number[]).every((v) => Number.isInteger(v))).toBe(true);
+  });
+});

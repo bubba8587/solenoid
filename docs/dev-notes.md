@@ -120,6 +120,35 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### D23 step 3, tranche 2: the array-returning core (2026-07-28k)
+
+UNIQUE, SORT, SORTBY, FILTER, TAKE, DROP, MODE.MULT, FREQUENCY, RANDARRAY.
+350/646; gap A is 8 — entirely the function-argument family now (LAMBDA/MAP/
+BYROW/BYCOL/MAKEARRAY/REDUCE + SCAN/GROUPBY), one tranche, a language feature.
+
+Again the urgent half was the OLD names: UNIQUE, SORT, MODE.MULT, FREQUENCY and
+DROP were dispatchable through Formula.js and broadcasting — UNIQUE([3,1,3,2])
+answered a column of singletons, SORT a list of empty objects. Owned now, same
+displacement as MMULT.
+
+Kernel extractions came with two small honesty wins: UniqueNode's dedupe keyed a
+raw Set by IDENTITY (harmless only because its socket is numeric — the VAL-8
+letter now holds via setKey), and TAKE/DROP's signed count slice is ONE kernel
+(takeSlice/dropSlice) under the two 1-D nodes, the 2-D node's per-axis slice,
+and the formula — the 1-D and 2-D nodes previously disagreed about 0
+(empty vs identity); each card keeps its own 0-guard, the kernel is shared.
+
+One honest FX-1 note: FILTER's node (List Filter) is condition-ROW configured —
+a different MECHANISM from Excel's computed boolean mask, so node-equality
+doesn't apply term-for-term; the test pins the mask semantics directly and says
+so. SORT is 1-D scoped (sort_index must be 1/omitted); ragged FILTER masks are
+#SHAPE! rather than null-padded — a mask that doesn't cover the data is a user
+error, not missing data. RANDARRAY is volatile per the SHUFFLE precedent, full
+Excel signature (rows/cols/min/max/integer), MAX_GENERATED at the boundary.
+
+rangeRouting's DEFERRED is down to TREND/GROWTH/LINEST/LOGEST — the regression
+quartet, real fitting math, its own tranche when the kernels exist.
+
 ### The provenance audit: every rule graded, one stale claim caught (2026-07-28j)
 
 All 43 non-PROV rules now carry a grade on their heading, and rules.test.ts

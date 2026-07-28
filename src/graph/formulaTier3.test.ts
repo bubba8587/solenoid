@@ -180,7 +180,9 @@ describe("the declarations stay honest", () => {
   it("declared arity matches what the registration accepts", () => {
     for (const name of wholeArgNames()) {
       const [min, max] = EXCEL_IMPL_META[name].arity;
-      expect(min, name).toBeGreaterThanOrEqual(1);
+      // RANDARRAY is Excel's one fully-optional-args generator: RANDARRAY() is a
+      // legal call (one random number), so min 0 is its honest arity.
+      expect(min, name).toBeGreaterThanOrEqual(name === "RANDARRAY" ? 0 : 1);
       expect(max, name).toBeGreaterThanOrEqual(min);
     }
   });
