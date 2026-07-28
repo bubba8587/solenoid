@@ -231,6 +231,29 @@ vertical placement is MEASURED per row — never a fixed constant, never a `tran
 `offsetTop` ignores transforms, so rete would misreport the endpoint.
 *Enforced by:* `UNENFORCED` (a CSS + layout invariant; `CLAUDE.md` carries the detail).
 
+### SOCK-9 — `anydata`: the rank-≤2 element-agnostic wildcard (D23)
+**MUST:** `anydata` accepts every FAMILY value of rank ≤ 2 (scalar / list / combo /
+matrix) plus the lower wildcards (`any`, `anylist`, `anycombo`, `anytable`), and
+REFUSES frames, cubes and the object family (lambda / chart / document). As an
+OUTPUT it flows wherever `anycombo` flows (runtime-shaped, same accepted risk). Its
+membership edges are DERIVED additions to `accepts()` per `SOCK-3`, swept by the
+full lattice test. Expression VARIABLES are `anydata` — that is the D23 lift.
+
+The RESULT keeps its family: the `resultAs` combo socket stays for rank-≤1
+results, and when a computed result is a MATRIX the node swaps its result socket
+to the same family's matrix rung and reconciles per `SOCK-7`
+(`retypeOutputCables`) — value-driven, but through the same machinery every
+in-place retype uses. Family typing for downstream FCs survives; the socket never
+lies about rank.
+
+*Why:* the D23 endpoint is matrices-ONLY. A `trueany` variable would admit frames
+and cubes into formulas (out of scope, permanently); `anycombo` refuses the
+matrices the decision admits. The lattice needed the one rung between them. The
+result is NOT `anydata` because that would trade away the family (`familyOf` =
+none) that Format Controllers key on, for a rank the matrix rungs already spell.
+*Enforced by:* `socketConnect.test.ts` (the full sweep + the anydata cases);
+`expressionMatrix.test.ts` (the lift + the result-rank reconcile).
+
 ---
 
 # FX — The formula surface
@@ -342,6 +365,30 @@ Formula.js internals as formula functions".
 *Why:* a node's Count is a spinner the user watches; a formula field is where a typo asks
 for ten million elements with nothing visible to stop it.
 *Enforced by:* `formulaTier3.test.ts` → "a generator is capped at the formula boundary".
+
+### FX-9 — Formula.js never sees a matrix (D23 containment)
+**MUST:** a rank-2 value reaches a dispatch WHOLE only through a registration
+declaring `matrixArgs`. Otherwise: a range aggregate FLATTENS row-major before its
+1-D prep; a positional lookup or 1-D whole-list native answers `#SHAPE!`; an
+element-wise function broadcasts cell-wise, so the fallthrough only ever receives
+scalars. The Formula.js fallthrough stays 1-D permanently.
+
+*Why:* the weaker engine's array functions are written against 2-D ranges with
+unvetted quirks, and it has been caught mutating its arguments in place
+(CHISQ.TEST). The original cap was partly containment; at rank 2 that logic is
+permanent even though the cap itself lifted.
+*Enforced by:* `broadcastRules.test.ts` → "the D23 containment rule".
+
+### FX-10 — One broadcast engine, and the table is the test
+**MUST:** every element-wise surface (operators, unary, percent, function
+broadcasting) routes through `mapCells`. The broadcast semantics live in exactly
+one normative table (`v2.0/17-matrix-formulas.md` Part 2), transcribed row-for-row
+into `broadcastRules.test.ts` — changing either without the other fails
+(`SSOT-6`'s pattern applied to semantics rather than a metric).
+
+*Why:* two broadcasters is how the same expression answers differently by surface —
+the exact drift class the parity program exists to close.
+*Enforced by:* `broadcastRules.test.ts`.
 
 ---
 
@@ -507,13 +554,25 @@ to bare arrays fails type-check at the `Cx` type itself.
 *Origin:* the complex rebrand (2026-07-28). Complex was the only bare-array scalar in
 the value model and the sole reason "a cell may be an array" was ever true.
 
+### VAL-16 — The rank grammar: nothing nests deeper than a matrix
+**MUST:** a runtime value is a primitive scalar, a tagged scalar (`VAL-15`), a 1-D
+`Array` of cells, or a 2-D `Array` of row-`Array`s. Depth 3+ is not a value —
+surfaces that meet one answer `#SHAPE!`. `Array.isArray` at two depths is therefore
+the COMPLETE rank test, and no code may carry a private shape-sniffing scheme.
+
+*Why:* this is the invariant that made D23 buildable without a branded-value
+wrapper; every new nesting scheme would re-open the ambiguity VAL-15 closed.
+(Recursion beyond rank 2 is what CUBES are for — a container, not a value shape.)
+*Enforced by:* `broadcastRules.test.ts` → "anything deeper than a matrix is
+#SHAPE!"; `complex.test.ts` (the tagged-scalar half).
+
 # Enforcement summary
 
-39 rules.
+43 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 29 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4 · FX-1,2,3,5,6,7,8 · VAL-1,2,3,4,5,6,7,8,9,11,15 |
+| Enforced | 33 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,9 · FX-1,2,3,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,15,16 |
 | Partially enforced | 6 | SOCK-5, SOCK-7 · FX-4 · VAL-10, VAL-12, VAL-14 |
 | Unenforced | 4 | SSOT-5 · SOCK-6, SOCK-8 · VAL-13 |
 

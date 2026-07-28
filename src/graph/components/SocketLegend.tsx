@@ -11,7 +11,7 @@ import "./SocketLegend.css";
 // its list/2D sibling under one type label (number + numlist = "Numeric"). Each
 // dot carries `tip` — its precise per-dimension name, shown in the hover pill.
 type Dot = {
-  kind: "circle" | "square" | "grid" | "frame" | "cube" | "lambda" | "chart" | "document" | "ring";
+  kind: "circle" | "square" | "grid" | "splitgrid" | "frame" | "cube" | "lambda" | "chart" | "document" | "ring";
   color: string;
   tip?: string;
 };
@@ -62,6 +62,7 @@ const GROUPS: LegendGroup[] = [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
     { kind: "grid",   color: SOCKET_COLORS.anytable, tip: "Any Matrix" },
+    { kind: "splitgrid", color: SOCKET_COLORS.anydata, tip: "Any Value, List or Matrix" },
     { kind: "ring",   color: SOCKET_COLORS.trueany,  tip: "True Any" },
   ] },
 ];
@@ -172,6 +173,18 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
         <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
+        <path d="M6 2.5 V9.5 M2.5 6 H9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
+        <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+      </svg>
+    );
+  }
+  if (entry.kind === "splitgrid") {
+    // `anydata` (SOCK-9): the anycombo split square with the matrix grid cross —
+    // "any rank, up to a matrix". Mirrors SocketComponent's combo+cross branch.
+    return (
+      <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
+        <polygon points="0,12 0,0 12,0"   fill={entry.color} />
+        <polygon points="0,12 12,12 12,0" fill="var(--sock-any-ring)" />
         <path d="M6 2.5 V9.5 M2.5 6 H9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
         <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
       </svg>

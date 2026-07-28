@@ -21,6 +21,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     frame: "none", cube: "none",  // per-column formats are the A4 units milestone
     anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
     anycombo: "none",             // its scalar-or-list sibling — same reason
+    anydata: "none",              // the rank-≤2 sibling (SOCK-9) — same reason
     chart: "chart",               // text-scale control (display only)
     lambda: "lambda",             // view-as control (signature/KaTeX/highlighted/mono)
     document: "none",             // a whole-document value — no FC format controls

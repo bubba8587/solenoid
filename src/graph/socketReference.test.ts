@@ -187,8 +187,8 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
 
   it("the variants the doc calls gray are exactly the ones sharing --sock-any", () => {
     const gray = ALL.filter((t) => SOCKET_COLORS[t] === "var(--sock-any)");
-    expect(gray.sort()).toEqual(["any", "anycombo", "anylist", "anytable", "trueany"]);
-    expect(DOC).toMatch(/all five wildcards gray/);
+    expect(gray.sort()).toEqual(["any", "anycombo", "anydata", "anylist", "anytable", "trueany"]);
+    expect(DOC).toMatch(/all six wildcards gray/);
   });
 });
 

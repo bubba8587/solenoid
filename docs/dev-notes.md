@@ -120,6 +120,39 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### D23 build step 2: the anydata rung — matrices reach formulas (2026-07-28g)
+
+Spec-first, per the author's standing instruction: SOCK-9 (the rung), FX-9
+(containment), FX-10 (one broadcast engine, table = test) and VAL-16 (the rank
+grammar) went into rules.md BEFORE the code, and rules.test.ts caught the one
+forward reference (SOCK-9 citing expressionMatrix.test.ts before it existed).
+43 rules, 33 enforced.
+
+The lift itself: `anydata` — element-agnostic rank ≤ 2, the rung between
+`anycombo` (refuses the matrices D23 admits) and `trueany` (admits the frames and
+cubes D23 excludes). Expression VARIABLES are anydata; the #SHAPE! matrix block in
+expression.ts is deleted; a wired matrix computes by the broadcast table.
+
+The RESULT socket is deliberately NOT anydata: it keeps its `resultAs` FAMILY (the
+thing FCs key on — familyOf(anydata) is "none") and reconciles its RANK to the
+computed value, swapping combo ↔ matrix rung through retypeOutputCables — the
+standard SOCK-7 machinery, value-driven via a post-compute microtask so it never
+runs inside data(). An error result leaves the socket where the last real value
+put it. Headless runs skip the swap and just flow the value.
+
+Everything downstream of the lattice edit was found by the existing machinery,
+which is the spec system paying rent: the full sweep passed derivation untouched;
+socketReference.test.ts flagged every stale connection list (regenerated
+mechanically — the patcher must keep "all N variants other than…" shorthands on
+one line, readSet parses them single-line), the glyph table, the FC-family table,
+the gray-wildcards pin, and the variant count (31 now). The legend gains a
+split-grid glyph (anycombo's split square + the matrix cross); units flow per D20
+(envDim flattens a matrix — one homogeneous unit).
+
+Still capped until step 3: the registrations (TRANSPOSE, SEQUENCE, the LAMBDA
+family, matrix math) — a matrix can now reach a formula and every element-wise op
+and aggregate works over it, but the 19 gap-A names still #NAME?.
+
 ### D23: the cap lifts — matrices in formulas (decision + build step 1) (2026-07-28f)
 
 **The author decided Tier 4 with the packet on the table: YES, matrices-only.**
