@@ -133,11 +133,16 @@ already answered, not mechanisms. It also fixes the containment line: Formula.js
 never sees a matrix — rank-2 dispatch requires a declared registration, permanently.
 
 Part 2 is the broadcast table, eleven rows written to be transcribed into
-`broadcastRules.test.ts` as a literal. It surfaces the ONE genuine sub-decision:
-the PAD rule — Excel fills non-overlapping broadcast cells with #N/A, the app's
-existing contract pads ragged zips with null. Recommendation on record: null
-everywhere (coherence is the fixed criterion; the transpiler shims workbooks that
-lean on #N/A pads). Part 3 is the yes-path build order and the no-path cleanup.
+`broadcastRules.test.ts` as a literal. The PAD question the first draft posed as
+open turned out to be ALREADY ANSWERED, twice, and better than either blanket
+option: P3 (2026-06-22) rules element-wise ragged ops pad with null ("the missing
+tail is literally missing data" — built, pinned by broadcastContract.test), and
+D15 (2026-07-09) rules shape CONSTRUCTION pads with #N/A per cell like Excel
+(VSTACK/HSTACK/WRAPROWS/WRAPCOLS, cost accepted on record). Split by operation
+kind, not rank — and it carries into formulas for free, because the construction
+functions arrive as FX-1 shared impls whose #N/A padding rides inside the
+implementation; the broadcaster's null rule never touches them. The packet is now
+sub-decision-free. Part 3 is the yes-path build order and the no-path cleanup.
 
 ### Complex is a tagged object; VAL-15 (2026-07-28d)
 
