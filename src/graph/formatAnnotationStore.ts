@@ -6,6 +6,7 @@ import { extremeSci } from "./components/format";
 import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
 import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 // ─── Format style (how the number renders) ───────────────────────────────────
 
@@ -562,6 +563,22 @@ export const formatAnnotationStore = {
       notify();
     }
   },
+  /** Drop every annotation of a (deleted) node — the registry forget. */
+  removeForNode(nodeId: string): void {
+    const inner = _byNode.get(nodeId);
+    if (!inner) return;
+    for (const socketKey of inner.keys()) _store.delete(key(nodeId, socketKey));
+    _byNode.delete(nodeId);
+    notify();
+  },
+  /** Drop ALL node annotations (rebuild). Leaves the pack-contributed format/unit
+   *  REGISTRATIONS alone — those are extensions, not node state. */
+  clearNodes(): void {
+    if (_store.size === 0) return;
+    _store.clear();
+    _byNode.clear();
+    notify();
+  },
   subscribe,
   /** Monotonic version for useSyncExternalStore snapshots. */
   version,
@@ -636,3 +653,10 @@ export function formatWithAnnotation(
   if (!ann) return autoFormat(n);
   return formatNumberWithAnnotation(n, ann);
 }
+
+// Registered like every node-keyed store (nodeStoreRegistry / STORE-1): a
+// deleted node's annotations go with it (they were re-derived per reconcile
+// pass but the DEAD-id entries lingered — the recorded leak), and a rebuild
+// clears node state in one pass without touching pack registrations.
+registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));
+registerNodeForgetAll(() => formatAnnotationStore.clearNodes());

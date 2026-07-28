@@ -467,3 +467,97 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     }
   });
 });
+
+describe("STORE-1 — every node-keyed store registers with nodeStoreRegistry", () => {
+  // Per-node state lives in module-level stores (rete's separate React root —
+  // no shared context), and the registry is the ONE answer to "what happens on
+  // node delete / graph rebuild". A store that skips it leaks dead-id entries
+  // (bounded — rete ids never collide across loads — but real: the sweep that
+  // built this found formatAnnotationStore, dockedNodeStore, compositeStaleStore
+  // and standoffs unregistered, and isolateStore's miss was a VISIBLE bug: a
+  // document switch while isolated dimmed the entire new graph). Every
+  // src/graph/*Store*.ts either references the registry or is sanctioned here
+  // with the reason it holds no per-node map.
+  const SANCTIONED: Record<string, string> = {
+    "nodeStoreRegistry.ts": "the registry itself",
+    "documentStore.ts": "document-level (docs, slots, autosave) — not node-keyed",
+    "documentStoreCore.ts": "documentStore's pure transform half",
+    "docMetaStore.ts": "per-document metadata",
+    "calcModeStore.ts": "per-document calc mode",
+    "settingsStore.ts": "app settings",
+    "apiKeyStore.ts": "the AI key (settings)",
+    "shortcutsStore.ts": "keyboard-shortcut prefs",
+    "addMenuStore.ts": "Add-menu UI state",
+    "paletteStore.ts": "command-palette UI state",
+    "outlineStore.ts": "Navigator open/closed UI state",
+    "mobileMenuStore.ts": "mobile sheet UI state",
+    "helpDialogStore.ts": "dialog open/closed",
+    "confirmStore.ts": "dialog open/closed",
+    "connectionDialogStore.ts": "dialog request state (transient)",
+    "noticeStore.ts": "toast queue (self-expiring)",
+    "computeOverlayStore.ts": "compute-progress overlay (transient)",
+    "presentationStore.ts": "presenter-mode UI state",
+    "rendererSpikeStore.ts": "dev-only renderer spike",
+    "frStore.ts": "Function Reference overlay (transient open state)",
+    "gridSnapStore.ts": "canvas snap pref",
+    "semanticZoomStore.ts": "canvas zoom band (derived per frame)",
+    "touchSelectStore.ts": "touch selection mode toggle",
+    "cableFlourishStore.ts": "global cable render toggle",
+    "cableFlowStore.ts": "global cable flow-animation toggle",
+    "chartPopupStore.ts": "ONE transient open-popup id, not a per-node map",
+    "cubePopupStore.ts": "ONE transient open-popup id, not a per-node map",
+    "tablePopupStore.ts": "ONE transient open-popup id, not a per-node map",
+    "formulaPopupStore.ts": "ONE transient open-popup id, not a per-node map",
+    "pivotEditorStore.ts": "ONE transient open-editor id, not a per-node map",
+    "elementPickerStore.ts": "ONE transient open-picker id, not a per-node map",
+    "compositeEditorStore.ts": "ONE transient open-drill-in id, not a per-node map",
+    "reportStore.ts": "ONE transient open-overlay id (+ dock flag), not a per-node map",
+  };
+
+  it("every *Store*.ts references registerNodeForget (or is sanctioned, with a reason)", () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC)) {
+      const base = rel(file);
+      if (!/Store[A-Za-z]*\.ts$/.test(base) || base.includes("/")) continue; // top-level stores
+      if (base in SANCTIONED) continue;
+      const src = fs.readFileSync(file, "utf8");
+      if (!/registerNodeForget/.test(src)) offenders.push(base);
+    }
+    expect(
+      offenders,
+      `These stores hold state but never register with nodeStoreRegistry ` +
+      `(STORE-1): a deleted node's entries linger and a rebuild misses them. ` +
+      `registerNodeForget(+All), or add the store to SANCTIONED with the reason ` +
+      `it is not node-keyed:\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("every registrant also registers the bulk reset (forgetAll)", () => {
+    // The rebuild path calls forgetAllNodes() ONCE instead of per-node forgets
+    // (O(nodes × entries) — the recorded rebuild cost). A store with only the
+    // per-node half silently opts back into the slow path AND leaks on rebuild
+    // (the per-node handler is skipped while rebuilding).
+    const offenders: string[] = [];
+    for (const file of walk(SRC)) {
+      const base = rel(file);
+      if (base === "nodeStoreRegistry.ts" || base.includes("/")) continue;
+      const src = fs.readFileSync(file, "utf8");
+      if (/registerNodeForget\(/.test(src) && !/registerNodeForgetAll\(/.test(src)) offenders.push(base);
+    }
+    expect(
+      offenders,
+      `These stores register forget but not forgetAll (STORE-1) — the rebuild ` +
+      `bulk reset misses them:\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("the sanctioned list stays honest — every entry exists and stays unregistered", () => {
+    for (const [base, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, base);
+      expect(fs.existsSync(file), `${base} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      if (base === "nodeStoreRegistry.ts") continue;
+      const src = fs.readFileSync(file, "utf8");
+      expect(/registerNodeForget/.test(src), `${base} now registers — drop the redundant sanction`).toBe(false);
+    }
+  });
+});

@@ -16,10 +16,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - **FX: backend parity corpus** — the Polars/JS-oracle pair needs a shared fixture
     corpus run by both vitest and cargo + an every-verb completeness guard. The
     largest single build in the queue.
-  - **STORE registry completeness** — every node-keyed store registers forget +
-    forgetAll (formatAnnotationStore and standoffs register neither; triage note:
-    the miss is a bounded LEAK, not corruption — rete ids regenerate per load and
-    never collide — so this is hygiene + memory, not a wrong answer).
   - **Catalog-wide transient-field triage** — every own field of every node either
     round-trips through extractInit or lands in a DELIBERATELY_TRANSIENT sanction
     map (one-time ~50-name triage; the map becomes the missing documentation).

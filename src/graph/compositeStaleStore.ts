@@ -6,6 +6,7 @@
 // card subscribes here so the stale dot appears the moment data() flags it.
 
 import { createNotifier } from "./storeKit";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 const stale = new Set<string>();
 const { notify, subscribe, version } = createNotifier();
@@ -24,3 +25,7 @@ export const compositeStaleStore = {
   subscribe,
   getVersion: version,
 };
+
+// Registered like every node-keyed store (nodeStoreRegistry / STORE-1).
+registerNodeForget((id) => compositeStaleStore.set(id, false));
+registerNodeForgetAll(() => { if (stale.size > 0) { stale.clear(); notify(); } });

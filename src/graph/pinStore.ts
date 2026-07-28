@@ -6,7 +6,7 @@
 // Persisted additively in SavedGraph (like standoffs). One pin per node.
 
 import { createNotifier } from "./storeKit";
-import { registerNodeForget } from "./nodeStoreRegistry";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { getEditor } from "./process";
 
 export interface Pin {
@@ -69,3 +69,4 @@ export function pinNodeValue(nodeId: string): void {
 // A deleted node drops its pin — same lifecycle convention as the other
 // node-keyed stores (nodeStoreRegistry).
 registerNodeForget((nodeId) => pinStore.remove(nodeId));
+registerNodeForgetAll(() => pinStore.clear());

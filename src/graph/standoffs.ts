@@ -13,6 +13,7 @@
 //
 // Module-level store (no React context — same reasons as cableState).
 
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 export type StandoffAnchor = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
 
 export interface StandoffEnd {
@@ -247,3 +248,10 @@ export function setStandoffSettle(fn: (pinned?: Set<string>, opts?: SettleOpts) 
 export function settleStandoffs(pinned?: Set<string>, opts?: SettleOpts) {
   _settle(pinned, opts);
 }
+
+// Registered like every node-keyed store (nodeStoreRegistry): a deleted node's
+// standoffs go with it, and a wholesale rebuild clears in one pass — this was
+// previously wired ad hoc in Canvas.tsx (unconditionally, so a big rebuild paid
+// the per-node scan the registry's skip exists to avoid) and persistence.ts.
+registerNodeForget((nodeId) => standoffStore.removeForNode(nodeId));
+registerNodeForgetAll(() => standoffStore.clear());

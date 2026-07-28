@@ -6,6 +6,7 @@
 // can read it. `null` = not isolating (everything visible).
 
 import { createNotifier } from "./storeKit";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 let _focus: Set<string> | null = null;
 // Which gesture produced the focus set — the IsolatePill labels the mode so a
@@ -41,6 +42,20 @@ export const isolateStore = {
   subscribe,
   version,
 };
+
+// Registered like every node-keyed store (nodeStoreRegistry / STORE-1). Before
+// this, NOTHING exited isolate on a document load: the focus set kept the old
+// graph's ids, every regenerated id was a non-member, and the entire new graph
+// dimmed. A deleted node also leaves the focus set (exiting when it empties —
+// an empty focus would dim everything with no members).
+registerNodeForget((id) => {
+  if (_focus?.has(id)) {
+    _focus.delete(id);
+    if (_focus.size === 0) { _focus = null; _mode = null; }
+    notify();
+  }
+});
+registerNodeForgetAll(() => isolateStore.exit());
 
 // Which isolate endpoint terminal is selected ("entry" | "exit" | null). Routed
 // through a store (not component state) so the terminals join the one selection

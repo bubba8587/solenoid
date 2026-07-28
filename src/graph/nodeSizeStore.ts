@@ -6,7 +6,7 @@
 // nodeResizable) expose a handle; everything else auto-sizes and truncates.
 
 import { createNotifier } from "./storeKit";
-import { registerNodeForget } from "./nodeStoreRegistry";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export type NodeSize = { w: number; h: number };
 
@@ -45,3 +45,4 @@ export const nodeSizeStore = {
 };
 
 registerNodeForget(nodeSizeStore.forget);
+registerNodeForgetAll(() => nodeSizeStore.clear());
