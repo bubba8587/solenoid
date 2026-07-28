@@ -598,7 +598,7 @@ a source scan over the component `<OpSelect>` sites, where the misnamed field is
 visible. The contract: an OpSelect either binds `op` (directly, a per-row `.op` config
 field, or via `useNodeField(…, "op")`) or carries the `arg` prop — the machine-readable
 "not the family op selector" declaration (criterion comparators, payment timing,
-config/data picks). DateIf's `unit` — the recorded borderline — is settled as `arg`:
+config/data picks). Datedif's `unit` — the recorded borderline — is settled as `arg`:
 an op dropdown by mechanism, Excel's argument by semantics.
 *Origin:* `PadNode.dir` meant `list-pad` had no declaration, so `PADLEFT`/`PADRIGHT` were
 unsearchable in the Add menu and unmeasurable in the parity walk. It was not missing work

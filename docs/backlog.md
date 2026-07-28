@@ -10,6 +10,14 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
+- [ ] **Spec-promotion sweep (author queue, 2026-07-28)** — walk the codebase and the
+  test suite looking for invariants that deserve promotion into the formal spec system:
+  load-bearing rules living only as comments/folklore (the CLAUDE.md trap list is the
+  obvious hunting ground), behaviors pinned by a test but stated by no rule (the test
+  passes while its MEANING has no home), and conventions every file follows that
+  nothing enforces (the completeness-gap shape the 2026-07-28 tranches closed for the
+  VAL rules). Deliverable per find: a numbered rule with provenance grade + an
+  Enforced-by line (or an honest UNENFORCED), same discipline as the existing 44.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO
   (2026-07-28: VAL-10 algebra-file scan, VAL-12 OpSelect-binding scan + the `arg`
   contract, VAL-14 only-if — after the earlier passes closed SOCK-5/SOCK-7/VAL-13/FX-4;

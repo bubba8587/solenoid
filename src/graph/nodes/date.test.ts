@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateIfNode, DateAddNode, TimeValueNode, DateConstructNode, WorkdayNode, NetworkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
+import { DatedifNode, DateAddNode, TimeValueNode, DateConstructNode, WorkdayNode, NetworkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DatedifUnit } from "./date";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket } from "../sockets";
 
@@ -117,8 +117,8 @@ describe("serial ↔ JS Date", () => {
 });
 
 describe("DATEDIF", () => {
-  const diff = (unit: DateIfUnit, s: number, e: number) =>
-    new DateIfNode({ unit }).data({ start: [s], end: [e] }).result;
+  const diff = (unit: DatedifUnit, s: number, e: number) =>
+    new DatedifNode({ unit }).data({ start: [s], end: [e] }).result;
 
   it("Y counts complete years", () => {
     expect(diff("Y", ser(2020, 5, 10), ser(2024, 5, 9))).toBe(3);
@@ -288,7 +288,7 @@ describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () =>
   it("a LIST operand yields a list, element-wise", () => {
     expect(new DatePartNode({ op: "day" }).data({ date: [[MON, WED, FRI]] }).result).toEqual([2, 4, 6]);
     expect(new WeekInfoNode({ op: "weekday" }).data({ date: [[MON, FRI]], return_type: [2] }).result).toEqual([1, 5]);
-    expect(new DateIfNode({ unit: "D" }).data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([2, 4]);
+    expect(new DatedifNode({ unit: "D" }).data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([2, 4]);
     expect(new NetworkdaysNode().data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([3, 5]);
   });
 

@@ -120,6 +120,21 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Datedif rename + the spec-promotion sweep queued (2026-07-28u)
+
+**DateIfNode → DatedifNode** (author catch): DATEDIF is a date-DIFFERENCE
+function, and the old class name parsed it as "Date If" — which leaked to the
+user as the Navigator's generated `DateIf_1`. The card label was already
+DATEDIF; the class, unit type, meta table, component and rete label now spell
+it as the one-word Excel name (`Datedif_1` in the Navigator). One-word rather
+than DateDifNode because DateDiffNode (the op family) already exists and a
+one-f/two-f pair is a reading trap. No aliases per pre-alpha; an old save's
+DateIfNode loads as a Placeholder.
+
+**Backlog gains the spec-promotion sweep** (author queue): walk code + tests
+for invariants worth promoting into rules.md — comment/folklore rules, tests
+that pin meaning no rule states, conventions nothing enforces.
+
 ### The partial set hits zero: VAL-10 / VAL-12 / VAL-14 completeness (2026-07-28t)
 
 The last three partially-enforced rules flip to enforced; the spec's summary is
@@ -143,7 +158,7 @@ a per-row `.op` config field, or via `useNodeField(…, "op")` — or carry the
 `arg` prop, now the machine-readable "not the family op selector" declaration.
 That contract surfaced 20 unmarked argument/config/data-pick dropdowns (TVM's
 payment timing — CumPmt/IpmtPpmt already had `arg`, TVM had missed the same
-sweep; XMATCH match mode, FIXED no-commas, TEXTJOIN ignore-empty, DateIf's
+sweep; XMATCH match mode, FIXED no-commas, TEXTJOIN ignore-empty, Datedif's
 `unit` — the recorded borderline, settled as argument-by-semantics; ByAxis's
 BYROW/BYCOL axis, resistor band picks, Slicer column, run-mode/target/format
 configs, the frame-filter condition rows). All sit on neutral cards, so the
