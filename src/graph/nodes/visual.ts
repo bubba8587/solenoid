@@ -76,19 +76,22 @@ export type ChartOp =
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
   | "composed" | "bubble";
 
+// `group` is the card dropdown's optgroup heading — declared here so the dropdown
+// DERIVES from this table like the Add-menu search rows do (SSOT-1), instead of a
+// second hand-written options list drifting beside it.
 export const CHART_OP_META = {
-  column:    { label: "Column" },
-  bar:       { label: "Bar" },
-  line:      { label: "Line" },
-  area:      { label: "Area" },
-  pie:       { label: "Pie" },
-  radar:     { label: "Radar" },
-  radialbar: { label: "Radial" },
-  funnel:    { label: "Funnel" },
-  scatter:   { label: "Scatter" },
-  composed:  { label: "Composed" },
-  bubble:    { label: "Bubble" },
-} satisfies Record<ChartOp, { label: string }>;
+  column:    { label: "Column",   group: "Cartesian" },
+  bar:       { label: "Bar",      group: "Cartesian" },
+  line:      { label: "Line",     group: "Cartesian" },
+  area:      { label: "Area",     group: "Cartesian" },
+  scatter:   { label: "Scatter",  group: "Cartesian" },
+  pie:       { label: "Pie",      group: "Categorical" },
+  radar:     { label: "Radar",    group: "Categorical" },
+  radialbar: { label: "Radial",   group: "Categorical" },
+  funnel:    { label: "Funnel",   group: "Categorical" },
+  composed:  { label: "Composed", group: "Multi-series: wire Series" },
+  bubble:    { label: "Bubble",   group: "Multi-series: wire Series" },
+} satisfies Record<ChartOp, { label: string; group: string }>;
 
 // The 2-D ops read the `series` matrix input (composed = columns are series;
 // bubble = rows are [x, y, size]); the 1-D ops read `values`.

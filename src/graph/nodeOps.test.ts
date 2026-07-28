@@ -223,3 +223,15 @@ describe("the exposure flag is the whole change", () => {
     }
   });
 });
+
+describe("a generated op row is exactly one op", () => {
+  it("does not inherit the host's { } marker fields", () => {
+    // By search time applyNodeOps has stamped hiddenOps onto the host entry;
+    // spreading it into the row put the marker on every generated op row.
+    const decl = opsFor("list-set")! as Parameters<typeof opEntry>[0];
+    const host = { ...byType.get("list-set")!, hiddenOps: [{ op: "x", label: "X" }], hideOpsMark: true };
+    const row = opEntry(decl, host, { op: "union", label: "Union" });
+    expect(row.hiddenOps).toBeUndefined();
+    expect(row.hideOpsMark).toBeUndefined();
+  });
+});
