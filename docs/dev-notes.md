@@ -173,6 +173,34 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### The spec's real gap, found by testing it against the remainder (2026-07-27b)
+
+Author: *"your spec means you should be able to do the rest mechanically. if not, evolve
+the spec."* Read the remaining sites rather than assuming. It was mostly mechanical, and
+one gap was NOT — and it is everywhere in the four files still open.
+
+**"Absent" is not "unknown".** Most nodes already have a code path for an input being
+absent, sitting right next to the read:
+
+    const min = inputs.min?.[0] ?? this.literals.min ?? null;    // null = no floor
+    const rk  = (inputs.rightKey?.[0] ?? …).trim() || lk;        // blank = same as left
+    const tol = inputs.tolerance?.[0] ?? this.literals.tolerance; // undefined = exact
+
+That path is for the UNWIRED slot. Routing a wired blank into it LOOKS like reuse and is
+a semantic change — "the user didn't supply this" and "the graph computed this and got
+nothing" are different facts. Clamp with a wired blank `min` is blank, not unclamped; an
+as-of Join whose `tolerance` arrives blank is blank, not an exact-match join; a KPI whose
+`prev` arrives blank shows no comparison. The unwired readings are unchanged.
+
+It earns its own section because the absent-branch is already written, which makes the
+wrong answer the path of least resistance. Also recorded: an existing comment saying
+"unwired/blank → default" (RoundN's `digits` had one) predates the spec and conflates the
+two cases — the spec wins.
+
+**Batch 5** — scalar (13) and stats (22). 194 → 159; only finance, frame, list and visual
+remain, and all four are full of the optional-input shape, which is why finding this
+before touching them mattered.
+
 ### The blank-wire SPEC, and sweep batch 4 (2026-07-27b)
 
 Author: *"I need you to be writing these rules out formally somewhere, so we have a spec

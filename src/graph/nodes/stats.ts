@@ -60,7 +60,9 @@ export class NthValueNode extends ClassicPreset.Node {
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
-    const k = Math.round(inputs.k?.[0] ?? this.literals.k ?? 1);
+    const kRaw = readInput(inputs.k, this.literals.k ?? 1);
+    if (kRaw === null) { this.cachedResult = null; return { result: null }; }
+    const k = Math.round(kRaw);
     let result: number | null = null;
     if (arr.length > 0 && k >= 1 && k <= arr.length) {
       const sorted = [...arr].sort((a, b) => a - b);
@@ -95,7 +97,8 @@ export class PercentileNode extends ClassicPreset.Node {
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
-    const p = inputs.p?.[0] ?? this.literals.p ?? 0.5;
+    const p = readInput(inputs.p, this.literals.p ?? 0.5);
+    if (p === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (arr.length > 0) {
       const sorted = [...arr].sort((a, b) => a - b);
@@ -150,7 +153,9 @@ export class QuartileNode extends ClassicPreset.Node {
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
-    const q = Math.round(inputs.q?.[0] ?? this.literals.q ?? 2);
+    const qRaw = readInput(inputs.q, this.literals.q ?? 2);
+    if (qRaw === null) { this.cachedResult = null; return { result: null }; }
+    const q = Math.round(qRaw);
     let result: number | null = null;
     if (arr.length > 0 && q >= 0 && q <= 4) {
       if (this.op === "exc" && (q === 0 || q === 4)) {
@@ -205,8 +210,10 @@ export class PercentrankNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; value?: number[]; significance?: number[] }): { result: number | SolError | null } {
     const arr = inputs.list?.[0] ?? null;
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    const sig = Math.round(inputs.significance?.[0] ?? this.literals.significance ?? 3);
+    const v = readInput(inputs.value, this.literals.value ?? null);
+    const sigRaw = readInput(inputs.significance, this.literals.significance ?? 3);
+    if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
+    const sig = Math.round(sigRaw);
     if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
     // Shared with the formula path (excelFunctions `excelPercentRank`) — interpolates
     // between data points + truncates to `sig` digits, matching Excel. One impl both call.
@@ -242,7 +249,7 @@ export class RankNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; value?: number[] }): { result: number | SolError | null } {
     const arr = inputs.list?.[0] ?? null;
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    const v = readInput(inputs.value, this.literals.value ?? null);
     if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
     // Shared with the formula path (excelFunctions `excelRank`) — one impl both call.
     const result = excelRank(v, arr, this.op === "avg");
@@ -318,9 +325,9 @@ export class StandardizeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[]; mean?: (number | number[])[]; stdev?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    const m = inputs.mean?.[0]  ?? this.literals.mean  ?? null;
-    const s = inputs.stdev?.[0] ?? this.literals.stdev ?? null;
+    const v = readInput(inputs.value, this.literals.value ?? null);
+    const m = readInput(inputs.mean, this.literals.mean ?? null);
+    const s = readInput(inputs.stdev, this.literals.stdev ?? null);
     // A zero std dev divides by zero — #DIV/0! — tagged the same at every
     // dimensionality: a scalar → a #DIV/0! scalar, a per-element zero sigma in a
     // LIST → a per-cell #DIV/0! (array-semantics: lists carry per-cell errors).
@@ -397,7 +404,7 @@ export class FisherNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    const v = readInput(inputs.value, this.literals.value ?? null);
     // FISHER is only defined on the open interval (−1, 1). A value outside it is a
     // domain error — #DOMAIN! — tagged the same at every dimensionality (a scalar
     // → a #DOMAIN! scalar, a per-element miss in a LIST → a per-cell #DOMAIN!).
@@ -500,7 +507,8 @@ export class ForecastNode extends ClassicPreset.Node {
   }
 
   data(inputs: { x?: number[]; ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { result: number | SolError | null } {
-    const x = inputs.x?.[0] ?? this.literals.x ?? 0;
+    const x = readInput(inputs.x, this.literals.x ?? 0);
+    if (x === null) { this.cachedResult = null; return { result: null }; }
     const { error, xs: xsP, ys: ysP } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     const ys = ysP, xs = xsP;
@@ -578,7 +586,8 @@ export class TrimMeanNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; percent?: number[] }): { result: number | SolError | null } {
     const arr = inputs.list?.[0] ?? null;
-    const percent = inputs.percent?.[0] ?? this.literals.percent ?? 0.1;
+    const percent = readInput(inputs.percent, this.literals.percent ?? 0.1);
+    if (percent === null) { this.cachedResult = null; return { result: null }; }
     if (!arr || arr.length === 0) { this.cachedResult = null; return { result: null }; }
     // Shared with the formula path (excelFunctions `excelTrimmean`) — one impl both call.
     const result = excelTrimmean(arr, percent);
@@ -667,9 +676,11 @@ export class ConfidenceNode extends ClassicPreset.Node {
   }
 
   data(inputs: { alpha?: number[]; stdev?: number[]; n?: number[] }) {
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? 0.05;
-    const stdev = inputs.stdev?.[0] ?? this.literals.stdev ?? 1;
-    const n = Math.round(inputs.n?.[0] ?? this.literals.n ?? 30);
+    const alpha = readInput(inputs.alpha, this.literals.alpha ?? 0.05);
+    const stdev = readInput(inputs.stdev, this.literals.stdev ?? 1);
+    const nRaw  = readInput(inputs.n,     this.literals.n     ?? 30);
+    if (alpha === null || stdev === null || nRaw === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.round(nRaw);
     let result: number | null = null;
     if (n >= 1 && stdev > 0 && alpha > 0 && alpha < 1) {
       if (this.op === "norm") {
@@ -722,7 +733,7 @@ export class ZTestNode extends ClassicPreset.Node {
 
   data(inputs: { array?: number[][]; x?: number[]; sigma?: number[] }) {
     const arr   = inputs.array?.[0] ?? null;
-    const x     = inputs.x?.[0]     ?? this.literals.x ?? 0;
+    const x     = readInput(inputs.x, this.literals.x ?? 0) ?? NaN; // blank → NaN → the guard below
     const sigma = inputs.sigma?.[0] ?? null;
     let result: number | null = null;
     if (arr && arr.length >= 2) {
@@ -1313,10 +1324,15 @@ export class BinomDistRangeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; p?: number[]; lo?: number[]; hi?: number[] }) {
-    const n  = Math.floor(inputs.n?.[0]  ?? this.literals.n  ?? 10);
-    const p  = inputs.p?.[0]             ?? this.literals.p  ?? 0.5;
-    const lo = Math.floor(inputs.lo?.[0] ?? this.literals.lo ?? 0);
-    const hi = Math.floor(inputs.hi?.[0] ?? this.literals.hi ?? n);
+    const nRaw  = readInput(inputs.n,  this.literals.n  ?? 10);
+    const p     = readInput(inputs.p,  this.literals.p  ?? 0.5);
+    if (nRaw === null || p === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.floor(nRaw);
+    const loRaw = readInput(inputs.lo, this.literals.lo ?? 0);
+    const hiRaw = readInput(inputs.hi, this.literals.hi ?? n);
+    if (loRaw === null || hiRaw === null) { this.cachedResult = null; return { result: null }; }
+    const lo = Math.floor(loRaw);
+    const hi = Math.floor(hiRaw);
     let result: number | null = null;
     if (n >= 0 && p >= 0 && p <= 1 && lo >= 0 && hi >= lo && hi <= n) {
       let sum = 0;
@@ -1353,8 +1369,9 @@ export class ProbNode extends ClassicPreset.Node {
   data(inputs: { range?: number[][]; probs?: number[][]; lo?: number[]; hi?: number[] }) {
     const range = inputs.range?.[0] ?? null;
     const probs = inputs.probs?.[0] ?? null;
-    const lo    = inputs.lo?.[0]    ?? this.literals.lo ?? 0;
-    const hi    = inputs.hi?.[0]    ?? this.literals.hi ?? 1;
+    const lo    = readInput(inputs.lo, this.literals.lo ?? 0);
+    const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
+    if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (range && probs && range.length > 0 && probs.length >= range.length) {
       const n = range.length;

@@ -111,6 +111,7 @@ Decide by the input's ROLE, not by its type:
 | a **check's parameter** — Expect's bound or pattern | that check cannot be EVALUATED | **skips THAT CHECK** and passes the data through | Expect keeps flowing, reports no violation |
 | a **control's bound** — Slider min/max/step | the control still has to work | **falls back to the card's own value** | Slider keeps clamping to its typed bound |
 | a **filter predicate** | that row is not known to match | **DROPS the row** | Filter |
+| an **optional** input — a bound, a tolerance, a comparison value | see "absent is not unknown" below: still **PROPAGATES** | | Clamp's min, as-of tolerance |
 
 The first row is the default. The rest exist because the alternative is worse in a
 specific, checkable way — not as taste:
@@ -122,6 +123,32 @@ specific, checkable way — not as taste:
 - A **control** that propagated would drop the value the user physically set. And
   "stop constraining" (`±Infinity`) is not an escape: it breaks
   `<input type="range">`, the play loop's wrap-around, and tornado's sweep bounds.
+
+### The trap: "absent" is not "unknown"
+
+Most nodes already have a code path for an input being ABSENT, and it is almost always
+sitting right next to the read:
+
+```ts
+const min = inputs.min?.[0] ?? this.literals.min ?? null;   // null = no floor applied
+const rk  = (inputs.rightKey?.[0] ?? …).trim() || lk;       // blank = same key as left
+const tol = inputs.tolerance?.[0] ?? this.literals.tolerance; // undefined = exact match
+```
+
+That path exists for the **UNWIRED** slot. Routing a wired blank into it looks like
+reuse and is a semantic change: *"the user didn't supply this"* and *"the graph computed
+this and got nothing"* are different facts, and only the first means omitted.
+
+So Clamp with a wired blank `min` is **blank**, not unclamped. An as-of Join whose
+`tolerance` arrives blank is **blank**, not an exact-match join. A KPI whose `prev`
+arrives blank shows **no comparison**, not a comparison against the card's number. The
+unwired readings — no floor, exact match, no delta — are unchanged, because those are
+what an unwired slot still means.
+
+This is the same core rule as everywhere else. It gets its own section because the
+absent-branch is already written, which makes the wrong answer the path of least
+resistance. **An existing comment that says "unwired/blank → default" predates this
+spec and conflates the two cases; the spec wins.**
 
 ### Writing a new node
 
