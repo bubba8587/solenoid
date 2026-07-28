@@ -120,6 +120,20 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The registry stops accepting silent collisions (2026-07-28m)
+
+registerInternal was "idempotent-overwrite" — Map.set, so two modules claiming
+one formula name was a lottery decided by import order, with the loser silently
+dead. After a week that added ~120 registrations across five tranches, that was
+the next collision waiting. It now THROWS on a duplicate live name (FX-4's
+registry half, complementing the naming-side injectivity sweep); pack-revocable
+names may return after unregisterInternal, which is the rebuild path.
+
+The guard immediately caught a test-suite hack: excelFunctions.test "cleaned up"
+its ABS test double by registering `undefined` as the impl — registering a hole
+instead of unregistering. Cleanup is now unregisterInternal, and the guard has
+its own pin (throw on duplicate, allow re-registration after withdrawal).
+
 ### D23 step 3, the lambda tranche: gap A reaches ZERO (2026-07-28l)
 
 LAMBDA is now the evaluator's one SPECIAL FORM — handled before the generic

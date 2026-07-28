@@ -222,9 +222,20 @@ export function registryGeneration(): number {
 }
 
 /** Declare a native implementation as authoritative for `name` (a "keep internal"
- *  family, or a flipped one). Idempotent-overwrite. UPPERCASE-keyed. */
+ *  family, or a flipped one). UPPERCASE-keyed.
+ *
+ *  A DUPLICATE registration throws (FX-4's registry half): `Map.set` overwrote
+ *  silently, so two modules claiming one name was a lottery decided by import
+ *  order — the same silent-collision class the despacing injectivity check
+ *  guards on the naming side. Packs re-register on rebuild by design, so a
+ *  REVOCABLE name (one that went through unregisterInternal) may return; a live
+ *  name may not be claimed twice. */
 export function registerInternal(name: string, fn: (...a: unknown[]) => unknown): void {
-  INTERNAL_IMPLS.set(name.toUpperCase(), fn);
+  const key = name.toUpperCase();
+  if (INTERNAL_IMPLS.has(key)) {
+    throw new Error(`Duplicate formula registration: ${key} — two impls claim one name (FX-4)`);
+  }
+  INTERNAL_IMPLS.set(key, fn);
   registryGen++;
 }
 
