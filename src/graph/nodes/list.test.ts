@@ -501,17 +501,22 @@ describe("Filter — condition rows over the list's own values (D16)", () => {
     expect(out.dropped).toBeNull();
   });
 
-  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null reads as unwritten", () => {
+  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null is UNKNOWN", () => {
     const n = mk([{ op: "gt", value: "999" }]); // literal is overridden by the cable
     expect(n.data({ list: [[1, 5, 10]], value0: [4] }).result).toEqual([5, 10]);
     // Boolean threshold on a logical list (stringifies to "true").
     const nb = mk([{ op: "eq", value: "" }]);
     expect(nb.data({ list: [[true, false, true]], value0: [true] }).result).toEqual([true, true]);
-    // A wired MISSING wins over the literal and reads as "not written yet".
+    // A wired MISSING makes the condition unevaluable, so which elements survive is
+    // unknown — blank out, NOT the unfiltered list. That reading (an empty literal's
+    // "not written yet") belongs to the UNWIRED slot only; value-semantics.md,
+    // "Reading an input" -> "absent is not unknown".
     const nn = mk([{ op: "gt", value: "2" }]);
     const out = nn.data({ list: [[1, 5]], value0: [null] });
-    expect(out.result).toEqual([1, 5]);
+    expect(out.result).toBeNull();
     expect(out.dropped).toBeNull();
+    // The UNWIRED slot with an empty literal still passes the list through.
+    expect(mk([{ op: "gt", value: "" }]).data({ list: [[1, 5]] }).result).toEqual([1, 5]);
   });
 
   it("a per-cell error fails its condition and lands in Dropped unmorphed", () => {

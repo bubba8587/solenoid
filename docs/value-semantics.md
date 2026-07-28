@@ -110,7 +110,9 @@ Decide by the input's ROLE, not by its type:
 | a **member of a reduction** — CONCAT's rows, SUM's inputs | one contributor is missing | **SKIPS it**, as SUM skips nulls | `CONCAT(blank, "b")` → `"b"` |
 | a **check's parameter** — Expect's bound or pattern | that check cannot be EVALUATED | **skips THAT CHECK** and passes the data through | Expect keeps flowing, reports no violation |
 | a **control's bound** — Slider min/max/step | the control still has to work | **falls back to the card's own value** | Slider keeps clamping to its typed bound |
+| a **column reference** — which column to sort/group/split/look up by | the target is unknown | **PROPAGATES** — a blank frame out, NOT the frame unchanged | Frame Sort, Get Column, XLOOKUP |
 | a **filter predicate** | that row is not known to match | **DROPS the row** | Filter |
+| a **filter condition's column or comparison value** | that condition cannot be evaluated, so which rows survive is unknown | **PROPAGATES** — the whole result is blank | Filter, SUMIFS |
 | an **optional** input — a bound, a tolerance, a comparison value | see "absent is not unknown" below: still **PROPAGATES** | | Clamp's min, as-of tolerance |
 
 The first row is the default. The rest exist because the alternative is worse in a
@@ -123,6 +125,19 @@ specific, checkable way — not as taste:
 - A **control** that propagated would drop the value the user physically set. And
   "stop constraining" (`±Infinity`) is not an escape: it breaks
   `<input type="range">`, the play loop's wrap-around, and tornado's sweep bounds.
+- A **filter condition** looks like it should skip, the way a check's parameter does.
+  It doesn't, and the difference is what the node OUTPUTS. A check passes the data
+  through and reports separately, so skipping costs only the report. A filter's output
+  IS the decision — skipping the condition silently returns MORE rows than the graph
+  asked for, which reads as a successful unfiltered result rather than a missing one.
+
+An empty STRING deserves its own note, because it is the literal these roles ship with.
+`""` is a real value that already means something on almost every frame verb — "no
+column chosen, pass the frame through". It is what an UNWIRED slot with an untouched
+card reads as, and that reading is unchanged. A cable delivering blank is a different
+fact and takes the row's disposition. So read the raw value first and only then `.trim()`
+it: `const raw = readInput(inputs.column, this.stringLiterals.column ?? "")` — `null` is
+the wired blank, `""` is the untouched card.
 
 ### The trap: "absent" is not "unknown"
 

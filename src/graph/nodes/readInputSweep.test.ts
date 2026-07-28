@@ -24,8 +24,7 @@ const SWALLOW = /\?\? *(this|node)\.(string)?[Ll]iterals/g;
 // Remaining `?? literal` reads, by file. LOWER these as files are swept; never raise
 // one to make the suite green — that is the bug this exists to stop.
 const REMAINING: Record<string, number> = {
-  "frame.ts": 30,
-  "list.ts": 33,
+  "list.ts": 31,
   "visual.ts": 23,
 };
 
@@ -75,7 +74,7 @@ describe("wired-null swallow — ratcheted down, never up", () => {
     for (const f of ["text.ts", "complex.ts", "chemistry.ts", "dist-discrete.ts", "quality.ts", "logic.ts",
                       "date.ts", "input.ts", "matrix.ts", "tableLambda.ts",
                       "cube.ts", "display.ts", "expression.ts", "lambda.ts",
-                      "scalar.ts", "stats.ts", "finance.ts"]) {
+                      "scalar.ts", "stats.ts", "finance.ts", "frame.ts"]) {
       expect(live[f] ?? 0, `${f} regressed — it was fully swept`).toBe(0);
     }
   });
