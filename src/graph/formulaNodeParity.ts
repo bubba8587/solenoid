@@ -45,6 +45,29 @@ export interface ParityRow {
  *  registrations derive their names the same way, from the family OP_META tables. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
+// Leaves the LANGUAGE itself covers: the four operator nodes (+ − × ÷ are the
+// formula surface's own operators), Comparison (= <> < > <= >=), and the two
+// formula HOSTS (Expression/Equation ARE the surface being measured). A name for
+// any of these would be noise; counting them as gaps was a measurement artifact
+// (author-reviewed 2026-07-28).
+const LANGUAGE_LEAVES = new Set([
+  "arith-add", "arith-sub", "arith-mul", "arith-div", "comparison", "expression", "equation",
+]);
+
+/** A PRESET-FORMULA leaf (a locked ExpressionNode with its `expr` baked in — the
+ *  timesaver pattern, and most pack nodes): its formula equivalent is its OWN
+ *  expr, typeable today, so a per-leaf function name would only rename it.
+ *  Detected MECHANICALLY (instantiate, look for the locked formula) rather than
+ *  by a hand-kept list — SSOT-3. */
+function isPresetFormula(leaf: NodeCatalogEntry): boolean {
+  try {
+    const inst = leaf.create() as { expr?: unknown; locked?: unknown };
+    return typeof inst?.expr === "string" && inst.expr.length > 0 && inst.locked === true;
+  } catch {
+    return false;
+  }
+}
+
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
@@ -74,6 +97,8 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     const excelCovered = excel.length > 0 && excel.every((x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))
+      || LANGUAGE_LEAVES.has(leaf.type)
+      || isPresetFormula(leaf)
       || (ops !== undefined && ops.length > 0
           && ops.every((o) => formulaNames.has(o.fx ?? despace(o.label))));
     out.push({ cat: path.join(" › ") || "(top)", type: leaf.type, label: leaf.label, excel, inFormula, excelCovered });

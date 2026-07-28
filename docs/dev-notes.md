@@ -120,6 +120,33 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The remainder audit: false deliberations dissolved by measurement (2026-07-28n)
+
+The author challenged the 289-leaf "deliberate" remainder; the audit found one
+false blanket and one measurement artifact, and fixing the MEASUREMENT dissolved
+most of the gap without registering anything:
+
+- **Preset-formula leaves detected mechanically.** A locked ExpressionNode with
+  its expr baked in (the timesaver pattern — and, it turns out, 148 of the 167
+  pack leaves) has its own expr as its formula equivalent, typeable today. The
+  walk now instantiates each leaf and checks `.locked && .expr` (SSOT-3 —
+  derived, no hand-kept list). My "pack parity moot" blanket was HALF-true: true
+  for these 148, false for the 19 custom-logic nodes now named in the backlog as
+  the real pack workstream (PackFormulas through the existing seam).
+- **The language's own leaves** (the four operator nodes, Comparison,
+  Expression/Equation) counted as gaps — their equivalent is the language
+  itself. A small named set, author-reviewed.
+- **Eight genuine stragglers registered**: REVERSETEXT and SPELLNUMBER (their
+  custom kernels moved to textOps — FX-2), DECODEURL (the existing decode half),
+  LOG2 (matching the node's quiet-null on x ≤ 0, per FX-1, not an invented
+  #DOMAIN!), HYPOTENUSE, and the Kleene trio XNOR/NAND/NOR (variadic,
+  coerceLogical per operand, null poisons XNOR / flows by Kleene in NAND/NOR).
+
+Non-pack: 380/479 — the remainder is sources/sinks/UI/endpoint plus five named
+leaves each with a stated reason. Packs: 148/167, remainder = the 19
+custom-logic nodes. The lesson is the audit's own thesis again: most of the
+"gap" was the measurement not understanding the system, not missing work.
+
 ### The registry stops accepting silent collisions (2026-07-28m)
 
 registerInternal was "idempotent-overwrite" — Map.set, so two modules claiming
