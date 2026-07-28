@@ -173,6 +173,28 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### Sweep batch 3 — a THIRD policy: a source keeps emitting (2026-07-27b)
+
+date, input, matrix, tableLambda (17 sites). 223 → 206 across 10 files.
+
+**The Slider forced a third reading, and it is the one most likely to be swept wrong.**
+Propagating a wired-blank BOUND would null a source node's output — dropping the value
+the user physically set, in order to report a constraint that couldn't be evaluated.
+So a blank bound stops CONSTRAINING (`±Infinity`) rather than voiding the value. Same
+shape as Expect's undeterminable check, and now pinned: an unwired max still clamps to
+the literal, a WIRED blank max does not.
+
+So the policy set is four-way, not two:
+  • element-wise operand / mode selector → PROPAGATE
+  • aggregator, reducer                  → SKIP the missing
+  • a CHECK whose parameter is missing   → skip that check, pass the data
+  • a SOURCE whose bound is missing      → stop constraining, keep emitting
+The first is the default; the rest are what "read the node, not the pattern" means.
+
+Everything else in this batch was shape-or-operand and took the default: matrix
+dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
+answered blank for blank text and only needed the swallow removed.
+
 ### Sweep batch 2 — and the sharpest form of the bug (2026-07-27b)
 
 Swept chemistry, dist-discrete, quality and logic (11 sites). Two findings worth more

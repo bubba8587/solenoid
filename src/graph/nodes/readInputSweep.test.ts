@@ -27,18 +27,14 @@ const SWALLOW = /\?\? *(this|node)\.(string)?[Ll]iterals/g;
 // one to make the suite green — that is the bug this exists to stop.
 const REMAINING: Record<string, number> = {
   "cube.ts": 5,
-  "date.ts": 2,
   "display.ts": 5,
   "expression.ts": 1,
   "finance.ts": 73,
   "frame.ts": 30,
-  "input.ts": 4,
   "lambda.ts": 1,
   "list.ts": 33,
-  "matrix.ts": 7,
   "scalar.ts": 13,
   "stats.ts": 22,
-  "tableLambda.ts": 4,
   "visual.ts": 23,
 };
 
@@ -85,7 +81,8 @@ describe("wired-null swallow — ratcheted down, never up", () => {
   });
 
   it("the files already swept stay swept", () => {
-    for (const f of ["text.ts", "complex.ts", "chemistry.ts", "dist-discrete.ts", "quality.ts", "logic.ts"]) {
+    for (const f of ["text.ts", "complex.ts", "chemistry.ts", "dist-discrete.ts", "quality.ts", "logic.ts",
+                      "date.ts", "input.ts", "matrix.ts", "tableLambda.ts"]) {
       expect(live[f] ?? 0, `${f} regressed — it was fully swept`).toBe(0);
     }
   });

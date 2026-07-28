@@ -133,8 +133,9 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - The grid is mouse-only: no arrow keys between cells, no Enter-to-move-down, no
     Tab-across, and headers aren't focusable so the sort has no keyboard path. The
     biggest gap against "zero learning curve from Excel", and much the largest job.
-- [ ] **Finish the `readInput` sweep** — done: text, date (operands + modes), complex,
-  chemistry, dist-discrete, quality, logic. **223 reads remain across 14 files**,
+- [ ] **Finish the `readInput` sweep** — done: text, date, complex, chemistry,
+  dist-discrete, quality, logic, input, matrix, tableLambda. **206 reads remain across
+  10 files**,
   RATCHETED per file by `nodes/readInputSweep.test.ts`
   so the count can only shrink and a new node can't reintroduce the idiom. (The old
   "~144 sites" estimate was low — the real figure is measured by that test.) Biggest:

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode } from "./text";
 import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
 import { BooleanOpNode, NotNode } from "./logic";
+import { SliderInputNode } from "./input";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -126,6 +127,23 @@ describe("Kleene logic — a wired blank is UNKNOWN, not FALSE", () => {
     expect(node.data({ in: [null] }).result).toBeNull();
     // Unwired still uses the literal.
     expect(node.data({}).result).toBe(true); // NOT(0) — the default literal
+  });
+});
+
+describe("a SOURCE keeps emitting — Slider skips the undeterminable clamp", () => {
+  // Third policy, alongside propagate and skip: a Slider is a source, so a wired
+  // blank BOUND must not null its output. That would drop the value the user set in
+  // order to report a constraint that couldn't be evaluated. The bound simply stops
+  // constraining — the same reading as Expect's undeterminable check.
+  it("keeps its value when a bound is a wired blank", () => {
+    const node = new SliderInputNode();
+    node.value = 250;
+    node.literals.max = 100;
+    // Unwired max clamps to the literal...
+    expect(node.data({}).value).toBe(100);
+    node.value = 250;
+    // ...but a WIRED blank max means "no upper bound right now", not "clamp to 100".
+    expect(node.data({ max: [null as unknown as number] }).value).toBe(250);
   });
 });
 
