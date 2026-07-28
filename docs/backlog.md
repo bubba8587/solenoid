@@ -13,13 +13,25 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed (2026-07-28:
   PERSIST ×8, EFFECT ×2, ENGINE ×3, SOCK-10/11/12, FX-11, VAL-17/18; **63 rules**).
   Still queued, roughly by value:
-  - **FX: backend parity corpus — STEP 1 BUILT** (`v2.0/18-parity-corpus.md`):
-    FRAME_OP_KINDS + both runners + sort/distinct/filter seed fixtures (15
-    cases). JS green; the cargo runner is written but UNVERIFIED in-container
-    (Tauri link needs the GTK libs — now installed; compile skipped by author
-    call — run `cargo test corpus_cases` to verify). Next: verify cargo once,
-    then the verb-by-verb migration off the hand-mirrored pairs (the
-    NOT_YET_MIGRATED whitelist is the ratchet), guard flip, FX-12 promotion.
+  - **FX: backend parity corpus — STEP 1 BUILT; HANDOFF to a fresh session**
+    (`v2.0/18-parity-corpus.md` is the complete brief). Pickup, in order:
+    1. `cd src-tauri && cargo test corpus_cases` — the runner is written
+       against the production deserializers but has NEVER compiled (author
+       skipped the cold Polars build). GTK dev libs were apt-installed
+       2026-07-28; a fresh container needs
+       `apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev`
+       first. Expect a long first compile. Fix whatever the first run
+       surfaces (likely candidates: serde field visibility, dump()'s
+       `__nf`-tagged non-finite cells vs fixture values, error-code drift
+       between the engine's IpcError codes and the oracle's).
+    2. Step 2 (the bulk): migrate the ~30 hand-mirrored test pairs verb by
+       verb — move each pair's cases into `fixtures/frame-verbs/<verb>.json`,
+       delete the Rust+JS pair in ONE commit, delete the verb from
+       `NOT_YET_MIGRATED` in `frameVerbCorpus.test.ts` (the ratchet). The
+       "vitest twin" comments in `engine/tests.rs` map the pairs.
+    3. Binary verbs (join/append/lookup) get their own inventory + `frames`
+       map entries when their pairs migrate.
+    4. Whitelist empty → flip the guard, promote as FX-12 (bundle step 4).
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
     promote if the class of config-driven coercions grows.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO
@@ -119,12 +131,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
   call-on-call). (The regression quartet TREND/GROWTH/LINEST/LOGEST left this
   list: owned over the nodes' fitting kernels, rangeRouting.test.ts pins.)
-  Also formula-shaped: **Expression can still combine two currencies** — the
-  evaluator runs on stripped magnitudes and dimEval on dims, so the display
-  CODE (the real currency identity, VAL-19) never reaches the formula path;
-  `a + b` over $5 and 5€ answers 10. Node-side arithmetic refuses (VAL-19).
-  Fix shape: carry the code alongside the dim in dimEval, or strip to a
-  code-aware operand.
   **Split view (author call 2026-07-28): count packs separately — and the
   preset-formula detection changed both numbers.** The measurement now detects a
   locked preset-formula leaf mechanically (its own `expr` IS its formula

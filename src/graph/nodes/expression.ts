@@ -6,7 +6,7 @@ import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, t
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
 import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
-import { dimEval, type DimEnv } from "../unitDimExpr";
+import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
 
 // The formula grammar is real Excel syntax (^, UPPERCASE functions, & …),
@@ -64,6 +64,22 @@ function stripUnits(v: unknown): unknown {
       : isUnitCell(c) ? (c as UnitCell).value : c);
   }
   return v;
+}
+
+/** The currency CODE a pure-currency formula input carries: the shared display id
+ *  of its tagged cell(s), or undefined when uncoded / mixed (lenient — a computed
+ *  currency has no code) / not currency at all. The code is the currency's real
+ *  unit identity (VAL-19), so it rides the dim pass beside the dim. */
+function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
+  if (!dimEqual(dim, { currency: 1 })) return undefined;
+  const cells = Array.isArray(v) ? v.flat() : [v];
+  let code: string | undefined;
+  for (const c of cells) {
+    if (!isUnitCell(c) || c.display == null) continue;
+    if (code === undefined) code = c.display;
+    else if (code !== c.display) return undefined; // mixed within ONE input → lenient
+  }
+  return code;
 }
 
 /** The dimension a formula input carries: a scalar UnitCell's dim, or the shared dim
@@ -233,8 +249,16 @@ export class ExpressionNode extends ClassicPreset.Node {
       // the unit). Tag the numeric result cells with a determined dimension.
       if (this.ast && this.varNames.some((v) => envDim(rawEnv[v]) !== DIMENSIONLESS && !isDimensionless(envDim(rawEnv[v])))) {
         const dimEnv: DimEnv = {};
-        for (const v of this.varNames) dimEnv[v] = envDim(rawEnv[v]);
-        const dr = dimEval(this.ast, dimEnv);
+        const codeEnv: CodeEnv = {};
+        for (const v of this.varNames) {
+          dimEnv[v] = envDim(rawEnv[v]);
+          // A pure-CURRENCY input also carries its display code — the currency's
+          // real identity (VAL-19) — so the dim pass can refuse `$a + €b` the way
+          // the node-side arithmeticCell does. Other dims never set a code.
+          const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
+          if (code !== undefined) codeEnv[v] = code;
+        }
+        const dr = dimEval(this.ast, dimEnv, codeEnv);
         if (isSolError(dr)) {
           this.cachedResult = dr; this.cachedError = null;
           return { result: dr };

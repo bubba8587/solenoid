@@ -790,8 +790,13 @@ and `$10 ÷ 5€ = 2:1`. Consolidated to one implementation (`arithmeticCell`, m
 rete-free into unitValue.ts) with the guard up front where no op can miss it — SSOT-1
 applied to an algebra.
 *Enforced by:* `unitCurrencyPolicy.test.ts` — the per-op policy table (completeness:
-every `ArithmeticOp` must appear), the non-arithmetic combinators, and the
-combinator-surface check (a new `*Units` export fails until it joins the sweep).
+every `ArithmeticOp` must appear), the non-arithmetic combinators, the
+combinator-surface check (a new `*Units` export fails until it joins the sweep), and
+the FORMULA surface: currency codes ride the dimensional pass (`unitDimExpr`
+`CodeEnv`, supplied by the Expression from its inputs' display ids), so formula
+OPERATORS refuse a mismatch with the same `#UNIT!`. Recorded limitation: codes drop
+at function CALLS — `SUM` over two coded inputs still combines in a formula; the
+node-side aggregators refuse.
 *Origin:* the 2026-07-28 completeness queue ("currency-mismatch across every unit
 combinator"); the sweep's first run found the four live wrong answers above.
 
