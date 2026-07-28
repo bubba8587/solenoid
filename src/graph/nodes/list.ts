@@ -15,6 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
+import { MAX_GENERATED, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -240,7 +241,9 @@ export class ListLengthNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Count"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  // `unknown[][]`, not `number[][]`: the input socket is element-BLIND (anylist) and
+  // this only reads `.length`, so declaring numbers understated what it accepts.
+  data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? null;
     this.cachedResult = arr ? arr.length : null;
     return { result: this.cachedResult };
@@ -496,7 +499,7 @@ export class ReverseNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    const reversed = [...arr].reverse();
+    const reversed = reverseList(arr);
     this.cachedList = reversed;
     return { result: reversed };
   }
@@ -529,10 +532,7 @@ export class SliceNode extends ClassicPreset.Node {
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     const endRaw = readInput(inputs.end, this.literals.end as number | undefined);
     if (startRaw === null || endRaw === null) { this.cachedList = null; return { result: null }; }
-    const start = Math.round(startRaw);
-    const end = endRaw === undefined ? undefined : Math.round(endRaw);
-    // 1-based inclusive → JS slice(start-1, end).
-    const sliced = arr.slice(Math.max(0, start - 1), end);
+    const sliced = sliceList(arr, startRaw, endRaw);
     this.cachedList = sliced;
     return { result: sliced };
   }
@@ -1272,20 +1272,7 @@ export class CumulativeNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    if (arr.length === 0) { this.cachedList = []; return { result: [] }; }
-    const out: number[] = [];
-    let acc = this.op === "cumprod" ? 1 : arr[0];
-    if (this.op === "cumsum")  acc = 0;
-    if (this.op === "cumprod") acc = 1;
-    for (const v of arr) {
-      switch (this.op) {
-        case "cumsum":  acc = (out.length === 0 ? 0 : acc) + v; break;
-        case "cummax":  acc = out.length === 0 ? v : Math.max(acc, v); break;
-        case "cummin":  acc = out.length === 0 ? v : Math.min(acc, v); break;
-        case "cumprod": acc = (out.length === 0 ? 1 : acc) * v; break;
-      }
-      out.push(acc);
-    }
+    const out = cumulative(this.op, arr);
     this.cachedList = out;
     return { result: out };
   }
@@ -1306,7 +1293,7 @@ export class DiffNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = arr.slice(1).map((v, i) => v - arr[i]);
+    this.cachedList = diffList(arr);
     return { result: this.cachedList };
   }
 }
@@ -1335,14 +1322,7 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = inputs.list?.[0] ?? null;
-    let result: number | null = null;
-    if (arr && arr.length > 0) {
-      let idx = 0;
-      for (let i = 1; i < arr.length; i++) {
-        if (this.op === "argmax" ? arr[i] > arr[idx] : arr[i] < arr[idx]) idx = i;
-      }
-      result = idx + 1; // 1-based
-    }
+    const result = arr === null ? null : argMinMax(this.op, arr);
     this.cachedResult = result;
     return { result };
   }
@@ -1369,7 +1349,7 @@ export class ContainsNode extends ClassicPreset.Node {
     let result: number | null = null;
     // A blank needle can't be looked for — unknown, not "not asked yet"
     // (value-semantics.md, "Reading an input").
-    if (arr !== null && v !== null && v !== undefined) result = arr.includes(v) ? 1 : 0;
+    if (arr !== null && v !== null && v !== undefined) result = containsValue(arr, v);
     this.cachedResult = result;
     return { result };
   }
@@ -1390,9 +1370,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    if (arr.length === 0) { this.cachedList = []; return { result: [] }; }
-    const mn = iterMin(arr), mx = iterMax(arr);
-    this.cachedList = mn === mx ? arr.map(() => 0) : arr.map(v => (v - mn) / (mx - mn));
+    this.cachedList = normalizeList(arr);
     return { result: this.cachedList };
   }
 }
@@ -1419,10 +1397,7 @@ export class LinSpaceNode extends ClassicPreset.Node {
     const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (start === null || end === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.round(nRaw);
-    if (n <= 0)  { this.cachedList = []; return { result: [] }; }
-    if (n === 1) { this.cachedList = [start]; return { result: [start] }; }
-    this.cachedList = Array.from({ length: n }, (_, i) => start + i * (end - start) / (n - 1));
+    this.cachedList = linspace(start, end, nRaw);
     return { result: this.cachedList };
   }
 }
@@ -1447,8 +1422,7 @@ export class RepeatNode extends ClassicPreset.Node {
     const nRaw = readInput(inputs.count, this.literals.count ?? 5);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (v === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.max(0, Math.round(nRaw));
-    this.cachedList = Array(n).fill(v);
+    this.cachedList = repeatValue(v, nRaw);
     return { result: this.cachedList };
   }
 }
@@ -1513,8 +1487,7 @@ export class NthElementNode extends ClassicPreset.Node {
     const nRaw = readInput(inputs.n, this.literals.n ?? 2);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.max(1, Math.round(nRaw));
-    this.cachedList = arr.filter((_, i) => i % n === 0);
+    this.cachedList = nthElement(arr, nRaw);
     return { result: this.cachedList };
   }
 }
@@ -1538,13 +1511,7 @@ export class InterleaveNode extends ClassicPreset.Node {
 
   data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
     const a = inputs.a?.[0] ?? [], b = inputs.b?.[0] ?? [];
-    // Ragged inputs pad to the LONGEST with null so the A/B alternation stays
-    // aligned and no tail element is silently dropped.
-    const n = Math.max(a.length, b.length);
-    const out: unknown[] = [];
-    for (let i = 0; i < n; i++) {
-      out.push(i < a.length ? a[i] : null, i < b.length ? b[i] : null);
-    }
+    const out = interleave(a, b);
     this.cachedList = out;
     return { result: out };
   }
@@ -1584,10 +1551,7 @@ export class PadNode extends ClassicPreset.Node {
     const fill = readInput(inputs.fill, this.literals.fill ?? 0);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (nRaw === null || fill === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.round(nRaw);
-    if (arr.length >= n) { this.cachedList = arr; return { result: arr }; }
-    const pad = Array(n - arr.length).fill(fill);
-    this.cachedList = this.dir === "left" ? [...pad, ...arr] : [...arr, ...pad];
+    this.cachedList = padList(arr, nRaw, fill as unknown, this.dir);
     return { result: this.cachedList };
   }
 }
@@ -1614,10 +1578,7 @@ export class GeometricNode extends ClassicPreset.Node {
     const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (start === null || ratio === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.max(0, Math.round(nRaw));
-    const out: number[] = [];
-    let v = start;
-    for (let i = 0; i < n; i++) { out.push(v); v *= ratio; }
+    const out = geometric(start, ratio, nRaw);
     this.cachedList = out;
     return { result: out };
   }
@@ -1641,11 +1602,7 @@ export class FibonacciNode extends ClassicPreset.Node {
     const nRaw = readInput(inputs.n, this.literals.n ?? 10);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const count = Math.min(78, Math.max(0, Math.round(nRaw)));
-    if (count === 0) { this.cachedList = []; return { result: [] }; }
-    const out = [1];
-    if (count > 1) { out.push(1); }
-    for (let i = 2; i < count; i++) out.push(out[i - 1] + out[i - 2]);
+    const out = fibonacci(nRaw);
     this.cachedList = out;
     return { result: out };
   }
@@ -1686,36 +1643,7 @@ export class RollingNode extends ClassicPreset.Node {
     const wRaw = readInput(inputs.window, this.literals.window ?? 3);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (wRaw === null) { this.cachedList = null; return { result: null }; }
-    const w = Math.max(1, Math.round(wRaw));
-    // Each window runs through forAggregate like every other reducer (audit
-    // finding 14): a per-cell error propagates into THAT output cell (a blind
-    // `a+b` reduce concatenated the error object into a string), a null is
-    // skipped (it counted as 0 and still divided the average by the full
-    // window). An all-null window: sum 0, everything else null.
-    const result: (number | null | SolError)[] = arr.map((_, i) => {
-      const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));
-      if (prep.error) return prep.error;
-      const nums = prep.nums.filter((n) => Number.isFinite(n));
-      if (nums.length === 0) return this.op === "sum" ? 0 : null;
-      switch (this.op) {
-        case "sum": return nums.reduce((a, b) => a + b, 0);
-        case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
-        case "min": return iterMin(nums);
-        case "max": return iterMax(nums);
-        case "stdev": {
-          if (nums.length < 2) return null; // sample stdev undefined (matches var_s)
-          const m = nums.reduce((a, b) => a + b, 0) / nums.length;
-          return Math.sqrt(nums.reduce((s, v) => s + (v - m) ** 2, 0) / (nums.length - 1));
-        }
-        case "median": {
-          const sorted = [...nums].sort((a, b) => a - b);
-          const mid = Math.floor(sorted.length / 2);
-          return sorted.length % 2 === 0
-            ? (sorted[mid - 1] + sorted[mid]) / 2
-            : sorted[mid];
-        }
-      }
-    });
+    const result = rolling(this.op, arr, wRaw);
     this.cachedList = result;
     return { result };
   }
@@ -1749,33 +1677,7 @@ export class WeightedNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | null | SolError)[][]; weights?: (number | null | SolError)[][] }) {
     const values  = inputs.values?.[0]  ?? null;
     const weights = inputs.weights?.[0] ?? null;
-    // A SolError in either list propagates.
-    for (const v of [...(values ?? []), ...(weights ?? [])]) if (isSolError(v)) { this.cachedResult = v; return { result: v }; }
-    let result: number | null = null;
-    if (values && weights && values.length > 0 && weights.length >= values.length) {
-      // Pair value↔weight by position; SKIP a pair if either side is null (missing).
-      const pairs: [number, number][] = [];
-      for (let i = 0; i < values.length; i++) {
-        const v = values[i], w = weights[i];
-        if (!isMissing(v) && !isMissing(w)) pairs.push([v as number, w as number]);
-      }
-      const wSum = pairs.reduce((a, [, w]) => a + w, 0);
-      if (pairs.length > 0 && wSum !== 0) {
-        const wavg = pairs.reduce((s, [v, w]) => s + v * w, 0) / wSum;
-        if (this.op === "wavg") {
-          result = wavg;
-        } else {
-          // Bessel-corrected reliability-weight variance: Σw·(x−μ)² / (Σw − Σw²/Σw)
-          const wSum2 = pairs.reduce((a, [, w]) => a + w * w, 0);
-          const denom = wSum - wSum2 / wSum;
-          if (denom > 0) {
-            const wvar = pairs.reduce((s, [v, w]) => s + w * (v - wavg) ** 2, 0) / denom;
-            result = this.op === "wvar" ? wvar : Math.sqrt(wvar);
-          }
-        }
-        if (result !== null && !Number.isFinite(result)) result = null;
-      }
-    }
+    const result = values && weights ? weighted(this.op, values, weights) : null;
     this.cachedResult = result;
     return { result };
   }
@@ -1981,7 +1883,7 @@ export class AggregateNode extends ClassicPreset.Node {
 // Upper bound on a generated list's length. A generator asked for an absurd count
 // (a typo, or a wired value) would otherwise allocate an enormous array that
 // freezes the UI; cap it and return #OVERFLOW! (count out of range) instead.
-const MAX_GENERATED = 1_000_000;
+// The ceiling lives in listOps.ts so the formula registrations share this exact number.
 
 export class RandArrayNode extends ClassicPreset.Node {
   label: string;

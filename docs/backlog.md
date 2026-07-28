@@ -82,19 +82,16 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   data-provider keys, which is fine for a key the user pastes, but an OAuth-style
   "connect an account" flow would change that shape.
 
-- [ ] **Formula ↔ node parity — the remainder** (D19; ratchet, alias gate and Tier 1
-  landed 2026-07-27, so the D10 formula-surface violation is closed). Left:
-  the pack seam also landed 2026-07-27 (`formulaExtensions.ts`). Left: **Tier 3** —
-  formula names for the Solenoid-native data-op core. Naming is now fully DECIDED
-  (D19 decision 2(a), resolved 2026-07-27): **per-op names, uniformly** — the formula
-  name is the node's LABEL despaced, not the class hint. Falls straight out for
-  WAVG/WVAR/WSTDEV, ARGMIN/ARGMAX and ROLLINGSUM…; only SetOp needs invented names
-  (SETUNION/SETINTERSECT/SETDIFFERENCE/SETSYMDIFF) because its labels are prose.
-  Remaining work is mechanical plus two pieces of plumbing: a list `ExcelReturn` type
-  and range routing for list-in-list-out functions.
-  Gap A's remaining 19 are D2-capped and cannot be registered — they ride on the Tier 4
-  decision (author-present, `deferrals.md`). Tiers + rationale in
-  `formula-node-parity.md`; both gaps machine-checked by `formulaNodeParity.test.ts`.
+- [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
+  the ratchet and the pack seam have landed; 325/646 leaves are formula-callable.
+  Left: **Tier 4** (the D2 dimensionality cap — author-present, `deferrals.md`) and
+  the tail of the list family Tier 3 skipped — Set / Set relation (needs the invented
+  SETUNION/SETINTERSECT/SETDIFFERENCE/SETSYMDIFF names, the one naming call D19 2(a)
+  doesn't answer because the labels are prose), Coalesce/Fill, Range, Concat Lists,
+  and Shuffle (nondeterministic — decide whether a formula may be non-pure at all).
+  Gap A's remaining 19 are D2-capped and cannot be registered; they ride on Tier 4.
+  Tiers + rationale in `formula-node-parity.md`; gaps machine-checked by
+  `formulaNodeParity.test.ts`, node↔formula equality by `formulaTier3.test.ts`.
   Residual: distributions are validated only at representative points — widen if
   accuracy is ever in doubt.
 - [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose

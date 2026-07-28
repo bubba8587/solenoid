@@ -360,6 +360,19 @@ const RANGE_PAIRED = new Set([
 // answer in indices), so nulls stay put; errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
 
+// ── Whole-list natives (D19 Tier 3) ───────────────────────────────────────────
+// The Solenoid data-op core — REVERSE / SLICE / ROLLINGSUM / WAVG / … — takes a 1-D
+// list as an argument, so the call must NOT be mapped element-wise the way a scalar
+// function is. It is range routing, but with the raw-argument policy rather than the
+// aggregator one, and for the same reason COUNT has it: these ops are
+// POSITION-preserving, so dropping the nulls out of the vector before the call would
+// change the answer (`REVERSE([1,null,3])` is `[3,null,1]`) and hoisting a cell error
+// to the top would erase which cell it belonged to. Membership is DERIVED from the
+// `listArgs` flag on each registration, so declaring a Tier 3 function routes it.
+function takesWholeArgs(name: string): boolean {
+  return EXCEL_IMPL_META[name]?.listArgs === true && !ELIMINATED_FUNCTIONS.has(name);
+}
+
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to
 // a #NAME? redirect stub, so routing it would only decide how carefully the arguments
 // were prepared before handing them to a function that refuses to run. Derived from
@@ -637,6 +650,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // an FX error object), so surface the first one rather than let it vanish.
       const sol = argv.find(isSolError);
       if (sol) return sol;
+      // A whole-list native gets its arguments exactly as they arrived — no
+      // element-wise mapping, no null-drop, no error hoist (see takesWholeArgs).
+      if (takesWholeArgs(name)) return dispatch(name, ...argv);
       if (RANGE_FUNCTIONS.has(name)) {
         // Array args honor the aggregator policy (error propagates, null skips —
         // see prepRangeArgs) instead of passing raw into Formula.js.

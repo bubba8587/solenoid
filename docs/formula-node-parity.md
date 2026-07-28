@@ -1,10 +1,9 @@
 # Formula ↔ node parity — audit + design frame
 
-**Status: TIER 1 + TIER 2 BUILT (2026-07-27). Tier 3 open; Tier 4 author-gated.**
+**Status: TIERS 1–3 BUILT (Tier 3 landed 2026-07-28). Tier 4 author-gated.**
 The mechanical work D19 greenlit — the ratchet, the alias gate, the Tier 1
-registrations — has landed; what remains is Tier 3 (formula names for the
-Solenoid-native data-op core) and the Tier 4 decision. The audit framing below is
-kept because Tier 3/4 still need it. **Design frame as of 2026-07-14:** Author direction: the expression/equation
+registrations, the pack seam, and now the Tier 3 list core — has landed; what remains
+is the Tier 4 decision. The audit framing below is kept because Tier 4 still needs it. **Design frame as of 2026-07-14:** Author direction: the expression/equation
 formula language and the node set should converge — "people will be expecting that and
 we've kind of let it stagnate." The author has also explicitly **reopened the recorded
 restrictions** in this area (D2's permanent Expression cap, the broadcastCall/element-wise
@@ -118,15 +117,40 @@ and are dropped from autocomplete and range routing. Gap C is now 0 — the
 remaining current-Excel names with no node (AGGREGATE, GROWTH, N, T, TYPE,
 ISO.CEILING, CEILING.PRECISE, FLOOR.PRECISE) are recorded in `EXCEL_GAP` instead.
 
-**Tier 3 — formula names for the Solenoid-native data-op core.** SETEQ/SETDIFF-style
-registrations for the list/set utilities. Needs two small pieces of plumbing (a list
-`ExcelReturn` type + range routing for list-in-list-out functions) and one design
-decision: **naming**. Options: bare names matching the node labels (REVERSE, SLICE —
-risk: future Excel collisions), or a SOL. namespace (SOL.REVERSE — the dotted-name
-machinery already exists for NORM.DIST). **DECIDED: bare, unified with the node hover
-hint — see Decisions below.** Frame verbs in formulas are explicitly NOT this
-tier — a query language in a formula string is its own large design (and bundle 08's
-transpiler is the nearer answer for "text in, graph out").
+**Tier 3 — formula names for the Solenoid-native data-op core. BUILT 2026-07-28.**
+31 registrations covering Lists › Shape / Find / Aggregate / Build / Rolling: REVERSE,
+SLICE, NTHELEMENT, INTERLEAVE, PADLEFT/PADRIGHT, DIFF, NORMALIZE, RUNNINGSUM/PRODUCT/
+MAX/MIN, ROLLINGSUM/AVG/MIN/MAX/STDEV/MEDIAN, LENGTH, ARGMAX/ARGMIN, CONTAINS,
+WAVG/WVAR/WSTDEV, LINSPACE, REPEAT, GEOMETRIC, FIBONACCI. Naming is bare and per-op
+(decision 2(a)): the node LABEL DESPACED, read from the family's OP_META table rather
+than reinvented, so "Rolling SUM" is ROLLINGSUM. `formulaNodeParity.ts` despaces the
+same way when it measures, which is what stopped it under-reporting every multi-word
+native.
+
+Both surfaces call ONE implementation — `nodes/listOps.ts`, extracted from the nodes'
+`data()` methods — so a formula and its node cannot answer differently;
+`formulaTier3.test.ts` asserts that op by op rather than testing the formula alone.
+
+The two pieces of plumbing it needed:
+- **Output rank.** `ExcelImplMeta.rank` ("scalar" | "list") splits the RANK from the
+  element type the way the socket lattice already does. Deliberately no "matrix" —
+  that spelling arrives with the Tier 4 decision, not before.
+- **Whole-list routing.** `listArgs` on a registration routes the call past the
+  element-wise broadcaster. It is range routing with the RAW argument policy, not the
+  aggregator one, and for the same reason COUNT has it: these ops are
+  position-preserving, so dropping nulls out of the vector first would change the
+  answer (`REVERSE([1,null,3])` is `[3,null,1]`) and hoisting a cell error to the top
+  would erase which cell it came from. Both sets derive from the meta table, so a
+  registration cannot declare one and forget the other.
+
+Generators are capped at the FORMULA boundary (`#OVERFLOW!` past `MAX_GENERATED`,
+the RANDARRAY/SEQUENCE convention). The nodes stay uncapped on purpose: a Count field
+is a spinner the user watches, a formula field is where a typo asks for ten million.
+
+Still open in the list family: Set / Set relation (needs the invented SETUNION-style
+names), Coalesce/Fill, Shuffle (nondeterministic), Range and Concat Lists. Frame verbs
+are explicitly NOT this tier — a query language in a formula string is its own large
+design (and bundle 08's transpiler is the nearer answer for "text in, graph out").
 
 **Tier 4 — the dimensionality cap itself (D2, reopened).** Whether formulas accept
 matrices. Discussed with the author 2026-07-14 — full framing in the dedicated section

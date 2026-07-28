@@ -301,6 +301,53 @@ Everything else in this batch was shape-or-operand and took the default: matrix
 dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
 answered blank for blank text and only needed the swallow removed.
 
+### D19 Tier 3 — the list core is callable from a formula (2026-07-28)
+
+31 registrations, and the point of them is not the 31. Tier 3's real deliverable is
+that the two surfaces stop being two implementations: `nodes/listOps.ts` is the single
+copy, extracted out of the nodes' `data()` methods, and both the node and the formula
+call it. `formulaTier3.test.ts` asserts node-equals-formula op by op rather than
+testing the formula in isolation — the discipline Tier 1 set, because a formula test
+that passes on its own is exactly how the two drifted in the first place.
+
+**Naming needed no new decision, which is the payoff from the OP_META unification two
+commits earlier.** D19 2(a) says the formula name is the node's LABEL despaced; the
+labels now live in one table per family, so ROLLINGSUM/RUNNINGMAX/PADLEFT fall out of
+`ROLLING_OP_META`/`CUMULATIVE_OP_META`/`PAD_OP_META` instead of being retyped. The
+test reads the tables too, so renaming an op in one place fails here.
+
+**The measurement was wrong before it was right.** `formulaNodeParity.ts` matched a
+native leaf by its label verbatim, so it kept reporting "Rolling SUM" as a gap after
+ROLLINGSUM was registered. It now despaces exactly the way the registrations do —
+one exported helper, both callers. That is the same failure the module's own header
+warns about (a report that measures differently from the ratchet), caught only
+because the numbers didn't move when they should have. 302 → 325 leaves callable.
+
+**The two plumbing pieces, and why the second one isn't the obvious one.** Output rank
+(`ExcelImplMeta.rank`) splits RANK from element type the way the socket lattice
+already does — with no "matrix" spelling, deliberately, since that arrives with Tier 4
+or not at all. Routing was the interesting half: the instinct is to reuse the existing
+range routing, but its argument prep is the AGGREGATOR policy (drop nulls, hoist the
+first error), and every Tier 3 op is position-preserving. `REVERSE([1,null,3])` must
+be `[3,null,1]`, and a cell error has to stay in the cell it came from. So `listArgs`
+routes with the RAW policy — the one COUNT already has, for the same reason. Both sets
+derive from the meta table rather than being hand-kept beside it.
+
+`listArgs` also does a job that isn't about lists arriving: it marks LINSPACE and
+friends never-broadcast. Without it `LINSPACE(list, 1, 5)` would map element-wise into
+a list of lists — a 2-D value built behind D2's back, from a function whose arguments
+are all scalars.
+
+Generators are capped at the formula boundary (`#OVERFLOW!` past `MAX_GENERATED`,
+reusing RANDARRAY/SEQUENCE's convention and constant). The nodes stay uncapped on
+purpose: a Count field is a spinner the user watches change, a formula field is where
+a typo asks for ten million elements with nothing visible to stop it.
+
+Skipped for now, each for a stated reason rather than fatigue: Set / Set relation
+(prose labels, so 2(a) doesn't name them — SETUNION-style names are a real decision),
+Coalesce/Fill, Range, Concat Lists, and Shuffle, which is nondeterministic and raises
+a question Tier 3 shouldn't answer alone: whether a formula may be non-pure at all.
+
 ### The wired-null sweep is DONE — 0 sites, and the spec grew four rules (2026-07-28)
 
 The last four files went in one pass each: finance (73), frame (30), list (31), visual
