@@ -83,17 +83,22 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   "connect an account" flow would change that shape.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
-  the ratchet and the pack seam have landed; 332/646 leaves are formula-callable, gap A
+  the ratchet and the pack seam have landed; 336/646 leaves are formula-callable, gap A
   is the 19 D2-capped names, gap C is 0. Left: **Tier 4** (the D2 dimensionality cap —
   author-present, `deferrals.md`), and three list-family stragglers each parked for a
   stated reason rather than effort:
   - **SHUFFLE** needs a VOLATILITY model. The node holds its permutation stable within
     a recalc pass; a formula call can't. RAND/RANDBETWEEN already reach the formula
     surface from Formula.js without one — decide the model before adding a third.
-  - **COUNT DISTINCT / INTERPOLATE / the Lists › Tests pair** — mechanical, just not
-    done; each needs its op extracted to `listOps.ts` first.
+  - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
+    is registered.
   - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is
     the answer to "text in, graph out").
+  Separately: **array-RETURNING range functions** (TREND, GROWTH, LINEST, LOGEST,
+  FREQUENCY, MODE.MULT, UNIQUE, SORT, FILTER, TRANSPOSE) are still broadcast rather
+  than range-routed — Formula.js writes them against a 2-D range and doesn't treat a
+  1-D list as a vector, so each needs list-model handling. Pinned as a known state by
+  `rangeRouting.test.ts`; the scalar-returning half of that bug class is fixed.
   Tiers + rationale in `formula-node-parity.md`; gaps machine-checked by
   `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
   `formulaTier3.test.ts`. Residual: distributions are validated only at representative

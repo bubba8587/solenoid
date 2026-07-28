@@ -333,6 +333,14 @@ export const RANGE_FUNCTIONS = new Set<string>([
   // Without this the classic five broadcast element-wise: VLOOKUP(2,[1,2,3],1)
   // returned [#N/A,#N/A,#N/A].
   "XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX",
+  // Statistical TESTS and the pairwise sums — whole samples in, ONE number out. These
+  // were broadcasting: T.TEST([1,2,3,4], …) ran four times on four scalars and
+  // answered a list of four empty objects. Nothing caught it because RANGE_FUNCTIONS
+  // is hand-kept and these were simply never added; `rangeRouting.test.ts` now checks
+  // the shape of every one of them.
+  "T.TEST", "F.TEST", "Z.TEST", "CHISQ.TEST",
+  "SUMX2MY2", "SUMX2PY2", "SUMXMY2",
+  "MODE.SNGL", "PROB", "SERIESSUM",
 ]);
 
 // ── Range-argument prep (the null/error aggregator policy) ────────────────────
@@ -355,7 +363,18 @@ const RANGE_PAIRED = new Set([
   "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR", "XIRR", "XNPV",
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS",
+  // The pairwise sums are defined term-by-term (Σ(xᵢ²−yᵢ²)), and CHISQ.TEST compares
+  // observed against expected cell for cell, so both must keep their arrays aligned.
+  // PROB pairs each value with its probability.
+  "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "CHISQ.TEST", "PROB",
 ]);
+// NOT paired, deliberately: T.TEST and F.TEST. Their arrays are two SAMPLES, which for
+// an independent test (T.TEST types 2/3, F.TEST) may legitimately differ in length —
+// the paired policy's min-length zip would silently discard the tail of the longer one
+// on every such call. The pooled policy instead misaligns pairs only for a PAIRED test
+// that also contains a null, which is both rarer and narrower. Excel requires equal
+// lengths for type 1 anyway, so the zip would be a no-op in exactly the case where
+// pairing would have helped.
 // POSITIONAL lookups: dropping nulls would shift match positions (MATCH/INDEX
 // answer in indices), so nulls stay put; errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
