@@ -793,9 +793,11 @@ applied to an algebra.
 every `ArithmeticOp` must appear), the non-arithmetic combinators, the
 combinator-surface check (a new `*Units` export fails until it joins the sweep), and
 the FORMULA surface: currency codes ride the dimensional pass (`unitDimExpr`
-`CodeEnv`, supplied by the Expression from its inputs' display ids), so formula
-OPERATORS refuse a mismatch with the same `#UNIT!`. Recorded limitation: codes drop
-at function CALLS — `SUM` over two coded inputs still combines in a formula; the
+`CodeEnv`, supplied by the Expression AND the Equation from their inputs' display
+ids), so formula OPERATORS refuse a mismatch with the same `#UNIT!` — and the
+Equation's `=` compares its two sides' RESULT codes (`dimEvalWithCode`), since no
+operator inside either side ever sees both. Recorded limitation: codes drop at
+function CALLS — `SUM` over two coded inputs still combines in a formula; the
 node-side aggregators refuse.
 *Origin:* the 2026-07-28 completeness queue ("currency-mismatch across every unit
 combinator"); the sweep's first run found the four live wrong answers above.

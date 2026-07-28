@@ -13,7 +13,7 @@ import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { dimEval, type DimEnv } from "../unitDimExpr";
+import { dimEval, dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, isDimensionless } from "../dimension";
 
@@ -32,6 +32,21 @@ function dimOfVal(v: unknown): Dim {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) { for (const c of v) if (isUnitCell(c)) return c.dim; }
   return DIMENSIONLESS;
+}
+
+/** A pure-currency known's display code — the currency's real identity
+ *  (VAL-19), threaded through dimEval so `$P = €C` refuses instead of holding
+ *  by magnitude. Mirrors the Expression's envCurrencyCode. */
+function codeOfVal(v: unknown, dim: Dim): string | undefined {
+  if (!dimEqual(dim, { currency: 1 })) return undefined;
+  const cells = Array.isArray(v) ? v : [v];
+  let code: string | undefined;
+  for (const c of cells) {
+    if (!isUnitCell(c) || c.display == null) continue;
+    if (code === undefined) code = c.display;
+    else if (code !== c.display) return undefined; // mixed within one input → lenient
+  }
+  return code;
 }
 
 /** Strip a value to base-SI magnitudes for the numeric engine. */
@@ -207,11 +222,14 @@ export class EquationNode extends ClassicPreset.Node {
     // derivation), then run the numeric engine on BASE-SI magnitudes — the same
     // convention as the arithmetic algebra.
     const dims: DimEnv = {};
+    const codes: CodeEnv = {};
     let anyDim = false;
     for (const v of this.varNames) {
       if (unknowns.includes(v)) continue;
       const d = dimOfVal(env[v]);
       dims[v] = d;
+      const code = codeOfVal(env[v], d);
+      if (code !== undefined) codes[v] = code;
       if (!isDimensionless(d)) anyDim = true;
     }
     if (anyDim) for (const k of Object.keys(env)) env[k] = toBaseVal(env[k]);
@@ -224,12 +242,19 @@ export class EquationNode extends ClassicPreset.Node {
       // Fully determined → dimensional consistency FIRST (comparing a metre to a
       // second can't "hold"), then the numeric truth check on base magnitudes.
       if (anyDim) {
-        const dl = dimEval(this.equation.lhs, dims);
-        const dr = dimEval(this.equation.rhs, dims);
+        const dl = dimEvalWithCode(this.equation.lhs, dims, codes);
+        const dr = dimEvalWithCode(this.equation.rhs, dims, codes);
         if (isSolError(dl)) { this.cachedHolds = dl; return finish(null); }
         if (isSolError(dr)) { this.cachedHolds = dr; return finish(null); }
-        if (dl !== null && dr !== null && !dimEqual(dl, dr)) {
+        if (dl !== null && dr !== null && !dimEqual(dl.dim, dr.dim)) {
           this.cachedHolds = unitError("The two sides carry different units.");
+          return finish(null);
+        }
+        // The `=` IS the combination: two sides in different CURRENCIES share the
+        // dimension but can't be equated (no exchange rate — VAL-19). `$5 = €5`
+        // must refuse, not "hold" by base magnitude.
+        if (dl !== null && dr !== null && dl.code !== undefined && dr.code !== undefined && dl.code !== dr.code) {
+          this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code} — different currencies, no exchange rate.`);
           return finish(null);
         }
       }
@@ -261,7 +286,7 @@ export class EquationNode extends ClassicPreset.Node {
           ? isolate(eq.rhs, eq.lhs, unknown)
           : null;
       if (!iso) return;
-      const dr = dimEval(iso, dims);
+      const dr = dimEval(iso, dims, codes);
       if (isSolError(dr)) { values[unknown] = dr; return; }
       if (dr === null || isDimensionless(dr)) return;
       const tag = (n: number | UnitCell | SolError | null) => (typeof n === "number" ? tagDim(n, dr) : n);

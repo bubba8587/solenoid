@@ -1702,6 +1702,12 @@ registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
 
 const needLambda = (v: unknown, host: string): LambdaValue | SolError =>
   isLambdaValue(v) ? v : solError("#VALUE!", `${host} needs a LAMBDA as its last argument`);
+/** The host-side half of eta-lambdas (`MAP(x, SQRT)`): an eta wrapper declares
+ *  no params, so the host calls it with its MEANINGFUL arity only — the wired
+ *  arrays' cells, never the trailing row/col indices or pad slots a raw scalar
+ *  function would happily compute on. A declared LAMBDA gets the full tuple. */
+const etaFn = (lam: LambdaValue, meaningful: number): ((...args: unknown[]) => unknown) =>
+  lam.eta ? (...args: unknown[]) => lam.fn(...args.slice(0, meaningful)) : lam.fn;
 /** Rank-preserving cell walk: a list is one ROW (SOCK-2's convention). */
 const asRows = (v: unknown): unknown[][] | null => {
   if (v == null) return null;
@@ -1721,9 +1727,10 @@ registerInternal("MAP", (...args: unknown[]) => {
   const rows = Math.max(...shaped.map((m) => m.length));
   const cols = Math.max(...shaped.flatMap((m) => m.map((r) => r.length)));
   const cellAt = (m: unknown[][], i: number, j: number) => (i < m.length && j < m[i].length ? m[i][j] : null);
+  const fn = etaFn(lam, arrays.length);
   const out = Array.from({ length: rows }, (_, i) =>
     Array.from({ length: cols }, (_, j) =>
-      lam.fn(cellAt(shaped[0], i, j), cellAt(shaped[1] ?? [], i, j), cellAt(shaped[2] ?? [], i, j), i + 1, j + 1)));
+      fn(cellAt(shaped[0], i, j), cellAt(shaped[1] ?? [], i, j), cellAt(shaped[2] ?? [], i, j), i + 1, j + 1)));
   return likeInput(arrays[0], out);
 });
 
@@ -1731,7 +1738,8 @@ registerInternal("BYROW", (v, fn) => {
   const lam = needLambda(fn, "BYROW");
   if (isSolError(lam)) return lam;
   const m = asRows(v);
-  return m === null ? null : m.map((row) => lam.fn([...row]));
+  const call = etaFn(lam, 1);
+  return m === null ? null : m.map((row) => call([...row]));
 });
 registerInternal("BYCOL", (v, fn) => {
   const lam = needLambda(fn, "BYCOL");
@@ -1739,7 +1747,8 @@ registerInternal("BYCOL", (v, fn) => {
   const m = asRows(v);
   if (m === null) return null;
   const cols = Math.max(...m.map((r) => r.length), 0);
-  return Array.from({ length: cols }, (_, j) => lam.fn(m.map((r) => (j < r.length ? r[j] : null))));
+  const call = etaFn(lam, 1);
+  return Array.from({ length: cols }, (_, j) => call(m.map((r) => (j < r.length ? r[j] : null))));
 });
 
 // REDUCE/SCAN walk cells row-major, calling (acc, value, step). A cell ERROR
@@ -1752,9 +1761,10 @@ registerInternal("REDUCE", (init, v, fn) => {
   if (m === null) return null;
   let acc: unknown = init ?? null;
   let step = 0;
+  const call = etaFn(lam, 2);
   for (const row of m) for (const cell of row) {
     if (isSolError(cell)) return cell;
-    acc = lam.fn(acc, cell, ++step);
+    acc = call(acc, cell, ++step);
     if (isSolError(acc)) return acc;
   }
   return acc;
@@ -1767,10 +1777,11 @@ registerInternal("SCAN", (init, v, fn) => {
   let acc: unknown = init ?? null;
   let step = 0;
   let poisoned: SolError | null = null;
+  const call = etaFn(lam, 2);
   const out = m.map((row) => row.map((cell) => {
     if (poisoned) return poisoned;
     if (isSolError(cell)) { poisoned = cell; return cell; }
-    acc = lam.fn(acc, cell, ++step);
+    acc = call(acc, cell, ++step);
     if (isSolError(acc)) poisoned = acc as SolError;
     return acc;
   }));
@@ -1806,7 +1817,8 @@ registerInternal("GROUPBY", (keys, values, fn) => {
     const g = groups.get(k);
     if (g) g.vals.push(vs[i]); else groups.set(k, { key: ks[i], vals: [vs[i]] });
   }
-  return [...groups.values()].map((g) => [g.key, lam.fn(g.vals)]);
+  const call = etaFn(lam, 1);
+  return [...groups.values()].map((g) => [g.key, call(g.vals)]);
 });
 
 // LAMBDA is intercepted as a special form BEFORE dispatch ever runs — this stub

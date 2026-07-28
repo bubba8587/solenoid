@@ -26,6 +26,10 @@ export type Ast =
   | { t: "bool"; v: boolean }
   | { t: "name"; name: string }
   | { t: "call"; name: string; args: Ast[] }
+  // A POSTFIX call on a computed function value — `LAMBDA(x, x+1)(5)`, or a
+  // chained `f(2)(3)`. Distinct from `call` (a NAME applied to args): `fn` is an
+  // arbitrary expression that must evaluate to a LambdaValue.
+  | { t: "apply"; fn: Ast; args: Ast[] }
   | { t: "unary"; op: "-" | "+"; arg: Ast }
   | { t: "percent"; arg: Ast }
   | { t: "bin"; op: string; l: Ast; r: Ast }
@@ -137,7 +141,45 @@ function parse(toks: Tok[]): Ast | null {
     if (isOp("-", "+")) { const op = eat().v as "-" | "+"; const arg = unary(); if (!arg) return null; return { t: "unary", op, arg }; }
     return primary();
   }
+  /** Parse "( args )" starting AT the open paren. Null on syntax error. */
+  function argList(): Ast[] | null {
+    eat(); // the "("
+    const args: Ast[] = [];
+    if (peek()?.v !== ")") {
+      for (;;) {
+        // An OMITTED argument — a comma (or the closing paren) right where an
+        // expression should start — is a BLANK, Excel's `IF(x,,y)` form.
+        if (peek()?.k === "comma" || (peek()?.k === "paren" && peek().v === ")")) {
+          args.push({ t: "blank" });
+        } else {
+          const a = comparison();
+          if (!a) return null;
+          args.push(a);
+        }
+        if (peek()?.k === "comma") { eat(); continue; }
+        break;
+      }
+    }
+    if (peek()?.v !== ")") return null;
+    eat();
+    return args;
+  }
+
   function primary(): Ast | null {
+    const base = primaryNoApply();
+    if (!base) return null;
+    // Postfix application — `LAMBDA(x, x+1)(5)`, `f(2)(3)`: any further "(" after
+    // a complete primary applies its VALUE (which must be a lambda at runtime).
+    let node = base;
+    while (peek()?.k === "paren" && peek().v === "(") {
+      const args = argList();
+      if (!args) return null;
+      node = { t: "apply", fn: node, args };
+    }
+    return node;
+  }
+
+  function primaryNoApply(): Ast | null {
     const t = peek();
     if (!t) return null;
     if (t.k === "num") { eat(); return { t: "num", v: t.v }; }
@@ -152,25 +194,8 @@ function parse(toks: Tok[]): Ast | null {
     if (t.k === "name") {
       eat();
       if (peek()?.k === "paren" && peek().v === "(") {
-        eat();
-        const args: Ast[] = [];
-        if (peek()?.v !== ")") {
-          for (;;) {
-            // An OMITTED argument — a comma (or the closing paren) right where an
-            // expression should start — is a BLANK, Excel's `IF(x,,y)` form.
-            if (peek()?.k === "comma" || (peek()?.k === "paren" && peek().v === ")")) {
-              args.push({ t: "blank" });
-            } else {
-              const a = comparison();
-              if (!a) return null;
-              args.push(a);
-            }
-            if (peek()?.k === "comma") { eat(); continue; }
-            break;
-          }
-        }
-        if (peek()?.v !== ")") return null;
-        eat();
+        const args = argList();
+        if (!args) return null;
         return { t: "call", name: t.v, args };
       }
       const up = t.v.toUpperCase();
@@ -262,6 +287,7 @@ function collectNames(n: Ast, out: string[], seen: Set<string>): void {
   switch (n.t) {
     case "name": if (constantValue(n.name) === undefined && !seen.has(n.name)) { seen.add(n.name); out.push(n.name); } break;
     case "call": n.args.forEach((a) => collectNames(a, out, seen)); break;
+    case "apply": collectNames(n.fn, out, seen); n.args.forEach((a) => collectNames(a, out, seen)); break;
     case "unary": case "percent": collectNames(n.t === "unary" ? n.arg : n.arg, out, seen); break;
     case "bin": collectNames(n.l, out, seen); collectNames(n.r, out, seen); break;
   }
@@ -421,6 +447,11 @@ const NULLABLE_SCALARS_OK = new Set([
   // A blank condition means the default "contains".
   "TEXTFILTER",
 ]);
+
+// The lambda HOSTS whose fn argument may be a bare function name (eta). MAKEARRAY
+// is excluded on purpose: its lambda is a (row, col) GENERATOR — a bare scalar
+// function there is a mistake worth surfacing, not a shorthand.
+const ETA_HOSTS = new Set(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"]);
 
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to
 // a #NAME? redirect stub, so routing it would only decide how carefully the arguments
@@ -646,6 +677,10 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   // numeric coercion below, which would concatenate the object into
   // "[object Object]" garbage.
   if (isCx(a) || isCx(b)) return applyCxOp(op, a, b);
+  // A LAMBDA operand is the same garbage class — a function has no arithmetic.
+  if (isLambdaValue(a) || isLambdaValue(b)) {
+    return solError("#TYPE!", "A LAMBDA isn't a value — apply it with (…) or pass it to MAP/REDUCE/…");
+  }
   // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
   const na = num(a), nb = num(b);
@@ -771,6 +806,25 @@ function broadcastCall(name: string, argv: unknown[]): unknown {
 // etc. surface a real error; per-cell errors inside a broadcast list propagate
 // unmorphed through operators (applyOp's isErr guard — lists carry errors
 // first-class since the 2026-06-22 array-semantics build).
+/** Evaluate an argument that sits in a LAMBDA-position slot: a BARE dispatchable
+ *  name eta-expands to an eta LambdaValue wrapping the dispatch (`MAP(x, SQRT)`,
+ *  `LAMBDA(f, f(9))(SQRT)`), marked `eta` so a host calls it with its MEANINGFUL
+ *  arity only (a raw SQRT must not receive MAP's (v, v2, v3, row, col) tuple —
+ *  excelFunctions.ts etaFn). A same-named VARIABLE or constant still wins, and a
+ *  lambda that then leaks into an operator refuses with #TYPE! (applyOp). */
+function etaOrEval(a: Ast, env: Record<string, unknown>): unknown {
+  if (a.t === "name" && !(a.name in env)
+      && constantValue(a.name) === undefined && resolveExcelFunction(a.name)) {
+    const fnName = a.name.toUpperCase();
+    const fn = (...args: unknown[]): unknown => {
+      const r = dispatch(fnName, ...args);
+      return typeof r === "number" ? guardFinite(r, ...args) : r;
+    };
+    return { __lambda: true, params: [], fn, expr: a.name, eta: true } satisfies LambdaValue;
+  }
+  return evalAst(a, env);
+}
+
 function evalAst(n: Ast, env: Record<string, unknown>): unknown {
   switch (n.t) {
     case "num": return Number(n.v);
@@ -802,8 +856,42 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       if (isErr(r)) return r;
       return applyOp(n.op, l, r);
     }
+    case "apply": {
+      // Postfix application — `LAMBDA(x, x+1)(5)`, `f(2)(3)`. The fn expression
+      // must yield a LambdaValue; a declared arity must match (Excel refuses a
+      // mis-applied lambda), an eta wrapper (params: []) takes what it's given.
+      const fnVal = evalAst(n.fn, env);
+      if (isErr(fnVal)) return fnVal;
+      if (!isLambdaValue(fnVal)) {
+        return solError("#VALUE!", "Only a LAMBDA can be called like a function");
+      }
+      // A bare dispatchable name in an APPLY's arguments is a lambda-position
+      // slot too — `LAMBDA(f, f(9))(SQRT)` — so it eta-expands like a host's.
+      const argv = n.args.map((a) => etaOrEval(a, env));
+      const sol = argv.find(isSolError);
+      if (sol) return sol;
+      if (fnVal.params.length > 0 && argv.length !== fnVal.params.length) {
+        return solError("#VALUE!", `This LAMBDA takes ${fnVal.params.length} argument${fnVal.params.length === 1 ? "" : "s"}, not ${argv.length}`);
+      }
+      return fnVal.fn(...argv);
+    }
     case "call": {
       const name = n.name.toUpperCase();
+      // A call whose NAME is a lambda-valued binding applies the lambda — the
+      // higher-order form `LAMBDA(f, f(3))`'s body. Bindings only ever hold a
+      // LambdaValue via LAMBDA parameters (anydata refuses the lambda family at
+      // the socket, SOCK-9), so a plain variable never shadows a function name
+      // here. Checked on the RAW name (env keys are case-sensitive).
+      const bound = env[n.name];
+      if (isLambdaValue(bound)) {
+        const argv = n.args.map((a) => evalAst(a, env));
+        const sol = argv.find(isSolError);
+        if (sol) return sol;
+        if (bound.params.length > 0 && argv.length !== bound.params.length) {
+          return solError("#VALUE!", `${n.name} takes ${bound.params.length} argument${bound.params.length === 1 ? "" : "s"}, not ${argv.length}`);
+        }
+        return bound.fn(...argv);
+      }
       // ── LAMBDA — the one SPECIAL FORM (D23 lambda tranche) ─────────────────
       // Its parameters and body must NOT be evaluated as expressions (the params
       // are unbound names, the body waits for arguments), so it is handled before
@@ -834,7 +922,12 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // LIST of identical #NAME?s instead of the one the user should read.
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
-      let argv = n.args.map((a) => evalAst(a, env));
+      // ── Eta-lambdas (Excel parity): `MAP(x, SQRT)` — a BARE dispatchable name
+      // in a lambda HOST's argument evaluates to an eta LambdaValue wrapping the
+      // dispatch, instead of an undefined variable (see etaOrEval).
+      let argv = ETA_HOSTS.has(name)
+        ? n.args.map((a) => etaOrEval(a, env))
+        : n.args.map((a) => evalAst(a, env));
       // The IFERROR family must see the error to catch it — handled internally,
       // BEFORE the propagate-first check below.
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
@@ -1013,6 +1106,8 @@ function tex(n: Ast, parent: number): string {
     case "name": return symbolLatex(n.name);
     case "unary": return wrap(`${n.op === "-" ? "-" : ""}${tex(n.arg, 6)}`, 6);
     case "percent": return wrap(`${tex(n.arg, 6)}\\%`, 6);
+    case "apply":
+      return wrap(`${tex(n.fn, 7)}\\left(${n.args.map((x) => tex(x, 0)).join(", ")}\\right)`, 7);
     case "call": {
       const name = n.name.toUpperCase();
       const a = n.args;
@@ -1113,6 +1208,7 @@ export function evaluateSteps(expr: string, vars: Record<string, number>): { ste
       case "str": ok = false; return NaN;
       case "unary": { const a = ev(n.arg); return n.op === "-" ? -a : a; }
       case "percent": return ev(n.arg) / 100;
+      case "apply": { ok = false; return NaN; } // the step-trace walk doesn't apply lambdas
       case "call": {
         const argv = n.args.map(ev);
         let value: number;
