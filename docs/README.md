@@ -29,7 +29,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   and what the coercion boundary does on arrival. Generated lists — regenerate
   with `scripts/socket-inventory.ts`.
 - **`value-semantics.md`** — null / NaN / Infinity / SolError semantics per
-  computation context. All shipped.
+  computation context, plus **"Reading an input"**: the spec for what a node
+  does with a WIRED blank vs its typed literal. Target that section when
+  writing a new node. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
   `nodeCatalog.ts` is the real source of truth.
 - **`cube-node-scope.md`** — the Cube model + node set + drill-in.

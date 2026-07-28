@@ -70,6 +70,74 @@ The sanctioned divergence (decision D11): formula `AND(x)` is a *reduction* (nul
 skipped → Excel behavior); the BooleanOp node is *element-wise* (Kleene). Same word,
 two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 
+## Reading an input — a WIRED blank vs the TYPED literal
+
+The table above says how a missing value behaves once it is inside a computation. This
+says how it gets there, which is a separate decision every node makes and got wrong for
+a long time. **Target this section when writing a new node.**
+
+### The one rule
+
+Most inputs are BOTH a socket and a field on the card. Read them with `readInput`
+(`nodes/shared.ts`):
+
+```ts
+const n = readInput(inputs.count, this.literals.count ?? 1);
+```
+
+- The slot is **UNWIRED** (`undefined`) → the typed literal. The field on the card is
+  the value.
+- The slot is **WIRED** → the cable's value wins, **even when it is `null`**. A blank you
+  deliberately wired is a fact about the data, not an absence of input.
+
+**Never `inputs.x?.[0] ?? this.literals.x`.** `??` cannot tell "no cable" from "a cable
+carrying blank", so it silently substitutes the card's value for the graph's answer —
+returning a number the user never asked for and cannot see the origin of. This is the
+single most common way a Solenoid node has produced a confidently wrong answer.
+`nodes/readInputSweep.test.ts` ratchets the remaining occurrences down and fails on new
+ones.
+
+### What a wired blank DOES, by the input's role
+
+Reading the input correctly is half of it; the other half is what the node then does.
+Decide by the input's ROLE, not by its type:
+
+| The input is… | A wired blank means | So the node… | Example |
+|---|---|---|---|
+| an **operand** — the value being computed on | this element is unknown | **PROPAGATES**: blank in, blank out, per cell | `UPPER(blank)` → blank |
+| a **mode selector** — basis, delimiter, pattern, weekend code | the mode is unknown | **PROPAGATES** — an unknown rule gives an unknown answer | `TEXTSPLIT(x, blank)` → blank |
+| a **shape** — rows, cols, count, wrap width | the result's shape is unknown | **PROPAGATES** | `MAKEARRAY(blank, 3)` → blank |
+| a **member of a reduction** — CONCAT's rows, SUM's inputs | one contributor is missing | **SKIPS it**, as SUM skips nulls | `CONCAT(blank, "b")` → `"b"` |
+| a **check's parameter** — Expect's bound or pattern | that check cannot be EVALUATED | **skips THAT CHECK** and passes the data through | Expect keeps flowing, reports no violation |
+| a **control's bound** — Slider min/max/step | the control still has to work | **falls back to the card's own value** | Slider keeps clamping to its typed bound |
+| a **filter predicate** | that row is not known to match | **DROPS the row** | Filter |
+
+The first row is the default. The rest exist because the alternative is worse in a
+specific, checkable way — not as taste:
+
+- A **reduction** that propagated would let one blank void an entire aggregate, which is
+  neither Excel's range behavior nor SQL's.
+- A **check** that propagated would null out the user's data in order to report a
+  violation it could not justify. Undeterminable is not the same as failed.
+- A **control** that propagated would drop the value the user physically set. And
+  "stop constraining" (`±Infinity`) is not an escape: it breaks
+  `<input type="range">`, the play loop's wrap-around, and tornado's sweep bounds.
+
+### Writing a new node
+
+1. Read every input through `readInput`. If an input is genuinely not a card field,
+   there is no literal and nothing to swallow.
+2. For each input, name its ROLE from the table and take that disposition.
+3. **Check what CONSUMES the value, not just `data()`.** The Slider bug was invisible in
+   its own method: three other call sites — a DOM attribute, a wrap-around, and a
+   sensitivity sweep in another file — each assumed a finite bound. If a node publishes
+   a field others read (`effectiveMin`, `cachedResult`), the disposition has to survive
+   at those call sites too.
+4. Pin BOTH halves in a test: a wired blank does the right thing, **and** an unwired slot
+   still uses the literal. A fix that propagates unconditionally breaks every typed
+   default just as badly as the bug it replaces. Worked examples of each row of the
+   table live in `nodes/wiredNull.test.ts`.
+
 ## Boundaries and bridges
 
 - **Logical↔number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE; **NaN → null**

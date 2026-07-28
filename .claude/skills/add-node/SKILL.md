@@ -132,6 +132,14 @@ script when the component needs hand-writing anyway (op select, custom render).
   is shared with `textForm.ts`'s byte-identical writer — extend, don't reorder.
   The constructor must accept the same fields back (guard stale enum values
   from old saves — fall back, don't crash).
+- **Reading an input**: use `readInput(inputs.x, this.literals.x ?? default)`,
+  NEVER `inputs.x?.[0] ?? this.literals.x`. `??` can't tell "no cable" from "a
+  cable carrying blank", so it substitutes the card's value for the graph's
+  answer. Then decide what a wired blank DOES from the input's role —
+  propagate / skip / skip-the-check / fall back — per the table in
+  `docs/value-semantics.md` "Reading an input". Pin both halves in a test
+  (wired blank AND unwired default); `nodes/readInputSweep.test.ts` fails on a
+  new `?? literal` read.
 - **`literals` / `stringLiterals`**: declare the map on the class IFF the card
   edits those values inline — that declaration is the LOAD GATE (persistence
   restores the maps only onto declaring classes, so a save can't hardcode a
