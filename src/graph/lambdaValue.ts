@@ -18,6 +18,12 @@ export interface LambdaValue {
    *  by-name consumer uses this to warn when one collides with its own variable
    *  names — the user meant a live value but got a captured constant. */
   captured?: string[];
+  /** ETA wrapper — a bare function name passed where a lambda belongs
+   *  (`MAP(x, SQRT)`). Declares NO params, so a host must call it with its
+   *  MEANINGFUL arity only (etaFn in excelFunctions.ts) — a raw scalar function
+   *  must not receive the host's full argument tuple (row/col indices, pad
+   *  slots) or it computes on them. */
+  eta?: true;
   /** Optional per-variable prose (var name → description), carried so a Report
    *  embed can show a "where:" legend under the formula. Kept out of `expr`. */
   descriptions?: Record<string, string>;

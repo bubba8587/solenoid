@@ -120,6 +120,38 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The scope audit: Equation currency + the lambda deviations close (2026-07-28jj)
+
+The author asked "sure there's nothing left?" — and the audit found four real
+items I'd waved off. All landed:
+
+**Equation currency** — the Equation runs dimEval too, and `$5 = €5` HELD (the
+`=` compares sides whose dims agree; no operator inside either side ever sees
+both codes). Codes now thread through the Equation's dim checks, and the
+equals compares the sides' RESULT codes via the new `dimEvalWithCode` — the
+one caller whose top level is itself a combination. `$5 = €5` → #UNIT!.
+
+**Eta-lambdas** (`MAP(x, SQRT)`) — a bare dispatchable name in a lambda slot
+(host fn args + APPLY args) eta-expands via `etaOrEval` to a LambdaValue
+marked `eta`; the hosts call an eta wrapper with their MEANINGFUL arity only
+(`etaFn` — a raw SQRT must never receive MAP's (v, v2, v3, row, col) tuple,
+which was exactly why this was recorded as a deviation rather than built).
+Variables/params shadow; unknown names still refuse.
+
+**IIFE + curried + higher-order application** — a new `apply` AST node
+(postfix `(…)` on any primary): `LAMBDA(x, x+1)(5)`, chained `f(2)(3)`, and a
+call whose NAME is a lambda-valued binding (`LAMBDA(f, f(9))(SQRT)`). Declared
+arity is checked; applying a non-lambda refuses. Every Ast walker learned the
+node (tex, collectNames, dimEval → indeterminate, equationSolve, the dormant
+step-trace walk).
+
+**The garbage class, closed for lambdas too** — a lambda leaking into an
+operator (`f + 1`) used to concatenate "[object Object]"; applyOp now refuses
+with #TYPE! like the Cx guard.
+
+The recorded formula-language deviations list is EMPTY. Pins in
+formulaLambda.test.ts + unitCurrencyPolicy.test.ts.
+
 ### The Expression two-currency gap closes — codes ride the dim pass (2026-07-28ii)
 
 The last recorded formula-surface wrong answer. The numeric evaluator computes

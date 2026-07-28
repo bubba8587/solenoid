@@ -218,6 +218,9 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
       return opEval(node.arg, env, codes); // ±x keeps x's dimension
     case "percent":
       return opEval(node.arg, env, codes); // x% = x/100 — same dimension
+    case "apply":
+      // A computed-lambda application: the body isn't visible here → indeterminate.
+      return null;
     case "call": {
       // Codes DROP at calls (see the header note); dims flow as before.
       const d = callDim(node.name, node.args.map((a) => {
@@ -285,6 +288,14 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
 export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult {
   const r = opEval(node, env, codes);
   return r === null || isSolError(r) ? r : r.dim;
+}
+
+/** dimEval's code-carrying form — for callers whose TOP LEVEL is itself a
+ *  combination (the Equation's `=` compares its two sides, so no operator inside
+ *  either side ever sees both codes: `$P = €C` needs the sides' result codes to
+ *  refuse the way an in-expression `+` would). */
+export function dimEvalWithCode(node: Ast, env: DimEnv, codes: CodeEnv = {}): { dim: Dim; code?: string } | SolError | null {
+  return opEval(node, env, codes);
 }
 
 /** Convenience: the result dim as a plain `Dim | null`, folding a `#UNIT!` conflict

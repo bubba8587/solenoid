@@ -124,3 +124,17 @@ describe("the formula surface — codes ride the dim pass (the Expression gap, c
     expect(dimEval(parseFormula("a + b")!, env, { a: "usd" })).toEqual({ currency: 1 });
   });
 });
+
+describe("the Equation surface — `=` is itself a combination", () => {
+  it("$5 = €5 refuses; $5 = $5 holds", async () => {
+    // No operator inside either side ever sees both codes, so the equals
+    // compares the sides' RESULT codes (dimEvalWithCode).
+    const { EquationNode } = await import("./nodes/equation");
+    const n = new EquationNode({ expr: "p = c" });
+    n.data({ p: [money(5, "usd")], c: [money(5, "eur")] });
+    expect((n.cachedHolds as { code?: string })?.code).toBe("#UNIT!");
+    const m = new EquationNode({ expr: "p = c" });
+    m.data({ p: [money(5, "usd")], c: [money(5, "usd")] });
+    expect(m.cachedHolds).toBe(true);
+  });
+});

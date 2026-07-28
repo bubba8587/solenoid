@@ -110,3 +110,39 @@ describe("the value model rides through lambdas", () => {
     expect(ev("MDETERM(MAKEARRAY(2, 2, LAMBDA(r, c, IF(r = c, 1, 0))))")).toBe(1);
   });
 });
+
+describe("eta-lambdas and application — the recorded deviations, closed", () => {
+  // Excel parity: a BARE dispatchable name works where a lambda belongs
+  // (`MAP(x, SQRT)` — eta), and a lambda value applies with `(…)` — inline
+  // (IIFE), curried, or through a parameter (higher-order). The eta wrapper
+  // declares no params and is marked `eta`, so hosts call it with their
+  // MEANINGFUL arity only (etaFn): a raw SQRT never sees MAP's row/col tuple.
+  it("eta: a bare function name in a host's fn slot", () => {
+    expect(ev("MAP(x, SQRT)", { x: [1, 4, 9] })).toEqual([1, 2, 3]);
+    expect(ev("BYROW(m, SUM)", { m: M })).toEqual([3, 7]);
+    expect(ev("BYCOL(m, MAX)", { m: M })).toEqual([3, 4]);
+    expect(ev("REDUCE(0, x, SUM)", { x: [1, 2, 3, 4] })).toBe(10);
+    expect(ev("SCAN(0, x, SUM)", { x: [1, 2, 3] })).toEqual([1, 3, 6]);
+    // Two arrays: the eta wrapper receives exactly the wired arrays' cells.
+    expect(ev("MAP(a, b, SUM)", { a: [1, 2], b: [10, 20] })).toEqual([11, 22]);
+    // A dispatch failure classifies per cell like any other computed error.
+    expect(code((ev("MAP(x, SQRT)", { x: [4, -1] }) as unknown[])[1])).toBe("#DOMAIN!");
+  });
+
+  it("eta never shadows: a variable or param named like a function wins", () => {
+    expect(ev("MAP(x, LAMBDA(SUM, SUM * 2))", { x: [5] })).toEqual([10]);
+    expect(code(ev("MAP(x, NOTAFUNCTION)", { x: [1] }))).toBe("#VALUE!");
+  });
+
+  it("application: IIFE, curried, higher-order, and the honest refusals", () => {
+    expect(ev("LAMBDA(x, x + 1)(5)")).toBe(6);
+    expect(ev("LAMBDA(x, LAMBDA(y, x + y))(2)(3)")).toBe(5);
+    expect(ev("LAMBDA(f, f(9))(SQRT)")).toBe(3); // eta rides an APPLY's args too
+    expect(code(ev("LAMBDA(x, x)(1, 2)"))).toBe("#VALUE!"); // declared arity is checked
+    expect(code(ev("(1 + 2)(3)"))).toBe("#VALUE!"); // only a lambda applies
+  });
+
+  it("a lambda leaking into an operator refuses (the [object Object] class)", () => {
+    expect(code(ev("LAMBDA(f, f + 1)(SQRT)"))).toBe("#TYPE!");
+  });
+});

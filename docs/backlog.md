@@ -126,11 +126,10 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   SEQUENCE) are BUILT; **gap A is ZERO** — the lambda
   tranche closed the last eight (LAMBDA as the evaluator's special form, the seven
   hosts on the shared LambdaValue currency). Remaining formula work, none of it
-  gap-shaped: eta-lambdas (passing SUM bare as a function
-  argument — Excel allows it, we require LAMBDA(g, SUM(g))), and
-  immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
-  call-on-call). (The regression quartet TREND/GROWTH/LINEST/LOGEST left this
-  list: owned over the nodes' fitting kernels, rangeRouting.test.ts pins.)
+  gap-shaped — and now EMPTY: eta-lambdas, IIFE/curried application, and
+  higher-order `f(x)` all landed 2026-07-28 (the `apply` AST node + `etaOrEval`
+  + host arity-trim, pinned in formulaLambda.test.ts); the regression quartet
+  left earlier (owned over the nodes' fitting kernels).
   **Split view (author call 2026-07-28): count packs separately — and the
   preset-formula detection changed both numbers.** The measurement now detects a
   locked preset-formula leaf mechanically (its own `expr` IS its formula
