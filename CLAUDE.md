@@ -52,6 +52,13 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
   faux-3D/gradient/glassmorphism. **"UI change" includes STRINGS, not just pixels** — §7 Voice &
   copy governs `src/graph/help/*.md`, every `nodeCatalog` description, tooltips and empty states;
   read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
+- **`docs/rules.md` — the NORMATIVE architecture spec. Read before changing sockets, the
+  formula surface, naming, or value handling.** 38 numbered MUST-rules (`SSOT-n`, `SOCK-n`,
+  `FX-n`, `VAL-n`), each naming the test that enforces it or marked UNENFORCED. Covers the
+  invariants that CANNOT be caught by looking at the app — a broken socket rule, a wrong
+  formula name or a mishandled null yields a plausible answer, not a visible defect. Cite
+  rule IDs in comments and commits. Exceptions live under their own rule so the count stays
+  visible; a known-violations list at the bottom is the live work queue for it.
 - **`docs/subsystem-invariants.md`** — full mechanics + invariants for the tricky subsystems
   (indexed below).
 - **`docs/decisions.md`** — the decision log (what/why/what-would-reverse-it). Check it so a

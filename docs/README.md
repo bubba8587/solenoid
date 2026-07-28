@@ -11,7 +11,10 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 2. **`glossary.md`** — the invented vocabulary (Conduit, Standoff, FrameRef, unit
    flow…). Read before the deep-dive docs or their terms won't parse.
 3. **`architecture.md`** — the file map: where things live.
-4. **`decisions.md`** — the big WHYs and what would reverse them; read before
+4. **`rules.md`** — the NORMATIVE spec: what must remain true, and the test that
+   enforces each rule. Sockets, formula surface + naming, value handling — the
+   architecture that can't be checked by looking at the app.
+5. **`decisions.md`** — the big WHYs and what would reverse them; read before
    proposing anything that touches a settled call.
 
 ## Reference (read the relevant section before touching a subsystem)
