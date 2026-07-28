@@ -234,8 +234,10 @@ for coherence** — engineering grounds only. Do not re-litigate the identity ar
 
 **Standing plan:** (1) finish the registry unification as part of the D19 Tier 1 work —
 closing the 57 grows the registry anyway, so the precondition and the greenlit work are
-the same motion; (2) with unification real, bring Tier 4 back with a concrete
-shape-branding design + the DA broadcast-rules table; the two defensible endpoints are
+the same motion — DONE through Tier 3; (2) with unification real, bring Tier 4 back with
+a concrete shape-branding design + the DA broadcast-rules table — **the packet exists:
+`v2.0/17-matrix-formulas.md` (2026-07-28), written after the VAL-15 complex rebrand
+removed the recorded shape-branding blocker**; the two defensible endpoints are
 "never (formulas stay 1-D glue)" and "matrices-only, full Excel-DA semantics — frames/
 cubes/complex stay out" (rung 4, frames-in-formulas, is rejected outright: no Excel
 semantics to copy, competes with the verb engine, breaks lazy-FrameRef economics).

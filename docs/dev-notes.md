@@ -120,6 +120,25 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The Tier 4 decision packet exists (2026-07-28e)
+
+`v2.0/17-matrix-formulas.md` — the two artifacts the recorded Tier 4 plan requires
+before the author-present decision session, written immediately after the VAL-15
+rebrand cleared the recorded shape-branding blocker.
+
+Part 1 shows the branded-value/type-pass D2 feared is no longer needed: with every
+special scalar tagged, `Array.isArray` at two depths IS the complete rank test, and
+the two residual questions (orientation, empty `[]`) are conventions the lattice
+already answered, not mechanisms. It also fixes the containment line: Formula.js
+never sees a matrix — rank-2 dispatch requires a declared registration, permanently.
+
+Part 2 is the broadcast table, eleven rows written to be transcribed into
+`broadcastRules.test.ts` as a literal. It surfaces the ONE genuine sub-decision:
+the PAD rule — Excel fills non-overlapping broadcast cells with #N/A, the app's
+existing contract pads ragged zips with null. Recommendation on record: null
+everywhere (coherence is the fixed criterion; the transpiler shims workbooks that
+lean on #N/A pads). Part 3 is the yes-path build order and the no-path cleanup.
+
 ### Complex is a tagged object; VAL-15 (2026-07-28d)
 
 Author authorized the Tier 4 prep sequence; step 1 is this rebrand. `Cx` is now
