@@ -120,6 +120,19 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Deploy fix: the unopened CSS comment + a postcss gate (2026-07-28y)
+
+Seven hours of Vercel deploys were red: `07a117a` (15:07, the op-selector
+session) added a doc paragraph to nodeCard.css whose opening `/*` was lost —
+its own `*/` survived — so the prose sat bare in the stylesheet and postcss
+read `SUMIFS'` as an unclosed string. Nothing local checks CSS syntax (tsc
+ignores it, vitest env is node, the dev server tolerates more than the prod
+pipeline), so the suite stayed green the whole time. Fixed by restoring the
+comment, and `cssSyntax.test.ts` now runs postcss.parse — the SAME parser the
+build uses — over every stylesheet under src/ (pixi excluded), verified to
+reproduce the exact deploy error against the broken state. Production build
+run locally end-to-end before pushing.
+
 ### The spec-promotion sweep, tranche 1: PERSIST + EFFECT domains (2026-07-28x)
 
 The author-queued sweep ran as three parallel surveys (folklore docs, the test
