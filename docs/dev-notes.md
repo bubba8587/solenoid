@@ -120,6 +120,35 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The provenance audit: every rule graded, one stale claim caught (2026-07-28j)
+
+All 43 non-PROV rules now carry a grade on their heading, and rules.test.ts
+enforces completeness (every heading has exactly one of [ARR]/[INFERRED]/
+[DEFAULT]) — so a future rule can't land ungraded any more than a future ARR can
+be minted by an agent.
+
+The grading itself was the audit: INFERRED requires a CONCRETE incident, named in
+the rule's Origin, and 38 rules have one. The DEFAULT set — the rules held up by
+nothing but agent judgment — is exactly five: SOCK-3 (derived lattice edits),
+SOCK-6 (the wildcard predicate), FX-10 (one broadcast engine), VAL-13 (components
+never call data()), VAL-14 (literal-map iff). Named in the PROV section as the
+thinnest ice: first candidates for either an enforcing incident or deletion.
+Notably VAL-13 and the OS-dropdown folklore in CLAUDE.md are the same epistemic
+class — widely cited, no recorded incident — and now the doc says so out loud.
+
+decisions.md gets the PROV reading at its head: nothing in the log is
+author-ruled, INCLUDING verbatim quotes — a quote is evidence with the weight of
+its reasoning, not a standing order; the reversal conditions are the honest
+interface for reopening. This is the sentence that retires "the author said" as
+a trump card, which is what the author's 99%-assumptions note asked for.
+
+Caught during the walk (the audit paying rent immediately): rangeRouting.test's
+DEFERRED list still called TRANSPOSE "unrouted" after the matrix tranche owned
+it — the pin still PASSED (ownership isn't RANGE membership, so the assertion
+held while its meaning rotted). The exact silent-staleness class the spec
+fights, inside the spec's own test. Fixed, with the post-D23 note that ownership
+at rank 2 (FX-9), not range routing, is now the right shape for the other nine.
+
 ### PROV: the provenance constitution — one ARR, by author ruling (2026-07-28i)
 
 The author issued the spec system's first genuinely author-ruled rule, and it is

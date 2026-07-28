@@ -2,7 +2,15 @@
 
 The project's hard, deliberate, feels-irreversible calls: each entry is the reasoning
 and, crucially, **what would justify revisiting**. Rules derived from these live in
-`CLAUDE.md`; the build history behind them lives in the dev-notes archive.
+`CLAUDE.md` and `rules.md`; the build history behind them lives in the dev-notes archive.
+
+**Provenance (PROV-1, rules.md):** nothing in this log is author-ruled — including
+entries that quote the author verbatim. A quote is EVIDENCE for a decision's reasoning
+and carries the weight of that reasoning, not the force of a standing order; ARR exists
+only in `rules.md`, conferred only by the author marking a rule there in-session. Read
+"author:" attributions here as *what was said and when*, never as *what may not be
+questioned*. The reversal conditions below are the honest interface for reopening any
+of these.
 
 CLAUDE.md's own standing rule warns against **re-litigating settled decisions**. But a
 decision with no recorded rationale gets re-litigated anyway (nobody remembers why), and
