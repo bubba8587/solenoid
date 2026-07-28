@@ -408,6 +408,8 @@ const NULLABLE_SCALARS_OK = new Set([
   // takes its default. The generic blank guard would answer null before the
   // registration could make that distinction.
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
+  // Tranche 2, same contract: each registration decides blank-by-blank.
+  "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY",
 ]);
 
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to

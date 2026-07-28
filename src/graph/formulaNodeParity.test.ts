@@ -23,24 +23,20 @@ import { measureParity, excelNamedGapNames } from "./formulaNodeParity";
 // D23 opened this list: the cap lifted, and the matrix tranche closed the
 // 2-D-shaped registrations (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/
 // SEQUENCE — `formulaMatrix.test.ts`). What remains splits in two:
-// - array-returning functions awaiting their list/matrix-model registrations
-//   (FILTER/SORTBY/GROUPBY/RANDARRAY/SCAN, the table TAKE) — closeable now,
-//   tranche by tranche, same discipline;
-// - the lambda META-functions (LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE) — a
-//   language feature (compilePositional at rank 2), the last tranche.
+// Tranche 2 closed the array-returning registrations (FILTER/SORTBY/RANDARRAY/
+// TAKE — formulaMatrix.test.ts). What remains is ONE family: the lambda
+// META-functions (LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE) plus SCAN and
+// GROUPBY, which take a function argument — a language feature
+// (compilePositional at rank 2), the last tranche.
 const EXCEL_NAMED_GAP: string[] = [
   "BYCOL",
   "BYROW",
-  "FILTER",
   "GROUPBY",
   "LAMBDA",
   "MAKEARRAY",
   "MAP",
-  "RANDARRAY",
   "REDUCE",
   "SCAN",
-  "SORTBY",
-  "TAKE",
 ];
 
 // GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a

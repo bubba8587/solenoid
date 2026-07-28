@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, wrapCells } from "./matrixOps";
+import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
@@ -623,14 +624,10 @@ export class TableTakeDropNode extends ClassicPreset.Node {
   }
 
   // 0 = identity for both ops ("take all" / "drop none", Excel's omitted arg).
+  // The signed slice is the shared takeSlice/dropSlice kernel (listOps.ts) — the
+  // 1-D Take/Drop nodes and the TAKE/DROP formula registrations run the same code.
   private takeDrop<T>(arr: T[], n: number): T[] {
-    if (n === 0) return arr;
-    if (this.op === "take") {
-      // Counts past the size keep everything (Excel's behavior).
-      return n > 0 ? arr.slice(0, n) : arr.slice(Math.max(0, arr.length + n));
-    }
-    // Drop past the size leaves an empty result, not an error.
-    return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
+    return this.op === "take" ? takeSlice(arr, n) : dropSlice(arr, n);
   }
 
   data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[] }) {

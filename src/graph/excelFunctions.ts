@@ -11,7 +11,8 @@ import {
   cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
-  firstError as firstListError, sequenceList,
+  firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
+  takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
   concatLists, type Cell as ListCell,
 } from "./nodes/listOps";
 import {
@@ -655,6 +656,18 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TOCOL:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   TOROW:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
+
+  // ── D23 tranche 2: the array-returning core. UNIQUE/SORT/MODE.MULT/FREQUENCY
+  // override Formula.js (they were broadcasting garbage); the rest add names.
+  UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
+  SORT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 3] },
+  SORTBY:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  FILTER:      { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
+  TAKE:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
+  DROP:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3] },
+  "MODE.MULT": { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "statistics" },
+  FREQUENCY:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], family: "statistics" },
+  RANDARRAY:   { returns: "number", rank: "matrix", listArgs: true, arity: [0, 5], native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1492,6 +1505,86 @@ registerInternal("SEQUENCE", (rows, cols, start, step) => {
     return solError("#OVERFLOW!", `SEQUENCE count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }
   const flat = sequenceList(r * c, s0, st);
+  if (c === 1) return flat;
+  return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
+});
+
+// ── D23 tranche 2: the array-returning core ───────────────────────────────────
+// UNIQUE, SORT, MODE.MULT and FREQUENCY were already dispatchable through
+// Formula.js and BROADCASTING element-wise — UNIQUE([3,1,3,2]) answered a column
+// of singletons, SORT a list of empty objects. Same displacement as the matrix
+// tranche: own the name, share the node's kernel (FX-1), and the fallthrough
+// never sees an array again. FILTER/SORTBY/TAKE close their gap-A rows.
+
+registerInternal("UNIQUE", (v) => (v == null ? null : uniqueList(toList(v))));
+// Excel SORT(array, [sort_index], [sort_order], [by_col]) — 1-D scope: the index
+// must be 1/omitted (a list has one column); order −1 sorts descending.
+registerInternal("SORT", (v, sortIndex, order) => {
+  if (v == null) return null;
+  if (sortIndex != null && Number(sortIndex) !== 1) {
+    return solError("#SHAPE!", "SORT of a list has one column — sort_index must be 1 or omitted");
+  }
+  return sortNumericList(numList(v), Number(order ?? 1) === -1);
+});
+registerInternal("SORTBY", (v, by) => {
+  if (v == null || by == null) return null;
+  return sortByKeys(toList(v), numList(by));
+});
+registerInternal("FILTER", (v, include, ifEmpty) => {
+  if (v == null || include == null) return null;
+  const arr = toList(v), mask = toList(include);
+  if (arr.length !== mask.length) {
+    return solError("#SHAPE!", "FILTER's include array must be the same size as the data");
+  }
+  const out = filterByMask(arr, mask);
+  if (isSolError(out)) return out;
+  if (out.length === 0 && ifEmpty !== undefined && ifEmpty !== null) return ifEmpty;
+  return out;
+});
+// TAKE/DROP: Excel's signed counts, rank-aware — a list takes/drops elements, a
+// matrix rows then columns, all through the ONE takeSlice/dropSlice kernel the
+// three nodes run.
+registerInternal("TAKE", (v, rows, cols) => {
+  if (v == null || rows == null) return null;
+  const n = Math.round(Number(rows));
+  if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
+    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : takeSlice(r, Math.round(Number(cols)))));
+    return takeSlice(m, n);
+  }
+  if (cols != null) return solError("#SHAPE!", "TAKE of a list has no columns — pass one count");
+  return takeSlice(toList(v), n);
+});
+registerInternal("DROP", (v, rows, cols) => {
+  if (v == null || rows == null) return null;
+  const n = Math.round(Number(rows));
+  if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
+    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, Math.round(Number(cols)))));
+    return dropSlice(m, n);
+  }
+  if (cols != null) return solError("#SHAPE!", "DROP of a list has no columns — pass one count");
+  return dropSlice(toList(v), n);
+});
+registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
+registerInternal("FREQUENCY", (data, bins) => {
+  if (data == null || bins == null) return null;
+  return frequencyBins(numList(data), numList(bins));
+});
+// RANDARRAY([rows], [cols], [min], [max], [integer]) — volatile, like the RAND
+// already in the language and the SHUFFLE precedent: fresh values per evaluation
+// (the node holds its rolls for a recalc pass; same kernel-free arithmetic).
+registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
+  const r = rows == null ? 1 : Math.max(0, Math.floor(Number(rows)));
+  const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
+  const lo = min == null ? 0 : Number(min);
+  const hi = max == null ? 1 : Number(max);
+  if (r * c > MAX_GENERATED) {
+    return solError("#OVERFLOW!", `RANDARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
+  }
+  const draw = () => {
+    const x = lo + Math.random() * (hi - lo);
+    return isTrue(integer) ? Math.round(x) : x;
+  };
+  const flat = Array.from({ length: r * c }, draw);
   if (c === 1) return flat;
   return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
 });

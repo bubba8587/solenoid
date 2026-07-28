@@ -479,3 +479,115 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
     .sort((a, b) => a.k - b.k)
     .map((p) => p.v);
 }
+
+// ─── D23 tranche 2: the array-returning core ──────────────────────────────────
+
+/** UNIQUE: first-seen dedupe by VALUE (setKey, VAL-8); every ERROR cell survives
+ *  deterministically — identity-dedup is a lottery for errors ("10 values + 3
+ *  errors = 3 fixes to make"). */
+export function uniqueList(arr: readonly unknown[]): unknown[] {
+  const seen = new Set<unknown>();
+  const out: unknown[] = [];
+  for (const v of arr) {
+    if (isSolError(v)) { out.push(v); continue; }
+    const k = setKey(v);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(v);
+  }
+  return out;
+}
+
+/** SORT: numeric, stable; nulls and per-cell errors sort LAST in both directions
+ *  (the frame sort's blanks-last policy) — a bare compare would coerce null to 0
+ *  and scatter both mid-list. */
+export function sortNumericList(arr: readonly Cell[], desc = false): Cell[] {
+  const isTail = (v: unknown) => isMissing(v) || isSolError(v);
+  const idx = arr.map((_, i) => i);
+  idx.sort((i, j) => {
+    const ti = isTail(arr[i]), tj = isTail(arr[j]);
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
+    const c = (arr[i] as number) - (arr[j] as number);
+    return c !== 0 ? (desc ? -c : c) : i - j; // stable on ties
+  });
+  return idx.map((i) => arr[i]);
+}
+
+/** SORTBY: reorder `arr` by parallel numeric keys; ragged pads to the LONGEST with
+ *  null; a null/error KEY sends its row to the tail, stably. */
+export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[]): (T | null)[] {
+  const n = Math.max(arr.length, by.length);
+  const isTail = (v: unknown) => isMissing(v) || isSolError(v);
+  const idx = Array.from({ length: n }, (_, i) => i);
+  idx.sort((i, j) => {
+    const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
+    const ti = isTail(ki), tj = isTail(kj);
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
+    const c = (ki as number) - (kj as number);
+    return c !== 0 ? c : i - j;
+  });
+  return idx.map((i) => (i < arr.length ? arr[i] : null));
+}
+
+/** TAKE/DROP's signed count slice (Excel's sign convention: positive from the
+ *  start, negative from the end; 0 = identity for take-all / drop-none). ONE
+ *  kernel for the 1-D nodes, the 2-D node (applied per axis) and the formula. */
+export function takeSlice<T>(arr: readonly T[], n: number): T[] {
+  if (n === 0) return [...arr];
+  return n > 0 ? arr.slice(0, n) : arr.slice(Math.max(0, arr.length + n));
+}
+export function dropSlice<T>(arr: readonly T[], n: number): T[] {
+  if (n === 0) return [...arr];
+  return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
+}
+
+/** FILTER by a parallel boolean/number mask (Excel's include array). A mask cell
+ *  error propagates whole; sizes must match (#SHAPE! is the caller's job). */
+export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[] | SolError {
+  const err = firstError(mask);
+  if (err) return err;
+  return arr.filter((_, i) => {
+    const m = mask[i];
+    return m === true || (typeof m === "number" && m !== 0);
+  });
+}
+
+/** MODE.MULT: every most-frequent value (count ≥ 2 per Excel), first-seen order,
+ *  keyed by VALUE; nulls skipped, an error propagates (aggregator policy). */
+export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const counts = new Map<unknown, { v: unknown; n: number }>();
+  for (const v of arr) {
+    if (isMissing(v)) continue;
+    const k = setKey(v);
+    const e = counts.get(k);
+    if (e) e.n++; else counts.set(k, { v, n: 1 });
+  }
+  let best = 0;
+  for (const e of counts.values()) best = Math.max(best, e.n);
+  if (best < 2) return [];
+  return [...counts.values()].filter((e) => e.n === best).map((e) => e.v);
+}
+
+/** FREQUENCY(data, bins): counts per interval (≤ bin, ascending), one OVERFLOW
+ *  bucket last — Excel's contract, including unsorted bins (counts follow the
+ *  bins' sorted order but report in the GIVEN order). Nulls skipped, errors
+ *  propagate. */
+export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): number[] | SolError {
+  const err = firstError(data) ?? firstError(bins);
+  if (err) return err;
+  const xs = data.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const bs = bins.map((b, i) => ({ b: b as number, i })).filter((e) => typeof e.b === "number" && Number.isFinite(e.b));
+  const sorted = [...bs].sort((a, c) => a.b - c.b);
+  const counts = new Array<number>(bins.length + 1).fill(0);
+  for (const x of xs) {
+    let placed = false;
+    for (let k = 0; k < sorted.length; k++) {
+      const lo = k === 0 ? -Infinity : sorted[k - 1].b;
+      if (x > lo && x <= sorted[k].b) { counts[sorted[k].i]++; placed = true; break; }
+    }
+    if (!placed) counts[bins.length]++; // overflow: greater than every bin
+  }
+  return counts;
+}
