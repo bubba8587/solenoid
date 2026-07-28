@@ -1,14 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode } from "./text";
+import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode, RegexNode } from "./text";
 import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
-import { BooleanOpNode, NotNode } from "./logic";
+import { BooleanOpNode, NotNode, IfsNode, SwitchNode } from "./logic";
 import { SliderInputNode } from "./input";
 import { ExpressionNode } from "./expression";
 import { ClampNode } from "./scalar";
-import { MirrNode, TBillNode } from "./finance";
-import { SortFrameNode, JoinNode } from "./frame";
+import { MirrNode, TBillNode, XirrNode, OddCouponNode } from "./finance";
+import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
 import { ListIndexNode, SliceNode } from "./list";
-import { BulletNode, KpiNode } from "./visual";
+import { BulletNode, KpiNode, HistogramNode } from "./visual";
+import { AlertNode } from "./display";
+import { ExpectNode } from "./quality";
+import { CubeRollupNode } from "./cube";
+import { ZTestNode } from "./stats";
+import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 
@@ -332,5 +337,180 @@ describe("date operands", () => {
     expect(node.data({ start: [46096], months: [null as unknown as number] }).result).toBeNull();
     // Unwired offset keeps the literal — the value shifts, so it still computes.
     expect(typeof node.data({ start: [46096] }).result).toBe("number");
+  });
+});
+
+// ─── The review sweep's second pass (2026-07-28) — misses the first pass left ──
+
+describe("Kleene logic THROUGH the real coercion wrapper", () => {
+  // The bare-data() tests above pass raw numbers, but the live engine coerces a
+  // wired logical to a REAL boolean first (`numsToBools`), and `false !== 0` is
+  // true — so AND(false, TRUE) computed as AND(true, true). These pin the family
+  // through wrapNodeData, the exact path Canvas installs.
+  function wrapped<T extends { data: (i: never) => unknown }>(node: T): T {
+    wrapNodeData(node as never);
+    return node;
+  }
+
+  it("AND(false, true) is FALSE through coercion — wired as numbers", () => {
+    const node = wrapped(new BooleanOpNode({ op: "and" }));
+    const [a, b] = Object.keys(node.inputs);
+    expect((node.data({ [a]: [0], [b]: [1] }) as { result: unknown }).result).toBe(false);
+  });
+
+  it("AND(false, true) is FALSE through coercion — wired as booleans", () => {
+    const node = wrapped(new BooleanOpNode({ op: "and" }));
+    const [a, b] = Object.keys(node.inputs);
+    expect((node.data({ [a]: [false], [b]: [true] } as never) as { result: unknown }).result).toBe(false);
+  });
+
+  it("NOT(false) is TRUE through coercion", () => {
+    const node = wrapped(new NotNode());
+    expect((node.data({ in: [0] }) as { result: unknown }).result).toBe(true);
+  });
+
+  it("a wired blank still reads as unknown through coercion", () => {
+    const node = wrapped(new BooleanOpNode({ op: "and" }));
+    const [a, b] = Object.keys(node.inputs);
+    expect((node.data({ [a]: [null], [b]: [1] }) as { result: unknown }).result).toBeNull();
+  });
+});
+
+describe("a CHECK never fires against a bound the graph withheld", () => {
+  it("Alert (range): a wired blank High is unknown — status null, not the card's 100", () => {
+    const node = new AlertNode({ mode: "range" });
+    node.literals.high = 100;
+    expect(node.data({ value: [500], high: [null as unknown as number] }).result).toBeNull();
+    // Unwired High keeps the card's bound and still alerts.
+    const unwired = new AlertNode({ mode: "range" });
+    expect(unwired.data({ value: [500] }).result).toBe(2);
+  });
+
+  it("Expect (range): a blank floor skips ONLY the floor — the ceiling still checks", () => {
+    const node = new ExpectNode({ checkNotNull: false, checkRange: true });
+    node.literals.max = 10;
+    node.data({ in: [50], min: [null as unknown as number] });
+    expect(node.violations).toContain("range");
+  });
+});
+
+describe("the guard is scoped to the ACTIVE op — second pass", () => {
+  const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [1, 2, 3] }] };
+
+  it("Head (First N) ignores a wired blank To", async () => {
+    const node = new HeadNode({ op: "first" });
+    node.literals.rows = 2;
+    const out = (await node.data({ frame: [f], to: [null as unknown as number] })).frame;
+    expect(out).not.toBeNull();
+  });
+
+  it("Join (inner) ignores a wired blank Tolerance", async () => {
+    const node = new JoinNode({ how: "inner" });
+    node.stringLiterals.leftKey = "a";
+    const out = (await node.data({ left: [f], right: [f], tolerance: [null as unknown as number] })).frame;
+    expect(out).not.toBeNull();
+  });
+
+  it("REGEXTEST ignores a wired blank Replace-with", () => {
+    const node = new RegexNode({ op: "test" });
+    node.stringLiterals.pattern = "a";
+    expect(node.data({ text: ["abc"], replacement: [null as unknown as string] }).result).toBe(1);
+  });
+
+  it("ODDLPRICE ignores `issue` entirely; ODDFPRICE blanks on a wired blank issue", () => {
+    const f2 = new OddCouponNode({ op: "oddfprice" });
+    const s = 45000, m = 48000, fl = 45100;
+    const withIssue = f2.data({ settle: [s], maturity: [m], firstlast: [fl], issue: [44900] }).result;
+    expect(withIssue).not.toBeNull();
+    expect(f2.data({ settle: [s], maturity: [m], firstlast: [fl], issue: [null as unknown as number] }).result).toBeNull();
+  });
+});
+
+describe("a column-LIST reference — same rule as the scalar column", () => {
+  const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [1] }, { name: "b", type: "number", values: [2] }] };
+
+  it("Select Columns: a WIRED blank list blanks the frame; the empty literal passes it through", async () => {
+    const node = new SelectColumnsNode();
+    expect((await node.data({ frame: [f], columns: [null as unknown as string[]] })).frame).toBeNull();
+    expect((await new SelectColumnsNode().data({ frame: [f] })).frame).toEqual(f);
+  });
+});
+
+describe("per-cell contract in hand-rolled broadcasts", () => {
+  it("Regex over a list: a missing cell propagates and an error cell rides along", () => {
+    const err = solError("#DIV/0!", "upstream");
+    const node = new RegexNode({ op: "test" });
+    node.stringLiterals.pattern = "a";
+    const out = node.data({ text: [["abc", null, err] as unknown as string[]] }).result;
+    expect(out).toEqual([1, null, err]);
+  });
+
+  it("XIRR: an error cell in the cash flows surfaces as ITSELF, not #CONV!", () => {
+    const err = solError("#DIV/0!", "upstream");
+    const node = new XirrNode();
+    const out = node.data({
+      values: [[-1000, err as unknown as number, 600]],
+      dates: [[45000, 45180, 45365]],
+    }).result;
+    expect(out).toBe(err);
+  });
+
+  it("XIRR: a missing DATE leaves the schedule unknown", () => {
+    const node = new XirrNode();
+    expect(node.data({ values: [[-1000, 600]], dates: [[45000, null as unknown as number]] }).result).toBeNull();
+  });
+});
+
+describe("value selectors — an unknown selector is an unknown answer", () => {
+  it("IFS: a WIRED blank condition propagates; an unset row just falls through", () => {
+    const wired = new IfsNode();
+    wired.literals.otherwise = 7;
+    expect(wired.data({ cond0: [null] }).result).toBeNull();
+    // Unset rows (nothing wired, nothing typed) fall through to Otherwise.
+    const unset = new IfsNode();
+    unset.literals = { otherwise: 7 }; // clear the demo-seeded pair literals
+    expect(unset.data({}).result).toBe(7);
+  });
+
+  it("SWITCH: an unknown expression matches NOTHING — not an unset When row", () => {
+    const node = new SwitchNode();
+    node.literals.then0 = 5;
+    // Wired blank expr: unknown, propagates — must NOT return then0 via null === null.
+    expect(node.data({ expr: [null] }).result).toBeNull();
+  });
+});
+
+describe("figure controls never clobber the typed literal", () => {
+  it("Histogram: a wired Bins value does not overwrite the card's literal", () => {
+    const node = new HistogramNode();
+    node.literals.bins = 10;
+    node.data({ values: [[1, 2, 3]], bins: [4] });
+    expect(node.literals.bins).toBe(10);
+  });
+});
+
+describe("Z.TEST", () => {
+  it("a wired blank μ₀ propagates; an unwired σ still uses the sample std", () => {
+    const node = new ZTestNode();
+    expect(node.data({ array: [[1, 2, 3, 4]], x: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ array: [[1, 2, 3, 4]] }).result).not.toBeNull();
+    // A wired blank σ is unknown too — not "use the sample std".
+    expect(node.data({ array: [[1, 2, 3, 4]], sigma: [null as unknown as number] }).result).toBeNull();
+  });
+});
+
+describe("cube column references — read raw, guard, then trim", () => {
+  it("Rollup: a wired blank output name is unknown, never the \"Total\" default", () => {
+    const cube = {
+      __cube: true,
+      columns: [
+        { name: "k", type: "string" as const, values: ["x"] },
+        { name: "items", type: "frame" as const, values: [{ __frame: true, columns: [{ name: "v", type: "number" as const, values: [1] }] }] },
+      ],
+    };
+    const node = new CubeRollupNode();
+    node.stringLiterals.nested = "items";
+    node.stringLiterals.column = "v";
+    expect(node.data({ cube: [cube as never], as: [null as unknown as string] }).frame).toBeNull();
   });
 });

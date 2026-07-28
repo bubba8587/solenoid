@@ -733,13 +733,15 @@ export class ZTestNode extends ClassicPreset.Node {
 
   data(inputs: { array?: number[][]; x?: number[]; sigma?: number[] }) {
     const arr   = inputs.array?.[0] ?? null;
-    const x     = readInput(inputs.x, this.literals.x ?? 0) ?? NaN; // blank → NaN → the guard below
-    const sigma = inputs.sigma?.[0] ?? null;
+    const x     = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
+    // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
+    // unknown and propagates (value-semantics.md, "Reading an input").
+    const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
     let result: number | null = null;
-    if (arr && arr.length >= 2) {
+    if (arr && arr.length >= 2 && x !== null && sigma !== null) {
       const n   = arr.length;
       const m   = arrMean(arr);
-      const std = (sigma != null && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(arr));
+      const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(arr));
       if (std > 0) {
         const z = (m - x) / (std / Math.sqrt(n));
         result  = 1 - stdNormCDF(z);

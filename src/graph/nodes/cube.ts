@@ -72,7 +72,11 @@ export class BuildCubeNode extends ClassicPreset.Node {
       if (wired && wired.length) return wired[0] as CubeCell;
       return (k in this.literals ? this.literals[k] : null) as CubeCell;
     });
-    const name = (inputs.name?.[0] as string | undefined)?.trim() || this.stringLiterals.name?.trim() || "Items";
+    // Read raw, guard, THEN trim: a wired blank name is unknown, not "Items"
+    // (value-semantics.md, "Reading an input").
+    const nameRaw = readInput(inputs.name as string[] | undefined, this.stringLiterals.name ?? "");
+    if (nameRaw === null) { this.cachedResult = null; return { cube: null }; }
+    const name = nameRaw.trim() || "Items";
     this.cachedResult = cubeFromColumns([{ name, cells }]);
     return { cube: this.cachedResult };
   }
@@ -123,8 +127,13 @@ export class NestJoinNode extends ClassicPreset.Node {
   data(inputs: { parent?: unknown[]; child?: unknown[]; key?: string[]; name?: string[] }) {
     const parent = inputs.parent?.[0] ?? null;
     const child = asNestChild(inputs.child?.[0] ?? null);
-    const key = (readInput(inputs.key, this.stringLiterals.key ?? "") ?? "").trim();
-    const name = (readInput(inputs.name, this.stringLiterals.name ?? "") ?? "").trim();
+    // Read raw, guard, THEN trim: `?? ""` here would collapse a wired blank into
+    // the empty literal's "not chosen" reading (value-semantics.md, "Reading an input").
+    const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
+    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
+    if (keyRaw === null || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
+    const key = keyRaw.trim();
+    const name = nameRaw.trim();
     if (!child || key === "") { this.cachedResult = null; return { cube: null }; }
     // Cube parent → deepen one level into the nested sub-frames; Frame parent →
     // the original nest join. A WIRED parent that's neither (a bare list / scalar) is
@@ -236,9 +245,15 @@ export class CubeRollupNode extends ClassicPreset.Node {
   data(inputs: { cube?: (CubeValue | null)[]; nested?: string[]; column?: string[]; as?: string[] }) {
     const cube = inputs.cube?.[0] ?? null;
     if (!cube) { this.cachedResult = null; return { frame: null }; }
-    const nestedName = (readInput(inputs.nested, this.stringLiterals.nested ?? "") ?? "").trim();
-    const col = (readInput(inputs.column, this.stringLiterals.column ?? "") ?? "").trim();
-    const outName = (readInput(inputs.as, this.stringLiterals.as ?? "Total") ?? "").trim() || "Total";
+    // Read raw, guard, THEN trim — a wired blank is unknown, never the default
+    // ("Total" would name a column from a value the graph withheld).
+    const nestedRaw = readInput(inputs.nested, this.stringLiterals.nested ?? "");
+    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
+    const asRaw = readInput(inputs.as, this.stringLiterals.as ?? "Total");
+    if (nestedRaw === null || colRaw === null || asRaw === null) { this.cachedResult = null; return { frame: null }; }
+    const nestedName = nestedRaw.trim();
+    const col = colRaw.trim();
+    const outName = asRaw.trim() || "Total";
     const nestedIdx = cube.columns.findIndex((c) => c.name === nestedName);
     if (nestedName === "" || col === "") { this.cachedResult = null; return { frame: null }; }
     if (nestedIdx < 0) {

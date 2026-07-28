@@ -1120,8 +1120,17 @@ export class XirrNode extends ClassicPreset.Node {
   }
 
   data(inputs: { values?: number[][]; dates?: number[][] }): { result: number | SolError | null } {
-    const values = inputs.values?.[0] ?? [];
-    const dates  = inputs.dates?.[0]  ?? [];
+    // An error outranks an unknown (value-semantics.md): scan BOTH lists for cell
+    // errors before any arithmetic, so an upstream #DIV/0! surfaces as itself
+    // rather than masquerading as a #CONV! Newton stall. Null cash flows read as 0
+    // (cashPrep — position keeps the date pairing); a null DATE has no such
+    // reading, so the schedule is unknown and the result propagates blank.
+    const { error, nums: values } = cashPrep((inputs.values?.[0] ?? null) as (number | null | SolError)[] | null);
+    if (error) { this.cachedResult = error; return { result: error }; }
+    const datesRaw = (inputs.dates?.[0] ?? []) as (number | null | SolError)[];
+    for (const d of datesRaw) if (isSolError(d)) { this.cachedResult = d; return { result: d }; }
+    if (datesRaw.some((d) => d == null)) { this.cachedResult = null; return { result: null }; }
+    const dates = datesRaw as number[];
     const n = Math.min(values.length, dates.length);
     if (n < 2) { this.cachedResult = null; return { result: null }; }
     const d0 = dates[0];
@@ -1205,7 +1214,14 @@ export class OddCouponNode extends ClassicPreset.Node {
       ? (readInput(inputs.yld, this.literals.yld ?? 0.085))
       : (readInput(inputs.pr, this.literals.pr ?? 99.5));
     if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = oddCoupon(this.op, s, m, inputs.issue?.[0] ?? s, fl, rate, yldOrPrice, redemption, freq);
+    // `issue` exists on the ODDF* ops alone. UNWIRED keeps the settlement-date
+    // fallback the card has always used; a WIRED blank is unknown — pricing the
+    // bond as if issued at settlement would be a fabricated answer
+    // (value-semantics.md, "Reading an input").
+    const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
+    const issue = isFirst ? readInput(inputs.issue, s) : s;
+    if (issue === null) { this.cachedResult = null; return { result: null }; }
+    const result = oddCoupon(this.op, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
     this.cachedResult = result;
     return { result: this.cachedResult };
   }
@@ -1215,7 +1231,7 @@ export class OddCouponNode extends ClassicPreset.Node {
 
 export class XnpvNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.1 };
   width = 180; height = 195;
 
@@ -1228,19 +1244,27 @@ export class XnpvNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Net present value"));
   }
 
-  data(inputs: { rate?: number[]; values?: number[][]; dates?: number[][] }): { result: number | null } {
+  data(inputs: { rate?: number[]; values?: number[][]; dates?: number[][] }): { result: number | SolError | null } {
     const rate   = readInput(inputs.rate, this.literals.rate ?? 0.1);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null) { this.cachedResult = null; return { result: null }; }
-    const values = inputs.values?.[0] ?? [];
-    const dates  = inputs.dates?.[0]  ?? [];
+    // Same prep as XIRR: error first, null cash → 0, null date → unknown
+    // (value-semantics.md, "an error outranks an unknown").
+    const { error, nums: values } = cashPrep((inputs.values?.[0] ?? null) as (number | null | SolError)[] | null);
+    if (error) { this.cachedResult = error; return { result: error }; }
+    const datesRaw = (inputs.dates?.[0] ?? []) as (number | null | SolError)[];
+    for (const d of datesRaw) if (isSolError(d)) { this.cachedResult = d; return { result: d }; }
+    if (datesRaw.some((d) => d == null)) { this.cachedResult = null; return { result: null }; }
+    const dates = datesRaw as number[];
     if (values.length === 0 || dates.length === 0) { this.cachedResult = null; return { result: null }; }
     // Truncate to equal length BEFORE handing off — verified Formula.js's XNPV takes
     // our date serials directly (no Date-object conversion needed) and matches this
     // year-fraction-from-365 formula exactly, but its own ragged-array behavior is
     // untested, so keep that truncation hand-rolled.
     const n      = Math.min(values.length, dates.length);
-    const result = resolveExcelFunction("XNPV")!(rate, values.slice(0, n), dates.slice(0, n)) as number;
+    const raw    = resolveExcelFunction("XNPV")!(rate, values.slice(0, n), dates.slice(0, n)) as number;
+    // A non-finite result is not a number the graph can carry (no-NaN rule).
+    const result = Number.isFinite(raw) ? raw : null;
     this.cachedResult = result;
     return { result };
   }
