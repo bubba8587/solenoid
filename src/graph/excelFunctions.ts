@@ -9,6 +9,7 @@ import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, setKey,
+  shuffleList,
   firstError as firstListError,
   concatLists, type Cell as ListCell,
 } from "./nodes/listOps";
@@ -558,6 +559,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
 
   COUNTDISTINCT:   { returns: "number", listArgs: true, arity: [1, 1], family: "statistics", native: true },
   INTERPOLATE:     { returns: "number", listArgs: true, arity: [3, 3], family: "statistics", native: true },
+  SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1236,4 +1238,13 @@ registerInternal("INTERPOLATE", (ys, xs, newXs) => {
   // A missing query stays missing IN PLACE, like the node.
   const result = out.map((v) => (Number.isNaN(v) ? null : v));
   return Array.isArray(newXs) ? result : result[0] ?? null;
+});
+
+// SHUFFLE is VOLATILE — a fresh permutation per evaluation, exactly like the RAND and
+// RANDBETWEEN already reachable here. The node is volatile too, just on a coarser
+// clock: it holds its keys until the next recalc so an unrelated edit doesn't
+// reshuffle the card. Both call `shuffleList`; only the key source differs.
+registerInternal("SHUFFLE", (list) => {
+  const arr = toList(list);
+  return shuffleList(arr, arr.map(() => Math.random()));
 });

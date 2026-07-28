@@ -15,7 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, setKey, setOperation, setRelation, fillList, rangeList, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci } from "./listOps";
+import { MAX_GENERATED, shuffleList, setKey, setOperation, setRelation, fillList, rangeList, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -1389,10 +1389,7 @@ export class ShuffleNode extends ClassicPreset.Node {
       this.keys = arr.map(() => Math.random());
       this.lastGen = gen;
     }
-    const order = arr
-      .map((v, i) => ({ v, k: this.keys[i] }))
-      .sort((a, b) => a.k - b.k)
-      .map((p) => p.v);
+    const order = shuffleList(arr, this.keys);
     this.cachedList = order;
     return { result: order };
   }
@@ -1464,15 +1461,15 @@ export class PadNode extends ClassicPreset.Node {
    *  date list stays a date list) — see passthrough.ts. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  dir: PadDir;
+  op: PadDir;
   cachedList: unknown[] | null = [];
   literals: Record<string, number> = { n: 5, fill: 0 };
   width = 180; height = 230;
 
-  constructor(init?: { label?: string; dir?: PadDir }) {
+  constructor(init?: { label?: string; op?: PadDir }) {
     super("Pad");
     this.label = init?.label ?? "Pad";
-    this.dir = init?.dir ?? "right";
+    this.op = init?.op ?? "right";
     this.addInput("list", adoptiveListIn("List"));
     this.addInput("n",    numIn("Target length"));
     this.addInput("fill", numIn("Fill value"));
@@ -1485,7 +1482,7 @@ export class PadNode extends ClassicPreset.Node {
     const fill = readInput(inputs.fill, this.literals.fill ?? 0);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (nRaw === null || fill === null) { this.cachedList = null; return { result: null }; }
-    this.cachedList = padList(arr, nRaw, fill as unknown, this.dir);
+    this.cachedList = padList(arr, nRaw, fill as unknown, this.op);
     return { result: this.cachedList };
   }
 }

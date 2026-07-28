@@ -53,7 +53,7 @@ describe("every Tier 3 name computes what its node computes", () => {
 
   it("PADLEFT / PADRIGHT — one name per direction, from PAD_OP_META", () => {
     for (const [dir, meta] of Object.entries(PAD_OP_META)) {
-      const node = new PadNode({ dir: dir as "left" | "right" });
+      const node = new PadNode({ op: dir as "left" | "right" });
       expect(ev(`${meta.label}(x, 6, 0)`, { x: LIST }))
         .toEqual(node.data({ list: [LIST], n: [6], fill: [0] }).result);
       expect(despace(meta.label)).toBe(meta.label); // the name IS the label
@@ -227,6 +227,20 @@ describe("the prose-labelled families — names DECLARED, not despaced", () => {
     // A list fallback EXTENDS the result; a bare number broadcasts without extending.
     expect(ev("COALESCE(a, b)", { a: [1], b: [null, 7] })).toEqual([1, 7]);
     expect(ev("COALESCE(a, 5)", { a: [1, null] })).toEqual([1, 5]);
+  });
+
+  it("SHUFFLE is a permutation — volatile, like the RAND already in the language", () => {
+    const x = [1, 2, 3, 4, 5, 6, 7, 8];
+    const out = ev("SHUFFLE(x)", { x }) as number[];
+    expect([...out].sort((a, b) => a - b)).toEqual(x);   // same multiset
+    expect(out.length).toBe(x.length);
+    // Volatile means two evaluations may differ; over enough draws they must. This is
+    // the ONE Tier 3 function that can't assert node-equals-formula, because the two
+    // deliberately run different volatility clocks — the node holds its keys until the
+    // next recalc, a formula redraws per evaluation. They share `shuffleList`, so the
+    // permutation itself is still one implementation.
+    const draws = new Set(Array.from({ length: 40 }, () => JSON.stringify(ev("SHUFFLE(x)", { x }))));
+    expect(draws.size).toBeGreaterThan(1);
   });
 
   it("RANGE and CONCATLISTS", () => {

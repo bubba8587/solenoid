@@ -54,7 +54,7 @@ import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
   FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
-  SET_OP_META, SET_RELATION_META,
+  SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
@@ -202,6 +202,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new HeadNode({ op: op as never }) },
 
   // ── Operation-kind: each op stands alone as a name ──
+  // Pad's selector was called `dir` — the only op family that named its op something
+  // else, which is why it had no declaration at all and PADLEFT/PADRIGHT were
+  // unsearchable. Renamed to `op` like every other family.
+  { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
+    create: (op) => new PadNode({ op: op as never }) },
   { type: "list-set", ctor: SetOpNode, kind: "operation", ops: SET_OPS,
     create: (op) => new SetOpNode({ op: op as never }) },
   { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: SET_RELATION_OPS,
