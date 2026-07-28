@@ -1,13 +1,20 @@
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, complexComboIn, complexComboOut, readInput, type CellResult, type BroadcastResult } from "./shared";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
-import { cx, isCx, formatCx, type Cx } from "../cxValue";
+import {
+  cx, isCx, formatCx, type Cx,
+  cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
+  cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
+  cxSech, cxCsch, quadraticRoots,
+} from "../cxValue";
 
 // ─── Internal complex type ────────────────────────────────────────────────────
-// The tagged Cx (VAL-15) lives in ../cxValue — RETE-FREE so the formula path and the
-// display layer can use it without loading the editor. Re-exported here because this
-// is the family's home module and every existing importer reads it from here.
+// The tagged Cx (VAL-15) AND the math kernels live in ../cxValue — RETE-FREE so
+// the formula path (the IM* registrations run the identical functions, FX-1) and
+// the display layer can use them without loading the editor. Re-exported here
+// because this is the family's home module and every existing importer reads it
+// from here.
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
 // ─── Complex broadcasting (the family's own, and why it keeps one) ────────────
@@ -79,57 +86,6 @@ function broadcastComplex(
   }
   return out;
 }
-
-// ─── Math helpers ─────────────────────────────────────────────────────────────
-
-function cxAdd(a: Cx, b: Cx): Cx { return cx(a.re+b.re, a.im+b.im); }
-function cxSub(a: Cx, b: Cx): Cx { return cx(a.re-b.re, a.im-b.im); }
-function cxMul(a: Cx, b: Cx): Cx {
-  return cx(a.re*b.re-a.im*b.im, a.re*b.im+a.im*b.re);
-}
-function cxDiv(a: Cx, b: Cx): Cx {
-  const d = b.re**2 + b.im**2;
-  if (d === 0) return cx(NaN, NaN);
-  return cx((a.re*b.re+a.im*b.im)/d, (a.im*b.re-a.re*b.im)/d);
-}
-function cxAbs(z: Cx): number { return Math.hypot(z.re, z.im); }
-function cxArg(z: Cx): number { return Math.atan2(z.im, z.re); }
-function cxExp(z: Cx): Cx {
-  const r = Math.exp(z.re);
-  return cx(r*Math.cos(z.im), r*Math.sin(z.im));
-}
-function cxLn(z: Cx): Cx { return cx(Math.log(cxAbs(z)), cxArg(z)); }
-function cxPow(z: Cx, n: number): Cx {
-  if (z.re === 0 && z.im === 0) return cx(0, 0);
-  const r = Math.pow(cxAbs(z), n);
-  const a = cxArg(z) * n;
-  return cx(r*Math.cos(a), r*Math.sin(a));
-}
-function cxSqrt(z: Cx): Cx { return cxPow(z, 0.5); }
-function cxConj(z: Cx): Cx { return cx(z.re, -z.im); }
-function cxSin(z: Cx): Cx {
-  const { re: r, im: i } = z;
-  return cx(Math.sin(r)*Math.cosh(i), Math.cos(r)*Math.sinh(i));
-}
-function cxCos(z: Cx): Cx {
-  const { re: r, im: i } = z;
-  return cx(Math.cos(r)*Math.cosh(i), -Math.sin(r)*Math.sinh(i));
-}
-function cxTan(z: Cx): Cx { return cxDiv(cxSin(z), cxCos(z)); }
-function cxSinh(z: Cx): Cx {
-  const { re: r, im: i } = z;
-  return cx(Math.sinh(r)*Math.cos(i), Math.cosh(r)*Math.sin(i));
-}
-function cxCosh(z: Cx): Cx {
-  const { re: r, im: i } = z;
-  return cx(Math.cosh(r)*Math.cos(i), Math.sinh(r)*Math.sin(i));
-}
-function cxSec(z: Cx): Cx { return cxDiv(cx(1,0), cxCos(z)); }
-function cxCsc(z: Cx): Cx { return cxDiv(cx(1,0), cxSin(z)); }
-function cxCot(z: Cx): Cx { return cxDiv(cxCos(z), cxSin(z)); }
-function cxSech(z: Cx): Cx { return cxDiv(cx(1,0), cxCosh(z)); }
-function cxCsch(z: Cx): Cx { return cxDiv(cx(1,0), cxSinh(z)); }
-
 
 /** SolError-safe wrapper for a complex node's value box. An upstream error makes
  *  installErrorGuards set cachedResult to a SolError (these nodes aren't in
@@ -256,14 +212,13 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
   }
 
   data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }): { result: CellResult<Cx> } {
-    const LN10 = Math.log(10), LN2 = Math.log(2);
     const result = broadcastComplex((z: Cx): Cx => {
       switch (this.op) {
         case "conj":  return cxConj(z);
         case "exp":   return cxExp(z);
         case "ln":    return cxLn(z);
-        case "log10": { const l = cxLn(z); return cx(l.re/LN10, l.im/LN10); }
-        case "log2":  { const l = cxLn(z); return cx(l.re/LN2,  l.im/LN2);  }
+        case "log10": return cxLog10(z);
+        case "log2":  return cxLog2(z);
         case "sqrt":  return cxSqrt(z);
         case "sin":   return cxSin(z);
         case "cos":   return cxCos(z);
@@ -389,16 +344,12 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
     c?: (number | number[] | null)[];
   }): { x1: CellResult<Cx>; x2: CellResult<Cx> } {
     // Both roots broadcast over the same coefficients, so a list of quadratics
-    // solves into two parallel lists of roots.
+    // solves into two parallel lists of roots. The math is the shared kernel
+    // (cxValue.ts), so a = 0 is a per-cell #DOMAIN! — one degenerate row in a
+    // list errors alone.
     const root = (which: 1 | 2) => broadcastComplex((a: number, b: number, c: number): Cx | SolError => {
-      // a = 0 is a per-cell #DOMAIN!, so one degenerate row in a list errors alone.
-      if (a === 0) return solError("#DOMAIN!", "a = 0 is a line, not a quadratic — solve b·x + c = 0 directly");
-      const disc = b * b - 4 * a * c;
-      const s = Math.sqrt(Math.abs(disc)) / (2 * a);
-      const z = (v: number) => (v === 0 ? 0 : v); // kill -0 (it would display "-0")
-      const re = z(-b / (2 * a));
-      if (disc >= 0) return which === 1 ? cx(z(re - s), 0) : cx(z(re + s), 0);
-      return which === 1 ? cx(re, z(-s)) : cx(re, z(s)); // the conjugate pair
+      const r = quadraticRoots(a, b, c);
+      return isSolError(r) ? r : r[which - 1];
     },
       numOp(readInput(inputs.a, this.literals.a)),
       numOp(readInput(inputs.b, this.literals.b)),

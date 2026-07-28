@@ -12,7 +12,8 @@ Frames and cubes stay out of formulas — no Excel semantics to copy, competes w
 the verb engine, breaks lazy-FrameRef economics. (Complex was originally listed in
 that exclusion and REMOVED by the same-day amendment: its blocker was the tuple
 ambiguity VAL-15 deleted, and the frame/cube reasons never applied to it. See D23's
-amendment; the complex-in-formulas build is in the backlog.)
+amendment; the complex tranche LANDED same day — IM* owned over tagged Cx,
+operators typed, `cxArgs` containment, `formulaComplex.test.ts`.)
 
 ---
 
@@ -136,7 +137,8 @@ extension; logical↔number bridges per cell (VAL-7).
 
 **Explicitly NOT implemented:** spill / `#SPILL!` (no grid — the result flows out a
 socket), implicit intersection `@` (meaningless without a grid), `#N/A` pads (per
-PAD-a), frames/cubes/complex in formulas (endpoint scope).
+PAD-a), frames/cubes in formulas (endpoint scope — complex left this list with the
+amendment tranche).
 
 ---
 

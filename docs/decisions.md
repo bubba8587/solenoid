@@ -539,9 +539,12 @@ ambiguity) was removed by VAL-15 the same day. Worse, the exclusion was never
 enforced: `anydata` accepts the complex family, so tagged Cx values already flow
 into formulas — where operators concatenate them into "[object Object]1" and the
 Formula.js IM* names work on TEXT complexes ("3+4i") while refusing tagged ones.
-Complex-in-formulas is therefore an OPEN build (backlog), not an exclusion: own the
-IM* family over tagged Cx (FX-1, the complex.ts kernels), accept Excel's text form
-on the way in, and make an operator on a Cx a typed #TYPE! instead of garbage.
+Complex-in-formulas is therefore a build, not an exclusion — LANDED same day: the
+IM* family (25 names + COMPLEX + QUADRATICROOTS) owned over tagged Cx running the
+shared kernels (now in `cxValue.ts`, rete-free), Excel's "a+bi" text and real
+numbers coerce IN (never out — results are tagged Cx), an operator on a Cx answers
+a typed #TYPE! (`=`/`<>` compare structurally, `&` renders via formatCx), and the
+FX-9 containment gate grew a `cxArgs` half (`formulaComplex.test.ts`).
 **The criteria that decided it** (fixed 2026-07-14): correctness + coherence only —
 the identity objection was retired by the author. What made it decidable now:
 registry unification is real through Tier 3 (one shared impl per function,

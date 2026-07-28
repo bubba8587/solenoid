@@ -21,6 +21,12 @@ import {
   durationValue, bondPriceYield, oddCoupon, vdb,
 } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
+import {
+  cx, isCx, parseCx, type Cx,
+  cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
+  cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
+  cxSech, cxCsch, quadraticRoots,
+} from "./cxValue";
 
 // ─── EXCEL_FUNCTIONS — the one declared home for "where does each function live?" ──
 // The app computes through TWO parallel implementations of the same Excel functions:
@@ -111,7 +117,7 @@ export const FAMILY_BACKING: Record<FuncFamily, { backing: Backing; why: string 
   "text":              { backing: "formulajs", why: "Excel parity IS the spec here; least reason to hand-roll." },
   "datetime":          { backing: "internal",  why: "Single serial model + UTC/timezone care differs from Excel's Date/1900 conventions." },
   "lookup":            { backing: "internal",  why: "XLOOKUP/XMATCH already richer than Formula.js; CONVERT is unit-aware (the flagship)." },
-  "complex":           { backing: "verify",    why: "Formula.js has IM* fns; verify representation/accuracy match before flipping." },
+  "complex":           { backing: "internal",  why: "Tagged Cx (VAL-15) is the family currency; Formula.js IM* speak text complexes only — owned over Cx, accepting Excel's text form on the way in." },
   "matrix":            { backing: "internal",  why: "Shape / Frame semantics are Solenoid's own." },
   "units":             { backing: "internal",  why: "The flagship — Formula.js has no unit system; nothing to consolidate." },
 };
@@ -179,8 +185,14 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   // ── lookup + unit conversion (richer / unit-aware — internal) ──
   XLOOKUP: "lookup", XMATCH: "lookup", CONVERT: "lookup", CHOOSE: "lookup",
 
-  // ── complex (verify) ──
-  COMPLEX: "complex", IMABS: "complex", IMREAL: "complex", IMAGINARY: "complex", IMSUM: "complex", IMPRODUCT: "complex", IMPOWER: "complex",
+  // ── complex (internal — the whole IM* family is owned over tagged Cx) ──
+  COMPLEX: "complex", IMABS: "complex", IMREAL: "complex", IMAGINARY: "complex",
+  IMARGUMENT: "complex", IMCONJUGATE: "complex", IMEXP: "complex", IMLN: "complex",
+  IMLOG10: "complex", IMLOG2: "complex", IMSQRT: "complex",
+  IMSIN: "complex", IMCOS: "complex", IMTAN: "complex", IMCOT: "complex",
+  IMSEC: "complex", IMCSC: "complex", IMSINH: "complex", IMCOSH: "complex",
+  IMSECH: "complex", IMCSCH: "complex",
+  IMSUM: "complex", IMSUB: "complex", IMPRODUCT: "complex", IMDIV: "complex", IMPOWER: "complex",
 
   // ── matrix (shape semantics — internal) ──
   MMULT: "matrix", MINVERSE: "matrix", MDETERM: "matrix", TRANSPOSE: "matrix",
@@ -399,7 +411,8 @@ export function internalFunctionNames(): string[] {
  *  future result-type inference, not yet wired to the result socket. */
 // "any" = type-neutral: the function returns whichever type its arguments carry
 // (XLOOKUP/IF/INDEX pass values through) — a forced concrete type here would lie.
-export type ExcelReturn = "number" | "string" | "logical" | "date" | "any";
+// "complex" = a tagged Cx (VAL-15) — the IM* family's currency.
+export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
  *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name.
@@ -425,6 +438,13 @@ export interface ExcelImplMeta {
    *  functions are written against 2-D ranges with unvetted quirks, and it has
    *  been caught mutating arguments in place). */
   matrixArgs?: boolean;
+  /** The function COMPUTES ON tagged Cx values (the IM* family). This is the only
+   *  gate through which a complex reaches a dispatch (the D23-amendment
+   *  containment rule, same shape as `matrixArgs`): everywhere else a Cx operand
+   *  answers #TYPE! rather than coercing to "[object Object]" / NaN. Exemptions
+   *  live at the guard (excelFormula.ts): the NULL_INSPECTING value-passers and
+   *  the whole-list natives. */
+  cxArgs?: boolean;
   arity: [number, number]; // [min, max]
   family?: FuncFamily;
   /** true = Solenoid-only (no Formula.js equivalent) — the registry ADDS the
@@ -701,6 +721,41 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NAND:        { returns: "logical", arity: [1, 255], native: true },
   NOR:         { returns: "logical", arity: [1, 255], native: true },
   XNOR:        { returns: "logical", arity: [1, 255], native: true },
+
+  // ── D23 amendment: the complex tranche. The IM* family owned over tagged Cx
+  // (VAL-15) — arguments accept a Cx, a real number, or Excel's "a+bi" text;
+  // results are tagged Cx (formatCx renders them), not Excel's text complexes.
+  // `cxArgs` is the containment gate (excelFormula.ts). COMPLEX and
+  // QUADRATICROOTS take REAL arguments, deliberately no cxArgs.
+  COMPLEX:     { returns: "complex", arity: [2, 3], family: "complex" },
+  IMREAL:      { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
+  IMAGINARY:   { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
+  IMABS:       { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
+  IMARGUMENT:  { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
+  IMCONJUGATE: { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMEXP:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMLN:        { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMLOG10:     { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMLOG2:      { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMSQRT:      { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMSIN:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMCOS:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMTAN:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMCOT:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMSEC:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMCSC:       { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMSINH:      { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMCOSH:      { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMSECH:      { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMCSCH:      { returns: "complex", arity: [1, 1], family: "complex", cxArgs: true },
+  IMSUM:       { returns: "complex", arity: [1, 255], family: "complex", cxArgs: true },
+  IMPRODUCT:   { returns: "complex", arity: [1, 255], family: "complex", cxArgs: true },
+  IMSUB:       { returns: "complex", arity: [2, 2], family: "complex", cxArgs: true },
+  IMDIV:       { returns: "complex", arity: [2, 2], family: "complex", cxArgs: true },
+  IMPOWER:     { returns: "complex", arity: [2, 2], family: "complex", cxArgs: true },
+  // listArgs like the other generators (SEQUENCE/LINSPACE): scalar coefficients
+  // in, whole [x₁, x₂] out — a list-returner must never be broadcast.
+  QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, arity: [3, 3], family: "complex", native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1753,9 +1808,10 @@ registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form �
 // ── The non-pack straggler sweep (2026-07-28) ─────────────────────────────────
 // The last genuinely-registrable non-pack names. Everything else the parity walk
 // still lists is deliberate: sources/sinks/UI (no formula meaning), the D23
-// endpoint (frames/cubes/complex), preset-FORMULA leaves (their own `expr` IS
-// the formula equivalent — the measurement now detects them mechanically), and
-// the operator nodes (covered by the language's own + − × / and comparisons).
+// endpoint (frames/cubes — complex landed with the amendment tranche below),
+// preset-FORMULA leaves (their own `expr` IS the formula equivalent — the
+// measurement now detects them mechanically), and the operator nodes (covered
+// by the language's own + − × / and comparisons).
 
 registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
 registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
@@ -1787,4 +1843,112 @@ registerInternal("XNOR", (...vals) => {
     acc = acc !== t;
   }
   return !acc;
+});
+
+// ── D23 amendment: the complex tranche (2026-07-28) ───────────────────────────
+// The IM* family over tagged Cx, running the node family's kernels (cxValue.ts —
+// FX-1: one math, two surfaces). These shadow Formula.js's text-complex IM*
+// implementations, which were the split-brain: IMSUM("3+4i","1+2i") worked while
+// IMSUM on the graph's own tagged values answered #VALUE!. Element-wise like the
+// nodes: no listArgs, so broadcastCall lifts each over complex LISTS with the
+// per-cell error/missing contract — the same broadcast the node family runs.
+// Note IMSUM/IMPRODUCT over two lists therefore zip PAIRWISE (the node's
+// semantics), not Excel's sum-a-whole-range (a range is one cell here anyway).
+
+/** Coerce one argument into the family: a tagged Cx as-is, a real number as
+ *  re+0i, text via Excel's "a+bi" grammar. Invalid text is a #VALUE! (Excel says
+ *  #NUM!, a code this vocabulary deliberately splits — a malformed text form is
+ *  a value problem, not a domain/overflow/convergence one). Anything else —
+ *  logicals included, matching the node's socket refusal — is a typed #TYPE!. */
+function asCxArg(v: unknown, name: string): Cx | SolError {
+  if (isCx(v)) return v;
+  if (typeof v === "number") return cx(v, 0);
+  if (typeof v === "string") {
+    return parseCx(v) ?? solError("#VALUE!", `${name}: "${v}" is not a complex number — the form is "a+bi"`);
+  }
+  return solError("#TYPE!", `${name} expects a complex number`);
+}
+
+function regCxUnary(name: string, f: (z: Cx) => Cx | number): void {
+  registerInternal(name, (v) => {
+    const z = asCxArg(v, name);
+    return isSolError(z) ? z : f(z);
+  });
+}
+regCxUnary("IMREAL", (z) => z.re);
+regCxUnary("IMAGINARY", (z) => z.im);
+regCxUnary("IMABS", cxAbs);
+// IMARGUMENT(0) is 0 here (atan2's convention, the IM Unpack node's answer);
+// Excel makes it #DIV/0! — FX-1 sides with the node.
+regCxUnary("IMARGUMENT", cxArg);
+regCxUnary("IMCONJUGATE", cxConj);
+regCxUnary("IMEXP", cxExp);
+regCxUnary("IMLN", cxLn);
+regCxUnary("IMLOG10", cxLog10);
+regCxUnary("IMLOG2", cxLog2);
+regCxUnary("IMSQRT", cxSqrt);
+regCxUnary("IMSIN", cxSin);
+regCxUnary("IMCOS", cxCos);
+regCxUnary("IMTAN", cxTan);
+regCxUnary("IMCOT", cxCot);
+regCxUnary("IMSEC", cxSec);
+regCxUnary("IMCSC", cxCsc);
+regCxUnary("IMSINH", cxSinh);
+regCxUnary("IMCOSH", cxCosh);
+regCxUnary("IMSECH", cxSech);
+regCxUnary("IMCSCH", cxCsch);
+
+function regCxFold(name: string, f: (a: Cx, b: Cx) => Cx): void {
+  registerInternal(name, (...vs) => {
+    let acc: Cx | null = null;
+    for (const v of vs) {
+      const z = asCxArg(v, name);
+      if (isSolError(z)) return z;
+      acc = acc === null ? z : f(acc, z);
+    }
+    return acc;
+  });
+}
+regCxFold("IMSUM", cxAdd);
+regCxFold("IMPRODUCT", cxMul);
+
+function regCxBinary(name: string, f: (a: Cx, b: Cx) => Cx): void {
+  registerInternal(name, (a, b) => {
+    const za = asCxArg(a, name);
+    if (isSolError(za)) return za;
+    const zb = asCxArg(b, name);
+    return isSolError(zb) ? zb : f(za, zb);
+  });
+}
+regCxBinary("IMSUB", cxSub);
+regCxBinary("IMDIV", cxDiv);
+
+// IMPOWER's exponent is REAL (the node's contract — complex exponents are out of
+// scope on both surfaces).
+registerInternal("IMPOWER", (v, n) => {
+  const z = asCxArg(v, "IMPOWER");
+  if (isSolError(z)) return z;
+  if (isCx(n)) return solError("#TYPE!", "IMPOWER's exponent is a real number");
+  const p = Number(n);
+  return Number.isNaN(p) ? solError("#VALUE!", "IMPOWER's exponent must be a number") : cxPow(z, p);
+});
+
+// COMPLEX(re, im, [suffix]) — REAL parts in, tagged Cx out. The suffix argument
+// is validated per Excel ("i"/"j") and then dropped: a tagged Cx has no stored
+// spelling, formatCx always renders `i`.
+registerInternal("COMPLEX", (re, im, suffix) => {
+  const r = Number(re), i = Number(im);
+  if (Number.isNaN(r) || Number.isNaN(i)) return solError("#VALUE!", "COMPLEX takes real and imaginary NUMBERS");
+  if (suffix !== undefined && suffix !== null && suffix !== "i" && suffix !== "j") {
+    return solError("#VALUE!", 'COMPLEX\'s suffix is "i" or "j"');
+  }
+  return cx(r, i);
+});
+
+// Both roots as the 2-element list [x₁, x₂] — the Quadratic Roots node's two
+// outputs side by side, same kernel (cxValue.ts).
+registerInternal("QUADRATICROOTS", (a, b, c) => {
+  const na = Number(a), nb = Number(b), nc = Number(c);
+  if ([na, nb, nc].some(Number.isNaN)) return solError("#VALUE!", "QUADRATICROOTS takes numeric coefficients a, b, c");
+  return quadraticRoots(na, nb, nc);
 });

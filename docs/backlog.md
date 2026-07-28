@@ -123,19 +123,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   equivalent, typeable today — SSOT-3, no hand-kept list) and counts the
   language's own leaves (the four operators, Comparison, Expression/Equation).
   With the straggler registrations (REVERSETEXT, SPELLNUMBER, DECODEURL, LOG2,
-  HYPOTENUSE, XNOR, NAND, NOR):
-  **Non-pack: 380/479.** The 99 remaining are Input/Output/Tables (sources,
-  sinks, UI, D23-endpoint) plus exactly five named leaves: Quadratic Roots
-  (rides the complex-in-formulas build below), Text Filter (op family, needs its
-  per-op naming pass), Image/SVG/Promo (not functions).
-  - [ ] **Complex in formulas** (D23 amendment — the exclusion was false and
-    unenforced): complex values ALREADY reach formulas via anydata; today an
-    operator on a tagged Cx concatenates garbage ("[object Object]1") and the
-    Formula.js IM* names work on TEXT complexes while refusing tagged ones (two
-    representations, the FX-1 drift). Build: extract the complex.ts math kernels
-    rete-free (the listOps pattern), own the IM* family over tagged Cx + accept
-    Excel's "a+bi" text on the way in, operators on a Cx answer a typed #TYPE!.
-    Closes Quadratic Roots' leaf too.
+  HYPOTENUSE, XNOR, NAND, NOR) and the complex tranche (D23 amendment, landed:
+  IM* owned over tagged Cx, operators answer typed #TYPE!, QUADRATICROOTS):
+  **Non-pack: 381/479.** The 98 remaining are Input/Output/Tables (sources,
+  sinks, UI, D23-endpoint) plus exactly four named leaves: Text Filter (op
+  family, needs its per-op naming pass), Image/SVG/Promo (not functions).
   **Packs: 148/167 already covered** (preset formulas). The pack workstream is
   the 19 CUSTOM-LOGIC nodes: Triangle Solver, Parallel Combine, Resistor Color
   Code, E-Series Value, AWG Wire, EM Spectrum Band, Physics Constant, Heart-Rate

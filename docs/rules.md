@@ -417,18 +417,30 @@ Formula.js internals as formula functions".
 for ten million elements with nothing visible to stop it.
 *Enforced by:* `formulaTier3.test.ts` → "a generator is capped at the formula boundary".
 
-### FX-9 — Formula.js never sees a matrix (D23 containment) **[INFERRED]**
+### FX-9 — Formula.js never sees a matrix, or a tagged Cx (D23 containment) **[INFERRED]**
 **MUST:** a rank-2 value reaches a dispatch WHOLE only through a registration
 declaring `matrixArgs`. Otherwise: a range aggregate FLATTENS row-major before its
 1-D prep; a positional lookup or 1-D whole-list native answers `#SHAPE!`; an
 element-wise function broadcasts cell-wise, so the fallthrough only ever receives
 scalars. The Formula.js fallthrough stays 1-D permanently.
+**MUST (the same principle, per element):** a tagged `Cx` reaches a dispatch only
+through a registration declaring `cxArgs` (the IM* family, owned over Cx);
+everywhere else a complex operand answers a typed `#TYPE!` naming that family.
+Exempt: the `NULL_INSPECTING` value-passers (IF hands a complex branch through;
+type predicates must SEE it) and whole-list natives (position-preserving shape
+ops on opaque elements — `REVERSE` of a complex list is legitimate; their numeric
+members coerce a Cx like any other non-number, the family-wide list policy).
 
 *Why:* the weaker engine's array functions are written against 2-D ranges with
 unvetted quirks, and it has been caught mutating its arguments in place
 (CHISQ.TEST). The original cap was partly containment; at rank 2 that logic is
-permanent even though the cap itself lifted.
-*Enforced by:* `broadcastRules.test.ts` → "the D23 containment rule".
+permanent even though the cap itself lifted. The Cx half has the same shape:
+before the gate, `cx + 1` concatenated to `"[object Object]1"` and Formula.js's
+IM* worked on TEXT complexes while refusing the graph's own tagged values (the
+D23-amendment finding, 2026-07-28).
+*Enforced by:* `broadcastRules.test.ts` → "the D23 containment rule";
+`formulaComplex.test.ts` → "containment — a Cx reaches a dispatch only through
+cxArgs" (plus the operator table there).
 
 ### FX-10 — One broadcast engine, and the table is the test **[DEFAULT]**
 **MUST:** every element-wise surface (operators, unary, percent, function
@@ -669,12 +681,12 @@ only. Each is actionable in the follow-up.
 6. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
    map its card never edits, which would let a save inject an invisible value.
 
-7. **Array-RETURNING range functions are unrouted** — `TREND`, `GROWTH`, `LINEST`,
-   `LOGEST`, `FREQUENCY`, `MODE.MULT`, `UNIQUE`, `SORT`, `FILTER` are still broadcast
-   (FX-5). Formula.js writes them against a 2-D range and doesn't treat a 1-D list as
-   a vector, so each needs an owned registration (post-D23 the right fix is ownership
-   at rank 2, not routing — FX-9). `TRANSPOSE` left this list with the matrix tranche.
-   Pinned as a known state by `rangeRouting.test.ts`.
+7. **The regression quartet is unrouted** — `TREND`, `GROWTH`, `LINEST`, `LOGEST` are
+   still broadcast (FX-5). Formula.js writes them against a 2-D range and doesn't treat
+   a 1-D list as a vector, so each needs an owned fitting registration (post-D23 the
+   right fix is ownership at rank 2, not routing — FX-9). The rest of the original
+   list — `FREQUENCY`, `MODE.MULT`, `UNIQUE`, `SORT`, `FILTER`, `TRANSPOSE` — left it
+   with the D23 tranches. Pinned as a known state by `rangeRouting.test.ts` (DEFERRED).
 
 8. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
