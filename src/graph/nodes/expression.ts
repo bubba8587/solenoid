@@ -1,5 +1,7 @@
 import { ClassicPreset } from "rete";
-import { anyComboIn, resultOut, readInput, type ResultType } from "./shared";
+import { anyDataIn, resultOut, resultSocket, readInput, type ResultType } from "./shared";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
@@ -54,17 +56,24 @@ function tagResult(v: unknown): unknown {
  *  the numeric formula evaluator never sees a dimensioned object. */
 function stripUnits(v: unknown): unknown {
   if (isUnitCell(v)) return v.value;
-  if (Array.isArray(v)) return v.map((c) => (isUnitCell(c) ? (c as UnitCell).value : c));
+  if (Array.isArray(v)) {
+    // Rank 2 (D23): strip per row. A matrix carries ONE homogeneous unit (D20),
+    // but the cells are tagged individually like a list's.
+    return v.map((c) =>
+      Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
+      : isUnitCell(c) ? (c as UnitCell).value : c);
+  }
   return v;
 }
 
 /** The dimension a formula input carries: a scalar UnitCell's dim, or the shared dim
- *  of a list's tagged cells (dimensionless if none / mixed). */
+ *  of a container's tagged cells (dimensionless if none / mixed). Rank 2 flattens —
+ *  a matrix carries ONE homogeneous unit (D20), so the shared-dim walk is the same. */
 function envDim(v: unknown): Dim {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) {
     let dim: Dim | null = null;
-    for (const c of v) {
+    for (const c of v.flat()) {
       if (!isUnitCell(c)) continue;
       if (dim === null) dim = c.dim;
       else if (!dimEqual(dim, c.dim)) return DIMENSIONLESS; // mixed → drop
@@ -136,7 +145,7 @@ export class ExpressionNode extends ClassicPreset.Node {
 
     for (const v of next) {
       if (!prev.has(v)) {
-        this.addInput(v, anyComboIn(v));
+        this.addInput(v, anyDataIn(v));
         added.push(v);
       }
     }
@@ -150,6 +159,33 @@ export class ExpressionNode extends ClassicPreset.Node {
     this.evaluator = compileEvaluator(this.expr);
     this.ast = parseFormula(this.expr);
     return { added, removed };
+  }
+
+  /** The result socket's RANK, reconciled to the computed VALUE (SOCK-9): the
+   *  resultAs combo covers rank ≤ 1; a matrix result swaps to the same family's
+   *  matrix rung, through the standard in-place-retype machinery (SOCK-7 — cables
+   *  the new type can't feed drop, downstream FCs re-resolve). Value-driven, so it
+   *  runs OUTSIDE data() via a microtask; headless runs (no editor) skip the swap
+   *  and just flow the value. An error result leaves the socket alone. */
+  private lastResultRank: 1 | 2 = 1;
+  private reconcileResultRank(result: unknown): void {
+    // An error RESULT (it flows through the normal return, as a value) says nothing
+    // about the formula's shape — leave the socket where the last real value put it.
+    if (isSolError(result)) return;
+    const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
+    if (want === this.lastResultRank) return;
+    this.lastResultRank = want;
+    queueMicrotask(() => {
+      void (async () => {
+        const editor = getActiveEditor();
+        const area = getActiveArea();
+        const out = this.outputs.result;
+        if (!editor || !area || !out || !editor.getNode(this.id)) return;
+        out.socket = resultSocket(want === 2 ? "matrix" : "combo", this.resultAs);
+        await retypeOutputCables(editor, area, this.id, "result");
+        await area.update("node", this.id);
+      })();
+    });
   }
 
   data(inputs: Record<string, unknown[]>): { result: unknown } {
@@ -179,21 +215,6 @@ export class ExpressionNode extends ClassicPreset.Node {
       const env: Record<string, unknown> = {};
       for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
 
-      // A 2-D matrix wired into an Expression is a #SHAPE! by DESIGN — the formula
-      // scope is permanently capped at scalars + 1-D lists (CLAUDE.md / dev-notes).
-      // To run a formula over a table, use the LAMBDA hosts (MAP / BYROW / BYCOL /
-      // REDUCE / MAKEARRAY): they apply the formula per cell/row and own the 2-D
-      // iteration. Fail LOUD rather than silently mis-broadcast a matrix row.
-      for (const v of this.varNames) {
-        const val = rawEnv[v];
-        if (Array.isArray(val) && val.some((e) => Array.isArray(e))) {
-          this.cachedError = "Matrix input not supported";
-          const err = solError("#SHAPE!", "A formula works on values and 1-D lists, not a 2-D matrix. Use MAP / BYROW / REDUCE to run it over a table.");
-          this.cachedResult = err;
-          return { result: err };
-        }
-      }
-
       // The evaluator decides broadcast-vs-aggregate per call site. Both a SCALAR
       // and each LIST element run through the SAME tagging (tagResult): an
       // in-formula error → tagged SolError (#DIV/0! / #DOMAIN! / mapped Formula.js
@@ -203,7 +224,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       // carry per-cell errors and `null` as distinct kinds (array-semantics build).
       const raw = this.evaluator(env);
       let result: unknown = Array.isArray(raw)
-        ? raw.map((e) => tagResult(e))
+        ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
         : tagResult(raw);
 
       // Dimensional interpretation (Bundle 05: FC A4, step 3): only when an input
@@ -226,6 +247,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       }
       this.cachedResult = result;
       this.cachedError  = null;
+      this.reconcileResultRank(result);
       return { result };
     } catch {
       this.cachedError = "Evaluation error";

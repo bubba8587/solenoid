@@ -64,6 +64,9 @@ export const anyListIn  = (label: string) => new ClassicPreset.Input(new Adoptiv
 // op (Regex). Before this rung existed, the same effect needed the `noWidenInputs`
 // side-channel, which overrode the socket rather than being expressed by it.
 export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
+/** The rank-≤2 element-agnostic input (SOCK-9): an Expression variable — the D23
+ *  lift. Adoptive like anyComboIn, so a wired family type shows its real color. */
+export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
 export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
 export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);

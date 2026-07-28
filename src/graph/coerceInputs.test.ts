@@ -137,12 +137,13 @@ describe("coerceInputs — noWidenInputs: opt out of rank widening, keep element
   });
 });
 
-describe("coerceInputs — Expression is a broadcaster: its variables are `anycombo`", () => {
+describe("coerceInputs — Expression is a broadcaster: its variables are `anydata`", () => {
   // Regression: a scalar into Expression's variable input was widened to `[scalar]`
   // (the `anylist` Set/position rule above), so `a+b` of two scalars broadcast to a
   // 1-element LIST. That was patched with a `noWidenInputs` side-channel until
-  // 2026-07-25; the variables now declare `anycombo` — the element-agnostic COMBO —
-  // so the SOCKET says "scalar or list" and the coercion follows from the type.
+  // 2026-07-25; the variables now declare `anydata` (SOCK-9, since D23) — the
+  // rank-≤2 wildcard — so the SOCKET says "scalar, list or matrix" and the
+  // coercion follows from the type.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
     const node = new ExpressionNode({ expr });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
@@ -155,22 +156,27 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyco
   const varTypes = (n: ExpressionNode) =>
     n.varNames.map((v) => (n.inputs[v]?.socket as SolenoidSocket)?.dataType);
 
-  it("every formula variable is an `anycombo` port, and tracks the formula", () => {
+  it("every formula variable is an `anydata` port, and tracks the formula", () => {
     const node = new ExpressionNode({ expr: "a + b" });
     expect(node.varNames).toEqual(["a", "b"]);
-    expect(varTypes(node)).toEqual(["anycombo", "anycombo"]);
+    expect(varTypes(node)).toEqual(["anydata", "anydata"]);
     node.expr = "x * y - z";
     node._rebuild();
-    expect(varTypes(node)).toEqual(["anycombo", "anycombo", "anycombo"]);
+    expect(varTypes(node)).toEqual(["anydata", "anydata", "anydata"]);
     // The node no longer carries a coercion side-channel — the socket is the truth.
     expect("noWidenInputs" in node).toBe(false);
   });
-  it("the cap is unchanged: scalars and 1-D lists connect, a matrix does not", () => {
-    expect(canConnect("list", "anycombo")).toBe(true);
-    expect(canConnect("date", "anycombo")).toBe(true);
-    expect(canConnect("strlist", "anycombo")).toBe(true);
+  it("the D23 acceptance: scalars, lists AND matrices connect; frames/cubes do not", () => {
+    expect(canConnect("list", "anydata")).toBe(true);
+    expect(canConnect("date", "anydata")).toBe(true);
+    expect(canConnect("strlist", "anydata")).toBe(true);
+    expect(canConnect("table", "anydata")).toBe(true);   // the lift
+    expect(canConnect("anytable", "anydata")).toBe(true);
+    expect(canConnect("frame", "anydata")).toBe(false);  // matrices-ONLY (D23)
+    expect(canConnect("cube", "anydata")).toBe(false);
+    expect(canConnect("lambda", "anydata")).toBe(false);
+    // anycombo itself is unchanged — the old rung still refuses rank 2.
     expect(canConnect("table", "anycombo")).toBe(false);
-    expect(canConnect("frame", "anycombo")).toBe(false);
   });
   it("scalar inputs → a SCALAR result (not a 1-element list)", () => {
     expect(runExpr("a + b", { a: [5], b: [3] })).toBe(8);

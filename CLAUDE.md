@@ -259,8 +259,9 @@ Read the relevant section there before touching one of these. The one-line "don'
 - **Socket lattice** (`sockets.ts`): enforce TYPE separation (element families never auto-cross;
   Cast required; sole exception logical↔number), allow DIMENSIONAL flow (scalar → list →
   matrix → frame; a list widens into a 2-D input as a ROW). The wildcard ladder (D17): `any` =
-  untyped scalar, `anylist`/`anytable` = 1-D/2-D, `trueany` = the adopt-anything supremum
-  (hollow ring). Adoption (`trueAnyAdopt.ts`) never drops cables and never persists;
+  untyped scalar, `anylist`/`anytable` = 1-D/2-D, `anydata` = rank ≤ 2 (Expression
+  variables — SOCK-9/D23: matrices in, frames/cubes never), `trueany` = the
+  adopt-anything supremum (hollow ring). Adoption (`trueAnyAdopt.ts`) never drops cables and never persists;
   rank-bearing wildcards keep their rank and adopt only the element family; every
   "resolve past untyped passthroughs" check routes through `isWildcardType()`. Cross-type
   dimensional edges are explicit in `accepts()`, machine-checked by the full sweep in

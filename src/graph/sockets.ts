@@ -39,6 +39,8 @@ export type SocketDataType =
   | "anylist"   // 1-D list of ANY element type — the element-agnostic list wildcard
                 // (Any List), the rank-1 sibling of `anytable`. Used by element-
                 // agnostic list ops (Set). STRICT: a scalar widens to a singleton.
+  | "anydata"   // ANY element type, rank ≤ 2 (scalar | list | matrix) — SOCK-9, the D23
+                // rung for Expression variables/results: matrices in, frames/cubes out
   | "anycombo"  // ANY element type, scalar OR 1-D list — the element-agnostic COMBO,
                 // what `numlist` is to `number`. Accepts exactly what `anylist` does;
                 // the difference is that a scalar STAYS a scalar (no singleton
@@ -92,6 +94,7 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   anytable: "var(--sock-any)",      // gray          — grid (any-element 2-D matrix; reshaper output)
   anylist:  "var(--sock-any)",      // gray          — square (any-element 1-D list)
   anycombo: "var(--sock-any)",      // gray          — split square (any scalar | any list)
+  anydata:  "var(--sock-any)",      // gray          — split grid (any value up to a 2-D matrix)
   frame:    "var(--sock-frame)",    // violet        — grid (named-column data table)
   cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
   lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)
@@ -128,6 +131,7 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   anytable:     "Matrix (any)",
   anylist:      "List (any)",
   anycombo:     "Any value or list",
+  anydata:      "Any value, list or matrix",
   frame:        "Frame (table)",
   cube:         "Cube (nested table)",
   lambda:       "Function",
@@ -315,6 +319,7 @@ export function comboOfFamily(fam: string): SocketDataType | null {
 export function latticeRank(dt: SocketDataType): number | null {
   if (dt === "any") return 0;
   if (dt === "anylist" || dt === "anycombo") return 1;
+  if (dt === "anydata") return 2;
   if (dt === "anytable") return 2;
   for (const dims of Object.values(FAMILIES)) {
     for (const [dim, t] of Object.entries(dims)) if (t === dt) return DIM_RANK[dim as Dim];
@@ -350,7 +355,7 @@ export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): S
   // Expression variable must not turn the port INTO `trueany` — that erased the
   // rank glyph AND made every drag-time/connection-dialog check treat the occupied
   // port as accept-anything (the exact defect the anylist/anytable branch fixed).
-  if ((base === "any" || base === "anycombo") && fam === null) return base;
+  if ((base === "any" || base === "anycombo" || base === "anydata") && fam === null) return base;
   // Everything else (a `trueany` base, a family-typed wire) adopts verbatim.
   return wired;
 }
@@ -414,6 +419,15 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   // reaches a scalar input — i.e. it flows wherever `any` flows.
   if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
+  // `anydata` — the rank-≤2 element-agnostic wildcard (SOCK-9, D23): the rung between
+  // `anycombo` (refuses the matrices D23 admits) and `trueany` (admits the frames and
+  // cubes D23 excludes). As an INPUT any family value of rank ≤ 2 widens in, and the
+  // lower wildcards join it. As an OUTPUT it flows exactly where `anycombo` flows —
+  // runtime-shaped, the same accepted risk.
+  // (An `anycombo`/`any` OUTPUT already reached every non-object input via their own
+  // permissive lines above, so only `anylist`/`anytable` outputs need naming here.)
+  if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
+  if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   // A `frame` INPUT accepts ANY lower-rank value by DIMENSIONAL widening — the type
   // system enforces ELEMENT separation (date/number/complex/string never auto-cross;
   // only the deliberate logical↔number bridge does) but allows DIMENSIONAL flow. So a
@@ -505,6 +519,7 @@ export const strTableSocket  = new SolenoidSocket("strtable");
 export const dateTableSocket = new SolenoidSocket("datetable");
 export const anyTableSocket  = new SolenoidSocket("anytable");
 export const anyComboSocket  = new SolenoidSocket("anycombo");
+export const anyDataSocket   = new SolenoidSocket("anydata");
 export const stringSocket  = new SolenoidSocket("string");
 export const strListSocket = new SolenoidSocket("strlist");
 export const dateSocket    = new SolenoidSocket("date");

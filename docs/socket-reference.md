@@ -4,7 +4,7 @@ Every socket variant in Solenoid, in plain English: what it carries, what it loo
 like, what may connect to it, what is blocked, and what happens to a value the
 moment it arrives.
 
-There are **30 socket variants**. This document has one section for each. It
+There are **31 socket variants**. This document has one section for each. It
 describes only what the system **does** and what it **blocks** — a rule that is
 absent is simply not listed.
 
@@ -34,7 +34,7 @@ counts and the prose are not — re-run the script above after adding a node.
 | 2 | The two governing rules |
 | 3 | Reading a socket at a glance (shape and color) |
 | 4 | What the boundary does at every socket |
-| 5 | **The 30 variants**, one section each — 5.1 number · 5.2 text · 5.3 date · 5.4 complex · 5.5 logical · 5.6 wildcards · 5.7 containers · 5.8 object |
+| 5 | **The 31 variants**, one section each — 5.1 number · 5.2 text · 5.3 date · 5.4 complex · 5.5 logical · 5.6 wildcards · 5.7 containers · 5.8 object |
 | 6 | Adoptive ports and passthrough type resolution |
 | 7 | What a socket's type controls beyond connections |
 | 8 | Choosing a socket for a new port, and the factory to call |
@@ -172,7 +172,7 @@ family.
 |---|---|---|
 | Filled circle | scalar | `number` `string` `date` `complex` `logical` `any` |
 | Filled rounded square | strict list | `list` `strlist` `datelist` `complexlist` `logicallist` `anylist` |
-| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` |
+| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` `anydata` |
 | Square with a 2×2 grid | matrix | `table` `strtable` `datetable` `complextable` `logicaltable` `anytable` |
 | Square with an "F" | frame | `frame` |
 | Flat hexagon (three rhombi) | cube | `cube` |
@@ -183,7 +183,7 @@ family.
 
 Colors by family: number amber, text yellow-green, date pink, complex sky blue,
 logical purple, frame and cube violet, function teal-green, chart and document
-blue, all five wildcards gray. Within a family, the strict list is a darker shade
+blue, all six wildcards gray. Within a family, the strict list is a darker shade
 of the scalar and the matrix is a more saturated shade. A combo's split square
 takes the scalar color on the upper-left triangle and the list color on the
 lower-right. `anycombo`, whose family has only one color, takes gray on the
@@ -245,20 +245,21 @@ it is.
 **Ports:** 191 inputs, 102 outputs — the most-used variant in the app.
 
 **Accepts from:** `number`, `numlist`, `logical`, `logicalcombo`, `anycombo`,
-`any`, `trueany`.
+`anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `list`, `string`, `strlist`, `strcombo`, `date`,
-`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logicallist`, `logicaltable`, `table`, `strtable`, `datetable`, `anytable`,
-`anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logicallist`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
+`document`.
 
 **Reaches:** `number`, `list`, `numlist`, `logical`, `logicallist`,
 `logicalcombo`, `logicaltable`, `table`, `anytable`, `anylist`, `anycombo`,
-`frame`, `cube`, `any`, `trueany`.
+`anydata`, `frame`, `cube`, `any`, `trueany`.
 
-**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
-`datetable`, `lambda`, `chart`, `document`.
+**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`,
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `strtable`, `datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** booleans convert to 1/0, then the value is reduced to a single
 number: a one-element list or a 1×1 matrix collapses to the number it holds.
@@ -271,7 +272,7 @@ Anything carrying more than one element raises `#SHAPE!`. Null passes through.
 **Ports:** 66 inputs, 19 outputs.
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
-`logicalcombo`, `anylist`, `anycombo`, `any`, `trueany`.
+`logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
 `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
@@ -279,11 +280,13 @@ Anything carrying more than one element raises `#SHAPE!`. Null passes through.
 `lambda`, `chart`, `document`.
 
 **Reaches:** `list`, `numlist`, `logicallist`, `logicalcombo`, `logicaltable`,
-`table`, `anytable`, `anylist`, `anycombo`, `frame`, `cube`, `trueany`.
+`table`, `anytable`, `anylist`, `anycombo`, `anydata`, `frame`, `cube`,
+`trueany`.
 
 **Blocked at the output:** `number`, `string`, `strlist`, `strcombo`, `date`,
-`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logical`, `strtable`, `datetable`, `lambda`, `chart`, `document`, `any`.
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logical`, `strtable`, `datetable`, `lambda`, `chart`,
+`document`, `any`.
 
 **On arrival:** booleans convert to 1/0, then the value is shaped to a 1-D
 numeric list: a scalar widens to a one-element list, and a matrix that is a single
@@ -297,7 +300,7 @@ more than one column raises `#SHAPE!`. Null passes through.
 **Ports:** 149 inputs, 93 outputs.
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
-`logicalcombo`, `anylist`, `anycombo`, `any`, `trueany`.
+`logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
 `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
@@ -306,12 +309,11 @@ more than one column raises `#SHAPE!`. Null passes through.
 
 **Reaches:** `number`, `list`, `numlist`, `logical`, `logicallist`,
 `logicalcombo`, `logicaltable`, `table`, `anytable`, `anylist`, `anycombo`,
-`frame`, `cube`, `any`, `trueany` — including the scalar `number`, by the combo
-exception.
+`anydata`, `frame`, `cube`, `any`, `trueany`.
 
-**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
-`datetable`, `lambda`, `chart`, `document`.
+**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`,
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `strtable`, `datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** booleans convert to 1/0. A 2-D matrix is reduced to a list so
 element-wise logic never sees rows — a single row or single column becomes that
@@ -325,13 +327,16 @@ number. Everything else keeps its natural rank — that is the point of the rung
 **Ports:** 8 inputs, 11 outputs.
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
-`logicalcombo`, `logicaltable`, `table`, `anytable`, `anycombo`, `any`, `trueany`.
+`logicalcombo`, `logicaltable`, `table`, `anytable`, `anycombo`, `anydata`,
+`any`, `trueany`.
 
 **Blocked at the input:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
-`datetable`, `anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`strtable`, `datetable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
+`document`.
 
-**Reaches:** `logicaltable`, `table`, `anytable`, `frame`, `cube`, `trueany`.
+**Reaches:** `logicaltable`, `table`, `anytable`, `anydata`, `frame`, `cube`,
+`trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
@@ -353,21 +358,22 @@ matrix unit tag survives the reshape.
 **Dot:** yellow-green filled circle.
 **Ports:** 68 inputs, 10 outputs.
 
-**Accepts from:** `string`, `strcombo`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `string`, `strcombo`, `anycombo`, `anydata`, `any`,
+`trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `strlist`, `date`,
-`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
-`datetable`, `anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
-`document`.
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logical`, `logicallist`, `logicalcombo`, `logicaltable`,
+`table`, `strtable`, `datetable`, `anytable`, `anylist`, `frame`, `cube`,
+`lambda`, `chart`, `document`.
 
-**Reaches:** `string`, `strlist`, `strcombo`, `strtable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `any`, `trueany`.
+**Reaches:** `string`, `strlist`, `strcombo`, `strtable`, `anytable`,
+`anylist`, `anycombo`, `anydata`, `frame`, `cube`, `any`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `datetable`, `lambda`,
-`chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`,
+`datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** a one-element list collapses to the text it contains. Everything
 else passes as-is.
@@ -378,21 +384,21 @@ else passes as-is.
 **Dot:** dark yellow-green filled square.
 **Ports:** 18 inputs, 4 outputs. **Typeable in place.**
 
-**Accepts from:** `string`, `strlist`, `strcombo`, `anylist`, `anycombo`, `any`,
-`trueany`.
+**Accepts from:** `string`, `strlist`, `strcombo`, `anylist`, `anycombo`,
+`anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `strlist`, `strcombo`, `strtable`, `anytable`, `anylist`, `anycombo`,
-`frame`, `cube`, `trueany`.
+**Reaches:** `strlist`, `strcombo`, `strtable`, `anytable`, `anylist`,
+`anycombo`, `anydata`, `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `date`,
-`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `datetable`,
-`lambda`, `chart`, `document`, `any`.
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logical`, `logicallist`, `logicalcombo`, `logicaltable`,
+`table`, `datetable`, `lambda`, `chart`, `document`, `any`.
 
 **On arrival:** a lone value widens to a one-element list; null passes through
 as null. An unwired port with typed CSV text parses that text into the list —
@@ -404,22 +410,21 @@ every part is valid text.
 **Dot:** two-tone split square, yellow-green over dark yellow-green.
 **Ports:** 20 inputs, 15 outputs.
 
-**Accepts from:** `string`, `strlist`, `strcombo`, `anylist`, `anycombo`, `any`,
-`trueany`.
+**Accepts from:** `string`, `strlist`, `strcombo`, `anylist`, `anycombo`,
+`anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `string`, `strlist`, `strcombo`, `strtable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `any`, `trueany` — including the scalar `string`, by
-the combo exception.
+**Reaches:** `string`, `strlist`, `strcombo`, `strtable`, `anytable`,
+`anylist`, `anycombo`, `anydata`, `frame`, `cube`, `any`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `datetable`, `lambda`,
-`chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`,
+`datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** a one-element list collapses to the text it contains. Everything
 else keeps its natural rank.
@@ -433,20 +438,20 @@ matrix rung and is reachable by adoption — a text-family value flowing into an
 adoptive matrix port takes this type.
 
 **Accepts from:** `string`, `strlist`, `strcombo`, `strtable`, `anytable`,
-`anycombo`, `any`, `trueany`.
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `datetable`, `anylist`,
-`frame`, `cube`, `lambda`, `chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`,
+`datetable`, `anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `strtable`, `anytable`, `frame`, `cube`, `trueany`.
+**Reaches:** `strtable`, `anytable`, `anydata`, `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
 `complexcombo`, `complextable`, `logical`, `logicallist`, `logicalcombo`,
-`logicaltable`, `table`, `datetable`, `anylist`, `anycombo`, `lambda`, `chart`,
-`document`, `any`.
+`logicaltable`, `table`, `datetable`, `anylist`, `anycombo`, `lambda`,
+`chart`, `document`, `any`.
 
 **On arrival:** the value passes as-is — the producing node has already shaped it.
 
@@ -464,21 +469,22 @@ a date socket through every rung.
 **Dot:** pink filled circle.
 **Ports:** 26 inputs, 7 outputs.
 
-**Accepts from:** `date`, `datecombo`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `date`, `datecombo`, `anycombo`, `anydata`, `any`,
+`trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `datelist`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
-`datetable`, `anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
-`document`.
+`strcombo`, `datelist`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logical`, `logicallist`, `logicalcombo`, `logicaltable`,
+`table`, `strtable`, `datetable`, `anytable`, `anylist`, `frame`, `cube`,
+`lambda`, `chart`, `document`.
 
-**Reaches:** `date`, `datelist`, `datecombo`, `datetable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `any`, `trueany`.
+**Reaches:** `date`, `datelist`, `datecombo`, `datetable`, `anytable`,
+`anylist`, `anycombo`, `anydata`, `frame`, `cube`, `any`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `lambda`,
-`chart`, `document`.
+`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`lambda`, `chart`, `document`.
 
 **On arrival:** a one-element list collapses to the serial it contains.
 
@@ -489,16 +495,16 @@ a date socket through every rung.
 **Ports:** 2 inputs, no outputs (the holiday lists on WORKDAY and NETWORKDAYS).
 **Typeable in place.**
 
-**Accepts from:** `date`, `datelist`, `datecombo`, `anylist`, `anycombo`, `any`,
-`trueany`.
+**Accepts from:** `date`, `datelist`, `datecombo`, `anylist`, `anycombo`,
+`anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
 **Reaches:** `datelist`, `datecombo`, `datetable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `trueany`.
+`anycombo`, `anydata`, `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `complex`, `complexlist`, `complexcombo`, `complextable`,
@@ -515,22 +521,21 @@ that will not parse becomes null.
 **Dot:** two-tone split square, pink over dark pink.
 **Ports:** 10 inputs, 3 outputs.
 
-**Accepts from:** `date`, `datelist`, `datecombo`, `anylist`, `anycombo`, `any`,
-`trueany`.
+**Accepts from:** `date`, `datelist`, `datecombo`, `anylist`, `anycombo`,
+`anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `date`, `datelist`, `datecombo`, `datetable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `any`, `trueany` — including the scalar `date`, by
-the combo exception.
+**Reaches:** `date`, `datelist`, `datecombo`, `datetable`, `anytable`,
+`anylist`, `anycombo`, `anydata`, `frame`, `cube`, `any`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `lambda`,
-`chart`, `document`.
+`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`lambda`, `chart`, `document`.
 
 **On arrival:** a one-element list collapses to the date it contains. This is what
 makes a one-value date list feed YEAR and come out as a single year rather than a
@@ -544,14 +549,14 @@ one-element list.
 adoptive port.
 
 **Accepts from:** `date`, `datelist`, `datecombo`, `datetable`, `anytable`,
-`anycombo`, `any`, `trueany`.
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `anylist`,
-`frame`, `cube`, `lambda`, `chart`, `document`.
+`strcombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `datetable`, `anytable`, `frame`, `cube`, `trueany`.
+**Reaches:** `datetable`, `anytable`, `anydata`, `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
@@ -575,7 +580,8 @@ collapsing a one-element complex list tests the **outer** length only.
 **Ports:** none in the shipped catalog — every complex node uses the combo rung.
 Reachable by adoption and by Cast.
 
-**Accepts from:** `complex`, `complexcombo`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `complex`, `complexcombo`, `anycombo`, `anydata`, `any`,
+`trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complexlist`, `complextable`,
@@ -583,8 +589,9 @@ Reachable by adoption and by Cast.
 `datetable`, `anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
 `document`.
 
-**Reaches:** `complex`, `complexlist`, `complexcombo`, `complextable`, `anytable`,
-`anylist`, `anycombo`, `frame`, `cube`, `any`, `trueany`.
+**Reaches:** `complex`, `complexlist`, `complexcombo`, `complextable`,
+`anytable`, `anylist`, `anycombo`, `anydata`, `frame`, `cube`, `any`,
+`trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `logical`, `logicallist`,
@@ -600,21 +607,21 @@ Reachable by adoption and by Cast.
 **Ports:** none in the shipped catalog. Reachable by adoption: a `complex` scalar
 wired into a port based on `anylist` retypes that port to `complexlist`.
 
-**Accepts from:** `complex`, `complexlist`, `complexcombo`, `anylist`, `anycombo`,
-`any`, `trueany`.
+**Accepts from:** `complex`, `complexlist`, `complexcombo`, `anylist`,
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `complexlist`, `complexcombo`, `complextable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `trueany`.
+**Reaches:** `complexlist`, `complexcombo`, `complextable`, `anytable`,
+`anylist`, `anycombo`, `anydata`, `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
-`strcombo`, `date`, `datelist`, `datecombo`, `complex`, `logical`, `logicallist`,
-`logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`, `lambda`,
-`chart`, `document`, `any`.
+`strcombo`, `date`, `datelist`, `datecombo`, `complex`, `logical`,
+`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `lambda`, `chart`, `document`, `any`.
 
 **On arrival:** a lone complex number widens to a one-element list; null passes
 through as null. The test is on nesting: a value whose first element is itself a
@@ -627,17 +634,17 @@ and the rung every complex node actually uses.
 **Dot:** two-tone split square, sky blue over dark sky blue.
 **Ports:** 5 inputs, 5 outputs.
 
-**Accepts from:** `complex`, `complexlist`, `complexcombo`, `anylist`, `anycombo`,
-`any`, `trueany`.
+**Accepts from:** `complex`, `complexlist`, `complexcombo`, `anylist`,
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `complex`, `complexlist`, `complexcombo`, `complextable`, `anytable`,
-`anylist`, `anycombo`, `frame`, `cube`, `any`, `trueany` — including the scalar
-`complex`, by the combo exception.
+**Reaches:** `complex`, `complexlist`, `complexcombo`, `complextable`,
+`anytable`, `anylist`, `anycombo`, `anydata`, `frame`, `cube`, `any`,
+`trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `logical`, `logicallist`,
@@ -654,20 +661,21 @@ complex number. A bare `[real, imaginary]` pair is length 2 and stays put.
 **Ports:** none in the shipped catalog; reachable by adoption.
 
 **Accepts from:** `complex`, `complexlist`, `complexcombo`, `complextable`,
-`anytable`, `anycombo`, `any`, `trueany`.
+`anytable`, `anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `logical`, `logicallist`,
 `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`, `anylist`,
 `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** `complextable`, `anytable`, `frame`, `cube`, `trueany`.
+**Reaches:** `complextable`, `anytable`, `anydata`, `frame`, `cube`,
+`trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
-`complexcombo`, `logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`,
-`strtable`, `datetable`, `anylist`, `anycombo`, `lambda`, `chart`, `document`,
-`any`.
+`complexcombo`, `logical`, `logicallist`, `logicalcombo`, `logicaltable`,
+`table`, `strtable`, `datetable`, `anylist`, `anycombo`, `lambda`, `chart`,
+`document`, `any`.
 
 **On arrival:** the value passes as-is.
 
@@ -685,21 +693,22 @@ unknown.
 **Dot:** purple filled circle.
 **Ports:** 1 input, 2 outputs.
 
-**Accepts from:** `logical`, `logicalcombo`, `number`, `numlist`, `anycombo`,
-`any`, `trueany`.
+**Accepts from:** `number`, `numlist`, `logical`, `logicalcombo`, `anycombo`,
+`anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `list`, `string`, `strlist`, `strcombo`, `date`,
-`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logicallist`, `logicaltable`, `table`, `strtable`, `datetable`, `anytable`,
-`anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logicallist`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
+`document`.
 
-**Reaches:** `logical`, `logicallist`, `logicalcombo`, `logicaltable`, `number`,
-`list`, `numlist`, `table`, `anytable`, `anylist`, `anycombo`, `frame`, `cube`,
-`any`, `trueany`.
+**Reaches:** `number`, `list`, `numlist`, `logical`, `logicallist`,
+`logicalcombo`, `logicaltable`, `table`, `anytable`, `anylist`, `anycombo`,
+`anydata`, `frame`, `cube`, `any`, `trueany`.
 
-**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
-`datetable`, `lambda`, `chart`, `document`.
+**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`,
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `strtable`, `datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** a number becomes a boolean — zero is FALSE, NaN is null, every
 other number is TRUE. A one-element list collapses to the boolean it contains.
@@ -710,20 +719,22 @@ other number is TRUE. A one-element list collapses to the boolean it contains.
 **Dot:** dark purple filled square.
 **Ports:** 1 input, 2 outputs. **Typeable in place.**
 
-**Accepts from:** `logical`, `logicallist`, `logicalcombo`, `number`, `list`,
-`numlist`, `anylist`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
+`logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
 `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
 `logicaltable`, `table`, `strtable`, `datetable`, `anytable`, `frame`, `cube`,
 `lambda`, `chart`, `document`.
 
-**Reaches:** `logicallist`, `logicalcombo`, `logicaltable`, `list`, `numlist`,
-`table`, `anytable`, `anylist`, `anycombo`, `frame`, `cube`, `trueany`.
+**Reaches:** `list`, `numlist`, `logicallist`, `logicalcombo`, `logicaltable`,
+`table`, `anytable`, `anylist`, `anycombo`, `anydata`, `frame`, `cube`,
+`trueany`.
 
 **Blocked at the output:** `number`, `string`, `strlist`, `strcombo`, `date`,
-`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
-`logical`, `strtable`, `datetable`, `lambda`, `chart`, `document`, `any`.
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `logical`, `strtable`, `datetable`, `lambda`, `chart`,
+`document`, `any`.
 
 **On arrival:** numbers convert to booleans, then a lone value widens to a
 one-element list. An unwired port with typed CSV text parses each part with a
@@ -737,22 +748,21 @@ the output type of every comparison and test node.
 **Dot:** two-tone split square, purple over dark purple.
 **Ports:** 3 inputs, 8 outputs.
 
-**Accepts from:** `logical`, `logicallist`, `logicalcombo`, `number`, `list`,
-`numlist`, `anylist`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
+`logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
 `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
 `logicaltable`, `table`, `strtable`, `datetable`, `anytable`, `frame`, `cube`,
 `lambda`, `chart`, `document`.
 
-**Reaches:** `logical`, `logicallist`, `logicalcombo`, `logicaltable`, `number`,
-`list`, `numlist`, `table`, `anytable`, `anylist`, `anycombo`, `frame`, `cube`,
-`any`, `trueany` — including both the scalar `logical` **and** the scalar
-`number`, since the combo exception applies to the number bridge as well.
+**Reaches:** `number`, `list`, `numlist`, `logical`, `logicallist`,
+`logicalcombo`, `logicaltable`, `table`, `anytable`, `anylist`, `anycombo`,
+`anydata`, `frame`, `cube`, `any`, `trueany`.
 
-**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
-`datetable`, `lambda`, `chart`, `document`.
+**Blocked at the output:** `string`, `strlist`, `strcombo`, `date`,
+`datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`,
+`complextable`, `strtable`, `datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** numbers convert to booleans, then a one-element list collapses to
 the boolean it contains.
@@ -763,14 +773,17 @@ the boolean it contains.
 **Dot:** saturated purple 2×2-grid square.
 **Ports:** none in the shipped catalog; reachable by adoption.
 
-**Accepts from:** `logical`, `logicallist`, `logicalcombo`, `logicaltable`,
-`number`, `list`, `numlist`, `table`, `anytable`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
+`logicalcombo`, `logicaltable`, `table`, `anytable`, `anycombo`, `anydata`,
+`any`, `trueany`.
 
 **Blocked at the input:** `string`, `strlist`, `strcombo`, `date`, `datelist`,
-`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
-`datetable`, `anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
+`strtable`, `datetable`, `anylist`, `frame`, `cube`, `lambda`, `chart`,
+`document`.
 
-**Reaches:** `logicaltable`, `table`, `anytable`, `frame`, `cube`, `trueany`.
+**Reaches:** `logicaltable`, `table`, `anytable`, `anydata`, `frame`, `cube`,
+`trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
@@ -798,22 +811,18 @@ List Filter's and Frame Filter's comparison value, SUMIFS' criteria, EXPAND's
 fill, REDUCE's and SCAN's initial value, SWITCH's expression and its `when`
 arms. Every one of them is adoptive.
 
-**Accepts from:** every family's scalar and combo — `number`, `numlist`, `string`,
-`strcombo`, `date`, `datecombo`, `complex`, `complexcombo`, `logical`,
-`logicalcombo` — plus `anycombo` (a combo may be a scalar, the same exception
-every family scalar makes for its own combo), `any` and `trueany`.
+**Accepts from:** `number`, `numlist`, `string`, `strcombo`, `date`,
+`datecombo`, `complex`, `complexcombo`, `logical`, `logicalcombo`, `anycombo`,
+`any`, `trueany`.
 
 **Blocked at the input:** `list`, `strlist`, `datelist`, `complexlist`,
-`logicallist`, `logicaltable`, `table`, `strtable`, `datetable`, `complextable`,
-`anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`complextable`, `logicallist`, `logicaltable`, `table`, `strtable`,
+`datetable`, `anytable`, `anylist`, `anydata`, `frame`, `cube`, `lambda`,
+`chart`, `document`.
 
-**Reaches:** every data variant — `number`, `list`, `numlist`, `string`,
-`strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
-`complexcombo`, `complextable`, `logical`, `logicallist`, `logicalcombo`,
-`logicaltable`, `table`, `strtable`, `datetable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `any`, `trueany`.
+**Reaches:** all 28 variants other than `lambda`, `chart`, `document`.
 
-**Blocked at the output:** `lambda`, `chart`, `document` — the object family.
+**Blocked at the output:** `lambda`, `chart`, `document`.
 
 **On arrival:** the value passes as-is; the node handles it.
 
@@ -822,31 +831,53 @@ every family scalar makes for its own combo), `any` and `trueany`.
 **Holds:** one value **or** a list, of an unknown family. The element-agnostic
 combo — what `numlist` is to `number`.
 **Dot:** two-tone split square, gray over gray's own border shade.
-**Ports:** 107 inputs, 1 output. Almost all of the inputs are Expression's formula
-variables; the output is Regex, whose result rank follows its operation.
+**Ports:** the SWITCH/CHOOSE-style value rows and Regex's result output, whose
+rank follows its operation. (Expression's variables moved UP a rung to `anydata`
+with D23 — this rung refuses the matrices formulas now accept.)
 
-**Accepts from:** every family's scalar, list and combo — `number`, `list`,
-`numlist`, `string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`,
-`complex`, `complexlist`, `complexcombo`, `logical`, `logicallist`,
-`logicalcombo` — plus `anylist`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
+`strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
+`complexcombo`, `logical`, `logicallist`, `logicalcombo`, `anylist`,
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `complextable`, `logicaltable`, `table`, `strtable`,
 `datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** every data variant at every rank, scalars included — that last part
-is what separates it from `anylist` — `number`, `list`,
-`numlist`, `string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`,
-`complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
-`logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `anylist`, `anycombo`, `frame`, `cube`, `any`, `trueany` — `any`
-because a combo may be a scalar, the same exception every family combo makes
-for its own scalar (without it, a Regex result couldn't reach a SWITCH arm).
+**Reaches:** all 28 variants other than `lambda`, `chart`, `document`.
 
 **Blocked at the output:** `lambda`, `chart`, `document`.
 
 **On arrival:** a one-element list collapses to the value it contains. Everything
 else keeps its natural rank — a scalar stays a scalar, which is the whole reason
 this rung exists. There is no element conversion, because the family is unknown.
+
+#### `anydata` — "Any value, list or matrix"
+
+**Holds:** one value, a list, **or** a 2-D matrix, of an unknown family — the
+rank-≤2 wildcard (SOCK-9), added by D23 so a formula variable can take a matrix.
+What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
+matrices-only endpoint is the decision, permanently.
+**Dot:** the anycombo split square with the matrix grid cross overlaid.
+**Ports:** Expression's formula variables (the D23 lift). The result output is
+NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
+computed value (combo rung for a scalar/list result, the family's matrix rung
+for a matrix result).
+
+**Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
+`strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
+`complexcombo`, `complextable`, `logical`, `logicallist`, `logicalcombo`,
+`logicaltable`, `table`, `strtable`, `datetable`, `anytable`, `anylist`,
+`anycombo`, `anydata`, `any`, `trueany`.
+
+**Blocked at the input:** `frame`, `cube`, `lambda`, `chart`, `document`.
+
+**Reaches:** all 27 variants other than `lambda`, `chart`, `document`, `any`.
+
+**Blocked at the output:** `lambda`, `chart`, `document`, `any`.
+
+**On arrival:** a one-element list collapses to the value it contains; everything
+else passes through at its natural rank — a matrix flows WHOLE, and the formula
+evaluator owns the rank semantics from there (the broadcast table, FX-10).
 
 #### `anylist` — "List (any)"
 
@@ -855,22 +886,21 @@ this rung exists. There is no element conversion, because the family is unknown.
 **Ports:** 25 inputs, 15 outputs — the element-agnostic list operations (FILTER,
 DROP, Concat Lists, Interleave, GROUPBY keys, Frame from Lists).
 
-**Accepts from:** every family's scalar, list and combo — `number`, `list`,
-`numlist`, `string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`,
-`complex`, `complexlist`, `complexcombo`, `logical`, `logicallist`,
-`logicalcombo` — plus `anylist`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
+`strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
+`complexcombo`, `logical`, `logicallist`, `logicalcombo`, `anylist`,
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `complextable`, `logicaltable`, `table`, `strtable`,
 `datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** every family's list and combo — `list`, `numlist`, `strlist`,
-`strcombo`, `datelist`, `datecombo`, `complexlist`, `complexcombo`,
-`logicallist`, `logicalcombo` — plus `anytable`, `anylist`, `anycombo`, `frame`,
-`cube`, `trueany`.
+**Reaches:** `list`, `numlist`, `strlist`, `strcombo`, `datelist`,
+`datecombo`, `complexlist`, `complexcombo`, `logicallist`, `logicalcombo`,
+`anytable`, `anylist`, `anycombo`, `anydata`, `frame`, `cube`, `trueany`.
 
-**Blocked at the output:** `number`, `string`, `date`, `complex`, `logical`,
-`complextable`, `logicaltable`, `table`, `strtable`, `datetable`, `lambda`,
-`chart`, `document`, `any`.
+**Blocked at the output:** `number`, `string`, `date`, `complex`,
+`complextable`, `logical`, `logicaltable`, `table`, `strtable`, `datetable`,
+`lambda`, `chart`, `document`, `any`.
 
 **On arrival:** a lone value widens to a one-element list; null passes through as
 null. Without this, a number
@@ -885,21 +915,21 @@ passes through as-is.
 **Ports:** 14 inputs, 7 outputs (TRANSPOSE, WRAPROWS, TAKE/DROP, HSTACK/VSTACK,
 MAP over a table, chart series, Build Frame's matrix).
 
-**Accepts from:** every family value at any rank — `number`, `list`, `numlist`,
-`string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`,
-`complexlist`, `complexcombo`, `complextable`, `logical`, `logicallist`,
-`logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable` — plus
-`anytable`, `anylist`, `anycombo`, `any`, `trueany`.
+**Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
+`strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
+`complexcombo`, `complextable`, `logical`, `logicallist`, `logicalcombo`,
+`logicaltable`, `table`, `strtable`, `datetable`, `anytable`, `anylist`,
+`anycombo`, `anydata`, `any`, `trueany`.
 
 **Blocked at the input:** `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** every concrete matrix — `complextable`, `logicaltable`, `table`,
-`strtable`, `datetable` — plus `anytable`, `frame`, `cube`, `trueany`.
+**Reaches:** `complextable`, `logicaltable`, `table`, `strtable`, `datetable`,
+`anytable`, `anydata`, `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
-`complexcombo`, `logical`, `logicallist`, `logicalcombo`, `anylist`, `anycombo`,
-`lambda`, `chart`, `document`, `any`.
+`complexcombo`, `logical`, `logicallist`, `logicalcombo`, `anylist`,
+`anycombo`, `lambda`, `chart`, `document`, `any`.
 
 **On arrival:** the value passes as-is.
 
@@ -912,11 +942,11 @@ IFERROR, SWITCH, CHOOSE, Cast, INDEX, Expect, IS.TEST, NA, XLOOKUP's value, Buil
 Cube, Cube Columns, Nest Join, Input Switch, Conduit lanes, the Format Controller's
 pair, composite input/output ports and Placeholder.
 
-**Accepts from:** all 30 variants.
+**Accepts from:** all 31 variants.
 
 **Blocked at the input:** nothing.
 
-**Reaches:** all 30 variants.
+**Reaches:** all 31 variants.
 
 **Blocked at the output:** nothing.
 
@@ -934,22 +964,13 @@ declares it handles anything is taken at its word.
 **Ports:** 43 inputs, 37 outputs — every relational verb, every table-shaped chart,
 every data source.
 
-**Accepts from:** every family value at any rank — `number`, `list`, `numlist`,
-`string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`,
-`complexlist`, `complexcombo`, `complextable`, `logical`, `logicallist`,
-`logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable` — plus
-`anytable`, `anylist`, `anycombo`, `frame`, `any`, `trueany`.
+**Accepts from:** all 27 variants other than `cube`, `lambda`, `chart`, `document`.
 
 **Blocked at the input:** `cube`, `lambda`, `chart`, `document`.
 
 **Reaches:** `frame`, `cube`, `trueany`.
 
-**Blocked at the output:** everything else — `number`, `list`, `numlist`,
-`string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`,
-`complexlist`, `complexcombo`, `complextable`, `logical`, `logicallist`,
-`logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`, `anytable`,
-`anylist`, `anycombo`, `lambda`, `chart`, `document`, `any`. Reading a column out
-of a frame is an explicit Get Column, never an implicit narrowing.
+**Blocked at the output:** all 28 variants other than `frame`, `cube`, `trueany`.
 
 **On arrival:** a real frame passes through. A 2-D matrix becomes named columns
 (`Col1`, `Col2`, … with types inferred). A 1-D list becomes a single **row**,
@@ -968,23 +989,13 @@ cube. The top of the data lattice.
 **Dot:** violet flat hexagon built from three rhombi.
 **Ports:** 3 inputs, 5 outputs.
 
-**Accepts from:** every data variant — `number`, `list`, `numlist`, `string`,
-`strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
-`complexcombo`, `complextable`, `logical`, `logicallist`, `logicalcombo`,
-`logicaltable`, `table`, `strtable`, `datetable`, `anytable`, `anylist`,
-`anycombo`, `frame`, `cube`, `any`, `trueany`.
+**Accepts from:** all 28 variants other than `lambda`, `chart`, `document`.
 
 **Blocked at the input:** `lambda`, `chart`, `document`.
 
 **Reaches:** `cube`, `trueany`.
 
-**Blocked at the output:** everything else — `number`, `list`, `numlist`,
-`string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`,
-`complexlist`, `complexcombo`, `complextable`, `logical`, `logicallist`,
-`logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`, `anytable`,
-`anylist`, `anycombo`, `frame`, `lambda`, `chart`, `document`, `any`. Flowing a
-cube into a narrower container would silently drop its nesting, so it is refused;
-UNNEST does it explicitly.
+**Blocked at the output:** all 29 variants other than `cube`, `trueany`.
 
 **On arrival:** a cube passes through. A frame re-brands as flat cells. A matrix
 becomes a grid of cells. A list becomes one row. A scalar becomes 1×1. Null passes
@@ -1005,9 +1016,9 @@ Three variants hold things that are not data. Each connects only to itself and t
 REDUCE, SCAN and BYROW/BYCOL consume it.
 
 **Accepts from:** `lambda`, `trueany`.
-**Blocked at the input:** all 28 variants other than `lambda` and `trueany`.
+**Blocked at the input:** all 29 variants other than `lambda`, `trueany`.
 **Reaches:** `lambda`, `trueany`.
-**Blocked at the output:** all 28 variants other than `lambda` and `trueany`.
+**Blocked at the output:** all 29 variants other than `lambda`, `trueany`.
 **On arrival:** the function passes through untouched.
 
 #### `chart` — "Chart / visual"
@@ -1018,9 +1029,9 @@ REDUCE, SCAN and BYROW/BYCOL consume it.
 the chart popup and the canvas figure renderer rather than wired onward.
 
 **Accepts from:** `chart`, `trueany`.
-**Blocked at the input:** all 28 variants other than `chart` and `trueany`.
+**Blocked at the input:** all 29 variants other than `chart`, `trueany`.
 **Reaches:** `chart`, `trueany`.
-**Blocked at the output:** all 28 variants other than `chart` and `trueany`.
+**Blocked at the output:** all 29 variants other than `chart`, `trueany`.
 **On arrival:** the value passes through untouched.
 
 A figure node that receives an error on its data input renders an empty figure; it
@@ -1034,9 +1045,9 @@ never emits a SolError out a `chart` socket.
 Write to Obsidian consumes one.
 
 **Accepts from:** `document`, `trueany`.
-**Blocked at the input:** all 28 variants other than `document` and `trueany`.
+**Blocked at the input:** all 29 variants other than `document`, `trueany`.
 **Reaches:** `document`, `trueany`.
-**Blocked at the output:** all 28 variants other than `document` and `trueany`.
+**Blocked at the output:** all 29 variants other than `document`, `trueany`.
 **On arrival:** the value passes through untouched.
 
 ---
@@ -1116,7 +1127,7 @@ socket's family:
 | `anytable`, and `any`/`trueany` before a type resolves | number (provisional) |
 | `lambda` | function view-as |
 | `chart` | text scale |
-| `anylist` `anycombo` `frame` `cube` `document` | none |
+| `anylist` `anycombo` `anydata` `frame` `cube` `document` | none |
 
 **Units.** A unit is a property of the value, authored by the Format Controller or
 by Convert, and it rides through passthroughs and selectors. It attaches per
@@ -1185,6 +1196,7 @@ unplugged.
 | `anytable` | `anyTableIn`\* / `adoptiveTableIn`\* | `adoptiveTableOut`\* |
 | `anylist` | `anyListIn`\* / `adoptiveListIn`\* | `adoptiveListOut`\* |
 | `anycombo` | `anyComboIn`\* | `anyComboOut` |
+| `anydata` | `anyDataIn`\* | — |
 | `any` | `anyIn`\* | — |
 | `frame` | `frameIn` | `frameOut` |
 | `cube` | `cubeIn` | `cubeOut` |

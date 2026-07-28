@@ -34,6 +34,9 @@ const COMBO_COLORS: Record<string, [string, string]> = {
   // same fixed value-drop every glyph's border uses), which keeps the split visible
   // without inventing a hue (DESIGN.md's Sibling Rule).
   anycombo:     [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
+  // `anydata` (SOCK-9) is anycombo's rank-≤2 sibling: same split square, plus the
+  // matrix grid cross overlaid — "any rank, up to a matrix" read at a glance.
+  anydata:      [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
 };
 
 export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
@@ -81,6 +84,9 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
             <polygon points="0,12 0,0 12,0"   fill={combo[0]} />
             <polygon points="0,12 12,12 12,0" fill={combo[1]} />
           </g>
+          {dataType === "anydata" && (
+            <path d="M6 2.5 V9.5 M2.5 6 H9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
+          )}
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
       ) : isList ? (

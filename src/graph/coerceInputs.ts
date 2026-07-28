@@ -251,6 +251,9 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     // `anycombo` is the element-agnostic one: no element coercion (the family is
     // unknown) and no rank widening — a scalar STAYS a scalar, which is the whole
     // point of the rung. Contrast `anylist` below, which widens one in.
+    // `anydata` (SOCK-9) is its rank-≤2 sibling: same pass-through, and a matrix
+    // flows whole — the formula evaluator owns the rank semantics (FX-10).
+    case "anydata":
     case "anycombo":
       return collapseSingleton(v);
     case "logicallist": {

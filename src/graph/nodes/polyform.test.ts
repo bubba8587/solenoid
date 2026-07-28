@@ -46,10 +46,10 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ x: [[1, 3, 4]] }).result).toEqual([0.125, 0.375, 0.5]);
   });
 
-  it("fails loud with #SHAPE! on a 2-D matrix input (P4 placeholder)", () => {
+  it("computes over a 2-D matrix input (D23 — the old #SHAPE! cap is lifted)", () => {
     const n = new ExpressionNode({ expr: "a * 2" });
     const r = n.data({ a: [[[1, 2], [3, 4]]] }).result;
-    expect(isSolError(r) && r.code).toBe("#SHAPE!");
+    expect(r).toEqual([[2, 4], [6, 8]]);
   });
 
   it("tags scalar division by zero as #DIV/0! (P5)", () => {
@@ -116,11 +116,11 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
   });
 
-  it("variable inputs are `anycombo` so text/date arrays connect AND a scalar stays scalar", () => {
+  it("variable inputs are `anydata` so text/date arrays AND matrices connect, and a scalar stays scalar", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    // `anycombo` (2026-07-25) replaced `anylist` + the `noWidenInputs` side-channel:
+    // `anydata` (D23/SOCK-9) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
     // same acceptance, but the SOCKET now says the evaluator takes either rank.
-    expect(dt(n.inputs.name?.socket)).toBe("anycombo");
+    expect(dt(n.inputs.name?.socket)).toBe("anydata");
   });
 });
 
