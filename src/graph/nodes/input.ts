@@ -230,17 +230,23 @@ export class SliderInputNode extends ClassicPreset.Node {
   }
 
   data(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
-    // A Slider is a SOURCE: it always emits the value you set. So a wired blank
-    // BOUND doesn't null the output — that would silently drop a user's input to
-    // report a constraint it couldn't evaluate. It means that side has no
-    // constraint right now, so the clamp simply skips it. Same reading as Expect's
-    // undeterminable check: unknown is not the same as failed.
-    const min  = readInput(inputs.min,  this.literals.min  ?? 0);
-    const max  = readInput(inputs.max,  this.literals.max  ?? 100);
-    const step = readInput(inputs.step, this.literals.step ?? 1);
-    this.effectiveMin  = min  ?? Number.NEGATIVE_INFINITY;
-    this.effectiveMax  = max  ?? Number.POSITIVE_INFINITY;
-    this.effectiveStep = step ?? 1;
+    // A Slider is a SOURCE whose CONTROL needs finite bounds to exist at all, so a
+    // wired blank bound falls back to the card's own — the one case in this sweep
+    // where the literal is the right answer rather than the bug.
+    //
+    // The tempting reading, "a blank bound stops constraining", breaks three things:
+    // `<input type="range" min="-Infinity">` is invalid so the browser substitutes
+    // its own 0–100; the play loop (`next > hi ? lo : next`) never wraps and runs
+    // away; and `tornadoRun` reads these bounds through `??`, which doesn't catch an
+    // Infinity, so a sensitivity sweep would run to infinity. Propagating null
+    // instead would drop the value the user physically set. Both alternatives are
+    // worse than honouring the bound printed on the card.
+    const litMin  = this.literals.min  ?? 0;
+    const litMax  = this.literals.max  ?? 100;
+    const litStep = this.literals.step ?? 1;
+    this.effectiveMin  = readInput(inputs.min,  litMin)  ?? litMin;
+    this.effectiveMax  = readInput(inputs.max,  litMax)  ?? litMax;
+    this.effectiveStep = readInput(inputs.step, litStep) ?? litStep;
     this.value = Math.min(Math.max(this.value, this.effectiveMin), this.effectiveMax);
     return { value: this.value };
   }

@@ -177,19 +177,28 @@ it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on 
 
 date, input, matrix, tableLambda (17 sites). 223 → 206 across 10 files.
 
-**The Slider forced a third reading, and it is the one most likely to be swept wrong.**
-Propagating a wired-blank BOUND would null a source node's output — dropping the value
-the user physically set, in order to report a constraint that couldn't be evaluated.
-So a blank bound stops CONSTRAINING (`±Infinity`) rather than voiding the value. Same
-shape as Expect's undeterminable check, and now pinned: an unwired max still clamps to
-the literal, a WIRED blank max does not.
+**The Slider is the one case where the LITERAL is the right answer** — and I got it
+wrong first, with "a blank bound stops constraining" (`±Infinity`). Author caught it.
+That breaks three things, none of them visible from the data() method alone:
+`<input type="range" min="-Infinity">` is invalid, so the browser substitutes its own
+0–100; the play loop (`next > hi ? lo : next`) never wraps and runs away; and
+`tornadoRun` reads these bounds through `??`, which does NOT catch an Infinity, so a
+sensitivity sweep would run to infinity. Propagating null instead would drop the value
+the user physically set. A Slider is a source whose CONTROL cannot exist without finite
+bounds, so a wired blank honours the bound printed on the card.
+
+Written as `readInput(x, lit) ?? lit` with the literal hoisted to a local — explicit
+about the fallback, and it doesn't re-trip the sweep regex. Pinned that the bounds stay
+FINITE, which is the property the three breakages all violate.
 
 So the policy set is four-way, not two:
   • element-wise operand / mode selector → PROPAGATE
   • aggregator, reducer                  → SKIP the missing
   • a CHECK whose parameter is missing   → skip that check, pass the data
-  • a SOURCE whose bound is missing      → stop constraining, keep emitting
-The first is the default; the rest are what "read the node, not the pattern" means.
+  • a CONTROL that needs a usable value  → fall back to the card's own
+The first is the default; the rest are what "read the node, not the pattern" means —
+and the Slider adds "read its CONSUMERS too", since nothing in `data()` hinted that
+three separate call sites would choke on a non-finite bound.
 
 Everything else in this batch was shape-or-operand and took the default: matrix
 dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
