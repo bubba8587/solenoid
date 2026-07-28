@@ -59,6 +59,10 @@ export function nextSort(sort: ColumnSort, col: number): ColumnSort {
 export function useColumnSort(resetKey?: unknown): {
   sort: ColumnSort;
   cycle: (col: number) => void;
+  /** Apply an old→new column-index map (see `remapSort`) — call on any structural
+   *  column change so a key can't re-attach to whatever slides into its index. */
+  remap: (fn: (col: number) => number | null) => void;
+  clear: () => void;
 } {
   const [sort, setSort] = useState<ColumnSort>([]);
   const [seenKey, setSeenKey] = useState(resetKey);
@@ -66,7 +70,28 @@ export function useColumnSort(resetKey?: unknown): {
     setSeenKey(resetKey);
     setSort([]);
   }
-  return { sort, cycle: (col) => setSort((s) => nextSort(s, col)) };
+  return {
+    sort,
+    cycle: (col) => setSort((s) => nextSort(s, col)),
+    remap: (fn) => setSort((s) => remapSort(s, fn)),
+    clear: () => setSort([]),
+  };
+}
+
+/**
+ * The sort under a structural column change, described as an old→new index map:
+ * `fn` returns a column's new index, or null for a removed column — that key drops
+ * and the surviving keys keep their relative priority. Without this, removing a
+ * sorted column would leave its key pointing at whichever column slid into the
+ * index (a silent sort by the wrong data).
+ */
+export function remapSort(sort: ColumnSort, fn: (col: number) => number | null): ColumnSort {
+  const next: Array<{ col: number; dir: SortDir }> = [];
+  for (const k of sort) {
+    const col = fn(k.col);
+    if (col !== null) next.push({ col, dir: k.dir });
+  }
+  return next;
 }
 
 /** A cell reduced to something comparable. `null` = nothing to sort on (blank, or a
@@ -96,8 +121,14 @@ export function sortKeyOf(v: unknown): SortKey {
 
 function compareKeys(a: SortKey, b: SortKey): number {
   if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1; // blanks last
-  if (typeof a === "number" && typeof b === "number") return a - b;
-  // Mixed or textual: natural-ish text order, so "item2" precedes "item10".
+  // Type tier FIRST — all numbers before all text (ascending). Comparing a mixed
+  // pair as text while number pairs compare numerically is intransitive (numeric
+  // -2 < -1 but textual "-1…" < "-2…"), and an intransitive comparator lets
+  // Array.sort emit cycles like -2 after -1. The tier makes the order total.
+  const an = typeof a === "number";
+  if (an !== (typeof b === "number")) return an ? -1 : 1;
+  if (an) return (a as number) - (b as number);
+  // Textual: natural-ish text order, so "item2" precedes "item10".
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 
