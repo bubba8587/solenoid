@@ -120,6 +120,25 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### VAL-20: the last bare-NaN producer — the RANGE branch classifies (2026-07-28cc)
+
+The completeness pair's other half. The producer sweep ran as a probe battery:
+the KERNELS came back clean (listOps/matrixOps/mathUtils each carry a recorded
+convention — quiet null, tagged error, IMDIV's cx(NaN, NaN)), and the leak was
+one branch: the formula evaluator's RANGE dispatch returned results raw where
+broadcastCall has always classified. Nine whole-sample calls leaked bare NaN —
+STDEV/VAR of one value, CORREL of a constant, SLOPE of constant xs, RSQ, SKEW
+below n=3, KURT below n=4, GEOMEAN of a negative, Z.TEST of a constant — each
+rendering as an EMPTY cell and computing onward as more NaN, the least visible
+wrong answer in the model.
+
+One guard closes all nine: the range branch now routes a numeric result
+through guardFinite, feeding the flattened arg cells to the ∞-input rule so
+SUM over a first-class ∞ still answers ∞. tTestP's deliberate quiet-null
+stays a null (carve-out pinned). The battery is `rangeRouting.test.ts` →
+"a range RESULT classifies non-finite". Promoted as VAL-20; 66 rules, 62
+enforced. The VAL completeness pair is fully closed.
+
 ### VAL-19: currency is guarded in EVERY combinator — four live wrong answers die (2026-07-28bb)
 
 The completeness queue's currency half. Probing before building found the worst

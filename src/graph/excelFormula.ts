@@ -895,7 +895,16 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         // cached value for every other consumer of that cable.
         const prep = prepRangeArgs(name, argv);
         if (prep.error !== undefined) return prep.error;
-        return dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
+        const r = dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
+        // A range RESULT classifies non-finite like every other computed number
+        // (guardFinite — broadcastCall has always done this; the range branch
+        // did not, and it was the last producer emitting bare NaN): STDEV of
+        // one value, CORREL of a constant, GEOMEAN of a negative all answered
+        // NaN raw. The flattened cells feed the ∞-input passthrough, so SUM
+        // over a first-class ∞ still answers ∞.
+        return typeof r === "number"
+          ? guardFinite(r, ...prep.args.flatMap((a) => (isArr(a) ? a : [a])))
+          : r;
       }
       return broadcastCall(name, argv);
     }

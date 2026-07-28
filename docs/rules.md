@@ -795,6 +795,26 @@ combinator-surface check (a new `*Units` export fails until it joins the sweep).
 *Origin:* the 2026-07-28 completeness queue ("currency-mismatch across every unit
 combinator"); the sweep's first run found the four live wrong answers above.
 
+### VAL-20 — No producer emits a bare non-finite; the producer classifies **[INFERRED]**
+**MUST:** a computed number never leaves its producing op as bare `NaN`/`±Infinity` —
+the producer classifies via `guardFinite` (valueKinds.ts): `NaN` → `#DOMAIN!`; `±Inf`
+from all-FINITE inputs → `#OVERFLOW!`; `±Inf` when an input was already infinite PASSES
+(the Constant node's ∞ is first-class). Guarded producers: the element-wise broadcasters
+(shared.ts), the formula operators (`applyOp`/unary/percent), `broadcastCall`, and the
+RANGE dispatch. A kernel with its own recorded non-finite convention (a quiet null, a
+tagged error, IMDIV's `cx(NaN, NaN)`) is the deliberate alternative, not an exemption
+from deciding.
+
+*Why:* a bare NaN renders as an EMPTY cell and computes onward as more NaN — a wrong
+answer with no appearance, the least-visible failure in the model.
+*Enforced by:* `broadcastContract.test.ts` (the per-cell classification behaviour);
+`rangeRouting.test.ts` → "a range RESULT classifies non-finite" (the degenerate probe
+battery + the ∞-passthrough + the quiet-null carve-out).
+*Origin:* the 2026-07-28 producer sweep. The kernels probed CLEAN; the RANGE branch was
+the last leak — nine whole-sample calls (STDEV of one value, CORREL of a constant,
+GEOMEAN of a negative, SLOPE/RSQ/SKEW/KURT/VAR/Z.TEST degenerate) answered bare NaN
+because the branch, unlike `broadcastCall`, returned dispatch results raw.
+
 ---
 
 # PERSIST — The save path
@@ -984,11 +1004,11 @@ carry-over bug (switch into an already-met condition).
 
 # Enforcement summary
 
-65 rules.
+66 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 61 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
+| Enforced | 62 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
