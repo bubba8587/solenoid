@@ -10,27 +10,23 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
-- [ ] **Close the rules spec's known violations** — `rules.md` ships 38 MUST-rules with
-  their enforcement status and a numbered known-violations list at the bottom; this item
-  is that list. Highest value first, because each is a rule that holds for the cases that
-  EXIST and fails silently for the next one:
-  - **VAL-12** — Sort / Take / Drop still name their op selector `dir`, so none can
-    declare its ops and none of their ops are searchable. Pad had the identical defect.
-    Rename + declare, then make the check see its own violations (today `nodeOps.test.ts`
-    only validates families that already declared).
+- [ ] **Close the rules spec's REMAINING known violations** — the 2026-07-28 review pass
+  landed VAL-12's renames (Sort/Take/Drop/DropBlankRows/IFError), VAL-8's pin (it
+  already existed — the doc was wrong), FX-2's import-graph test, and `rules.test.ts`
+  (the mechanical half). Still open, highest value first:
   - **VAL-10 / SOCK-7 completeness** — nothing proves a NEW algebra node sets
     `unitAware`, or that a NEW in-place retyper calls `reconcileFcTypes`.
-  - **VAL-8 / SOCK-5 origin cases unpinned** — the complex-tuple membership bug `setKey`
-    exists to fix has no test, and nothing asserts an adopted `trueany` type stays out of
-    the save. Both found while writing the enforcement column, not by the suite.
+  - **VAL-12 residue** — Alert/ColorBlend still name the field `mode` (argument-shaped,
+    so the cost is only coverage); and violation 2 stands: a family that CAN'T declare
+    is invisible to the check — drive the coverage test off the catalog/OpSelect usage.
+  - **SOCK-5** — nothing asserts an adopted `trueany` type stays out of the save.
   - **FX-4** — injectivity sweeps catalog leaves and the three `fx` tables, not every
     family's op labels against each other.
   - **VAL-14** — only the "if" direction of the literal-map rule is checked.
-  - **SSOT-5** — no `rules.test.ts`: the spec's own `Enforced by:` paths are unverified,
-    so a rule could name a test that no longer exists.
   - **Unenforced, lower value:** SOCK-6 (wildcard predicate not inlined), SOCK-8 (socket
-    box geometry), FX-2 (shared impls stay rete-free), VAL-13 (components never call
-    `data()`). Each is a grep- or import-graph-shaped check.
+    box geometry), VAL-13 (components never call `data()`). Grep-shaped checks.
+  - **`rules.test.ts` semantic half** — it checks cited files EXIST; whether a cited
+    test enforces its rule is still a reading job.
 
 ## Bugs & verifications
 
@@ -111,10 +107,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   is the 19 D2-capped names, gap C is 0. Left: **Tier 4** (the D2 dimensionality cap —
   author-present, `deferrals.md`), and three list-family stragglers each parked for a
   stated reason rather than effort:
-  - **Sort / Take / Drop still call their op selector `dir`** and so have no
-    `NODE_OPS` declaration — their ops are unsearchable in the Add menu. Pad had the
-    same problem and was fixed by renaming `dir` → `op`; these three are the same
-    one-line change plus a declaration.
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.
   - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is
@@ -180,7 +172,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   CubeRollup + GroupByFrame (their `AggOp` table needs identifying first). The DATA
   pickers (Element's 118 entries, PhysicsConstant, Antoine, PipeRoughness, ESeries,
   ResistorCode, Constant) should STAY kind-only — a row per value would bury the menu.
-  `scripts/op-exposure.ts` lists the exposure gaps.
+  `scripts/op-exposure.ts` lists the exposure gaps — NOTE its table-matching heuristic
+  mis-joins GroupByFrame (an `AggOp` family with no meta table) to the 5-op list
+  `GROUP_BY_OP_META`, so its GroupByFrame/Pivot/CubeRollup rows are wrong until the
+  AggOp table exists.
+
 ## Packs
 
 - [ ] **Materials & Mechanical pack** — next domain candidate; the INTERPOLATE gate is
