@@ -117,6 +117,18 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   argument — Excel allows it, we require LAMBDA(g, SUM(g))), and
   immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
   call-on-call).
+  **Split view (author call 2026-07-28): count packs separately.** Non-pack:
+  357/479 callable (122 gap: Input 28 + Output 33 = sources/sinks/UI, genuinely
+  deliberate; Tables & Frames 33, mostly D23-endpoint-blocked; ~28 across
+  Numbers/Logic/Text/Date/Other, of which the honest split is: 5 operator nodes =
+  a MEASUREMENT ARTIFACT (their formula equivalent is the operator itself — teach
+  the metric), ~16-20 flatly unswept (Text Transform scalars, XNOR/NAND/NOR,
+  Percent Change — register with the standard discipline), rest to audit).
+  **Packs: 0/167 — a separate workstream, and it DOES need fixing** (author): the
+  "parity moot" blanket was false for custom-LOGIC pack nodes (Colebrook, Sun
+  Position, Dew Point, Great-Circle…) — register those through the existing
+  formulaExtensions seam as PackFormulas; preset-formula pack nodes (Ohm's Law =
+  `v/r`) stay name-free as the narrow TRUE deliberation. Non-pack items first.
   Stragglers, each parked for a stated reason rather than effort:
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.
