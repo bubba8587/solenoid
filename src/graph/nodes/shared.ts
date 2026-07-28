@@ -252,9 +252,9 @@ export function broadcastErr(
 // a computed NaN/∞ classifies into a tagged error just as in the numeric path.
 //
 // Element types are constrained to `Cell` (string | number | boolean) because the
-// list check is `Array.isArray` — an element that is ITSELF an array can't be told
-// apart from a list of them. That's why the complex family (a value is `[re, im]`)
-// carries its OWN broadcaster instead: `broadcastComplex` in nodes/complex.ts, with
+// list check is `Array.isArray`. A complex is a tagged object (VAL-15), so it is NOT
+// the reason for the constraint anymore; the complex family still carries its own
+// broadcaster (`broadcastComplex` in nodes/complex.ts) for typed per-operand tags, with
 // an exact shape test and per-operand tags. Reach for that one, not this, if a
 // future element type is array-shaped.
 type Cell = string | number | boolean;

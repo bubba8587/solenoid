@@ -3,7 +3,7 @@ import { isDateType, type SocketDataType } from "../sockets";
 import { trueAnyIn, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
 import { coerceLogical } from "../valueKinds";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
-import { formatCx, type Cx } from "./complex";
+import { formatCx, cx, isCx, type Cx } from "./complex";
 import { formatNumberPattern } from "./text";
 import { getEditor } from "../process";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -43,31 +43,31 @@ export function castOutput(target: CastTarget) {
   }
 }
 
-// Parse "a", "bi", "a+bi", "a-bi", "i", "-i" (also j) → [re, im].
+// Parse "a", "bi", "a+bi", "a-bi", "i", "-i" (also j) → a tagged Cx.
 export function parseCx(s: string): Cx {
   const t = s.trim().replace(/\s+/g, "");
-  if (t === "") return [NaN, NaN];
+  if (t === "") return cx(NaN, NaN);
   const NUM = "[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?";
   let m = new RegExp(`^(${NUM})$`).exec(t);
-  if (m) return [Number(m[1]), 0];
+  if (m) return cx(Number(m[1]), 0);
   m = new RegExp(`^([+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)?)[ij]$`).exec(t);
-  if (m) return [0, m[1] === "" || m[1] === "+" ? 1 : m[1] === "-" ? -1 : Number(m[1])];
+  if (m) return cx(0, m[1] === "" || m[1] === "+" ? 1 : m[1] === "-" ? -1 : Number(m[1]));
   m = new RegExp(`^(${NUM})([+-](?:\\d+(?:\\.\\d*)?|\\.\\d+)?)[ij]$`).exec(t);
-  if (m) return [Number(m[1]), m[2] === "+" ? 1 : m[2] === "-" ? -1 : Number(m[2])];
-  return [NaN, NaN];
+  if (m) return cx(Number(m[1]), m[2] === "+" ? 1 : m[2] === "-" ? -1 : Number(m[2]));
+  return cx(NaN, NaN);
 }
 
 type CastScalar = number | string | Cx | boolean | null;
 
-// Cast one scalar. `cx` marks x as a complex tuple (a Cx IS a 2-number array,
-// indistinguishable from a 2-element list by value alone — the caller decides
-// from the source socket type). `dateish` makes "to text" use the date
+// Cast one scalar. A complex is self-identifying now (tagged, VAL-15), so no caller
+// flag — which also means a cell of a complex LIST casts correctly (the old flag was
+// only ever set for the scalar path). `dateish` makes "to text" use the date
 // formatter for numeric serials.
-function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean, cx: boolean): CastScalar {
+function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean): CastScalar {
   if (x == null) return null;
   switch (target) {
     case "number": {
-      if (cx) return (x as Cx)[0]; // real part
+      if (isCx(x)) return x.re; // real part
       if (typeof x === "number") return x;
       // logical↔number is the one cross-family bridge (TRUE→1, FALSE→0, Excel
       // N(TRUE)=1) — Cast already does number→logical, so honour the reverse too.
@@ -76,7 +76,7 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
       return NaN;
     }
     case "text": {
-      if (cx) return formatCx(x as Cx);
+      if (isCx(x)) return formatCx(x);
       if (typeof x === "string") return x;
       if (typeof x === "number") {
         return dateish ? formatDateSerial(x, format || DEFAULT_DATE_FORMAT) : formatNumberPattern(x, format);
@@ -89,10 +89,10 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
       return NaN;
     }
     case "complex": {
-      if (cx) return x as Cx;
-      if (typeof x === "number") return [x, 0] as Cx;
+      if (isCx(x)) return x;
+      if (typeof x === "number") return cx(x, 0);
       if (typeof x === "string") return parseCx(x);
-      return [NaN, NaN] as Cx;
+      return cx(NaN, NaN);
     }
     case "logical": {
       // x is non-null here (the top guard returned null for a blank). A SUCCESS is a
@@ -111,7 +111,7 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
 function castFailed(v: CastScalar, target: CastTarget): boolean {
   if (v === null) return false;
   if (target === "complex") {
-    return Array.isArray(v) && (Number.isNaN(v[0]) || Number.isNaN(v[1]));
+    return isCx(v) && (Number.isNaN(v.re) || Number.isNaN(v.im));
   }
   return typeof v === "number" && Number.isNaN(v);
 }
@@ -168,8 +168,8 @@ export class CastNode extends ClassicPreset.Node {
     this.addOutput("result", castOutput(this.target));
   }
 
-  // dataType of the socket feeding `value` — distinguishes a complex [re, im]
-  // tuple from a 2-number list, and a date serial from a plain number.
+  // dataType of the socket feeding `value` — distinguishes a date serial from a
+  // plain number (the one genuinely untagged ambiguity left).
   private sourceKind(): SocketDataType | null {
     const editor = getEditor();
     if (!editor) return null;
@@ -185,17 +185,16 @@ export class CastNode extends ClassicPreset.Node {
     const raw = inputs.value?.[0];
     // Text casts use the default representation (no custom format code).
     const format = "";
+    // The socket is consulted only for `dateish` now — a serial and a plain number
+    // really are the same value, so the source type is the only witness. A complex
+    // is self-identifying (tagged, VAL-15), and Array.isArray means exactly "list".
     const kind = this.sourceKind();
-    const isCxValue = kind === "complex" && Array.isArray(raw) && raw.length === 2 && typeof raw[0] === "number";
     const dateish = kind != null && isDateType(kind);
 
-    // A Cx input is itself an array — `mapped` (not Array.isArray of the
-    // result) is what distinguishes "a list of results" from "one complex".
-    const mapped = !isCxValue && Array.isArray(raw);
-    if (mapped) {
+    if (Array.isArray(raw)) {
       // List path (relaxed invariant): a per-element parse FAILURE → per-cell
       // #VALUE! error (propagates); a blank input element → null (missing).
-      const raw2 = (raw as unknown[]).map((el) => castOne(el, this.target, format, dateish, false));
+      const raw2 = raw.map((el) => castOne(el, this.target, format, dateish));
       const out: (CastScalar | SolError)[] = raw2.map((v) =>
         v === null ? null
         : castFailed(v, this.target) ? solError("#VALUE!", `Could not convert the value to ${this.target}`)
@@ -205,7 +204,7 @@ export class CastNode extends ClassicPreset.Node {
       return { result: out };
     }
 
-    const scalar = castOne(raw, this.target, format, dateish, isCxValue);
+    const scalar = castOne(raw, this.target, format, dateish);
     // A genuine scalar parse failure (text that isn't a number/date, an
     // unparseable complex literal) is a #VALUE! error — not a blank. `null`
     // (the input was itself blank/unwired) stays null.

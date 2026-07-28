@@ -17,6 +17,10 @@ readInput, IFS/SWITCH #N/A). If a new rule is decided-but-unbuilt, tag it
 | Kind | Meaning | It is… |
 |---|---|---|
 | value | a real number/string/date/logical/complex | the normal case |
+
+A **complex** value is the tagged object `{ __cx: true, re, im }` (VAL-15) — never a bare
+`[re, im]` array. `Array.isArray` on any cell or value therefore always means "a 1-D
+list"; `isCx` (`nodes/complex.ts`) is the one complex test.
 | `null` | **missing** — no value was ever there | data, not a failure |
 | `SolError` | **failure** — a computation could not answer (tagged code, 15 incl. `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
 | `NaN` | **undefined number that leaked** — not an error, not missing | residue; computation may not produce it (guardFinite) [shipped] |

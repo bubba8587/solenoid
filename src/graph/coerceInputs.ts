@@ -194,9 +194,8 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
  * list — that IS the difference between the two rungs, and it re-widens a scalar on
  * the way in, so the round trip is lossless.
  *
- * A complex scalar is itself `[re, im]`, so the test is on the OUTER length only:
- * `[[1,2]]` (a one-element complex list) collapses to `[1,2]`, while `[1,2]` (one
- * complex number) is length 2 and stays put.
+ * A complex is a tagged object (VAL-15), so no special case: `[cx]` (a one-element
+ * complex list) collapses to the tagged scalar like any other family.
  */
 function collapseSingleton(v: unknown): unknown {
   return Array.isArray(v) && v.length === 1 ? v[0] : v;
@@ -265,18 +264,16 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
       // widens to a singleton — see the lattice rule in sockets.ts), so promote a
       // lone value to a 1-element array; an incoming list passes through. (The
       // numeric `list` case above goes through toList, which already does this.
-      // A complex value is itself a [re, im] array, so only wrap when the OUTER
-      // value isn't already a list of complexes — detected by a nested array.)
+      // A complex is a tagged object (VAL-15) — not an array — so it takes the
+      // same wrap as every other scalar, no outer-shape sniffing.)
       if (v == null) return v;
-      if (dataType === "complexlist")
-        return Array.isArray(v) && Array.isArray((v as unknown[])[0]) ? v : [v];
       return Array.isArray(v) ? v : [v];
     case "anylist":
       // The element-agnostic 1-D wildcard (Set nodes): the lattice lets a scalar of
       // ANY family widen in, so promote a lone value to a singleton — without this a
       // number throws in the node's for...of and a string iterates PER CHARACTER.
-      // (A complex scalar is itself [re, im] — an array — so it passes through as-is;
-      // element-agnostic means we can't disambiguate it from a 2-list here.)
+      // (A complex is tagged (VAL-15), so it correctly wraps to a singleton here —
+      // under the old [re, im] tuple it slipped through as a fake 2-list.)
       if (v == null) return v;
       return Array.isArray(v) ? v : [v];
     case "frame":

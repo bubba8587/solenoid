@@ -1,4 +1,5 @@
 import { isSolError, type SolError } from "../errorValue";
+import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
 
@@ -251,12 +252,12 @@ export function fibonacci(count: number): number[] {
 }
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// Membership is by VALUE, not identity. A complex number is an [re, im] ARRAY and a
-// JS Set keys an array by REFERENCE, so two equal complexes from different sources
-// would never match (a real Set-node bug once). Canonicalize the tuple to a string;
-// every primitive (number incl. a date serial, string, boolean) stays itself.
+// Membership is by VALUE, not identity (VAL-8). JS Sets key OBJECTS by reference, so
+// a tagged complex (VAL-15) canonicalizes to a string; every primitive (number incl.
+// a date serial, string, boolean) stays itself. Precise now: only a complex takes the
+// detour — the old Array.isArray branch swept up ANY array cell.
 export function setKey(v: unknown): unknown {
-  return Array.isArray(v) ? `\x00cx:${(v as unknown[]).join(",")}` : v;
+  return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }
 
 /** A side's distinct members. Blank (null) and error cells are NOT members — they

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CastNode, castOutput, parseCx, type CastTarget } from "./cast";
+import { cx } from "../cxValue";
 import { formatNumberPattern } from "./text";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket, isDateType } from "../sockets";
@@ -107,20 +108,20 @@ describe("Cast node", () => {
   });
 
   it("casts to complex", () => {
-    expect(cast("complex", 7)).toEqual([7, 0]);
-    expect(cast("complex", "3+4i")).toEqual([3, 4]);
-    expect(cast("complex", ["1+i", 2])).toEqual([[1, 1], [2, 0]]);
+    expect(cast("complex", 7)).toEqual(cx(7, 0));
+    expect(cast("complex", "3+4i")).toEqual(cx(3, 4));
+    expect(cast("complex", ["1+i", 2])).toEqual([cx(1, 1), cx(2, 0)]);
   });
 
   it("parses complex text forms", () => {
-    expect(parseCx("3+4i")).toEqual([3, 4]);
-    expect(parseCx("3-4i")).toEqual([3, -4]);
-    expect(parseCx("-i")).toEqual([0, -1]);
-    expect(parseCx("i")).toEqual([0, 1]);
-    expect(parseCx("2.5")).toEqual([2.5, 0]);
-    expect(parseCx("5j")).toEqual([0, 5]);
-    expect(parseCx("1+j")).toEqual([1, 1]);
-    expect(parseCx("garbage")).toEqual([NaN, NaN]);
+    expect(parseCx("3+4i")).toEqual(cx(3, 4));
+    expect(parseCx("3-4i")).toEqual(cx(3, -4));
+    expect(parseCx("-i")).toEqual(cx(0, -1));
+    expect(parseCx("i")).toEqual(cx(0, 1));
+    expect(parseCx("2.5")).toEqual(cx(2.5, 0));
+    expect(parseCx("5j")).toEqual(cx(0, 5));
+    expect(parseCx("1+j")).toEqual(cx(1, 1));
+    expect(parseCx("garbage")).toEqual(cx(NaN, NaN));
   });
 
   it("passes null through and exposes lists as a structured value (chip, not a joined string)", () => {
