@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "./excelFormula";
+import { TrendNode, LinestNode, LogestNode } from "./nodes/stats";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
 // `RANGE_FUNCTIONS` is hand-kept, and a function missing from it fails SILENTLY in the
@@ -54,18 +55,64 @@ describe("whole-sample functions are range-routed, not broadcast", () => {
   });
 });
 
-describe("array-RETURNING range functions — the known remaining gap", () => {
-  // Documented at RANGE_FUNCTIONS: these need list-model handling of their own (they
-  // are written against a 2-D range and don't treat a plain 1-D list as a vector), so
-  // they are NOT routed yet. Pinned here so the gap is a recorded state rather than an
-  // oversight — when one is fixed, move it into SCALAR_RESULT or its own shape case.
-  // TRANSPOSE left with the D23 matrix tranche; UNIQUE/SORT/MODE.MULT/FREQUENCY/
-  // FILTER with tranche 2 — owned (listArgs), not range-routed, the post-D23 fix
-  // shape (FX-9). The regression quartet is all that remains: real fitting math,
-  // its own tranche when the kernels exist.
-  const DEFERRED = ["TREND", "GROWTH", "LINEST", "LOGEST"];
+describe("the regression quartet — owned, not routed (the last DEFERRED closed)", () => {
+  // The former DEFERRED list. Like UNIQUE/SORT/TRANSPOSE before them, the fix
+  // shape is OWNERSHIP (a listArgs registration over the nodes' fitting kernels,
+  // FX-9), not RANGE_FUNCTIONS routing — so membership there stays false, and the
+  // shape checks below are what "fixed" means: one fitted answer, never a
+  // broadcast echo of the input.
+  const QUARTET = ["TREND", "GROWTH", "LINEST", "LOGEST"];
+  const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+  const XS = [1, 2, 3, 4];
+  const YS = [3, 5, 7, 9];        // exactly 2x + 1
+  const EXP = [2, 4, 8, 16];      // exactly 2·2ˣ⁻¹ → m = 2, b = 1
 
-  it.each(DEFERRED)("%s is still unrouted", (name) => {
-    expect(RANGE_FUNCTIONS.has(name), `${name} is now routed — move it out of DEFERRED`).toBe(false);
+  it.each(QUARTET)("%s is owned (listArgs), not range-routed", (name) => {
+    expect(RANGE_FUNCTIONS.has(name), `${name} entered RANGE_FUNCTIONS — it is owned, not routed`).toBe(false);
+  });
+
+  it("TREND matches the node and takes Excel's optional forms", () => {
+    const node = new TrendNode();
+    const nodeOut = node.data({ ys: [YS], xs: [XS], new_xs: [[5, 6]] });
+    expect(ev("TREND(y, x, n)", { y: YS, x: XS, n: [5, 6] })).toEqual(nodeOut.result);
+    expect(ev("TREND(y, x, n)", { y: YS, x: XS, n: [5, 6] })).toEqual([11, 13]);
+    // new_xs omitted → predict at the known xs; xs omitted too → 1..n.
+    expect(ev("TREND(y, x)", { y: YS, x: XS })).toEqual(YS);
+    expect(ev("TREND(y)", { y: YS })).toEqual(YS);
+  });
+
+  it("GROWTH is TREND in log space", () => {
+    const out = ev("GROWTH(y, x, n)", { y: EXP, x: XS, n: [5] }) as number[];
+    expect(out).toHaveLength(1);
+    expect(out[0]).toBeCloseTo(32, 10);
+    expect((ev("GROWTH(y)", { y: EXP }) as number[])[3]).toBeCloseTo(16, 10);
+  });
+
+  it("LINEST matches the node's three outputs as [slope, intercept, r²]", () => {
+    const node = new LinestNode();
+    const nodeOut = node.data({ ys: [YS], xs: [XS] });
+    expect(ev("LINEST(y, x)", { y: YS, x: XS }))
+      .toEqual([nodeOut.slope, nodeOut.intercept, nodeOut.r2]);
+    expect(ev("LINEST(y, x)", { y: YS, x: XS })).toEqual([2, 1, 1]);
+    // Degenerate fit (zero X variance) → null, the node's null outputs.
+    expect(ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] })).toBeNull();
+  });
+
+  it("LOGEST matches the node's [m, b], and y ≤ 0 is the node's quiet empty", () => {
+    const node = new LogestNode();
+    const nodeOut = node.data({ ys: [EXP], xs: [XS] });
+    const fx = ev("LOGEST(y, x)", { y: EXP, x: XS }) as number[];
+    expect(fx).toEqual(nodeOut.result);
+    expect(fx[0]).toBeCloseTo(2, 10);
+    expect(fx[1]).toBeCloseTo(1, 10);
+    expect(ev("LOGEST(y, x)", { y: [1, -1, 2, 3], x: XS })).toEqual([]);
+  });
+
+  it("the value model rides through: a cell error propagates, a null pair drops", () => {
+    const err = { __solError: true, code: "#DIV/0!", message: "x" };
+    const r = ev("LINEST(y, x)", { y: [3, err, 7], x: [1, 2, 3] });
+    expect((r as { code?: string }).code).toBe("#DIV/0!");
+    // [1,3]/[3,7] after the null pair drops — still the exact 2x + 1 line.
+    expect(ev("LINEST(y, x)", { y: [3, null, 7], x: [1, 2, 3] })).toEqual([2, 1, 1]);
   });
 });

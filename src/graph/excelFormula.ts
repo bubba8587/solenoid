@@ -415,6 +415,9 @@ const NULLABLE_SCALARS_OK = new Set([
   // The lambda tranche: hosts validate their own arguments (a non-lambda is a
   // typed #VALUE!, a blank array propagates null).
   "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
+  // The regression quartet: a blank xs means Excel's 1..n default and a blank
+  // new_xs means "predict at the known xs" — each registration decides.
+  "TREND", "GROWTH", "LINEST", "LOGEST",
 ]);
 
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to

@@ -199,6 +199,43 @@ export function linearFit(
   return { slope, intercept: yMean - slope * xMean };
 }
 
+/** `linearFit` plus R² — the LINEST node's three outputs in one pass. Same null
+ *  conditions (fewer than two points, zero X variance); R² is 0 when Y has zero
+ *  variance (a flat line explains nothing, but the fit itself exists). */
+export function linearFitR2(
+  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
+): { slope: number; intercept: number; r2: number } | null {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  let xMean = 0, yMean = 0;
+  for (let i = 0; i < n; i++) { xMean += xs[i]; yMean += ys[i]; }
+  xMean /= n; yMean /= n;
+  let SSxy = 0, SSxx = 0, SSyy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - xMean, dy = ys[i] - yMean;
+    SSxy += dx * dy; SSxx += dx * dx; SSyy += dy * dy;
+  }
+  if (SSxx === 0) return null;
+  const slope = SSxy / SSxx;
+  const r2 = (SSxx > 0 && SSyy > 0) ? (SSxy / Math.sqrt(SSxx * SSyy)) ** 2 : 0;
+  return { slope, intercept: yMean - slope * xMean, r2 };
+}
+
+/** Exponential fit y = b·mˣ by least squares in log space — LOGEST/GROWTH's
+ *  core. Null when the linear fit of ln(y) is undefined OR any y ≤ 0 (the log
+ *  doesn't exist); callers decide how to surface that (the node's convention is
+ *  a quiet empty result). */
+export function expFit(
+  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
+): { m: number; b: number } | null {
+  const n = Math.min(xs.length, ys.length);
+  const ySlice = ys.slice(0, n);
+  if (!ySlice.every((y) => y > 0)) return null;
+  const fit = linearFit(xs.slice(0, n), ySlice.map(Math.log));
+  if (!fit) return null;
+  return { m: Math.exp(fit.slope), b: Math.exp(fit.intercept) };
+}
+
 // ─── Piecewise-linear interpolation ───────────────────────────────────────────
 // Lives here, not in stats.ts, for the same reason textOps/listOps do: the formula
 // registration (INTERPOLATE) needs it and must not drag rete + the socket lattice in.

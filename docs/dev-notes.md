@@ -120,6 +120,32 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The regression quartet owned — the broadcast-garbage class closes (2026-07-28q)
+
+TREND/GROWTH/LINEST/LOGEST were the last array-RETURNING names still broadcast
+(rangeRouting's DEFERRED): a 1-D list mapped the call element-wise into a
+plausible-looking garbage list, the same silent class as T.TEST. Same fix shape
+as every D23 tranche:
+
+**Kernels shared** — `linearFitR2` (LINEST's slope/intercept/R² in one pass) and
+`expFit` (y = b·mˣ via least squares in log space) join `linearFit` in
+mathUtils; the Trend/Linest/Logest nodes' inline math collapsed onto them
+(three near-identical SSxy/SSxx loops deleted from stats.ts).
+
+**Four listArgs registrations** running those kernels (FX-1; GROWTH has no node
+— it's TREND's exponential sibling on the same kernels). Pair prep is
+`pairPresent` (error propagates, null pair drops, ragged truncates). Excel's
+optional arguments, which node sockets can't express, work on the formula
+surface: xs omitted/blank → 1..n, TREND/GROWTH's new_xs omitted/blank → the
+known xs. Excel's trailing const/stats args are NOT taken: LINEST answers
+[slope, intercept, r²] (the node's three outputs as a list; degenerate → null),
+LOGEST [m, b] (y ≤ 0 → the node's quiet empty).
+
+rangeRouting.test.ts's DEFERRED block became the quartet's owned pins
+(node-equality + shape + value model). rules.md known-violation 7 DELETED —
+the array-returning broadcast class is now fully closed; the backlog paragraph
+about it reconciled the same way. Suite 3572 → 3577.
+
 ### The complex tranche: IM* owned over tagged Cx, operators typed (2026-07-28p)
 
 The build the D23 amendment queued, landed. Four moves:
