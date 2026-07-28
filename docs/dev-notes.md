@@ -120,6 +120,37 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Spec tranche 2: ENGINE domain + the queue's promotable half (2026-07-28z)
+
+Ten more rules from the remainder queue — rules.md is **63 rules, 59/1/3**:
+
+**New builds**: SOCK-10 (an adopting port OWNS its socket instance — two
+instances of every catalog class, no shared MutableSocket; the Input Switch
+shared-valueSocket incident, and the survey found ZERO live offenders — pure
+ratchet); SOCK-11 (a `trueany` output implies passthrough() — catalog walk;
+the six undeclared classes are all principled and sanctioned with reasons:
+FC/Conduit/composite-boundary resolve their own types, NA/XLOOKUP are
+genuinely unknowable); PERSIST-8 (every documentStore verb that swaps the
+canvas calls captureCurrent + guards isGraphRebuilding — method-body scan;
+restore/remove/reloadCurrent sanctioned with their reasons).
+
+**Pure promotions over existing pins**: SOCK-12 (relay transparency — conduit
+trace + frame shape through passthroughs, "Bug B"); ENGINE-1..3 (a new domain:
+targeted pass ≡ full pass incl. #CIRC! SCC seeding; the calc-mode gate is the
+only pass-skipper; a live-data refresh never enters a rebuild scope); VAL-18
+(positional access filters errors per cell, aggregation propagates whole);
+FX-11 (vendored-engine divergences owned + TRIPWIRED — the bidirectional pin
+pattern from formulaDivergence.test); PERSIST-7 (unknown types round-trip
+losslessly through Placeholder, loud #REF! while it lasts).
+
+**Triage note recorded**: the store-registry gap (formatAnnotationStore /
+standoffs register no forgetters) is a bounded LEAK, not corruption — rete ids
+regenerate per load and never collide — so it stays queued as hygiene rather
+than promoted as a wrong-answer rule. The queue's remaining items are the
+mode-keys pruning refactor, the two VAL completeness sweeps, the backend
+parity corpus (the largest build), the transient-field triage, and
+width/height ownership. Suite 3601 → 3605.
+
 ### Deploy fix: the unopened CSS comment + a postcss gate (2026-07-28y)
 
 Seven hours of Vercel deploys were red: `07a117a` (15:07, the op-selector

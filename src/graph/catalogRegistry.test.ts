@@ -3,6 +3,8 @@ import { NODE_EXCEL } from "./nodeExcel";
 import { FLAT_CATALOG } from "./catalogUtils";
 import { NODE_COMPONENTS, componentForNode } from "./nodeRegistry";
 import { extractInit } from "./copyPaste";
+import { MutableSocket } from "./sockets";
+import { getPassthrough } from "./nodes/passthrough";
 
 // HARD version of the dev-only catalogValidator console warnings (v1.0 audit,
 // quality): catalog↔registry drift previously surfaced only as a dev console
@@ -78,6 +80,68 @@ describe("catalog ↔ registry consistency", () => {
       if ("enabled" in init) offenders.push(`${inst.constructor.name} persists \`enabled\` — an armed sink would round-trip through a shared file`);
     }
     expect(offenders, offenders.join("\n  ")).toEqual([]);
+  });
+
+  // SOCK-10: an adopting port OWNS its socket instance — the class doc says it
+  // outright ("One instance per port, never shared — a retype must not leak
+  // across cards"). A module-level shared MutableSocket means wiring a date into
+  // one card retypes ANOTHER card's port; that card then coerces under the wrong
+  // type and answers a plausible number (the Input Switch's old shared
+  // valueSocket). Two instances of every class: no MutableSocket may appear in
+  // both.
+  it("no two instances of a class share a mutable socket (SOCK-10)", () => {
+    const offenders: string[] = [];
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let a: object, b: object;
+      try { a = entry.create() as object; b = entry.create() as object; } catch { continue; }
+      const socketsOf = (n: object) =>
+        [...Object.values((n as { inputs?: object }).inputs ?? {}), ...Object.values((n as { outputs?: object }).outputs ?? {})]
+          .map((p) => (p as { socket?: unknown } | undefined)?.socket)
+          .filter((s): s is MutableSocket => s instanceof MutableSocket);
+      const setA = new Set(socketsOf(a));
+      if (socketsOf(b).some((s) => setA.has(s))) offenders.push(`${type} (${a.constructor.name})`);
+    }
+    expect(offenders, `classes sharing a MutableSocket across instances — adoption leaks between cards:\n  ${offenders.join("\n  ")}`).toEqual([]);
+  });
+
+  // SOCK-11: a class with a `trueany` OUTPUT either declares passthrough() (so
+  // the four derived-type consumers — adoption, unit flow, the display walk,
+  // coerceInputs' keep-tags boundary — can resolve it) or is sanctioned with the
+  // reason its type resolves another way. An undeclared forwarder's output stays
+  // trueany forever: a downstream FC can't key a family, so a date serial
+  // renders as its raw number — everything connects, nothing errors, the format
+  // is just silently wrong.
+  const TRUEANY_OUT_SANCTIONED: Record<string, string> = {
+    NaNode: "the deliberate #N/A producer — its output IS the error (errorOnlyOutput), no type to forward",
+    ConduitNode: "lane types resolve through conduitTrace, the conduit's own resolution system",
+    FormatControllerNode: "the FC is the RESOLVER — fcReconcile drives its sockets",
+    CompositeNode: "boundary port adoption runs in the composite's own sync pass",
+    CompositeInputNode: "a composite boundary marker — typed by the composite's sync pass",
+    XLookupNode: "a genuinely unknowable producer — the result type depends on the looked-up data",
+  };
+  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) (SOCK-11)", () => {
+    const offenders: string[] = [];
+    const sanctionedSeen = new Set<string>();
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let inst: object;
+      try { inst = entry.create() as object; } catch { continue; }
+      const hasTrueanyOut = Object.values((inst as { outputs?: object }).outputs ?? {})
+        .some((p) => (p as { socket?: { dataType?: string } } | undefined)?.socket?.dataType === "trueany");
+      if (!hasTrueanyOut) continue;
+      const cls = inst.constructor.name;
+      if (cls in TRUEANY_OUT_SANCTIONED) { sanctionedSeen.add(cls); continue; }
+      if (getPassthrough(inst as never).length === 0) offenders.push(`${type} (${cls})`);
+    }
+    expect(
+      offenders,
+      `trueany outputs with no passthrough() declaration (SOCK-11) — the port stays ` +
+      `untyped forever and downstream FCs silently format wrong. Declare the spec, or ` +
+      `add the class to TRUEANY_OUT_SANCTIONED with the reason:\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
+    // The sanction list stays honest: every entry still exists in the catalog
+    // with a trueany output and no declaration.
+    const stale = Object.keys(TRUEANY_OUT_SANCTIONED).filter((c) => !sanctionedSeen.has(c));
+    expect(stale, `sanctioned classes that no longer have an undeclared trueany output — drop:\n  ${stale.join("\n  ")}`).toEqual([]);
   });
 
   // VAL-14, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is

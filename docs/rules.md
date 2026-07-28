@@ -20,6 +20,7 @@ answer (or an invisible non-event), not a visible defect.
 | Formula surface | `FX` | registration, naming, argument routing |
 | Value handling | `VAL` | null, SolError, logical, units |
 | Persistence | `PERSIST` | the save path — capture, round-trip, slots, identity |
+| Engine | `ENGINE` | recompute passes — targeted ≡ full, gating, refresh scope |
 | External effects | `EFFECT` | when a node may touch the world (disk, alerts) |
 
 **Out of scope here:** UI, visual and copy rules live in `DESIGN.md` and are enforced by
@@ -91,10 +92,10 @@ moving with it is part of that same author-marked change.
 real evidence, no ARR authority. Every rule heading carries its grade (the
 2026-07-28 audit): INFERRED where a concrete incident occurred and is named,
 DEFAULT where the rule is preventive judgment with no forcing incident. The
-DEFAULT set (SOCK-3, SOCK-6, FX-10, VAL-13, VAL-14, VAL-17, PERSIST-3,4,5,6,
-EFFECT-1) is the thinnest ice: rules held up by the agent's reasoning without a
-forcing incident, and the first candidates for either an enforcing incident or
-deletion. (The 2026-07-28 promotion sweep grew it — a promoted convention whose
+DEFAULT set (SOCK-3, SOCK-6, SOCK-11, FX-10, VAL-13, VAL-14, VAL-17,
+PERSIST-3,4,5,6, EFFECT-1) is the thinnest ice: rules held up by the agent's
+reasoning without a forcing incident, and the first candidates for either an
+enforcing incident or deletion. (The 2026-07-28 promotion sweep grew it — a promoted convention whose
 failure has not yet HAPPENED grades DEFAULT no matter how load-bearing the
 reasoning; the grade tracks provenance, not value.)
 
@@ -312,6 +313,46 @@ none) that Format Controllers key on, for a rank the matrix rungs already spell.
 *Enforced by:* `socketConnect.test.ts` (the full sweep + the anydata cases);
 `expressionMatrix.test.ts` (the lift + the result-rank reconcile).
 
+### SOCK-10 — An adopting port owns its socket instance **[INFERRED]**
+**MUST:** every `MutableSocket`/`AdoptiveSocket` port gets a FRESH instance — never a
+module-level shared one (the deliberately never-mutated `staticTrueAny*` singleton is
+the sanctioned exception, and it is immutable by contract). A shared mutable socket
+means wiring a date into one card retypes ANOTHER card's port, which then coerces its
+input under the wrong type and answers a plausible number the user cannot connect to a
+cause.
+
+*Enforced by:* `catalogRegistry.test.ts` → "no two instances of a class share a mutable
+socket" — two instances of every catalog class, no `MutableSocket` in both.
+*Origin:* the Input Switch's old shared `valueSocket` — the incident the AdoptiveSocket
+class doc ("One instance per port, never shared") was written against.
+
+### SOCK-11 — A `trueany` output implies a `passthrough()` declaration **[DEFAULT]**
+**MUST:** a class with a `trueany` OUTPUT either declares `passthrough()` — the ONE
+declaration the four derived-type consumers read (trueany adoption, unit flow, the
+display-type walk, coerceInputs' keep-tags boundary) — or is sanctioned with the reason
+its type resolves another way (the FC is the resolver; Conduit lanes resolve through
+conduitTrace; composite boundary ports sync in their own pass; XLOOKUP/NA are genuinely
+unknowable). An undeclared forwarder's output stays `trueany` forever: downstream FCs
+can't key a family, so a date serial silently renders as its raw number.
+
+*Enforced by:* `catalogRegistry.test.ts` → "every class with a trueany output declares
+passthrough()" — a catalog walk with the reasoned sanction list and its honesty check.
+
+### SOCK-12 — Relay nodes are transparent to every static derivation **[INFERRED]**
+**MUST:** a value relay (a Conduit lane, a passthrough chain, an IF with one wired
+branch) is TRANSPARENT to static resolution: a cable leaving it resolves type, unit
+annotation and frame SHAPE from the ORIGINATING source's socket — through chains,
+reverting on disconnect — never from the relay's own untyped lane. And a Conduit run is
+identified from its ORIGIN: every segment of one run resolves to the same run, so
+provenance readings (the Cable inspector's "From") and run-wide actions cannot split by
+which segment was clicked.
+
+*Enforced by:* `conduitTrace.test.ts` (lane tracing through chains, loop termination,
+lane adopt/revert, `conduitPath` run identity); `frameShapePassthrough.test.ts` (frame
+shape through a Display / a Conduit lane / a half-wired IF — "Bug B").
+*Origin:* Bug B — downstream column pickers went empty and formula column references
+silently failed to resolve through a passthrough, with no error anywhere.
+
 ---
 
 # FX — The formula surface
@@ -474,6 +515,19 @@ into `broadcastRules.test.ts` — changing either without the other fails
 *Why:* two broadcasters is how the same expression answers differently by surface —
 the exact drift class the parity program exists to close.
 *Enforced by:* `broadcastRules.test.ts`.
+
+### FX-11 — A vendored-engine divergence is owned, and tripwired **[INFERRED]**
+**MUST:** where Formula.js diverges from Excel, the registered override is the
+Excel-correct answer, backed by the same impl as the node (`FX-1`) — and the divergence
+is pinned BIDIRECTIONALLY: the correctness assertion plus a tripwire asserting FX still
+answers wrong, so a vendored-engine update that silently changes behaviour fails the
+suite and forces a re-evaluation instead of a silent regression (in either direction).
+
+*Enforced by:* `formulaDivergence.test.ts` — MOD's divisor-sign, ATAN2's argument
+order, RANK, VALUE's strictness (`VALUE("abc")` is `#VALUE!`, not FX's silent 0), each
+with its "FX still diverges (tripwire)" twin.
+*Origin:* author-flagged 2026-06-25; recovered from the audit notes after the original
+sweep script was lost — which is why the pins live in the suite now.
 
 ---
 
@@ -689,6 +743,17 @@ references getRecalcGen" — a source scan with a sanctioned list (composite.ts 
 ids, not values). The volatility CLOCK split between the two surfaces is `FX-1`'s
 SHUFFLE exception.
 
+### VAL-18 — Positional access filters errors per cell; aggregation propagates whole **[INFERRED]**
+**MUST:** a positional lookup (INDEX, XMATCH, MAKEARRAY reads) propagates ONLY the error
+of the cell it actually references — an unreferenced error cell elsewhere in the range
+must not blanket-error the call. An AGGREGATE over a range containing an error still
+propagates it whole (Excel-correct). Both directions are silently wrong when flipped:
+blanket-erroring hides a good answer, under-propagating hides a bad one.
+
+*Enforced by:* `errorFiltering.test.ts` (the INDEX/XMATCH/MAKEARRAY cases + the
+aggregate-still-propagates case). This is the per-cell refinement of `VAL-3`'s
+whole-node rule.
+
 ---
 
 # PERSIST — The save path
@@ -770,6 +835,76 @@ fires for an ABSENT type, and a collision is indistinguishable from a hit).
 declare esbuild keepNames"; `catalogRegistry.test.ts` → "no two catalog classes share a
 constructor name".
 
+### PERSIST-7 — An unknown node type round-trips losslessly through Placeholder **[INFERRED]**
+**MUST:** loading a save with an unregistered type builds a `PlaceholderNode` that
+carries the ORIGINAL type, init, literal maps and derived socket keys, and re-saves as
+that original type — never as "PlaceholderNode". The whole dormant-pack story rests on
+this: open a doc with a pack off, save it, and the pack's nodes must survive intact.
+Its outputs emit `#REF!` so the break is LOUD while it lasts, never a silent blank.
+
+*Enforced by:* `nodes/placeholder.test.ts` ("keeps the original type, init, and
+literals for a lossless re-save"; the loud `#REF!` outputs); `persistenceCore.test.ts`
+(`deriveMissingNodeSockets` — cables to an unknown type derive its socket keys instead
+of dropping).
+
+### PERSIST-8 — A canvas-swapping verb captures first and guards the rebuild **[INFERRED]**
+**MUST:** every `documentStore` verb that changes which document is on screen calls
+`captureCurrent()` before switching (else up to the autosave delay of outgoing edits is
+discarded) and guards on `isGraphRebuilding()` (else it races a load and serializes a
+half-built canvas into the current doc). Sanctioned exceptions carry their reason:
+`restore` (startup — nothing live yet), `remove` (the doc is going away — capturing
+would resurrect the dying edits), `reloadCurrent` (the guard lives inside
+captureCurrent; its own gate is the reveal lock).
+
+*Enforced by:* `sourceInvariants.test.ts` → "every documentStore verb that swaps the
+canvas captures first and guards the rebuild" — a method-body scan over the store
+object, with the sanction honesty check.
+*Origin:* audit 21p (the race) and 20p (the refused-doc fallback) — both dated in the
+store's own comments.
+
+---
+
+# ENGINE — Recompute passes
+
+The engine's one observable contract: however a recompute is triggered — full pass,
+targeted cone, manual mode, a live-data refresh — the values on screen are the ones a
+full clean pass would produce. Every rule here is an equivalence, and every failure
+mode is a STALE value standing next to fresh ones with nothing marking it.
+
+### ENGINE-1 — The targeted pass is observationally equal to the full pass **[INFERRED]**
+**MUST:** `downstreamClosure(nodeId)` equals exactly the set a full pass would
+recompute differently — the start node and every transitive dependent, across branches
+and joins, terminating on cycles. No more (wasted work is the cheap half) and no less —
+a node outside the cone keeps displaying its previous answer with no error. Cycle
+handling matches too: the targeted path seeds `#CIRC!` on exactly the SCC members,
+like the full pass, instead of recursing to a RangeError.
+
+*Enforced by:* `processTargeted.test.ts` (the closure across branches/joins/cycles);
+`circularReset.test.ts` (closing a cycle with a live cable yields `#CIRC!` on the loop
+members — audit finding 40, with the rete-engine 2.1.1 recursion bug in the record).
+
+### ENGINE-2 — The calc-mode gate is the ONLY thing that skips a pass **[INFERRED]**
+**MUST:** manual/auto × dirty is a real transition matrix: manual mode marks dirty
+instead of computing, switching to auto clears the pending flag by RUNNING the pass,
+and an unavailable localStorage degrades to in-memory state — never to a graph that
+silently stops recomputing.
+
+*Enforced by:* `calcModeStore.test.ts` (the transition matrix, notify-exactly-then,
+the missing-localStorage degrade).
+*Origin:* shipped in 1.0 with zero direct coverage (v1.0 audit, quality) — the
+"silently stops recomputing" failure is invisible by construction.
+
+### ENGINE-3 — A live-data refresh never runs inside a rebuild scope **[INFERRED]**
+**MUST:** `refreshConnection` (the manual button and the interval timer) drives its
+recompute OUTSIDE `beginGraphRebuild`/`endGraphRebuild` — only `loadGraph` may
+suppress. A refresh that lands inside a rebuild scope silently swallows the
+edge-detection downstream: an Alert watching refreshed live data simply stops firing.
+
+*Enforced by:* `connectionStore.test.ts` → "refreshConnection never enters a
+graph-rebuild scope (the only thing that would silently suppress a fire)" + the
+rising-edge-through-refresh case. Pairs with `EFFECT-2` (the suppression this rule
+keeps refreshes OUT of is the one loads must stay IN).
+
 ---
 
 # EFFECT — External effects
@@ -808,11 +943,11 @@ carry-over bug (switch into an already-met condition).
 
 # Enforcement summary
 
-53 rules.
+63 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 49 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,4,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 · PERSIST-1,2,3,4,5,6 · EFFECT-2 |
+| Enforced | 59 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 

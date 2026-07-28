@@ -15,7 +15,7 @@ import * as path from "node:path";
 const DOC = fs.readFileSync(path.resolve(__dirname, "../../docs/rules.md"), "utf8");
 
 describe("docs/rules.md", () => {
-  const ids = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|EFFECT)-\d+)/gm)].map((m) => m[1]);
+  const ids = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT)-\d+)/gm)].map((m) => m[1]);
 
   // ─── The ARR-uniqueness guard (PROV-1, the one author-ruled rule) ───────────
   // ARR is conferred ONLY by the author reading this document in a session and
@@ -27,7 +27,7 @@ describe("docs/rules.md", () => {
   // the author's, not yours.)
   it("exactly one rule is author-ruled, and it is PROV-1", () => {
     const AUTHOR_MARKED_ARR: string[] = ["PROV-1"]; // author-maintained; agents must not edit
-    const marks = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|EFFECT)-\d+)[^\n]*\[ARR\]/gm)].map((m) => m[1]);
+    const marks = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT)-\d+)[^\n]*\[ARR\]/gm)].map((m) => m[1]);
     expect(marks.sort()).toEqual([...AUTHOR_MARKED_ARR].sort());
     // And [ARR] can't hide in prose: beyond rule headings, the literal may
     // appear only where the PROV section NAMES the mark (its grade table and
@@ -37,7 +37,7 @@ describe("docs/rules.md", () => {
   });
 
   it("every rule heading carries exactly one provenance grade (PROV-1's axis)", () => {
-    const headings = [...DOC.matchAll(/^### (?:PROV|SSOT|SOCK|FX|VAL|PERSIST|EFFECT)-\d+[^\n]*/gm)].map((m) => m[0]);
+    const headings = [...DOC.matchAll(/^### (?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT)-\d+[^\n]*/gm)].map((m) => m[0]);
     const ungraded = headings.filter((h) => !/\[(ARR|INFERRED|DEFAULT)\]/.test(h));
     expect(ungraded, `rules missing a provenance grade:\n${ungraded.join("\n")}`).toEqual([]);
     const doubly = headings.filter((h) => (h.match(/\[(ARR|INFERRED|DEFAULT)\]/g) ?? []).length > 1);

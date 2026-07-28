@@ -346,6 +346,57 @@ describe("EFFECT-2 — an outward effect from data() gates on isGraphRebuilding(
   });
 });
 
+describe("PERSIST-8 — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
+  // A verb that switches which document is on screen without captureCurrent()
+  // discards up to AUTOSAVE_DELAY of edits to the outgoing doc; without the
+  // isGraphRebuilding() guard it races a load and can serialize a half-built
+  // canvas INTO the current doc (audit 21p — the exact bug the guards close).
+  // Scan: every method of the documentStore object whose body loads a graph
+  // (loadGraph / showCurrent) must also reference captureCurrent AND
+  // isGraphRebuilding, or be sanctioned with the reason.
+  const SANCTIONED: Record<string, string> = {
+    restore: "startup — no live graph exists to capture yet; the refused-doc fallback (audit 20p) is its own guard",
+    reloadCurrent: "captureCurrent() carries the rebuild guard internally; the verb's own gate is loadRevealStore.isActive()",
+    remove: "DELIBERATELY no capture — the doc is going away; capturing would write the dying edits somewhere. Still guards the rebuild (21p)",
+  };
+
+  it("swap verbs capture + guard (or are sanctioned, with a reason)", () => {
+    const src = fs.readFileSync(path.join(SRC, "documentStore.ts"), "utf8").split("\n");
+    const start = src.findIndex((l) => l.startsWith("export const documentStore"));
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = src.findIndex((l, i) => i > start && l === "};");
+    // Split the object literal into method bodies at 2-space indentation.
+    const methodStarts: Array<{ name: string; line: number }> = [];
+    for (let i = start + 1; i < end; i++) {
+      const m = /^  (?:async )?(\w+)\(/.exec(src[i]);
+      if (m) methodStarts.push({ name: m[1], line: i });
+    }
+    expect(methodStarts.length).toBeGreaterThan(8); // parser sanity
+    const offenders: string[] = [];
+    for (let k = 0; k < methodStarts.length; k++) {
+      const { name, line } = methodStarts[k];
+      const bodyEnd = k + 1 < methodStarts.length ? methodStarts[k + 1].line : end;
+      const body = src.slice(line, bodyEnd).join("\n");
+      if (!/loadGraph\(|showCurrent/.test(body)) continue;
+      if (name in SANCTIONED) continue;
+      if (!/captureCurrent/.test(body)) offenders.push(`${name} (no captureCurrent — outgoing edits discarded)`);
+      if (!/isGraphRebuilding/.test(body)) offenders.push(`${name} (no isGraphRebuilding guard — races a load, audit 21p)`);
+    }
+    expect(
+      offenders,
+      `documentStore verbs that swap the canvas without the discipline (PERSIST-8):\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("the sanctioned list stays honest — every entry is still a real method that loads", () => {
+    const src = fs.readFileSync(path.join(SRC, "documentStore.ts"), "utf8");
+    for (const [name, why] of Object.entries(SANCTIONED)) {
+      expect(new RegExp(`^  (?:async )?${name}\\(`, "m").test(src), `${name} (sanctioned: ${why}) is no longer a store method — drop the entry`).toBe(true);
+    }
+  });
+});
+
 describe("VAL-13 — components never call node.data()", () => {
   // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
   // nodes, installErrorGuards) has run; a component calling it raw gets
