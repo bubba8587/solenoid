@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortKeyOf, sortedOrder, sortDirOf, nextSort, type ColumnSort } from "./components/columnSort";
+import { sortKeyOf, sortedOrder, sortDirOf, nextSort, remapSort, type ColumnSort } from "./components/columnSort";
 import { solError } from "./errorValue";
 
 // The visual-only popup sort. Only the PURE parts are pinned here (the vitest env is
@@ -69,6 +69,26 @@ describe("sortedOrder — SOURCE row indices in display order", () => {
     expect(sortedOrder(3, desc(0), keyOf(g))).toEqual([0, 1, 2]);
   });
 
+  it("tiers a MIXED column — all numbers (numeric order) before all text", () => {
+    // The regression: number pairs compared numerically but a number-vs-text pair
+    // compared AS TEXT, and for negatives those two orders disagree ("-1…" < "-2…"
+    // textually) — an intransitive comparator, so Array.sort could emit -2 AFTER -1.
+    const col = [-1, "-1a", -2, "-3x", 5, "apple"];
+    const shown = sortedOrder(col.length, asc(0), keyOf(col.map((v) => [v]))).map((r) => col[r]);
+    expect(shown.slice(0, 3)).toEqual([-2, -1, 5]); // numbers first, by magnitude
+    expect(shown.slice(3).every((v) => typeof v === "string")).toBe(true);
+  });
+
+  it("gives ONE order for a multiset regardless of the input permutation", () => {
+    // Transitivity's observable face: with a total order, the sorted output is a
+    // function of the VALUES, not of where the sort algorithm happened to start.
+    const a: Array<string | number> = [-1, "-1a", -2, "-3x", 5, "apple"];
+    const b = [...a].reverse();
+    const sortAll = (col: Array<string | number>) =>
+      sortedOrder(col.length, asc(0), keyOf(col.map((v) => [v]))).map((r) => col[r]);
+    expect(sortAll(a)).toEqual(sortAll(b));
+  });
+
   it("sorts a date column CHRONOLOGICALLY when keyed on the raw serial", () => {
     // The popups key off the raw grid for exactly this reason: these same dates
     // rendered as "20-Mar-2026" / "01-Apr-2026" would sort alphabetically.
@@ -134,5 +154,31 @@ describe("multi-column sort — Excel's add-a-level model", () => {
     expect(sortDirOf(sort, 3)).toBe("desc");
     expect(sortDirOf(sort, 1)).toBeNull();
     expect(sortDirOf([], 3)).toBeNull();
+  });
+});
+
+describe("remapSort — the sort under structural column changes", () => {
+  // The popups call this from remove-column / CSV reshape so a stale key can't
+  // re-attach to whatever column slides into its index.
+  const removal = (removed: number) => (col: number) =>
+    col === removed ? null : col > removed ? col - 1 : col;
+
+  it("drops the removed column's key and shifts higher indices down", () => {
+    const s: ColumnSort = [{ col: 0, dir: "asc" }, { col: 2, dir: "desc" }];
+    expect(remapSort(s, removal(1))).toEqual([{ col: 0, dir: "asc" }, { col: 1, dir: "desc" }]);
+    expect(remapSort(s, removal(2))).toEqual([{ col: 0, dir: "asc" }]);
+  });
+
+  it("keeps the surviving keys' PRIORITY order across a drop", () => {
+    const s: ColumnSort = [{ col: 2, dir: "asc" }, { col: 0, dir: "desc" }, { col: 1, dir: "asc" }];
+    expect(remapSort(s, removal(2))).toEqual([{ col: 0, dir: "desc" }, { col: 1, dir: "asc" }]);
+  });
+
+  it("clears outright when the map rejects every key (the CSV-reshape case)", () => {
+    expect(remapSort([{ col: 0, dir: "asc" }, { col: 3, dir: "desc" }], () => null)).toEqual([]);
+  });
+
+  it("is the identity for an empty sort", () => {
+    expect(remapSort([], removal(0))).toEqual([]);
   });
 });

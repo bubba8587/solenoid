@@ -144,7 +144,7 @@ export function TablePopup() {
   const [grid, setGrid] = useState<string[][]>([]);
   // Visual-only row sort (columnSort.tsx) — a view control over the rendered rows.
   // Keyed on the popup state, so opening a different value starts unsorted.
-  const { sort, cycle: cycleSort } = useColumnSort(state);
+  const { sort, cycle: cycleSort, remap: remapSort, clear: clearSort } = useColumnSort(state);
   // Editable column names + per-column types (frame editor). Kept aligned with the
   // grid's columns; unused when the popup isn't in frame mode.
   const [headerNames, setHeaderNames] = useState<string[]>([]);
@@ -161,9 +161,12 @@ export function TablePopup() {
   // focused, and re-renders formatted on blur. A read-only date view just toggles
   // serial vs date string.
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
-  // The cell being edited IN FORMATTED MODE + its draft. The draft lives in a ref
-  // (state only marks the cell + forces renders) so Escape can reset it and blur
-  // synchronously without committing a stale closure's text.
+  // The cell being edited + its draft — EVERY editable cell edits through this
+  // (edits commit on Enter/clickaway, never per keystroke; Escape reverts). It also
+  // keeps a sorted grid still under the caret: committing per keystroke re-sorts,
+  // moving the focused row mid-edit. The draft lives in a ref (state only marks the
+  // cell + forces renders) so Escape can reset it and blur synchronously without
+  // committing a stale closure's text.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
   const editDraft = useRef("");
   const [, bumpDraft] = useState(0);
@@ -459,6 +462,8 @@ export function TablePopup() {
     setGrid((g) => [...g, Array.from({ length: Math.max(1, cols) }, () => "")]);
   }
   function addCol() {
+    // Appends at the END, so existing column indices — and the sort keys that hold
+    // them — are untouched; no remap needed.
     setGrid((g) => (g.length === 0 ? [[""]] : g.map((row) => [...row, ""])));
     setHeaderNames((h) => [...h, ""]);
     setColumnTypes((t) => [...t, "number"]);
@@ -468,6 +473,11 @@ export function TablePopup() {
   }
   function removeCol() {
     if (cols <= 1) return;
+    // Drop the removed column's sort key (and shift any higher key down — can't
+    // occur while removal is last-column-only, kept general anyway) so the key
+    // doesn't re-attach to the column that inherits the index.
+    const removed = cols - 1;
+    remapSort((col) => (col === removed ? null : col > removed ? col - 1 : col));
     setGrid((g) => g.map((row) => row.slice(0, -1)));
     setHeaderNames((h) => h.slice(0, -1));
     setColumnTypes((t) => t.slice(0, -1));
@@ -527,6 +537,10 @@ export function TablePopup() {
     // Symmetric with `asText`: when the CSV view carries a header line, parse it
     // back OUT into headerNames instead of dumping it into the data grid — else the
     // header gets duplicated into row 0 of the data (the round-trip bug).
+    // A CSV edit that changes the column COUNT reshapes the table — every sort
+    // key's index means something else now, so the sort clears outright.
+    const body = hasHeaderLine ? rows.slice(1) : rows;
+    if (body.reduce((m, r) => Math.max(m, r.length), 0) !== cols) clearSort();
     if (hasHeaderLine) {
       setHeaderNames(rows[0] ?? []);
       setGrid(rows.slice(1));
@@ -634,9 +648,16 @@ export function TablePopup() {
                   <th
                     key={c}
                     // The WHOLE header cell cycles the sort — there is no button to
-                    // hit. The name field and type toggle below opt out.
+                    // hit. The name field and type toggle below opt out via
+                    // stopSortTrigger, but a text-selection drag that STARTS in the
+                    // input and ends elsewhere in the th dispatches its click on the
+                    // th itself (the common-ancestor rule), skipping the input's
+                    // handler — so also ignore any click originating in a control.
                     title={vertical ? undefined : headers?.[c]}
-                    onClick={sortable ? () => cycleSort(c) : undefined}
+                    onClick={sortable ? (e) => {
+                      if ((e.target as Element).closest("input,button,select")) return;
+                      cycleSort(c);
+                    } : undefined}
                     className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}${sortable && editableHeaders ? " table-popup__colhead--sortpad" : ""}`}
                   >
                     {/* A vertical list has one unnamed column; label it like the row
@@ -734,11 +755,16 @@ export function TablePopup() {
                     // NaN (dirty data) — a text column is excluded, and the editable
                     // raw view shows the source token ("oops"), never "NaN".
                     const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
-                    // Formatted mode edits through a focus draft: the cell shows the
-                    // derived render at rest, swaps to the RAW text on focus (the edit
-                    // truth, like Excel's formula-bar-in-cell), and commits on blur —
-                    // where it re-renders formatted (units, dates, number formats).
+                    // EVERY editable cell edits through the focus draft: setCell
+                    // fires on commit (blur/Enter), never per keystroke — drafts
+                    // stay local while typing, Escape reverts (the app-wide commit
+                    // rule; it also keeps a sorted row from re-sorting out from
+                    // under the caret mid-edit). Formatted mode additionally swaps
+                    // the derived render for the RAW text on focus (the edit truth,
+                    // like Excel's formula-bar-in-cell) and re-renders formatted on
+                    // the commit (units, dates, number formats).
                     const fmtEdit = formattedPreview && editable && !vertical;
+                    const canEdit = editable && !(formattedPreview && !fmtEdit); // = !readOnly below
                     const editingHere = !!editCell && editCell.r === r && editCell.c === c;
                     return (
                     <td
@@ -753,13 +779,17 @@ export function TablePopup() {
                         readOnly={!editable || (formattedPreview && !fmtEdit)}
                         inputMode={isTextType(type) ? "text" : "decimal"}
                         spellCheck={false}
-                        onFocus={fmtEdit ? () => { editDraft.current = grid[r]?.[c] ?? ""; setEditCell({ r, c }); } : undefined}
+                        onFocus={canEdit ? () => { editDraft.current = grid[r]?.[c] ?? ""; setEditCell({ r, c }); } : undefined}
                         onChange={(e) => {
-                          if (fmtEdit) { editDraft.current = e.target.value; bumpDraft((x) => x + 1); }
-                          else setCell(r, c, e.target.value);
+                          if (!canEdit) return;
+                          editDraft.current = e.target.value;
+                          // Focus normally seeded editCell already; re-seat if not
+                          // (an edit can't land on an unmarked cell).
+                          if (editingHere) bumpDraft((x) => x + 1);
+                          else setEditCell({ r, c });
                         }}
-                        onBlur={fmtEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
-                        onKeyDown={fmtEdit ? (e) => {
+                        onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        onKeyDown={canEdit ? (e) => {
                           if (e.key === "Enter") e.currentTarget.blur();
                           else if (e.key === "Escape") { editDraft.current = grid[r]?.[c] ?? ""; e.currentTarget.blur(); }
                         } : undefined}
