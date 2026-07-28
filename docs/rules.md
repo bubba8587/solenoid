@@ -36,6 +36,9 @@ does not repeat them.
   written wrong — fix the rule instead.
 - **`Origin:`** records the incident that produced the rule. Rules invented without an
   incident tend to be someone's taste; rules with one are load-bearing.
+- **Provenance** (`PROV`): who a rule binds depends on who made it — see the PROV
+  section. Exactly one rule in this document is author-ruled; everything else is the
+  working agent's inference or default, and is open to question on those terms.
 
 ## Process
 
@@ -44,6 +47,47 @@ declaration format, or a sweep touching many files updates this document *before
 code. Ordinary work — a node, a bug fix, a one-line change — just follows the existing
 rules. Every bug fix ships the check that would have caught it, or says why it can't
 (`SSOT-5`). This is the working default, not an author ruling; tighten it freely.
+
+---
+
+# PROV — Provenance
+
+Who a rule actually binds depends on who made it. This section is the constitution
+for that question, and it contains the ONLY author-ruled rule in this document.
+
+Every rule carries (implicitly today, explicitly as the audit reaches it) one of
+three provenance grades:
+
+| Grade | Meaning | May be changed by |
+|---|---|---|
+| **ARR** — author-ruled | The author read this document in a session and marked the rule THEMSELVES | the author, the same way |
+| **INFERRED** | Written by the working agent from an incident, or from something the author once said. A past author statement is EVIDENCE for the reasoning — it does not confer ARR | the agent, with the reasoning updated |
+| **DEFAULT** | The agent's judgment call with no forcing incident — a standing invitation to question | the agent, freely |
+
+### PROV-1 — ARR is conferred only by the author, in-session, on this document **[ARR]**
+**MUST:** a rule is author-ruled if and only if the author, in a specific session,
+has read this rules document and marked the rule themselves. Nothing else confers
+ARR — not a past author statement, not a recorded decision, not a quote in
+`decisions.md`, not the agent's confidence in what the author meant. As of this
+rule's creation (2026-07-28), **every other rule in this document is NOT
+author-ruled**, whatever its history; the agent may mark THIS rule ARR and no
+others.
+
+*Why (author, 2026-07-28, verbatim intent):* "99% of what is in this codebase is
+your assumptions and references you built for yourself unless you recorded that I
+told you something specific… even if I said something in the past — it's not an
+author-ruled rule as of right now."
+*Enforced by:* `rules.test.ts` → the ARR-uniqueness guard: exactly ONE `[ARR]`
+mark may exist in this document, and it must sit on PROV-1. The agent cannot
+promote a rule to ARR without that test failing — promotion happens by the author
+editing (or dictating the edit of) this file, and the guard's expected count
+moving with it is part of that same author-marked change.
+
+**Consequences for the rest of this document:** every "author-gated",
+"author ruling", and quoted decision below is now read as INFERRED — real history,
+real evidence, no ARR authority. The per-rule provenance marks land with the
+audit; until a rule is marked, treat it as INFERRED when it cites an incident or
+a past statement, DEFAULT otherwise.
 
 ---
 
@@ -568,11 +612,11 @@ wrapper; every new nesting scheme would re-open the ambiguity VAL-15 closed.
 
 # Enforcement summary
 
-43 rules.
+44 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 33 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,9 · FX-1,2,3,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,15,16 |
+| Enforced | 34 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,9 · FX-1,2,3,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,15,16 |
 | Partially enforced | 6 | SOCK-5, SOCK-7 · FX-4 · VAL-10, VAL-12, VAL-14 |
 | Unenforced | 4 | SSOT-5 · SOCK-6, SOCK-8 · VAL-13 |
 
