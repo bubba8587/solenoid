@@ -1,4 +1,4 @@
-import { parseDateToSerial } from "./nodes/date";
+import { parseDateToSerial } from "./nodes/dateSerial";
 
 // ─── Note frontmatter → typed fields ──────────────────────────────────────────
 // A Note's markdown body may open with an Obsidian-style YAML frontmatter block

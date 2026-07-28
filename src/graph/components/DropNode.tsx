@@ -9,11 +9,11 @@ const OPS: { value: DropDir; label: string }[] = [
 ];
 
 export function DropComponent({ data, emit }: NodeProps<DropNodeType>) {
-  const [dir, setDir] = useNodeField(data, "dir");
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={dir} onChange={setDir} options={OPS} />
+      <OpSelect arg value={op} onChange={setOp} options={OPS} />
       <ValueDisplay value={data.cachedList as DisplayValue} />
     </NodeShell>
   );

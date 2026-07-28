@@ -595,11 +595,11 @@ const BLANK_ROW_OPTIONS = (Object.entries(BLANK_ROW_OP_META) as [BlankRowMode, {
   .map(([value, m]) => ({ value, label: m.label, title: m.description }));
 
 export function DropBlankRowsComponent({ data, emit }: NodeProps<DropBlankRowsNodeType>) {
-  const [mode, setMode] = useNodeField(data, "mode");
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={mode} onChange={setMode} options={BLANK_ROW_OPTIONS} />
+      <OpSelect arg value={op} onChange={setOp} options={BLANK_ROW_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );

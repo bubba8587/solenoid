@@ -729,11 +729,11 @@ describe("Aggregate — n<2 stdev blanks; empty-list identities (audit finding 3
 describe("Sort — nulls and per-cell errors last in both directions (frame blanks-last policy)", () => {
   const err = solError("#DIV/0!", "test");
   it("ascending: values sort, null/error tail keeps input order", () => {
-    expect(new SortNode({ dir: "asc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+    expect(new SortNode({ op: "asc" }).data({ list: [[3, null, 1, err, 2]] }).result)
       .toEqual([1, 2, 3, null, err]);
   });
   it("descending: values flip, tail stays last", () => {
-    expect(new SortNode({ dir: "desc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+    expect(new SortNode({ op: "desc" }).data({ list: [[3, null, 1, err, 2]] }).result)
       .toEqual([3, 2, 1, null, err]);
   });
 });
