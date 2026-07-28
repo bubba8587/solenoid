@@ -360,8 +360,12 @@ machine-checked.
 *Why:* a naming law without an injectivity check will silently collide, and the collision
 is discovered by whoever registers second.
 *Enforced by:* `formulaTier3.test.ts` → "the formula namespace stays unambiguous" —
-PARTIAL: it sweeps catalog leaf labels and the three declared `fx` tables, but not every
-family's op labels against each other. See Known violations.
+PARTIAL on the naming side (it sweeps catalog leaf labels and the three declared `fx`
+tables, not every family's op labels against each other; see Known violations) — plus
+the REGISTRY half: `registerInternal` THROWS on a duplicate live name
+(`excelFunctions.test.ts` → "the duplicate-registration guard"), so two impls claiming
+one name fail at module load instead of the winner being decided by import order.
+Withdrawn (pack-revocable) names may return.
 *Origin:* Fill's `Interpolate` op and the `INTERPOLATE` node in `stats.ts` both despace to
 `INTERPOLATE`. Fill's op now declares `fx: "FILLINTERPOLATE"` per `SSOT-2`.
 
@@ -657,9 +661,10 @@ only. Each is actionable in the follow-up.
    a new one that skips `reconcileFcTypes` leaves stale downstream formats. *Fix: assert
    every class that assigns to a socket's `dataType` also calls the reconciler.*
 
-5. **FX-4 injectivity is partial** — the check covers catalog leaf labels and the three
-   declared `fx` tables. It does NOT check that two ops in DIFFERENT families despace to
-   distinct names. *Fix: extend the sweep to every `OP_META` label across all families.*
+5. **FX-4 injectivity is partial on the NAMING side** — the sweep covers catalog leaf
+   labels and the three declared `fx` tables, not every family's op labels against each
+   other. (The REGISTRY side closed 2026-07-28: duplicate registration throws.)
+   *Fix: extend the sweep to every `OP_META` label across all families.*
 
 6. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
    map its card never edits, which would let a save inject an invisible value.

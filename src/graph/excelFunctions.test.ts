@@ -11,6 +11,7 @@ import {
   EXCEL_IMPL_META,
   numberToText,
   type FuncFamily,
+  unregisterInternal,
 } from "./excelFunctions";
 import { compileEvaluator, formulaFunctionNames } from "./excelFormula";
 import { isSolError, type SolError } from "./errorValue";
@@ -80,8 +81,10 @@ describe("excelFunctionInfo", () => {
 
 describe("resolveExcelFunction (the resolution seam)", () => {
   afterEach(() => {
-    // registerInternal mutates module state — clear what tests added.
-    registerInternal("ABS", undefined as unknown as (...a: unknown[]) => unknown);
+    // registerInternal mutates module state — WITHDRAW what tests added. (The old
+    // cleanup registered `undefined` as the impl, which the duplicate-registration
+    // guard now correctly refuses — registering a hole is not unregistering.)
+    unregisterInternal("ABS");
   });
 
   it("falls through to the Formula.js impl today (no internals registered)", () => {
@@ -314,5 +317,16 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(serial).toBe(46096);
     expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toBe(46157);    // 2026-05-15, still a number
     expect(typeof ev("DATEVALUE(\"2026-03-15\")")).toBe("number");
+  });
+});
+
+describe("the duplicate-registration guard (FX-4's registry half)", () => {
+  it("a second claim on a live name throws instead of silently overwriting", () => {
+    registerInternal("GUARDTESTNAME", () => 1);
+    expect(() => registerInternal("GUARDTESTNAME", () => 2)).toThrow(/Duplicate formula registration/);
+    unregisterInternal("GUARDTESTNAME");
+    // A REVOCABLE name may return after withdrawal — the pack-rebuild path.
+    expect(() => registerInternal("GUARDTESTNAME", () => 3)).not.toThrow();
+    unregisterInternal("GUARDTESTNAME");
   });
 });

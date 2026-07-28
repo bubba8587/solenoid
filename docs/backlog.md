@@ -20,8 +20,9 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
     so the cost is only coverage); and violation 2 stands: a family that CAN'T declare
     is invisible to the check — drive the coverage test off the catalog/OpSelect usage.
   - **SOCK-5** — nothing asserts an adopted `trueany` type stays out of the save.
-  - **FX-4** — injectivity sweeps catalog leaves and the three `fx` tables, not every
-    family's op labels against each other.
+  - **FX-4** — the naming-side sweep covers catalog leaves and the three `fx` tables,
+    not every family's op labels against each other. (Registry side CLOSED:
+    duplicate registration throws.)
   - **VAL-14** — only the "if" direction of the literal-map rule is checked.
   - **Unenforced, lower value:** SOCK-6 (wildcard predicate not inlined), SOCK-8 (socket
     box geometry), VAL-13 (components never call `data()`). Grep-shaped checks.
