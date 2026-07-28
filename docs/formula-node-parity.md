@@ -1,7 +1,7 @@
 # Formula ↔ node parity — audit + design frame
 
 **Status: TIERS 1–3 BUILT; Tier 4 DECIDED YES (D23, 2026-07-28) — building.**
-350/646 leaves formula-callable; gap A is down to 8 (the LAMBDA family + SCAN/
+349/646 leaves formula-callable; gap A is down to 8 (the LAMBDA family + SCAN/
 GROUPBY — all function-argument names); gap C is 0. Build spec: `v2.0/17-matrix-formulas.md`.
 The mechanical work D19 greenlit — the ratchet, the alias gate, the Tier 1
 registrations, the pack seam, and now the Tier 3 list core — has landed; what remains
