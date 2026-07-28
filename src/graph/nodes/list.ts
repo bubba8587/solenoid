@@ -4,7 +4,7 @@ import { parseListLiteral } from "../coerceInputs";
 import { parseDateToSerial } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -554,13 +554,15 @@ function listElemColType(arr: readonly unknown[]): FrameColType {
 }
 
 /** Read a Filter/SUMIFS Value slot: the wired value wins over the literal even
- *  when it's `null` (the readInput rule) — a wired missing reads as "not written
- *  yet" (blank). A wired scalar STRINGIFIES, so both engines see exactly what a
- *  typed literal would say ("5", "true", a date serial); a wired SolError becomes
- *  its code text, which matches no rows (the unparseable-value rule). */
-export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string {
-  const raw: unknown = wired !== undefined && wired.length > 0 ? wired[0] : (literal ?? "");
-  if (raw === null || raw === undefined) return "";
+ *  when it's `null` (the readInput rule). Returns **null for a WIRED blank** —
+ *  the condition's comparison value is UNKNOWN, which is not the same as the
+ *  empty literal's "not written yet" (value-semantics.md, "Reading an input").
+ *  A wired scalar STRINGIFIES, so both engines see exactly what a typed literal
+ *  would say ("5", "true", a date serial); a wired SolError becomes its code
+ *  text, which matches no rows (the unparseable-value rule). */
+export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {
+  const raw: unknown = wired === undefined || wired.length === 0 ? (literal ?? "") : (wired[0] ?? null);
+  if (raw === null) return null;
   if (isSolError(raw)) return raw.code;
   return String(raw);
 }
@@ -659,8 +661,16 @@ export class FilterNode extends ClassicPreset.Node {
       // The blank / error predicates take no value — an empty field doesn't mean
       // "not written yet" for them, it's the whole point.
       const valueless = VALUELESS_FILTER_OPS.has(op);
-      if (!valueless && val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
-      conds.push({ op, value: val, matchCase: cfg?.matchCase ?? false });
+      // A WIRED blank comparison value makes this condition unevaluable, so which
+      // elements survive is unknown — the result is blank, not the unfiltered list
+      // (value-semantics.md, "Reading an input"). The EMPTY literal still means
+      // "not written yet" and skips the condition.
+      if (!valueless && val === null) {
+        this.cachedResult = null; this.cachedDropped = null;
+        return { result: null, dropped: null };
+      }
+      if (!valueless && val!.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
+      conds.push({ op, value: val!, matchCase: cfg?.matchCase ?? false });
     }
     if (conds.length === 0) {
       // No complete conditions = pass-through, like the frame Filter.
@@ -771,15 +781,20 @@ export class SumIfsNode extends ClassicPreset.Node {
     const crits: Crit[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
-      const name = String(inputs[colKey]?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
+      const nameRaw = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
       const cfg = this.condConfig[id];
       const op: FilterOp = cfg?.op ?? "eq";
       const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
       const valueless = op === "isblank" || op === "notblank"; // no value to write
-      if (name === "" || (!valueless && val.trim() === "")) continue; // row not written yet
+      // A WIRED blank column or comparison value makes this criterion unevaluable —
+      // the aggregate is unknown, not "row not written yet" (value-semantics.md,
+      // "Reading an input").
+      if (nameRaw === null || (!valueless && val === null)) return finish(null);
+      const name = String(nameRaw).trim();
+      if (name === "" || (!valueless && val!.trim() === "")) continue; // row not written yet
       const col = getColumn(f, name);
       if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
-      crits.push({ col, op, value: val, matchCase: cfg?.matchCase ?? false });
+      crits.push({ col, op, value: val!, matchCase: cfg?.matchCase ?? false });
     }
     if (crits.length === 0) return finish(null);
     const n = frameRowCount(f);
@@ -792,7 +807,10 @@ export class SumIfsNode extends ClassicPreset.Node {
       for (let i = 0; i < n; i++) if (passes(i)) count++;
       return finish(count);
     }
-    const vname = String(inputs.values?.[0] ?? this.stringLiterals.values ?? "").trim();
+    const vnameRaw = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
+    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    if (vnameRaw === null) return finish(null);
+    const vname = String(vnameRaw).trim();
     if (vname === "") return finish(null); // not written yet
     const vcol = getColumn(f, vname);
     if (!vcol) return finish(solError("#REF!", `No column "${vname}" in the frame`));

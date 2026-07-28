@@ -6,6 +6,8 @@ import { SliderInputNode } from "./input";
 import { ExpressionNode } from "./expression";
 import { ClampNode } from "./scalar";
 import { MirrNode, TBillNode } from "./finance";
+import { SortFrameNode, JoinNode } from "./frame";
+import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
@@ -223,6 +225,34 @@ describe("where the blank check GOES", () => {
     expect(node.data({
       settle: [46096], maturity: [46187], price: [null as unknown as number],
     }).result).toBeNull();
+  });
+});
+
+describe("a column REFERENCE — the frame family's dominant shape", () => {
+  // Nearly every frame verb names its column with a string that is BOTH a socket and
+  // a card field, and the empty literal already means something: "no column chosen —
+  // pass the frame through". A wired blank is not that. It says the graph computed
+  // which column to act on and got nothing, so the output frame is blank.
+  it("Frame Sort: a WIRED blank column blanks the frame, an empty literal passes it through", async () => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [2, 1] }] };
+    const wired = new SortFrameNode();
+    expect((await wired.data({ frame: [f], column: [null as unknown as string] })).frame).toBeNull();
+    // Unwired, with the literal left empty — the "not chosen yet" reading, unchanged.
+    expect((await new SortFrameNode().data({ frame: [f] })).frame).toEqual(f);
+  });
+
+  it("Join: a WIRED blank rightKey is unknown, not \"same name as the left\"", async () => {
+    const l: FrameValue = { __frame: true, columns: [{ name: "id", type: "number", values: [1] }] };
+    const r: FrameValue = { __frame: true, columns: [{ name: "id", type: "number", values: [1] }] };
+    const node = new JoinNode();
+    node.stringLiterals.leftKey = "id";
+    expect((await node.data({
+      left: [l], right: [r], rightKey: [null as unknown as string],
+    })).frame).toBeNull();
+    // UNWIRED rightKey still falls back to the left key and joins.
+    const unwired = new JoinNode();
+    unwired.stringLiterals.leftKey = "id";
+    expect((await unwired.data({ left: [l], right: [r] })).frame).not.toBeNull();
   });
 });
 

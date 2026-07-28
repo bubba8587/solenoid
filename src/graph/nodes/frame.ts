@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn } from "./shared";
+import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn } from "./shared";
 import { readFilterValue } from "./list";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
@@ -172,10 +172,11 @@ export class HeadNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[]; to?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
-    const n = inputs.rows?.[0] ?? this.literals.rows ?? 10;
-    const to = inputs.to?.[0] ?? this.literals.to ?? n;
+    const n = readInput(inputs.rows, this.literals.rows ?? 10);
+    const to = readInput(inputs.to, this.literals.to ?? n);
     const gen = beginPass(this);
-    if (f == null) return emitFrame(this, gen, null);
+    // A wired blank row count leaves the slice unknown (value-semantics.md, "Reading an input").
+    if (f == null || n === null || to === null) return emitFrame(this, gen, null);
     // First-N stays a LAZY verb (the head-of-a-huge-chain case); the other row
     // slices are eager like Split Column — Power Query's Keep/Remove Rows family.
     if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
@@ -208,9 +209,11 @@ export class SortFrameNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    if (f == null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), col === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col, dir: this.dir }));
+    const col = readInput(inputs.column, this.stringLiterals.column ?? "");
+    // A wired blank column names no column — unknown, not "not chosen yet"
+    // (value-semantics.md, "Reading an input").
+    if (f == null || col === null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), col.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
   }
 }
 
@@ -321,12 +324,20 @@ export class FilterFrameNode extends ClassicPreset.Node {
     const conditions: FilterCond[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
-      const col = String((inputs[colKey] as string[] | undefined)?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
+      const colRaw = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
       const cfg = this.condConfig[id];
       const op = cfg?.op ?? "gt";
       const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
       const valueless = VALUELESS_FILTER_OPS.has(op); // no value to write (blank / error predicates)
-      if (col === "" || (!valueless && val.trim() === "")) continue;
+      // A WIRED blank column or comparison value makes this condition unevaluable, so
+      // which rows survive is unknown — the whole frame is blank, not the unfiltered
+      // input (value-semantics.md, "Reading an input"). An EMPTY literal still means
+      // "not written yet" and skips the condition.
+      if (colRaw === null || (!valueless && val === null)) {
+        return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
+      }
+      const col = String(colRaw).trim();
+      if (col === "" || (!valueless && val!.trim() === "")) continue;
       conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
     if (conditions.length === 0) {
@@ -391,9 +402,20 @@ export class JoinNode extends ClassicPreset.Node {
   }) {
     const left = inputs.left?.[0] ?? null;
     const right = inputs.right?.[0] ?? null;
-    const lk = (inputs.leftKey?.[0] ?? this.stringLiterals.leftKey ?? "").trim();
-    const rk = (inputs.rightKey?.[0] ?? this.stringLiterals.rightKey ?? "").trim() || lk;
-    const tolerance = inputs.tolerance?.[0] ?? this.literals.tolerance;
+    const lkRaw = readInput(inputs.leftKey, this.stringLiterals.leftKey ?? "");
+    const rkRaw = readInput(inputs.rightKey, this.stringLiterals.rightKey ?? "");
+    // `tolerance` is the one input whose UNWIRED reading is genuinely "omitted" — no
+    // literal typed, exact match. readInput separates the two cleanly: `undefined` is
+    // that omission, `null` is a blank that arrived down a cable.
+    const tolerance = readInput(inputs.tolerance, this.literals.tolerance);
+    // A WIRED blank on any of the three is unknown, not omitted: an UNWIRED rightKey
+    // means "same name as the left" and an UNWIRED tolerance means exact match, but a
+    // blank arriving down a cable means neither (value-semantics.md, "Reading an input").
+    if (lkRaw === null || rkRaw === null || tolerance === null) {
+      return emitFrame(this, beginPass(this), null);
+    }
+    const lk = lkRaw.trim();
+    const rk = rkRaw.trim() || lk;
     if (left == null || right == null || lk === "") return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), await runFrameJoin(left, right, {
       leftKey: lk, rightKey: rk, how: this.how,
@@ -481,8 +503,10 @@ export class GroupByFrameNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; column?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const keys = inputs.keys?.[0] ?? [];
-    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    if (f == null) return emitFrame(this, beginPass(this), null);
+    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
+    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    if (f == null || colRaw === null) return emitFrame(this, beginPass(this), null);
+    const col = colRaw.trim();
     if (!(keys.length && col)) return emitFrame(this, beginPass(this), await readFrame(f));
     // Totals need the source (not the grouped output) to re-aggregate, so this
     // path is EAGER — materialize here and pivot, instead of extending the lazy
@@ -690,8 +714,10 @@ export class NestNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[]; keys?: string[][]; nestedName?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const keys = inputs.keys?.[0] ?? [];
-    const name = (inputs.nestedName?.[0] ?? this.stringLiterals.nestedName ?? "items").trim() || "items";
-    if (!f || !keys.length) { this.cachedResult = null; return { cube: null }; }
+    const nameRaw = readInput(inputs.nestedName, this.stringLiterals.nestedName ?? "items");
+    // A wired blank name is unknown (value-semantics.md, "Reading an input").
+    if (!f || !keys.length || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
+    const name = nameRaw.trim() || "items";
     this.cachedResult = runVerb(() => nestFrame(f, keys, name));
     return { cube: this.cachedResult };
   }
@@ -713,8 +739,10 @@ export class UnnestNode extends ClassicPreset.Node {
 
   data(inputs: { cube?: (CubeValue | null)[]; column?: string[] }) {
     const c = inputs.cube?.[0] ?? null;
-    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    if (!c || !col) { this.cachedResult = null; return { frame: null }; }
+    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
+    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    if (!c || colRaw === null || !colRaw.trim()) { this.cachedResult = null; return { frame: null }; }
+    const col = colRaw.trim();
     this.cachedResult = runVerb(() => unnestCube(c, col));
     return { frame: this.cachedResult };
   }
@@ -826,9 +854,12 @@ export class SplitColumnNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    const column = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    const delimiter = inputs.delimiter?.[0] ?? this.stringLiterals.delimiter ?? "";
+    const columnRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
+    const delimiter = readInput(inputs.delimiter, this.stringLiterals.delimiter ?? "");
     const into = inputs.into?.[0] ?? [];
+    // A wired blank column or delimiter is unknown (value-semantics.md, "Reading an input").
+    if (columnRaw === null || delimiter === null) { this.cachedResult = null; return { frame: null }; }
+    const column = columnRaw.trim();
     this.cachedResult = column ? runVerb(() => splitColumn(f, column, delimiter, into)) : f;
     return { frame: this.cachedResult };
   }
@@ -858,8 +889,11 @@ export class AddIndexNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null, grid: null }; }
-    const start = inputs.start?.[0] ?? this.literals.start ?? 1;
-    const name = (inputs.name?.[0] ?? this.stringLiterals.name ?? "Index").trim() || "Index";
+    const start = readInput(inputs.start, this.literals.start ?? 1);
+    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
+    // A wired blank start or name is unknown (value-semantics.md, "Reading an input").
+    if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null, grid: null }; }
+    const name = nameRaw.trim() || "Index";
     this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
     const grid = runVerb(() => borderedGridFromFrame(f, start));
     return { frame: this.cachedResult, grid };
@@ -921,9 +955,12 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; find?: string[]; replace?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    const column = inputs.column?.[0] ?? this.stringLiterals.column ?? "";
-    const find = inputs.find?.[0] ?? this.stringLiterals.find ?? "";
-    const replace = inputs.replace?.[0] ?? this.stringLiterals.replace ?? "";
+    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
+    const find = readInput(inputs.find, this.stringLiterals.find ?? "");
+    const replace = readInput(inputs.replace, this.stringLiterals.replace ?? "");
+    // A wired blank is unknown, NOT the empty literal's "all columns" / "match nothing"
+    // (value-semantics.md, "Reading an input").
+    if (column === null || find === null || replace === null) { this.cachedResult = null; return { frame: null }; }
     this.cachedResult = runVerb(() => replaceValues(f, column, find, replace, this.mode));
     return { frame: this.cachedResult };
   }
@@ -949,8 +986,10 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
     const columns = (inputs.columns?.[0] ?? []).map((c) => String(c).trim()).filter(Boolean);
-    const separator = inputs.separator?.[0] ?? this.stringLiterals.separator ?? "";
-    const name = inputs.name?.[0] ?? this.stringLiterals.name ?? "";
+    const separator = readInput(inputs.separator, this.stringLiterals.separator ?? "");
+    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
+    // A wired blank separator or name is unknown (value-semantics.md, "Reading an input").
+    if (separator === null || name === null) { this.cachedResult = null; return { frame: null }; }
     // No columns typed yet → pass through untouched (not an error: "not written yet").
     this.cachedResult = columns.length < 2 ? f : runVerb(() => mergeColumns(f, columns, separator, name));
     return { frame: this.cachedResult };
@@ -1144,9 +1183,18 @@ export class ReconcileNode extends ClassicPreset.Node {
   }) {
     const left = inputs.left?.[0] ?? null;
     const right = inputs.right?.[0] ?? null;
-    const key = (inputs.key?.[0] ?? this.stringLiterals.key ?? "").trim();
-    const priceColumn = (inputs.priceColumn?.[0] ?? this.stringLiterals.priceColumn ?? "").trim() || undefined;
-    const qtyColumn = (inputs.qtyColumn?.[0] ?? this.stringLiterals.qtyColumn ?? "").trim() || undefined;
+    const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
+    const priceRaw = readInput(inputs.priceColumn, this.stringLiterals.priceColumn ?? "");
+    const qtyRaw = readInput(inputs.qtyColumn, this.stringLiterals.qtyColumn ?? "");
+    // A wired blank is unknown, NOT the empty literal's "don't compare this column"
+    // (value-semantics.md, "Reading an input").
+    if (keyRaw === null || priceRaw === null || qtyRaw === null) {
+      this.cachedResult = null; this.cachedSummary = "";
+      return { frame: null, summary: "" };
+    }
+    const key = keyRaw.trim();
+    const priceColumn = priceRaw.trim() || undefined;
+    const qtyColumn = qtyRaw.trim() || undefined;
     if (!left || !right || !key) {
       this.cachedResult = null; this.cachedSummary = "";
       return { frame: null, summary: "" };
@@ -1311,7 +1359,11 @@ export class FrameFromListsNode extends ClassicPreset.Node {
       const wired = inputs[valsK]?.[0];
       if (wired === undefined || wired === null) continue; // an unwired row contributes nothing
       const cells = Array.isArray(wired) ? wired : [wired]; // a scalar makes a 1-cell column
-      const name = String(inputs[nameK]?.[0] ?? this.stringLiterals[nameK] ?? "").trim();
+      const nameRaw = readInput(inputs[nameK] as string[] | undefined, this.stringLiterals[nameK] ?? "");
+      // A wired blank column NAME is unknown — the whole frame is blank rather than
+      // one column silently auto-named (value-semantics.md, "Reading an input").
+      if (nameRaw === null) { this.cachedResult = null; this._sig = []; return { frame: null }; }
+      const name = String(nameRaw).trim();
       // The column type adopted onto this list input from its wired cable (date
       // survives here; null = an untyped anylist source → infer from values).
       const sock = this.inputs[valsK]?.socket;
@@ -1446,8 +1498,9 @@ export class GetColumnNode extends ClassicPreset.Node {
 
   data(inputs: { frame?: (FrameInput | null)[]; name?: string[] }): { values: GetColumnValues } {
     const f = inputs.frame?.[0] ?? null;
-    const name = inputs.name?.[0] ?? this.stringLiterals.name ?? "";
-    if (!f || name.trim() === "") { this.cachedResult = null; return { values: null }; }
+    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
+    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
     // A LAZY upstream (verb chain): fetch the ONE column through the backend's
     // column primitive instead of forcing a full-frame collect (audit finding
     // 24 — Get Column wasn't in LAZY_FRAME_NODES, so a 500k-row chain hauled
@@ -1554,8 +1607,10 @@ export class AddColumnNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[]; values?: FrameCell[][]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const values = inputs.values?.[0] ?? null;
-    const name = (inputs.name?.[0] ?? this.stringLiterals.name ?? "").trim() || "Col";
-    if (!f || !values) { this.cachedResult = null; return { frame: null }; }
+    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
+    // A wired blank name is unknown (value-semantics.md, "Reading an input").
+    if (!f || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
+    const name = nameRaw.trim() || "Col";
     // Pad the new column to the frame's row count so columns stay aligned. A null/
     // text/error cell in the incoming list is carried verbatim (array-semantics policy).
     const rows = Math.max(frameRowCount(f), values.length);
@@ -1590,8 +1645,9 @@ export class GetRowNode extends ClassicPreset.Node {
 
   data(inputs: { frame?: (FrameValue | null)[]; index?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
-    const idx1 = inputs.index?.[0] ?? this.literals.index ?? 1;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const idx1 = readInput(inputs.index, this.literals.index ?? 1);
+    // A wired blank index picks no row — unknown (value-semantics.md, "Reading an input").
+    if (!f || idx1 === null) { this.cachedResult = null; return { frame: null }; }
     const i = Math.round(idx1) - 1; // 1-based row number → 0-based index
     if (i < 0 || i >= frameRowCount(f)) { this.cachedResult = null; return { frame: null }; }
     const columns: FrameColumn[] = f.columns.map((c) => ({
@@ -1653,10 +1709,18 @@ export class XLookupNode extends ClassicPreset.Node {
     inColumn?: string[]; returnColumn?: string[]; ifNotFound?: string[];
   }) {
     const raw = inputs.frame?.[0] ?? null;
-    const lookup = (inputs.lookup?.[0] ?? this.stringLiterals.lookup ?? "").trim();
-    const inCol = (inputs.inColumn?.[0] ?? this.stringLiterals.inColumn ?? "").trim();
-    const retCol = (inputs.returnColumn?.[0] ?? this.stringLiterals.returnColumn ?? "").trim();
-    const fallbackRaw = inputs.ifNotFound?.[0] ?? this.stringLiterals.ifNotFound ?? "";
+    const lookupRaw = readInput(inputs.lookup, this.stringLiterals.lookup ?? "");
+    const inColRaw = readInput(inputs.inColumn, this.stringLiterals.inColumn ?? "");
+    const retColRaw = readInput(inputs.returnColumn, this.stringLiterals.returnColumn ?? "");
+    const fallbackRaw = readInput(inputs.ifNotFound, this.stringLiterals.ifNotFound ?? "");
+    // A wired blank is unknown — including ifNotFound, whose EMPTY literal means
+    // "no fallback typed" (value-semantics.md, "Reading an input").
+    if (lookupRaw === null || inColRaw === null || retColRaw === null || fallbackRaw === null) {
+      this.cachedResult = null; return { value: null };
+    }
+    const lookup = lookupRaw.trim();
+    const inCol = inColRaw.trim();
+    const retCol = retColRaw.trim();
     if (raw == null || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
     // The source socket is `any` (the only socket type that passes a Frame OR a Cube
     // through UNCOERCED — a `cube` socket would re-brand a frame, an `anytable` rejects
