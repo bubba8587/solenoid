@@ -400,7 +400,15 @@ function takesWholeArgs(name: string): boolean {
 
 // Whole-arg natives whose NODE deliberately accepts a missing scalar argument —
 // the exemptions to the blank-scalar-propagates rule at the call site.
-const NULLABLE_SCALARS_OK = new Set(["FILLVALUE", "COALESCE"]);
+const NULLABLE_SCALARS_OK = new Set([
+  "FILLVALUE", "COALESCE",
+  // The D23 matrix tranche: Excel-style OPTIONAL arguments arrive as blanks
+  // (`SEQUENCE(4,, 10, 5)`), and each registration decides blank-by-blank —
+  // a missing REQUIRED arg propagates null per VAL-1, an omitted OPTIONAL one
+  // takes its default. The generic blank guard would answer null before the
+  // registration could make that distinction.
+  "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
+]);
 
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to
 // a #NAME? redirect stub, so routing it would only decide how carefully the arguments

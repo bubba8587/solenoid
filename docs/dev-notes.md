@@ -120,6 +120,34 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### D23 step 3, tranche 1: the matrix core owns its names (2026-07-28h)
+
+TRANSPOSE, MMULT, MUNIT, MDETERM, MINVERSE, WRAPROWS, WRAPCOLS, TOCOL, TOROW,
+SEQUENCE — kernels extracted to `nodes/matrixOps.ts` (rete-free, FX-2), both
+surfaces call them (FX-1), `formulaMatrix.test.ts` pins node-equals-formula
+including the ERROR taxonomy (#TYPE!/#VALUE!/#SHAPE!/#DIV/0!). 344/646; gap A
+down to 12; the ratchet caught its own seven stale pins.
+
+The urgent part wasn't the new names — it was the three OLD ones. MMULT,
+TRANSPOSE and MUNIT were already dispatchable through Formula.js, and step 2's
+lift meant a wired matrix reached them ELEMENT-WISE: MMULT answered the Hadamard
+grid of [object Object]s under the correct name. Ownership displaced that
+(pinned: "ownership displaced the broadcast garbage"). This ordering lesson is
+general — lifting a cap turns every already-dispatchable array name into a
+potential silent-garbage source until it's owned or routed.
+
+Blanks per VAL-1: Excel-style optional args arrive as blanks (`SEQUENCE(4,, 10,
+5)`), so the tranche names joined NULLABLE_SCALARS_OK and each registration
+decides blank-by-blank — a missing REQUIRED arg propagates null (the node
+agrees), an omitted OPTIONAL one takes its default. WRAPROWS/WRAPCOLS carry
+Excel's pad_with, defaulting to D15's #N/A. SEQUENCE's 1-arg form IS the
+Sequence node (shared `sequenceList`); cols>1 wraps the same arithmetic
+row-major with the shared MAX_GENERATED overflow.
+
+Remaining tranches recorded in the backlog: the array-returning six
+(FILTER/SORTBY/GROUPBY/RANDARRAY/SCAN/table-TAKE), then the LAMBDA family
+(compilePositional at rank 2 — a language feature, last).
+
 ### D23 build step 2: the anydata rung — matrices reach formulas (2026-07-28g)
 
 Spec-first, per the author's standing instruction: SOCK-9 (the rung), FX-9

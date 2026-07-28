@@ -5,12 +5,13 @@ import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, pa
 import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
+import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
-  firstError as firstListError,
+  firstError as firstListError, sequenceList,
   concatLists, type Cell as ListCell,
 } from "./nodes/listOps";
 import {
@@ -639,6 +640,21 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   COUNTDISTINCT:   { returns: "number", listArgs: true, arity: [1, 1], family: "statistics", native: true },
   INTERPOLATE:     { returns: "number", listArgs: true, arity: [3, 3], family: "statistics", native: true },
   SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+
+  // ── D23 tranche 1: the matrix core. `matrixArgs` is FX-9's gate; `listArgs`
+  // routes the rank-≤1 case whole too (TRANSPOSE of a list is a column, not an
+  // element-wise map). TRANSPOSE/MMULT/MUNIT override Formula.js (no `native`);
+  // the rest add names it lacks.
+  TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
+  MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
+  MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
+  MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
+  WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
+  TOCOL:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  TOROW:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1384,4 +1400,98 @@ registerInternal("PROB", (range, probs, lo, hi) => {
 registerInternal("SHUFFLE", (list) => {
   const arr = toList(list);
   return shuffleList(arr, arr.map(() => Math.random()));
+});
+
+// ── D23 tranche 1: the matrix core ────────────────────────────────────────────
+// Every registration here declares `matrixArgs` (FX-9: the ONLY gate through
+// which a rank-2 value reaches a dispatch whole) and delegates to the same
+// kernels the matrix nodes run (`nodes/matrixOps.ts`, FX-1) — MMULT in a formula
+// and an MMULT node cannot disagree, and the pre-D23 Formula.js fallthrough
+// (which silently BROADCAST these element-wise: MMULT answered the Hadamard
+// grid of [object Object]s) is overridden by ownership, not blocked by luck.
+//
+// Error codes are the node family's, by shared implementation: #TYPE! wrong
+// element family, #VALUE! incomplete data, #SHAPE! wrong dimensions, #DIV/0!
+// singular. Shape CONSTRUCTION (WRAPROWS/WRAPCOLS) pads #N/A per D15; the
+// element-wise broadcaster's null pad (P3) never applies to these.
+
+/** A formula argument as a MATRIX: a matrix stays itself, a list is a ROW
+ *  (SOCK-2's orientation convention), a scalar is 1×1, null stays null. */
+function toMatrix(v: unknown): unknown[][] | null {
+  if (v == null) return null;
+  if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
+  return [[v]];
+}
+const numMatrix = (v: unknown): NumMat | SolError | null => {
+  const m = toMatrix(v);
+  return m === null ? null : asNumericMatrix(m); // a wired blank stays unknown (VAL-1)
+};
+
+registerInternal("TRANSPOSE", (v) => {
+  const m = toMatrix(v);
+  return m === null ? null : matTranspose(m);
+});
+registerInternal("MMULT", (a, b) => {
+  const ma = numMatrix(a);
+  if (ma === null || isSolError(ma)) return ma;
+  const mb = numMatrix(b);
+  if (mb === null || isSolError(mb)) return mb;
+  const product = matMul(ma, mb);
+  return product ?? solError("#SHAPE!", "A's column count must equal B's row count");
+});
+registerInternal("MUNIT", (n) => (n == null ? null : matUnit(Number(n), 0)));
+registerInternal("MDETERM", (v) => {
+  const m = numMatrix(v);
+  if (m === null || isSolError(m)) return m;
+  if (matRows(m) !== matCols(m)) return solError("#SHAPE!", "Matrix must be square");
+  return matDet(m) ?? solError("#DIV/0!", "Matrix is singular");
+});
+registerInternal("MINVERSE", (v) => {
+  const m = numMatrix(v);
+  if (m === null || isSolError(m)) return m;
+  if (matRows(m) !== matCols(m)) return solError("#SHAPE!", "Matrix must be square");
+  return matInverse(m) ?? solError("#DIV/0!", "Matrix is singular; it has no inverse");
+});
+// WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the D15 #N/A.
+const wrapPad = (padWith: unknown, what: string) => () =>
+  padWith !== undefined && padWith !== null
+    ? padWith
+    : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
+registerInternal("WRAPROWS", (list, w, padWith) => {
+  if (list == null || w == null) return null; // a wired blank stays unknown (VAL-1; the node answers blank too)
+  const width = Math.round(Number(w));
+  if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPROWS needs a wrap count of 1 or more");
+  return wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
+});
+registerInternal("WRAPCOLS", (list, w, padWith) => {
+  if (list == null || w == null) return null;
+  const width = Math.round(Number(w));
+  if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPCOLS needs a wrap count of 1 or more");
+  return wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
+});
+// TOCOL/TOROW flatten exactly as the TableReshape node does: TOCOL row-major,
+// TOROW down the columns (the node's transpose-then-flatten).
+registerInternal("TOCOL", (v) => {
+  const m = toMatrix(v);
+  return m === null ? null : m.flat();
+});
+registerInternal("TOROW", (v) => {
+  const m = toMatrix(v);
+  return m === null ? null : matTranspose(m).flat();
+});
+// SEQUENCE(rows, [cols], [start], [step]) — Excel's 2-D form. The 1-argument /
+// cols=1 call IS the Sequence node (one shared kernel, a LIST out, matching the
+// node's 1-D socket); cols > 1 wraps the same arithmetic row-major.
+registerInternal("SEQUENCE", (rows, cols, start, step) => {
+  if (rows == null) return null; // the required arg: a wired blank stays unknown (the node agrees)
+  const r = Math.max(0, Math.floor(Number(rows)));
+  const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
+  const s0 = start == null ? 1 : Number(start);
+  const st = step == null ? 1 : Number(step);
+  if (r * c > MAX_GENERATED) {
+    return solError("#OVERFLOW!", `SEQUENCE count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
+  }
+  const flat = sequenceList(r * c, s0, st);
+  if (c === 1) return flat;
+  return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
 });
