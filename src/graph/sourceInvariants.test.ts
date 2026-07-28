@@ -223,6 +223,129 @@ describe("VAL-12 — a card's family op selector binds a field named `op`", () =
   });
 });
 
+describe("PERSIST-2 — the text form carries every SavedGraph field, both directions", () => {
+  // serializeGraph() returns readTextForm(writeTextForm(raw)) — the text form is
+  // the NARROW WAIST of the save path, so a SavedGraph field that either
+  // direction omits is deleted from EVERY save, and autosave then writes the
+  // lossy result over the good copy. This happened: `comments` and
+  // `reportPalette` were built by buildRawSavedGraph and silently dropped by the
+  // round trip from their ship date until 2026-07-06. The scan: every field
+  // declared on the SavedGraph interface must be named in BOTH writeTextForm and
+  // readTextForm.
+  it("every SavedGraph interface field appears in writeTextForm AND readTextForm", () => {
+    const persistence = fs.readFileSync(path.join(SRC, "persistence.ts"), "utf8");
+    const iface = /export interface SavedGraph \{([\s\S]*?)\n\}/.exec(persistence);
+    expect(iface, "SavedGraph interface not found in persistence.ts").toBeTruthy();
+    const fields = [...iface![1].matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
+    expect(fields.length).toBeGreaterThanOrEqual(10); // parser sanity — the interface has ~12 fields
+    // `v` is the version gate, checked structurally by its own dedicated lines
+    // (too short a name to grep for honestly).
+    const SKIP = new Set(["v"]);
+
+    const text = fs.readFileSync(path.join(SRC, "textForm.ts"), "utf8").split("\n");
+    const fnStart = (name: string) => text.findIndex((l) => l.startsWith(`export function ${name}`));
+    const nextFn = (from: number) => {
+      const i = text.findIndex((l, idx) => idx > from && /^(export )?function /.test(l));
+      return i === -1 ? text.length : i;
+    };
+    const wStart = fnStart("writeTextForm"), rStart = fnStart("readTextForm");
+    expect(wStart, "writeTextForm not found").toBeGreaterThanOrEqual(0);
+    expect(rStart, "readTextForm not found").toBeGreaterThanOrEqual(0);
+    const writeBody = text.slice(wStart, nextFn(wStart)).join("\n");
+    const readBody = text.slice(rStart, nextFn(rStart)).join("\n");
+
+    const missing: string[] = [];
+    for (const f of fields) {
+      if (SKIP.has(f)) continue;
+      const re = new RegExp(`\\b${f}\\b`);
+      if (!re.test(writeBody)) missing.push(`${f} (not written by writeTextForm)`);
+      if (!re.test(readBody)) missing.push(`${f} (not read by readTextForm)`);
+    }
+    expect(
+      missing,
+      `SavedGraph fields the text-form narrow waist drops (PERSIST-2) — the field ` +
+      `will silently vanish from every save until both directions carry it:\n  ` +
+      missing.join("\n  "),
+    ).toEqual([]);
+  });
+});
+
+describe("PERSIST-6 — class names are load-bearing: keepNames stays in both bundler configs", () => {
+  // `constructor.name` is not a label here — it is the TYPE written into every
+  // save (persistence.ts), the ctor-registry key that loads resolve through, and
+  // a dispatch key (SEES_ERRORS, groupCollapse, pinStore…). A build without
+  // keepNames mangles class names, so production saves carry one-letter types
+  // (permanent corruption) and error-sink dispatch silently stops matching —
+  // while dev and tests, which keep names, stay green.
+  it("vite.config.ts and vitest.config.ts both declare esbuild keepNames", () => {
+    for (const cfg of ["vite.config.ts", "vitest.config.ts"]) {
+      const src = fs.readFileSync(path.resolve(SRC, "../..", cfg), "utf8");
+      expect(/keepNames:\s*true/.test(src), `${cfg} lost esbuild keepNames — class-name dispatch and save types break in production only`).toBe(true);
+    }
+  });
+});
+
+describe("VAL-17 — a volatile data() freezes its roll on getRecalcGen()", () => {
+  // Math.random() called bare in data() re-rolls on EVERY recompute pass — any
+  // unrelated edit anywhere silently changes the value, F9 stops being the
+  // thing that controls re-rolling, and a Monte Carlo built on it is
+  // non-reproducible. The convention (RandBetween/Shuffle/RandArray/random-line)
+  // caches the draw and re-rolls only when the recalc generation changes.
+  const SANCTIONED: Record<string, string> = {
+    "nodes/composite.ts": "generates port/scenario IDS at author time, not values in data()",
+  };
+  it("every nodes/packs file calling Math.random references getRecalcGen (or is sanctioned, with a reason)", () => {
+    const offenders: string[] = [];
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        const lines = codeLines(file);
+        if (!lines.some((l) => /\bMath\.random\(/.test(l))) continue;
+        const r = rel(file);
+        if (r in SANCTIONED) continue;
+        if (!/getRecalcGen/.test(lines.join("\n"))) offenders.push(r);
+      }
+    }
+    expect(
+      offenders,
+      `These node files call Math.random() without freezing on getRecalcGen() ` +
+      `(VAL-17): the value silently re-rolls on every recompute pass. Cache the ` +
+      `draw against the recalc generation, or add to SANCTIONED with the reason:\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+  it("the sanctioned list stays honest", () => {
+    for (const [r, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, r);
+      expect(fs.existsSync(file), `${r} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      const lines = codeLines(file);
+      expect(lines.some((l) => /\bMath\.random\(/.test(l)), `${r} no longer calls Math.random — drop the stale sanction`).toBe(true);
+    }
+  });
+});
+
+describe("EFFECT-2 — an outward effect from data() gates on isGraphRebuilding()", () => {
+  // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
+  // fired from data() without the gate replays its whole backlog on every
+  // document open, doc switch and rollback (the audit-2026-07-05 class: a
+  // closed composite's interval kept firing full recomputes forever).
+  it("every nodes/packs file firing an alert references isGraphRebuilding", () => {
+    const offenders: string[] = [];
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        const lines = codeLines(file);
+        if (!lines.some((l) => /\bfireAlert\(/.test(l))) continue;
+        if (!/isGraphRebuilding/.test(lines.join("\n"))) offenders.push(rel(file));
+      }
+    }
+    expect(
+      offenders,
+      `These node files fire alerts without the isGraphRebuilding() gate ` +
+      `(EFFECT-2): every document load will replay the alert backlog:\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+});
+
 describe("VAL-13 — components never call node.data()", () => {
   // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
   // nodes, installErrorGuards) has run; a component calling it raw gets

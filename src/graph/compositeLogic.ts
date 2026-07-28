@@ -92,8 +92,9 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       if (!targetInputDef) continue;
       const portLabel = `${target.label || target.constructor.name} · ${targetInputDef.label || c.targetInput}`;
       const marker = new CompositeInputNode({ label: portLabel });
-      installErrorGuards(marker);
+      // AFTER addNode — guard outside coercion (see CompositeNode.hydrate).
       await composite.internalEditor.addNode(marker as SolenoidNode);
+      installErrorGuards(marker);
       await composite.internalEditor.addConnection(
         new ClassicPreset.Connection(marker, "value", target, c.targetInput) as SolenoidConnection,
       );
@@ -116,8 +117,9 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       if (!sourceOutputDef) continue;
       const portLabel = `${source.label || source.constructor.name} · ${sourceOutputDef.label || c.sourceOutput}`;
       const marker = new CompositeOutputNode({ label: portLabel });
-      installErrorGuards(marker);
+      // AFTER addNode — guard outside coercion (see CompositeNode.hydrate).
       await composite.internalEditor.addNode(marker as SolenoidNode);
+      installErrorGuards(marker);
       await composite.internalEditor.addConnection(
         new ClassicPreset.Connection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
       );

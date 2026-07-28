@@ -87,8 +87,7 @@ export function isDimensionalFcUnit(id: string): boolean {
  * as do frames / lambdas / strings / objects.
  *
  *   • a dimensionless number + a real unit → tag it base SI, interpreting the
- *     magnitude AS that unit (`5` + km ⇒ 5000 m, display "km") — same reading as
- *     the Number node's unit picker;
+ *     magnitude AS that unit (`5` + km ⇒ 5000 m, display "km");
  *   • an already-dimensioned cell + a COMMENSURABLE unit → keep the base value,
  *     just RE-DISPLAY in the new unit (km → mi is a display change, base is
  *     dimension-invariant);

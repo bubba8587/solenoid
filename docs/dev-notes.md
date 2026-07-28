@@ -120,6 +120,50 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The spec-promotion sweep, tranche 1: PERSIST + EFFECT domains (2026-07-28x)
+
+The author-queued sweep ran as three parallel surveys (folklore docs, the test
+suite, code conventions) and converged hard on one theme: THE SAVE PATH was the
+largest cluster of load-bearing, test-pinned invariants with no normative home.
+Tranche 1 promotes nine rules — rules.md is **53 rules, 49/1/3**:
+
+**PERSIST-1..6** (new domain): extractInit fixed point + JSON-plain (the new
+JSON sweep closes the seam where a Map-valued config passes the live-object
+fixed point while the FILE empties it); the text form is the narrow waist
+(new scan: every SavedGraph interface field must appear in BOTH writeTextForm
+and readTextForm — the comments/reportPalette data-loss class); documentStoreCore
+immutability (new deep-freeze walk over every exported transform — identity IS
+the persist signal, so an in-place mutation is an edit that silently never
+saves); slot rotation + seq-first-key (new tests — freshness is a prefix regex,
+so a payload with another key first silently resurrects the older write);
+persistence binds MAIN never the active surface (activeGraph.test's CARDINAL,
+promoted); class names are load-bearing (new keepNames config scan + catalog
+ctor-name uniqueness walk — `constructor.name` is the save's `type` field and
+the registry is first-wins, so a collision reconstructs the loser as the
+winner with no placeholder).
+
+**EFFECT-1..2** (new domain): a sink acts only from Run and always loads
+disarmed (new catalog-wide quantifier: no class persists `enabled`, none
+constructs armed — generalizing the two per-class pins); outward effects are
+edge-triggered and rebuild-suppressed (new scan: fireAlert ⇒ isGraphRebuilding).
+**VAL-17**: volatile data() freezes on getRecalcGen (new scan; all four
+existing volatile files already complied).
+
+**Found and FIXED by the sweep**: the composite paths installed
+installErrorGuards BEFORE addNode — guard wrapped INSIDE coercion, inverted
+from Canvas's pipe order, so a coercion ShapeError escaped both wrappers
+(degrading a per-node #SHAPE! to a whole-card #ERROR!). Four sites moved to
+after addNode; VAL-3 gained the ordering clause and records the incident. Also
+fixed: the subsystem doc claimed the Number picker authors units (stale — the
+node has no unit field; CLAUDE.md's "FC/Convert only" is the truth), plus the
+matching unitBridge comment.
+
+The unpromoted candidate remainder (SOCK socket-ownership/passthrough-decl/
+mode-keys, an ENGINE domain, guardFinite/currency completeness, the
+Polars↔JS-oracle parity corpus, store-registry completeness) is recorded as
+the backlog's remainder queue. Suite 3588 → 3600; rules.test's prefix
+alternation learned PERSIST|EFFECT.
+
 ### CONTAINS made honest: any-element membership, logical answer (2026-07-28w)
 
 Author called for a review; the issues were exactly the visible kind. The node

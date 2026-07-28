@@ -96,3 +96,27 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
     expect((extractInit(bare) as { varDescriptions?: unknown }).varDescriptions).toBeUndefined();
   });
 });
+
+// ─── PERSIST-1's file half: everything extractInit captures is JSON-plain ─────
+// The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
+// config field passes it perfectly ({} equals {} on both sides) while the FILE
+// silently empties it: the save path stringifies each init field
+// (textForm.ts) and {...aMap} is {}, JSON.stringify(Infinity) is null. One line
+// per node closes the seam between "the object round-trips" and "the file
+// round-trips".
+describe("everything extractInit captures survives a JSON round trip", () => {
+  it("JSON.parse(JSON.stringify(init)) equals init for every catalog node", () => {
+    const broken: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n1: ClassicPreset.Node;
+      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; }
+      try {
+        const init = extractInit(n1);
+        expect(JSON.parse(JSON.stringify(init)), `catalog type "${type}"`).toEqual(init);
+      } catch (e) {
+        broken.push(`${type}: ${e instanceof Error ? e.message.split("\n")[0] : e}`);
+      }
+    }
+    expect(broken, `init fields that don't survive JSON (a Map/Set/Infinity config silently empties in the save):\n  ${broken.join("\n  ")}`).toEqual([]);
+  });
+});
