@@ -1,6 +1,7 @@
 # Formula ↔ node parity — audit + design frame
 
 **Status: TIERS 1–3 BUILT (Tier 3 landed 2026-07-28). Tier 4 author-gated.**
+332/646 leaves formula-callable; gap A is the 19 D2-capped names; gap C is 0.
 The mechanical work D19 greenlit — the ratchet, the alias gate, the Tier 1
 registrations, the pack seam, and now the Tier 3 list core — has landed; what remains
 is the Tier 4 decision. The audit framing below is kept because Tier 4 still needs it. **Design frame as of 2026-07-14:** Author direction: the expression/equation
@@ -147,10 +148,32 @@ Generators are capped at the FORMULA boundary (`#OVERFLOW!` past `MAX_GENERATED`
 the RANDARRAY/SEQUENCE convention). The nodes stay uncapped on purpose: a Count field
 is a spinner the user watches, a formula field is where a typo asks for ten million.
 
-Still open in the list family: Set / Set relation (needs the invented SETUNION-style
-names), Coalesce/Fill, Shuffle (nondeterministic), Range and Concat Lists. Frame verbs
-are explicitly NOT this tier — a query language in a formula string is its own large
-design (and bundle 08's transpiler is the nearer answer for "text in, graph out").
+A second tranche closed the rest of the list family: SETUNION/SETINTERSECT/
+SETDIFFERENCE/SETSYMDIFF, SETEQUAL/SETSUBSET/SETSUPERSET/SETDISJOINT, the nine
+FILL*/COALESCE ops, RANGE and CONCATLISTS. 51 Tier 3 names in all.
+
+**Where 2(a) doesn't reach: `fx`.** Despacing the label works while a label is a NAME.
+Three families label themselves in SENTENCES for the dropdown ("Union: in A or B",
+"Fill with value"), and despacing those gives either nonsense or, in one case, a
+COLLISION — Fill's `Interpolate` op and the INTERPOLATE node in `stats.ts` both
+despace to INTERPOLATE. So an op may declare an `fx` beside its label on its OP_META
+table, and Fill's is FILLINTERPOLATE. Same one-table principle as the label itself:
+explicit where it has to be, derived everywhere else. `formulaTier3.test.ts` now
+machine-checks that the namespace is UNAMBIGUOUS — no two leaves despace to one name,
+and no declared `fx` collides with a label. Nothing checked that before; it is how the
+INTERPOLATE clash got in.
+
+**SHUFFLE is deliberately not registered.** Tier 3's contract is node-equals-formula,
+and Shuffle is volatile: the node keeps its permutation stable within a recalc pass
+(keyed on the recalc generation), which a formula call has no way to do. RAND and
+RANDBETWEEN already reach the formula surface from Formula.js without that model;
+adding our own volatile function would deepen that hole rather than fill it. Registering
+SHUFFLE waits on a volatility model, not on effort.
+
+Frame verbs are explicitly NOT this tier — a query language in a formula string is its
+own large design (and bundle 08's transpiler is the nearer answer for "text in, graph
+out"). Also still native-only: Pad's host leaf (its two ops ARE callable), COUNT
+DISTINCT, INTERPOLATE, and the Lists › Tests pair.
 
 **Tier 4 — the dimensionality cap itself (D2, reopened).** Whether formulas accept
 matrices. Discussed with the author 2026-07-14 — full framing in the dedicated section

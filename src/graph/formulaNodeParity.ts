@@ -19,6 +19,7 @@ import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } fro
 import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";
 import { formulaFunctionNames } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
+import { opsFor } from "./nodeOps";
 
 export interface ParityRow {
   /** Add-menu path, " › "-joined. */
@@ -27,8 +28,14 @@ export interface ParityRow {
   label: string;
   /** The Excel name(s) this node stands in for, UPPERCASE. Empty = Solenoid-native. */
   excel: string[];
-  /** Is any of those names (or the node's own label) callable in a formula? */
+  /** Is any of those names (or the node's own label / ops) callable in a formula? */
   inFormula: boolean;
+  /** Is every EXCEL name this node stands in for dispatchable? False for a node with
+   *  no Excel names. Kept separate from `inFormula` on purpose: a node can be fully
+   *  reachable under its Solenoid name and STILL leave its Excel spelling answering
+   *  #NAME?, which is exactly what gap A is for. Folding the two together let SCAN
+   *  quietly drop out of the gap the moment RUNNINGSUM was registered. */
+  excelCovered: boolean;
 }
 
 // A leaf's `type` is a free-form node type, so `e.type === "category"` doesn't
@@ -51,9 +58,19 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     // A Solenoid-native leaf is matched by its LABEL DESPACED — D19 decision 2(a),
     // which is how "Rolling SUM" becomes ROLLINGSUM. Without the despace this
     // under-reports every multi-word native the Tier 3 registrations cover.
+    //
+    // A COLLAPSED op family is a second case: its leaf label ("Pad", "Coalesce / Fill")
+    // names the family, not any one function, so the leaf is covered when every OP is
+    // callable — PADLEFT and PADRIGHT, not PAD. An op's formula name is its declared
+    // `fx` where the label is prose, else the despaced label. Reading the host label
+    // alone reported nine registered FILL* functions as a gap.
+    const ops = opsFor(leaf.type)?.ops;
+    const excelCovered = excel.length > 0 && excel.every((x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
-      || formulaNames.has(despace(leaf.label));
-    out.push({ cat: path.join(" › ") || "(top)", type: leaf.type, label: leaf.label, excel, inFormula });
+      || formulaNames.has(despace(leaf.label))
+      || (ops !== undefined && ops.length > 0
+          && ops.every((o) => formulaNames.has(o.fx ?? despace(o.label))));
+    out.push({ cat: path.join(" › ") || "(top)", type: leaf.type, label: leaf.label, excel, inFormula, excelCovered });
   }
 }
 
@@ -96,7 +113,7 @@ export function measureParity(): ParityMeasurement {
   return {
     rows,
     covered: rows.filter((r) => r.inFormula),
-    excelNamedGap: rows.filter((r) => !r.inFormula && r.excel.length > 0),
+    excelNamedGap: rows.filter((r) => r.excel.length > 0 && !r.excelCovered),
     nativeGap: rows.filter((r) => !r.inFormula && r.excel.length === 0),
     noNode,
     untracked: noNode.filter((n) => {

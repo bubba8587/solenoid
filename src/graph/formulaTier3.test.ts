@@ -5,8 +5,13 @@ import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
   CumulativeNode, RollingNode, ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode,
   LinSpaceNode, RepeatNode, GeometricNode, FibonacciNode,
+  SetOpNode, SetRelationNode, FillNode, RangeNode, ConcatListsNode,
   CUMULATIVE_OP_META, ROLLING_OP_META, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
+  SET_OP_META, SET_RELATION_META, FILL_OP_META,
 } from "./nodes/list";
+import { buildCatalog } from "./catalogUtils";
+import { despace as parityDespace } from "./formulaNodeParity";
+import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
 // ─── D19 Tier 3: the node surface and the formula surface agree ───────────────
 // Tier 3 makes the Solenoid-native list core callable from a formula. The whole point
@@ -177,6 +182,102 @@ describe("the declarations stay honest", () => {
       const [min, max] = EXCEL_IMPL_META[name].arity;
       expect(min, name).toBeGreaterThanOrEqual(1);
       expect(max, name).toBeGreaterThanOrEqual(min);
+    }
+  });
+});
+
+describe("the prose-labelled families — names DECLARED, not despaced", () => {
+  // D19 2(a) despaces the label, which works only while the label is a NAME. These
+  // three families label themselves in sentences ("Union: in A or B"), so each op
+  // carries an `fx` beside its label. Same one-table principle, explicit instead of
+  // derived — and the test reads the table, so a rename in one place fails here.
+  it("SET* — one name per Set op", () => {
+    const a = [1, 2, 3], b = [3, 4];
+    for (const [op, meta] of Object.entries(SET_OP_META)) {
+      const node = new SetOpNode({ op: op as "union" });
+      expect(ev(`${meta.fx}(a, b)`, { a, b }), meta.fx)
+        .toEqual(node.data({ a: [a], b: [b] }).result);
+    }
+  });
+
+  it("SET* relations — one name per relation", () => {
+    const a = [1, 2], b = [1, 2, 3];
+    for (const [op, meta] of Object.entries(SET_RELATION_META)) {
+      const node = new SetRelationNode({ op: op as "equal" });
+      expect(ev(`${meta.fx}(a, b)`, { a, b }), meta.fx)
+        .toEqual(node.data({ a: [a], b: [b] }).result);
+    }
+  });
+
+  it("FILL* — one name per Fill op, except the variadic COALESCE", () => {
+    const gappy = [1, null, null, 4];
+    for (const [op, meta] of Object.entries(FILL_OP_META)) {
+      if (op === "coalesce") continue; // N-ary — its own case below
+      const node = new FillNode({ op: op as "ffill" });
+      const call = op === "constant" ? `${meta.fx}(x, 0)` : `${meta.fx}(x)`;
+      const nodeOut = op === "constant"
+        ? node.data({ list: [gappy], value: [0] }).result
+        : node.data({ list: [gappy] }).result;
+      expect(ev(call, { x: gappy }), meta.fx).toEqual(nodeOut);
+    }
+  });
+
+  it("COALESCE takes the first present across its sources, in order", () => {
+    expect(ev("COALESCE(a, b, 99)", { a: [1, null, null], b: [null, 2, null] })).toEqual([1, 2, 99]);
+    // A list fallback EXTENDS the result; a bare number broadcasts without extending.
+    expect(ev("COALESCE(a, b)", { a: [1], b: [null, 7] })).toEqual([1, 7]);
+    expect(ev("COALESCE(a, 5)", { a: [1, null] })).toEqual([1, 5]);
+  });
+
+  it("RANGE and CONCATLISTS", () => {
+    expect(ev("RANGE(0, 5)")).toEqual(new RangeNode().data({ start: [0], stop: [5] }).list);
+    expect(ev("RANGE(0, 10, 3)")).toEqual([0, 3, 6, 9]);
+    const cat = new ConcatListsNode();
+    const keys = cat.valueInputKeys();
+    expect(ev("CONCATLISTS(a, b)", { a: [1, 2], b: [3] }))
+      .toEqual(cat.data({ [keys[0]]: [[1, 2]], [keys[1]]: [[3]] }).result);
+  });
+});
+
+describe("the formula namespace stays unambiguous", () => {
+  // D19 2(a) is not INJECTIVE, and nothing checked that until it bit: Fill's
+  // "Interpolate" op and the INTERPOLATE node in stats.ts both despace to the same
+  // name. Fill's op now declares FILLINTERPOLATE instead. This is the guard — two
+  // different things must never claim one formula name.
+  function leaves(entries: CatalogEntry[], out: NodeCatalogEntry[] = []): NodeCatalogEntry[] {
+    for (const e of entries) {
+      if (e.type === "category" || e.type === "pair") leaves((e as { children: CatalogEntry[] }).children, out);
+      else out.push(e as NodeCatalogEntry);
+    }
+    return out;
+  }
+
+  it("no two catalog leaves despace to the same formula name", () => {
+    const seen = new Map<string, string>();
+    const clashes: string[] = [];
+    for (const leaf of leaves(buildCatalog(false))) {
+      if (leaf.hidden) continue;
+      const fx = parityDespace(leaf.label);
+      const prev = seen.get(fx);
+      if (prev && prev !== leaf.label) clashes.push(`${fx}: "${prev}" vs "${leaf.label}"`);
+      else seen.set(fx, leaf.label);
+    }
+    expect(clashes, `Two leaves claim one formula name:\n  ${clashes.join("\n  ")}`).toEqual([]);
+  });
+
+  it("every declared `fx` is distinct from every other, and from the despaced labels", () => {
+    const labelNames = new Set(
+      leaves(buildCatalog(false)).filter((l) => !l.hidden).map((l) => parityDespace(l.label)),
+    );
+    const declared = [
+      ...Object.values(SET_OP_META).map((m) => m.fx),
+      ...Object.values(SET_RELATION_META).map((m) => m.fx),
+      ...Object.values(FILL_OP_META).map((m) => m.fx),
+    ];
+    expect(new Set(declared).size, "duplicate `fx` among the declared names").toBe(declared.length);
+    // FILLINTERPOLATE exists precisely because "Interpolate" collided with the node.
+    for (const fx of declared) {
+      expect(labelNames.has(fx), `${fx} collides with a node label`).toBe(false);
     }
   });
 });
