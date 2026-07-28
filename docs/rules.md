@@ -940,6 +940,23 @@ classification, the no-double-claim + stale-entry honesty checks, and the found-
 "backward" on every save/reload/paste — invisible to PERSIST-1 precisely because the
 whitelist never saw it. Now whitelisted, pinned.
 
+### PERSIST-10 — `width`/`height` ownership: the observer owns them; size-owners re-consume **[INFERRED]**
+**MUST:** `node.width`/`height` are a MEASUREMENT MIRROR — NodeCard's ResizeObserver
+overwrites both with rendered pixels every layout (minimap silhouette + cable geometry
+read them). They persist for every node, but only the declared SIZE-OWNER classes
+(user-dragged surfaces: the annotation frames, the composite card, groups, the
+overlay hosts) re-consume `init.width/height`; for everyone else the persisted values
+are inert and the class default + re-measure win. A class with a USER size gesture
+must either re-consume the init or route through `nodeSizeStore` (Display's grip —
+its own persisted channel, `sn.size`). Nothing else may start consuming the init.
+
+*Why:* dual-use fields drift silently in both directions — a new resizable class that
+forgets to re-consume loses the user's drag on reload (the `asofDirection` class of
+bug), and a compute class that starts consuming freezes a measured size into layout.
+*Enforced by:* `persistenceSweep.test.ts` → "PERSIST-10" — a behaviour probe
+(`new Ctor({width: 777, height: 555})`) over the whole catalog, compared against the
+declared owner set in both directions.
+
 ---
 
 # ENGINE — Recompute passes
@@ -1053,11 +1070,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-68 rules.
+69 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 64 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
+| Enforced | 65 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 

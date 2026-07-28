@@ -246,3 +246,55 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     expect((rebuild(n) as unknown as AnyNode).asofDirection).toBe("forward");
   });
 });
+
+// ─── PERSIST-10: width/height dual-use ownership ──────────────────────────────
+// `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
+// runtime (it overwrites both with measured pixels every layout — the minimap
+// silhouette and cable geometry read them), and the persistence whitelist
+// captures them for every node. Only the SIZE-OWNER classes — nodes whose box
+// is a user-dragged surface, not content-driven — re-consume the persisted
+// values in their constructors; for every other class the persisted numbers are
+// inert (the class default wins on load, the observer re-measures). Display's
+// grip is the third channel: it routes through nodeSizeStore, which persists
+// per node id (persistence.ts sn.size) — NOT through these fields.
+//
+// The MUST: a class with a user size gesture either re-consumes
+// init.width/height or routes through nodeSizeStore. This pin keeps the owner
+// set conscious — a NEW class that starts adopting (or an owner that stops)
+// fails here and must update the list, which is where the "does the user's
+// drag survive reload?" question gets asked.
+
+describe("PERSIST-10 — the size-owner set is exactly the declared list", () => {
+  const SIZE_OWNERS = new Set([
+    "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
+    "composite", "query",                        // the composite card (query = its preset)
+    "group",                                     // the group rectangle IS its size
+    "report", "presentation", "session-history", // overlay/host cards with dragged bodies
+  ]);
+
+  it("exactly the declared classes re-consume persisted width/height", () => {
+    const adopts: string[] = [];
+    const shouldButDoesnt: string[] = [];
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let inst: ClassicPreset.Node;
+      try { inst = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const Ctor = inst.constructor as new (init?: Record<string, unknown>) => AnyNode;
+      let probe: AnyNode;
+      try { probe = new Ctor({ width: 777, height: 555 }); } catch { continue; }
+      const adopted = probe.width === 777 || probe.height === 555;
+      if (adopted && !SIZE_OWNERS.has(type)) adopts.push(type);
+      if (!adopted && SIZE_OWNERS.has(type)) shouldButDoesnt.push(type);
+    }
+    expect(
+      adopts,
+      `These classes now adopt persisted width/height but are not declared ` +
+      `SIZE_OWNERS (PERSIST-10) — declare them (is the size a user gesture?), ` +
+      `or stop consuming the init`,
+    ).toEqual([]);
+    expect(
+      shouldButDoesnt,
+      `These declared SIZE_OWNERS no longer re-consume init.width/height — ` +
+      `the user's drag resets on reload (the asofDirection class of bug)`,
+    ).toEqual([]);
+  });
+});

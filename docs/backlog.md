@@ -16,8 +16,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - **FX: backend parity corpus** — the Polars/JS-oracle pair needs a shared fixture
     corpus run by both vitest and cargo + an every-verb completeness guard. The
     largest single build in the queue.
-  - **width/height dual-use ownership** — NodeCard's ResizeObserver writes measured
-    pixels onto whitelisted persistence fields; only ~6 classes read them back.
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
     promote if the class of config-driven coercions grows.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO

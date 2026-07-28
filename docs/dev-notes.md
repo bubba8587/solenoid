@@ -120,6 +120,21 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### PERSIST-10: width/height ownership pinned — the last small residue (2026-07-28ff)
+
+The observer owns `node.width/height` at runtime (measured px every layout,
+read by the minimap + cable geometry); they persist for every node, but only
+the SIZE-OWNER classes re-consume the init — the probe found ten: note, image,
+svg, import-obsidian, composite, query, group, report, presentation,
+session-history. Display's grip is the third channel (nodeSizeStore, its own
+persisted `sn.size` — verified, no bug). The pin probes the whole catalog with
+`{width: 777, height: 555}` and compares against the declared set BOTH ways: a
+new adopter must declare (is the size a user gesture?), and an owner that
+stops re-consuming fails as "the user's drag resets on reload". Rule
+PERSIST-10; 69 rules, 65 enforced.
+
+With this, the spec-promotion queue holds ONE item: the backend parity corpus.
+
 ### PERSIST-9: the transient-field triage — 169 fields, one real bug (2026-07-28ee)
 
 The queue's one-sitting item. The fixed-point sweep (PERSIST-1) proves
