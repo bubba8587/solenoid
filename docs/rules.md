@@ -242,7 +242,7 @@ Program record: `docs/formula-node-parity.md`.
 ### FX-1 — One implementation, two surfaces
 **MUST:** a function callable from BOTH a node and a formula has exactly one
 implementation, in a rete-free module (`nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`,
-`mathUtils.ts`). Both callers delegate to it.
+`mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`). Both callers delegate to it.
 
 *Why:* the two surfaces drifted for exactly as long as they were two implementations.
 *Enforced by:* `formulaTier3.test.ts` → "every Tier 3 name computes what its node
@@ -259,18 +259,28 @@ what volatile means. Any future volatile function follows the same split.
 or the frame model.
 
 *Why:* the headless formula path (`run-graph`, the evaluator) should not load the editor.
-*Enforced by:* `UNENFORCED` — an import-graph assertion would close it.
+*Enforced by:* `formulaPathIsReteFree.test.ts` — walks the import graph from
+`excelFormula`/`excelFunctions` and fails on any reachable `rete` or `sockets` import.
 *Origin:* `interpolateLinear` lived in `stats.ts` and had to move to `mathUtils.ts` before
-`INTERPOLATE` could be registered.
+`INTERPOLATE` could be registered. The rule was VIOLATED while it was unenforced:
+`excelFunctions` reached rete through `nodes/date.ts` (the serial helpers) and
+`nodes/convert.ts` (the unit table) until both were extracted (`dateSerial.ts`,
+`convertUnits.ts`) — found by the enforcement column's own review, which is the argument
+for the test.
 
 ### FX-3 — A registration declares its full contract
 **MUST:** every `registerInternal` name has an `EXCEL_IMPL_META` entry declaring
 `returns`, `arity`, and where applicable `rank` and `listArgs`. Routing DERIVES from that
 entry (`SSOT-3`); it is never declared twice.
 
-*Enforced by:* `excelFunctions.test.ts` → "each registered impl declares an output type";
-`formulaTier3.test.ts` → "the declarations stay honest", "a list-RETURNING function also
-takes its args whole".
+*Enforced by:* `excelFunctions.test.ts` → "every registered internal declares its meta
+(FX-3, the registered→declared direction)" — the D10 redirect stubs are out of scope (they
+are the gate, not implementations); `formulaTier3.test.ts` → "the declarations stay
+honest", "a list-RETURNING function also takes its args whole" (the declared→dispatches
+direction).
+*Exceptions:* the POSITIONAL lookups (`XLOOKUP`/`XMATCH`/`INDEX`) declare meta but not
+`listArgs` — they are routed by `RANGE_POSITIONAL` (skip the error scan) and the flag
+would reroute them. **Removed by:** unifying the two routing declarations.
 
 ### FX-4 — A derived name function is TOTAL and INJECTIVE
 **MUST:** any rule that derives a name (D19 2(a): the node label despaced) must be defined
@@ -305,7 +315,10 @@ cap's back.
 `REVERSE([1,null,3])` must be `[3,null,1]`, never `[3,1]` — and the paired policy is wrong
 for independent samples of different lengths.
 *Enforced by:* `formulaTier3.test.ts` → "nulls keep their POSITION", "a cell error rides
-along in its own slot"; `rangeRouting.test.ts`.
+along in its own slot" (raw); `auditFixes.test.ts` → "CORREL propagates an embedded error
+and drops null pairs" and `excelFormula.test.ts` (SUMPRODUCT pairwise drop) for the
+PAIRED policy; `formulaReviewFixes.test.ts` (SERIESSUM's zero-fill, the T.TEST family).
+`rangeRouting.test.ts` checks routing SHAPE only, not policy.
 *Exceptions:* `T.TEST` and `F.TEST` take the POOLED policy despite comparing two arrays,
 because their arrays are samples that may legitimately differ in length for an independent
 test; the paired policy's min-length zip would discard the tail of the longer one on every
@@ -317,8 +330,10 @@ argument value.
 current function, is dropped from autocomplete and highlighting, and gets no range
 routing. The blocklist is DERIVED from `LEGACY_ALIASES`, not hand-pruned.
 
-*Enforced by:* `formulaNodeParity.test.ts` → "never advertises Formula.js internals as
-formula functions"; `excelFunctions.test.ts`.
+*Enforced by:* `formulaTier1.test.ts` → "the D10 gate covers the WHOLE blocklist, on
+every surface (FX-7)" — every blocked spelling answers `#NAME?` naming its replacement,
+none is advertised, none is range-routed; `formulaNodeParity.test.ts` → "never advertises
+Formula.js internals as formula functions".
 
 ### FX-8 — The formula boundary caps what a node's control already bounds
 **MUST:** a generator reachable from a formula enforces `MAX_GENERATED` and answers
@@ -401,13 +416,14 @@ raw values is a defect wherever a value may be an ARRAY.
 *Why:* a complex number is an `[re, im]` array and JS keys arrays by REFERENCE, so two
 equal complexes from different sources never match.
 *Enforced by:* `packs/sets.test.ts` covers the PRIMITIVE behaviour ("counts distinct
-values in first-seen order", "counts unique values, skipping nulls, propagating errors").
-**The complex-tuple case — the actual regression — is `UNENFORCED`:** no test references
-`setKey`, and no test puts a complex value through Set / IsIn / Tally.
+values in first-seen order", "counts unique values, skipping nulls, propagating errors");
+`nodes/list.test.ts` → "complex numbers compare by VALUE, not array identity (Set-node
+fix)" puts distinct `[re, im]` instances through Set / IsIn / Tally — reverting a
+consumer to a raw `Set` fails it.
 *Origin:* a real Set-node bug; `setKey` was introduced to fix it and now lives in
-`listOps.ts` for every membership consumer. The fix shipped without a test pinning it,
-which is `SSOT-5`'s exact failure mode — found while writing this document's enforcement
-column, not by the suite.
+`listOps.ts` for every membership consumer. (An earlier revision of this document
+recorded the complex-tuple case as unpinned — the list.test.ts block already covered it;
+CONTAINS was the one consumer still comparing by reference, fixed with the review.)
 
 ### VAL-9 — The unit is a property of the VALUE
 **MUST:** a unit is a base-SI `UnitCell` AUTHORED only by the Format Controller
@@ -449,7 +465,10 @@ declaration. **A family that cannot declare because its field is misnamed is cur
 invisible to this check.** See Known violations.
 *Origin:* `PadNode.dir` meant `list-pad` had no declaration, so `PADLEFT`/`PADRIGHT` were
 unsearchable in the Add menu and unmeasurable in the parity walk. It was not missing work
-— it was work that could not attach because one field had a different name.
+— it was work that could not attach because one field had a different name. The same
+defect was then found five more times by the enforcement review (Sort/Take/Drop `dir`,
+DropBlankRows/IFError `mode`) and fixed by the same rename — IFERROR and IFNA are now
+searchable. Alert's and ColorBlend's `mode` remain (see Known violations).
 
 ### VAL-13 — Components never call `node.data()`
 **MUST:** a React component extracts a pure helper instead. `data()` assumes the
@@ -474,11 +493,11 @@ nothing catches a class declaring a map its card never edits.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 26 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4 · FX-1,3,5,6,7,8 · VAL-1,2,3,4,5,6,7,9,11 |
-| Partially enforced | 7 | SOCK-5, SOCK-7 · FX-4 · VAL-8, VAL-10, VAL-12, VAL-14 |
-| Unenforced | 5 | SSOT-5 · SOCK-6, SOCK-8 · FX-2 · VAL-13 |
+| Enforced | 28 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4 · FX-1,2,3,5,6,7,8 · VAL-1,2,3,4,5,6,7,8,9,11 |
+| Partially enforced | 6 | SOCK-5, SOCK-7 · FX-4 · VAL-10, VAL-12, VAL-14 |
+| Unenforced | 4 | SSOT-5 · SOCK-6, SOCK-8 · VAL-13 |
 
-**The partially-enforced seven are the highest-value gap.** In each the rule is tested for
+**The partially-enforced six are the highest-value gap.** In each the rule is tested for
 the cases that exist and nothing fails when a NEW case forgets it — precisely the shape of
 every bug in the Origin notes. Two of them (SOCK-5, VAL-8) were written here as "enforced"
 on the strength of a plausible-sounding test file name, and only turned out to be partial
@@ -491,10 +510,12 @@ because the enforcement column forced the check. That is the argument for the co
 Recorded here rather than fixed, per the author's instruction that this pass is documents
 only. Each is actionable in the follow-up.
 
-1. **`SortNode`, `TakeNode`, `DropNode` name their op selector `dir`** — violates VAL-12.
-   Consequence: none of the three has a `NODE_OPS` declaration, so their ops are
-   unsearchable in the Add menu. `PadNode` had the identical defect and was fixed by
-   renaming; these are the same change. *Fix: rename `dir` → `op`, add the declaration.*
+1. **`AlertNode` and `ColorBlendNode` name their op selector `mode`** — the last two
+   VAL-12 field-name violations (Sort/Take/Drop's `dir` and DropBlankRows/IFError's
+   `mode` were renamed with the enforcement review). Both are argument-shaped, so the
+   cost is only that the coverage check cannot see them. *Fix: same rename.* (`DateIf`'s
+   `unit` selector is the borderline sibling — an op dropdown by mechanism, Excel's
+   argument by semantics.)
 
 2. **VAL-12's check cannot see its own violations** — `nodeOps.test.ts` verifies that a
    node WITH a declaration is consistent, but a family that can't declare (misnamed field)
@@ -523,15 +544,11 @@ only. Each is actionable in the follow-up.
    list as a vector, so each needs list-model handling. Pinned as a known state by
    `rangeRouting.test.ts`.
 
-8. **SSOT-5 has no `rules.test.ts`** — this document's own claims are unchecked. A rule ID
-   could name a test file that doesn't exist, or a test could be deleted without the rule
-   noticing. *Fix: assert every `Enforced by:` path resolves and every ID is unique.*
+8. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
+   file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
+   still a reading job (this document's fact-check found four misciting rules that a
+   file-exists check alone would have passed).
 
-9. **VAL-8's origin case is unpinned** — the complex-tuple membership bug that `setKey`
-   exists to fix has no test. Nothing would fail if a consumer went back to a raw `Set`.
-   *Fix: put a complex value through Set / IsIn / Tally / COUNTDISTINCT and assert two
-   equal tuples from different sources count as one.*
-
-10. **SOCK-5's "never persists" is unpinned** — adoption behaviour is tested, but nothing
+9. **SOCK-5's "never persists" is unpinned** — adoption behaviour is tested, but nothing
     asserts an adopted type is absent from the serialized graph. *Fix: adopt, serialize,
     assert the socket's declared type is the wildcard.*

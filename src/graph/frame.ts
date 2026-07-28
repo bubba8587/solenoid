@@ -9,7 +9,7 @@
 // between those two worlds; Get Column / Add Column are the general per-column
 // path that a text column would later flow through.
 import { parseCsvRows } from "./csv";
-import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
+import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";

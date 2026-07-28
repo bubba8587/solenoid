@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolveExcelFunction, LEGACY_ALIASES } from "./excelFunctions";
-import { compileEvaluator } from "./excelFormula";
+import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "./excelFormula";
 import { isSolError } from "./errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "./nodes/text";
 import { CouponNode, BondPriceNode, DurationNode, VdbNode } from "./nodes/finance";
@@ -161,5 +161,26 @@ describe("FORECAST.LINEAR", () => {
   it("the superseded FORECAST spelling redirects here", () => {
     const r = ev("FORECAST(4, ys, xs)", { ys: [2, 4, 6], xs: [1, 2, 3] });
     expect(isSolError(r) && r.message).toBe("Use FORECAST.LINEAR");
+  });
+});
+
+describe("the D10 gate covers the WHOLE blocklist, on every surface (FX-7)", () => {
+  it("every blocked spelling answers #NAME? naming its replacement", () => {
+    for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
+      const r = ev(`${name}(1)`);
+      expect(isSolError(r) && r.code, name).toBe("#NAME?");
+      expect(isSolError(r) && r.message, name).toBe(`Use ${use}`);
+    }
+  });
+
+  it("no blocked spelling is advertised (autocomplete/highlighting)", () => {
+    const advertised = new Set(formulaFunctionNames());
+    const leaked = Object.keys(LEGACY_ALIASES).filter((n) => advertised.has(n));
+    expect(leaked, `blocked names still advertised: ${leaked.join(", ")}`).toEqual([]);
+  });
+
+  it("no blocked spelling gets range routing", () => {
+    const leaked = Object.keys(LEGACY_ALIASES).filter((n) => RANGE_FUNCTIONS.has(n));
+    expect(leaked, `blocked names still range-routed: ${leaked.join(", ")}`).toEqual([]);
   });
 });

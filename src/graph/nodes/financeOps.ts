@@ -16,7 +16,7 @@
 // surface tags its own failure from that (the node shows a blank, the formula
 // returns a SolError).
 
-import { serialToJsDate, jsDateToSerial } from "./date";
+import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 
 // ─── Coupon / accrual date helpers ────────────────────────────────────────────
 

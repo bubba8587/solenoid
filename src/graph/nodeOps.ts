@@ -55,9 +55,11 @@ import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
   FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
+  SortNode, TakeNode, DropNode,
 } from "./nodes/list";
-import { HeadNode, HeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
+import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
+import { IFErrorNode } from "./nodes/logic";
 import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
@@ -195,6 +197,14 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless here.
   { type: "list-groupby", ctor: GroupByNode, kind: "argument", ops: fromMeta(GROUP_BY_OP_META),
     create: (op) => new GroupByNode({ op: op as never }) },
+  // Direction toggles: ascending/descending and first/last are parameters of ONE
+  // operation — nobody searches the Add menu for "Descending". These families
+  // previously named the field `dir`, so they could not declare at all (VAL-12).
+  { type: "list-sort", ctor: SortNode, kind: "argument" },
+  { type: "list-take", ctor: TakeNode, kind: "argument" },
+  { type: "list-drop", ctor: DropNode, kind: "argument" },
+  // Which rows count as blank is a parameter of Drop Blank Rows.
+  { type: "drop-blank-rows", ctor: DropBlankRowsNode, kind: "argument" },
 
   // ── Operation-kind: each op stands alone as a name ──
   // Fill's ops carry declared fx names (FILLMEAN, FILLINTERPOLATE…) and dispatch
@@ -212,6 +222,12 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new SetOpNode({ op: op as never }) },
   { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: SET_RELATION_OPS,
     create: (op) => new SetRelationNode({ op: op as never }) },
+  // IFERROR and IFNA are both real Excel names people search for; the meta labels
+  // are dropdown prose ("IFERROR: catch NaN / ±Infinity"), so the search names are
+  // declared here like the Set families' (SSOT-2).
+  { type: "iferror", ctor: IFErrorNode, kind: "operation",
+    ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
+    create: (op) => new IFErrorNode({ op: op as never }) },
   { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
   { type: "text-filter", ctor: TextFilterNode, kind: "operation", ops: fromMeta(TEXT_FILTER_OP_META),

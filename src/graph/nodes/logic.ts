@@ -341,7 +341,7 @@ export type IFErrorMode = "iferror" | "ifna";
 
 export class IFErrorNode extends ClassicPreset.Node {
   label: string;
-  mode: IFErrorMode;
+  op: IFErrorMode;
   // A list now carries per-cell errors + null, so the result can too (caught
   // cells → fallback; uncaught errors/nulls pass through).
   // IFERROR/IFNA pass a value THROUGH, swapping only caught error cells for the
@@ -355,10 +355,10 @@ export class IFErrorNode extends ClassicPreset.Node {
   // the same drift Expect / Cable Switch had: in the type set, missing from units).
   passthrough(): PassthroughSpec[] { return [{ output: "result", inputs: ["value", "fallback"], combine: "agree" }]; }
 
-  constructor(init?: { label?: string; mode?: IFErrorMode }) {
+  constructor(init?: { label?: string; op?: IFErrorMode }) {
     super("IFError");
     this.label = init?.label ?? "IFERROR";
-    this.mode = init?.mode ?? "iferror";
+    this.op = init?.op ?? "iferror";
     this.addInput("value",    trueAnyIn("Value"));
     this.addInput("fallback", trueAnyIn("Fallback"));
     this.addOutput("result",  trueAnyOut("Result"));
@@ -379,7 +379,7 @@ export class IFErrorNode extends ClassicPreset.Node {
     //  notion of "error" across this family. Producers tag domain failures or
     //  collapse non-finite to null, so a bare NaN never reaches here untagged.
     const caught = (v: unknown): boolean =>
-      this.mode === "iferror" ? isSolError(v) : isNaError(v);
+      this.op === "iferror" ? isSolError(v) : isNaError(v);
     const result = replaceCaught(rawValue, fallback, caught);
     this.cachedResult = result as IFErrorNode["cachedResult"];
     return { result };

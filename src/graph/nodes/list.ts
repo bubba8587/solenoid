@@ -446,15 +446,15 @@ export type SortDir = "asc" | "desc";
 
 export class SortNode extends ClassicPreset.Node {
   label: string;
-  dir: SortDir;
+  op: SortDir;
   cachedList: number[] = [];
   width = 180;
   height = 150;
 
-  constructor(init?: { label?: string; dir?: SortDir }) {
+  constructor(init?: { label?: string; op?: SortDir }) {
     super("Sort");
     this.label = init?.label ?? "List Sort";
-    this.dir = init?.dir ?? "asc";
+    this.op = init?.op ?? "asc";
     this.addInput("list", listIn("List"));
     this.addOutput("result", listOut("Sorted"));
   }
@@ -471,7 +471,7 @@ export class SortNode extends ClassicPreset.Node {
       const ti = isTail(arr[i]), tj = isTail(arr[j]);
       if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
       const c = (arr[i] as number) - (arr[j] as number);
-      return c !== 0 ? (this.dir === "desc" ? -c : c) : i - j; // stable on ties
+      return c !== 0 ? (this.op === "desc" ? -c : c) : i - j; // stable on ties
     });
     const sorted = idx.map((i) => arr[i]) as number[];
     this.cachedList = sorted;
@@ -1075,16 +1075,16 @@ export class TakeNode extends ClassicPreset.Node {
    *  date list stays a date list) — see passthrough.ts. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  dir: TakeDir;
+  op: TakeDir;
   cachedList: unknown[] | null = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
 
-  constructor(init?: { label?: string; dir?: TakeDir }) {
+  constructor(init?: { label?: string; op?: TakeDir }) {
     super("Take");
     this.label = init?.label ?? "TAKE";
-    this.dir = init?.dir ?? "first";
+    this.op = init?.op ?? "first";
     this.addInput("list",  adoptiveListIn("List"));
     this.addInput("count", numIn("Count"));
     this.addOutput("result", adoptiveListOut("Result"));
@@ -1097,7 +1097,7 @@ export class TakeNode extends ClassicPreset.Node {
     if (nRaw === null) { this.cachedList = null; return { result: null }; }
     const n = Math.round(nRaw);
     if (n <= 0) { this.cachedList = []; return { result: [] }; }
-    this.cachedList = this.dir === "first" ? arr.slice(0, n) : arr.slice(-n);
+    this.cachedList = this.op === "first" ? arr.slice(0, n) : arr.slice(-n);
     return { result: this.cachedList };
   }
 }
@@ -1109,16 +1109,16 @@ export class DropNode extends ClassicPreset.Node {
    *  date list stays a date list) — see passthrough.ts. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  dir: DropDir;
+  op: DropDir;
   cachedList: unknown[] | null = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
 
-  constructor(init?: { label?: string; dir?: DropDir }) {
+  constructor(init?: { label?: string; op?: DropDir }) {
     super("Drop");
     this.label = init?.label ?? "DROP";
-    this.dir = init?.dir ?? "first";
+    this.op = init?.op ?? "first";
     this.addInput("list",  adoptiveListIn("List"));
     this.addInput("count", numIn("Count"));
     this.addOutput("result", adoptiveListOut("Result"));
@@ -1132,7 +1132,7 @@ export class DropNode extends ClassicPreset.Node {
     const n = Math.round(nRaw);
     if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
     if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
-    this.cachedList = this.dir === "first" ? arr.slice(n) : arr.slice(0, -n);
+    this.cachedList = this.op === "first" ? arr.slice(n) : arr.slice(0, -n);
     return { result: this.cachedList };
   }
 }

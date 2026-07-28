@@ -6,6 +6,8 @@ import {
   excelFunctionInfo,
   resolveExcelFunction,
   registerInternal,
+  internalFunctionNames,
+  ELIMINATED_FUNCTIONS,
   EXCEL_IMPL_META,
   numberToText,
   type FuncFamily,
@@ -177,10 +179,19 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
     expect(EXCEL_IMPL_META.BETWEEN).toMatchObject({ returns: "logical", native: true });
   });
   it("each registered impl declares an output type that matches the audit families", () => {
-    // Every meta entry has a known ExcelReturn (number/string/logical/date).
+    // Every meta entry has a known ExcelReturn ("any" = type-neutral passthrough).
     for (const m of Object.values(EXCEL_IMPL_META)) {
-      expect(["number", "string", "logical", "date"]).toContain(m.returns);
+      expect(["number", "string", "logical", "date", "any"]).toContain(m.returns);
     }
+  });
+  it("every registered internal declares its meta (FX-3, the registered→declared direction)", () => {
+    // The reverse direction (declared→dispatches) lives in formulaTier3; without
+    // THIS one, 28 registrations had no entry and the rule was fiction.
+    const meta = new Set(Object.keys(EXCEL_IMPL_META));
+    // The D10 redirect stubs are the GATE, not implementations — their whole
+    // contract is answering #NAME? — so the blocklist is out of scope here.
+    const undeclared = internalFunctionNames().filter((n) => !meta.has(n) && !ELIMINATED_FUNCTIONS.has(n));
+    expect(undeclared, `registerInternal names with no EXCEL_IMPL_META entry: ${undeclared.join(", ")}`).toEqual([]);
   });
 });
 

@@ -1,8 +1,8 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { serialToJsDate, jsDateToSerial } from "./nodes/date";
+import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
-import { convertValue } from "./nodes/convert";
+import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
 import {
@@ -383,7 +383,9 @@ export function internalFunctionNames(): string[] {
 
 /** Declared output ELEMENT type (a SocketDataType subset) — metadata for tests + a
  *  future result-type inference, not yet wired to the result socket. */
-export type ExcelReturn = "number" | "string" | "logical" | "date";
+// "any" = type-neutral: the function returns whichever type its arguments carry
+// (XLOOKUP/IF/INDEX pass values through) — a forced concrete type here would lie.
+export type ExcelReturn = "number" | "string" | "logical" | "date" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
  *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name.
@@ -469,6 +471,70 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
   PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
+
+  // ── The registered internals that predate the meta requirement (FX-3) ──
+  // Every `registerInternal` name declares its contract here; the completeness is
+  // machine-checked ("every registered internal declares its meta"), so a new
+  // registration without an entry fails loudly instead of quietly taking default
+  // routing.
+  CONCAT:      { returns: "string", arity: [1, 255], family: "text" },
+  CONCATENATE: { returns: "string", arity: [1, 255], family: "text" },
+  TEXTJOIN:    { returns: "string", arity: [3, 255], family: "text" },
+  TEXT:        { returns: "string", arity: [2, 2], family: "text" },
+  DOLLAR:      { returns: "string", arity: [1, 2], family: "text" },
+  VALUE:       { returns: "number", arity: [1, 1], family: "text" },
+  NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
+  MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
+  QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
+  ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
+  CONVERT:     { returns: "number", arity: [3, 3], family: "scalar-math" },
+  "T.DIST":       { returns: "number", arity: [3, 3], family: "statistics" },
+  "T.DIST.RT":    { returns: "number", arity: [2, 2], family: "statistics" },
+  "T.DIST.2T":    { returns: "number", arity: [2, 2], family: "statistics" },
+  "T.INV":        { returns: "number", arity: [2, 2], family: "statistics" },
+  "T.INV.2T":     { returns: "number", arity: [2, 2], family: "statistics" },
+  "CHISQ.DIST.RT": { returns: "number", arity: [2, 2], family: "statistics" },
+  "CHISQ.INV.RT":  { returns: "number", arity: [2, 2], family: "statistics" },
+  "F.DIST.RT":    { returns: "number", arity: [3, 3], family: "statistics" },
+  "F.INV.RT":     { returns: "number", arity: [3, 3], family: "statistics" },
+  "GAMMA.DIST":   { returns: "number", arity: [4, 4], family: "statistics" },
+  "GAMMA.INV":    { returns: "number", arity: [3, 3], family: "statistics" },
+  TODAY:       { returns: "date", arity: [0, 0], family: "datetime" },
+  NOW:         { returns: "date", arity: [0, 0], family: "datetime" },
+  // The lookups DO take whole lists, but deliberately NOT via `listArgs`: that
+  // flag routes through takesWholeArgs (raw policy + blank-scalar propagation),
+  // while these are routed by RANGE_POSITIONAL (skip the error scan — an error
+  // at an UNREFERENCED position must not poison the pick). Unifying the two
+  // routing declarations is a real change, not a metadata backfill.
+  XLOOKUP:     { returns: "any", arity: [3, 4] },
+  XMATCH:      { returns: "number", arity: [2, 4] },
+  IF:          { returns: "any", arity: [2, 3] },
+  INDEX:       { returns: "any", arity: [2, 3] },
+  LEFT:       { returns: "string", arity: [1, 2], family: "text" },
+  RIGHT:      { returns: "string", arity: [1, 2], family: "text" },
+  MID:        { returns: "string", arity: [3, 3], family: "text" },
+  UPPER:      { returns: "string", arity: [1, 1], family: "text" },
+  LOWER:      { returns: "string", arity: [1, 1], family: "text" },
+  PROPER:     { returns: "string", arity: [1, 1], family: "text" },
+  TRIM:       { returns: "string", arity: [1, 1], family: "text" },
+  REPT:       { returns: "string", arity: [2, 2], family: "text" },
+  SUBSTITUTE: { returns: "string", arity: [3, 4], family: "text" },
+  REPLACE:    { returns: "string", arity: [4, 4], family: "text" },
+  EXACT:      { returns: "logical", arity: [2, 2], family: "text" },
+  FIND:       { returns: "number", arity: [2, 3], family: "text" },
+  SEARCH:     { returns: "number", arity: [2, 3], family: "text" },
+  ABS:        { returns: "number", arity: [1, 1], family: "scalar-math" },
+  LN:         { returns: "number", arity: [1, 1], family: "scalar-math" },
+  LOG10:      { returns: "number", arity: [1, 1], family: "scalar-math" },
+  SQRTPI:     { returns: "number", arity: [1, 1], family: "scalar-math" },
+  ASIN:       { returns: "number", arity: [1, 1], family: "scalar-math" },
+  ACOS:       { returns: "number", arity: [1, 1], family: "scalar-math" },
+  ACOSH:      { returns: "number", arity: [1, 1], family: "scalar-math" },
+  ATANH:      { returns: "number", arity: [1, 1], family: "scalar-math" },
+  DATE:       { returns: "date", arity: [3, 3], family: "datetime" },
+  EDATE:      { returns: "date", arity: [2, 2], family: "datetime" },
+  DATEVALUE:  { returns: "date", arity: [1, 1], family: "datetime" },
+  WORKDAY:    { returns: "date", arity: [2, 3], family: "datetime" },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   // Bond / security block. COUPNCD and COUPPCD return a date SERIAL, so they carry
   // the `date` return type; every other one is a number.

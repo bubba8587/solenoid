@@ -4,7 +4,7 @@ import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } 
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
-import { parseDateToSerial } from "./nodes/date";
+import { parseDateToSerial } from "./nodes/dateSerial";
 import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";

@@ -1060,14 +1060,14 @@ export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; descriptio
 
 export class DropBlankRowsNode extends ClassicPreset.Node {
   label: string;
-  mode: BlankRowMode;
+  op: BlankRowMode;
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 140;
 
-  constructor(init?: { label?: string; mode?: BlankRowMode }) {
+  constructor(init?: { label?: string; op?: BlankRowMode }) {
     super("DropBlankRows");
     this.label = init?.label ?? "Drop Blank Rows";
-    this.mode = init?.mode ?? "all";
+    this.op = init?.op ?? "all";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1075,7 +1075,7 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => dropBlankRows(f, this.mode));
+    this.cachedResult = runVerb(() => dropBlankRows(f, this.op));
     return { frame: this.cachedResult };
   }
 }

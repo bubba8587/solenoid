@@ -22,7 +22,7 @@ import { isSolError, solError } from "./errorValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
-import { parseDateToSerial } from "./nodes/date";
+import { parseDateToSerial } from "./nodes/dateSerial";
 
 /** Group-aggregation ops (the GroupBy / PivotBy core). count = non-null cells
  *  (COUNTA); sum/avg/min/max/product/median/mode/stdev/var skip null and
