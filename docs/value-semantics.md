@@ -165,6 +165,23 @@ absent-branch is already written, which makes the wrong answer the path of least
 resistance. **An existing comment that says "unwired/blank → default" predates this
 spec and conflates the two cases; the spec wins.**
 
+`readInput` already separates them, and this is the mechanism to use when an input has
+a genuine omitted reading. Pass the literal through WITHOUT an `?? default` and you get
+three distinct states back:
+
+```ts
+const end = readInput(inputs.end, this.literals.end as number | undefined);
+//  undefined → unwired, nothing typed  → OMITTED: slice to the end of the list
+//  null      → a cable carrying blank  → UNKNOWN: blank out
+//  a number  → wired or typed          → use it
+```
+
+Excel's own omitted-argument readings live in the `undefined` branch, and only there:
+INDEX's omitted axis meaning "the whole row/column", Slice's open end, an as-of Join's
+exact-match tolerance, a Sequence with no stop yet. Writing `?? 0` or `?? 1` on the
+literal collapses `undefined` into a value and throws that distinction away — so only
+add a default when the input genuinely has no omitted reading.
+
 ### Where the blank check GOES
 
 Two placement rules, both found by sweeping `finance.ts` (73 reads, ~20 multi-op hosts).

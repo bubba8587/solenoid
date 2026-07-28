@@ -7,6 +7,7 @@ import { ExpressionNode } from "./expression";
 import { ClampNode } from "./scalar";
 import { MirrNode, TBillNode } from "./finance";
 import { SortFrameNode, JoinNode } from "./frame";
+import { ListIndexNode, SliceNode } from "./list";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 
@@ -253,6 +254,29 @@ describe("a column REFERENCE — the frame family's dominant shape", () => {
     const unwired = new JoinNode();
     unwired.stringLiterals.leftKey = "id";
     expect((await unwired.data({ left: [l], right: [r] })).frame).not.toBeNull();
+  });
+});
+
+describe("the THIRD state — undefined is omitted, null is unknown", () => {
+  // Excel's omitted-argument readings are real and stay. They just belong to the
+  // `undefined` branch, which readInput hands back only for an unwired slot with
+  // nothing typed. A `?? 0` on the literal would collapse the two.
+  it("INDEX: an omitted axis is the WHOLE axis; a wired blank axis is unknown", () => {
+    const m = [[1, 2], [3, 4]];
+    // Omitted column → the whole row (Excel INDEX).
+    expect(new ListIndexNode().data({ list: [m], index: [1] }).result).toEqual([1, 2]);
+    // A cable carrying blank is not an omission.
+    expect(new ListIndexNode().data({
+      list: [m], index: [1], column: [null as unknown as number],
+    }).result).toBeNull();
+  });
+
+  it("Slice: an omitted end runs to the end; a wired blank end is unknown", () => {
+    const arr = [1, 2, 3, 4];
+    expect(new SliceNode().data({ list: [arr], start: [2] }).result).toEqual([2, 3, 4]);
+    expect(new SliceNode().data({
+      list: [arr], start: [2], end: [null as unknown as number],
+    }).result).toBeNull();
   });
 });
 

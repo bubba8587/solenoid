@@ -185,7 +185,7 @@ export class ListInputNode extends ClassicPreset.Node {
 
 export class RangeNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: number[] | null = [];
   // No default for `stop` — an unset stop keeps the range empty until
   // the user provides one (cable or literal).
   literals: Record<string, number> = { start: 0, step: 1 };
@@ -202,11 +202,15 @@ export class RangeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: number[]; stop?: number[]; step?: number[] }) {
-    const start = inputs.start?.[0] ?? this.literals.start ?? 0;
-    const stop  = inputs.stop?.[0]  ?? this.literals.stop  ?? null;
-    const step  = inputs.step?.[0]  ?? this.literals.step  ?? 1;
+    const start = readInput(inputs.start, this.literals.start ?? 0);
+    // `stop` is legitimately UNSET (an empty card = no series yet). readInput keeps the
+    // two apart: undefined is unset, null is a cable carrying blank.
+    const stop  = readInput(inputs.stop, this.literals.stop as number | undefined);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    const step  = readInput(inputs.step, this.literals.step ?? 1);
+    if (start === null || stop === null || step === null) { this.cachedList = null; return { list: null }; }
     const list: number[] = [];
-    if (stop !== null && step !== 0) {
+    if (stop !== undefined && step !== 0) {
       const goUp = step > 0;
       let cur = start;
       while (goUp ? cur < stop : cur > stop) {
@@ -341,16 +345,20 @@ export class ListIndexNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
     const v = inputs.list?.[0] ?? null;
-    const rowIn = inputs.index?.[0] ?? this.literals.index ?? null;
-    const colIn = inputs.column?.[0] ?? this.literals.column ?? null;
+    // Excel INDEX reads an OMITTED axis as "the whole axis" — that is the UNWIRED
+    // slot with an empty card, not a cable carrying blank (value-semantics.md,
+    // "Reading an input" -> "absent is not unknown").
+    const rowIn = readInput(inputs.index, this.literals.index as number | undefined);
+    const colIn = readInput(inputs.column, this.literals.column as number | undefined);
     const done = (result: number | SolError | null | CubeCell | FrameValue | CubeValue) => {
       this.cachedResult = result;
       return { result };
     };
     if (v === null || v === undefined) return done(null);
     // Excel INDEX: 0 (or omitted) selects the WHOLE axis.
-    const rowAll = rowIn === null || Math.round(rowIn) === 0;
-    const colAll = colIn === null || Math.round(colIn) === 0;
+    if (rowIn === null || colIn === null) return done(null); // a WIRED blank axis
+    const rowAll = rowIn === undefined || Math.round(rowIn) === 0;
+    const colAll = colIn === undefined || Math.round(colIn) === 0;
     const r = rowAll ? -1 : Math.round(rowIn as number) - 1;
     const c = colAll ? -1 : Math.round(colIn as number) - 1;
     const refErr = (n: number, max: number, what: string) =>
@@ -499,7 +507,7 @@ export class SliceNode extends ClassicPreset.Node {
    *  date list stays a date list) — see passthrough.ts. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  cachedList: unknown[] = [];
+  cachedList: unknown[] | null = [];
   // 1-based, inclusive. `end` unset → through the end of the list.
   literals: Record<string, number> = { start: 1 };
   width = 180;
@@ -516,8 +524,12 @@ export class SliceNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; start?: number[]; end?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const start = Math.round(inputs.start?.[0] ?? this.literals.start ?? 1);
-    const endRaw = inputs.end?.[0] ?? this.literals.end;
+    const startRaw = readInput(inputs.start, this.literals.start ?? 1);
+    // An UNSET end means "to the end of the list"; a WIRED blank does not.
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    const endRaw = readInput(inputs.end, this.literals.end as number | undefined);
+    if (startRaw === null || endRaw === null) { this.cachedList = null; return { result: null }; }
+    const start = Math.round(startRaw);
     const end = endRaw === undefined ? undefined : Math.round(endRaw);
     // 1-based inclusive → JS slice(start-1, end).
     const sliced = arr.slice(Math.max(0, start - 1), end);
@@ -1114,7 +1126,7 @@ export class TakeNode extends ClassicPreset.Node {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   dir: TakeDir;
-  cachedList: unknown[] = [];
+  cachedList: unknown[] | null = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
@@ -1130,7 +1142,10 @@ export class TakeNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; count?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
+    const nRaw = readInput(inputs.count, this.literals.count ?? 1);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (nRaw === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.round(nRaw);
     if (n <= 0) { this.cachedList = []; return { result: [] }; }
     this.cachedList = this.dir === "first" ? arr.slice(0, n) : arr.slice(-n);
     return { result: this.cachedList };
@@ -1145,7 +1160,7 @@ export class DropNode extends ClassicPreset.Node {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   dir: DropDir;
-  cachedList: unknown[] = [];
+  cachedList: unknown[] | null = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
@@ -1161,7 +1176,10 @@ export class DropNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; count?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
+    const nRaw = readInput(inputs.count, this.literals.count ?? 1);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (nRaw === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.round(nRaw);
     if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
     if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
     this.cachedList = this.dir === "first" ? arr.slice(n) : arr.slice(0, -n);
@@ -1338,9 +1356,11 @@ export class ContainsNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; value?: number[] }) {
     const arr = inputs.list?.[0] ?? null;
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    const v = readInput(inputs.value, this.literals.value as number | undefined);
     let result: number | null = null;
-    if (arr !== null && v !== null) result = arr.includes(v) ? 1 : 0;
+    // A blank needle can't be looked for — unknown, not "not asked yet"
+    // (value-semantics.md, "Reading an input").
+    if (arr !== null && v !== null && v !== undefined) result = arr.includes(v) ? 1 : 0;
     this.cachedResult = result;
     return { result };
   }
@@ -1371,7 +1391,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 // ─── LinSpace ─────────────────────────────────────────────────────────────────
 export class LinSpaceNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: number[] | null = [];
   literals: Record<string, number> = { start: 0, end: 1, count: 10 };
   width = 180; height = 220;
 
@@ -1385,9 +1405,12 @@ export class LinSpaceNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: number[]; end?: number[]; count?: number[] }) {
-    const start = inputs.start?.[0] ?? this.literals.start ?? 0;
-    const end   = inputs.end?.[0]   ?? this.literals.end   ?? 1;
-    const n     = Math.round(inputs.count?.[0] ?? this.literals.count ?? 10);
+    const start = readInput(inputs.start, this.literals.start ?? 0);
+    const end   = readInput(inputs.end, this.literals.end ?? 1);
+    const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (start === null || end === null || nRaw === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.round(nRaw);
     if (n <= 0)  { this.cachedList = []; return { result: [] }; }
     if (n === 1) { this.cachedList = [start]; return { result: [start] }; }
     this.cachedList = Array.from({ length: n }, (_, i) => start + i * (end - start) / (n - 1));
@@ -1398,7 +1421,7 @@ export class LinSpaceNode extends ClassicPreset.Node {
 // ─── Repeat ───────────────────────────────────────────────────────────────────
 export class RepeatNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: number[] | null = [];
   literals: Record<string, number> = { value: 0, count: 5 };
   width = 180; height = 160;
 
@@ -1411,8 +1434,11 @@ export class RepeatNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[]; count?: number[] }) {
-    const v = inputs.value?.[0] ?? this.literals.value ?? 0;
-    const n = Math.max(0, Math.round(inputs.count?.[0] ?? this.literals.count ?? 5));
+    const v    = readInput(inputs.value, this.literals.value ?? 0);
+    const nRaw = readInput(inputs.count, this.literals.count ?? 5);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (v === null || nRaw === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.max(0, Math.round(nRaw));
     this.cachedList = Array(n).fill(v);
     return { result: this.cachedList };
   }
@@ -1461,7 +1487,7 @@ export class NthElementNode extends ClassicPreset.Node {
    *  date list stays a date list) — see passthrough.ts. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  cachedList: unknown[] = [];
+  cachedList: unknown[] | null = [];
   literals: Record<string, number> = { n: 2 };
   width = 180; height = 160;
 
@@ -1475,7 +1501,10 @@ export class NthElementNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; n?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const n = Math.max(1, Math.round(inputs.n?.[0] ?? this.literals.n ?? 2));
+    const nRaw = readInput(inputs.n, this.literals.n ?? 2);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (nRaw === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.max(1, Math.round(nRaw));
     this.cachedList = arr.filter((_, i) => i % n === 0);
     return { result: this.cachedList };
   }
@@ -1526,7 +1555,7 @@ export class PadNode extends ClassicPreset.Node {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   dir: PadDir;
-  cachedList: unknown[] = [];
+  cachedList: unknown[] | null = [];
   literals: Record<string, number> = { n: 5, fill: 0 };
   width = 180; height = 230;
 
@@ -1542,8 +1571,11 @@ export class PadNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; n?: number[]; fill?: number[] }) {
     const arr  = inputs.list?.[0] ?? [];
-    const n    = Math.round(inputs.n?.[0] ?? this.literals.n ?? 5);
-    const fill = inputs.fill?.[0] ?? this.literals.fill ?? 0;
+    const nRaw = readInput(inputs.n, this.literals.n ?? 5);
+    const fill = readInput(inputs.fill, this.literals.fill ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (nRaw === null || fill === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.round(nRaw);
     if (arr.length >= n) { this.cachedList = arr; return { result: arr }; }
     const pad = Array(n - arr.length).fill(fill);
     this.cachedList = this.dir === "left" ? [...pad, ...arr] : [...arr, ...pad];
@@ -1554,7 +1586,7 @@ export class PadNode extends ClassicPreset.Node {
 // ─── Geometric Sequence ───────────────────────────────────────────────────────
 export class GeometricNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: number[] | null = [];
   literals: Record<string, number> = { start: 1, ratio: 2, count: 8 };
   width = 180; height = 220;
 
@@ -1568,9 +1600,12 @@ export class GeometricNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: number[]; ratio?: number[]; count?: number[] }) {
-    const start = inputs.start?.[0] ?? this.literals.start ?? 1;
-    const ratio = inputs.ratio?.[0] ?? this.literals.ratio ?? 2;
-    const n     = Math.max(0, Math.round(inputs.count?.[0] ?? this.literals.count ?? 8));
+    const start = readInput(inputs.start, this.literals.start ?? 1);
+    const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
+    const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (start === null || ratio === null || nRaw === null) { this.cachedList = null; return { result: null }; }
+    const n = Math.max(0, Math.round(nRaw));
     const out: number[] = [];
     let v = start;
     for (let i = 0; i < n; i++) { out.push(v); v *= ratio; }
@@ -1582,7 +1617,7 @@ export class GeometricNode extends ClassicPreset.Node {
 // ─── Fibonacci ────────────────────────────────────────────────────────────────
 export class FibonacciNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: number[] | null = [];
   literals: Record<string, number> = { n: 10 };
   width = 180; height = 130;
 
@@ -1594,7 +1629,10 @@ export class FibonacciNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[] }) {
-    const count = Math.min(78, Math.max(0, Math.round(inputs.n?.[0] ?? this.literals.n ?? 10)));
+    const nRaw = readInput(inputs.n, this.literals.n ?? 10);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (nRaw === null) { this.cachedList = null; return { result: null }; }
+    const count = Math.min(78, Math.max(0, Math.round(nRaw)));
     if (count === 0) { this.cachedList = []; return { result: [] }; }
     const out = [1];
     if (count > 1) { out.push(1); }
@@ -1620,7 +1658,7 @@ export const ROLLING_OP_META = {
 export class RollingNode extends ClassicPreset.Node {
   label: string;
   op: RollingOp;
-  cachedList: (number | null | SolError)[] = [];
+  cachedList: (number | null | SolError)[] | null = [];
   literals: Record<string, number> = { window: 3 };
   width = 180;
   height = 210;
@@ -1636,7 +1674,10 @@ export class RollingNode extends ClassicPreset.Node {
 
   data(inputs: { list?: (number | null | SolError)[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const w   = Math.max(1, Math.round(inputs.window?.[0] ?? this.literals.window ?? 3));
+    const wRaw = readInput(inputs.window, this.literals.window ?? 3);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (wRaw === null) { this.cachedList = null; return { result: null }; }
+    const w = Math.max(1, Math.round(wRaw));
     // Each window runs through forAggregate like every other reducer (audit
     // finding 14): a per-cell error propagates into THAT output cell (a blind
     // `a+b` reduce concatenated the error object into a string), a null is
@@ -1935,7 +1976,7 @@ const MAX_GENERATED = 1_000_000;
 
 export class RandArrayNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] | SolError = [];
+  cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 }; // min/max ship unset → muted 0/1 placeholders
   width = 180; height = 225;
   // Volatile: raw [0,1) rolls are fixed until a recalc (or the count changes);
@@ -1952,15 +1993,21 @@ export class RandArrayNode extends ClassicPreset.Node {
     this.addOutput("list", listOut("List"));
   }
 
-  data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError } {
-    const count = Math.max(0, Math.floor(inputs.count?.[0] ?? this.literals.count ?? 10));
+  data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
+    const countRaw = readInput(inputs.count, this.literals.count ?? 10);
+    const lo    = readInput(inputs.min, this.literals.min ?? 0);
+    const hi    = readInput(inputs.max, this.literals.max ?? 1);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (countRaw === null || lo === null || hi === null) {
+      this.cachedList = null; this.rolls = []; this.lastGen = -1;
+      return { list: null };
+    }
+    const count = Math.max(0, Math.floor(countRaw));
     if (count > MAX_GENERATED) {
       const e = solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`);
       this.cachedList = e; this.rolls = []; this.lastGen = -1;
       return { list: e };
     }
-    const lo    = inputs.min?.[0] ?? this.literals.min ?? 0;
-    const hi    = inputs.max?.[0] ?? this.literals.max ?? 1;
     const range = hi - lo;
     const gen = getRecalcGen();
     if (this.lastGen !== gen || this.rolls.length !== count) {
@@ -1977,7 +2024,7 @@ export class RandArrayNode extends ClassicPreset.Node {
 
 export class SequenceNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] | SolError = [];
+  cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 }; // start/step ship unset → muted 1/1 placeholders
   width = 180; height = 195;
 
@@ -1990,15 +2037,18 @@ export class SequenceNode extends ClassicPreset.Node {
     this.addOutput("list", listOut("List"));
   }
 
-  data(inputs: { count?: number[]; start?: number[]; step?: number[] }): { list: number[] | SolError } {
-    const count = Math.max(0, Math.floor(inputs.count?.[0] ?? this.literals.count ?? 10));
+  data(inputs: { count?: number[]; start?: number[]; step?: number[] }): { list: number[] | SolError | null } {
+    const countRaw = readInput(inputs.count, this.literals.count ?? 10);
+    const start = readInput(inputs.start, this.literals.start ?? 1);
+    const step  = readInput(inputs.step, this.literals.step ?? 1);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (countRaw === null || start === null || step === null) { this.cachedList = null; return { list: null }; }
+    const count = Math.max(0, Math.floor(countRaw));
     if (count > MAX_GENERATED) {
       const e = solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`);
       this.cachedList = e;
       return { list: e };
     }
-    const start = inputs.start?.[0] ?? this.literals.start ?? 1;
-    const step  = inputs.step?.[0]  ?? this.literals.step  ?? 1;
     const list  = Array.from({ length: count }, (_, i) => start + i * step);
     this.cachedList = list;
     return { list };
@@ -2078,7 +2128,9 @@ export class XMatchNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[]; array?: number[][] }): { result: number | SolError | null } {
-    const val = inputs.value?.[0] ?? this.literals.value ?? 0;
+    const val = readInput(inputs.value, this.literals.value ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (val === null) { this.cachedResult = null; return { result: null }; }
     const wired = inputs.array?.[0] ?? null;
     const arr = wired ?? [];
     let result: number | SolError | null = null;
@@ -2329,7 +2381,10 @@ export class FillNode extends ClassicPreset.Node {
     let out: Cell[];
     switch (this.op) {
       case "constant": {
-        const c = inputs.value?.[0] ?? this.literals.value ?? 0;
+        // A wired blank fill value fills a missing WITH a missing — the honest
+        // per-cell propagation, so those cells stay blank rather than taking the
+        // number typed on the card (value-semantics.md, "Reading an input").
+        const c = readInput(inputs.value, this.literals.value ?? 0);
         out = arr.map((v) => (isMissing(v) ? c : v));
         break;
       }
