@@ -526,11 +526,22 @@ boundary typing that adoption can't express — either would argue for a real su
 **When:** 2026-07-28 (author, with the `v2.0/17-matrix-formulas.md` packet on the
 table: "Yes — lift the limit").
 **The decision:** Expression / LAMBDA formulas will accept 2-D MATRICES with Excel
-dynamic-array semantics. The scope is matrices-ONLY: frames, cubes and complex stay
-out of formulas permanently (rung 4 was rejected on record — no Excel semantics to
-copy, competes with the verb engine, breaks lazy-FrameRef economics). This
-supersedes the "permanent" reading of the D2 formula cap; D2's OTHER half (the
-composite toolbar reroute) is untouched.
+dynamic-array semantics. Frames and cubes stay out of formulas (rung 4 was rejected
+on record — no Excel semantics to copy, competes with the verb engine, breaks
+lazy-FrameRef economics). This supersedes the "permanent" reading of the D2 formula
+cap; D2's OTHER half (the composite toolbar reroute) is untouched.
+
+**AMENDED 2026-07-28 (same day, author challenge): complex is NOT excluded.** The
+original clause read "frames, cubes and complex stay out" — but complex was
+piggybacking on reasons that only apply to frames/cubes (Excel HAS complex
+semantics: the IM* family), and its actual technical blocker (the [re,im]/2-list
+ambiguity) was removed by VAL-15 the same day. Worse, the exclusion was never
+enforced: `anydata` accepts the complex family, so tagged Cx values already flow
+into formulas — where operators concatenate them into "[object Object]1" and the
+Formula.js IM* names work on TEXT complexes ("3+4i") while refusing tagged ones.
+Complex-in-formulas is therefore an OPEN build (backlog), not an exclusion: own the
+IM* family over tagged Cx (FX-1, the complex.ts kernels), accept Excel's text form
+on the way in, and make an operator on a Cx a typed #TYPE! instead of garbage.
 **The criteria that decided it** (fixed 2026-07-14): correctness + coherence only —
 the identity objection was retired by the author. What made it decidable now:
 registry unification is real through Tier 3 (one shared impl per function,

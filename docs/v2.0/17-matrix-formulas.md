@@ -8,8 +8,11 @@ gate come out in build step 2, not before the engine understands rank 2.
 
 **The question was:** do formulas (Expression / LAMBDA) accept matrices, or stay
 1-D forever? **Answered: matrices-only, Excel dynamic-array semantics** (D23).
-Frames, cubes and complex stay out of formulas permanently — no Excel semantics to
-copy, competes with the verb engine, breaks lazy-FrameRef economics.
+Frames and cubes stay out of formulas — no Excel semantics to copy, competes with
+the verb engine, breaks lazy-FrameRef economics. (Complex was originally listed in
+that exclusion and REMOVED by the same-day amendment: its blocker was the tuple
+ambiguity VAL-15 deleted, and the frame/cube reasons never applied to it. See D23's
+amendment; the complex-in-formulas build is in the backlog.)
 
 ---
 
