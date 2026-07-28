@@ -22,7 +22,7 @@ export function DocumentChip({ value, size = "md" }: { value: DocumentValue; siz
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--document${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title={!open ? "Document" : isReport ? "Document. Click to open the report." : "Document. Click to go to its note."}
+      title={!open ? "Document" : isReport ? "Document. Open the report." : "Document. Go to its note."}
       disabled={!open}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}

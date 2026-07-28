@@ -112,7 +112,7 @@ export function FormulaField({
           <div
             ref={renderRef}
             className="solenoid-expr__rendered"
-            title={onOpen ? (locked ? `${LOCK_TITLE} Click to view.` : "Click to open the formula") : locked ? LOCK_TITLE : disabled ? disabledTitle : "Click to edit"}
+            title={onOpen ? (locked ? `${LOCK_TITLE} View.` : "Open the formula.") : locked ? LOCK_TITLE : disabled ? disabledTitle : "Edit."}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={onOpen ? () => onOpen() : editable ? () => setEditing(true) : undefined}
