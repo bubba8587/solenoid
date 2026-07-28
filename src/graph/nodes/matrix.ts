@@ -1,4 +1,5 @@
 import { ClassicPreset } from "rete";
+import { matRows, matCols, matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, wrapCells } from "./matrixOps";
 import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
@@ -13,117 +14,10 @@ import { taggedListFromMatrix, matrixCellsFromList } from "../unitColumn";
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 type Mat = (number | null)[][];  // numeric matrix; a null cell is MISSING (linear-algebra ops reject it)
-type NumMat = number[][];        // a COMPLETE numeric matrix — the compute kernels run only after asNumericMatrix
 type CellMat = Cell[][];          // element-agnostic matrix (the pure-reshape ops)
 
 // Dimensions / transpose are element-agnostic — used by both the numeric ops and
 // the polymorphic reshapers (TRANSPOSE / TOROW / …), so they take any matrix.
-function matRows(m: readonly unknown[][]): number { return m.length; }
-function matCols(m: readonly unknown[][]): number { return m[0]?.length ?? 0; }
-
-// The strictly-numeric matrix ops (MMULT / MDETERM / MINVERSE) declare a numeric
-// `table` input, but an `anytable` (the 2-D wildcard) can still land on them: the
-// socket only blocks DROPPING a dimension, not narrowing the element type, so a
-// text/date matrix reaches here and would otherwise multiply strings into NaN
-// soup (see docs/backlog.md "Ameliorate the anytable element-type risk"). Guard
-// at runtime with a tagged #TYPE! instead — the element-type error code, distinct
-// from #VALUE! (operand misuse): the value is wired correctly, it's just the wrong
-// element family for a numeric op. Element types are HOMOGENEOUS within a matrix —
-// the type system never mixes them — so the first non-blank cell classifies the
-// whole grid; no full scan needed. The positive test (finite number) also rejects
-// the degenerate object/NaN cases, not just text.
-function asNumericMatrix(m: CellMat): NumMat | SolError {
-  // Full scan (not first-cell): a numeric matrix may now have `null` GAPS, and
-  // linear algebra can't run with a missing cell — reject it as #VALUE! (complete
-  // data needed), distinct from #TYPE! (wrong element family — text in a number op).
-  for (const row of m)
-    for (const cell of row) {
-      if (cell === null || cell === undefined || cell === "")
-        return solError("#VALUE!", "This matrix operation needs complete data; a cell is missing");
-      if (typeof cell !== "number" || !Number.isFinite(cell))
-        return solError("#TYPE!", "This matrix operation needs numbers, but got text");
-    }
-  return m as NumMat; // every cell is a finite number
-}
-
-function matMul(a: NumMat, b: NumMat): NumMat | null {
-  const m = matRows(a), n = matCols(a), p = matCols(b);
-  if (n !== matRows(b) || n === 0) return null;
-  const r: NumMat = Array.from({ length: m }, () => Array(p).fill(0));
-  for (let i = 0; i < m; i++)
-    for (let j = 0; j < p; j++)
-      for (let k = 0; k < n; k++)
-        r[i][j] += a[i][k] * b[k][j];
-  return r;
-}
-
-function matTranspose<T>(m: T[][]): T[][] {
-  const rows = matRows(m), cols = matCols(m);
-  return Array.from({ length: cols }, (_, j) =>
-    Array.from({ length: rows }, (_, i) => m[i][j]));
-}
-
-function matUnit(n: number, offDiag: number | null = 0): Mat {
-  const k = Math.round(n);
-  if (k < 1) return [];
-  return Array.from({ length: k }, (_, i) =>
-    Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
-}
-
-// LU decomposition with partial pivoting for det and inverse.
-function matLU(m: NumMat): { L: NumMat; U: NumMat; P: number[]; sign: number } | null {
-  const n = matRows(m);
-  if (n !== matCols(m)) return null;
-  const a = m.map(row => [...row]);
-  const P = Array.from({ length: n }, (_, i) => i);
-  let sign = 1;
-  for (let i = 0; i < n; i++) {
-    let maxVal = Math.abs(a[i][i]), maxR = i;
-    for (let r = i + 1; r < n; r++)
-      if (Math.abs(a[r][i]) > maxVal) { maxVal = Math.abs(a[r][i]); maxR = r; }
-    if (maxVal < 1e-14) return null;
-    if (maxR !== i) { [a[i], a[maxR]] = [a[maxR], a[i]]; [P[i], P[maxR]] = [P[maxR], P[i]]; sign *= -1; }
-    for (let r = i + 1; r < n; r++) {
-      a[r][i] /= a[i][i];
-      for (let c = i + 1; c < n; c++) a[r][c] -= a[r][i] * a[i][c];
-    }
-  }
-  const L: NumMat = Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) => j < i ? a[i][j] : j === i ? 1 : 0));
-  const U: NumMat = Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) => j >= i ? a[i][j] : 0));
-  return { L, U, P, sign };
-}
-
-function matDet(m: NumMat): number | null {
-  const lu = matLU(m);
-  if (!lu) return null;
-  let d = lu.sign;
-  for (let i = 0; i < lu.U.length; i++) d *= lu.U[i][i];
-  return d;
-}
-
-function matInverse(m: NumMat): NumMat | null {
-  const n = matRows(m);
-  if (n !== matCols(m)) return null;
-  const aug = m.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
-  for (let i = 0; i < n; i++) {
-    let max = Math.abs(aug[i][i]), maxR = i;
-    for (let r = i + 1; r < n; r++)
-      if (Math.abs(aug[r][i]) > max) { max = Math.abs(aug[r][i]); maxR = r; }
-    if (max < 1e-14) return null;
-    if (maxR !== i) [aug[i], aug[maxR]] = [aug[maxR], aug[i]];
-    const pivot = aug[i][i];
-    for (let c = 0; c < 2 * n; c++) aug[i][c] /= pivot;
-    for (let r = 0; r < n; r++) {
-      if (r === i) continue;
-      const f = aug[r][i];
-      for (let c = 0; c < 2 * n; c++) aug[r][c] -= f * aug[i][c];
-    }
-  }
-  return aug.map(row => row.slice(n));
-}
-
 // ─── TABLE INPUT ──────────────────────────────────────────────────────────────
 // A LITERAL source, exactly like Frame Input (subsystem-invariants "Frame Input
 // is a LITERAL source"): `tableText` stores the raw text the user typed, the
@@ -604,12 +498,7 @@ export class TableReshapeNode extends ClassicPreset.Node {
       if (!raw || w < 1) return { result: null };
       const { mags: list, unit } = matrixCellsFromList(raw);
       const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last row");
-      const rows: CellMat = [];
-      for (let i = 0; i < list.length; i += w) {
-        const row = list.slice(i, i + w) as Cell[];
-        while (row.length < w) row.push(na);
-        rows.push(row);
-      }
+      const rows: CellMat = wrapCells(list as Cell[], w, "rows", () => na);
       withMatrixUnit(rows, unit);
       this.cachedMatrix = rows;
       return { result: rows };
@@ -620,9 +509,7 @@ export class TableReshapeNode extends ClassicPreset.Node {
       if (!raw || w < 1) return { result: null };
       const { mags: list, unit } = matrixCellsFromList(raw);
       const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last column");
-      const nCols = Math.ceil(list.length / w);
-      const mat: CellMat = Array.from({ length: w }, () => Array<Cell>(nCols).fill(na));
-      for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i] as Cell;
+      const mat: CellMat = wrapCells(list as Cell[], w, "cols", () => na);
       withMatrixUnit(mat, unit);
       this.cachedMatrix = mat;
       return { result: mat };

@@ -20,13 +20,14 @@ import { measureParity, excelNamedGapNames } from "./formulaNodeParity";
 // GAP A — a node carries an Excel name, but typing that name in an Expression
 // gives #NAME?. The sharpest gap: the node is right there in the Add menu.
 //
-// What remains here after the Tier 1 sweep is the D2-capped set, and it is NOT
-// closeable by registration: these are 2-D-shaped (TOCOL/TOROW/WRAPROWS/WRAPCOLS/
-// MDETERM/MINVERSE/the table TAKE), array-returning range functions still awaiting
-// list-model range routing (FILTER/SORTBY/GROUPBY/SEQUENCE/RANDARRAY/SCAN), or
-// lambda META-functions that are a language feature rather than a registration
-// (LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE). They land if and only if Tier 4 lifts
-// the dimensionality cap — do not register them piecemeal to shrink this list.
+// D23 opened this list: the cap lifted, and the matrix tranche closed the
+// 2-D-shaped registrations (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/
+// SEQUENCE — `formulaMatrix.test.ts`). What remains splits in two:
+// - array-returning functions awaiting their list/matrix-model registrations
+//   (FILTER/SORTBY/GROUPBY/RANDARRAY/SCAN, the table TAKE) — closeable now,
+//   tranche by tranche, same discipline;
+// - the lambda META-functions (LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE) — a
+//   language feature (compilePositional at rank 2), the last tranche.
 const EXCEL_NAMED_GAP: string[] = [
   "BYCOL",
   "BYROW",
@@ -35,18 +36,11 @@ const EXCEL_NAMED_GAP: string[] = [
   "LAMBDA",
   "MAKEARRAY",
   "MAP",
-  "MDETERM",
-  "MINVERSE",
   "RANDARRAY",
   "REDUCE",
   "SCAN",
-  "SEQUENCE",
   "SORTBY",
   "TAKE",
-  "TOCOL",
-  "TOROW",
-  "WRAPCOLS",
-  "WRAPROWS",
 ];
 
 // GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a

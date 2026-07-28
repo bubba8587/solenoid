@@ -240,6 +240,13 @@ export function geometric(start: number, ratio: number, count: number): number[]
   return out;
 }
 
+/** SEQUENCE's arithmetic core (Excel: SEQUENCE). Uncapped — both surfaces apply
+ *  the MAX_GENERATED overflow convention at their own boundary. */
+export function sequenceList(count: number, start: number, step: number): number[] {
+  const n = Math.max(0, Math.floor(count));
+  return Array.from({ length: n }, (_, i) => start + i * step);
+}
+
 /** Capped at 78 terms — the last Fibonacci number exactly representable as a double
  *  (F79 exceeds 2^53 and would silently start rounding). */
 export function fibonacci(count: number): number[] {

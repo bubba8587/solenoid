@@ -103,11 +103,19 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   "connect an account" flow would change that shape.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
-  the ratchet and the pack seam have landed; 338/646 leaves are formula-callable, gap A
-  is the 19 D2-capped names, gap C is 0. Left: **the Tier 4 BUILD** (decided YES —
-  D23, 2026-07-28; spec = `v2.0/17-matrix-formulas.md` Part 3: broadcast engine →
-  socket lift → registrations in tranches), and the
-  stragglers each parked for a stated reason rather than effort:
+  the ratchet and the pack seam have landed; 344/646 leaves are formula-callable, gap A
+  is the 19 D2-capped names, gap C is 0. Left: **the Tier 4 BUILD's last tranches**
+  (D23; spec = `v2.0/17-matrix-formulas.md`). Engine, socket lift and the matrix
+  core (TRANSPOSE/MMULT/MUNIT/MDETERM/MINVERSE/WRAPROWS/WRAPCOLS/TOCOL/TOROW/
+  SEQUENCE) are BUILT; gap A is 12 names in two tranches:
+  - **array-returning registrations** — FILTER, SORTBY, GROUPBY, RANDARRAY, SCAN,
+    the table TAKE; mechanical, the formulaMatrix.test discipline.
+  - **the LAMBDA family** — LAMBDA/MAP/BYROW/BYCOL/MAKEARRAY/REDUCE; a language
+    feature (compilePositional at rank 2), the last tranche.
+  Also: the array-returning Formula.js names (TREND/GROWTH/LINEST/LOGEST/
+  FREQUENCY/MODE.MULT/UNIQUE/SORT) can now be OWNED at rank 2 instead of staying
+  unrouted (rangeRouting.test's DEFERRED list shrinks as they land).
+  Stragglers, each parked for a stated reason rather than effort:
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.
   - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is

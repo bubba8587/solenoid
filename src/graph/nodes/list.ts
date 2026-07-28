@@ -15,7 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, shuffleList, setKey, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -1903,7 +1903,7 @@ export class SequenceNode extends ClassicPreset.Node {
       this.cachedList = e;
       return { list: e };
     }
-    const list  = Array.from({ length: count }, (_, i) => start + i * step);
+    const list  = sequenceList(count, start, step);
     this.cachedList = list;
     return { list };
   }
