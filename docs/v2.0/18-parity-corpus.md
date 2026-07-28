@@ -1,6 +1,16 @@
 # 18 — The backend parity corpus (FX: one fixture set, both engines)
 
-**Status: DESIGNED, not built.** The last item on the spec-promotion queue and the
+**Status: STEP 1 BUILT (2026-07-28)** — `FRAME_OP_KINDS` (compile-time exhaustive),
+both runners, and three seed verbs (sort / distinct / filter, 15 cases incl.
+`expectError` and null-cell edges) are in. The JS side is green; the cargo runner
+(`corpus_cases` in `engine/tests.rs`) is written against the production
+deserializers but UNVERIFIED in the dev container — the Tauri link needs the GTK
+dev libs (now apt-installed here; the compile was skipped by author call — run
+`cargo test corpus_cases` in src-tauri to verify). Remaining: the verb-by-verb
+migration (step 2, the `NOT_YET_MIGRATED` whitelist in `frameVerbCorpus.test.ts`),
+the guard flip (step 3), the FX-12 promotion (step 4).
+
+**Original design note.** The last item on the spec-promotion queue and the
 largest: today the Polars engine (`src-tauri/src/engine.rs`) and the JS oracle
 (`src/graph/frameVerbs.ts`) are kept in agreement by HAND-MIRRORED tests — each
 side re-encodes its own fixtures, and the "vitest twin" comments in
@@ -49,11 +59,10 @@ Each file:
   dtype included. `expectError` is the SolError code (the engine's error mapping
   and the oracle's must agree on the CODE; messages are per-side prose).
 - Value-model edges live IN the cases, not in special machinery: `null` cells,
-  `Infinity`/`NaN` (which JSON-serialize as `null` — the corpus therefore writes
-  non-finite values with the same `["#", null]` convention the oracle keys
-  already pinned; a case needing a REAL ∞ input encodes it as the string
-  sentinel `"__Infinity"`, decoded by both runners), `-0` (keys as `0`),
-  mixed-type columns, empty frames, empty column lists.
+  non-finite values in the wire's OWN tagged form (`{"__nf": "inf"|"-inf"|"nan"}`
+  — the convention frameBackend/engine.rs already speak on the IPC seam, so both
+  runners decode it with production code paths), `-0` (keys as `0`), mixed-type
+  columns, empty frames, empty column lists.
 
 ## Runners
 

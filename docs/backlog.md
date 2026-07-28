@@ -13,12 +13,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed (2026-07-28:
   PERSIST ×8, EFFECT ×2, ENGINE ×3, SOCK-10/11/12, FX-11, VAL-17/18; **63 rules**).
   Still queued, roughly by value:
-  - **FX: backend parity corpus** — DESIGNED (`v2.0/18-parity-corpus.md`,
-    decision-complete: the corpus format IS the wire format — fixtures are
-    recorded IPC payloads both engines' production deserializers read; two
-    runners; derived FRAME_OP_KINDS guard; verb-by-verb migration off the
-    hand-mirrored pairs, whitelist-ratcheted; promotes as FX-12 at the end).
-    The build remains the largest single item in the queue.
+  - **FX: backend parity corpus — STEP 1 BUILT** (`v2.0/18-parity-corpus.md`):
+    FRAME_OP_KINDS + both runners + sort/distinct/filter seed fixtures (15
+    cases). JS green; the cargo runner is written but UNVERIFIED in-container
+    (Tauri link needs the GTK libs — now installed; compile skipped by author
+    call — run `cargo test corpus_cases` to verify). Next: verify cargo once,
+    then the verb-by-verb migration off the hand-mirrored pairs (the
+    NOT_YET_MIGRATED whitelist is the ratchet), guard flip, FX-12 promotion.
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
     promote if the class of config-driven coercions grows.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO

@@ -1,0 +1,38 @@
+{ "verb": "filter",
+  "cases": [
+    { "name": "numeric greater-than",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 3, 8] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "gt", "value": 3 },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [5, 8] } ] } },
+    { "name": "text equality is case-insensitive by default",
+      "frames": { "in": { "columns": [
+        { "name": "s", "type": "string", "values": ["Ada", "ada", "Bob"] } ] } },
+      "op": { "kind": "filter", "column": "s", "op": "eq", "value": "ada" },
+      "expect": { "columns": [
+        { "name": "s", "type": "string", "values": ["Ada", "ada"] } ] } },
+    { "name": "text equality with matchCase is exact",
+      "frames": { "in": { "columns": [
+        { "name": "s", "type": "string", "values": ["Ada", "ada", "Bob"] } ] } },
+      "op": { "kind": "filter", "column": "s", "op": "eq", "value": "ada", "matchCase": true },
+      "expect": { "columns": [
+        { "name": "s", "type": "string", "values": ["ada"] } ] } },
+    { "name": "a null cell never passes a comparison",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, null, 5] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "lt", "value": 10 },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5] } ] } },
+    { "name": "isblank keeps exactly the null cells",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, null, 5, null] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "isblank", "value": null },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [null, null] } ] } },
+    { "name": "unknown column errors",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "filter", "column": "missing", "op": "gt", "value": 0 },
+      "expectError": "#REF!" }
+  ] }

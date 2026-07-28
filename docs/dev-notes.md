@@ -120,6 +120,30 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Parity corpus step 1 BUILT — the loop exists end to end (2026-07-28hh)
+
+The bundle's step 1, same day as the design. `FRAME_OP_KINDS` in frameVerbs.ts
+is compile-time exhaustive (an unlisted FrameOp kind fails tsc via an
+Exclude-to-never check); `fixtures/frame-verbs/{sort,distinct,filter}.json`
+hold 15 wire-shaped cases including #REF! expectError rows, null-cell edges,
+and case-sensitivity toggles; `frameVerbCorpus.test.ts` globs them through
+`applyVerb` with structural compare + the completeness ratchet (fixtures ∪
+NOT_YET_MIGRATED whitelist must equal FRAME_OP_KINDS exactly, no overlap);
+`corpus_cases` in engine/tests.rs walks the same directory through the
+PRODUCTION deserializers (WireFrame/WireOp → apply_ops → dump, numeric-aware
+compare, IpcError codes read via their serde form).
+
+Design correction while building: the doc's invented "__Infinity" sentinel
+died on contact with the code — the wire ALREADY has a non-finite convention
+(`{"__nf": "inf"|"-inf"|"nan"}`, spoken by frameBackend + engine.rs since
+2026-07-02). The corpus uses that, per its own format-is-the-wire rule.
+
+The JS side is green (suite 3655). The cargo runner is written but UNVERIFIED
+here: the Tauri lib link needs the GTK dev libs (apt-installed now), and the
+cold Polars compile was skipped by author call — `cargo test corpus_cases`
+in src-tauri is the one pending verification. Then step 2: migrate the ~30
+hand-mirrored pairs verb by verb, shrinking the whitelist.
+
 ### The parity corpus is DESIGNED — the queue's last item, decision-complete (2026-07-28gg)
 
 `v2.0/18-parity-corpus.md`. The one design decision that matters: **the corpus
