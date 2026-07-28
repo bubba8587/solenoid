@@ -549,25 +549,25 @@ export class NetworkdaysNode extends ClassicPreset.Node {
  *  re-default the whole app. */
 // ─── DATEDIF ─────────────────────────────────────────────────────────────────
 
-export type DateIfUnit = "Y" | "M" | "D" | "MD" | "YM" | "YD";
+export type DatedifUnit = "Y" | "M" | "D" | "MD" | "YM" | "YD";
 
-export const DATEIF_UNIT_META = {
+export const DATEDIF_UNIT_META = {
   Y:  { label: "Y",  description: "Complete years between dates" },
   M:  { label: "M",  description: "Complete months between dates" },
   D:  { label: "D",  description: "Days between dates" },
   MD: { label: "MD", description: "Days, ignoring months and years" },
   YM: { label: "YM", description: "Months, ignoring years" },
   YD: { label: "YD", description: "Days, ignoring years" },
-} satisfies Record<DateIfUnit, { label: string; description: string }>;
+} satisfies Record<DatedifUnit, { label: string; description: string }>;
 
-export class DateIfNode extends ClassicPreset.Node {
+export class DatedifNode extends ClassicPreset.Node {
   label: string;
-  unit: DateIfUnit;
+  unit: DatedifUnit;
   cachedResult: BroadcastResult = null;
   width = 180; height = 220;
 
-  constructor(init?: { label?: string; unit?: DateIfUnit }) {
-    super("DateIf");
+  constructor(init?: { label?: string; unit?: DatedifUnit }) {
+    super("Datedif");
     this.label = init?.label ?? "DATEDIF";
     this.unit  = init?.unit  ?? "Y";
     this.addInput("start", dateComboIn("Start date"));

@@ -10,12 +10,12 @@ import type {
   DateAddNode as DateAddNodeType,
   WorkdayNode as WorkdayNodeType,
   NetworkdaysNode as NetworkdaysNodeType,
-  DateIfNode as DateIfNodeType,
-  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, DateIfUnit,
+  DatedifNode as DatedifNodeType,
+  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, DatedifUnit,
 } from "../rete-nodes";
 import {
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
-  DATE_DIFF_OP_META, DATE_ADD_OP_META, DATEIF_UNIT_META,
+  DATE_DIFF_OP_META, DATE_ADD_OP_META, DATEDIF_UNIT_META,
 } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
@@ -179,16 +179,16 @@ export function NetworkdaysComponent({ data, emit }: NodeProps<NetworkdaysNodeTy
   );
 }
 
-const DATEIF_UNITS = (Object.keys(DATEIF_UNIT_META) as DateIfUnit[]).map(u => ({
-  value: u, label: DATEIF_UNIT_META[u].label,
+const DATEDIF_UNITS = (Object.keys(DATEDIF_UNIT_META) as DatedifUnit[]).map(u => ({
+  value: u, label: DATEDIF_UNIT_META[u].label,
 }));
 
-export function DateIfComponent({ data, emit }: NodeProps<DateIfNodeType>) {
+export function DatedifComponent({ data, emit }: NodeProps<DatedifNodeType>) {
   const [unit, setUnit] = useNodeField(data, "unit");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={unit} onChange={setUnit} options={DATEIF_UNITS} />
+      <OpSelect arg value={unit} onChange={setUnit} options={DATEDIF_UNITS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
