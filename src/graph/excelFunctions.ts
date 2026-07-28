@@ -625,7 +625,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
-  CONTAINS:        { returns: "number", listArgs: true, arity: [2, 2], native: true },
+  CONTAINS:        { returns: "logical", listArgs: true, arity: [2, 2], native: true },
   WAVG:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
   WVAR:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
   WSTDEV:          { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },

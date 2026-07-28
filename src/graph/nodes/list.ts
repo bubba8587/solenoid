@@ -1254,7 +1254,7 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
 
 export class ContainsNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: boolean | null = null;
   literals: Record<string, number> = { value: 0 };
   width = 180;
   height = 160;
@@ -1262,15 +1262,18 @@ export class ContainsNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Contains");
     this.label = init?.label ?? "CONTAINS";
-    this.addInput("list",  listIn("List"));
-    this.addInput("value", numIn("Value"));
-    this.addOutput("result", numOut("0 / 1"));
+    // Membership is type-generic (the kernel keys by setKey — VAL-8 was written
+    // for it), so the sockets match the Set/Is In/Tally siblings: any-element
+    // list, adoptive needle, LOGICAL answer.
+    this.addInput("list",  anyListIn("List"));
+    this.addInput("value", anyIn("Value"));
+    this.addOutput("result", logicalOut("Found"));
   }
 
-  data(inputs: { list?: number[][]; value?: number[] }) {
+  data(inputs: { list?: unknown[][]; value?: unknown[] }) {
     const arr = inputs.list?.[0] ?? null;
-    const v = readInput(inputs.value, this.literals.value as number | undefined);
-    let result: number | null = null;
+    const v = readInput(inputs.value, this.literals.value as unknown);
+    let result: boolean | null = null;
     // A blank needle can't be looked for — unknown, not "not asked yet"
     // (value-semantics.md, "Reading an input").
     if (arr !== null && v !== null && v !== undefined) result = containsValue(arr, v);
