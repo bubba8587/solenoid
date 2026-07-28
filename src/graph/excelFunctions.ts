@@ -1,14 +1,14 @@
 import * as FX from "@formulajs/formulajs";
-import { solError, type SolError, type SolErrorCode } from "./errorValue";
+import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/date";
-import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit } from "./nodes/mathUtils";
+import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convert";
-import { splitText, textAfterBefore, urlEncode, regexApply } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
-  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, setKey,
+  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
   firstError as firstListError,
   concatLists, type Cell as ListCell,
@@ -323,7 +323,7 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   // ── superseded Excel statistics/distribution names ──
   NORMDIST: "NORM.DIST", NORMINV: "NORM.INV", NORMSDIST: "NORM.S.DIST", NORMSINV: "NORM.S.INV",
   LOGNORMDIST: "LOGNORM.DIST", LOGINV: "LOGNORM.INV", LOGNORMINV: "LOGNORM.INV",
-  TDIST: "T.DIST", TINV: "T.INV",
+  TDIST: "T.DIST.RT", TINV: "T.INV.2T", // MS compat mapping: TDIST's tails arg splits into .RT/.2T; TINV was always two-tailed
   CHIDIST: "CHISQ.DIST.RT", CHIINV: "CHISQ.INV.RT",
   FDIST: "F.DIST.RT", FINV: "F.INV.RT",
   BETADIST: "BETA.DIST", BETAINV: "BETA.INV",
@@ -462,7 +462,13 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ENCODEURL:    { returns: "string", arity: [1, 1], family: "text", native: true },
   REGEXTEST:    { returns: "number", arity: [2, 3], family: "text", native: true },
   REGEXEXTRACT: { returns: "string", arity: [2, 4], family: "text", native: true },
-  REGEXREPLACE: { returns: "string", arity: [3, 4], family: "text", native: true },
+  REGEXREPLACE: { returns: "string", arity: [3, 5], family: "text", native: true },
+  // The statistical tests Formula.js gets WRONG: its T.TEST ignores tails/type and
+  // its F.TEST returns the variance ratio instead of the p-value. Registered
+  // against the nodes' own impls (mathUtils) so both surfaces answer the same.
+  "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
+  "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
+  PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   // Bond / security block. COUPNCD and COUPPCD return a date SERIAL, so they carry
   // the `date` return type; every other one is a number.
@@ -1056,14 +1062,39 @@ registerInternal("TEXTSPLIT",  (text, delim) => splitText(toStr(text), toStr(del
 registerInternal("TEXTAFTER",  (text, delim) => textAfterBefore("after",  toStr(text), toStr(delim)));
 registerInternal("TEXTBEFORE", (text, delim) => textAfterBefore("before", toStr(text), toStr(delim)));
 registerInternal("ENCODEURL",  (text) => urlEncode("encode", toStr(text)));
-// Excel's REGEX* take an optional case-sensitivity argument; ours takes the flags
-// string straight through to the RegExp, matching the node's Flags field.
-registerInternal("REGEXTEST",    (text, pat, flags) => regexApply("test",    toStr(text), toStr(pat), "", toStr(flags ?? "")));
-registerInternal("REGEXREPLACE", (text, pat, repl, flags) => regexApply("replace", toStr(text), toStr(pat), toStr(repl), toStr(flags ?? "")));
-// REGEXEXTRACT's return_all argument mirrors Excel's: FALSE (default) = the first
-// match as text, TRUE = every match as a list.
-registerInternal("REGEXEXTRACT", (text, pat, all, flags) =>
-  regexApply(isTrue(all) ? "extract_all" : "extract", toStr(text), toStr(pat), "", toStr(flags ?? "")));
+// Excel's REGEX* optional arguments, as DOCUMENTED — not JS flag strings. An
+// earlier cut passed the third arg through as RegExp flags, so Excel's
+// REGEXTEST(text, pat, 1) (1 = case-INsensitive) blanked on the invalid flag "1".
+// case_sensitivity: 0 = case-sensitive (default), 1 = case-insensitive.
+const caseFlag = (fn: string, cs: unknown): string | SolError => {
+  const v = cs == null ? 0 : Number(cs);
+  return v === 0 ? "" : v === 1 ? "i" : solError("#VALUE!", `${fn}: case_sensitivity must be 0 or 1`);
+};
+registerInternal("REGEXTEST", (text, pat, cs) => {
+  const f = caseFlag("REGEXTEST", cs);
+  return isSolError(f) ? f : regexApply("test", toStr(text), toStr(pat), "", f);
+});
+// occurrence: 0 (default) replaces every match; n replaces only the nth.
+registerInternal("REGEXREPLACE", (text, pat, repl, occurrence, cs) => {
+  const f = caseFlag("REGEXREPLACE", cs);
+  if (isSolError(f)) return f;
+  const occ = occurrence == null ? 0 : Math.round(Number(occurrence));
+  if (!Number.isFinite(occ) || occ < 0) return solError("#VALUE!", "REGEXREPLACE: occurrence must be 0 or a positive count");
+  return occ === 0
+    ? regexApply("replace", toStr(text), toStr(pat), toStr(repl), f)
+    : replaceNth(toStr(text), toStr(pat), toStr(repl), occ, f);
+});
+// return_mode: 0 (default) = first match, 1 = all matches as a list, 2 = the first
+// match's capture groups as a list.
+registerInternal("REGEXEXTRACT", (text, pat, mode, cs) => {
+  const f = caseFlag("REGEXEXTRACT", cs);
+  if (isSolError(f)) return f;
+  const m = mode == null ? 0 : Number(mode);
+  if (m === 0) return regexApply("extract", toStr(text), toStr(pat), "", f);
+  if (m === 1) return regexApply("extract_all", toStr(text), toStr(pat), "", f);
+  if (m === 2) return regexGroups(toStr(text), toStr(pat), f);
+  return solError("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2");
+});
 
 // ── Solenoid-native (no Formula.js equivalent) — the registry ADDS these ──
 // Cover the string + logical output types and show the registry isn't limited to
@@ -1124,12 +1155,12 @@ registerInternal("NTHELEMENT", (list, n) => nthElement(toList(list), Number(n)))
 registerInternal("INTERLEAVE", (a, b) => interleave(toList(a), toList(b)));
 registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "right"));
 registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
-registerInternal("DIFF",       (list) => diffList(numList(list) as number[]));
-registerInternal("NORMALIZE",  (list) => normalizeList(numList(list) as number[]));
-registerInternal("RUNNINGSUM",     (list) => cumulative("cumsum",  numList(list) as number[]));
+registerInternal("DIFF",       (list) => diffList(numList(list)));
+registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
+registerInternal("RUNNINGSUM",     (list) => cumulative("cumsum",  numList(list)));
 registerInternal("RUNNINGPRODUCT", (list) => cumulative("cumprod", numList(list) as number[]));
-registerInternal("RUNNINGMAX",     (list) => cumulative("cummax",  numList(list) as number[]));
-registerInternal("RUNNINGMIN",     (list) => cumulative("cummin",  numList(list) as number[]));
+registerInternal("RUNNINGMAX",     (list) => cumulative("cummax",  numList(list)));
+registerInternal("RUNNINGMIN",     (list) => cumulative("cummin",  numList(list)));
 registerInternal("ROLLINGSUM",    (list, w) => rolling("sum",    numList(list), Number(w)));
 registerInternal("ROLLINGAVG",    (list, w) => rolling("avg",    numList(list), Number(w)));
 registerInternal("ROLLINGMIN",    (list, w) => rolling("min",    numList(list), Number(w)));
@@ -1140,8 +1171,8 @@ registerInternal("ROLLINGMEDIAN", (list, w) => rolling("median", numList(list), 
 // Find / aggregate: list in, scalar out. LENGTH counts every slot including the
 // missing ones, which is exactly why these need the raw whole-list routing.
 registerInternal("LENGTH",   (list) => toList(list).length);
-registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list) as number[]));
-registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list) as number[]));
+registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
+registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list)));
 registerInternal("CONTAINS", (list, v) => containsValue(toList(list), v));
 registerInternal("WAVG",     (x, w) => weighted("wavg",   numList(x), numList(w)));
 registerInternal("WVAR",     (x, w) => weighted("wvar",   numList(x), numList(w)));
@@ -1181,8 +1212,13 @@ registerInternal("COALESCE", (list, ...rest) => fillList("coalesce", numList(lis
 
 // Build (continued). RANGE is half-open [start, stop) walking by step, like the node
 // and like Python — NOT Excel's "a range of cells", which has no formula spelling here.
-registerInternal("RANGE", (start, stop, step) =>
-  rangeList(Number(start), stop == null ? undefined : Number(stop), step == null ? 1 : Number(step)));
+registerInternal("RANGE", (start, stop, step) => {
+  const a = Number(start), b = stop == null ? undefined : Number(stop), st = step == null ? 1 : Number(step);
+  // Same convention as LINSPACE/REPEAT — no Count arg, so cap on the IMPLIED
+  // length (an infinite walk is #VALUE!, a too-long one #OVERFLOW!). The old
+  // implementation silently truncated at 1000 elements.
+  return capped("RANGE", rangeCount(a, b, st), () => rangeList(a, b, st));
+});
 registerInternal("CONCATLISTS", (...lists) => concatLists(...lists.map(toList)));
 
 // ── Names the NODE surface already claims, made callable ──────────────────────
@@ -1232,12 +1268,40 @@ registerInternal("COUNTDISTINCT", (list) => {
 // D2 cap. Argument order follows the node's sockets, which is Excel's own
 // known_ys / known_xs / new_xs convention (FORECAST, TREND).
 registerInternal("INTERPOLATE", (ys, xs, newXs) => {
-  const kx = numList(xs) as number[], ky = numList(ys) as number[];
-  const q = toList(newXs).map((v) => (v == null ? NaN : Number(v)));
+  // The node's own pair policy (pairPresent): a cell error in the known data
+  // propagates, an incomplete pair drops — the raw cast once interpolated
+  // against a fabricated (0, y) point when a known-x was null.
+  const { error, xs: kx, ys: ky } = pairPresent(numList(xs), numList(ys));
+  if (error) return error;
+  const qRaw = toList(newXs);
+  const qErr = qRaw.find(isSolError);
+  if (qErr) return qErr;
+  const q = qRaw.map((v) => (v == null ? NaN : Number(v)));
   const out = interpolateLinear(kx, ky, q);
   // A missing query stays missing IN PLACE, like the node.
   const result = out.map((v) => (Number.isNaN(v) ? null : v));
   return Array.isArray(newXs) ? result : result[0] ?? null;
+});
+
+// ── The statistical tests Formula.js computes WRONGLY (see EXCEL_IMPL_META) ──
+// These stay in RANGE_FUNCTIONS (excelFormula) so their arrays arrive whole with
+// the right null/error policy; dispatch prefers the internal over FX.
+registerInternal("T.TEST", (a, b, tails, type) => {
+  const t = tails == null ? 2 : Number(tails);
+  const ty = Number(type);
+  const kind: TTestKind | null = ty === 1 ? "paired" : ty === 2 ? "equal-var" : ty === 3 ? "unequal-var" : null;
+  if (kind === null) return solError("#DOMAIN!", "T.TEST: type must be 1 (paired), 2 (equal variance) or 3 (Welch)");
+  if (t !== 1 && t !== 2) return solError("#DOMAIN!", "T.TEST: tails must be 1 or 2");
+  const p2 = tTestP(kind, (a as number[]) ?? [], (b as number[]) ?? []);
+  return p2 === null ? null : t === 2 ? p2 : p2 / 2;
+});
+registerInternal("F.TEST", (a, b) => fTestP((a as number[]) ?? [], (b as number[]) ?? []));
+// Excel PROB: an omitted upper limit means "exactly lower".
+registerInternal("PROB", (range, probs, lo, hi) => {
+  const l = toNum(lo);
+  const h = hi == null ? l : toNum(hi);
+  if (Number.isNaN(l) || Number.isNaN(h)) return VALUE("PROB");
+  return probBetween(numList(range), numList(probs), l, h);
 });
 
 // SHUFFLE is VOLATILE — a fresh permutation per evaluation, exactly like the RAND and

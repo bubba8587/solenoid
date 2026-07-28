@@ -312,8 +312,10 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "SUM", "SUMSQ", "SUMPRODUCT", "PRODUCT", "AVERAGE", "AVERAGEA", "AVEDEV", "DEVSQ",
   "MIN", "MINA", "MAX", "MAXA", "COUNT", "COUNTA", "COUNTBLANK",
   "MEDIAN", "MODE", "GEOMEAN", "HARMEAN", "TRIMMEAN",
-  "STDEV", "STDEVA", "STDEVP", "STDEVPA", "STDEV.S", "STDEV.P",
-  "VAR", "VARA", "VARP", "VARPA", "VAR.S", "VAR.P",
+  // STDEVP/VARP are absent on purpose: they're D10-blocked legacy spellings
+  // (LEGACY_ALIASES), so listing them here would only be deleted by the D10 gate.
+  "STDEV", "STDEVA", "STDEVPA", "STDEV.S", "STDEV.P",
+  "VAR", "VARA", "VARPA", "VAR.S", "VAR.P",
   "SKEW", "SKEW.P", "KURT", "LARGE", "SMALL",
   "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC",
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
@@ -378,6 +380,10 @@ const RANGE_PAIRED = new Set([
 // POSITIONAL lookups: dropping nulls would shift match positions (MATCH/INDEX
 // answer in indices), so nulls stay put; errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
+// SERIESSUM's coefficients are positional (aᵢ·x^(n+(i−1)m)): the pooled null-drop
+// would silently shift every later coefficient onto a lower power. A blank
+// coefficient contributes 0·x^k IN PLACE instead; errors still propagate first.
+const RANGE_ZERO_FILL = new Set(["SERIESSUM"]);
 
 // ── Whole-list natives (D19 Tier 3) ───────────────────────────────────────────
 // The Solenoid data-op core — REVERSE / SLICE / ROLLINGSUM / WAVG / … — takes a 1-D
@@ -391,6 +397,10 @@ const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LO
 function takesWholeArgs(name: string): boolean {
   return EXCEL_IMPL_META[name]?.listArgs === true && !ELIMINATED_FUNCTIONS.has(name);
 }
+
+// Whole-arg natives whose NODE deliberately accepts a missing scalar argument —
+// the exemptions to the blank-scalar-propagates rule at the call site.
+const NULLABLE_SCALARS_OK = new Set(["FILLVALUE", "COALESCE"]);
 
 // D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to
 // a #NAME? redirect stub, so routing it would only decide how carefully the arguments
@@ -418,6 +428,9 @@ function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: 
         if (v instanceof Error) return { error: fxErrorToSol(v), args: argv };
       }
     }
+  }
+  if (RANGE_ZERO_FILL.has(name)) {
+    return { args: argv.map((a) => (isArr(a) ? a.map((v) => (isMissing(v) ? 0 : v)) : a)) };
   }
   if (RANGE_PAIRED.has(name)) {
     const arrays = argv.filter(isArr);
@@ -671,13 +684,26 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       if (sol) return sol;
       // A whole-list native gets its arguments exactly as they arrived — no
       // element-wise mapping, no null-drop, no error hoist (see takesWholeArgs).
-      if (takesWholeArgs(name)) return dispatch(name, ...argv);
+      // EXCEPT a blank SCALAR argument: the node propagates it as unknown
+      // (value-semantics.md), and letting it through fabricated an answer via
+      // Number(null) = 0 — ROLLINGSUM(x, blank) became a window-1 rolling sum,
+      // CONTAINS(list, blank) "found" the blank. The two exemptions are the ops
+      // whose NODE accepts a missing scalar by design (Fill's constant fills
+      // with missing; Coalesce's fallbacks contribute nothing).
+      if (takesWholeArgs(name)) {
+        if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a) => !isArr(a) && isMissing(a))) return null;
+        return dispatch(name, ...argv);
+      }
       if (RANGE_FUNCTIONS.has(name)) {
         // Array args honor the aggregator policy (error propagates, null skips —
-        // see prepRangeArgs) instead of passing raw into Formula.js.
+        // see prepRangeArgs) instead of passing raw into Formula.js. They are
+        // also CLONED: prep can return the caller's arrays by reference, and
+        // Formula.js mutates some arguments in place (CHISQ.TEST rebuilds its
+        // ranges element-by-element), which would corrupt the upstream node's
+        // cached value for every other consumer of that cable.
         const prep = prepRangeArgs(name, argv);
         if (prep.error !== undefined) return prep.error;
-        return dispatch(name, ...prep.args);
+        return dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
       }
       return broadcastCall(name, argv);
     }

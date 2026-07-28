@@ -62,30 +62,56 @@ export function padList<T>(arr: readonly T[], n: number, fill: T, dir: PadDir): 
   return dir === "left" ? [...pad, ...arr] : [...arr, ...pad];
 }
 
-/** Successive differences — one shorter than the input. */
-export function diffList(arr: readonly number[]): number[] {
-  return arr.slice(1).map((v, i) => v - arr[i]);
+/** Successive differences — one shorter than the input. Element-wise over
+ *  consecutive PAIRS: a missing neighbour makes that difference missing, and a
+ *  cell error propagates into each difference it touches — bare arithmetic here
+ *  once computed `v - null` as `v - 0` and string-concatenated a SolError. */
+export function diffList(arr: readonly Cell[]): Cell[] {
+  return arr.slice(1).map((v, i) => {
+    const prev = arr[i];
+    if (isSolError(v)) return v;
+    if (isSolError(prev)) return prev;
+    if (isMissing(v) || isMissing(prev)) return null;
+    return (v as number) - (prev as number);
+  });
 }
 
 /** Rescale to 0–1 by the list's own min/max. A flat list is all zeros (the range is
- *  zero, so every element sits at the same place in it). */
-export function normalizeList(arr: readonly number[]): number[] {
-  if (arr.length === 0) return [];
-  const mn = iterMin(arr), mx = iterMax(arr);
-  return mn === mx ? arr.map(() => 0) : arr.map((v) => (v - mn) / (mx - mn));
+ *  zero, so every element sits at the same place in it). The SCALE is a reduction —
+ *  an error anywhere poisons it, a null is skipped for it and stays null in place. */
+export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return arr.map(() => null);
+  const mn = iterMin(nums), mx = iterMax(nums);
+  return arr.map((v) =>
+    typeof v === "number" && Number.isFinite(v) ? (mn === mx ? 0 : (v - mn) / (mx - mn)) : null);
 }
 
 export type CumulativeOp = "cumsum" | "cumprod" | "cummax" | "cummin";
 
-export function cumulative(op: CumulativeOp, arr: readonly number[]): number[] {
-  const out: number[] = [];
-  let acc = op === "cumprod" ? 1 : 0;
+/** Running aggregate with the reducer policy applied per PREFIX: a null cell
+ *  contributes nothing (its output is the running value so far — null while
+ *  nothing has been seen), and a cell error poisons its own position and every
+ *  later one, since each later prefix contains it. Bare arithmetic here once made
+ *  RUNNINGMAX([-5, null]) answer [-5, 0] via Math.max(-5, null). */
+export function cumulative(op: CumulativeOp, arr: readonly Cell[]): Cell[] {
+  const out: Cell[] = [];
+  let err: SolError | null = null;
+  let acc: number | null = null;
   for (const v of arr) {
-    switch (op) {
-      case "cumsum":  acc = (out.length === 0 ? 0 : acc) + v; break;
-      case "cummax":  acc = out.length === 0 ? v : Math.max(acc, v); break;
-      case "cummin":  acc = out.length === 0 ? v : Math.min(acc, v); break;
-      case "cumprod": acc = (out.length === 0 ? 1 : acc) * v; break;
+    if (err) { out.push(err); continue; }
+    if (isSolError(v)) { err = v; out.push(v); continue; }
+    if (isMissing(v) || typeof v !== "number") { out.push(acc); continue; }
+    if (acc === null) acc = v;
+    else {
+      switch (op) {
+        case "cumsum":  acc = acc + v; break;
+        case "cummax":  acc = Math.max(acc, v); break;
+        case "cummin":  acc = Math.min(acc, v); break;
+        case "cumprod": acc = acc * v; break;
+      }
     }
     out.push(acc);
   }
@@ -128,19 +154,28 @@ export function rolling(op: RollingOp, arr: readonly Cell[], window: number): Ce
 
 export type ArgMinMaxOp = "argmax" | "argmin";
 
-/** 1-based position of the extreme value; null for an empty list. */
-export function argMinMax(op: ArgMinMaxOp, arr: readonly number[]): number | null {
-  if (arr.length === 0) return null;
-  let idx = 0;
-  for (let i = 1; i < arr.length; i++) {
-    if (op === "argmax" ? arr[i] > arr[idx] : arr[i] < arr[idx]) idx = i;
+/** 1-based position of the extreme value; null for an empty (or all-missing)
+ *  list. Reducer policy: a cell error propagates, a null is skipped — the bare
+ *  comparison once let `null` compare as 0 and win argmin. */
+export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolError | null {
+  const err = firstError(arr);
+  if (err) return err;
+  let idx = -1;
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i];
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    if (idx === -1 || (op === "argmax" ? v > (arr[idx] as number) : v < (arr[idx] as number))) idx = i;
   }
-  return idx + 1;
+  return idx === -1 ? null : idx + 1;
 }
 
-/** 1 / 0 rather than a logical, matching the node's numeric output socket. */
+/** 1 / 0 rather than a logical, matching the node's numeric output socket.
+ *  Membership keys by VALUE via setKey (VAL-8 — `includes` compares a complex
+ *  [re, im] tuple by reference and never matched); blank and error cells are not
+ *  members, exactly as the Set family treats them. */
 export function containsValue(arr: readonly unknown[], v: unknown): number {
-  return arr.includes(v) ? 1 : 0;
+  const k = setKey(v);
+  return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k) ? 1 : 0;
 }
 
 // ─── Weighted statistics ──────────────────────────────────────────────────────
@@ -395,17 +430,24 @@ export function fillList(
 
 /** Half-open `[start, stop)` walking by `step`, like Python's range. An UNSET stop
  *  (undefined) means no series yet — that is the node's empty card, not a blank
- *  cable (value-semantics.md, "absent is not unknown"). */
-export function rangeList(start: number, stop: number | undefined, step: number, cap = 1000): number[] {
+ *  cable (value-semantics.md, "absent is not unknown").
+ *
+ *  The IMPLIED length, for the shared overflow convention: unlike the other
+ *  generators there is no Count field, so callers cap on this rather than on an
+ *  argument. Infinity when the walk never terminates (step 0 or wrong-signed). */
+export function rangeCount(start: number, stop: number | undefined, step: number): number {
+  if (stop === undefined) return 0;
+  if (step === 0) return start === stop ? 0 : Infinity;
+  const n = Math.ceil((stop - start) / step);
+  return n > 0 ? n : 0;
+}
+
+export function rangeList(start: number, stop: number | undefined, step: number): number[] {
+  const n = rangeCount(start, stop, step);
+  if (!Number.isFinite(n)) return [];
   const out: number[] = [];
-  if (stop === undefined || step === 0) return out;
-  const goUp = step > 0;
   let cur = start;
-  while (goUp ? cur < stop : cur > stop) {
-    out.push(cur);
-    cur += step;
-    if (out.length >= cap) break;
-  }
+  for (let i = 0; i < n; i++) { out.push(cur); cur += step; }
   return out;
 }
 

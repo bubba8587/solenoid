@@ -42,7 +42,9 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
   });
 
   it("blocks the superseded statistics spellings", () => {
-    for (const [name, use] of [["NORMDIST", "NORM.DIST"], ["TDIST", "T.DIST"], ["CRITBINOM", "BINOM.INV"]]) {
+    // TDIST redirects to T.DIST.RT (Microsoft's own compat mapping — TDIST was
+    // right-tailed/2T, never the density-capable T.DIST).
+    for (const [name, use] of [["NORMDIST", "NORM.DIST"], ["TDIST", "T.DIST.RT"], ["CRITBINOM", "BINOM.INV"]]) {
       const r = ev(`${name}(1, 2, 3, TRUE)`);
       expect(isSolError(r) && r.code, name).toBe("#NAME?");
       expect(isSolError(r) && r.message, name).toBe(`Use ${use}`);
