@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "./trueAnyAdopt";
 import { DisplayNode } from "./nodes/display";
-import { IfNode } from "./nodes/logic";
+import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
 import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, SelectColumnsNode } from "./rete-nodes";
-import { numberSocket, stringSocket, frameSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket } from "./sockets";
+import { numberSocket, stringSocket, frameSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
 // getNodes/getNode/getConnections and mutates sockets in place.
@@ -324,5 +324,61 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // Unwired → both revert to their declared wildcard rank.
     reconcileTrueAnyTypes(makeEditor([tbl, flat], []));
     expect(dt(flat.outputs.result?.socket)).toBe("anylist");
+  });
+});
+
+// ─── The agree VOTE distinguishes unwired / unknowable / error-only (2026-07-28) ──
+// Three branch states, three dispositions: UNWIRED contributes no value (no vote);
+// wired to a STATIC-trueany source (XLOOKUP, Get Cell) is a real value of unknowable
+// type (VETO — a typed agreement would format it wrongly, the fa3565a bug); wired to
+// NA() is always a tagged error, which formats as an error under any type (abstain).
+describe("agree vote — unknowable vetoes, NA() abstains", () => {
+  const trueAnySource = () => {
+    const n = new ClassicPreset.Node("Lookupish");
+    n.addOutput("value", new ClassicPreset.Output(new SolenoidSocket("trueany")));
+    return n;
+  };
+
+  it("a wired static-trueany branch VETOES: IF(cond, XLOOKUP…, date) is unknown", () => {
+    const unknowable = trueAnySource();
+    const num = numSource();
+    const iff = new IfNode();
+    const ed = makeEditor([unknowable, num, iff], [
+      { source: unknowable.id, sourceOutput: "value", target: iff.id, targetInput: "then" },
+      { source: num.id, sourceOutput: "value", target: iff.id, targetInput: "else" },
+    ]);
+    reconcileTrueAnyTypes(ed);
+    expect(dt(iff.outputs.result?.socket)).toBe("trueany");
+  });
+
+  it("NA() abstains: IFERROR-style IF(cond, num, NA()) keeps the number type", () => {
+    const na = new NaNode();
+    const num = numSource();
+    const iff = new IfNode();
+    const ed = makeEditor([na, num, iff], [
+      { source: num.id, sourceOutput: "value", target: iff.id, targetInput: "then" },
+      { source: na.id, sourceOutput: "result", target: iff.id, targetInput: "else" },
+    ]);
+    reconcileTrueAnyTypes(ed);
+    expect(dt(iff.outputs.result?.socket)).toBe("number");
+  });
+});
+
+// ─── Rank-0/combo wildcard bases keep themselves on a family-less wire ────────
+describe("any/anycombo bases — a family-less wire keeps the base (Bug C, completed)", () => {
+  it("adoptTypeForBase(any, trueany) is any; (anycombo, trueany) is anycombo", () => {
+    expect(adoptTypeForBase("any", "trueany")).toBe("any");
+    expect(adoptTypeForBase("anycombo", "trueany")).toBe("anycombo");
+    expect(adoptTypeForBase("anycombo", "anylist")).toBe("anycombo");
+    // Family-typed wires still adopt verbatim.
+    expect(adoptTypeForBase("any", "number")).toBe("number");
+    expect(adoptTypeForBase("anycombo", "strlist")).toBe("strlist");
+    // A trueany BASE still adopts anything verbatim.
+    expect(adoptTypeForBase("trueany", "frame")).toBe("frame");
+  });
+
+  it("…so an occupied SWITCH row still refuses a frame", () => {
+    expect(canConnect("frame", adoptTypeForBase("any", "trueany"))).toBe(false);
+    expect(canConnect("lambda", adoptTypeForBase("any", "trueany"))).toBe(false);
   });
 });

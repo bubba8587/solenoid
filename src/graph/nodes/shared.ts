@@ -130,7 +130,12 @@ export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string
 
 const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, ClassicPreset.Socket>> = {
   scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,        auto: anySocket },
-  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anySocket },
+  // combo/auto is anyCOMBO, not `any`: an Auto Expression/BYROW result IS a list
+  // whenever a list variable broadcasts, so a scalar circle here was the same
+  // "lying dot" that retired `anyOut` on Regex — and it let a list-shaped result
+  // flow into strict scalar inputs (#SHAPE! at runtime) that the honest combo
+  // type routes correctly.
+  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anyComboSocket },
   matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket,   auto: anyTableSocket },
 };
 

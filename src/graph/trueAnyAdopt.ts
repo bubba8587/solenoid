@@ -94,8 +94,21 @@ function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<str
     //    the agreed branch type; Cable Switch (One) adopts the active branch; an
     //    EXTRACTION (INDEX) projects its container's family onto its own rank. A
     //    generative output (XLOOKUP, MAP, sources) declares nothing → static.
+    // The vote a branch input casts in `agree` (see agreeTypes): UNWIRED → null
+    // (no value flows, no vote); wired to an ERROR-ONLY source (NA()) → null too —
+    // its value is always a tagged error, which formats as an error under any
+    // branch type, so it deliberately abstains; wired to anything else → the
+    // input's resolved type, where `trueany` means statically UNKNOWABLE
+    // (XLOOKUP, Get Cell) and VETOES the agreement.
+    const voteOf = (k: string): SocketDataType | null => {
+      const feed = conns.find((c) => c.target === node.id && c.targetInput === k);
+      if (!feed) return null;
+      const src = editor.getNode(feed.source) as (AdoptNode & { errorOnlyOutput?: boolean }) | undefined;
+      if (src?.errorOnlyOutput) return null;
+      return inType(node, k) ?? "trueany";
+    };
     for (const spec of getPassthrough(node)) {
-      const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agreeTypes, contextFor(node));
+      const resolved = resolvePassthroughType(spec, voteOf, agreeTypes, contextFor(node));
       const outSock = node.outputs?.[spec.output]?.socket;
       if (!(outSock instanceof MutableSocket)) continue;
       // Project onto the output's declared wildcard RANK (AdoptiveSocket base):

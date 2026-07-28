@@ -511,6 +511,11 @@ export class IsTestNode extends ClassicPreset.Node {
 export class NaNode extends ClassicPreset.Node {
   label: string;
   cachedResult: SolError;
+  /** This output only ever carries a tagged error, which formats as an error under
+   *  ANY branch type — so it deliberately ABSTAINS in a selector's `agree` vote
+   *  (trueAnyAdopt), unlike XLOOKUP/Get Cell whose trueany is a real unknown and
+   *  vetoes. `IFERROR(aDate, NA())` keeps the date's type because of this flag. */
+  errorOnlyOutput = true;
   width = 140;
   height = 80;
 
@@ -523,8 +528,9 @@ export class NaNode extends ClassicPreset.Node {
     // (coerceValue passes it untouched, installErrorGuards propagates it). Declaring
     // `number` made it VOTE in a selector's `agree`: `IFERROR(aDate, NA())` had
     // branches date + number, which disagree, so the result resolved to "unknown" and
-    // the date lost its formatting downstream. `trueany` doesn't vote (agreeTypes
-    // ignores it as unwired) and connects everywhere #N/A is legal, which is anywhere.
+    // the date lost its formatting downstream. The abstention now rides on
+    // `errorOnlyOutput` above (a wired trueany otherwise VETOES the agreement);
+    // `trueany` also connects everywhere #N/A is legal, which is anywhere.
     this.addOutput("result", staticTrueAnyOut("N/A"));
   }
 

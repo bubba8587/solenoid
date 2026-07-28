@@ -329,21 +329,30 @@ export function latticeRank(dt: SocketDataType): number | null {
  *  scalar circle — the socket still represents a list. Everything else (trueany / any
  *  bases, a same-or-higher-rank wire, a non-family structural type) adopts verbatim. */
 export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): SocketDataType {
-  if (base !== "anylist" && base !== "anytable") return wired;
-  const baseRank = latticeRank(base);
-  const wiredRank = latticeRank(wired);
   const fam = elementFamilyOf(wired);
-  // A FAMILY-LESS wire (another wildcard — `any`/`anylist`/`anycombo`/`trueany`, or a
-  // frame/cube) carries nothing to adopt, so the port KEEPS ITS BASE. Returning the
-  // wired type here broke the restriction this port's whole doc comment promises: a
-  // `trueany` cable into a Concat-Lists row turned that row INTO a `trueany` port, which
-  // then accepted a frame or a lambda — values the node can't handle. It also erased the
-  // rank glyph (a hollow ring where a list square belongs). Matches
-  // `projectTypeToBase`'s family-less branch, so the two agree on every connectable pair
-  // (machine-checked in socketConnect.test.ts).
-  if (fam === null || baseRank === null || wiredRank === null) return base;
-  if (wiredRank >= baseRank) return wired;
-  return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
+  if (base === "anylist" || base === "anytable") {
+    const baseRank = latticeRank(base);
+    const wiredRank = latticeRank(wired);
+    // A FAMILY-LESS wire (another wildcard — `any`/`anylist`/`anycombo`/`trueany`, or a
+    // frame/cube) carries nothing to adopt, so the port KEEPS ITS BASE. Returning the
+    // wired type here broke the restriction this port's whole doc comment promises: a
+    // `trueany` cable into a Concat-Lists row turned that row INTO a `trueany` port, which
+    // then accepted a frame or a lambda — values the node can't handle. It also erased the
+    // rank glyph (a hollow ring where a list square belongs). Matches
+    // `projectTypeToBase`'s family-less branch, so the two agree on every connectable pair
+    // (machine-checked in socketConnect.test.ts).
+    if (fam === null || baseRank === null || wiredRank === null) return base;
+    if (wiredRank >= baseRank) return wired;
+    return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
+  }
+  // The rank-0/combo wildcard bases (`any`, `anycombo`) keep the SAME family-less
+  // rule: a `trueany` cable (NA(), XLOOKUP, Get Cell) into a SWITCH row or an
+  // Expression variable must not turn the port INTO `trueany` — that erased the
+  // rank glyph AND made every drag-time/connection-dialog check treat the occupied
+  // port as accept-anything (the exact defect the anylist/anytable branch fixed).
+  if ((base === "any" || base === "anycombo") && fam === null) return base;
+  // Everything else (a `trueany` base, a family-typed wire) adopts verbatim.
+  return wired;
 }
 
 /** The OUTPUT-side sibling of adoptTypeForBase: project a resolved passthrough
@@ -378,7 +387,11 @@ export function projectTypeToBase(base: SocketDataType, t: SocketDataType): Sock
 function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === outT) return true;
   if (inT === "trueany" || outT === "trueany") return true;
-  if (inT === "any") return SCALAR_COMBO_TYPES.has(outT);
+  // `anycombo` may be a scalar at runtime, so it reaches an `any` input exactly as
+  // every family combo reaches its own scalar (the combo→scalar exception) — without
+  // this, retyping a Result socket from `any` to `anycombo` silently REMOVED the
+  // Regex→SWITCH/CHOOSE/Set-row edges (and load silently dropped such cables).
+  if (inT === "any") return SCALAR_COMBO_TYPES.has(outT) || outT === "anycombo";
   if (outT === "any") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   // `anytable` as an INPUT is a 2-D, element-agnostic wildcard that any lower-rank
   // value WIDENS into — a 1-D list or a scalar of any family (TRANSPOSE of a list →
