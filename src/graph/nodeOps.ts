@@ -54,6 +54,7 @@ import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
   FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
+  SET_OP_META, SET_RELATION_META,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
@@ -133,15 +134,24 @@ interface NodeOpsBase {
  *  list), and for one whose variants are DATA rather than operations, where a row
  *  per value would bury the menu it was meant to help. */
 export type NodeOpsDecl = NodeOpsBase & (
-  | { ops: Array<{ op: string; label: string }>; create: (op: string) => unknown }
+  | { ops: Array<OpEntryDecl>; create: (op: string) => unknown }
   | { ops?: undefined; create?: undefined }
 );
 
+/** One op of a family, as the menu and the formula surface each need it.
+ *
+ *  `fx` is the FORMULA name (D19 Tier 3). It is present only where the op's label is
+ *  prose: 2(a) says the formula name is the label despaced, which works while a label
+ *  is a name and produces nonsense — or a COLLISION — when it is a sentence. Declaring
+ *  it on the OP_META table keeps it beside the label instead of in a parallel map. */
+export interface OpEntryDecl { op: string; label: string; fx?: string }
+
 /** Read an OP_META table into the declaration's op list. The tables differ in their
  *  extra fields (some carry `description`, some `tex`/`plain`) but all carry `label`,
- *  which is the per-op identity the Add menu and search show. */
-function fromMeta(meta: Record<string, { label: string }>): Array<{ op: string; label: string }> {
-  return Object.entries(meta).map(([op, m]) => ({ op, label: m.label }));
+ *  which is the per-op identity the Add menu and search show. `fx` rides along when
+ *  the table declares one. */
+function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntryDecl[] {
+  return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}) }));
 }
 
 /** Names for the ops whose OP_META `label` is dropdown PROSE rather than a name.
@@ -152,17 +162,19 @@ function fromMeta(meta: Record<string, { label: string }>): Array<{ op: string; 
  *  a mangled sentence and, worse, matches every sibling equally (the ops stop
  *  discriminating, so searching "symmetric" surfaced Union). The meta keeps its
  *  prose for the card; these are what the menu and search use. */
-const SET_OPS = [
-  { op: "union", label: "Union" },
-  { op: "intersect", label: "Intersection" },
-  { op: "difference", label: "Difference" },
-  { op: "symdiff", label: "Symmetric difference" },
+// The SEARCH labels are overridden here (the meta labels are dropdown prose), but the
+// FORMULA names still come from the meta table — one declaration per op, not two.
+const SET_OPS: OpEntryDecl[] = [
+  { op: "union", label: "Union", fx: SET_OP_META.union.fx },
+  { op: "intersect", label: "Intersection", fx: SET_OP_META.intersect.fx },
+  { op: "difference", label: "Difference", fx: SET_OP_META.difference.fx },
+  { op: "symdiff", label: "Symmetric difference", fx: SET_OP_META.symdiff.fx },
 ];
-const SET_RELATION_OPS = [
-  { op: "equal", label: "Equal" },
-  { op: "subset", label: "Subset" },
-  { op: "superset", label: "Superset" },
-  { op: "disjoint", label: "Disjoint" },
+const SET_RELATION_OPS: OpEntryDecl[] = [
+  { op: "equal", label: "Equal", fx: SET_RELATION_META.equal.fx },
+  { op: "subset", label: "Subset", fx: SET_RELATION_META.subset.fx },
+  { op: "superset", label: "Superset", fx: SET_RELATION_META.superset.fx },
+  { op: "disjoint", label: "Disjoint", fx: SET_RELATION_META.disjoint.fx },
 ];
 
 export const NODE_OPS: NodeOpsDecl[] = [

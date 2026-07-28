@@ -15,7 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci } from "./listOps";
+import { MAX_GENERATED, setKey, setOperation, setRelation, fillList, rangeList, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -210,16 +210,7 @@ export class RangeNode extends ClassicPreset.Node {
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     const step  = readInput(inputs.step, this.literals.step ?? 1);
     if (start === null || stop === null || step === null) { this.cachedList = null; return { list: null }; }
-    const list: number[] = [];
-    if (stop !== undefined && step !== 0) {
-      const goUp = step > 0;
-      let cur = start;
-      while (goUp ? cur < stop : cur > stop) {
-        list.push(cur);
-        cur += step;
-        if (list.length >= 1000) break;
-      }
-    }
+    const list = rangeList(start, stop, step);
     this.cachedList = list;
     return { list };
   }
@@ -887,18 +878,18 @@ export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 // (a known Set-node bug). Key membership by VALUE instead: a complex tuple
 // canonicalizes to a string, every primitive (number incl. a date serial,
 // string, boolean) stays itself. Used by every Set/membership/tally node below.
-function setKey(v: unknown): unknown {
-  return Array.isArray(v) ? `\x00cx:${(v as unknown[]).join(",")}` : v;
-}
 
 // label = the plain-English dropdown text (no notation — the KaTeX line under the
 // selector carries the symbols); tex = the set notation rendered on the card; plain =
 // the Unicode fallback shown until the KaTeX chunk loads.
-export const SET_OP_META: Record<SetOp, { label: string; tex: string; plain: string }> = {
-  union:      { label: "Union: in A or B",             tex: "A \\cup B",                plain: "A ∪ B" },
-  intersect:  { label: "Intersection: in both",        tex: "A \\cap B",                plain: "A ∩ B" },
-  difference: { label: "Difference: in A, not B",      tex: "A \\setminus B",           plain: "A ∖ B" },
-  symdiff:    { label: "Symmetric difference: in one only", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
+// `fx` = the formula name. D19 2(a) says "the node label despaced", which works only
+// while a label is a NAME; these are sentences, so each op declares its formula name
+// beside its label rather than in a parallel map somewhere else.
+export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string; plain: string }> = {
+  union:      { label: "Union: in A or B",             fx: "SETUNION",      tex: "A \\cup B",                plain: "A ∪ B" },
+  intersect:  { label: "Intersection: in both",        fx: "SETINTERSECT",  tex: "A \\cap B",                plain: "A ∩ B" },
+  difference: { label: "Difference: in A, not B",      fx: "SETDIFFERENCE", tex: "A \\setminus B",           plain: "A ∖ B" },
+  symdiff:    { label: "Symmetric difference: in one only", fx: "SETSYMDIFF", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
 // Set operations over two lists — the gap Excel never filled (it ships only UNIQUE, no
@@ -934,39 +925,7 @@ export class SetOpNode extends ClassicPreset.Node {
     const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
     const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
 
-    // Value-membership of a side — blanks and errors are excluded (not members).
-    const memberSet = (arr: unknown[]) => {
-      const s = new Set<unknown>();
-      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
-      return s;
-    };
-    const aSet = memberSet(a);
-    const bSet = memberSet(b);
-
-    const out: unknown[] = [];
-    const emitted = new Set<unknown>();
-    // Values dedupe (first-seen wins); errors bypass this and are pushed as-is, so a
-    // repeated error survives once per occurrence — deterministic, like UNIQUE.
-    const emitValue = (v: unknown) => { const k = setKey(v); if (!emitted.has(k)) { emitted.add(k); out.push(v); } };
-
-    switch (this.op) {
-      case "union":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
-        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
-        break;
-      case "intersect":
-        for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(setKey(v))) emitValue(v); }
-        break;
-      case "difference":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
-        break;
-      case "symdiff":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
-        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(setKey(v))) emitValue(v); }
-        break;
-    }
-
-    this.cachedList = out as number[];
+    this.cachedList = setOperation(this.op, a, b) as number[];
     return { result: this.cachedList };
   }
 }
@@ -1054,11 +1013,11 @@ export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
 
 // label = plain-English dropdown text; tex = the KaTeX relation on the card; plain =
 // the Unicode fallback shown until the KaTeX chunk loads.
-export const SET_RELATION_META: Record<SetRelation, { label: string; tex: string; plain: string }> = {
-  equal:    { label: "Equal: same set",         tex: "A = B",                    plain: "A = B" },
-  subset:   { label: "Subset: A within B",      tex: "A \\subseteq B",           plain: "A ⊆ B" },
-  superset: { label: "Superset: A contains B",  tex: "A \\supseteq B",           plain: "A ⊇ B" },
-  disjoint: { label: "Disjoint: no overlap",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
+export const SET_RELATION_META: Record<SetRelation, { label: string; fx: string; tex: string; plain: string }> = {
+  equal:    { label: "Equal: same set",         fx: "SETEQUAL",    tex: "A = B",                    plain: "A = B" },
+  subset:   { label: "Subset: A within B",      fx: "SETSUBSET",   tex: "A \\subseteq B",           plain: "A ⊆ B" },
+  superset: { label: "Superset: A contains B",  fx: "SETSUPERSET", tex: "A \\supseteq B",           plain: "A ⊇ B" },
+  disjoint: { label: "Disjoint: no overlap",    fx: "SETDISJOINT", tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
 };
 
 // Set RELATION tests — predicates that answer TRUE/FALSE about two lists as sets. The
@@ -1091,28 +1050,7 @@ export class SetRelationNode extends ClassicPreset.Node {
     // Nothing wired on either side — no sets to compare, so the relation is unknown.
     if (aRaw === undefined && bRaw === undefined) { this.cachedResult = null; return { result: null }; }
 
-    const memberSet = (arr: unknown[]) => {
-      const s = new Set<unknown>();
-      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
-      return s;
-    };
-    const aSet = memberSet((aRaw ?? []) as unknown[]);
-    const bSet = memberSet((bRaw ?? []) as unknown[]);
-    const subsetOf = (x: Set<unknown>, y: Set<unknown>) => {
-      for (const v of x) if (!y.has(v)) return false;
-      return true;
-    };
-
-    let result = false;
-    switch (this.op) {
-      case "equal":    result = aSet.size === bSet.size && subsetOf(aSet, bSet); break;
-      case "subset":   result = subsetOf(aSet, bSet); break;
-      case "superset": result = subsetOf(bSet, aSet); break;
-      case "disjoint":
-        result = true;
-        for (const v of aSet) if (bSet.has(v)) { result = false; break; }
-        break;
-    }
+    const result = setRelation(this.op, (aRaw ?? []) as unknown[], (bRaw ?? []) as unknown[]);
     this.cachedResult = result;
     return { result };
   }
@@ -1234,11 +1172,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[][] | undefined>) {
-    const out: unknown[] = [];
-    for (const k of this.valueInputKeys()) {
-      const arr = inputs[k]?.[0];
-      if (arr != null) out.push(...arr);
-    }
+    const out = concatLists(...this.valueInputKeys().map((k) => inputs[k]?.[0]));
     this.cachedList = out;
     return { result: out };
   }
@@ -2163,73 +2097,32 @@ export type FillOp =
   | "mean" | "median" | "mode"
   | "interpolate" | "drop" | "coalesce";
 
+// `fx` = the formula name, declared rather than despaced. Despacing these labels
+// would give FILLWITHVALUE next to FORWARDFILL — one family reading as two — and
+// `interpolate` would COLLIDE with the INTERPOLATE node in stats.ts. One FILL* family,
+// plus SQL's COALESCE, which is the name the card already uses for that op.
 export const FILL_OP_META = {
-  constant:    { label: "Fill with value",  description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
-  ffill:       { label: "Forward fill",      description: "Carry the last present value forward over gaps. Pandas: ffill." },
-  bfill:       { label: "Backward fill",     description: "Carry the next present value back over gaps. Pandas: bfill." },
-  mean:        { label: "Fill with mean",    description: "Impute gaps with the mean of present values" },
-  median:      { label: "Fill with median",  description: "Impute gaps with the median of present values" },
-  mode:        { label: "Fill with mode",    description: "Impute gaps with the most common present value" },
-  interpolate: { label: "Interpolate",       description: "Linearly interpolate interior gaps between bracketing present values" },
-  drop:        { label: "Drop missing",      description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
-  coalesce:    { label: "Coalesce (else)",   description: "First present of List then each Else in order, per position. SQL: COALESCE." },
-} satisfies Record<FillOp, { label: string; description: string }>;
+  constant:    { label: "Fill with value",  fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
+  ffill:       { label: "Forward fill",     fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
+  bfill:       { label: "Backward fill",    fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: bfill." },
+  mean:        { label: "Fill with mean",   fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },
+  median:      { label: "Fill with median", fx: "FILLMEDIAN",      description: "Impute gaps with the median of present values" },
+  mode:        { label: "Fill with mode",   fx: "FILLMODE",        description: "Impute gaps with the most common present value" },
+  interpolate: { label: "Interpolate",      fx: "FILLINTERPOLATE", description: "Linearly interpolate interior gaps between bracketing present values" },
+  drop:        { label: "Drop missing",     fx: "FILLDROP",        description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
+  coalesce:    { label: "Coalesce (else)",  fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: COALESCE." },
+} satisfies Record<FillOp, { label: string; fx: string; description: string }>;
 
 type Cell = number | null | SolError;
 
 /** Present finite numbers only — gaps (null) and per-cell errors are excluded, so
  *  an imputation statistic is computed from real data (per P3 skip-null). */
-function presentNumbers(arr: ReadonlyArray<Cell>): number[] {
-  return arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-}
 
-function imputeStat(arr: ReadonlyArray<Cell>, op: "mean" | "median" | "mode"): number | null {
-  const nums = presentNumbers(arr);
-  if (nums.length === 0) return null; // nothing present → can't impute, leave gaps null
-  if (op === "mean") return nums.reduce((a, b) => a + b, 0) / nums.length;
-  if (op === "median") {
-    const s = [...nums].sort((a, b) => a - b);
-    const m = Math.floor(s.length / 2);
-    return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
-  }
-  // mode: most frequent; ties broken by first occurrence (Excel MODE behavior).
-  const counts = new Map<number, number>();
-  let best = nums[0], bestCount = 0;
-  for (const v of nums) {
-    const c = (counts.get(v) ?? 0) + 1;
-    counts.set(v, c);
-    if (c > bestCount) { bestCount = c; best = v; }
-  }
-  return best;
-}
 
 /** Linear interpolation of interior gaps: each null between two present finite
  *  numbers is filled along the straight line by index. Leading/trailing gaps (no
  *  bracket on one side) stay null — no extrapolation. A non-finite/error cell is a
  *  hard boundary (not a value to interpolate from), so gaps beside it stay null. */
-function interpolateList(arr: ReadonlyArray<Cell>): Cell[] {
-  const out: Cell[] = arr.slice();
-  let i = 0;
-  while (i < out.length) {
-    if (!isMissing(out[i])) { i++; continue; }
-    // run of nulls [start, end)
-    const start = i;
-    while (i < out.length && isMissing(out[i])) i++;
-    const end = i;
-    const left = start - 1;
-    const right = end;
-    const lv = left >= 0 ? out[left] : undefined;
-    const rv = right < out.length ? out[right] : undefined;
-    if (typeof lv === "number" && Number.isFinite(lv) && typeof rv === "number" && Number.isFinite(rv)) {
-      const span = right - left;
-      for (let k = start; k < end; k++) {
-        const t = (k - left) / span;
-        out[k] = lv + (rv - lv) * t;
-      }
-    } // else: an open-ended or error-bounded gap — leave the nulls in place
-  }
-  return out;
-}
 
 export class FillNode extends ClassicPreset.Node {
   label: string;
@@ -2289,78 +2182,23 @@ export class FillNode extends ClassicPreset.Node {
   data(inputs: { list?: Cell[][]; value?: number[] } & Record<string, Cell[][] | number[] | undefined>) {
     const arr = inputs.list?.[0] ?? null;
     if (!arr) { this.cachedList = []; return { result: [] }; }
-    let out: Cell[];
-    switch (this.op) {
-      case "constant": {
-        // A wired blank fill value fills a missing WITH a missing — the honest
-        // per-cell propagation, so those cells stay blank rather than taking the
-        // number typed on the card (value-semantics.md, "Reading an input").
-        const c = readInput(inputs.value, this.literals.value ?? 0);
-        out = arr.map((v) => (isMissing(v) ? c : v));
-        break;
-      }
-      case "ffill": {
-        out = [];
-        let last: Cell = null;
-        let have = false;
-        for (const v of arr) {
-          if (isMissing(v)) out.push(have ? last : null);
-          else { last = v; have = true; out.push(v); }
-        }
-        break;
-      }
-      case "bfill": {
-        out = new Array<Cell>(arr.length).fill(null);
-        let next: Cell = null;
-        let have = false;
-        for (let i = arr.length - 1; i >= 0; i--) {
-          const v = arr[i];
-          if (isMissing(v)) out[i] = have ? next : null;
-          else { next = v; have = true; out[i] = v; }
-        }
-        break;
-      }
-      case "mean": case "median": case "mode": {
-        const stat = imputeStat(arr, this.op);
-        out = arr.map((v) => (isMissing(v) ? stat : v));
-        break;
-      }
-      case "interpolate": {
-        out = interpolateList(arr);
-        break;
-      }
-      case "drop": {
-        out = arr.filter((v) => !isMissing(v));
-        break;
-      }
-      case "coalesce": {
-        // N-ary: List first, then each Else row in order. A wired row
-        // contributes its list (a longer one EXTENDS the output, matching the
-        // old 2-source behavior); an unwired row with a typed literal is a
-        // broadcast constant (the last-resort-default idiom, doesn't extend);
-        // an untouched row contributes nothing.
-        const fallbacks: (Cell[] | number | null)[] = this.elseKeys().map((k) => {
-          const wired = (inputs[k] as Cell[][] | undefined)?.[0];
-          if (Array.isArray(wired)) return wired;
-          if (k in inputs) return null; // wired but empty — contributes nothing
-          const lit = this.literals[k];
-          return typeof lit === "number" ? lit : null;
-        });
-        const lists = fallbacks.filter((f): f is Cell[] => Array.isArray(f));
-        const n = Math.max(arr.length, ...lists.map((s) => s.length));
-        out = Array.from({ length: n }, (_, i): Cell => {
-          const first: Cell = i < arr.length ? arr[i] : null;
-          if (!isMissing(first)) return first;
-          for (const f of fallbacks) {
-            if (f === null) continue;
-            const v: Cell = typeof f === "number" ? f : i < f.length ? f[i] : null;
-            if (!isMissing(v)) return v;
-          }
-          return null;
-        });
-        break;
-      }
-    }
+    // A wired blank fill value fills a missing WITH a missing — the honest per-cell
+    // propagation, so those cells stay blank rather than taking the number typed on
+    // the card (value-semantics.md, "Reading an input").
+    const constant = readInput(inputs.value, this.literals.value ?? 0);
+    // Coalesce is N-ary: List first, then each Else row in order. A wired row
+    // contributes its list (a longer one EXTENDS the output, matching the old
+    // 2-source behavior); an unwired row with a typed literal is a broadcast constant
+    // (the last-resort-default idiom, doesn't extend); an untouched row contributes
+    // nothing.
+    const fallbacks: (Cell[] | number | null)[] = this.elseKeys().map((k) => {
+      const wired = (inputs[k] as Cell[][] | undefined)?.[0];
+      if (Array.isArray(wired)) return wired;
+      if (k in inputs) return null; // wired but empty — contributes nothing
+      const lit = this.literals[k];
+      return typeof lit === "number" ? lit : null;
+    });
+    const out = fillList(this.op, arr, { constant, fallbacks });
     this.cachedList = out;
     return { result: out };
   }

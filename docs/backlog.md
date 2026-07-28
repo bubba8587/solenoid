@@ -83,17 +83,21 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   "connect an account" flow would change that shape.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
-  the ratchet and the pack seam have landed; 325/646 leaves are formula-callable.
-  Left: **Tier 4** (the D2 dimensionality cap — author-present, `deferrals.md`) and
-  the tail of the list family Tier 3 skipped — Set / Set relation (needs the invented
-  SETUNION/SETINTERSECT/SETDIFFERENCE/SETSYMDIFF names, the one naming call D19 2(a)
-  doesn't answer because the labels are prose), Coalesce/Fill, Range, Concat Lists,
-  and Shuffle (nondeterministic — decide whether a formula may be non-pure at all).
-  Gap A's remaining 19 are D2-capped and cannot be registered; they ride on Tier 4.
+  the ratchet and the pack seam have landed; 332/646 leaves are formula-callable, gap A
+  is the 19 D2-capped names, gap C is 0. Left: **Tier 4** (the D2 dimensionality cap —
+  author-present, `deferrals.md`), and three list-family stragglers each parked for a
+  stated reason rather than effort:
+  - **SHUFFLE** needs a VOLATILITY model. The node holds its permutation stable within
+    a recalc pass; a formula call can't. RAND/RANDBETWEEN already reach the formula
+    surface from Formula.js without one — decide the model before adding a third.
+  - **COUNT DISTINCT / INTERPOLATE / the Lists › Tests pair** — mechanical, just not
+    done; each needs its op extracted to `listOps.ts` first.
+  - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is
+    the answer to "text in, graph out").
   Tiers + rationale in `formula-node-parity.md`; gaps machine-checked by
-  `formulaNodeParity.test.ts`, node↔formula equality by `formulaTier3.test.ts`.
-  Residual: distributions are validated only at representative points — widen if
-  accuracy is ever in doubt.
+  `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
+  `formulaTier3.test.ts`. Residual: distributions are validated only at representative
+  points — widen if accuracy is ever in doubt.
 - [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose
   variables are column names, appended in place (PQ Custom Column); wants a design pass
   on sharing the Expression engine.

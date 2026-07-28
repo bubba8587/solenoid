@@ -214,3 +214,204 @@ export function fibonacci(count: number): number[] {
   for (let i = 2; i < n; i++) out.push(out[i - 1] + out[i - 2]);
   return out;
 }
+
+// ─── Sets ─────────────────────────────────────────────────────────────────────
+// Membership is by VALUE, not identity. A complex number is an [re, im] ARRAY and a
+// JS Set keys an array by REFERENCE, so two equal complexes from different sources
+// would never match (a real Set-node bug once). Canonicalize the tuple to a string;
+// every primitive (number incl. a date serial, string, boolean) stays itself.
+export function setKey(v: unknown): unknown {
+  return Array.isArray(v) ? `\x00cx:${(v as unknown[]).join(",")}` : v;
+}
+
+/** A side's distinct members. Blank (null) and error cells are NOT members — they
+ *  can't be equal to anything, so they take no part in the comparison. */
+function memberSet(arr: readonly unknown[]): Set<unknown> {
+  const s = new Set<unknown>();
+  for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
+  return s;
+}
+
+export type SetOp = "union" | "intersect" | "difference" | "symdiff";
+
+/** First-seen order, deduped the way UNIQUE does. An error cell is never equal to
+ *  anything, so it can't match across sides: it passes through where it belongs
+ *  (kept in union, and on the A side of difference / symmetric difference; dropped
+ *  from intersection) rather than silently vanishing. */
+export function setOperation(op: SetOp, a: readonly unknown[], b: readonly unknown[]): unknown[] {
+  const aSet = memberSet(a), bSet = memberSet(b);
+  const out: unknown[] = [];
+  const emitted = new Set<unknown>();
+  const emitValue = (v: unknown) => { const k = setKey(v); if (!emitted.has(k)) { emitted.add(k); out.push(v); } };
+  switch (op) {
+    case "union":
+      for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
+      for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
+      break;
+    case "intersect":
+      for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(setKey(v))) emitValue(v); }
+      break;
+    case "difference":
+      for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
+      break;
+    case "symdiff":
+      for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
+      for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(setKey(v))) emitValue(v); }
+      break;
+  }
+  return out;
+}
+
+export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
+
+/** The empty-set edge cases follow set theory: ∅ ⊆ anything, ∅ is disjoint with
+ *  anything, ∅ = ∅. */
+export function setRelation(op: SetRelation, a: readonly unknown[], b: readonly unknown[]): boolean {
+  const aSet = memberSet(a), bSet = memberSet(b);
+  const subsetOf = (x: Set<unknown>, y: Set<unknown>) => {
+    for (const v of x) if (!y.has(v)) return false;
+    return true;
+  };
+  switch (op) {
+    case "equal":    return aSet.size === bSet.size && subsetOf(aSet, bSet);
+    case "subset":   return subsetOf(aSet, bSet);
+    case "superset": return subsetOf(bSet, aSet);
+    case "disjoint": {
+      for (const v of aSet) if (bSet.has(v)) return false;
+      return true;
+    }
+  }
+}
+
+// ─── Fill / Coalesce — the opt-in to treat a missing as something ──────────────
+
+export type FillOp =
+  | "constant" | "ffill" | "bfill" | "mean" | "median" | "mode"
+  | "interpolate" | "drop" | "coalesce";
+
+/** Present finite numbers only — gaps and per-cell errors excluded, so an imputed
+ *  statistic is computed from the values that are actually there. */
+export function presentNumbers(arr: readonly Cell[]): number[] {
+  return arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+}
+
+export function imputeStat(arr: readonly Cell[], op: "mean" | "median" | "mode"): number | null {
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return null; // nothing present → can't impute, leave gaps null
+  if (op === "mean") return nums.reduce((a, b) => a + b, 0) / nums.length;
+  if (op === "median") {
+    const s = [...nums].sort((a, b) => a - b);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+  }
+  // mode: most frequent; ties broken by first occurrence (Excel MODE behavior).
+  const counts = new Map<number, number>();
+  let best = nums[0], bestCount = 0;
+  for (const v of nums) {
+    const c = (counts.get(v) ?? 0) + 1;
+    counts.set(v, c);
+    if (c > bestCount) { bestCount = c; best = v; }
+  }
+  return best;
+}
+
+/** Linear interpolation of INTERIOR gaps only. An open-ended run (leading/trailing)
+ *  or one bounded by an error has nothing to interpolate between, so its nulls stay. */
+export function interpolateList(arr: readonly Cell[]): Cell[] {
+  const out: Cell[] = arr.slice();
+  let i = 0;
+  while (i < out.length) {
+    if (!isMissing(out[i])) { i++; continue; }
+    const start = i;
+    while (i < out.length && isMissing(out[i])) i++;
+    const end = i, left = start - 1, right = end;
+    const lv = left >= 0 ? out[left] : undefined;
+    const rv = right < out.length ? out[right] : undefined;
+    if (typeof lv === "number" && Number.isFinite(lv) && typeof rv === "number" && Number.isFinite(rv)) {
+      const span = right - left;
+      for (let k = start; k < end; k++) out[k] = lv + (rv - lv) * ((k - left) / span);
+    }
+  }
+  return out;
+}
+
+/** `constant` supplies the fill for the constant op; `fallbacks` are coalesce's
+ *  ordered sources — a LIST extends the output to its length, a bare number is a
+ *  broadcast constant that doesn't extend, and null contributes nothing. */
+export function fillList(
+  op: FillOp,
+  arr: readonly Cell[],
+  opts: { constant?: Cell; fallbacks?: readonly (Cell[] | number | null)[] } = {},
+): Cell[] {
+  switch (op) {
+    case "constant": {
+      const c = opts.constant ?? null;
+      return arr.map((v) => (isMissing(v) ? c : v));
+    }
+    case "ffill": {
+      const out: Cell[] = [];
+      let last: Cell = null, have = false;
+      for (const v of arr) {
+        if (isMissing(v)) out.push(have ? last : null);
+        else { last = v; have = true; out.push(v); }
+      }
+      return out;
+    }
+    case "bfill": {
+      const out = new Array<Cell>(arr.length).fill(null);
+      let next: Cell = null, have = false;
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const v = arr[i];
+        if (isMissing(v)) out[i] = have ? next : null;
+        else { next = v; have = true; out[i] = v; }
+      }
+      return out;
+    }
+    case "mean": case "median": case "mode": {
+      const stat = imputeStat(arr, op);
+      return arr.map((v) => (isMissing(v) ? stat : v));
+    }
+    case "interpolate": return interpolateList(arr);
+    case "drop":        return arr.filter((v) => !isMissing(v));
+    case "coalesce": {
+      const fallbacks = opts.fallbacks ?? [];
+      const lists = fallbacks.filter((f): f is Cell[] => Array.isArray(f));
+      const n = Math.max(arr.length, ...lists.map((s) => s.length), 0);
+      return Array.from({ length: n }, (_, i): Cell => {
+        const first: Cell = i < arr.length ? arr[i] : null;
+        if (!isMissing(first)) return first;
+        for (const f of fallbacks) {
+          if (f === null) continue;
+          const v: Cell = typeof f === "number" ? f : i < f.length ? f[i] : null;
+          if (!isMissing(v)) return v;
+        }
+        return null;
+      });
+    }
+  }
+}
+
+// ─── Range ────────────────────────────────────────────────────────────────────
+
+/** Half-open `[start, stop)` walking by `step`, like Python's range. An UNSET stop
+ *  (undefined) means no series yet — that is the node's empty card, not a blank
+ *  cable (value-semantics.md, "absent is not unknown"). */
+export function rangeList(start: number, stop: number | undefined, step: number, cap = 1000): number[] {
+  const out: number[] = [];
+  if (stop === undefined || step === 0) return out;
+  const goUp = step > 0;
+  let cur = start;
+  while (goUp ? cur < stop : cur > stop) {
+    out.push(cur);
+    cur += step;
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+/** End-to-end concatenation, staying 1-D. An unwired row contributes nothing. */
+export function concatLists(...lists: (readonly unknown[] | null | undefined)[]): unknown[] {
+  const out: unknown[] = [];
+  for (const l of lists) if (l != null) out.push(...l);
+  return out;
+}

@@ -7,7 +7,8 @@ import { splitText, textAfterBefore, urlEncode, regexApply } from "./nodes/textO
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
-  geometric, fibonacci, MAX_GENERATED, type Cell as ListCell,
+  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList,
+  concatLists, type Cell as ListCell,
 } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
@@ -518,6 +519,40 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   REPEAT:          { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   GEOMETRIC:       { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
   FIBONACCI:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+
+  // Sets + Fill + the remaining builders. Names DECLARED on the OP_META tables
+  // (SET_OP_META / SET_RELATION_META / FILL_OP_META) because the labels are prose.
+  SETUNION:        { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
+  SETINTERSECT:    { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
+  SETDIFFERENCE:   { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
+  SETSYMDIFF:      { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
+  SETEQUAL:        { returns: "logical", listArgs: true, arity: [2, 2], native: true },
+  SETSUBSET:       { returns: "logical", listArgs: true, arity: [2, 2], native: true },
+  SETSUPERSET:     { returns: "logical", listArgs: true, arity: [2, 2], native: true },
+  SETDISJOINT:     { returns: "logical", listArgs: true, arity: [2, 2], native: true },
+  FILLVALUE:       { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  FILLFORWARD:     { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  FILLBACKWARD:    { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  FILLMEAN:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  FILLMEDIAN:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  FILLMODE:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  FILLINTERPOLATE: { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  FILLDROP:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  COALESCE:        { returns: "number", rank: "list", listArgs: true, arity: [1, 255], native: true },
+  RANGE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
+  CONCATLISTS:     { returns: "number", rank: "list", listArgs: true, arity: [1, 255], native: true },
+
+  // Names the node surface already claimed (see the registrations at the bottom).
+  LENB:            { returns: "number", arity: [1, 1], family: "text" },
+  LEFTB:           { returns: "string", arity: [1, 2], family: "text" },
+  MIDB:            { returns: "string", arity: [3, 3], family: "text" },
+  RIGHTB:          { returns: "string", arity: [1, 2], family: "text" },
+  FINDB:           { returns: "number", arity: [2, 3], family: "text" },
+  SEARCHB:         { returns: "number", arity: [2, 3], family: "text" },
+  REPLACEB:        { returns: "string", arity: [4, 4], family: "text" },
+  "ERF.PRECISE":   { returns: "number", arity: [1, 1] },
+  "ERFC.PRECISE":  { returns: "number", arity: [1, 1] },
+  VALUETOTEXT:     { returns: "string", arity: [1, 2], family: "text" },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1110,3 +1145,66 @@ registerInternal("LINSPACE",  (a, b, n) => capped("LINSPACE", Number(n), () => l
 registerInternal("REPEAT",    (v, n) => capped("REPEAT", Number(n), () => repeatValue(v, Number(n))));
 registerInternal("GEOMETRIC", (a, r, n) => capped("GEOMETRIC", Number(n), () => geometric(Number(a), Number(r), Number(n))));
 registerInternal("FIBONACCI", (n) => fibonacci(Number(n)));
+
+// Sets — the gap Excel never filled (it ships UNIQUE and nothing else). Prose labels,
+// so these names are DECLARED on SET_OP_META / SET_RELATION_META rather than despaced.
+registerInternal("SETUNION",      (a, b) => setOperation("union",      toList(a), toList(b)));
+registerInternal("SETINTERSECT",  (a, b) => setOperation("intersect",  toList(a), toList(b)));
+registerInternal("SETDIFFERENCE", (a, b) => setOperation("difference", toList(a), toList(b)));
+registerInternal("SETSYMDIFF",    (a, b) => setOperation("symdiff",    toList(a), toList(b)));
+registerInternal("SETEQUAL",      (a, b) => setRelation("equal",    toList(a), toList(b)));
+registerInternal("SETSUBSET",     (a, b) => setRelation("subset",   toList(a), toList(b)));
+registerInternal("SETSUPERSET",   (a, b) => setRelation("superset", toList(a), toList(b)));
+registerInternal("SETDISJOINT",   (a, b) => setRelation("disjoint", toList(a), toList(b)));
+
+// Fill / Coalesce — the opt-in to treat a missing as something. COALESCE is variadic
+// (List, then each fallback in order), matching the node's extensible Else rows.
+registerInternal("FILLVALUE",       (list, v) => fillList("constant", numList(list), { constant: (v ?? null) as ListCell }));
+registerInternal("FILLFORWARD",     (list) => fillList("ffill",       numList(list)));
+registerInternal("FILLBACKWARD",    (list) => fillList("bfill",       numList(list)));
+registerInternal("FILLMEAN",        (list) => fillList("mean",        numList(list)));
+registerInternal("FILLMEDIAN",      (list) => fillList("median",      numList(list)));
+registerInternal("FILLMODE",        (list) => fillList("mode",        numList(list)));
+registerInternal("FILLINTERPOLATE", (list) => fillList("interpolate", numList(list)));
+registerInternal("FILLDROP",        (list) => fillList("drop",        numList(list)));
+registerInternal("COALESCE", (list, ...rest) => fillList("coalesce", numList(list), {
+  // A list fallback extends the result to its length; a bare number broadcasts.
+  fallbacks: rest.map((f) => (Array.isArray(f) ? f as ListCell[] : typeof f === "number" ? f : null)),
+}));
+
+// Build (continued). RANGE is half-open [start, stop) walking by step, like the node
+// and like Python — NOT Excel's "a range of cells", which has no formula spelling here.
+registerInternal("RANGE", (start, stop, step) =>
+  rangeList(Number(start), stop == null ? undefined : Number(stop), step == null ? 1 : Number(step)));
+registerInternal("CONCATLISTS", (...lists) => concatLists(...lists.map(toList)));
+
+// ── Names the NODE surface already claims, made callable ──────────────────────
+// Surfaced by tightening gap A to "every Excel name this node stands in for
+// dispatches" (it used to pass if ANY did, which hid these). Each one is already
+// declared in `nodeExcel.ts` against a real node, so the formula answering #NAME?
+// was the inconsistency — not these registrations.
+//
+// The B-suffixed text functions are Excel's BYTE-indexed variants for double-byte
+// locales. Solenoid has no byte model, and `nodeExcel.ts` has always said so
+// (`parity: false`, "Byte-indexed; treated as character-indexed"). Delegating to the
+// character-indexed form is that stated position, now true on both surfaces instead
+// of one. In a single-byte locale the two agree exactly, which is the common case.
+const delegate = (name: string, to: string) =>
+  registerInternal(name, (...args: unknown[]) => {
+    const fn = resolveExcelFunction(to);
+    return fn ? fn(...args) : solError("#NAME?", `${to} is unavailable`);
+  });
+
+for (const [name, to] of [
+  ["LENB", "LEN"], ["LEFTB", "LEFT"], ["MIDB", "MID"], ["RIGHTB", "RIGHT"],
+  ["FINDB", "FIND"], ["SEARCHB", "SEARCH"], ["REPLACEB", "REPLACE"],
+  // ERF.PRECISE / ERFC.PRECISE are Excel's single-argument forms — identical to
+  // ERF / ERFC, which is what `nodeExcel.ts` says too ("Same as ERF in Solenoid").
+  ["ERF.PRECISE", "ERF"], ["ERFC.PRECISE", "ERFC"],
+] as const) delegate(name, to);
+
+// VALUETOTEXT(value, [format]): format 0 (default) is the plain string conversion,
+// format 1 is the "strict" form that quotes text and shows an array in braces. Only
+// the concise form is meaningful here — Cast to Text with an empty format, which is
+// what the node does.
+registerInternal("VALUETOTEXT", (v) => toStr(v));

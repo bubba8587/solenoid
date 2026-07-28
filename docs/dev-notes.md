@@ -301,6 +301,53 @@ Everything else in this batch was shape-or-operand and took the default: matrix
 dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
 answered blank for blank text and only needed the swallow removed.
 
+### Tier 3 finished, and two measurement bugs it exposed (2026-07-28b)
+
+The rest of the list family: the eight SET* names, the nine FILL*/COALESCE ops, RANGE
+and CONCATLISTS. 51 Tier 3 names total, 332/646 leaves callable. The interesting part
+is again not the names.
+
+**D19 2(a) is not injective, and nothing checked.** Despacing a label works while the
+label is a NAME. Fill's `Interpolate` op and the INTERPOLATE node in `stats.ts` both
+despace to INTERPOLATE — a straight collision inside our own naming scheme, found only
+by trying to register it. Three families also label themselves in sentences for the
+dropdown ("Union: in A or B"), where despacing gives nonsense. Both cases now use the
+same escape: an op may declare an `fx` beside its label on its OP_META table, and
+`formulaTier3.test.ts` machine-checks that no two leaves despace to one name and no
+declared `fx` collides with a label. The check is the point — the collision was a
+one-line fix, the absence of a guard was the bug.
+
+`nodeOps.ts` already had this exact problem one surface over: `SET_OPS` overrides those
+prose labels for the Add-menu SEARCH rows. So `fx` rides through `fromMeta` and the
+search overrides pull it from the meta table — one declaration per op, not two.
+
+**The coverage metric was lying twice, in opposite directions.** First: it matched a
+leaf by its host LABEL, so a collapsed op family read as uncovered even with every op
+registered — nine FILL* functions reported as a gap. It now consults `opsFor(type)`
+and counts a family covered when every op is callable.
+
+Fixing that immediately broke the OTHER direction, which is the one worth remembering.
+Gap A means "an Excel-named node whose Excel name gives #NAME?". It was computed as
+`!inFormula`, so the moment RUNNINGSUM was registered, Cumulative went "covered" and
+SCAN silently dropped OUT of gap A — the ratchet would have stopped watching a name
+that still doesn't dispatch. Coverage and Excel-name coverage are now separate fields
+(`inFormula` vs `excelCovered`), because a node can be perfectly reachable under its
+Solenoid name while its Excel spelling still fails.
+
+Tightening `excelCovered` from "any name dispatches" to "every name dispatches" then
+surfaced 10 more: the seven B-suffixed text functions, ERF.PRECISE, ERFC.PRECISE and
+VALUETOTEXT. All were already declared against real nodes in `nodeExcel.ts` — the
+B-variants explicitly as `parity: false`, "Byte-indexed; treated as character-indexed".
+So the node surface had been promising LENB for a long time while the formula surface
+answered #NAME?. They now delegate to their character-indexed forms, which is the
+position the app already documented, true on both surfaces instead of one.
+
+**SHUFFLE stays unregistered on purpose.** Tier 3's contract is node-equals-formula,
+and Shuffle is volatile — the node keeps its permutation stable within a recalc pass
+(keyed on the recalc generation) and a formula call has no way to. RAND/RANDBETWEEN
+already reach formulas from Formula.js without that model; adding a third volatile
+function would deepen the hole rather than fill it.
+
 ### D19 Tier 3 — the list core is callable from a formula (2026-07-28)
 
 31 registrations, and the point of them is not the 31. Tier 3's real deliverable is
