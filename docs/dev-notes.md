@@ -173,6 +173,30 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### The blank-wire SPEC, and sweep batch 4 (2026-07-27b)
+
+Author: *"I need you to be writing these rules out formally somewhere, so we have a spec
+to target for new nodes."* Fair — they had been accumulating across commit messages and
+comments, which is not something a node author can target.
+
+`value-semantics.md` gains **"Reading an input"**, deliberately next to the propagation
+table it complements: that table says how a missing value behaves once it is INSIDE a
+computation, this says how it gets there. It carries the one rule (`readInput` — a
+connected cable wins even when null, only an unwired slot falls back), a table of what a
+wired blank DOES by the input's ROLE, why each non-default row exists in checkable terms
+rather than as taste, and a four-step procedure for a new node. Step 3 is the Slider
+lesson: **check what CONSUMES the value, not just `data()`** — that bug was invisible in
+its own method, with a DOM attribute, a wrap-around and a sensitivity sweep in another
+file each assuming a finite bound. Linked from the add-node skill where literals are
+introduced, the docs index, and CLAUDE.md; the ratchet now points at the spec instead of
+restating a shorter version of it.
+
+**Batch 4** — cube, display, expression, lambda (12 sites). 206 → 194, and every small
+file is now done; only the six big ones remain. The formula hosts were the notable ones:
+`=x+1` with a wired blank `x` returned **1**, because `?? 0` asserted a zero the graph
+never supplied. The evaluator already carried the missing contract, so the fix was the
+read alone — the fifth file in a row where the plumbing was waiting on the reader.
+
 ### Sweep batch 3 — a THIRD policy: a source keeps emitting (2026-07-27b)
 
 date, input, matrix, tableLambda (17 sites). 223 → 206 across 10 files.

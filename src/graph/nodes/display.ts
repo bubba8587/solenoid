@@ -3,7 +3,7 @@ import { getRecalcGen, isGraphRebuilding } from "../process";
 import type { PassthroughSpec } from "./passthrough";
 import type { UnitSuffix } from "../unitFormat";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
-import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast } from "./shared";
+import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast, readInput } from "./shared";
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
@@ -157,8 +157,9 @@ export class AlertNode extends ClassicPreset.Node {
         return broadcast((x) => (((x as unknown) === true || x === 1) ? 1 : 0), v) as number | number[] | null;
       }
       case "text": {
-        const text = inputs.text?.[0] ?? this.stringLiterals.text ?? "";
-        const match = inputs.match?.[0] ?? this.stringLiterals.match ?? "";
+        const text = readInput(inputs.text, this.stringLiterals.text ?? "");
+        const match = readInput(inputs.match, this.stringLiterals.match ?? "");
+        if (text === null || match === null) return null;
         if (match === "") return 0; // nothing to look for → never triggered
         return text.includes(match) ? 1 : 0;
       }
@@ -220,7 +221,7 @@ export class AlertNode extends ClassicPreset.Node {
       case "boolean":
         return `${name}: is true`;
       case "text": {
-        const m = inputs.match?.[0] ?? this.stringLiterals.match ?? "";
+        const m = readInput(inputs.match, this.stringLiterals.match ?? "") ?? "";
         return `${name}: contains "${m}"`;
       }
     }
@@ -278,8 +279,10 @@ export class RandBetweenNode extends ClassicPreset.Node {
       this.rawRoll = Math.random();
       this.lastRollGen = gen;
     }
-    const bound1 = inputs.bound1?.[0] ?? this.literals.bound1 ?? 0;
-    const bound2 = inputs.bound2?.[0] ?? this.literals.bound2 ?? 1;
+    // A blank bound leaves the range undefined, so there is no number to draw.
+    const bound1 = readInput(inputs.bound1, this.literals.bound1 ?? 0);
+    const bound2 = readInput(inputs.bound2, this.literals.bound2 ?? 1);
+    if (bound1 === null || bound2 === null) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = bound1 + this.rawRoll * (bound2 - bound1);
     return { result: this.cachedResult };
   }

@@ -3,6 +3,7 @@ import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNo
 import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
 import { BooleanOpNode, NotNode } from "./logic";
 import { SliderInputNode } from "./input";
+import { ExpressionNode } from "./expression";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -158,6 +159,16 @@ describe("a CONTROL needs a usable bound — Slider keeps the card's", () => {
     node.literals.max = 100;
     node.value = 250;
     expect(node.data({ max: [500] }).value).toBe(250);
+  });
+});
+
+describe("a formula VARIABLE carries the blank through", () => {
+  it("=x+1 with a wired blank x is blank, not 1", () => {
+    const node = new ExpressionNode({ expr: "x + 1" });
+    node.literals.x = 5;
+    expect(node.data({ x: [null as unknown as number] }).result).toBeNull();
+    // Unwired still uses the typed value.
+    expect(node.data({}).result).toBe(6);
   });
 });
 

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyComboIn, resultOut, type ResultType } from "./shared";
+import { anyComboIn, resultOut, readInput, type ResultType } from "./shared";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
@@ -172,7 +172,10 @@ export class ExpressionNode extends ClassicPreset.Node {
       // evaluator runs on magnitudes (rawEnv stripped), so a dimensioned input never
       // reaches the arithmetic as an object.
       const rawEnv: Record<string, unknown> = {};
-      for (const v of this.varNames) rawEnv[v] = inputs[v]?.[0] ?? this.literals[v] ?? 0;
+      // A wired blank VARIABLE stays blank through the formula (`=x+1` with x blank
+      // is blank, not 1) — the evaluator already carries the missing contract. `?? 0`
+      // asserted a zero the graph never supplied.
+      for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
       const env: Record<string, unknown> = {};
       for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
 
