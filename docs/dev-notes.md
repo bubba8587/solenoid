@@ -120,6 +120,42 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Enforcement tranche: three rules flip to enforced, VAL-12 closes (2026-07-28r)
+
+The author waved off packs, so the next-highest-value item was the spec's own
+"partially enforced six" (rules.md's stated highest-value gap). Four moves:
+
+**`sourceInvariants.test.ts`** — a new home for grep-shaped completeness checks,
+same discipline as formulaPathIsReteFree: static scans over the real source, so a
+NEW offender fails CI naming the rule. Two scans: SOCK-7 completeness (every file
+that retypes a socket in place — `.socket =` / `.setType(` / `.dataType =` — must
+reference a reconciler; a SANCTIONED map with per-file reasons covers the central
+adoption machinery, and a second test keeps that list honest by re-verifying each
+entry still exists and still retypes) and VAL-13 (no component source calls
+`.data(`). Both found ZERO offenders — the codebase was already clean; the value
+is the ratchet.
+
+**SOCK-5's "never persists" pinned** — adopt onto a Display, `extractInit`, assert
+the adopted type is absent from the init and a reconstructed node starts hollow
+(`trueany`). The save records init fields, never sockets, so this is the exact
+leak surface.
+
+**VAL-12 closed** — Alert and ColorBlend, the last two `mode` misnames, renamed to
+`op` (nodes, components, tests; `op` was already in the persistence whitelist).
+The coverage check immediately demanded declarations — the machinery working as
+designed — so both got argument-kind entries in NODE_OPS (a trigger condition and
+a blend formula are parameters, not searchable operations).
+
+**SOCK-6 honestly recorded un-greppable** — the survey found every wildcard-literal
+comparison outside sockets.ts is a RENDERING classifier (glyph shape, combo
+drawing, wire-only rows), not a semantic untyped-check; a mechanical scan can't
+separate them. The rule's Enforced-by line now says so instead of promising a
+grep that would never work.
+
+Enforcement summary moves 34/6/4 → **37 enforced / 4 partial / 3 unenforced**;
+known violations 8 → 5. Remaining partials: FX-4 naming sweep, VAL-10 unitAware
+completeness, VAL-12 blindness, VAL-14 only-if.
+
 ### The regression quartet owned — the broadcast-garbage class closes (2026-07-28q)
 
 TREND/GROWTH/LINEST/LOGEST were the last array-RETURNING names still broadcast

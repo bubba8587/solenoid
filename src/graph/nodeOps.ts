@@ -93,6 +93,7 @@ import {
   TodayNowNode, UrlEncodeNode, WeekInfoNode, WeibullDistNode,
   WeightedNode,
   ResistorCodeNode,
+  AlertNode, ColorBlendNode,
 } from "./rete-nodes";
 
 
@@ -205,6 +206,12 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "list-drop", ctor: DropNode, kind: "argument" },
   // Which rows count as blank is a parameter of Drop Blank Rows.
   { type: "drop-blank-rows", ctor: DropBlankRowsNode, kind: "argument" },
+  // The trigger CONDITION (range / equals / boolean / text) is a parameter of the
+  // one Alert; a blend formula ("multiply", "screen") is a parameter of Color
+  // Blend — nobody searches the Add menu for either. These two previously named
+  // the field `mode`, the last VAL-12 misnames, so they could not declare at all.
+  { type: "alert", ctor: AlertNode, kind: "argument" },
+  { type: "color-blend", ctor: ColorBlendNode, kind: "argument" },
 
   // ── Operation-kind: each op stands alone as a name ──
   // Fill's ops carry declared fx names (FILLMEAN, FILLINTERPOLATE…) and dispatch

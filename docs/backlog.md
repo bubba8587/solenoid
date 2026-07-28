@@ -10,22 +10,21 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
-- [ ] **Close the rules spec's REMAINING known violations** — the 2026-07-28 review pass
-  landed VAL-12's renames (Sort/Take/Drop/DropBlankRows/IFError), VAL-8's pin (it
-  already existed — the doc was wrong), FX-2's import-graph test, and `rules.test.ts`
-  (the mechanical half). Still open, highest value first:
-  - **VAL-10 / SOCK-7 completeness** — nothing proves a NEW algebra node sets
-    `unitAware`, or that a NEW in-place retyper calls `reconcileFcTypes`.
-  - **VAL-12 residue** — Alert/ColorBlend still name the field `mode` (argument-shaped,
-    so the cost is only coverage); and violation 2 stands: a family that CAN'T declare
-    is invisible to the check — drive the coverage test off the catalog/OpSelect usage.
-  - **SOCK-5** — nothing asserts an adopted `trueany` type stays out of the save.
+- [ ] **Close the rules spec's REMAINING known violations** — two enforcement passes
+  landed (2026-07-28): the review pass (VAL-12's six renames, VAL-8's pin, FX-2's
+  import-graph test, `rules.test.ts` mechanical half) and the enforcement tranche
+  (SOCK-7 completeness + VAL-13 as source scans in `sourceInvariants.test.ts`, SOCK-5's
+  persistence pin, the last VAL-12 renames Alert/ColorBlend + declarations; SOCK-6
+  attempted and recorded un-greppable — only rendering classifiers inline wildcard
+  names). Still open, highest value first:
+  - **VAL-10 completeness** — nothing proves a NEW algebra node sets `unitAware`.
+  - **VAL-12 blindness** — a family that CAN'T declare (misnamed field) is invisible to
+    the coverage check — drive it off the catalog/OpSelect usage instead.
   - **FX-4** — the naming-side sweep covers catalog leaves and the three `fx` tables,
     not every family's op labels against each other. (Registry side CLOSED:
     duplicate registration throws.)
   - **VAL-14** — only the "if" direction of the literal-map rule is checked.
-  - **Unenforced, lower value:** SOCK-6 (wildcard predicate not inlined), SOCK-8 (socket
-    box geometry), VAL-13 (components never call `data()`). Grep-shaped checks.
+  - **Unenforced, lower value:** SOCK-8 (socket box geometry — a CSS invariant).
   - **`rules.test.ts` semantic half** — it checks cited files EXIST; whether a cited
     test enforces its rule is still a reading job.
 

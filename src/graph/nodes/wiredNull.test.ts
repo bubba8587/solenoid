@@ -378,11 +378,11 @@ describe("Kleene logic THROUGH the real coercion wrapper", () => {
 
 describe("a CHECK never fires against a bound the graph withheld", () => {
   it("Alert (range): a wired blank High is unknown — status null, not the card's 100", () => {
-    const node = new AlertNode({ mode: "range" });
+    const node = new AlertNode({ op: "range" });
     node.literals.high = 100;
     expect(node.data({ value: [500], high: [null as unknown as number] }).result).toBeNull();
     // Unwired High keeps the card's bound and still alerts.
-    const unwired = new AlertNode({ mode: "range" });
+    const unwired = new AlertNode({ op: "range" });
     expect(unwired.data({ value: [500] }).result).toBe(2);
   });
 

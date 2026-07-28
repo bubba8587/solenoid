@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "./trueAnyAdopt";
+import { extractInit } from "./copyPaste";
 import { DisplayNode } from "./nodes/display";
 import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
@@ -46,6 +47,25 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     reconcileTrueAnyTypes(makeEditor([src, disp], []));
     expect(dt(disp.inputs.in?.socket)).toBe("trueany");
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
+  });
+
+  it("adoption never PERSISTS: a save/paste init carries no adopted type (SOCK-5)", () => {
+    // The save records a node's init fields (extractInit — persistence and paste
+    // share it), never its sockets, so an adopted type must not appear there and
+    // a reconstructed node must start hollow. This is the "never persists" half
+    // of SOCK-5, previously unpinned: if Display ever grows a whitelisted field
+    // holding the adopted type, this fails.
+    const src = numSource();
+    const disp = new DisplayNode();
+    reconcileTrueAnyTypes(makeEditor([src, disp], [
+      { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" },
+    ]));
+    expect(dt(disp.inputs.in?.socket)).toBe("number"); // adopted live
+    const init = extractInit(disp);
+    expect(JSON.stringify(init)).not.toContain('"number"');
+    const clone = new DisplayNode(init as ConstructorParameters<typeof DisplayNode>[0]);
+    expect(dt(clone.inputs.in?.socket)).toBe("trueany");
+    expect(dt(clone.outputs.out?.socket)).toBe("trueany");
   });
 
   it("adoption propagates down a passthrough CHAIN (Display → Display)", () => {

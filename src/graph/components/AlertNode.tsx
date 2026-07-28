@@ -31,12 +31,12 @@ const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = 
 const CALM_COLOR = "var(--text-dim)";
 
 export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
-  const [mode, setMode] = useNodeField(data, "mode");
+  const [op, setOp] = useNodeField(data, "op");
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const metColor = themeAccent(resolveColor("amber"), appThemeStore.getMode());
-  const shownKeys = ALERT_MODE_KEYS[mode];
+  const shownKeys = ALERT_MODE_KEYS[op];
 
-  async function handleModeChange(next: AlertMode) {
+  async function handleOpChange(next: AlertMode) {
     // Inputs that leave the active set are about to be hidden — drop any cable
     // wired to them so it doesn't dangle to an unrendered socket (same as TVM).
     const keep = new Set(ALERT_MODE_KEYS[next]);
@@ -47,14 +47,14 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
       );
       for (const c of stale) await editor.removeConnection(c.id);
     }
-    // setMode sets data.mode + recomputes; the node re-evaluates the new condition
+    // setOp sets data.op + recomputes; the node re-evaluates the new condition
     // fresh, so switching into an already-met condition fires once.
-    setMode(next);
+    setOp(next);
   }
 
   return (
     <NodeShell node={data} emit={emit}>
-      <OpSelect value={mode} onChange={handleModeChange} options={MODES} />
+      <OpSelect value={op} onChange={handleOpChange} options={MODES} />
       <InlineInputs node={data} emit={emit} keys={shownKeys} />
       <ValueDisplay
         value={data.cachedResult}
@@ -62,7 +62,7 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
           const met = Array.isArray(v) ? v.some((x) => x !== 0) : v !== 0;
           const desc = Array.isArray(v)
             ? (met ? "some out" : "all clear")
-            : (met ? STATUS[mode].met(v as number) : STATUS[mode].calm);
+            : (met ? STATUS[op].met(v as number) : STATUS[op].calm);
           return <span style={{ color: met ? metColor : CALM_COLOR, fontWeight: 600 }}>● {desc}</span>;
         }}
       />

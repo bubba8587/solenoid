@@ -12,14 +12,14 @@ const MODE_OPTS = (Object.keys(BLEND_MODE_META) as BlendMode[]).map((m) => ({
 }));
 
 export function ColorBlendComponent({ data, emit }: NodeProps<ColorBlendNodeType>) {
-  const [mode, setMode] = useNodeField(data, "mode");
+  const [op, setOp] = useNodeField(data, "op");
   const out = data.cachedString;
   const colorOut = data.outputs.color;
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Blend" hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
       <div style={{ padding: "6px 0 2px" }}>
-        <OpSelect value={mode} onChange={setMode} options={MODE_OPTS} />
+        <OpSelect value={op} onChange={setOp} options={MODE_OPTS} />
       </div>
       {/* Swatch + output string on the output-socket row — the Color Picker's
           result-row pattern, so the dot sits next to what it emits. */}
