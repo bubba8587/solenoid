@@ -120,6 +120,35 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Two spec lints + the unary fixture set completes (2026-07-28kk)
+
+The in-scope remainder after the audit, all three landed:
+
+**SSOT-5 made mechanical** — rules.test.ts now walks every `### <ID>` section
+and fails any rule without an `*Enforced by:*` line; the meta-rule that "every
+rule labels its enforcement" is itself enforced. Flipped to enforced in the
+summary table (66 enforced / 2 partial / 1 unenforced).
+
+**SOCK-8's greppable half** — sourceInvariants.test.ts pins socket.css's
+deterministic 12×12 block (`display: block`, `var(--socket-size, 12px)`,
+`line-height: 0`), greps the tree for any reborn `INPUT_ROW_TOP`-style
+constant, and refuses `transform: translate` in NodeSocket.tsx (offsetTop
+ignores transforms — rete would misreport the endpoint). The rendering half
+(measured-row correctness) stays unenforceable by grep; noted on the rule.
+
+**Corpus fixtures for all 8 remaining unary verbs** — select/drop/rename/
+head/filterMulti/groupBy/unpivot/pivot, authored from oracle probes (40 cases
+total across 11 files). `NOT_YET_MIGRATED` is EMPTY for unary verbs; the
+completeness ratchet now holds FRAME_OP_KINDS ⊆ fixtures outright. Probing
+found a real wound: the wire carries agg `op` as a free string, and an
+unknown name ("mean" for "avg") fell off the switch to a fabricated silent
+null column — it now REFUSES whole-verb with a thrown #NAME? (a bad op name
+is a request error like a missing column's #REF!, not a per-cell data error).
+Pinned as a groupBy expectError case. Pivot probe also corrected the spec's
+field names on contact: `rowFields/colFields/values/funcs`, not rows/columns.
+The cargo handoff (backlog) is unchanged — pairs still await verification +
+deletion; FX-12 promotes only when cargo agrees.
+
 ### The scope audit: Equation currency + the lambda deviations close (2026-07-28jj)
 
 The author asked "sure there's nothing left?" — and the audit found four real

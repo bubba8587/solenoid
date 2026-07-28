@@ -1,0 +1,22 @@
+{ "verb": "unpivot",
+  "cases": [
+    { "name": "wide to long, default variable/value names",
+      "frames": { "in": { "columns": [
+        { "name": "id", "type": "string", "values": ["r1", "r2"] },
+        { "name": "q1", "type": "number", "values": [10, 30] },
+        { "name": "q2", "type": "number", "values": [20, 40] } ] } },
+      "op": { "kind": "unpivot", "idColumns": ["id"], "valueColumns": ["q1", "q2"] },
+      "expect": { "columns": [
+        { "name": "id", "type": "string", "values": ["r1", "r1", "r2", "r2"] },
+        { "name": "variable", "type": "string", "values": ["q1", "q2", "q1", "q2"] },
+        { "name": "value", "type": "number", "values": [10, 20, 30, 40] } ] } },
+    { "name": "custom variable/value names",
+      "frames": { "in": { "columns": [
+        { "name": "id", "type": "string", "values": ["r1", "r2"] },
+        { "name": "q1", "type": "number", "values": [10, 30] } ] } },
+      "op": { "kind": "unpivot", "idColumns": ["id"], "valueColumns": ["q1"], "variableName": "quarter", "valueName": "sales" },
+      "expect": { "columns": [
+        { "name": "id", "type": "string", "values": ["r1", "r2"] },
+        { "name": "quarter", "type": "string", "values": ["q1", "q1"] },
+        { "name": "sales", "type": "number", "values": [10, 30] } ] } }
+  ] }

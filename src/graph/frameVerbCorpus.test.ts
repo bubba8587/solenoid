@@ -79,9 +79,11 @@ describe("corpus completeness — every unary verb has a fixture file", () => {
   // here; the guard closes fully when the list is empty, and then promotes as
   // FX-12. Adding a NEW FrameOp kind fails compile (FRAME_OP_KINDS) and then
   // fails here until it ships with corpus cases.
-  const NOT_YET_MIGRATED = new Set([
-    "select", "drop", "rename", "head", "filterMulti", "groupBy", "unpivot", "pivot",
-  ]);
+  // EMPTY for the unary verbs: every FrameOp kind has fixture cases. What
+  // remains for the corpus is cargo verification + deleting the hand-mirrored
+  // pairs (the handoff steps in the backlog), and the BINARY verbs' own
+  // inventory (join/append/lookup) when their pairs migrate.
+  const NOT_YET_MIGRATED = new Set<string>([]);
 
   it("fixture files + the migration whitelist cover FRAME_OP_KINDS exactly", () => {
     const covered = new Set(corpus.map((c) => c.verb));

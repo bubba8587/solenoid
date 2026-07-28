@@ -24,14 +24,19 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
        surfaces (likely candidates: serde field visibility, dump()'s
        `__nf`-tagged non-finite cells vs fixture values, error-code drift
        between the engine's IpcError codes and the oracle's).
-    2. Step 2 (the bulk): migrate the ~30 hand-mirrored test pairs verb by
-       verb — move each pair's cases into `fixtures/frame-verbs/<verb>.json`,
-       delete the Rust+JS pair in ONE commit, delete the verb from
-       `NOT_YET_MIGRATED` in `frameVerbCorpus.test.ts` (the ratchet). The
-       "vitest twin" comments in `engine/tests.rs` map the pairs.
+    2. Step 2 (the bulk): fixture files now exist for ALL unary verbs
+       (2026-07-28kk authored the remaining 8 from oracle probes;
+       `NOT_YET_MIGRATED` is already empty), so migration is now
+       verb-by-verb PAIR DELETION: check each hand-mirrored Rust+JS pair's
+       cases are covered by (or get folded into) the verb's fixture file,
+       then delete the pair in ONE commit. The "vitest twin" comments in
+       `engine/tests.rs` map the pairs.
     3. Binary verbs (join/append/lookup) get their own inventory + `frames`
        map entries when their pairs migrate.
-    4. Whitelist empty → flip the guard, promote as FX-12 (bundle step 4).
+    4. Cargo green on the corpus + pairs deleted → promote as FX-12
+       (bundle step 4). The JS-side ratchet is already closed; the rule
+       waits on the cargo half so it never claims dual-engine enforcement
+       it doesn't have.
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
     promote if the class of config-driven coercions grows.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO

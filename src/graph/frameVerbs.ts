@@ -334,7 +334,15 @@ export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   const nums = prep.nums;
   if (nums.length === 0) return op === "sum" ? 0 : op === "product" ? 1 : null;
   if (nums.some((n) => Number.isNaN(n))) return guardFinite(NaN, ...nums);
-  return guardAgg(rawAggregate(nums, op), nums);
+  const r = rawAggregate(nums, op);
+  // The TS union is exhaustive, but the WIRE path carries op as a free string
+  // (WireAgg / a save's aggs) — an unknown op fell off the switch to undefined
+  // and fabricated a silent null column. A bad op NAME is a request error, not
+  // a data error, so it refuses the whole verb (thrown, like a missing column's
+  // #REF!) rather than seeding per-cell errors (VAL-20's no-silent-garbage
+  // discipline applied to the verb surface).
+  if (r === undefined) throw solError("#NAME?", `Unknown aggregation "${op}"`);
+  return guardAgg(r, nums);
 }
 
 function guardAgg(r: number | null, inputs: readonly number[]): FrameCell {

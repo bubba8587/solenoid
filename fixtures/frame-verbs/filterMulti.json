@@ -1,0 +1,38 @@
+{ "verb": "filterMulti",
+  "cases": [
+    { "name": "and: every condition must pass",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
+        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
+      "op": { "kind": "filterMulti", "combine": "and", "conditions": [
+        { "column": "v", "op": "gt", "value": 2 },
+        { "column": "s", "op": "eq", "value": "b" } ] },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [5, 8] },
+        { "name": "s", "type": "string", "values": ["b", "b"] } ] } },
+    { "name": "or: any condition passes",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
+        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
+      "op": { "kind": "filterMulti", "combine": "or", "conditions": [
+        { "column": "v", "op": "lt", "value": 2 },
+        { "column": "s", "op": "eq", "value": "b" } ] },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 8] },
+        { "name": "s", "type": "string", "values": ["a", "b", "b"] } ] } },
+    { "name": "complement keeps the REST",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
+        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
+      "op": { "kind": "filterMulti", "combine": "and", "complement": true, "conditions": [
+        { "column": "v", "op": "gt", "value": 2 } ] },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1] },
+        { "name": "s", "type": "string", "values": ["a"] } ] } },
+    { "name": "an unknown condition column errors",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "filterMulti", "combine": "and", "conditions": [
+        { "column": "nope", "op": "gt", "value": 0 } ] },
+      "expectError": "#REF!" }
+  ] }

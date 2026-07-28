@@ -169,8 +169,10 @@ that would have caught it, or states why it can't be checked.
 break it. `CLAUDE.md` already carries an honest example of the alternative — the
 OS-dropdown rule, "widely cited, but no originating incident is on record", 21 call sites
 held on precaution.
-*Enforced by:* `UNENFORCED` — this rule is about the document, and is checked by review.
-A `rules.test.ts` asserting every ID resolves to a real test file would close it.
+*Enforced by:* `rules.test.ts` → "every rule labels its enforcement" — the
+labelling itself is mechanical (every rule body carries an *Enforced by:* line, tests
+or an explicit UNENFORCED); whether a cited test truly enforces stays a reading job
+(Known violations).
 
 ### SSOT-6 — A gating metric has exactly one implementation **[INFERRED]**
 **MUST:** a number that gates CI is computed in ONE module. The human-readable report and
@@ -308,7 +310,11 @@ vertical placement is MEASURED per row — never a fixed constant, never a `tran
 
 *Why:* `rete-render-utils` measures the span's offset box for cable endpoints, and
 `offsetTop` ignores transforms, so rete would misreport the endpoint.
-*Enforced by:* `UNENFORCED` (a CSS + layout invariant; `CLAUDE.md` carries the detail).
+*Enforced by:* `sourceInvariants.test.ts` → "SOCK-8 — the socket box's greppable
+half": socket.css keeps the deterministic box (display:block, the 12px size variable
+on both axes, line-height 0), no INPUT_ROW_TOP-style constant anywhere, no transform
+positioning in the socket component. **The RENDERING half stays unenforced** — only a
+browser can verify rete measures the box it expects.
 
 ### SOCK-9 — `anydata`: the rank-≤2 element-agnostic wildcard (D23) **[INFERRED]**
 **MUST:** `anydata` accepts every FAMILY value of rank ≤ 2 (scalar / list / combo /
@@ -1081,9 +1087,9 @@ isolateStore missing too.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 65 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
-| Partially enforced | 1 | EFFECT-1 |
-| Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
+| Enforced | 66 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
+| Partially enforced | 2 | EFFECT-1 · SOCK-8 |
+| Unenforced | 1 | SOCK-6 |
 
 **The ORIGINAL partially-enforced six all closed** (EFFECT-1, which arrived later with
 its own domain, is the one current partial — its data()-never-writes half is per-class).

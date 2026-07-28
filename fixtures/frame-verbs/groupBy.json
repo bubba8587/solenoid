@@ -1,0 +1,30 @@
+{ "verb": "groupBy",
+  "cases": [
+    { "name": "sum per key, first-seen key order",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
+        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
+      "op": { "kind": "groupBy", "keys": ["s"], "aggs": [
+        { "column": "v", "op": "sum", "as": "total" } ] },
+      "expect": { "columns": [
+        { "name": "s", "type": "string", "values": ["a", "b"] },
+        { "name": "total", "type": "number", "values": [4, 13] } ] } },
+    { "name": "count and avg side by side",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
+        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
+      "op": { "kind": "groupBy", "keys": ["s"], "aggs": [
+        { "column": "v", "op": "count", "as": "n" },
+        { "column": "v", "op": "avg", "as": "mean" } ] },
+      "expect": { "columns": [
+        { "name": "s", "type": "string", "values": ["a", "b"] },
+        { "name": "n", "type": "number", "values": [2, 2] },
+        { "name": "mean", "type": "number", "values": [2, 6.5] } ] } },
+    { "name": "an UNKNOWN agg op refuses by name (the wire carries op as a free string)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 2] },
+        { "name": "s", "type": "string", "values": ["a", "a"] } ] } },
+      "op": { "kind": "groupBy", "keys": ["s"], "aggs": [
+        { "column": "v", "op": "mean", "as": "x" } ] },
+      "expectError": "#NAME?" }
+  ] }
