@@ -106,7 +106,8 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   the ratchet and the pack seam have landed; 338/646 leaves are formula-callable, gap A
   is the 19 D2-capped names, gap C is 0. Left: **Tier 4** (the D2 dimensionality cap —
   author-present, `deferrals.md`; the decision PACKET is ready —
-  `v2.0/17-matrix-formulas.md`, one sub-decision inside, the PAD rule), and the
+  `v2.0/17-matrix-formulas.md`, no open sub-decisions: the PAD rule turned out to be
+  already settled by P3 + D15), and the
   stragglers each parked for a stated reason rather than effort:
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.

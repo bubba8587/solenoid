@@ -101,23 +101,32 @@ percent, and every scalar function under `broadcastCall`.
 | B10 | `M(1×1)` | anything | as `s` | a 1×1 collapses to its scalar (Excel rule; mirrors today's singleton collapse) |
 | B11 | `L(1)` | anything | as `s` | singleton collapse, already shipped for combos |
 
-**PAD — the one deliberate Excel deviation, decided once for every row above.**
-Excel fills non-overlapping broadcast cells with `#N/A`. Solenoid's existing 1-D
-broadcast contract pads ragged zips with `null` (missing), pinned by
-`broadcastContract.test.ts`, and `null` then flows by the app-wide value model
-(aggregators skip it, element-wise math propagates it). Two options:
+**PAD — already decided; no sub-decision here.** An earlier draft of this packet
+posed null-vs-`#N/A` as open. It isn't — the author has ruled twice, and the two
+rulings compose into a rule sharper than either blanket option, split by what the
+OPERATION is rather than by rank:
 
-- **(a) `null` everywhere** — coherent with the whole app; a ragged 2-D op behaves
-  exactly like today's ragged 1-D op. Deviates from Excel output where a workbook
-  relied on `#N/A` padding.
-- **(b) `#N/A` at rank 2, `null` at rank 1** — Excel-faithful for the transpiler,
-  but the SAME mismatch now answers differently by rank, which is exactly the kind
-  of incoherence the decision criteria exclude.
+- **Element-wise math over ragged operands → `null`** (the P3 ragged-lists ruling,
+  2026-06-22, archive/dev-notes-history: *"the missing tail is literally missing
+  data"* — not truncate, not error, not 0-fill). Built and pinned by
+  `broadcastContract.test.ts` ("ragged pad still yields null"). Rows B4/B7/B9
+  above are element-wise, so they pad with `null` — a ragged 2-D op behaves
+  exactly like today's ragged 1-D op.
+- **Shape CONSTRUCTION → `#N/A` per cell** (D15, 2026-07-09): VSTACK/HSTACK pad
+  ragged inputs with `#N/A` cells exactly like Excel, WRAPROWS/WRAPCOLS joined the
+  same rule — *"a per-cell #N/A is visible, honest, and recoverable (IFNA/Fill),
+  and SUM over it goes #N/A like Excel"*, with the cost accepted on record. The
+  user asked for a rectangle; the filler cells are cells they created with no
+  value, which is a different thing from an operand that ran out.
 
-**Recommendation: (a).** Coherence is the fixed criterion; the transpiler can
-inject `IFERROR`-style shims where a workbook genuinely depends on `#N/A` pads.
-This is the packet's one open sub-decision — it needs the author's yes/no, not
-design work.
+The split carries into formulas with no broadcaster involvement: the construction
+functions (VSTACK, WRAPROWS…) arrive as REGISTERED shared impls (FX-1), so their
+`#N/A` padding rides inside the implementation both surfaces call — the
+broadcaster's `null` rule never applies to them. The transpiler consequence
+resolves the same way: Excel's `#N/A`-padded stacking IS `#N/A`-padded here; only
+an Excel workbook leaning on `#N/A` from a ragged *element-wise* broadcast sees
+`null` instead, which is the P3 deviation the app has shipped everywhere since
+June.
 
 **Aggregates over a matrix:** `SUM(M)` and every range function flatten row-major
 and then apply their existing 1-D null/error policy (`prepRangeArgs` unchanged —

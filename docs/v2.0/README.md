@@ -18,7 +18,7 @@ subsystem-invariants "Unit flow", `decisions.md` D20).
 | [10](10-decision-model-sensitivity.md) | Decision Matrix sensitivity ("wiggle the weights") | Buildable — the composite Monte Carlo run-mode hook it waited on shipped 2026-07-12; needs re-triage / an author pick, not gated |
 | [12](12-value-model-extensions.md) | Uncertain values (#21) + money mode (#43) | As-Of half SHIPPED; the rest VERY LATE, each needs an author representation call |
 | [16](16-widget-nodes.md) | **Everyday widget nodes** (Weather/Geocode/FX/Holidays/TZ/QR — the throwaway-workbook layer) | Scoped 2026-07-20; Tier 1 autonomous-friendly (could be 1.3); 4 author calls listed in the doc (FX cap reversal, provider policy) |
-| [17](17-matrix-formulas.md) | **Matrix formulas** — the Tier 4 / D2 decision packet (shape branding + broadcast table) | Prep COMPLETE 2026-07-28 (VAL-15 rebrand cleared the recorded blocker); decision AUTHOR-GATED; one sub-decision inside (the PAD rule) |
+| [17](17-matrix-formulas.md) | **Matrix formulas** — the Tier 4 / D2 decision packet (shape branding + broadcast table) | Prep COMPLETE 2026-07-28 (VAL-15 rebrand cleared the recorded blocker); decision AUTHOR-GATED; no open sub-decisions — the PAD rule was already settled by P3 + D15 |
 
 ## Verdict pending — needs a fresh author call before any bundle doc
 
