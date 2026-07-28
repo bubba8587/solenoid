@@ -1341,7 +1341,8 @@ body.solenoid-scrubbing * {
 
    `data-op-kind` is set on the card root by NodeCard, and is ABSENT for a family
    not yet declared in nodeOps.ts — an undeclared node stays neutral rather than
-   claiming to be an argument selector. */
+   claiming to be an argument selector.
+
    A SECONDARY select on an operation card (SUMIFS' per-criterion comparator,
    CumPmt's payment timing) is an ARGUMENT and opts out via `data-op-arg`
    (OpSelect's `arg` prop) — the descendant match alone would edge every select
