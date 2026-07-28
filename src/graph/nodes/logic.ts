@@ -45,7 +45,12 @@ function broadcastEl<A, T>(
   }
   return out;
 }
-const triBool = (x: number | null): Tri => (isMissing(x) ? null : x !== 0);
+// After coerceInputs a WIRED logical operand is a real boolean (`numsToBools`),
+// while a typed literal stays a raw 0/1 number — so a bare `x !== 0` reads a wired
+// FALSE as true (`false !== 0`). Same trap `truthy` documents below; accept both
+// encodings here too.
+const triBool = (x: number | boolean | null): Tri =>
+  isMissing(x) ? null : x === true || (typeof x === "number" && x !== 0);
 
 // Truthiness of a CONDITION for the value-selectors (IF / IFS). After coerceInputs,
 // a logical socket delivers a real boolean — so a bare `x !== 0` is wrong
@@ -231,7 +236,7 @@ export const BOOLEAN_OP_META = {
 
 /** Fold N tri-valued operands per the op (Kleene three-valued logic). NOT is a
  *  separate unary node (NotNode) — every op here is a true N-ary reducer. */
-function foldBoolean(op: BooleanOp, xs: (number | null)[]): Tri {
+function foldBoolean(op: BooleanOp, xs: (number | boolean | null)[]): Tri {
   const tris = xs.map(triBool);
   switch (op) {
     case "and":  return tris.reduce<Tri>((a, t) => kleeneAnd(a, t), true);
@@ -686,6 +691,13 @@ export class SwitchNode extends ClassicPreset.Node {
     // a distinct type from numbers in this app, so there's no "serials are numbers"
     // special case here either.
     const expr = pick("expr");
+    // An UNKNOWN expression can't be known equal to anything (Kleene): propagate,
+    // instead of letting null === null "match" an unset When row's literal.
+    if (isMissing(expr)) {
+      this._selectedUnitKey = null;
+      this.cachedResult = null;
+      return { result: null };
+    }
     for (const [whenKey, thenKey] of this.valuePairKeys()) {
       if (expr === pick(whenKey)) {
         const then = pick(thenKey);
@@ -778,6 +790,14 @@ export class IfsNode extends ClassicPreset.Node {
       inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
     for (const [condKey, valKey] of this.valuePairKeys()) {
       const cond = pick(condKey);
+      // A WIRED blank condition is UNKNOWN, and an unknown at this row makes the
+      // whole answer unknown (Kleene — the row might have matched): propagate.
+      // An UNSET row (no cable, no literal) just falls through like FALSE.
+      if (isMissing(cond) && (inputs[condKey]?.length ?? 0) > 0) {
+        this._selectedUnitKey = null;
+        this.cachedResult = null;
+        return { result: null };
+      }
       // First condition that's truthy (a real boolean after coercion, or a raw 1)
       // returns its paired value. A missing/false condition falls through.
       if (!isMissing(cond) && truthy(cond)) {

@@ -20,20 +20,30 @@ import * as path from "node:path";
 // is no list to maintain and nothing to raise — a failure means one new read to fix,
 // not a budget to adjust.
 
-const SWALLOW = /\?\? *(this|node)\.(string)?[Ll]iterals/g;
+// `??` OR `||` (which swallows falsy values too), with any whitespace — including a
+// line break — between the operator and the literal read, so reformatting can't
+// hide a swallow from the floor.
+const SWALLOW = /(\?\?|\|\|)\s*(this|node)\.(string)?[Ll]iterals/g;
+
+// Blank out comments while PRESERVING line structure, so `shared.ts`'s doc comment
+// (which describes the very idiom this counts) and notes written beside a fix don't
+// register — and so a trailing comment can't hide a live read on the same line.
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:"'`])\/\/[^\n]*/g, (_m, p: string) => p);
+}
 
 function offenders(): { file: string; lines: number[] }[] {
   const dir = path.resolve(__dirname);
   const out: { file: string; lines: number[] }[] = [];
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith(".ts") || f.endsWith(".test.ts")) continue;
-    // Skip COMMENT lines: `shared.ts` documents the very idiom this counts, and the
-    // fix for a site is often to write a note about it — neither is a live read.
+    const src = stripComments(fs.readFileSync(path.join(dir, f), "utf8"));
     const lines: number[] = [];
-    fs.readFileSync(path.join(dir, f), "utf8").split("\n").forEach((l, i) => {
-      if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;
-      if (l.match(SWALLOW)) lines.push(i + 1);
-    });
+    for (const m of src.matchAll(SWALLOW)) {
+      lines.push(src.slice(0, m.index).split("\n").length);
+    }
     if (lines.length) out.push({ file: f, lines });
   }
   return out;

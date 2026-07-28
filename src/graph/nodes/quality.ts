@@ -122,12 +122,14 @@ export class ExpectNode extends ClassicPreset.Node {
         seen.add(k);
       }
     }
-    // A missing bound means the check cannot be EVALUATED, which is not the same as
-    // failing it — Expect is a passthrough validator, so it skips the undeterminable
-    // check and keeps the data flowing rather than reporting a violation it can't
-    // justify (or nulling the value out).
-    if (this.checkRange && min !== null && max !== null) {
-      const bad = values.some((v) => typeof v === "number" && Number.isFinite(v) && (v < min || v > max));
+    // A missing bound means that HALF of the check cannot be EVALUATED, which is
+    // not the same as failing it — Expect is a passthrough validator, so it skips
+    // the undeterminable bound and keeps the data flowing rather than reporting a
+    // violation it can't justify (or nulling the value out). Each bound is skipped
+    // independently: a blank floor doesn't disable the ceiling.
+    if (this.checkRange && (min !== null || max !== null)) {
+      const bad = values.some((v) => typeof v === "number" && Number.isFinite(v) &&
+        ((min !== null && v < min) || (max !== null && v > max)));
       if (bad) violations.push("range");
     }
     if (this.checkRegex && pattern !== null && pattern.trim() !== "") {

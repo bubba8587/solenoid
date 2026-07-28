@@ -228,10 +228,13 @@ export class AlertNode extends ClassicPreset.Node {
   }
 }
 
-// Resolve a numeric input to its first value, else its literal fallback, else null.
+// Resolve a numeric input slot: a CONNECTED cable wins even when blank (`null` —
+// the check can't run, so the status is unknown and the alert never fires against
+// a bound the graph withheld); only an UNWIRED slot falls back to the card's
+// literal (VAL-1). The old `got?.[0] ?? lit` swallowed a wired blank into the
+// literal, so a range Alert could fire on the card's bound instead of the wire's.
 function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
-  const v = got?.[0] ?? lit ?? null;
-  return v;
+  return readInput(got, lit ?? null);
 }
 
 // "No status seen yet" sentinel — distinct from any real status key (which are

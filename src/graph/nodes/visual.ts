@@ -240,8 +240,10 @@ export class HistogramNode extends ClassicPreset.Node {
     const list = Array.isArray(raw) ? raw : raw === null ? [] : [raw];
     const bins = readInput(inputs.bins, this.literals.bins ?? 10);
     // Bins is a SHAPE, not styling — a wired blank leaves the binning unknown, so the
-    // figure is empty (value-semantics.md, "Reading an input").
-    if (bins !== null) this.literals.bins = bins;
+    // figure is empty (value-semantics.md, "Reading an input"). Mirror to the card
+    // ONLY when unwired (the KPI/Bullet pattern): writing a WIRED value into
+    // `literals` would permanently overwrite the typed value and persist it.
+    if (inputs.bins?.[0] === undefined && bins !== null) this.literals.bins = bins;
     const counts = bins === null ? [] : histogramBins(list as (number | null)[], bins);
     this.cachedResult = counts;
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
@@ -352,7 +354,9 @@ export class SevenSegNode extends ClassicPreset.Node {
     // `decimals` is PRESENTATION: a wired blank means "no formatting given", which is
     // the neutral 0 — not the number typed on the card.
     const d = clamp(Math.round(readInput(inputs.decimals, this.literals.decimals ?? 0) ?? 0), 0, 6);
-    this.literals.decimals = d;
+    // Normalize the card's own value only when unwired — never clobber the typed
+    // literal with a wired one (the KPI/Bullet pattern).
+    if (inputs.decimals?.[0] === undefined) this.literals.decimals = d;
     if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
     const payload: SevenSegPayload = { kind: "sevenseg", text: sevenSegText(v, d) };
     const chart: ChartValue = { __chart: true, op: "sevenseg", values: v, payload, options: {}, title: this.label || "7-Segment" };
@@ -670,7 +674,8 @@ export class ContourNode extends ClassicPreset.Node {
     // leaves the figure empty rather than reusing the card's count.
     const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
     const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
-    if (levelsRaw !== null) this.literals.levels = levels;
+    // Mirror only when unwired — never clobber the typed literal with a wired value.
+    if (inputs.levels?.[0] === undefined && levelsRaw !== null) this.literals.levels = levels;
     const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
     const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
     this.cachedChart = chart;

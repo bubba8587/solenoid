@@ -356,8 +356,12 @@ describe("SevenSeg", () => {
     const n = new SevenSegNode();
     const out = n.data({ value: [42.5], decimals: [1] });
     expect(out.chart).toMatchObject({ __chart: true, op: "sevenseg", values: 42.5, payload: { kind: "sevenseg", text: "42.5" } });
-    expect(n.literals.decimals).toBe(1);
-    n.data({ value: [1], decimals: [99] });
+    // A WIRED decimals renders with the wired value but never clobbers the card's
+    // typed literal (the KPI/Bullet mirror-only-when-unwired pattern).
+    expect(n.literals.decimals).toBe(0);
+    // Unwired: the card's own out-of-range literal normalizes (clamped to 6).
+    n.literals.decimals = 99;
+    n.data({ value: [1] });
     expect(n.literals.decimals).toBe(6);
   });
 

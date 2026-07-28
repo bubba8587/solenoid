@@ -6,7 +6,7 @@ import {
   broadcastCells, readInput, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops these nodes compute with, shared verbatim with the formula surface
 // (see textOps.ts). Re-exported so the node barrel keeps its shape.
@@ -735,10 +735,14 @@ export class NumberValueNode extends ClassicPreset.Node {
     decimal_sep?: string[];
     group_sep?: string[];
   }): { result: BroadcastResult } {
-    // `||` (not `??`): an empty/unset separator field means "use the default", so a
-    // blank box (placeholder showing) still parses with "."/",".
-    const decSep = inputs.decimal_sep?.[0] || this.stringLiterals.decimal_sep || ".";
-    const grpSep = inputs.group_sep?.[0]   || this.stringLiterals.group_sep   || ",";
+    // An empty separator (unset field, placeholder showing — or a wired "") means
+    // "use the default"; a WIRED blank (null) is a mode selector the graph failed
+    // to supply, and propagates (value-semantics.md, "Reading an input").
+    const decRaw = readInput(inputs.decimal_sep, this.stringLiterals.decimal_sep ?? "");
+    const grpRaw = readInput(inputs.group_sep, this.stringLiterals.group_sep ?? "");
+    if (decRaw === null || grpRaw === null) { this.cachedResult = null; return { result: null }; }
+    const decSep = decRaw || ".";
+    const grpSep = grpRaw || ",";
     const result = broadcastCells((raw: string) => {
       const text = raw.trim();
       // Empty input is blank (null); a non-empty string that won't parse is a
@@ -921,27 +925,35 @@ export class RegexNode extends ClassicPreset.Node {
     pattern?: string[];
     replacement?: string[];
   }): { result: number | number[] | string | string[] | null } {
-    const pattern     = readInput(inputs.pattern,     this.stringLiterals.pattern     ?? "");
-    const replacement = readInput(inputs.replacement, this.stringLiterals.replacement ?? "");
+    const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
+    // `replacement` is read by the "replace" op ALONE — guard scoped to the active
+    // op (value-semantics.md), so a wired blank Replace-with must not blank a TEST.
+    const replacement = this.op === "replace"
+      ? readInput(inputs.replacement, this.stringLiterals.replacement ?? "")
+      : "";
     if (pattern === null || replacement === null) { this.cachedResult = null; return { result: null }; }
     const flags       = this.stringLiterals.flags ?? "";
 
     if (!pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
 
-    const rawText = inputs.text?.[0];
-    const isList  = Array.isArray(rawText);
-    const texts   = isList ? (rawText as unknown[]).map(String) : [String(rawText ?? "")];
-
-    const applyOne = (t: string) =>
-      regexApply(this.op, t, pattern, replacement, flags) as number | string | string[];
+    // Unwired text keeps the old empty-string reading; a WIRED blank is unknown and
+    // propagates. Per-cell missing/error cells ride through untouched — never
+    // stringified into "null" / "[object Object]" (value-semantics.md).
+    const rawText = inputs.text === undefined ? "" : (inputs.text[0] ?? null);
+    const applyCell = (c: unknown): number | string | string[] | SolError | null =>
+      c == null ? null
+      : isSolError(c) ? c
+      : (regexApply(this.op, String(c), pattern, replacement, flags) as number | string | string[]);
 
     let result: number | number[] | string | string[] | null;
-    if (this.op === "extract_all") {
-      result = applyOne(texts[0]) as string[];
-    } else if (isList) {
-      result = texts.map((t) => applyOne(t)) as number[] | string[];
+    if (rawText === null) {
+      result = null;
+    } else if (this.op === "extract_all") {
+      result = applyCell(Array.isArray(rawText) ? (rawText as unknown[])[0] : rawText) as string[];
+    } else if (Array.isArray(rawText)) {
+      result = (rawText as unknown[]).map(applyCell) as number[] | string[];
     } else {
-      result = applyOne(texts[0]) as number | string;
+      result = applyCell(rawText) as number | string;
     }
     this.cachedResult = result;
     return { result };
