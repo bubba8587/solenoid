@@ -103,7 +103,7 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   "connect an account" flow would change that shape.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
-  the ratchet and the pack seam have landed; 349/646 leaves are formula-callable
+  the ratchet and the pack seam have landed; 357/646 leaves are formula-callable
   (regenerate with `scripts/formula-node-parity.ts` — the script is the truth, SSOT-6),
   gap C is 0. Left: **the Tier 4 BUILD's last tranches**
   (D23; spec = `v2.0/17-matrix-formulas.md`). Engine, socket lift and the matrix
