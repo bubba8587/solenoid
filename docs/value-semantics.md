@@ -150,11 +150,33 @@ absent-branch is already written, which makes the wrong answer the path of least
 resistance. **An existing comment that says "unwired/blank → default" predates this
 spec and conflates the two cases; the spec wins.**
 
+### Where the blank check GOES
+
+Two placement rules, both found by sweeping `finance.ts` (73 reads, ~20 multi-op hosts).
+Neither is about which disposition to take — both are about a guard that takes the right
+disposition in the wrong place, which typechecks and is silently wrong.
+
+**An error outranks an unknown.** A node that both null-guards its scalars and inspects a
+list for `SolError`s must run the error check FIRST. `#DIV/0!` reaching MIRR's cashflows
+and a blank reaching its `finrate` is not a blank result — it is `#DIV/0!`, because that
+is what `installErrorGuards` would return if the error had arrived on any other input.
+Guard order is the only thing deciding this, so put the error branch above the blank one.
+
+**Scope the guard to the ACTIVE op.** On a multi-op node, only the inputs the current op
+actually reads can make the result unknown. A guard hoisted above the `switch` that ANDs
+together every op's inputs turns a blank on an input this op ignores into a blank answer —
+TBILLYIELD does not read `discount`, so a blank there must not null it. Either put the read
+and its guard inside the branch, or read op-dependently first
+(`const a = this.op === "disc" ? readInput(inputs.pr, …) : readInput(inputs.investment, …)`)
+and guard the result. The inputs every op shares (`basis`, `frequency`) can still be
+guarded once, up top.
+
 ### Writing a new node
 
 1. Read every input through `readInput`. If an input is genuinely not a card field,
    there is no literal and nothing to swallow.
-2. For each input, name its ROLE from the table and take that disposition.
+2. For each input, name its ROLE from the table and take that disposition. Place the
+   guard per "Where the blank check goes" — after any error branch, inside the op branch.
 3. **Check what CONSUMES the value, not just `data()`.** The Slider bug was invisible in
    its own method: three other call sites — a DOM attribute, a wrap-around, and a
    sensitivity sweep in another file — each assumed a finite bound. If a node publishes
