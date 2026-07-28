@@ -17,7 +17,12 @@ branch, registry, catalog, vitest file.
 
 Solenoid bundles multi-op families behind one node with a dropdown. **Do not
 add a standalone node for something that's an op of an existing family** —
-add it to that family's op union + `data()` switch + catalog row instead:
+add it to that family's op union + `data()` switch + `X_OP_META` table +
+catalog row instead. The meta table is the ONE place the op is named: the
+card's dropdown and the Add-menu search row both read it, and its
+`satisfies Record<XOp, …>` is what makes tsc tell you the op is missing.
+Never write a label anywhere else — a second copy is how ISBOOLEAN on the
+card shipped as ISLOGICAL in search (2026-07-28). The families:
 
 - unary math (abs/sqrt/sin/round…) → `MathFnOp` (`scalar.ts`)
 - two-input arithmetic (+−×÷ % ^) → `ArithmeticOp` (`scalar.ts`)

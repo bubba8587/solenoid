@@ -120,6 +120,51 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The label-less op families get their OP_META tables (2026-07-28b)
+
+Closes the last of the op-selector items. Comparison, IS.TEST, Cumulative, GCD/LCM and
+RoundN kept their per-op labels in their React component's `OPS` array, so `nodeOps.ts`
+transcribed them by hand to build the Add-menu search rows.
+
+**It had already drifted, which is the whole argument for the item.** The IS.TEST card
+says ISBOOLEAN; search offered ISLOGICAL. You could read a name off a card and fail to
+find it in the menu — the one failure mode the collapsed-family design is supposed to
+make impossible ("nothing is undiscoverable just because it's folded up"). IsEvenOdd was
+the same bug from the other side: `PARITY_OP_META` existed and nodeOps consumed it, but
+the component still hand-wrote ISEVEN/ISODD beside it. The table existing is not the
+invariant; both surfaces reading it is.
+
+**Where the two roles genuinely differ, the table carries both** rather than one label
+being copied and edited. Comparison gets a `symbol` field: the dropdown reads
+"≥  Greater or equal" because on the card the glyph is the faster read, while a search
+row wants the name alone. That absorbed `COMPARISON_SYMBOLS`, which was exported for
+exactly this purpose and had zero callers.
+
+Two dropdowns lose a gloss, and that was a copy call, not a mechanical one. Cumulative
+went from "CUMSUM: running sum" to "Running SUM" — it matches the sibling Rolling family
+and reads as the pair it is (Rolling is a sliding window, Running is everything so far),
+and CUMSUM was never an Excel name. GCD/LCM go bare like every other Excel-name family;
+the expansion is already in the catalog description, which is what the tooltip shows.
+
+**The Set families keep hand-written name lists and are now the only two.** Their meta
+labels are dropdown PROSE ("Union: in A or B"), which composes into "Set: Union: in A or
+B" as a search row and stops discriminating between siblings — the bug that made
+searching "symmetric" surface Union. Everywhere else `satisfies Record<XOp, …>` now makes
+tsc prove the list is complete; for these two nothing did, so a new set operation could
+reach the card while staying invisible to search. `nodeOps.test.ts` pins both directions
+(the lists cover the meta exactly, and never take the prose as a name) plus the ISBOOLEAN
+case itself.
+
+Worth knowing for the remaining exposure item: `scripts/op-exposure.ts` matches a family
+to its table by op KEYS, so these five reported as bare op lists with no coverage figure.
+Its "no op table matched" bucket drops 18 → 13, and the remainder is genuinely config
+selectors and the DATA pickers that should stay kind-only. Its GroupByFrame line is a
+MIS-match to watch: that node is typed `AggOp` (13 ops, `frameVerbs.ts`), which has no
+meta table, so the heuristic pins it to the 5-op `GROUP_BY_OP_META` off the shared `sum`
+default. Pivot and CubeRollup are the same `AggOp` and show up ambiguous. The backlog
+already says that table needs identifying first — this is what that looks like from the
+audit side.
+
 ### SESSION DIGEST (2026-07-27b — the formula surface stops drifting: D19 ratchet, alias gate, Tier 1)
 
 Picked up the D19 parity program (author call: "#2 is the important one"). Built in the order the

@@ -150,11 +150,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   pickers (Element's 118 entries, PhysicsConstant, Antoine, PipeRoughness, ESeries,
   ResistorCode, Constant) should STAY kind-only — a row per value would bury the menu.
   `scripts/op-exposure.ts` lists the exposure gaps.
-- [ ] **Give the label-less op families real OP_META tables** — Comparison, IsTest,
-  Cumulative, Gcd, RoundN keep their per-op labels in their React component's `OPS`
-  array, so `nodeOps.ts` transcribes them. Move them into the node modules the way
-  every other family does it, and have both consume the one table.
-
 ## Packs
 
 - [ ] **Materials & Mechanical pack** — next domain candidate; the INTERPOLATE gate is
