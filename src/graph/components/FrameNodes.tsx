@@ -36,6 +36,7 @@ import type {
   FrameSortDir,
   DecisionDetail,
   SplitColType,
+  ComputedColumnAs,
   HeadOp,
   FillDir,
   ReplaceMode,
@@ -841,6 +842,14 @@ export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>)
 
 // ─── COMPUTED COLUMN ───────────────────────────────────────────────────────────
 
+const COMPUTED_AS_OPTIONS: { value: ComputedColumnAs; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "number", label: "Number" },
+  { value: "text", label: "Text" },
+  { value: "date", label: "Date" },
+  { value: "logical", label: "Boolean" },
+];
+
 export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumnNodeType>) {
   const [expr, setExpr] = useState(data.expr);
   useEffect(() => { setExpr(data.expr); }, [data.expr]);
@@ -849,11 +858,15 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
     data.expr = next;
     await processGraph(data.id);
   }, [data]);
+  // The output type: Auto infers from the computed cells; Date is the case
+  // inference can't reach (a serial is indistinguishable from a number).
+  const [addAs, setAddAs] = useNodeField(data, "addAs");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      {/* Variables are column names; a wired λ takes over and the field goes
-          quiet. Editing routes to the shared formula popup like Expression. */}
+      {/* Variables are column names, `row`, or side inputs the node grows; a
+          wired λ takes over and the field goes quiet. Editing routes to the
+          shared formula popup like Expression. */}
       <FormulaField
         value={expr}
         onChange={commit}
@@ -861,6 +874,7 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
         locked={false}
         onOpen={() => formulaPopup.open(data.id)}
       />
+      <OpSelect arg value={addAs} onChange={setAddAs} options={COMPUTED_AS_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
