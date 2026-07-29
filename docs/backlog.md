@@ -166,12 +166,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
   `formulaTier3.test.ts`. Residual: distributions are validated only at representative
   points — widen if accuracy is ever in doubt.
-- [ ] **The computed-column SURFACE — `v2.0/19-computed-column-surface.md`** (author
-  direction 2026-07-29: table computed columns are the mainline Excel workload,
-  no half-assing). The shared core is extracted (`computedColumnCore.ts` — the
-  CC node delegates); the bundle's slice 1 (Frame Input λ sockets + per-column
-  source control + topo-order intra-table refs) waits on the C1–C4 crux answers
-  in the bundle.
+- [ ] **The computed-column SURFACE — `v2.0/19-computed-column-surface.md`, design
+  RATIFIED 2026-07-29** (C1 addable λ sockets; C2 TablePopup formula editing +
+  card-chip glyph; C3 STRUCK — no wired-list source, no Frame from Lists fold;
+  C4 eyeball). The shared core is extracted (`computedColumnCore.ts` — the CC
+  node delegates). Next: BUILD SLICE 1 — Frame Input λ sockets + per-column
+  source control + topo-order intra-table refs + cycle refusal; then slice 2
+  (Formula source in the popup).
 - [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
   inline expr + wired-λ definition, side-input sockets, row/rows, col() for
   unspellable names, addAs output typing, After placement). Remaining,
