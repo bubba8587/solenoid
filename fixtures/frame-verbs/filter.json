@@ -107,6 +107,12 @@
       "op": { "kind": "filter", "column": "v", "op": "gt", "value": " 1100 " },
       "expect": { "columns": [
         { "name": "v", "type": "number", "values": [1234] } ] } },
+    { "name": "a null comparison value matches no rows (text predicates too)",
+      "frames": { "in": { "columns": [
+        { "name": "s", "type": "string", "values": ["a", "b"] } ] } },
+      "op": { "kind": "filter", "column": "s", "op": "startsWith", "value": null },
+      "expect": { "columns": [
+        { "name": "s", "type": "string", "values": [] } ] } },
     { "name": "a logical column accepts the text \"false\"",
       "frames": { "in": { "columns": [
         { "name": "flag", "type": "logical", "values": [true, false] } ] } },

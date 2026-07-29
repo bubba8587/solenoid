@@ -164,11 +164,12 @@ others.
 your assumptions and references you built for yourself unless you recorded that I
 told you something specific… even if I said something in the past — it's not an
 author-ruled rule as of right now."
-*Enforced by:* `rules.test.ts` → the ARR-uniqueness guard: exactly ONE `[ARR]`
-mark may exist in this document, and it must sit on PROV-1. The agent cannot
-promote a rule to ARR without that test failing — promotion happens by the author
-editing (or dictating the edit of) this file, and the guard's expected count
-moving with it is part of that same author-marked change.
+*Enforced by:* `rules.test.ts` → "exactly one rule is author-ruled, and it is
+PROV-1" — the ARR-uniqueness guard: exactly ONE `[ARR]` mark may exist in this
+document, and it must sit on PROV-1. The agent cannot promote a rule to ARR
+without that test failing — promotion happens by the author editing (or dictating
+the edit of) this file, and the guard's expected count moving with it is part of
+that same author-marked change.
 
 **Consequences for the rest of this document:** every "author-gated",
 "author ruling", and quoted decision below is now read as INFERRED — real history,
@@ -379,11 +380,11 @@ stays 2-D", "`trueany` bridges everything, both directions".
 **MUST:** `trueany` adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting
 anything, and the adopted type is not written to the save file.
 
-*Enforced by:* `trueAnyAdopt.test.ts` — adoption and REVERT-on-disconnect ("a Display
-adopts on both sides and REVERTS on disconnect", "adoption propagates down a
-passthrough CHAIN", "two Displays do NOT share adoption"), and the "never persists"
-half: "adoption never PERSISTS: a save/paste init carries no adopted type" (adopt →
-extractInit → assert no adopted type in the init, reconstructed node starts hollow).
+*Enforced by:* `trueAnyAdopt.test.ts` → "a Display adopts on both sides and REVERTS
+on disconnect", "adoption propagates down a passthrough CHAIN", "two Displays do NOT
+share adoption" (the never-drops half), and "adoption never PERSISTS: a save/paste
+init carries no adopted type" (adopt → extractInit → assert no adopted type in the
+init, reconstructed node starts hollow).
 
 ### SOCK-6 — "Resolve past untyped passthroughs" goes through one predicate **[DEFAULT]**
 **MUST:** every place that needs to see through an untyped hop calls `isWildcardType()`.
@@ -401,11 +402,13 @@ Get Column read-as, Note frontmatter) fires no connection event, so it MUST call
 `reconcileFcTypes` / `retypeOutputCables`.
 
 *Why:* without it, downstream Format Controllers keep stale formats.
-*Enforced by:* `fcReconcile.test.ts`, `noteFcPropagation.test.ts` cover the BEHAVIOUR of
-the known retypers; `sourceInvariants.test.ts` covers COMPLETENESS — a source scan
-requires every file that retypes a socket in place (`.socket =` / `.setType(` /
-`.dataType =`) to reference a reconciler, with a reasoned sanctioned list for the
-central adoption machinery itself.
+*Enforced by:* `fcReconcile.test.ts` → "retypeOutputCables (Cast / LAMBDA / Get Column
+shared retype path)" and `noteFcPropagation.test.ts` → "Note frontmatter retype
+propagates type to a downstream FC" cover the BEHAVIOUR of the known retypers;
+`sourceInvariants.test.ts` → "every socket-retyping file references the reconciler"
+covers COMPLETENESS — a source scan requires every file that retypes a socket in
+place (`.socket =` / `.setType(` / `.dataType =`) to reference a reconciler, with a
+reasoned sanctioned list for the central adoption machinery itself.
 
 ### SOCK-8 — The socket box is a deterministic 12×12 **[INFERRED]**
 **MUST:** the socket span renders `display:block; line-height:0` at a locked 12×12, and
@@ -441,8 +444,10 @@ and cubes into formulas (out of scope, permanently); `anycombo` refuses the
 matrices the decision admits. The lattice needed the one rung between them. The
 result is NOT `anydata` because that would trade away the family (`familyOf` =
 none) that Format Controllers key on, for a rank the matrix rungs already spell.
-*Enforced by:* `socketConnect.test.ts` (the full sweep + the anydata cases);
-`expressionMatrix.test.ts` (the lift + the result-rank reconcile).
+*Enforced by:* `socketConnect.test.ts` → "lattice invariants — TYPE separation +
+DIMENSIONAL flow (full sweep)" (the anydata cases ride the sweep);
+`expressionMatrix.test.ts` → "the connect-time gate (SOCK-9 acceptance)", "a fresh
+Expression declares anydata variables" (the lift + the result-rank reconcile).
 
 ### SOCK-10 — An adopting port owns its socket instance **[INFERRED]**
 **MUST:** every `MutableSocket`/`AdoptiveSocket` port gets a FRESH instance — never a
@@ -478,9 +483,11 @@ identified from its ORIGIN: every segment of one run resolves to the same run, s
 provenance readings (the Cable inspector's "From") and run-wide actions cannot split by
 which segment was clicked.
 
-*Enforced by:* `conduitTrace.test.ts` (lane tracing through chains, loop termination,
-lane adopt/revert, `conduitPath` run identity); `frameShapePassthrough.test.ts` (frame
-shape through a Display / a Conduit lane / a half-wired IF — "Bug B").
+*Enforced by:* `conduitTrace.test.ts` → "resolveTypedSource — Conduit type tracing"
+(lane tracing through chains, loop termination, lane adopt/revert) and "conduitPath —
+the whole run a cable belongs to" (run identity); `frameShapePassthrough.test.ts` →
+"frame SHAPE survives a passthrough (Bug B)" (through a Display / a Conduit lane / a
+half-wired IF).
 *Origin:* Bug B — downstream column pickers went empty and formula column references
 silently failed to resolve through a passthrough, with no error anywhere.
 
@@ -512,8 +519,9 @@ what volatile means. Any future volatile function follows the same split.
 or the frame model.
 
 *Why:* the headless formula path (`run-graph`, the evaluator) should not load the editor.
-*Enforced by:* `formulaPathIsReteFree.test.ts` — walks the import graph from
-`excelFormula`/`excelFunctions` and fails on any reachable `rete` or `sockets` import.
+*Enforced by:* `formulaPathIsReteFree.test.ts` → "no module reachable from
+excelFormula/excelFunctions imports rete or sockets" — walks the import graph and
+fails on any reachable `rete` or `sockets` import.
 *Origin:* `interpolateLinear` lived in `stats.ts` and had to move to `mathUtils.ts` before
 `INTERPOLATE` could be registered. The rule was VIOLATED while it was unenforced:
 `excelFunctions` reached rete through `nodes/date.ts` (the serial helpers) and
@@ -645,7 +653,7 @@ into `broadcastRules.test.ts` — changing either without the other fails
 
 *Why:* two broadcasters is how the same expression answers differently by surface —
 the exact drift class the parity program exists to close.
-*Enforced by:* `broadcastRules.test.ts`.
+*Enforced by:* `broadcastRules.test.ts` → "the eleven rows" (the transcription).
 
 ### FX-11 — A vendored-engine divergence is owned, and tripwired **[INFERRED]**
 **MUST:** where Formula.js diverges from Excel, the registered override is the
@@ -654,9 +662,10 @@ is pinned BIDIRECTIONALLY: the correctness assertion plus a tripwire asserting F
 answers wrong, so a vendored-engine update that silently changes behaviour fails the
 suite and forces a re-evaluation instead of a silent regression (in either direction).
 
-*Enforced by:* `formulaDivergence.test.ts` — MOD's divisor-sign, ATAN2's argument
-order, RANK, VALUE's strictness (`VALUE("abc")` is `#VALUE!`, not FX's silent 0), each
-with its "FX still diverges (tripwire)" twin.
+*Enforced by:* `formulaDivergence.test.ts` → "FX still has the sign bug (tripwire —
+re-evaluate the override if this fails)" and its siblings — MOD's divisor-sign,
+ATAN2's argument order, RANK, VALUE's strictness (`VALUE("abc")` is `#VALUE!`, not
+FX's silent 0), each divergence paired with its tripwire twin.
 *Origin:* author-flagged 2026-06-25; recovered from the audit notes after the original
 sweep script was lost — which is why the pins live in the suite now.
 
@@ -684,11 +693,12 @@ over. The corpus's first three runs each caught a REAL divergence the pairs had
 missed: a silent null column for an unknown agg op (now `#NAME?` both sides),
 NaN passing gt/gte under Polars' total float order, and outer-join row order
 (never pinned engine-side).
-*Enforced by:* `frameVerbCorpus.test.ts` (cases + the completeness guard + a
-corpus-wide input-mutation check) and `engine/tests.rs` `corpus_cases` — CI
-runs both suites, so a case passing one engine and failing the other is a red
-build. Oracle-only semantics the wire can't carry (per-cell SolErrors) stay
-pinned in `frameVerbs.test.ts`, marked as such.
+*Enforced by:* `frameVerbCorpus.test.ts` → "corpus completeness — every verb has
+a fixture file" (plus the cases themselves and a corpus-wide input-mutation
+check) and `engine/tests.rs` `corpus_cases` — CI runs both suites, so a case
+passing one engine and failing the other is a red build. Oracle-only semantics
+the wire can't carry (per-cell SolErrors) stay pinned in `frameVerbs.test.ts`,
+marked as such.
 *Origin:* bundle 18 (archived: `archive/18-parity-corpus.md`), landed 2026-07-29.
 
 ---
@@ -811,7 +821,9 @@ strip, so a unit-blind reshape carrying it is correct.
 **MUST:** per-element `UnitCell` for a list, per-column `ColumnUnit` for a frame, one
 homogeneous unit for a matrix (D20).
 
-*Enforced by:* `unitColumn.test.ts`, `unitValue.test.ts`.
+*Enforced by:* `unitValue.test.ts` → "per-column frame unit", "homogeneous matrix
+unit (D20) — one tag on the array, cells stay bare"; `unitColumn.test.ts` (the
+frame-column mechanics end to end).
 
 ### VAL-12 — An op family's selector field is named `op` **[INFERRED]**
 **MUST:** a node whose card carries an op dropdown stores it as `op`. Not `dir`, not
@@ -874,9 +886,9 @@ special-cases (outer-length tests, "can't disambiguate from a 2-list here"), `se
 array canonicalization, and `ArrayChip.is2D` — where a complexlist reaching a generic
 chip rendered as a 2-column TABLE, silently. It is also the shape-branding blocker the
 Tier 4 record names: "a complex `[re,im]` is indistinguishable from a 2-list."
-*Enforced by:* `complex.test.ts` (the tagged representation + the family's behaviour
-through it); the disambiguation sites above DELETE their special cases, so a regression
-to bare arrays fails type-check at the `Cx` type itself.
+*Enforced by:* `complex.test.ts` → "the tagged representation (VAL-15)" (+ the
+family's behaviour through it); the disambiguation sites above DELETE their special
+cases, so a regression to bare arrays fails type-check at the `Cx` type itself.
 *Origin:* the complex rebrand (2026-07-28). Complex was the only bare-array scalar in
 the value model and the sole reason "a cell may be an array" was ever true.
 
@@ -910,9 +922,9 @@ must not blanket-error the call. An AGGREGATE over a range containing an error s
 propagates it whole (Excel-correct). Both directions are silently wrong when flipped:
 blanket-erroring hides a good answer, under-propagating hides a bad one.
 
-*Enforced by:* `errorFiltering.test.ts` (the INDEX/XMATCH/MAKEARRAY cases + the
-aggregate-still-propagates case). This is the per-cell refinement of `VAL-3`'s
-whole-node rule.
+*Enforced by:* `errorFiltering.test.ts` → "positional lookups don't blanket-error on
+an unreferenced error cell", "an AGGREGATE over an error range still propagates
+(Excel-correct)". This is the per-cell refinement of `VAL-3`'s whole-node rule.
 
 ### VAL-19 — Two different currency codes are incommensurable in EVERY combinator **[INFERRED]**
 **MUST:**
@@ -932,16 +944,18 @@ lacked the adoption-scaling author call) while the LIVE path answered `$5 + 5€
 and `$10 ÷ 5€ = 2:1`. Consolidated to one implementation (`arithmeticCell`, moved
 rete-free into unitValue.ts) with the guard up front where no op can miss it — SSOT-1
 applied to an algebra.
-*Enforced by:* `unitCurrencyPolicy.test.ts` — the per-op policy table (completeness:
-every `ArithmeticOp` must appear), the non-arithmetic combinators, the
-combinator-surface check (a new `*Units` export fails until it joins the sweep), and
-the FORMULA surface: currency codes ride the dimensional pass (`unitDimExpr`
-`CodeEnv`, supplied by the Expression AND the Equation from their inputs' display
-ids), so formula OPERATORS refuse a mismatch with the same `#UNIT!` — and the
-Equation's `=` compares its two sides' RESULT codes (`dimEvalWithCode`), since no
-operator inside either side ever sees both. Recorded limitation: codes drop at
-function CALLS — `SUM` over two coded inputs still combines in a formula; the
-node-side aggregators refuse.
+*Enforced by:* `unitCurrencyPolicy.test.ts` → "every arithmetic op refuses mismatched
+currencies" (the per-op policy table — completeness: every `ArithmeticOp` must
+appear), "the non-arithmetic combinators carry the same policy", "completeness — a
+new combinator must join this sweep" (a new `*Units` export fails until it joins),
+"the formula surface — codes ride the dim pass (the Expression gap, closed)"
+(currency codes ride the dimensional pass — `unitDimExpr` `CodeEnv`, supplied by the
+Expression AND the Equation from their inputs' display ids — so formula OPERATORS
+refuse a mismatch with the same `#UNIT!`), and "the Equation surface — `=` is itself
+a combination" (the Equation compares its two sides' RESULT codes via
+`dimEvalWithCode`, since no operator inside either side ever sees both). Recorded
+limitation: codes drop at function CALLS — `SUM` over two coded inputs still
+combines in a formula; the node-side aggregators refuse.
 *Origin:* the 2026-07-28 completeness queue ("currency-mismatch across every unit
 combinator"); the sweep's first run found the four live wrong answers above.
 
@@ -981,8 +995,9 @@ value must also survive `JSON.parse(JSON.stringify(…))`: the file path stringi
 field, so a `Map`/`Set`/class instance/`Infinity` config silently empties in the save
 while the live-object fixed point still holds.
 
-*Enforced by:* `persistenceSweep.test.ts` — the fixed-point sweep, the perturbation
-sweep (with the reasoned `PERTURB_SKIP` list), and the JSON round-trip sweep.
+*Enforced by:* `persistenceSweep.test.ts` → "persistence fixed-point sweep (every
+catalog node)" (with the perturbation sweep and its reasoned `PERTURB_SKIP` list),
+"everything extractInit captures survives a JSON round trip".
 *Origin:* v1.0 audit finding 38 — a field captured but not re-applied drops on reload
 with nothing to catch it.
 
@@ -1005,10 +1020,11 @@ dropped by the round trip from their ship date until 2026-07-06 — a real data-
 (`_lastPersisted.get(id) === doc` skips the write), so an in-place mutation still updates
 the screen but is silently never persisted — the edit vanishes on the next reload.
 
-*Enforced by:* `documentStoreCore.test.ts` → the PERSIST-3 deep-freeze walk over every
-exported transform (a new in-place write throws on the frozen object; a new export not
-in the walk fails the completeness check) + the changed-doc-is-a-new-object identity
-assertions.
+*Enforced by:* `documentStoreCore.test.ts` → "PERSIST-3 — every transform returns new
+objects, never mutates (identity is the persist signal)" — a deep-freeze walk over
+every exported transform (a new in-place write throws on the frozen object; a new
+export not in the walk fails the completeness check) + the changed-doc-is-a-new-object
+identity assertions.
 
 ### PERSIST-4 — Autosave slots: write the older, read the newer, `seq` first and strictly increasing **[DEFAULT]**
 **MUST:** the two-slot autosave pair obeys three laws:
@@ -1056,10 +1072,10 @@ that original type — never as "PlaceholderNode". The whole dormant-pack story 
 this: open a doc with a pack off, save it, and the pack's nodes must survive intact.
 Its outputs emit `#REF!` so the break is LOUD while it lasts, never a silent blank.
 
-*Enforced by:* `nodes/placeholder.test.ts` ("keeps the original type, init, and
-literals for a lossless re-save"; the loud `#REF!` outputs); `persistenceCore.test.ts`
-(`deriveMissingNodeSockets` — cables to an unknown type derive its socket keys instead
-of dropping).
+*Enforced by:* `nodes/placeholder.test.ts` → "keeps the original type, init, and
+literals for a lossless re-save", "emits a #REF! error on every output (the break is
+loud, not silent)"; `persistenceCore.test.ts` → "deriveMissingNodeSockets" (cables to
+an unknown type derive its socket keys instead of dropping).
 
 ### PERSIST-8 — A canvas-swapping verb captures first and guards the rebuild **[INFERRED]**
 **MUST:** every `documentStore` verb that changes which document is on screen calls
@@ -1129,9 +1145,11 @@ a node outside the cone keeps displaying its previous answer with no error. Cycl
 handling matches too: the targeted path seeds `#CIRC!` on exactly the SCC members,
 like the full pass, instead of recursing to a RangeError.
 
-*Enforced by:* `processTargeted.test.ts` (the closure across branches/joins/cycles);
-`circularReset.test.ts` (closing a cycle with a live cable yields `#CIRC!` on the loop
-members — audit finding 40, with the rete-engine 2.1.1 recursion bug in the record).
+*Enforced by:* `processTargeted.test.ts` → "downstreamClosure (targeted recompute
+cone)" (the closure across branches/joins/cycles); `circularReset.test.ts` →
+"closing a cycle with a live cable (targeted topology pass)" (yields `#CIRC!` on the
+loop members — audit finding 40, with the rete-engine 2.1.1 recursion bug in the
+record).
 
 ### ENGINE-2 — The calc-mode gate is the ONLY thing that skips a pass **[INFERRED]**
 **MUST:** manual/auto × dirty is a real transition matrix: manual mode marks dirty
@@ -1139,8 +1157,10 @@ instead of computing, switching to auto clears the pending flag by RUNNING the p
 and an unavailable localStorage degrades to in-memory state — never to a graph that
 silently stops recomputing.
 
-*Enforced by:* `calcModeStore.test.ts` (the transition matrix, notify-exactly-then,
-the missing-localStorage degrade).
+*Enforced by:* `calcModeStore.test.ts` → "switching to auto clears a pending dirty
+flag (the caller recomputes)", "notifies subscribers on every mode/dirty transition,
+and only then", "survives a missing localStorage (the vitest env is node — persist
+must not throw)".
 *Origin:* shipped in 1.0 with zero direct coverage (v1.0 audit, quality) — the
 "silently stops recomputing" failure is invisible by construction.
 
@@ -1265,12 +1285,14 @@ spelling — so the codebase was already clean and the value is the ratchet. 202
 EFFECT-1's data()-never-writes sweep, exactly as prescribed here; and the semantic-half
 citation work below.)
 
-1. **Un-quoted citations are verified by reading, not machine** — narrowed 2026-07-29.
-   The QUOTED citations (the suite-name → "test name" arrow form, 57 of them) are now
-   mechanical:
-   `rules.test.ts` asserts each quoted name appears in the cited suite, so a renamed or
-   deleted test fails CI with the rule's citation (first run caught two drifted quotes).
-   The residual: a rule citing a bare filename still relies on reading. All 19 such
-   rules were read and verified 2026-07-29 (every cited suite genuinely enforces its
-   rule); the residual applies to FUTURE bare-file citations — prefer quoting the
-   describe/it name, which buys the machine check.
+1. **Un-quoted citations are verified by reading, not machine** — narrowed 2026-07-29,
+   twice. The QUOTED citations (the suite-name → "test name" arrow form) are
+   mechanical: `rules.test.ts` asserts each quoted name appears in the cited suite, so
+   a renamed or deleted test fails CI with the rule's citation (first run caught two
+   drifted quotes). All 19 bare-file-cited rules were then read and verified (every
+   cited suite genuinely enforces its rule), and 18 of them were CONVERTED to the
+   quoted form in the same sitting — ~80 machine-checked citations now. The residual
+   is exactly ONE rule: SSOT-6, whose enforcement is a shared IMPORT (`measureParity`
+   from one module into both the report script and the ratchet test), a structural
+   fact no test-name quote can express. New rules should quote their describe/it
+   names, which buys the machine check for free.
