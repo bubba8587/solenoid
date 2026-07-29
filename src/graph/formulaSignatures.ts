@@ -1,4 +1,4 @@
-import { EXCEL_IMPL_META } from "./excelFunctions";
+import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 
 // ─── Formula function signatures (display-only) ────────────────────────────────
@@ -222,6 +222,10 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
  *  else a bare argument count from the registered impl's arity, else null. */
 export function signatureFor(name: string): string | null {
   const up = name.toUpperCase();
+  // A frame verb's "signature" is the redirect — the hint bar is where the
+  // user is looking when they've just typed the name.
+  const frameNode = FRAME_SURFACE_NAMES[up];
+  if (frameNode) return `frame verb — use the ${frameNode} node`;
   const sig = FORMULA_SIGNATURES[up];
   if (sig !== undefined) return sig;
   const packSig = packFormulaSignature(up);
