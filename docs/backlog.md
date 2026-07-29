@@ -10,33 +10,8 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
-- [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed (2026-07-28:
-  PERSIST ×8, EFFECT ×2, ENGINE ×3, SOCK-10/11/12, FX-11, VAL-17/18; **63 rules**).
-  Still queued, roughly by value:
-  - **FX: backend parity corpus — STEP 1 BUILT; HANDOFF to a fresh session**
-    (`v2.0/18-parity-corpus.md` is the complete brief). Pickup, in order:
-    1. `cd src-tauri && cargo test corpus_cases` — the runner is written
-       against the production deserializers but has NEVER compiled (author
-       skipped the cold Polars build). GTK dev libs were apt-installed
-       2026-07-28; a fresh container needs
-       `apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev`
-       first. Expect a long first compile. Fix whatever the first run
-       surfaces (likely candidates: serde field visibility, dump()'s
-       `__nf`-tagged non-finite cells vs fixture values, error-code drift
-       between the engine's IpcError codes and the oracle's).
-    2. Step 2 (the bulk): fixture files now exist for ALL unary verbs
-       (2026-07-28kk authored the remaining 8 from oracle probes;
-       `NOT_YET_MIGRATED` is already empty), so migration is now
-       verb-by-verb PAIR DELETION: check each hand-mirrored Rust+JS pair's
-       cases are covered by (or get folded into) the verb's fixture file,
-       then delete the pair in ONE commit. The "vitest twin" comments in
-       `engine/tests.rs` map the pairs.
-    3. Binary verbs (join/append/lookup) get their own inventory + `frames`
-       map entries when their pairs migrate.
-    4. Cargo green on the corpus + pairs deleted → promote as FX-12
-       (bundle step 4). The JS-side ratchet is already closed; the rule
-       waits on the cargo half so it never claims dual-engine enforcement
-       it doesn't have.
+- [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed 2026-07-28;
+  the parity corpus landed as FX-12 2026-07-29 (**70 rules**). Still queued:
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
     promote if the class of config-driven coercions grows.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO
@@ -50,6 +25,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
+- [ ] **Engine lacks the aggregate non-finite guard (corpus-discovered,
+  2026-07-29)** — the oracle's groupBy sums guard B-1b (#OVERFLOW! on
+  all-finite overflow, #DOMAIN! on NaN/∞−∞), but those are SolError CELLS the
+  wire can't carry and the engine has no equivalent: desktop emits inf/NaN
+  cells where web shows the error. Fix = engine-side guard mapping to the
+  `__err` download form (or a post-materialization pass); the oracle-side pins
+  are in frameVerbs.test.ts ("the aggregate guard, oracle-only").
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s
   `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent
   border. Needs a live devtools look (F12 — CSP/decorum errors?) or a decorum/tauri

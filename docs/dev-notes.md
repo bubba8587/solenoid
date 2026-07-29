@@ -120,6 +120,42 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The parity corpus LANDS end to end — FX-12 promoted (2026-07-29)
+
+Bundle 18 steps 1v–4 in one session; `18-parity-corpus.md` → archive. The
+first-ever cargo run of `corpus_cases` (cold Polars build, GTK libs
+apt-installed) compiled clean and immediately earned its keep — **three real
+divergences the hand-mirrored pairs had never caught, each fixed engine-side**:
+1. An unknown groupBy agg op computed a silent null column while the oracle
+   refuses `#NAME?` — `require_agg_ops` now validates the wire's free-string op
+   names (`percentof` stays a null column on both sides).
+2. Polars totally orders floats (NaN greater than everything), so a NaN cell
+   PASSED `gt`/`gte` engine-side; the oracle fails NaN on every comparison but
+   `neq`. `comparison_filter_expr` masks NaN out of the two divergent ops.
+3. OUTER join row order was never pinned engine-side: Polars' Full join tails
+   unmatched LEFT rows, the oracle keeps left rows in order and appends
+   unmatched RIGHT rows. `verb_join` now builds outer as that composition
+   (left join + right-anti tail in the head's schema).
+
+Migration is COMPLETE, unary and binary both: 99 corpus cases across 13
+fixture files; every hand-mirrored Rust+JS verb pair deleted (engine/tests.rs
+1373→680 lines, incl. the dead `#[cfg(test)]` verb wrappers; frameVerbs.test.ts
+keeps only ORACLE-ONLY semantics, marked as such — per-cell SolError behavior,
+the aggregate non-finite guard, the B-1a key-literal pin, XLOOKUP's
+lookupFrameCell which has no engine command). Runner upgrades: `expect` frames
+decode `__nf` (NaN compares equal under toEqual), a corpus-wide input-mutation
+check replaced every per-verb "does not mutate" test, binary verbs dispatch by
+name (join reads frames left/right with the op parsed as PRODUCTION
+WireJoinOpts; append names inputs, op carries order), and pivot is an
+`ORACLE_ONLY_VERBS` entry whose exemption self-destructs (cargo asserts the
+engine still can't parse the op). The completeness whitelist is deleted —
+fixtures must cover `FRAME_OP_KINDS` + `BINARY_VERBS` exactly. Promoted as
+**FX-12** (70 rules, 67 enforced).
+
+**Corpus-discovered gap, left open (backlog):** the aggregate non-finite guard
+(#OVERFLOW!/#DOMAIN! on groupBy sums, B-1b) exists ONLY oracle-side — the
+engine emits inf/NaN cells there, so desktop diverges live on overflow.
+
 ### Two spec lints + the unary fixture set completes (2026-07-28kk)
 
 The in-scope remainder after the audit, all three landed:
