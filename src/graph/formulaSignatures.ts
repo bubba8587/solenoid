@@ -212,6 +212,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   PRICE: "settlement, maturity, rate, yld, [redemption], [frequency]",
   YIELD: "settlement, maturity, rate, pr, [redemption], [frequency]",
   VDB: "cost, salvage, life, start_period, end_period, [factor]",
+  COL: "column name — this row's cell (the @ form spelled out)",
   ODDFPRICE: "settlement, maturity, issue, first_coupon, rate, yld, [redemption], [frequency]",
   ODDFYIELD: "settlement, maturity, issue, first_coupon, rate, pr, [redemption], [frequency]",
   ODDLPRICE: "settlement, maturity, last_interest, rate, yld, [redemption], [frequency]",

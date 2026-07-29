@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
-import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
+import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
@@ -174,8 +174,12 @@ export class FrameInputNode extends ClassicPreset.Node {
       progress = false;
       for (const i of [...remaining]) {
         const lam = lamAt(i);
+        // Column dependencies: the λ's params AND its row-context reads
+        // (`@name`, `col("name")` — rowRefNames), so a zero-param λ reading
+        // @revenue still orders after the revenue column.
         const blocked = lam
-          ? lam.params.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })
+          ? [...lam.params, ...(lam.expr ? rowRefNames(lam.expr) : [])]
+              .some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })
           : false;
         if (blocked) continue;
         remaining.delete(i);

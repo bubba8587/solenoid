@@ -40,6 +40,30 @@ type Binding =
   | { kind: "rows" }
   | { kind: "side"; value: unknown };
 
+// ─── The dynamic row context — what `@price` and `col("price")` read ─────────
+// A row formula runs INSIDE a row: the core pushes an accessor for the current
+// row around every evaluation (the inline expr AND a wired λ's body alike —
+// dynamic scope is what lets a ZERO-param λ read `@price` with no binding
+// ceremony), and the `@` operator / the COL function resolve against the top
+// of the stack. Synchronous by construction — the engine's recompute is
+// single-threaded, and nesting (a λ whose captures carry another computed
+// frame) stacks cleanly.
+const rowStack: Array<(name: string) => unknown> = [];
+
+/** Resolve a this-row reference (`@name`, `COL(name)`). Outside any row
+ *  context the reference is meaningless — a targeted #REF!, not a typo's
+ *  #NAME?. */
+export function readRowCell(name: unknown): unknown {
+  const top = rowStack[rowStack.length - 1];
+  if (!top) return solError("#REF!", "@ and col() read the current row — they work inside a computed column");
+  return top(String(name));
+}
+
+function withRow<T>(accessor: (name: string) => unknown, f: () => T): T {
+  rowStack.push(accessor);
+  try { return f(); } finally { rowStack.pop(); }
+}
+
 /** One computed cell, tagged: SolErrors pass, NaN is #DOMAIN! (op-level guards
  *  inside the evaluator already classified overflow — a surviving ±Inf is a
  *  definable infinity), a non-scalar result refuses (#SHAPE! — one value per
@@ -96,15 +120,13 @@ export function computeColumnCells(
   }
 
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-  // The `col` accessor: one closure serves every row via the cursor.
+  // The row accessor behind `@name` / `col(name)`: one closure serves every
+  // row via the cursor. Exact name match — a numeric name is a NAME, never a
+  // positional index.
   let cursor = 0;
-  const colAccessor = {
-    __lambda: true as const, params: ["name"], expr: "",
-    fn: (nm: unknown) => {
-      const key = String(nm);
-      const c = f.columns.find((cc) => cc.name === key);
-      return c ? (c.values[cursor] ?? null) : solError("#REF!", `No column "${key}"`);
-    },
+  const rowAccessor = (key: string): unknown => {
+    const c = f.columns.find((cc) => cc.name === key);
+    return c ? (c.values[cursor] ?? null) : solError("#REF!", `No column "${key}"`);
   };
 
   const cells: FrameCell[] = [];
@@ -119,16 +141,16 @@ export function computeColumnCells(
       : b.value);
     const err = rowCells.find((v) => isSolError(v));
     if (err) { cells.push(err as SolError); continue; }
-    let r: unknown;
-    if (spec.kind === "lambda") {
-      try { r = spec.lam.fn(...rowCells); } catch (e) {
-        r = isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
+    const r = withRow(rowAccessor, () => {
+      if (spec.kind === "lambda") {
+        try { return spec.lam.fn(...rowCells); } catch (e) {
+          return isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
+        }
       }
-    } else {
-      const env: Record<string, unknown> = { col: colAccessor };
+      const env: Record<string, unknown> = {};
       params.forEach((p, k) => { env[p] = rowCells[k]; });
-      r = spec.evaluator(env);
-    }
+      return spec.evaluator(env);
+    });
     cells.push(tagComputedCell(r));
   }
   return { cells, sideVars };

@@ -144,6 +144,34 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### The @ operator: this-row reads, Excel's [@Price] as @price (2026-07-29o)
+
+Author proposal, built: `@price` is Excel's table this-row reference, and it
+makes the ZERO-PARAM λ the natural row formula — `λ() → @price * @qty`
+computes a column with no param↔column binding ceremony at all. Mechanics:
+- **AST**: a first-class `atcol` node (identifier names only; extractVariables
+  skips it, so `@price` never grows a socket or a λ capture). Tokenizer takes
+  `@`; the parser reads `@name` in primary position; KaTeX renders `@name`
+  literally; the equation/unit/step-trace walks each carry the case (tsc's
+  exhaustiveness found all four).
+- **The dynamic row context** (computedColumnCore): the core pushes a
+  current-row accessor around EVERY evaluation — the inline expr and a wired
+  λ's body alike — and `readRowCell` resolves against the stack top. This
+  replaced the env-injected col accessor, which also FIXES col() inside λ
+  bodies (it only worked in inline exprs before). Outside any row context, @
+  and COL answer a targeted #REF! ("read the current row…"), never a typo's
+  #NAME?.
+- **COL is now a REGISTERED native** (`EXCEL_IMPL_META`, returns any,
+  arity 1) — the spelled-out @ for names an identifier can't
+  (`col("Unit Price")`, `col(2024)`), dispatching case-insensitively,
+  advertised + hinted like any function.
+- **Topo integration**: `rowRefNames(expr)` collects `@name` + col(<literal>)
+  reads, and Frame Input's dependency sort unions them with the λ's params —
+  a zero-param λ reading `@revenue` still orders after the revenue column
+  (and cycles through @ still refuse).
+- Highlighting: `@name` colors as the variable it behaves as (fx-var).
+6 pins (38 total in computedColumn.test.ts).
+
 ### Surface slice 1 SHIPS: Frame Input λ columns (2026-07-29n)
 
 The ratified design's first slice, end to end:
