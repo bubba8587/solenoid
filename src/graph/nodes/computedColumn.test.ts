@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "./frame";
 import { LambdaNode } from "./lambda";
+import { compileEvaluator, rowRefNames } from "../excelFormula";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 import { extractInit } from "../copyPaste";
@@ -344,6 +345,60 @@ describe("Frame Input λ columns (surface slice 1)", () => {
     n.removeValueInput("fn1");
     expect(n.lambdaKeys).toEqual([]);
     expect(parseFrameSource(n.frameText).find((c) => c.name === "c")!.lambda).toBeUndefined();
+  });
+});
+
+describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
+  it("@ works in the CC node's inline formula, mixed with bound variables", () => {
+    const r = run(named("@price * qty", "rev"), sales) as FrameValue;
+    expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
+  });
+
+  it("a ZERO-param λ reads the row via @ — no binding ceremony", () => {
+    const lam = new LambdaNode({ expr: "@price * @qty", params: "" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    // No capture sockets grew for @price/@qty — they are not variables.
+    expect(lam.captured).toEqual([]);
+    const r = run(named("", "rev"), sales, { fn: [fn] }) as FrameValue;
+    expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
+  });
+
+  it("col() now works INSIDE a λ body too (the row context is dynamic)", () => {
+    const awkward: FrameValue = {
+      __frame: true,
+      columns: [{ name: "Unit Price", type: "number", values: [5, 7] }],
+    };
+    const lam = new LambdaNode({ expr: 'col("Unit Price") * 2', params: "" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    const r = run(named("", "dbl"), awkward, { fn: [fn] }) as FrameValue;
+    expect(getColumn(r, "dbl")!.values).toEqual([10, 14]);
+  });
+
+  it("a zero-param λ using @ still orders after the column it reads (Frame Input topo)", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "qty", type: "number", cells: ["2", "4"] },
+        { name: "margin", type: "number", cells: [], lambda: "fn2" }, // reads @revenue
+        { name: "revenue", type: "number", cells: [], lambda: "fn1" },
+      ]),
+      lambdaKeys: ["fn1", "fn2"],
+    });
+    const mk = (expr: string) => (new LambdaNode({ expr, params: "" }).data({}) as { result: unknown }).result;
+    const out = n.data({ fn1: [mk("@qty * 10")], fn2: [mk("@revenue / 2")] }).frame as FrameValue;
+    expect(getColumn(out, "revenue")!.values).toEqual([20, 40]);
+    expect(getColumn(out, "margin")!.values).toEqual([10, 20]);
+  });
+
+  it("outside a row context, @ and COL answer a targeted #REF!, not a typo's #NAME?", () => {
+    const r = compileEvaluator("@price + 1")!({});
+    expect(isSolError(r) && r.code).toBe("#REF!");
+    expect(isSolError(r) && r.message).toContain("current row");
+    const c = compileEvaluator('COL("price")')!({});
+    expect(isSolError(c) && c.code).toBe("#REF!");
+  });
+
+  it("rowRefNames feeds the topo: @names and col() literals, no variables", () => {
+    expect(rowRefNames('@a + col("b c") * col(2024) + qty').sort()).toEqual(["2024", "a", "b c"]);
   });
 });
 

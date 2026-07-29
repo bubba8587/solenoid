@@ -211,6 +211,7 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
     case "bool":
     case "str":
     case "blank": // an omitted argument is a bare missing value
+    case "atcol": // a this-row cell is a plain value — frame units live on the COLUMN (D20)
       return { dim: DIMENSIONLESS }; // literals carry no unit (a string result is unitless)
     case "name":
       return { dim: env[node.name] ?? DIMENSIONLESS, code: codes[node.name] };

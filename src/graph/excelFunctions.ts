@@ -6,6 +6,7 @@ import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
+import { readRowCell } from "./computedColumnCore";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
@@ -531,6 +532,11 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   CLAMP:       { returns: "number",  arity: [3, 3], native: true },
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
+  // The this-row reader (`col("Unit Price")`, `col(2024)`) — the spelled-out
+  // form of the `@` operator, for column names an identifier can't. Resolves
+  // the dynamic row context a computed column sets (computedColumnCore);
+  // outside one it answers a targeted #REF!.
+  COL:         { returns: "any",     arity: [1, 1], native: true },
 
   // ── Tier 1 (D19): names Formula.js lacks entirely, so the registry is what
   // makes them callable at all. `native: true` says exactly that — it is not a
@@ -1886,6 +1892,10 @@ registerInternal("HYPOTENUSE", (x, y) => {
   if (x == null || y == null) return null;
   return Math.hypot(Number(x), Number(y));
 });
+// This row's cell of the named column — `@price` desugars here semantically;
+// the quoted form covers names an identifier can't (`col("Unit Price")`,
+// `col(2024)` — a numeric argument is a NAME, never a positional index).
+registerInternal("COL", (name) => (name == null ? null : readRowCell(name)));
 // The negated Boolean trio — variadic, Kleene three-valued like the node
 // (logic.ts BooleanOpNode): coerceLogical per operand (the shared liberal
 // parse), null = unknown flows by Kleene, result is a real boolean.

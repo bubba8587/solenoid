@@ -18,6 +18,7 @@ import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
+import { readRowCell } from "./computedColumnCore";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -34,7 +35,13 @@ export type Ast =
   | { t: "percent"; arg: Ast }
   | { t: "bin"; op: string; l: Ast; r: Ast }
   // An OMITTED call argument — Excel's `IF(x,,y)` — evaluating to null (blank).
-  | { t: "blank" };
+  | { t: "blank" }
+  // Excel's table this-row reference, `[@Price]` spelled `@price`: the CURRENT
+  // row's cell of that column, resolved via the dynamic row context a computed
+  // column sets around each row (computedColumnCore). Sugar over `col("price")`
+  // — identifier-shaped names only; an awkward name stays `col("Unit Price")`.
+  // NOT a variable: extractVariables skips it, so it never grows a socket.
+  | { t: "atcol"; name: string };
 
 // ─── Tokenizer ────────────────────────────────────────────────────────────────
 type Tok = { k: "num" | "str" | "name" | "op" | "paren" | "comma"; v: string };
@@ -81,7 +88,7 @@ function tokenize(src: string): Tok[] | null {
     // Multi-char comparison operators.
     const two = src.slice(i, i + 2);
     if (two === "<>" || two === "<=" || two === ">=") { toks.push({ k: "op", v: two }); i += 2; continue; }
-    if ("+-*/^%&=<>".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
+    if ("+-*/^%&=<>@".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
     if (c === "(" || c === ")") { toks.push({ k: "paren", v: c }); i++; continue; }
     if (c === ",") { toks.push({ k: "comma", v: "," }); i++; continue; }
     return null; // unknown character
@@ -182,6 +189,13 @@ function parse(toks: Tok[]): Ast | null {
   function primaryNoApply(): Ast | null {
     const t = peek();
     if (!t) return null;
+    if (t.k === "op" && t.v === "@") {
+      eat();
+      const n = peek();
+      if (n?.k !== "name") return null;
+      eat();
+      return { t: "atcol", name: n.v };
+    }
     if (t.k === "num") { eat(); return { t: "num", v: t.v }; }
     if (t.k === "str") { eat(); return { t: "str", v: t.v }; }
     if (t.k === "paren" && t.v === "(") {
@@ -300,6 +314,38 @@ export function extractVariables(expr: string): string[] {
   const out: string[] = [];
   collectNames(ast, out, new Set());
   return out;
+}
+
+// The column names a formula reads THROUGH THE ROW CONTEXT: `@name` and
+// `col("literal")` / `col(2024)` calls. NOT variables (extractVariables skips
+// them deliberately) — this is the dependency feed for a computed-column topo
+// sort, where a zero-param λ reading `@revenue` still depends on the revenue
+// column. A col(<computed expr>) can't be known statically and isn't collected.
+function collectRowRefs(n: Ast, out: Set<string>): void {
+  switch (n.t) {
+    case "atcol": out.add(n.name); break;
+    case "call": {
+      if (n.name.toUpperCase() === "COL" && n.args.length === 1) {
+        const a = n.args[0];
+        if (a.t === "str") out.add(a.v);
+        else if (a.t === "num") out.add(a.v);
+      }
+      n.args.forEach((a) => collectRowRefs(a, out));
+      break;
+    }
+    case "apply": collectRowRefs(n.fn, out); n.args.forEach((a) => collectRowRefs(a, out)); break;
+    case "unary": case "percent": collectRowRefs(n.arg, out); break;
+    case "bin": collectRowRefs(n.l, out); collectRowRefs(n.r, out); break;
+  }
+}
+
+/** The row-context column reads (`@name`, `col("name")`) in a formula. */
+export function rowRefNames(expr: string): string[] {
+  const ast = parseExpr(expr);
+  if (!ast) return [];
+  const out = new Set<string>();
+  collectRowRefs(ast, out);
+  return [...out];
 }
 
 // Resolve Excel functions through the EXCEL_FUNCTIONS registry seam: a registered
@@ -831,6 +877,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     case "str": return n.v;
     case "bool": return n.v;
     case "blank": return null; // an omitted argument IS the missing value
+    case "atcol": return readRowCell(n.name); // this row's cell (dynamic row context)
     case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
     case "unary": {
       const a = evalAst(n.arg, env);
@@ -1107,6 +1154,7 @@ function tex(n: Ast, parent: number): string {
   switch (n.t) {
     case "num": return numLatex(n.v);
     case "blank": return "\\varnothing"; // an omitted argument, kept visible in the preview
+    case "atcol": return `\\text{@${n.name}}`; // the this-row reference, kept literal
     case "str": return texString(n.v);
     case "bool": return `\\mathrm{${n.v ? "TRUE" : "FALSE"}}`;
     case "name": return symbolLatex(n.name);
@@ -1212,6 +1260,7 @@ export function evaluateSteps(expr: string, vars: Record<string, number>): { ste
       case "name": { const c = constantValue(n.name); return c !== undefined ? c : (vars[n.name] ?? 0); }
       case "bool": return n.v ? 1 : 0;
       case "str": ok = false; return NaN;
+      case "atcol": { ok = false; return NaN; } // no row context in a step trace
       case "unary": { const a = ev(n.arg); return n.op === "-" ? -a : a; }
       case "percent": return ev(n.arg) / 100;
       case "apply": { ok = false; return NaN; } // the step-trace walk doesn't apply lambdas
