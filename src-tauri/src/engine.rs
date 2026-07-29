@@ -1217,8 +1217,30 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
         "stdevp" => base.std(0),
         "var" => base.var(1),
         "varp" => base.var(0),
+        // "percentof" (pivot-only, needs a total set) and anything validated
+        // by require_agg_ops — unreachable for unknown names.
         _ => lit(NULL).cast(DataType::Float64),
     }
+}
+
+/// The agg-op names both engines speak (the oracle's `AggOp` union). The wire
+/// carries op as a FREE STRING, and an unknown name used to fall off
+/// `group_agg_expr`'s catch-all into a silent null column — the oracle refuses
+/// with #NAME? (`aggregateGroup`), so the engine must too (surfaced by the
+/// parity corpus). "percentof" stays accepted: it's pivot-only, a group-by
+/// nulls it on both sides.
+const AGG_OPS: &[&str] = &[
+    "count", "percentof", "sum", "avg", "min", "max", "product", "median",
+    "mode", "stdev", "stdevp", "var", "varp",
+];
+
+fn require_agg_ops(aggs: &[WireAgg]) -> Result<(), IpcError> {
+    for a in aggs {
+        if !AGG_OPS.contains(&a.op.as_str()) {
+            return Err(IpcError::new("#NAME?", format!("Unknown aggregation \"{}\"", a.op)));
+        }
+    }
+    Ok(())
 }
 
 /// Most-frequent value in a group; ties break by FIRST OCCURRENCE (oracle
@@ -1285,6 +1307,7 @@ fn group_by_lazy_plan(
     require_in(names, keys)?;
     let agg_cols: Vec<String> = aggs.iter().map(|a| a.column.clone()).collect();
     require_in(names, &agg_cols)?;
+    require_agg_ops(aggs)?;
 
     // De-dupe output names up front (a key name + an agg `as` may collide) so
     // the Polars aliases are already unique — matches the oracle's makeHeaders
