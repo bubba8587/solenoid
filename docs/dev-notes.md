@@ -144,6 +144,33 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Surface slice 1 SHIPS: Frame Input λ columns (2026-07-29n)
+
+The ratified design's first slice, end to end:
+- **Model**: `FrameSourceColumn.lambda?` (the λ input key defining the
+  column) rides `frameText` (serializer + parser); a computed column's raw
+  cells are empty — the raw-text guarantee is now a per-column fact.
+- **Node**: `FrameInputNode.lambdaKeys` (persisted via INIT_FIELD_ORDER) +
+  addable `lambdaIn` sockets (`addValueInput`/`removeValueInput`, the
+  ExtensibleInputs contract — removing a λ row unbinds its columns back to
+  Typed). data() computes λ columns via the SHARED core in TOPO order (a
+  computed column can reference another; declaration order is irrelevant), a
+  cycle refuses per column with #REF! naming the members, an unwired λ leaves
+  its column blank, an unbound λ param errors per row pointing at captures.
+  Computed frames skip the identity cache (λ results change without a text
+  edit). inferColumn supplies TYPE only — its constructed column would mangle
+  per-row SolErrors (caught by the pins).
+- **UI**: the card grows the λ input group (ExtensibleInputs, new `minRows=0`
+  — an optional group's last row can go; `lambda` joined the wire-only row
+  types); the TablePopup's editable header gains the per-column SOURCE select
+  (Typed | λ…, rendered only when the host has λ inputs), computed cells
+  render read-only in a quiet frame-violet tint from the derived frame
+  (`computedCells` threaded chip→popup), the type-cycle hides on computed
+  columns (type is inferred), Save writes `lambda` back through
+  buildSourceColumns. C4 (the computed-cell look) awaits the author eyeball.
+5 slice pins (32 total in computedColumn.test.ts). Slice 2 next: the Formula
+source (popup editing) + the card-chip glyph.
+
 ### The computed-column SURFACE: design bundle + shared core (2026-07-29m)
 
 The author raised the altitude: computed columns should live PER-COLUMN in

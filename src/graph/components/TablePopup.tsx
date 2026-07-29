@@ -180,6 +180,10 @@ export function TablePopup() {
   // matrices). Index by column; a "matrix" popup uses index 0 for the whole grid.
   // Display-only: re-renders the on-screen grid, never the value or Copy/CSV.
   const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
+  // Per-column λ binding (the column-source model): undefined = Typed, else the
+  // host's λ input key defining the column. Committed on Save via the source
+  // column's `lambda` field.
+  const [colLambdas, setColLambdas] = useState<(string | undefined)[]>([]);
   const initedFor = useRef<TablePopupState | null>(null);
 
   // (Re)seed whenever a different popup opens.
@@ -193,6 +197,7 @@ export function TablePopup() {
     const ncols = g.reduce((m, r) => Math.max(m, r.length), 0);
     setHeaderNames(Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? ""));
     setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
+    setColLambdas(Array.from({ length: ncols }, (_, j) => state.sourceLambdas?.[j]));
     // Seed the FC controls row: a date column defaults to the date style, a number
     // column to Auto; the unit dropdown seeds from the column's locked unit. A
     // PERSISTED per-column format (frameFormatStore, keyed by node+column name) wins
@@ -567,11 +572,14 @@ export function TablePopup() {
       // A unit-taggable source persists the per-column unit choice (number columns
       // only) so it rides the value downstream via deriveFrame.
       const u = state?.unitTaggable && (columnTypes[c] ?? "number") === "number" ? annFor(c).unit : undefined;
+      const lambda = colLambdas[c];
       return {
         name: (headerNames[c] ?? "").trim(),
         type: columnTypes[c] ?? "number",
-        cells: grid.map((row) => row[c] ?? ""),
+        // A computed column has no raw text — its cells derive from the λ.
+        cells: lambda ? [] : grid.map((row) => row[c] ?? ""),
         ...(u && u !== "none" ? { unit: u } : {}),
+        ...(lambda ? { lambda } : {}),
       };
     });
   }
@@ -665,14 +673,18 @@ export function TablePopup() {
                         blank — it's the handle the sort control hangs off. */}
                     {vertical ? colLabel(0) : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
-                        <button
-                          type="button"
-                          className="table-popup__coltype"
-                          title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean.`}
-                          onClick={(e) => { e.stopPropagation(); toggleColumnType(c); }}
-                        >
-                          {COLTYPE_GLYPH[colTypeAt(c)]}
-                        </button>
+                        {/* A computed column's type is inferred from its cells —
+                            the cycle button only applies to a Typed column. */}
+                        {!colLambdas[c] && (
+                          <button
+                            type="button"
+                            className="table-popup__coltype"
+                            title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean.`}
+                            onClick={(e) => { e.stopPropagation(); toggleColumnType(c); }}
+                          >
+                            {COLTYPE_GLYPH[colTypeAt(c)]}
+                          </button>
+                        )}
                         <input
                           className="table-popup__input table-popup__input--text table-popup__colhead-input"
                           value={headerNames[c] ?? ""}
@@ -684,6 +696,26 @@ export function TablePopup() {
                       </div>
                     ) : (
                       colHeaderLabel(c)
+                    )}
+                    {editableHeaders && !vertical && (state.lambdaOptions?.length ?? 0) > 0 && (
+                      // The column-source select (slice 1): Typed, or one of the
+                      // host's wired λ inputs. Only rendered when the host HAS λ
+                      // sockets, so plain tables see no new chrome.
+                      <select
+                        className="table-popup__srcselect"
+                        value={colLambdas[c] ?? ""}
+                        {...stopSortTrigger}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const v = e.target.value || undefined;
+                          setColLambdas((prev) => { const next = [...prev]; next[c] = v; return next; });
+                        }}
+                      >
+                        <option value="">Typed</option>
+                        {state.lambdaOptions!.map((k) => (
+                          <option key={k} value={k}>{`λ${k.replace(/^fn/, "")}`}</option>
+                        ))}
+                      </select>
                     )}
                     {sortable && (
                       <SortIndicator
@@ -764,8 +796,28 @@ export function TablePopup() {
                     // like Excel's formula-bar-in-cell) and re-renders formatted on
                     // the commit (units, dates, number formats).
                     const fmtEdit = formattedPreview && editable && !vertical;
-                    const canEdit = editable && !(formattedPreview && !fmtEdit); // = !readOnly below
                     const editingHere = !!editCell && editCell.r === r && editCell.c === c;
+                    // A COMPUTED column's cells derive from its λ — read-only,
+                    // rendered from the derived frame, no raw text behind them.
+                    const computedHere = !vertical && !!colLambdas[c];
+                    const canEdit = !computedHere && editable && !(formattedPreview && !fmtEdit); // = !readOnly below
+                    if (computedHere) {
+                      return (
+                        <td
+                          key={c}
+                          className="table-popup__cell table-popup__cell--computed"
+                          style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
+                        >
+                          <input
+                            className="table-popup__input table-popup__input--computed"
+                            value={state.computedCells?.[r]?.[c] ?? ""}
+                            readOnly
+                            tabIndex={-1}
+                            spellCheck={false}
+                          />
+                        </td>
+                      );
+                    }
                     return (
                     <td
                       key={c}

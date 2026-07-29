@@ -295,6 +295,12 @@ export interface FrameSourceColumn {
    *  in `frameText` and applied by `deriveFrame` → `FrameColumn.unit`, so the unit
    *  rides the value downstream. Absent ⇒ no unit. */
   unit?: string;
+  /** COMPUTED column: the key of the node's λ input that defines it (the
+   *  column-source model, v2.0/19-computed-column-surface.md). Present ⇒ the
+   *  cells are derived per row by that λ (computedColumnCore rules) and the
+   *  raw `cells` are ignored; absent ⇒ a Typed literal column, the raw-text
+   *  guarantee untouched. */
+  lambda?: string;
 }
 export type FrameSource = FrameSourceColumn[];
 
@@ -333,10 +339,11 @@ export function deriveFrame(source: FrameSource): FrameValue {
 
 /** Serialize the raw source to the stored `frameText` (JSON). */
 export function frameSourceToText(source: FrameSource): string {
-  return JSON.stringify(source.map((c) => (
-    c.unit ? { name: c.name, type: c.type, cells: c.cells, unit: c.unit }
-           : { name: c.name, type: c.type, cells: c.cells }
-  )));
+  return JSON.stringify(source.map((c) => ({
+    name: c.name, type: c.type, cells: c.cells,
+    ...(c.unit ? { unit: c.unit } : {}),
+    ...(c.lambda ? { lambda: c.lambda } : {}),
+  })));
 }
 
 /** Infer just a column's TYPE from raw cells (same rules as inferColumn, cells kept
@@ -373,7 +380,8 @@ export function parseFrameSource(text: string): FrameSource {
                   x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : String(x))
               : [];
           const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
-          return { name: names[i], type, cells, unit };
+          const lambda = typeof c?.lambda === "string" && c.lambda !== "" ? c.lambda : undefined;
+          return { name: names[i], type, cells, unit, ...(lambda ? { lambda } : {}) };
         });
       }
     } catch { /* malformed — fall through to the legacy CSV reader */ }
