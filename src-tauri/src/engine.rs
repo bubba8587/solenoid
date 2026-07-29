@@ -1313,9 +1313,10 @@ fn mode_expr(e: Expr) -> Expr {
             let mut vals: Vec<f64> = Vec::with_capacity(s.len());
             for i in 0..s.len() {
                 if let AnyValue::Float64(v) = s.get(i).unwrap_or(AnyValue::Null) {
-                    if v.is_finite() {
-                        vals.push(v);
-                    }
+                    // ±Inf is a countable value like any other (the oracle's
+                    // modeOf sees it; a NaN group short-circuits upstream on
+                    // the oracle side, so it never reaches a corpus compare).
+                    vals.push(v);
                 }
             }
             let name = c.name().clone();
@@ -1323,11 +1324,13 @@ fn mode_expr(e: Expr) -> Expr {
                 return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
             }
             // Most-frequent value; ties break by FIRST OCCURRENCE (oracle `modeOf`).
+            // Key -0 as 0: JS `===` unifies them, to_bits would not.
             let mut counts: HashMap<u64, usize> = HashMap::new();
             let mut best = vals[0];
             let mut best_count = 0usize;
             for &v in &vals {
-                let cnt = counts.entry(v.to_bits()).or_insert(0);
+                let k = if v == 0.0 { 0.0f64 } else { v };
+                let cnt = counts.entry(k.to_bits()).or_insert(0);
                 *cnt += 1;
                 if *cnt > best_count {
                     best_count = *cnt;

@@ -127,7 +127,7 @@ corpus cases — oracle-computed expectations, wire format, `fuzz-*.json` beside
 the hand fixtures — so cargo becomes the divergence hunt. 480 cases per run;
 usage in the script header; fuzz files are TRANSIENT (generate → run → delete),
 each find lands as a permanent hand-named case instead (11 added; corpus now
-110). First sweep found SEVEN real defects across both engines:
+110). Two seeds run (480 + 600 cases) found EIGHT real defects across both engines:
 1. **Sorting by a logical column PANICKED the engine** (Polars bool sort has no
    nulls-last) — sort now keys logical as 0/1 and floats with NaN nulled, which
    also fixed NaN-desc tailing. (`lazy_sort` key exprs)
@@ -147,7 +147,9 @@ each find lands as a permanent hand-named case instead (11 added; corpus now
    mirror of the oracle's binary search): its `allow_eq` default silently
    excluded EXACT key ties, `nearest` tie-breaks forward (oracle: backward),
    and non-finite keys mismatched. Three kernel quirks, one small function.
-7. **Spec clarifications, both sides**: mismatched join key types refuse
+7. **mode over a group of non-finite values** answered null engine-side (an
+   old is_finite filter in the UDF; also -0/0 now share a count bucket like
+   JS ===). 8. **Spec clarifications, both sides**: mismatched join key types refuse
    `#TYPE!` (was silent-empty web / `#ERROR!` desktop); mixed-type unpivot
    value columns refuse `#TYPE!` (was silent nulls desktop); a null comparison
    value matches no rows in text predicates (oracle stringified it to "null",
