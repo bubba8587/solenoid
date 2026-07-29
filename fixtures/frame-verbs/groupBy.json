@@ -156,6 +156,15 @@
         { "name": "total", "type": "number", "values": [0] },
         { "name": "lo", "type": "string", "values": [null] },
         { "name": "n", "type": "number", "values": [2] } ] } },
+    { "name": "mode counts a non-finite value like any other",
+      "frames": { "in": { "columns": [
+        { "name": "k", "type": "string", "values": ["a", "a", "a"] },
+        { "name": "v", "type": "number", "values": [{"__nf": "-inf"}, {"__nf": "-inf"}, 5] } ] } },
+      "op": { "kind": "groupBy", "keys": ["k"], "aggs": [
+        { "column": "v", "op": "mode", "as": "m" } ] },
+      "expect": { "columns": [
+        { "name": "k", "type": "string", "values": ["a"] },
+        { "name": "m", "type": "number", "values": [{"__nf": "-inf"}] } ] } },
     { "name": "variance is the sequential two-pass algorithm, byte-exact at large means",
       "frames": { "in": { "columns": [
         { "name": "k", "type": "string", "values": ["a", "a", "a"] },
