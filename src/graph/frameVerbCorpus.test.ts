@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { applyVerb, FRAME_OP_KINDS, type FrameOp } from "./frameVerbs";
+import { applyVerb, joinFrames, appendFrames, FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "./frameVerbs";
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import { isSolError } from "./errorValue";
 
@@ -18,11 +18,23 @@ interface WireColumn { name: string; type: FrameColumn["type"]; values: FrameCel
 interface CorpusCase {
   name: string;
   frames: Record<string, { columns: WireColumn[] }>;
-  op: FrameOp;
+  // Unary verbs carry a FrameOp; the binary verbs' ops are corpus shapes over
+  // the same wire vocabulary: join = `{ kind: "join" } & JoinOpts` (frames
+  // "left"/"right"), append = `{ kind: "append", frames: [names…] }` (order —
+  // the frames map can't carry it).
+  op: { kind: string } & Record<string, unknown>;
   expect?: { columns: WireColumn[] };
   expectError?: string;
 }
 interface CorpusFile { verb: string; cases: CorpusCase[] }
+
+/** The verbs that take MORE than one frame. Not derivable from `FrameOp` (they
+ *  are separate backend commands, not ops), so hand-listed — the cargo runner
+ *  dispatches on the same two names, and the completeness guard below requires
+ *  a fixture file for each. (XLOOKUP's lookupFrameCell is oracle-only on every
+ *  platform — no engine command — so it has no corpus entry, like pivot's
+ *  richer half.) */
+const BINARY_VERBS = ["join", "append"] as const;
 
 /** Non-finite cells ride the wire's OWN tagged form — `{"__nf": "inf"|"-inf"|
  *  "nan"}`, the convention frameBackend/engine.rs already speak — because the
@@ -65,11 +77,20 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
     // Structural sanity the cargo side relies on too.
     expect(kase.expect !== undefined || kase.expectError !== undefined, "a case needs expect XOR expectError").toBe(true);
     expect(kase.expect !== undefined && kase.expectError !== undefined, "not both").toBe(false);
-    const input = brand(kase.frames.in);
-    const before = dump(input);
+    const inputs = Object.fromEntries(Object.entries(kase.frames).map(([k, w]) => [k, brand(w)]));
+    const before = Object.fromEntries(Object.entries(inputs).map(([k, f]) => [k, dump(f)]));
     let out: FrameValue | undefined;
     let err: unknown;
-    try { out = applyVerb(input, kase.op); } catch (e) { err = e; }
+    try {
+      if (kase.op.kind === "join") {
+        const { kind: _kind, ...opts } = kase.op;
+        out = joinFrames(inputs.left, inputs.right, opts as unknown as JoinOpts);
+      } else if (kase.op.kind === "append") {
+        out = appendFrames((kase.op.frames as string[]).map((n) => inputs[n]));
+      } else {
+        out = applyVerb(inputs.in, kase.op as unknown as FrameOp);
+      }
+    } catch (e) { err = e; }
     if (kase.expectError !== undefined) {
       expect(isSolError(err), `expected ${kase.expectError}, got ${JSON.stringify(out && dump(out))}`).toBe(true);
       expect((err as { code: string }).code).toBe(kase.expectError);
@@ -77,33 +98,28 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
       expect(err, `oracle threw: ${(err as Error)?.message ?? err}`).toBeUndefined();
       expect(dump(out!)).toEqual(decodeColumns(kase.expect!));
     }
-    // Every verb leaves its input frame untouched — checked corpus-wide, so no
+    // Every verb leaves its input frames untouched — checked corpus-wide, so no
     // per-verb "does not mutate" test needs to exist.
-    expect(dump(input), "the verb mutated its input frame").toEqual(before);
+    for (const [k, f] of Object.entries(inputs)) {
+      expect(dump(f), `the verb mutated input frame "${k}"`).toEqual(before[k]);
+    }
   });
 });
 
-describe("corpus completeness — every unary verb has a fixture file", () => {
-  // The ratchet (bundle 18 step 3): verbs still covered ONLY by the
-  // hand-mirrored test pairs sit in this whitelist. Migrating a verb = moving
-  // its pair's cases into fixtures/frame-verbs/<verb>.json and DELETING it
-  // here; the guard closes fully when the list is empty, and then promotes as
-  // FX-12. Adding a NEW FrameOp kind fails compile (FRAME_OP_KINDS) and then
-  // fails here until it ships with corpus cases.
-  // EMPTY for the unary verbs: every FrameOp kind has fixture cases. What
-  // remains for the corpus is cargo verification + deleting the hand-mirrored
-  // pairs (the handoff steps in the backlog), and the BINARY verbs' own
-  // inventory (join/append/lookup) when their pairs migrate.
-  const NOT_YET_MIGRATED = new Set<string>([]);
+describe("corpus completeness — every verb has a fixture file", () => {
+  // The closed ratchet (bundle 18 step 3, promoted as FX-12): the migration
+  // whitelist emptied and died — every verb both engines speak computes from
+  // this ONE fixture corpus. Adding a NEW FrameOp kind fails compile
+  // (FRAME_OP_KINDS) and then fails here until it ships with corpus cases; a
+  // new binary verb joins BINARY_VERBS and needs a fixture file the same way.
+  const INVENTORY: readonly string[] = [...FRAME_OP_KINDS, ...BINARY_VERBS];
 
-  it("fixture files + the migration whitelist cover FRAME_OP_KINDS exactly", () => {
+  it("fixture files cover the verb inventory exactly", () => {
     const covered = new Set(corpus.map((c) => c.verb));
-    const missing = FRAME_OP_KINDS.filter((k) => !covered.has(k) && !NOT_YET_MIGRATED.has(k));
-    const doubled = FRAME_OP_KINDS.filter((k) => covered.has(k) && NOT_YET_MIGRATED.has(k));
-    const unknown = [...covered].filter((v) => !(FRAME_OP_KINDS as readonly string[]).includes(v));
-    expect(missing, "verbs with neither fixtures nor a whitelist entry").toEqual([]);
-    expect(doubled, "verbs with fixtures still on the whitelist — delete the entry").toEqual([]);
-    expect(unknown, "fixture files for verbs not in FRAME_OP_KINDS (binary verbs get their own inventory when they migrate)").toEqual([]);
+    const missing = INVENTORY.filter((k) => !covered.has(k));
+    const unknown = [...covered].filter((v) => !INVENTORY.includes(v));
+    expect(missing, "verbs without corpus fixtures — a verb without cases does not ship").toEqual([]);
+    expect(unknown, "fixture files for verbs outside FRAME_OP_KINDS + BINARY_VERBS").toEqual([]);
   });
 
   it("every fixture file has cases, each named uniquely", () => {

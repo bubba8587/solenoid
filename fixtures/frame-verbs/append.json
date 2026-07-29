@@ -1,0 +1,33 @@
+{ "verb": "append",
+  "cases": [
+    { "name": "identical schemas stack into a plain concat",
+      "frames": {
+        "a": { "columns": [
+          { "name": "x", "type": "number", "values": [1, 2] },
+          { "name": "y", "type": "string", "values": ["a", "b"] } ] },
+        "b": { "columns": [
+          { "name": "x", "type": "number", "values": [3] },
+          { "name": "y", "type": "string", "values": ["c"] } ] } },
+      "op": { "kind": "append", "frames": ["a", "b"] },
+      "expect": { "columns": [
+        { "name": "x", "type": "number", "values": [1, 2, 3] },
+        { "name": "y", "type": "string", "values": ["a", "b", "c"] } ] } },
+    { "name": "unions differing columns by name, filling absent ones with null",
+      "frames": {
+        "a": { "columns": [
+          { "name": "x", "type": "number", "values": [1] } ] },
+        "b": { "columns": [
+          { "name": "z", "type": "string", "values": ["q"] } ] } },
+      "op": { "kind": "append", "frames": ["a", "b"] },
+      "expect": { "columns": [
+        { "name": "x", "type": "number", "values": [1, null] },
+        { "name": "z", "type": "string", "values": [null, "q"] } ] } },
+    { "name": "a shared column name with conflicting types refuses (reject-on-mismatch)",
+      "frames": {
+        "a": { "columns": [
+          { "name": "k", "type": "number", "values": [1] } ] },
+        "b": { "columns": [
+          { "name": "k", "type": "string", "values": ["x"] } ] } },
+      "op": { "kind": "append", "frames": ["a", "b"] },
+      "expectError": "#TYPE!" }
+  ] }
