@@ -144,6 +144,28 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Computed Column v3 — col() for unspellable names, rows, placement (2026-07-29l)
+
+The author's next two catches, closed:
+- **Columns a variable can't spell** — a "2024" year column, "Unit Price".
+  The `col` accessor: `col("Unit Price")`, `col(2024)` (a numeric literal
+  coerces to the NAME, never a positional index — deliberately unlike
+  requireColumn's `^\d+$` fallback). Mechanically an env LAMBDA injected per
+  row and resolved by the evaluator's higher-order call path (the 2026-07-28
+  `f(x)` machinery), so `col` never parses as a variable and never grows a
+  side socket; one closure serves every row via a cursor. An absent name is a
+  per-row #REF! cell. This also un-blocks the picker item's worst case —
+  pickers are now purely a comfort, not the only path.
+- **`rows`** — total row count builtin (`row / rows` = position fraction);
+  shadowed by a real column like `row` is.
+- **Placement** — the `After` input (socket + literal): blank appends at the
+  end; a column name inserts the NEW column right after it; a REPLACED column
+  keeps its position regardless (replacement detected by column count, not by
+  re-parsing the unit header); a missing anchor is #REF!. `after` joins the
+  reserved input names.
+Six more pins (24 total in computedColumn.test.ts); catalog copy teaches
+row/rows/col().
+
 ### Computed Column v2 — the author's "it's missing a ton" round (2026-07-29k)
 
 Four holes the v1 shipped with, all closed:

@@ -183,6 +183,57 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
   });
 });
 
+describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
+  it('col("name") reaches columns a variable cannot spell — numeric and spaced names', () => {
+    const awkward: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "2024", type: "number", values: [100, 200] },
+        { name: "Unit Price", type: "number", values: [5, 7] },
+      ],
+    };
+    const quoted = run(named('col("2024") + col("Unit Price")', "sum"), awkward) as FrameValue;
+    expect(getColumn(quoted, "sum")!.values).toEqual([105, 207]);
+    // A numeric literal coerces to the name — col(2024) reads the year column,
+    // never a positional index.
+    const bare = run(named("col(2024) * 2", "dbl"), awkward) as FrameValue;
+    expect(getColumn(bare, "dbl")!.values).toEqual([200, 400]);
+  });
+
+  it("col() of an absent column is a per-row #REF!", () => {
+    const r = run(named('col("nope") + 1', "x"), sales) as FrameValue;
+    expect(isSolError(getColumn(r, "x")!.values[0])).toBe(true);
+  });
+
+  it("`rows` is the total row count (a column named rows shadows it)", () => {
+    const r = run(named("row / rows", "frac"), sales) as FrameValue;
+    expect(getColumn(r, "frac")!.values).toEqual([1 / 3, 2 / 3, 1]);
+  });
+
+  it("After places a NEW column right after the anchor; blank appends at the end", () => {
+    const n = named("qty * price", "revenue");
+    n.stringLiterals.after = "qty";
+    const r = run(n, sales) as FrameValue;
+    expect(r.columns.map((c) => c.name)).toEqual(["qty", "revenue", "price", "city"]);
+  });
+
+  it("a REPLACED column keeps its position even with After set", () => {
+    const n = named("qty * 2", "qty");
+    n.stringLiterals.after = "city";
+    const r = run(n, sales) as FrameValue;
+    expect(r.columns.map((c) => c.name)).toEqual(["qty", "price", "city"]);
+    expect(getColumn(r, "qty")!.values).toEqual([4, 6, 8]);
+  });
+
+  it("a missing After anchor refuses with #REF!", () => {
+    const n = named("qty * price", "revenue");
+    n.stringLiterals.after = "ghost";
+    const r = run(n, sales);
+    expect(isSolError(r) && r.code).toBe("#REF!");
+    expect(isSolError(r) && r.message).toContain('"ghost"');
+  });
+});
+
 describe("persistence", () => {
   it("extractInit round-trips expr and the column name", () => {
     const n = named("qty * price", "revenue");
