@@ -28,7 +28,23 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
-- [ ] **Engine lacks the aggregate non-finite guard (corpus-discovered,
+- [ ] **OUTSIDE REVIEW WANTED: number→text semantics of the text predicates**
+  (flagged 2026-07-29; author explicitly defers this judgment to a reviewer).
+  The spec today: a text predicate (contains/startsWith/endsWith, and string-eq
+  with a numeric comparison value) on a NUMBER/date column compares the JS
+  display string — `String(cell)` in the oracle (`passesFilter`), mirrored in
+  the engine by a hand-written ECMA `Number::toString` (`js_number_string`,
+  engine.rs; corpus-pinned in filter.json). That Rust reimplementation is the
+  cost under review: correct today, but a classic own-it-forever liability.
+  The alternatives a reviewer should weigh: (a) keep the JS display form
+  (status quo — zero user-visible change, keeps the Rust formatter);
+  (b) refuse text predicates on non-string columns with #TYPE! and require
+  Cast — most consistent with the socket lattice's "families never
+  auto-cross, Cast required" doctrine, deletes `js_number_string`, but
+  removes a quiet convenience Excel users may expect from filtering;
+  (c) canonical app-format strings (formatScalar) — rejected-by-default
+  (locale/format-dependent comparisons). Whatever the verdict, it lands as a
+  rules.md VAL rule with corpus cases; today's behavior is pinned either way.
   2026-07-29)** — the oracle's groupBy sums guard B-1b (#OVERFLOW! on
   all-finite overflow, #DOMAIN! on NaN/∞−∞), but those are SolError CELLS the
   wire can't carry and the engine has no equivalent: desktop emits inf/NaN
