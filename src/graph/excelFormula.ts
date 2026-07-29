@@ -927,7 +927,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // typo's #NAME?. Same short-circuit position as the legacy block, for
       // the same reason (the stub must not broadcast element-wise).
       const frameNode = FRAME_SURFACE_NAMES[name];
-      if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node`);
+      if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
       // ── Eta-lambdas (Excel parity): `MAP(x, SQRT)` — a BARE dispatchable name
       // in a lambda HOST's argument evaluates to an eta LambdaValue wrapping the
       // dispatch, instead of an undefined variable (see etaOrEval).

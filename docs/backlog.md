@@ -166,11 +166,20 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
   `formulaTier3.test.ts`. Residual: distributions are validated only at representative
   points — widen if accuracy is ever in doubt.
-- [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose
-  variables are column names, appended in place (PQ Custom Column); wants a design pass
-  on sharing the Expression engine. When it ships, grow the frame-verb refusal message
-  (FRAME_SURFACE_NAMES, "use the X node") with the "or a Computed Column" arm — the
-  redirect deliberately names only surfaces that exist.
+- [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29: `ComputedColumnNode`,
+  inline expr + wired-λ definition, by-name column binding, per-row error/null
+  contract, inferred output type, `Name (unit)` headers; the frame-verb refusal
+  message grew its "or a Computed Column" arm). Remaining, all author-eyeball or
+  design-tail:
+  - **Column-binding pickers** (author direction): bind expr variables / λ params to
+    columns via pickers instead of by-name only — the Pivot `sourceColumns` republish
+    pattern; would also be the first shared column-picker component (Sort/Get
+    Column/Join name columns as free text today and could adopt it).
+  - **Output-column format/unit controls on the node** (author direction): reuse the
+    TablePopup per-column format row (`fcControls`) for the computed column.
+  - **Typing a formula into a grid column directly** (author: possible, not the only
+    way) — a TablePopup editing affordance, larger lift.
+  - λ view-as on the card (lambdaView annotation) once an FC docks to the λ input.
 - [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
   what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts
   "series (2-D)"). Every frame-consuming node reuses it, per the aligned-columns rule
