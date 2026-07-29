@@ -1056,6 +1056,15 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
         }
         _ => None,
     };
+    // The logical bridge: ANY value compared against a logical column collapses
+    // to 0/1 first (the oracle's coerceLogical — `eq 12` on a logical column
+    // matches TRUE rows, not nothing). The string branch above already folds;
+    // this folds the number/bool branches the same way.
+    let parsed = if ty == SolType::Logical {
+        parsed.map(|n| if n == 0.0 { 0.0 } else { 1.0 })
+    } else {
+        parsed
+    };
     let Some(v) = parsed else { return Ok(None) };
     let x = c.cast(DataType::Float64);
     let y = lit(v);
@@ -1632,29 +1641,42 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         other => return Err(IpcError::new("#VALUE!", format!("unknown join how \"{other}\""))),
     };
     let is_right = matches!(how, JoinType::Right);
-    // Row order must match the oracle (strict driving-side order with grouped
-    // fan-out) — Polars docs say join order is unspecified unless maintain_order
-    // is set (audit finding 15). The driving side is the RIGHT frame for a right
-    // join, the left frame otherwise.
-    let maintain = if is_right { MaintainOrderJoin::RightLeft } else { MaintainOrderJoin::LeftRight };
+    // Row order must match the oracle: strict DRIVING-side order with grouped
+    // fan-out in the other side's row order (audit finding 15; the driving
+    // side is the RIGHT frame for a right join, the left frame otherwise).
+    // maintain_order is NOT enough: Polars swaps an inner join's build/probe
+    // sides by size and the flag loses (corpus fuzz sweep) — so both sides
+    // carry a row index and the joined result is SORTED into the contract.
     // Coalesce is OFF and done EXPLICITLY below: Polars' CoalesceColumns names
     // the merged key by a how/collision-dependent rule — audit finding 4's
     // maze, where a right key sharing an unrelated LEFT column's name made the
     // by-name lookup read the WRONG column (corpus fuzz sweep caught it live).
-    let mut args = JoinArgs::new(how);
-    args.maintain_order = maintain; // no builder method in polars 0.46
+    const IDXL: &str = "__solenoid_join_idx_left__";
+    const IDXR: &str = "__solenoid_join_idx_right__";
+    let args = JoinArgs::new(how);
 
     let mut joined_lf = left
         .df
         .clone()
         .lazy()
+        .with_row_index(IDXL, None)
         .with_column(mask_key(&opts.left_key, lt, JKL))
         .join(
-            right.df.clone().lazy().with_column(mask_key(&opts.right_key, rt, JKR)),
+            right
+                .df
+                .clone()
+                .lazy()
+                .with_row_index(IDXR, None)
+                .with_column(mask_key(&opts.right_key, rt, JKR)),
             vec![col(JKL)],
             vec![col(JKR)],
             args,
         );
+    let (primary, secondary) = if is_right { (IDXR, IDXL) } else { (IDXL, IDXR) };
+    joined_lf = joined_lf.sort_by_exprs(
+        vec![col(primary), col(secondary)],
+        SortMultipleOptions::default().with_nulls_last(true).with_maintain_order(true),
+    );
     if is_right {
         // Unmatched right rows have a null left side — fill the key from the
         // RIGHT key column, whose joined name is deterministic: suffixed iff it

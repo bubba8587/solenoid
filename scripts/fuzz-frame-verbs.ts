@@ -40,16 +40,22 @@ const int = (lo: number, hi: number) => lo + Math.floor(rnd() * (hi - lo + 1));
 const chance = (p: number) => rnd() < p;
 
 // ─── random frames ────────────────────────────────────────────────────────────
-const NUMBERS: FrameCell[] = [0, 1, -1, 2, 2.5, -3, 0.1, 10, 1234, 1e10, 1e308, -0, null, NaN, Infinity, -Infinity];
-const STRINGS: FrameCell[] = ["", "a", "A", "b", "Oslo", "oslo", "OSLO", " x ", "1", "1,234", "xs:y", "José", "true", null];
+const NUMBERS: FrameCell[] = [
+  0, 1, -1, 2, 2.5, -3, 0.1, 10, 1234, 1e10, 1e308, -0, null, NaN, Infinity, -Infinity,
+  -2.5, 0.30000000000000004, 1e-15, -1e-300, 9007199254740993, 46096.25, 0.5, 100,
+];
+const STRINGS: FrameCell[] = [
+  "", "a", "A", "b", "Oslo", "oslo", "OSLO", " x ", "1", "1,234", "x\u0001s:y", "Jos\u00e9",
+  "true", null, "null", "NaN", "-0", "  ", "a b", "\u00df", "\u0130", "0", "false", "Stra\u00dfe",
+];
 const LOGICALS: FrameCell[] = [true, false, null];
-const DATES: FrameCell[] = [46000, 46010, 46096, null];
+const DATES: FrameCell[] = [46000, 46010, 46096, 46096.25, 0, -30000, null];
 const CELLS: Record<FrameColType, FrameCell[]> = { number: NUMBERS, string: STRINGS, logical: LOGICALS, date: DATES };
 const NAME_POOL = ["a", "b", "c", "k", "v", "qty", "city", "when", "flag"];
 
 function randFrame(opts?: { minCols?: number; types?: FrameColType[]; rows?: number }): FrameValue {
   const nCols = Math.max(opts?.minCols ?? 1, int(1, 4));
-  const rows = opts?.rows ?? int(0, 8);
+  const rows = opts?.rows ?? int(0, 14);
   const names = [...NAME_POOL].sort(() => rnd() - 0.5).slice(0, nCols);
   const types = opts?.types ?? (["number", "string", "logical", "date"] as FrameColType[]);
   return {

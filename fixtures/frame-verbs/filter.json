@@ -113,6 +113,12 @@
       "op": { "kind": "filter", "column": "s", "op": "startsWith", "value": null },
       "expect": { "columns": [
         { "name": "s", "type": "string", "values": [] } ] } },
+    { "name": "a numeric value against a logical column collapses through the bridge (12 means TRUE)",
+      "frames": { "in": { "columns": [
+        { "name": "flag", "type": "logical", "values": [true, false, null, true] } ] } },
+      "op": { "kind": "filter", "column": "flag", "op": "eq", "value": 12 },
+      "expect": { "columns": [
+        { "name": "flag", "type": "logical", "values": [true, true] } ] } },
     { "name": "a logical column accepts the text \"false\"",
       "frames": { "in": { "columns": [
         { "name": "flag", "type": "logical", "values": [true, false] } ] } },

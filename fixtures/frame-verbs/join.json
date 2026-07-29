@@ -216,6 +216,17 @@
         { "name": "flag", "type": "number", "values": [2, 3] },
         { "name": "k", "type": "string", "values": ["b", null] },
         { "name": "v", "type": "string", "values": ["x", "y"] } ] } },
+    { "name": "inner join keeps left-driven order even when the RIGHT side is larger",
+      "frames": {
+        "left": { "columns": [
+          { "name": "k", "type": "number", "values": [2, 1, 2] } ] },
+        "right": { "columns": [
+          { "name": "k", "type": "number", "values": [1, 2, 1, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109] },
+          { "name": "r", "type": "number", "values": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] } ] } },
+      "op": { "kind": "join", "leftKey": "k", "rightKey": "k", "how": "inner" },
+      "expect": { "columns": [
+        { "name": "k", "type": "number", "values": [2, 1, 1, 2] },
+        { "name": "r", "type": "number", "values": [1, 0, 2, 1] } ] } },
     { "name": "asof matches an EXACT key tie (backward from 0 finds 0, not the row before)",
       "frames": {
         "left": { "columns": [

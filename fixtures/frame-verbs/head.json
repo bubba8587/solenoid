@@ -18,6 +18,12 @@
       "op": { "kind": "head", "n": 99 },
       "expect": { "columns": [
         { "name": "a", "type": "number", "values": [1, 2] } ] } },
+    { "name": "seventeen-digit doubles cross the wire exactly (serde float_roundtrip)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [0.30000000000000004, 32594.794185575094, 9007199254740993, -1e-300] } ] } },
+      "op": { "kind": "head", "n": 99 },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [0.30000000000000004, 32594.794185575094, 9007199254740993, -1e-300] } ] } },
     { "name": "a negative n clamps to zero rows",
       "frames": { "in": { "columns": [
         { "name": "a", "type": "number", "values": [1, 2] } ] } },
