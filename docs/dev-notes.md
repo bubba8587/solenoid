@@ -133,6 +133,17 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Backlog claim FALSE: drill-ins DO adopt — pinned, line deleted (2026-07-29e)
+
+The "trueany adoption runs on the MAIN editor only — drill-in composites don't
+adopt" backlog line was stale when written (2026-07-22): `settleInternalTypes`
+has run `settleWildcardTypes(this.internalEditor)` on every live drill-in
+connection change since 2026-07-18 (35fe709). Verified behaviorally — a new
+composite.test.ts case ("an INTERNAL trueany node adopts on a live drill-in
+wire") wires a Display inside a composite's internal editor and watches both
+rings adopt `number` and revert on disconnect. Line deleted per the reconcile
+rule; the test keeps it true.
+
 ### Fuzz round 3 (widened pools): three deeper finds, incl. the WIRE itself (2026-07-29c)
 
 Widened the generator (17-digit doubles, denormals, 2^53+1, fractional/negative

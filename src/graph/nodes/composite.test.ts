@@ -223,6 +223,30 @@ describe("CompositeNode boundary output-type adoption (D17)", () => {
     expect((c.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("trueany");
   });
 
+  it("an INTERNAL trueany node adopts on a live drill-in wire (not just the boundary)", async () => {
+    // The main canvas's connection-pipe settle never touches the internal
+    // editor — the internal pipe's settleInternalTypes runs the SAME joint
+    // fixpoint (settleWildcardTypes) instead, so a Display dropped inside a
+    // composite adopts its rings exactly like one on the outer canvas.
+    const { DisplayNode } = await import("./display");
+    const c = new CompositeNode();
+    const num = new NumberInputNode({ value: 7 });
+    const disp = new DisplayNode();
+    await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(disp as unknown as Schemes["Node"]);
+    const sockOf = (side: "inputs" | "outputs") =>
+      ((side === "inputs" ? disp.inputs.in : disp.outputs.out)!.socket as unknown as { dataType: string }).dataType;
+    expect(sockOf("inputs")).toBe("trueany");
+    // Wiring fires the internal pipe → adoption on both Display sides.
+    await connect(c.internalEditor, num, "value", disp, "in");
+    expect(sockOf("inputs")).toBe("number");
+    expect(sockOf("outputs")).toBe("number");
+    // Unwiring reverts the rings (derived state, never persisted — SOCK-5).
+    const conn = c.internalEditor.getConnections()[0]!;
+    await c.internalEditor.removeConnection(conn.id);
+    expect(sockOf("inputs")).toBe("trueany");
+  });
+
   it("adoption survives a snapshot/hydrate round-trip (load path settles once)", async () => {
     const c = new CompositeNode();
     const num = new NumberInputNode({ value: 3 });

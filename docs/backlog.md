@@ -198,8 +198,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - The grid is mouse-only: no arrow keys between cells, no Enter-to-move-down, no
     Tab-across, and headers aren't focusable so the sort has no keyboard path. The
     biggest gap against "zero learning curve from Excel", and much the largest job.
-- [ ] **Small mechanical sweep**: trueany adoption runs on the MAIN editor only —
-  drill-in composites don't adopt (`trueAnyAdopt.ts`).
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 
