@@ -70,12 +70,16 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   // Sketch mode (#24): an aggregate scaled up from a sample carries `__approx` —
   // never show it as if it were an exact total.
   const approx = value.__approx != null;
+  // Computed columns (λ / Formula source) mark the chip with a quiet ƒ — the
+  // at-a-glance signal that part of this table is DEFINED, not typed (C2,
+  // v2.0/19-computed-column-surface.md).
+  const computedCols = source?.filter((c) => c.lambda || c.expr).length ?? 0;
 
   return (
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--frame${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}. ${onSave ? "Edit" : "View"}.`}
+      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSave || onSaveSource ? "Edit" : "View"}.`}
       onClick={async (e) => {
         e.stopPropagation();
         // Header accent: an explicit prop, else the inherited node/group style
@@ -126,16 +130,19 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           groupColor: st.groupColor,
           groupColorDark: st.groupColorDark,
           pinNodeId: hostId ?? undefined,
-          // The column-source model (slice 1): the host's λ keys, each column's
-          // current binding, and the COMPUTED columns' derived display text
-          // (they have no raw cells — the popup renders these read-only).
-          ...(isSource && lambdaOptions?.length ? {
-            lambdaOptions,
+          // The column-source model: the host's λ keys, each column's current
+          // binding (λ or inline formula), and the COMPUTED columns' derived
+          // display text (they have no raw cells — the popup renders these
+          // read-only). Always passed for a literal source, so the source
+          // select (Typed | Formula | λ…) is there even before any λ socket.
+          ...(isSource ? {
+            lambdaOptions: lambdaOptions ?? [],
             sourceLambdas: source!.map((c) => c.lambda),
+            sourceExprs: source!.map((c) => c.expr),
             computedCells: Array.from(
               { length: Math.max(rowCount, frameRowCount(value)) },
               (_, r) => source!.map((c, j) => {
-                if (!c.lambda) return null;
+                if (!c.lambda && !c.expr) return null;
                 const cell = formatFrameCell(value.columns[j]?.type ?? "number", value.columns[j]?.values[r] ?? null);
                 return cell === null ? "" : String(cell);
               }),
@@ -146,7 +153,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      [{approx ? "≈" : ""}{totalRows}×{cols} Frame]
+      [{approx ? "≈" : ""}{totalRows}×{cols} Frame{computedCols ? " ƒ" : ""}]
     </button>
   );
 }

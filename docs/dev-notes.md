@@ -144,6 +144,32 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Surface slice 2 SHIPS: the Formula column source + the chip's ƒ (2026-07-29p)
+
+The pure-text rung of the column-source ladder, per the ratified design:
+- **`FrameSourceColumn.expr`** — an inline row-wise formula on the column
+  itself, riding `frameText` (serialize/parse; blank exprs dropped). A
+  `lambda` binding wins when both are set (the wired, reusable definition,
+  mirroring the CC node's λ-over-expr precedence); removing the λ socket
+  falls the column back to its expr.
+- **Frame Input's topo loop generalizes** to computed = λ OR expr: deps for
+  an expr column are its variables + `rowRefNames` (so `@`-only formulas
+  order correctly); a non-parsing expr fills the column with #VALUE!; a
+  variable naming no column is a per-row `#REF! No column "x"` (Formula
+  columns have no side inputs — that's the CC node's/λ-captures' job).
+  Compiled evaluators cache per expr text across data() calls.
+- **TablePopup (C2)**: the source select now reads Typed | Formula | λ… and
+  renders for EVERY literal-source frame editor (it no longer waits for a λ
+  socket to exist); picking Formula opens an =-prefixed formula row under the
+  header — one definition per column, popup-local until Save. Type-cycle
+  hides on computed columns either way.
+- **The chip's ƒ** (C2's glyph): a Frame Input chip with computed columns
+  reads `[3×4 Frame ƒ]`, title counting them — the at-a-glance mark that part
+  of the table is defined, not typed.
+7 pins (45 total in computedColumn.test.ts). C4 (the author eyeball of the
+computed-cell look + formula row) is the surface's only open item; the tail
+(binding pickers, per-column format on the CC node) stays in the backlog.
+
 ### The @ operator: this-row reads, Excel's [@Price] as @price (2026-07-29o)
 
 Author proposal, built: `@price` is Excel's table this-row reference, and it

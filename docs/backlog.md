@@ -169,11 +169,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **The computed-column SURFACE — `v2.0/19-computed-column-surface.md`, design
   RATIFIED 2026-07-29** (C1 addable λ sockets; C2 TablePopup formula editing +
   card-chip glyph; C3 STRUCK — no wired-list source, no Frame from Lists fold;
-  C4 eyeball). The shared core is extracted (`computedColumnCore.ts` — the CC
-  node delegates). SLICE 1 SHIPPED 2026-07-29 (λ sockets + source select +
-  topo-order intra-table refs + cycle refusal + computed-cell rendering — C4
-  look awaits the eyeball). Next: SLICE 2 — the Formula source (TablePopup
-  editing per C2) + the card-chip computed-column glyph.
+  C4 eyeball). Slices 1+2 SHIPPED 2026-07-29: λ sockets, per-column source
+  select (Typed | Formula | λ…), inline Formula source with popup editing,
+  topo-order intra-table refs (@/col() deps included) + cycle refusal,
+  computed-cell rendering, the chip's ƒ mark. Remaining here: C4 — the author
+  eyeballs the computed-cell look + the popup formula row on the preview.
 - [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
   inline expr + wired-λ definition, side-input sockets, row/rows, col() for
   unspellable names, addAs output typing, After placement). Remaining,

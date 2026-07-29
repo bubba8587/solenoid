@@ -16,7 +16,7 @@ import {
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
   formatFrameCell, isCubeValue, isFrameValue, inferColumn,
-  type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
+  type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
@@ -139,9 +139,15 @@ export class FrameInputNode extends ClassicPreset.Node {
     }
   }
 
+  /** Compiled Formula-source columns, keyed by expr text (rebuilt each data()
+   *  from the exprs present, so edits drop stale entries; a null value = the
+   *  text does not parse). */
+  private _exprCache = new Map<string, { evaluator: ExprEvaluator; vars: string[] } | null>();
+
   data(inputs: Record<string, unknown[] | undefined> = {}) {
     const source = parseFrameSource(this.frameText);
-    if (!source.some((c) => c.lambda)) {
+    const isComputed = (c: FrameSourceColumn) => !!(c.lambda || c.expr);
+    if (!source.some(isComputed)) {
       if (!this.cachedResult || this._builtFrom !== this.frameText) {
         this.cachedResult = frameFromInputText(this.frameText);
         this._builtFrom = this.frameText;
@@ -149,54 +155,80 @@ export class FrameInputNode extends ClassicPreset.Node {
       return { frame: this.cachedResult };
     }
 
-    // ── Computed (λ) columns — topo order, cycle-refusing ──────────────────
+    // ── Computed (λ / Formula) columns — topo order, cycle-refusing ────────
     // The working frame starts as the literal derivation with computed columns
     // EMPTIED (their stale text must not feed row counts or earlier deps);
-    // each computed column then fills in dependency order, so a λ column can
-    // reference another computed column. The rules per row are the shared
-    // core's (computedColumnCore.ts) — identical to the Computed Column verb.
+    // each computed column then fills in dependency order, so a computed
+    // column can reference another. The rules per row are the shared core's
+    // (computedColumnCore.ts) — identical to the Computed Column verb.
     const base = deriveFrame(source);
     const frame: FrameValue = {
       __frame: true,
       columns: base.columns.map((col, i) =>
-        source[i].lambda ? { name: col.name, type: "number" as FrameColType, values: [] } : col),
+        isComputed(source[i]) ? { name: col.name, type: "number" as FrameColType, values: [] } : col),
     };
     const nameToIdx = new Map(source.map((c, i) => [c.name, i] as const));
-    const remaining = new Set(source.map((c, i) => (c.lambda ? i : -1)).filter((i) => i >= 0));
+    const remaining = new Set(source.map((c, i) => (isComputed(c) ? i : -1)).filter((i) => i >= 0));
     const lamAt = (i: number) => {
       const v = inputs[source[i].lambda!]?.[0];
       return isLambdaValue(v) ? v : null;
     };
+    const compiled = new Map<string, { evaluator: ExprEvaluator; vars: string[] } | null>();
+    const exprAt = (i: number) => {
+      const text = source[i].expr!;
+      let entry = compiled.get(text);
+      if (entry === undefined) {
+        entry = this._exprCache.get(text);
+        if (entry === undefined) {
+          const evaluator = compileEvaluator(text);
+          entry = evaluator ? { evaluator, vars: extractVariables(text) } : null;
+        }
+        compiled.set(text, entry);
+      }
+      return entry;
+    };
     const rowCount = () => frame.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
+    const fill = (i: number, cell: FrameCell) =>
+      (frame.columns[i] = { name: source[i].name, type: "number", values: Array(rowCount()).fill(cell) });
 
     let progress = true;
     while (progress && remaining.size > 0) {
       progress = false;
       for (const i of [...remaining]) {
-        const lam = lamAt(i);
-        // Column dependencies: the λ's params AND its row-context reads
-        // (`@name`, `col("name")` — rowRefNames), so a zero-param λ reading
-        // @revenue still orders after the revenue column.
-        const blocked = lam
+        const c = source[i];
+        const lam = c.lambda ? lamAt(i) : null;
+        const ex = !c.lambda && c.expr ? exprAt(i) : null;
+        // Column dependencies: the definition's variables AND its row-context
+        // reads (`@name`, `col("name")` — rowRefNames), so a zero-param λ or a
+        // pure-@ formula reading @revenue still orders after that column.
+        const deps = lam
           ? [...lam.params, ...(lam.expr ? rowRefNames(lam.expr) : [])]
-              .some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })
-          : false;
-        if (blocked) continue;
+          : ex
+            ? [...ex.vars, ...rowRefNames(c.expr!)]
+            : [];
+        if (deps.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })) continue;
         remaining.delete(i);
         progress = true;
-        const c = source[i];
-        if (!lam) {
+        if (c.lambda && !lam) {
           // No λ wired to the bound socket yet — the column is blank, not an error.
-          frame.columns[i] = { name: c.name, type: "number", values: Array(rowCount()).fill(null) };
+          fill(i, null);
           continue;
         }
-        const r = computeColumnCells(frame, { kind: "lambda", lam }, {
-          // A λ param naming no column: side values ride the λ's OWN captures
-          // (the Lambda node's sockets), so here it is a miss, per row.
-          sideValue: (p) => solError("#REF!", `No column "${p}" — a table λ's side values ride its captures`),
-        });
+        if (!c.lambda && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
+        const r = computeColumnCells(
+          frame,
+          lam ? { kind: "lambda", lam } : { kind: "expr", evaluator: ex!.evaluator, vars: ex!.vars },
+          {
+            // A variable naming no column: λ side values ride the λ's OWN
+            // captures (the Lambda node's sockets); a Formula column has no
+            // side inputs at all. Either way it is a miss, per row.
+            sideValue: (p) => solError("#REF!", lam
+              ? `No column "${p}" — a table λ's side values ride its captures`
+              : `No column "${p}"`),
+          },
+        );
         if (isSolError(r)) {
-          frame.columns[i] = { name: c.name, type: "number", values: Array(rowCount()).fill(r) };
+          fill(i, r);
         } else {
           // Type from inference, values verbatim (inferColumn CONSTRUCTS a
           // column — stringified raw, coerced cells — which would mangle
@@ -213,6 +245,7 @@ export class FrameInputNode extends ClassicPreset.Node {
         frame.columns[i] = { name: source[i].name, type: "number", values: Array(n).fill(err) };
       }
     }
+    this._exprCache = compiled;
     this.cachedResult = frame;
     this._builtFrom = undefined; // computed frames never reuse the identity cache
     return { frame };

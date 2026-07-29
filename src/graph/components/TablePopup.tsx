@@ -184,6 +184,11 @@ export function TablePopup() {
   // host's λ input key defining the column. Committed on Save via the source
   // column's `lambda` field.
   const [colLambdas, setColLambdas] = useState<(string | undefined)[]>([]);
+  // Per-column inline formula (the Formula source, slice 2): undefined = not a
+  // Formula column; a string (possibly empty, mid-authoring) = the row-wise
+  // expr. One definition per column — Excel's "same formula down the column".
+  // Committed on Save via the source column's `expr` field.
+  const [colExprs, setColExprs] = useState<(string | undefined)[]>([]);
   const initedFor = useRef<TablePopupState | null>(null);
 
   // (Re)seed whenever a different popup opens.
@@ -198,6 +203,7 @@ export function TablePopup() {
     setHeaderNames(Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? ""));
     setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
     setColLambdas(Array.from({ length: ncols }, (_, j) => state.sourceLambdas?.[j]));
+    setColExprs(Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]));
     // Seed the FC controls row: a date column defaults to the date style, a number
     // column to Auto; the unit dropdown seeds from the column's locked unit. A
     // PERSISTED per-column format (frameFormatStore, keyed by node+column name) wins
@@ -573,13 +579,15 @@ export function TablePopup() {
       // only) so it rides the value downstream via deriveFrame.
       const u = state?.unitTaggable && (columnTypes[c] ?? "number") === "number" ? annFor(c).unit : undefined;
       const lambda = colLambdas[c];
+      const expr = lambda ? undefined : colExprs[c]?.trim() || undefined;
       return {
         name: (headerNames[c] ?? "").trim(),
         type: columnTypes[c] ?? "number",
-        // A computed column has no raw text — its cells derive from the λ.
-        cells: lambda ? [] : grid.map((row) => row[c] ?? ""),
+        // A computed column has no raw text — its cells derive from the λ/formula.
+        cells: lambda || expr ? [] : grid.map((row) => row[c] ?? ""),
         ...(u && u !== "none" ? { unit: u } : {}),
         ...(lambda ? { lambda } : {}),
+        ...(expr ? { expr } : {}),
       };
     });
   }
@@ -675,7 +683,7 @@ export function TablePopup() {
                       <div className="table-popup__colhead-edit">
                         {/* A computed column's type is inferred from its cells —
                             the cycle button only applies to a Typed column. */}
-                        {!colLambdas[c] && (
+                        {!colLambdas[c] && colExprs[c] === undefined && (
                           <button
                             type="button"
                             className="table-popup__coltype"
@@ -697,25 +705,49 @@ export function TablePopup() {
                     ) : (
                       colHeaderLabel(c)
                     )}
-                    {editableHeaders && !vertical && (state.lambdaOptions?.length ?? 0) > 0 && (
-                      // The column-source select (slice 1): Typed, or one of the
-                      // host's wired λ inputs. Only rendered when the host HAS λ
-                      // sockets, so plain tables see no new chrome.
-                      <select
-                        className="table-popup__srcselect"
-                        value={colLambdas[c] ?? ""}
-                        {...stopSortTrigger}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          const v = e.target.value || undefined;
-                          setColLambdas((prev) => { const next = [...prev]; next[c] = v; return next; });
-                        }}
-                      >
-                        <option value="">Typed</option>
-                        {state.lambdaOptions!.map((k) => (
-                          <option key={k} value={k}>{`λ${k.replace(/^fn/, "")}`}</option>
-                        ))}
-                      </select>
+                    {editableHeaders && !vertical && !!state.onSaveSource && (
+                      // The column-source select (the column-source model): Typed,
+                      // an inline Formula, or one of the host's wired λ inputs.
+                      // Only the literal-source frame editor gets it.
+                      <>
+                        <select
+                          className="table-popup__srcselect"
+                          value={colLambdas[c] ?? (colExprs[c] !== undefined ? "=" : "")}
+                          {...stopSortTrigger}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setColLambdas((prev) => { const next = [...prev]; next[c] = v && v !== "=" ? v : undefined; return next; });
+                            setColExprs((prev) => { const next = [...prev]; next[c] = v === "=" ? (next[c] ?? "") : undefined; return next; });
+                          }}
+                        >
+                          <option value="">Typed</option>
+                          <option value="=">Formula</option>
+                          {(state.lambdaOptions ?? []).map((k) => (
+                            <option key={k} value={k}>{`λ${k.replace(/^fn/, "")}`}</option>
+                          ))}
+                        </select>
+                        {colExprs[c] !== undefined && !colLambdas[c] && (
+                          // The column's one formula (edited here per C2 — never
+                          // per-cell text). Variables are column names; @name /
+                          // col() read this row. Popup-local until Save.
+                          <div className="table-popup__exprrow">
+                            <span className="table-popup__exprprefix">=</span>
+                            <input
+                              className="table-popup__input table-popup__input--text table-popup__exprinput"
+                              value={colExprs[c] ?? ""}
+                              placeholder="price * qty"
+                              spellCheck={false}
+                              {...stopSortTrigger}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setColExprs((prev) => { const next = [...prev]; next[c] = v; return next; });
+                              }}
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                     {sortable && (
                       <SortIndicator
@@ -797,9 +829,10 @@ export function TablePopup() {
                     // the commit (units, dates, number formats).
                     const fmtEdit = formattedPreview && editable && !vertical;
                     const editingHere = !!editCell && editCell.r === r && editCell.c === c;
-                    // A COMPUTED column's cells derive from its λ — read-only,
-                    // rendered from the derived frame, no raw text behind them.
-                    const computedHere = !vertical && !!colLambdas[c];
+                    // A COMPUTED column's cells derive from its λ/formula —
+                    // read-only, rendered from the derived frame, no raw text
+                    // behind them.
+                    const computedHere = !vertical && (!!colLambdas[c] || colExprs[c] !== undefined);
                     const canEdit = !computedHere && editable && !(formattedPreview && !fmtEdit); // = !readOnly below
                     if (computedHere) {
                       return (

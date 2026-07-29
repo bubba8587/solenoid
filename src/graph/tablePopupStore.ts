@@ -107,6 +107,9 @@ export interface TablePopupState {
   lambdaOptions?: string[];
   /** Per-column initial λ binding (aligned with columns; undefined = Typed). */
   sourceLambdas?: (string | undefined)[];
+  /** Per-column initial inline formula — the Formula source (aligned with
+   *  columns; undefined = not a Formula column). */
+  sourceExprs?: (string | undefined)[];
   /** Formatted display text for COMPUTED columns (row-major; null where the
    *  column is Typed) — computed cells render read-only from the derived
    *  frame, they have no raw text to edit. */
