@@ -4,8 +4,11 @@
 // (navigation convention — these formulas bake their own radian conversion),
 // distances in meters unless a description says km.
 
-import { SolarPositionNode, SunriseSunsetNode, MoonPhaseNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import {
+  SolarPositionNode, SunriseSunsetNode, MoonPhaseNode,
+  solarPosition, sunTimes, moonPhase, latLonError,
+} from "../rete-nodes";
+import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 const G = "6.6743*10^-11"; // CODATA gravitational constant
 
@@ -44,7 +47,81 @@ export const ORBIT_FORMULAS: FormulaPackEntry[] = [
 
 export const EARTHSKY_FORMULAS: FormulaPackEntry[] = [...EARTH_FORMULAS, ...ORBIT_FORMULAS];
 
+// The pack's custom-logic nodes as formula functions (D19 decision 4). The
+// Sunrise / Sunset node splits into three names — a formula returns one value,
+// and SUNRISE / SUNSET / DAYLENGTH are what its three outputs are called.
+const geo = (when: unknown, lat: unknown, lon: unknown): { w: number; la: number; lo: number } | ReturnType<typeof latLonError> | null => {
+  if (when == null || lat == null || lon == null) return null;
+  const w = Number(when), la = Number(lat), lo = Number(lon);
+  if (!Number.isFinite(w) || !Number.isFinite(la) || !Number.isFinite(lo)) return null;
+  return latLonError(la, lo) ?? { w, la, lo };
+};
+const isGeo = (g: unknown): g is { w: number; la: number; lo: number } =>
+  typeof g === "object" && g !== null && "w" in g;
+
+const EARTHSKY_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "SUNPOSITION",
+    impl: (when, lat, lon, part) => {
+      const g = geo(when, lat, lon);
+      if (!isGeo(g)) return g;
+      const p = part == null ? "elevation" : String(part).toLowerCase();
+      const r = solarPosition(g.w, g.la, g.lo);
+      if (p === "elevation") return r.elevation;
+      if (p === "azimuth") return r.azimuth;
+      if (p === "declination") return r.declination;
+      return solError("#VALUE!", `Unknown part "${p}" — elevation, azimuth, declination`);
+    },
+    returns: "number", arity: [3, 4],
+    signature: "datetime UTC, lat, lon, part (elevation)",
+  },
+  {
+    name: "SUNRISE",
+    impl: (when, lat, lon) => {
+      const g = geo(when, lat, lon);
+      return isGeo(g) ? sunTimes(g.w, g.la, g.lo).sunrise : g;
+    },
+    returns: "date", arity: [3, 3],
+    signature: "date, lat, lon — UTC; blank in polar night/day",
+  },
+  {
+    name: "SUNSET",
+    impl: (when, lat, lon) => {
+      const g = geo(when, lat, lon);
+      return isGeo(g) ? sunTimes(g.w, g.la, g.lo).sunset : g;
+    },
+    returns: "date", arity: [3, 3],
+    signature: "date, lat, lon — UTC; blank in polar night/day",
+  },
+  {
+    name: "DAYLENGTH",
+    impl: (when, lat, lon) => {
+      const g = geo(when, lat, lon);
+      return isGeo(g) ? sunTimes(g.w, g.la, g.lo).dayLength : g;
+    },
+    returns: "number", arity: [3, 3],
+    signature: "date, lat, lon — hours",
+  },
+  {
+    name: "MOONPHASE",
+    impl: (when, part) => {
+      if (when == null) return null;
+      const w = Number(when);
+      if (!Number.isFinite(w)) return null;
+      const p = part == null ? "phase" : String(part).toLowerCase();
+      const r = moonPhase(w);
+      if (p === "phase") return r.phase;
+      if (p === "age") return r.age;
+      if (p === "illumination") return r.illumination;
+      return solError("#VALUE!", `Unknown part "${p}" — phase, age, illumination`);
+    },
+    returns: "number", arity: [1, 2],
+    signature: "date, part (phase)",
+  },
+];
+
 export const EARTHSKY_PACK: Pack = {
+  formulas: EARTHSKY_PACK_FORMULAS,
   id: "earthsky",
   name: "Earth & Sky",
   description: "Navigation and astronomy: great-circle distance and bearing, gravity by latitude, horizon distance, orbital mechanics (Kepler, escape velocity), sun position and sunrise/sunset (NOAA), and moon phase.",
@@ -67,6 +144,7 @@ export const EARTHSKY_PACK: Pack = {
       entry: {
         type: "es-sunrise-sunset",
         label: "Sunrise / Sunset",
+        fx: ["SUNRISE", "SUNSET", "DAYLENGTH"],
         description: "Sunrise and sunset times (UTC) and day length for a date at a lat/lon — NOAA formulation with standard refraction; blank in polar day/night",
         keywords: "dawn dusk daylight noaa golden hour",
         create: () => new SunriseSunsetNode(),

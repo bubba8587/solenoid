@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "./thermo";
-import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "./formulaTestKit";
 import { isaAtGeopotential, isaAtGeometric, IsaAtmosphereNode, ANTOINE, antoinePressure, AntoineNode, type AntoineOp } from "../nodes/thermo";
 import { isSolError } from "../errorValue";
 
@@ -117,5 +117,19 @@ describe("Antoine vapor pressure", () => {
     expect(r.pressure as number).toBeCloseTo(7833, -2); // ~7.8 kPa
     expect(r.bp).toBeCloseTo(78.37, 0);
     expect(isSolError(n.data({ t: [-500] }).pressure)).toBe(true);
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("STANDARDATMOSPHERE reads sea level by property (pressure default)", () => {
+    expect(evalPackFormula("STANDARDATMOSPHERE(0)")).toBeCloseTo(101325, 0);
+    expect(evalPackFormula('STANDARDATMOSPHERE(0, "temp")')).toBeCloseTo(288.15, 6);
+    const bad = evalPackFormula("STANDARDATMOSPHERE(100000)");
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
+  });
+  it("ANTOINE reproduces water's normal boiling point within a percent", () => {
+    expect((evalPackFormula('ANTOINE("water", 100)') as number) / 101325).toBeCloseTo(1, 2);
+    const bad = evalPackFormula('ANTOINE("mercury", 25)');
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
   });
 });

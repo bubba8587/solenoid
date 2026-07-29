@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { EM_FORMULAS, ELECTROMAGNETISM_PACK } from "./electromagnetism";
-import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "./formulaTestKit";
+import { isSolError } from "../errorValue";
 import { emBand, EmSpectrumNode } from "../nodes/emSpectrum";
 import { PHYS_CONSTANTS, PhysicsConstantNode } from "../rete-nodes";
 
@@ -132,5 +133,17 @@ describe("EM Spectrum Band", () => {
     const byWl = n.data({ freq: [null], wavelength: [532e-9] });
     expect(byWl.band).toBe("Visible (green)");
     expect(byWl.freq as number).toBeCloseTo(5.635e14, -11);
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("EMSPECTRUMBAND classifies by frequency, or by wavelength via an elided first arg", () => {
+    expect(String(evalPackFormula("EMSPECTRUMBAND(5e14)"))).toMatch(/^Visible/);
+    expect(evalPackFormula("EMSPECTRUMBAND(, 0.05)")).toBe("Microwave");
+  });
+  it("PHYSICSCONSTANT reads the table by id, case-sensitively", () => {
+    expect(evalPackFormula('PHYSICSCONSTANT("c")')).toBe(299792458);
+    const bad = evalPackFormula('PHYSICSCONSTANT("speed")');
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
   });
 });

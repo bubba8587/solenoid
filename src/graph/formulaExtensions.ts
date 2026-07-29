@@ -86,7 +86,11 @@ export function initPackFormulas(): void {
       PACK_FORMULA_OWNER.set(name, p.id);
       PACK_FORMULA_META.set(name, f);
       registerInternal(name, f.impl);
-      EXCEL_IMPL_META[name] = { returns: f.returns, arity: f.arity, native: true };
+      EXCEL_IMPL_META[name] = {
+        returns: f.returns, arity: f.arity, native: true,
+        ...(f.rank ? { rank: f.rank } : {}),
+        ...(f.listArgs ? { listArgs: true } : {}),
+      };
     }
   }
 }

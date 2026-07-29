@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { HEALTH_FORMULAS } from "./health";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "./formulaTestKit";
+import { isSolError } from "../errorValue";
 import { hrZonesFrame, HrZonesNode } from "../nodes/health";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -77,5 +78,16 @@ describe("Heart-Rate Zones", () => {
     expect((out.zones as { columns: { values: unknown[] }[] }).columns[2].values[4]).toBe(180);
     const bad = n.data({ age: [40], resting: [200] });
     expect((bad.zones as { code?: string }).code).toBe("#DOMAIN!");
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("HEARTRATEZONES is the zone table as five [low, high] rows", () => {
+    expect(evalPackFormula("HEARTRATEZONES(200)")).toEqual(
+      [[100, 120], [120, 140], [140, 160], [160, 180], [180, 200]]);
+    // Karvonen with a resting HR: rest + pct * (max - rest)
+    expect((evalPackFormula("HEARTRATEZONES(200, 60)") as number[][])[0]).toEqual([130, 144]);
+    const bad = evalPackFormula("HEARTRATEZONES(200, 300)");
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
   });
 });

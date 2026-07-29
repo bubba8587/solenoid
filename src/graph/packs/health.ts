@@ -5,8 +5,8 @@
 // Sex-specific equations ship as two presets (the constants differ; a locked
 // formula stays reliable instead of hiding a ±sign input).
 
-import { HrZonesNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { HrZonesNode, hrZonesMatrix } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 export const HEALTH_BODY: FormulaPackEntry[] = [
   { type: "hf-bmi", label: "BMI", expr: "w/h^2",
@@ -84,7 +84,25 @@ export const HEALTH_FORMULAS: FormulaPackEntry[] = [
   ...HEALTH_BODY, ...HEALTH_COMPOSITION, ...HEALTH_ENERGY, ...HEALTH_CARDIO, ...HEALTH_CLINICAL,
 ];
 
+// The zone table as a formula function (D19 decision 4): five [low, high] rows,
+// Z1…Z5 — the matrix form of the node's frame (frames stay out of formulas).
+const HEALTH_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "HEARTRATEZONES",
+    impl: (max, resting) => {
+      if (max == null) return null;
+      const m = Number(max);
+      if (!Number.isFinite(m)) return null;
+      const r = resting == null ? null : Number(resting);
+      return hrZonesMatrix(m, r !== null && Number.isFinite(r) ? r : null);
+    },
+    returns: "number", rank: "matrix", arity: [1, 2],
+    signature: "max HR, resting HR — five [low, high] rows",
+  },
+];
+
 export const HEALTH_PACK: Pack = {
+  formulas: HEALTH_PACK_FORMULAS,
   id: "health",
   name: "Health & Fitness",
   description: "Body and fitness formulas: BMI, body surface area, BMR/TDEE, body-fat estimates (Deurenberg, US Navy), the heart-rate zone table, VO₂max, ideal body weight, creatinine clearance. Metric inputs; estimates, not medical advice.",
@@ -96,6 +114,7 @@ export const HEALTH_PACK: Pack = {
       entry: {
         type: "hf-zones",
         label: "Heart-Rate Zones",
+        fx: ["HEARTRATEZONES"],
         description: "Five training zones as a table: age (or a wired max HR) → Z1–Z5 low/high BPM. Add a resting HR for the Karvonen method. Chart it or look a zone up",
         keywords: "heart rate zones training karvonen bpm z1 z2 z3 z4 z5",
         create: () => new HrZonesNode(),

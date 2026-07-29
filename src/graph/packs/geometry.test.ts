@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "./geometry";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "./formulaTestKit";
 import { solveTriangle, TriangleSolverNode, type TriangleSolved } from "../nodes/triangle";
 import { isSolError } from "../errorValue";
 
@@ -11,6 +11,18 @@ const num = (type: string, inputs: Record<string, number>): number => {
   expect(typeof r, `${type} → ${JSON.stringify(r)}`).toBe("number");
   return r as number;
 };
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("TRIANGLESOLVER solves 3-4-C=90 through elided arguments", () => {
+    const r = evalPackFormula("TRIANGLESOLVER(3, 4, , , , 90)") as number[];
+    expect(r[2]).toBeCloseTo(5, 9);            // c
+    expect(r[3]).toBeCloseTo(36.8698976, 5);   // A opposite the 3 side
+    expect(r[5]).toBe(90);                     // the given C passes through
+  });
+  it("fewer than three parts is the node's quiet passthrough", () => {
+    expect(evalPackFormula("TRIANGLESOLVER(3, 4)")).toEqual([3, 4, null, null, null, null]);
+  });
+});
 
 describe("Geometry second-wave formulas", () => {
   it("every formula compiles and is well-formed", () => {

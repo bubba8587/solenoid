@@ -138,7 +138,7 @@ export function moonPhase(serial: number): MoonPhase {
 
 // ─── Nodes ────────────────────────────────────────────────────────────────────
 
-function latLonError(lat: number, lon: number): SolError | null {
+export function latLonError(lat: number, lon: number): SolError | null {
   if (lat < -90 || lat > 90) return solError("#DOMAIN!", "Latitude runs −90 to 90");
   if (lon < -180 || lon > 180) return solError("#DOMAIN!", "Longitude runs −180 to 180 (east positive)");
   return null;

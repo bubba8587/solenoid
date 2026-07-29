@@ -39,19 +39,20 @@ export class ColebrookNode extends ClassicPreset.Node {
   data(inputs: { re?: (number | null)[]; rr?: (number | null)[] }) {
     const re = readInput(inputs.re, this.literals.re);
     const rr = readInput(inputs.rr, this.literals.rr);
-    let result: number | SolError | null = null;
-    if (typeof re === "number" && typeof rr === "number") {
-      if (re <= 0 || rr < 0 || rr >= 1) {
-        result = solError("#DOMAIN!", "Needs Re > 0 and relative roughness 0 ≤ ε/D < 1");
-      } else if (re < 2300) {
-        result = 64 / re; // laminar — Colebrook doesn't apply, hand off to 64/Re
-      } else {
-        result = colebrookF(re, rr);
-      }
-    }
+    const result = typeof re === "number" && typeof rr === "number" ? colebrookFriction(re, rr) : null;
     this.cachedResult = result;
     return { result };
   }
+}
+
+/** The guarded friction factor the node and the pack's COLEBROOK formula share:
+ *  #DOMAIN! outside Re > 0 / 0 ≤ ε/D < 1, the laminar 64/Re hand-off below
+ *  Re 2300, Colebrook–White above. */
+export function colebrookFriction(re: number, rr: number): number | SolError {
+  if (re <= 0 || rr < 0 || rr >= 1) {
+    return solError("#DOMAIN!", "Needs Re > 0 and relative roughness 0 ≤ ε/D < 1");
+  }
+  return re < 2300 ? 64 / re : colebrookF(re, rr);
 }
 
 // ─── Pipe roughness ───────────────────────────────────────────────────────────

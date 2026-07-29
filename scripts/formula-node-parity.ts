@@ -15,6 +15,12 @@
 
 import { measureParity, excelNamedGapNames } from "../src/graph/formulaNodeParity";
 import { EXCEL_IMPL_META } from "../src/graph/excelFunctions";
+import { initPackFormulas } from "../src/graph/formulaExtensions";
+
+// Register every pack's formula functions first — the app does this at startup
+// (main.tsx), so a measurement without them would report the custom-logic pack
+// nodes (TRIANGLESOLVER, MOLARMASS…) as gaps they no longer are.
+initPackFormulas();
 
 const m = measureParity();
 

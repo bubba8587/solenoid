@@ -39,6 +39,11 @@ export type NodeCatalogEntry = {
   // class-derived hover hint when it differs from the label, or common aliases).
   // Space-separated; matched by the Add-menu search only, never displayed.
   keywords?: string;
+  // The Solenoid-native formula name(s) this leaf answers to when the D19 2(a)
+  // despaced label CAN'T be the name (punctuation in the label, or one node
+  // splitting into several functions — "Sunrise / Sunset" → SUNRISE + SUNSET).
+  // Same idea as an op's `fx`, one level up; read by the parity measurement.
+  fx?: string[];
 };
 
 // One Excel function a node stands in for. `parity`/`note` override the entry's

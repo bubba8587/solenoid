@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames } from "./formulaNodeParity";
+import { initPackFormulas } from "./formulaExtensions";
 
 // ─── The parity RATCHET (D19) ─────────────────────────────────────────────────
 // The node set and the formula language drifted apart because NOTHING checked one
@@ -41,6 +42,9 @@ const UNTRACKED_DISPATCHABLE: string[] = [];
 const fmt = (xs: string[]) => (xs.length ? `\n  ${xs.join("\n  ")}\n` : " (none)");
 
 describe("formula ↔ node parity ratchet", () => {
+  // Pack formula functions register at app startup (main.tsx) — measure the
+  // same registry the app runs, like the report script does.
+  initPackFormulas();
   const m = measureParity();
 
   describe("gap A — Excel-named nodes not callable in a formula", () => {

@@ -6,7 +6,7 @@
 
 import { ClassicPreset } from "rete";
 import { listIn, numIn, numOut, readInput } from "./shared";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate } from "../valueKinds";
 
 // ─── Parallel Combine ─────────────────────────────────────────────────────────
@@ -28,26 +28,27 @@ export class ParallelCombineNode extends ClassicPreset.Node {
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
-    // Aggregator policy: per-cell SolError propagates, null (missing) is skipped.
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    let result: number | SolError | null = null;
-    if (arr.length > 0) {
-      // A 0 element short-circuits the whole combination to 0 (a 0 Ω branch);
-      // computing through 1/0 = ∞ would trip the finite guard, so handle it.
-      if (arr.some((v) => v === 0)) {
-        result = 0;
-      } else {
-        const sum = arr.reduce((a, b) => a + 1 / b, 0);
-        result = sum === 0
-          ? solError("#DIV/0!", "The reciprocals cancel out — the combination is undefined")
-          : 1 / sum;
-      }
-    }
+    const result = parallelCombine(inputs.list?.[0] ?? []);
     this.cachedResult = result;
     return { result };
   }
+}
+
+/** The parallel combination 1/Σ(1/xᵢ) — the node's core, shared with the pack's
+ *  PARALLELCOMBINE formula. Aggregator policy: per-cell SolError propagates,
+ *  null (missing) is skipped; empty → null. A 0 element short-circuits the
+ *  whole combination to 0 (a 0 Ω branch) — computing through 1/0 = ∞ would trip
+ *  the finite guard. Reciprocals cancelling (−R with +R) is #DIV/0!. */
+export function parallelCombine(cells: readonly (number | null | SolError)[]): number | SolError | null {
+  const prep = forAggregate([...cells]);
+  if (prep.error) return prep.error;
+  const arr = prep.nums;
+  if (arr.length === 0) return null;
+  if (arr.some((v) => v === 0)) return 0;
+  const sum = arr.reduce((a, b) => a + 1 / b, 0);
+  return sum === 0
+    ? solError("#DIV/0!", "The reciprocals cancel out — the combination is undefined")
+    : 1 / sum;
 }
 
 // ─── E-Series preferred value ─────────────────────────────────────────────────
@@ -168,16 +169,11 @@ export class AwgNode extends ClassicPreset.Node {
     let resistance: number | SolError | null = null;
     let ampacity: number | null = null;
     if (typeof n === "number") {
-      if (n >= -3 && n <= 40) {
-        const d = 0.127 * 92 ** ((36 - n) / 39);
-        const a = (Math.PI / 4) * d * d;
-        diameter = d;
-        area = a;
-        resistance = 17.24 / a; // ρ·L/A with ρ_cu = 1.724e-8 Ω·m, per km
-        ampacity = Number.isInteger(n) ? AWG_AMPACITY_75C[n] ?? null : null;
+      const w = awgWire(n);
+      if (isSolError(w)) {
+        diameter = area = resistance = w; // ampacity stays null, never an error
       } else {
-        const err = solError("#DOMAIN!", "AWG runs 4/0 (enter -3) through 40");
-        diameter = area = resistance = err;
+        ({ diameter, area, resistance, ampacity } = w);
       }
     }
     this.cachedDiameter = diameter;
@@ -186,6 +182,18 @@ export class AwgNode extends ClassicPreset.Node {
     this.cachedAmpacity = ampacity;
     return { diameter, area, resistance, ampacity };
   }
+}
+
+/** AWG geometry + copper resistance for gauge n (fractional allowed): Ø mm,
+ *  area mm², Ω/km (ρ·L/A with ρ_cu = 1.724e-8 Ω·m, per km); NEC 75 °C copper
+ *  ampacity for the table's integer gauges, null otherwise (blank, never a
+ *  guess). #DOMAIN! outside 4/0 (−3) … 40. Shared by the node and the pack's
+ *  AWGWIRE formula. */
+export function awgWire(n: number): { diameter: number; area: number; resistance: number; ampacity: number | null } | SolError {
+  if (!(n >= -3 && n <= 40)) return solError("#DOMAIN!", "AWG runs 4/0 (enter -3) through 40");
+  const d = 0.127 * 92 ** ((36 - n) / 39);
+  const a = (Math.PI / 4) * d * d;
+  return { diameter: d, area: a, resistance: 17.24 / a, ampacity: Number.isInteger(n) ? AWG_AMPACITY_75C[n] ?? null : null };
 }
 
 // ─── Resistor color code ──────────────────────────────────────────────────────

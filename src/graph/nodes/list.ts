@@ -942,18 +942,24 @@ export class IsInNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
-    const a = (inputs.a?.[0] ?? []) as unknown[];
-    const b = (inputs.b?.[0] ?? []) as unknown[];
-    const members = new Set<unknown>();
-    for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
-    const result = a.map((v) => {
-      if (isMissing(v)) return null;
-      if (isSolError(v)) return v;
-      return members.has(setKey(v));
-    });
+    const result = isInMask((inputs.a?.[0] ?? []) as unknown[], (inputs.b?.[0] ?? []) as unknown[]);
     this.cachedList = result;
     return { result };
   }
+}
+
+/** Membership mask of `a` against the set `b` — the node's core, shared with
+ *  the Set & Relational pack's ISIN formula. Blank/error cells of `b` aren't
+ *  members; an `a`-side blank stays blank, an `a`-side error propagates per
+ *  cell. */
+export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean | null | SolError)[] {
+  const members = new Set<unknown>();
+  for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
+  return a.map((v) => {
+    if (isMissing(v)) return null;
+    if (isSolError(v)) return v as SolError;
+    return members.has(setKey(v));
+  });
 }
 
 // ─── Tally (value counts) — Set & Relational pack ─────────────────────────────
@@ -976,27 +982,32 @@ export class TallyNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][] }) {
     const list = (inputs.list?.[0] ?? []) as unknown[];
-    // Key by value (so equal complexes tally together) but keep the first-seen
-    // original value as the row's representative.
-    const counts = new Map<unknown, { value: unknown; count: number }>();
-    for (const v of list) {
-      if (isMissing(v) || isSolError(v)) continue;
-      const k = setKey(v);
-      const e = counts.get(k);
-      if (e) e.count++; else counts.set(k, { value: v, count: 1 });
-    }
-    const entries = [...counts.values()];
-    const values = entries.map((e) => e.value);
+    const { values, counts } = tallyPairs(list);
     const frame: FrameValue = {
       __frame: true,
       columns: [
         inferColumn("Value", values),
-        { name: "Count", type: "number", values: entries.map((e) => e.count) },
+        { name: "Count", type: "number", values: counts },
       ],
     };
-    this.cachedResult = list.length || counts.size ? frame : null;
+    this.cachedResult = list.length || values.length ? frame : null;
     return { frame: this.cachedResult };
   }
+}
+
+/** Distinct values (first-seen order, keyed by value so equal complexes tally
+ *  together, blank/error cells skipped) with their occurrence counts — the
+ *  node's core, shared with the Set & Relational pack's TALLY formula. */
+export function tallyPairs(list: readonly unknown[]): { values: unknown[]; counts: number[] } {
+  const counts = new Map<unknown, { value: unknown; count: number }>();
+  for (const v of list) {
+    if (isMissing(v) || isSolError(v)) continue;
+    const k = setKey(v);
+    const e = counts.get(k);
+    if (e) e.count++; else counts.set(k, { value: v, count: 1 });
+  }
+  const entries = [...counts.values()];
+  return { values: entries.map((e) => e.value), counts: entries.map((e) => e.count) };
 }
 
 export type SetRelation = "equal" | "subset" | "superset" | "disjoint";

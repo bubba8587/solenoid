@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EARTHSKY_FORMULAS } from "./earthsky";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "./formulaTestKit";
 import { solarBasis, solarPosition, sunTimes, moonPhase, serialToJulianDay, SunriseSunsetNode } from "../nodes/astro";
 import { isSolError } from "../errorValue";
 
@@ -117,5 +117,30 @@ describe("moon phase", () => {
     expect(Math.abs(full.phase - 0.5)).toBeLessThan(0.03);
     const nu = moonPhase(serial(2024, 4, 8, 18));
     expect(Math.min(nu.phase, 1 - nu.phase)).toBeLessThan(0.03);
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("SUNRISE / SUNSET / DAYLENGTH agree with the node core at the equator", () => {
+    const t = sunTimes(46000, 0, 0);
+    expect(evalPackFormula("SUNRISE(46000, 0, 0)")).toBe(t.sunrise);
+    expect(evalPackFormula("SUNSET(46000, 0, 0)")).toBe(t.sunset);
+    expect(evalPackFormula("DAYLENGTH(46000, 0, 0)")).toBe(t.dayLength);
+    expect(t.dayLength).toBeGreaterThan(11.5);
+    expect(t.dayLength).toBeLessThan(12.5);
+  });
+  it("SUNPOSITION reads a part (elevation default); lat/lon are range-checked", () => {
+    const p = solarPosition(46000.5, 40, -74);
+    expect(evalPackFormula("SUNPOSITION(46000.5, 40, -74)")).toBe(p.elevation);
+    expect(evalPackFormula('SUNPOSITION(46000.5, 40, -74, "azimuth")')).toBe(p.azimuth);
+    const bad = evalPackFormula("SUNPOSITION(46000.5, 91, 0)");
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
+  });
+  it("MOONPHASE reads phase / age / illumination", () => {
+    const m = moonPhase(46000);
+    expect(evalPackFormula("MOONPHASE(46000)")).toBe(m.phase);
+    expect(evalPackFormula('MOONPHASE(46000, "age")')).toBe(m.age);
+    expect(m.age).toBeGreaterThanOrEqual(0);
+    expect(m.age).toBeLessThan(29.6);
   });
 });

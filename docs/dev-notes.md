@@ -144,6 +144,30 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Pack formulas: the 19 custom-logic nodes are formula-callable (2026-07-29h)
+
+The D19 pack workstream closed: all 19 custom-logic pack nodes register as
+PackFormulas (21 functions — Sunrise/Sunset splits into SUNRISE, SUNSET,
+DAYLENGTH), the first real users of the formulaExtensions seam. Names follow
+D19 2(a) (despaced label) where the label allows; punctuated labels declare a
+leaf-level `fx` in the catalog entry ("Friction Factor (Colebrook)" →
+COLEBROOK), a new NodeCatalogEntry field the parity measurement reads like an
+op's `fx`, one level up. Mechanics: every impl delegates to the SAME core its
+node calls — inline data() logic was extracted into shared exported helpers
+(parallelCombine, awgWire, emSpectrum, hrZonesMatrix + hrZonesDomainOk,
+isInMask, tallyPairs, standardAtmosphere, colebrookFriction) so the two
+surfaces cannot drift; packs mint selector errors via solError/isSolError
+re-exported through packShared (the one core error seam, keeping the pack
+import rule). PackFormula grew `rank`/`listArgs` passthrough into
+EXCEL_IMPL_META so ISIN/TALLY/TRIANGLESOLVER/HEARTRATEZONES ride the whole-arg
+and rank machinery instead of broadcasting into garbage. Frame-out nodes
+project to rank-legal shapes: HEARTRATEZONES → five [low, high] rows (matrix),
+TALLY → the counts list (first-seen distinct order). Pins: a
+`pack formula functions (D19 decision 4)` describe in each pack's vitest file
+via the new `evalPackFormula` test-kit helper. The parity script AND ratchet
+now run initPackFormulas() first (matching app startup): 548/645 leaves
+formula-callable, packs 167/167 — the backlog item's pack half is deleted.
+
 ### The aggregate guard reaches the engine — last parity gap closed (2026-07-29g)
 
 The corpus-discovered gap (desktop emitted inf/NaN cells where web shows
