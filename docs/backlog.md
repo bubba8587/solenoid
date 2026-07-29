@@ -146,12 +146,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   **Non-pack: 381/478.** The 97 remaining are Input/Output/Tables (sources,
   sinks, UI, D23-endpoint) plus Image/SVG/Promo (not functions) — every
   registrable named leaf is CLOSED.
-  **Packs: 148/167 already covered** (preset formulas). The pack workstream is
-  the 19 CUSTOM-LOGIC nodes: Triangle Solver, Parallel Combine, Resistor Color
-  Code, E-Series Value, AWG Wire, EM Spectrum Band, Physics Constant, Heart-Rate
-  Zones, Colebrook, Pipe Roughness, Standard Atmosphere, Antoine, Is In, Tally,
-  Sun Position, Sunrise/Sunset, Moon Phase, Element, Molar Mass — register these
-  through the existing formulaExtensions seam as PackFormulas.
+  **Packs: 167/167 — CLOSED** (2026-07-29). The 19 custom-logic nodes registered
+  as PackFormulas through the formulaExtensions seam (21 functions — the
+  Sunrise/Sunset node split into SUNRISE/SUNSET/DAYLENGTH); each pack's vitest
+  file pins its functions via `evalPackFormula`. PackFormula grew `rank`/
+  `listArgs` passthrough; punctuated labels declare their names via the new
+  leaf-level `fx` (read by the parity measurement, which now registers pack
+  formulas before measuring — like app startup).
   Stragglers, each parked for a stated reason rather than effort:
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.

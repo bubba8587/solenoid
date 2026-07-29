@@ -97,6 +97,11 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     const excelCovered = excel.length > 0 && excel.every((x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))
+      // A leaf-level `fx` names the function(s) where the despaced label can't
+      // ("Sunrise / Sunset" → SUNRISE/SUNSET/DAYLENGTH) — covered when ALL are
+      // dispatchable, like an op family.
+      || (leaf.fx !== undefined && leaf.fx.length > 0
+          && leaf.fx.every((n) => formulaNames.has(n.toUpperCase())))
       || LANGUAGE_LEAVES.has(leaf.type)
       || isPresetFormula(leaf)
       || (ops !== undefined && ops.length > 0

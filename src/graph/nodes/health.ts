@@ -19,6 +19,27 @@ const ZONES: Array<{ name: string; lo: number; hi: number }> = [
 /** The zone table: %-of-max bands, or Karvonen bands off the heart-rate reserve
  *  when a resting HR is given (rest + pct·(max − rest)). BPM rounded — nobody
  *  trains to a tenth of a beat. */
+/** The one domain rule for the zone table (shared by the node and the pack's
+ *  HEARTRATEZONES formula): a positive max, and any resting HR strictly
+ *  between 0 and it. */
+export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolean {
+  return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
+}
+
+/** The zone bands as five [low, high] rows (Z1…Z5) — the formula surface's
+ *  matrix form of the node's frame (frames stay out of formulas by design;
+ *  rank 2 is spellable since D23). Same rounding and Karvonen switch as the
+ *  frame. */
+export function hrZonesMatrix(maxHr: number, restingHr: number | null): number[][] | SolError {
+  if (!hrZonesDomainOk(maxHr, restingHr)) {
+    return solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
+  }
+  const f = hrZonesFrame(maxHr, restingHr);
+  const lo = f.columns[1].values as number[];
+  const hi = f.columns[2].values as number[];
+  return lo.map((l, i) => [l, hi[i]]);
+}
+
 export function hrZonesFrame(maxHr: number, restingHr: number | null): FrameValue {
   const at = (pct: number) =>
     Math.round(restingHr !== null ? restingHr + pct * (maxHr - restingHr) : pct * maxHr);
@@ -58,7 +79,7 @@ export class HrZonesNode extends ClassicPreset.Node {
     let zones: FrameValue | SolError | null = null;
     if (maxHr !== null) {
       const rest = typeof resting === "number" ? resting : null;
-      zones = maxHr > 0 && (rest === null || (rest > 0 && rest < maxHr))
+      zones = hrZonesDomainOk(maxHr, rest)
         ? hrZonesFrame(maxHr, rest)
         : solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
     }

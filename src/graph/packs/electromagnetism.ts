@@ -5,8 +5,8 @@
 // Physics Constant node exposes the same library as a wireable source.
 // SI units throughout; angles in radians (core Trigonometry convention).
 
-import { PhysicsConstantNode, EmSpectrumNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { PhysicsConstantNode, EmSpectrumNode, emSpectrum, PHYS_CONSTANTS, type PhysConstOp } from "../rete-nodes";
+import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 // CODATA 2018, written as decimal·10^n so the formula grammar stays simple.
 const KE   = "8.9875517923*10^9";    // Coulomb constant (N·m²/C²)
@@ -83,7 +83,34 @@ export const EM_FORMULAS: FormulaPackEntry[] = [
   ...EM_ELECTROSTATICS, ...EM_MAGNETISM, ...EM_WAVES, ...EM_INDUCTION,
 ];
 
+// The pack's custom-logic nodes as formula functions (D19 decision 4).
+const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "EMSPECTRUMBAND",
+    impl: (freq, wavelength) => {
+      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+      const r = emSpectrum(num(freq), num(wavelength));
+      if (r === null) return null;
+      return isSolError(r) ? r : r.band;
+    },
+    returns: "string", arity: [1, 2],
+    signature: "frequency Hz — or blank, wavelength m",
+  },
+  {
+    name: "PHYSICSCONSTANT",
+    impl: (id) => {
+      if (id == null) return null;
+      const k = String(id);
+      const m = PHYS_CONSTANTS[k as PhysConstOp];
+      return m ? m.value : solError("#NAME?", `Unknown constant "${k}" — c, G, h, e, kb, na… (case matters)`);
+    },
+    returns: "number", arity: [1, 1],
+    signature: "id — c, G, h, e, kb, na…",
+  },
+];
+
 export const ELECTROMAGNETISM_PACK: Pack = {
+  formulas: ELECTROMAGNETISM_PACK_FORMULAS,
   id: "electromagnetism",
   name: "Electromagnetism",
   description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law, the EM spectrum band namer, and the CODATA physical-constants node. Builds on Electricity & Circuits.",

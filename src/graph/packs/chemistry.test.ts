@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "./chemistry";
-import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "./formulaTestKit";
 import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, ElementNode, MolarMassNode, elementCell, searchElements } from "../nodes/chemistry";
 import { isSolError, type SolError } from "../errorValue";
 
@@ -149,5 +149,21 @@ describe("Element picker — table geometry + search", () => {
     expect(searchElements("ver").map((e) => e.symbol)).toContain("Ag"); // silVER substring
     expect(searchElements("")).toHaveLength(118);               // empty = everything
     expect(searchElements("zzz")).toHaveLength(0);
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("ELEMENT reads by symbol or atomic number, any property", () => {
+    expect(evalPackFormula('ELEMENT("Fe")')).toBeCloseTo(55.845, 3);
+    expect(evalPackFormula('ELEMENT(26, "symbol")')).toBe("Fe");
+    expect(evalPackFormula('ELEMENT("Fe", "name")')).toBe("Iron");
+    const bad = evalPackFormula('ELEMENT("Xx")');
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
+  });
+  it("MOLARMASS parses formulas, hydrates included", () => {
+    expect(evalPackFormula('MOLARMASS("H2O")')).toBeCloseTo(18.015, 2);
+    expect((evalPackFormula('MOLARMASS("CuSO4\u00b75H2O")') as number)).toBeCloseTo(249.68, 1);
+    const bad = evalPackFormula('MOLARMASS("Xx2")');
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
   });
 });

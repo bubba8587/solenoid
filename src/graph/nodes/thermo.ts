@@ -6,7 +6,7 @@
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, readInput } from "./shared";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 // ─── ISA / US Standard Atmosphere 1976, 0–86 km ───────────────────────────────
 // Seven geopotential layers; base pressures are DERIVED from the layer table at
@@ -61,6 +61,17 @@ export function isaAtGeometric(z: number): IsaPoint {
   return isaAtGeopotential((EARTH_R * z) / (EARTH_R + z));
 }
 
+/** The guarded geometric-altitude read the node and the pack's
+ *  STANDARDATMOSPHERE formula share: #DOMAIN! outside the 1976 standard's
+ *  −2…86 km (checked on the GEOPOTENTIAL altitude, like the tables). */
+export function standardAtmosphere(z: number): IsaPoint | SolError {
+  const h = (EARTH_R * z) / (EARTH_R + z);
+  if (h < -2000 || h > ISA_TOP) {
+    return solError("#DOMAIN!", "The 1976 standard atmosphere is defined from −2 to 86 km");
+  }
+  return isaAtGeopotential(h);
+}
+
 export class IsaAtmosphereNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { alt: 0 };
@@ -88,12 +99,10 @@ export class IsaAtmosphereNode extends ClassicPreset.Node {
     let density: number | SolError | null = null;
     let sound: number | SolError | null = null;
     if (typeof z === "number") {
-      const h = (EARTH_R * z) / (EARTH_R + z);
-      if (h < -2000 || h > ISA_TOP) {
-        temp = pressure = density = sound =
-          solError("#DOMAIN!", "The 1976 standard atmosphere is defined from −2 to 86 km");
+      const pt = standardAtmosphere(z);
+      if (isSolError(pt)) {
+        temp = pressure = density = sound = pt;
       } else {
-        const pt = isaAtGeopotential(h);
         temp = pt.T; pressure = pt.p; density = pt.rho; sound = pt.a;
       }
     }

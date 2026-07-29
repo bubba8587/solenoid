@@ -6,7 +6,20 @@
 
 import { ExpressionNode, EquationNode } from "../rete-nodes";
 import { parseEquation } from "../equationSolve";
+import { initPackFormulas } from "../formulaExtensions";
+import { compileEvaluator } from "../excelFormula";
 import type { FormulaPackEntry, Pack } from "./packShared";
+
+/** Compile-and-evaluate an expression with every known pack's FORMULA FUNCTIONS
+ *  registered (initPackFormulas is idempotent) — the pin path for a pack's
+ *  custom-logic PackFormula entries, mirroring how a typed Expression resolves
+ *  them on canvas. */
+export function evalPackFormula(expr: string, env: Record<string, unknown> = {}): unknown {
+  initPackFormulas();
+  const f = compileEvaluator(expr);
+  if (!f) throw new Error(`did not compile: ${expr}`);
+  return f(env);
+}
 
 /** Evaluate one formula entry with the given variable values. */
 export function evalFormula(

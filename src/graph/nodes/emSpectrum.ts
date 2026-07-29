@@ -6,7 +6,7 @@
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, strOut, readInput } from "./shared";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 const C = 299792458; // m/s
 
@@ -59,13 +59,23 @@ export class EmSpectrumNode extends ClassicPreset.Node {
       this.cachedWavelength = wavelength;
       return { band, freq, wavelength };
     };
-    const fq = typeof f === "number" ? f : typeof wl === "number" && wl > 0 ? C / wl : null;
-    if (fq === null) return finish(null, null, null);
-    if (!(fq > 0) || !Number.isFinite(fq)) {
-      const err = solError("#DOMAIN!", "Needs a positive frequency or wavelength");
-      return finish(err, err, err);
-    }
-    const lambda = C / fq;
-    return finish(emBand(lambda), fq, lambda);
+    const r = emSpectrum(typeof f === "number" ? f : null, typeof wl === "number" ? wl : null);
+    if (r === null) return finish(null, null, null);
+    if (isSolError(r)) return finish(r, r, r);
+    return finish(r.band, r.freq, r.wavelength);
   }
+}
+
+/** Band + both quantities from EITHER a frequency (Hz, wins when both given) or
+ *  a wavelength (m). null = no usable input; #DOMAIN! for a non-positive or
+ *  non-finite frequency. Shared by the node and the pack's EMSPECTRUMBAND
+ *  formula. */
+export function emSpectrum(f: number | null, wl: number | null): { band: string; freq: number; wavelength: number } | SolError | null {
+  const fq = typeof f === "number" ? f : typeof wl === "number" && wl > 0 ? C / wl : null;
+  if (fq === null) return null;
+  if (!(fq > 0) || !Number.isFinite(fq)) {
+    return solError("#DOMAIN!", "Needs a positive frequency or wavelength");
+  }
+  const lambda = C / fq;
+  return { band: emBand(lambda), freq: fq, wavelength: lambda };
 }

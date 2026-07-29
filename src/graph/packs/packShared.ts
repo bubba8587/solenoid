@@ -8,8 +8,14 @@
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
-import type { ExcelReturn } from "../excelFunctions";
+import type { ExcelReturn, ExcelRank } from "../excelFunctions";
 import { ExpressionNode, EquationNode } from "../rete-nodes";
+
+// The ONE core error seam packs may reach: a custom-logic formula impl mints a
+// domain failure with this (never throws) — re-exported here so pack files
+// stay inside the import rule (packShared / ../rete-nodes / type-only seams).
+export { solError, isSolError } from "../errorValue";
+export type { SolError } from "../errorValue";
 
 // ─── Pack-contributed formula functions (D19 decision 4) ─────────────────────
 // A pack ships its node surface and its FORMULA surface together: declare a
@@ -28,6 +34,14 @@ export interface PackFormula {
    *  return a value, or a `SolError` for a domain failure — never throw. */
   impl: (...args: unknown[]) => unknown;
   returns: ExcelReturn;
+  /** Output rank (default "scalar"): "list"/"matrix" for functions returning a
+   *  1-D/2-D value, mirrored into `EXCEL_IMPL_META.rank` so the evaluator and
+   *  socket typing treat the result like any core list/matrix native. */
+  rank?: ExcelRank;
+  /** The function takes whole LISTS as arguments (position-preserving, carries
+   *  cell errors in place) — mirrored into `EXCEL_IMPL_META.listArgs` so the
+   *  evaluator hands vectors over intact instead of broadcasting the call. */
+  listArgs?: boolean;
   /** [min, max] argument count, for the editor's hint. */
   arity: [number, number];
   /** Curated argument hint ("radius, height"); falls back to a bare count. */

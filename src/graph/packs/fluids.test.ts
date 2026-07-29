@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "./fluids";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "./formulaTestKit";
 import { PIPE_ROUGHNESS, PipeRoughnessNode } from "../nodes/fluids";
 import { ColebrookNode, colebrookF } from "../nodes/fluids";
 import { isSolError } from "../errorValue";
@@ -110,5 +110,19 @@ describe("Pipe Roughness", () => {
     expect(bare.rel).toBeNull();
     const withD = n.data({ d: [100] }); // 100 mm pipe
     expect(withD.rel as number).toBeCloseTo(0.00045, 9);
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("COLEBROOK matches the node core, laminar hand-off included", () => {
+    expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(colebrookF(100000, 0.0001));
+    expect(evalPackFormula("COLEBROOK(1000, 0)")).toBeCloseTo(0.064, 12);
+    const bad = evalPackFormula("COLEBROOK(-5, 0)");
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
+  });
+  it("PIPEROUGHNESS looks up the material's absolute roughness in mm", () => {
+    expect(evalPackFormula('PIPEROUGHNESS("steel")')).toBe(0.045);
+    const bad = evalPackFormula('PIPEROUGHNESS("adamantium")');
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
   });
 });
