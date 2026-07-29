@@ -323,6 +323,115 @@ describe("VAL-17 — a volatile data() freezes its roll on getRecalcGen()", () =
   });
 });
 
+describe("EFFECT-1 — data() never touches disk", () => {
+  // A sink's data() caches for preview ONLY; the write lives in run(), fired by
+  // the node's Run button. The two existing sink families are pinned by their
+  // own suites, but a NEW sink whose data() writes was uncaught until its own
+  // test existed (rules.md known-violation 2, now closed): this brace-matches
+  // every data() body in nodes/ + packs/ and refuses the write APIs — and
+  // `this.run(`, the indirect spelling of the same mistake.
+  const WRITE_APIS = ["writeTextFilePath", "pickSaveFilePath", "writeDocumentToVault", "obsidianWrite"];
+
+  /** Index just past the matching close for the opener at src[i] ("(" or "{"),
+   *  skipping strings, template literals (incl. nested `${…}`) and comments.
+   *  -1 if unbalanced. */
+  function matchDelim(src: string, i: number): number {
+    const open = src[i];
+    const close = open === "(" ? ")" : "}";
+    let depth = 0;
+    while (i < src.length) {
+      const c = src[i];
+      if (c === '"' || c === "'" || c === "`") { i = skipString(src, i); continue; }
+      if (c === "/" && src[i + 1] === "/") { i = src.indexOf("\n", i); if (i < 0) return -1; continue; }
+      if (c === "/" && src[i + 1] === "*") { const e = src.indexOf("*/", i); if (e < 0) return -1; i = e + 2; continue; }
+      if (c === open) depth++;
+      else if (c === close && --depth === 0) return i + 1;
+      i++;
+    }
+    return -1;
+  }
+  function skipString(src: string, i: number): number {
+    const q = src[i];
+    i++;
+    while (i < src.length) {
+      if (src[i] === "\\") { i += 2; continue; }
+      if (src[i] === q) return i + 1;
+      if (q === "`" && src[i] === "$" && src[i + 1] === "{") { i = matchDelim(src, i + 1); if (i < 0) return src.length; continue; }
+      i++;
+    }
+    return i;
+  }
+
+  /** Every data() METHOD body in the file. The body "{" is the first one after
+   *  the argument list at paren AND angle depth 0 — a return-type annotation
+   *  (`: Promise<{ … }>`) keeps its braces inside the generic's angles. */
+  function dataBodies(src: string): { line: number; body: string }[] {
+    const out: { line: number; body: string }[] = [];
+    const re = /(?<![.\w$])data\s*\(/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) !== null) {
+      const argOpen = m.index + m[0].length - 1;
+      const argClose = matchDelim(src, argOpen);
+      if (argClose < 0) continue;
+      let i = argClose, angle = 0, paren = 0, bodyStart = -1;
+      while (i < src.length) {
+        const c = src[i];
+        if (c === ";") break; // an interface/type signature — no body
+        if (c === "<") angle++;
+        else if (c === ">" && src[i - 1] !== "=") angle--;
+        else if (c === "(") paren++;
+        else if (c === ")") paren--;
+        else if (c === "{" && angle === 0 && paren === 0) { bodyStart = i; break; }
+        i++;
+      }
+      if (bodyStart < 0) continue;
+      const bodyEnd = matchDelim(src, bodyStart);
+      if (bodyEnd < 0) continue;
+      out.push({ line: src.slice(0, m.index).split("\n").length, body: src.slice(bodyStart, bodyEnd) });
+    }
+    return out;
+  }
+
+  it("no data() body in nodes/packs references a write API (or this.run)", () => {
+    const offenders: string[] = [];
+    let bodies = 0;
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        const src = fs.readFileSync(file, "utf8");
+        // `this.run(` is the indirect spelling of the same mistake — but only
+        // where run() IS the effect method, i.e. in a file that touches a
+        // write API at all. (The live-connection Imports have a private
+        // fetching helper also named run(); reads from data() are their job.)
+        const writesDisk = WRITE_APIS.some((api) => src.includes(api));
+        for (const { line, body } of dataBodies(src)) {
+          bodies++;
+          for (const api of WRITE_APIS) {
+            if (body.includes(api)) offenders.push(`${rel(file)}:${line} (references ${api})`);
+          }
+          if (writesDisk && /\bthis\s*\.\s*run\s*\(/.test(body)) offenders.push(`${rel(file)}:${line} (calls this.run())`);
+        }
+      }
+    }
+    // Extraction self-check: the sweep really is walking the node classes — a
+    // regex rot that finds nothing would otherwise pass silently.
+    expect(bodies).toBeGreaterThan(250);
+    expect(
+      offenders,
+      `These data() bodies touch a write API (EFFECT-1): data() caches for ` +
+      `preview only — the effect belongs in run(), behind the Run button:\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("the write-API list stays honest — every name still appears in the walked tree", () => {
+    // A renamed/added disk API must fail HERE (update WRITE_APIS), not silently
+    // fall out of the sweep. The names live in the sink families' imports/run().
+    const all = ["nodes", "packs"].flatMap((d) => walk(path.join(SRC, d))).map((f) => fs.readFileSync(f, "utf8")).join("\n");
+    const missing = WRITE_APIS.filter((api) => !all.includes(api));
+    expect(missing, "WRITE_APIS entries no longer referenced anywhere in nodes/packs — rename?").toEqual([]);
+  });
+});
+
 describe("EFFECT-2 — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every

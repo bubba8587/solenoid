@@ -1062,8 +1062,10 @@ disk.
 *Enforced by:* `nodes/sink.test.ts`, `nodes/obsidian.test.ts` (the two families'
 behaviour: data() never touches disk, run() gates on the arm, atomic tmp+rename);
 `catalogRegistry.test.ts` → "no catalog class persists an `enabled` arm flag, and none
-constructs armed" (the catalog-wide quantifier). **The data()-never-writes half is
-per-class only** — see Known violations.
+constructs armed" (the catalog-wide quantifier); `sourceInvariants.test.ts` →
+"EFFECT-1 — data() never touches disk" (the completeness half: brace-matches every
+data() body in nodes/+packs and refuses the write APIs — and `this.run(` in any
+file that touches one — with a stays-honest check on the API-name list).
 
 ### EFFECT-2 — An outward effect is edge-triggered, and suppressed during rebuild **[INFERRED]**
 **MUST:** an alert fires on a STATUS edge (`statusKey` — so range LOW↔HIGH re-fires and
@@ -1116,13 +1118,13 @@ isolateStore missing too.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 67 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11,12 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
-| Partially enforced | 2 | EFFECT-1 · SOCK-8 |
+| Enforced | 68 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11,12 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
+| Partially enforced | 1 | SOCK-8 |
 | Unenforced | 1 | SOCK-6 |
 
-**The ORIGINAL partially-enforced six all closed** (EFFECT-1, which arrived later with
-its own domain, is the one current partial — its data()-never-writes half is per-class).
-The original six were the
+**The ORIGINAL partially-enforced six all closed**, and EFFECT-1 (which arrived later
+with its own domain) closed 2026-07-29 — its data()-never-writes half was per-class
+until the sourceInvariants sweep. The original six were the
 highest-value gap: in each, the rule was tested for the cases that existed and nothing
 failed when a NEW case forgot it — precisely the shape of every bug in the Origin notes.
 Two of them (SOCK-5, VAL-8) had been written here as "enforced" on the strength of a
@@ -1139,22 +1141,17 @@ component). SOCK-6 was attempted and recorded as genuinely un-greppable (see the
 # Known violations
 
 Recorded here rather than fixed, per the author's instruction that the original pass was
-documents only. Each is actionable in the follow-up. (Closed so far, all 2026-07-28: the
+documents only. Each is actionable in the follow-up. (Closed so far — 2026-07-28: the
 Alert/ColorBlend `mode` renames, SOCK-7 completeness, SOCK-5's persistence pin, the FX-4
 full naming sweep — which caught and fixed the Text Filter CONTAINS claim and the
 duplicate math-fn `round` op on its first run — and the completeness tranche: VAL-10's
 algebra-file scan, VAL-12's OpSelect binding scan, VAL-14's only-if check. The VAL-14
 check's first run listed 13 candidate classes; all 13 verified as real editors once the
 heuristic learned the bespoke surfaces — ExtensibleInputs and the `stringLiterals`
-spelling — so the codebase was already clean and the value is the ratchet.)
+spelling — so the codebase was already clean and the value is the ratchet. 2026-07-29:
+EFFECT-1's data()-never-writes sweep, exactly as prescribed here.)
 
 1. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
    still a reading job (this document's fact-check found four misciting rules that a
    file-exists check alone would have passed).
-
-2. **EFFECT-1's data()-never-writes half is per-class** — the two existing sink families
-   are pinned individually; a NEW sink whose `data()` touches disk is uncaught until its
-   own test exists. *Fix: a brace-matched `data()`-body source scan for the write APIs
-   (`writeTextFilePath` / `obsidianWrite` / `pickSaveFilePath`), the `opSelectTag`
-   technique.*
