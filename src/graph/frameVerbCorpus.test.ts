@@ -50,6 +50,13 @@ function dump(f: FrameValue): WireColumn[] {
   return f.columns.map((c) => ({ name: c.name, type: c.type, values: [...c.values] }));
 }
 
+/** `expect` frames decode the `__nf` sentinel exactly like inputs do (the
+ *  corpus format is the wire format in BOTH directions) — toEqual treats NaN
+ *  as equal to NaN, so a decoded expectation compares cleanly. */
+function decodeColumns(wire: { columns: WireColumn[] }): WireColumn[] {
+  return wire.columns.map((c) => ({ ...c, values: c.values.map(decodeCell) }));
+}
+
 const files = fs.readdirSync(CORPUS_DIR).filter((f) => f.endsWith(".json")).sort();
 const corpus: CorpusFile[] = files.map((f) => JSON.parse(fs.readFileSync(path.join(CORPUS_DIR, f), "utf8")));
 
@@ -59,6 +66,7 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
     expect(kase.expect !== undefined || kase.expectError !== undefined, "a case needs expect XOR expectError").toBe(true);
     expect(kase.expect !== undefined && kase.expectError !== undefined, "not both").toBe(false);
     const input = brand(kase.frames.in);
+    const before = dump(input);
     let out: FrameValue | undefined;
     let err: unknown;
     try { out = applyVerb(input, kase.op); } catch (e) { err = e; }
@@ -67,8 +75,11 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
       expect((err as { code: string }).code).toBe(kase.expectError);
     } else {
       expect(err, `oracle threw: ${(err as Error)?.message ?? err}`).toBeUndefined();
-      expect(dump(out!)).toEqual(kase.expect!.columns);
+      expect(dump(out!)).toEqual(decodeColumns(kase.expect!));
     }
+    // Every verb leaves its input frame untouched — checked corpus-wide, so no
+    // per-verb "does not mutate" test needs to exist.
+    expect(dump(input), "the verb mutated its input frame").toEqual(before);
   });
 });
 
