@@ -28,6 +28,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
+- [ ] **Fuzz next territory: op CHAINS through the fusion path** — the corpus
+  fuzz (`scripts/fuzz-frame-verbs.ts`, 11 finds over ~4k cases) runs single ops;
+  the seams it has NOT walked are fused multi-op plans (`engine_apply_many` —
+  lazy/eager handoffs interacting) and chained verbs over the round 3 value
+  pools. Extension = a `pipeline` generator emitting `ops: [...]` cases + both
+  runners applying sequentially (oracle) vs fused (engine). Single-op pools feel
+  mined out (last four seeds: zero finds).
 - [ ] **Engine lacks the aggregate non-finite guard (corpus-discovered,
   2026-07-29)** — the oracle's groupBy sums guard B-1b (#OVERFLOW! on
   all-finite overflow, #DOMAIN! on NaN/∞−∞), but those are SolError CELLS the
@@ -43,9 +50,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order / hit-area or membership-sync issue tied to
   group membership.
-- [ ] **FC complex-family styles — verify code against the format-model truth table** —
-  `format-model.md` warns "implementation may lag the spec here; the popup must still
-  gate to the reduced style list". Verify, fix or clear the warning.
+- [ ] **FC complex-family RENDER wiring** (verified 2026-07-29; the old "verify the
+  truth table" item resolved into this): the popup half is done (reduced style list,
+  precision, unit rows all gate correctly), but a complex annotation never reaches a
+  render — the complex cards pre-format to strings in `data()` (`formatCxValue`,
+  fixed trim). Build = annotation-aware `formatCx` (style gated to the reduced list,
+  precision on BOTH components, unit wraps the whole value) + route the complex value
+  boxes / chips / Display through it. A visual change — author-eyeball loop.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
   events; verify on hardware, intercept manually if not. (Unrelated to the 2026-07-27
   touch-pinch fix: that was the multi-touch finger count, this is the wheel path.)
