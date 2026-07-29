@@ -88,6 +88,15 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
             <polygon points="0,12 0,0 12,0"   fill={combo[0]} />
             <polygon points="0,12 12,12 12,0" fill={combo[1]} />
           </g>
+          {dataType === "anydata" && (
+            // The rank-2 mark, kept INSIDE the combo language: a small grid
+            // cross in the lower half only — "one value, or up to a matrix".
+            // The lower triangle is where every combo's list-ness lives, so
+            // the cross extends that half rather than restyling the glyph
+            // (the old full-square cross matched no other combo and read as
+            // noise — author call, 2026-07-29).
+            <path d="M7.9 5.8 V10.2 M5.8 7.9 H10.2" fill="none" stroke="var(--socket-ring)" strokeWidth="1.2" />
+          )}
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
       ) : isList ? (
