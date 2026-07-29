@@ -39,105 +39,6 @@ fn j(v: &[f64]) -> Vec<Json> {
 }
 
 #[test]
-fn join_inner_fans_out_and_drops_right_key() {
-    let left = frame(vec![("id", SolType::Number, num(&[1.0, 2.0]))]);
-    let right = frame(vec![
-        ("fk", SolType::Number, num(&[1.0, 1.0])),
-        ("v", SolType::Str, strs(&["x", "y"])),
-    ]);
-    let out = verb_join(
-        &left,
-        &right,
-        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "inner".into(), ..Default::default() },
-    )
-    .unwrap();
-    let d = dump(&out);
-    assert_eq!(d.iter().map(|c| c.0.clone()).collect::<Vec<_>>(), vec!["id", "v"]);
-    assert_eq!(d[0].2, j(&[1.0, 1.0]));
-    assert_eq!(d[1].2, vec![Json::String("x".into()), Json::String("y".into())]);
-}
-
-#[test]
-fn join_left_keeps_unmatched_with_null() {
-    let left = frame(vec![("id", SolType::Number, num(&[1.0, 2.0]))]);
-    let right = frame(vec![
-        ("id", SolType::Number, num(&[1.0])),
-        ("v", SolType::Str, strs(&["x"])),
-    ]);
-    let out = verb_join(
-        &left,
-        &right,
-        &WireJoinOpts { left_key: "id".into(), right_key: "id".into(), how: "left".into(), ..Default::default() },
-    )
-    .unwrap();
-    let d = dump(&out);
-    assert_eq!(d.iter().map(|c| c.0.clone()).collect::<Vec<_>>(), vec!["id", "v"]);
-    assert_eq!(d[0].2, j(&[1.0, 2.0]));
-    assert_eq!(d[1].2, vec![Json::String("x".into()), Json::Null]);
-}
-
-#[test]
-fn join_semi_and_anti_filter_left_columns_only() {
-    let left = frame(vec![
-        ("id", SolType::Number, num(&[1.0, 2.0, 3.0])),
-        ("a", SolType::Str, strs(&["p", "q", "r"])),
-    ]);
-    let right = frame(vec![
-        ("fk", SolType::Number, num(&[2.0, 2.0])),
-        ("v", SolType::Str, strs(&["x", "y"])),
-    ]);
-    let semi = verb_join(
-        &left,
-        &right,
-        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "semi".into(), ..Default::default() },
-    )
-    .unwrap();
-    let d = dump(&semi);
-    // Left columns only, and NO fan-out despite the duplicated right key.
-    assert_eq!(d.iter().map(|c| c.0.clone()).collect::<Vec<_>>(), vec!["id", "a"]);
-    assert_eq!(d[0].2, j(&[2.0]));
-    assert_eq!(d[1].2, vec![Json::String("q".into())]);
-
-    let anti = verb_join(
-        &left,
-        &right,
-        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "anti".into(), ..Default::default() },
-    )
-    .unwrap();
-    let d = dump(&anti);
-    assert_eq!(d[0].2, j(&[1.0, 3.0]));
-    assert_eq!(d[1].2, vec![Json::String("p".into()), Json::String("r".into())]);
-}
-
-#[test]
-fn append_union_by_name_fills_missing() {
-    let a = frame(vec![
-        ("x", SolType::Number, num(&[1.0])),
-        ("y", SolType::Number, num(&[2.0])),
-    ]);
-    let b = frame(vec![("y", SolType::Number, num(&[3.0]))]);
-    let ha = register(a);
-    let hb = register(b);
-    let out = append_frames(&[ha, hb]).unwrap();
-    let d = dump(&out);
-    assert_eq!(d.iter().map(|c| c.0.clone()).collect::<Vec<_>>(), vec!["x", "y"]);
-    assert_eq!(d[0].2, vec![num_to_json(1.0), Json::Null]);
-    assert_eq!(d[1].2, j(&[2.0, 3.0]));
-}
-
-#[test]
-fn append_rejects_type_conflict() {
-    let a = frame(vec![("x", SolType::Number, num(&[1.0]))]);
-    let b = frame(vec![("x", SolType::Str, strs(&["a"]))]);
-    let ha = register(a);
-    let hb = register(b);
-    let err = append_frames(&[ha, hb]).unwrap_err();
-    // IpcError serializes with a code; check via JSON
-    let v = serde_json::to_value(&err).unwrap();
-    assert_eq!(v["code"], "#TYPE!");
-}
-
-#[test]
 fn source_preview_column_drop_lifecycle() {
     let wf: WireFrame = serde_json::from_value(serde_json::json!({
         "columns": [
@@ -191,139 +92,6 @@ fn integral_numbers_emit_as_integers() {
 fn make_headers_matches_oracle() {
     let got = make_headers(&["".to_string(), "a".to_string(), "a".to_string()], 3);
     assert_eq!(got, vec!["Col1".to_string(), "a".to_string(), "a2".to_string()]);
-}
-
-#[test]
-fn join_right_labels_columns_correctly() {
-    // Audit finding 4 (pin before fixing): Polars with CoalesceColumns emits a
-    // DIFFERENT column order for a right join (coalesced key after left non-key
-    // columns), and the positional rename then puts values under wrong headers.
-    let left = frame(vec![
-        ("k", SolType::Number, num(&[1.0, 2.0])),
-        ("qty", SolType::Number, num(&[10.0, 20.0])),
-    ]);
-    let right = frame(vec![
-        ("ck", SolType::Number, num(&[2.0, 3.0])),
-        ("name", SolType::Str, strs(&["b", "c"])),
-    ]);
-    let opts = WireJoinOpts {
-        left_key: "k".into(),
-        right_key: "ck".into(),
-        how: "right".into(),
-        ..Default::default()
-    };
-    let out = verb_join(&left, &right, &opts).unwrap();
-    let d = dump(&out);
-    assert_eq!(d[0].0, "k");
-    assert_eq!(d[1].0, "qty");
-    assert_eq!(d[2].0, "name");
-    // Locate rows by key value (row order asserted separately) and check every
-    // value sits under the right header.
-    let key_at = |v: f64| d[0].2.iter().position(|c| *c == num_to_json(v)).unwrap_or_else(|| panic!("key {v} missing from {:?}", d[0].2));
-    let r2 = key_at(2.0);
-    let r3 = key_at(3.0);
-    assert_eq!(d[1].2[r2], num_to_json(20.0)); // qty of key 2
-    assert_eq!(d[2].2[r2], Json::String("b".into())); // name of key 2
-    assert_eq!(d[1].2[r3], Json::Null); // key 3 unmatched on the left
-    assert_eq!(d[2].2[r3], Json::String("c".into()));
-    // types must follow the names, not the positions (key stayed Number, name Str)
-    assert_eq!(d[2].1, "string");
-}
-
-#[test]
-fn join_row_order_matches_oracle() {
-    // Audit finding 15: the oracle guarantees strict driving-side row order with
-    // grouped fan-out; Polars needs maintain_order set to promise the same.
-    let left = frame(vec![
-        ("k", SolType::Number, num(&[3.0, 1.0, 2.0, 1.0])),
-        ("l", SolType::Number, num(&[30.0, 10.0, 20.0, 11.0])),
-    ]);
-    let right = frame(vec![
-        ("k", SolType::Number, num(&[1.0, 2.0, 1.0])),
-        ("r", SolType::Number, num(&[100.0, 200.0, 101.0])),
-    ]);
-    let opts = WireJoinOpts { left_key: "k".into(), right_key: "k".into(), how: "left".into(), ..Default::default() };
-    let out = verb_join(&left, &right, &opts).unwrap();
-    let d = dump(&out);
-    // Oracle order: left rows in order, each fanning out over its right matches
-    // in right-row order: 3→(null), 1→(100,101), 2→(200), 1→(100,101).
-    assert_eq!(d[1].2, j(&[30.0, 10.0, 10.0, 20.0, 11.0, 11.0]));
-    assert_eq!(
-        d[2].2,
-        vec![Json::Null, num_to_json(100.0), num_to_json(101.0), num_to_json(200.0), num_to_json(100.0), num_to_json(101.0)]
-    );
-}
-
-// ─── as-of join (prices/trades: every left row kept, nearest right by time) ─────
-fn asof_fixture() -> (SolFrame, SolFrame) {
-    // trades at t = -1 (before any quote), 1, 5, 10, 20 (after every quote)
-    let trades = frame(vec![("t", SolType::Number, num(&[-1.0, 1.0, 5.0, 10.0, 20.0]))]);
-    // quotes at t = 0, 2, 4, 8, 12 with a distinguishing value
-    let quotes = frame(vec![
-        ("t", SolType::Number, num(&[0.0, 2.0, 4.0, 8.0, 12.0])),
-        ("px", SolType::Number, num(&[100.0, 101.0, 102.0, 103.0, 104.0])),
-    ]);
-    (trades, quotes)
-}
-
-fn asof_opts(direction: &str) -> WireJoinOpts {
-    WireJoinOpts {
-        left_key: "t".into(),
-        right_key: "t".into(),
-        how: "asof".into(),
-        asof_direction: Some(direction.to_string()),
-        ..Default::default()
-    }
-}
-
-#[test]
-fn join_asof_backward_keeps_every_left_row_latest_leq() {
-    let (trades, quotes) = asof_fixture();
-    let out = verb_join(&trades, &quotes, &asof_opts("backward")).unwrap();
-    let d = dump(&out);
-    assert_eq!(d[0].0, "t");
-    assert_eq!(d[0].2, j(&[-1.0, 1.0, 5.0, 10.0, 20.0])); // original LEFT order preserved
-    assert_eq!(d[1].2, vec![Json::Null, num_to_json(100.0), num_to_json(102.0), num_to_json(103.0), num_to_json(104.0)]);
-}
-
-#[test]
-fn join_asof_forward_earliest_geq() {
-    let (trades, quotes) = asof_fixture();
-    let out = verb_join(&trades, &quotes, &asof_opts("forward")).unwrap();
-    let d = dump(&out);
-    assert_eq!(d[1].2, vec![num_to_json(100.0), num_to_json(101.0), num_to_json(103.0), num_to_json(104.0), Json::Null]);
-}
-
-#[test]
-fn join_asof_nearest_ties_favor_backward() {
-    let (trades, quotes) = asof_fixture();
-    let out = verb_join(&trades, &quotes, &asof_opts("nearest")).unwrap();
-    let d = dump(&out);
-    // t=-1: only forward (0) exists -> 100. t=1: |1-0|=|1-2|=1 tie -> backward (100).
-    // t=5: |5-4|=1 < |5-8|=3 -> backward (102). t=10: |10-8|=|10-12|=2 tie -> backward (103).
-    // t=20: only backward (12) exists -> 104.
-    assert_eq!(d[1].2, vec![num_to_json(100.0), num_to_json(100.0), num_to_json(102.0), num_to_json(103.0), num_to_json(104.0)]);
-}
-
-#[test]
-fn join_asof_tolerance_excludes_far_matches() {
-    let (trades, quotes) = asof_fixture();
-    let mut opts = asof_opts("backward");
-    opts.asof_tolerance = Some(1.0);
-    let out = verb_join(&trades, &quotes, &opts).unwrap();
-    let d = dump(&out);
-    // t=5's backward match (t=4) is within tolerance (diff 1); t=10's (t=8, diff 2) is not.
-    assert_eq!(d[1].2, vec![Json::Null, num_to_json(100.0), num_to_json(102.0), Json::Null, Json::Null]);
-}
-
-#[test]
-fn join_asof_rejects_non_orderable_key() {
-    let left = frame(vec![("k", SolType::Str, strs(&["a"]))]);
-    let right = frame(vec![("k", SolType::Str, strs(&["a"])), ("v", SolType::Number, num(&[1.0]))]);
-    let opts = WireJoinOpts { left_key: "k".into(), right_key: "k".into(), how: "asof".into(), ..Default::default() };
-    let err = verb_join(&left, &right, &opts).unwrap_err();
-    let v = serde_json::to_value(&err).unwrap();
-    assert_eq!(v["code"], "#VALUE!");
 }
 
 // ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
@@ -778,9 +546,8 @@ fn corpus_cases() {
             .unwrap_or_else(|e| panic!("{}: fixture does not parse as wire payloads: {e}", path.display()));
         for case in file.cases {
             let label = format!("{} › {}", file.verb, case.name);
-            let parsed = serde_json::from_value::<WireOp>(case.op);
             if ORACLE_ONLY_VERBS.contains(&file.verb.as_str()) {
-                if parsed.is_ok() {
+                if serde_json::from_value::<WireOp>(case.op).is_ok() {
                     failures.push(format!(
                         "{label}: the engine now speaks this op — remove \"{}\" from ORACLE_ONLY_VERBS and run its cases",
                         file.verb
@@ -788,19 +555,71 @@ fn corpus_cases() {
                 }
                 continue;
             }
-            let op = match parsed {
-                Ok(op) => op,
-                Err(e) => { failures.push(format!("{label}: op does not parse as WireOp: {e}")); continue; }
+            // Decode every named input with the production deserializer.
+            let mut frames: std::collections::HashMap<String, SolFrame> = std::collections::HashMap::new();
+            let mut refused = false;
+            for (k, wf) in case.frames {
+                match wire_to_solframe(wf) {
+                    Ok(f) => { frames.insert(k, f); }
+                    Err(e) => { failures.push(format!("{label}: input frame \"{k}\" refused: {}", err_code(&e))); refused = true; }
+                }
+            }
+            if refused { continue; }
+            let take = |frames: &mut std::collections::HashMap<String, SolFrame>, name: &str| -> Option<SolFrame> {
+                frames.remove(name)
             };
-            let input = match case.frames.into_iter().find(|(k, _)| k == "in") {
-                Some((_, f)) => f,
-                None => { failures.push(format!("{label}: no \"in\" frame")); continue; }
+            // Binary verbs are separate backend commands, not WireOps — dispatch
+            // by the file's verb name (the JS runner does the same).
+            let result: Result<SolFrame, IpcError> = match file.verb.as_str() {
+                "join" => {
+                    // The op is `{ kind: "join" } & WireJoinOpts` — serde ignores
+                    // the extra `kind` field, so the PRODUCTION opts type parses it.
+                    match serde_json::from_value::<WireJoinOpts>(case.op) {
+                        Err(e) => { failures.push(format!("{label}: op does not parse as WireJoinOpts: {e}")); continue; }
+                        Ok(opts) => {
+                            let (Some(l), Some(r)) = (take(&mut frames, "left"), take(&mut frames, "right")) else {
+                                failures.push(format!("{label}: join needs \"left\" + \"right\" frames"));
+                                continue;
+                            };
+                            verb_join(&l, &r, &opts)
+                        }
+                    }
+                }
+                "append" => {
+                    #[derive(serde::Deserialize)]
+                    struct AppendOp { frames: Vec<String> }
+                    match serde_json::from_value::<AppendOp>(case.op) {
+                        Err(e) => { failures.push(format!("{label}: op does not parse as an append op: {e}")); continue; }
+                        Ok(op) => {
+                            // append_frames runs over store handles (the IPC shape).
+                            let mut handles: Vec<String> = Vec::new();
+                            let mut missing = false;
+                            for n in &op.frames {
+                                match take(&mut frames, n) {
+                                    Some(f) => handles.push(register(f)),
+                                    None => { failures.push(format!("{label}: append names an absent frame \"{n}\"")); missing = true; }
+                                }
+                            }
+                            let r = if missing { continue } else { append_frames(&handles) };
+                            let mut s = store().lock().unwrap();
+                            for h in handles { s.frames.remove(&h); }
+                            drop(s);
+                            r
+                        }
+                    }
+                }
+                _ => {
+                    let op = match serde_json::from_value::<WireOp>(case.op) {
+                        Ok(op) => op,
+                        Err(e) => { failures.push(format!("{label}: op does not parse as WireOp: {e}")); continue; }
+                    };
+                    let Some(input) = take(&mut frames, "in") else {
+                        failures.push(format!("{label}: no \"in\" frame"));
+                        continue;
+                    };
+                    apply_ops(&input, &[op])
+                }
             };
-            let frame = match wire_to_solframe(input) {
-                Ok(f) => f,
-                Err(e) => { failures.push(format!("{label}: input frame refused: {}", err_code(&e))); continue; }
-            };
-            let result = apply_ops(&frame, &[op]);
             match (result, case.expect, case.expect_error) {
                 (Ok(out), Some(expect), _) => {
                     let got = dump(&out);

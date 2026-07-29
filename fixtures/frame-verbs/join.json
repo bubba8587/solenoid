@@ -1,0 +1,195 @@
+{ "verb": "join",
+  "cases": [
+    { "name": "inner: only matches, fan-out, right key column dropped",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "name", "type": "string", "values": ["A", "B", "C"] } ] },
+        "right": { "columns": [
+          { "name": "cust", "type": "number", "values": [1, 1, 3, 4] },
+          { "name": "amt", "type": "number", "values": [10, 20, 30, 40] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "cust", "how": "inner" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1, 1, 3] },
+        { "name": "name", "type": "string", "values": ["A", "A", "C"] },
+        { "name": "amt", "type": "number", "values": [10, 20, 30] } ] } },
+    { "name": "left: unmatched left row keeps null on the right side",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "name", "type": "string", "values": ["A", "B", "C"] } ] },
+        "right": { "columns": [
+          { "name": "cust", "type": "number", "values": [1, 1, 3, 4] },
+          { "name": "amt", "type": "number", "values": [10, 20, 30, 40] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "cust", "how": "left" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1, 1, 2, 3] },
+        { "name": "name", "type": "string", "values": ["A", "A", "B", "C"] },
+        { "name": "amt", "type": "number", "values": [10, 20, null, 30] } ] } },
+    { "name": "right: all right rows; key coalesces from the right when no left match",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "name", "type": "string", "values": ["A", "B", "C"] } ] },
+        "right": { "columns": [
+          { "name": "cust", "type": "number", "values": [1, 1, 3, 4] },
+          { "name": "amt", "type": "number", "values": [10, 20, 30, 40] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "cust", "how": "right" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1, 1, 3, 4] },
+        { "name": "name", "type": "string", "values": ["A", "A", "C", null] },
+        { "name": "amt", "type": "number", "values": [10, 20, 30, 40] } ] } },
+    { "name": "outer: all of both, unmatched filled null",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "name", "type": "string", "values": ["A", "B", "C"] } ] },
+        "right": { "columns": [
+          { "name": "cust", "type": "number", "values": [1, 1, 3, 4] },
+          { "name": "amt", "type": "number", "values": [10, 20, 30, 40] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "cust", "how": "outer" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1, 1, 2, 3, 4] },
+        { "name": "name", "type": "string", "values": ["A", "A", "B", "C", null] },
+        { "name": "amt", "type": "number", "values": [10, 20, null, 30, 40] } ] } },
+    { "name": "semi filters left columns only, no fan-out",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "a", "type": "string", "values": ["p", "q", "r"] } ] },
+        "right": { "columns": [
+          { "name": "fk", "type": "number", "values": [2, 2] },
+          { "name": "v", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "fk", "how": "semi" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [2] },
+        { "name": "a", "type": "string", "values": ["q"] } ] } },
+    { "name": "anti keeps the unmatched left rows",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "a", "type": "string", "values": ["p", "q", "r"] } ] },
+        "right": { "columns": [
+          { "name": "fk", "type": "number", "values": [2, 2] },
+          { "name": "v", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "fk", "how": "anti" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1, 3] },
+        { "name": "a", "type": "string", "values": ["p", "r"] } ] } },
+    { "name": "null keys never match each other (SQL semantics)",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, null] },
+          { "name": "n", "type": "string", "values": ["A", "B"] } ] },
+        "right": { "columns": [
+          { "name": "id", "type": "number", "values": [1, null] },
+          { "name": "v", "type": "number", "values": [9, 8] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "id", "how": "inner" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1] },
+        { "name": "n", "type": "string", "values": ["A"] },
+        { "name": "v", "type": "number", "values": [9] } ] } },
+    { "name": "left join keeps a null-key left row, right side null",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, null] },
+          { "name": "n", "type": "string", "values": ["A", "B"] } ] },
+        "right": { "columns": [
+          { "name": "id", "type": "number", "values": [1, null] },
+          { "name": "v", "type": "number", "values": [9, 8] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "id", "how": "left" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1, null] },
+        { "name": "n", "type": "string", "values": ["A", "B"] },
+        { "name": "v", "type": "number", "values": [9, null] } ] } },
+    { "name": "a colliding non-key column name dedupes (name -> name2)",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1, 2, 3] },
+          { "name": "name", "type": "string", "values": ["A", "B", "C"] } ] },
+        "right": { "columns": [
+          { "name": "cust", "type": "number", "values": [1] },
+          { "name": "name", "type": "string", "values": ["order-1"] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "cust", "how": "inner" },
+      "expect": { "columns": [
+        { "name": "id", "type": "number", "values": [1] },
+        { "name": "name", "type": "string", "values": ["A"] },
+        { "name": "name2", "type": "string", "values": ["order-1"] } ] } },
+    { "name": "strict driving-side row order with grouped fan-out (audit finding 15)",
+      "frames": {
+        "left": { "columns": [
+          { "name": "k", "type": "number", "values": [3, 1, 2, 1] },
+          { "name": "l", "type": "number", "values": [30, 10, 20, 11] } ] },
+        "right": { "columns": [
+          { "name": "k", "type": "number", "values": [1, 2, 1] },
+          { "name": "r", "type": "number", "values": [100, 200, 101] } ] } },
+      "op": { "kind": "join", "leftKey": "k", "rightKey": "k", "how": "left" },
+      "expect": { "columns": [
+        { "name": "k", "type": "number", "values": [3, 1, 1, 2, 1, 1] },
+        { "name": "l", "type": "number", "values": [30, 10, 10, 20, 11, 11] },
+        { "name": "r", "type": "number", "values": [null, 100, 101, 200, 100, 101] } ] } },
+    { "name": "asof backward: latest right key <= left key; every left row kept, original order",
+      "frames": {
+        "left": { "columns": [
+          { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] } ] },
+        "right": { "columns": [
+          { "name": "t", "type": "number", "values": [0, 2, 4, 8, 12] },
+          { "name": "px", "type": "number", "values": [100, 101, 102, 103, 104] } ] } },
+      "op": { "kind": "join", "leftKey": "t", "rightKey": "t", "how": "asof", "asofDirection": "backward" },
+      "expect": { "columns": [
+        { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] },
+        { "name": "px", "type": "number", "values": [null, 100, 102, 103, 104] } ] } },
+    { "name": "asof forward: earliest right key >= left key",
+      "frames": {
+        "left": { "columns": [
+          { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] } ] },
+        "right": { "columns": [
+          { "name": "t", "type": "number", "values": [0, 2, 4, 8, 12] },
+          { "name": "px", "type": "number", "values": [100, 101, 102, 103, 104] } ] } },
+      "op": { "kind": "join", "leftKey": "t", "rightKey": "t", "how": "asof", "asofDirection": "forward" },
+      "expect": { "columns": [
+        { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] },
+        { "name": "px", "type": "number", "values": [100, 101, 103, 104, null] } ] } },
+    { "name": "asof nearest: whichever is closer; a tie favors backward",
+      "frames": {
+        "left": { "columns": [
+          { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] } ] },
+        "right": { "columns": [
+          { "name": "t", "type": "number", "values": [0, 2, 4, 8, 12] },
+          { "name": "px", "type": "number", "values": [100, 101, 102, 103, 104] } ] } },
+      "op": { "kind": "join", "leftKey": "t", "rightKey": "t", "how": "asof", "asofDirection": "nearest" },
+      "expect": { "columns": [
+        { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] },
+        { "name": "px", "type": "number", "values": [100, 100, 102, 103, 104] } ] } },
+    { "name": "asof tolerance excludes a match beyond the max key distance",
+      "frames": {
+        "left": { "columns": [
+          { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] } ] },
+        "right": { "columns": [
+          { "name": "t", "type": "number", "values": [0, 2, 4, 8, 12] },
+          { "name": "px", "type": "number", "values": [100, 101, 102, 103, 104] } ] } },
+      "op": { "kind": "join", "leftKey": "t", "rightKey": "t", "how": "asof", "asofDirection": "backward", "asofTolerance": 1 },
+      "expect": { "columns": [
+        { "name": "t", "type": "number", "values": [-1, 1, 5, 10, 20] },
+        { "name": "px", "type": "number", "values": [null, 100, 102, null, null] } ] } },
+    { "name": "asof never matches a null key row (same rule as an equality join)",
+      "frames": {
+        "left": { "columns": [
+          { "name": "t", "type": "number", "values": [null, 5] } ] },
+        "right": { "columns": [
+          { "name": "t", "type": "number", "values": [0, 2, 4, 8, 12] },
+          { "name": "px", "type": "number", "values": [100, 101, 102, 103, 104] } ] } },
+      "op": { "kind": "join", "leftKey": "t", "rightKey": "t", "how": "asof", "asofDirection": "backward" },
+      "expect": { "columns": [
+        { "name": "t", "type": "number", "values": [null, 5] },
+        { "name": "px", "type": "number", "values": [null, 102] } ] } },
+    { "name": "asof rejects a non-orderable (string) key",
+      "frames": {
+        "left": { "columns": [
+          { "name": "k", "type": "string", "values": ["a"] } ] },
+        "right": { "columns": [
+          { "name": "k", "type": "string", "values": ["a"] },
+          { "name": "v", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "join", "leftKey": "k", "rightKey": "k", "how": "asof" },
+      "expectError": "#VALUE!" }
+  ] }

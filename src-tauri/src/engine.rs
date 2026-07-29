@@ -1437,11 +1437,57 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         ))?;
         return Ok(SolFrame { df: joined, types: left.types.clone() });
     }
+    if opts.how.as_str() == "outer" {
+        // The oracle's OUTER layout is a composition Polars' maintain_order
+        // can't express (a Full join tails the unmatched LEFT rows): every left
+        // row in order with grouped fan-out — i.e. the LEFT join — then the
+        // unmatched RIGHT rows in right order, key coalesced from the right.
+        // Build exactly that composition (surfaced by the parity corpus).
+        let left_opts = WireJoinOpts {
+            left_key: opts.left_key.clone(),
+            right_key: opts.right_key.clone(),
+            how: "left".into(),
+            asof_direction: None,
+            asof_tolerance: None,
+        };
+        let head = verb_join(left, right, &left_opts)?;
+        let mut args = JoinArgs::new(JoinType::Anti);
+        args.maintain_order = MaintainOrderJoin::LeftRight;
+        let tail = collect_lazy(right.df.clone().lazy().join(
+            left.df.clone().lazy(),
+            vec![col(opts.right_key.as_str())],
+            vec![col(opts.left_key.as_str())],
+            args,
+        ))?;
+        let tail_frame = SolFrame { df: tail, types: right.types.clone() };
+        // Tail rows in the head's schema: the key coalesces from the right,
+        // every other LEFT column is null, right non-key columns carry over.
+        let head_names = head.names();
+        let left_names = left.names();
+        let mut right_nonkey = right.names().into_iter().filter(|n| n != &opts.right_key);
+        let mut cols: Vec<Vec<Cell>> = Vec::with_capacity(head_names.len());
+        for i in 0..head_names.len() {
+            let src = if i < left_names.len() {
+                if left_names[i] == opts.left_key { Some(opts.right_key.clone()) } else { None }
+            } else {
+                right_nonkey.next()
+            };
+            cols.push(match src {
+                Some(rn) => tail_frame.column_cells(&rn).unwrap().1,
+                None => vec![Cell::Null; tail_frame.df.height()],
+            });
+        }
+        let tail_df = build_df(&head_names, &head.types, &cols)?;
+        let df = head
+            .df
+            .vstack(&tail_df)
+            .map_err(|e| IpcError::internal(format!("outer join tail stack failed: {e}")))?;
+        return Ok(SolFrame { df, types: head.types });
+    }
     let how = match opts.how.as_str() {
         "inner" => JoinType::Inner,
         "left" => JoinType::Left,
         "right" => JoinType::Right,
-        "outer" => JoinType::Full,
         other => return Err(IpcError::new("#VALUE!", format!("unknown join how \"{other}\""))),
     };
     let is_right = matches!(how, JoinType::Right);

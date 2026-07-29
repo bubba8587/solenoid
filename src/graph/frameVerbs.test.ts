@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortByColumn, filterRows, filterRowsMulti, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame } from "./frameVerbs";
+import { sortByColumn, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
 import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
 
@@ -148,132 +148,6 @@ describe("groupBy — error cells + the aggregate guard (oracle-only)", () => {
   });
 });
 
-describe("join", () => {
-  const customers: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "id", type: "number", values: [1, 2, 3] },
-      { name: "name", type: "string", values: ["A", "B", "C"] },
-    ],
-  };
-  const orders: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "cust", type: "number", values: [1, 1, 3, 4] },
-      { name: "amt", type: "number", values: [10, 20, 30, 40] },
-    ],
-  };
-  const opts = (how: "inner" | "left" | "right" | "outer") => ({ leftKey: "id", rightKey: "cust", how });
-
-  it("inner: only matches, fan-out, right key column dropped", () => {
-    const out = joinFrames(customers, orders, opts("inner"));
-    expect(out.columns.map((c) => c.name)).toEqual(["id", "name", "amt"]);
-    expect(out.columns[0].values).toEqual([1, 1, 3]);
-    expect(out.columns[1].values).toEqual(["A", "A", "C"]);
-    expect(out.columns[2].values).toEqual([10, 20, 30]);
-  });
-  it("left: unmatched left row keeps null on the right side", () => {
-    const out = joinFrames(customers, orders, opts("left"));
-    expect(out.columns[0].values).toEqual([1, 1, 2, 3]);
-    expect(out.columns[2].values).toEqual([10, 20, null, 30]); // id=2 had no order
-  });
-  it("right: all right rows; key coalesces from the right when no left match", () => {
-    const out = joinFrames(customers, orders, opts("right"));
-    expect(out.columns[0].values).toEqual([1, 1, 3, 4]); // cust=4 coalesced into id
-    expect(out.columns[1].values).toEqual(["A", "A", "C", null]);
-    expect(out.columns[2].values).toEqual([10, 20, 30, 40]);
-  });
-  it("outer: all of both, unmatched filled null", () => {
-    const out = joinFrames(customers, orders, opts("outer"));
-    expect(out.columns[0].values).toEqual([1, 1, 2, 3, 4]);
-    expect(out.columns[1].values).toEqual(["A", "A", "B", "C", null]);
-    expect(out.columns[2].values).toEqual([10, 20, null, 30, 40]);
-  });
-  it("does not match null keys (SQL / Polars join_nulls=false)", () => {
-    const l: FrameValue = {
-      __frame: true,
-      columns: [{ name: "id", type: "number", values: [1, null] }, { name: "n", type: "string", values: ["A", "B"] }],
-    };
-    const r: FrameValue = {
-      __frame: true,
-      columns: [{ name: "id", type: "number", values: [1, null] }, { name: "v", type: "number", values: [9, 8] }],
-    };
-    const inner = joinFrames(l, r, { leftKey: "id", rightKey: "id", how: "inner" });
-    expect(inner.columns[0].values).toEqual([1]); // the two null rows do NOT match each other
-    expect(inner.columns[2].values).toEqual([9]);
-    const left = joinFrames(l, r, { leftKey: "id", rightKey: "id", how: "left" });
-    expect(left.columns[0].values).toEqual([1, null]); // null-key left row kept, right side null
-    expect(left.columns[2].values).toEqual([9, null]);
-  });
-  it("de-dupes a colliding non-key column name", () => {
-    const r2: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "cust", type: "number", values: [1] },
-        { name: "name", type: "string", values: ["order-1"] }, // collides with customers.name
-      ],
-    };
-    const out = joinFrames(customers, r2, opts("inner"));
-    expect(out.columns.map((c) => c.name)).toEqual(["id", "name", "name2"]);
-  });
-});
-
-describe("join — asof (prices/trades: every left row kept, nearest right by time)", () => {
-  // trades at t = -1 (before any quote), 1, 5, 10, 20 (after every quote)
-  const trades: FrameValue = {
-    __frame: true,
-    columns: [{ name: "t", type: "number", values: [-1, 1, 5, 10, 20] }],
-  };
-  // quotes at t = 0, 2, 4, 8, 12
-  const quotes: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "t", type: "number", values: [0, 2, 4, 8, 12] },
-      { name: "px", type: "number", values: [100, 101, 102, 103, 104] },
-    ],
-  };
-  const asofOpts = (asofDirection: "backward" | "forward" | "nearest", asofTolerance?: number) =>
-    ({ leftKey: "t", rightKey: "t", how: "asof" as const, asofDirection, asofTolerance });
-
-  it("backward: latest right key ≤ left key; every left row kept, original order", () => {
-    const out = joinFrames(trades, quotes, asofOpts("backward"));
-    expect(out.columns[0].values).toEqual([-1, 1, 5, 10, 20]); // LEFT order preserved
-    expect(out.columns[1].values).toEqual([null, 100, 102, 103, 104]);
-  });
-
-  it("forward: earliest right key ≥ left key", () => {
-    const out = joinFrames(trades, quotes, asofOpts("forward"));
-    expect(out.columns[1].values).toEqual([100, 101, 103, 104, null]);
-  });
-
-  it("nearest: whichever is closer; a tie favors backward", () => {
-    const out = joinFrames(trades, quotes, asofOpts("nearest"));
-    // t=-1: only forward (0) exists -> 100. t=1: |1-0|=|1-2|=1 tie -> backward (100).
-    // t=5: |5-4|=1 < |5-8|=3 -> backward (102). t=10: |10-8|=|10-12|=2 tie -> backward (103).
-    // t=20: only backward (12) exists -> 104.
-    expect(out.columns[1].values).toEqual([100, 100, 102, 103, 104]);
-  });
-
-  it("tolerance excludes a match beyond the max key distance", () => {
-    const out = joinFrames(trades, quotes, asofOpts("backward", 1));
-    // t=5's backward match (t=4, diff 1) is within tolerance; t=10's (t=8, diff 2) is not.
-    expect(out.columns[1].values).toEqual([null, 100, 102, null, null]);
-  });
-
-  it("never matches a null/error key row (same rule as an equality join)", () => {
-    const gappy: FrameValue = { __frame: true, columns: [{ name: "t", type: "number", values: [null, 5] }] };
-    const out = joinFrames(gappy, quotes, asofOpts("backward"));
-    expect(out.columns[1].values).toEqual([null, 102]);
-  });
-
-  it("rejects a non-orderable (string/logical) key with #VALUE!", () => {
-    const strKeyed: FrameValue = { __frame: true, columns: [{ name: "k", type: "string", values: ["a"] }] };
-    const strRight: FrameValue = { __frame: true, columns: [{ name: "k", type: "string", values: ["a"] }, { name: "v", type: "number", values: [1] }] };
-    const err = (() => { try { joinFrames(strKeyed, strRight, { leftKey: "k", rightKey: "k", how: "asof" }); } catch (e) { return e; } })();
-    expect(isSolError(err) && err.code).toBe("#VALUE!");
-  });
-});
-
 describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () => {
   const prices: FrameValue = {
     __frame: true,
@@ -376,34 +250,6 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     try { unnestCube(nestFrame(flat, ["cust"]), "nope"); } catch (e) { err = e; }
     if (!isSolError(err)) throw new Error("expected SolError");
     expect(err.code).toBe("#REF!");
-  });
-});
-
-describe("append (union by name)", () => {
-  it("stacks identical schemas into a plain concat", () => {
-    const a: FrameValue = { __frame: true, columns: [
-      { name: "x", type: "number", values: [1, 2] }, { name: "y", type: "string", values: ["a", "b"] }] };
-    const b: FrameValue = { __frame: true, columns: [
-      { name: "x", type: "number", values: [3] }, { name: "y", type: "string", values: ["c"] }] };
-    const out = appendFrames([a, b]);
-    expect(out.columns[0].values).toEqual([1, 2, 3]);
-    expect(out.columns[1].values).toEqual(["a", "b", "c"]);
-  });
-  it("unions differing columns, filling absent ones with null", () => {
-    const a: FrameValue = { __frame: true, columns: [{ name: "x", type: "number", values: [1] }] };
-    const b: FrameValue = { __frame: true, columns: [{ name: "z", type: "string", values: ["q"] }] };
-    const out = appendFrames([a, b]);
-    expect(out.columns.map((c) => c.name)).toEqual(["x", "z"]);
-    expect(out.columns[0].values).toEqual([1, null]);  // b had no x
-    expect(out.columns[1].values).toEqual([null, "q"]); // a had no z
-  });
-  it("#TYPE!s when a shared column name has conflicting types (reject-on-mismatch)", () => {
-    const a: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [1] }] };
-    const b: FrameValue = { __frame: true, columns: [{ name: "k", type: "string", values: ["x"] }] };
-    let err: unknown;
-    try { appendFrames([a, b]); } catch (e) { err = e; }
-    if (!isSolError(err)) throw new Error("expected a SolError");
-    expect(err.code).toBe("#TYPE!");
   });
 });
 
