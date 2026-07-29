@@ -19,7 +19,7 @@ subsystem-invariants "Unit flow", `decisions.md` D20).
 | [12](12-value-model-extensions.md) | Uncertain values (#21) + money mode (#43) | As-Of half SHIPPED; the rest VERY LATE, each needs an author representation call |
 | [16](16-widget-nodes.md) | **Everyday widget nodes** (Weather/Geocode/FX/Holidays/TZ/QR — the throwaway-workbook layer) | Scoped 2026-07-20; Tier 1 autonomous-friendly (could be 1.3); 4 author calls listed in the doc (FX cap reversal, provider policy) |
 | [17](17-matrix-formulas.md) | **Matrix formulas** — the Tier 4 / D2 decision packet (shape branding + broadcast table) | Prep COMPLETE 2026-07-28 (VAL-15 rebrand cleared the recorded blocker); decision AUTHOR-GATED; no open sub-decisions — the PAD rule was already settled by P3 + D15 |
-| [18](18-parity-corpus.md) | **Backend parity corpus** — one wire-format fixture set run by both vitest and cargo, replacing the hand-mirrored verb-test pairs | DESIGNED 2026-07-28, decision-complete; build queued (backlog) — migrates verb-by-verb, promotes as FX-12 |
+| 18 | **Backend parity corpus** — one wire-format fixture set run by both vitest and cargo, replacing the hand-mirrored verb-test pairs | SHIPPED 2026-07-29 as FX-12, archived to `../archive/18-parity-corpus.md` (live truth: `fixtures/frame-verbs/`, `frameVerbCorpus.test.ts`, `corpus_cases` in engine/tests.rs) |
 
 ## Verdict pending — needs a fresh author call before any bundle doc
 

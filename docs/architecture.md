@@ -249,7 +249,7 @@ src-tauri/
 ├── tauri.conf.json           # Window, identifier, build hooks
 ├── capabilities/default.json # Permissions: dialog:default, fs read scoped to $HOME/**
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
-├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. 46 cargo parity tests vs the frameVerbs JS oracle.
+├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, FX-12): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
 ```
 

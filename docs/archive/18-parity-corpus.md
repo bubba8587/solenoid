@@ -1,14 +1,16 @@
 # 18 — The backend parity corpus (FX: one fixture set, both engines)
 
-**Status: STEP 1 BUILT (2026-07-28)** — `FRAME_OP_KINDS` (compile-time exhaustive),
-both runners, and three seed verbs (sort / distinct / filter, 15 cases incl.
-`expectError` and null-cell edges) are in. The JS side is green; the cargo runner
-(`corpus_cases` in `engine/tests.rs`) is written against the production
-deserializers but UNVERIFIED in the dev container — the Tauri link needs the GTK
-dev libs (now apt-installed here; the compile was skipped by author call — run
-`cargo test corpus_cases` in src-tauri to verify). Remaining: the verb-by-verb
-migration (step 2, the `NOT_YET_MIGRATED` whitelist in `frameVerbCorpus.test.ts`),
-the guard flip (step 3), the FX-12 promotion (step 4).
+**Status: SHIPPED 2026-07-29, promoted as FX-12 (archived).** All four steps
+landed: cargo runner verified, every hand-mirrored pair (unary AND binary)
+migrated and deleted, the whitelist ratchet closed, FX-12 in `rules.md`. The
+first three cargo runs each caught a real divergence (unknown-agg-op silent
+null column, NaN passing gt/gte under Polars' total float order, outer-join
+row order) — details in the 2026-07-29 dev-notes digest. Live truth:
+`fixtures/frame-verbs/`, `frameVerbCorpus.test.ts`, `corpus_cases` in
+`engine/tests.rs`, FX-12. Deviations from the design as written: pivot is
+declared `ORACLE_ONLY_VERBS` (self-destructing exemption) rather than getting
+an engine op; append's op carries the frame ORDER (`frames: [names…]`) since
+a JSON map can't.
 
 **Original design note.** The last item on the spec-promotion queue and the
 largest: today the Polars engine (`src-tauri/src/engine.rs`) and the JS oracle

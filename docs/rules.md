@@ -555,6 +555,35 @@ with its "FX still diverges (tripwire)" twin.
 *Origin:* author-flagged 2026-06-25; recovered from the audit notes after the original
 sweep script was lost — which is why the pins live in the suite now.
 
+### FX-12 — The verb pair computes from ONE fixture corpus **[INFERRED]**
+**MUST:** every frame verb both engines speak is specified by cases in
+`fixtures/frame-verbs/` — recorded WIRE payloads (frames + the op in serde's own
+tagged shape), which BOTH runners deserialize with production code
+(`frameVerbCorpus.test.ts` through the oracle, `corpus_cases` in
+`engine/tests.rs` through Polars). A verb without corpus cases does not ship:
+the completeness guard requires a fixture file per verb in
+`FRAME_OP_KINDS` + `BINARY_VERBS`, and a new `FrameOp` kind fails compile before
+it fails the guard. Verbs only ONE side runs are declared, not skipped: an
+`ORACLE_ONLY_VERBS` entry (pivot) makes cargo assert the engine still does NOT
+parse the op, so the exemption self-destructs if the engine ever learns it.
+**MUST NOT:** re-encode a case per side — the corpus format IS the wire format;
+a fixture that parses on one side and not the other is itself the parity
+failure, surfacing at load.
+
+*Why:* the two engines were kept in agreement by hand-mirrored test pairs tied
+together by comments; nothing failed when a verb, option or edge landed on one
+side only — the drift class the whole parity program exists to close, one seam
+over. The corpus's first three runs each caught a REAL divergence the pairs had
+missed: a silent null column for an unknown agg op (now `#NAME?` both sides),
+NaN passing gt/gte under Polars' total float order, and outer-join row order
+(never pinned engine-side).
+*Enforced by:* `frameVerbCorpus.test.ts` (cases + the completeness guard + a
+corpus-wide input-mutation check) and `engine/tests.rs` `corpus_cases` — CI
+runs both suites, so a case passing one engine and failing the other is a red
+build. Oracle-only semantics the wire can't carry (per-cell SolErrors) stay
+pinned in `frameVerbs.test.ts`, marked as such.
+*Origin:* bundle 18 (`v2.0/18-parity-corpus.md`), landed 2026-07-29.
+
 ---
 
 # VAL — Value handling
@@ -1083,11 +1112,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-69 rules.
+70 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 66 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
+| Enforced | 67 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11,12 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
 | Partially enforced | 2 | EFFECT-1 · SOCK-8 |
 | Unenforced | 1 | SOCK-6 |
 
