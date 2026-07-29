@@ -112,8 +112,13 @@ Notes:
   renders through an annotation.
 - **Complex** applies the precision rule to BOTH components (`3.14+2.72i` at
   2 places). Percent/fraction/integer are meaningless on a complex value → not
-  offered. (Implementation may lag the spec here; the popup must still gate to the
-  reduced style list from day one.)
+  offered. **Implementation status (verified 2026-07-29): the popup half is DONE**
+  (`controlsFor` + `COMPLEX_FORMAT_STYLES` gate the dropdown to auto/decimal/
+  scientific, precision + unit rows show); **the RENDER half is NOT wired** — the
+  complex cards pre-format to strings in `data()` (`formatCxValue`, fixed 4-digit
+  trim), so a docked FC's style/precision/unit annotation never reaches a complex
+  value. Building it = an annotation-aware `formatCx` + routing the complex value
+  boxes / chips / Display through it (a visual change; backlog).
 - **Advanced-tier composition order** (2026-07-05): scale divides the magnitude
   and appends its suffix inside the number (`1.2M`); the unit wraps that
   (`$1.2M`); a paren negative wraps OUTSIDE the unit, Excel accounting style

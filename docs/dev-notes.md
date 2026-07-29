@@ -120,6 +120,19 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### FC complex verification: popup done, render half unwired (2026-07-29d)
+
+The backlog's "verify FC complex styles against the format-model truth table"
+item: verified. The POPUP half is correctly implemented (`controlsFor` +
+`COMPLEX_FORMAT_STYLES` gate to auto/decimal/scientific; precision + unit rows
+show; advanced tier correctly absent). The RENDER half is NOT wired at all —
+the complex cards pre-format to strings inside `data()` (`formatCxValue`,
+fixed 4-digit trim), so a docked FC's annotation never reaches a complex
+value on any surface. format-model.md's vague "may lag" warning replaced with
+this precise status; the build (annotation-aware formatCx + routing the value
+boxes/chips/Display) is a visual change and sits in the backlog for an
+author-eyeball loop.
+
 ### Fuzz round 3 (widened pools): three deeper finds, incl. the WIRE itself (2026-07-29c)
 
 Widened the generator (17-digit doubles, denormals, 2^53+1, fractional/negative
