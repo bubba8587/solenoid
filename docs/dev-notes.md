@@ -144,6 +144,42 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Fuzz round 4 (fused op chains): six finds, both engines AND the oracle (2026-07-29f)
+
+The backlog's "fuzz next territory" landed: a `pipeline` corpus verb —
+`op: {kind: "pipeline", ops: [WireOp…]}` over the "in" frame. The oracle (and
+the JS runner) applies the ops SEQUENTIALLY; the cargo runner hands the list to
+`apply_ops`, which fuses them into ONE lazy Polars plan — so these cases pin
+the fusion seam (predicate pushdown, group-by-mid-chain) no single-op case
+sees. `pipeline.json` holds 11 hand-named chains (report chain, rename→select,
+empty-ops identity, error-mid-chain surfaces its code…); the fuzz generator
+grew per-verb op MAKERS so each chained op is built against the intermediate
+frame (column-aware chains), 2–5 ops, error cells mid-chain skip the case (the
+FX-12 wire boundary). ~28k cases over 35 seeds; six real divergences, all
+fixed + pinned, final 12 seeds clean:
+
+- **Polars median interpolates** (`lo + 0.5*(hi−lo)`, loses ~1e-6 when the
+  even pair spans magnitudes) vs the oracle's midpoint `(lo+hi)/2` →
+  `median_expr` UDF mirroring the oracle (like variance/mode).
+- **Descending sort REVERSED an all-null column** — Polars' all-equal-keys
+  fast path ignores maintain_order (chains manufacture the degenerate column:
+  stdev of single-row groups). `lazy_sort` now rides a row index as the
+  explicit ascending tiebreak key — order is part of the sort contract now.
+- **The outer join's anti TAIL joined on RAW keys** — Polars matches NaN==NaN,
+  so NaN-keyed right rows "matched" and vanished; now masked like every path.
+- **Text predicates read serde's float form, not JS display**: 2^53 fell out
+  of num_to_json's i64 window and read "9007199254740992.0" (endsWith "0"
+  matched); non-finite cells read "" instead of "NaN"/"Infinity". New
+  `js_number_string` (ECMA Number::toString over Rust's `{:e}` shortest
+  digits) now backs `cell_display` + `json_str`.
+- **min/max over a logical column — BOTH sides wrong differently**: the oracle
+  emitted 1/0 numbers in a logical-typed column, the engine left the Float64
+  agg uncast under a logical label. Both now return booleans.
+- **-0 breaks the corpus tautology**: JSON can't write -0, so an oracle
+  -0 (product crossing zero) failed replay under toEqual's Object.is. The JS
+  runner's dump now compares sign-of-zero-blind, matching the wire, the Rust
+  runner's f64 ==, and every user surface.
+
 ### Fuzz round 3 (widened pools): three deeper finds, incl. the WIRE itself (2026-07-29c)
 
 Widened the generator (17-digit doubles, denormals, 2^53+1, fractional/negative

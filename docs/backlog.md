@@ -28,13 +28,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
-- [ ] **Fuzz next territory: op CHAINS through the fusion path** — the corpus
-  fuzz (`scripts/fuzz-frame-verbs.ts`, 11 finds over ~4k cases) runs single ops;
-  the seams it has NOT walked are fused multi-op plans (`engine_apply_many` —
-  lazy/eager handoffs interacting) and chained verbs over the round 3 value
-  pools. Extension = a `pipeline` generator emitting `ops: [...]` cases + both
-  runners applying sequentially (oracle) vs fused (engine). Single-op pools feel
-  mined out (last four seeds: zero finds).
 - [ ] **Engine lacks the aggregate non-finite guard (corpus-discovered,
   2026-07-29)** — the oracle's groupBy sums guard B-1b (#OVERFLOW! on
   all-finite overflow, #DOMAIN! on NaN/∞−∞), but those are SolError CELLS the

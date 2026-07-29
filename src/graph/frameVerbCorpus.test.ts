@@ -36,6 +36,14 @@ interface CorpusFile { verb: string; cases: CorpusCase[] }
  *  richer half.) */
 const BINARY_VERBS = ["join", "append"] as const;
 
+/** The fusion corpus verb: `op: { kind: "pipeline", ops: [FrameOp…] }` over the
+ *  "in" frame. The oracle applies the ops SEQUENTIALLY (each materialized); the
+ *  cargo runner hands the whole list to `apply_ops`, which fuses them into ONE
+ *  lazy Polars plan — so these cases pin the fusion seam itself (predicate
+ *  pushdown, projection reordering, a group-by mid-chain), which no single-op
+ *  case can see. Sequential-vs-fused is the parity claim. */
+const PIPELINE_VERB = "pipeline";
+
 /** Non-finite cells ride the wire's OWN tagged form — `{"__nf": "inf"|"-inf"|
  *  "nan"}`, the convention frameBackend/engine.rs already speak — because the
  *  corpus format IS the wire format. Decoded here exactly as frameBackend's
@@ -57,9 +65,18 @@ function brand(wire: { columns: WireColumn[] }): FrameValue {
 }
 
 /** Structural view for comparison: name/type/values only (unit/raw are
- *  node-side extras the corpus doesn't exercise). */
+ *  node-side extras the corpus doesn't exercise). Negative zero normalizes to
+ *  0: JSON cannot write -0 (JSON.stringify(-0) is "0"), so the wire — and
+ *  therefore the corpus format — loses the sign of zero at the same boundary
+ *  production frames do; the Rust runner's frames_equal compares f64 `==`
+ *  (sign-blind) and no user surface distinguishes them. Without this, an
+ *  oracle-computed -0 (e.g. a product crossing zero) fails against its own
+ *  round-tripped expectation under toEqual's Object.is semantics. */
 function dump(f: FrameValue): WireColumn[] {
-  return f.columns.map((c) => ({ name: c.name, type: c.type, values: [...c.values] }));
+  return f.columns.map((c) => ({
+    name: c.name, type: c.type,
+    values: c.values.map((v) => (typeof v === "number" && Object.is(v, -0) ? 0 : v)),
+  }));
 }
 
 /** `expect` frames decode the `__nf` sentinel exactly like inputs do (the
@@ -87,6 +104,10 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
         out = joinFrames(inputs.left, inputs.right, opts as unknown as JoinOpts);
       } else if (kase.op.kind === "append") {
         out = appendFrames((kase.op.frames as string[]).map((n) => inputs[n]));
+      } else if (kase.op.kind === "pipeline") {
+        // Sequential application IS the oracle semantics — each op fully
+        // materializes before the next; the cargo side fuses the same list.
+        out = (kase.op.ops as FrameOp[]).reduce((f, o) => applyVerb(f, o), inputs.in);
       } else {
         out = applyVerb(inputs.in, kase.op as unknown as FrameOp);
       }
@@ -112,7 +133,7 @@ describe("corpus completeness — every verb has a fixture file", () => {
   // this ONE fixture corpus. Adding a NEW FrameOp kind fails compile
   // (FRAME_OP_KINDS) and then fails here until it ships with corpus cases; a
   // new binary verb joins BINARY_VERBS and needs a fixture file the same way.
-  const INVENTORY: readonly string[] = [...FRAME_OP_KINDS, ...BINARY_VERBS];
+  const INVENTORY: readonly string[] = [...FRAME_OP_KINDS, ...BINARY_VERBS, PIPELINE_VERB];
 
   it("fixture files cover the verb inventory exactly", () => {
     const covered = new Set(corpus.map((c) => c.verb));

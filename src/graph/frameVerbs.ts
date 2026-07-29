@@ -400,15 +400,26 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     name: c.name, type: c.type,
     values: keyOrder.map((k) => cellAt(c, buckets.get(k)![0])), // every row in a bucket shares the key
   }));
-  const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => ({
-    name: spec.as,
-    // min/max preserve the SOURCE type (a min over a date column IS a date, not a
-    // bare serial); sum/avg/count are always numeric.
-    type: spec.op === "min" || spec.op === "max" ? col.type : "number",
+  const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
+    const preserves = spec.op === "min" || spec.op === "max";
     // The non-finite guard lives INSIDE aggregateGroup (B-1b) so pivot's
     // re-aggregating totals get it too — not just this verb.
-    values: keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op)),
-  }));
+    let values = keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op));
+    // A preserved LOGICAL column converts the 1/0 the aggregator computed back
+    // to booleans — aggregateGroup coerces logicals to numbers on the way in,
+    // and a logical-typed column must not carry number cells (the engine's
+    // min over a bool column returns bools; corpus fuzz seed 910021).
+    if (preserves && col.type === "logical") {
+      values = values.map((v) => (typeof v === "number" ? v !== 0 : v));
+    }
+    return {
+      name: spec.as,
+      // min/max preserve the SOURCE type (a min over a date column IS a date,
+      // not a bare serial); sum/avg/count are always numeric.
+      type: preserves ? col.type : "number",
+      values,
+    };
+  });
   // De-dupe output names ("count of Region grouped by Region" collides the agg
   // `as` with the key) — two same-named columns here, a hard error in Rust
   // before it grew the same makeHeaders pass (audit finding 32).

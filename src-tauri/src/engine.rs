@@ -910,11 +910,21 @@ fn lazy_sort(plan: Plan, by: &str, dir: &str) -> Result<Plan, IpcError> {
         SolType::Str => col(by),
     };
     let desc = dir == "desc";
+    // A row index rides as the ASCENDING tiebreak key instead of relying on
+    // maintain_order: Polars' descending sort has an all-equal-keys fast path
+    // that REVERSES the rows even with maintain_order set (an all-null sort
+    // column — e.g. a stdev over single-row groups — came back reversed;
+    // corpus fuzz seed 910007, pinned in sort.json). The index makes the
+    // within-tie order part of the sort contract itself.
+    const SORT_IDX: &str = "__solenoid_sort_idx__";
     let opts = SortMultipleOptions::default()
-        .with_order_descending(desc)
-        .with_nulls_last(true)
-        .with_maintain_order(true);
-    let lf = plan.lf.sort_by_exprs(vec![key], opts);
+        .with_order_descending_multi([desc, false])
+        .with_nulls_last(true);
+    let lf = plan
+        .lf
+        .with_row_index(SORT_IDX, None)
+        .sort_by_exprs(vec![key, col(SORT_IDX)], opts)
+        .drop([SORT_IDX]);
     Ok(Plan { lf, ..plan })
 }
 
@@ -979,25 +989,77 @@ fn verb_sample(frame: &SolFrame, n: usize) -> Result<(SolFrame, f64), IpcError> 
 }
 
 // filter
+/// The exact string JS `String(n)` produces (ECMA-262 Number::toString, base
+/// 10). The text predicates compare DISPLAY strings, and serde's float form is
+/// not that display: it appends ".0" to an integral float outside
+/// num_to_json's i64 window, so 9007199254740992 (2^53, the window's first
+/// miss) read "9007199254740992.0" and an `endsWith "0"` kept it while the
+/// oracle's "9007199254740992" dropped it (corpus fuzz seed 910020, pinned in
+/// filter.json). Rust's `{:e}` yields the same shortest round-trip digits JS
+/// computes — only the formatting rules differ, and those are spelled out
+/// here: decimal form for exponents in (-7, 21], exponential with an explicit
+/// sign otherwise.
+fn js_number_string(n: f64) -> String {
+    if n.is_nan() {
+        return "NaN".into();
+    }
+    if n.is_infinite() {
+        return if n > 0.0 { "Infinity".into() } else { "-Infinity".into() };
+    }
+    if n == 0.0 {
+        return "0".into(); // JS String(-0) is "0" — the sign never prints
+    }
+    let neg = n < 0.0;
+    let sci = format!("{:e}", n.abs()); // "9.007199254740992e15"
+    let (mant, exp) = sci.split_once('e').expect("{:e} always carries an exponent");
+    let exp: i32 = exp.parse().expect("{:e} exponent is an integer");
+    let digits: String = mant.chars().filter(|c| *c != '.').collect();
+    let digits = digits.trim_end_matches('0');
+    let digits = if digits.is_empty() { "0" } else { digits };
+    let k = digits.len() as i32;
+    let np = exp + 1; // ECMA's n: value = 0.d1..dk × 10^n
+    let s = if k <= np && np <= 21 {
+        format!("{}{}", digits, "0".repeat((np - k) as usize))
+    } else if 0 < np && np <= 21 {
+        format!("{}.{}", &digits[..np as usize], &digits[np as usize..])
+    } else if -6 < np && np <= 0 {
+        format!("0.{}{}", "0".repeat((-np) as usize), digits)
+    } else {
+        let mut t = String::from(&digits[..1]);
+        if k > 1 {
+            t.push('.');
+            t.push_str(&digits[1..]);
+        }
+        t.push('e');
+        t.push(if np > 0 { '+' } else { '-' });
+        t.push_str(&(np - 1).abs().to_string());
+        t
+    };
+    if neg { format!("-{s}") } else { s }
+}
+
 fn json_str(v: &Json) -> String {
     match v {
         Json::String(s) => s.clone(),
-        Json::Number(n) => n.to_string(),
+        // The oracle stringifies a numeric comparison value with String(value)
+        // — mirror it exactly (an integral float needle would otherwise read
+        // "5.0" here and "5" there).
+        Json::Number(n) => n.as_f64().map(js_number_string).unwrap_or_else(|| n.to_string()),
         Json::Bool(b) => b.to_string(),
         _ => String::new(),
     }
 }
 /// A non-null cell as the string the oracle's `String(cell)` would produce (for
 /// the text predicates). `null` → None (excluded by the predicate, SQL WHERE).
+/// Non-finite cells read "NaN"/"Infinity"/"-Infinity" like JS — they used to
+/// display as "" (num_to_json's sentinel isn't a Number), silently missing
+/// every needle the oracle's "NaN" would contain.
 fn cell_display(c: &Cell) -> Option<String> {
     match c {
         Cell::Null => None,
         Cell::Str(s) => Some(s.clone()),
         Cell::Bool(b) => Some(b.to_string()),
-        Cell::Num(n) => Some(match num_to_json(*n) {
-            Json::Number(num) => num.to_string(),
-            _ => String::new(),
-        }),
+        Cell::Num(n) => Some(js_number_string(*n)),
     }
 }
 
@@ -1222,7 +1284,7 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
         "min" => base.min(),
         "max" => base.max(),
         "product" => base.product().fill_null(lit(1.0)),
-        "median" => base.median(),
+        "median" => median_expr(base),
         "mode" => mode_expr(base),
         // Sequential two-pass variance, byte-identical to the oracle's
         // `varianceOf` — Polars' own var() uses a different summation and
@@ -1238,6 +1300,43 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
         // by require_agg_ops — unreachable for unknown names.
         _ => lit(NULL).cast(DataType::Float64),
     }
+}
+
+/// Midpoint median in the ORACLE's exact form (`rawAggregate` "median",
+/// frameVerbs.ts): sort ascending, odd count takes the middle, EVEN count is
+/// `(lo + hi) / 2`. Polars' own median() interpolates `lo + 0.5*(hi - lo)`,
+/// whose subtract-then-add loses ~1e-6 once the pair spans magnitudes (1e10
+/// and 0.3 gave 5000000000.150001 vs the oracle's 5000000000.15 — corpus fuzz
+/// seed 910005). Nulls are skipped like every aggregate; ±inf sorts fine under
+/// total_cmp and averages honestly.
+fn median_expr(e: Expr) -> Expr {
+    let options = FunctionOptions {
+        collect_groups: ApplyOptions::GroupWise,
+        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
+        fmt_str: "median_midpoint",
+        ..Default::default()
+    };
+    e.function_with_options(
+        move |c: Column| {
+            let s = c.as_materialized_series();
+            let mut vals: Vec<f64> = Vec::with_capacity(s.len());
+            for i in 0..s.len() {
+                if let AnyValue::Float64(v) = s.get(i).unwrap_or(AnyValue::Null) {
+                    vals.push(v);
+                }
+            }
+            let name = c.name().clone();
+            if vals.is_empty() {
+                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+            }
+            vals.sort_by(|a, b| a.total_cmp(b));
+            let m = vals.len() / 2;
+            let out = if vals.len() % 2 == 1 { vals[m] } else { (vals[m - 1] + vals[m]) / 2.0 };
+            Ok(Some(Series::new(name, &[out]).into_column()))
+        },
+        GetOutput::from_type(DataType::Float64),
+        options,
+    )
 }
 
 /// Two-pass variance in the ORACLE's exact operation order (`varianceOf`,
@@ -1404,9 +1503,18 @@ fn group_by_lazy_plan(
         .collect();
     for (i, a) in aggs.iter().enumerate() {
         let src_ty = type_of_in(names, types, &a.column).unwrap();
-        agg_exprs.push(group_agg_expr(&a.column, src_ty, &a.op).alias(agg_names[i].as_str()));
+        let preserves = a.op == "min" || a.op == "max";
+        let mut e = group_agg_expr(&a.column, src_ty, &a.op);
+        // A preserved LOGICAL column casts the aggregated 0/1 back to bool —
+        // group_agg_expr coerces logicals to Float64 on the way in, and the
+        // declared logical output must not carry number cells (the oracle
+        // converts back the same way; corpus fuzz seed 910021).
+        if preserves && src_ty == SolType::Logical {
+            e = e.neq(lit(0.0));
+        }
+        agg_exprs.push(e.alias(agg_names[i].as_str()));
         // min/max preserve the source type; sum/avg/count/… are numeric
-        out_types.push(if a.op == "min" || a.op == "max" { src_ty } else { SolType::Number });
+        out_types.push(if preserves { src_ty } else { SolType::Number });
     }
     // Polars' agg() output column order isn't contractually the input order —
     // pin it explicitly (mirrors verb_join's by-name reselect). The select also
@@ -1603,12 +1711,27 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         let head = verb_join(left, right, &left_opts)?;
         let mut args = JoinArgs::new(JoinType::Anti);
         args.maintain_order = MaintainOrderJoin::LeftRight;
-        let tail = collect_lazy(right.df.clone().lazy().join(
-            left.df.clone().lazy(),
-            vec![col(opts.right_key.as_str())],
-            vec![col(opts.left_key.as_str())],
-            args,
-        ))?;
+        // The anti tail must compare MASKED keys like every other path: on raw
+        // keys Polars matches NaN == NaN, so a NaN-keyed right row "matched"
+        // the left's NaN and vanished from the tail — the oracle masks
+        // non-finite keys to unmatchable, so those rows belong IN the tail
+        // (corpus fuzz seed 910016, pinned in join.json).
+        let tail = collect_lazy(
+            right
+                .df
+                .clone()
+                .lazy()
+                .with_column(mask_key(&opts.right_key, rt, JKR))
+                .join(
+                    left.df.clone().lazy().with_column(mask_key(&opts.left_key, lt, JKL)),
+                    vec![col(JKR)],
+                    vec![col(JKL)],
+                    args,
+                ),
+        )?;
+        let tail = tail
+            .drop(JKR)
+            .map_err(|e| IpcError::internal(format!("outer tail key drop failed: {e}")))?;
         let tail_frame = SolFrame { df: tail, types: right.types.clone() };
         // Tail rows in the head's schema: the key coalesces from the right,
         // every other LEFT column is null, right non-key columns carry over.
