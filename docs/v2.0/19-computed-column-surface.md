@@ -1,10 +1,14 @@
 # 19 — The computed-column SURFACE (table columns are defined, not just typed)
 
-**Status: DESIGN — crux decisions open (author).** The core mechanics shipped
-2026-07-29 (`computedColumnCore.ts` + the Computed Column verb node); this
-bundle is the full UIUX surface the author called for the same day: *"a very
-large percentage of Excel work is table computed columns, we can't half-ass
-this UIUX surface."*
+**Status: DESIGN RATIFIED 2026-07-29 (author) — build slice 1.** The core
+mechanics shipped the same day (`computedColumnCore.ts` + the Computed Column
+verb node); this bundle is the full UIUX surface the author called for: *"a
+very large percentage of Excel work is table computed columns, we can't
+half-ass this UIUX surface."* Author rulings: C1 = addable λ sockets; C2 =
+the TablePopup hosts Formula editing (the card chip marks computed columns
+with a glyph); C3 = STRUCK — there is NO wired-list column source and NO
+Frame from Lists fold (see "What does NOT change"); C4 = eyeball on the
+preview.
 
 ## The spectrum (author direction, verbatim intent)
 
@@ -16,10 +20,13 @@ definitions, each at its natural altitude:
 |---|---|---|
 | trivial (`price*qty`) | inline formula text | typed on the column / the CC node |
 | reusable | a λ (params bind to columns; captures carry side values) | wired |
-| arbitrary logic | a NODE SUBGRAPH computing a list | wired list / by-row composite |
+| arbitrary logic | a NODE SUBGRAPH | the existing downstream verbs — the chain ENDS in a frame via Add Column / the CC node / Frame from Lists |
 
-All three must feel native to a TABLE — Excel users think "the column has a
-formula", not "there is a verb node downstream".
+The first two live IN the table — Excel users think "the column has a
+formula". The third already speaks frames on its own: an external process
+that builds a column with nodes finishes as a frame through the machinery
+that exists (author ruling 2026-07-29 — no new injection surface; "inject it
+back" = the pipeline's OUTPUT is the enriched table).
 
 ## The column-source model (the design's one idea)
 
@@ -34,16 +41,16 @@ Every column of an EDITABLE table (Frame Input) has a **source**:
    EXTENSIBLE λ input group (individually-labeled addable sockets — the
    ExtensibleInputs pattern; each input plays a distinct role, per the
    node-coverage design rule). A column picks a λ by its socket label.
-4. **Wired list** — one of the node's wired LIST inputs (same extensible
-   pattern, `anylist`). The list IS the column's cells: the injection path for
-   node-built columns. **Cycle constraint:** the list must come from UPSTREAM
-   data — a list derived from this table's own output is a graph cycle and
-   refuses like any cycle. Columns computed FROM the table's own rows use
-   sources 2–3 (in-table, cycle-free) or the downstream CC-verb pattern.
+
+There is deliberately NO wired-list source (author ruling 2026-07-29): a
+column built with nodes arrives as a FRAME through the existing downstream
+verbs, not as a list injected into the source table — computing from the
+table's own rows via a wire-back would be a graph cycle anyway, and the
+in-table sources (2–3) are the cycle-free form of that.
 
 Where the sources live in the value model: `FrameSourceColumn` grows a
-`source` variant (`typed` | `{formula, expr}` | `{lambda, socket}` |
-`{list, socket}`). Pre-alpha: the save format changes, seeds update, no shim.
+`source` variant (`typed` | `{formula, expr}` | `{lambda, socket}`).
+Pre-alpha: the save format changes, seeds update, no shim.
 
 ### Intra-table references
 
@@ -72,33 +79,35 @@ slice, not later.
 - **The CC verb node stays.** It is the mid-pipeline form (computing on a
   Join's output has no editable table to host the definition) and the two
   surfaces share one core, so they cannot drift.
+- **Frame from Lists and Add Column stay, as themselves.** They are the
+  node-built path's ending — a chain that computes a column with nodes
+  finishes as a FRAME through them. No fold, no successor (author ruling
+  2026-07-29: any future foldability is hypothetical and is not a goal).
 - **Get Column → nodes → Add Column stays legal** — it is the same
-  computation at the graph altitude, and the wired-list source is its
-  ergonomic ending.
+  computation at the graph altitude.
 - The Frame Input's literal columns keep the raw-text guarantee untouched.
 
 ## Staging
 
 1. **Core extraction — DONE** (`computedColumnCore.ts`; the CC node
-   delegates; 24 pins).
+   delegates; 27 pins).
 2. **Slice 1:** Frame Input λ sockets (extensible) + the per-column source
    control (Typed | λ) + computed-cell rendering + topo-order eval + cycle
    refusal. The smallest slice that exercises the whole surface.
-3. **Slice 2:** Formula source (popup editing UX) — the pure-text rung.
-4. **Slice 3:** Wired-list source; decide Frame from Lists' fate (it becomes
-   the all-wired degenerate case — fold or keep).
-5. **Tail:** per-column format/unit reuse on computed columns, binding
+3. **Slice 2:** Formula source (TablePopup editing per C2) — the pure-text
+   rung — plus the card-chip glyph marking computed columns.
+4. **Tail:** per-column format/unit reuse on computed columns, binding
    pickers, the CC node's remaining UX items — unchanged backlog.
 
-## Crux decisions (author)
+## Crux decisions — RESOLVED (author, 2026-07-29)
 
-- **C1 — λ inputs: individually-addable sockets** (recommended; matches
-  ExtensibleInputs + "distinct roles get labeled rows") **vs one λ-list
-  socket** (would need a new lambda-list socket type in the lattice for a
-  UI-only need).
-- **C2 — where a Formula column's text is edited:** the TablePopup column
-  header (recommended: the definition lives where the column lives) vs the
-  node card.
-- **C3 — Frame from Lists' fate** once wired-list columns exist.
-- **C4 — computed-cell look** in the grid (author eyeball once slice 1 is on
-  the preview).
+- **C1 — addable λ sockets** (ExtensibleInputs rows, individually labeled);
+  a lambda-list socket type was rejected — a lattice change for a UI-density
+  concern.
+- **C2 — the TablePopup hosts Formula editing** (one formula per column,
+  where the column's other controls live); the card CHIP marks computed
+  columns with a glyph for at-a-glance discoverability.
+- **C3 — STRUCK.** No wired-list source; Frame from Lists is not folded and
+  no fold is queued.
+- **C4 — computed-cell rendering:** author eyeball once slice 1 is on the
+  preview.
