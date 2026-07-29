@@ -156,6 +156,23 @@ fixtures must cover `FRAME_OP_KINDS` + `BINARY_VERBS` exactly. Promoted as
 (#OVERFLOW!/#DOMAIN! on groupBy sums, B-1b) exists ONLY oracle-side — the
 engine emits inf/NaN cells there, so desktop diverges live on overflow.
 
+Same sitting, the violations queue worked to its residual:
+- **EFFECT-1 closed** (known-violation 2, exactly as prescribed): a
+  string/comment/template-aware brace-matched sweep over every data() body in
+  nodes/+packs (313, floor-asserted) refuses the write APIs and `this.run(` in
+  any file touching one (the live-connection Imports' fetching run() stays
+  legitimate), with a stays-honest pin on the API-name list. 68 enforced /
+  1 partial (SOCK-8) / 1 unenforced (SOCK-6).
+- **The semantic half narrowed to its residual** (known-violation 1):
+  rules.test.ts now machine-checks every quoted citation — the suite-name →
+  "test name" arrow form, 57 of them — as a whitespace-collapsed substring of
+  the cited suite; its first run caught two drifted quotes (both name-drift,
+  not enforcement loss). The 19 bare-file-cited rules were then read end to
+  end: every cited suite genuinely enforces its rule (checked against each
+  MUST: SSOT-6's shared-metric import, VAL-18's both halves, PERSIST-3's
+  deep-freeze walk, ENGINE-2's transition matrix, etc.). Residual: future
+  bare-file citations — prefer the quoted form, which buys the machine check.
+
 ### Two spec lints + the unary fixture set completes (2026-07-28kk)
 
 The in-scope remainder after the audit, all three landed:

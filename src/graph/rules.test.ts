@@ -65,24 +65,58 @@ describe("docs/rules.md", () => {
     expect(ids.length).toBe(Number(declared![1]));
   });
 
+  /** basename → full path for every suite under src/graph. */
+  function testFileIndex(): Map<string, string> {
+    const found = new Map<string, string>();
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(path.join(dir, e.name));
+        else if (e.name.endsWith(".test.ts")) found.set(e.name, path.join(dir, e.name));
+      }
+    };
+    walk(path.resolve(__dirname));
+    return found;
+  }
+
   it("every cited test file exists", () => {
     // Cited as `name.test.ts` anywhere in the doc; resolve against src/graph
     // (recursively), which is where every suite lives.
     const cited = [...new Set([...DOC.matchAll(/`([\w./-]+\.test\.ts)`/g)].map((m) => m[1]))];
     expect(cited.length).toBeGreaterThan(10);
-    const roots = [path.resolve(__dirname)];
-    const found = new Set<string>();
-    for (const root of roots) {
-      const walk = (dir: string) => {
-        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-          if (e.isDirectory()) walk(path.join(dir, e.name));
-          else if (e.name.endsWith(".test.ts")) found.add(e.name);
-        }
-      };
-      walk(root);
-    }
+    const found = testFileIndex();
     const missing = cited.filter((c) => !found.has(path.basename(c)));
     expect(missing, `rules.md cites test files that do not exist: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it('every quoted citation (`file.test.ts` → "…") appears in the cited file', () => {
+    // The mechanized slice of the semantic half (known-violation 1): where a
+    // rule quotes the describe/it it leans on, the quote must be a real
+    // substring of that suite — so renaming or deleting the cited test fails
+    // HERE with the rule's citation, instead of the enforcement column rotting
+    // into folklore. (Whitespace-collapsed both sides: the doc wraps at the
+    // margin, suites don't.) Unquoted file-level citations stay a reading job.
+    const collapse = (s: string) => s.replace(/\s+/g, " ");
+    const found = testFileIndex();
+    const srcOf = new Map<string, string>();
+    const offenders: string[] = [];
+    let quotes = 0;
+    for (const m of DOC.matchAll(/`([\w./-]+\.test\.ts)`\s*→\s*("[^"]*"(?:\s*,\s*"[^"]*")*)/g)) {
+      const file = path.basename(m[1]);
+      const p = found.get(file);
+      if (!p) continue; // "every cited test file exists" owns missing files
+      if (!srcOf.has(file)) srcOf.set(file, collapse(fs.readFileSync(p, "utf8")));
+      const src = srcOf.get(file)!;
+      for (const q of m[2].matchAll(/"([^"]*)"/g)) {
+        quotes++;
+        if (!src.includes(collapse(q[1]))) offenders.push(`${file}: "${collapse(q[1])}"`);
+      }
+    }
+    expect(quotes, "the extractor found no quoted citations — regex rot?").toBeGreaterThan(40);
+    expect(
+      offenders,
+      `rules.md quotes test names that do not appear in the cited suite ` +
+      `(align the doc or restore the test):\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
   });
 
   it("the enforcement summary's rows add up to the total", () => {
