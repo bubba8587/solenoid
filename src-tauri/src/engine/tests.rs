@@ -608,6 +608,25 @@ fn corpus_cases() {
                         }
                     }
                 }
+                "pipeline" => {
+                    // The fusion cases: the oracle ran these ops SEQUENTIALLY;
+                    // here the whole list goes to apply_ops in one call, so
+                    // Polars fuses them into a single lazy plan (the
+                    // engine_apply_many path). Sequential-vs-fused parity is
+                    // exactly what these cases pin.
+                    #[derive(serde::Deserialize)]
+                    struct PipelineOp { ops: Vec<WireOp> }
+                    match serde_json::from_value::<PipelineOp>(case.op) {
+                        Err(e) => { failures.push(format!("{label}: op does not parse as a pipeline of WireOps: {e}")); continue; }
+                        Ok(p) => {
+                            let Some(input) = take(&mut frames, "in") else {
+                                failures.push(format!("{label}: no \"in\" frame"));
+                                continue;
+                            };
+                            apply_ops(&input, &p.ops)
+                        }
+                    }
+                }
                 _ => {
                     let op = match serde_json::from_value::<WireOp>(case.op) {
                         Ok(op) => op,

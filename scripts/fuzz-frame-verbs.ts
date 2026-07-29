@@ -67,7 +67,7 @@ function randFrame(opts?: { minCols?: number; types?: FrameColType[]; rows?: num
   };
 }
 const colNames = (f: FrameValue) => f.columns.map((c) => c.name);
-const someCol = (f: FrameValue) => (chance(0.08) ? "missing" : pick(colNames(f)));
+const someCol = (f: FrameValue) => (f.columns.length === 0 || chance(0.08) ? "missing" : pick(colNames(f)));
 const numericCol = (f: FrameValue) => f.columns.find((c) => c.type === "number" || c.type === "date");
 
 // ─── wire encoding (the __nf sentinel, both directions) ───────────────────────
@@ -89,66 +89,103 @@ const AGG_OPS: AggOp[] = ["sum", "avg", "min", "max", "count", "product", "media
 type Gen = () => { frames: Record<string, FrameValue>; op: Record<string, unknown> };
 const cond = (f: FrameValue) => ({ column: someCol(f), op: pick(FILTER_OPS), value: pick(FILTER_VALUES), ...(chance(0.3) ? { matchCase: true } : {}) });
 
-const GENERATORS: Record<string, Gen> = {
-  select: () => { const f = randFrame(); return { frames: { in: f }, op: { kind: "select", columns: Array.from({ length: int(1, 3) }, () => someCol(f)) } }; },
-  drop:   () => { const f = randFrame(); return { frames: { in: f }, op: { kind: "drop", columns: Array.from({ length: int(1, 2) }, () => someCol(f)) } }; },
-  rename: () => {
-    const f = randFrame();
+// ─── unary op makers (op built FROM the frame it will see) ────────────────────
+// Split out of the generators so the pipeline generator can build each chained
+// op against the INTERMEDIATE frame the previous op produced — column-aware
+// chains, not blind ones. Every maker must tolerate any frame shape (a chain
+// can drop to one column or zero rows mid-way); someCol already yields
+// "missing" for a column-less frame.
+type OpMaker = (f: FrameValue) => Record<string, unknown>;
+const UNARY_MAKERS: Record<string, OpMaker> = {
+  select: (f) => ({ kind: "select", columns: Array.from({ length: int(1, 3) }, () => someCol(f)) }),
+  drop:   (f) => ({ kind: "drop", columns: Array.from({ length: int(1, 2) }, () => someCol(f)) }),
+  rename: (f) => {
     const map: Record<string, string> = {};
-    for (let i = 0; i < int(1, 2); i++) map[someCol(f)] = pick([...NAME_POOL, pick(colNames(f))]);
-    return { frames: { in: f }, op: { kind: "rename", map } };
+    for (let i = 0; i < int(1, 2); i++) map[someCol(f)] = pick([...NAME_POOL, someCol(f)]);
+    return { kind: "rename", map };
   },
-  sort:     () => { const f = randFrame(); return { frames: { in: f }, op: { kind: "sort", by: someCol(f), dir: pick(["asc", "desc"]) } }; },
-  distinct: () => { const f = randFrame(); return { frames: { in: f }, op: { kind: "distinct", ...(chance(0.5) ? { columns: [someCol(f)] } : {}) } }; },
-  head:     () => { const f = randFrame(); return { frames: { in: f }, op: { kind: "head", n: pick([0, 1, 2, 5, 99, -3]) } }; },
-  filter:   () => { const f = randFrame(); return { frames: { in: f }, op: { kind: "filter", ...cond(f) } }; },
-  filterMulti: () => {
-    const f = randFrame();
-    return { frames: { in: f }, op: {
-      kind: "filterMulti", combine: pick(["and", "or"]),
-      conditions: Array.from({ length: int(0, 3) }, () => cond(f)),
-      ...(chance(0.3) ? { complement: true } : {}),
-    } };
-  },
-  groupBy: () => {
-    const f = randFrame({ minCols: 2 });
+  sort:     (f) => ({ kind: "sort", by: someCol(f), dir: pick(["asc", "desc"]) }),
+  distinct: (f) => ({ kind: "distinct", ...(chance(0.5) ? { columns: [someCol(f)] } : {}) }),
+  head:     () => ({ kind: "head", n: pick([0, 1, 2, 5, 99, -3]) }),
+  filter:   (f) => ({ kind: "filter", ...cond(f) }),
+  filterMulti: (f) => ({
+    kind: "filterMulti", combine: pick(["and", "or"]),
+    conditions: Array.from({ length: int(0, 3) }, () => cond(f)),
+    ...(chance(0.3) ? { complement: true } : {}),
+  }),
+  groupBy: (f) => {
     const keys = [...new Set(Array.from({ length: int(1, 2) }, () => someCol(f)))];
-    return { frames: { in: f }, op: { kind: "groupBy", keys, aggs: Array.from({ length: int(1, 3) }, () => ({ column: someCol(f), op: pick(AGG_OPS), as: pick(NAME_POOL) })) } };
+    return { kind: "groupBy", keys, aggs: Array.from({ length: int(1, 3) }, () => ({ column: someCol(f), op: pick(AGG_OPS), as: pick(NAME_POOL) })) };
   },
-  unpivot: () => {
-    const f = randFrame({ minCols: 2 });
+  unpivot: (f) => {
     const names = colNames(f);
+    if (names.length < 2) return { kind: "unpivot", idColumns: [], valueColumns: names.length ? names : ["missing"] };
     const split = int(1, names.length - 1);
-    return { frames: { in: f }, op: {
+    return {
       kind: "unpivot", idColumns: names.slice(0, split), valueColumns: chance(0.08) ? ["missing"] : names.slice(split),
       ...(chance(0.3) ? { variableName: "var", valueName: "val" } : {}),
+    };
+  },
+};
+// Verbs whose ops are near-degenerate on a 1-column frame — their standalone
+// generators start from ≥2 columns so the interesting shapes actually occur.
+const WANT_TWO_COLS = new Set(["groupBy", "unpivot"]);
+
+const GENERATORS: Record<string, Gen> = Object.fromEntries(
+  Object.entries(UNARY_MAKERS).map(([verb, mk]) => [verb, () => {
+    const f = randFrame(WANT_TWO_COLS.has(verb) ? { minCols: 2 } : undefined);
+    return { frames: { in: f }, op: mk(f) };
+  }]),
+);
+
+// The fusion hunt: 2–5 chained unary ops over one input. The oracle (and the
+// JS corpus runner) applies them SEQUENTIALLY; the cargo runner fuses the list
+// into one lazy Polars plan via apply_ops — so these cases probe predicate
+// pushdown, projection reordering and group-by-mid-chain interactions no
+// single-op case can reach. Ops are built against the running intermediate
+// frame; a mid-generation SolError ends the chain there (the case then pins
+// WHICH error a fused plan must surface).
+GENERATORS.pipeline = () => {
+  const f0 = randFrame({ minCols: 2 });
+  let cur = f0; // verbs never mutate their input (corpus-checked), so f0 survives
+  const ops: Record<string, unknown>[] = [];
+  const len = int(2, 5);
+  for (let i = 0; i < len; i++) {
+    const op = UNARY_MAKERS[pick(Object.keys(UNARY_MAKERS))](cur);
+    ops.push(op);
+    try { cur = applyVerb(cur, op as unknown as FrameOp); } catch { break; }
+  }
+  return { frames: { in: f0 }, op: { kind: "pipeline", ops } };
+};
+GENERATORS.join = () => {
+  const how = pick(["inner", "left", "right", "outer", "semi", "anti", "asof"] as const);
+  if (how === "asof") {
+    const left = randFrame({ types: ["number"], rows: int(0, 6) });
+    const right = randFrame({ types: ["number"], rows: int(0, 6) });
+    return { frames: { left, right }, op: {
+      kind: "join", leftKey: someCol(left), rightKey: someCol(right), how,
+      ...(chance(0.7) ? { asofDirection: pick(["backward", "forward", "nearest"]) } : {}),
+      ...(chance(0.4) ? { asofTolerance: pick([1, 2, 10]) } : {}),
     } };
-  },
-  join: () => {
-    const how = pick(["inner", "left", "right", "outer", "semi", "anti", "asof"] as const);
-    if (how === "asof") {
-      const left = randFrame({ types: ["number"], rows: int(0, 6) });
-      const right = randFrame({ types: ["number"], rows: int(0, 6) });
-      return { frames: { left, right }, op: {
-        kind: "join", leftKey: someCol(left), rightKey: someCol(right), how,
-        ...(chance(0.7) ? { asofDirection: pick(["backward", "forward", "nearest"]) } : {}),
-        ...(chance(0.4) ? { asofTolerance: pick([1, 2, 10]) } : {}),
-      } };
-    }
-    const left = randFrame(); const right = randFrame();
-    return { frames: { left, right }, op: { kind: "join", leftKey: someCol(left), rightKey: someCol(right), how } };
-  },
-  append: () => {
-    const n = int(2, 3);
-    const frames: Record<string, FrameValue> = {};
-    const order: string[] = [];
-    for (let i = 0; i < n; i++) { const k = `f${i + 1}`; frames[k] = randFrame(); order.push(k); }
-    return { frames, op: { kind: "append", frames: order } };
-  },
+  }
+  const left = randFrame(); const right = randFrame();
+  return { frames: { left, right }, op: { kind: "join", leftKey: someCol(left), rightKey: someCol(right), how } };
+};
+GENERATORS.append = () => {
+  const n = int(2, 3);
+  const frames: Record<string, FrameValue> = {};
+  const order: string[] = [];
+  for (let i = 0; i < n; i++) { const k = `f${i + 1}`; frames[k] = randFrame(); order.push(k); }
+  return { frames, op: { kind: "append", frames: order } };
 };
 
 // ─── run the oracle, build fixture files ──────────────────────────────────────
 const hasErrorCell = (f: FrameValue) => f.columns.some((c) => c.values.some((v) => isSolError(v)));
+// A pipeline whose INTERMEDIATE frame holds SolError cells is skipped like a
+// final-frame one: the engine has no error-cell representation at any point in
+// a fused plan (the recorded FX-12 boundary), so such a chain can't be a fair
+// parity case even if a later op filters the errors back out.
+const SKIP = Symbol("skip: error cells mid-chain");
 let written = 0, errCases = 0, skippedErrCells = 0;
 const crashes: string[] = [];
 
@@ -160,8 +197,19 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
     try {
       if (verb === "join") { const { kind: _k, ...opts } = op; out = joinFrames(frames.left, frames.right, opts as unknown as JoinOpts); }
       else if (verb === "append") out = appendFrames((op.frames as string[]).map((k) => frames[k]));
+      else if (verb === "pipeline") {
+        let cur = frames.in;
+        for (const o of op.ops as FrameOp[]) {
+          cur = applyVerb(cur, o);
+          if (hasErrorCell(cur)) throw SKIP;
+        }
+        out = cur;
+      }
       else out = applyVerb(frames.in, op as unknown as FrameOp);
-    } catch (e) { err = e; }
+    } catch (e) {
+      if (e === SKIP) { skippedErrCells++; continue; }
+      err = e;
+    }
     const name = `fuzz seed=${SEED} ${verb} #${i}`;
     const base = { name, frames: Object.fromEntries(Object.entries(frames).map(([k, f]) => [k, encFrame(f)])), op };
     if (err !== undefined) {

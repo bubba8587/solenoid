@@ -1,62 +1,555 @@
-{ "verb": "sort",
-  "cases": [
-    { "name": "numbers ascending",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [3, 1, 2] },
-        { "name": "s", "type": "string", "values": ["c", "a", "b"] } ] } },
-      "op": { "kind": "sort", "by": "v", "dir": "asc" },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 2, 3] },
-        { "name": "s", "type": "string", "values": ["a", "b", "c"] } ] } },
-    { "name": "numbers descending",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [3, 1, 2] } ] } },
-      "op": { "kind": "sort", "by": "v", "dir": "desc" },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [3, 2, 1] } ] } },
-    { "name": "null cells sort last, both directions",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [2, null, 1] } ] } },
-      "op": { "kind": "sort", "by": "v", "dir": "asc" },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 2, null] } ] } },
-    { "name": "strings sort by byte order, stable",
-      "frames": { "in": { "columns": [
-        { "name": "s", "type": "string", "values": ["b", "a", "b", "A"] },
-        { "name": "i", "type": "number", "values": [1, 2, 3, 4] } ] } },
-      "op": { "kind": "sort", "by": "s", "dir": "asc" },
-      "expect": { "columns": [
-        { "name": "s", "type": "string", "values": ["A", "a", "b", "b"] },
-        { "name": "i", "type": "number", "values": [4, 2, 1, 3] } ] } },
-    { "name": "null cells sort last descending too",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [2, null, 1] } ] } },
-      "op": { "kind": "sort", "by": "v", "dir": "desc" },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [2, 1, null] } ] } },
-    { "name": "NaN sorts to the tail (present dirty data, deterministic)",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1, {"__nf": "nan"}, 3] } ] } },
-      "op": { "kind": "sort", "by": "v", "dir": "asc" },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 3, {"__nf": "nan"}] } ] } },
-    { "name": "NaN tails descending too (the sort key nulls it, both directions)",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1, {"__nf": "nan"}, 3] } ] } },
-      "op": { "kind": "sort", "by": "v", "dir": "desc" },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [3, 1, {"__nf": "nan"}] } ] } },
-    { "name": "sorting by a logical column keys 0/1 (the raw bool sort PANICKED the engine)",
-      "frames": { "in": { "columns": [
-        { "name": "flag", "type": "logical", "values": [true, null, false, true] },
-        { "name": "i", "type": "number", "values": [1, 2, 3, 4] } ] } },
-      "op": { "kind": "sort", "by": "flag", "dir": "asc" },
-      "expect": { "columns": [
-        { "name": "flag", "type": "logical", "values": [false, true, true, null] },
-        { "name": "i", "type": "number", "values": [3, 1, 4, 2] } ] } },
-    { "name": "unknown column errors",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1] } ] } },
-      "op": { "kind": "sort", "by": "missing", "dir": "asc" },
-      "expectError": "#REF!" }
-  ] }
+{
+ "verb": "sort",
+ "cases": [
+  {
+   "name": "numbers ascending",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "c",
+        "a",
+        "b"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "v",
+    "dir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "s",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "c"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "numbers descending",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "v",
+    "dir": "desc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       3,
+       2,
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "null cells sort last, both directions",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        2,
+        null,
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "v",
+    "dir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "strings sort by byte order, stable",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "b",
+        "a",
+        "b",
+        "A"
+       ]
+      },
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "s",
+    "dir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "string",
+      "values": [
+       "A",
+       "a",
+       "b",
+       "b"
+      ]
+     },
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       4,
+       2,
+       1,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "null cells sort last descending too",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        2,
+        null,
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "v",
+    "dir": "desc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       2,
+       1,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "NaN sorts to the tail (present dirty data, deterministic)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "v",
+    "dir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       3,
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "NaN tails descending too (the sort key nulls it, both directions)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "v",
+    "dir": "desc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "sorting by a logical column keys 0/1 (the raw bool sort PANICKED the engine)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "flag",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        true
+       ]
+      },
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "flag",
+    "dir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "flag",
+      "type": "logical",
+      "values": [
+       false,
+       true,
+       true,
+       null
+      ]
+     },
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       4,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "unknown column errors",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "missing",
+    "dir": "asc"
+   },
+   "expectError": "#REF!"
+  },
+  {
+   "name": "an all-null sort column keeps input order (asc)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        null,
+        null,
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "k",
+    "dir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "c"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an all-null sort column keeps input order (desc — Polars' all-equal fast path reversed it)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        null,
+        null,
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "k",
+    "dir": "desc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "c"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the null tail keeps input order under desc when real keys are present",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        null,
+        1,
+        null,
+        2,
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "a",
+        "x",
+        "b",
+        "y",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "k",
+    "dir": "desc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       2,
+       1,
+       null,
+       null,
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "y",
+       "x",
+       "a",
+       "b",
+       "c"
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
