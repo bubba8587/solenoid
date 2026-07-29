@@ -1250,11 +1250,21 @@ fn engine_read_csv_infers_dates_end_to_end() {
 struct CorpusCase {
     name: String,
     frames: std::collections::HashMap<String, WireFrame>,
-    op: WireOp,
+    // Raw here, WireOp-parsed per case: an ORACLE_ONLY verb's op must REFUSE to
+    // parse (that refusal is asserted), everything else must parse.
+    op: Json,
     expect: Option<WireFrame>,
     #[serde(rename = "expectError")]
     expect_error: Option<String>,
 }
+
+/// Verbs with corpus fixtures but NO engine op: they run eagerly in the JS
+/// oracle on BOTH platforms (pivot — the full PIVOTBY spec is a deliberate
+/// materialization boundary; the stale engine variant was deleted, audit
+/// finding 34). The runner still asserts the engine indeed does NOT speak the
+/// op, so the list can't go stale: if `WireOp` ever gains the kind, the
+/// assertion fails and the verb joins the corpus proper.
+const ORACLE_ONLY_VERBS: &[&str] = &["pivot"];
 
 #[derive(serde::Deserialize)]
 struct CorpusFile {
@@ -1280,6 +1290,20 @@ fn corpus_cases() {
             .unwrap_or_else(|e| panic!("{}: fixture does not parse as wire payloads: {e}", path.display()));
         for case in file.cases {
             let label = format!("{} › {}", file.verb, case.name);
+            let parsed = serde_json::from_value::<WireOp>(case.op);
+            if ORACLE_ONLY_VERBS.contains(&file.verb.as_str()) {
+                if parsed.is_ok() {
+                    failures.push(format!(
+                        "{label}: the engine now speaks this op — remove \"{}\" from ORACLE_ONLY_VERBS and run its cases",
+                        file.verb
+                    ));
+                }
+                continue;
+            }
+            let op = match parsed {
+                Ok(op) => op,
+                Err(e) => { failures.push(format!("{label}: op does not parse as WireOp: {e}")); continue; }
+            };
             let input = match case.frames.into_iter().find(|(k, _)| k == "in") {
                 Some((_, f)) => f,
                 None => { failures.push(format!("{label}: no \"in\" frame")); continue; }
@@ -1288,7 +1312,7 @@ fn corpus_cases() {
                 Ok(f) => f,
                 Err(e) => { failures.push(format!("{label}: input frame refused: {}", err_code(&e))); continue; }
             };
-            let result = apply_ops(&frame, &[case.op]);
+            let result = apply_ops(&frame, &[op]);
             match (result, case.expect, case.expect_error) {
                 (Ok(out), Some(expect), _) => {
                     let got = dump(&out);
