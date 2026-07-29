@@ -234,6 +234,30 @@ describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
   });
 });
 
+describe("ComputedColumnNode — kitchen sink", () => {
+  it("text functions, IF chains, and mixed builtins compose in one row formula", () => {
+    const r = run(named('IF(qty > 2, UPPER(city), LOWER(city)) & " #" & TEXT(row, "0")', "tag"), sales) as FrameValue;
+    expect(getColumn(r, "tag")!.values).toEqual(["oslo #1", "BERGEN #2", "TROMSØ #3"]);
+  });
+
+  it("a λ that returns a SolError poisons only its row", () => {
+    const lam = new LambdaNode({ expr: "IF(v < 0, NA(), v)", params: "v" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    const f: FrameValue = { __frame: true, columns: [{ name: "v", type: "number", values: [1, -1, 3] }] };
+    const r = run(named("", "ok"), f, { fn: [fn] }) as FrameValue;
+    const vals = getColumn(r, "ok")!.values;
+    expect(vals[0]).toBe(1);
+    expect(isSolError(vals[1])).toBe(true);
+    expect(vals[2]).toBe(3);
+  });
+
+  it("col(), a bound column, row, and a side input all mix in one formula", () => {
+    const n = named('col("qty") * price + row + base', "mix");
+    const r = run(n, sales, { base: [[1000]] }) as FrameValue;
+    expect(getColumn(r, "mix")!.values).toEqual([2 * 10 + 1 + 1000, 3 * 20 + 2 + 1000, 4 * 30 + 3 + 1000]);
+  });
+});
+
 describe("persistence", () => {
   it("extractInit round-trips expr and the column name", () => {
     const n = named("qty * price", "revenue");

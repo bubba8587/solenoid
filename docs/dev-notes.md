@@ -144,6 +144,29 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### The computed-column SURFACE: design bundle + shared core (2026-07-29m)
+
+The author raised the altitude: computed columns should live PER-COLUMN in
+Frame Input too ("maybe frame input grows addable lambda sockets… columns
+pick from inputs"), with the full ladder — trivial math as text, reusable
+math as a λ, arbitrary logic as a node subgraph injected back — because
+"a very large percentage of Excel work is table computed columns, we can't
+half-ass this UIUX surface." Two deliverables:
+- **`v2.0/19-computed-column-surface.md`** — the design: every editable-table
+  column has a SOURCE (Typed | Formula | λ | Wired list); Frame Input grows
+  extensible λ/list input groups; intra-table references evaluate in topo
+  order with per-column #REF! on cycles (in slice 1, not later); the wired-
+  list source is the node-built injection path (upstream data only — feeding
+  a table's own output back is a graph cycle and refuses as one); the CC verb
+  node stays as the mid-pipeline form. Crux decisions C1–C4 wait on the
+  author (λ sockets individually-addable vs a lambda-list type; where Formula
+  text is edited; Frame from Lists' fate; computed-cell rendering).
+- **`computedColumnCore.ts`** — the row-eval rules extracted to ONE module
+  (binding precedence, row/rows, col(), the per-row contract) so the CC node
+  and the coming Frame Input sources cannot disagree; the node now only
+  supplies its ports. 27 pins (kitchen-sink round added: IF/UPPER/TEXT
+  chains, a λ erroring one row, col()+column+row+side in one formula).
+
 ### Computed Column v3 — col() for unspellable names, rows, placement (2026-07-29l)
 
 The author's next two catches, closed:
