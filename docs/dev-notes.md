@@ -144,6 +144,31 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Computed Column v2 — the author's "it's missing a ton" round (2026-07-29k)
+
+Four holes the v1 shipped with, all closed:
+- **Side inputs** (the Expression idiom restored): a variable naming no column
+  becomes an input SOCKET (`anyIn`), row-invariant, with an inline literal
+  default (0). Grows/shrinks from data() via the reconcile-in-a-microtask
+  pattern (Expression's result-rank swap); a column appearing with the same
+  name takes the variable over and drops the socket's cables. A wired LIST
+  side input is legal — `price / SUM(prices)` is percent-of-total in ONE node,
+  totals wired the graph-native way.
+- **`row`** — the 1-based row number as a builtin variable; a column named
+  `row` shadows it (user data outranks convenience). Reserved input names
+  (frame/name/fn) refuse with #REF!.
+- **Output type control** (`addAs`: Auto/Number/Text/Date/Boolean, persisted —
+  the field name reuses Add Column's): Auto infers; Date is the case inference
+  cannot reach (a serial is indistinguishable from a number). `start + 7` can
+  finally BE a date column.
+- **λ side params**: a λ param naming no column becomes a side input too, so a
+  generic λ(v, rate) applies to any frame — the reusability story v1 promised
+  and didn't deliver.
+Two sweeps corrected the build again (PERSIST-9: sideVars classified
+transient-derived; VAL-12: the addAs OpSelect marked `arg`). 18 pins. Still
+open in the UX tail: pickers (non-identifier columns stay unreachable by
+typed name — the one v1 hole that needs UI, not mechanics).
+
 ### Computed Column lands — the row-wise formula verb (2026-07-29j)
 
 The design-first backlog item built, to the author's three directions (frames

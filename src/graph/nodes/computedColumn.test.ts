@@ -46,12 +46,6 @@ describe("ComputedColumnNode — inline formula", () => {
     expect(col.values).toEqual(["OSLO!", "BERGEN!", "TROMSØ!"]);
   });
 
-  it("an unknown variable refuses with #REF! naming it", () => {
-    const r = run(named("qty * pric"), sales);
-    expect(isSolError(r) && r.code).toBe("#REF!");
-    expect(isSolError(r) && r.message).toContain('"pric"');
-  });
-
   it("a blank formula passes the frame through untouched", () => {
     expect(run(named(""), sales)).toBe(sales);
   });
@@ -128,11 +122,64 @@ describe("ComputedColumnNode — wired λ", () => {
     expect(getColumn(r, "margin")!.values).toEqual([8, 17, 26]);
   });
 
-  it("a λ param that names no column is #REF!", () => {
-    const fn = lambdaFor("cost * 2", "cost");
-    const r = run(named("", "x"), sales, { fn: [fn] });
+});
+
+describe("ComputedColumnNode — side inputs, row, and the output type", () => {
+  it("a variable naming no column becomes a SIDE INPUT (wired value or literal default)", () => {
+    const n = named("price * (1 + taxrate)", "gross");
+    // Wired: the side value is row-invariant.
+    const wired = run(n, sales, { taxrate: [[0.25]] }) as FrameValue;
+    expect(getColumn(wired, "gross")!.values).toEqual([12.5, 25, 37.5]);
+    expect(n.sideVars).toEqual(["taxrate"]);
+    // Unwired: the literal default (Expression convention: 0).
+    const bare = run(named("price * (1 + taxrate)", "gross"), sales) as FrameValue;
+    expect(getColumn(bare, "gross")!.values).toEqual([10, 20, 30]);
+  });
+
+  it("a whole LIST side input enables percent-of-total in one node", () => {
+    const n = named("price / SUM(prices)", "share");
+    const r = run(n, sales, { prices: [[10, 20, 30]] }) as FrameValue;
+    expect(getColumn(r, "share")!.values.map((v) => (v as number).toFixed(4)))
+      .toEqual(["0.1667", "0.3333", "0.5000"]);
+  });
+
+  it("`row` is the 1-based row number; a column named row shadows it", () => {
+    const r = run(named("row * 10", "idx"), sales) as FrameValue;
+    expect(getColumn(r, "idx")!.values).toEqual([10, 20, 30]);
+    const withRowCol: FrameValue = {
+      __frame: true,
+      columns: [{ name: "row", type: "number", values: [7, 8, 9] }],
+    };
+    const shadowed = run(named("row * 10", "idx"), withRowCol) as FrameValue;
+    expect(getColumn(shadowed, "idx")!.values).toEqual([70, 80, 90]);
+  });
+
+  it("a reserved input name refuses with #REF!", () => {
+    const r = run(named("frame + 1"), sales);
     expect(isSolError(r) && r.code).toBe("#REF!");
-    expect(isSolError(r) && r.message).toContain('"cost"');
+  });
+
+  it("addAs declares the output type where inference can't (date serials)", () => {
+    const due: FrameValue = {
+      __frame: true,
+      columns: [{ name: "start", type: "date", values: [46000, 46010] }],
+    };
+    const auto = run(named("start + 7", "due"), due) as FrameValue;
+    expect(getColumn(auto, "due")!.type).toBe("number"); // inference can't see date-ness
+    const typedNode = named("start + 7", "due");
+    typedNode.addAs = "date";
+    const typed = run(typedNode, due) as FrameValue;
+    expect(getColumn(typed, "due")!.type).toBe("date");
+    expect(getColumn(typed, "due")!.values).toEqual([46007, 46017]);
+  });
+
+  it("a λ param naming no column becomes a side input too", () => {
+    const lam = new LambdaNode({ expr: "price * rate", params: "price, rate" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    const n = named("", "scaled");
+    const r = run(n, sales, { fn: [fn], rate: [[2]] }) as FrameValue;
+    expect(getColumn(r, "scaled")!.values).toEqual([20, 40, 60]);
+    expect(n.sideVars).toEqual(["rate"]);
   });
 });
 
