@@ -120,6 +120,25 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Fuzz round 3 (widened pools): three deeper finds, incl. the WIRE itself (2026-07-29c)
+
+Widened the generator (17-digit doubles, denormals, 2^53+1, fractional/negative
+date serials, unicode/whitespace strings, bigger frames) and ran four fresh
+seeds — 2,880 cases. Three finds, the first one striking:
+1. **serde_json's default float parse is LOSSY** — a 17-digit double crossing
+   the IPC could land one ulp off (32594.794185575094 → …098), so the engine
+   computed on subtly different data than the oracle. `float_roundtrip` feature
+   now on in src-tauri/Cargo.toml; the wire round-trips doubles exactly.
+2. **The logical bridge was missing from the engine's filter-value coercion for
+   number/bool values** — `eq 12` on a logical column matched nothing desktop
+   (12 ≠ 1) but every TRUE row on web (coerceLogical: nonzero → 1). Folded now.
+3. **Polars swaps an inner join's build/probe sides by size and maintain_order
+   LOSES** — a right side larger than the left made inner joins emit
+   right-driven row order. Equality joins now row-index BOTH sides and sort the
+   joined result into the contract explicitly (maintain_order dropped — the
+   sort is the guarantee).
+All four seeds fully green after; three permanent corpus cases pinned (114).
+
 ### The corpus fuzz sweep: seven more real divergences, all fixed (2026-07-29b)
 
 `scripts/fuzz-frame-verbs.ts` (new, kept): seeded generator that writes random
