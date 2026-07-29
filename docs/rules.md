@@ -269,8 +269,8 @@ is the adopt-anything supremum. A rank-bearing wildcard keeps its rank and adopt
 the element family.
 
 *Enforced by:* `socketConnect.test.ts` → "`any` INPUT: family scalars + combos in;
-lists/matrices/containers refused", "anylist INPUT/OUTPUT", "anytable OUTPUT stays 2-D",
-"`trueany` bridges everything, both directions".
+lists/matrices/containers refused", "anylist INPUT", "anylist OUTPUT", "anytable OUTPUT
+stays 2-D", "`trueany` bridges everything, both directions".
 
 ### SOCK-5 — Adoption never drops cables and never persists **[INFERRED]**
 **MUST:** `trueany` adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting
@@ -666,8 +666,8 @@ raw values is a defect wherever a value may be an ARRAY.
 VAL-15) from different sources never match without a canonical key.
 *Enforced by:* `packs/sets.test.ts` covers the PRIMITIVE behaviour ("counts distinct
 values in first-seen order", "counts unique values, skipping nulls, propagating errors");
-`nodes/list.test.ts` → "complex numbers compare by VALUE, not array identity (Set-node
-fix)" puts distinct `[re, im]` instances through Set / IsIn / Tally — reverting a
+`nodes/list.test.ts` → "complex numbers compare by VALUE, not object identity (Set-node
+fix, VAL-8)" puts distinct `[re, im]` instances through Set / IsIn / Tally — reverting a
 consumer to a raw `Set` fails it.
 *Origin:* a real Set-node bug; `setKey` was introduced to fix it and now lives in
 `listOps.ts` for every membership consumer. (An earlier revision of this document
@@ -1149,9 +1149,15 @@ algebra-file scan, VAL-12's OpSelect binding scan, VAL-14's only-if check. The V
 check's first run listed 13 candidate classes; all 13 verified as real editors once the
 heuristic learned the bespoke surfaces — ExtensibleInputs and the `stringLiterals`
 spelling — so the codebase was already clean and the value is the ratchet. 2026-07-29:
-EFFECT-1's data()-never-writes sweep, exactly as prescribed here.)
+EFFECT-1's data()-never-writes sweep, exactly as prescribed here; and the semantic-half
+citation work below.)
 
-1. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
-   file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
-   still a reading job (this document's fact-check found four misciting rules that a
-   file-exists check alone would have passed).
+1. **Un-quoted citations are verified by reading, not machine** — narrowed 2026-07-29.
+   The QUOTED citations (the suite-name → "test name" arrow form, 57 of them) are now
+   mechanical:
+   `rules.test.ts` asserts each quoted name appears in the cited suite, so a renamed or
+   deleted test fails CI with the rule's citation (first run caught two drifted quotes).
+   The residual: a rule citing a bare filename still relies on reading. All 19 such
+   rules were read and verified 2026-07-29 (every cited suite genuinely enforces its
+   rule); the residual applies to FUTURE bare-file citations — prefer quoting the
+   describe/it name, which buys the machine check.

@@ -14,11 +14,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   the parity corpus landed as FX-12 2026-07-29 (**70 rules**). Still queued:
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
     promote if the class of config-driven coercions grows.
-- [ ] **Rules spec — the enforcement tail.** Down to (low value):
-  - **Partial:** SOCK-8 (the un-greppable visual half of the socket-box geometry —
-    the CSS pin landed 2026-07-28kk). **Unenforced:** SOCK-6 (recorded un-greppable).
-  - **`rules.test.ts` semantic half** — it checks cited files EXIST; whether a cited
-    test enforces its rule is still a reading job.
+- [ ] **Rules spec — the enforcement tail.** Down to (low value): SOCK-8 partial
+  (the un-greppable visual half of the socket-box geometry — the CSS pin landed
+  2026-07-28kk) and SOCK-6 unenforced (recorded un-greppable). The semantic half
+  closed 2026-07-29: quoted citations are machine-checked, the 19 bare-file
+  citations were read and verified (rules.md known-violation 1 has the residual).
 
 ## Bugs & verifications
 
