@@ -95,7 +95,10 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Frame">
-      <FrameDisplay frame={data.cachedResult} label={data.label} source={source} onSaveSource={onSaveSource} />
+      {/* Addable λ inputs (column-source model, slice 1): each wired λ can
+          define a column — pick it per column in the grid editor. */}
+      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} source={source} onSaveSource={onSaveSource} lambdaOptions={data.lambdaKeys} />
     </NodeShell>
   );
 }

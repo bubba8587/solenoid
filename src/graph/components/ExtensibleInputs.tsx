@@ -108,7 +108,7 @@ export function pushRowAddUndo(node: RowHost, keys: string[], removeIt: () => vo
  * rows can sit anywhere in the body — no fixed header-offset assumption.
  */
 export function ExtensibleInputs({
-  node, emit, leadingKeys, valueKeys,
+  node, emit, leadingKeys, valueKeys, minRows = 1,
 }: {
   node: ExtensibleNode;
   emit: RenderEmit<ClassicScheme>;
@@ -119,6 +119,10 @@ export function ExtensibleInputs({
   // Which input keys are the removable value rows. Default: all inputs (the
   // List/Concat case, where every input is a value row).
   valueKeys?: string[];
+  // The fewest rows the remove button leaves standing. Value nodes keep 1 (a
+  // List with zero rows is nothing); an OPTIONAL group (Frame Input's λ
+  // inputs) passes 0 so the last row can go too.
+  minRows?: number;
 }) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
@@ -203,7 +207,7 @@ export function ExtensibleInputs({
         // (order = stack order); wired it names the incoming node. A logical
         // operand (BooleanOp's AND/OR/… rows) is wire-only too — you wire a
         // condition, matching IfNode; a number still bridges in via the socket.
-        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo";
+        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isWireOnly ? (
@@ -219,7 +223,7 @@ export function ExtensibleInputs({
             ) : (
               <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} />
             )}
-            {keys.length > 1 && (
+            {keys.length > minRows && (
               <button
                 type="button"
                 className="solenoid-node__row-remove"

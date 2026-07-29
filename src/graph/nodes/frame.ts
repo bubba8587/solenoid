@@ -14,7 +14,8 @@ import { APP_LOCALE } from "../locale";
 import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
-  frameFromInputText, formatFrameCell, isCubeValue, isFrameValue, inferColumn,
+  frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
+  formatFrameCell, isCubeValue, isFrameValue, inferColumn,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
@@ -97,26 +98,120 @@ export class FrameInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
+  /** The addable λ input keys (fn1, fn2, …) — the column-source model's wired
+   *  definitions (v2.0/19-computed-column-surface.md slice 1): a source column
+   *  with `lambda: "fn1"` computes its cells per row from the λ wired there. */
+  lambdaKeys: string[] = [];
   // Signature of the text `cachedResult` was built from. Rebuilding a fresh
   // FrameValue every data() call defeats the backend's identity source-cache (each
   // recompute re-uploads the same frame to Rust); return the SAME object while the
   // text is unchanged so the handle is reused. A real edit changes frameText → rebuild.
+  // Computed (λ) columns opt OUT of this cache: their cells change when upstream
+  // λs change, which no frameText edit reflects.
   private _builtFrom: string | undefined;
   width = 240; height = 220;
 
-  constructor(init?: { label?: string; frameText?: string }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[] }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
+    if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
+    for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(`λ${k.replace(/^fn/, "")}`));
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data() {
-    if (!this.cachedResult || this._builtFrom !== this.frameText) {
-      this.cachedResult = frameFromInputText(this.frameText);
-      this._builtFrom = this.frameText;
+  /** Add one λ input row (the ExtensibleInputs contract). */
+  addValueInput(): string {
+    const next = this.lambdaKeys.reduce((m, k) => Math.max(m, Number(k.replace(/^fn/, "")) || 0), 0) + 1;
+    const key = `fn${next}`;
+    this.lambdaKeys.push(key);
+    this.addInput(key, lambdaIn(`λ${next}`));
+    return key;
+  }
+
+  /** Remove one λ input row; columns bound to it fall back to Typed. */
+  removeValueInput(key: string): void {
+    this.lambdaKeys = this.lambdaKeys.filter((k) => k !== key);
+    if (this.inputs[key]) this.removeInput(key);
+    const source = parseFrameSource(this.frameText);
+    if (source.some((c) => c.lambda === key)) {
+      this.frameText = frameSourceToText(source.map((c) => (c.lambda === key ? { ...c, lambda: undefined } : c)));
     }
-    return { frame: this.cachedResult };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    const source = parseFrameSource(this.frameText);
+    if (!source.some((c) => c.lambda)) {
+      if (!this.cachedResult || this._builtFrom !== this.frameText) {
+        this.cachedResult = frameFromInputText(this.frameText);
+        this._builtFrom = this.frameText;
+      }
+      return { frame: this.cachedResult };
+    }
+
+    // ── Computed (λ) columns — topo order, cycle-refusing ──────────────────
+    // The working frame starts as the literal derivation with computed columns
+    // EMPTIED (their stale text must not feed row counts or earlier deps);
+    // each computed column then fills in dependency order, so a λ column can
+    // reference another computed column. The rules per row are the shared
+    // core's (computedColumnCore.ts) — identical to the Computed Column verb.
+    const base = deriveFrame(source);
+    const frame: FrameValue = {
+      __frame: true,
+      columns: base.columns.map((col, i) =>
+        source[i].lambda ? { name: col.name, type: "number" as FrameColType, values: [] } : col),
+    };
+    const nameToIdx = new Map(source.map((c, i) => [c.name, i] as const));
+    const remaining = new Set(source.map((c, i) => (c.lambda ? i : -1)).filter((i) => i >= 0));
+    const lamAt = (i: number) => {
+      const v = inputs[source[i].lambda!]?.[0];
+      return isLambdaValue(v) ? v : null;
+    };
+    const rowCount = () => frame.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
+
+    let progress = true;
+    while (progress && remaining.size > 0) {
+      progress = false;
+      for (const i of [...remaining]) {
+        const lam = lamAt(i);
+        const blocked = lam
+          ? lam.params.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })
+          : false;
+        if (blocked) continue;
+        remaining.delete(i);
+        progress = true;
+        const c = source[i];
+        if (!lam) {
+          // No λ wired to the bound socket yet — the column is blank, not an error.
+          frame.columns[i] = { name: c.name, type: "number", values: Array(rowCount()).fill(null) };
+          continue;
+        }
+        const r = computeColumnCells(frame, { kind: "lambda", lam }, {
+          // A λ param naming no column: side values ride the λ's OWN captures
+          // (the Lambda node's sockets), so here it is a miss, per row.
+          sideValue: (p) => solError("#REF!", `No column "${p}" — a table λ's side values ride its captures`),
+        });
+        if (isSolError(r)) {
+          frame.columns[i] = { name: c.name, type: "number", values: Array(rowCount()).fill(r) };
+        } else {
+          // Type from inference, values verbatim (inferColumn CONSTRUCTS a
+          // column — stringified raw, coerced cells — which would mangle
+          // per-row SolErrors; the CC verb reads .type the same way).
+          frame.columns[i] = { name: c.name, type: inferColumn(c.name, r.cells).type, values: r.cells };
+        }
+      }
+    }
+    if (remaining.size > 0) {
+      const cycle = [...remaining].map((i) => source[i].name).join(" → ");
+      const err = solError("#REF!", `Circular computed columns: ${cycle}`);
+      const n = rowCount();
+      for (const i of remaining) {
+        frame.columns[i] = { name: source[i].name, type: "number", values: Array(n).fill(err) };
+      }
+    }
+    this.cachedResult = frame;
+    this._builtFrom = undefined; // computed frames never reuse the identity cache
+    return { frame };
   }
 }
 

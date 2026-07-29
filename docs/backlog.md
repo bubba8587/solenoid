@@ -170,9 +170,10 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   RATIFIED 2026-07-29** (C1 addable λ sockets; C2 TablePopup formula editing +
   card-chip glyph; C3 STRUCK — no wired-list source, no Frame from Lists fold;
   C4 eyeball). The shared core is extracted (`computedColumnCore.ts` — the CC
-  node delegates). Next: BUILD SLICE 1 — Frame Input λ sockets + per-column
-  source control + topo-order intra-table refs + cycle refusal; then slice 2
-  (Formula source in the popup).
+  node delegates). SLICE 1 SHIPPED 2026-07-29 (λ sockets + source select +
+  topo-order intra-table refs + cycle refusal + computed-cell rendering — C4
+  look awaits the eyeball). Next: SLICE 2 — the Formula source (TablePopup
+  editing per C2) + the card-chip computed-column glyph.
 - [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
   inline expr + wired-λ definition, side-input sockets, row/rows, col() for
   unspellable names, addAs output typing, After placement). Remaining,

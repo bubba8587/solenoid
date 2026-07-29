@@ -100,6 +100,17 @@ export interface TablePopupState {
    *  (pin this value to the HUD). Absent for HUD/group-readout chips, which have
    *  no single host node to pin. */
   pinNodeId?: string;
+  /** The host's λ input keys (Frame Input's addable lambda sockets) — when
+   *  non-empty, the editable header grows the per-column SOURCE select
+   *  (Typed | λ…), the column-source model's slice 1
+   *  (v2.0/19-computed-column-surface.md). */
+  lambdaOptions?: string[];
+  /** Per-column initial λ binding (aligned with columns; undefined = Typed). */
+  sourceLambdas?: (string | undefined)[];
+  /** Formatted display text for COMPUTED columns (row-major; null where the
+   *  column is Typed) — computed cells render read-only from the derived
+   *  frame, they have no raw text to edit. */
+  computedCells?: (string | null)[][];
 }
 
 export const tablePopup = createValueStore<TablePopupState>();

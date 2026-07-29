@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { ComputedColumnNode } from "./frame";
+import { ComputedColumnNode, FrameInputNode } from "./frame";
 import { LambdaNode } from "./lambda";
-import { getColumn, type FrameValue } from "../frame";
+import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 import { extractInit } from "../copyPaste";
 
@@ -255,6 +255,95 @@ describe("ComputedColumnNode — kitchen sink", () => {
     const n = named('col("qty") * price + row + base', "mix");
     const r = run(n, sales, { base: [[1000]] }) as FrameValue;
     expect(getColumn(r, "mix")!.values).toEqual([2 * 10 + 1 + 1000, 3 * 20 + 2 + 1000, 4 * 30 + 3 + 1000]);
+  });
+});
+
+describe("Frame Input λ columns (surface slice 1)", () => {
+  const src = (cols: Parameters<typeof frameSourceToText>[0]) => frameSourceToText(cols);
+  const lambda = (expr: string, params: string) =>
+    (new LambdaNode({ expr, params }).data({}) as { result: unknown }).result;
+
+  it("a λ-bound column computes per row over the literal columns", () => {
+    const n = new FrameInputNode({
+      frameText: src([
+        { name: "a", type: "number", cells: ["1", "2", "3"] },
+        { name: "b", type: "number", cells: ["10", "20", "30"] },
+        { name: "sum", type: "number", cells: [], lambda: "fn1" },
+      ]),
+      lambdaKeys: ["fn1"],
+    });
+    const out = n.data({ fn1: [lambda("a + b", "a, b")] }).frame as FrameValue;
+    expect(getColumn(out, "sum")!.values).toEqual([11, 22, 33]);
+    // Literal columns keep their raw text; the computed column has none.
+    expect(getColumn(out, "a")!.raw).toEqual(["1", "2", "3"]);
+    expect(getColumn(out, "sum")!.raw).toBeUndefined();
+  });
+
+  it("a computed column can reference another computed column (topo order)", () => {
+    const n = new FrameInputNode({
+      frameText: src([
+        { name: "qty", type: "number", cells: ["2", "4"] },
+        { name: "margin", type: "number", cells: [], lambda: "fn2" }, // declared FIRST, depends on revenue
+        { name: "revenue", type: "number", cells: [], lambda: "fn1" },
+      ]),
+      lambdaKeys: ["fn1", "fn2"],
+    });
+    const out = n.data({
+      fn1: [lambda("qty * 10", "qty")],
+      fn2: [lambda("revenue / 2", "revenue")],
+    }).frame as FrameValue;
+    expect(getColumn(out, "revenue")!.values).toEqual([20, 40]);
+    expect(getColumn(out, "margin")!.values).toEqual([10, 20]);
+  });
+
+  it("a cycle between computed columns refuses per column with #REF!", () => {
+    const n = new FrameInputNode({
+      frameText: src([
+        { name: "x", type: "number", cells: ["1"] },
+        { name: "p", type: "number", cells: [], lambda: "fn1" },
+        { name: "q", type: "number", cells: [], lambda: "fn2" },
+      ]),
+      lambdaKeys: ["fn1", "fn2"],
+    });
+    const out = n.data({
+      fn1: [lambda("q + 1", "q")],
+      fn2: [lambda("p + 1", "p")],
+    }).frame as FrameValue;
+    const p = getColumn(out, "p")!.values[0];
+    expect(isSolError(p) && p.message).toContain("Circular");
+    expect(isSolError(getColumn(out, "q")!.values[0])).toBe(true);
+    // The literal column is untouched by the cycle.
+    expect(getColumn(out, "x")!.values).toEqual([1]);
+  });
+
+  it("an unwired λ socket leaves the column blank; an unbound param is a per-row #REF!", () => {
+    const n = new FrameInputNode({
+      frameText: src([
+        { name: "a", type: "number", cells: ["1", "2"] },
+        { name: "c1", type: "number", cells: [], lambda: "fn1" },
+        { name: "c2", type: "number", cells: [], lambda: "fn2" },
+      ]),
+      lambdaKeys: ["fn1", "fn2"],
+    });
+    const out = n.data({ fn2: [lambda("ghost * 2", "ghost")] }).frame as FrameValue;
+    expect(getColumn(out, "c1")!.values).toEqual([null, null]);
+    const c2 = getColumn(out, "c2")!.values[0];
+    expect(isSolError(c2) && c2.message).toContain("captures");
+  });
+
+  it("removing a λ row unbinds its columns back to Typed; lambdaKeys round-trips extractInit", () => {
+    const n = new FrameInputNode({
+      frameText: src([
+        { name: "a", type: "number", cells: ["1"] },
+        { name: "c", type: "number", cells: [], lambda: "fn1" },
+      ]),
+      lambdaKeys: ["fn1"],
+    });
+    const init = extractInit(n) as { lambdaKeys?: string[] };
+    expect(init.lambdaKeys).toEqual(["fn1"]);
+    n.removeValueInput("fn1");
+    expect(n.lambdaKeys).toEqual([]);
+    expect(parseFrameSource(n.frameText).find((c) => c.name === "c")!.lambda).toBeUndefined();
   });
 });
 

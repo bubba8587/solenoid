@@ -178,6 +178,28 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
+/* The per-column SOURCE select (column-source model): Typed vs a wired λ.
+   Rendered only when the host has λ inputs; sits under the name row. */
+.table-popup__srcselect {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+/* A COMPUTED column's cells: derived, read-only — quiet tint, no edit caret.
+   Color conveys state (the frame violet at low strength), not decoration. */
+.table-popup__cell--computed .table-popup__input {
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--sock-frame) 7%, transparent);
+  cursor: default;
+}
+
 /* ── Visual-only column sort (columnSort.tsx) ─────────────────────────────────
    The whole header cell is the click target, so the cursor is the affordance and
    there is no resting glyph on any column — the chevron exists ONLY while that

@@ -36,7 +36,7 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full, previewRows, previewCols, scroll, formatNodeId }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions }: {
   frame: FrameValue | SolError | null;
   label?: string;
   /** Override the node whose persisted per-column formats to read (frameFormatStore).
@@ -62,6 +62,9 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
   /** Cap the table height and scroll past it, so a tall preview doesn't run the
    *  whole document. Keeps the chip (opens the full popup). */
   scroll?: boolean;
+  /** The host's λ input keys (Frame Input) — forwarded to the chip so the
+   *  popup can offer the per-column source select (column-source model). */
+  lambdaOptions?: string[];
 }) {
   // Per-column persisted formats live on the host node (frameFormatStore). Subscribe
   // so a format change in the popup re-renders this preview. A Report embed overrides
@@ -136,7 +139,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
       </table>
       {!full && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} />
+          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} lambdaOptions={lambdaOptions} />
         </div>
       )}
     </div>

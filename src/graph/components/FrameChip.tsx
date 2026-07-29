@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { tablePopup, type FramePopupColumn } from "../tablePopupStore";
-import { frameRowCount, frameToGrid, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
+import { frameRowCount, frameToGrid, isFrameValue, formatFrameCell, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
@@ -38,7 +38,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
  * chip is its editor. Column types are passed either way so a frame with a text
  * column renders correctly even read-only.
  */
-export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, pinNodeId }: {
+export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, pinNodeId, lambdaOptions }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -55,6 +55,9 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   /** The node whose value the popup's Pin action pins (see ArrayChip). Defaults to
    *  the host node from context; a collapsed-group readout passes its member id. */
   pinNodeId?: string;
+  /** The host's λ input keys (Frame Input) — enables the popup's per-column
+   *  source select (the column-source model, slice 1). */
+  lambdaOptions?: string[];
 }) {
   // Hook runs every render (Rules of Hooks); the explicit prop wins when given.
   const ctxHostId = useHostNodeId();
@@ -123,6 +126,21 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           groupColor: st.groupColor,
           groupColorDark: st.groupColorDark,
           pinNodeId: hostId ?? undefined,
+          // The column-source model (slice 1): the host's λ keys, each column's
+          // current binding, and the COMPUTED columns' derived display text
+          // (they have no raw cells — the popup renders these read-only).
+          ...(isSource && lambdaOptions?.length ? {
+            lambdaOptions,
+            sourceLambdas: source!.map((c) => c.lambda),
+            computedCells: Array.from(
+              { length: Math.max(rowCount, frameRowCount(value)) },
+              (_, r) => source!.map((c, j) => {
+                if (!c.lambda) return null;
+                const cell = formatFrameCell(value.columns[j]?.type ?? "number", value.columns[j]?.values[r] ?? null);
+                return cell === null ? "" : String(cell);
+              }),
+            ),
+          } : {}),
         });
       }}
       onPointerDown={stopDragStart}
