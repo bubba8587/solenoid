@@ -254,6 +254,12 @@ export function forAggregate(values: ReadonlyArray<unknown>): AggregatePrep {
   for (const v of values) {
     if (isSolError(v)) return { error: v };
   }
-  const nums = values.filter((v) => !isMissing(v)) as number[];
+  // Only NUMERIC cells aggregate (dates are serials; callers coerce logicals to
+  // 1/0 first — the socket boundary does it for node lists, aggregateGroup for
+  // frame columns). A text cell contributes NOTHING numeric: it must not ride
+  // into sum's `+` (which would CONCATENATE) or min/max's `<` (lexical by
+  // accident). Surfaced by the corpus fuzz sweep; the Polars engine already
+  // skipped non-numeric cells.
+  const nums = values.filter((v): v is number => typeof v === "number");
   return { nums };
 }

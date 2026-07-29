@@ -10,6 +10,13 @@
         { "name": "id", "type": "string", "values": ["r1", "r1", "r2", "r2"] },
         { "name": "variable", "type": "string", "values": ["q1", "q2", "q1", "q2"] },
         { "name": "value", "type": "number", "values": [10, 20, 30, 40] } ] } },
+    { "name": "mixed-type value columns refuse (the melted column is ONE typed column)",
+      "frames": { "in": { "columns": [
+        { "name": "id", "type": "number", "values": [1] },
+        { "name": "a", "type": "number", "values": [2] },
+        { "name": "b", "type": "string", "values": ["x"] } ] } },
+      "op": { "kind": "unpivot", "idColumns": ["id"], "valueColumns": ["a", "b"] },
+      "expectError": "#TYPE!" },
     { "name": "custom variable/value names",
       "frames": { "in": { "columns": [
         { "name": "id", "type": "string", "values": ["r1", "r2"] },

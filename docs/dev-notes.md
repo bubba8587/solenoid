@@ -120,6 +120,41 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The corpus fuzz sweep: seven more real divergences, all fixed (2026-07-29b)
+
+`scripts/fuzz-frame-verbs.ts` (new, kept): seeded generator that writes random
+corpus cases — oracle-computed expectations, wire format, `fuzz-*.json` beside
+the hand fixtures — so cargo becomes the divergence hunt. 480 cases per run;
+usage in the script header; fuzz files are TRANSIENT (generate → run → delete),
+each find lands as a permanent hand-named case instead (11 added; corpus now
+110). First sweep found SEVEN real defects across both engines:
+1. **Sorting by a logical column PANICKED the engine** (Polars bool sort has no
+   nulls-last) — sort now keys logical as 0/1 and floats with NaN nulled, which
+   also fixed NaN-desc tailing. (`lazy_sort` key exprs)
+2. **The oracle's `forAggregate` admitted text cells** — sum CONCATENATED
+   ("0"+"b"→"0b"), min/max compared lexically by accident. Numeric-only now
+   (engine already skipped): sum 0 / product 1 / min-max null over text.
+3. **Equality-join keys**: the oracle's B-1a bucket matched NaN to −∞; Polars
+   matched inf==inf. Both now: non-finite keys never match (like null). The
+   engine joins on TEMP masked key columns with coalesce done EXPLICITLY —
+   which also fixed 4. **the right-join coalesce naming maze** (a right key
+   named like an unrelated LEFT column coalesced the WRONG column — audit
+   finding 4's last corner, live).
+5. **groupBy keys**: engine grouped inf/−inf/NaN separately; oracle buckets all
+   non-finite as one group, null its own (B-1a). Engine now groups on derived
+   key exprs (masked value + non-finite flag) with `first()` key output.
+6. **Polars' asof kernel retired** (`verb_join_asof` is now a hand-rolled
+   mirror of the oracle's binary search): its `allow_eq` default silently
+   excluded EXACT key ties, `nearest` tie-breaks forward (oracle: backward),
+   and non-finite keys mismatched. Three kernel quirks, one small function.
+7. **Spec clarifications, both sides**: mismatched join key types refuse
+   `#TYPE!` (was silent-empty web / `#ERROR!` desktop); mixed-type unpivot
+   value columns refuse `#TYPE!` (was silent nulls desktop); a null comparison
+   value matches no rows in text predicates (oracle stringified it to "null",
+   engine to ""). Variance/stdev now run the oracle's sequential two-pass in a
+   GroupWise UDF — Polars' own var() drifts in the last digits at large means
+   (date serials), and byte parity is the corpus contract.
+
 ### The parity corpus LANDS end to end — FX-12 promoted (2026-07-29)
 
 Bundle 18 steps 1v–4 in one session; `18-parity-corpus.md` → archive. The

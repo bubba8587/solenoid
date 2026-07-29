@@ -242,6 +242,11 @@ export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, ty
   if (op === "isblank")  return cell === null;
   if (op === "notblank") return cell !== null;
   if (cell === null || isSolError(cell)) return false;
+  // A null comparison VALUE matches no rows — the numeric path already answers
+  // this through filterValueToNumber; without the same guard the text path
+  // stringified null into the literal text "null" (corpus fuzz sweep). Blank
+  // predicates sit above because they ignore the value by design.
+  if (value === null) return false;
   // Simple lowercase fold, NOT locale-aware — the one spec both engines
   // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).
   const fold = (s: string) => (matchCase ? s : s.toLowerCase());
@@ -492,7 +497,12 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   const idx = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
     const cell = cellAt(col, i);
-    if (cell === null || isSolError(cell)) continue; // null/error never join
+    // null / error / NON-FINITE keys never join (corpus fuzz sweep): encKey
+    // buckets every non-finite as ["#",null], which would match NaN to −∞ —
+    // dedupe semantics (B-1a, distinct) but garbage as an equality MATCH.
+    // Skipping them here also blanks the probe side: a non-finite probe key
+    // encodes to the same bucket, which is now never stored.
+    if (cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell))) continue;
     const k = encKey(cell);
     const bucket = idx.get(k);
     if (bucket) bucket.push(i); else idx.set(k, [i]);
@@ -583,10 +593,13 @@ function asofPairs(
     throw solError("#VALUE!", "As-of join requires a numeric or date key");
   }
   const rn = frameRowCount(right);
+  // A non-finite key never matches, same as a null key (corpus fuzz sweep):
+  // ±∞/NaN on a time axis is dirty data, and the Polars kernel drops it —
+  // "nearest to ∞" is not an answer either engine should invent.
   const sortedRight: { key: number; idx: number }[] = [];
   for (let j = 0; j < rn; j++) {
     const cell = cellAt(rk, j);
-    if (cell === null || isSolError(cell)) continue;
+    if (cell === null || isSolError(cell) || !Number.isFinite(Number(cell))) continue;
     sortedRight.push({ key: Number(cell), idx: j });
   }
   sortedRight.sort((a, b) => a.key - b.key || a.idx - b.idx);
@@ -596,7 +609,7 @@ function asofPairs(
   const pairs: [number | null, number | null][] = [];
   for (let i = 0; i < ln; i++) {
     const cell = cellAt(lk, i);
-    if (cell === null || isSolError(cell)) { pairs.push([i, null]); continue; }
+    if (cell === null || isSolError(cell) || !Number.isFinite(Number(cell))) { pairs.push([i, null]); continue; }
     pairs.push([i, asofNearest(sortedRight, Number(cell), direction, opts.asofTolerance)]);
   }
   return pairs;
@@ -611,6 +624,13 @@ function asofPairs(
 export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
+  // Keys of two different types can never match (families never auto-cross,
+  // SOCK-1's discipline at the verb surface) — refuse loudly instead of the
+  // silent empty result / engine-side error the mismatch used to produce
+  // (corpus fuzz sweep). Cast a key column first.
+  if (lk.type !== rk.type) {
+    throw solError("#TYPE!", `Join keys must share a type ("${lk.type}" vs "${rk.type}")`);
+  }
   const ln = frameRowCount(left), rn = frameRowCount(right);
 
   // Semi/anti FILTER the left frame (the table-level set intersect/difference):
@@ -876,6 +896,14 @@ export function unpivotFrame(
 ): FrameValue {
   const idCols = idColumns.map((n) => requireColumn(f, n));
   const valCols = valueColumns.map((n) => requireColumn(f, n));
+  // The melted `value` column is ONE typed column — value columns of mixed
+  // types cannot honestly land in it (cells of the wrong type would silently
+  // null on the engine side; corpus fuzz sweep). Reject-on-mismatch, same as
+  // append's union rule; Cast the columns to one type first.
+  const mixed = valCols.find((c) => c.type !== valCols[0].type);
+  if (mixed) {
+    throw solError("#TYPE!", `Unpivot value columns must share a type ("${valCols[0].name}" is ${valCols[0].type}, "${mixed.name}" is ${mixed.type})`);
+  }
   const idVals: FrameCell[][] = idCols.map(() => []);
   const varVals: FrameCell[] = [];
   const valVals: FrameCell[] = [];

@@ -183,6 +183,50 @@
       "expect": { "columns": [
         { "name": "t", "type": "number", "values": [null, 5] },
         { "name": "px", "type": "number", "values": [null, 102] } ] } },
+    { "name": "mismatched key types refuse (never a silent empty result)",
+      "frames": {
+        "left": { "columns": [
+          { "name": "id", "type": "number", "values": [1] } ] },
+        "right": { "columns": [
+          { "name": "id", "type": "string", "values": ["1"] },
+          { "name": "v", "type": "number", "values": [9] } ] } },
+      "op": { "kind": "join", "leftKey": "id", "rightKey": "id", "how": "inner" },
+      "expectError": "#TYPE!" },
+    { "name": "non-finite keys never match — not even inf to inf",
+      "frames": {
+        "left": { "columns": [
+          { "name": "k", "type": "number", "values": [{"__nf": "inf"}, 1] } ] },
+        "right": { "columns": [
+          { "name": "k", "type": "number", "values": [{"__nf": "inf"}, 1] },
+          { "name": "v", "type": "number", "values": [9, 8] } ] } },
+      "op": { "kind": "join", "leftKey": "k", "rightKey": "k", "how": "left" },
+      "expect": { "columns": [
+        { "name": "k", "type": "number", "values": [{"__nf": "inf"}, 1] },
+        { "name": "v", "type": "number", "values": [null, 8] } ] } },
+    { "name": "right join coalesces the key even when the right key's NAME matches another left column",
+      "frames": {
+        "left": { "columns": [
+          { "name": "flag", "type": "number", "values": [1, 2] },
+          { "name": "k", "type": "string", "values": ["a", "b"] } ] },
+        "right": { "columns": [
+          { "name": "k", "type": "number", "values": [2, 3] },
+          { "name": "v", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "join", "leftKey": "flag", "rightKey": "k", "how": "right" },
+      "expect": { "columns": [
+        { "name": "flag", "type": "number", "values": [2, 3] },
+        { "name": "k", "type": "string", "values": ["b", null] },
+        { "name": "v", "type": "string", "values": ["x", "y"] } ] } },
+    { "name": "asof matches an EXACT key tie (backward from 0 finds 0, not the row before)",
+      "frames": {
+        "left": { "columns": [
+          { "name": "t", "type": "number", "values": [0] } ] },
+        "right": { "columns": [
+          { "name": "t", "type": "number", "values": [-3, 0] },
+          { "name": "px", "type": "number", "values": [9, 2] } ] } },
+      "op": { "kind": "join", "leftKey": "t", "rightKey": "t", "how": "asof", "asofDirection": "backward" },
+      "expect": { "columns": [
+        { "name": "t", "type": "number", "values": [0] },
+        { "name": "px", "type": "number", "values": [2] } ] } },
     { "name": "asof rejects a non-orderable (string) key",
       "frames": {
         "left": { "columns": [
