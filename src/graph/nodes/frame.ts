@@ -2,6 +2,7 @@ import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
+import { computeColumnCells } from "../computedColumnCore";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { readFilterValue } from "./list";
 import { toAnyMatrix } from "./coerce";
@@ -1667,40 +1668,10 @@ export class AddColumnNode extends ClassicPreset.Node {
 // element-wise op); the output column's type is inferred from the computed
 // cells, and a `Name (unit)` header tags the unit like Add Column.
 
-/** One computed cell, tagged: SolErrors pass, NaN is #DOMAIN! (op-level guards
- *  inside the evaluator already classified overflow — a surviving ±Inf is a
- *  definable infinity), a non-scalar result refuses (#SHAPE! — one value per
- *  row), undefined reads as blank. */
-function tagComputedCell(v: unknown): FrameCell {
-  if (isSolError(v)) return v;
-  if (typeof v === "number") {
-    return Number.isNaN(v) ? solError("#DOMAIN!", "The result is undefined: not a number") : v;
-  }
-  if (typeof v === "string" || typeof v === "boolean" || v === null) return v;
-  if (v === undefined) return null;
-  if (Array.isArray(v)) return solError("#SHAPE!", "A computed column needs one value per row, not a list");
-  return solError("#VALUE!", "A computed column needs a number, text, boolean, or blank per row");
-}
-
 /** How the computed column is typed: inferred from the computed cells, or
  *  declared (a formula over date serials can only BE a date column by saying
  *  so — inference cannot tell a serial from a number). */
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
-
-/** How one variable of the row formula resolves, in precedence order: a COLUMN
- *  of that name (the row context), the `row`/`rows` builtins (1-based row
- *  number / total row count), or a SIDE INPUT — a socket the node grows for
- *  it, carrying a row-invariant value from the graph (a rate, a threshold, a
- *  whole list for SUM(...)). Columns whose names a variable can't spell — a
- *  year column "2024", "Unit Price" — are reached with the `col` accessor
- *  instead: `col("Unit Price")`, `col(2024)` — an env lambda injected per
- *  row, resolved by the evaluator's higher-order call path, so it never
- *  becomes a variable or a side socket. */
-type ComputedBinding =
-  | { kind: "col"; col: FrameColumn }
-  | { kind: "row" }
-  | { kind: "rows" }
-  | { kind: "side"; value: unknown };
 
 export class ComputedColumnNode extends ClassicPreset.Node {
   label: string;
@@ -1769,13 +1740,10 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const name = nameRaw.trim() || "computed";
     const after = (afterRaw ?? "").trim();
 
-    // The variable list: the λ's params when wired (the λ wins — it's the
-    // deliberate, reusable definition), else the inline formula's variables.
-    let params: string[];
+    // The definition: the λ when wired (it wins — the deliberate, reusable
+    // definition), else the inline formula (compiled once per expr).
     const wired = isLambdaValue(lam) ? lam : null;
-    if (wired) {
-      params = wired.params;
-    } else {
+    if (!wired) {
       if (this._compiledFor !== this.expr) {
         this._evaluator = compileEvaluator(this.expr);
         this._vars = this._evaluator ? extractVariables(this.expr) : [];
@@ -1783,67 +1751,23 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       }
       if (!this.expr.trim()) { this._reconcileSideSockets([]); return out(f); } // nothing defined yet
       if (!this._evaluator) { this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
-      params = this._vars;
     }
 
-    // Bind each variable: column → `row`/`rows` builtins → side input. A
-    // column of the same name shadows a builtin (the user's data outranks our
-    // convenience).
-    const bindings: ComputedBinding[] = [];
-    const side: string[] = [];
-    for (const p of params) {
-      const col = f.columns.find((c) => c.name === p);
-      if (col) { bindings.push({ kind: "col", col }); continue; }
-      if (p === "row") { bindings.push({ kind: "row" }); continue; }
-      if (p === "rows") { bindings.push({ kind: "rows" }); continue; }
-      if (p === "frame" || p === "name" || p === "fn" || p === "after") {
-        this._reconcileSideSockets(side);
-        return out(solError("#REF!", `"${p}" is a reserved input name — rename the variable or the column`));
-      }
-      side.push(p);
-      bindings.push({ kind: "side", value: readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0) });
-    }
-    this._reconcileSideSockets(side);
-
-    const rows = frameRowCount(f);
-    // The `col` accessor for names a variable can't spell (a "2024" year
-    // column, "Unit Price"): one env lambda reading the CURRENT row, resolved
-    // by the evaluator's higher-order call path. `cursor` advances with the
-    // row loop, so one closure serves every row. Exact name match only — no
-    // positional fallback here, a name is a name.
-    let cursor = 0;
-    const colAccessor = {
-      __lambda: true as const, params: ["name"], expr: "",
-      fn: (nm: unknown) => {
-        const key = String(nm);
-        const c = f.columns.find((cc) => cc.name === key);
-        return c ? (c.values[cursor] ?? null) : solError("#REF!", `No column "${key}"`);
+    // The rules — binding precedence, builtins, col(), the per-row contract —
+    // live in the SHARED core (computedColumnCore.ts), so this surface and the
+    // Frame Input's per-column sources can never disagree. This node only
+    // supplies its ports: reserved keys, and the side-value read.
+    const computed = computeColumnCells(
+      f,
+      wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
+      {
+        reserved: ["frame", "name", "fn", "after"],
+        sideValue: (p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0),
       },
-    };
-    const values: FrameCell[] = [];
-    for (let i = 0; i < rows; i++) {
-      cursor = i;
-      // Frame cells are plain values — units live on the COLUMN (D20), so
-      // there is nothing to unwrap per cell. Side inputs are row-invariant.
-      const cells = bindings.map((b) =>
-        b.kind === "col" ? (b.col.values[i] ?? null)
-        : b.kind === "row" ? i + 1
-        : b.kind === "rows" ? rows
-        : b.value);
-      const err = cells.find((v) => isSolError(v));
-      if (err) { values.push(err as SolError); continue; }
-      let r: unknown;
-      if (wired) {
-        try { r = wired.fn(...cells); } catch (e) {
-          r = isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
-        }
-      } else {
-        const env: Record<string, unknown> = { col: colAccessor };
-        params.forEach((p, k) => { env[p] = cells[k]; });
-        r = this._evaluator!(env);
-      }
-      values.push(tagComputedCell(r));
-    }
+    );
+    if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
+    this._reconcileSideSockets(computed.sideVars);
+    const values = computed.cells;
     const colType: FrameColType = this.addAs === "auto"
       ? inferColumn(name, values).type
       : this.addAs === "text" ? "string" : this.addAs;

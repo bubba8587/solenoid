@@ -166,11 +166,16 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
   `formulaTier3.test.ts`. Residual: distributions are validated only at representative
   points — widen if accuracy is ever in doubt.
-- [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29: `ComputedColumnNode`,
-  inline expr + wired-λ definition, by-name column binding, per-row error/null
-  contract, inferred output type, `Name (unit)` headers; the frame-verb refusal
-  message grew its "or a Computed Column" arm). Remaining, all author-eyeball or
-  design-tail:
+- [ ] **The computed-column SURFACE — `v2.0/19-computed-column-surface.md`** (author
+  direction 2026-07-29: table computed columns are the mainline Excel workload,
+  no half-assing). The shared core is extracted (`computedColumnCore.ts` — the
+  CC node delegates); the bundle's slice 1 (Frame Input λ sockets + per-column
+  source control + topo-order intra-table refs) waits on the C1–C4 crux answers
+  in the bundle.
+- [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
+  inline expr + wired-λ definition, side-input sockets, row/rows, col() for
+  unspellable names, addAs output typing, After placement). Remaining,
+  author-eyeball or design-tail:
   - **Column-binding pickers** (author direction): bind expr variables / λ params to
     columns via pickers instead of by-name only — the Pivot `sourceColumns` republish
     pattern; would also be the first shared column-picker component (Sort/Get
