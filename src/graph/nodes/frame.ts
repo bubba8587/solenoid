@@ -1688,12 +1688,18 @@ function tagComputedCell(v: unknown): FrameCell {
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
 /** How one variable of the row formula resolves, in precedence order: a COLUMN
- *  of that name (the row context), the `row` builtin (1-based row number), or
- *  a SIDE INPUT — a socket the node grows for it, carrying a row-invariant
- *  value from the graph (a rate, a threshold, a whole list for SUM(...)). */
+ *  of that name (the row context), the `row`/`rows` builtins (1-based row
+ *  number / total row count), or a SIDE INPUT — a socket the node grows for
+ *  it, carrying a row-invariant value from the graph (a rate, a threshold, a
+ *  whole list for SUM(...)). Columns whose names a variable can't spell — a
+ *  year column "2024", "Unit Price" — are reached with the `col` accessor
+ *  instead: `col("Unit Price")`, `col(2024)` — an env lambda injected per
+ *  row, resolved by the evaluator's higher-order call path, so it never
+ *  becomes a variable or a side socket. */
 type ComputedBinding =
   | { kind: "col"; col: FrameColumn }
   | { kind: "row" }
+  | { kind: "rows" }
   | { kind: "side"; value: unknown };
 
 export class ComputedColumnNode extends ClassicPreset.Node {
@@ -1701,7 +1707,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   expr: string;
   addAs: ComputedColumnAs;
   cachedResult: FrameValue | SolError | null = null;
-  stringLiterals: Record<string, string> = { name: "computed" };
+  stringLiterals: Record<string, string> = { name: "computed", after: "" };
   /** Inline defaults for the side-input sockets (Expression convention: 0). */
   literals: Record<string, number> = {};
   /** The side-input sockets currently grown (variables that named no column). */
@@ -1719,6 +1725,9 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("frame", frameIn("Frame"));
     this.addInput("name", strIn("Name"));
+    // Placement: blank = append at the end; a column name = insert right
+    // after it. Replacing an existing column keeps its position regardless.
+    this.addInput("after", strIn("After"));
     this.addInput("fn", lambdaIn("λ"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1750,13 +1759,15 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     });
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; name?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
+  data(inputs: { frame?: (FrameValue | null)[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
     const f = inputs.frame?.[0] ?? null;
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
+    const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
     const lam = inputs.fn?.[0];
     const out = (frame: FrameValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
     if (!f || nameRaw === null) { this._reconcileSideSockets([]); return out(null); }
     const name = nameRaw.trim() || "computed";
+    const after = (afterRaw ?? "").trim();
 
     // The variable list: the λ's params when wired (the λ wins — it's the
     // deliberate, reusable definition), else the inline formula's variables.
@@ -1775,15 +1786,17 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       params = this._vars;
     }
 
-    // Bind each variable: column → `row` builtin → side input. A column named
-    // `row` shadows the builtin (the user's data outranks our convenience).
+    // Bind each variable: column → `row`/`rows` builtins → side input. A
+    // column of the same name shadows a builtin (the user's data outranks our
+    // convenience).
     const bindings: ComputedBinding[] = [];
     const side: string[] = [];
     for (const p of params) {
       const col = f.columns.find((c) => c.name === p);
       if (col) { bindings.push({ kind: "col", col }); continue; }
       if (p === "row") { bindings.push({ kind: "row" }); continue; }
-      if (p === "frame" || p === "name" || p === "fn") {
+      if (p === "rows") { bindings.push({ kind: "rows" }); continue; }
+      if (p === "frame" || p === "name" || p === "fn" || p === "after") {
         this._reconcileSideSockets(side);
         return out(solError("#REF!", `"${p}" is a reserved input name — rename the variable or the column`));
       }
@@ -1793,12 +1806,30 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     this._reconcileSideSockets(side);
 
     const rows = frameRowCount(f);
+    // The `col` accessor for names a variable can't spell (a "2024" year
+    // column, "Unit Price"): one env lambda reading the CURRENT row, resolved
+    // by the evaluator's higher-order call path. `cursor` advances with the
+    // row loop, so one closure serves every row. Exact name match only — no
+    // positional fallback here, a name is a name.
+    let cursor = 0;
+    const colAccessor = {
+      __lambda: true as const, params: ["name"], expr: "",
+      fn: (nm: unknown) => {
+        const key = String(nm);
+        const c = f.columns.find((cc) => cc.name === key);
+        return c ? (c.values[cursor] ?? null) : solError("#REF!", `No column "${key}"`);
+      },
+    };
     const values: FrameCell[] = [];
     for (let i = 0; i < rows; i++) {
+      cursor = i;
       // Frame cells are plain values — units live on the COLUMN (D20), so
       // there is nothing to unwrap per cell. Side inputs are row-invariant.
       const cells = bindings.map((b) =>
-        b.kind === "col" ? (b.col.values[i] ?? null) : b.kind === "row" ? i + 1 : b.value);
+        b.kind === "col" ? (b.col.values[i] ?? null)
+        : b.kind === "row" ? i + 1
+        : b.kind === "rows" ? rows
+        : b.value);
       const err = cells.find((v) => isSolError(v));
       if (err) { values.push(err as SolError); continue; }
       let r: unknown;
@@ -1807,7 +1838,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
           r = isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
         }
       } else {
-        const env: Record<string, unknown> = {};
+        const env: Record<string, unknown> = { col: colAccessor };
         params.forEach((p, k) => { env[p] = cells[k]; });
         r = this._evaluator!(env);
       }
@@ -1816,7 +1847,22 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const colType: FrameColType = this.addAs === "auto"
       ? inferColumn(name, values).type
       : this.addAs === "text" ? "string" : this.addAs;
-    return out(addColumn(f, name, values, colType));
+
+    // Placement: a replaced column keeps its position (addColumn semantics);
+    // a NEW column appends, then moves after the named anchor when one is set.
+    // Replacement is detected by the column count — exact, and free of a
+    // second copy of addColumn's `Name (unit)` header parsing.
+    const result = addColumn(f, name, values, colType);
+    const replacing = result.columns.length === f.columns.length;
+    if (after && !replacing) {
+      const anchorIdx = result.columns.findIndex((c) => c.name === after);
+      if (anchorIdx < 0) return out(solError("#REF!", `No column "${after}" to place after`));
+      const cols = [...result.columns];
+      const added = cols.pop()!;
+      cols.splice(anchorIdx + 1, 0, added);
+      return out({ __frame: true, columns: cols });
+    }
+    return out(result);
   }
 }
 
