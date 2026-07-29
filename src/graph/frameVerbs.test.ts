@@ -100,7 +100,7 @@ describe("filterMulti — error cells (oracle-only)", () => {
   });
 });
 
-describe("groupBy — error cells + the aggregate guard (oracle-only)", () => {
+describe("groupBy — error cells + the aggregate guard", () => {
   const g: FrameValue = {
     __frame: true,
     columns: [
@@ -119,9 +119,11 @@ describe("groupBy — error cells + the aggregate guard (oracle-only)", () => {
     expect(isSolError(out.columns[2].values[1])).toBe(true);
     expect(out.columns[3].values).toEqual([2, 2]);           // present (non-null) cells per group
   });
-  // ── The aggregate non-finite guard (B-1b, decided 2026-07-02). The guarded
-  // results are SolError CELLS, which can't ride the wire — and the ENGINE has
-  // no equivalent guard yet (a corpus-discovered gap, see backlog). ───────────
+  // ── The aggregate non-finite guard (B-1b, decided 2026-07-02). The ENGINE
+  // guards identically since 2026-07-29 (guard_agg_expr, payload-NaN markers →
+  // the {"__err"} download form) — parity is pinned by the corpus's "the
+  // aggregate guard" cases in groupBy.json. Input-error PROPAGATION (the test
+  // above) stays oracle-only: uploads degrade error cells to null. ────────────
   it("sum overflowing from ALL-FINITE inputs → #OVERFLOW!, never a silent Infinity", () => {
     const big: FrameValue = {
       __frame: true,

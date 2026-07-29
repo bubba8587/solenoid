@@ -300,7 +300,15 @@ fn num_to_json(n: f64) -> Json {
     // Infinity/-Infinity/NaN (frameBackend `decodeWireCell`). Keys still use
     // `key_num` (null-for-non-finite, JSON.stringify parity) — don't merge them.
     if n.is_nan() {
-        return serde_json::json!({"__nf": "nan"});
+        // The aggregate guard's reserved payloads decode to the wire's per-cell
+        // error form here — the download boundary is where a verdict becomes a
+        // SolError (frameBackend decodeWireCell). A canonical NaN stays the
+        // ordinary sentinel.
+        match n.to_bits() {
+            ERR_DOMAIN_BITS => return serde_json::json!({"__err": "#DOMAIN!"}),
+            ERR_OVERFLOW_BITS => return serde_json::json!({"__err": "#OVERFLOW!"}),
+            _ => return serde_json::json!({"__nf": "nan"}),
+        }
     }
     if n.is_infinite() {
         return serde_json::json!({"__nf": if n > 0.0 { "inf" } else { "-inf" }});
@@ -1260,6 +1268,45 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 // guarantees. Mirrors the oracle op-for-op; every
 // op the node UI offers is implemented via `group_agg_expr`. Booleans coerce to
 // 1/0 in BOTH implementations.
+
+// ─── The aggregate non-finite guard (B-1b), engine side ─────────────────────────
+// The oracle classifies every aggregate result (`aggregateGroup` →
+// `guardFinite`): any NaN INPUT poisons the group to #DOMAIN! up front; a NaN
+// RESULT (∞−∞ sums) is #DOMAIN!; a ±Inf result from all-FINITE inputs is
+// #OVERFLOW! (the true answer is a too-big NUMBER); a ±Inf result when an
+// input was already infinite passes through (a definable infinity). A Polars
+// column cannot hold a SolError, so the two error verdicts ride as RESERVED
+// QUIET-NaN BIT PATTERNS: within the engine a marked cell behaves exactly like
+// NaN — which is what the oracle's error cells get anyway where it matters
+// (sort tails null/error/NaN as one group; comparisons drop them; group keys
+// mask non-finite) — and `num_to_json` decodes the exact bits to the wire's
+// per-cell error form ({"__err": code}, the download half frameBackend's
+// decodeWireCell already speaks). A genuine data NaN is always the canonical
+// 0x7ff8000000000000, so the payloads can't collide with real values; any
+// arithmetic on a marked cell canonicalizes it back to plain NaN, which at
+// worst re-guards to #DOMAIN! at the next aggregation (the oracle would
+// propagate the original code — an accepted, chain-only approximation).
+const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
+const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
+
+/// Wrap an aggregate expression with the B-1b verdicts, in the oracle's exact
+/// order: NaN input → #DOMAIN!; NaN result → #DOMAIN!; ±Inf result with no
+/// infinite input → #OVERFLOW!; else the result (an empty group's identity and
+/// a null result fall through untouched — `when` treats their null conditions
+/// as false).
+fn guard_agg_expr(r: Expr, src: Expr) -> Expr {
+    let domain = lit(f64::from_bits(ERR_DOMAIN_BITS));
+    let overflow = lit(f64::from_bits(ERR_OVERFLOW_BITS));
+    let any_nan = src.clone().is_nan().any(true);
+    let any_inf = src.is_infinite().any(true);
+    when(any_nan)
+        .then(domain.clone())
+        .when(r.clone().is_nan())
+        .then(domain)
+        .when(r.clone().is_infinite().and(any_inf.not()))
+        .then(overflow)
+        .otherwise(r)
+}
 fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
     if op == "count" {
         // count is on the RAW column regardless of type — a string cell counts
@@ -1505,6 +1552,15 @@ fn group_by_lazy_plan(
         let src_ty = type_of_in(names, types, &a.column).unwrap();
         let preserves = a.op == "min" || a.op == "max";
         let mut e = group_agg_expr(&a.column, src_ty, &a.op);
+        // The B-1b guard applies where non-finite inputs can exist (float
+        // columns) and the op runs the numeric path — count counts raw cells
+        // before the oracle's guard, and percentof is pivot-only (nulled).
+        if matches!(src_ty, SolType::Number | SolType::Date)
+            && a.op != "count"
+            && a.op != "percentof"
+        {
+            e = guard_agg_expr(e, col(a.column.as_str()));
+        }
         // A preserved LOGICAL column casts the aggregated 0/1 back to bool —
         // group_agg_expr coerces logicals to Float64 on the way in, and the
         // declared logical output must not carry number cells (the oracle

@@ -45,12 +45,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   (c) canonical app-format strings (formatScalar) — rejected-by-default
   (locale/format-dependent comparisons). Whatever the verdict, it lands as a
   rules.md VAL rule with corpus cases; today's behavior is pinned either way.
-  2026-07-29)** — the oracle's groupBy sums guard B-1b (#OVERFLOW! on
-  all-finite overflow, #DOMAIN! on NaN/∞−∞), but those are SolError CELLS the
-  wire can't carry and the engine has no equivalent: desktop emits inf/NaN
-  cells where web shows the error. Fix = engine-side guard mapping to the
-  `__err` download form (or a post-materialization pass); the oracle-side pins
-  are in frameVerbs.test.ts ("the aggregate guard, oracle-only").
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s
   `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent
   border. Needs a live devtools look (F12 — CSP/decorum errors?) or a decorum/tauri

@@ -1409,6 +1409,314 @@
      }
     ]
    }
+  },
+  {
+   "name": "the aggregate guard: an all-finite overflow is #OVERFLOW!, not inf",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "g",
+        "g"
+       ]
+      },
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        1e+308,
+        1e+308
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "a",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "g"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#OVERFLOW!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the aggregate guard: a NaN input poisons the group to #DOMAIN! up front",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "g",
+        "g"
+       ]
+      },
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "nan"
+        },
+        5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "a",
+      "op": "min",
+      "as": "m"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "g"
+      ]
+     },
+     {
+      "name": "m",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DOMAIN!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the aggregate guard: a wired infinity passes through (inf + 5 = inf)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "g",
+        "g"
+       ]
+      },
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "a",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "g"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the aggregate guard: inf minus inf sums to #DOMAIN!",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "g",
+        "g"
+       ]
+      },
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        {
+         "__nf": "-inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "a",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "g"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DOMAIN!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the aggregate guard: an all-null group keeps its identity, unguarded",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "g",
+        "g"
+       ]
+      },
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "a",
+      "op": "sum",
+      "as": "s"
+     },
+     {
+      "column": "a",
+      "op": "avg",
+      "as": "m"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "g"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       0
+      ]
+     },
+     {
+      "name": "m",
+      "type": "number",
+      "values": [
+       null
+      ]
+     }
+    ]
+   }
   }
  ]
 }

@@ -144,6 +144,29 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### The aggregate guard reaches the engine — last parity gap closed (2026-07-29g)
+
+The corpus-discovered gap (desktop emitted inf/NaN cells where web shows
+#OVERFLOW!/#DOMAIN!) is closed: `guard_agg_expr` wraps every numeric/date
+aggregate in the group-by plan with the oracle's exact B-1b order (NaN input →
+#DOMAIN! up front; NaN result → #DOMAIN!; ±inf result from all-finite inputs →
+#OVERFLOW!; a wired infinity passes through; empty-group identities and null
+results untouched). Representation: a Polars column can't hold a SolError, so
+the two verdicts ride as RESERVED QUIET-NaN BIT PATTERNS — inside the engine a
+marked cell behaves as NaN (which is what the oracle's error cells get where
+it matters: the sort tail, comparison drops, key masking), and `num_to_json`
+decodes the exact bits to `{"__err": code}` at the download boundary, the form
+`decodeWireCell` has been ready for since B-1b. The corpus now PINS the guard
+cross-engine: expect frames may carry `{"__err"}` (both runners normalize
+error cells to that one form and compare by code), five hand-named guard cases
+in groupBy.json, and the fuzz generator emits single-verb guard cases instead
+of skipping them (six seeds clean). Pipeline cases with error cells at any
+step still skip — mid-chain error semantics stay the oracle's (a marked cell
+that flows into ANOTHER aggregation re-guards to #DOMAIN! rather than
+propagating the original code; recorded approximation). Upload is unchanged:
+error cells still degrade to null (input-error propagation stays pinned
+oracle-side in frameVerbs.test.ts). FX-12's boundary paragraph updated.
+
 ### Fuzz round 4 (fused op chains): six finds, both engines AND the oracle (2026-07-29f)
 
 The backlog's "fuzz next territory" landed: a `pipeline` corpus verb —
