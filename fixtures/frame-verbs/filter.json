@@ -34,5 +34,89 @@
       "frames": { "in": { "columns": [
         { "name": "v", "type": "number", "values": [1] } ] } },
       "op": { "kind": "filter", "column": "missing", "op": "gt", "value": 0 },
-      "expectError": "#REF!" }
+      "expectError": "#REF!" },
+    { "name": "notblank keeps present cells; NaN is present, not blank",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, null, {"__nf": "nan"}, 4] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "notblank", "value": null },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1, {"__nf": "nan"}, 4] } ] } },
+    { "name": "NaN passes no numeric predicate (present dirty data still drops)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, {"__nf": "nan"}, 3] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "gte", "value": 0 },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 3] } ] } },
+    { "name": "startsWith folds case",
+      "frames": { "in": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "OSLO", "Tromso"] } ] } },
+      "op": { "kind": "filter", "column": "city", "op": "startsWith", "value": "tr" },
+      "expect": { "columns": [
+        { "name": "city", "type": "string", "values": ["Tromso"] } ] } },
+    { "name": "contains folds case",
+      "frames": { "in": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "OSLO", "Tromso"] } ] } },
+      "op": { "kind": "filter", "column": "city", "op": "contains", "value": "OS" },
+      "expect": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "OSLO"] } ] } },
+    { "name": "contains with matchCase is exact",
+      "frames": { "in": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "OSLO", "Tromso"] } ] } },
+      "op": { "kind": "filter", "column": "city", "op": "contains", "value": "OS", "matchCase": true },
+      "expect": { "columns": [
+        { "name": "city", "type": "string", "values": ["OSLO"] } ] } },
+    { "name": "neq folds case",
+      "frames": { "in": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "OSLO", "Tromso"] } ] } },
+      "op": { "kind": "filter", "column": "city", "op": "neq", "value": "oslo" },
+      "expect": { "columns": [
+        { "name": "city", "type": "string", "values": ["Bergen", "Tromso"] } ] } },
+    { "name": "neq with matchCase keeps every inexact row",
+      "frames": { "in": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "OSLO", "Tromso"] } ] } },
+      "op": { "kind": "filter", "column": "city", "op": "neq", "value": "oslo", "matchCase": true },
+      "expect": { "columns": [
+        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "OSLO", "Tromso"] } ] } },
+    { "name": "accented characters fold (José = JOSÉ)",
+      "frames": { "in": { "columns": [
+        { "name": "n", "type": "string", "values": ["José", "JOSÉ", "Jose"] } ] } },
+      "op": { "kind": "filter", "column": "n", "op": "eq", "value": "josé" },
+      "expect": { "columns": [
+        { "name": "n", "type": "string", "values": ["José", "JOSÉ"] } ] } },
+    { "name": "endsWith folds accents too",
+      "frames": { "in": { "columns": [
+        { "name": "n", "type": "string", "values": ["José", "JOSÉ", "Jose"] } ] } },
+      "op": { "kind": "filter", "column": "n", "op": "endsWith", "value": "SÉ" },
+      "expect": { "columns": [
+        { "name": "n", "type": "string", "values": ["José", "JOSÉ"] } ] } },
+    { "name": "an unparseable numeric value matches no rows (no comma stripping)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1000, 1234] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "eq", "value": "1,234" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [] } ] } },
+    { "name": "an unparseable numeric value matches no rows even for neq",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1000, 1234] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "neq", "value": "garbage" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [] } ] } },
+    { "name": "a numeric string parses after a trim",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1000, 1234] } ] } },
+      "op": { "kind": "filter", "column": "v", "op": "gt", "value": " 1100 " },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1234] } ] } },
+    { "name": "a logical column accepts the text \"false\"",
+      "frames": { "in": { "columns": [
+        { "name": "flag", "type": "logical", "values": [true, false] } ] } },
+      "op": { "kind": "filter", "column": "flag", "op": "eq", "value": "false" },
+      "expect": { "columns": [
+        { "name": "flag", "type": "logical", "values": [false] } ] } },
+    { "name": "a logical column accepts the text \"TRUE\"",
+      "frames": { "in": { "columns": [
+        { "name": "flag", "type": "logical", "values": [true, false] } ] } },
+      "op": { "kind": "filter", "column": "flag", "op": "eq", "value": "TRUE" },
+      "expect": { "columns": [
+        { "name": "flag", "type": "logical", "values": [true] } ] } }
   ] }

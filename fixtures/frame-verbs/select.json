@@ -12,5 +12,13 @@
       "frames": { "in": { "columns": [
         { "name": "a", "type": "number", "values": [1] } ] } },
       "op": { "kind": "select", "columns": ["nope"] },
-      "expectError": "#REF!" }
+      "expectError": "#REF!" },
+    { "name": "a repeated name keeps the first occurrence only",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1] },
+        { "name": "b", "type": "number", "values": [2] } ] } },
+      "op": { "kind": "select", "columns": ["a", "a", "b"] },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1] },
+        { "name": "b", "type": "number", "values": [2] } ] } }
   ] }

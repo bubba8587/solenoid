@@ -1063,13 +1063,18 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     let Some(v) = parsed else { return Ok(None) };
     let x = c.cast(DataType::Float64);
     let y = lit(v);
+    // Polars totally orders floats (NaN greater than everything), so a NaN cell
+    // would PASS gt/gte — the oracle compares IEEE (`compareOp`), where NaN
+    // fails every comparison except neq. Mask NaN out of the two divergent ops
+    // (lt/lte/eq already agree; neq keeps NaN on both sides). Surfaced by the
+    // parity corpus.
     let e = match op {
         "eq" => x.eq(y),
         "neq" => x.neq(y),
         "lt" => x.lt(y),
         "lte" => x.lt_eq(y),
-        "gt" => x.gt(y),
-        "gte" => x.gt_eq(y),
+        "gt" => x.clone().gt(y).and(x.is_not_nan()),
+        "gte" => x.clone().gt_eq(y).and(x.is_not_nan()),
         _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
     };
     Ok(Some(e))

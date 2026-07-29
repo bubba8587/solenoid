@@ -26,5 +26,25 @@
       "frames": { "in": { "columns": [
         { "name": "v", "type": "number", "values": [1] } ] } },
       "op": { "kind": "distinct", "columns": ["missing"] },
-      "expectError": "#REF!" }
+      "expectError": "#REF!" },
+    { "name": "two nulls collapse to one bucket",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "string", "values": ["1", "1", null, null] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "v", "type": "string", "values": ["1", null] } ] } },
+    { "name": "crafted separator strings never collide (the old \u0001-join bug class)",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "string", "values": ["x\u0001s:y", "x"] },
+        { "name": "b", "type": "string", "values": ["z", "y\u0001s:z"] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "a", "type": "string", "values": ["x\u0001s:y", "x"] },
+        { "name": "b", "type": "string", "values": ["z", "y\u0001s:z"] } ] } },
+    { "name": "all non-finite numbers share one key bucket (first occurrence wins)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, {"__nf": "-inf"}, {"__nf": "nan"}, 1] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, 1] } ] } }
   ] }

@@ -28,6 +28,18 @@
       "expect": { "columns": [
         { "name": "s", "type": "string", "values": ["A", "a", "b", "b"] },
         { "name": "i", "type": "number", "values": [4, 2, 1, 3] } ] } },
+    { "name": "null cells sort last descending too",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [2, null, 1] } ] } },
+      "op": { "kind": "sort", "by": "v", "dir": "desc" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [2, 1, null] } ] } },
+    { "name": "NaN sorts to the tail (present dirty data, deterministic)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1, {"__nf": "nan"}, 3] } ] } },
+      "op": { "kind": "sort", "by": "v", "dir": "asc" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [1, 3, {"__nf": "nan"}] } ] } },
     { "name": "unknown column errors",
       "frames": { "in": { "columns": [
         { "name": "v", "type": "number", "values": [1] } ] } },
