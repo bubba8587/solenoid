@@ -10,9 +10,11 @@
 //   rm fixtures/frame-verbs/fuzz-*.json       # cleanup (keep any find as a
 //                                             # hand-named permanent case)
 //
-// Cases whose expected OUTPUT contains a per-cell SolError are skipped (the wire
-// cannot carry error cells — the recorded FX-12 boundary); an oracle throw that
-// is NOT a SolError is reported loudly as an oracle crash.
+// Error CELLS: an expect frame carries them as {"__err": code} — the wire's
+// download form, which the engine's aggregate guard emits — so single-verb
+// guard cases are real corpus cases. PIPELINE cases with error cells at ANY
+// step still skip (mid-chain error semantics are the oracle's alone). An
+// oracle throw that is NOT a SolError is reported loudly as an oracle crash.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -77,6 +79,10 @@ function enc(v: FrameCell): unknown {
     if (v === Infinity) return { __nf: "inf" };
     if (v === -Infinity) return { __nf: "-inf" };
   }
+  // A per-cell SolError in an EXPECT frame encodes as the wire's download form
+  // — the engine's aggregate guard emits the same shape, and both corpus
+  // runners compare error cells by code in this one representation.
+  if (isSolError(v)) return { __err: v.code };
   return v;
 }
 const encFrame = (f: FrameValue) => ({ columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(enc) })) });
@@ -181,10 +187,11 @@ GENERATORS.append = () => {
 
 // ─── run the oracle, build fixture files ──────────────────────────────────────
 const hasErrorCell = (f: FrameValue) => f.columns.some((c) => c.values.some((v) => isSolError(v)));
-// A pipeline whose INTERMEDIATE frame holds SolError cells is skipped like a
-// final-frame one: the engine has no error-cell representation at any point in
-// a fused plan (the recorded FX-12 boundary), so such a chain can't be a fair
-// parity case even if a later op filters the errors back out.
+// A pipeline with SolError cells at ANY step (intermediate or final) is
+// skipped: the engine's guard markers behave as plain NaN inside a fused plan,
+// so a chain that OPERATES on error cells follows the oracle's richer error
+// semantics only approximately — not a fair parity case. Single-verb guard
+// outputs are fair (the {"__err"} download form) and are kept.
 const SKIP = Symbol("skip: error cells mid-chain");
 let written = 0, errCases = 0, skippedErrCells = 0;
 const crashes: string[] = [];
@@ -216,7 +223,10 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
       if (!isSolError(err)) { crashes.push(`${name}: ${(err as Error)?.message ?? err}`); continue; }
       cases.push({ ...base, expectError: err.code }); errCases++;
     } else {
-      if (hasErrorCell(out!)) { skippedErrCells++; continue; }
+      // Single-verb error cells (the groupBy aggregate guard) are REAL cases
+      // now — the expect frame carries them as {"__err": code}. Only pipeline
+      // cases still skip (the SKIP throw above): mid-chain error semantics are
+      // the oracle's alone.
       cases.push({ ...base, expect: encFrame(out!) });
     }
   }
@@ -225,7 +235,7 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
 }
 
 console.log(`wrote ${written} cases (${errCases} expectError) across ${Object.keys(GENERATORS).length} fuzz-*.json files`);
-console.log(`skipped ${skippedErrCells} cases whose expected output holds SolError cells (wire can't carry them)`);
+console.log(`skipped ${skippedErrCells} pipeline cases with SolError cells mid-chain (oracle-only semantics)`);
 if (crashes.length) {
   console.log(`\nORACLE CRASHES (non-SolError throws — real bugs, investigate):\n  ${crashes.join("\n  ")}`);
   process.exitCode = 1;

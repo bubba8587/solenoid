@@ -696,9 +696,11 @@ NaN passing gt/gte under Polars' total float order, and outer-join row order
 *Enforced by:* `frameVerbCorpus.test.ts` → "corpus completeness — every verb has
 a fixture file" (plus the cases themselves and a corpus-wide input-mutation
 check) and `engine/tests.rs` `corpus_cases` — CI runs both suites, so a case
-passing one engine and failing the other is a red build. Oracle-only semantics
-the wire can't carry (per-cell SolErrors) stay pinned in `frameVerbs.test.ts`,
-marked as such.
+passing one engine and failing the other is a red build. Per-cell SolErrors in
+an EXPECT frame ride the wire's download form (`{"__err": code}` — the
+aggregate guard's verdicts, guarded on BOTH sides since 2026-07-29); uploads
+still degrade error cells to null, so input-error PROPAGATION stays pinned
+oracle-side in `frameVerbs.test.ts`, marked as such.
 *Origin:* bundle 18 (archived: `archive/18-parity-corpus.md`), landed 2026-07-29.
 
 ---

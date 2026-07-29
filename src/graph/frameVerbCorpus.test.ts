@@ -71,11 +71,19 @@ function brand(wire: { columns: WireColumn[] }): FrameValue {
  *  production frames do; the Rust runner's frames_equal compares f64 `==`
  *  (sign-blind) and no user surface distinguishes them. Without this, an
  *  oracle-computed -0 (e.g. a product crossing zero) fails against its own
- *  round-tripped expectation under toEqual's Object.is semantics. */
+ *  round-tripped expectation under toEqual's Object.is semantics.
+ *  A per-cell SolError normalizes to the wire's download form {"__err": code}
+ *  — the form expect frames carry and the Rust runner's num_to_json emits for
+ *  the aggregate guard's verdicts — so both engines compare error cells by
+ *  CODE, message-blind, in the one shared representation. */
 function dump(f: FrameValue): WireColumn[] {
   return f.columns.map((c) => ({
     name: c.name, type: c.type,
-    values: c.values.map((v) => (typeof v === "number" && Object.is(v, -0) ? 0 : v)),
+    values: c.values.map((v): FrameCell => {
+      if (typeof v === "number" && Object.is(v, -0)) return 0;
+      if (isSolError(v)) return { __err: v.code } as unknown as FrameCell;
+      return v;
+    }),
   }));
 }
 
