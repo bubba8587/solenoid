@@ -10,6 +10,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
+- [ ] **The author ARR pass — READY (author-present).** The intent: walk every rule
+  by hand and authorize it as fully permanent. rules.md now carries the rule index
+  (the authorization checklist, machine-checked against the headings) and the
+  marking procedure (PROV section: heading grade → [ARR] + the ID into
+  `AUTHOR_MARKED_ARR` in rules.test.ts, both in the same author-marked change). The
+  densest MUSTs were restructured for the read-through 2026-07-29.
 - [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed 2026-07-28;
   the parity corpus landed as FX-12 2026-07-29 (**70 rules**). Still queued:
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;

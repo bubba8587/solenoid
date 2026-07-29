@@ -65,6 +65,17 @@ describe("docs/rules.md", () => {
     expect(ids.length).toBe(Number(declared![1]));
   });
 
+  it("the rule index matches the headings exactly (id, title, order)", () => {
+    // The index is the author's authorization checklist — a hand-kept table, so
+    // it is shape-guarded (SSOT-4): every row must be a real rule with the real
+    // title, in document order, with none missing.
+    const headings = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+) — (.+?) \*\*\[/gm)]
+      .map((m) => `${m[1]} | ${m[2]}`);
+    const rows = [...DOC.matchAll(/^\| ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+) \| (.+?) \|$/gm)]
+      .map((m) => `${m[1]} | ${m[2]}`);
+    expect(rows, "the index table (add the row when adding a rule)").toEqual(headings);
+  });
+
   /** basename → full path for every suite under src/graph. */
   function testFileIndex(): Map<string, string> {
     const found = new Map<string, string>();
