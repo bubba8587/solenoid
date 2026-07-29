@@ -178,8 +178,8 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
-/* The per-column SOURCE select (column-source model): Typed vs a wired λ.
-   Rendered only when the host has λ inputs; sits under the name row. */
+/* The per-column SOURCE select (column-source model): Typed, an inline Formula,
+   or a wired λ. Literal-source frame editors only; sits under the name row. */
 .table-popup__srcselect {
   display: block;
   width: 100%;
@@ -187,6 +187,29 @@
   font-size: 11px;
   color: var(--text-dim);
   background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+/* The Formula source's inline formula, under the source select: an =-prefixed
+   one-liner (one definition per column, popup-local until Save). */
+.table-popup__exprrow {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+}
+.table-popup__exprprefix {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.table-popup__exprinput {
+  flex: 1;
+  min-width: 60px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 3px;

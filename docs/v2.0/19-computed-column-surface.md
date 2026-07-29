@@ -91,11 +91,14 @@ slice, not later.
 
 1. **Core extraction — DONE** (`computedColumnCore.ts`; the CC node
    delegates; 27 pins).
-2. **Slice 1:** Frame Input λ sockets (extensible) + the per-column source
-   control (Typed | λ) + computed-cell rendering + topo-order eval + cycle
-   refusal. The smallest slice that exercises the whole surface.
-3. **Slice 2:** Formula source (TablePopup editing per C2) — the pure-text
-   rung — plus the card-chip glyph marking computed columns.
+2. **Slice 1 — DONE (2026-07-29):** Frame Input λ sockets (extensible) + the
+   per-column source control (Typed | λ) + computed-cell rendering +
+   topo-order eval + cycle refusal. The smallest slice that exercises the
+   whole surface.
+3. **Slice 2 — DONE (2026-07-29):** Formula source (`FrameSourceColumn.expr`;
+   TablePopup editing per C2 — the source select gained Formula and an
+   =-prefixed formula row under the header) — the pure-text rung — plus the
+   chip's ƒ mark on any table with computed columns.
 4. **Tail:** per-column format/unit reuse on computed columns, binding
    pickers, the CC node's remaining UX items — unchanged backlog.
 

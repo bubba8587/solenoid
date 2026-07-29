@@ -301,6 +301,13 @@ export interface FrameSourceColumn {
    *  raw `cells` are ignored; absent ⇒ a Typed literal column, the raw-text
    *  guarantee untouched. */
   lambda?: string;
+  /** COMPUTED column, Formula source: an inline row-wise formula (slice 2 of
+   *  the column-source model). Same rules as the CC node's expr, verbatim —
+   *  variables are column names, `@name`/`col()` read this row, `row`/`rows`
+   *  are builtins. Present ⇒ cells derive per row and the raw `cells` are
+   *  ignored. A `lambda` binding wins when both are set (the wired, reusable
+   *  definition — mirrors the CC node's λ-over-expr precedence). */
+  expr?: string;
 }
 export type FrameSource = FrameSourceColumn[];
 
@@ -343,6 +350,7 @@ export function frameSourceToText(source: FrameSource): string {
     name: c.name, type: c.type, cells: c.cells,
     ...(c.unit ? { unit: c.unit } : {}),
     ...(c.lambda ? { lambda: c.lambda } : {}),
+    ...(c.expr ? { expr: c.expr } : {}),
   })));
 }
 
@@ -381,7 +389,8 @@ export function parseFrameSource(text: string): FrameSource {
               : [];
           const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
           const lambda = typeof c?.lambda === "string" && c.lambda !== "" ? c.lambda : undefined;
-          return { name: names[i], type, cells, unit, ...(lambda ? { lambda } : {}) };
+          const expr = typeof c?.expr === "string" && c.expr.trim() !== "" ? c.expr : undefined;
+          return { name: names[i], type, cells, unit, ...(lambda ? { lambda } : {}), ...(expr ? { expr } : {}) };
         });
       }
     } catch { /* malformed — fall through to the legacy CSV reader */ }

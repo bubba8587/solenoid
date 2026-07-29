@@ -348,6 +348,103 @@ describe("Frame Input λ columns (surface slice 1)", () => {
   });
 });
 
+describe("Frame Input Formula columns (surface slice 2)", () => {
+  it("an expr column computes per row over the literal columns — no wiring at all", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "price", type: "number", cells: ["10", "20"] },
+        { name: "qty", type: "number", cells: ["2", "3"] },
+        { name: "rev", type: "number", cells: [], expr: "price * qty" },
+      ]),
+    });
+    const out = n.data({}).frame as FrameValue;
+    expect(getColumn(out, "rev")!.values).toEqual([20, 60]);
+    expect(getColumn(out, "rev")!.raw).toBeUndefined();
+  });
+
+  it("@ reads work in an expr column, and pure-@ deps still topo-order", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "qty", type: "number", cells: ["2", "4"] },
+        { name: "margin", type: "number", cells: [], expr: "@revenue / 2" }, // declared FIRST
+        { name: "revenue", type: "number", cells: [], expr: "@qty * 10" },
+      ]),
+    });
+    const out = n.data({}).frame as FrameValue;
+    expect(getColumn(out, "revenue")!.values).toEqual([20, 40]);
+    expect(getColumn(out, "margin")!.values).toEqual([10, 20]);
+  });
+
+  it("expr and λ columns share one topo — an expr can read a λ column", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "qty", type: "number", cells: ["2", "4"] },
+        { name: "half", type: "number", cells: [], expr: "revenue / 2" },
+        { name: "revenue", type: "number", cells: [], lambda: "fn1" },
+      ]),
+      lambdaKeys: ["fn1"],
+    });
+    const lam = (new LambdaNode({ expr: "qty * 10", params: "qty" }).data({}) as { result: unknown }).result;
+    const out = n.data({ fn1: [lam] }).frame as FrameValue;
+    expect(getColumn(out, "half")!.values).toEqual([10, 20]);
+  });
+
+  it("an expr cycle refuses per column with #REF!; a variable naming no column is a per-row #REF!", () => {
+    const cyc = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "x", type: "number", cells: ["1"] },
+        { name: "p", type: "number", cells: [], expr: "q + 1" },
+        { name: "q", type: "number", cells: [], expr: "p + 1" },
+      ]),
+    });
+    const out = cyc.data({}).frame as FrameValue;
+    const p = getColumn(out, "p")!.values[0];
+    expect(isSolError(p) && p.message).toContain("Circular");
+    const ghost = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "a", type: "number", cells: ["1"] },
+        { name: "c", type: "number", cells: [], expr: "ghost * 2" },
+      ]),
+    });
+    const g = (getColumn(ghost.data({}).frame as FrameValue, "c")!.values[0]);
+    expect(isSolError(g) && g.message).toBe('No column "ghost"');
+  });
+
+  it("a non-parsing expr fills the column with #VALUE!", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "a", type: "number", cells: ["1", "2"] },
+        { name: "bad", type: "number", cells: [], expr: "a +* 2" },
+      ]),
+    });
+    const v = getColumn(n.data({}).frame as FrameValue, "bad")!.values[0];
+    expect(isSolError(v) && v.code).toBe("#VALUE!");
+  });
+
+  it("a λ binding wins over a stale expr (the wired, reusable definition)", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "a", type: "number", cells: ["3"] },
+        { name: "c", type: "number", cells: [], lambda: "fn1", expr: "a * 100" },
+      ]),
+      lambdaKeys: ["fn1"],
+    });
+    const lam = (new LambdaNode({ expr: "a + 1", params: "a" }).data({}) as { result: unknown }).result;
+    expect(getColumn(n.data({ fn1: [lam] }).frame as FrameValue, "c")!.values).toEqual([4]);
+  });
+
+  it("expr rides the frameText round-trip; a blank expr is dropped on parse", () => {
+    const text = frameSourceToText([
+      { name: "a", type: "number", cells: ["1"] },
+      { name: "c", type: "number", cells: [], expr: "a * 2" },
+      { name: "d", type: "number", cells: ["5"], expr: "  " },
+    ]);
+    const back = parseFrameSource(text);
+    expect(back.find((c) => c.name === "c")!.expr).toBe("a * 2");
+    expect(back.find((c) => c.name === "d")!.expr).toBeUndefined();
+  });
+});
+
 describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
   it("@ works in the CC node's inline formula, mixed with bound variables", () => {
     const r = run(named("@price * qty", "rev"), sales) as FrameValue;
