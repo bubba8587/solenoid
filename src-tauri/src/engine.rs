@@ -850,8 +850,8 @@ fn require_in(names: &[String], cols: &[String]) -> Result<(), IpcError> {
 
 // select / drop / rename / sort / head — the lazy builders. Each takes the plan's
 // CURRENT (possibly uncollected) schema instead of a live `DataFrame`, so no
-// collect happens here; `verb_select` etc. below are thin single-op wrappers that
-// collect immediately (kept for the standalone call sites + the unit tests).
+// collect happens here; production traffic reaches them only through
+// `apply_step`'s fused path (the parity corpus tests through the same door).
 fn lazy_select(plan: Plan, columns: &[String]) -> Result<Plan, IpcError> {
     // Dedupe repeats, keeping the first — matches the oracle; a duplicate
     // selection was a hard Polars error here (audit finding 32).
@@ -908,26 +908,6 @@ fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
     Ok(Plan { lf: plan.lf.limit(take), ..plan })
 }
 
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_select(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
-    lazy_select(Plan::from_frame(frame), columns)?.collect()
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_drop(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
-    lazy_drop(Plan::from_frame(frame), columns)?.collect()
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_rename(frame: &SolFrame, map: &HashMap<String, String>) -> Result<SolFrame, IpcError> {
-    lazy_rename(Plan::from_frame(frame), map)?.collect()
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_sort(frame: &SolFrame, by: &str, dir: &str) -> Result<SolFrame, IpcError> {
-    lazy_sort(Plan::from_frame(frame), by, dir)?.collect()
-}
-
 // Re-materialize a frame from a row-index list (the basis for distinct).
 fn reorder_rows(frame: &SolFrame, idxs: &[usize]) -> Result<SolFrame, IpcError> {
     let names = frame.names();
@@ -964,11 +944,6 @@ fn verb_distinct(frame: &SolFrame, columns: &Option<Vec<String>>) -> Result<SolF
 }
 
 // head
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_head(frame: &SolFrame, n: f64) -> Result<SolFrame, IpcError> {
-    lazy_head(Plan::from_frame(frame), n)?.collect()
-}
-
 // ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
 // Deterministic (never random) evenly-strided subset of up to `n` rows, mirroring
 // the JS oracle's `sampleFrame` (frameVerbs.ts) exactly — same stride formula, same
@@ -1336,13 +1311,6 @@ fn group_by_lazy_plan(
     let select_exprs: Vec<Expr> = out_names.iter().map(|n| col(n.as_str())).collect();
     let out_lf = lf.group_by_stable(&key_exprs).agg(agg_exprs).select(select_exprs);
     Ok((out_lf, out_names, out_types))
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_group_by(frame: &SolFrame, keys: &[String], aggs: &[WireAgg]) -> Result<SolFrame, IpcError> {
-    let (lf, _names, types) = group_by_lazy_plan(frame.df.clone().lazy(), &frame.names(), &frame.types, keys, aggs)?;
-    let df = collect_lazy(lf)?;
-    Ok(SolFrame { df, types })
 }
 
 // ─── unpivot (manual, row-major) ────────────────────────────────────────────────
