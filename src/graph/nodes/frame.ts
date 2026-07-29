@@ -1,5 +1,7 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn } from "./shared";
+import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
+import { isLambdaValue } from "../lambdaValue";
 import { readFilterValue } from "./list";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
@@ -10,7 +12,7 @@ import { APP_LOCALE } from "../locale";
 import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
-  frameFromInputText, formatFrameCell, isCubeValue, isFrameValue,
+  frameFromInputText, formatFrameCell, isCubeValue, isFrameValue, inferColumn,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
@@ -1645,6 +1647,113 @@ export class AddColumnNode extends ClassicPreset.Node {
     );
     this.cachedResult = addColumn(f, name, padded, this.addAs === "text" ? "string" : this.addAs === "date" ? "date" : this.addAs === "logical" ? "logical" : "number");
     return { frame: this.cachedResult };
+  }
+}
+
+// ─── COMPUTED COLUMN ───────────────────────────────────────────────────────────
+// A row-wise formula over the frame's columns, appended (or replacing, by name)
+// as a new column — Power Query's Custom Column. This node is WHY frames stay
+// out of formulas (D23): the row iteration lives here, and the formula only
+// ever sees scalars. Two ways to define the math (author direction 2026-07-29 —
+// the frame stays pure data, the computation is a graph citizen):
+//   • the inline formula (`expr`) — its variables ARE column names;
+//   • a wired λ — its params bind to columns by name, so one lambda authored
+//     once computes the same column on any frame (and its capture sockets
+//     carry side parameters: scalars wired from anywhere in the graph).
+// Per-row contract mirrors the broadcast rules: an error cell in any BOUND
+// column propagates to that row's output (first in binding order); a null
+// flows INTO the formula (ISBLANK/IF can see it — a formula is not an
+// element-wise op); the output column's type is inferred from the computed
+// cells, and a `Name (unit)` header tags the unit like Add Column.
+
+/** One computed cell, tagged: SolErrors pass, NaN is #DOMAIN! (op-level guards
+ *  inside the evaluator already classified overflow — a surviving ±Inf is a
+ *  definable infinity), a non-scalar result refuses (#SHAPE! — one value per
+ *  row), undefined reads as blank. */
+function tagComputedCell(v: unknown): FrameCell {
+  if (isSolError(v)) return v;
+  if (typeof v === "number") {
+    return Number.isNaN(v) ? solError("#DOMAIN!", "The result is undefined: not a number") : v;
+  }
+  if (typeof v === "string" || typeof v === "boolean" || v === null) return v;
+  if (v === undefined) return null;
+  if (Array.isArray(v)) return solError("#SHAPE!", "A computed column needs one value per row, not a list");
+  return solError("#VALUE!", "A computed column needs a number, text, boolean, or blank per row");
+}
+
+export class ComputedColumnNode extends ClassicPreset.Node {
+  label: string;
+  expr: string;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { name: "computed" };
+  width = 235; height = 265;
+  private _evaluator: ExprEvaluator | null = null;
+  private _vars: string[] = [];
+  private _compiledFor: string | null = null;
+
+  constructor(init?: { label?: string; expr?: string }) {
+    super("ComputedColumn");
+    this.label = init?.label ?? "Computed Column";
+    this.expr = init?.expr ?? "";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("name", strIn("Name"));
+    this.addInput("fn", lambdaIn("λ"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; name?: string[]; fn?: unknown[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
+    const lam = inputs.fn?.[0];
+    const out = (frame: FrameValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
+    if (!f || nameRaw === null) return out(null);
+    const name = nameRaw.trim() || "computed";
+
+    // The variable list: the λ's params when wired (the λ wins — it's the
+    // deliberate, reusable definition), else the inline formula's variables.
+    let params: string[];
+    const wired = isLambdaValue(lam) ? lam : null;
+    if (wired) {
+      params = wired.params;
+    } else {
+      if (this._compiledFor !== this.expr) {
+        this._evaluator = compileEvaluator(this.expr);
+        this._vars = this._evaluator ? extractVariables(this.expr) : [];
+        this._compiledFor = this.expr;
+      }
+      if (!this.expr.trim()) return out(f); // nothing defined yet — pass the frame through
+      if (!this._evaluator) return out(solError("#VALUE!", "The formula does not parse"));
+      params = this._vars;
+    }
+
+    const cols: FrameColumn[] = [];
+    for (const p of params) {
+      const col = f.columns.find((c) => c.name === p);
+      if (!col) return out(solError("#REF!", `No column "${p}" — a computed column's variables are the frame's column names`));
+      cols.push(col);
+    }
+
+    const rows = frameRowCount(f);
+    const values: FrameCell[] = [];
+    for (let i = 0; i < rows; i++) {
+      // Frame cells are plain values — units live on the COLUMN (D20), so
+      // there is nothing to unwrap per cell.
+      const cells = cols.map((c) => c.values[i] ?? null);
+      const err = cells.find((v) => isSolError(v));
+      if (err) { values.push(err as SolError); continue; }
+      let r: unknown;
+      if (wired) {
+        try { r = wired.fn(...cells); } catch (e) {
+          r = isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
+        }
+      } else {
+        const env: Record<string, unknown> = {};
+        params.forEach((p, k) => { env[p] = cells[k]; });
+        r = this._evaluator!(env);
+      }
+      values.push(tagComputedCell(r));
+    }
+    return out(addColumn(f, name, values, inferColumn(name, values).type));
   }
 }
 

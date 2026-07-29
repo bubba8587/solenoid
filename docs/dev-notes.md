@@ -144,6 +144,32 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Computed Column lands — the row-wise formula verb (2026-07-29j)
+
+The design-first backlog item built, to the author's three directions (frames
+stay pure data; the computation is a graph citizen; reuse the existing
+surfaces). `ComputedColumnNode` (nodes/frame.ts, beside Add Column): frame +
+name + optional λ in, frame out. The math comes from the inline `expr`
+(variables ARE column names — resolved by exact name, #REF! naming a miss) or
+a wired LambdaValue (params bind to columns the same way; the λ wins over the
+expr — it's the deliberate, reusable definition, and its capture sockets carry
+side parameters). Per-row contract: an error cell in a bound column propagates
+to that row (first in binding order); a NULL FLOWS INTO the formula (a formula
+is not an element-wise op — ISBLANK/IF can see it); NaN → #DOMAIN!, a
+list-shaped result → #SHAPE! (one value per row); output type inferred
+(inferColumn), `Name (unit)` headers tag units via addColumn, name collisions
+replace in place. Eager like Add Column/XLOOKUP/Pivot (not in
+LAZY_FRAME_NODES — a JS formula has no Polars op). Editing routes through the
+shared FormulaPopup (new ComputedColumnNode arm); the card is
+FormulaField + FrameDisplay. Two sweeps caught the first draft (worked as
+designed): VAL-10 rejected a per-cell isUnitCell strip (frame cells are plain
+— D20, units live on the column; deleted), uiCopy rejected a
+"wire a λ" instruction in the catalog description (reworded). 14 pins in
+nodes/computedColumn.test.ts. The frame-verb refusal message now ends
+"…or a Computed Column for row math", and COMPUTEDCOLUMN itself joined
+FRAME_SURFACE_NAMES (the derivation ratchet demanded it). UX tail
+(binding pickers, output-column format controls, grid typing) → backlog.
+
 ### Frame verbs: recognized-but-refused in formulas (2026-07-29i)
 
 D23 keeps frames out of formulas, but the Add menu TEACHES the verb names — so

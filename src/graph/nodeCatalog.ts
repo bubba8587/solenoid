@@ -48,7 +48,7 @@ import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
   HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
-  FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode,
+  FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   ReconcileNode,
@@ -987,6 +987,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date; this sets the output type.", create: () => new GetColumnNode(), parity: false },
           { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, giving a 1-row Frame: a row mixes types, so it's not a list.", create: () => new GetRowNode(), parity: false },
           { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame as a new named column, or replace an existing column of that name. Shorter lists pad with blanks.", create: () => new AddColumnNode(), parity: false },
+          { type: "computed-column", label: "Computed Column", description: "Adds a column computed row by row from a formula whose variables are the frame's column names; a λ input carries one reusable formula across frames   (Power Query: Custom Column)", keywords: "custom column calculated field formula derive mutate row-wise", create: () => new ComputedColumnNode(), parity: false },
         ],
       },
       {

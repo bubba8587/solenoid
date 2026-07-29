@@ -6,6 +6,7 @@ import type {
   SplitFrameNode as SplitFrameNodeType,
   GetColumnNode as GetColumnNodeType,
   AddColumnNode as AddColumnNodeType,
+  ComputedColumnNode as ComputedColumnNodeType,
   GetRowNode as GetRowNodeType,
   DistinctNode as DistinctNodeType,
   HeadNode as HeadNodeType,
@@ -56,6 +57,8 @@ import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } 
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs, pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
+import { FormulaField } from "./FormulaField";
+import { formulaPopup } from "../formulaPopupStore";
 import { ResultDisplay } from "./ResultDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
@@ -830,6 +833,33 @@ export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>)
         value={addAs}
         options={ADD_COLUMN_OPTIONS}
         onChange={(next) => { setAddAs(next); void applyAddColumnAddAs(data, next); }}
+      />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── COMPUTED COLUMN ───────────────────────────────────────────────────────────
+
+export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumnNodeType>) {
+  const [expr, setExpr] = useState(data.expr);
+  useEffect(() => { setExpr(data.expr); }, [data.expr]);
+  const commit = useCallback(async (next: string) => {
+    setExpr(next);
+    data.expr = next;
+    await processGraph(data.id);
+  }, [data]);
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      {/* Variables are column names; a wired λ takes over and the field goes
+          quiet. Editing routes to the shared formula popup like Expression. */}
+      <FormulaField
+        value={expr}
+        onChange={commit}
+        placeholder="price * qty …"
+        locked={false}
+        onOpen={() => formulaPopup.open(data.id)}
       />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>

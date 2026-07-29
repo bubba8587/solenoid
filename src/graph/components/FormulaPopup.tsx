@@ -77,6 +77,13 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
     return { label, text: n.expr, locked: false, setText: (s) => applyLambdaChange(n, { expr: s }),
       varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
   }
+  if (typeName === "ComputedColumnNode") {
+    // The frame verb whose math is a formula: variables are column names, so
+    // there are no variable descriptions (the frame's headers ARE the docs).
+    const n = node as unknown as { id: string; expr: string };
+    return { label, text: n.expr, locked: false,
+      setText: async (s) => { n.expr = s; await processGraph(n.id); } };
+  }
   if (TABLE_LAMBDA_TYPES.has(typeName)) {
     const n = node as MapTableNode;
     return {
