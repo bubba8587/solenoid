@@ -13,7 +13,7 @@
 // evaluation core), and a LaTeX string for the KaTeX preview.
 
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, registryGeneration } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -922,6 +922,12 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // LIST of identical #NAME?s instead of the one the user should read.
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
+      // A FRAME VERB is a real name whose data type can't flow here (D23:
+      // frames/cubes stay out of formulas) — #TYPE! naming the node, not a
+      // typo's #NAME?. Same short-circuit position as the legacy block, for
+      // the same reason (the stub must not broadcast element-wise).
+      const frameNode = FRAME_SURFACE_NAMES[name];
+      if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node`);
       // ── Eta-lambdas (Excel parity): `MAP(x, SQRT)` — a BARE dispatchable name
       // in a lambda HOST's argument evaluates to an eta LambdaValue wrapping the
       // dispatch, instead of an undefined variable (see etaOrEval).

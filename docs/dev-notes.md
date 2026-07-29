@@ -144,6 +144,26 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Frame verbs: recognized-but-refused in formulas (2026-07-29i)
+
+D23 keeps frames out of formulas, but the Add menu TEACHES the verb names — so
+a typed JOIN(...) read as a typo's #NAME?, indistinguishable from a
+misspelling. Now: `FRAME_SURFACE_NAMES` (excelFunctions.ts, beside
+LEGACY_ALIASES — deliberately distinct: a legacy spelling is a WRONG name with
+a right substitute, these are RIGHT names whose data type can't flow here).
+33 names (all Tables & Frames leaves' typeable despaced labels + PIVOTBY).
+Behavior: dispatch short-circuits to #TYPE! "Frames don't flow through
+formulas — use the X node" (shared by Expression AND Equation — equations
+compile through the same evaluator); the editor colors the token in the frame
+socket violet (`fx-frame`, `var(--sock-frame)` — color conveys type, distinct
+from the typo red); the hint bar shows "frame verb — use the X node"
+(signatureFor); autocomplete never offers them. SSOT gate:
+frameSurfaceNames.test.ts derives the set from the catalog BOTH ways (a new
+frame verb can't ship outside the map; the map can't shadow a dispatchable
+name, a legacy alias, or a ghost label). When Computed Column ships, the
+message should grow the "or a Computed Column" arm (noted on its backlog
+item). VISUAL half (the violet token) awaits the author's eyeball.
+
 ### Pack formulas: the 19 custom-logic nodes are formula-callable (2026-07-29h)
 
 The D19 pack workstream closed: all 19 custom-logic pack nodes register as

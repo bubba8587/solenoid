@@ -342,6 +342,43 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
 // Every replacement named here is verified callable by `excelFunctions.test.ts` — a
 // redirect pointing at a dead name is worse than no redirect. Blocking a name whose
 // replacement does NOT already dispatch means registering that replacement first.
+// ─── FRAME_SURFACE_NAMES — the frame/cube verbs, recognized but refused ───────
+// D23 rejected rung 4 on record: frames and cubes stay OUT of formulas (no
+// Excel semantics to copy, competes with the verb engine, breaks the
+// lazy-FrameRef economics). But their names are REAL surface vocabulary — the
+// Add menu teaches JOIN and PIVOTBY — so typing one must not read as a typo.
+// Each name here short-circuits dispatch with a #TYPE! naming the node to use
+// (the frame surface IS the canvas), and the editor colors it in the frame
+// socket violet (`fx-frame`) instead of the unknown-name red. Distinct from
+// LEGACY_ALIASES on purpose: a legacy spelling is a WRONG name with a right
+// one to substitute; these are RIGHT names whose data type can't flow here.
+//
+// Value = the node label the message points at. Machine-checked against the
+// catalog (frameSurfaceNames.test.ts): every visible Tables & Frames leaf
+// whose typeable name doesn't dispatch appears here, no entry collides with a
+// dispatchable name or a legacy alias, and every label is a real leaf.
+export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
+  // Frames (named columns)
+  BUILDFRAME: "Build Frame", FRAMEFROMLISTS: "Frame from Lists", SPLITFRAME: "Split Frame",
+  GETCOLUMN: "Get Column", GETROW: "Get Row", ADDCOLUMN: "Add Column",
+  // Table verbs
+  FRAMEFILTER: "Frame Filter", FRAMESORT: "Frame Sort", DISTINCT: "Distinct", HEAD: "Head",
+  JOIN: "Join", APPEND: "Append",
+  // Table verbs › Columns
+  SELECTCOLUMNS: "Select Columns", DROPCOLUMNS: "Drop Columns", RENAME: "Rename",
+  SPLITCOLUMN: "Split Column", ADDINDEX: "Add Index", MERGECOLUMNS: "Merge Columns",
+  HEADERS: "Headers",
+  // Table verbs › Reshape
+  PIVOTBY: "PIVOTBY", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
+  // Table verbs › Clean
+  FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
+  // Table verbs › Analyze
+  DECISIONMATRIX: "Decision Matrix", SENSITIVITY: "Sensitivity", RECONCILE: "Reconcile",
+  // Cubes (nested tables)
+  NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
+  CUBEROLLUP: "Cube Rollup",
+};
+
 export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   // ── lookup classics (the original D10 four) ──
   VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",

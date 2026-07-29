@@ -1,4 +1,5 @@
 import { FORMULA_CONSTANTS } from "./excelFormula";
+import { FRAME_SURFACE_NAMES } from "./excelFunctions";
 import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
@@ -32,11 +33,17 @@ const isIdChar = (c: string) => /[A-Za-z0-9_]/.test(c);
 /**
  * The CSS class for an identifier given what follows it: a name in CALL position
  * (next non-space char is `(`) is a function — `fx-fn` if it's a real Formula.js
- * name, else `fx-unknown` (a typo, or a lambda variable once Expression consumes
- * those). A bare name is a math constant (`fx-const`) or a variable (`fx-var`).
+ * name, `fx-frame` if it's a FRAME VERB (a real name whose data type can't flow
+ * through formulas — colored in the frame socket violet so it reads as "this is
+ * frame territory", not as a typo), else `fx-unknown`. A bare name is a math
+ * constant (`fx-const`) or a variable (`fx-var`).
  */
 function identClass(word: string, isCall: boolean): string {
-  if (isCall) return fnSet().has(word.toUpperCase()) ? "fx-fn" : "fx-unknown";
+  if (isCall) {
+    const up = word.toUpperCase();
+    if (fnSet().has(up)) return "fx-fn";
+    return FRAME_SURFACE_NAMES[up] ? "fx-frame" : "fx-unknown";
+  }
   if (CONST_SET.has(word.toLowerCase())) return "fx-const";
   return "fx-var";
 }

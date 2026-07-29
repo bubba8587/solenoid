@@ -168,7 +168,9 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   points — widen if accuracy is ever in doubt.
 - [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose
   variables are column names, appended in place (PQ Custom Column); wants a design pass
-  on sharing the Expression engine.
+  on sharing the Expression engine. When it ships, grow the frame-verb refusal message
+  (FRAME_SURFACE_NAMES, "use the X node") with the "or a Computed Column" arm — the
+  redirect deliberately names only surfaces that exist.
 - [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
   what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts
   "series (2-D)"). Every frame-consuming node reuses it, per the aligned-columns rule
