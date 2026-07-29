@@ -180,6 +180,13 @@ fixed + pinned, final 12 seeds clean:
   runner's dump now compares sign-of-zero-blind, matching the wire, the Rust
   runner's f64 ==, and every user surface.
 
+Follow-up (author call, same day): whether text predicates on number columns
+SHOULD compare JS display strings at all — the spec `js_number_string`
+implements — is flagged for an OUTSIDE reviewer (backlog, "Bugs &
+verifications"); the author explicitly declined to adjudicate it. Behavior is
+corpus-pinned either way, so the review can land as a spec change without
+archaeology.
+
 ### Fuzz round 3 (widened pools): three deeper finds, incl. the WIRE itself (2026-07-29c)
 
 Widened the generator (17-digit doubles, denormals, 2^53+1, fractional/negative
