@@ -27,6 +27,10 @@ answer (or an invisible non-event), not a visible defect.
 `uiCopy.test.ts`. Branch model, doc duty and commit style live in `CLAUDE.md`. This file
 does not repeat them.
 
+**Vocabulary:** the invented terms (frame, cube, combo, FC, Conduit, the socket
+families…) are defined in `docs/glossary.md`; read it first if a term here doesn't
+parse. `CLAUDE.md`'s alias table maps the author's UI words to code handles.
+
 ## Conventions
 
 - **Cite rule IDs** in code comments, commit messages and backlog items (`per FX-4`).
@@ -51,6 +55,85 @@ declaration format, or a sweep touching many files updates this document *before
 code. Ordinary work — a node, a bug fix, a one-line change — just follows the existing
 rules. Every bug fix ships the check that would have caught it, or says why it can't
 (`SSOT-5`). This is the working default, not an author ruling; tighten it freely.
+
+## Rule index (the authorization checklist)
+
+Every rule, one line each — the walk order for the author's authorization pass (the
+procedure is in the PROV section). Machine-checked against the actual headings by
+`rules.test.ts`, so this list cannot drift.
+
+| ID | Rule |
+|---|---|
+| PROV-1 | ARR is conferred only by the author, in-session, on this document |
+| SSOT-1 | One declaration per fact |
+| SSOT-2 | Where a derivation can't be total, the override lives in the same table |
+| SSOT-3 | No hand-kept list of a derivable property |
+| SSOT-4 | An irreducibly hand-kept set is guarded by SHAPE |
+| SSOT-5 | A rule not enforced by a test is debt, and is labelled |
+| SSOT-6 | A gating metric has exactly one implementation |
+| SSOT-7 | A metric measures one thing |
+| SSOT-8 | Completeness quantifiers are `every`, not `some` |
+| SSOT-9 | Input-cable pruning is ONE loop (`dropInputCables`) |
+| SOCK-1 | Type separation: element families never auto-cross |
+| SOCK-2 | Dimensional flow: values widen up, never narrow down |
+| SOCK-3 | Adding a socket type is a derived edit |
+| SOCK-4 | The wildcard ladder keeps rank |
+| SOCK-5 | Adoption never drops cables and never persists |
+| SOCK-6 | "Resolve past untyped passthroughs" goes through one predicate |
+| SOCK-7 | In-place retype must reconcile downstream |
+| SOCK-8 | The socket box is a deterministic 12×12 |
+| SOCK-9 | `anydata`: the rank-≤2 element-agnostic wildcard (D23) |
+| SOCK-10 | An adopting port owns its socket instance |
+| SOCK-11 | A `trueany` output implies a `passthrough()` declaration |
+| SOCK-12 | Relay nodes are transparent to every static derivation |
+| FX-1 | One implementation, two surfaces |
+| FX-2 | A shared implementation is rete-free |
+| FX-3 | A registration declares its full contract |
+| FX-4 | A derived name function is TOTAL and INJECTIVE |
+| FX-5 | Array arguments arrive whole |
+| FX-6 | Argument prep matches the function's shape, not its category |
+| FX-7 | Blocked spellings answer before their arguments are shaped |
+| FX-8 | The formula boundary caps what a node's control already bounds |
+| FX-9 | Formula.js never sees a matrix, or a tagged Cx (D23 containment) |
+| FX-10 | One broadcast engine, and the table is the test |
+| FX-11 | A vendored-engine divergence is owned, and tripwired |
+| FX-12 | The verb pair computes from ONE fixture corpus |
+| VAL-1 | Unwired is not blank |
+| VAL-2 | One notion of error |
+| VAL-3 | Error in, error out, without running the node |
+| VAL-4 | Errors carry provenance |
+| VAL-5 | Null is first-class and skipped, not zero |
+| VAL-6 | Error beats missing at the same cell |
+| VAL-7 | Logical is a first-class family with Kleene logic |
+| VAL-8 | Membership keys by VALUE, never identity |
+| VAL-9 | The unit is a property of the VALUE |
+| VAL-10 | The unit-blind boundary is PER-INPUT |
+| VAL-11 | Units attach at the granularity of homogeneity |
+| VAL-12 | An op family's selector field is named `op` |
+| VAL-13 | Components never call `node.data()` |
+| VAL-14 | Inline literal maps are declared iff the card edits them |
+| VAL-15 | A special scalar is a TAGGED OBJECT, never a bare array |
+| VAL-16 | The rank grammar: nothing nests deeper than a matrix |
+| VAL-17 | A volatile `data()` freezes its roll on the recalc generation |
+| VAL-18 | Positional access filters errors per cell; aggregation propagates whole |
+| VAL-19 | Two different currency codes are incommensurable in EVERY combinator |
+| VAL-20 | No producer emits a bare non-finite; the producer classifies |
+| PERSIST-1 | `extractInit` is a fixed point, and JSON-plain |
+| PERSIST-2 | The text form is the narrow waist: every `SavedGraph` field, both directions |
+| PERSIST-3 | `documentStoreCore` transforms are structurally immutable |
+| PERSIST-4 | Autosave slots: write the older, read the newer, `seq` first and strictly increasing |
+| PERSIST-5 | Persistence binds MAIN, never the active surface |
+| PERSIST-6 | The class name is the persisted type: kept and unique |
+| PERSIST-7 | An unknown node type round-trips losslessly through Placeholder |
+| PERSIST-8 | A canvas-swapping verb captures first and guards the rebuild |
+| PERSIST-9 | Every node field is persisted or DELIBERATELY transient |
+| PERSIST-10 | `width`/`height` ownership: the observer owns them; size-owners re-consume |
+| ENGINE-1 | The targeted pass is observationally equal to the full pass |
+| ENGINE-2 | The calc-mode gate is the ONLY thing that skips a pass |
+| ENGINE-3 | A live-data refresh never runs inside a rebuild scope |
+| EFFECT-1 | A sink acts only from its Run button, and always loads disarmed |
+| EFFECT-2 | An outward effect is edge-triggered, and suppressed during rebuild |
+| STORE-1 | A node-keyed store registers forget AND forgetAll |
 
 ---
 
@@ -95,9 +178,28 @@ DEFAULT where the rule is preventive judgment with no forcing incident. The
 DEFAULT set (SOCK-3, SOCK-6, SOCK-11, FX-10, VAL-13, VAL-14, VAL-17,
 PERSIST-3,4,5,6, EFFECT-1) is the thinnest ice: rules held up by the agent's
 reasoning without a forcing incident, and the first candidates for either an
-enforcing incident or deletion. (The 2026-07-28 promotion sweep grew it — a promoted convention whose
-failure has not yet HAPPENED grades DEFAULT no matter how load-bearing the
-reasoning; the grade tracks provenance, not value.)
+enforcing incident or deletion. Note the grade tracks PROVENANCE, not value — a
+promoted convention whose failure has never actually happened grades DEFAULT no
+matter how load-bearing the reasoning, which is why the 2026-07-28 promotion
+sweep grew the set.
+
+**The authorization pass (how a rule becomes permanent).** The intended end state
+is that the author walks the rule index above and authorizes each rule by hand.
+Per rule, the mechanics are:
+
+1. **Read the rule.** The heading is the claim; the MUST is the exact contract;
+   *Why*/*Origin* are the evidence; *Enforced by* is what fails if it's broken.
+2. **To authorize it as permanent:** change the grade in its heading to `[ARR]`
+   and add its ID to `AUTHOR_MARKED_ARR` in `rules.test.ts` — both halves in the
+   SAME author-marked change. The ARR-uniqueness guard enforces the pairing;
+   that the author edits the expected list themselves is what makes the mark the
+   author's rather than the agent's.
+3. **To amend first:** dictate the amendment, then mark the amended rule.
+4. **To reject:** the rule is deleted or regraded in the same sitting — never
+   left half-authorized.
+
+A rule not yet marked keeps its INFERRED/DEFAULT grade and binds only as the
+working agent's inference — open to question on exactly those terms.
 
 ---
 
@@ -171,8 +273,9 @@ OS-dropdown rule, "widely cited, but no originating incident is on record", 21 c
 held on precaution.
 *Enforced by:* `rules.test.ts` → "every rule labels its enforcement" — the
 labelling itself is mechanical (every rule body carries an *Enforced by:* line, tests
-or an explicit UNENFORCED); whether a cited test truly enforces stays a reading job
-(Known violations).
+or an explicit UNENFORCED). Whether a cited test truly enforces is machine-checked for
+QUOTED citations (the arrow → "test name" form must appear in the cited suite) and a
+reading job for bare-file citations (Known violations, narrowed 2026-07-29).
 
 ### SSOT-6 — A gating metric has exactly one implementation **[INFERRED]**
 **MUST:** a number that gates CI is computed in ONE module. The human-readable report and
@@ -317,19 +420,21 @@ positioning in the socket component. **The RENDERING half stays unenforced** —
 browser can verify rete measures the box it expects.
 
 ### SOCK-9 — `anydata`: the rank-≤2 element-agnostic wildcard (D23) **[INFERRED]**
-**MUST:** `anydata` accepts every FAMILY value of rank ≤ 2 (scalar / list / combo /
-matrix) plus the lower wildcards (`any`, `anylist`, `anycombo`, `anytable`), and
-REFUSES frames, cubes and the object family (lambda / chart / document). As an
-OUTPUT it flows wherever `anycombo` flows (runtime-shaped, same accepted risk). Its
-membership edges are DERIVED additions to `accepts()` per `SOCK-3`, swept by the
-full lattice test. Expression VARIABLES are `anydata` — that is the D23 lift.
-
-The RESULT keeps its family: the `resultAs` combo socket stays for rank-≤1
-results, and when a computed result is a MATRIX the node swaps its result socket
-to the same family's matrix rung and reconciles per `SOCK-7`
-(`retypeOutputCables`) — value-driven, but through the same machinery every
-in-place retype uses. Family typing for downstream FCs survives; the socket never
-lies about rank.
+**MUST:**
+- **As an input:** `anydata` accepts every FAMILY value of rank ≤ 2 (scalar / list /
+  combo / matrix) plus the lower wildcards (`any`, `anylist`, `anycombo`,
+  `anytable`), and REFUSES frames, cubes and the object family (lambda / chart /
+  document).
+- **As an output:** it flows wherever `anycombo` flows (runtime-shaped, same
+  accepted risk).
+- Its membership edges are DERIVED additions to `accepts()` per `SOCK-3`, swept by
+  the full lattice test.
+- Expression VARIABLES are `anydata` — that is the D23 lift. The RESULT socket keeps
+  its family instead: the `resultAs` combo socket stays for rank-≤1 results, and
+  when a computed result is a MATRIX the node swaps its result socket to the same
+  family's matrix rung and reconciles per `SOCK-7` (`retypeOutputCables`) —
+  value-driven, but through the same machinery every in-place retype uses. Family
+  typing for downstream FCs survives; the socket never lies about rank.
 
 *Why:* the D23 endpoint is matrices-ONLY. A `trueany` variable would admit frames
 and cubes into formulas (out of scope, permanently); `anycombo` refuses the
@@ -556,19 +661,21 @@ with its "FX still diverges (tripwire)" twin.
 sweep script was lost — which is why the pins live in the suite now.
 
 ### FX-12 — The verb pair computes from ONE fixture corpus **[INFERRED]**
-**MUST:** every frame verb both engines speak is specified by cases in
-`fixtures/frame-verbs/` — recorded WIRE payloads (frames + the op in serde's own
-tagged shape), which BOTH runners deserialize with production code
-(`frameVerbCorpus.test.ts` through the oracle, `corpus_cases` in
-`engine/tests.rs` through Polars). A verb without corpus cases does not ship:
-the completeness guard requires a fixture file per verb in
-`FRAME_OP_KINDS` + `BINARY_VERBS`, and a new `FrameOp` kind fails compile before
-it fails the guard. Verbs only ONE side runs are declared, not skipped: an
-`ORACLE_ONLY_VERBS` entry (pivot) makes cargo assert the engine still does NOT
-parse the op, so the exemption self-destructs if the engine ever learns it.
-**MUST NOT:** re-encode a case per side — the corpus format IS the wire format;
-a fixture that parses on one side and not the other is itself the parity
-failure, surfacing at load.
+**MUST:**
+- Every frame verb both engines speak is specified by cases in
+  `fixtures/frame-verbs/` — recorded WIRE payloads (frames + the op in serde's own
+  tagged shape), which BOTH runners deserialize with production code
+  (`frameVerbCorpus.test.ts` through the oracle, `corpus_cases` in
+  `engine/tests.rs` through Polars).
+- A verb without corpus cases does not ship: the completeness guard requires a
+  fixture file per verb in `FRAME_OP_KINDS` + `BINARY_VERBS`, and a new `FrameOp`
+  kind fails compile before it fails the guard.
+- Verbs only ONE side runs are declared, not skipped: an `ORACLE_ONLY_VERBS` entry
+  (pivot) makes cargo assert the engine still does NOT parse the op, so the
+  exemption self-destructs if the engine ever learns it.
+- **MUST NOT** re-encode a case per side — the corpus format IS the wire format; a
+  fixture that parses on one side and not the other is itself the parity failure,
+  surfacing at load.
 
 *Why:* the two engines were kept in agreement by hand-mirrored test pairs tied
 together by comments; nothing failed when a verb, option or edge landed on one
@@ -582,7 +689,7 @@ corpus-wide input-mutation check) and `engine/tests.rs` `corpus_cases` — CI
 runs both suites, so a case passing one engine and failing the other is a red
 build. Oracle-only semantics the wire can't carry (per-cell SolErrors) stay
 pinned in `frameVerbs.test.ts`, marked as such.
-*Origin:* bundle 18 (`v2.0/18-parity-corpus.md`), landed 2026-07-29.
+*Origin:* bundle 18 (archived: `archive/18-parity-corpus.md`), landed 2026-07-29.
 
 ---
 
@@ -753,8 +860,6 @@ every declaring class's registered component source must contain an editing surf
 (InlineInputs / ExtensibleInputs / a direct `literals` / `stringLiterals` reference), so
 a save cannot restore a value onto a card that can never show it.
 
----
-
 ### VAL-15 — A special scalar is a TAGGED OBJECT, never a bare array **[INFERRED]**
 **MUST:** every non-primitive scalar value — a value that is one *thing* but needs more
 than one JS primitive to carry it — is a tagged object (`SolError` `{__solError…}`,
@@ -810,13 +915,16 @@ aggregate-still-propagates case). This is the per-cell refinement of `VAL-3`'s
 whole-node rule.
 
 ### VAL-19 — Two different currency codes are incommensurable in EVERY combinator **[INFERRED]**
-**MUST:** FX is out of scope, so every currency shares one `currency` axis at scale 1 —
-$5 and 5€ store the same base magnitude, and the display CODE is the real unit identity.
-Every unit combinator (`arithmeticCell` — all seven ops — `compareUnits`,
-`forAggregateUnits`) refuses two operands carrying different explicit codes with a
-`#UNIT!` ("no exchange rate"). ×/÷ refuse too: division would mint a RATIO, and a
-unitless $/€ number IS a fabricated exchange rate. An UNCODED currency cell (a computed
-result) adopts leniently. A new combinator must register in the policy sweep.
+**MUST:**
+- Exchange rates are out of scope, so every currency shares one `currency` axis at
+  scale 1: $5 and 5€ store the same base magnitude, and the display CODE is the real
+  unit identity.
+- Every unit combinator (`arithmeticCell` — all seven ops — `compareUnits`,
+  `forAggregateUnits`) refuses two operands carrying different explicit codes with a
+  `#UNIT!` ("no exchange rate"). ×/÷ refuse too: division would mint a RATIO, and a
+  unitless $/€ number IS a fabricated exchange rate.
+- An UNCODED currency cell (a computed result) adopts leniently.
+- A new combinator must register in the policy sweep.
 
 *Why:* the check lived in some combinators and not others, and the split was the worst
 one possible: the currency-aware copies of +/−/×/÷ were DEAD CODE (also stale — they
@@ -903,12 +1011,14 @@ in the walk fails the completeness check) + the changed-doc-is-a-new-object iden
 assertions.
 
 ### PERSIST-4 — Autosave slots: write the older, read the newer, `seq` first and strictly increasing **[DEFAULT]**
-**MUST:** the two-slot pair always writes the OLDER slot (a crash mid-write can never
-destroy the only good copy) and reads the newer; slot `seq` is a strictly-monotonic
-in-session counter (never a raw clock read — same-millisecond writes must not tie); and
-`seq` is the FIRST key of every slot payload, because freshness is read with a prefix
-regex, not a parse — a payload with any other key first reads as an EMPTY slot and the
-rotation silently resurrects the older write.
+**MUST:** the two-slot autosave pair obeys three laws:
+- it always writes the OLDER slot (a crash mid-write can never destroy the only good
+  copy) and reads the newer;
+- slot `seq` is a strictly-monotonic in-session counter — never a raw clock read
+  (same-millisecond writes must not tie);
+- `seq` is the FIRST key of every slot payload, because freshness is read with a
+  prefix regex, not a parse — a payload with any other key first reads as an EMPTY
+  slot and the rotation silently resurrects the older write.
 
 *Enforced by:* `persistenceCore.test.ts` (the rotation algebra);
 `documentStorePersist.test.ts` → "every slot payload the STORE wrote is prefix-readable",
@@ -928,11 +1038,12 @@ MAIN even while drilled in" (+ the per-node ownership resolvers).
 ### PERSIST-6 — The class name is the persisted type: kept and unique **[DEFAULT]**
 **MUST:** `constructor.name` is the `type` written into every save and the
 ctor-registry key loads resolve through (plus a dispatch key — `SEES_ERRORS`, group
-collapse, pins). Two consequences: production builds must keep class names
-(`keepNames`), and no two catalog classes may share a name — the registry is
-first-wins, so the losing class's saves would silently reconstruct as the winner
-(different sockets, plausible wiring, wrong computation; the Placeholder path only
-fires for an ABSENT type, and a collision is indistinguishable from a hit).
+collapse, pins). Two consequences:
+- production builds must keep class names (`keepNames`);
+- no two catalog classes may share a name — the registry is first-wins, so the losing
+  class's saves would silently reconstruct as the winner (different sockets,
+  plausible wiring, wrong computation; the Placeholder path only fires for an ABSENT
+  type, and a collision is indistinguishable from a hit).
 
 *Enforced by:* `sourceInvariants.test.ts` → "vite.config.ts and vitest.config.ts both
 declare esbuild keepNames"; `catalogRegistry.test.ts` → "no two catalog classes share a
@@ -985,12 +1096,14 @@ whitelist never saw it. Now whitelisted, pinned.
 ### PERSIST-10 — `width`/`height` ownership: the observer owns them; size-owners re-consume **[INFERRED]**
 **MUST:** `node.width`/`height` are a MEASUREMENT MIRROR — NodeCard's ResizeObserver
 overwrites both with rendered pixels every layout (minimap silhouette + cable geometry
-read them). They persist for every node, but only the declared SIZE-OWNER classes
-(user-dragged surfaces: the annotation frames, the composite card, groups, the
-overlay hosts) re-consume `init.width/height`; for everyone else the persisted values
-are inert and the class default + re-measure win. A class with a USER size gesture
-must either re-consume the init or route through `nodeSizeStore` (Display's grip —
-its own persisted channel, `sn.size`). Nothing else may start consuming the init.
+read them). Consequences:
+- they persist for every node, but only the declared SIZE-OWNER classes (user-dragged
+  surfaces: the annotation frames, the composite card, groups, the overlay hosts)
+  re-consume `init.width/height`; for everyone else the persisted values are inert
+  and the class default + re-measure win;
+- a class with a USER size gesture must either re-consume the init or route through
+  `nodeSizeStore` (Display's grip — its own persisted channel, `sn.size`);
+- nothing else may start consuming the init.
 
 *Why:* dual-use fields drift silently in both directions — a new resizable class that
 forgets to re-consume loses the user's drag on reload (the `asofDirection` class of

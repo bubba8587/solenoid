@@ -156,6 +156,19 @@ fixtures must cover `FRAME_OP_KINDS` + `BINARY_VERBS` exactly. Promoted as
 (#OVERFLOW!/#DOMAIN! on groupBy sums, B-1b) exists ONLY oracle-side — the
 engine emits inf/NaN cells there, so desktop diverges live on overflow.
 
+Same sitting, rules.md was prepared for the author's hand-authorization pass
+(the stated end state: every rule read and marked permanent by the author):
+- **Rule index** — a 70-row ID→title checklist at the top, machine-checked
+  against the actual headings by rules.test.ts (a stale/missing row fails).
+- **The authorization procedure written down** (PROV section): read → mark the
+  heading [ARR] + add the ID to AUTHOR_MARKED_ARR in rules.test.ts, both in the
+  SAME author-marked change; amend-then-mark; reject = delete or regrade.
+- **Readability restructure of the six densest MUSTs** (SOCK-9, VAL-19, FX-12,
+  PERSIST-4/6/10) — multi-clause paragraphs into scannable clause lists,
+  meaning-preserving. Plus a glossary pointer in the header, the stray VAL-14/15
+  divider removed, FX-12's archived-bundle path fixed, SSOT-5's enforcement note
+  updated to the narrowed reading-job state.
+
 Same sitting, the violations queue worked to its residual:
 - **EFFECT-1 closed** (known-violation 2, exactly as prescribed): a
   string/comment/template-aware brace-matched sweep over every data() body in
