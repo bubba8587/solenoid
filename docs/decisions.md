@@ -612,6 +612,26 @@ dead, not deferred.
 **What would reverse it:** nothing — this is identity, the same class as D10's
 eliminated-stays-eliminated.
 
+### D26 — A value's unit is FIRST-CLASS: only the algebra may change it
+**When:** 2026-07-31 (author, after the forwarding-lock fix: "it's important that
+a value's unit is treated as first class. you wouldn't just let its magnitude be
+overwritten. a unit change is in reality affecting the magnitude, comparatively").
+**Where:** `formatController.ts` (forwarding mirrors + LOCKS), `unitFlow`/`applyFcUnit`,
+`subsystem-invariants.md` "Unit flow".
+**The decision:** the unit is part of the value's identity, exactly like its
+magnitude — 5 m and 5 km are different values, so relabeling a unit without
+converting IS overwriting the magnitude, comparatively. Consequences: an FC
+downstream of a unit-carrying value LOCKS (mirrors the inherited unit; never
+re-authors); the ONLY thing that changes a value's unit is the algebra — Convert
+(which converts magnitude and unit together) or a transform that legitimately
+breaks the tag. The pre-fix "forwarding is editable for re-display" design let a
+downstream dropdown relabel a value's unit in place — the exact overwrite this
+forbids.
+**Cost accepted:** changing a display unit downstream takes a Convert node, not a
+dropdown flick.
+**What would reverse it:** nothing — this is the value model's integrity, the same
+class as D5's first-class null/error.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
