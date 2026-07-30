@@ -144,6 +144,21 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Small-queue pass: release-notes reconcile + INDEX-cube slices (2026-07-30e)
+
+Two small items while the author is away. (1) `release-notes-features.md`
+reconciled against the 188 commits since v1.2.0 — three slide headliners
+now (computed columns; matrix formulas & LAMBDA + the full parity closure;
+Query) plus a body list (element-wise families, frame-verb redirects,
+popup column sort, op-exposure search, corpus-verified engine parity,
+touch fixes, socket/copy polish). (2) INDEX over a CUBE types its
+whole-axis slices: `cubeProjection` — any BLANK unwired axis ⇒ `cube`
+(data() keeps nested cells whole; one blank axis guarantees a cube
+whatever the other says), Row AND Column both given (or wired) ⇒ the
+placeholder (a single cell is genuinely unknowable). Backlog line
+deleted; pins in trueAnyAdopt + passthroughSystem (the old "cube is
+unknowable" pin updated — it now depends on the axis literals).
+
 ### Identity-stable computed frames — mitigation (a) built (2026-07-30d)
 
 The scale assessment's cheap rung, landed: an unchanged pass now returns

@@ -6,7 +6,7 @@ import { DisplayNode } from "./nodes/display";
 import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
 import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, SelectColumnsNode } from "./rete-nodes";
-import { numberSocket, stringSocket, frameSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
+import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
 // getNodes/getNode/getConnections and mutates sockets in place.
@@ -227,6 +227,44 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     idx.literals.column = 1; // Select Columns reordered — column 1 is now Due
     reconcileTrueAnyTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
+  });
+
+  // 2026-07-30: a cube's slices are ALWAYS cubes (data() keeps nested cells
+  // whole), so any blank axis types the output `cube` — only a single CELL
+  // (Row and Column both given) is genuinely unknowable.
+  it("INDEX over a CUBE: whole-axis slices type as cube; only a single cell is the placeholder", () => {
+    const src = new ClassicPreset.Node("Cube");
+    src.addOutput("cube", new ClassicPreset.Output(cubeSocket));
+    const idx = new ListIndexNode();
+    const ed = makeEditor([src, idx], [
+      { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
+    ]);
+    // Both axes blank: the cube passes through whole.
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.inputs.list?.socket)).toBe("cube");
+    expect(dt(idx.outputs.result?.socket)).toBe("cube");
+    // Column set, Row blank: a one-column cube.
+    idx.literals.column = 2;
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("cube");
+    // Row set too: a single CELL — could be anything, the placeholder stands.
+    idx.literals.index = 1;
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("trueany");
+    // Row set, Column blank: a one-row cube.
+    delete idx.literals.column;
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("cube");
+    // A WIRED axis is a runtime value — with the other axis given, a cell is
+    // possible, so the placeholder returns.
+    const which = numSource();
+    idx.literals.column = 2;
+    delete idx.literals.index;
+    reconcileTrueAnyTypes(makeEditor([src, which, idx], [
+      { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
+      { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "index" },
+    ]));
+    expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
   it("INDEX over a FRAME: a WIRED Column is a runtime value — back to the placeholder", () => {

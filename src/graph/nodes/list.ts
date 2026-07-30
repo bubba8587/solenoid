@@ -316,8 +316,25 @@ export class ListIndexNode extends ClassicPreset.Node {
       output: "result",
       inputs: ["list"],
       combine: "single",
-      project: (t, ctx) => (t === "frame" ? this.frameProjection(ctx) : comboOfType(t) ?? "trueany"),
+      project: (t, ctx) =>
+        t === "frame" ? this.frameProjection(ctx)
+        : t === "cube" ? this.cubeProjection(ctx)
+        : comboOfType(t) ?? "trueany",
     }];
+  }
+
+  /** The output type for a CUBE container. A cube has no element family, but its
+   *  SLICES are always cubes — `data()` keeps nested cells whole (whole row = a
+   *  one-row cube, whole column = a one-column cube, both blank = the cube
+   *  itself) — so any BLANK axis makes the result a cube. Only a single CELL
+   *  (Row and Column both given) is genuinely unknowable: the placeholder
+   *  stands there, honestly. A WIRED axis could carry a real index (→ maybe a
+   *  cell), so it doesn't count as blank — but one blank UNWIRED axis already
+   *  guarantees a cube whatever the other axis says. */
+  private cubeProjection(ctx: ProjectContext): SocketDataType {
+    const blank = (key: "index" | "column") =>
+      !ctx.wired(key) && (this.literals[key] == null || Math.round(this.literals[key]) === 0);
+    return blank("index") || blank("column") ? "cube" : "trueany";
   }
 
   /** The output type for a FRAME container. `comboOfType("frame")` is null — a frame

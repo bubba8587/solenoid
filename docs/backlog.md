@@ -196,11 +196,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Extend targeted recompute to topology changes** (D8 open follow-through) — a
   full recompute still fires on every cable connect/disconnect; value edits already
   recompute targeted.
-- [ ] **INDEX over a CUBE: resolve the whole-axis slices** — the frame arm now types a
-  blank/0 Column as `frame` (the whole-row slice); a cube's slices are likewise always
-  cubes (`data()` keeps nested cells whole), so blank Column — or blank Row with a
-  Column set — could type as `cube` instead of the placeholder. Only a single CELL is
-  genuinely unknowable there.
 - [ ] **Value-popup gaps** (surveyed 2026-07-27 while adding the column sort; author
   parked all five). In rough order of how much each bites:
   - The visual sort only covers the LOADED WINDOW — a grid is truncated to 1,000 rows
