@@ -8,7 +8,7 @@
 
 import { type ColumnUnit, fromUnit, tagDim, isUnitCell, sameColumnUnit } from "./unitValue";
 import { fcUnitToUnit, displayMagnitudeOf } from "./unitBridge";
-import { type Unit, formatDim } from "./dimension";
+import { formatDim } from "./dimension";
 
 // Currency symbol → FC unit id (the header spec "$0.00" means the currency $).
 const CURRENCY_SYMBOL: Record<string, string> = { "$": "usd", "€": "eur", "£": "gbp", "¥": "jpy" };
@@ -78,15 +78,6 @@ export function tagFrameCellUnit(v: unknown, cu: ColumnUnit): unknown {
   if (typeof v !== "number" || !Number.isFinite(v)) return v;
   const u = cu.display ? fcUnitToUnit(cu.display) : null;
   return u ? fromUnit(v, u, cu.display) : tagDim(v, cu.dim);
-}
-
-/** Convert a column's stored base-SI magnitude to its display unit (for rendering a
- *  cell in the unit the column was locked to). Base value when no display unit or
- *  it doesn't resolve. */
-export function columnDisplayValue(cu: ColumnUnit, base: number): number {
-  const u: Unit | null = cu.display ? fcUnitToUnit(cu.display) : null;
-  if (!u) return base;
-  return (base - (u.offset ?? 0)) / u.scale;
 }
 
 // ─── The matrix ↔ list unit bridge (rank-changing reshapes) ──────────────────────

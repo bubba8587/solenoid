@@ -270,9 +270,8 @@ Read the relevant section there before touching one of these. The one-line "don'
   "resolve past untyped passthroughs" check routes through `isWildcardType()`. Cross-type
   dimensional edges are explicit in `accepts()`, machine-checked by the full sweep in
   `socketConnect.test.ts` — adding a socket type is a small, derived edit.
-- **Conduit perpendicular-face sign**: which face carries input vs output lanes flips at
-  `sin r = 0`; the chosen perpendicular leans east (output) / west (input), y-tiebreak keeps
-  cables flowing top-to-bottom.
+- **Conduit lane faces**: NO flip rule — inputs on the local −x face, outputs on +x, both
+  rotating with the block angle; a face-sign predicate anywhere is dead Manifold code.
 
 ### UX principles
 - **Edits commit on Enter/clickaway, never per keystroke** (like Excel cells). Drafts stay local

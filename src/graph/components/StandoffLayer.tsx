@@ -43,8 +43,8 @@ import "./StandoffLayer.css";
 
 // ─── Standoff layer ─────────────────────────────────────────────────────────────
 // Renders every standoff as a pale, thick bar UNDER the graph (the layer's
-// holder sits at z-index -2 inside the area's transformed plane — below
-// conduits at -1 and all nodes). Bars are drawn between the two live anchor
+// holder sits at z-index -3 inside the area's transformed plane — below
+// expanded groups at -2, conduits at -1 and all nodes). Bars are drawn between the two live anchor
 // points, so they slant to show perpendicular slack; the constrained axis is
 // the line between the anchors' boxes, not the bar's angle.
 //
