@@ -50,15 +50,22 @@ walk(buildCatalog(false));
     }
   }
 
-  // A NODE_OPS declaration with an ops list is AUTHORITATIVE for its class — use
-  // it before the table-content heuristic, which mis-joins classes whose op keys
-  // are a subset of an unrelated table (GroupByFrame's {"sum"} matched the 1-D
-  // GROUP_BY_OP_META until the AggOp table existed).
+  // NODE_OPS is AUTHORITATIVE where it speaks — consult it before the
+  // table-content heuristic, which mis-joins classes whose op keys are a subset
+  // of an unrelated table (GroupByFrame's {"sum"} matched the 1-D
+  // GROUP_BY_OP_META). An ARGUMENT-kind family is declared a non-gap outright:
+  // its variants are parameters of the host (an aggregator, a condition), not
+  // operations that could deserve menu exposure (author ruling 2026-07-30).
   const declared = new Map<string, string[]>();
-  for (const d of NODE_OPS) if (d.ops) declared.set(d.ctor.name, d.ops.map((o) => o.op));
+  const argumentKind = new Set<string>();
+  for (const d of NODE_OPS) {
+    if (d.kind === "argument") argumentKind.add(d.ctor.name);
+    else if (d.ops) declared.set(d.ctor.name, d.ops.map((o) => o.op));
+  }
 
   const rows: string[] = [], ambiguous: string[] = [], unmatched: string[] = [];
   for (const [cls, ops] of exposed) {
+    if (argumentKind.has(cls)) continue;
     const declKeys = declared.get(cls);
     if (declKeys) {
       if (ops.size < declKeys.length) {

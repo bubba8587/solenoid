@@ -219,12 +219,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 - [ ] **Give the kind-only families their ops lists — the distributions tranche** —
   all 98 op-selector families declare a `kind` (machine-checked by `nodeOps.test.ts`).
-  LANDED 2026-07-30: the `AGG_OP_META` table (SSOT-1 — Group By/Cube Rollup cards, the
-  Pivot editor, and the search rows all derive from it; `pivotOnly` keeps percentof to
-  the pivot) with ops declarations for Pivot/CubeRollup/GroupByFrame, plus
-  Percentile/Quartile/Percentrank (inc/exc as PERCENTILE.INC-style search names);
-  `scripts/op-exposure.ts` now consults NODE_OPS declarations before its
-  table-content heuristic (the GroupByFrame mis-join is dead). REMAINING: the 17
+  LANDED 2026-07-30: the `AGG_OP_META` table (SSOT-1 — Group By/Cube Rollup cards and
+  the Pivot editor derive from it; `pivotOnly` keeps percentof to the pivot), plus
+  Percentile/Quartile/Percentrank (inc/exc as PERCENTILE.INC-style search names).
+  AUTHOR RULING same day: **aggregators are args, not ops — NOT searchable**; all
+  four aggregator hosts (incl. the 1-D Group Lists) are kind-only, and
+  `scripts/op-exposure.ts` skips argument-kind families outright (also killing its
+  GroupByFrame mis-join). REMAINING: the 17
   distributions (cdf/pdf, and the `.RT` right-tail forms — Excel treats
   `CHISQ.DIST.RT` as its own function, so those arguably want real leaves, not just
   search rows). The DATA pickers (Element's 118 entries, PhysicsConstant, Antoine,

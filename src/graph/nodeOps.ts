@@ -53,12 +53,11 @@ import { ChartNode, SparklineNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
-  FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
+  FILL_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
   SortNode, TakeNode, DropNode,
 } from "./nodes/list";
-import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META, AGG_OP_META } from "./nodes/frame";
-import type { AggOp } from "./frameVerbs";
+import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
@@ -181,15 +180,6 @@ const SET_RELATION_OPS: OpEntryDecl[] = [
   { op: "superset", label: "Superset", fx: SET_RELATION_META.superset.fx },
   { op: "disjoint", label: "Disjoint", fx: SET_RELATION_META.disjoint.fx },
 ];
-// The frame aggregators, from the ONE AggOp table. The pivot alone also offers
-// the pivotOnly op (percentof — it needs the relative total set, which only the
-// pivot assembly computes); Group By / Cube Rollup search rows exclude it, so a
-// row can never construct a node at an op its card refuses.
-const AGG_OPS: OpEntryDecl[] = (Object.keys(AGG_OP_META) as AggOp[])
-  .filter((op) => !AGG_OP_META[op].pivotOnly)
-  .map((op) => ({ op, label: AGG_OP_META[op].label }));
-const AGG_OPS_ALL: OpEntryDecl[] = (Object.keys(AGG_OP_META) as AggOp[])
-  .map((op) => ({ op, label: AGG_OP_META[op].label }));
 
 export const NODE_OPS: NodeOpsDecl[] = [
   // ── Operation-kind (continued): a chart TYPE is a thing you search for ──
@@ -206,9 +196,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // pair of settings on one card rather than as two operations.
   { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
     create: (op) => new HeadersNode({ op: op as never }) },
-  // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless here.
-  { type: "list-groupby", ctor: GroupByNode, kind: "argument", ops: fromMeta(GROUP_BY_OP_META),
-    create: (op) => new GroupByNode({ op: op as never }) },
+  // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless
+  // here — and NOT searchable (author ruling 2026-07-30: aggregators are args,
+  // not ops; no "Group By: MEDIAN" rows). Kind-only, like the frame aggregator
+  // hosts below.
+  { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles: ascending/descending and first/last are parameters of ONE
   // operation — nobody searches the Add menu for "Descending". These families
   // previously named the field `dir`, so they could not declare at all (VAL-12).
@@ -378,16 +370,14 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
   { type: "betadist", ctor: BetaDistNode, kind: "operation" },
   { type: "binomdist", ctor: BinomDistNode, kind: "operation" },
-  { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument", ops: AGG_OPS,
-    create: (op) => new CubeRollupNode({ op: op as never }) },
+  { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
   { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
   { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
   { type: "ch-element", ctor: ElementNode, kind: "argument" },
   { type: "expodist", ctor: ExponDistNode, kind: "operation" },
   { type: "fdist", ctor: FDistNode, kind: "operation" },
   { type: "gammadist", ctor: GammaDistNode, kind: "operation" },
-  { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument", ops: AGG_OPS,
-    create: (op) => new GroupByFrameNode({ op: op as never }) },
+  { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
   { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "operation" },
   { type: "lognormdist", ctor: LognormDistNode, kind: "operation" },
   { type: "negbinomdist", ctor: NegbinomDistNode, kind: "operation" },
@@ -395,8 +385,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "normsdist", ctor: NormSDistNode, kind: "operation" },
   { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
   { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
-  { type: "pivot", ctor: PivotNode, kind: "argument", ops: AGG_OPS_ALL,
-    create: (op) => new PivotNode({ op: op as never }) },
+  { type: "pivot", ctor: PivotNode, kind: "argument" },
   { type: "poissondist", ctor: PoissonDistNode, kind: "operation" },
   { type: "tdist", ctor: TDistNode, kind: "operation" },
   { type: "weibulldist", ctor: WeibullDistNode, kind: "operation" },

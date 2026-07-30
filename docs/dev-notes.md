@@ -133,21 +133,26 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
-### Ops lists: the AggOp table + the Percentile trio (2026-07-30f)
+### Ops lists: the AggOp table + the Percentile trio (2026-07-30f, amended same day)
 
-The searchability gap's easy half. `AGG_OP_META` (nodes/frame.ts) is now the
-ONE AggOp table — the Group By / Cube Rollup card dropdowns, the Pivot
-editor's per-value selector, and the Add-menu search rows all derive from
-it (`pivotOnly` keeps PERCENTOF to the pivot editor, since only the pivot
-assembly computes the relative total set — a search row can never construct
-a node at an op its card refuses). Pivot/CubeRollup/GroupByFrame declare
-their ops (argument-kind: searchable as "Group By: MEDIAN", no formula
-names), and Percentile/Quartile/Percentrank declare inc/exc with
-PERCENTILE.INC-style search names (operation-kind; the names already
-dispatch via Formula.js, and FX-4's sweep passes). `op-exposure.ts` now
-consults NODE_OPS declarations before its table-content heuristic, killing
-the recorded GroupByFrame→GROUP_BY_OP_META mis-join. Remaining in the
-backlog item: the 17 distributions (leaf-vs-search question).
+The searchability gap's easy half — with one AUTHOR RULING mid-flight:
+**aggregators are ARGS, not ops, and are NOT searchable.** The first cut
+gave Pivot/CubeRollup/GroupByFrame searchable op rows ("Group By: MEDIAN");
+the author struck that, and it took the 1-D Group Lists' pre-existing rows
+with it — all four aggregator hosts are now kind-only `argument`
+declarations, and `op-exposure.ts` skips argument-kind families outright
+(their variants are parameters, never exposure gaps; this also
+retires its GroupByFrame→GROUP_BY_OP_META mis-join for good).
+
+What stands: `AGG_OP_META` (nodes/frame.ts) is the ONE AggOp table — the
+Group By / Cube Rollup card dropdowns and the Pivot editor's per-value
+selector derive from it (`pivotOnly` keeps PERCENTOF to the pivot editor,
+since only the pivot assembly computes the relative total set), replacing
+two drifted hand lists. And Percentile/Quartile/Percentrank declare
+inc/exc with PERCENTILE.INC-style search names — those ARE Excel functions
+(operation-kind; the names already dispatch via Formula.js, FX-4 sweep
+green). Remaining in the backlog item: the 17 distributions
+(leaf-vs-search question).
 
 ### Small-queue pass: release-notes reconcile + INDEX-cube slices (2026-07-30e)
 
