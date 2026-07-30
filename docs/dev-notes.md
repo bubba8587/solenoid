@@ -184,6 +184,14 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### D25: no per-cell formulas, ever (2026-07-31e)
+
+Author ruling, verbatim intent: grid-cell formula typing is "too Excel" —
+"100% unbreakably consistent columns are a must." The backlog idea dies
+(deleted, not deferred); recorded as D25 (the D10 class: eliminated stays
+eliminated) and stamped into the design doc. A column's definition lives
+on the COLUMN — one Formula or λ for all rows — on every surface, forever.
+
 ### Computed columns: copy/CSV/sort read the derived values (2026-07-31d)
 
 The popup's working grid holds "" for computed columns (no raw text), so

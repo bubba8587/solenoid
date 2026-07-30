@@ -597,6 +597,21 @@ Get Column / INDEX territory at the graph altitude.
 **What would reverse it:** nothing foreseeable — this IS the Excel model the
 surface exists to mirror; a change would be a new decision.
 
+### D25 — No per-cell formulas, ever: a computed column is 100% consistent
+**When:** 2026-07-31 (author: "I DON'T want formula in grid cell — that's too
+Excel. 100% unbreakably consistent columns are a must").
+**Where:** the TablePopup source model (one definition per column, in the header);
+`v2.0/19-computed-column-surface.md`.
+**The decision:** a column's definition lives on the COLUMN — one Formula or one λ
+for every row — and no surface may ever accept a formula typed into an individual
+grid cell. Excel's per-cell freedom is the disease this surface exists to cure:
+mixed-formula columns that LOOK uniform, break silently on sort/fill, and can't be
+audited. The former backlog idea "typing a formula into a grid column directly" is
+dead, not deferred.
+**Cost accepted:** none worth naming — the header formula row already covers entry.
+**What would reverse it:** nothing — this is identity, the same class as D10's
+eliminated-stays-eliminated.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
