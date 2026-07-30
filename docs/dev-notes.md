@@ -144,6 +144,22 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Identity-stable computed frames — mitigation (a) built (2026-07-30d)
+
+The scale assessment's cheap rung, landed: an unchanged pass now returns
+the SAME objects end to end, so `_sourceCache` (identity-keyed) keeps its
+Polars handle across full recomputes instead of re-uploading computed
+frames every pass. Three memos, each keyed on what actually shapes the
+value: **LambdaNode** (expr + params + captured values by Object.is +
+descriptions) returns the same `LambdaValue`; **Frame Input's computed
+path** (`_computedFrom`: frameText + per-λ input identities); **the CC
+node** (`_lastKey`: input frame identity + λ identity + expr/addAs/name/
+after + bindings JSON + side values by Object.is). The chain composes: a
+stable λ makes the Frame Input stable makes downstream identity checks
+hold; any upstream that mints fresh objects just misses harmlessly (a verb
+ref's collect is per-pass — the CC-after-verbs case still re-collects,
+that's rung (b)'s territory). Errors are never memoized. 2 pins (57).
+
 ### Computed-column scale: measured envelope + a quadratic killed (2026-07-30c)
 
 Benchmarked `computeColumnCells` (tsx, this container — relative numbers are

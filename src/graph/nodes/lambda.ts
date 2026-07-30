@@ -155,12 +155,33 @@ export class LambdaNode extends ClassicPreset.Node {
     // Captured values resolve NOW — the closure carries them, so a consumer
     // never reaches back into the graph.
     const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
+    // IDENTITY-STABLE output: when nothing that shapes the value changed since
+    // the last pass, return the SAME LambdaValue object. Consumers key their
+    // own memos (and the backend keys its upload cache) on value identity, so
+    // a full recompute that changed nothing must not mint a fresh closure.
+    // Captured values compare by Object.is — a wired list counts as changed
+    // when its producer rebuilt the array, which is exactly when recompute is
+    // due. varDescriptions ride the value for display; compare them too so a
+    // legend edit propagates.
+    const descJson = JSON.stringify(this.varDescriptions);
+    const last = this._lastBuild;
+    if (
+      this.cachedValue && last && last.expr === this.expr && last.params === this.params &&
+      last.descJson === descJson && last.capturedVals.length === capturedVals.length &&
+      last.capturedVals.every((v, i) => Object.is(v, capturedVals[i]))
+    ) {
+      return { result: this.cachedValue };
+    }
     const fn: Compiled = (...args) =>
       compiled(...args.slice(0, params.length), ...capturedVals);
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
     const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured: [...this.captured], descriptions };
+    this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
     this.cachedValue = value;
     this.cachedError = null;
     return { result: value };
   }
+
+  /** What the last emitted LambdaValue was built from (identity memo). */
+  private _lastBuild: { expr: string; params: string; descJson: string; capturedVals: unknown[] } | null = null;
 }

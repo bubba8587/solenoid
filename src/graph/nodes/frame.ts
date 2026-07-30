@@ -106,8 +106,8 @@ export class FrameInputNode extends ClassicPreset.Node {
   // FrameValue every data() call defeats the backend's identity source-cache (each
   // recompute re-uploads the same frame to Rust); return the SAME object while the
   // text is unchanged so the handle is reused. A real edit changes frameText → rebuild.
-  // Computed (λ) columns opt OUT of this cache: their cells change when upstream
-  // λs change, which no frameText edit reflects.
+  // Computed columns use `_computedFrom` instead (text PLUS the λ input
+  // identities — a λ edit changes cells with no frameText edit to key on).
   private _builtFrom: string | undefined;
   width = 240; height = 220;
 
@@ -144,6 +144,12 @@ export class FrameInputNode extends ClassicPreset.Node {
    *  text does not parse). */
   private _exprCache = new Map<string, { evaluator: ExprEvaluator; vars: string[] } | null>();
 
+  /** What the last computed frame was built from: the text plus each λ input's
+   *  value identity, so an unchanged pass returns the SAME frame object and
+   *  the backend's identity-keyed upload cache holds (a λ edit mints a new
+   *  LambdaValue upstream, which is exactly the miss condition). */
+  private _computedFrom: { text: string; lams: unknown[] } | null = null;
+
   data(inputs: Record<string, unknown[] | undefined> = {}) {
     const source = parseFrameSource(this.frameText);
     const isComputed = (c: FrameSourceColumn) => !!(c.lambda || c.expr);
@@ -152,6 +158,14 @@ export class FrameInputNode extends ClassicPreset.Node {
         this.cachedResult = frameFromInputText(this.frameText);
         this._builtFrom = this.frameText;
       }
+      return { frame: this.cachedResult };
+    }
+    const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
+    if (
+      this.cachedResult && this._computedFrom && this._computedFrom.text === this.frameText &&
+      this._computedFrom.lams.length === lams.length &&
+      this._computedFrom.lams.every((v, i) => Object.is(v, lams[i]))
+    ) {
       return { frame: this.cachedResult };
     }
 
@@ -250,7 +264,8 @@ export class FrameInputNode extends ClassicPreset.Node {
     }
     this._exprCache = compiled;
     this.cachedResult = frame;
-    this._builtFrom = undefined; // computed frames never reuse the identity cache
+    this._builtFrom = undefined; // the literal-path cache key never matches a computed frame
+    this._computedFrom = { text: this.frameText, lams };
     return { frame };
   }
 }
@@ -1910,6 +1925,26 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
     }
 
+    // IDENTITY-STABLE output: same frame, same λ, same definition/config,
+    // same side values → return the SAME result object, so the backend's
+    // identity-keyed upload cache holds across full recomputes (a real change
+    // upstream mints new input identities, which is exactly the miss).
+    const sideVals = this.sideVars.map((p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0));
+    const bindJson = JSON.stringify(this.bindings);
+    const k = this._lastKey;
+    if (
+      this.cachedResult && !isSolError(this.cachedResult) && k &&
+      Object.is(k.f, f) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
+      k.name === name && k.after === after && k.bindings === bindJson &&
+      k.sideVals.length === sideVals.length && k.sideVals.every((v, i) => Object.is(v, sideVals[i]))
+    ) {
+      return { frame: this.cachedResult };
+    }
+    const remember = (frame: FrameValue) => {
+      this._lastKey = { f, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals };
+      return out(frame);
+    };
+
     // The rules — binding precedence, builtins, col(), the per-row contract —
     // live in the SHARED core (computedColumnCore.ts), so this surface and the
     // Frame Input's per-column sources can never disagree. This node only
@@ -1951,10 +1986,16 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       const cols = [...result.columns];
       const added = cols.pop()!;
       cols.splice(anchorIdx + 1, 0, added);
-      return out({ __frame: true, columns: cols });
+      return remember({ __frame: true, columns: cols });
     }
-    return out(result);
+    return remember(result);
   }
+
+  /** What the last successful frame was built from (identity memo). */
+  private _lastKey: {
+    f: FrameValue; lam: unknown; expr: string; addAs: ComputedColumnAs;
+    name: string; after: string; bindings: string; sideVals: unknown[];
+  } | null = null;
 }
 
 // ─── GET ROW ────────────────────────────────────────────────────────────────────
