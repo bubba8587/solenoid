@@ -187,8 +187,15 @@ export function TablePopup() {
   // Per-column inline formula (the Formula source, slice 2): undefined = not a
   // Formula column; a string (possibly empty, mid-authoring) = the row-wise
   // expr. One definition per column — Excel's "same formula down the column".
-  // Committed on Save via the source column's `expr` field.
+  // The DRAFT is local per keystroke; blur/Enter COMMITS through to the node
+  // (the app-wide commit rule), Escape reverts to the last committed text.
   const [colExprs, setColExprs] = useState<(string | undefined)[]>([]);
+  const committedExprs = useRef<(string | undefined)[]>([]);
+  const exprEscaped = useRef(false);
+  // Fresh derived cells/types from a LIVE source commit (onCommitSource) —
+  // override the snapshot the popup opened with, so a blurred formula or a
+  // rebound λ shows its result without a Save/close round trip.
+  const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
   const initedFor = useRef<TablePopupState | null>(null);
 
   // (Re)seed whenever a different popup opens.
@@ -204,6 +211,8 @@ export function TablePopup() {
     setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
     setColLambdas(Array.from({ length: ncols }, (_, j) => state.sourceLambdas?.[j]));
     setColExprs(Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]));
+    committedExprs.current = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
+    setLiveComputed(null);
     // Seed the FC controls row: a date column defaults to the date style, a number
     // column to Auto; the unit dropdown seeds from the column's locked unit. A
     // PERSISTED per-column format (frameFormatStore, keyed by node+column name) wins
@@ -573,13 +582,21 @@ export function TablePopup() {
   }
   // Raw source columns from the current grid — cells kept verbatim (the literal
   // source; coercion to typed values happens downstream in deriveFrame).
-  function buildSourceColumns(): FrameSourceColumn[] {
+  function buildSourceColumns(overrides?: {
+    lambdas?: (string | undefined)[];
+    exprs?: (string | undefined)[];
+    units?: Record<number, string>;
+  }): FrameSourceColumn[] {
+    const lambdas = overrides?.lambdas ?? colLambdas;
+    const exprs = overrides?.exprs ?? colExprs;
     return Array.from({ length: cols }, (_, c) => {
       // A unit-taggable source persists the per-column unit choice (number columns
       // only) so it rides the value downstream via deriveFrame.
-      const u = state?.unitTaggable && (columnTypes[c] ?? "number") === "number" ? annFor(c).unit : undefined;
-      const lambda = colLambdas[c];
-      const expr = lambda ? undefined : colExprs[c]?.trim() || undefined;
+      const u = state?.unitTaggable && (columnTypes[c] ?? "number") === "number"
+        ? (overrides?.units?.[c] ?? annFor(c).unit)
+        : undefined;
+      const lambda = lambdas[c];
+      const expr = lambda ? undefined : exprs[c]?.trim() || undefined;
       return {
         name: (headerNames[c] ?? "").trim(),
         type: columnTypes[c] ?? "number",
@@ -590,6 +607,18 @@ export function TablePopup() {
         ...(expr ? { expr } : {}),
       };
     });
+  }
+  // LIVE commit (the column-source model): write the source through to the node
+  // now — a blurred formula, a rebound λ, a computed column's unit pick — and
+  // refresh the popup's derived cells + types from the recompute. The later
+  // Save is then a no-op re-commit (identical text).
+  async function commitLive(overrides?: Parameters<typeof buildSourceColumns>[0]) {
+    if (!state?.onCommitSource) return;
+    committedExprs.current = [...(overrides?.exprs ?? colExprs)];
+    const refresh = await state.onCommitSource(buildSourceColumns(overrides));
+    if (!refresh) return;
+    setLiveComputed(refresh.computedCells);
+    setColumnTypes(refresh.columnTypes);
   }
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
@@ -717,8 +746,13 @@ export function TablePopup() {
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => {
                             const v = e.target.value;
-                            setColLambdas((prev) => { const next = [...prev]; next[c] = v && v !== "=" ? v : undefined; return next; });
-                            setColExprs((prev) => { const next = [...prev]; next[c] = v === "=" ? (next[c] ?? "") : undefined; return next; });
+                            const nextLambdas = [...colLambdas]; nextLambdas[c] = v && v !== "=" ? v : undefined;
+                            const nextExprs = [...colExprs]; nextExprs[c] = v === "=" ? (nextExprs[c] ?? "") : undefined;
+                            setColLambdas(nextLambdas);
+                            setColExprs(nextExprs);
+                            // A COMPLETE pick (Data, or a λ) applies now, like any
+                            // discrete pick; Formula waits for its expr to blur.
+                            if (v !== "=") void commitLive({ lambdas: nextLambdas, exprs: nextExprs });
                           }}
                         >
                           <option value="">Data</option>
@@ -729,8 +763,10 @@ export function TablePopup() {
                         </select>
                         {colExprs[c] !== undefined && !colLambdas[c] && (
                           // The column's one formula (edited here per C2 — never
-                          // per-cell text). Variables are column names; @name /
-                          // col() read this row. Popup-local until Save.
+                          // per-cell text). @name reads this row, a bare name the
+                          // whole column (D24). The draft is local per keystroke;
+                          // blur/Enter COMMITS through to the node and the
+                          // computed cells refresh in place; Escape reverts.
                           <div className="table-popup__exprrow">
                             <span className="table-popup__exprprefix">=</span>
                             <input
@@ -743,6 +779,21 @@ export function TablePopup() {
                               onChange={(e) => {
                                 const v = e.target.value;
                                 setColExprs((prev) => { const next = [...prev]; next[c] = v; return next; });
+                              }}
+                              onBlur={() => {
+                                if (exprEscaped.current) { exprEscaped.current = false; return; }
+                                if (colExprs[c] !== committedExprs.current[c]) void commitLive();
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
+                                else if (e.key === "Escape") {
+                                  // Revert the draft; the flag stops the blur that
+                                  // follows from committing the stale closure text.
+                                  const prev = committedExprs.current[c];
+                                  setColExprs((xs) => { const next = [...xs]; next[c] = prev; return next; });
+                                  exprEscaped.current = true;
+                                  e.currentTarget.blur();
+                                }
                               }}
                             />
                           </div>
@@ -784,7 +835,17 @@ export function TablePopup() {
                           <div className="table-popup__fmtstack">
                             <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
                             {state.unitTaggable ? (
-                              <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
+                              <UnitSelect
+                                className="table-popup__fmtselect"
+                                value={annFor(c).unit}
+                                onChange={(u) => {
+                                  setColFmtAt(c, { unit: u });
+                                  // A COMPUTED column's unit rides the derived value —
+                                  // commit now so the tag reaches the node without a
+                                  // Save round trip (a Data column keeps Save timing).
+                                  if (colLambdas[c] || colExprs[c] !== undefined) void commitLive({ units: { [c]: u } });
+                                }}
+                              />
                             ) : state.columnUnits?.[c] ? (
                               // Derived column: unit inherited from the source, LOCKED (disabled picker).
                               <UnitSelect
@@ -847,7 +908,7 @@ export function TablePopup() {
                         >
                           <input
                             className={`table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`}
-                            value={controlledCell(state.computedCells?.[r]?.[c] ?? null, c)}
+                            value={controlledCell((liveComputed ?? state.computedCells)?.[r]?.[c] ?? null, c)}
                             readOnly
                             tabIndex={-1}
                             spellCheck={false}
