@@ -307,7 +307,10 @@ derive "is this Excel name callable" from "is this node reachable somehow".
 contract.
 
 *Why:* `some` reports a node covered when most of its names still fail.
-*Enforced by:* `formulaNodeParity.ts` `excelCovered`.
+*Enforced by:* `formulaNodeParity.test.ts` → "excelCovered quantifier is EVERY, not
+SOME — one missing name uncovers the node (SSOT-8)" — a direct pin on the extracted
+`excelCoverage` quantifier (the live catalog can't distinguish the quantifiers while
+gap A is empty, so the pin is synthetic by design).
 *Origin:* the `some` form hid ten names — the seven B-suffixed text functions,
 `ERF.PRECISE`, `ERFC.PRECISE`, `VALUETOTEXT` — each declared against a real node while
 the formula surface answered `#NAME?`.
@@ -1362,12 +1365,12 @@ citation work below.)
    drifted quotes). All 19 bare-file-cited rules were then read and verified (every
    cited suite genuinely enforces its rule), and 18 of them were CONVERTED to the
    quoted form in the same sitting — ~80 machine-checked citations now. The residual
-   (corrected 2026-07-31 — the "exactly ONE" undercount missed two) is the three
+   (corrected 2026-07-31 — the "exactly ONE" undercount missed two; SSOT-8 converted
+   the same day via the extracted `excelCoverage` quantifier pin) is two
    `formulaNodeParity.ts` rules: SSOT-6, whose enforcement is a shared IMPORT
    (`measureParity` from one module into both the report script and the ratchet
-   test), a structural fact no test-name quote can express; and SSOT-7/SSOT-8, which
-   cite the implementation MODULE and no test — their claims (the field split, the
-   `every` quantifier) are guarded only by the ratchet's numbers moving. SSOT-8 is
-   the weakest and the cheapest to convert: a direct `excelCovered` quantifier test
-   would give it a quotable name. New rules should quote their describe/it names,
-   which buys the machine check for free.
+   test), a structural fact no test-name quote can express; and SSOT-7, which cites
+   the implementation MODULE and no test — its claim (the `inFormula` vs
+   `excelCovered` field split) is guarded only by the ratchet's numbers moving. New
+   rules should quote their describe/it names, which buys the machine check for
+   free.

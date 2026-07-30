@@ -316,9 +316,10 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
 }
 
 // ─── DATA FEED (Finance / economic data) ────────────────────────────────────────
-// A provider dropdown (FRED / Stooq / Alpha Vantage) + a series/ticker field → a
+// A provider dropdown (FRED / Alpha Vantage) + a series/ticker field → a
 // Frame. FRED is KEYLESS (public fredgraph.csv) and offers common-series quick-picks;
-// stocks are keyless via Stooq (Alpha Vantage is the keyed backup). Wire the frame
+// stock history is Alpha Vantage (keyed) — see dataProviders.ts for why Stooq
+// was cut. Wire the frame
 // into a Chart node to "embed a FRED graph" natively. Same fetch/cache/refresh shape
 // as the other connection nodes (data() stays sync; one background fetch per key).
 

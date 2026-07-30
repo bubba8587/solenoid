@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { measureParity, excelNamedGapNames } from "./formulaNodeParity";
+import { measureParity, excelNamedGapNames, excelCoverage } from "./formulaNodeParity";
 import { initPackFormulas } from "./formulaExtensions";
 
 // ─── The parity RATCHET (D19) ─────────────────────────────────────────────────
@@ -103,5 +103,15 @@ describe("formula ↔ node parity ratchet", () => {
   it("never advertises Formula.js internals as formula functions", () => {
     const leaked = m.noNode.filter((n) => n.startsWith("utils."));
     expect(leaked, `Formula.js internals leaked into the formula name list:${fmt(leaked)}`).toEqual([]);
+  });
+
+  // The live catalog can't pin this: gap A is empty, so every excel-named row is
+  // FULLY covered and `some` vs `every` agree on all of them. The synthetic
+  // partial case is the only input that distinguishes the quantifiers.
+  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node (SSOT-8)", () => {
+    const only = (avail: string[]) => (n: string) => avail.includes(n);
+    expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING", "CEILING.MATH"]))).toBe(true);
+    expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING"]))).toBe(false);
+    expect(excelCoverage([], () => true)).toBe(false); // vacuous ≠ complete
   });
 });

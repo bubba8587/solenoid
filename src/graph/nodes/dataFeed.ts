@@ -7,7 +7,7 @@ import { apiKeyStore } from "../apiKeyStore";
 import { getProvider, type ProviderId, type ProviderPreset } from "../dataProviders";
 
 // ─── Data Feed (Finance) connection node ─────────────────────────────────────────
-// ONE node family for the market/economic data providers (FRED / Stooq / Alpha
+// ONE node family for the market/economic data providers (FRED / Alpha
 // Vantage) — a provider preset dropdown + a series/ticker field, fetching a Frame on
 // refresh via httpBridge (never baking the data into the project). It reuses the
 // WebSourceNode pattern: data() stays SYNCHRONOUS (a source that returns a Promise
