@@ -650,6 +650,28 @@ export class DropColumnsNode extends ClassicPreset.Node {
 // the pivot engine RE-AGGREGATES the source for totals (a grand AVERAGE averages
 // all source rows, not the group averages), which the lazy groupBy verb can't do.
 
+// The ONE AggOp table (SSOT-1): the Group By / Cube Rollup cards, the Pivot
+// editor's per-value selector, and the Add-menu search rows all derive from it,
+// so the surfaces cannot disagree. `pivotOnly` marks the op only the pivot
+// assembly can run (percentof needs the relative total set — aggregateGroup
+// returns null for it), so the card dropdowns and the Group By / Rollup search
+// rows exclude it.
+export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> = {
+  sum: { label: "SUM" },
+  avg: { label: "AVERAGE" },
+  min: { label: "MIN" },
+  max: { label: "MAX" },
+  count: { label: "COUNT" },
+  product: { label: "PRODUCT" },
+  median: { label: "MEDIAN" },
+  mode: { label: "MODE" },
+  stdev: { label: "STDEV.S" },
+  stdevp: { label: "STDEV.P" },
+  var: { label: "VAR.S" },
+  varp: { label: "VAR.P" },
+  percentof: { label: "PERCENTOF", pivotOnly: true },
+};
+
 export class GroupByFrameNode extends ClassicPreset.Node {
   label: string;
   op: AggOp;

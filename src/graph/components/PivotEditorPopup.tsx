@@ -3,19 +3,16 @@ import { pivotEditor } from "../pivotEditorStore";
 import { processGraph } from "../process";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameVerbs";
-import type { PivotNode } from "../rete-nodes";
+import { AGG_OP_META, type PivotNode } from "../rete-nodes";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
 
 // ── Option lists (the popup owns the pivot-specific selectors) ──────────────────
-const FUNC_OPTIONS: { value: AggOp; label: string }[] = [
-  { value: "sum", label: "SUM" }, { value: "avg", label: "AVERAGE" },
-  { value: "count", label: "COUNT" }, { value: "min", label: "MIN" }, { value: "max", label: "MAX" },
-  { value: "product", label: "PRODUCT" }, { value: "median", label: "MEDIAN" }, { value: "mode", label: "MODE" },
-  { value: "stdev", label: "STDEV.S" }, { value: "stdevp", label: "STDEV.P" },
-  { value: "var", label: "VAR.S" }, { value: "varp", label: "VAR.P" }, { value: "percentof", label: "PERCENTOF" },
-];
+// The per-value function list derives from AGG_OP_META (SSOT-1) — the pivot is
+// the one surface that also offers the pivotOnly ops (percentof).
+const FUNC_OPTIONS: { value: AggOp; label: string }[] =
+  (Object.keys(AGG_OP_META) as AggOp[]).map((value) => ({ value, label: AGG_OP_META[value].label }));
 const TOTAL_DEPTH_OPTIONS = [
   { value: "0", label: "No totals" }, { value: "1", label: "Grand total" }, { value: "2", label: "Grand + subtotals" },
   { value: "-1", label: "Grand at start" }, { value: "-2", label: "Grand + sub at start" },

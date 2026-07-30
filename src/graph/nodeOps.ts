@@ -57,7 +57,8 @@ import {
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
   SortNode, TakeNode, DropNode,
 } from "./nodes/list";
-import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
+import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META, AGG_OP_META } from "./nodes/frame";
+import type { AggOp } from "./frameVerbs";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
@@ -180,6 +181,15 @@ const SET_RELATION_OPS: OpEntryDecl[] = [
   { op: "superset", label: "Superset", fx: SET_RELATION_META.superset.fx },
   { op: "disjoint", label: "Disjoint", fx: SET_RELATION_META.disjoint.fx },
 ];
+// The frame aggregators, from the ONE AggOp table. The pivot alone also offers
+// the pivotOnly op (percentof — it needs the relative total set, which only the
+// pivot assembly computes); Group By / Cube Rollup search rows exclude it, so a
+// row can never construct a node at an op its card refuses.
+const AGG_OPS: OpEntryDecl[] = (Object.keys(AGG_OP_META) as AggOp[])
+  .filter((op) => !AGG_OP_META[op].pivotOnly)
+  .map((op) => ({ op, label: AGG_OP_META[op].label }));
+const AGG_OPS_ALL: OpEntryDecl[] = (Object.keys(AGG_OP_META) as AggOp[])
+  .map((op) => ({ op, label: AGG_OP_META[op].label }));
 
 export const NODE_OPS: NodeOpsDecl[] = [
   // ── Operation-kind (continued): a chart TYPE is a thing you search for ──
@@ -323,11 +333,20 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "math-abs", ctor: MathFnNode, kind: "operation" },
   { type: "nth-large", ctor: NthValueNode, kind: "operation" },
   { type: "oddcoupon-oddfprice", ctor: OddCouponNode, kind: "operation" },
-  { type: "stat-percentile", ctor: PercentileNode, kind: "operation" },
-  { type: "stat-percentrank", ctor: PercentrankNode, kind: "operation" },
+  // The inc/exc forms are Excel functions in their own right (PERCENTILE.EXC is
+  // what you search for when INC's clamp surprises you); the card labels are
+  // dropdown prose, so the search names are declared here (SSOT-2).
+  { type: "stat-percentile", ctor: PercentileNode, kind: "operation",
+    ops: [{ op: "inc", label: "PERCENTILE.INC" }, { op: "exc", label: "PERCENTILE.EXC" }],
+    create: (op) => new PercentileNode({ op: op as never }) },
+  { type: "stat-percentrank", ctor: PercentrankNode, kind: "operation",
+    ops: [{ op: "inc", label: "PERCENTRANK.INC" }, { op: "exc", label: "PERCENTRANK.EXC" }],
+    create: (op) => new PercentrankNode({ op: op as never }) },
   { type: "pricedisc-pricedisc", ctor: PriceDiscNode, kind: "operation" },
   { type: "pricemat-pricemat", ctor: PriceMatNode, kind: "operation" },
-  { type: "stat-quartile", ctor: QuartileNode, kind: "operation" },
+  { type: "stat-quartile", ctor: QuartileNode, kind: "operation",
+    ops: [{ op: "inc", label: "QUARTILE.INC" }, { op: "exc", label: "QUARTILE.EXC" }],
+    create: (op) => new QuartileNode({ op: op as never }) },
   { type: "rank-eq", ctor: RankNode, kind: "operation" },
   { type: "rolling-sum", ctor: RollingNode, kind: "operation" },
   { type: "roman-arabic-roman", ctor: RomanArabicNode, kind: "operation" },
@@ -359,14 +378,16 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
   { type: "betadist", ctor: BetaDistNode, kind: "operation" },
   { type: "binomdist", ctor: BinomDistNode, kind: "operation" },
-  { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
+  { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument", ops: AGG_OPS,
+    create: (op) => new CubeRollupNode({ op: op as never }) },
   { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
   { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
   { type: "ch-element", ctor: ElementNode, kind: "argument" },
   { type: "expodist", ctor: ExponDistNode, kind: "operation" },
   { type: "fdist", ctor: FDistNode, kind: "operation" },
   { type: "gammadist", ctor: GammaDistNode, kind: "operation" },
-  { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
+  { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument", ops: AGG_OPS,
+    create: (op) => new GroupByFrameNode({ op: op as never }) },
   { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "operation" },
   { type: "lognormdist", ctor: LognormDistNode, kind: "operation" },
   { type: "negbinomdist", ctor: NegbinomDistNode, kind: "operation" },
@@ -374,7 +395,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "normsdist", ctor: NormSDistNode, kind: "operation" },
   { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
   { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
-  { type: "pivot", ctor: PivotNode, kind: "argument" },
+  { type: "pivot", ctor: PivotNode, kind: "argument", ops: AGG_OPS_ALL,
+    create: (op) => new PivotNode({ op: op as never }) },
   { type: "poissondist", ctor: PoissonDistNode, kind: "operation" },
   { type: "tdist", ctor: TDistNode, kind: "operation" },
   { type: "weibulldist", ctor: WeibullDistNode, kind: "operation" },
