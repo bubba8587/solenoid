@@ -172,8 +172,8 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   C4 eyeball). Slices 1+2 SHIPPED 2026-07-29: λ sockets, per-column source
   select (Data | Formula | λ…), inline Formula source with popup editing,
   topo-order intra-table refs (@/col() deps included) + cycle refusal,
-  computed-cell rendering, the chip's ƒ mark. Remaining here: C4 — the author
-  eyeballs the computed-cell look + the popup formula row on the preview.
+  computed-cell rendering, the chip's ƒ mark. C4 CLOSED 2026-07-31 (author
+  eyeball: "they look fine") — the ratified design is fully landed.
 - [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
   inline expr + wired-λ definition, side-input sockets, row/rows, col() for
   unspellable names, addAs output typing, After placement). Remaining,

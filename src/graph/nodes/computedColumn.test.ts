@@ -487,6 +487,32 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     expect(getColumn(t.data({}).frame as FrameValue, "up")!.unit).toBeUndefined();
   });
 
+  it("a computed column's unit rides through INDEX and LOCKS a downstream FC", async () => {
+    // The author's repro (2026-07-31): unit on a computed column → INDEX pulls
+    // a cell → FC inherits AND locks (an inherited unit is set elsewhere in
+    // the chain — forwarding is a locked state).
+    const { ListIndexNode } = await import("./list");
+    const { FormatControllerNode } = await import("./formatController");
+    const { isUnitCell } = await import("../unitValue");
+    const fi = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "price", type: "number", cells: ["10", "20"] },
+        { name: "rev", type: "number", cells: [], expr: "@price * 2", unit: "usd" },
+      ]),
+    });
+    const frame = fi.data({}).frame as FrameValue;
+    const idx = new ListIndexNode();
+    idx.literals.index = 2;
+    idx.literals.column = 2;
+    const cell = idx.data({ list: [frame] }).result;
+    expect(isUnitCell(cell)).toBe(true); // the column's unit rides the extracted cell
+    const fc = new FormatControllerNode({ unit: "none" });
+    fc.data({ in: [cell] });
+    expect(fc.forwarding).toBe(true);
+    expect(fc.unit).toBe("usd");
+    expect(fc.unitLocked).toBe(true);
+  });
+
   it("expr rides the frameText round-trip; a blank expr is dropped on parse", () => {
     const text = frameSourceToText([
       { name: "a", type: "number", cells: ["1"] },
