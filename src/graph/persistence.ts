@@ -512,20 +512,26 @@ async function rebuildGraph(
     bump();
   }
 
-  // Register each FC's positional dock now that its host + cables exist.
-  for (const node of created) {
-    if (node instanceof FormatControllerNode) node.dockSelf(editor);
-  }
   // A Composite's internal subgraph is serialized independently of the outer
   // graph (see nodes/composite.ts) — hydrate it now that this node exists,
   // using the SAME class registry as the outer rebuild.
   for (const node of created) {
     if (node instanceof CompositeNode) await node.hydrate(reg);
   }
-  // Derived socket types settle BEFORE the FC refresh below — Conduit lanes and
-  // trueany placeholder ports adopt the types feeding them, so an FC downstream
-  // of either resolves against the real type, not the wildcard.
+  // Derived socket types settle BEFORE the docks and the FC refresh below —
+  // Conduit lanes and trueany placeholder ports adopt the types feeding them,
+  // so an FC resolves against the real type, not the wildcard. ORDER MATTERS:
+  // dockSelf's adaptTypeFromConnections resolves the HOST socket, and before
+  // this settle a projected wildcard output (INDEX over a frame) still reads
+  // as its upstream's raw type — the docked FC adopted "frame" and nothing
+  // re-adapted it after the settle (the "false Frame type on reload" bug;
+  // re-docking by hand fixed it because that re-ran the adapt post-settle).
   settleWildcardTypes(editor);
+  // Register each FC's positional dock now that its host + cables exist and
+  // the derived socket types are settled.
+  for (const node of created) {
+    if (node instanceof FormatControllerNode) node.dockSelf(editor);
+  }
   // Final settle pass (wiring is the source of truth for both).
   for (const node of editor.getNodes()) {
     if (node instanceof ConvertNode) node.syncUnitArrows(editor);
