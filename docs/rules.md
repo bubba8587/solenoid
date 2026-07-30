@@ -86,6 +86,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | SOCK-10 | An adopting port owns its socket instance |
 | SOCK-11 | A `trueany` output implies a `passthrough()` declaration |
 | SOCK-12 | Relay nodes are transparent to every static derivation |
+| SOCK-13 | A derived-type consumer runs only after the wildcard settle |
 | FX-1 | One implementation, two surfaces |
 | FX-2 | A shared implementation is rete-free |
 | FX-3 | A registration declares its full contract |
@@ -98,6 +99,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | FX-10 | One broadcast engine, and the table is the test |
 | FX-11 | A vendored-engine divergence is owned, and tripwired |
 | FX-12 | The verb pair computes from ONE fixture corpus |
+| FX-13 | In a row formula, a bare name is the WHOLE column; `@` is this row |
 | VAL-1 | Unwired is not blank |
 | VAL-2 | One notion of error |
 | VAL-3 | Error in, error out, without running the node |
@@ -314,9 +316,12 @@ the formula surface answered `#NAME?`.
 **MUST:** every "these input sockets are going away" moment — a mode/op switch hiding
 inputs, a variadic row being deleted, a formula variable disappearing — drops the
 affected cables through `components/cablePrune.ts` `dropInputCables`, BEFORE the socket
-is hidden or removed. A component calls `editor.removeConnection` directly only for a
-genuinely different shape (cross-graph port sync, both-direction prunes, type-compat
-filters, single user-selected cable), each sanctioned with its reason in the sweep.
+is hidden or removed. This binds NODE CLASSES as much as components (Computed Column's
+side-socket reconcile was the twelfth hand-rolled copy, found 2026-07-31 — in a node
+class, exactly where the components-only sweep couldn't see). A file calls
+`editor.removeConnection` directly only for a genuinely different shape (cross-graph
+port sync, both-direction prunes, type-compat filters, single user-selected cable),
+each sanctioned with its reason in the sweep.
 
 *Why:* eleven hand-rolled copies of the loop had drifted on the details that matter —
 some snapshotted the connection list before removing, some iterated it LIVE while
@@ -325,8 +330,9 @@ graph), the next copy wouldn't have. The helper also carries the ordering rule t
 copies each half-remembered: prune before the socket goes (removeInput while a cable
 references the socket is unsafe — the Interpolate variant-switch lesson), and a hidden
 socket with a live cable is an invisible wire.
-*Enforced by:* `sourceInvariants.test.ts` → "no component hand-rolls an input-cable
-pruning loop" (+ the sanctioned-list honesty check).
+*Enforced by:* `sourceInvariants.test.ts` → "no component or node class hand-rolls an
+input-cable pruning loop" (+ the sanctioned-list honesty check) — the scan walks
+`components/`, `nodes/` and `packs/`.
 *Origin:* the 2026-07-28 spec-promotion queue — recorded there as six copies; the
 unification sweep found eleven.
 
@@ -432,7 +438,9 @@ browser can verify rete measures the box it expects.
   accepted risk).
 - Its membership edges are DERIVED additions to `accepts()` per `SOCK-3`, swept by
   the full lattice test.
-- Expression VARIABLES are `anydata` — that is the D23 lift. The RESULT socket keeps
+- A formula surface's variable/side sockets are `anydata`: Expression VARIABLES (the
+  D23 lift) and Computed Column SIDE INPUTS (a side value can be a whole list —
+  `SUM(list)` — or a row-aligned list read by `@name`). The RESULT socket keeps
   its family instead: the `resultAs` combo socket stays for rank-≤1 results, and
   when a computed result is a MATRIX the node swaps its result socket to the same
   family's matrix rung and reconciles per `SOCK-7` (`retypeOutputCables`) —
@@ -490,6 +498,27 @@ the whole run a cable belongs to" (run identity); `frameShapePassthrough.test.ts
 half-wired IF).
 *Origin:* Bug B — downstream column pickers went empty and formula column references
 silently failed to resolve through a passthrough, with no error anywhere.
+
+### SOCK-13 — A derived-type consumer runs only after the wildcard settle **[INFERRED]**
+**MUST:** any step that reads a RESOLVED socket type and CACHES the answer — the FC
+dock loop is the load-path instance (`dockSelf` → `adaptTypeFromConnections` resolves
+the HOST socket once, at dock time) — runs AFTER `settleWildcardTypes` on that editor.
+On load, `persistence.ts` settles wildcard types before registering FC docks; any new
+one-shot consumer of a projected/adopted type joins the same side of the fence.
+
+*Why:* before the settle, a projected wildcard output (INDEX over a frame) still
+reads as its upstream's RAW type. A consumer that caches that answer keeps it — the
+docked FC adopted `frame`, showed no controls, and nothing re-adapted after the
+settle. The failure is a plausible wrong type with no error anywhere, and the
+observed "fix" (re-docking by hand) masks the cause, which is the worst possible
+diagnostic signal.
+*Enforced by:* `fcDockReload.test.ts` → "load order settles wildcard types before
+dockSelf — the FC adopts the cell's family, locked to its unit", plus its
+inverted-order MECHANISM twin, which pins that the constraint is real and
+self-retires if `adaptTypeFromConnections` ever learns to project through an
+unresolved wildcard.
+*Origin:* the 2026-07-31 "false Frame type on reload" report — a computed column's
+unit → INDEX → docked FC chain read `frame` after every reload until re-docked.
 
 ---
 
@@ -703,6 +732,30 @@ still degrade error cells to null, so input-error PROPAGATION stays pinned
 oracle-side in `frameVerbs.test.ts`, marked as such.
 *Origin:* bundle 18 (archived: `archive/18-parity-corpus.md`), landed 2026-07-29.
 
+### FX-13 — In a row formula, a bare name is the WHOLE column; `@` is this row **[INFERRED]**
+**MUST:** inside a computed column's inline expression, a bare identifier (or
+`[Name]`) resolves to the WHOLE column as a list; `@name` / `@[Name]` / `[@Name]`
+resolves to THIS row's cell — Excel's table-reference semantics exactly (D24). λ
+PARAMS stay row-bound (the λ is the per-row interface); bare names and @names in a λ
+body become capture sockets. The resolution order is fixed: column → `row`/`rows`
+builtins → the definition's own env (λ captures) → the surface's side value. A bare
+column reaching scalar position is a LOUD per-row `#SHAPE!` that points at `@` —
+never a silent per-row identity.
+
+*Why:* the failure mode of any other resolution is a plausible number, not an error:
+under row-bound bare names, `revenue / SUM(revenue)` returned `1.0` per row —
+`SUM(revenue)` reduced this row's scalar — and nothing anywhere looked wrong. The
+mixed-reference cases that forced the Excel model (`SUMIFS(amt, cat, @cat)`,
+filter-A-by-this-row's-B) are impossible to spell if one spelling owns both readings.
+*Enforced by:* `nodes/computedColumn.test.ts` → "a bare column name is the WHOLE
+column — @revenue-style share-of-total works unwired", "a bare column in scalar
+position is a LOUD per-row #SHAPE!, pointing at @", "@[Name] is this row, [Name] the
+whole column — for names a variable cannot spell", "a bound variable reads its
+picked column — whole for expr vars, this-row for λ params (D24)", "a ZERO-param λ
+reads the row via @ — capture sockets grow, columns win over them".
+*Origin:* D24 (2026-07-30) — the author's Excel-mixing case ruled out the row-bound
+default the first cut shipped.
+
 ---
 
 # VAL — Value handling
@@ -794,11 +847,22 @@ recorded the complex-tuple case as unpinned — the list.test.ts block already c
 CONTAINS was the one consumer still comparing by reference, fixed with the review.)
 
 ### VAL-9 — The unit is a property of the VALUE **[INFERRED]**
-**MUST:** a unit is a base-SI `UnitCell` AUTHORED only by the Format Controller
-(`applyFcUnit`) or Convert. It rides through passthroughs and selectors and BREAKS at any
-transform. There is no graph unit-walk. The Number node is a plain literal source.
+**MUST:** a unit is a base-SI `UnitCell` AUTHORED at the value's ORIGIN — the Format
+Controller (`applyFcUnit`), Convert, or a frame column's declared unit spec (a header
+spec or the popup's unit picker → `ColumnUnit`, riding onto a computed column exactly
+like a Data column). It rides through passthroughs and selectors and BREAKS at any
+transform. DOWNSTREAM, an inherited unit is never re-authored: an FC fed a
+unit-carrying value MIRRORS it and LOCKS (`unitLocked = lockedByConvert || forwarding`,
+D26 — a unit is first-class like the magnitude; a unit change IS a magnitude change,
+so it takes Convert, not a dropdown). There is no graph unit-walk for PROPAGATION;
+the one sanctioned graph read is Convert-primacy dictation (`refreshAnnotation`),
+which sets the FC's own dropdown and never re-tags a value. The Number node is a
+plain literal source.
 
-*Enforced by:* `unitCoercion.test.ts` → "Convert primacy on the outgoing value";
+*Enforced by:* `unitCoercion.test.ts` → "Convert primacy on the outgoing value",
+"an FC fed by another FC forwards: → → arrows, dropdown mirrors km and LOCKS",
+"an FC fed by a Convert forwards the converted unit: → →, mirrors km and LOCKS",
+"an FC FEEDING a Convert is dictated its fromUnit: ← ←, locked to m";
 `unitWiring.test.ts`, `unitFlowAnnotation.test.ts`.
 
 ### VAL-10 — The unit-blind boundary is PER-INPUT **[INFERRED]**
@@ -825,7 +889,11 @@ homogeneous unit for a matrix (D20).
 
 *Enforced by:* `unitValue.test.ts` → "per-column frame unit", "homogeneous matrix
 unit (D20) — one tag on the array, cells stay bare"; `unitColumn.test.ts` (the
-frame-column mechanics end to end).
+frame-column mechanics end to end); `nodes/computedColumn.test.ts` → "a computed
+column's UNIT tag rides onto the derived column, like a Data column's", "a computed
+column's unit rides through INDEX and LOCKS a downstream FC" (a DERIVED column
+carries the same per-column tag, and it survives projection into a scalar
+`UnitCell`).
 
 ### VAL-12 — An op family's selector field is named `op` **[INFERRED]**
 **MUST:** a node whose card carries an op dropdown stores it as `op`. Not `dir`, not
@@ -1249,11 +1317,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-70 rules.
+72 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 68 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11,12 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
+| Enforced | 70 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12,13 · FX-1,2,3,4,5,6,7,8,9,10,11,12,13 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
 | Partially enforced | 1 | SOCK-8 |
 | Unenforced | 1 | SOCK-6 |
 
@@ -1294,7 +1362,12 @@ citation work below.)
    drifted quotes). All 19 bare-file-cited rules were then read and verified (every
    cited suite genuinely enforces its rule), and 18 of them were CONVERTED to the
    quoted form in the same sitting — ~80 machine-checked citations now. The residual
-   is exactly ONE rule: SSOT-6, whose enforcement is a shared IMPORT (`measureParity`
-   from one module into both the report script and the ratchet test), a structural
-   fact no test-name quote can express. New rules should quote their describe/it
-   names, which buys the machine check for free.
+   (corrected 2026-07-31 — the "exactly ONE" undercount missed two) is the three
+   `formulaNodeParity.ts` rules: SSOT-6, whose enforcement is a shared IMPORT
+   (`measureParity` from one module into both the report script and the ratchet
+   test), a structural fact no test-name quote can express; and SSOT-7/SSOT-8, which
+   cite the implementation MODULE and no test — their claims (the field split, the
+   `every` quantifier) are guarded only by the ratchet's numbers moving. SSOT-8 is
+   the weakest and the cheapest to convert: a direct `excelCovered` quantifier test
+   would give it a quotable name. New rules should quote their describe/it names,
+   which buys the machine check for free.

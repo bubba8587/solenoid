@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── docs/rules.md keeps itself honest (SSOT-5's own gap, known-violation 8) ──
+// ─── docs/rules.md keeps itself honest (SSOT-5 applied to the spec itself) ──
 // The spec's whole value is the enforcement column; a rule ID that names a test
 // file that doesn't exist — or a test deleted without the rule noticing — turns
 // the column back into folklore. This asserts the document's own claims:

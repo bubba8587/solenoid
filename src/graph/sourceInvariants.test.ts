@@ -327,7 +327,7 @@ describe("EFFECT-1 — data() never touches disk", () => {
   // A sink's data() caches for preview ONLY; the write lives in run(), fired by
   // the node's Run button. The two existing sink families are pinned by their
   // own suites, but a NEW sink whose data() writes was uncaught until its own
-  // test existed (rules.md known-violation 2, now closed): this brace-matches
+  // test existed (EFFECT-1's closed gap): this brace-matches
   // every data() body in nodes/ + packs/ and refuses the write APIs — and
   // `this.run(`, the indirect spelling of the same mistake.
   const WRITE_APIS = ["writeTextFilePath", "pickSaveFilePath", "writeDocumentToVault", "obsidianWrite"];
@@ -546,18 +546,26 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     "components/expressionEdit.ts": "the Equation prune covers both directions (a variable owns an OUTPUT socket too); Expression/LAMBDA already use the helper",
   };
 
-  it("no component hand-rolls an input-cable pruning loop (use dropInputCables)", () => {
+  it("no component or node class hand-rolls an input-cable pruning loop (use dropInputCables)", () => {
+    // nodes/ and packs/ are in scope too: Computed Column's side-socket
+    // reconcile moved a "these sockets are going away" moment into a node
+    // class, which was exactly where the components-only scan couldn't see
+    // (the twelfth hand-rolled copy, SSOT-9).
     const offenders: string[] = [];
-    for (const file of walk(path.join(SRC, "components"))) {
-      const lines = codeLines(file);
-      if (!lines.some((l) => /\.removeConnection\(/.test(l))) continue;
-      const r = rel(file);
-      if (r in SANCTIONED) continue;
-      offenders.push(r);
+    const roots = ["components", "nodes", "packs"].map((d) => path.join(SRC, d));
+    for (const root of roots) {
+      if (!fs.existsSync(root)) continue;
+      for (const file of walk(root)) {
+        const lines = codeLines(file);
+        if (!lines.some((l) => /\.removeConnection\(/.test(l))) continue;
+        const r = rel(file);
+        if (r in SANCTIONED) continue;
+        offenders.push(r);
+      }
     }
     expect(
       offenders,
-      `These components call editor.removeConnection directly — the input-key ` +
+      `These files call editor.removeConnection directly — the input-key ` +
       `pruning loop lives in cablePrune.ts (dropInputCables). Use it, or add the ` +
       `file to SANCTIONED with the reason its shape is genuinely different:\n  ` +
       offenders.join("\n  "),

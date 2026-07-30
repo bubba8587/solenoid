@@ -3,7 +3,8 @@ import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logic
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { dropInputCables } from "../components/cablePrune";
+import { getActiveArea } from "../activeGraph";
 import { readFilterValue } from "./list";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
@@ -1917,12 +1918,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         // anydata (rank ≤ 2, the Expression variable socket): a side value can
         // be a whole list — SUM(list), or a row-aligned list read by @name.
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
-        const editor = getActiveEditor();
-        if (editor?.getNode(this.id)) {
-          const conns = editor.getConnections().filter(
-            (c) => c.target === this.id && removed.includes(c.targetInput as string));
-          for (const c of conns) await editor.removeConnection(c.id);
-        }
+        await dropInputCables(this.id, removed); // SSOT-9: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
         await getActiveArea()?.update("node", this.id);
       })();
@@ -1974,7 +1970,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       return out(frame);
     };
 
-    // The rules — binding precedence, builtins, col(), the per-row contract —
+    // The rules — binding precedence, builtins, bracket refs, the per-row contract —
     // live in the SHARED core (computedColumnCore.ts), so this surface and the
     // Frame Input's per-column sources can never disagree. This node only
     // supplies its ports: reserved keys, side-value reads, and the pickers'

@@ -303,8 +303,8 @@ export interface FrameSourceColumn {
   lambda?: string;
   /** COMPUTED column, Formula source: an inline row-wise formula (slice 2 of
    *  the column-source model). Same rules as the CC node's expr, verbatim —
-   *  variables are column names, `@name`/`col()` read this row, `row`/`rows`
-   *  are builtins. Present ⇒ cells derive per row and the raw `cells` are
+   *  a bare column name is the WHOLE column, `@name`/`@[Name]` read this row
+   *  (D24), `row`/`rows` are builtins. Present ⇒ cells derive per row and the raw `cells` are
    *  ignored. A `lambda` binding wins when both are set (the wired, reusable
    *  definition — mirrors the CC node's λ-over-expr precedence). */
   expr?: string;

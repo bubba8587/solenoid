@@ -290,7 +290,11 @@ export function formulaSyntaxHint(expr: string): string | null {
   if (/[{}]/.test(s)) return "Braces { } aren't formula syntax — remove them (array literals aren't supported; wire a List or Table input instead)";
   if (s.startsWith("=")) return "Drop the leading = — type just the formula body";
   if (/;/.test(s)) return "Separate arguments with commas, not semicolons";
-  if (/[[\]]/.test(s)) return "Square brackets aren't formula syntax — omit optional arguments instead";
+  // Brackets ARE syntax since D24 (structured references) — only an unbalanced
+  // pair is diagnosable here; a balanced-bracket failure falls through.
+  const openB = (s.match(/\[/g) ?? []).length;
+  const closeB = (s.match(/\]/g) ?? []).length;
+  if (openB !== closeB) return "Unclosed [ — a whole column is [Name], this row's cell is @[Name]";
   const open = (s.match(/\(/g) ?? []).length;
   const close = (s.match(/\)/g) ?? []).length;
   if (open > close) return `Missing ${open - close} closing parenthesis${open - close === 1 ? "" : "es"}`;
