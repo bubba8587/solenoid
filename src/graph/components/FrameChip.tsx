@@ -134,7 +134,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           // binding (λ or inline formula), and the COMPUTED columns' derived
           // display text (they have no raw cells — the popup renders these
           // read-only). Always passed for a literal source, so the source
-          // select (Typed | Formula | λ…) is there even before any λ socket.
+          // select (Data | Formula | λ…) is there even before any λ socket.
           ...(isSource ? {
             lambdaOptions: lambdaOptions ?? [],
             sourceLambdas: source!.map((c) => c.lambda),

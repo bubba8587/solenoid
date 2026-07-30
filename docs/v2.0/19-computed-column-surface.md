@@ -32,7 +32,7 @@ back" = the pipeline's OUTPUT is the enriched table).
 
 Every column of an EDITABLE table (Frame Input) has a **source**:
 
-1. **Typed** — today's literal cells (raw text, never rewritten). The default.
+1. **Data** — today's literal cells (raw text, never rewritten). The default.
 2. **Formula** — an inline row-wise expr. Same rules as the CC node, verbatim,
    because both call `computeColumnCells`: variables are column names,
    `row`/`rows` builtins, `col("Unit Price")`/`col(2024)` for unspellable
@@ -64,7 +64,7 @@ slice, not later.
 ### What renders where (TablePopup)
 
 - The per-column header controls (name, type-cycle, format row) gain a
-  **source control**. Typed stays visually as today. A computed column's
+  **source control**. Data stays visually as today. A computed column's
   cells render read-only with the derived-value treatment (the popup already
   distinguishes Source vs Formatted for literals — computed is a third,
   visually quiet state; the column header carries the definition).
@@ -92,7 +92,7 @@ slice, not later.
 1. **Core extraction — DONE** (`computedColumnCore.ts`; the CC node
    delegates; 27 pins).
 2. **Slice 1 — DONE (2026-07-29):** Frame Input λ sockets (extensible) + the
-   per-column source control (Typed | λ) + computed-cell rendering +
+   per-column source control (Data | λ) + computed-cell rendering +
    topo-order eval + cycle refusal. The smallest slice that exercises the
    whole surface.
 3. **Slice 2 — DONE (2026-07-29):** Formula source (`FrameSourceColumn.expr`;
