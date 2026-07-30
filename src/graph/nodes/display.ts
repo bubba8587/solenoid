@@ -71,7 +71,7 @@ export type AlertMode = "range" | "equals" | "boolean" | "text";
 export const ALERT_MODE_KEYS: Record<AlertMode, string[]> = {
   range:   ["value", "low", "high"], // value outside [low, high]
   equals:  ["value", "target"],      // value exactly equals target
-  boolean: ["value"],                // value is true (nonzero)
+  boolean: ["value"],                // value is TRUE (a real true or === 1, not any nonzero)
   text:    ["text", "match"],        // text contains match
 };
 

@@ -39,8 +39,10 @@ export interface FrameColumn {
   /** Cell values, aligned by row index. `null` is an empty cell. */
   values: FrameCell[];
   /** A numeric column may be LOCKED to a dimensional unit (Bundle 05: FC A4). The
-   *  cells stay bare base-SI numbers; the column carries the dimension + the display
-   *  unit id it was locked to (from a `Name (unit)` header, or a docked FC). Unit
+   *  cells stay bare AS-TYPED magnitudes (the display unit's, NOT base-SI — crossing
+   *  into a scalar/list converts via `tagFrameCellUnit`); the column carries the
+   *  dimension + the display unit id it was locked to (from a `Name (unit)` header
+   *  or the popup's unit picker; a computed column rides it the same way). Unit
    *  propagation survives a frame this way — a frame row IS a list, so its column's
    *  unit is the per-column analog of a list cell's tag. */
   unit?: ColumnUnit;

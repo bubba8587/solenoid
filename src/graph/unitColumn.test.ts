@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildFrame, addColumn } from "./frame";
-import { parseColumnUnitFromHeader, columnUnitLabel, columnDisplayValue, tagFrameCellUnit } from "./unitColumn";
+import { parseColumnUnitFromHeader, columnUnitLabel, tagFrameCellUnit } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { GetColumnNode } from "./nodes/frame";
 import { AggregateNode } from "./nodes/list";
@@ -100,9 +100,8 @@ describe("Aggregate over a unit-tagged list carries the unit", () => {
 });
 
 describe("column display helpers", () => {
-  it("columnDisplayValue converts base SI to the display unit", () => {
+  it("columnUnitLabel reads the display id", () => {
     const cu = parseColumnUnitFromHeader("d (km)").unit!;
-    expect(columnDisplayValue(cu, 5000)).toBe(5);
     expect(columnUnitLabel(cu)).toBe("km");
   });
 });
