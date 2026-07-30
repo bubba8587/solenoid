@@ -144,6 +144,39 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### @ over side values + binding pickers (2026-07-30a)
+
+Two Computed Column moves, author-directed.
+
+**@ reads row-aligned side LISTS, not just columns.** The author's shape:
+`λ(qty, price) → qty * price * @scale` where `scale` is a 5-row list, not a
+column. Resolution chain in the core's row accessor (shared by `@` and
+`col()`): the column → the `row`/`rows` builtins → the surface's SIDE value —
+a list must line up with the frame's rows (mismatch → per-row #SHAPE! naming
+both counts; a matrix refuses), a scalar reads the same every row. The port
+grows on the **CC node**, not the Lambda node: `rowRefs` (rowRefNames) joins
+the side-var machinery, so an @name matching no column grows a side socket
+exactly like an unknown variable — the list is zipped to THIS frame's rows,
+so its port belongs on the table-side node, and the λ stays frame-agnostic
+(zero-ceremony `captured: []` is preserved; captures deliberately do NOT
+reach @). Side sockets widened `anyIn` → `anyDataIn` (rank ≤ 2, the
+Expression variable socket) so lists can actually wire in — which also makes
+the core's long-stated "a whole list for SUM(...)" side-value contract
+reachable. Behavior flip pinned: `col("nope")` on the CC node now grows a
+side port reading its default (like any unknown name) instead of erroring;
+the per-row `#REF! No column` case stays on the port-less Frame Input
+sources. Frame Input λ columns word the miss per path (the captures hint
+only for param binding — captures don't reach @).
+
+**Binding pickers.** Explicit variable/param → column bindings
+(`bindings: Record<string,string>`, persisted via a bespoke extras block —
+live-vars-only + sorted keys, the varDescriptions pattern). The core's
+`alias` opt: a bound name is ALWAYS a column read (stale target → #REF!
+naming both ends, never a silent fallback); a bound would-be side var loses
+its socket. Card UI: one `field-row` per variable (auto | column names),
+shown once a frame is wired, fed by the transient `sourceColumns`/`defVars`
+stash (Pivot's pattern). 9 pins (54 total in computedColumn.test.ts).
+
 ### Surface slice 2 SHIPS: the Formula column source + the chip's ƒ (2026-07-29p)
 
 The pure-text rung of the column-source ladder, per the ratified design:

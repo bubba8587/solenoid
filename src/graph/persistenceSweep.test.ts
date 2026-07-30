@@ -141,7 +141,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
   // filtering semantics). Kept in sync by the honesty check below.
   const BESPOKE_EXTRAS = new Set([
     "varDescriptions", "inputPorts", "outputPorts", "scenarios", "dataTableValues",
-    "goalSeek", "monteCarlo", "uncertainty", "distribution",
+    "goalSeek", "monteCarlo", "uncertainty", "distribution", "bindings",
   ]);
   const RETE_BASE = new Set(["id", "inputs", "outputs", "controls"]);
 
@@ -160,6 +160,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     criteria: "detected from the input frame per compute",
     sourceColumns: "detected from the input frame per compute",
     sideVars: "re-derived per compute from the expr/λ variables minus the frame's columns",
+    defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
     shapeError: "per-pass validation state", seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",

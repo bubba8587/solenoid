@@ -178,10 +178,9 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   inline expr + wired-λ definition, side-input sockets, row/rows, col() for
   unspellable names, addAs output typing, After placement). Remaining,
   author-eyeball or design-tail:
-  - **Column-binding pickers** (author direction): bind expr variables / λ params to
-    columns via pickers instead of by-name only — the Pivot `sourceColumns` republish
-    pattern; would also be the first shared column-picker component (Sort/Get
-    Column/Join name columns as free text today and could adopt it).
+  - **Shared column-picker component** (follow-on to the binding pickers, which
+    landed 2026-07-30 as plain per-variable selects): Sort/Get Column/Join name
+    columns as free text today and could adopt one shared picker.
   - **Output-column format/unit controls on the node** (author direction): reuse the
     TablePopup per-column format row (`fcControls`) for the computed column.
   - **Typing a formula into a grid column directly** (author: possible, not the only
