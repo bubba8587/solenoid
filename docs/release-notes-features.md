@@ -17,8 +17,8 @@ Covers everything on `develop` since the v1.2.0 tag.
   pick Formula on any Frame Input column and write `price * qty`, or bind a wired λ —
   `@name` reads this row's cell (Excel's `[@Price]`), computed columns can reference
   each other, and the chip's **ƒ** marks a defined table. Mid-pipeline, the Computed
-  Column node does the same over any frame — with side inputs, `col("Unit Price")`
-  for unspellable names, and per-variable column-binding pickers. The
+  Column node does the same over any frame — with side inputs, bracket references
+  (`@[Unit Price]`) for unspellable names, and per-variable column-binding pickers. The
   "Computed Columns & @" example canvas tours it.
 - **[slide] Matrix formulas & LAMBDA.** Expression now takes matrices (D23):
   TRANSPOSE/MMULT/SEQUENCE/WRAPROWS and the array-returning core, LAMBDA as a first-
