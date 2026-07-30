@@ -270,7 +270,25 @@ export function TablePopup() {
   // sliced, with a notice below. (The chip count already shows the true total.)
   const MAX_VISIBLE_ROWS = 1000;
   const rowsTruncated = rows > MAX_VISIBLE_ROWS;
-  const shownGrid = rowsTruncated ? grid.slice(0, MAX_VISIBLE_ROWS) : grid;
+  // Computed columns have no raw text — substitute their DERIVED values (raw
+  // string form) into the shown window so the Formatted/Source views, Copy /
+  // CSV / Markdown and the visual sort see real cells, not blanks. `grid`
+  // stays the edit/save truth (computed cells are read-only, and Save drops
+  // their cells regardless).
+  const computedVals = liveComputed ?? state.computedCells;
+  const isComputedCol = (c: number) => !!colLambdas[c] || colExprs[c] !== undefined;
+  const hasComputed = !!computedVals && (colLambdas.some(Boolean) || colExprs.some((e) => e !== undefined));
+  const rawAt = (r: number, c: number): string => {
+    if (!hasComputed || !isComputedCol(c)) return grid[r]?.[c] ?? "";
+    const v = computedVals?.[r]?.[c];
+    if (v == null) return "";
+    if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+    return isSolError(v) ? v.code : String(v);
+  };
+  const shownBase = rowsTruncated ? grid.slice(0, MAX_VISIBLE_ROWS) : grid;
+  const shownGrid = hasComputed
+    ? shownBase.map((_, r) => Array.from({ length: cols }, (_c, c) => rawAt(r, c)))
+    : shownBase;
 
   const hasDateCols = state.columnTypes?.some(t => t === "date") || state.cellType === "date";
   // A frame popup carries per-column types; a plain Table/list does not.
@@ -427,8 +445,9 @@ export function TablePopup() {
   // as "20-Mar-2026" but is stored as its serial, and sorting the rendered string
   // would order March before May of the previous year. The raw cell sorts a date
   // chronologically, a formatted number by magnitude, text alphabetically.
+  // (rawAt substitutes a COMPUTED column's derived value — its only cells.)
   const sortOrder = sortedOrder(viewGrid.length, sort, (r, c) =>
-    sortKeyOf(vertical ? grid[0]?.[r] : grid[r]?.[c]));
+    sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c)));
   // A list in ROW orientation lays each element out as its own COLUMN of a single
   // row, so there is nothing to order — sorting one column would sort one cell. The
   // headers there stay inert (no cursor, no indicator); flipping to Column mode, one

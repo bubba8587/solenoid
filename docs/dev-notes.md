@@ -184,6 +184,15 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Computed columns: copy/CSV/sort read the derived values (2026-07-31d)
+
+The popup's working grid holds "" for computed columns (no raw text), so
+Copy / Copy-as-Markdown / Export CSV emitted BLANKS for them and the
+visual sort had no keys. `rawAt` now substitutes the derived values (raw
+string form: TRUE/FALSE, error codes) into the shown window and the sort
+keys; `grid` stays the edit/save truth (computed cells are read-only, and
+Save drops their cells regardless).
+
 ### Live commit: the formula applies on blur (2026-07-31c)
 
 Author: "the typed formula column must update on blur." The popup's source
