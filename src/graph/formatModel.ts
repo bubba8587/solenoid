@@ -74,6 +74,7 @@ export type FcControls = {
   complexStyle: boolean; // the reduced complex style list instead
   precision: boolean;    // digits + places/sigfigs row
   unit: boolean;         // unit dropdown (number-family + complex)
+  customPattern: boolean; // the free-pattern field (number `custom` / date `date_custom`)
   dateStyle: boolean;    // the date-style dropdown
   text: boolean;         // case + bold/italic/size
   logical: boolean;      // the show-as dropdown (TRUE/FALSE · 1/0 · Yes/No · ✓/✗)
@@ -89,6 +90,8 @@ export function controlsFor(family: FormatFamily, style: FormatStyleId): FcContr
     complexStyle: family === "complex",
     precision:    numeric && precisionApplies(style),
     unit:         numeric,
+    customPattern: (family === "number" && style === "custom") ||
+                   (family === "date" && style === "date_custom"),
     dateStyle:    family === "date",
     text:         family === "text",
     logical:      family === "logical",
