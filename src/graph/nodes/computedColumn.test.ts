@@ -453,11 +453,14 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
   });
 
-  it("a ZERO-param λ reads the row via @ — no binding ceremony", () => {
+  it("a ZERO-param λ reads the row via @ — capture sockets grow, columns win over them", () => {
     const lam = new LambdaNode({ expr: "@price * @qty", params: "" });
     const fn = (lam.data({}) as { result: unknown }).result;
-    // No capture sockets grew for @price/@qty — they are not variables.
-    expect(lam.captured).toEqual([]);
+    // @names grow capture sockets like any free variable (the λ owns its
+    // names — author ruling 2026-07-30); on a table the COLUMNS win at
+    // row-eval, so the unwired captures are inert and the λ still computes
+    // with no wiring at all.
+    expect(lam.captured).toEqual(["price", "qty"]);
     const r = run(named("", "rev"), sales, { fn: [fn] }) as FrameValue;
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
   });
@@ -503,20 +506,28 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
 
 describe("@ over side values — row-aligned lists (no capture, no column)", () => {
   // The author's shape: λ(framecol1, framecol2) → framecol1*framecol2*@list.
-  // `list` is neither a param nor a column — it grows a side port on the CC
-  // NODE (the list is zipped to THIS frame's rows; the λ stays frame-agnostic),
-  // and @ reads element-per-row.
-  it("a λ's @list reads the CC node's side port, element per row", () => {
+  // `list` is neither a param nor a column — it grows a CAPTURE socket on the
+  // LAMBDA node (the λ owns its names), and @ reads the captured list
+  // element-per-row inside the row context.
+  it("a λ's @list rides the Lambda card's capture socket, element per row", () => {
     const lam = new LambdaNode({ expr: "qty * price * @scale", params: "qty, price" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    expect(lam.captured).toEqual([]); // @ still grows no capture — zero ceremony
+    expect(lam.captured).toEqual(["scale"]); // the @name grew a capture socket
+    // Unwired capture: @scale reads the 0 default, same every row.
+    const bare = (lam.data({}) as { result: unknown }).result;
     const n = named("", "prod");
-    const r1 = run(n, sales, { fn: [fn] }) as FrameValue;
-    // First compute: the port hasn't grown yet — @scale reads the 0 default.
+    const r1 = run(n, sales, { fn: [bare] }) as FrameValue;
     expect(getColumn(r1, "prod")!.values).toEqual([0, 0, 0]);
-    expect(n.sideVars).toEqual(["scale"]);
-    const r2 = run(n, sales, { fn: [fn], scale: [[1, 2, 3]] }) as FrameValue;
+    // The λ's captured names never grow CC side ports — the definition owns them.
+    expect(n.sideVars).toEqual([]);
+    // List wired to the capture: element per row, in the frame's row order.
+    const fn = (lam.data({ scale: [[1, 2, 3]] }) as { result: unknown }).result;
+    const r2 = run(n, sales, { fn: [fn] }) as FrameValue;
     expect(getColumn(r2, "prod")!.values).toEqual([20, 120, 360]); // 2·10·1, 3·20·2, 4·30·3
+    // A captured list that doesn't line up with the rows: per-row #SHAPE!.
+    const short = (lam.data({ scale: [[1, 2]] }) as { result: unknown }).result;
+    const r3 = run(n, sales, { fn: [short] }) as FrameValue;
+    const v = getColumn(r3, "prod")!.values[0];
+    expect(isSolError(v) && v.code).toBe("#SHAPE!");
   });
 
   it("an inline expr's @list works the same, and a scalar side value reads every row", () => {

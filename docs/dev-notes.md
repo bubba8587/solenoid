@@ -167,23 +167,29 @@ Two Computed Column moves, author-directed.
 
 **@ reads row-aligned side LISTS, not just columns.** The author's shape:
 `λ(qty, price) → qty * price * @scale` where `scale` is a 5-row list, not a
-column. Resolution chain in the core's row accessor (shared by `@` and
-`col()`): the column → the `row`/`rows` builtins → the surface's SIDE value —
-a list must line up with the frame's rows (mismatch → per-row #SHAPE! naming
-both counts; a matrix refuses), a scalar reads the same every row. The port
-grows on the **CC node**, not the Lambda node: `rowRefs` (rowRefNames) joins
-the side-var machinery, so an @name matching no column grows a side socket
-exactly like an unknown variable — the list is zipped to THIS frame's rows,
-so its port belongs on the table-side node, and the λ stays frame-agnostic
-(zero-ceremony `captured: []` is preserved; captures deliberately do NOT
-reach @). Side sockets widened `anyIn` → `anyDataIn` (rank ≤ 2, the
-Expression variable socket) so lists can actually wire in — which also makes
-the core's long-stated "a whole list for SUM(...)" side-value contract
-reachable. Behavior flip pinned: `col("nope")` on the CC node now grows a
-side port reading its default (like any unknown name) instead of erroring;
-the per-row `#REF! No column` case stays on the port-less Frame Input
-sources. Frame Input λ columns word the miss per path (the captures hint
-only for param binding — captures don't reach @).
+column. Resolution chain in the core's row context (shared by `@` and
+`col()`): the column → the `row`/`rows` builtins → the DEFINITION's own
+environment → the surface's SIDE value — a list must line up with the
+frame's rows (mismatch → per-row #SHAPE! naming both counts; a matrix
+refuses), a scalar reads the same every row. **Where the port grows
+(author-corrected same day): the definition owns its names.** A λ's `@name`
+grows a CAPTURE socket on the Lambda card (`atColNames` joins `_rebuild`'s
+free-variable set; the first cut routed λ @-misses to the CC node's side
+ports and the author overruled it — "@ swallowing them left no place to wire
+the value"). Columns/builtins win over the capture at row-eval, so a table
+λ's `@price` still computes with zero wiring and its unwired capture is
+inert; `@row`/`@rows` capture nothing. The eval seam: `readRowCell` takes an
+env-fallback the `atcol` case supplies, and a captured list is row-indexed
+(length-checked) like any @-read. The CC node's side ports serve its OWN
+inline expr's @-misses (rowRefs, filtered by a wired λ's `captured`); COL()
+reaches columns + side ports but never captures (its impl has no env — @ is
+the capture-reaching form). Side sockets widened `anyIn` → `anyDataIn`
+(rank ≤ 2, the Expression variable socket) so lists can actually wire in —
+which also makes the core's long-stated "a whole list for SUM(...)"
+side-value contract reachable. Behavior flip pinned: `col("nope")` on the CC
+node now grows a side port reading its default (like any unknown name)
+instead of erroring; the per-row `#REF! No column` case stays on the
+port-less Frame Input sources.
 
 **Binding pickers.** Explicit variable/param → column bindings
 (`bindings: Record<string,string>`, persisted via a bespoke extras block —
