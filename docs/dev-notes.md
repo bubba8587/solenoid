@@ -144,6 +144,34 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### Computed-column scale: measured envelope + a quadratic killed (2026-07-30c)
+
+Benchmarked `computeColumnCells` (tsx, this container — relative numbers are
+what matter): the interpreted row loop runs **~0.4–0.9 M rows/s per
+computed column** (simple arithmetic ~0.9M, a ROUND() call ~0.4M; λ vs
+inline expr is a wash; column count is irrelevant — the row context is
+Map-indexed). Envelope: 10k rows ≈ 15–25ms/column, 100k ≈ 100–225ms, 1M ≈
+1.1–2.4s. Columns stack linearly.
+
+Killed while measuring: **the @-list read was QUADRATIC** — `at()` ran its
+matrix-scan + length validation (O(list)) on every row, so a 100k-row
+`@scale` read cost 3.9s (and 1M extrapolated to ~6.5 min). The verdict is
+now memoized per name (row-invariant by contract): 213ms at 100k, 2.4s at
+1M — linear.
+
+The REAL scale costs are architectural, not the loop (assessment, nothing
+built): (1) the CC node is a **materialization barrier** on desktop — verbs
+chain lazily in Polars, but coerceInputs collects the ref for every other
+node, so Filter → CC → Sort = full download + JS loop + re-upload; (2) the
+re-upload repeats every pass because `_sourceCache` keys by FrameValue
+IDENTITY and the CC node (and Frame Input's computed path, deliberately)
+emit a fresh object per data(). Mitigation ladder if heavy-data computed
+columns become real: (a) memoize CC output by input-identity + config so
+the handle cache holds across passes; (b) transpile the expr subset to a
+Polars `with_columns` verb (JS oracle stays the λ/fallback path — the
+frameVerbs seam); (c) compile the interpreted evaluator (web-only gain once
+b exists).
+
 ### The computed-columns seed + the sideVars load fix (2026-07-30b)
 
 `seedGraphs/computed-columns.json` ("Computed Columns & @", order 18, author
