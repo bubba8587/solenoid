@@ -50,7 +50,9 @@ Dragging a cable into empty canvas opens the Add menu filtered to nodes that wil
 
 ## Units
 
-A unit is a property of the **value**, not of a node or a wire. Only two things author one: a **Format Controller** docked on a socket, and **Convert**. From there the unit rides the value through anything that merely carries it — selectors, Displays, reshapes — and breaks at the first real transform, where the arithmetic *derives* the result's unit instead: `m × m` is `m²`, `km ÷ h` is a speed, and `10 m ÷ 2 m` cancels to a pure **ratio**, shown `5:1`.
+A unit is a property of the **value**, not of a node or a wire. It is authored at the value's origin — a **Format Controller** docked on a socket, a table column's unit picker, or **Convert**. From there the unit rides the value through anything that merely carries it — selectors, Displays, reshapes — and breaks at the first real transform, where the arithmetic *derives* the result's unit instead: `m × m` is `m²`, `km ÷ h` is a speed, and `10 m ÷ 2 m` cancels to a pure **ratio**, shown `5:1`.
+
+Because the unit is the value's, a Format Controller downstream of a value that already carries one shows it **locked** — it mirrors, it doesn't relabel. A unit change is really a magnitude change, so it takes **Convert**.
 
 Mixing genuinely different dimensions in one sum is a **`#UNIT!`** — meters plus seconds has no answer. A bare, unitless number is compatible with anything: it **adopts** the unit of the operation it's in, read in the other side's display unit — `$5 + 3` is `$8`, and `SUM(5 km, 3)` is `8 km`, not 5.003 km.
 
