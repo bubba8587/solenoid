@@ -38,7 +38,10 @@ a rewrite. **Do not** casually add a second engine "for web" without re-opening 
 decision explicitly (see future-directions Bet 5 for the honest trade-off).
 
 ### D2 — Expression / formula scope is capped, permanently
-**When:** 2026-06-23. **Where:** `CLAUDE.md`, the `#SHAPE!` matrix guard in `nodes/expression.ts`.
+**When:** 2026-06-23. **SUPERSEDED IN PART by D23 (2026-07-28):** matrices and complex
+are IN (the old `#SHAPE!` matrix guard in `nodes/expression.ts` is gone — the node now
+swaps its result socket to the matrix rung); the frames/cubes exclusion STANDS,
+permanently. **Where (today):** `CLAUDE.md`, D23, `broadcastRules.test.ts`.
 **Why:** the formula language stays the type-agnostic subset (scalars + 1-D lists,
 broadcast element-wise). Matrices/frames/complex/type-directed semantics are explicitly
 NOT coming — that's the job of the future subgraph/composite node.
@@ -53,7 +56,7 @@ explicitly walked back the "permanent" framing — *"I'm not necessarily committ
 assumptions/restrictions that we already wrote down… let's keep an open mind."* The cap
 STANDS as the working default until the parity design decides Tier 4 (keep 1-D vs lift
 to 2-D) — see `docs/formula-node-parity.md`, whose outcome should be recorded here as
-D2's successor. Do not treat D2 as immovable in that design; do not silently widen
+D2's successor. **That successor exists: D23 (2026-07-28) lifted the cap to matrices.** Do not treat D2 as immovable in that design; do not silently widen
 Expression before it's decided either.
 Tier-4 preconditions, decision criteria (correctness + coherence only — the
 auditability objection is retired), and the candidate endpoints are recorded in full in
@@ -95,8 +98,8 @@ paths that still don't — that's a bug against this decision, not a reason to r
 compute findings are the *completion* of this decision, not a challenge to it.
 
 ### D6 — Renderer is HTML-in-Canvas, not hand-rolled WebGPU or a Pixi re-implementation
-**When:** 2026-06-27 (supersedes the WGSL and Pixi directions). **Where:** `backlog.md`
-Renderer section, `htmlCanvasRenderer.ts`.
+**When:** 2026-06-27 (supersedes the WGSL and Pixi directions). **Where:**
+`htmlCanvasRenderer.ts`, `archive/performance-hardening.md`.
 **Why:** capture the *real* DOM cards into a mip-pyramid of bitmaps → crisp at any zoom,
 no component re-authoring. Perf-validated (280 nodes, 165fps). The DOM renderer stays the
 permanent default/fallback.
@@ -430,9 +433,8 @@ the mechanical work is greenlit but deliberately deferred to a dedicated session
    (the `registerInternal` seam), following the same naming rule — so a pack ships node
    + formula surface together. Registration must respect pack enable/disable
    (`FORMULA_FUNCTION_NAMES` and autocomplete become pack-sensitive).
-4. **Tier 4 (the reopened D2 dimensionality cap) is NOT decided** — author-present
-   discussion explicitly required ("we have to talk about this"). D2 stands as the
-   working default until then.
+4. **Tier 4 (the reopened D2 dimensionality cap)** — RESOLVED by D23 (2026-07-28):
+   the cap lifts to matrices; frames/cubes stay out.
 **Cost accepted:** blocking aliases breaks any formula that used a legacy name (pre-alpha,
 acceptable per D3); bare names risk future Excel-name collisions (accepted over the
 namespace's ugliness — a collision is handled case-by-case when Excel ships one).
@@ -569,8 +571,9 @@ argue for re-capping to 1-D, recorded as a new decision, not a silent revert.
 
 ### D24 — Computed-column references use Excel TABLE semantics: bare = whole column, `@` = this row
 **When:** 2026-07-30 (author: "we're going to have to go with the Excel version").
-**Where:** `computedColumnCore.ts`, `excelFunctions.ts` (COL/AT), the CC node +
-Frame Input Formula columns.
+**Where:** `computedColumnCore.ts`, `excelFormula.ts` (the `colref`/`rowref` tokenizer
++ `wholecol`/`atcol` AST — COL/AT are deleted, see the amendment below), the CC node +
+Frame Input Formula columns. Normative: rules.md FX-13.
 **The decision:** inside a computed-column formula, a bare column name is the WHOLE
 column as a list (Excel's `[Amount]`); `@name` is this row's cell (`[@Amount]`).
 For names an identifier can't spell, the BRACKET references do both — `[Unit

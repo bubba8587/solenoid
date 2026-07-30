@@ -1501,9 +1501,9 @@ registerInternal("COUNTDISTINCT", (list) => {
   return seen.size;
 });
 
-// INTERPOLATE covers the node's LIST mode only — grid mode is 2-D and stays behind the
-// D2 cap. Argument order follows the node's sockets, which is Excel's own
-// known_ys / known_xs / new_xs convention (FORECAST, TREND).
+// INTERPOLATE covers the node's LIST mode only — grid mode is 2-D; D23 unblocked a
+// rank-2 registration but it isn't built (backlog). Argument order follows the node's
+// sockets, which is Excel's own known_ys / known_xs / new_xs convention (FORECAST, TREND).
 registerInternal("INTERPOLATE", (ys, xs, newXs) => {
   // The node's own pair policy (pairPresent): a cell error in the known data
   // propagates, an incomplete pair drops — the raw cast once interpolated

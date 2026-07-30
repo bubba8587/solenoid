@@ -1,6 +1,200 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Latest sweep 2026-07-30: through session 2026-07-29i (sweep blocks are newest-first internally, marked below).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Latest sweep 2026-07-31: through session 2026-07-29p (sweep blocks are newest-first internally, marked below).
+
+---
+
+## Sweep 2026-07-31 — the computed-column build arc (2026-07-29j–p + 29d)
+
+### FC complex verification: popup done, render half unwired (2026-07-29d)
+
+The backlog's "verify FC complex styles against the format-model truth table"
+item: verified. The POPUP half is correctly implemented (`controlsFor` +
+`COMPLEX_FORMAT_STYLES` gate to auto/decimal/scientific; precision + unit rows
+show; advanced tier correctly absent). The RENDER half is NOT wired at all —
+the complex cards pre-format to strings inside `data()` (`formatCxValue`,
+fixed 4-digit trim), so a docked FC's annotation never reaches a complex
+value on any surface. format-model.md's vague "may lag" warning replaced with
+this precise status; the build (annotation-aware formatCx + routing the value
+boxes/chips/Display) is a visual change and sits in the backlog for an
+author-eyeball loop.
+
+### Surface slice 2 SHIPS: the Formula column source + the chip's ƒ (2026-07-29p)
+
+The pure-text rung of the column-source ladder, per the ratified design:
+- **`FrameSourceColumn.expr`** — an inline row-wise formula on the column
+  itself, riding `frameText` (serialize/parse; blank exprs dropped). A
+  `lambda` binding wins when both are set (the wired, reusable definition,
+  mirroring the CC node's λ-over-expr precedence); removing the λ socket
+  falls the column back to its expr.
+- **Frame Input's topo loop generalizes** to computed = λ OR expr: deps for
+  an expr column are its variables + `rowRefNames` (so `@`-only formulas
+  order correctly); a non-parsing expr fills the column with #VALUE!; a
+  variable naming no column is a per-row `#REF! No column "x"` (Formula
+  columns have no side inputs — that's the CC node's/λ-captures' job).
+  Compiled evaluators cache per expr text across data() calls.
+- **TablePopup (C2)**: the source select now reads Typed | Formula | λ… and
+  renders for EVERY literal-source frame editor (it no longer waits for a λ
+  socket to exist); picking Formula opens an =-prefixed formula row under the
+  header — one definition per column, popup-local until Save. Type-cycle
+  hides on computed columns either way.
+- **The chip's ƒ** (C2's glyph): a Frame Input chip with computed columns
+  reads `[3×4 Frame ƒ]`, title counting them — the at-a-glance mark that part
+  of the table is defined, not typed.
+7 pins (45 total in computedColumn.test.ts). C4 (the author eyeball of the
+computed-cell look + formula row) is the surface's only open item; the tail
+(binding pickers, per-column format on the CC node) stays in the backlog.
+
+### The @ operator: this-row reads, Excel's [@Price] as @price (2026-07-29o)
+
+Author proposal, built: `@price` is Excel's table this-row reference, and it
+makes the ZERO-PARAM λ the natural row formula — `λ() → @price * @qty`
+computes a column with no param↔column binding ceremony at all. Mechanics:
+- **AST**: a first-class `atcol` node (identifier names only; extractVariables
+  skips it, so `@price` never grows a socket or a λ capture). Tokenizer takes
+  `@`; the parser reads `@name` in primary position; KaTeX renders `@name`
+  literally; the equation/unit/step-trace walks each carry the case (tsc's
+  exhaustiveness found all four).
+- **The dynamic row context** (computedColumnCore): the core pushes a
+  current-row accessor around EVERY evaluation — the inline expr and a wired
+  λ's body alike — and `readRowCell` resolves against the stack top. This
+  replaced the env-injected col accessor, which also FIXES col() inside λ
+  bodies (it only worked in inline exprs before). Outside any row context, @
+  and COL answer a targeted #REF! ("read the current row…"), never a typo's
+  #NAME?.
+- **COL is now a REGISTERED native** (`EXCEL_IMPL_META`, returns any,
+  arity 1) — the spelled-out @ for names an identifier can't
+  (`col("Unit Price")`, `col(2024)`), dispatching case-insensitively,
+  advertised + hinted like any function.
+- **Topo integration**: `rowRefNames(expr)` collects `@name` + col(<literal>)
+  reads, and Frame Input's dependency sort unions them with the λ's params —
+  a zero-param λ reading `@revenue` still orders after the revenue column
+  (and cycles through @ still refuse).
+- Highlighting: `@name` colors as the variable it behaves as (fx-var).
+6 pins (38 total in computedColumn.test.ts).
+
+### Surface slice 1 SHIPS: Frame Input λ columns (2026-07-29n)
+
+The ratified design's first slice, end to end:
+- **Model**: `FrameSourceColumn.lambda?` (the λ input key defining the
+  column) rides `frameText` (serializer + parser); a computed column's raw
+  cells are empty — the raw-text guarantee is now a per-column fact.
+- **Node**: `FrameInputNode.lambdaKeys` (persisted via INIT_FIELD_ORDER) +
+  addable `lambdaIn` sockets (`addValueInput`/`removeValueInput`, the
+  ExtensibleInputs contract — removing a λ row unbinds its columns back to
+  Typed). data() computes λ columns via the SHARED core in TOPO order (a
+  computed column can reference another; declaration order is irrelevant), a
+  cycle refuses per column with #REF! naming the members, an unwired λ leaves
+  its column blank, an unbound λ param errors per row pointing at captures.
+  Computed frames skip the identity cache (λ results change without a text
+  edit). inferColumn supplies TYPE only — its constructed column would mangle
+  per-row SolErrors (caught by the pins).
+- **UI**: the card grows the λ input group (ExtensibleInputs, new `minRows=0`
+  — an optional group's last row can go; `lambda` joined the wire-only row
+  types); the TablePopup's editable header gains the per-column SOURCE select
+  (Typed | λ…, rendered only when the host has λ inputs), computed cells
+  render read-only in a quiet frame-violet tint from the derived frame
+  (`computedCells` threaded chip→popup), the type-cycle hides on computed
+  columns (type is inferred), Save writes `lambda` back through
+  buildSourceColumns. C4 (the computed-cell look) awaits the author eyeball.
+5 slice pins (32 total in computedColumn.test.ts). Slice 2 next: the Formula
+source (popup editing) + the card-chip glyph.
+
+### The computed-column SURFACE: design bundle + shared core (2026-07-29m)
+
+The author raised the altitude: computed columns should live PER-COLUMN in
+Frame Input too ("maybe frame input grows addable lambda sockets… columns
+pick from inputs"), with the full ladder — trivial math as text, reusable
+math as a λ, arbitrary logic as a node subgraph injected back — because
+"a very large percentage of Excel work is table computed columns, we can't
+half-ass this UIUX surface." Two deliverables:
+- **`v2.0/19-computed-column-surface.md`** — the design: every editable-table
+  column has a SOURCE (Typed | Formula | λ | Wired list); Frame Input grows
+  extensible λ/list input groups; intra-table references evaluate in topo
+  order with per-column #REF! on cycles (in slice 1, not later); the wired-
+  list source is the node-built injection path (upstream data only — feeding
+  a table's own output back is a graph cycle and refuses as one); the CC verb
+  node stays as the mid-pipeline form. Crux decisions C1–C4 wait on the
+  author (λ sockets individually-addable vs a lambda-list type; where Formula
+  text is edited; Frame from Lists' fate; computed-cell rendering).
+- **`computedColumnCore.ts`** — the row-eval rules extracted to ONE module
+  (binding precedence, row/rows, col(), the per-row contract) so the CC node
+  and the coming Frame Input sources cannot disagree; the node now only
+  supplies its ports. 27 pins (kitchen-sink round added: IF/UPPER/TEXT
+  chains, a λ erroring one row, col()+column+row+side in one formula).
+
+### Computed Column v3 — col() for unspellable names, rows, placement (2026-07-29l)
+
+The author's next two catches, closed:
+- **Columns a variable can't spell** — a "2024" year column, "Unit Price".
+  The `col` accessor: `col("Unit Price")`, `col(2024)` (a numeric literal
+  coerces to the NAME, never a positional index — deliberately unlike
+  requireColumn's `^\d+$` fallback). Mechanically an env LAMBDA injected per
+  row and resolved by the evaluator's higher-order call path (the 2026-07-28
+  `f(x)` machinery), so `col` never parses as a variable and never grows a
+  side socket; one closure serves every row via a cursor. An absent name is a
+  per-row #REF! cell. This also un-blocks the picker item's worst case —
+  pickers are now purely a comfort, not the only path.
+- **`rows`** — total row count builtin (`row / rows` = position fraction);
+  shadowed by a real column like `row` is.
+- **Placement** — the `After` input (socket + literal): blank appends at the
+  end; a column name inserts the NEW column right after it; a REPLACED column
+  keeps its position regardless (replacement detected by column count, not by
+  re-parsing the unit header); a missing anchor is #REF!. `after` joins the
+  reserved input names.
+Six more pins (24 total in computedColumn.test.ts); catalog copy teaches
+row/rows/col().
+
+### Computed Column v2 — the author's "it's missing a ton" round (2026-07-29k)
+
+Four holes the v1 shipped with, all closed:
+- **Side inputs** (the Expression idiom restored): a variable naming no column
+  becomes an input SOCKET (`anyIn`), row-invariant, with an inline literal
+  default (0). Grows/shrinks from data() via the reconcile-in-a-microtask
+  pattern (Expression's result-rank swap); a column appearing with the same
+  name takes the variable over and drops the socket's cables. A wired LIST
+  side input is legal — `price / SUM(prices)` is percent-of-total in ONE node,
+  totals wired the graph-native way.
+- **`row`** — the 1-based row number as a builtin variable; a column named
+  `row` shadows it (user data outranks convenience). Reserved input names
+  (frame/name/fn) refuse with #REF!.
+- **Output type control** (`addAs`: Auto/Number/Text/Date/Boolean, persisted —
+  the field name reuses Add Column's): Auto infers; Date is the case inference
+  cannot reach (a serial is indistinguishable from a number). `start + 7` can
+  finally BE a date column.
+- **λ side params**: a λ param naming no column becomes a side input too, so a
+  generic λ(v, rate) applies to any frame — the reusability story v1 promised
+  and didn't deliver.
+Two sweeps corrected the build again (PERSIST-9: sideVars classified
+transient-derived; VAL-12: the addAs OpSelect marked `arg`). 18 pins. Still
+open in the UX tail: pickers (non-identifier columns stay unreachable by
+typed name — the one v1 hole that needs UI, not mechanics).
+
+### Computed Column lands — the row-wise formula verb (2026-07-29j)
+
+The design-first backlog item built, to the author's three directions (frames
+stay pure data; the computation is a graph citizen; reuse the existing
+surfaces). `ComputedColumnNode` (nodes/frame.ts, beside Add Column): frame +
+name + optional λ in, frame out. The math comes from the inline `expr`
+(variables ARE column names — resolved by exact name, #REF! naming a miss) or
+a wired LambdaValue (params bind to columns the same way; the λ wins over the
+expr — it's the deliberate, reusable definition, and its capture sockets carry
+side parameters). Per-row contract: an error cell in a bound column propagates
+to that row (first in binding order); a NULL FLOWS INTO the formula (a formula
+is not an element-wise op — ISBLANK/IF can see it); NaN → #DOMAIN!, a
+list-shaped result → #SHAPE! (one value per row); output type inferred
+(inferColumn), `Name (unit)` headers tag units via addColumn, name collisions
+replace in place. Eager like Add Column/XLOOKUP/Pivot (not in
+LAZY_FRAME_NODES — a JS formula has no Polars op). Editing routes through the
+shared FormulaPopup (new ComputedColumnNode arm); the card is
+FormulaField + FrameDisplay. Two sweeps caught the first draft (worked as
+designed): VAL-10 rejected a per-cell isUnitCell strip (frame cells are plain
+— D20, units live on the column; deleted), uiCopy rejected a
+"wire a λ" instruction in the catalog description (reworded). 14 pins in
+nodes/computedColumn.test.ts. The frame-verb refusal message now ends
+"…or a Computed Column for row math", and COMPUTEDCOLUMN itself joined
+FRAME_SURFACE_NAMES (the derivation ratchet demanded it). UX tail
+(binding pickers, output-column format controls, grid typing) → backlog.
 
 ---
 

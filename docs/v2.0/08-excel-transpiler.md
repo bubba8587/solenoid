@@ -6,16 +6,18 @@ CLI-grade spike needs neither 01 nor 02. **Sequence:** late per the author's own
 
 ## Grounding — the parser and catalog machinery already built
 
-**`src/graph/excelFormula.ts` exact exports** (the parser to run each cell formula
-through):
-- `Ast` type (lines 20-28): tagged union `num/str/bool/name/call/unary/percent/bin`,
+**`src/graph/excelFormula.ts` exports** (the parser to run each cell formula
+through; find by symbol — line numbers rot, and the module has since grown
+`lambda`/`apply`/`blank`/`atcol`/`wholecol` AST nodes and `colref`/`rowref`
+tokens for the D24 structured references):
+- `Ast` type: tagged union incl. `num/str/bool/name/call/unary/percent/bin`,
   e.g. `{t:"call"; name:string; args:Ast[]}`.
-- `Tok` type + tokenizer (line 31: `{k:"num"|"str"|"name"|"op"|"paren"|"comma"; v:string}`,
-  `tokenize(src): Tok[]|null` at line 33).
-- `extractVariables(expr): string[]` (218).
-- `compileFormula(expr, paramNames): CompiledFn|null` (272 — reused by bundle 03).
-- `formulaToLatex(expr): string|null` (695, reused by bundle 13).
-- `FormulaStep` type (735), `evaluateSteps(expr, vars)` (744).
+- `Tok` type + `tokenize(src): Tok[]|null`.
+- `extractVariables(expr): string[]`.
+- `compileFormula(expr, paramNames): CompiledFn|null` (dormant codegen — `evalAst`
+  is the production path; see the module's own comments before reviving it).
+- `formulaToLatex(expr): string|null` (reused by bundle 13).
+- `FormulaStep` type, `evaluateSteps(expr, vars)`.
 
 **Function-name→node mapping (the redirect table's foundation) is NOT in
 `excelFormula.ts` — it's `NODE_EXCEL: Record<string, ExcelEquiv[]>` in
@@ -69,8 +71,8 @@ the original text even if inert."
    the "already has a direct node" case.
 4. Fallback path: any formula whose function isn't in `NODE_EXCEL` and isn't in the
    redirect table becomes an Expression node carrying the original formula text verbatim
-   (may be inert under the Expression cap — `nodes/expression.ts:133-146`'s `#SHAPE!`
-   block, see bundle 09 — that's fine, same as any Placeholder).
+   (formulas compute at rank ≤ 2 since D23 — frames/cubes stay out — so a fallback can
+   still be inert; that's fine, same as any Placeholder).
 5. Layout: call the same `arrangeFn({skipConfirm: true})` accessor Canvas.tsx uses
    (`process.ts:64`) on the emitted graph.
 6. Sheets → Groups: each source sheet becomes a `GroupNode` (`nodes/group.ts:11-40`,

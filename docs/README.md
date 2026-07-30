@@ -61,8 +61,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`2.0-plan.md`** — the author-present flagships (Excel `.xlsx` transpiler, D2, D4;
   FC A4 units already shipped), the release view over `v2.0/`.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
-  12 uncertain/money, 16 widget nodes. Built bundles are archived (05 units-by-
-  dimensionality shipped → `archive/units-format-controller.md`); see `v2.0/README.md`.
+  12 uncertain/money, 16 widget nodes. Built bundles are archived (05 units →
+  `archive/units-format-controller.md`; 17 matrix formulas, 18 parity corpus,
+  19 computed-column surface → `archive/`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
   `archive/dev-notes-history.md`.
 - Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),

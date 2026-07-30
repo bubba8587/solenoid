@@ -14,9 +14,12 @@ Covers everything on `develop` since the v1.2.0 tag.
 ## Headliners — the slide deck
 
 - **[slide] Computed columns.** A table column can now be *defined*, not just typed:
-  pick Formula on any Frame Input column and write `price * qty`, or bind a wired λ —
-  `@name` reads this row's cell (Excel's `[@Price]`), computed columns can reference
-  each other, and the chip's **ƒ** marks a defined table. Mid-pipeline, the Computed
+  pick Formula on any Frame Input column and write `@price * @qty`, or bind a wired λ.
+  References work exactly like an Excel table: **a bare name is the whole column,
+  `@name` is this row's cell** — so `@revenue / SUM(revenue)` is a share-of-total and
+  `SUMIFS(amt, cat, @cat)` a per-group subtotal, per row. Computed columns can
+  reference each other, take per-column units and number formats like any typed
+  column, and the chip's **ƒ** marks a defined table. Mid-pipeline, the Computed
   Column node does the same over any frame — with side inputs, bracket references
   (`@[Unit Price]`) for unspellable names, and per-variable column-binding pickers. The
   "Computed Columns & @" example canvas tours it.
@@ -38,6 +41,9 @@ Covers everything on `develop` since the v1.2.0 tag.
   their node — a real name gets guidance, never a bare `#NAME?`.
 - Click a column header in any table popup to sort the view — multi-column,
   visual-only, the value never changes.
+- A value's unit is first-class now: a Format node downstream of a united value
+  shows the unit locked instead of letting a dropdown relabel it — changing a
+  display unit takes a Convert node, because a unit change is a magnitude change.
 - The Add menu finds operations *inside* nodes: searching "median" surfaces the
   Aggregate card's op, not just node names.
 - The desktop (Polars) engine and the web engine are corpus-tested to agree
