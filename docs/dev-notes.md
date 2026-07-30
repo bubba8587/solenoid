@@ -144,6 +144,23 @@ wire") wires a Display inside a composite's internal editor and watches both
 rings adopt `number` and revert on disconnect. Line deleted per the reconcile
 rule; the test keeps it true.
 
+### The computed-columns seed + the sideVars load fix (2026-07-30b)
+
+`seedGraphs/computed-columns.json` ("Computed Columns & @", order 18, author
+request): one canvas touring the whole surface — a Frame Input whose
+`revenue` is a Formula column (`price * qty`) and `margin` a λ column bound
+to a wired ZERO-param λ reading `@revenue` (intra-table topo on display),
+then the CC verb node adding `scaled = @revenue * @scale` with the scale
+LIST wired to the @-grown side port. Verified by the headless runner, not
+just the seed sweep: margin 90/140/135/100, scaled 360/1120/1620/1600.
+
+Prerequisite fix the seed exposed: **CC side sockets now persist**
+(`sideVars` joined INIT_FIELD_ORDER; the constructor regrows the sockets,
+the Expression pattern). Before, a saved cable into a side socket DROPPED on
+reload — connections restore before the first data() would have re-derived
+the socket. The reconcile still owns growth/pruning after load. Pinned in
+computedColumn.test.ts (55).
+
 ### @ over side values + binding pickers (2026-07-30a)
 
 Two Computed Column moves, author-directed.

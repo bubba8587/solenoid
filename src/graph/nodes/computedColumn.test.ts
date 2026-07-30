@@ -613,4 +613,15 @@ describe("persistence", () => {
     const clone = new ComputedColumnNode(init as ConstructorParameters<typeof ComputedColumnNode>[0]);
     expect(clone.expr).toBe("qty * price");
   });
+
+  it("sideVars persist and the constructor regrows the sockets — a saved side cable finds its port at load", () => {
+    const n = named("price * (1 - disc)", "net");
+    run(n, sales); // grows the disc side socket
+    expect(n.sideVars).toEqual(["disc"]);
+    const init = extractInit(n) as { sideVars?: string[] };
+    expect(init.sideVars).toEqual(["disc"]);
+    const clone = new ComputedColumnNode(init as ConstructorParameters<typeof ComputedColumnNode>[0]);
+    expect(clone.sideVars).toEqual(["disc"]);
+    expect(clone.inputs.disc).toBeDefined(); // the socket exists BEFORE any compute
+  });
 });

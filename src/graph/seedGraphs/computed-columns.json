@@ -1,0 +1,132 @@
+{
+  "v": 1,
+  "label": "Computed Columns & @",
+  "order": 18,
+  "nodes": [
+    {
+      "id": "hdr",
+      "type": "NoteNode",
+      "x": -360,
+      "y": -250,
+      "init": {
+        "label": "Computed columns: define a column, don't type it",
+        "body": "A table column can be **Typed** (literal cells), a **Formula** (a row-wise expression stored on the column), or a **λ** wired in from outside. Inside any row formula, a plain name reads the column of that name and `@name` reads *this row's* cell — Excel's `[@Price]`. Open the Sales table (click its chip) to see the per-column source selects; the chip's **ƒ** marks a table with defined columns.",
+        "color": "blue",
+        "width": 940,
+        "height": 170
+      }
+    },
+    {
+      "id": "rule",
+      "type": "LambdaNode",
+      "x": -360,
+      "y": 60,
+      "init": {
+        "label": "Margin rule — zero params, @ reads the row",
+        "expr": "@revenue * 0.25",
+        "params": ""
+      }
+    },
+    {
+      "id": "sales",
+      "type": "FrameInputNode",
+      "x": -40,
+      "y": 60,
+      "init": {
+        "label": "Sales",
+        "frameText": "[{\"name\":\"price\",\"type\":\"number\",\"cells\":[\"120\",\"80\",\"45\",\"200\"]},{\"name\":\"qty\",\"type\":\"number\",\"cells\":[\"3\",\"7\",\"12\",\"2\"]},{\"name\":\"revenue\",\"type\":\"number\",\"cells\":[],\"expr\":\"price * qty\"},{\"name\":\"margin\",\"type\":\"number\",\"cells\":[],\"lambda\":\"fn1\"}]",
+        "lambdaKeys": ["fn1"]
+      }
+    },
+    {
+      "id": "noteA",
+      "type": "NoteNode",
+      "x": -360,
+      "y": 340,
+      "init": {
+        "label": "Two defined columns in one table",
+        "body": "`revenue` is a **Formula** column — `price * qty`, stored on the column itself. `margin` is a **λ** column bound to the wired Margin rule: the λ takes *no parameters* and reads `@revenue` — a computed column referencing another computed column, evaluated in dependency order.",
+        "color": "green",
+        "width": 560,
+        "height": 175
+      }
+    },
+    {
+      "id": "scale",
+      "type": "ListInputNode",
+      "x": -40,
+      "y": 590,
+      "init": {
+        "label": "Scale — one value per row",
+        "valueKeys": ["v0"],
+        "dataType": "number"
+      },
+      "stringLiterals": {
+        "v0": "1, 2, 3, 4"
+      }
+    },
+    {
+      "id": "cc",
+      "type": "ComputedColumnNode",
+      "x": 330,
+      "y": 60,
+      "init": {
+        "label": "Computed Column",
+        "expr": "@revenue * @scale",
+        "sideVars": ["scale"]
+      },
+      "stringLiterals": {
+        "name": "scaled",
+        "after": ""
+      }
+    },
+    {
+      "id": "out",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 60,
+      "init": {
+        "label": "Sales + scaled"
+      }
+    },
+    {
+      "id": "noteB",
+      "type": "NoteNode",
+      "x": 330,
+      "y": 420,
+      "init": {
+        "label": "@ over a wired list",
+        "body": "Mid-pipeline, the **Computed Column** node adds `scaled = @revenue * @scale`. `revenue` is a column, but `scale` isn't — an `@name` matching no column becomes a side input on this node, and the wired list is read **row by row** (it must line up: 4 values for 4 rows; a mismatch is a per-row `#SHAPE!`). A scalar wired there would read the same every row.",
+        "color": "amber",
+        "width": 560,
+        "height": 185
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "rule",
+      "sourceOutput": "result",
+      "target": "sales",
+      "targetInput": "fn1"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "cc",
+      "targetInput": "frame"
+    },
+    {
+      "source": "scale",
+      "sourceOutput": "list",
+      "target": "cc",
+      "targetInput": "scale"
+    },
+    {
+      "source": "cc",
+      "sourceOutput": "frame",
+      "target": "out",
+      "targetInput": "in"
+    }
+  ]
+}

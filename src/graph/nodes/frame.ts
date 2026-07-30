@@ -1816,7 +1816,10 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = { name: "computed", after: "" };
   /** Inline defaults for the side-input sockets (Expression convention: 0). */
   literals: Record<string, number> = {};
-  /** The side-input sockets currently grown (variables that named no column). */
+  /** The side-input sockets currently grown (variables that named no column).
+   *  PERSISTED and regrown in the constructor (the Expression pattern) — a
+   *  saved cable into a side socket must find its socket at load, before the
+   *  first data() would have re-derived it; the reconcile then owns it. */
   sideVars: string[] = [];
   /** Explicit variable → column bindings (the binding pickers). Absent = auto
    *  (by name, else a side input); present = ALWAYS a read of that column
@@ -1833,13 +1836,17 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   private _rowRefs: string[] = [];
   private _compiledFor: string | null = null;
 
-  constructor(init?: { label?: string; expr?: string; addAs?: ComputedColumnAs; literals?: Record<string, number>; bindings?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; addAs?: ComputedColumnAs; literals?: Record<string, number>; bindings?: Record<string, string>; sideVars?: string[] }) {
     super("ComputedColumn");
     this.label = init?.label ?? "Computed Column";
     this.expr = init?.expr ?? "";
     this.addAs = init?.addAs === "number" || init?.addAs === "text" || init?.addAs === "date" || init?.addAs === "logical" ? init.addAs : "auto";
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.bindings) this.bindings = { ...init.bindings };
+    if (Array.isArray(init?.sideVars)) {
+      this.sideVars = init.sideVars.filter((v) => typeof v === "string");
+      for (const v of this.sideVars) this.addInput(v, anyDataIn(v));
+    }
     this.addInput("frame", frameIn("Frame"));
     this.addInput("name", strIn("Name"));
     // Placement: blank = append at the end; a column name = insert right
