@@ -447,7 +447,7 @@ describe("adoptTypeForBase / projectTypeToBase — one answer per connectable pa
   const EVERY: SocketDataType[] = [
     "number","list","numlist","table","string","strlist","strcombo","strtable",
     "date","datelist","datecombo","datetable","complex","complexlist","complexcombo","complextable",
-    "logical","logicallist","logicalcombo","logicaltable","anytable","anylist","anycombo",
+    "logical","logicallist","logicalcombo","logicaltable","anytable","anylist","anycombo","anydata",
     "frame","cube","lambda","chart","document","any","trueany",
   ];
 

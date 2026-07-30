@@ -78,7 +78,7 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
 - `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
   `docs/deferrals.md` — the deferred/parked/author-gated set behind the backlog's single
   Deferral-review item. `docs/dev-notes.md` — open problems + the latest session digests only.
-- Rationale/reference: `docs/socket-reference.md` (all 30 socket variants — what each
+- Rationale/reference: `docs/socket-reference.md` (all 31 socket variants — what each
   accepts, what it's blocked from, what the coercion boundary does; read before typing
   a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
   table, mirrored in `formatModel.ts` — read before touching FC controls),
@@ -262,7 +262,7 @@ Read the relevant section there before touching one of these. The one-line "don'
 - **Socket lattice** (`sockets.ts`): enforce TYPE separation (element families never auto-cross;
   Cast required; sole exception logical↔number), allow DIMENSIONAL flow (scalar → list →
   matrix → frame; a list widens into a 2-D input as a ROW). The wildcard ladder (D17): `any` =
-  untyped scalar, `anylist`/`anytable` = 1-D/2-D, `anydata` = rank ≤ 2 (Expression
+  untyped scalar, `anycombo` = 0-or-1-D, `anylist`/`anytable` = 1-D/2-D, `anydata` = rank ≤ 2 (Expression
   variables — SOCK-9/D23: matrices in, frames/cubes never), `trueany` = the
   adopt-anything supremum (hollow ring). Adoption (`trueAnyAdopt.ts`) never drops cables and never persists;
   rank-bearing wildcards keep their rank and adopt only the element family; every
