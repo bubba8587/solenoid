@@ -616,6 +616,58 @@ describe("binding pickers — explicit variable → column bindings", () => {
   });
 });
 
+describe("identity-stable outputs — the backend upload cache holds across passes", () => {
+  it("an unchanged pass returns the SAME objects: λ value, CC frame", () => {
+    const lam = new LambdaNode({ expr: "qty * 2", params: "qty" });
+    const v1 = (lam.data({}) as { result: unknown }).result;
+    const v2 = (lam.data({}) as { result: unknown }).result;
+    expect(v2).toBe(v1);
+    // A changed capture input mints a new value.
+    const lam2 = new LambdaNode({ expr: "qty * k", params: "qty" });
+    const a = (lam2.data({ k: [2] }) as { result: unknown }).result;
+    const b = (lam2.data({ k: [3] }) as { result: unknown }).result;
+    expect(b).not.toBe(a);
+
+    const n = named("price * qty", "rev");
+    const r1 = run(n, sales) as FrameValue;
+    const r2 = run(n, sales) as FrameValue;
+    expect(r2).toBe(r1);
+    // A different input frame (new identity) recomputes.
+    const r3 = run(n, { ...sales }) as FrameValue;
+    expect(r3).not.toBe(r1);
+    // A config change recomputes.
+    n.stringLiterals.name = "revenue";
+    expect(run(n, { ...sales })).not.toBe(r3);
+  });
+
+  it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", () => {
+    const n = named("price * (1 - disc)", "net");
+    run(n, sales); // grows disc
+    const r1 = run(n, sales, { disc: [0.1] }) as FrameValue;
+    expect(run(n, sales, { disc: [0.1] })).toBe(r1);
+    const r2 = run(n, sales, { disc: [0.2] }) as FrameValue;
+    expect(r2).not.toBe(r1);
+    expect(getColumn(r2, "net")!.values).toEqual([8, 16, 24]);
+    n.bindings = { disc: "qty" };
+    expect(run(n, sales, { disc: [0.2] })).not.toBe(r2);
+
+    const fi = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "a", type: "number", cells: ["1", "2"] },
+        { name: "c", type: "number", cells: [], lambda: "fn1" },
+      ]),
+      lambdaKeys: ["fn1"],
+    });
+    const lam = new LambdaNode({ expr: "a + 1", params: "a" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    const f1 = fi.data({ fn1: [fn] }).frame as FrameValue;
+    expect(fi.data({ fn1: [fn] }).frame).toBe(f1);
+    // A new λ identity (an edit upstream) recomputes.
+    const fn2 = (new LambdaNode({ expr: "a + 2", params: "a" }).data({}) as { result: unknown }).result;
+    expect(fi.data({ fn1: [fn2] }).frame).not.toBe(f1);
+  });
+});
+
 describe("persistence", () => {
   it("extractInit round-trips expr and the column name", () => {
     const n = named("qty * price", "revenue");
