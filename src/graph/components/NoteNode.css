@@ -324,6 +324,61 @@
 .solenoid-note__rendered.sol-md ol { margin: 5px 0; }
 .solenoid-note__rendered.sol-md pre { margin: 6px 0; }
 
+/* ── Markdown ink tinted by the note's OWN color ──────────────────────────────
+   The rendered body reached for the APP accent (links) and the neutral chrome
+   tokens (code, tables, rules) while every other part of the card — border,
+   header, chevron, title, fields separator, grip — is drawn from --note-color.
+   That's the Nearest-Accent Rule (DESIGN.md §2): inside a surface carrying its
+   own accent, the surface's accent wins, or an app-accent link lands next to a
+   note-colored border as two unrelated hues on one small card.
+   Every value below is a color-mix off --note-color, so it retints WITH the card
+   and there is nothing to keep in sync: picking a swatch rewrites the inline var
+   (NoteComponent `pick`), and a palette or light/dark switch re-renders the note
+   through themeAccent ∘ resolveColor (it subscribes to appThemeStore, which
+   appTheme re-notifies on every palette change). No JS reads these.
+   Deliberately QUIET (Quiet Accent Rule): the note color stays a MINORITY share
+   against the same text/chrome tokens as before, so prose contrast is unchanged
+   in both themes and only markdown's structural marks — headings, code, links,
+   rules, table headers — carry the tint. Body text (p / li / strong) is
+   untouched. The blockquote's left rule deliberately stays NEUTRAL: a 3px
+   colored left border is the accent stripe the design system bans outright,
+   whatever element it sits on. The percentages are the tuning knob; the
+   Import-from-Obsidian card renders these same classes and picks it up free. */
+.solenoid-note__rendered.sol-md h1,
+.solenoid-note__rendered.sol-md h2,
+.solenoid-note__rendered.sol-md h3 {
+  color: color-mix(in srgb, var(--note-color, var(--accent)) 40%, var(--text-bright));
+}
+.solenoid-note__rendered.sol-md a {
+  color: color-mix(in srgb, var(--note-color, var(--accent)) 72%, var(--text-bright));
+}
+.solenoid-note__rendered.sol-md code,
+.solenoid-note__rendered.sol-md pre,
+.solenoid-note__rendered.sol-md kbd,
+.solenoid-note__rendered.sol-md th {
+  background: color-mix(in srgb, var(--note-color, var(--accent)) 14%, var(--surface-sunken));
+}
+/* Hairlines: the h2 underline, the `---` rule, code/table edges. */
+.solenoid-note__rendered.sol-md code,
+.solenoid-note__rendered.sol-md pre,
+.solenoid-note__rendered.sol-md th,
+.solenoid-note__rendered.sol-md td {
+  border-color: color-mix(in srgb, var(--note-color, var(--accent)) 30%, var(--border));
+}
+.solenoid-note__rendered.sol-md kbd {
+  border-color: color-mix(in srgb, var(--note-color, var(--accent)) 30%, var(--border-strong));
+}
+.solenoid-note__rendered.sol-md h2 {
+  border-bottom-color: color-mix(in srgb, var(--note-color, var(--accent)) 40%, var(--border));
+}
+.solenoid-note__rendered.sol-md hr {
+  border-top-color: color-mix(in srgb, var(--note-color, var(--accent)) 45%, var(--border));
+}
+/* The `code` selectors above are two classes deep, so they out-specify
+   Markdown.css's `.sol-md pre code` reset — without this a fenced block would
+   paint the inline-code tint again inside its own already-tinted <pre>. */
+.solenoid-note__rendered.sol-md pre code { background: none; border: none; }
+
 /* Selection ring — copied from the Group node's (its own ring at the 8px
    radius so it hugs the frame; raised above the border via z-index). */
 .solenoid-note--selected {

@@ -120,6 +120,31 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Note markdown reads the note's accent, not the app's (2026-07-30i)
+
+`.solenoid-note__rendered.sol-md` inherited the shared doc styles wholesale, so
+the note body's links took `--accent` (the APP accent) and its code / tables /
+rules took the neutral chrome tokens — while every other part of the card
+(border, header, chevron, title, fields separator, grip) is drawn from
+`--note-color`. That's the Nearest-Accent Rule: inside a surface carrying its
+own accent, the surface's wins, or a gold link sits inside a violet note as two
+unrelated hues on one small card.
+
+Note-scoped overrides in `NoteNode.css` now mix the structural marks off
+`--note-color`: headings 40% toward `--text-bright`, links 72%, code/pre/kbd/th
+fills 14% over `--surface-sunken`, hairlines (code + table edges, the h2
+underline, `hr`) 30–45% over `--border`. Prose (p / li / strong) and the
+blockquote are untouched — the quote's 3px left rule stays neutral because a
+colored one is the banned accent stripe.
+
+CSS-only, and reactive for free: the mixes resolve `--note-color`, which
+`NoteComponent` writes inline from `themeAccent ∘ resolveColor` and re-renders
+on both a swatch pick (`pick` → `area.update`) and any palette/theme change (it
+subscribes to `appThemeStore`, which `appTheme` re-notifies from
+`paletteStore.subscribe`). The Import-from-Obsidian card renders the same
+classes over its own `--note-color`, so it picked this up unchanged. Percentages
+are the tuning knob.
+
 ### Column source reads "Data"; the seed drops its gratuitous @ (2026-07-30h)
 
 Three author copy/idiom corrections, no mechanism change.
