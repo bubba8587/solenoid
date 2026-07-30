@@ -184,6 +184,19 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Stale shape-cap copy swept off the formula surfaces (2026-07-31g)
+
+Author caught the formula POPUP still teaching the pre-D23 cap ("scalar /
+1-D only, a matrix returns #SHAPE!"). Swept the class: the popup's engine
+note now states the D23/D24 boundary (scalars + lists + matrices +
+complex in; MAP/BYROW/REDUCE apply λs; frames out — verbs are nodes, and
+in a computed column @name is this row, a bare name the whole column);
+help/notes.md "where the edges are" likewise; and the Expression catalog
+description dropped TWO dead claims — the 1-D cap AND "Formula.js …
+can differ from the matching node" (false since the Tier-3 registry
+unification: one shared impl, node-equality-tested). Equation's "numbers
+and 1-D lists" line verified still TRUE (numListIn) and kept.
+
 ### FC forwarding LOCKS: an inherited unit is set elsewhere (2026-07-31f)
 
 Author repro: computed column's unit → INDEX pulls a cell → FC inherits

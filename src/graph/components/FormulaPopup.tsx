@@ -313,18 +313,18 @@ export function FormulaPopup() {
           />
         </div>
 
-        {/* Engine note: the formula path now resolves through the same registry the
-            consolidation built, so it matches the visual nodes wherever they overlap
-            (the known divergences — MOD/ATAN2/RANK/TRIMMEAN/PERCENTRANK/domain errors —
-            are overridden to our impl). The load-bearing thing left to tell the user is
-            the SHAPE cap: formulas are scalar / 1-D only. See dev-notes 2026-06-25. */}
+        {/* Engine note: the formula path resolves through the same registry as the
+            visual nodes, so they match wherever they overlap. The load-bearing thing
+            to tell the user is the SHAPE boundary as of D23/D24: scalars, lists and
+            MATRICES are in (with complex); frames/cubes stay out — the verb nodes
+            are their surface, and a computed column's references are the row door. */}
         {host.equation ? (
           <div className="formula-popup__engine-note">
             ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
           </div>
         ) : (
         <div className="formula-popup__engine-note">
-          ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
+          ƒ Works on <strong>single values, 1-D lists, and 2-D matrices</strong>: element-wise broadcast, list aggregates (SUM, AVERAGE…), the matrix core (TRANSPOSE, MMULT, SEQUENCE…), and complex numbers. <strong>MAP / BYROW / BYCOL / REDUCE</strong> apply a λ over an array. Data tables stay out — the frame verbs are nodes (a verb name typed here names its node), and in a computed column <code>@name</code> is this row's cell, a bare column name the whole column.
         </div>
         )}
 
