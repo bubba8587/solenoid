@@ -37,8 +37,9 @@ Every column of an EDITABLE table (Frame Input) has a **source**:
    because both call `computeColumnCells`. Excel TABLE semantics (D24,
    2026-07-30): `@name` is this row's cell, a bare name is the WHOLE column
    (`[@Amount]` vs `[Amount]` — so `@revenue / SUM(revenue)` is a share of
-   total and `SUMIFS(amt, cat, @cat)` a per-group subtotal); `at("Unit
-   Price")` / `col("Unit Price")` spell the two for names a variable can't;
+   total and `SUMIFS(amt, cat, @cat)` a per-group subtotal); the bracket
+   references spell the two for names a variable can't — `@[Unit Price]` this
+   row, `[Unit Price]` whole;
    `row`/`rows` builtins; null flows in; one value per row (a list result is
    a #SHAPE! pointing at `@`).
 3. **λ** — one of the node's wired lambda inputs. Frame Input grows an

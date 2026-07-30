@@ -835,6 +835,10 @@ export function TablePopup() {
                     const computedHere = !vertical && (!!colLambdas[c] || colExprs[c] !== undefined);
                     const canEdit = !computedHere && editable && !(formattedPreview && !fmtEdit); // = !readOnly below
                     if (computedHere) {
+                      // Derived VALUES rendered through the same per-column
+                      // format + unit controls as literal cells (controlledCell)
+                      // — the format row works on a computed column exactly as
+                      // on a Data one.
                       return (
                         <td
                           key={c}
@@ -842,8 +846,8 @@ export function TablePopup() {
                           style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                         >
                           <input
-                            className="table-popup__input table-popup__input--computed"
-                            value={state.computedCells?.[r]?.[c] ?? ""}
+                            className={`table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`}
+                            value={controlledCell(state.computedCells?.[r]?.[c] ?? null, c)}
                             readOnly
                             tabIndex={-1}
                             spellCheck={false}

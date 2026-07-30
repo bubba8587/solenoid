@@ -184,6 +184,34 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Format + unit selectors work on computed columns (2026-07-31b)
+
+Author ask. Three seams closed: (1) Frame Input's compute path now carries
+the source column's `unit` onto the rebuilt computed column (number-typed,
+deriveFrame's exact rule) — it used to DROP the tag, so the popup's unit
+dropdown saved a choice that never reached the value; (2) FrameChip passes
+the DERIVED type for computed columns, so the format row shows the right
+selector family for what the cells actually are; (3) computed cells render
+their raw derived VALUES through `controlledCell` — the same per-column
+format+unit path literal cells use — instead of pre-formatted strings that
+bypassed the controls (`computedCells` is now `Cell[][]`). Unit-ride pin in
+computedColumn.test.ts (60).
+
+### Bracket references replace col()/at() (2026-07-31a)
+
+The author: "why not the [] bracket syntax." Right — brackets are what an
+Excel-tables user types; col()/at() were the cheap path. Both functions are
+DELETED (registrations, meta, signatures); the grammar gained structured
+references: `[Unit Price]` = the whole column, `@[Unit Price]` = this row,
+and Excel's own `[@Name]` / `[@[Name]]` spellings parse too. New
+colref/rowref tokens + a `wholecol` AST node (evalAst → readWholeColumn;
+tex/numeric/equation/unitDim walks; tsc exhaustiveness found them);
+collectRowRefs feeds the topo from both; atColNames filters λ captures to
+identifier @names (a bracketed name can never be a variable). Highlighting
+colors a whole bracket ref as one fx-var token. Dynamic col(expr) names
+lost their spelling — accepted (Get Column territory). D24 amended in
+place; seed/catalog/docs re-spelled.
+
 ### D24: Excel table semantics — bare = whole column, @ = this row (2026-07-30h)
 
 The author's late-day concern — "filter column A by this row's B needs
@@ -198,11 +226,17 @@ turn:
   whose message points at @ — the old trap's silent 1.0 is dead.
 - λ PARAMS stay row-bound (the λ's explicit per-row interface); picker
   bindings follow the same split (expr var → whole target, λ param → row).
-- `col()` FLIPS to the whole-column accessor; new `AT()` is the row read —
-  the two spelled-out forms for unspellable names. Both feed the topo
-  (collectRowRefs); neither grows λ captures.
+- Unspellable names use Excel's BRACKET syntax (amended same day — the
+  first cut shipped `col()`/`at()` functions, the author asked "why not the
+  [] bracket syntax", both functions deleted): `[Unit Price]` = the whole
+  column, `@[Unit Price]` = this row, and Excel's own `[@Name]` /
+  `[@[Name]]` spellings parse too. New tokenizer colref/rowref tokens + a
+  `wholecol` AST node (all four walks; tsc exhaustiveness); both feed the
+  topo (collectRowRefs); neither grows λ captures (atColNames filters to
+  identifier @names). Dynamic col(expr) names lost their spelling —
+  accepted, that's Get Column territory.
 - Inside a λ body a bare free name is still a capture (the definition owns
-  its names); whole-column reads there are `col("name")`.
+  its names); whole-column reads there are `[name]`.
 - Core: bindings split by spec kind (`wholecol` passes the same values
   array every row); the row context grew `whole()`; the per-row error
   pre-check now applies to ROW-bound cells only (errors inside a whole

@@ -65,7 +65,8 @@ export function astToFormula(n: Ast): string {
   switch (n.t) {
     case "num": return n.v;
     case "blank": return "";
-    case "atcol": return `@${n.name}`;
+    case "atcol": return /^[A-Za-z_][A-Za-z0-9_]*$/.test(n.name) ? `@${n.name}` : `@[${n.name}]`;
+    case "wholecol": return `[${n.name}]`;
     case "str": return `"${n.v}"`;
     case "bool": return n.v ? "TRUE()" : "FALSE()";
     case "name": return n.name;

@@ -6,7 +6,6 @@ import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
-import { readRowCell, readWholeColumn } from "./computedColumnCore";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
@@ -532,13 +531,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   CLAMP:       { returns: "number",  arity: [3, 3], native: true },
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
-  // The table readers for column names an identifier can't spell (D24, Excel
-  // table semantics): `col("Unit Price")` is the WHOLE column — the
-  // spelled-out bare name — and `at("Unit Price")` is this row's cell — the
-  // spelled-out `@`. Both resolve the dynamic row context a computed column
-  // sets (computedColumnCore); outside one they answer a targeted #REF!.
-  COL:         { returns: "any",     arity: [1, 1], native: true },
-  AT:          { returns: "any",     arity: [1, 1], native: true },
 
   // ── Tier 1 (D19): names Formula.js lacks entirely, so the registry is what
   // makes them callable at all. `native: true` says exactly that — it is not a
@@ -1894,14 +1886,6 @@ registerInternal("HYPOTENUSE", (x, y) => {
   if (x == null || y == null) return null;
   return Math.hypot(Number(x), Number(y));
 });
-// This row's cell of the named column — `@price` desugars here semantically;
-// the quoted form covers names an identifier can't (`col("Unit Price")`,
-// `col(2024)` — a numeric argument is a NAME, never a positional index).
-// D24 (Excel table semantics): COL is the WHOLE column — the spelled-out bare
-// name, for names an identifier can't carry; AT is the this-row read — the
-// spelled-out `@`. Both resolve the dynamic row context a computed column sets.
-registerInternal("COL", (name) => (name == null ? null : readWholeColumn(name)));
-registerInternal("AT", (name) => (name == null ? null : readRowCell(name)));
 // The negated Boolean trio — variadic, Kleene three-valued like the node
 // (logic.ts BooleanOpNode): coerceLogical per operand (the shared liberal
 // parse), null = unknown flows by Kleene, result is a real boolean.

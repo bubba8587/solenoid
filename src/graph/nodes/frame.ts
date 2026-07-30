@@ -32,7 +32,7 @@ import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
-import { tagFrameCellUnit } from "../unitColumn";
+import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
 
 // A verb that may throw a tagged SolError (a #REF! for a bad column) must NOT let
 // it escape data(): installErrorGuards' fromThrown flattens a thrown SolError to a
@@ -213,7 +213,7 @@ export class FrameInputNode extends ClassicPreset.Node {
         const lam = c.lambda ? lamAt(i) : null;
         const ex = !c.lambda && c.expr ? exprAt(i) : null;
         // Column dependencies: the definition's variables AND its row-context
-        // reads (`@name`, `col("name")` — rowRefNames), so a zero-param λ or a
+        // reads (`@name`, `[Name]` — rowRefNames), so a zero-param λ or a
         // pure-@ formula reading @revenue still orders after that column.
         const deps = lam
           ? [...lam.params, ...(lam.expr ? rowRefNames(lam.expr) : [])]
@@ -249,8 +249,15 @@ export class FrameInputNode extends ClassicPreset.Node {
         } else {
           // Type from inference, values verbatim (inferColumn CONSTRUCTS a
           // column — stringified raw, coerced cells — which would mangle
-          // per-row SolErrors; the CC verb reads .type the same way).
-          frame.columns[i] = { name: c.name, type: inferColumn(c.name, r.cells).type, values: r.cells };
+          // per-row SolErrors; the CC verb reads .type the same way). The
+          // source column's UNIT tag rides onto the derived column exactly
+          // like deriveFrame's literal rule — the popup's unit dropdown works
+          // on a computed column the same as on a Data one.
+          const type = inferColumn(c.name, r.cells).type;
+          frame.columns[i] = {
+            name: c.name, type, values: r.cells,
+            ...(type === "number" && c.unit ? { unit: columnUnitFromSpec(c.unit) ?? undefined } : {}),
+          };
         }
       }
     }
