@@ -873,7 +873,7 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
       <FormulaField
         value={expr}
         onChange={commit}
-        placeholder="price * qty …"
+        placeholder="@price * @qty …"
         locked={false}
         onOpen={() => formulaPopup.open(data.id)}
       />
