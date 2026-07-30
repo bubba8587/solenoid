@@ -119,14 +119,21 @@ describe("passthrough declarations", () => {
     expect(resolve("list")).toBe("numlist");
     expect(resolve("complexlist")).toBe("complexcombo");
 
-    // HETEROGENEOUS or untyped: genuinely unknowable, so the placeholder stands.
-    for (const t of ["cube", "anylist", "anytable", "any", "trueany"] as const) {
+    // Untyped wildcards: genuinely unknowable, so the placeholder stands.
+    for (const t of ["anylist", "anytable", "any", "trueany"] as const) {
       expect(resolve(t)).toBe("trueany");
     }
     expect(resolve(null)).toBe("trueany"); // unwired
     // A FRAME resolves per COLUMN, not per socket — with no shape context and no
     // Column set, the extraction is the whole row, which is still a frame.
     expect(resolve("frame")).toBe("frame");
+    // A CUBE's slices are always cubes: with a blank axis (here both — the
+    // defaults) the result is a cube; only Row AND Column both given is an
+    // unknowable single cell.
+    expect(resolve("cube")).toBe("cube");
+    n.literals.index = 1;
+    n.literals.column = 1;
+    expect(resolve("cube")).toBe("trueany");
   });
 
   it("INDEX over a FRAME takes the named COLUMN's family from the static shape", () => {
