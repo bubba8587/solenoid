@@ -193,9 +193,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Aliasing / hidden-port promotion UI** (composites) — the data model has
   `hidden`/`advanced` per port; no UI to flip exposure or edit a hidden port's baked
   default. Includes the pack-shell "many internal ports → one shell parameter" aliasing.
-- [ ] **Extend targeted recompute to topology changes** (D8 open follow-through) — a
-  full recompute still fires on every cable connect/disconnect; value edits already
-  recompute targeted.
 - [ ] **Value-popup gaps** (surveyed 2026-07-27 while adding the column sort; author
   parked all five). In rough order of how much each bites:
   - The visual sort only covers the LOADED WINDOW — a grid is truncated to 1,000 rows
