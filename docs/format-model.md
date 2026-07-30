@@ -17,8 +17,10 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
 
 1. **Type gate.** The FC's adopted socket type maps to a **format family**
    (`familyOf`). The family selects which controls exist at all (the truth table
-   below). A control outside the family is HIDDEN in the popup and INERT in
-   resolution — never disabled-but-visible, never silently applied.
+   below). A control outside the FAMILY is HIDDEN in the popup and INERT in
+   resolution — never disabled-but-visible, never silently applied. (The one
+   sanctioned disabled-but-visible control is WITHIN a family: the unit dropdown
+   under a lock state, below — locked is a fact worth showing, absence is not.)
 2. **Style.** The numeric magnitude renders per the format style, with precision
    resolved by ONE shared rule (below) — no per-style private precision logic.
    Dates render via their pattern instead; text/logical skip this stage.
@@ -29,12 +31,29 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
 
    **Unit = VALUE-level, format = DISPLAY-level (FC A4, 2026-07-13).** The FC is
    VALUE-MUTATING for the unit: `FormatControllerNode.data()` tags the value's
-   `UnitCell` (dimension + the chosen display id) via `applyFcUnit` — a
-   dimensionless number is authored (`5` + km → 5000 m base, display km), a
-   commensurable dimensioned value is re-displayed, an incommensurable one is a
-   `#UNIT!`. Because the unit now rides the VALUE (`unitValue.ts`, base-SI +
+   `UnitCell` (dimension + the chosen display id) via `applyFcUnit`, whose three
+   branches are: a dimensionless number is authored (`5` + km → 5000 m base,
+   display km), a commensurable dimensioned value is re-displayed, an
+   incommensurable one is a `#UNIT!`. But the FC as a user-facing tool can only
+   REACH the authoring branch (D26): the re-display branch serves the mirror of
+   an inherited unit, never a dropdown pick — re-displaying a dimensioned value
+   is Convert's job. Because the unit rides the VALUE (`unitValue.ts`, base-SI +
    `display`), it carries downstream through passthroughs/selectors and DROPS at a
-   transform on its own — there is no graph unit-walk. The rest of this pipeline
+   transform on its own — there is no graph unit-walk.
+
+   **Unit lock states (D26 — a unit is first-class like the magnitude).** Who
+   owns the FC's unit dropdown (`formatController.ts` `data()` lock block):
+   - **authored** (`← →`) — the incoming value carries no unit; the FC's pick
+     authors it. The only editable state.
+   - **forwarding** (`→ →`) — the value arrives already united (set elsewhere in
+     the chain); the dropdown MIRRORS it and LOCKS. This FC never re-authors
+     over it.
+   - **lockedByConvert** (`← ←`) — a downstream Convert's `fromUnit` dictates
+     the unit; locked.
+
+   `unitLocked = lockedByConvert || forwarding`; the popup renders the dropdown
+   present-but-disabled under a lock (`disabled={node.unitLocked}`) — the value
+   HAS a unit, so the control shows it; it just isn't this FC's to change. The rest of this pipeline
    (style / precision / negatives / K-M-B) stays a DISPLAY annotation the FC locks
    onto the box behind it (`unitFlow.ts` `makeAnnotationResolver` carries it to a
    downstream passthrough box). So the unit computes and clashes honestly; the
@@ -49,22 +68,27 @@ non-finite number → `String(n)`. These outrank any annotation.
 
 `familyOf(socketDataType)`:
 
-| family | socket types |
+| family | socket types (all four rungs per family) |
 |---|---|
-| `number` | `number`, `list`, `combo`, `matrix`, `anytable` (numeric cells) |
-| `date` | `date`, `datelist` |
-| `text` | `string`, `strlist` |
+| `number` | `number`, `list`, `numlist`, `table`, plus `anytable` (numeric cells) |
+| `date` | `date`, `datelist`, `datecombo`, `datetable` |
+| `text` | `string`, `strlist`, `strcombo`, `strtable` |
 | `logical` | `logical`, `logicallist`, `logicalcombo`, `logicaltable` |
-| `complex` | `complex`, `complexlist` |
+| `complex` | `complex`, `complexlist`, `complexcombo`, `complextable` |
 | `lambda` | `lambda` — display-only view-as for a flowing LambdaValue |
 | `chart` | `chart` — display-only text scale for a flowing chart figure |
-| `number` (provisional) | `any` — an FC docked to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it |
-| `none` | everything else (`frame`, `cube`, …) |
+| `number` (provisional) | the wildcards `trueany` (the FC's default/reset type) and `any` — an FC docked to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it |
+| `none` | everything else — `frame`, `cube`, and the family-less non-wildcards `anylist`/`anycombo`/`anydata` (no element family ⇒ no controls) |
 
 Lists/matrices format PER CELL with the one annotation (the array-semantics model:
 `null` and `SolError` cells short-circuit per cell). Frames are `none` in this
-model — per-column units/formats are v1.1 A4 (units by dimensionality), a separate
-representation, not a scalar annotation stretched over a table.
+model — per-column units/formats are a SEPARATE representation, not a scalar
+annotation stretched over a table: `ColumnUnit` on `FrameColumn.unit`
+(`unitColumn.ts`), authored by a header spec or the table popup's per-column
+format+unit row. A COMPUTED column keeps its authored unit the same way — the
+source column's unit tag rides onto the derived column (`nodes/frame.ts`), gated
+on the derived cells inferring as `number`: a computed column whose cells come
+out non-numeric silently drops its authored unit.
 
 ## The control truth table
 
@@ -74,7 +98,7 @@ Which controls exist per family (popup rows AND resolution axes):
 |---|---|---|---|---|---|
 | number style dropdown | ✔ all styles | — | — | — | ✔ reduced: `auto` / `decimal` / `scientific` |
 | precision row (digits + places\|sig figs) | per style, see rule | — | — | — | per style (both components) |
-| unit dropdown | ✔ | — | — | — | ✔ |
+| unit dropdown | ✔ (disabled under a lock state — see the unit lock states above) | — | — | — | ✔ (same) |
 | date style dropdown | — | ✔ | — | — | — |
 | custom pattern field | when style = `custom` | when style = `date_custom` | — | — | — |
 | case (Aa) | — | — | ✔ | — | — |
@@ -157,8 +181,11 @@ compat shim.
   `precisionApplies(style)`: the single source for both the popup and resolution.
 - `applyFormatStyle` — style cases delegate precision to the shared resolver;
   no case carries private digit logic.
-- `FormatControllerNode.tsx` — renders rows strictly off `controlsFor`; no inline
-  `isDate`/`isText`/`format === "decimal"` gates.
+- `FormatControllerNode.tsx` — renders rows strictly off `controlsFor` (including
+  the custom-pattern field, `customPattern`); no inline `isDate`/`isText`/
+  `format === "decimal"` gates. The unit dropdown's `disabled` under a lock state
+  is the one sanctioned non-`controlsFor` modifier (presence is still the
+  family's call; only editability is the lock's).
 - Render surfaces (`ValueDisplay`, `DisplayNode`, `CableInspector`,
   `inlineRefDisplay`, Report embeds) — booleans route through
   `applyLogicalStyle` when an annotation is present; numbers keep routing through

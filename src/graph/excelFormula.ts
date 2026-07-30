@@ -376,7 +376,7 @@ function collectRowRefs(n: Ast, out: Set<string>): void {
   }
 }
 
-/** The row-context column reads (`@name`, `col("name")`) in a formula. */
+/** The row-context column reads (`@name`, `@[name]`) in a formula. */
 export function rowRefNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];

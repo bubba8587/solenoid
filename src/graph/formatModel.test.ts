@@ -45,10 +45,18 @@ describe("precisionApplies — ONE list: decimal, percent, scientific", () => {
 describe("controlsFor — the truth table rows", () => {
   it("number family: styles + unit; precision follows the style", () => {
     const dec = controlsFor("number", "decimal");
-    expect(dec).toEqual({ numberStyle: true, complexStyle: false, precision: true, unit: true, dateStyle: false, text: false, logical: false, lambda: false, chart: false, advanced: true });
+    expect(dec).toEqual({ numberStyle: true, complexStyle: false, precision: true, unit: true, customPattern: false, dateStyle: false, text: false, logical: false, lambda: false, chart: false, advanced: true });
     expect(controlsFor("number", "scientific").precision).toBe(true); // the model's new grant
     expect(controlsFor("number", "integer").precision).toBe(false);
     expect(controlsFor("number", "fraction").precision).toBe(false);
+  });
+
+  it("custom pattern field: number `custom` and date `date_custom` only", () => {
+    expect(controlsFor("number", "custom").customPattern).toBe(true);
+    expect(controlsFor("date", "date_custom").customPattern).toBe(true);
+    expect(controlsFor("number", "decimal").customPattern).toBe(false);
+    expect(controlsFor("date", "date_dmy").customPattern).toBe(false);
+    expect(controlsFor("text", "custom").customPattern).toBe(false);
   });
 
   it("date family: date styles only — no unit, no precision", () => {

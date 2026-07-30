@@ -457,7 +457,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
-        {format === "date_custom" && (
+        {c.customPattern && (
           <div className="solenoid-fc__row solenoid-fc__row--custom">
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
@@ -608,7 +608,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </div>
         )}
         {/* Custom pattern directly under the style rows — it IS a format. */}
-        {format === "custom" && (
+        {c.customPattern && (
           <div className="solenoid-fc__row solenoid-fc__row--custom">
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input

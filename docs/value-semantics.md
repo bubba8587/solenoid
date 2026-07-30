@@ -7,9 +7,10 @@ step-by-step rulings (decisions D10–D13), all shipped by the 2026-07-04/05 tai
 pass. Mechanics/invariants live in `subsystem-invariants.md` "Error values"; this
 doc is the SEMANTICS reference.
 
-**Status honesty:** every rule below is **[shipped]** as of the 2026-07-04/05
-1.0-tail build pass (broadcaster contract, guardFinite/#OVERFLOW!, NaN affordance,
-readInput, IFS/SWITCH #N/A). If a new rule is decided-but-unbuilt, tag it
+**Status honesty:** every rule below is **[shipped]** — the core set as of the
+2026-07-04/05 1.0-tail build pass (broadcaster contract, guardFinite/#OVERFLOW!,
+NaN affordance, readInput, IFS/SWITCH #N/A), the computed-column rules as of the
+2026-07-30/31 D24–D26 run. If a new rule is decided-but-unbuilt, tag it
 `[decided <date>]` and carry the build item in the backlog.
 
 ## The kinds
@@ -17,14 +18,15 @@ readInput, IFS/SWITCH #N/A). If a new rule is decided-but-unbuilt, tag it
 | Kind | Meaning | It is… |
 |---|---|---|
 | value | a real number/string/date/logical/complex | the normal case |
-
-A **complex** value is the tagged object `{ __cx: true, re, im }` (VAL-15) — never a bare
-`[re, im]` array. `Array.isArray` on any cell or value therefore always means "a 1-D
-list"; `isCx` (`nodes/complex.ts`) is the one complex test.
 | `null` | **missing** — no value was ever there | data, not a failure |
 | `SolError` | **failure** — a computation could not answer (tagged code, 15 incl. `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
 | `NaN` | **undefined number that leaked** — not an error, not missing | residue; computation may not produce it (guardFinite) [shipped] |
 | `Infinity` | **definable infinity** — deliberately declared (Constant node) or derived from an infinite input | a first-class value [shipped] |
+
+A **complex** value is the tagged object `{ __cx: true, re, im }` (VAL-15) — never a
+bare `[re, im]` array. `Array.isArray` therefore never means "a complex number": an
+array is a 1-D list, or a matrix when its own elements are arrays (rank 2 is live
+since D23); `isCx` (`nodes/complex.ts`) is the one complex test.
 
 The load-bearing distinctions:
 
@@ -44,14 +46,19 @@ The load-bearing distinctions:
 
 - **Errors mint at the failure site, with the specific code**: `#DIV/0!` at the divide,
   `#DOMAIN!` at sqrt/log/pow domain failures, `#N/A` at not-found/no-match, `#SHAPE!`
-  at coercion, `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at representation
-  overflow [decided]. Never a raw NaN as a failure signal.
+  at coercion and per row in a computed column (a list-shaped cell result, or an
+  `@`-read of a mis-sized list — the DESIGNED loud failure for a bare column name in
+  scalar position, D24), `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at
+  representation overflow [decided]. Never a raw NaN as a failure signal.
 - **The non-finite guard** (`guardFinite`, valueKinds.ts) [shipped]:
   for any numeric op — result `NaN` → `#DOMAIN!` (indeterminate: `(-8)^(1/3)`, `∞−∞`,
   `∞/∞`, `0×∞`, or a NaN input entering the op); result `±Inf` from all-FINITE inputs →
   `#OVERFLOW!`; result `±Inf` with an infinite input → passes through (definable).
-  Consequence: computation cannot PRODUCE NaN — the only NaN source left is dirty
-  imported data.
+  Consequence: computation cannot PRODUCE NaN — the remaining NaN sources are all
+  data-entry (dirty imported data, an unparseable typed cell via `coerceFrameCell`)
+  plus one BUG CLASS: a `UnitCell` that escapes the unit-blind boundary reaches
+  `coerceNumber` as NaN (the 2026-07-13 regression `stripUnitCells` exists to
+  prevent).
 - **null** comes from data (blank cells, CSV holes), from ragged-list padding
   [shipped 2026-07-02], from empty aggregations (`AVG([])`), and from Kleene logic
   that genuinely cannot answer.
@@ -69,6 +76,7 @@ Which rule applies is decided by the CONTEXT, not the function's name. The conte
 | **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls STAY PUT (dropping would shift indices) | `RANGE_POSITIONAL` [shipped] |
 | **COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` [shipped] |
 | **Ragged element-wise zip** | — | pad-to-longest with null; a padded position is missing | all broadcasters [shipped 2026-07-02] |
+| **Computed column (per row)** | a ROW-bound error cell (λ param / `@`-read) fails THAT row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | `computedColumnCore.ts` `tagComputedCell` (D24; one definition per column, D25) [shipped] |
 
 The sanctioned divergence (decision D11): formula `AND(x)` is a *reduction* (nulls
 skipped → Excel behavior); the BooleanOp node is *element-wise* (Kleene). Same word,
@@ -79,6 +87,16 @@ two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 The table above says how a missing value behaves once it is inside a computation. This
 says how it gets there, which is a separate decision every node makes and got wrong for
 a long time. **Target this section when writing a new node.**
+
+(There is a SECOND way a value enters a computation since D24 — a formula-level
+reference resolved against a computed column's row context, not a socket. Its rules
+live with the core: precedence is column → `row`/`rows` builtins → the definition's
+own env (λ captures) → the surface's side value (`computedColumnCore.ts`); a
+reference used outside a row context is a targeted `#REF!`, not `#NAME?`. One trap
+for a NEW surface: the core's default when no `sideValue` hook is supplied is `0` —
+Frame Input deliberately overrides it with `#REF!`; a surface that forgets the hook
+gets a silent zero, the exact confidently-wrong-answer failure this section exists
+to prevent.)
 
 ### The one rule
 
@@ -238,6 +256,13 @@ guarded once, up top.
 - **Logical↔number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE; **NaN → null**
   (unknown truth value — R/pandas lineage) [shipped 2026-07-04]; aligned with
   `coerceLogical` (one spec).
+- **The unit-blind boundary** (`unitBridge.ts` `stripUnitCells`, applied per-input in
+  `coerceInputs`) [shipped 2026-07-13]: the dimension algebra runs only in
+  `unitAware = true` nodes; every OTHER node receives plain numbers in the display
+  magnitude the user sees (a `passthrough()` node keeps tags only on its spec-named
+  inputs). Without the strip, a `UnitCell` reaches `coerceNumber` as NaN and a
+  comparison/threshold/chart silently breaks. See also `subsystem-invariants.md`
+  "Unit flow".
 - **Wired null vs unwired input** (`readInput`, shared.ts) [shipped]: `undefined` (unwired) falls
   back to the node's literal; a WIRED `null` propagates as missing. The `?? literal`
   read idiom must not swallow wired nulls.
