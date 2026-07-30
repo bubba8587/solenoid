@@ -183,8 +183,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
     columns as free text today and could adopt one shared picker.
   - **Output-column format/unit controls on the node** (author direction): reuse the
     TablePopup per-column format row (`fcControls`) for the computed column.
-  - **Typing a formula into a grid column directly** (author: possible, not the only
-    way) — a TablePopup editing affordance, larger lift.
   - λ view-as on the card (lambdaView annotation) once an FC docks to the λ input.
 - [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
   what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts

@@ -76,6 +76,9 @@ slice, not later.
 - The formula for a Formula column is edited in the popup (one definition per
   column — Excel's "same formula down the column" model, PQ's Custom Column
   dialog; never per-cell text that pretends each cell has its own formula).
+  **AUTHOR-RULED (D25, 2026-07-31): no per-cell formulas, EVER** — "100%
+  unbreakably consistent columns are a must"; grid-cell formula typing is
+  dead, not deferred.
 - On the CARD, Frame Input shows its normal chip; the λ/list input groups are
   ordinary extensible socket rows.
 
