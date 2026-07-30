@@ -184,6 +184,21 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### FC forwarding LOCKS: an inherited unit is set elsewhere (2026-07-31f)
+
+Author repro: computed column's unit → INDEX pulls a cell → FC inherits
+the unit but the dropdown stayed editable; expected locked. The A2
+forwarding state was DELIBERATELY unlocked ("a user pick still wins —
+re-display"); the ruling flips it: an incoming `UnitCell` now mirrors the
+inherited unit into the dropdown unconditionally (a stale pick must not
+sit under a locked dropdown) and sets `unitLocked` — the FC never
+re-authors over an upstream unit; Convert is the re-display tool. Also
+closed C4 (author eyeballed the computed-cell look: fine). Pins updated
+(unitCoercion fc2/fcAfterConvert now expect locked) + the author's exact
+INDEX repro pinned; the STALE subsystem-invariants claim that the lock
+states were "inert, always false" reconciled to the live three-state
+model. Suite 3838.
+
 ### D25: no per-cell formulas, ever (2026-07-31e)
 
 Author ruling, verbatim intent: grid-cell formula typing is "too Excel" —

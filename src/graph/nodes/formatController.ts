@@ -389,9 +389,10 @@ export class FormatControllerNode extends ClassicPreset.Node {
     //   ← ← lockedByConvert — this FC FEEDS a Convert (refreshAnnotation's walk):
     //        the Convert's fromUnit dictates the unit, dropdown locked (primacy).
     //   → → forwarding — the incoming value already carries a unit (an upstream
-    //        FC / Convert / unit source authored it); the dropdown mirrors it when
-    //        the user hasn't authored one ("none"). A user pick still wins
-    //        (re-display; a dimension clash is a #UNIT! on the value).
+    //        FC / Convert / unit source / a unit-tagged frame column authored
+    //        it); the dropdown MIRRORS it and LOCKS (author ruling 2026-07-31:
+    //        an inherited unit is the value's, set elsewhere in the chain — this
+    //        FC never re-authors over it; Convert is the re-display tool).
     //   ← → authored — neither: this FC is the author.
     const cell = firstUnitCell(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
@@ -402,9 +403,12 @@ export class FormatControllerNode extends ClassicPreset.Node {
     // never a silent rewrite).
     if (dictated && this.unit === "none") this.unit = dictated;
     this.lockedByConvert = dictated !== "" && this.unit === dictated;
-    this.unitLocked = this.lockedByConvert;
     this.forwarding = !!cell && !this.lockedByConvert;
-    if (!this.lockedByConvert && inherited && isFcUnit(inherited) && this.unit === "none") this.unit = inherited;
+    // Forwarding mirrors the inherited unit unconditionally — a stale pick from
+    // before the wire carried units must not sit under a locked dropdown (and
+    // applyFcUnit would read it as a re-author).
+    if (this.forwarding && inherited && isFcUnit(inherited) && this.unit !== inherited) this.unit = inherited;
+    this.unitLocked = this.lockedByConvert || this.forwarding;
     // FC A4 — value-mutating: tag the value with this FC's unit (author a base-SI
     // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash). A
     // `custom` free-text unit becomes an opaque custom dimension (`poop`). A

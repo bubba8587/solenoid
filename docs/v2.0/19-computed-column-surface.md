@@ -120,5 +120,5 @@ slice, not later.
   columns with a glyph for at-a-glance discoverability.
 - **C3 — STRUCK.** No wired-list source; Frame from Lists is not folded and
   no fold is queued.
-- **C4 — computed-cell rendering:** author eyeball once slice 1 is on the
-  preview.
+- **C4 — computed-cell rendering:** CLOSED 2026-07-31 — author eyeballed the
+  preview: "they look fine."
