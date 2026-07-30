@@ -184,6 +184,23 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Docked FC false Frame type on reload: settle before dock (2026-07-31h)
+
+Author repro on the same chain as -f: reload the doc and the docked FC
+"deloads", reading a false Frame type; re-docking by hand restored it.
+Root cause was load ORDER in `persistence.ts` `rebuildGraph`: the FC dock
+loop (`dockSelf` → `adaptTypeFromConnections`, which resolves the HOST
+socket) ran BEFORE `settleWildcardTypes`, so INDEX's projected wildcard
+output still read as its upstream's raw "frame" when the FC adopted —
+and nothing re-adapts after the settle. Manual re-docking repaired it
+because that re-ran the adapt post-settle. Fix: rebuild tail is now
+composite hydrate → settleWildcardTypes → dock loop → syncUnitArrows →
+refreshAnnotation, with an ORDER MATTERS comment naming the bug.
+`fcDockReload.test.ts` pins both halves: the old order yields "frame"
+(the mechanism — if that half ever passes with "numlist", the ordering
+constraint can be relaxed), the fixed order yields "numlist" plus a
+locked usd FC after the first compute.
+
 ### Stale shape-cap copy swept off the formula surfaces (2026-07-31g)
 
 Author caught the formula POPUP still teaching the pre-D23 cap ("scalar /
