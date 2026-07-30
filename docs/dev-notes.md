@@ -159,6 +159,33 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### D24: Excel table semantics — bare = whole column, @ = this row (2026-07-30h)
+
+The author's late-day concern — "filter column A by this row's B needs
+whole references mixed with @" — exposed that the whole column was
+UNSPELLABLE (bare names read this-row) and inconsistent (bare SIDE values
+already meant whole), with a silent trap (`revenue / SUM(revenue)` = 1.0
+per row). Ruling: **the Excel version** — recorded as D24, built same
+turn:
+- Bare column name (inline exprs) = the WHOLE column as a list; `@name` =
+  this row. `@revenue / SUM(revenue)` and `SUMIFS(amt, cat, @cat)` work
+  verbatim. A bare column in scalar position is a LOUD per-row #SHAPE!
+  whose message points at @ — the old trap's silent 1.0 is dead.
+- λ PARAMS stay row-bound (the λ's explicit per-row interface); picker
+  bindings follow the same split (expr var → whole target, λ param → row).
+- `col()` FLIPS to the whole-column accessor; new `AT()` is the row read —
+  the two spelled-out forms for unspellable names. Both feed the topo
+  (collectRowRefs); neither grows λ captures.
+- Inside a λ body a bare free name is still a capture (the definition owns
+  its names); whole-column reads there are `col("name")`.
+- Core: bindings split by spec kind (`wholecol` passes the same values
+  array every row); the row context grew `whole()`; the per-row error
+  pre-check now applies to ROW-bound cells only (errors inside a whole
+  column flow into aggregates).
+Rewrote: the seed (share column = the D24 headline; @-exprs), catalog
+copy, placeholders, signatures, 23 pins + 2 new (59 in
+computedColumn.test.ts). decisions.md D24 has the full record.
+
 ### Backlog claim stale: topology recompute IS targeted (2026-07-30g)
 
 The queued "extend targeted recompute to topology changes (D8 follow-

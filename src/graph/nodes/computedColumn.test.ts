@@ -29,10 +29,10 @@ const named = (expr: string, name = "computed") => {
   return n;
 };
 
-describe("ComputedColumnNode — inline formula", () => {
-  it("computes row by row; variables are column names; type is inferred", () => {
-    expect(run(named("qty * price", "revenue"), null)).toBeNull(); // no frame → null
-    const r = run(named("qty * price", "revenue"), sales) as FrameValue;
+describe("ComputedColumnNode — inline formula (D24: bare = whole column, @ = this row)", () => {
+  it("computes row by row via @ reads; type is inferred", () => {
+    expect(run(named("@qty * @price", "revenue"), null)).toBeNull(); // no frame → null
+    const r = run(named("@qty * @price", "revenue"), sales) as FrameValue;
     const col = getColumn(r, "revenue")!;
     expect(col.type).toBe("number");
     expect(col.values).toEqual([20, 60, 120]);
@@ -40,8 +40,35 @@ describe("ComputedColumnNode — inline formula", () => {
     expect(r.columns.map((c) => c.name)).toEqual(["qty", "price", "city", "revenue"]);
   });
 
+  it("a bare column name is the WHOLE column — @revenue-style share-of-total works unwired", () => {
+    // The D24 headline: mixing this-row and whole-column references, Excel's
+    // [@Amount] / [Amount] — the case v1 semantics could not spell at all.
+    const r = run(named("@price / SUM(price)", "share"), sales) as FrameValue;
+    expect(getColumn(r, "share")!.values.map((v) => (v as number).toFixed(4)))
+      .toEqual(["0.1667", "0.3333", "0.5000"]);
+    // The author's case: aggregate one column filtered by THIS row's value.
+    const grouped: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "cat", type: "string", values: ["a", "b", "a"] },
+        { name: "amt", type: "number", values: [10, 20, 30] },
+      ],
+    };
+    const sub = run(named("SUMIFS(amt, cat, @cat)", "grouptotal"), grouped) as FrameValue;
+    expect(getColumn(sub, "grouptotal")!.values).toEqual([40, 20, 40]);
+  });
+
+  it("a bare column in scalar position is a LOUD per-row #SHAPE!, pointing at @", () => {
+    // The old silent trap (price * qty = cell math) now refuses per row with a
+    // message that names the fix.
+    const r = run(named("price * qty", "rev"), sales) as FrameValue;
+    const v = getColumn(r, "rev")!.values[0];
+    expect(isSolError(v) && v.code).toBe("#SHAPE!");
+    expect(isSolError(v) && v.message).toContain("@");
+  });
+
   it("text results infer a string column; functions dispatch normally", () => {
-    const r = run(named('UPPER(city) & "!"', "shout"), sales) as FrameValue;
+    const r = run(named('UPPER(@city) & "!"', "shout"), sales) as FrameValue;
     const col = getColumn(r, "shout")!;
     expect(col.type).toBe("string");
     expect(col.values).toEqual(["OSLO!", "BERGEN!", "TROMSØ!"]);
@@ -57,13 +84,13 @@ describe("ComputedColumnNode — inline formula", () => {
   });
 
   it("replaces an existing column when the name collides (addColumn semantics)", () => {
-    const r = run(named("qty * 2", "qty"), sales) as FrameValue;
+    const r = run(named("@qty * 2", "qty"), sales) as FrameValue;
     expect(r.columns.map((c) => c.name)).toEqual(["qty", "price", "city"]);
     expect(getColumn(r, "qty")!.values).toEqual([4, 6, 8]);
   });
 
   it("a `Name (unit)` header tags the unit like Add Column", () => {
-    const r = run(named("qty * price", "revenue (usd)"), sales) as FrameValue;
+    const r = run(named("@qty * @price", "revenue (usd)"), sales) as FrameValue;
     const col = r.columns[r.columns.length - 1];
     expect(col.name).toBe("revenue");
     expect((col.unit as { display?: string } | undefined)?.display).toBe("usd");
@@ -71,13 +98,13 @@ describe("ComputedColumnNode — inline formula", () => {
 });
 
 describe("ComputedColumnNode — the per-row contract", () => {
-  it("an error cell in a bound column propagates to that row only", () => {
+  it("an error cell reached by @ propagates to that row only", () => {
     const err = solError("#DIV/0!", "x");
     const f: FrameValue = {
       __frame: true,
       columns: [{ name: "v", type: "number", values: [1, err, 3] }],
     };
-    const r = run(named("v * 10", "out"), f) as FrameValue;
+    const r = run(named("@v * 10", "out"), f) as FrameValue;
     expect(getColumn(r, "out")!.values).toEqual([10, err, 30]);
   });
 
@@ -86,7 +113,7 @@ describe("ComputedColumnNode — the per-row contract", () => {
       __frame: true,
       columns: [{ name: "v", type: "number", values: [1, null, 3] }],
     };
-    const r = run(named('IF(ISBLANK(v), "missing", "here")', "flag"), f) as FrameValue;
+    const r = run(named('IF(ISBLANK(@v), "missing", "here")', "flag"), f) as FrameValue;
     expect(getColumn(r, "flag")!.values).toEqual(["here", "missing", "here"]);
   });
 
@@ -95,7 +122,7 @@ describe("ComputedColumnNode — the per-row contract", () => {
       __frame: true,
       columns: [{ name: "v", type: "number", values: [4, -4] }],
     };
-    const sq = run(named("SQRT(v)", "root"), f) as FrameValue;
+    const sq = run(named("SQRT(@v)", "root"), f) as FrameValue;
     const vals = getColumn(sq, "root")!.values;
     expect(vals[0]).toBe(2);
     expect(isSolError(vals[1])).toBe(true);
@@ -127,31 +154,31 @@ describe("ComputedColumnNode — wired λ", () => {
 
 describe("ComputedColumnNode — side inputs, row, and the output type", () => {
   it("a variable naming no column becomes a SIDE INPUT (wired value or literal default)", () => {
-    const n = named("price * (1 + taxrate)", "gross");
+    const n = named("@price * (1 + taxrate)", "gross");
     // Wired: the side value is row-invariant.
     const wired = run(n, sales, { taxrate: [[0.25]] }) as FrameValue;
     expect(getColumn(wired, "gross")!.values).toEqual([12.5, 25, 37.5]);
     expect(n.sideVars).toEqual(["taxrate"]);
     // Unwired: the literal default (Expression convention: 0).
-    const bare = run(named("price * (1 + taxrate)", "gross"), sales) as FrameValue;
+    const bare = run(named("@price * (1 + taxrate)", "gross"), sales) as FrameValue;
     expect(getColumn(bare, "gross")!.values).toEqual([10, 20, 30]);
   });
 
-  it("a whole LIST side input enables percent-of-total in one node", () => {
-    const n = named("price / SUM(prices)", "share");
+  it("a whole LIST side input aggregates like a bare column (both are whole)", () => {
+    const n = named("@price / SUM(prices)", "share");
     const r = run(n, sales, { prices: [[10, 20, 30]] }) as FrameValue;
     expect(getColumn(r, "share")!.values.map((v) => (v as number).toFixed(4)))
       .toEqual(["0.1667", "0.3333", "0.5000"]);
   });
 
-  it("`row` is the 1-based row number; a column named row shadows it", () => {
+  it("`row` is the 1-based row number; a column named row shadows it at @", () => {
     const r = run(named("row * 10", "idx"), sales) as FrameValue;
     expect(getColumn(r, "idx")!.values).toEqual([10, 20, 30]);
     const withRowCol: FrameValue = {
       __frame: true,
       columns: [{ name: "row", type: "number", values: [7, 8, 9] }],
     };
-    const shadowed = run(named("row * 10", "idx"), withRowCol) as FrameValue;
+    const shadowed = run(named("@row * 10", "idx"), withRowCol) as FrameValue;
     expect(getColumn(shadowed, "idx")!.values).toEqual([70, 80, 90]);
   });
 
@@ -165,9 +192,9 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
       __frame: true,
       columns: [{ name: "start", type: "date", values: [46000, 46010] }],
     };
-    const auto = run(named("start + 7", "due"), due) as FrameValue;
+    const auto = run(named("@start + 7", "due"), due) as FrameValue;
     expect(getColumn(auto, "due")!.type).toBe("number"); // inference can't see date-ness
-    const typedNode = named("start + 7", "due");
+    const typedNode = named("@start + 7", "due");
     typedNode.addAs = "date";
     const typed = run(typedNode, due) as FrameValue;
     expect(getColumn(typed, "due")!.type).toBe("date");
@@ -184,8 +211,8 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
   });
 });
 
-describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
-  it('col("name") reaches columns a variable cannot spell — numeric and spaced names', () => {
+describe("ComputedColumnNode — at()/col() accessors, rows, and placement", () => {
+  it('at("name") is this row, col("name") the whole column — for names a variable cannot spell', () => {
     const awkward: FrameValue = {
       __frame: true,
       columns: [
@@ -193,16 +220,19 @@ describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
         { name: "Unit Price", type: "number", values: [5, 7] },
       ],
     };
-    const quoted = run(named('col("2024") + col("Unit Price")', "sum"), awkward) as FrameValue;
+    const quoted = run(named('at("2024") + at("Unit Price")', "sum"), awkward) as FrameValue;
     expect(getColumn(quoted, "sum")!.values).toEqual([105, 207]);
-    // A numeric literal coerces to the name — col(2024) reads the year column,
+    // A numeric literal coerces to the name — at(2024) reads the year column,
     // never a positional index.
-    const bare = run(named("col(2024) * 2", "dbl"), awkward) as FrameValue;
+    const bare = run(named("at(2024) * 2", "dbl"), awkward) as FrameValue;
     expect(getColumn(bare, "dbl")!.values).toEqual([200, 400]);
+    // col() is the WHOLE column — the spelled-out bare name (D24).
+    const whole = run(named('at("Unit Price") / SUM(col("Unit Price"))', "shr"), awkward) as FrameValue;
+    expect(getColumn(whole, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
   });
 
-  it("col() of an absent column becomes a side port reading its default, like an unknown variable", () => {
-    const n = named('col("nope") + 1', "x");
+  it("at()/col() of an absent column become a side port reading its default, like an unknown variable", () => {
+    const n = named('at("nope") + 1', "x");
     const r = run(n, sales) as FrameValue;
     expect(getColumn(r, "x")!.values).toEqual([1, 1, 1]);
     expect(n.sideVars).toContain("nope");
@@ -214,14 +244,14 @@ describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
   });
 
   it("After places a NEW column right after the anchor; blank appends at the end", () => {
-    const n = named("qty * price", "revenue");
+    const n = named("@qty * @price", "revenue");
     n.stringLiterals.after = "qty";
     const r = run(n, sales) as FrameValue;
     expect(r.columns.map((c) => c.name)).toEqual(["qty", "revenue", "price", "city"]);
   });
 
   it("a REPLACED column keeps its position even with After set", () => {
-    const n = named("qty * 2", "qty");
+    const n = named("@qty * 2", "qty");
     n.stringLiterals.after = "city";
     const r = run(n, sales) as FrameValue;
     expect(r.columns.map((c) => c.name)).toEqual(["qty", "price", "city"]);
@@ -229,7 +259,7 @@ describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
   });
 
   it("a missing After anchor refuses with #REF!", () => {
-    const n = named("qty * price", "revenue");
+    const n = named("@qty * @price", "revenue");
     n.stringLiterals.after = "ghost";
     const r = run(n, sales);
     expect(isSolError(r) && r.code).toBe("#REF!");
@@ -239,7 +269,7 @@ describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
 
 describe("ComputedColumnNode — kitchen sink", () => {
   it("text functions, IF chains, and mixed builtins compose in one row formula", () => {
-    const r = run(named('IF(qty > 2, UPPER(city), LOWER(city)) & " #" & TEXT(row, "0")', "tag"), sales) as FrameValue;
+    const r = run(named('IF(@qty > 2, UPPER(@city), LOWER(@city)) & " #" & TEXT(row, "0")', "tag"), sales) as FrameValue;
     expect(getColumn(r, "tag")!.values).toEqual(["oslo #1", "BERGEN #2", "TROMSØ #3"]);
   });
 
@@ -254,8 +284,8 @@ describe("ComputedColumnNode — kitchen sink", () => {
     expect(vals[2]).toBe(3);
   });
 
-  it("col(), a bound column, row, and a side input all mix in one formula", () => {
-    const n = named('col("qty") * price + row + base', "mix");
+  it("at(), an @ read, row, and a side input all mix in one formula", () => {
+    const n = named('at("qty") * @price + row + base', "mix");
     const r = run(n, sales, { base: [[1000]] }) as FrameValue;
     expect(getColumn(r, "mix")!.values).toEqual([2 * 10 + 1 + 1000, 3 * 20 + 2 + 1000, 4 * 30 + 3 + 1000]);
   });
@@ -356,12 +386,14 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
       frameText: frameSourceToText([
         { name: "price", type: "number", cells: ["10", "20"] },
         { name: "qty", type: "number", cells: ["2", "3"] },
-        { name: "rev", type: "number", cells: [], expr: "price * qty" },
+        { name: "rev", type: "number", cells: [], expr: "@price * @qty" },
+        { name: "share", type: "number", cells: [], expr: "@rev / SUM(rev)" },
       ]),
     });
     const out = n.data({}).frame as FrameValue;
     expect(getColumn(out, "rev")!.values).toEqual([20, 60]);
     expect(getColumn(out, "rev")!.raw).toBeUndefined();
+    expect(getColumn(out, "share")!.values).toEqual([0.25, 0.75]);
   });
 
   it("@ reads work in an expr column, and pure-@ deps still topo-order", () => {
@@ -381,7 +413,7 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "qty", type: "number", cells: ["2", "4"] },
-        { name: "half", type: "number", cells: [], expr: "revenue / 2" },
+        { name: "half", type: "number", cells: [], expr: "@revenue / 2" },
         { name: "revenue", type: "number", cells: [], lambda: "fn1" },
       ]),
       lambdaKeys: ["fn1"],
@@ -448,9 +480,11 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
 });
 
 describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
-  it("@ works in the CC node's inline formula, mixed with bound variables", () => {
-    const r = run(named("@price * qty", "rev"), sales) as FrameValue;
+  it("@ works in the CC node's inline formula, mixed with whole-column reads", () => {
+    const r = run(named("@price * @qty", "rev"), sales) as FrameValue;
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
+    const mix = run(named("@price * COUNT(qty)", "x"), sales) as FrameValue;
+    expect(getColumn(mix, "x")!.values).toEqual([30, 60, 90]);
   });
 
   it("a ZERO-param λ reads the row via @ — capture sockets grow, columns win over them", () => {
@@ -465,15 +499,20 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
   });
 
-  it("col() now works INSIDE a λ body too (the row context is dynamic)", () => {
+  it("at() and col() work INSIDE a λ body too (the row context is dynamic)", () => {
     const awkward: FrameValue = {
       __frame: true,
       columns: [{ name: "Unit Price", type: "number", values: [5, 7] }],
     };
-    const lam = new LambdaNode({ expr: 'col("Unit Price") * 2', params: "" });
+    const lam = new LambdaNode({ expr: 'at("Unit Price") * 2', params: "" });
     const fn = (lam.data({}) as { result: unknown }).result;
     const r = run(named("", "dbl"), awkward, { fn: [fn] }) as FrameValue;
     expect(getColumn(r, "dbl")!.values).toEqual([10, 14]);
+    // col() = the whole column, so a λ body can aggregate the table.
+    const lam2 = new LambdaNode({ expr: 'at("Unit Price") / SUM(col("Unit Price"))', params: "" });
+    const fn2 = (lam2.data({}) as { result: unknown }).result;
+    const r2 = run(named("", "shr"), awkward, { fn: [fn2] }) as FrameValue;
+    expect(getColumn(r2, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
   });
 
   it("a zero-param λ using @ still orders after the column it reads (Frame Input topo)", () => {
@@ -491,16 +530,18 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
     expect(getColumn(out, "margin")!.values).toEqual([10, 20]);
   });
 
-  it("outside a row context, @ and COL answer a targeted #REF!, not a typo's #NAME?", () => {
+  it("outside a row context, @, AT and COL answer a targeted #REF!, not a typo's #NAME?", () => {
     const r = compileEvaluator("@price + 1")!({});
     expect(isSolError(r) && r.code).toBe("#REF!");
     expect(isSolError(r) && r.message).toContain("current row");
     const c = compileEvaluator('COL("price")')!({});
     expect(isSolError(c) && c.code).toBe("#REF!");
+    const a = compileEvaluator('AT("price")')!({});
+    expect(isSolError(a) && a.code).toBe("#REF!");
   });
 
-  it("rowRefNames feeds the topo: @names and col() literals, no variables", () => {
-    expect(rowRefNames('@a + col("b c") * col(2024) + qty').sort()).toEqual(["2024", "a", "b c"]);
+  it("rowRefNames feeds the topo: @names and col()/at() literals, no variables", () => {
+    expect(rowRefNames('@a + col("b c") * at(2024) + SUM(qty)').sort()).toEqual(["2024", "a", "b c"]);
   });
 });
 
@@ -548,11 +589,15 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
     expect(isSolError(v) && v.message).toContain("2 values for 3 rows");
   });
 
-  it("col() reaches the side list too — full @/col symmetry", () => {
-    const n = named('price * col("factor")', "adj");
+  it("at() reads the side list per row; col() reaches it whole — full symmetry", () => {
+    const n = named('@price * at("factor")', "adj");
     run(n, sales);
     const r = run(n, sales, { factor: [[1, 2, 3]] }) as FrameValue;
     expect(getColumn(r, "adj")!.values).toEqual([10, 40, 90]);
+    const w = named('@price / SUM(col("factor"))', "norm");
+    run(w, sales);
+    const r2 = run(w, sales, { factor: [[1, 2, 2]] }) as FrameValue;
+    expect(getColumn(r2, "norm")!.values).toEqual([2, 4, 6]);
   });
 
   it("a COLUMN of the same name wins over the side value, and @-misses don't fire in Frame Input", () => {
@@ -573,12 +618,12 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
 });
 
 describe("binding pickers — explicit variable → column bindings", () => {
-  it("a bound variable reads its picked column, whatever its own name", () => {
-    const n = named("a * 2", "dbl");
+  it("a bound variable reads its picked column — whole for expr vars, this-row for λ params (D24)", () => {
+    const n = named("SUM(a)", "total");
     n.bindings = { a: "price" };
     const r = run(n, sales) as FrameValue;
-    expect(getColumn(r, "dbl")!.values).toEqual([20, 40, 60]);
-    // λ params bind the same way through the shared core.
+    expect(getColumn(r, "total")!.values).toEqual([60, 60, 60]);
+    // λ params stay ROW-bound through the same alias.
     const lam = new LambdaNode({ expr: "x + 1", params: "x" });
     const fn = (lam.data({}) as { result: unknown }).result;
     const m = named("", "inc");
@@ -588,10 +633,10 @@ describe("binding pickers — explicit variable → column bindings", () => {
   });
 
   it("binding a would-be side variable to a column removes its socket role", () => {
-    const n = named("k + qty", "sum");
+    const n = named("SUM(k) + @qty", "sum");
     n.bindings = { k: "price" };
     const r = run(n, sales) as FrameValue;
-    expect(getColumn(r, "sum")!.values).toEqual([12, 23, 34]);
+    expect(getColumn(r, "sum")!.values).toEqual([62, 63, 64]);
     expect(n.sideVars).toEqual([]);
   });
 
@@ -628,7 +673,7 @@ describe("identity-stable outputs — the backend upload cache holds across pass
     const b = (lam2.data({ k: [3] }) as { result: unknown }).result;
     expect(b).not.toBe(a);
 
-    const n = named("price * qty", "rev");
+    const n = named("@price * @qty", "rev");
     const r1 = run(n, sales) as FrameValue;
     const r2 = run(n, sales) as FrameValue;
     expect(r2).toBe(r1);
@@ -641,7 +686,7 @@ describe("identity-stable outputs — the backend upload cache holds across pass
   });
 
   it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", () => {
-    const n = named("price * (1 - disc)", "net");
+    const n = named("@price * (1 - disc)", "net");
     run(n, sales); // grows disc
     const r1 = run(n, sales, { disc: [0.1] }) as FrameValue;
     expect(run(n, sales, { disc: [0.1] })).toBe(r1);

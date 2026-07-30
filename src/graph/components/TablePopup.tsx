@@ -736,7 +736,7 @@ export function TablePopup() {
                             <input
                               className="table-popup__input table-popup__input--text table-popup__exprinput"
                               value={colExprs[c] ?? ""}
-                              placeholder="price * qty"
+                              placeholder="@price * @qty"
                               spellCheck={false}
                               {...stopSortTrigger}
                               onClick={(e) => e.stopPropagation()}

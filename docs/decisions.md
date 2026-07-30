@@ -567,6 +567,31 @@ grid (spill/`@` complications leaking in after all), or the transpiler (bundle 0
 demonstrating the semantics diverge from Excel in ways users hit — either would
 argue for re-capping to 1-D, recorded as a new decision, not a silent revert.
 
+### D24 — Computed-column references use Excel TABLE semantics: bare = whole column, `@` = this row
+**When:** 2026-07-30 (author: "we're going to have to go with the Excel version").
+**Where:** `computedColumnCore.ts`, `excelFunctions.ts` (COL/AT), the CC node +
+Frame Input Formula columns.
+**The decision:** inside a computed-column formula, a bare column name is the WHOLE
+column as a list (Excel's `[Amount]`); `@name` is this row's cell (`[@Amount]`).
+For names an identifier can't spell, `col("Unit Price")` is the whole column and
+`at("Unit Price")` the row read. λ PARAMS stay row-bound — they are the λ's
+explicit per-row interface (`LAMBDA(revenue, revenue * 0.25)` reads the cell);
+picker bindings follow the same split (expr var → whole target column, λ param →
+row).
+**Why:** the v1 semantics (bare = this row) made the whole column UNSPELLABLE —
+`SUMIFS(amount, category, @category)` and `@revenue / SUM(revenue)` had no
+spelling — and was inconsistent (a bare side value already meant WHOLE). Worse, it
+carried a silent-wrong-answer trap: `revenue / SUM(revenue)` returned 1.0 per row
+(cell / SUM(cell)). Under D24 the failure flips loud: `price * qty` is a per-row
+`#SHAPE!` that points at `@` — exactly how modern Excel resolved the same tension
+when it retired implicit intersection.
+**Cost accepted:** `@` ceremony on the simplest per-row math; a week-one breaking
+change (exprs, seeds, tests rewritten — pre-alpha, no shim). Inside a λ BODY a
+bare free name is still a capture (the definition owns its names, 2026-07-30) —
+whole-column reads there are spelled `col("name")` or wired via Get Column.
+**What would reverse it:** nothing foreseeable — this IS the Excel model the
+surface exists to mirror; a change would be a new decision.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)

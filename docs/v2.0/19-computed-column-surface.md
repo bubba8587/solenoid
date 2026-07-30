@@ -34,9 +34,13 @@ Every column of an EDITABLE table (Frame Input) has a **source**:
 
 1. **Data** — today's literal cells (raw text, never rewritten). The default.
 2. **Formula** — an inline row-wise expr. Same rules as the CC node, verbatim,
-   because both call `computeColumnCells`: variables are column names,
-   `row`/`rows` builtins, `col("Unit Price")`/`col(2024)` for unspellable
-   names, null flows in, error cells propagate per row, one value per row.
+   because both call `computeColumnCells`. Excel TABLE semantics (D24,
+   2026-07-30): `@name` is this row's cell, a bare name is the WHOLE column
+   (`[@Amount]` vs `[Amount]` — so `@revenue / SUM(revenue)` is a share of
+   total and `SUMIFS(amt, cat, @cat)` a per-group subtotal); `at("Unit
+   Price")` / `col("Unit Price")` spell the two for names a variable can't;
+   `row`/`rows` builtins; null flows in; one value per row (a list result is
+   a #SHAPE! pointing at `@`).
 3. **λ** — one of the node's wired lambda inputs. Frame Input grows an
    EXTENSIBLE λ input group (individually-labeled addable sockets — the
    ExtensibleInputs pattern; each input plays a distinct role, per the

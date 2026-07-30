@@ -316,16 +316,18 @@ export function extractVariables(expr: string): string[] {
   return out;
 }
 
-// The column names a formula reads THROUGH THE ROW CONTEXT: `@name` and
-// `col("literal")` / `col(2024)` calls. NOT variables (extractVariables skips
-// them deliberately) — this is the dependency feed for a computed-column topo
+// The column names a formula reads THROUGH THE ROW CONTEXT: `@name`, and
+// `col("literal")` / `at("literal")` / `col(2024)` calls (COL = the whole
+// column, AT = this row — D24). NOT variables (extractVariables skips them
+// deliberately) — this is the dependency feed for a computed-column topo
 // sort, where a zero-param λ reading `@revenue` still depends on the revenue
 // column. A col(<computed expr>) can't be known statically and isn't collected.
 function collectRowRefs(n: Ast, out: Set<string>): void {
   switch (n.t) {
     case "atcol": out.add(n.name); break;
     case "call": {
-      if (n.name.toUpperCase() === "COL" && n.args.length === 1) {
+      const fn = n.name.toUpperCase();
+      if ((fn === "COL" || fn === "AT") && n.args.length === 1) {
         const a = n.args[0];
         if (a.t === "str") out.add(a.v);
         else if (a.t === "num") out.add(a.v);
@@ -349,9 +351,10 @@ export function rowRefNames(expr: string): string[] {
 }
 
 /** Only the `@name` reads (identifier-shaped, reachable through the eval env
- *  fallback) — the set a Lambda node grows CAPTURE sockets for. `col(...)`
- *  literals are excluded: COL resolves through columns and the surface's side
- *  ports only, never a capture, so a socket for one would be dead weight. */
+ *  fallback) — the set a Lambda node grows CAPTURE sockets for. `col(...)` /
+ *  `at(...)` literals are excluded: those resolve through columns and the
+ *  surface's side ports only, never a capture, so a socket for one would be
+ *  dead weight. */
 export function atColNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];

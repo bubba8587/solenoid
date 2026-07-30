@@ -8,24 +8,33 @@
 // error/null contract — so the rules live HERE once, and a surface only
 // supplies its own port plumbing.
 //
-// The contract (mirrors the broadcast rules where they apply, departs where a
-// formula is not an element-wise op):
-//   • a variable binds, in precedence order: a COLUMN of that name → the
-//     `row`/`rows` builtins (1-based row number / total count) → a SIDE value
-//     the surface supplies (row-invariant — a wired scalar, a whole list for
-//     SUM(...), an inline literal default);
-//   • `col("Unit Price")` / `col(2024)` reaches columns a variable can't
-//     spell — an env lambda resolved by the evaluator's higher-order call
-//     path, name-exact (a numeric literal is a NAME, never an index);
-//   • `@name` / `col(name)` resolve per row: the column → the `row`/`rows`
-//     builtins → the DEFINITION's own environment (a λ's captures — `@list`
-//     rides the Lambda card's capture socket) → the surface's SIDE value.
-//     A ROW-ALIGNED list reads element-per-row (length-checked against the
-//     frame); a scalar reads the same every row;
-//   • an error cell in a BOUND column propagates to that row's output (first
-//     in binding order); a null flows INTO the formula (ISBLANK can see it);
+// The contract — EXCEL TABLE SEMANTICS (author ruling 2026-07-30, D24): a bare
+// column name is the WHOLE column, `@name` is this row — `[Amount]` vs
+// `[@Amount]`. One uniform rule: bare = whole (columns and side values alike),
+// @ = this row. `@revenue / SUM(revenue)` is percent-of-total;
+// `SUMIFS(amount, category, @category)` is a per-group subtotal.
+//   • a bare VARIABLE (inline exprs) binds, in precedence order: a COLUMN of
+//     that name → the WHOLE column as a list (nulls and per-cell errors ride
+//     along as cells) → the `row`/`rows` builtins (1-based row number / total
+//     count) → a SIDE value the surface supplies (row-invariant — a wired
+//     scalar or list, an inline literal default), also whole;
+//   • a λ PARAM stays ROW-bound — params are the λ's explicit per-row
+//     interface (`LAMBDA(revenue, revenue * 0.25)` reads this row's cell);
+//   • `@name` resolves per row: the column's cell → `row`/`rows` → the
+//     DEFINITION's own environment (a λ's captures — `@list` rides the Lambda
+//     card's capture socket) → the surface's SIDE value. A ROW-ALIGNED list
+//     reads element-per-row (length-checked against the frame); a scalar
+//     reads the same every row;
+//   • `col("Unit Price")` / `col(2024)` is the WHOLE column for names a
+//     variable can't spell; `at("Unit Price")` is the this-row read for them
+//     (the @ form spelled out). Name-exact — a numeric literal is a NAME,
+//     never an index;
+//   • an error cell in a ROW-bound value (a λ param's cell) propagates to
+//     that row's output; inside a whole-column list it flows INTO the formula
+//     (aggregates apply their own error rules); a null flows in likewise
+//     (ISBLANK can see it);
 //   • a NaN result is #DOMAIN!, a list-shaped result is #SHAPE! (one value
-//     per row), undefined reads as blank.
+//     per row — reach for @), undefined reads as blank.
 
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
@@ -38,9 +47,12 @@ export type ComputedSpec =
   | { kind: "expr"; evaluator: ExprEvaluator; vars: string[] }
   | { kind: "lambda"; lam: LambdaValue };
 
-/** How one variable resolves — see the module note for the precedence. */
+/** How one variable resolves — see the module note for the precedence.
+ *  `col` is a ROW-bound column (λ params); `wholecol` is the whole column as a
+ *  list (bare variables in an inline expr — Excel's `[Amount]`). */
 type Binding =
   | { kind: "col"; col: FrameColumn }
+  | { kind: "wholecol"; col: FrameColumn }
   | { kind: "row" }
   | { kind: "rows" }
   | { kind: "side"; value: unknown };
@@ -69,23 +81,35 @@ type RowFrame = {
   /** This-row read of an arbitrary value: a row-aligned list reads its
    *  element (length-checked), a scalar reads the same every row. */
   at: (name: string, v: unknown) => unknown;
+  /** WHOLE-value resolution (`col(name)`): the column as a list, else the
+   *  surface's side value verbatim, else a miss #REF!. */
+  whole: (name: string) => unknown;
 };
 const rowStack: RowFrame[] = [];
 
-/** Resolve a this-row reference (`@name`, `COL(name)`). `fallback` is the
+/** Resolve a this-row reference (`@name`, `AT(name)`). `fallback` is the
  *  evaluator's window into the CURRENT definition's environment (λ captures,
  *  expr variables) — consulted after columns/builtins, before the surface's
  *  side values. Outside any row context the reference is meaningless — a
  *  targeted #REF!, not a typo's #NAME?. */
 export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: unknown }): unknown {
   const top = rowStack[rowStack.length - 1];
-  if (!top) return solError("#REF!", "@ and col() read the current row — they work inside a computed column");
+  if (!top) return solError("#REF!", "@ and at() read the current row — they work inside a computed column");
   const key = String(name);
   const direct = top.strong(key);
   if (direct.hit) return direct.v;
   const fb = fallback?.();
   if (fb?.hit) return top.at(key, fb.v);
   return top.side(key);
+}
+
+/** Resolve a WHOLE-column reference (`COL(name)` — Excel's `[Amount]` for a
+ *  name a variable can't spell): the column as a list, else the surface's
+ *  side value whole. Outside any row context: the same targeted #REF!. */
+export function readWholeColumn(name: unknown): unknown {
+  const top = rowStack[rowStack.length - 1];
+  if (!top) return solError("#REF!", "col() reads a table column whole — it works inside a computed column");
+  return top.whole(String(name));
 }
 
 function withRow<T>(frame: RowFrame, f: () => T): T {
@@ -104,7 +128,7 @@ export function tagComputedCell(v: unknown): FrameCell {
   }
   if (typeof v === "string" || typeof v === "boolean" || v === null) return v;
   if (v === undefined) return null;
-  if (Array.isArray(v)) return solError("#SHAPE!", "A computed column needs one value per row, not a list");
+  if (Array.isArray(v)) return solError("#SHAPE!", "A computed column needs one value per row — @name reads this row's cell");
   return solError("#VALUE!", "A computed column needs a number, text, boolean, or blank per row");
 }
 
@@ -149,6 +173,10 @@ export function computeColumnCells(
   const params = spec.kind === "lambda" ? spec.lam.params : spec.vars;
   const reserved = opts.reserved ?? [];
 
+  // A λ PARAM binds this row's cell (the λ's explicit per-row interface); a
+  // bare inline-expr VARIABLE binds the WHOLE column (Excel's `[Amount]` —
+  // D24). Explicit picker bindings follow the same split.
+  const colKind = spec.kind === "lambda" ? ("col" as const) : ("wholecol" as const);
   const bindings: Binding[] = [];
   const sideVars: string[] = [];
   for (const p of params) {
@@ -156,11 +184,11 @@ export function computeColumnCells(
     if (target !== undefined) {
       const bound = f.columns.find((c) => c.name === target);
       if (!bound) return solError("#REF!", `No column "${target}" to bind "${p}" to`);
-      bindings.push({ kind: "col", col: bound });
+      bindings.push({ kind: colKind, col: bound });
       continue;
     }
     const col = f.columns.find((c) => c.name === p);
-    if (col) { bindings.push({ kind: "col", col }); continue; }
+    if (col) { bindings.push({ kind: colKind, col }); continue; }
     if (p === "row") { bindings.push({ kind: "row" }); continue; }
     if (p === "rows") { bindings.push({ kind: "rows" }); continue; }
     if (reserved.includes(p)) {
@@ -221,20 +249,32 @@ export function computeColumnCells(
       return at(key, sideCache.get(key));
     },
     at,
+    whole: (key) => {
+      const c = colByName.get(key);
+      if (c) return c.values;
+      if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
+      if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row") ?? 0);
+      return sideCache.get(key);
+    },
   };
 
   const cells: FrameCell[] = [];
   for (let i = 0; i < rows; i++) {
     cursor = i;
     // Frame cells are plain values — units live on the COLUMN (D20), so
-    // there is nothing to unwrap per cell.
+    // there is nothing to unwrap per cell. A wholecol binding passes the SAME
+    // values array every row (row-invariant by construction).
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)
+      : b.kind === "wholecol" ? b.col.values
       : b.kind === "row" ? i + 1
       : b.kind === "rows" ? rows
       : b.value);
-    const err = rowCells.find((v) => isSolError(v));
-    if (err) { cells.push(err as SolError); continue; }
+    // A ROW-bound cell that is itself an error propagates to this row's
+    // output; an error INSIDE a whole-column list flows into the formula
+    // (aggregates apply their own error rules).
+    const errIdx = bindings.findIndex((b, k) => b.kind === "col" && isSolError(rowCells[k]));
+    if (errIdx >= 0) { cells.push(rowCells[errIdx] as SolError); continue; }
     const r = withRow(rowFrame, () => {
       if (spec.kind === "lambda") {
         try { return spec.lam.fn(...rowCells); } catch (e) {
