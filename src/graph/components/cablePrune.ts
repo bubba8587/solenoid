@@ -4,7 +4,8 @@ import { getActiveEditor } from "../activeGraph";
 // Every "this input socket is going away" moment must drop the cables wired into
 // it first: a mode/op switch hiding inputs (Alert, Chart, DateDiff), a variadic
 // row being deleted (Filter, CableSwitch, SumIfs, Build Frame, the Extensible
-// components), a formula variable disappearing (expressionEdit). Ten components
+// components), a formula variable disappearing (expressionEdit, Computed
+// Column's side-socket reconcile). Ten components
 // hand-rolled the same loop with drifting details — some snapshotted the
 // connection list before removing, some iterated it LIVE while awaiting
 // removals. This is the one implementation; `sourceInvariants.test.ts` pins that
