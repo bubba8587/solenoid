@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { tablePopup, type FramePopupColumn } from "../tablePopupStore";
+import { tablePopup, type FramePopupColumn, type SourceCommitRefresh } from "../tablePopupStore";
 import { frameRowCount, frameToGrid, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
@@ -38,7 +38,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
  * chip is its editor. Column types are passed either way so a frame with a text
  * column renders correctly even read-only.
  */
-export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, pinNodeId, lambdaOptions }: {
+export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -52,6 +52,8 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
    *  `onSaveSource`) it takes precedence over the typed `value` for the popup. */
   source?: FrameSourceColumn[];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
+  /** LIVE write-through for the column-source model — see tablePopupStore. */
+  onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   /** The node whose value the popup's Pin action pins (see ArrayChip). Defaults to
    *  the host node from context; a collapsed-group readout passes its member id. */
   pinNodeId?: string;
@@ -129,6 +131,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           editableHeaders: isSource || !!onSave,
           literalSource: isSource,
           onSaveSource: isSource ? onSaveSource : undefined,
+          onCommitSource: isSource ? onCommitSource : undefined,
           onSaveFrame: isSource ? undefined : onSave,
           accent: accent || st.accent,
           groupColor: st.groupColor,

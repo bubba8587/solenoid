@@ -11,6 +11,13 @@ import type { ColumnUnit } from "./unitValue";
  *  error (#CODE!). The popup's toGrid renders boolean as TRUE/FALSE. */
 export type Cell = number | string | boolean | null | SolError;
 
+/** What a live source commit hands back so the open popup can refresh its
+ *  computed columns in place (see `onCommitSource`). */
+export interface SourceCommitRefresh {
+  computedCells: Cell[][];
+  columnTypes: ("number" | "string" | "date" | "logical")[];
+}
+
 /** A typed column the frame editor hands back on save (matches FrameColumn). */
 export interface FramePopupColumn {
   name: string;
@@ -53,6 +60,11 @@ export interface TablePopupState {
    *  hands back the raw source. Takes precedence over onSaveFrame/onSave. */
   literalSource?: boolean;
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
+  /** LIVE write-through for the column-source model (Frame Input): commit the
+   *  source now (a formula blurred, a λ rebound, a computed column's unit
+   *  picked), recompute, and hand back the fresh derived cells + types so the
+   *  open popup shows the result without a Save/close round trip. */
+  onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   /** Lean literal-source mode (Table Input): `data` holds the RAW text cells
    *  (row-major, no headers/column chrome); the uniform `cellType` drives the
    *  Formatted preview. Save hands back the raw cells verbatim. Same precedence

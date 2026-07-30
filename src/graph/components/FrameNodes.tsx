@@ -49,7 +49,7 @@ import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNo
 import type { FilterCondConfig } from "../nodes/frame";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
-import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
+import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
 import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -93,13 +93,32 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     void processGraph();
   }, [data]);
+  // LIVE write-through (the column-source model): a blurred formula / rebound λ /
+  // computed column's unit pick commits NOW, recomputes this node, and hands the
+  // open popup the fresh derived cells + types — no Save/close round trip.
+  const onCommitSource = useCallback(async (columns: FrameSourceColumn[]) => {
+    data.frameText = frameSourceToText(columns);
+    const ed = getOwningEditor(data.id);
+    const ar = getOwningArea(data.id);
+    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+    await processGraph(data.id);
+    const derived = data.cachedResult;
+    if (!isFrameValue(derived)) return null;
+    const src = parseFrameSource(data.frameText);
+    const rows = frameRowCount(derived);
+    return {
+      computedCells: Array.from({ length: rows }, (_, r) =>
+        src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.values[r] ?? null) : null))),
+      columnTypes: src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.type ?? "number") : c.type)),
+    };
+  }, [data]);
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Frame">
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} />
-      <FrameDisplay frame={data.cachedResult} label={data.label} source={source} onSaveSource={onSaveSource} lambdaOptions={data.lambdaKeys} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys} />
     </NodeShell>
   );
 }

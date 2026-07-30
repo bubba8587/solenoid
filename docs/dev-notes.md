@@ -184,6 +184,21 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Live commit: the formula applies on blur (2026-07-31c)
+
+Author: "the typed formula column must update on blur." The popup's source
+model was popup-local until Save; now it WRITES THROUGH live via a new
+`onCommitSource` on the popup contract (Frame Input implements: set
+frameText → reconcileTypesAfterEdit → targeted processGraph → hand back
+the fresh derived cells + types). Triggers: a Formula input's blur/Enter
+(draft-local per keystroke, Escape reverts to the last committed text —
+the app-wide commit rule, with an escape flag so the revert's blur can't
+commit the stale closure draft); a COMPLETE source pick (Data or a λ —
+Formula waits for its expr); and a computed column's unit pick (its tag
+rides the derived value, so it can't wait for Save). The popup overrides
+its opening snapshot with the returned cells/types (`liveComputed`), so
+the result shows in place; Save stays the closing no-op re-commit.
+
 ### Format + unit selectors work on computed columns (2026-07-31b)
 
 Author ask. Three seams closed: (1) Frame Input's compute path now carries

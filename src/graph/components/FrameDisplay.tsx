@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { FrameChip } from "./FrameChip";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
-import type { FramePopupColumn } from "../tablePopupStore";
+import type { FramePopupColumn, SourceCommitRefresh } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
@@ -36,7 +36,7 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions }: {
   frame: FrameValue | SolError | null;
   label?: string;
   /** Override the node whose persisted per-column formats to read (frameFormatStore).
@@ -51,6 +51,8 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
    *  text, deriving the typed value downstream. Takes precedence over `onSave`. */
   source?: FrameSourceColumn[];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
+  /** LIVE write-through for the column-source model — see tablePopupStore. */
+  onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   /** Render the whole frame (no 3×4 cap, no chip) — for the Display node, whose
    *  box scrolls when resized. Default is the compact preview. */
   full?: boolean;
@@ -139,7 +141,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
       </table>
       {!full && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} lambdaOptions={lambdaOptions} />
+          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} />
         </div>
       )}
     </div>
