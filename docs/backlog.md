@@ -17,9 +17,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   `AUTHOR_MARKED_ARR` in rules.test.ts, both in the same author-marked change). The
   densest MUSTs were restructured for the read-through 2026-07-29.
 - [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed 2026-07-28;
-  the parity corpus landed as FX-12 2026-07-29 (**70 rules**). Still queued:
-  - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
+  the parity corpus landed as FX-12 2026-07-29; FX-13 + SOCK-13 landed 2026-07-31
+  (**72 rules**). Still queued:
+  - **read-as is coercion-not-assertion** (`applyGetColumnReadAs` pins it) — narrow;
     promote if the class of config-driven coercions grows.
+  - **SSOT-8 direct test** — a quotable `excelCovered` quantifier assertion converts
+    the weakest module-only citation (rules.md known-violation 1).
 - [ ] **Rules spec — the enforcement tail.** Down to (low value): SOCK-8 partial
   (the un-greppable visual half of the socket-box geometry — the CSS pin landed
   2026-07-28kk) and SOCK-6 unenforced (recorded un-greppable). The semantic half
@@ -92,11 +95,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   browser context, so don't render off-screen and cap concurrency). Most sites send
   X-Frame-Options: DENY — this serves embed-friendly content, not arbitrary pages.
 - [ ] **Data Feed widening** — a richer series/symbol picker (today a text field +
-  quick-picks), more providers. Shipped baseline: 3 providers (FRED keyless default /
-  Stooq keyless / Alpha Vantage keyed), a plain ticker/series field + FRED common-series
-  quick-picks, chart-ready typed output. Widening = a real symbol-search picker beyond
-  the free field, and more providers. Stays Excel STOCKHISTORY scope — NOT crypto/FX, no
-  real-time/intraday/options/fundamentals.
+  quick-picks), more providers. Shipped baseline: 2 providers (FRED keyless default /
+  Alpha Vantage keyed — Stooq was cut: its keyless CSV sits behind a JS bot-check,
+  `dataProviders.ts`), a plain ticker/series field + FRED common-series quick-picks,
+  chart-ready typed output. Sweep the stale Stooq copy still in
+  `ConnectionNodes.tsx` / `nodes/dataFeed.ts` / `Settings.tsx`. Widening = a real
+  symbol-search picker beyond the free field, and more providers. Stays Excel
+  STOCKHISTORY scope — NOT crypto/FX, no real-time/intraday/options/fundamentals.
 - [ ] **Composite drill-in — Navigator, lasso, group tools**: (a) Group/Cleanup/Autofit/
   Expand inside a drill-in (needs the group-drag reconcile pipe + push/standoffs/
   GroupNode taught the active area — a real DOM-verified lift); (b) Navigator + lasso
@@ -121,59 +126,17 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   data-provider keys, which is fine for a key the user pastes, but an OAuth-style
   "connect an account" flow would change that shape.
 
-- [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
-  the ratchet and the pack seam have landed; 357/646 leaves are formula-callable
-  (regenerate with `scripts/formula-node-parity.ts` — the script is the truth, SSOT-6),
-  gap C is 0. Left: **the Tier 4 BUILD's last tranches**
-  (D23; spec = `v2.0/17-matrix-formulas.md`). Engine, socket lift and the matrix
-  core (TRANSPOSE/MMULT/MUNIT/MDETERM/MINVERSE/WRAPROWS/WRAPCOLS/TOCOL/TOROW/
-  SEQUENCE) are BUILT; **gap A is ZERO** — the lambda
-  tranche closed the last eight (LAMBDA as the evaluator's special form, the seven
-  hosts on the shared LambdaValue currency). Remaining formula work, none of it
-  gap-shaped — and now EMPTY: eta-lambdas, IIFE/curried application, and
-  higher-order `f(x)` all landed 2026-07-28 (the `apply` AST node + `etaOrEval`
-  + host arity-trim, pinned in formulaLambda.test.ts); the regression quartet
-  left earlier (owned over the nodes' fitting kernels).
-  **Split view (author call 2026-07-28): count packs separately — and the
-  preset-formula detection changed both numbers.** The measurement now detects a
-  locked preset-formula leaf mechanically (its own `expr` IS its formula
-  equivalent, typeable today — SSOT-3, no hand-kept list) and counts the
-  language's own leaves (the four operators, Comparison, Expression/Equation).
-  With the straggler registrations (REVERSETEXT, SPELLNUMBER, DECODEURL, LOG2,
-  HYPOTENUSE, XNOR, NAND, NOR), the complex tranche (IM* owned over tagged Cx),
-  the regression quartet, and TEXTFILTER (the family reclassified argument-kind —
-  one name, condition as argument; the math-fn `round` duplicate deleted):
-  **Non-pack: 381/478.** The 97 remaining are Input/Output/Tables (sources,
-  sinks, UI, D23-endpoint) plus Image/SVG/Promo (not functions) — every
-  registrable named leaf is CLOSED.
-  **Packs: 167/167 — CLOSED** (2026-07-29). The 19 custom-logic nodes registered
-  as PackFormulas through the formulaExtensions seam (21 functions — the
-  Sunrise/Sunset node split into SUNRISE/SUNSET/DAYLENGTH); each pack's vitest
-  file pins its functions via `evalPackFormula`. PackFormula grew `rank`/
-  `listArgs` passthrough; punctuated labels declare their names via the new
-  leaf-level `fx` (read by the parity measurement, which now registers pack
-  formulas before measuring — like app startup).
-  Stragglers, each parked for a stated reason rather than effort:
-  - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
-    is registered.
-  - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is
-    the answer to "text in, graph out").
-  The array-returning broadcast-garbage class is CLOSED: every former member
-  (UNIQUE/SORT/FILTER/MODE.MULT/FREQUENCY/TRANSPOSE with the D23 tranches, the
-  regression quartet last) is owned via listArgs; `rangeRouting.test.ts` pins
-  both halves of the class.
-  Tiers + rationale in `formula-node-parity.md`; gaps machine-checked by
-  `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
-  `formulaTier3.test.ts`. Residual: distributions are validated only at representative
-  points — widen if accuracy is ever in doubt.
-- [ ] **The computed-column SURFACE — `v2.0/19-computed-column-surface.md`, design
-  RATIFIED 2026-07-29** (C1 addable λ sockets; C2 TablePopup formula editing +
-  card-chip glyph; C3 STRUCK — no wired-list source, no Frame from Lists fold;
-  C4 eyeball). Slices 1+2 SHIPPED 2026-07-29: λ sockets, per-column source
-  select (Data | Formula | λ…), inline Formula source with popup editing,
-  topo-order intra-table refs (@/bracket deps included) + cycle refusal,
-  computed-cell rendering, the chip's ƒ mark. C4 CLOSED 2026-07-31 (author
-  eyeball: "they look fine") — the ratified design is fully landed.
+- [ ] **Formula ↔ node parity — the remainder** (D19, all tiers LANDED; the program's
+  history lives in `formula-node-parity.md` + the dev-notes archive). Current state
+  per `scripts/formula-node-parity.ts` (the truth, SSOT-6 — regenerate, don't trust
+  this line): **548/646 leaves formula-callable; gap A = 0, gap C = 0; gap B = 98**
+  Solenoid-native ops that stay non-formula by design (sources, sinks, UI, the
+  frame-verb endpoint — bundle 08's transpiler is the "text in, graph out" answer).
+  Packs 167/167 CLOSED. Actually open:
+  - **INTERPOLATE grid mode as a formula** — unblocked by D23 (rank-2 impls are in);
+    the registration is list-only and its comment still cites the dead D2 cap.
+  - Distributions are validated only at representative points — widen if accuracy is
+    ever in doubt.
 - [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
   inline expr + wired-λ definition, side-input sockets, row/rows, bracket refs
   for unspellable names, addAs output typing, After placement). Remaining,
@@ -181,8 +144,10 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - **Shared column-picker component** (follow-on to the binding pickers, which
     landed 2026-07-30 as plain per-variable selects): Sort/Get Column/Join name
     columns as free text today and could adopt one shared picker.
-  - **Output-column format/unit controls on the node** (author direction): reuse the
-    TablePopup per-column format row (`fcControls`) for the computed column.
+  - **Output-column format/unit controls on the CC NODE's card** (author direction):
+    the popup half landed 2026-07-31 (TablePopup's per-column format+unit row works
+    on computed columns); the Computed Column node's own card still has no
+    format/unit control for its output column.
   - λ view-as on the card (lambdaView annotation) once an FC docks to the λ input.
 - [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
   what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts
@@ -212,18 +177,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 
-- [ ] **Give the kind-only families their ops lists — the distributions tranche** —
-  all 98 op-selector families declare a `kind` (machine-checked by `nodeOps.test.ts`).
-  LANDED 2026-07-30: the `AGG_OP_META` table (SSOT-1 — Group By/Cube Rollup cards and
-  the Pivot editor derive from it; `pivotOnly` keeps percentof to the pivot), plus
-  Percentile/Quartile/Percentrank (inc/exc as PERCENTILE.INC-style search names).
-  AUTHOR RULING same day: **aggregators are args, not ops — NOT searchable**; all
-  four aggregator hosts (incl. the 1-D Group Lists) are kind-only, and
-  `scripts/op-exposure.ts` skips argument-kind families outright (also killing its
-  GroupByFrame mis-join). REMAINING: the 17
-  distributions (cdf/pdf, and the `.RT` right-tail forms — Excel treats
-  `CHISQ.DIST.RT` as its own function, so those arguably want real leaves, not just
-  search rows). The DATA pickers (Element's 118 entries, PhysicsConstant, Antoine,
+- [ ] **Ops lists — the distributions tranche** — the 17 distributions (cdf/pdf, and
+  the `.RT` right-tail forms — Excel treats `CHISQ.DIST.RT` as its own function, so
+  those arguably want real leaves, not just search rows; needs the author's
+  leaf-vs-search ruling). Standing constraints: aggregators are args, not ops — NOT
+  searchable (author ruling 2026-07-30; `op-exposure.ts` skips argument-kind
+  families); the DATA pickers (Element's 118 entries, PhysicsConstant, Antoine,
   PipeRoughness, ESeries, ResistorCode, Constant) STAY kind-only — a row per value
   would bury the menu.
 

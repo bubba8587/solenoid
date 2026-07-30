@@ -38,4 +38,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
 
 ### Dev-notes history
-- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-07-19 + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
+- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-07-29p + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
+- [`17-matrix-formulas.md`](17-matrix-formulas.md) — the Tier 4 decision packet, decided as D23 (2026-07-28) and built; live truth is D23 + `broadcastRules.test.ts`.
+- [`18-parity-corpus.md`](18-parity-corpus.md) — the backend parity-corpus bundle, shipped 2026-07-29 as FX-12.
+- [`19-computed-column-surface.md`](19-computed-column-surface.md) — the computed-column surface design bundle, fully landed 2026-07-31 (note: the doc's `source` variant and "Typed" label shipped as sibling `expr?`/`lambda?` fields and the "Data" label).
