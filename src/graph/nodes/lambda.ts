@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, lambdaOut, readInput } from "./shared";
-import { extractVariables, compilePositional, formulaSyntaxHint } from "../excelFormula";
+import { extractVariables, atColNames, compilePositional, formulaSyntaxHint } from "../excelFormula";
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
@@ -108,7 +108,14 @@ export class LambdaNode extends ClassicPreset.Node {
   _rebuild(): { added: string[]; removed: string[] } {
     const params = this.paramList();
     const prev = new Set(this.captured);
-    const next = extractVariables(this.expr).filter((v) => !params.includes(v));
+    // Free variables AND @names (atColNames) both capture — `@list` grows a
+    // socket here like any free variable (author ruling 2026-07-30: the λ owns
+    // its names; @ swallowing them left no place to wire the value). At
+    // row-eval columns/builtins win over the capture, so a table λ's `@price`
+    // still reads the column and its unwired capture is inert; `row`/`rows`
+    // are builtins in every row context, so @row/@rows capture nothing.
+    const next = [...new Set([...extractVariables(this.expr), ...atColNames(this.expr)])]
+      .filter((v) => !params.includes(v) && v !== "row" && v !== "rows");
     const nextSet = new Set(next);
 
     const added: string[] = [];

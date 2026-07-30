@@ -348,6 +348,27 @@ export function rowRefNames(expr: string): string[] {
   return [...out];
 }
 
+/** Only the `@name` reads (identifier-shaped, reachable through the eval env
+ *  fallback) — the set a Lambda node grows CAPTURE sockets for. `col(...)`
+ *  literals are excluded: COL resolves through columns and the surface's side
+ *  ports only, never a capture, so a socket for one would be dead weight. */
+export function atColNames(expr: string): string[] {
+  const ast = parseExpr(expr);
+  if (!ast) return [];
+  const out = new Set<string>();
+  const walk = (n: Ast): void => {
+    switch (n.t) {
+      case "atcol": out.add(n.name); break;
+      case "call": n.args.forEach(walk); break;
+      case "apply": walk(n.fn); n.args.forEach(walk); break;
+      case "unary": case "percent": walk(n.arg); break;
+      case "bin": walk(n.l); walk(n.r); break;
+    }
+  };
+  walk(ast);
+  return [...out];
+}
+
 // Resolve Excel functions through the EXCEL_FUNCTIONS registry seam: a registered
 // native impl wins (the first wave — ROUND/SQRT/STANDARDIZE/YEAR/EOMONTH/LEN), and
 // every other name still falls through to Formula.js (behavior-identical). Throws
@@ -877,7 +898,13 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     case "str": return n.v;
     case "bool": return n.v;
     case "blank": return null; // an omitted argument IS the missing value
-    case "atcol": return readRowCell(n.name); // this row's cell (dynamic row context)
+    // This row's cell (dynamic row context). The env fallback is the
+    // DEFINITION's own names — a λ's captures, an expr's variables — so
+    // `@list` reads the Lambda card's capture socket when no column matches
+    // (columns/builtins win inside readRowCell; a plain constant name like
+    // `pi` is never an @-target worth special-casing).
+    case "atcol": return readRowCell(n.name, () =>
+      Object.prototype.hasOwnProperty.call(env, n.name) ? { hit: true, v: env[n.name] } : { hit: false });
     case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
     case "unary": {
       const a = evalAst(n.arg, env);

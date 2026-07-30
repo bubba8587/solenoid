@@ -1923,10 +1923,13 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         reserved: ["frame", "name", "fn", "after"],
         sideValue: (p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0),
         alias: this.bindings,
-        // @names that match no column grow side ports here — the row-aligned
-        // list a λ's `@list` reads is zipped to THIS frame, so its port
-        // belongs on this node, and the λ stays frame-agnostic (no capture).
-        rowRefs: wired ? (wired.expr ? rowRefNames(wired.expr) : []) : this._rowRefs,
+        // @names that match no column grow side ports here — EXCEPT a wired
+        // λ's captured names, which ride the Lambda card's own sockets (the
+        // definition owns its names; only this node's inline expr falls to
+        // its side ports).
+        rowRefs: wired
+          ? (wired.expr ? rowRefNames(wired.expr).filter((p) => !(wired.captured ?? []).includes(p)) : [])
+          : this._rowRefs,
       },
     );
     if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
