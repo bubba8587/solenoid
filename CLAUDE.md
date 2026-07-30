@@ -231,6 +231,9 @@ Read the relevant section there before touching one of these. The one-line "don'
 - **Unit flow** (`unitFlow.ts` + `unitBridge.ts`): the UNIT is a property of the VALUE — a
   base-SI `UnitCell` AUTHORED by the FC (`applyFcUnit`) or Convert, never the Number node; it
   rides through passthroughs/selectors and BREAKS at any transform; there is NO graph unit-walk.
+  A unit is FIRST-CLASS like the magnitude (D26): an FC downstream of a united value LOCKS
+  (mirrors, never re-authors) — only Convert changes a unit, because a unit change IS a
+  magnitude change, comparatively.
   The number FORMAT stays a display annotation (`makeAnnotationResolver` walks the graph, both
   directions, through pure passthroughs and Conduit lanes). **The unit-blind boundary (do NOT
   remove; PER-INPUT):** raw `UnitCell`s must never reach a node that doesn't run the algebra —

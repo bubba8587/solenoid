@@ -197,7 +197,11 @@ closed C4 (author eyeballed the computed-cell look: fine). Pins updated
 (unitCoercion fc2/fcAfterConvert now expect locked) + the author's exact
 INDEX repro pinned; the STALE subsystem-invariants claim that the lock
 states were "inert, always false" reconciled to the live three-state
-model. Suite 3838.
+model. Suite 3838. The author then supplied the load-bearing WHY, recorded
+as **D26**: the unit is first-class like the magnitude — "you wouldn't just
+let its magnitude be overwritten; a unit change is in reality affecting the
+magnitude, comparatively" — so only the algebra (Convert) may change a
+value's unit, ever.
 
 ### D25: no per-cell formulas, ever (2026-07-31e)
 
