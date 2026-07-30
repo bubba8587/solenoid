@@ -186,16 +186,26 @@ export function computeColumnCells(
   let cursor = 0;
   const colByName = new Map(f.columns.map((c) => [c.name, c] as const));
   const sideCache = new Map<string, unknown>();
+  // This-row read of an arbitrary value: a row-aligned list reads its element
+  // (length-checked), a scalar reads the same every row, a matrix has no
+  // single this-row value. The list VALIDATION (matrix scan + length) is
+  // memoized per name — @-values are row-invariant by contract, and running
+  // the O(list) matrix scan per row made an @-list read quadratic in rows.
+  const atVerdict = new Map<string, { v: unknown; err: SolError | null }>();
   const at = (key: string, v: unknown): unknown => {
-    // This-row read of an arbitrary value: a row-aligned list reads its
-    // element (length-checked), a scalar reads the same every row, a matrix
-    // has no single this-row value.
-    if (Array.isArray(v)) {
-      if (v.some((x) => Array.isArray(x))) return solError("#SHAPE!", `@${key} reads one value per row — a matrix has no single this-row value`);
-      if (v.length !== rows) return solError("#SHAPE!", `@${key}: ${v.length} value${v.length === 1 ? "" : "s"} for ${rows} row${rows === 1 ? "" : "s"}`);
-      return (v as unknown[])[cursor] ?? null;
+    if (!Array.isArray(v)) return v;
+    let m = atVerdict.get(key);
+    if (!m || m.v !== v) {
+      const err = v.some((x) => Array.isArray(x))
+        ? solError("#SHAPE!", `@${key} reads one value per row — a matrix has no single this-row value`)
+        : v.length !== rows
+          ? solError("#SHAPE!", `@${key}: ${v.length} value${v.length === 1 ? "" : "s"} for ${rows} row${rows === 1 ? "" : "s"}`)
+          : null;
+      m = { v, err };
+      atVerdict.set(key, m);
     }
-    return v;
+    if (m.err) return m.err;
+    return (v as unknown[])[cursor] ?? null;
   };
   const rowFrame: RowFrame = {
     strong: (key) => {
