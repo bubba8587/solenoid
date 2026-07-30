@@ -17,6 +17,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { buildCatalog } from "../src/graph/catalogUtils";
+import { NODE_OPS } from "../src/graph/nodeOps";
 import type { CatalogEntry, NodeCatalogEntry } from "../src/graph/AddNodeMenu";
 
 const exposed = new Map<string, Set<string>>();
@@ -49,8 +50,22 @@ walk(buildCatalog(false));
     }
   }
 
+  // A NODE_OPS declaration with an ops list is AUTHORITATIVE for its class — use
+  // it before the table-content heuristic, which mis-joins classes whose op keys
+  // are a subset of an unrelated table (GroupByFrame's {"sum"} matched the 1-D
+  // GROUP_BY_OP_META until the AggOp table existed).
+  const declared = new Map<string, string[]>();
+  for (const d of NODE_OPS) if (d.ops) declared.set(d.ctor.name, d.ops.map((o) => o.op));
+
   const rows: string[] = [], ambiguous: string[] = [], unmatched: string[] = [];
   for (const [cls, ops] of exposed) {
+    const declKeys = declared.get(cls);
+    if (declKeys) {
+      if (ops.size < declKeys.length) {
+        rows.push(`${cls} — ${ops.size}/${declKeys.length} | MISSING: ${declKeys.filter((k) => !ops.has(k)).join(", ")} | NODE_OPS declaration`);
+      }
+      continue;
+    }
     let cands = metas.filter((m) => [...ops].every((o) => m.keys.includes(o)));
     if (cands.length === 0) { unmatched.push(`${cls} (ops: ${[...ops].join(", ")})`); continue; }
     if (cands.length > 1) {

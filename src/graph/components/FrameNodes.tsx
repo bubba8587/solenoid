@@ -43,6 +43,7 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../rete-nodes";
+import { AGG_OP_META } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
@@ -382,20 +383,13 @@ export function DropColumnsComponent({ data, emit }: NodeProps<DropColumnsNodeTy
 
 // ─── GROUP BY / PIVOT (shared aggregate-op selector) ─────────────────────────
 
-export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] = [
-  { value: "sum", label: "SUM" },
-  { value: "avg", label: "AVERAGE" },
-  { value: "min", label: "MIN" },
-  { value: "max", label: "MAX" },
-  { value: "count", label: "COUNT" },
-  { value: "product", label: "PRODUCT" },
-  { value: "median", label: "MEDIAN" },
-  { value: "mode", label: "MODE" },
-  { value: "stdev", label: "STDEV.S" },
-  { value: "stdevp", label: "STDEV.P" },
-  { value: "var", label: "VAR.S" },
-  { value: "varp", label: "VAR.P" },
-];
+// Derived from AGG_OP_META (SSOT-1) — the table the search rows and the Pivot
+// editor read too. `pivotOnly` ops (percentof) stay off these cards: only the
+// pivot assembly can run them.
+export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] =
+  (Object.keys(AGG_OP_META) as AggOp[])
+    .filter((op) => !AGG_OP_META[op].pivotOnly)
+    .map((value) => ({ value, label: AGG_OP_META[value].label }));
 
 // Same depth encoding as the Pivot editor's totals selector (PivotSpec's
 // rowTotalDepth): 0/1/2, negative ⇒ totals placed at the top.
