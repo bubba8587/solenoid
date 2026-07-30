@@ -196,6 +196,16 @@ copies. Highlights beyond copy-fixes:
   digests swept to history, parity backlog re-derived from the script
   (548/646, gap B 98), Data Feed baseline corrected (Stooq is dead),
   D2/D19-4/D24-Where fixed in decisions.md.
+- Late tranches: SSOT-8 converted to a direct quantifier pin (the extracted
+  `excelCoverage`; the live catalog can't distinguish some/every while gap A
+  is empty); the four stale Stooq mentions swept incl. a user-facing Settings
+  string; subsystem-invariants reconciled — its "Conduit perpendicular-face
+  sign" section described a DELETED Manifold rule (no flip exists: −x in,
+  +x out, rotated), the lattice edge-list gained the missing wildcard rungs +
+  cube-as-supremum, unit authorship/branch facts corrected, a new SSOT-9
+  pruning section added; dead `columnDisplayValue` deleted (base-SI premise,
+  no callers); the `isWildcardType` two-of-six-rungs question is a backlog
+  item needing a repro.
 
 ### Docked FC false Frame type on reload: settle before dock (2026-07-31h)
 
