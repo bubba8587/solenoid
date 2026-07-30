@@ -102,18 +102,19 @@ export interface TablePopupState {
   pinNodeId?: string;
   /** The host's λ input keys (Frame Input's addable lambda sockets) — when
    *  non-empty, the editable header grows the per-column SOURCE select
-   *  (Typed | λ…), the column-source model's slice 1
+   *  (Data | Formula | λ…), the column-source model
    *  (v2.0/19-computed-column-surface.md). */
   lambdaOptions?: string[];
-  /** Per-column initial λ binding (aligned with columns; undefined = Typed). */
+  /** Per-column initial λ binding (aligned with columns; undefined = Data). */
   sourceLambdas?: (string | undefined)[];
   /** Per-column initial inline formula — the Formula source (aligned with
    *  columns; undefined = not a Formula column). */
   sourceExprs?: (string | undefined)[];
-  /** Formatted display text for COMPUTED columns (row-major; null where the
-   *  column is Typed) — computed cells render read-only from the derived
-   *  frame, they have no raw text to edit. */
-  computedCells?: (string | null)[][];
+  /** Derived cell VALUES for COMPUTED columns (row-major; meaningful only at
+   *  columns the popup's source state marks computed) — computed cells render
+   *  read-only from the derived frame through the SAME per-column format+unit
+   *  controls as literal cells; they have no raw text to edit. */
+  computedCells?: Cell[][];
 }
 
 export const tablePopup = createValueStore<TablePopupState>();

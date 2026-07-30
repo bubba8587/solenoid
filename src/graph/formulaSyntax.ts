@@ -81,6 +81,20 @@ export function highlightFormula(src: string): string {
       while (j < src.length && isIdChar(src[j])) j++;
       out += span("fx-var", src.slice(i, j)); i = j; continue;
     }
+    // Structured references (D24): `[Unit Price]` (whole column), `@[Name]` /
+    // `[@Name]` / `[@[Name]]` (this row). One token through the closing
+    // bracket — colored like the variables they behave as; left open
+    // mid-type, color to the end.
+    if (c === "[" || (c === "@" && src[i + 1] === "[")) {
+      let j = i + (c === "@" ? 2 : 1);
+      let depth = 1;
+      while (j < src.length && depth > 0) {
+        if (src[j] === "[") depth++;
+        else if (src[j] === "]") depth--;
+        j++;
+      }
+      out += span("fx-var", src.slice(i, j)); i = j; continue;
+    }
     // identifier — look past whitespace for a '(' to decide function vs name
     if (isIdStart(c)) {
       let j = i + 1;

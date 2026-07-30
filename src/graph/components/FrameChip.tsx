@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { tablePopup, type FramePopupColumn } from "../tablePopupStore";
-import { frameRowCount, frameToGrid, isFrameValue, formatFrameCell, type FrameValue, type FrameSourceColumn } from "../frame";
+import { frameRowCount, frameToGrid, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
@@ -107,7 +107,11 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           headers: (isSource ? source! : full.columns).map((c) => c.name),
           // The popup's type switcher covers all four kinds (number/text/date/logical),
           // so pass each column's real type — a logical column edits as TRUE/FALSE text.
-          columnTypes: (isSource ? source! : full.columns).map((c) => c.type),
+          // A COMPUTED column's type is the DERIVED one (inference/λ result), so the
+          // format row shows the right selector family for what the cells actually are.
+          columnTypes: isSource
+            ? source!.map((c, j) => ((c.lambda || c.expr) ? (value.columns[j]?.type ?? "number") : c.type))
+            : full.columns.map((c) => c.type),
           // Read-only frame: pass the INPUTTED source text (row-major) so the Source
           // view shows what came in (a date string, "1"/"true") rather than the
           // underlying value. The literal-source editor seeds raw from `data` instead.
@@ -132,8 +136,9 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           pinNodeId: hostId ?? undefined,
           // The column-source model: the host's λ keys, each column's current
           // binding (λ or inline formula), and the COMPUTED columns' derived
-          // display text (they have no raw cells — the popup renders these
-          // read-only). Always passed for a literal source, so the source
+          // cell VALUES (they have no raw cells — the popup renders these
+          // read-only, through the SAME format+unit controls as literal
+          // columns). Always passed for a literal source, so the source
           // select (Data | Formula | λ…) is there even before any λ socket.
           ...(isSource ? {
             lambdaOptions: lambdaOptions ?? [],
@@ -141,11 +146,8 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
             sourceExprs: source!.map((c) => c.expr),
             computedCells: Array.from(
               { length: Math.max(rowCount, frameRowCount(value)) },
-              (_, r) => source!.map((c, j) => {
-                if (!c.lambda && !c.expr) return null;
-                const cell = formatFrameCell(value.columns[j]?.type ?? "number", value.columns[j]?.values[r] ?? null);
-                return cell === null ? "" : String(cell);
-              }),
+              (_, r) => source!.map((c, j) =>
+                (c.lambda || c.expr) ? (value.columns[j]?.values[r] ?? null) : null),
             ),
           } : {}),
         });

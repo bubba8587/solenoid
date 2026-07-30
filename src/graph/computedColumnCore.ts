@@ -4,7 +4,7 @@
 // 2026-07-29: "a very large percentage of Excel work is table computed
 // columns"): the Computed Column VERB node today, the Frame Input's per-column
 // sources next (docs/v2.0/19-computed-column-surface.md). They must agree on
-// every rule — binding precedence, builtins, the col() accessor, the per-row
+// every rule — binding precedence, builtins, the bracket references, the per-row
 // error/null contract — so the rules live HERE once, and a surface only
 // supplies its own port plumbing.
 //
@@ -25,10 +25,10 @@
 //     card's capture socket) → the surface's SIDE value. A ROW-ALIGNED list
 //     reads element-per-row (length-checked against the frame); a scalar
 //     reads the same every row;
-//   • `col("Unit Price")` / `col(2024)` is the WHOLE column for names a
-//     variable can't spell; `at("Unit Price")` is the this-row read for them
-//     (the @ form spelled out). Name-exact — a numeric literal is a NAME,
-//     never an index;
+//   • the bracket references spell both for names a variable can't:
+//     `[Unit Price]` is the WHOLE column, `@[Unit Price]` (Excel also writes
+//     `[@Unit Price]` / `[@[Unit Price]]`) is this row. Name-exact — a
+//     numeric name is a NAME, never an index;
 //   • an error cell in a ROW-bound value (a λ param's cell) propagates to
 //     that row's output; inside a whole-column list it flows INTO the formula
 //     (aggregates apply their own error rules); a null flows in likewise
@@ -57,11 +57,11 @@ type Binding =
   | { kind: "rows" }
   | { kind: "side"; value: unknown };
 
-// ─── The dynamic row context — what `@price` and `col("price")` read ─────────
+// ─── The dynamic row context — what `@price` and `[Unit Price]` read ─────────
 // A row formula runs INSIDE a row: the core pushes an accessor for the current
 // row around every evaluation (the inline expr AND a wired λ's body alike —
 // dynamic scope is what lets a ZERO-param λ read `@price` with no binding
-// ceremony), and the `@` operator / the COL function resolve against the top
+// ceremony), and the `@` / bracket references resolve against the top
 // of the stack. Synchronous by construction — the engine's recompute is
 // single-threaded, and nesting (a λ whose captures carry another computed
 // frame) stacks cleanly.
@@ -81,20 +81,20 @@ type RowFrame = {
   /** This-row read of an arbitrary value: a row-aligned list reads its
    *  element (length-checked), a scalar reads the same every row. */
   at: (name: string, v: unknown) => unknown;
-  /** WHOLE-value resolution (`col(name)`): the column as a list, else the
+  /** WHOLE-value resolution (`[Name]`): the column as a list, else the
    *  surface's side value verbatim, else a miss #REF!. */
   whole: (name: string) => unknown;
 };
 const rowStack: RowFrame[] = [];
 
-/** Resolve a this-row reference (`@name`, `AT(name)`). `fallback` is the
+/** Resolve a this-row reference (`@name`, `@[Name]`). `fallback` is the
  *  evaluator's window into the CURRENT definition's environment (λ captures,
  *  expr variables) — consulted after columns/builtins, before the surface's
  *  side values. Outside any row context the reference is meaningless — a
  *  targeted #REF!, not a typo's #NAME?. */
 export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: unknown }): unknown {
   const top = rowStack[rowStack.length - 1];
-  if (!top) return solError("#REF!", "@ and at() read the current row — they work inside a computed column");
+  if (!top) return solError("#REF!", "@ reads the current row — it works inside a computed column");
   const key = String(name);
   const direct = top.strong(key);
   if (direct.hit) return direct.v;
@@ -103,12 +103,12 @@ export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: 
   return top.side(key);
 }
 
-/** Resolve a WHOLE-column reference (`COL(name)` — Excel's `[Amount]` for a
+/** Resolve a WHOLE-column reference (`[Unit Price]` — the bracket form, for a
  *  name a variable can't spell): the column as a list, else the surface's
  *  side value whole. Outside any row context: the same targeted #REF!. */
 export function readWholeColumn(name: unknown): unknown {
   const top = rowStack[rowStack.length - 1];
-  if (!top) return solError("#REF!", "col() reads a table column whole — it works inside a computed column");
+  if (!top) return solError("#REF!", "[column] reads a table column whole — it works inside a computed column");
   return top.whole(String(name));
 }
 
@@ -138,7 +138,7 @@ export interface ComputeColumnOptions {
   /** The surface's side-value lookup (a wired input, an inline literal…).
    *  Called once per side variable — side values are row-invariant by
    *  contract. `kind` says how the name is being read: bound as a variable
-   *  ("var"), or reached by `@name`/`col(name)` from inside a row ("row") —
+   *  ("var"), or reached by `@name`/`[Name]` from inside a row ("row") —
    *  a surface with no side ports can word its refusal per path. */
   sideValue?: (name: string, kind: "var" | "row") => unknown;
   /** The definition's row-context reads (`rowRefNames(expr)`) that the
@@ -206,7 +206,7 @@ export function computeColumnCells(
   }
 
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-  // The row context behind `@name` / `col(name)`: one frame object serves
+  // The row context behind `@name` / `[Name]`: one frame object serves
   // every row via the cursor; columns pre-indexed in a Map so an @-read is
   // O(1), not a per-row column scan. Exact name match — a numeric name is a
   // NAME, never a positional index. A non-column, non-env name falls to the

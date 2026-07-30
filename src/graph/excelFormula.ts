@@ -18,7 +18,7 @@ import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
-import { readRowCell } from "./computedColumnCore";
+import { readRowCell, readWholeColumn } from "./computedColumnCore";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -38,13 +38,23 @@ export type Ast =
   | { t: "blank" }
   // Excel's table this-row reference, `[@Price]` spelled `@price`: the CURRENT
   // row's cell of that column, resolved via the dynamic row context a computed
-  // column sets around each row (computedColumnCore). Sugar over `col("price")`
-  // — identifier-shaped names only; an awkward name stays `col("Unit Price")`.
-  // NOT a variable: extractVariables skips it, so it never grows a socket.
-  | { t: "atcol"; name: string };
+  // column sets around each row (computedColumnCore). Spellings: `@price` for
+  // an identifier name; `@[Unit Price]` / Excel's `[@Price]` / `[@[Unit
+  // Price]]` for the rest. NOT a variable: extractVariables skips it, so it
+  // never grows a socket.
+  | { t: "atcol"; name: string }
+  // A WHOLE-column structured reference — `[Unit Price]`, Excel's `[Amount]`
+  // (D24). The bracket form exists for names an identifier can't carry (a bare
+  // identifier already reads the whole column as a variable); same row-context
+  // resolution, whole. Not a variable either.
+  | { t: "wholecol"; name: string };
+
+/** Identifier-shaped: printable as a bare `@name` / variable; anything else
+ *  needs the bracket spelling. */
+const IDENT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 // ─── Tokenizer ────────────────────────────────────────────────────────────────
-type Tok = { k: "num" | "str" | "name" | "op" | "paren" | "comma"; v: string };
+type Tok = { k: "num" | "str" | "name" | "op" | "paren" | "comma" | "colref" | "rowref"; v: string };
 
 function tokenize(src: string): Tok[] | null {
   const toks: Tok[] = [];
@@ -91,6 +101,35 @@ function tokenize(src: string): Tok[] | null {
     if ("+-*/^%&=<>@".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
     if (c === "(" || c === ")") { toks.push({ k: "paren", v: c }); i++; continue; }
     if (c === ",") { toks.push({ k: "comma", v: "," }); i++; continue; }
+    if (c === "[") {
+      // Structured reference (D24): `[Name]` = the whole column; `[@Name]` and
+      // `[@[Name]]` (Excel's table spellings) = this row. The name is raw text
+      // up to the closing bracket — spaces and symbols welcome; `]` itself
+      // can't appear (Excel escapes it, we don't). `@[Name]` composes in the
+      // parser from the `@` op + a colref.
+      let j = i + 1;
+      let row = false;
+      if (src[j] === "@") { row = true; j++; }
+      let name: string;
+      if (row && src[j] === "[") {
+        let e = j + 1;
+        while (e < src.length && src[e] !== "]") e++;
+        if (e >= src.length || src[e + 1] !== "]") return null;
+        name = src.slice(j + 1, e);
+        j = e + 2;
+      } else {
+        let e = j;
+        while (e < src.length && src[e] !== "]") e++;
+        if (e >= src.length) return null;
+        name = src.slice(j, e);
+        j = e + 1;
+      }
+      name = name.trim();
+      if (!name) return null;
+      toks.push({ k: row ? "rowref" : "colref", v: name });
+      i = j;
+      continue;
+    }
     return null; // unknown character
   }
   return toks;
@@ -192,10 +231,12 @@ function parse(toks: Tok[]): Ast | null {
     if (t.k === "op" && t.v === "@") {
       eat();
       const n = peek();
-      if (n?.k !== "name") return null;
+      if (n?.k !== "name" && n?.k !== "colref") return null; // @price · @[Unit Price]
       eat();
       return { t: "atcol", name: n.v };
     }
+    if (t.k === "colref") { eat(); return { t: "wholecol", name: t.v }; }
+    if (t.k === "rowref") { eat(); return { t: "atcol", name: t.v } as Ast; }
     if (t.k === "num") { eat(); return { t: "num", v: t.v }; }
     if (t.k === "str") { eat(); return { t: "str", v: t.v }; }
     if (t.k === "paren" && t.v === "(") {
@@ -316,22 +357,16 @@ export function extractVariables(expr: string): string[] {
   return out;
 }
 
-// The column names a formula reads THROUGH THE ROW CONTEXT: `@name`, and
-// `col("literal")` / `at("literal")` / `col(2024)` calls (COL = the whole
-// column, AT = this row — D24). NOT variables (extractVariables skips them
-// deliberately) — this is the dependency feed for a computed-column topo
-// sort, where a zero-param λ reading `@revenue` still depends on the revenue
-// column. A col(<computed expr>) can't be known statically and isn't collected.
+// The column names a formula reads THROUGH THE ROW CONTEXT: `@name` /
+// `@[Name]` / `[@Name]` (this row) and `[Name]` (the whole column — D24). NOT
+// variables (extractVariables skips them deliberately) — this is the
+// dependency feed for a computed-column topo sort, where a zero-param λ
+// reading `@revenue` still depends on the revenue column.
 function collectRowRefs(n: Ast, out: Set<string>): void {
   switch (n.t) {
     case "atcol": out.add(n.name); break;
+    case "wholecol": out.add(n.name); break;
     case "call": {
-      const fn = n.name.toUpperCase();
-      if ((fn === "COL" || fn === "AT") && n.args.length === 1) {
-        const a = n.args[0];
-        if (a.t === "str") out.add(a.v);
-        else if (a.t === "num") out.add(a.v);
-      }
       n.args.forEach((a) => collectRowRefs(a, out));
       break;
     }
@@ -350,18 +385,19 @@ export function rowRefNames(expr: string): string[] {
   return [...out];
 }
 
-/** Only the `@name` reads (identifier-shaped, reachable through the eval env
- *  fallback) — the set a Lambda node grows CAPTURE sockets for. `col(...)` /
- *  `at(...)` literals are excluded: those resolve through columns and the
- *  surface's side ports only, never a capture, so a socket for one would be
- *  dead weight. */
+/** Only the IDENTIFIER-shaped `@name` reads (reachable through the eval env
+ *  fallback) — the set a Lambda node grows CAPTURE sockets for. Bracketed
+ *  references (`[Unit Price]`, `@[Unit Price]`) are excluded: a capture is a
+ *  variable, and those names can never be variables — they resolve through
+ *  columns and the surface's side ports only, so a socket would be dead
+ *  weight. */
 export function atColNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];
   const out = new Set<string>();
   const walk = (n: Ast): void => {
     switch (n.t) {
-      case "atcol": out.add(n.name); break;
+      case "atcol": if (IDENT_NAME.test(n.name)) out.add(n.name); break;
       case "call": n.args.forEach(walk); break;
       case "apply": walk(n.fn); n.args.forEach(walk); break;
       case "unary": case "percent": walk(n.arg); break;
@@ -908,6 +944,10 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     // `pi` is never an @-target worth special-casing).
     case "atcol": return readRowCell(n.name, () =>
       Object.prototype.hasOwnProperty.call(env, n.name) ? { hit: true, v: env[n.name] } : { hit: false });
+    // The whole column (D24's `[Unit Price]`). No env fallback: a bracketed
+    // name can never be a capture/variable (those are identifiers, already
+    // whole as bare names).
+    case "wholecol": return readWholeColumn(n.name);
     case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
     case "unary": {
       const a = evalAst(n.arg, env);
@@ -1184,7 +1224,8 @@ function tex(n: Ast, parent: number): string {
   switch (n.t) {
     case "num": return numLatex(n.v);
     case "blank": return "\\varnothing"; // an omitted argument, kept visible in the preview
-    case "atcol": return `\\text{@${n.name}}`; // the this-row reference, kept literal
+    case "atcol": return `\\text{@${IDENT_NAME.test(n.name) ? n.name : `[${n.name}]`}}`; // the this-row reference, kept literal
+    case "wholecol": return `\\text{[${n.name}]}`; // the whole-column reference, kept literal
     case "str": return texString(n.v);
     case "bool": return `\\mathrm{${n.v ? "TRUE" : "FALSE"}}`;
     case "name": return symbolLatex(n.name);
@@ -1291,6 +1332,7 @@ export function evaluateSteps(expr: string, vars: Record<string, number>): { ste
       case "bool": return n.v ? 1 : 0;
       case "str": ok = false; return NaN;
       case "atcol": { ok = false; return NaN; } // no row context in a step trace
+      case "wholecol": { ok = false; return NaN; } // no row context in a step trace
       case "unary": { const a = ev(n.arg); return n.op === "-" ? -a : a; }
       case "percent": return ev(n.arg) / 100;
       case "apply": { ok = false; return NaN; } // the step-trace walk doesn't apply lambdas

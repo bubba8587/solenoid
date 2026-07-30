@@ -573,8 +573,11 @@ argue for re-capping to 1-D, recorded as a new decision, not a silent revert.
 Frame Input Formula columns.
 **The decision:** inside a computed-column formula, a bare column name is the WHOLE
 column as a list (Excel's `[Amount]`); `@name` is this row's cell (`[@Amount]`).
-For names an identifier can't spell, `col("Unit Price")` is the whole column and
-`at("Unit Price")` the row read. λ PARAMS stay row-bound — they are the λ's
+For names an identifier can't spell, the BRACKET references do both — `[Unit
+Price]` whole, `@[Unit Price]` this row (Excel's own `[@Name]` / `[@[Name]]`
+spellings parse too; amended same day — the first cut shipped `col()`/`at()`
+functions and the author asked for the real Excel syntax; both functions are
+deleted, brackets are THE spelling). λ PARAMS stay row-bound — they are the λ's
 explicit per-row interface (`LAMBDA(revenue, revenue * 0.25)` reads the cell);
 picker bindings follow the same split (expr var → whole target column, λ param →
 row).
@@ -588,7 +591,9 @@ when it retired implicit intersection.
 **Cost accepted:** `@` ceremony on the simplest per-row math; a week-one breaking
 change (exprs, seeds, tests rewritten — pre-alpha, no shim). Inside a λ BODY a
 bare free name is still a capture (the definition owns its names, 2026-07-30) —
-whole-column reads there are spelled `col("name")` or wired via Get Column.
+whole-column reads there are spelled `[name]` or wired via Get Column. Dynamic
+(computed) column names lost their spelling with `col(expr)` — accepted; that's
+Get Column / INDEX territory at the graph altitude.
 **What would reverse it:** nothing foreseeable — this IS the Excel model the
 surface exists to mirror; a change would be a new decision.
 
