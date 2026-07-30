@@ -180,7 +180,7 @@ export function TablePopup() {
   // matrices). Index by column; a "matrix" popup uses index 0 for the whole grid.
   // Display-only: re-renders the on-screen grid, never the value or Copy/CSV.
   const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
-  // Per-column λ binding (the column-source model): undefined = Typed, else the
+  // Per-column λ binding (the column-source model): undefined = Data, else the
   // host's λ input key defining the column. Committed on Save via the source
   // column's `lambda` field.
   const [colLambdas, setColLambdas] = useState<(string | undefined)[]>([]);
@@ -682,7 +682,7 @@ export function TablePopup() {
                     {vertical ? colLabel(0) : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
                         {/* A computed column's type is inferred from its cells —
-                            the cycle button only applies to a Typed column. */}
+                            the cycle button only applies to a Data column. */}
                         {!colLambdas[c] && colExprs[c] === undefined && (
                           <button
                             type="button"
@@ -706,7 +706,7 @@ export function TablePopup() {
                       colHeaderLabel(c)
                     )}
                     {editableHeaders && !vertical && !!state.onSaveSource && (
-                      // The column-source select (the column-source model): Typed,
+                      // The column-source select (the column-source model): Data,
                       // an inline Formula, or one of the host's wired λ inputs.
                       // Only the literal-source frame editor gets it.
                       <>
@@ -721,7 +721,7 @@ export function TablePopup() {
                             setColExprs((prev) => { const next = [...prev]; next[c] = v === "=" ? (next[c] ?? "") : undefined; return next; });
                           }}
                         >
-                          <option value="">Typed</option>
+                          <option value="">Data</option>
                           <option value="=">Formula</option>
                           {(state.lambdaOptions ?? []).map((k) => (
                             <option key={k} value={k}>{`λ${k.replace(/^fn/, "")}`}</option>

@@ -120,6 +120,32 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Column source reads "Data"; the seed drops its gratuitous @ (2026-07-30h)
+
+Three author copy/idiom corrections, no mechanism change.
+
+1. The TablePopup per-column source select's first option is **Data**, not
+   "Typed" — it sits directly under the type-cycle glyph (Number/Text/Date/
+   Boolean), so "Typed" read as a second, contradictory type control. The
+   value is still `""`; only the label moved.
+2. `computed-columns.json`'s Margin rule is now `LAMBDA(revenue, revenue *
+   0.25)` — a declared param that binds to the column BY NAME — instead of a
+   zero-param λ reading `@revenue`. Both compute; the param form is what
+   you'd actually write, and it drops the inert `revenue` capture socket the
+   @-name grew (the 2026-07-30 "the λ owns its names" ruling).
+3. Same seed, the CC verb reads `scaled = revenue * @scale`. A bare column
+   name in a row formula ALREADY resolves to this row's cell
+   (`computedColumnCore` binds it `{kind:"col"}` and indexes per row), so
+   `@revenue` was noise. `@scale` stays and is load-bearing: `scale` names no
+   column, and only the @-path reads a wired row-aligned list element per row
+   (a plain variable would be a row-invariant side value).
+
+The seed's notes said "a plain name reads the column of that name and `@name`
+reads *this row's* cell", which is simply wrong — both are this row's cell.
+Rewritten to the real distinction: @ is how you reach a name that ISN'T a
+column. Re-verified through the headless runner, values unchanged (margin
+90/140/135/100, scaled 360/1120/1620/1600).
+
 ### FC complex verification: popup done, render half unwired (2026-07-29d)
 
 The backlog's "verify FC complex styles against the format-model truth table"

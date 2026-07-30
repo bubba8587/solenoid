@@ -170,7 +170,7 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   RATIFIED 2026-07-29** (C1 addable λ sockets; C2 TablePopup formula editing +
   card-chip glyph; C3 STRUCK — no wired-list source, no Frame from Lists fold;
   C4 eyeball). Slices 1+2 SHIPPED 2026-07-29: λ sockets, per-column source
-  select (Typed | Formula | λ…), inline Formula source with popup editing,
+  select (Data | Formula | λ…), inline Formula source with popup editing,
   topo-order intra-table refs (@/col() deps included) + cycle refusal,
   computed-cell rendering, the chip's ƒ mark. Remaining here: C4 — the author
   eyeballs the computed-cell look + the popup formula row on the preview.
