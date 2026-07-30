@@ -45,6 +45,14 @@ export interface ParityRow {
  *  registrations derive their names the same way, from the family OP_META tables. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
+/** The SSOT-8 quantifier, extracted so it is directly pinnable: a node claiming
+ *  Excel names is `excelCovered` only when EVERY one of them dispatches — `some`
+ *  would report a half-registered node as covered, which is exactly the drift the
+ *  completeness rule forbids. Empty claims are never covered (vacuous ≠ complete). */
+export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
+  return excel.length > 0 && excel.every(dispatches);
+}
+
 // Leaves the LANGUAGE itself covers: the four operator nodes (+ − × ÷ are the
 // formula surface's own operators), Comparison (= <> < > <= >=), and the two
 // formula HOSTS (Expression/Equation ARE the surface being measured). A name for
@@ -94,7 +102,7 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     // while GROUPBY itself still answers #NAME?.
     const decl = opsFor(leaf.type);
     const ops = decl?.kind === "operation" ? decl.ops : undefined;
-    const excelCovered = excel.length > 0 && excel.every((x) => formulaNames.has(x));
+    const excelCovered = excelCoverage(excel, (x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))
       // A leaf-level `fx` names the function(s) where the despaced label can't

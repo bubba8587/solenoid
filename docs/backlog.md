@@ -21,8 +21,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   (**72 rules**). Still queued:
   - **read-as is coercion-not-assertion** (`applyGetColumnReadAs` pins it) — narrow;
     promote if the class of config-driven coercions grows.
-  - **SSOT-8 direct test** — a quotable `excelCovered` quantifier assertion converts
-    the weakest module-only citation (rules.md known-violation 1).
 - [ ] **Rules spec — the enforcement tail.** Down to (low value): SOCK-8 partial
   (the un-greppable visual half of the socket-box geometry — the CSS pin landed
   2026-07-28kk) and SOCK-6 unenforced (recorded un-greppable). The semantic half

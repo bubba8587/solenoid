@@ -281,10 +281,10 @@ function PacksSection() {
 
 // API keys for the data-connection providers (FRED, Alpha Vantage). Stored per
 // provider in localStorage on this device only (apiKeyStore) — the "never bundled"
-// key store. Stooq stocks need no key, so they're not listed here.
+// key store.
 const API_PROVIDERS = [
   { id: "fred", label: "FRED", help: "Economic data series from the St. Louis Fed; free key at fredaccount.stlouisfed.org." },
-  { id: "alphavantage", label: "Alpha Vantage", help: "Stock quotes; free key at alphavantage.co. Stooq needs no key." },
+  { id: "alphavantage", label: "Alpha Vantage", help: "Stock history; free key at alphavantage.co." },
 ] as const;
 
 function ApiKeyRow({ id, label, help }: { id: string; label: string; help: string }) {
