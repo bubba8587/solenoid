@@ -9,7 +9,7 @@ area. When you coin a new load-bearing term, add it here.
 ## Graph & canvas
 
 - **Node** — one computation unit; a card on the canvas. Its `data()` method is a pure
-  function of its inputs. (`nodes/*.ts`, `nodeKit.tsx`)
+  function of its inputs. (`nodes/*.ts`, `components/nodeKit.tsx`)
 - **Cable / connection** — a wire carrying a value from one node's output socket to
   another's input. The dependency edges of the graph. (`ConnectionComponent.tsx`,
   `cablePaths.ts`)
@@ -40,9 +40,9 @@ area. When you coin a new load-bearing term, add it here.
 
 ## Values, types, errors
 
-- **SolError** — a tagged error value (`#DIV/0!`, `#SHAPE!`, `#CIRC!`, `#TYPE!`, `#N/A`…)
-  that propagates through the graph. One notion of error; `ISERROR` ⟺ `IFERROR`.
-  (`errorValue.ts`)
+- **SolError** — a tagged error value (`#DIV/0!`, `#SHAPE!`, `#TYPE!`, `#DOMAIN!`,
+  `#OVERFLOW!`, `#CIRC!`, `#N/A`…) that propagates through the graph. One notion of
+  error; `ISERROR` ⟺ `IFERROR`. (`errorValue.ts`)
 - **Missing / null** — a first-class "hole" in a list/frame: rendered `null`, *skipped* by
   aggregators, propagated by element-wise math, dropped by Filter. Distinct from an error.
   (`valueKinds.ts` `isMissing`)
@@ -52,20 +52,25 @@ area. When you coin a new load-bearing term, add it here.
 - **Kleene logic** — 3-valued AND/OR/NOT (true/false/null) matching SQL/Polars.
   (`valueKinds.ts` `kleeneAnd/Or/Not`)
 - **Logical type** — first-class Boolean (purple socket family) rendering TRUE/FALSE,
-  coercing ↔ 1/0. The one cross-family socket bridge. (`sockets.ts`, `logic.ts`)
+  coercing ↔ 1/0. The one cross-family socket bridge. (`sockets.ts`, `nodes/logic.ts`)
 - **Socket lattice** — the ruleset for what can connect to what: type families never
   auto-cross (Cast required); dimensionality flows upward freely. (`sockets.ts`,
   `socketConnect.test.ts`; see decisions.md D7)
 - **Cast** — the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
-- **Coalesce / Fill** — the opt-in node to treat `null` as a real value. (`list.ts`
-  `FillNode`)
+- **Coalesce / Fill** — the opt-in node to treat `null` as a real value.
+  (`nodes/list.ts` `FillNode`)
 
 ## Format & units
 
-- **Format Controller (FC)** — a node that LOCKS a value's unit + number format; the lock
-  rides the value through passthroughs and selectors, breaking at a transform.
-  (`formatController.ts`, `fcReconcile.ts`)
+- **Format Controller (FC)** — a node that LOCKS a value's number format, and authors a
+  unit ONLY onto a unit-less value; both ride the value through passthroughs and
+  selectors, breaking at a transform. (`nodes/formatController.ts`, `fcReconcile.ts`)
+- **FC lock states** — who owns the FC's unit dropdown: *authored* (the FC set it),
+  **forwarding** (an inherited upstream unit — the FC MIRRORS it, locked, because a
+  unit is first-class like the magnitude; D26), **lockedByConvert** (a downstream
+  Convert's `fromUnit` dictates it). `unitLocked = lockedByConvert || forwarding`.
+  (`nodes/formatController.ts`)
 - **Unit flow** — the machinery that carries an FC's unit/format lock along the value both
   downstream and upstream through passthroughs, derived on read. ($ is a unit, not a
   format.) (`unitFlow.ts`, `unitFormat.ts`)
@@ -81,9 +86,10 @@ area. When you coin a new load-bearing term, add it here.
 - **FrameValue** — a fully-materialized frame held in JS memory. (`frame.ts`)
 - **FrameRef** — a *lazy handle* on a cable pointing at a frame living in the engine
   (a query plan), not the data itself. (`frameBackend.ts` `isFrameRef`)
-- **Verb node** — a relational operation node: Filter/Sort/Join/Group By/Append/Distinct/
-  Rename/Select/Drop/Pivot/Unpivot/Nest/Unnest/Frame Lookup/Split Column/Add Index.
-  (`nodes/frame.ts`, `frameVerbs.ts`)
+- **Verb node** — a relational operation node — Filter/Sort/Join/Group By/Append/
+  Distinct/Pivot/Unpivot/Nest/Unnest/Computed Column/Split Column… and the rest of the
+  catalog's Table group. (`nodes/frame.ts`, `frameVerbs.ts`; inventory in
+  `nodeCatalog.ts`)
 - **FrameBackend** — the seam with two implementations: `JsFrameBackend` (web/dev, eager)
   and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
   (`frameBackend.ts`; see decisions.md D1)
@@ -96,15 +102,34 @@ area. When you coin a new load-bearing term, add it here.
 - **Source-handle cache** — a WeakMap keyed by frame identity so a given frame uploads to
   Rust only once. (`frameBackend.ts` `_sourceCache`)
 - **Cube** — the recursive nested-table container (a frame whose cells can be frames);
-  the anti-flat-grid feature, with cached depth and a drill-in popup. (`cube.ts`,
-  `cubePopupStore.ts`)
+  the anti-flat-grid feature, with cached depth and a drill-in popup. (`CubeValue` in
+  `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)
+- **Computed column** — a frame column whose cells come from a per-row computation
+  (an inline formula or a wired λ) instead of typed data. ONE definition per column,
+  never per cell (D25). Two surfaces, one core: the Frame Input popup's per-column
+  source picker (**Data | Formula | λ**) and the Computed Column verb node.
+  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; decisions D24/D25)
+- **Side value** — a non-column value wired into a computed column's definition (a
+  scalar or a row-aligned list); surfaces grow/prune side sockets from the expression's
+  free names (`sideVars`). `@list` reads a side list's this-row element after a length
+  check. (`computedColumnCore.ts`, `nodes/frame.ts`)
 
 ## Formula layer
 
-- **Expression node** — the in-cell formula node; capped at the type-agnostic scalar/1-D
-  subset. (`nodes/expression.ts`; see decisions.md D2)
-- **LAMBDA** — reusable formula values + 2-D LAMBDA family (MAP/etc.). (`nodes/lambda.ts`,
-  `nodes/tableLambda.ts`)
+- **Expression node** — the in-cell formula node; computes at rank ≤ 2 — scalars, lists,
+  matrices, complex (D23 lifted the old 1-D cap). Frames/cubes stay out permanently: the
+  verb engine is their surface. (`nodes/expression.ts`; see decisions.md D2 → D23)
+- **LAMBDA** — a reusable formula value with named params, plus the 2-D LAMBDA family
+  (MAP/BYROW/REDUCE…). In a computed column its PARAMS are row-bound; free names and
+  @names in the body become **capture** sockets on the Lambda card. (`nodes/lambda.ts`
+  `captured`, `nodes/tableLambda.ts`)
+- **`@` / this-row reference** — inside a computed column, `@name` reads THIS row's cell
+  of a column (or a side list's element, length-checked). A bare name is the WHOLE
+  column as a list — Excel's table semantics exactly (D24). (`computedColumnCore.ts`
+  `readRowCell`/`readWholeColumn`, `excelFormula.ts` `atcol`/`wholecol`)
+- **Structured (bracket) reference** — the spelling for unspellable column names:
+  `[Unit Price]` whole column, `@[Unit Price]` / `[@Unit Price]` this row. Replaced the
+  deleted `col()`/`at()` functions. (`excelFormula.ts` tokenizer `colref`/`rowref`)
 - **Formula evaluator** — the tree-walking `evalAst` in `excelFormula.ts` is THE
   evaluation core; the old `compileFormula` codegen path is dormant (see the module's
   own comments before reviving it).
