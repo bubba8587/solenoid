@@ -55,7 +55,7 @@ belongs to exactly one node and is either an input or an output.
 
 **Socket** — the typed dot drawn at a port. Every port has exactly one socket.
 
-**Socket variant** — one of the 30 named types a socket can be (`number`,
+**Socket variant** — one of the 31 named types a socket can be (`number`,
 `strlist`, `frame`, `trueany`, …). "Variant" always means the type, never a
 particular port on a particular node.
 
@@ -89,9 +89,11 @@ whose result rank follows its input rank: `Add(2, 3)` produces one number,
 to choose when a single value must be treated as a one-element list rather than as
 a scalar.
 
-**Wildcard** — a variant that carries no element family. There are five, forming a
-ladder: `any` (rank 0), `anycombo` (rank 0-or-1), `anylist` (rank 1), `anytable`
-(rank 2), `trueany` (the top — anything at all).
+**Wildcard** — a variant that carries no element family. There are six, forming a
+ladder: `any` (rank 0), `anycombo` (rank 0-or-1), `anylist` (rank 1), `anydata`
+(rank ≤ 2 — scalar, list or matrix), `anytable` (rank 2, strictly), `trueany` (the
+top — anything at all). `anydata` and `anytable` share the rank-2 ceiling but
+differ in strictness: `anytable` is 2-D only, `anydata` takes any rank up to 2.
 
 **Widening** — a value moving up the rank ladder: a scalar becoming a
 one-element list, a list becoming a one-row matrix, a matrix becoming a frame, and
@@ -242,7 +244,7 @@ it is.
 
 **Holds:** one number.
 **Dot:** amber filled circle.
-**Ports:** 191 inputs, 102 outputs — the most-used variant in the app.
+**Ports:** 190 inputs, 101 outputs — the most-used variant in the app.
 
 **Accepts from:** `number`, `numlist`, `logical`, `logicalcombo`, `anycombo`,
 `anydata`, `any`, `trueany`.
@@ -269,7 +271,7 @@ Anything carrying more than one element raises `#SHAPE!`. Null passes through.
 
 **Holds:** a list of numbers. Strict: always a list.
 **Dot:** dark amber filled square.
-**Ports:** 66 inputs, 19 outputs.
+**Ports:** 65 inputs, 19 outputs.
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
 `logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
@@ -297,7 +299,7 @@ more than one column raises `#SHAPE!`. Null passes through.
 
 **Holds:** one number **or** a list of numbers. The number family's combo.
 **Dot:** two-tone split square, amber over dark amber.
-**Ports:** 149 inputs, 93 outputs.
+**Ports:** 149 inputs, 92 outputs.
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
 `logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
@@ -356,7 +358,7 @@ matrix unit tag survives the reshape.
 
 **Holds:** one piece of text.
 **Dot:** yellow-green filled circle.
-**Ports:** 68 inputs, 10 outputs.
+**Ports:** 70 inputs, 10 outputs.
 
 **Accepts from:** `string`, `strcombo`, `anycombo`, `anydata`, `any`,
 `trueany`.
@@ -519,7 +521,7 @@ that will not parse becomes null.
 
 **Holds:** one date **or** a list of dates. The date family's combo.
 **Dot:** two-tone split square, pink over dark pink.
-**Ports:** 10 inputs, 3 outputs.
+**Ports:** 8 inputs, 3 outputs.
 
 **Accepts from:** `date`, `datelist`, `datecombo`, `anylist`, `anycombo`,
 `anydata`, `any`, `trueany`.
@@ -691,7 +693,7 @@ connects to and from the number family at every rank, in both directions.
 **Holds:** one TRUE, FALSE or null. Logic is three-valued (Kleene): null means
 unknown.
 **Dot:** purple filled circle.
-**Ports:** 1 input, 2 outputs.
+**Ports:** 1 input, 3 outputs.
 
 **Accepts from:** `number`, `numlist`, `logical`, `logicalcombo`, `anycombo`,
 `anydata`, `any`, `trueany`.
@@ -717,7 +719,7 @@ other number is TRUE. A one-element list collapses to the boolean it contains.
 
 **Holds:** a list of booleans. Strict.
 **Dot:** dark purple filled square.
-**Ports:** 1 input, 2 outputs. **Typeable in place.**
+**Ports:** 1 input, 1 output. **Typeable in place.**
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
 `logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
@@ -746,7 +748,7 @@ anything else is null.
 **Holds:** one boolean **or** a list of booleans. The logical family's combo, and
 the output type of every comparison and test node.
 **Dot:** two-tone split square, purple over dark purple.
-**Ports:** 3 inputs, 8 outputs.
+**Ports:** 3 inputs, 9 outputs.
 
 **Accepts from:** `number`, `list`, `numlist`, `logical`, `logicallist`,
 `logicalcombo`, `anylist`, `anycombo`, `anydata`, `any`, `trueany`.
@@ -798,18 +800,18 @@ value arrives with.
 
 ### 5.6 The wildcards
 
-Five variants carry no element family. They form a ladder by rank. All five are
+Six variants carry no element family. They form a ladder by rank. All six are
 gray; they are told apart by shape.
 
 #### `any` — "Any value"
 
 **Holds:** one value of an unknown family. The rank-0 wildcard.
 **Dot:** gray filled circle.
-**Ports:** 8 inputs, no outputs. It is an input-side wildcard: a slot that takes
+**Ports:** 9 inputs, no outputs. It is an input-side wildcard: a slot that takes
 one value of whatever type the comparison, fill or accumulator is working in —
-List Filter's and Frame Filter's comparison value, SUMIFS' criteria, EXPAND's
-fill, REDUCE's and SCAN's initial value, SWITCH's expression and its `when`
-arms. Every one of them is adoptive.
+List Filter's and Frame Filter's comparison value, SUMIFS' criteria, CONTAINS'
+value, EXPAND's fill, REDUCE's and SCAN's initial value, SWITCH's expression and
+its `when` arms. Every one of them is adoptive.
 
 **Accepts from:** `number`, `numlist`, `string`, `strcombo`, `date`,
 `datecombo`, `complex`, `complexcombo`, `logical`, `logicalcombo`, `anycombo`,
@@ -831,9 +833,10 @@ arms. Every one of them is adoptive.
 **Holds:** one value **or** a list, of an unknown family. The element-agnostic
 combo — what `numlist` is to `number`.
 **Dot:** two-tone split square, gray over gray's own border shade.
-**Ports:** the SWITCH/CHOOSE-style value rows and Regex's result output, whose
-rank follows its operation. (Expression's variables moved UP a rung to `anydata`
-with D23 — this rung refuses the matrices formulas now accept.)
+**Ports:** 1 output — Regex's `result`, whose rank follows its operation. No
+input declares it today (`anyComboIn` exists as a factory; Expression's
+variables moved UP a rung to `anydata` with D23 — this rung refuses the
+matrices formulas now accept).
 
 **Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
 `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
@@ -857,7 +860,8 @@ this rung exists. There is no element conversion, because the family is unknown.
 rank-≤2 wildcard (SOCK-9), added by D23 so a formula variable can take a matrix.
 What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
-**Dot:** the anycombo split square with the matrix grid cross overlaid.
+**Dot:** the anycombo split square with a small rank-2 cross in its lower half
+(author call 2026-07-29 — the old full-square cross read as noise).
 **Ports:** Expression's formula variables (the D23 lift). The result output is
 NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
 computed value (combo rung for a scalar/list result, the family's matrix rung
@@ -883,7 +887,7 @@ evaluator owns the rank semantics from there (the broadcast table, FX-10).
 
 **Holds:** a list of values of an unknown family. Strict: always a list.
 **Dot:** gray filled square.
-**Ports:** 25 inputs, 15 outputs — the element-agnostic list operations (FILTER,
+**Ports:** 26 inputs, 15 outputs — the element-agnostic list operations (FILTER,
 DROP, Concat Lists, Interleave, GROUPBY keys, Frame from Lists).
 
 **Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
@@ -961,7 +965,7 @@ declares it handles anything is taken at its word.
 
 **Holds:** a data table with named, typed columns.
 **Dot:** violet square with an "F" cut into it.
-**Ports:** 43 inputs, 37 outputs — every relational verb, every table-shaped chart,
+**Ports:** 44 inputs, 38 outputs — every relational verb, every table-shaped chart,
 every data source.
 
 **Accepts from:** all 27 variants other than `cube`, `lambda`, `chart`, `document`.
@@ -1012,7 +1016,7 @@ Three variants hold things that are not data. Each connects only to itself and t
 
 **Holds:** a first-class function value.
 **Dot:** teal-green circle with a λ.
-**Ports:** 5 inputs, 1 output — the LAMBDA node produces one; MAP, MAKEARRAY,
+**Ports:** 6 inputs, 1 output — the LAMBDA node produces one; MAP, MAKEARRAY,
 REDUCE, SCAN and BYROW/BYCOL consume it.
 
 **Accepts from:** `lambda`, `trueany`.
@@ -1057,23 +1061,32 @@ Write to Obsidian consumes one.
 An adoptive port's socket **changes type to match the cable plugged into it** and
 **reverts to its base when the cable is removed**. This is derived state: it is
 recomputed after every load, paste and drill-in, and it is never saved to a file.
+On load the settle pass runs **before** Format Controllers register their docks,
+because a docked FC resolves its host socket once at dock time — an INDEX output
+that hasn't projected yet would hand it the container's raw type (the "false
+Frame type on reload" bug, pinned by `fcDockReload.test.ts`).
 
 Five bases are in use:
 
-**Base `trueany`** — the hollow ring. It adopts the wired type verbatim, whatever
-it is, including `lambda`, `chart` and `document`. Used by Display, IF, CHOOSE,
-Cast, Cable Switch, Conduit lanes, composite ports and Placeholder.
+**Base `trueany`** — the hollow ring. The only base that adopts the wired type
+verbatim, whatever it is, including `lambda`, `chart` and `document`. Used by
+Display, IF, CHOOSE, Cast, Cable Switch, Conduit lanes, composite ports and
+Placeholder.
 
-**Base `any`** — adopts verbatim. Used for the comparison-value slots.
+**Base `any`** — adopts a family-typed wire verbatim (its own accepts-list keeps
+the rank low). Used for the comparison-value slots.
 
-**Base `anycombo`** — adopts verbatim. Used for Expression's formula variables.
+**Base `anydata`** — adopts a family-typed wire verbatim, at whatever rank ≤ 2
+it arrives. Used for Expression's formula variables and Computed Column's side
+inputs. (`anycombo` has a factory but no adoptive input uses it today.)
 
 **Base `anylist`** and **base `anytable`** — these **keep their rank** and adopt
 only the element family. A number wired into a Concat-Lists row makes that row a
 `list` (dark amber square), not a `number` (amber circle) — the port still
-represents a list, so it still draws as one and still refuses a frame. A wire
-carrying no family at all (another wildcard, a frame, a cube) leaves the port at
-its base.
+represents a list, so it still draws as one and still refuses a frame.
+
+For every base except `trueany`, a wire carrying no family at all (another
+wildcard, a frame, a cube) leaves the port at its base.
 
 **Reshaping outputs** project the same way in both directions. An adoptive output
 based on `anytable` fed a `strlist` becomes a `strtable`; an adoptive output based
@@ -1084,10 +1097,20 @@ modes exist: *single* (follow the one named input), *agree* (follow the inputs o
 when they all carry the same type), and *active* (follow whichever branch is
 selected). A declaration may also carry a **projection** — a function applied to
 the resolved type. INDEX uses this: it declares that its result follows its
-container input, projected to that family's **combo** rung, because whether INDEX
-returns one element or a whole slice depends on runtime arguments. Feeding INDEX a
-`datelist` gives a `datecombo` output; feeding it a frame or cube, where the
-extracted value genuinely could be anything, gives `trueany`.
+container input, projected per the container's kind — three cases:
+
+- A **homogeneous container** (list/combo/matrix) projects to that family's
+  **combo** rung, because whether INDEX returns one element or a whole slice
+  depends on runtime arguments. Feeding INDEX a `datelist` gives a `datecombo`
+  output.
+- A **frame** consults the projection CONTEXT (the frame's static shape and
+  which ports are wired), not just the socket type: a column literal that
+  resolves against the static shape projects the COLUMN's family combo (`numlist`
+  for a number column, `datecombo` for a date one); a blank/`0` column — the
+  whole-row/whole-frame form — projects `frame`; a WIRED or dynamic column, where
+  the extracted value genuinely could be anything, projects `trueany`.
+- A **cube** projects `cube` while either axis is blank and unwired (the slice
+  forms), `trueany` only for a fully-addressed single cell.
 
 **The Format Controller and Conduit lanes** use the same mechanism through a
 mutable socket, adopting the type that flows in so the FC can offer the right
@@ -1129,11 +1152,13 @@ socket's family:
 | `chart` | text scale |
 | `anylist` `anycombo` `anydata` `frame` `cube` `document` | none |
 
-**Units.** A unit is a property of the value, authored by the Format Controller or
-by Convert, and it rides through passthroughs and selectors. It attaches per
-element on a list, per column on a frame, and once for a whole matrix. Only a node
-that runs the unit algebra receives the tagged cells; the socket is what decides
-whether the tag survives the boundary.
+**Units.** A unit is a property of the value, authored by the Format Controller
+at the value's origin (or by a frame column's unit spec), and changed only by
+Convert; it rides through passthroughs and selectors. A DOWNSTREAM FC mirrors an
+inherited unit and is locked against re-authoring it (D26) — only the unit
+algebra changes a unit. It attaches per element on a list, per column on a frame,
+and once for a whole matrix. Only a node that runs the unit algebra receives the
+tagged cells; the socket is what decides whether the tag survives the boundary.
 
 ---
 
@@ -1264,8 +1289,9 @@ and the numbers below are what that produced.
 Four edits, all in `sockets.ts` — the type union, `SOCKET_COLORS`,
 `SOCKET_TYPE_LABELS`, and the `FAMILIES` row — give you every accept-set, the
 compatibility test and the connection guard, correct in both directions against
-all 30 variants. Nothing in the engine, the coercion boundary, the adoption
-system or any of the 315 catalog nodes needs to change: in the experiment the
+all 31 variants. Nothing in the engine, the coercion boundary, the adoption
+system or any of the catalog's ~650 entries (over ~310 port-declaring node
+classes) needs to change: in the experiment the
 entire suite passed apart from the checks that exist to demand the follow-up
 below.
 
@@ -1317,7 +1343,7 @@ The lattice enforces **no** automatic conversion between families — `logical` 
 every spreadsheet. A new family without a bridge reaches **only its own sockets**.
 
 That is the question to settle before the mechanics. Take money as the worked
-example: it is a unit on a number today, so it already flows into all 191 `number`
+example: it is a unit on a number today, so it already flows into all 190 `number`
 inputs and 149 `numlist` inputs — SUM, ROUND, every finance node. Promote it to a
 bridgeless family and by Rule 1 every one of those refuses it, and you are left
 choosing between a Cast at each boundary, a currency rung on every numeric node,
@@ -1335,6 +1361,6 @@ restriction to work around.
 `socketConnect.test.ts` re-derives the rules independently of `sockets.ts` and
 sweeps every ordered pair of the family rungs, with targeted cases for the
 wildcards, the containers and the object family. `socketReference.test.ts` parses
-**this document** and diffs all 120 of its connection lists against `canConnect`,
+**this document** and diffs all 124 of its connection lists against `canConnect`,
 along with the glyph table, the socket → FC family table and the port-factory
 table — and it holds the catalog to section 8's rung rule.

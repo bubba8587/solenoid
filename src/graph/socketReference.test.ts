@@ -8,9 +8,9 @@ import { familyOf } from "./formatModel";
 import { FLAT_CATALOG } from "./catalogUtils";
 import { elementFamilyOf, latticeRank, comboOfType } from "./sockets";
 
-// `docs/socket-reference.md` documents all 30 socket variants in prose: what each
+// `docs/socket-reference.md` documents all 31 socket variants in prose: what each
 // accepts, what is BLOCKED at it, what it reaches, what it is blocked from
-// reaching. That is 120 hand-written lists mirroring the lattice — exactly the
+// reaching. That is 124 hand-written lists mirroring the lattice — exactly the
 // shape of doc that rots silently the first time someone adds a socket type or
 // widens an accept rule.
 //
@@ -51,7 +51,7 @@ function backticked(chunk: string): SocketDataType[] {
 /** Read a bullet as a SET of types. Three shorthands are understood so the prose
  *  can stay readable where a literal 28-item list would not be:
  *    "nothing."                              → {}
- *    "all 30 variants."                      → every type
+ *    "all 31 variants."                      → every type
  *    "all 28 variants other than `a`, `b`."  → complement of {a, b}
  *  Anything else is read as the literal backticked list it contains. A COUNT in a
  *  shorthand is asserted too, so "all 28" can't drift to a wrong number. */
