@@ -864,6 +864,12 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
   // The output type: Auto infers from the computed cells; Date is the case
   // inference can't reach (a serial is indistinguishable from a number).
   const [addAs, setAddAs] = useNodeField(data, "addAs");
+  const [, bumpBindings] = useState(0);
+  const bind = useCallback((v: string, col: string) => {
+    if (col) data.bindings[v] = col; else delete data.bindings[v];
+    bumpBindings((x) => x + 1);
+    void processGraph(data.id);
+  }, [data]);
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
@@ -878,6 +884,22 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
         onOpen={() => formulaPopup.open(data.id)}
       />
       <OpSelect arg value={addAs} onChange={setAddAs} options={COMPUTED_AS_OPTIONS} />
+      {/* Binding pickers — one quiet row per variable/param, shown once a
+          frame is wired. Auto = the by-name ladder (column, else `row`/`rows`,
+          else a grown side input); a picked column ALWAYS reads that column,
+          so a variable can reach "Unit Price" or a column its own name
+          doesn't match. */}
+      {data.defVars.length > 0 && data.sourceColumns.length > 0 && data.defVars.map((v) => (
+        <div key={v} className="solenoid-node__field-row" title={`Where ${v} reads from`}>
+          <span className="solenoid-node__field-label">{v}</span>
+          <OpSelect
+            arg
+            value={data.bindings[v] ?? ""}
+            onChange={(next) => bind(v, next)}
+            options={[{ value: "", label: "auto" }, ...data.sourceColumns.map((c) => ({ value: c, label: c }))]}
+          />
+        </div>
+      ))}
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );

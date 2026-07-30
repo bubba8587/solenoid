@@ -89,7 +89,7 @@ export const INIT_FIELD_ORDER = [
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed
 // order, when present — same reuse rationale as INIT_FIELD_ORDER.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions", "bindings",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -166,6 +166,17 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
     const entries = Object.entries(n.varDescriptions as Record<string, string>)
       .filter(([k, v]) => live.has(k) && v.trim() !== "");
     if (entries.length) init.varDescriptions = Object.fromEntries(entries);
+  }
+  // Computed Column explicit variable → column bindings (the binding pickers).
+  // Deep-copy (mutated live as pickers change); keep only LIVE variables
+  // (`defVars`, the varDescriptions pattern) and sort the keys, so a stale or
+  // reordered entry can't break the text form's byte-identical second write.
+  if (n.bindings && typeof n.bindings === "object") {
+    const live = new Set((n.defVars as string[] | undefined) ?? []);
+    const entries = Object.entries(n.bindings as Record<string, string>)
+      .filter(([k, v]) => live.has(k) && v !== "")
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    if (entries.length) init.bindings = Object.fromEntries(entries);
   }
   // Composite node: its declared ports (deep-copied — mutated live as ports are
   // added) plus its ENTIRE internal subgraph, captured via the node's own

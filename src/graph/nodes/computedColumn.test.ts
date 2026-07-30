@@ -201,9 +201,11 @@ describe("ComputedColumnNode — col() accessor, rows, and placement", () => {
     expect(getColumn(bare, "dbl")!.values).toEqual([200, 400]);
   });
 
-  it("col() of an absent column is a per-row #REF!", () => {
-    const r = run(named('col("nope") + 1', "x"), sales) as FrameValue;
-    expect(isSolError(getColumn(r, "x")!.values[0])).toBe(true);
+  it("col() of an absent column becomes a side port reading its default, like an unknown variable", () => {
+    const n = named('col("nope") + 1', "x");
+    const r = run(n, sales) as FrameValue;
+    expect(getColumn(r, "x")!.values).toEqual([1, 1, 1]);
+    expect(n.sideVars).toContain("nope");
   });
 
   it("`rows` is the total row count (a column named rows shadows it)", () => {
@@ -496,6 +498,110 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
 
   it("rowRefNames feeds the topo: @names and col() literals, no variables", () => {
     expect(rowRefNames('@a + col("b c") * col(2024) + qty').sort()).toEqual(["2024", "a", "b c"]);
+  });
+});
+
+describe("@ over side values — row-aligned lists (no capture, no column)", () => {
+  // The author's shape: λ(framecol1, framecol2) → framecol1*framecol2*@list.
+  // `list` is neither a param nor a column — it grows a side port on the CC
+  // NODE (the list is zipped to THIS frame's rows; the λ stays frame-agnostic),
+  // and @ reads element-per-row.
+  it("a λ's @list reads the CC node's side port, element per row", () => {
+    const lam = new LambdaNode({ expr: "qty * price * @scale", params: "qty, price" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    expect(lam.captured).toEqual([]); // @ still grows no capture — zero ceremony
+    const n = named("", "prod");
+    const r1 = run(n, sales, { fn: [fn] }) as FrameValue;
+    // First compute: the port hasn't grown yet — @scale reads the 0 default.
+    expect(getColumn(r1, "prod")!.values).toEqual([0, 0, 0]);
+    expect(n.sideVars).toEqual(["scale"]);
+    const r2 = run(n, sales, { fn: [fn], scale: [[1, 2, 3]] }) as FrameValue;
+    expect(getColumn(r2, "prod")!.values).toEqual([20, 120, 360]); // 2·10·1, 3·20·2, 4·30·3
+  });
+
+  it("an inline expr's @list works the same, and a scalar side value reads every row", () => {
+    const n = named("@price * @factor", "adj");
+    run(n, sales); // grow the port
+    const r = run(n, sales, { factor: [[2, 0, 1]] }) as FrameValue;
+    expect(getColumn(r, "adj")!.values).toEqual([20, 0, 30]);
+    const s = run(n, sales, { factor: [10] }) as FrameValue;
+    expect(getColumn(s, "adj")!.values).toEqual([100, 200, 300]);
+  });
+
+  it("a side list that doesn't line up with the rows is a per-row #SHAPE! naming both", () => {
+    const n = named("@price * @factor", "adj");
+    run(n, sales);
+    const r = run(n, sales, { factor: [[1, 2]] }) as FrameValue;
+    const v = getColumn(r, "adj")!.values[0];
+    expect(isSolError(v) && v.code).toBe("#SHAPE!");
+    expect(isSolError(v) && v.message).toContain("2 values for 3 rows");
+  });
+
+  it("col() reaches the side list too — full @/col symmetry", () => {
+    const n = named('price * col("factor")', "adj");
+    run(n, sales);
+    const r = run(n, sales, { factor: [[1, 2, 3]] }) as FrameValue;
+    expect(getColumn(r, "adj")!.values).toEqual([10, 40, 90]);
+  });
+
+  it("a COLUMN of the same name wins over the side value, and @-misses don't fire in Frame Input", () => {
+    const n = named("@qty + 0", "q2");
+    const r = run(n, sales, { qty: [[100, 100, 100]] }) as FrameValue;
+    expect(getColumn(r, "q2")!.values).toEqual([2, 3, 4]); // the column, not the wire
+    // Frame Input's per-column sources have no side ports by design: an @name
+    // that matches no column stays a plain per-row #REF! there.
+    const fi = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "a", type: "number", cells: ["1"] },
+        { name: "c", type: "number", cells: [], expr: "@ghost + a" },
+      ]),
+    });
+    const g = getColumn(fi.data({}).frame as FrameValue, "c")!.values[0];
+    expect(isSolError(g) && g.message).toBe('No column "ghost"');
+  });
+});
+
+describe("binding pickers — explicit variable → column bindings", () => {
+  it("a bound variable reads its picked column, whatever its own name", () => {
+    const n = named("a * 2", "dbl");
+    n.bindings = { a: "price" };
+    const r = run(n, sales) as FrameValue;
+    expect(getColumn(r, "dbl")!.values).toEqual([20, 40, 60]);
+    // λ params bind the same way through the shared core.
+    const lam = new LambdaNode({ expr: "x + 1", params: "x" });
+    const fn = (lam.data({}) as { result: unknown }).result;
+    const m = named("", "inc");
+    m.bindings = { x: "qty" };
+    const r2 = run(m, sales, { fn: [fn] }) as FrameValue;
+    expect(getColumn(r2, "inc")!.values).toEqual([3, 4, 5]);
+  });
+
+  it("binding a would-be side variable to a column removes its socket role", () => {
+    const n = named("k + qty", "sum");
+    n.bindings = { k: "price" };
+    const r = run(n, sales) as FrameValue;
+    expect(getColumn(r, "sum")!.values).toEqual([12, 23, 34]);
+    expect(n.sideVars).toEqual([]);
+  });
+
+  it("a stale binding (its column gone) is a #REF! naming both ends — never a silent fallback", () => {
+    const n = named("a * 2", "dbl");
+    n.bindings = { a: "vanished" };
+    const r = run(n, sales);
+    expect(isSolError(r) && r.message).toContain('"vanished"');
+    expect(isSolError(r) && r.message).toContain('"a"');
+  });
+
+  it("extractInit persists bindings for LIVE variables only, keys sorted", () => {
+    const n = named("b + a", "s");
+    n.bindings = { b: "price", a: "qty", ghost: "city" };
+    run(n, sales); // stashes defVars = [b, a]
+    const init = extractInit(n) as { bindings?: Record<string, string> };
+    expect(Object.keys(init.bindings!)).toEqual(["a", "b"]);
+    expect(init.bindings).toEqual({ a: "qty", b: "price" });
+    // The constructor applies them back.
+    const back = new ComputedColumnNode({ expr: "b + a", bindings: init.bindings });
+    expect(back.bindings).toEqual({ a: "qty", b: "price" });
   });
 });
 

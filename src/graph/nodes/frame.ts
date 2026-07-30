@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
@@ -221,8 +221,11 @@ export class FrameInputNode extends ClassicPreset.Node {
           {
             // A variable naming no column: λ side values ride the λ's OWN
             // captures (the Lambda node's sockets); a Formula column has no
-            // side inputs at all. Either way it is a miss, per row.
-            sideValue: (p) => solError("#REF!", lam
+            // side inputs at all. Either way it is a miss, per row. An @name
+            // miss gets the plain message — captures don't reach @ (row-
+            // aligned lists ride the CC node's side ports; Frame Input's
+            // per-column sources have none by design).
+            sideValue: (p, kind) => solError("#REF!", lam && kind === "var"
               ? `No column "${p}" — a table λ's side values ride its captures`
               : `No column "${p}"`),
           },
@@ -1815,17 +1818,28 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   literals: Record<string, number> = {};
   /** The side-input sockets currently grown (variables that named no column). */
   sideVars: string[] = [];
+  /** Explicit variable → column bindings (the binding pickers). Absent = auto
+   *  (by name, else a side input); present = ALWAYS a read of that column
+   *  (stale target → #REF! naming it, per the core's alias contract). */
+  bindings: Record<string, string> = {};
+  /** The input frame's column names + the definition's variables, stashed per
+   *  compute so the card can render the binding pickers without re-deriving
+   *  (Pivot's `sourceColumns` pattern). Empty when unconnected. */
+  sourceColumns: string[] = [];
+  defVars: string[] = [];
   width = 235; height = 290;
   private _evaluator: ExprEvaluator | null = null;
   private _vars: string[] = [];
+  private _rowRefs: string[] = [];
   private _compiledFor: string | null = null;
 
-  constructor(init?: { label?: string; expr?: string; addAs?: ComputedColumnAs; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; expr?: string; addAs?: ComputedColumnAs; literals?: Record<string, number>; bindings?: Record<string, string> }) {
     super("ComputedColumn");
     this.label = init?.label ?? "Computed Column";
     this.expr = init?.expr ?? "";
     this.addAs = init?.addAs === "number" || init?.addAs === "text" || init?.addAs === "date" || init?.addAs === "logical" ? init.addAs : "auto";
     if (init?.literals) this.literals = { ...init.literals };
+    if (init?.bindings) this.bindings = { ...init.bindings };
     this.addInput("frame", frameIn("Frame"));
     this.addInput("name", strIn("Name"));
     // Placement: blank = append at the end; a column name = insert right
@@ -1849,7 +1863,9 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     this.sideVars = needed;
     queueMicrotask(() => {
       void (async () => {
-        for (const v of added) if (!this.inputs[v]) this.addInput(v, anyIn(v));
+        // anydata (rank ≤ 2, the Expression variable socket): a side value can
+        // be a whole list — SUM(list), or a row-aligned list read by @name.
+        for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         const editor = getActiveEditor();
         if (editor?.getNode(this.id)) {
           const conns = editor.getConnections().filter(
@@ -1868,7 +1884,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
     const lam = inputs.fn?.[0];
     const out = (frame: FrameValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
-    if (!f || nameRaw === null) { this._reconcileSideSockets([]); return out(null); }
+    this.sourceColumns = f ? f.columns.map((c) => c.name) : [];
+    if (!f || nameRaw === null) { this.defVars = []; this._reconcileSideSockets([]); return out(null); }
     const name = nameRaw.trim() || "computed";
     const after = (afterRaw ?? "").trim();
 
@@ -1879,22 +1896,30 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       if (this._compiledFor !== this.expr) {
         this._evaluator = compileEvaluator(this.expr);
         this._vars = this._evaluator ? extractVariables(this.expr) : [];
+        this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
         this._compiledFor = this.expr;
       }
-      if (!this.expr.trim()) { this._reconcileSideSockets([]); return out(f); } // nothing defined yet
-      if (!this._evaluator) { this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
+      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(f); } // nothing defined yet
+      if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
     }
 
     // The rules — binding precedence, builtins, col(), the per-row contract —
     // live in the SHARED core (computedColumnCore.ts), so this surface and the
     // Frame Input's per-column sources can never disagree. This node only
-    // supplies its ports: reserved keys, and the side-value read.
+    // supplies its ports: reserved keys, side-value reads, and the pickers'
+    // explicit bindings.
+    this.defVars = wired ? wired.params : this._vars;
     const computed = computeColumnCells(
       f,
       wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
       {
         reserved: ["frame", "name", "fn", "after"],
         sideValue: (p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0),
+        alias: this.bindings,
+        // @names that match no column grow side ports here — the row-aligned
+        // list a λ's `@list` reads is zipped to THIS frame, so its port
+        // belongs on this node, and the λ stays frame-agnostic (no capture).
+        rowRefs: wired ? (wired.expr ? rowRefNames(wired.expr) : []) : this._rowRefs,
       },
     );
     if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
