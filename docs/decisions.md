@@ -126,11 +126,13 @@ ad-hoc `accepts()` edit.
 **When:** 2026-07-01. **Where:** `CLAUDE.md`, `calcModeStore.ts`, `process.ts`.
 **Why:** heavy tables made every edit a full recompute; manual mode (F9) + targeted
 recompute for value edits keep big graphs usable.
-**Cost accepted:** a mode to reason about; a full recompute still fires on cable
-connect/disconnect (extending targeted recompute to topology changes is open follow-through,
-not a reason to drop this).
-**What would reverse it:** nothing — this is the perf floor. The open work is *extending*
-targeted recompute to topology changes (audit perf finding), not reverting to always-auto.
+**Cost accepted:** a mode to reason about.
+**What would reverse it:** nothing — this is the perf floor. The follow-through LANDED
+(audit finding 40, `35fe709`): a single cable connect/disconnect recomputes only the
+target's downstream closure (`processGraph(target, …, { topology: true })`, which also
+refreshes the loop cache — the one global a cable change touches); bulk topology ops
+settle once via `withGraphRebuild`. `processTargeted.test.ts` guards the
+closure≡reset equivalence.
 
 ### D9 — Default date format is `DD-MMM-YYYY`, dates are real serials (not the Excel 1900 model)
 **When:** ongoing. **Where:** `nodes/date.ts` `DEFAULT_DATE_FORMAT` / serial epoch.

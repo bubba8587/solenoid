@@ -133,6 +133,18 @@ this precise status; the build (annotation-aware formatCx + routing the value
 boxes/chips/Display) is a visual change and sits in the backlog for an
 author-eyeball loop.
 
+### Backlog claim stale: topology recompute IS targeted (2026-07-30g)
+
+The queued "extend targeted recompute to topology changes (D8 follow-
+through)" was already BUILT — audit finding 40, landed `35fe709` (the 1.2
+cycle): the Canvas `connectioncreated/removed` settle runs
+`processGraph(cable.target, …, { topology: true })` — the target's
+downstream closure only, plus the loop-cache refresh (the one global a
+cable change touches); bulk ops settle once via `withGraphRebuild`;
+`processTargeted.test.ts` guards the closure≡reset equivalence. Backlog
+line deleted; D8's "cost accepted: full recompute on connect/disconnect"
+clause corrected (it recorded the pre-landing state).
+
 ### Ops lists: the AggOp table + the Percentile trio (2026-07-30f, amended same day)
 
 The searchability gap's easy half — with one AUTHOR RULING mid-flight:
