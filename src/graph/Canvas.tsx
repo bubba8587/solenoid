@@ -415,14 +415,19 @@ export function Canvas() {
     };
   }, []);
 
-  // Mobile SELECT mode disables rete's area Drag (1-finger pan) so a single finger
-  // draws the lasso instead of panning — while the Zoom handler stays live, so TWO
+  // SELECT mode disables rete's area Drag (1-finger pan) so a single finger draws
+  // the lasso instead of panning — while the Zoom handler stays live, so TWO
   // fingers still pinch/pan (the lasso no longer stopPropagations finger 1, so the
   // zoom handler sees both). Restore the Drag handler when select mode turns off.
-  // Mobile-only: desktop's shift-lasso blocks the pan per-gesture (stopPropagation)
-  // and must keep normal drag-to-pan otherwise.
+  //
+  // Gated on IS_COARSE, not IS_MOBILE: the gate is "a touch device where select
+  // mode is reachable", and a TABLET reaches it from the top bar (TabletActions)
+  // while IS_MOBILE is false there. Under the old mobile-only gate a tablet
+  // toggled select mode, kept its pan handler, and a one-finger drag both panned
+  // AND drew the lasso. Desktop is still excluded on purpose: shift-lasso blocks
+  // the pan per-gesture (stopPropagation) and drag-to-pan must keep working.
   useEffect(() => {
-    if (!IS_MOBILE) return;
+    if (!IS_COARSE) return;
     const applyDragMode = () => {
       const area = areaRef.current;
       if (!area) return;

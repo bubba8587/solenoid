@@ -3,7 +3,7 @@ import { getEditor, getArea, selectNode, unselectAllNodes, connectionVersionStor
 import { outlineSearch } from "./outlineStore";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
-import { IS_MOBILE } from "./coarse";
+import { IS_COARSE, IS_MOBILE } from "./coarse";
 import { connectionDialog } from "./connectionDialogStore";
 import { nodeConnections } from "./nodeNames";
 import {
@@ -338,7 +338,13 @@ export function OutlinePanel() {
   };
   const handleRowClick = (e: MouseEvent, id: string) => {
     // Ctrl/Cmd (desktop) or select mode (touch) accumulates; Shift range-selects.
-    const accumulate = e.ctrlKey || e.metaKey || (IS_MOBILE && touchSelectStore.get());
+    // IS_COARSE, not IS_MOBILE: a tablet reaches select mode from the top bar
+    // (TabletActions) while IS_MOBILE is false there, so the mobile-only test
+    // left the Navigator ignoring select mode on exactly the device that has no
+    // keyboard to Ctrl-click with. The plain-click branch below stays IS_MOBILE:
+    // that one is about there being no double-click, which a tablet shares with
+    // the desktop pointer model.
+    const accumulate = e.ctrlKey || e.metaKey || (IS_COARSE && touchSelectStore.get());
     const range = e.shiftKey;
     if (!accumulate && !range) {
       // Plain: desktop is a deliberate no-op (avoids jumpy recentering); on

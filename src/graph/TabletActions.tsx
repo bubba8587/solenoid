@@ -24,6 +24,11 @@ import {
  *     phone's bottom edge. Up here it would just be a loud button, and the
  *     Quiet Accent Rule says accent conveys type/state, not emphasis.
  *
+ * PORTRAIT (2026-08-01): the desktop bar does not fit a tablet in portrait, so on
+ * a tablet it WRAPS to a second row. The palette pins to row 1 beside Reference
+ * and Settings (author call — those three stay top-right); the edit clusters
+ * carry `--tablet-edit` and wrap to row 2 with the file/layout/cable tools.
+ *
  * Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
  * selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` —
  * so a desktop never pays to watch a control it cannot see.
@@ -36,7 +41,7 @@ export function TabletActions() {
     <>
       {/* Command palette — its search covers find-node too, so one button carries
           both, exactly as on the bottom bar. */}
-      <div className="solenoid-topbar__group solenoid-topbar__group--tablet">
+      <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-pinned">
         <button
           className="solenoid-nav__btn"
           title="Commands (Ctrl+K)"
@@ -47,7 +52,7 @@ export function TabletActions() {
         </button>
       </div>
 
-      <div className="solenoid-topbar__group solenoid-topbar__group--tablet">
+      <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
         <button className="solenoid-nav__btn" title="Undo (Ctrl+Z)" aria-label="Undo" onClick={() => fireUndo(false)}>
           <UndoGlyph size={15} />
         </button>
@@ -59,7 +64,7 @@ export function TabletActions() {
       {/* Select mode · Group · Delete — the selection cluster. Group and Delete
           dim without a selection but stay tappable, so a fresh select isn't
           blocked by the 200ms poll (the bottom bar's rule, kept). */}
-      <div className="solenoid-topbar__group solenoid-topbar__group--tablet">
+      <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
         <button
           className={`solenoid-nav__btn${selectMode ? " solenoid-nav__btn--on" : ""}`}
           title={selectMode ? "Select mode: on" : "Select mode: off"}

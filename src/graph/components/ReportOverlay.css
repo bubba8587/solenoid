@@ -303,7 +303,7 @@ html.is-mobile .report-dock-btn { display: none; }
    width. Dock geometry is in vars so it's tunable in one place. */
 html.sol-report-docked {
   --report-dock-w: 440px;
-  --report-dock-top: 66px;    /* MenuBar (22) + TopBar (44) */
+  --report-dock-top: var(--chrome-top, 66px); /* measured header; 22 + 44 fallback */
   --report-dock-bottom: 19px; /* StatusBar footer */
 }
 

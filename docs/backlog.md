@@ -109,6 +109,14 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Build queue (decided, unbuilt)
 
+- [ ] **Hoist the BOTTOM chrome edge to a var**, the way `--chrome-top` was hoisted
+  2026-08-01 (`Header.tsx` measures the header; six top overlays derive from it —
+  `layout-chrome.md`). The bottom edge is still hand-keyed literals: status bar 19,
+  minimap `bottom:30`, socket legend `bottom:148`, mobile bar `~57 + safe-area`, and
+  the bottom-anchored floats lifted `84–96px` to clear it. Same recurring-bug class,
+  same fix shape (measure + `var(--chrome-bottom, …)` with a static fallback).
+  Mobile's `safe-area` overrides are the wrinkle — they must keep winning.
+
 
 - [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
   UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence

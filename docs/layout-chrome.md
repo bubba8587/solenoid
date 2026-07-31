@@ -7,13 +7,20 @@ offset has to move in lockstep or something ends up covering something. This fil
 what sits where, what each offset is measured from, and what to check before you add or move a
 piece.
 
-There is **no shared CSS var for the chrome envelope offsets/heights** — the only layout vars
-that exist are the report dock's (`--report-dock-w/-top/-bottom`) and the shared
-`--overlay-border-width`; the `22`/`44`/`19`/`80`/`12`/`16` px values are all literals with
-explanatory comments. So the numbers below are duplicated by hand. Treat the tables as the source of truth for "what number
-means what," and grep for the number before changing a bar height. (A real fix — hoist the
-envelope into `--chrome-top` / `--chrome-bottom` vars on `:root` and `html.is-mobile` — is a
-cross-cutting refactor; do it author-present, not as a drive-by.)
+**The TOP envelope is now a var — `--chrome-top`, MEASURED by `Header.tsx` (2026-08-01).**
+The "real fix" this file used to defer is done for the top edge: the six overlays that
+hard-coded an offset off the 66px header now derive from the measured value (details under
+the desktop stack below). It stopped being deferrable when the tablet wrap made the header
+height conditional — you cannot hand-key a number that depends on the viewport.
+
+**Everything else is still hand-keyed literals.** The BOTTOM edge has no var
+(`--chrome-bottom` does not exist): the status bar's `19`, the minimap's `bottom:30`, the
+legend's `bottom:148`, and the mobile bar's `~57 + safe-area` are all literals, as are the
+row heights themselves (`22`/`44`/`52`) and the `12`/`16` gutters. **Mobile's top overrides
+are also still literals** — they carry `safe-area` insets and win later in the cascade.
+So: treat the tables below as the source of truth for "what number means what," and grep for
+the number before changing a bar height. Hoisting the bottom edge the same way is the
+obvious follow-on.
 
 ---
 
@@ -41,16 +48,35 @@ bottom; everything else floats over the canvas.
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
-> touch actions (palette · undo/redo · select · group · delete — `TabletActions.tsx`) as
-> ordinary pill groups INSIDE the existing 44px row. **The envelope below is unchanged, and
-> must stay so:** all four offsets in it are hand-keyed against 66px, so a taller bar would
-> push the bar's bottom edge under every one of them at once. Reach comes from a
-> pseudo-element tap target, not from padding.
+> touch actions (palette · undo/redo · select · group · delete — `TabletActions.tsx`), and
+> because the desktop bar does not fit a tablet in PORTRAIT, the bar **wraps to a second
+> row** there. Row 1 keeps the identity plus the pinned cluster — command palette,
+> Reference, Settings; everything else wraps to row 2. The split is by `order` (flex-wrap
+> fills lines in order, not DOM sequence), and the dividers are hidden so none orphans at a
+> row edge. Touch reach comes from a pseudo-element tap target, not padding, so a wrapped
+> row is still 30px like every other pill row.
 
-**The header envelope is 66px** (22 + 44), plus a 2px accent underline ≈ **68px** to the
-canvas. That 66 is what `--report-dock-top` encodes and what the nav pill's `top:80px`
-(66 + border + gap) and the selbar's `top:76px` both clear. The HUD's `top:124px` = the nav
-pill's `80 + 34 (pill height) + 10 (gap)`.
+**The header envelope is MEASURED, not written down (2026-08-01).** `Header.tsx` observes
+its own height and publishes it as **`--chrome-top`** on `:root`; every top-anchored overlay
+offsets from it:
+
+| Overlay | Offset | Was |
+|---|---|---|
+| Nav/zoom pill · Navigator · web-demo banner | `calc(var(--chrome-top) + 14px)` | `80px` |
+| Align pill | `calc(var(--chrome-top) + 10px)` | `76px` |
+| HUD stack | `calc(var(--chrome-top) + 58px)` (pill top 14 + pill 34 + gap 10) | `124px` |
+| Docked report | `var(--chrome-top)` | `66px` |
+
+Each keeps a **static fallback** (`var(--chrome-top, 66px)`) so the first paint is correct
+before the observer fires. On desktop the measured value is the old 66px (22 + 44), plus a
+2px accent underline ≈ 68px to the canvas.
+
+**Why this changed:** these were six hand-keyed numbers all encoding one envelope, which is
+the bug this file was started for (below). The tablet wrap made the envelope CONDITIONAL —
+two rows in portrait, one in landscape, the wrap point depending on the viewport — so it
+stopped being a number anyone could write down at all. Pinned by `touchActions.test.ts`.
+**Mobile keeps its own explicit overrides** (they carry `safe-area` insets and win later in
+the cascade) — the table below is still the mobile truth.
 
 ## Tablets — the DESKTOP stack inside a mobile browser (2026-07-22)
 
