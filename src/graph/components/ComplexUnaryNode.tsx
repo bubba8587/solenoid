@@ -1,6 +1,5 @@
 import type { ComplexUnaryNode as ComplexUnaryNodeType, ComplexUnaryOp } from "../rete-nodes";
 import { COMPLEX_UNARY_OP_META } from "../rete-nodes";
-import { formatCxValue } from "../nodes/complex";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
@@ -16,7 +15,7 @@ export function ComplexUnaryComponent({ data, emit }: NodeProps<ComplexUnaryNode
       <OpSelect value={op} onChange={setOp} options={OPS} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay
-        value={formatCxValue(data.cachedResult)}
+        value={data.cachedResult}
         empty="—"
       />
     </NodeShell>

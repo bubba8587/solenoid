@@ -5,11 +5,13 @@ import {
   formatAnnotationStore,
   formatMismatchStore,
   formatNumberWithAnnotation,
+  formatCxWithAnnotation,
   isDateStyle,
   unitsCompatible,
   unitById,
   type FormatAnnotation,
 } from "./formatAnnotationStore";
+import { cx } from "./cxValue";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -436,5 +438,54 @@ describe("formatMismatchStore", () => {
     expect(fn).toHaveBeenCalledTimes(1);
     formatMismatchStore.setMismatch("n2", false); // cleanup
     unsub();
+  });
+});
+
+// ─── Complex: the FC finally reaches a complex value ─────────────────────────
+// The popup half (reduced style list, precision, unit rows) gated correctly long
+// before any of it reached a render: the complex cards pre-formatted to a fixed
+// string in their own components, so the annotation had nothing to act on. These
+// pin the three ways a complex differs from a number.
+describe("formatCxWithAnnotation", () => {
+  const fcx = (re: number, im: number, o: Partial<FormatAnnotation> = {}) =>
+    formatCxWithAnnotation(cx(re, im), ann(o));
+
+  it("auto keeps the default written form", () => {
+    expect(fcx(3, 2)).toBe("3 + 2i");
+    expect(fcx(3, -2)).toBe("3 - 2i");
+    expect(fcx(0, 1)).toBe("i");
+    expect(fcx(0, -1)).toBe("-i");
+    expect(fcx(5, 0)).toBe("5");
+  });
+
+  it("precision applies to BOTH components — the defect this closes", () => {
+    expect(fcx(1.23456, 2.34567, { format: "decimal", decimalDigits: 2 })).toBe("1.23 + 2.35i");
+    // …including when one component is a whole number: it does not keep an
+    // integer's bare form while the other shows places.
+    expect(fcx(1, 2.5, { format: "decimal", decimalDigits: 3 })).toBe("1.000 + 2.500i");
+  });
+
+  it("scientific formats both components too", () => {
+    expect(fcx(12345, 6789, { format: "scientific", decimalDigits: 2 })).toBe("1.23e+4 + 6.79e+3i");
+  });
+
+  it("a style outside the complex list falls back to auto, never nonsense", () => {
+    // percent/fraction/integer are not offered on a complex socket, but an
+    // annotation can still carry one from before the socket was retyped.
+    for (const format of ["percent", "fraction", "integer", "custom"] as const) {
+      expect(fcx(3, 2, { format })).toBe("3 + 2i");
+    }
+  });
+
+  it("the unit wraps the WHOLE value, parenthesised only in the two-term form", () => {
+    expect(fcx(3, 2, { unit: "custom", customUnit: " V" })).toBe("(3 + 2i) V");
+    // One term needs no parens — "2i V" cannot be misread.
+    expect(fcx(0, 2, { unit: "custom", customUnit: " V" })).toBe("2i V");
+    expect(fcx(3, 0, { unit: "custom", customUnit: " V" })).toBe("3 V");
+  });
+
+  it("NaN stays NaN rather than formatting into a number", () => {
+    expect(fcx(NaN, 1)).toBe("NaN");
+    expect(fcx(1, NaN, { format: "decimal", decimalDigits: 2 })).toBe("NaN");
   });
 });

@@ -134,15 +134,26 @@ Notes:
 - **Logical "show-as"** is new (`logicalStyle`): `TRUE/FALSE` (default, the Excel
   form) · `1/0` · `Yes/No` · `✓/✗`. Display-only, applied wherever a boolean
   renders through an annotation.
-- **Complex** applies the precision rule to BOTH components (`3.14+2.72i` at
-  2 places). Percent/fraction/integer are meaningless on a complex value → not
-  offered. **Implementation status (verified 2026-07-29): the popup half is DONE**
-  (`controlsFor` + `COMPLEX_FORMAT_STYLES` gate the dropdown to auto/decimal/
-  scientific, precision + unit rows show); **the RENDER half is NOT wired** — the
-  complex cards pre-format to strings in `data()` (`formatCxValue`, fixed 4-digit
-  trim), so a docked FC's style/precision/unit annotation never reaches a complex
-  value. Building it = an annotation-aware `formatCx` + routing the complex value
-  boxes / chips / Display through it (a visual change; backlog).
+- **Complex** — WIRED END TO END (2026-08-01). `formatCxWithAnnotation` is the
+  render half; the popup half (`controlsFor` + `COMPLEX_FORMAT_STYLES` gating the
+  dropdown to auto/decimal/scientific, plus the precision and unit rows) was
+  already done. Three rules, each forced by a complex having two components and
+  one sign structure:
+  - **Precision applies to BOTH components** — `3.14 + 2.72i` at 2 places, never
+    one formatted and the other trimmed.
+  - **The style list is reduced**: percent/fraction/integer/custom and the date
+    styles are meaningless on a complex, so they aren't offered — and an
+    annotation still carrying one (from before the socket was retyped) falls back
+    to `auto` rather than rendering nonsense.
+  - **The unit wraps the WHOLE value**: `(3 + 2i) V`, never `3 V + 2i V`.
+    Parenthesised only in the two-term form, where `3 + 2i V` would read as the
+    unit attaching to the imaginary term alone.
+  The advanced tier (grouping/negative/scale) is number-and-text only per
+  `controlsFor` and is deliberately not consulted: a complex has no single sign
+  to parenthesise and no magnitude to scale. A `Cx` reaches the value box RAW —
+  the display layer formats it, so the annotation can act (cards that
+  pre-formatted in their own components were exactly why it never could).
+  `assembleCx` (cxValue.ts) owns the written form for both formatters.
 - **Advanced-tier composition order** (2026-07-05): scale divides the magnitude
   and appends its suffix inside the number (`1.2M`); the unit wraps that
   (`$1.2M`); a paren negative wraps OUTSIDE the unit, Excel accounting style

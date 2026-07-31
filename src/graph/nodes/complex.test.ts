@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
-  ComplexPowerNode, QuadraticRootsNode, formatCxValue, cx, isCx, type Cx,
+  ComplexPowerNode, QuadraticRootsNode, cx, isCx, type Cx,
 } from "./complex";
 import { wrapNodeData } from "../coerceInputs";
 import { isSolError, solError } from "../errorValue";
@@ -162,21 +162,3 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
   });
 });
 
-describe("formatCxValue — the complex value box", () => {
-  it("formats a scalar, and never splits it into a list", () => {
-    expect(formatCxValue(cx(3, 2))).toBe("3 + 2i");
-    expect(formatCxValue(cx(3, -2))).toBe("3 - 2i");
-    expect(formatCxValue(null)).toBe(null);
-  });
-  it("formats a broadcast list per cell, passing errors and blanks through", () => {
-    const err = solError("#DIV/0!", "boom");
-    expect(formatCxValue([cx(1, 0), cx(0, 1), null, err])).toEqual(["1", "i", null, err]);
-    expect(formatCxValue([])).toEqual([]);
-    // Two-element lists were the old ambiguous length; tagged, they're just lists.
-    expect(formatCxValue([cx(1, 0), cx(0, 1)])).toEqual(["1", "i"]);
-  });
-  it("passes a whole-value SolError through for the red badge (never destructures it)", () => {
-    const err = solError("#SHAPE!", "boom");
-    expect(formatCxValue(err)).toBe(err);
-  });
-});

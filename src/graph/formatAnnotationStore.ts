@@ -3,7 +3,8 @@
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { extremeSci } from "./components/format";
-import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
+import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES } from "./formatModel";
+import { assembleCx, type Cx } from "./cxValue";
 import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -641,6 +642,41 @@ export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): st
     out = !u.label ? formatted : u.prefix ? `${u.label}${formatted}` : `${formatted}${u.label}`;
   }
   return paren ? `(${out})` : out;
+}
+
+/** Format a COMPLEX value through an FC annotation (VAL-15 + the format-model
+ *  truth table). Three things differ from the number path, each forced by the
+ *  value having two components and one sign structure:
+ *
+ *   • **Style is the reduced complex list.** percent / fraction / integer /
+ *     custom and the date styles are meaningless on a complex (COMPLEX_FORMAT_
+ *     STYLES is the popup's own list), so anything outside it falls back to
+ *     `auto` rather than rendering nonsense — the popup can't offer them, but an
+ *     annotation can still carry one from before the socket was retyped.
+ *   • **Precision applies to BOTH components.** A 3-place complex shows 3 places
+ *     on the real AND the imaginary part; formatting one and trimming the other
+ *     was the visible defect this closes.
+ *   • **The unit wraps the WHOLE value**, never each component: "(3 + 2i) V",
+ *     not "3 V + 2i V". Parenthesised only in the two-term form, where
+ *     "3 + 2i V" would read as the unit attaching to the imaginary term alone.
+ *
+ *  The advanced tier (grouping / negative / scale) is number-and-text only per
+ *  `controlsFor`, so it is deliberately not consulted: a complex has no single
+ *  sign to parenthesise and no magnitude to scale. */
+export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
+  const style: FormatStyleId =
+    (COMPLEX_FORMAT_STYLES as readonly string[]).includes(ann.format) ? ann.format : "auto";
+  const { text, hasBothParts } = assembleCx(z, (n) =>
+    style === "auto"
+      // `auto` keeps formatCx's own trim — the FC is annotating, not overriding.
+      ? (Number.isInteger(n) ? n.toString() : n.toFixed(4).replace(/\.?0+$/, ""))
+      : applyFormatStyle(n, style, ann.customPattern, ann.decimalDigits, ann.decimalMode, true));
+  if (text === "NaN") return text;
+  const unit = ann.unit === "custom" ? (ann.customUnit ?? "") : unitById(ann.unit).label;
+  if (!unit) return text;
+  const body = hasBothParts ? `(${text})` : text;
+  // A prefix unit ($) still leads, matching the number path.
+  return ann.unit !== "custom" && unitById(ann.unit).prefix ? `${unit}${body}` : `${body}${unit}`;
 }
 
 /** Format a number using the annotation for a given socket, falling back to auto. */

@@ -54,13 +54,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order / hit-area or membership-sync issue tied to
   group membership.
-- [ ] **FC complex-family RENDER wiring** (verified 2026-07-29; the old "verify the
-  truth table" item resolved into this): the popup half is done (reduced style list,
-  precision, unit rows all gate correctly), but a complex annotation never reaches a
-  render — the complex cards pre-format to strings in `data()` (`formatCxValue`,
-  fixed trim). Build = annotation-aware `formatCx` (style gated to the reduced list,
-  precision on BOTH components, unit wraps the whole value) + route the complex value
-  boxes / chips / Display through it. A visual change — author-eyeball loop.
+- [ ] **Multi-row cards resolve no FC annotation** (found 2026-08-01 while wiring
+  the complex render). `InlineOutputRows` formats through `formatRowValue` with no
+  annotation lookup at all — for ANY type, not just complex — so an FC docked to a
+  multi-output card (Quadratic Roots, Equation, Regression…) never reaches those
+  rows. `ValueDisplay` resolves per-socket already (`formatAnnotationStore.get(node,
+  socketKey)`); the rows carry their socket key, so the lookup is available — it
+  just isn't done. Not complex-specific and not a regression.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
   events; verify on hardware, intercept manually if not. (Unrelated to the 2026-07-27
   touch-pinch fix: that was the multi-touch finger count, this is the wheel path.)
@@ -108,6 +108,24 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   Properties window ships without them) — a format-pipeline integration, author-present.
 
 ## Build queue (decided, unbuilt)
+
+- [ ] **Tablet: the top bar grows the mobile bar's actions** (author, 2026-08-01).
+  A tablet gets the DESKTOP chrome today — `IS_MOBILE` is `IS_COARSE && IS_MOBILE_UA`
+  and iPadOS ships a desktop UA on purpose (`coarse.ts`), so `MobileControls` never
+  mounts and a tablet user has no touch target for any of it. Put them in the **top
+  bar** (`TopBar.tsx` / `AppToolbar.tsx`) on tablet only: **delete**, **group**,
+  **select mode**, a **command-palette pill**, and an **undo/redo pill**.
+  REUSE THE MOBILE BAR'S EXACT CONTROLS — same handlers, same icons, same disabled
+  logic, new location; every one already exists in `MobileControls.tsx`
+  (`paletteStore.open()`, `fireUndo(false|true)`, select mode, delete selection,
+  group selection). Do NOT re-implement or re-style them, and don't fork the
+  behavior — lift the shared pieces so the two bars can't drift.
+  The predicate is the one thing that doesn't exist yet: a tablet is
+  `IS_COARSE && !IS_MOBILE` (coarse pointer, not phone-sized) — add it to
+  `coarse.ts` beside the other two rather than sniffing UA at the call site.
+  Read `docs/layout-chrome.md` FIRST: top-bar offsets are hand-keyed magic numbers
+  with no shared envelope var, and this widens the bar on a class of device the
+  overlay offsets were never checked against.
 
 - [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
   UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence

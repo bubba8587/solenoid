@@ -1,6 +1,5 @@
 import type { ComplexBinaryNode as ComplexBinaryNodeType, ComplexBinaryOp } from "../rete-nodes";
 import { COMPLEX_BINARY_OP_META } from "../rete-nodes";
-import { formatCxValue } from "../nodes/complex";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
@@ -16,7 +15,7 @@ export function ComplexBinaryComponent({ data, emit }: NodeProps<ComplexBinaryNo
       <OpSelect value={op} onChange={setOp} options={OPS} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay
-        value={formatCxValue(data.cachedResult)}
+        value={data.cachedResult}
         empty="—"
       />
     </NodeShell>
