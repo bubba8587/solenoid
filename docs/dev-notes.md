@@ -169,6 +169,37 @@ Rewritten to the real distinction: @ is how you reach a name that ISN'T a
 column. Re-verified through the headless runner, values unchanged (margin
 90/140/135/100, scaled 360/1120/1620/1600).
 
+### Two audit findings built out: FC family resolution + INTERPOLATE grid (2026-08-01a)
+
+Cashing the two items the harmonization sweep left actionable.
+
+**The `isWildcardType` question, settled with a repro.** It WAS a real
+inconsistency, two lines to reproduce: an FC wired OUT-only into an
+Expression variable adopted `anydata` → `familyOf` none → NO controls,
+while the same FC into a Display (`trueany`) showed the provisional number
+set. Same intent, two answers, decided purely by which family-less rung the
+consumer declared. The fix keeps the two questions apart: `isWildcardType`
+stays the RANKLESS test (`any`/`trueany`) because rank-sensitive checks must
+keep treating `anylist` &c. as a real dimensional constraint; family
+resolution gets `isWildcardRung` (all six family-less rungs), used at the
+FC's four resolution sites plus the docked-to-an-input read that had no
+guard at all. `frame`/`cube`/`lambda`/`chart`/`document` are unaffected —
+no element family, but genuinely resolved types with their own FC treatment.
+Pinned both ways in `fcReconcile.test.ts`.
+
+**INTERPOLATE grid mode is callable in a formula.** D23 lifted the cap that
+parked it; the registration now dispatches the node's two MODES on the first
+argument's RANK — a matrix runs the bilinear fill (`INTERPOLATE(table)`, an
+optional second argument being grid mode's Forecast flag), rank ≤ 1 keeps
+the 3-arg list form. One node, one name (FX-4). The move it forced is the
+interesting part: `fillBorderedGrid` lived in `nodes/stats.ts`, which imports
+rete AND `excelFunctions` — so sharing it would have been both an FX-2
+violation and an import cycle. The kernel moved to `mathUtils.ts` where the
+other shared kernels live, which is what FX-1 has always implied for a
+two-surface kernel. Five pins in `formulaMatrix.test.ts`, all node-equality.
+Parity counts unchanged (INTERPOLATE already counted via list mode) — this
+closed a capability gap, not a counting gap.
+
 ### Docs-harmonization sweep: six audits, five reconcile tranches (2026-07-31i)
 
 Author put the session on specs/docs duty ("the internal docs are yours").

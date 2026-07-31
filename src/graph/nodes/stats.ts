@@ -1,11 +1,12 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
+import { fillBorderedGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
-import { fitSurface, type FitPoint } from "./surfaceFit";
+
 
 // Pair two parallel sample lists for a bivariate stat (CORREL/COVARIANCE/regression):
 // propagate the first SolError in either list (error-in → error-out), and drop any
@@ -881,138 +882,6 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 // The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
 // with value = (1-t)·v[i0] + t·v[i1], clamped at both ends (t=0 outside the range).
 
-
-// Fill the blank interior cells of a coordinate-BORDERED grid by true BILINEAR
-// interpolation — the standard lookup-table method (MATLAB `interp2`, SciPy
-// `RegularGridInterpolator` with method="linear"). The first row holds the X coordinate
-// of each column, the first column the Y coordinate of each row; the top-left corner is
-// ignored and comes back blank. The KNOWN cells define a coarse grid — its rows/columns
-// are the lines that carry data. A blank cell (an inserted intermediate coordinate, or a
-// hole) is the bilinear blend of the four surrounding known corners: its X is bracketed
-// among the data columns and its Y among the data rows, then interpolated in both. The
-// bracket WIDENS past any line whose corner is blank, so a hole interpolates across it
-// from the neighboring data lines — the closest four-corner box with all corners known
-// is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
-// no four known corners ENCLOSE (the query outside every known-corner box) is left for
-// the forecast pass.
-//
-// `forecast` (default true): after the bilinear pass, every still-blank cell is filled
-// by a smooth surface fitted through ALL the known points — a thin-plate spline, or a
-// plane for degenerate data (`surfaceFit.ts`). That fills the scattered gaps and
-// extrapolates past the data (a linear trend at the edges). With forecast OFF, only the
-// bilinear-enclosed cells fill; the rest stay blank.
-export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
-  const R = table.length;
-  const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
-  const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
-  // Rectangular working copy; a blank (null / non-finite) cell becomes `null`.
-  const g: (number | null)[][] = Array.from({ length: R }, (_, i) =>
-    Array.from({ length: C }, (_, j) => { const v = table[i]?.[j]; return isKnown(v) ? v : null; }),
-  );
-  if (R < 2 || C < 2) { if (g[0]) g[0][0] = null; return g; } // no interior to fill
-
-  const colXs = g[0].slice(1).map((v) => (v == null ? NaN : v));    // X of each interior column
-  const rowYs = g.slice(1).map((r) => (r[0] == null ? NaN : r[0])); // Y of each interior row
-  const Ri = R - 1, Ci = C - 1;
-  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior values
-
-  const out: (number | null)[][] = g.map((r) => [...r]);
-  out[0][0] = null; // corner always blank on output
-
-  // The coarse grid: interior columns/rows that carry ≥1 known value (a blank INSERTED
-  // line has none).
-  const coarseCols: number[] = [];
-  for (let j = 0; j < Ci; j++) if (!Number.isNaN(colXs[j]) && Z.some((row) => row[j] != null)) coarseCols.push(j);
-  const coarseRows: number[] = [];
-  for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
-
-  // Data lines bracketing a query on an axis: those at-or-below (nearest first) and
-  // at-or-above (nearest first). Returns null when the query sits past the data on that
-  // axis (one side empty) — the cell can't be ENCLOSED, so it's left for the forecast.
-  const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] | null => {
-    const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
-    const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
-    if (lo.length === 0 || hi.length === 0) return null;
-    return [lo, hi];
-  };
-
-  // Every labeled known point, for pass 1's containment test and pass 2's fit.
-  const knownPts: Array<{ x: number; y: number; i: number; j: number; z: number }> = [];
-  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    const v = Z[i][j];
-    if (v != null && !Number.isNaN(colXs[j]) && !Number.isNaN(rowYs[i])) {
-      knownPts.push({ x: colXs[j], y: rowYs[i], i, j, z: v });
-    }
-  }
-
-  // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
-  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; } // known passes through
-    const qx = colXs[j], qy = rowYs[i];
-    if (Number.isNaN(qx) || Number.isNaN(qy)) continue; // unlabelled line → stays blank
-    const rs = sides(coarseRows, (k) => rowYs[k], qy);
-    const cs = sides(coarseCols, (k) => colXs[k], qx);
-    if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
-    // Cap the widening DEPTH per side. Un-capped, scattered data (a diagonal)
-    // rejects every box and the four nested loops exhaust O(lines⁴) combinations
-    // per cell — seconds on a modest grid. A cap of 4 still crosses runs of
-    // several consecutive holes on a line (each hole costs one widening step);
-    // anything needing a wider reach is scattered, and the spline handles it.
-    const WIDEN = 4;
-    const [rLoC, rHiC] = [rs[0].slice(0, WIDEN), rs[1].slice(0, WIDEN)];
-    const [cLoC, cHiC] = [cs[0].slice(0, WIDEN), cs[1].slice(0, WIDEN)];
-    // Nearest-first search for the closest box whose four corners are all known; widening
-    // past blank corners (a hole) is what lets it interpolate across missing samples. The
-    // query is always inside the box (lo ≤ q ≤ hi), so this is pure interpolation.
-    search:
-    for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
-      const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
-      if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
-      const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
-      // A box is only an HONEST bilinear cell when no OTHER known data lies within
-      // it (coordinate-space, borders included): bilinear over the corners would
-      // ignore that nearer data. The sine-diagonal case made this concrete — the
-      // only all-known-corner box was the grid's four 0-corners, so every blank
-      // filled flat-0 while the whole diagonal sat inside the box. A DEGENERATE
-      // (1-D) span is likewise contested by data strictly between its two samples
-      // in the cross direction, ANY distance off-axis — otherwise the outer edges
-      // clamp to a corner-to-corner line while the interior curves (author
-      // 2026-07-16: edges defer to the spline). A contested cell falls through to
-      // the surface fit, which uses ALL the points.
-      const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
-      const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
-      const degenRow = rLo === rHi, degenCol = cLo === cHi;
-      let contested = false;
-      for (const p of knownPts) {
-        if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
-        const hit =
-          degenRow && !degenCol ? p.x > xA && p.x < xB :
-          degenCol && !degenRow ? p.y > yA && p.y < yB :
-          p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB;
-        if (hit) { contested = true; break; }
-      }
-      if (contested) continue;
-      const tx = x1 === x0 ? 0 : (qx - x0) / (x1 - x0);
-      const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
-      const top = z00 + tx * (z01 - z00);
-      const bot = z10 + tx * (z11 - z10);
-      out[i + 1][j + 1] = top + ty * (bot - top);
-      break search;
-    }
-  }
-
-  // ── Pass 2 — Forecast: fill every cell pass 1 left blank with a smooth surface fitted
-  // through ALL the known points (thin-plate spline, or a plane for degenerate data). ──
-  if (forecast) {
-    const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
-    if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-      if (out[i + 1][j + 1] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
-      const v = f(colXs[j], rowYs[i]);
-      if (Number.isFinite(v)) out[i + 1][j + 1] = v;
-    }
-  }
-  return out;
-}
 
 export class InterpolateNode extends ClassicPreset.Node {
   label: string;

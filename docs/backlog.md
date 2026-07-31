@@ -131,8 +131,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   Solenoid-native ops that stay non-formula by design (sources, sinks, UI, the
   frame-verb endpoint — bundle 08's transpiler is the "text in, graph out" answer).
   Packs 167/167 CLOSED. Actually open:
-  - **INTERPOLATE grid mode as a formula** — unblocked by D23 (rank-2 impls are in);
-    the registration is list-only and its comment still cites the dead D2 cap.
   - Distributions are validated only at representative points — widen if accuracy is
     ever in doubt.
 - [ ] **Computed Column — the UX tail** (core LANDED 2026-07-29 through v3:
