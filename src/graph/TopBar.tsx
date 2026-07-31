@@ -3,7 +3,7 @@ import wordmark from "../logo/solenoidwordmark.svg";
 import icon from "../logo/solenoidicon.svg";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
-import { TabletActions } from "./TabletActions";
+import { TabletEditActions, TabletPaletteButton } from "./TabletActions";
 import { autoArrange, cleanup } from "./process";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { frStore } from "./frStore";
@@ -193,16 +193,27 @@ export function TopBar() {
       <CableShapeSelector />
 
       {/* Tablet only: the keyboard-less edit actions (a tablet has no bottom bar).
-          Placed BEFORE the art slot so they sit with the other tool pills and the
-          flexible art gap absorbs the width. */}
-      <TabletActions />
+          BEFORE the art slot, so they sit with the other tool pills — and when the
+          bar wraps they go to row 2 with them. */}
+      <TabletEditActions />
 
       {/* Decorative art slot — fills the middle gap. Drop an SVG here later,
           e.g. <img className="solenoid-topbar__art-svg" src={...} /> or inline
           <svg>. Empty for now; it just holds the space. */}
       <div className="solenoid-topbar__art" />
 
+      {/* AFTER the art slot: the palette pins to the right end beside Reference and
+          Settings (in AppToolbar) in both layouts. */}
+      <TabletPaletteButton />
+
       <AppToolbar />
+
+      {/* Forced line break — zero-height, full-width, and `display:none` until the
+          bar actually wraps (TopBar.css). Everything before it stays on row 1;
+          everything ordered after it starts row 2. A flexible spacer can't do this
+          job: it collapses to zero in a wrapping container, so the line fills with
+          whatever fits instead of breaking where we mean. */}
+      <span className="solenoid-topbar__break" aria-hidden="true" />
     </div>
   );
 }

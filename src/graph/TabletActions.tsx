@@ -24,34 +24,44 @@ import {
  *     phone's bottom edge. Up here it would just be a loud button, and the
  *     Quiet Accent Rule says accent conveys type/state, not emphasis.
  *
- * PORTRAIT (2026-08-01): the desktop bar does not fit a tablet in portrait, so on
- * a tablet it WRAPS to a second row. The palette pins to row 1 beside Reference
- * and Settings (author call — those three stay top-right); the edit clusters
- * carry `--tablet-edit` and wrap to row 2 with the file/layout/cable tools.
+ * NARROW (2026-08-01): the desktop bar does not fit a tablet in portrait, so
+ * below ~1100px it WRAPS. Row 1 keeps the identity plus the pinned trio (palette
+ * · Reference · Settings) pushed right; everything else lands on row 2. The
+ * split is a FORCED break element, not flex fill: a flexible spacer collapses to
+ * zero in a wrapping container, so the first attempt just filled row 1 with
+ * whatever fit and left the pinned trio next to the wordmark. Above that width
+ * nothing is reordered at all — reordering a row that fits only scrambled it.
  *
  * Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
  * selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` —
  * so a desktop never pays to watch a control it cannot see.
  */
-export function TabletActions() {
+/** The command palette, PINNED to row 1 beside Reference and Settings (author
+ *  call). Mounted after the top bar's flexible art slot so it sits with them at
+ *  the right end in BOTH layouts — one row when the bar fits, row 1 when it
+ *  wraps. */
+export function TabletPaletteButton() {
+  return (
+    <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-pinned">
+      <button
+        className="solenoid-nav__btn"
+        title="Commands (Ctrl+K)"
+        aria-label="Command palette"
+        onClick={() => paletteStore.open()}
+      >
+        <CommandGlyph size={15} />
+      </button>
+    </div>
+  );
+}
+
+/** Undo/redo and the selection cluster — the part that WRAPS to row 2. */
+export function TabletEditActions() {
   const hasSelection = useHasSelection(IS_TABLET);
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
   return (
     <>
-      {/* Command palette — its search covers find-node too, so one button carries
-          both, exactly as on the bottom bar. */}
-      <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-pinned">
-        <button
-          className="solenoid-nav__btn"
-          title="Commands (Ctrl+K)"
-          aria-label="Command palette"
-          onClick={() => paletteStore.open()}
-        >
-          <CommandGlyph size={15} />
-        </button>
-      </div>
-
       <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
         <button className="solenoid-nav__btn" title="Undo (Ctrl+Z)" aria-label="Undo" onClick={() => fireUndo(false)}>
           <UndoGlyph size={15} />
