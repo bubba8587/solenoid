@@ -121,7 +121,8 @@ forms-that-append-rows as a lifestyle.
 **Stay out because:** training, tuning, and deploying models is its own universe, and
 "AutoML inside a spreadsheet" is a gimmick against free notebooks.
 **The line:** *Excel parity* stats (regression à la LINEST, distributions, the
-Analysis-ToolPak tier) are in scope as nodes. The AI story (scope #19) is Solenoid as
+Analysis-ToolPak tier) are in scope as nodes. The AI story (scope #19, in scope since
+D27) is Solenoid as
 the **audit surface for AI-produced computation** — the cage, not the beast. An
 LLM-as-column-transform node may someday pass the tests (typed in/out, inspectable,
 validated by expectations); an ML *pipeline* never does.

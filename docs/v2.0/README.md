@@ -34,12 +34,16 @@ Named dimensions (#20), model linter (#29), synthetic data (#26), data slots
 (#27), formula lens (#28), PDF/OCR intake (#33), guided tutorials (#36), history
 scrubber (#42), shared-definitions library (#53), structured templates (#55),
 commission vertical (#56), paste-anywhere (#57a), the Round-9 trust-machinery
-cluster (#58–63), embeddable-engine identity (#18), the NL/AI layer (#7, #19),
+cluster (#58–63), embeddable-engine identity (#18),
 data-drafts, golden tests — and, ruled 2026-07-05: **#2** publish-as-form,
 **#6** snapshots+diff, **#11** transform-by-example, **#46** sealed models,
 **Bet 5**, list-of-frames ("this is Cube"), Go-To-Special chrome. **#48/#54**
 resolved as the ultra-minimal library-folder opener (backlog). Per-item
 reasoning: the archived walk docs.
+
+**Reversed out of this list:** the NL/AI layer (#7, #19) — author, 2026-07-31
+(`decisions.md` D27; marketing stays minimal). Working queue: the backlog's
+"AI command palette" item.
 
 ## Cross-cutting reminders (apply to every bundle)
 

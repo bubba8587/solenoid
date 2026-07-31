@@ -635,6 +635,27 @@ dropdown flick.
 **What would reverse it:** nothing — this is the value model's integrity, the same
 class as D5's first-class null/error.
 
+### D27 — The AI layer is IN scope (reverses the #7/#19 ruled-OUT); marketing stays minimal
+**When:** 2026-07-31 (author: "I am reversing the AI layer being fully out. we'll keep
+marketing it to a minimum"). **Where:** `v2.0/README.md` (removed from the ruled-out
+list), backlog "AI command palette" item, `out-of-scope.md` §9.
+**Why:** the original OUT (2026-07-03 walk, #7 co-authoring / #19 the AI cage) predated
+the substrate that makes the feature safe and cheap: the text form is now the real save
+path (deterministic, name-addressed, fuzz-tested `textForm.ts`), D19 stabilized the
+function/node vocabulary, the headless runner covers generate→run→inspect, and the
+key-store + palette AI shell already shipped UI-only. What survives from the old
+ruling: the **positioning** half — the public story stays file-over-app/no-lock-in; AI
+is a capability, not the pitch (marketing minimal, per the author). The **cage framing
+survives as the design rule**: an AI edit proposes through the same governed, typed,
+validated path a human edit takes — never blind blob surgery, and graph-modifying
+actions need an approval step, not a chat log.
+**Cost accepted:** a provider dependency + a pasted-key UX; prompt-driven edits raise
+the bar on validation (a strict, repair-message-grade reader precedes any modify
+capability).
+**What would reverse it:** if the loop can't be made trustworthy (validated applies +
+approval) or the feature starts distorting the Excel-refugee focus into an AI-first
+pitch — the positioning ruling is the tripwire.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
