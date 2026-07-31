@@ -77,8 +77,8 @@ non-finite number → `String(n)`. These outrank any annotation.
 | `complex` | `complex`, `complexlist`, `complexcombo`, `complextable` |
 | `lambda` | `lambda` — display-only view-as for a flowing LambdaValue |
 | `chart` | `chart` — display-only text scale for a flowing chart figure |
-| `number` (provisional) | the wildcards `trueany` (the FC's default/reset type) and `any` — an FC docked to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it |
-| `none` | everything else — `frame`, `cube`, and the family-less non-wildcards `anylist`/`anycombo`/`anydata` (no element family ⇒ no controls) |
+| `number` (provisional) | the wildcard rungs — an FC attached to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it. `trueany` is the FC's own default/reset type, and it is what the FC resolves to against ANY family-less rung: resolution routes through `isWildcardRung`, so `anydata` (an Expression variable), `anylist`, `anycombo`, `anytable` and `any` all leave the FC provisional rather than adopting a rank with no family |
+| `none` | everything else — `frame`, `cube`, `document`: resolved types that genuinely carry no element family (so no controls), as opposed to the wildcard rungs above, which carry no ANSWER yet |
 
 Lists/matrices format PER CELL with the one annotation (the array-semantics model:
 `null` and `SolError` cells short-circuit per cell). Frames are `none` in this

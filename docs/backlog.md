@@ -61,13 +61,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   fixed trim). Build = annotation-aware `formatCx` (style gated to the reduced list,
   precision on BOTH components, unit wraps the whole value) + route the complex value
   boxes / chips / Display through it. A visual change — author-eyeball loop.
-- [ ] **`isWildcardType` covers only `any`/`trueany` while six wildcard rungs exist**
-  (flagged by the 2026-07-31 subsystem-invariants audit): `concreteTypeOfOutput`'s
-  upstream walk stops at an `anydata`/`anylist`/`anycombo` passthrough, so an FC
-  behind one may not resolve the real type. Possibly a real gap, possibly deliberate
-  (those rungs aren't "untyped passthrough" sockets in the D17 sense) — needs a
-  repro before widening the predicate, since every "resolve past untyped
-  passthroughs" check routes through it (CLAUDE.md invariant).
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
   events; verify on hardware, intercept manually if not. (Unrelated to the 2026-07-27
   touch-pinch fix: that was the multi-touch finger count, this is the wheel path.)
