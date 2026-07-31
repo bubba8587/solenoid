@@ -187,10 +187,25 @@ which a tablet shares with desktop).
 
 **2. The bar doesn't fit in portrait** → it wraps to a second row on tablet,
 per the author's call. Row 1 keeps the identity plus the pinned cluster
-(palette · Reference · Settings); everything else wraps. Split by `order`,
-because flex-wrap fills lines in ORDER, not DOM sequence — the flexible art
-slot grows to push the pinned cluster right and every order-4 item lands on
-the next line. Dividers hidden so none orphans at a row edge.
+(palette · Reference · Settings) pushed right; everything else wraps.
+
+The first attempt was wrong in both orientations and the device shots showed
+it. In PORTRAIT the split came out as "whatever fit" — row 1 filled with the
+file/layout/cable tools and only the edit clusters wrapped, leaving the
+pinned trio beside the wordmark. The bad assumption: that the flexible art
+slot would hold a gap. It has `min-width:0`, so in a wrapping container it
+collapses to zero and the line just fills. The fix is a FORCED break element
+(`flex-basis:100%`, zero height) — everything ordered before it stays on row
+1 regardless of what fits. In LANDSCAPE the rules applied even though nothing
+wrapped, so a row that fitted fine got REORDERED, pushing Reference/Settings
+into the middle and pinning the edit clusters right — the opposite of the
+request. Now scoped to `@media (max-width:1100px)`; above it the bar is
+untouched.
+
+Verified in real Chromium rather than by eye (no jsdom in the vitest env, so
+the layout can't be unit-tested): at 800px the rows land at y=7 and y=43 with
+the pinned trio flush to the 12px padding edge and the bar 80px tall; at
+1280px it's one 44px row with nothing reordered.
 
 **The wrap forced the envelope fix, and that's the durable part.** Six
 top-anchored overlays hard-coded an offset derived from the same 66px header

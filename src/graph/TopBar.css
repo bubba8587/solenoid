@@ -148,39 +148,61 @@ html.is-tablet .solenoid-topbar__group--tablet {
   opacity: 0.3;
 }
 
-/* ── Portrait: the bar WRAPS to a second row on a tablet ──────────────────────
+/* ── Narrow (portrait): the bar wraps to a second row on a tablet ─────────────
    The desktop bar doesn't fit a tablet in portrait. Rather than scroll it (which
-   hides controls) or hide tools behind an overflow menu (which adds a layer),
-   it wraps — everything stays visible and tappable.
+   hides controls) or hide tools behind an overflow menu (which adds a layer), it
+   wraps — everything stays visible and tappable.
 
-   Row 1 keeps the identity + the three things the author pinned top-right:
-   the command palette, Reference and Settings. Everything else wraps to row 2.
-   The split is done with `order`, since flex-wrap fills lines in ORDER, not DOM
-   sequence: the flexible art slot (order 1) grows to push the pinned cluster
-   right, and every order-4 item lands on the next line.
+   Two things this got wrong the first time, both visible on-device:
 
-   The header no longer needs its height written down anywhere: Header.tsx
-   measures it and publishes `--chrome-top`, which every top-anchored overlay
-   offsets from — so the second row pushes them all down automatically. That is
-   what makes wrapping safe at all; six hand-keyed offsets could not have
-   survived a conditional bar height. */
-html.is-tablet .solenoid-topbar {
-  flex-wrap: wrap;
-  height: auto;
-  padding: 7px 12px;
-  row-gap: 6px;
+   1. **The split must be a FORCED break, not flex fill.** A flexible spacer
+      (`__art`, flex:1 min-width:0) collapses to zero in a wrapping container, so
+      row 1 filled with whatever fit and the pinned trio ended up beside the
+      wordmark instead of at the right. `__break` is a zero-height, full-width
+      item: everything ordered before it stays on row 1, everything after starts
+      row 2, regardless of what fits.
+   2. **Only reorder when it actually wraps.** These rules were unscoped, so a
+      LANDSCAPE tablet — which fits on one row and needs no help — got its single
+      row reordered, pushing Reference/Settings into the middle. Above the
+      breakpoint nothing here applies and the bar is the plain desktop bar.
+
+   Row 1: identity · (art grows) · palette · Reference/Settings.
+   Row 2: file · layout · cable · undo/redo · select/group/delete.
+
+   Safe because the header height is MEASURED, not written down: Header.tsx
+   publishes `--chrome-top` and every top-anchored overlay offsets from it, so a
+   second row pushes them all down on its own. */
+.solenoid-topbar__break {
+  display: none;
+  flex-basis: 100%;
+  height: 0;
 }
-html.is-tablet .solenoid-topbar__art { order: 1; }
-html.is-tablet .solenoid-topbar__group--tablet-pinned { order: 2; }
-html.is-tablet .solenoid-apptools { order: 3; }
-/* Row 2: the document tools, the cable switch, and the edit clusters. */
-html.is-tablet .solenoid-topbar__group--file,
-html.is-tablet .solenoid-topbar__group--layout,
-html.is-tablet .solenoid-topbar__group--tablet-edit,
-html.is-tablet .solenoid-toolbar { order: 4; }
-/* The dividers separated groups along ONE row; across two they'd orphan at a row
-   edge. The pill outlines already do the separating. */
-html.is-tablet .solenoid-topbar__divider { display: none; }
+
+@media (max-width: 1100px) {
+  html.is-tablet .solenoid-topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 7px 12px;
+    /* The break consumes a flex LINE of its own (that's how the trick works), so
+       the two visible rows are separated by TWO row-gaps — 3px reads as the
+       intended 6px. */
+    row-gap: 3px;
+  }
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__break { display: block; order: 4; }
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__art { order: 1; }
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--tablet-pinned { order: 2; }
+  html.is-tablet .solenoid-topbar > .solenoid-apptools { order: 3; }
+  /* Row 2: the document tools, the cable switch (label + shapes + bead-flow
+     toggle, all one `.solenoid-toolbar`), and the edit clusters. Child-scoped:
+     `.solenoid-toolbar` is not unique to this bar. */
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--file,
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--layout,
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--tablet-edit,
+  html.is-tablet .solenoid-topbar > .solenoid-toolbar { order: 5; }
+  /* The dividers separated groups along ONE row; across two they'd orphan at a
+     row edge. The pill outlines already do the separating. */
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__divider { display: none; }
+}
 
 /* A tablet is a touch device on the desktop layout, where buttons are sized for
    a cursor. Widen the touch target without changing the LAID-OUT size: the pill
