@@ -25,43 +25,41 @@ import {
  *     Quiet Accent Rule says accent conveys type/state, not emphasis.
  *
  * NARROW (2026-08-01): the desktop bar does not fit a tablet in portrait, so
- * below ~1100px it WRAPS. Row 1 keeps the identity plus the pinned trio (palette
- * · Reference · Settings) pushed right; everything else lands on row 2. The
- * split is a FORCED break element, not flex fill: a flexible spacer collapses to
- * zero in a wrapping container, so the first attempt just filled row 1 with
- * whatever fit and left the pinned trio next to the wordmark. Above that width
- * nothing is reordered at all — reordering a row that fits only scrambled it.
+ * below ~1100px it WRAPS. Row 1 = identity · file · layout · (gap) · the pinned
+ * trio THEME / Reference / Settings, flush right. Row 2 = cable · palette ·
+ * undo/redo · select/group/delete. Row 1 deliberately carries a SHARE of the
+ * tools rather than only the wordmark — an otherwise near-empty first row was
+ * the author's second correction.
+ *
+ * The split is a FORCED break element, not flex fill: a flexible spacer
+ * collapses to zero in a wrapping container, so the first attempt just filled
+ * row 1 with whatever fit. Above the breakpoint nothing is reordered at all —
+ * reordering a row that already fits only scrambled it.
  *
  * Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
  * selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` —
  * so a desktop never pays to watch a control it cannot see.
  */
-/** The command palette, PINNED to row 1 beside Reference and Settings (author
- *  call). Mounted after the top bar's flexible art slot so it sits with them at
- *  the right end in BOTH layouts — one row when the bar fits, row 1 when it
- *  wraps. */
-export function TabletPaletteButton() {
-  return (
-    <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-pinned">
-      <button
-        className="solenoid-nav__btn"
-        title="Commands (Ctrl+K)"
-        aria-label="Command palette"
-        onClick={() => paletteStore.open()}
-      >
-        <CommandGlyph size={15} />
-      </button>
-    </div>
-  );
-}
-
-/** Undo/redo and the selection cluster — the part that WRAPS to row 2. */
-export function TabletEditActions() {
+/** The keyboard-less edit actions: command palette, undo/redo, and the selection
+ *  cluster. All of them WRAP — the pinned trio is theme / Reference / Settings,
+ *  which already live in `AppToolbar`. */
+export function TabletActions() {
   const hasSelection = useHasSelection(IS_TABLET);
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
   return (
     <>
+      <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
+        <button
+          className="solenoid-nav__btn"
+          title="Commands (Ctrl+K)"
+          aria-label="Command palette"
+          onClick={() => paletteStore.open()}
+        >
+          <CommandGlyph size={15} />
+        </button>
+      </div>
+
       <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
         <button className="solenoid-nav__btn" title="Undo (Ctrl+Z)" aria-label="Undo" onClick={() => fireUndo(false)}>
           <UndoGlyph size={15} />

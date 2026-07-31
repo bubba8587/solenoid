@@ -186,8 +186,15 @@ now; its plain-click branch stays IS_MOBILE (that one is about double-click,
 which a tablet shares with desktop).
 
 **2. The bar doesn't fit in portrait** → it wraps to a second row on tablet,
-per the author's call. Row 1 keeps the identity plus the pinned cluster
-(palette · Reference · Settings) pushed right; everything else wraps.
+per the author's call. Row 1 = identity · file · layout · (gap) · **theme ·
+Reference · Settings** flush right; row 2 = cable · command palette ·
+undo/redo · select/group/delete.
+
+Two corrections from the author after the first attempt: "palette" in the
+original request meant the THEME control, not the command palette (which is
+therefore unpinned and wraps with the rest), and row 1 was supposed to carry
+a SHARE of the tools — pinning only the trio left it holding just the
+wordmark, wasting exactly the width the wrap was meant to buy.
 
 The first attempt was wrong in both orientations and the device shots showed
 it. In PORTRAIT the split came out as "whatever fit" — row 1 filled with the
@@ -203,9 +210,9 @@ request. Now scoped to `@media (max-width:1100px)`; above it the bar is
 untouched.
 
 Verified in real Chromium rather than by eye (no jsdom in the vitest env, so
-the layout can't be unit-tested): at 800px the rows land at y=7 and y=43 with
-the pinned trio flush to the 12px padding edge and the bar 80px tall; at
-1280px it's one 44px row with nothing reordered.
+the layout can't be unit-tested) at 768 / 800 / 1280: the two narrow widths
+put the rows at y=7 and y=43 with the trio flush to the 12px padding edge and
+the bar 80px tall; 1280 is one 44px row with nothing reordered.
 
 **The wrap forced the envelope fix, and that's the durable part.** Six
 top-anchored overlays hard-coded an offset derived from the same 66px header
