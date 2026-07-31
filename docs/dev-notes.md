@@ -118,6 +118,37 @@ on the card; drawing frames in the HTML-in-canvas renderer only; quantizing the
 area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
+### D27 + the AI prerequisite layer: strict reader, grounding spec, headless loop (2026-08-01f)
+
+Author reversed the #7/#19 NL/AI ruled-OUT (recorded as **D27**: the AI layer is IN,
+marketing stays minimal, the cage framing is the design rule). Then the backlog's
+prerequisite layer was built:
+- **`graphValidate.ts`** — the strict validating reader over the text form / SavedGraph.
+  Contract: every condition the permissive loader silently repairs (unknown type →
+  Placeholder, refused cable → dropped in rebuild, unknown init key → ignored, inline
+  literal on a non-declaring class → dropped, sidecar ref to a missing name → lost)
+  is an ERROR with a repair-grade, line-anchored message + nearest-name suggestion;
+  what's legal-but-suspect (a dependency cycle → #CIRC!) is a WARNING — the
+  null-and-logical seed ships a deliberate cycle, which is what forced the split.
+  Init keys are judged against the CONSTRUCTED INSTANCE, not the static whitelist
+  alone — extractInit also emits literals-spread keys (Slider min/max/step),
+  extensible row keys (`valueKeys`), and composite fields, and every such key comes
+  from the instance. Cable checks reuse `canConnect` (the live guard's own check);
+  empty socket records (a Composite pre-hydrate) skip key checks rather than
+  false-positive. Seeds sweep-tested clean both as JSON and through the text form
+  (`graphValidate.test.ts`).
+- **`npm run validate-graph <file>`** — the gate as a CLI (text form or JSON).
+- **`npm run ai-grounding [-- --out f]`** — the model-facing spec, GENERATED from
+  `buildCatalog(false)` + live instances (the Add-menu/Function-Reference move):
+  grammar, socket lattice + type table, init whitelist, all ~315 classes with
+  sockets, inline-literal keys, and op variants. Deprecated (hidden) leaves excluded.
+- **`run-graph` accepts the text form** and gates both formats on the validator
+  (`--force` overrides) — generate → validate → run works headlessly end to end.
+- `textForm.ts`: `parseNodeLine` exported (the validator's per-line grammar pass
+  reports EVERY malformed line; the reader still throws on the first).
+Open before wiring the palette send site: the edit-granularity call and the
+cold-graph Tidy check (backlog).
+
 ### Note markdown reads the note's accent, not the app's (2026-07-30i)
 
 `.solenoid-note__rendered.sol-md` inherited the shared doc styles wholesale, so

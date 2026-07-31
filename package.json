@@ -13,7 +13,9 @@
     "tauri": "tauri",
     "desktop:live": "tauri dev --config src-tauri/tauri.live.conf.json",
     "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-build.ps1",
-    "run-graph": "tsx scripts/run-graph.ts"
+    "run-graph": "tsx scripts/run-graph.ts",
+    "validate-graph": "tsx scripts/validate-graph.ts",
+    "ai-grounding": "tsx scripts/ai-grounding.ts"
   },
   "dependencies": {
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.2.5",

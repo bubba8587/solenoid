@@ -146,20 +146,16 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   "connect an account" flow would change that shape.
   Scope ruling: D27 (the AI layer is IN; the cage framing is the design rule — AI edits
   go through the same governed path as human edits, modify actions behind approval).
-  **Prerequisite layer before any graph-MODIFYING capability** (2026-07-31 readiness
-  assessment; Q&A-only prompts don't need it):
-  - **Strict validating reader over the text form** — `readTextForm` parses but doesn't
-    semantically validate (unknown type → Placeholder, bad connection → silently dropped
-    in rebuild, init keys unchecked). An AI apply loop needs a validate step with
-    repair-grade messages ("no node type X — nearest Y", "input k doesn't exist on
-    Sort") BEFORE anything touches the doc; pure + headless like the rest of the seam.
-  - **Model-facing grounding spec, generated not authored** — node types / socket +
-    init keys / text-form grammar / lattice rules, emitted from `nodeCatalog.ts` the
-    way the Function Reference already is.
-  - **Prototype the loop headless first** — prompt → text form → `run-graph` → check
-    outputs, zero UI cost; positions can default and lean on Tidy/ELK (verify Tidy on
-    a cold all-at-0,0 graph). Edit granularity call (whole-doc rewrite vs validated
-    edit-ops per the archived #35 MCP sketch) falls out of this prototype.
+  **The prerequisite layer LANDED 2026-07-31** (`graphValidate.ts` strict validating
+  reader — every silently-repaired load condition is a repair-grade, line-anchored
+  issue, seeds sweep-tested clean; `npm run validate-graph`; `npm run ai-grounding`
+  generates the model-facing spec from the catalog + live classes; `run-graph` accepts
+  the text form and gates on the validator — the full generate → validate → run loop
+  works headlessly). Still open before wiring the send site:
+  - **Edit granularity call** — whole-doc text-form rewrite vs validated edit-ops (the
+    archived #35 MCP sketch); prototype prompts against the headless loop to decide.
+  - **Tidy on a cold graph** — verify auto-layout handles an all-at-0,0 generated
+    graph (needs the app; the headless loop can't check it).
   - Transport is already solved: `httpBridge` (desktop CORS-free; web needs the
     provider's browser-CORS opt-in header) + `apiKeyStore`.
 

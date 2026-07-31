@@ -351,7 +351,7 @@ export function readTextForm(text: string): SavedGraph {
   return g;
 }
 
-function parseNodeLine(line: string): {
+export function parseNodeLine(line: string): {
   name: string;
   type: string;
   init: Record<string, unknown>;
