@@ -49,21 +49,30 @@ bottom; everything else floats over the canvas.
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
 > touch actions (palette · undo/redo · select · group · delete — `TabletActions.tsx`), and
-> because the desktop bar does not fit a tablet in PORTRAIT, the bar **wraps to a second
-> row** there. Row 1 keeps the identity plus the pinned cluster — command palette,
-> Reference, Settings; everything else wraps to row 2. Two things this got wrong on the
-> first device test, both worth not repeating: the split must be a **forced break element**
-> (`.solenoid-topbar__break`, `flex-basis:100%`, zero height) — a flexible spacer collapses
-> to zero in a wrapping container, so row 1 just fills with whatever fits and the pinned trio
-> lands beside the wordmark; and the wrap/`order` rules must be **scoped to the narrow case**
-> (`@media (max-width:1100px)`), or a landscape tablet that needs no help gets its single row
-> reordered. Dividers are hidden so none orphans at a row edge. Touch reach comes from a
-> pseudo-element tap target, not padding, so a wrapped row is still 30px like every other
-> pill row. Measured in Chromium: 800px → rows at y=7 / y=43, bar 80px (envelope 102);
-> 1280px → one row, bar 44px, nothing reordered.
+> because the desktop bar does not fit a tablet in PORTRAIT, the bar **wraps** below
+> `1100px`:
 >
-> The break consumes a flex LINE of its own — that is how the trick works — so the two
-> visible rows sit two `row-gap`s apart; the gap is 3px to read as the intended 6px.
+> | | contents |
+> |---|---|
+> | Row 1 | identity · file · layout · *(art gap)* · **theme · Reference · Settings**, flush right |
+> | Row 2 | cable (+ bead-flow) · command palette · undo/redo · select/group/delete |
+>
+> The **pinned** set is theme/Reference/Settings (`.solenoid-apptools`) — the command
+> palette is NOT in it. Row 1 deliberately carries a share of the tools: pinning only the
+> trio left it nearly empty, wasting the width the wrap was meant to buy.
+>
+> Three things this got wrong before the device shots, worth not repeating: the split must
+> be a **forced break element** (`.solenoid-topbar__break`, `flex-basis:100%`, zero height)
+> — a flexible spacer collapses to zero in a wrapping container, so row 1 fills with
+> whatever fits; the wrap/`order` rules must be **scoped to the narrow case**
+> (`@media (max-width:1100px)`), or a landscape tablet that needs no help gets its single
+> row reordered; and the break consumes a flex LINE of its own, so `row-gap` is 3px to read
+> as the intended 6px. Dividers are hidden so none orphans at a row edge; touch reach comes
+> from a pseudo-element tap target, not padding, so a wrapped row is still 30px.
+>
+> Measured in Chromium (768 / 800 / 1280): at 768 and 800 the rows land at y=7 and y=43
+> with the trio flush to the 12px padding edge and the bar 80px tall (envelope 102); at
+> 1280 it is one 44px row with nothing reordered.
 
 **The header envelope is MEASURED, not written down (2026-08-01).** `Header.tsx` observes
 its own height and publishes it as **`--chrome-top`** on `:root`; every top-anchored overlay

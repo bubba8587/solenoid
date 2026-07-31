@@ -166,8 +166,13 @@ html.is-tablet .solenoid-topbar__group--tablet {
       row reordered, pushing Reference/Settings into the middle. Above the
       breakpoint nothing here applies and the bar is the plain desktop bar.
 
-   Row 1: identity · (art grows) · palette · Reference/Settings.
-   Row 2: file · layout · cable · undo/redo · select/group/delete.
+   Row 1: identity · file · layout · (art grows) · theme/Reference/Settings.
+   Row 2: cable · palette · undo/redo · select/group/delete.
+
+   Row 1 carries a SHARE of the tools on purpose: pinning only the trio left the
+   first row nearly empty, which wasted the width the wrap was meant to buy. The
+   PINNED set is theme · Reference · Settings — the command palette is not in it
+   and wraps with the rest.
 
    Safe because the header height is MEASURED, not written down: Header.tsx
    publishes `--chrome-top` and every top-anchored overlay offsets from it, so a
@@ -188,17 +193,20 @@ html.is-tablet .solenoid-topbar__group--tablet {
        intended 6px. */
     row-gap: 3px;
   }
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__break { display: block; order: 4; }
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__art { order: 1; }
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--tablet-pinned { order: 2; }
-  html.is-tablet .solenoid-topbar > .solenoid-apptools { order: 3; }
-  /* Row 2: the document tools, the cable switch (label + shapes + bead-flow
-     toggle, all one `.solenoid-toolbar`), and the edit clusters. Child-scoped:
-     `.solenoid-toolbar` is not unique to this bar. */
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--file,
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--layout,
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--tablet-edit,
-  html.is-tablet .solenoid-topbar > .solenoid-toolbar { order: 5; }
+  /* ROW 1 — identity, then a SHARE of the tools, then the gap, then the pinned
+     trio (theme · Reference · Settings, all inside `.solenoid-apptools`). The
+     file and layout pills ride up here because a first row holding only the
+     wordmark wasted the width the wrap was meant to buy. */
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--file { order: 1; }
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--layout { order: 2; }
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__art { order: 3; }
+  html.is-tablet .solenoid-topbar > .solenoid-apptools { order: 4; }
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__break { display: block; order: 5; }
+  /* ROW 2 — the cable switch (label + shapes + bead-flow toggle, all one
+     `.solenoid-toolbar`) and the edit clusters, which include the command
+     palette. Child-scoped: `.solenoid-toolbar` is not unique to this bar. */
+  html.is-tablet .solenoid-topbar > .solenoid-toolbar,
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--tablet-edit { order: 6; }
   /* The dividers separated groups along ONE row; across two they'd orphan at a
      row edge. The pill outlines already do the separating. */
   html.is-tablet .solenoid-topbar > .solenoid-topbar__divider { display: none; }
