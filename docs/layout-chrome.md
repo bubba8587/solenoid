@@ -50,29 +50,26 @@ bottom; everything else floats over the canvas.
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
 > touch actions (palette · undo/redo · select · group · delete — `TabletActions.tsx`), and
 > because the desktop bar does not fit a tablet in PORTRAIT, the bar **wraps** below
-> `1100px`:
+> `1100px`: fill the line, push the overflow to the next one. Nothing is reordered and
+> nothing is forced onto a chosen row.
 >
-> | | contents |
-> |---|---|
-> | Row 1 | identity · file · layout · *(art gap)* · **theme · Reference · Settings**, flush right |
-> | Row 2 | cable (+ bead-flow) · command palette · undo/redo · select/group/delete |
+> The exception is the **pinned trio** — theme · Reference · Settings
+> (`.solenoid-apptools`) — which must hold the top-right corner. An in-flow flex item
+> can't do that (it lands wherever its line ends), so it is `position:absolute` and the bar
+> reserves its column with `padding-right: calc(12px + var(--tablet-pinned-w))`. Everything
+> else then wraps normally against the narrower line. Reserving on every line costs a
+> little width on row 2; that is the price of the corner staying put.
 >
-> The **pinned** set is theme/Reference/Settings (`.solenoid-apptools`) — the command
-> palette is NOT in it. Row 1 deliberately carries a share of the tools: pinning only the
-> trio left it nearly empty, wasting the width the wrap was meant to buy.
+> **Do not "fix" this with a forced break.** A full-width zero-height break element ends the
+> line whether or not more would have fit — that is a two-row SPLIT, not a wrap, and it
+> shipped once (breaking after the layout pills with usable width left over). Likewise, do
+> not add `order` rules here: they scrambled the LANDSCAPE row, which fits and needs no
+> help. Dividers are hidden so none orphans at a row edge; touch reach comes from a
+> pseudo-element tap target, not padding, so a wrapped row is still 30px.
 >
-> Three things this got wrong before the device shots, worth not repeating: the split must
-> be a **forced break element** (`.solenoid-topbar__break`, `flex-basis:100%`, zero height)
-> — a flexible spacer collapses to zero in a wrapping container, so row 1 fills with
-> whatever fits; the wrap/`order` rules must be **scoped to the narrow case**
-> (`@media (max-width:1100px)`), or a landscape tablet that needs no help gets its single
-> row reordered; and the break consumes a flex LINE of its own, so `row-gap` is 3px to read
-> as the intended 6px. Dividers are hidden so none orphans at a row edge; touch reach comes
-> from a pseudo-element tap target, not padding, so a wrapped row is still 30px.
->
-> Measured in Chromium (768 / 800 / 1280): at 768 and 800 the rows land at y=7 and y=43
-> with the trio flush to the 12px padding edge and the bar 80px tall (envelope 102); at
-> 1280 it is one 44px row with nothing reordered.
+> Measured in Chromium — 768/800: `SOLENOID file layout` + trio, then `cable palette
+> undo/redo sel/grp/del`, bar 80px (envelope 102). 1024: row 1 also takes `cable` and the
+> palette, only `sel/grp/del` wraps. 1280: one 44px row, trio flush at the padding edge.
 
 **The header envelope is MEASURED, not written down (2026-08-01).** `Header.tsx` observes
 its own height and publishes it as **`--chrome-top`** on `:root`; every top-anchored overlay

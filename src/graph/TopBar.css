@@ -1,4 +1,9 @@
 .solenoid-topbar {
+  /* Width reserved for the out-of-flow pinned trio when the bar wraps (tablet,
+     narrow — see the media query at the bottom of this file). Slightly generous:
+     over-reserving leaves a little slack, under-reserving would let a wrapped
+     row slide under the pinned cluster. */
+  --tablet-pinned-w: 140px;
   /* Positioned by the Header (menu bar sits above it). Kept below the menu bar
      in the stacking order so its dropdowns paint over the toolbar. */
   position: relative;
@@ -148,65 +153,41 @@ html.is-tablet .solenoid-topbar__group--tablet {
   opacity: 0.3;
 }
 
-/* ── Narrow (portrait): the bar wraps to a second row on a tablet ─────────────
-   The desktop bar doesn't fit a tablet in portrait. Rather than scroll it (which
-   hides controls) or hide tools behind an overflow menu (which adds a layer), it
-   wraps — everything stays visible and tappable.
+/* ── Narrow (portrait): the bar WRAPS on a tablet ─────────────────────────────
+   The desktop bar doesn't fit a tablet in portrait. It wraps: fill the line,
+   push the overflow to the next one. Nothing is reordered and nothing is forced
+   onto a chosen row — an earlier version broke the line after the layout pills
+   whether or not more would have fit, which is a two-row SPLIT, not a wrap.
 
-   Two things this got wrong the first time, both visible on-device:
+   The one thing that can't just flow is the pinned trio (theme · Reference ·
+   Settings, all inside `.solenoid-apptools`): it must hold the top-right corner,
+   and an in-flow flex item can't — it goes wherever the line ends up. So it
+   leaves the flow entirely and the bar reserves its column with padding-right.
+   Everything else then wraps naturally into what's left, which is exactly the
+   normal wrap behaviour, just against a narrower line.
 
-   1. **The split must be a FORCED break, not flex fill.** A flexible spacer
-      (`__art`, flex:1 min-width:0) collapses to zero in a wrapping container, so
-      row 1 filled with whatever fit and the pinned trio ended up beside the
-      wordmark instead of at the right. `__break` is a zero-height, full-width
-      item: everything ordered before it stays on row 1, everything after starts
-      row 2, regardless of what fits.
-   2. **Only reorder when it actually wraps.** These rules were unscoped, so a
-      LANDSCAPE tablet — which fits on one row and needs no help — got its single
-      row reordered, pushing Reference/Settings into the middle. Above the
-      breakpoint nothing here applies and the bar is the plain desktop bar.
-
-   Row 1: identity · file · layout · (art grows) · theme/Reference/Settings.
-   Row 2: cable · palette · undo/redo · select/group/delete.
-
-   Row 1 carries a SHARE of the tools on purpose: pinning only the trio left the
-   first row nearly empty, which wasted the width the wrap was meant to buy. The
-   PINNED set is theme · Reference · Settings — the command palette is not in it
-   and wraps with the rest.
+   Reserving on EVERY line costs a little width on row 2. That is the price of
+   the corner staying put, and row 2 has the room.
 
    Safe because the header height is MEASURED, not written down: Header.tsx
    publishes `--chrome-top` and every top-anchored overlay offsets from it, so a
    second row pushes them all down on its own. */
-.solenoid-topbar__break {
-  display: none;
-  flex-basis: 100%;
-  height: 0;
-}
-
 @media (max-width: 1100px) {
   html.is-tablet .solenoid-topbar {
     flex-wrap: wrap;
     height: auto;
-    padding: 7px 12px;
-    /* The break consumes a flex LINE of its own (that's how the trick works), so
-       the two visible rows are separated by TWO row-gaps — 3px reads as the
-       intended 6px. */
-    row-gap: 3px;
+    row-gap: 6px;
+    /* Left/top/bottom as the desktop bar; the right pad is the reserved column
+       for the out-of-flow pinned trio (its width + the normal 8px gap). */
+    padding: 7px calc(12px + var(--tablet-pinned-w)) 7px 12px;
   }
-  /* ROW 1 — identity, then a SHARE of the tools, then the gap, then the pinned
-     trio (theme · Reference · Settings, all inside `.solenoid-apptools`). The
-     file and layout pills ride up here because a first row holding only the
-     wordmark wasted the width the wrap was meant to buy. */
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--file { order: 1; }
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--layout { order: 2; }
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__art { order: 3; }
-  html.is-tablet .solenoid-topbar > .solenoid-apptools { order: 4; }
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__break { display: block; order: 5; }
-  /* ROW 2 — the cable switch (label + shapes + bead-flow toggle, all one
-     `.solenoid-toolbar`) and the edit clusters, which include the command
-     palette. Child-scoped: `.solenoid-toolbar` is not unique to this bar. */
-  html.is-tablet .solenoid-topbar > .solenoid-toolbar,
-  html.is-tablet .solenoid-topbar > .solenoid-topbar__group--tablet-edit { order: 6; }
+  /* Out of the flow so the corner is a corner. The bar is already
+     `position: relative`. */
+  html.is-tablet .solenoid-topbar > .solenoid-apptools {
+    position: absolute;
+    top: 7px;
+    right: 12px;
+  }
   /* The dividers separated groups along ONE row; across two they'd orphan at a
      row edge. The pill outlines already do the separating. */
   html.is-tablet .solenoid-topbar > .solenoid-topbar__divider { display: none; }
