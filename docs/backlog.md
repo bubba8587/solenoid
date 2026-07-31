@@ -29,6 +29,19 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
+- [ ] **Editing a node header blacks out the app (tablet; other devices unchecked)**
+  — author-reported 2026-08-01, **NOT REPRODUCED**. Tried headlessly against the
+  real built app with `pointer:coarse` forced before module eval (so `IS_COARSE`/
+  `IS_TABLET` are true exactly as on a tablet): tapped the header, typed, and
+  committed via a real focus/blur on **every** card of getting-started (34),
+  pivot-tables, equation-solver, famous-math and power-features — 107+ headers,
+  zero errors, canvas intact. So it is NOT simply "any header commit": it needs
+  a node type, doc, or gesture the sweep missed (a real touch sequence, the
+  on-screen keyboard's viewport resize, or a node absent from those seeds).
+  **Next occurrence now names itself** — the app had no error boundary at all,
+  which is why a throw rendered as a black screen; `ErrorBoundary` (app + per
+  node) landed with this item. Get the copied text from the boundary panel and
+  this becomes a five-minute fix.
 - [ ] **OUTSIDE REVIEW WANTED: number→text semantics of the text predicates**
   (flagged 2026-07-29; author explicitly defers this judgment to a reviewer).
   The spec today: a text predicate (contains/startsWith/endsWith, and string-eq

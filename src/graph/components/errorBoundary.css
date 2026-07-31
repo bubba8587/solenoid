@@ -1,0 +1,92 @@
+/* Error-boundary surfaces. Deliberately plain: this renders when the app is
+   already broken, so it must not depend on anything clever. No gradients, no
+   faux-3D (DESIGN.md); the red is state, not decoration (Quiet Accent Rule). */
+
+.solenoid-errbound {
+  font-family: inherit;
+  color: var(--text, #e6e6e6);
+  background: var(--panel-bg, #1b1b1b);
+  border: 1px solid var(--error, #d9534f);
+  border-radius: 6px;
+}
+
+/* Full-root failure: centered, scrollable, and readable on a phone. */
+.solenoid-errbound--app {
+  position: fixed;
+  inset: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  overflow: auto;
+}
+
+.solenoid-errbound--app h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.solenoid-errbound--app p {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.solenoid-errbound--app pre {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* Selectable: the app sets user-select:none broadly, and the whole point of
+     this panel is copying the text out. */
+  user-select: text;
+  background: var(--canvas-bg, #111);
+  border: 1px solid var(--panel-border, #333);
+  border-radius: 4px;
+}
+
+.solenoid-errbound__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* One broken card, on the canvas, at node size. */
+.solenoid-errbound--node {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 180px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  user-select: text;
+}
+
+.solenoid-errbound--node strong {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--error, #d9534f);
+}
+
+.solenoid-errbound--node span {
+  opacity: 0.8;
+  word-break: break-word;
+}
+
+.solenoid-errbound button {
+  align-self: flex-start;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  color: inherit;
+  background: var(--btn-bg, #262626);
+  border: 1px solid var(--btn-border, #3a3a3a);
+  border-radius: 999px;
+  cursor: pointer;
+}

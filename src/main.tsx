@@ -17,6 +17,8 @@ import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { IS_MOBILE, IS_TABLET } from "./graph/coarse";
+import { ErrorBoundary } from "./graph/components/ErrorBoundary";
+import "./graph/components/errorBoundary.css";
 import "@fontsource-variable/atkinson-hyperlegible-next";
 // The italic FACE — without it, `*em*` / FC-italic render upright: the base
 // import loads only the upright axis, and `font-synthesis: none` (App.css,
@@ -143,5 +145,9 @@ if (import.meta.env.DEV) {
 // "Found more than one element for socket with same key and side". The graph
 // nodes render in rete's own root, so StrictMode wasn't checking them anyway.
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <App />,
+  // Without this the app had no boundary at all: any render throw blanked the
+  // screen and took its own diagnosis with it. Now it names what threw.
+  <ErrorBoundary scope="app">
+    <App />
+  </ErrorBoundary>,
 );

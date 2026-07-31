@@ -193,6 +193,11 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
   `box-shadow`, not a layout border. Never a text `×`/`✕` for a close button — use
   `components/CloseIcon.tsx`. Genuinely asymmetric glyphs get fixed in the path by ink centroid
   (an art call, not the parity rule).
+- **Every render is boundaried now** (`components/ErrorBoundary.tsx`): the app root and
+  EACH rete node. A throw no longer blacks out the app — the app panel prints the message +
+  component stack with a Copy button, and a single bad card degrades to a small red box
+  while the rest of the canvas keeps working. When a black screen IS reported, ask for the
+  copied text first; don't go hunting blind.
 - **Components NEVER call `node.data()`** — extract a pure helper (the coerceInputs wrapper
   assumes engine-driven calls).
 - **A cable drag blurs the focused field first** (Canvas `connectionpick`), so a mid-edit value

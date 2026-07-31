@@ -5,6 +5,7 @@ import type { NodeEditor } from "rete";
 import type { Schemes, AreaExtra } from "./schemes";
 import { getGuardedSocketPosition } from "./guardedSocketPosition";
 import { componentForNode } from "./nodeRegistry";
+import { withNodeBoundary } from "./components/ErrorBoundary";
 import { SocketComponent } from "./components/SocketComponent";
 import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
@@ -132,7 +133,11 @@ export function solenoidClassicRenderSetup() {
     socketPositionWatcher: getGuardedSocketPosition({ offset: (p) => p }),
     customize: {
       node({ payload }) {
-        return componentForNode(payload);
+        // Boundaried per NODE: rete gives each node its own React root, so an
+        // unguarded throw in one card's render blanks the whole canvas and says
+        // nothing about which card did it. Wrapped, the broken one shows a small
+        // red box naming itself and every other node keeps working.
+        return withNodeBoundary(componentForNode(payload));
       },
       socket() {
         return SocketComponent;
