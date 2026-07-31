@@ -225,7 +225,7 @@ copies. Highlights beyond copy-fixes:
   absent from its `EVERY` array (only checked transitively before).
 - Planning set: bundles 17 + 19 archived (v2.0 now 4 live), the 2026-07-29
   digests swept to history, parity backlog re-derived from the script
-  (548/646, gap B 98), Data Feed baseline corrected (Stooq is dead),
+  (548 of 548 in-scope leaves), Data Feed baseline corrected (Stooq is dead),
   D2/D19-4/D24-Where fixed in decisions.md.
 - Late tranches: SSOT-8 converted to a direct quantifier pin (the extracted
   `excelCoverage`; the live catalog can't distinguish some/every while gap A

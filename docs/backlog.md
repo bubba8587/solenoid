@@ -96,8 +96,7 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   quick-picks), more providers. Shipped baseline: 2 providers (FRED keyless default /
   Alpha Vantage keyed — Stooq was cut: its keyless CSV sits behind a JS bot-check,
   `dataProviders.ts`), a plain ticker/series field + FRED common-series quick-picks,
-  chart-ready typed output. Sweep the stale Stooq copy still in
-  `ConnectionNodes.tsx` / `nodes/dataFeed.ts` / `Settings.tsx`. Widening = a real
+  chart-ready typed output. Widening = a real
   symbol-search picker beyond the free field, and more providers. Stays Excel
   STOCKHISTORY scope — NOT crypto/FX, no real-time/intraday/options/fundamentals.
 - [ ] **Composite drill-in — Navigator, lasso, group tools**: (a) Group/Cleanup/Autofit/
@@ -127,7 +126,10 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Formula ↔ node parity — the remainder** (D19, all tiers LANDED; the program's
   history lives in `formula-node-parity.md` + the dev-notes archive). Current state
   per `scripts/formula-node-parity.ts` (the truth, SSOT-6 — regenerate, don't trust
-  this line): **548/646 leaves formula-callable; gap A = 0, gap C = 0; gap B = 98**
+  this line): **548/548 IN-SCOPE leaves callable (100%); gap A = 0, gap C = 0**.
+  The denominator is `inScope`, never the 646 catalog total — 98 leaves (sources,
+  sinks, UI controls, canvas chrome, the verb surface) are non-functions by design
+  and were never candidates
   Solenoid-native ops that stay non-formula by design (sources, sinks, UI, the
   frame-verb endpoint — bundle 08's transpiler is the "text in, graph out" answer).
   Packs 167/167 CLOSED. Actually open:
