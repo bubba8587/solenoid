@@ -24,7 +24,14 @@ initPackFormulas();
 
 const m = measureParity();
 
-console.log(`\n=== Node → formula: ${m.covered.length}/${m.rows.length} leaves formula-callable ===`);
+// Report against the IN-SCOPE leaves, never `rows.length`: the catalog includes
+// sliders, notes, sinks and chrome that were never candidates for a formula name,
+// so x/646 understates coverage and answers a different question (author ruling,
+// 2026-08-01). Gap B is printed on its own line as the excluded population.
+const pct = m.inScope.length ? Math.round((m.covered.length / m.inScope.length) * 1000) / 10 : 100;
+console.log(`\n=== Node → formula: ${m.covered.length}/${m.inScope.length} in-scope leaves callable (${pct}%) ===`);
+console.log(`    excluded by design: ${m.nativeGap.length} non-function leaves (sources · sinks · UI · chrome · the verb surface) — gap B below`);
+console.log(`    catalog total: ${m.rows.length} leaves`);
 console.log(`\nA. Excel-named node, name NOT dispatchable in a formula (${m.excelNamedGap.length} nodes, ${excelNamedGapNames(m).length} names):`);
 for (const r of m.excelNamedGap) console.log(`  ${r.excel.join("/")}  ←  ${r.label} [${r.cat}]`);
 

@@ -105,6 +105,21 @@ describe("formula ↔ node parity ratchet", () => {
     expect(leaked, `Formula.js internals leaked into the formula name list:${fmt(leaked)}`).toEqual([]);
   });
 
+  // The coverage DENOMINATOR: in-scope ⊎ excluded-by-design must partition the
+  // catalog exactly — no leaf counted twice, none dropped. A coverage claim uses
+  // `inScope`, never `rows` (author ruling 2026-08-01: don't report a ratio whose
+  // denominator includes leaves that were never candidates).
+  it("inScope and nativeGap partition the catalog — the coverage denominator is honest", () => {
+    expect(m.inScope.length + m.nativeGap.length).toBe(m.rows.length);
+    const inScope = new Set(m.inScope.map((r) => r.type));
+    const excluded = new Set(m.nativeGap.map((r) => r.type));
+    for (const t of inScope) expect(excluded.has(t), `${t} counted in BOTH populations`).toBe(false);
+    // Everything covered is in scope by construction; the only in-scope leaf that
+    // is NOT covered is a gap-A leaf (an Excel name that doesn't dispatch).
+    expect(m.covered.length + m.excelNamedGap.filter((r) => !r.inFormula).length)
+      .toBe(m.inScope.length);
+  });
+
   // The live catalog can't pin this: gap A is empty, so every excel-named row is
   // FULLY covered and `some` vs `every` agree on all of them. The synthetic
   // partial case is the only input that distinguishes the quantifiers.

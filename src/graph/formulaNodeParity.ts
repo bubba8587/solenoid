@@ -130,6 +130,17 @@ export interface ParityMeasurement {
    *  pack formulas and visual/IO nodes make parity moot; only the data-op core is
    *  meaningful (Tier 3). Not ratcheted for that reason. */
   nativeGap: ParityRow[];
+  /** Leaves that are IN SCOPE for a formula name — every leaf EXCEPT the
+   *  deliberate exclusions in `nativeGap` (sources, sinks, UI controls, canvas
+   *  chrome, the frame-verb surface: a verb's surface is the node, and bundle 08's
+   *  transpiler is the "text in, graph out" answer).
+   *
+   *  **This is the denominator a coverage claim must use.** Reporting against
+   *  `rows.length` counts leaves that were never candidates — a Slider and a Note
+   *  can't be "formula-callable" — so it understates coverage and answers a
+   *  question nobody asked (author ruling, 2026-08-01: don't report x/646 when
+   *  that includes deliberate exclusions). SSOT-7: one metric, one question. */
+  inScope: ParityRow[];
   /** Dispatchable names with no node home. */
   noNode: string[];
   /** GAP C — dispatchable, no node, no EXCEL_GAP entry, and not a deliberately
@@ -159,6 +170,9 @@ export function measureParity(): ParityMeasurement {
     covered: rows.filter((r) => r.inFormula),
     excelNamedGap: rows.filter((r) => r.excel.length > 0 && !r.excelCovered),
     nativeGap: rows.filter((r) => !r.inFormula && r.excel.length === 0),
+    // The complement of nativeGap — derived from the same predicate, so the two
+    // can't drift into overlapping or leaving a leaf uncounted.
+    inScope: rows.filter((r) => r.inFormula || r.excel.length > 0),
     noNode,
     untracked: noNode.filter((n) => {
       const k = n.toUpperCase();

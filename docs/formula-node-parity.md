@@ -1,7 +1,8 @@
 # Formula ↔ node parity — audit + design frame
 
 **Status: TIERS 1–4 BUILT (D23 + same-day amendment, 2026-07-28).**
-529/646 leaves formula-callable (live split in `backlog.md`); **gap A is ZERO**;
+**548 of 548 IN-SCOPE leaves callable** — the denominator excludes the 98
+non-function leaves (sources, sinks, UI, chrome, the verb surface); **gap A is ZERO**;
 gap C is 0. Formulas compute at rank ≤ 2 — matrices, the lambda hosts, and the
 tagged-complex IM* family all landed; frames/cubes stay out by design (the verb
 engine is their surface). Build spec: `v2.0/17-matrix-formulas.md`; containment:
@@ -48,9 +49,14 @@ against itself).
 are machine-checked by `formulaNodeParity.test.ts` — that test, not this prose, is
 the live truth.**
 
+(Historical snapshot — these two columns count against the CATALOG TOTAL, the
+denominator this program has since stopped reporting: it includes leaves that were
+never candidates for a formula name. The live headline is in-scope-only; see the
+status line at the top.)
+
 | | 2026-07-14 | 2026-07-27 |
 |---|---|---|
-| Leaves formula-callable | 266 / 626 | **302 / 646** |
+| Leaves formula-callable (of the catalog total) | 266 / 626 | **302 / 646** |
 | Gap A — Excel-named node, name not dispatchable | 57 | **19** |
 | Gap C — dispatchable, no node, no decision | 75 | **0** |
 
