@@ -540,10 +540,29 @@ export const documentSocket = new SolenoidSocket("document");
 export const anySocket     = new SolenoidSocket("any");
 export const trueAnySocket = new SolenoidSocket("trueany");
 
-/** Both wildcard rungs — the types that carry NO family/rank information a
- *  resolver could adopt. Every "walk past untyped passthrough sockets" check
- *  (FC adoption, type-default display, conduit tracing) must treat these two
- *  identically, so they all route through here. */
+/** The two RANKLESS wildcard rungs — no family AND no rank. Every "walk past
+ *  untyped passthrough sockets" check (type-default display, conduit tracing)
+ *  routes through here. NOTE: this is deliberately narrower than
+ *  `isWildcardRung` — a rank-bearing wildcard (`anylist` &c.) is a real
+ *  dimensional constraint, so a rank-sensitive check must NOT treat it as
+ *  "untyped". */
 export function isWildcardType(dt: SocketDataType): boolean {
   return dt === "any" || dt === "trueany";
+}
+
+/** EVERY wildcard rung — the six types that carry no ELEMENT FAMILY, whether or
+ *  not they pin a rank. A resolver asking "what family is on this socket, so I
+ *  can format/display by it?" gets nothing from any of them and must keep
+ *  looking (or fall back to the provisional wildcard).
+ *
+ *  Use this, not `isWildcardType`, for FAMILY resolution: an FC wired into an
+ *  Expression variable (`anydata`) once adopted "anydata" and rendered NO
+ *  controls, while the same FC into a Display (`trueany`) showed the
+ *  provisional number set — the same intent answered two ways because two
+ *  family-less rungs were classified differently (2026-08-01). Family-less is
+ *  family-less; only `frame`/`cube`/`lambda`/`chart`/`document` are genuinely
+ *  resolved non-family types, and they stay resolvable. */
+export function isWildcardRung(dt: SocketDataType): boolean {
+  return isWildcardType(dt) || dt === "anycombo" || dt === "anylist"
+    || dt === "anytable" || dt === "anydata";
 }

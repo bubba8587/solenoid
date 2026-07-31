@@ -4,7 +4,7 @@ import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
 import { isPurePassthroughNode } from "./passthrough";
 import { isUnitCell, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
-import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
+import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
 // ─── Format Controller ────────────────────────────────────────────────────────
 // Docks to a socket on a host node. Two responsibilities, on two layers:
@@ -48,11 +48,11 @@ function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, 
   if (seen.has(key)) return "trueany";
   seen.add(key);
   const sock = editor.getNode(nodeId)?.outputs[outKey]?.socket;
-  if (sock instanceof SolenoidSocket && !isWildcardType(sock.dataType)) return sock.dataType;
+  if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) return sock.dataType;
   for (const c of editor.getConnections()) {
     if (c.target === nodeId) {
       const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput, seen);
-      if (!isWildcardType(t)) return t;
+      if (!isWildcardRung(t)) return t;
     }
   }
   return "trueany";
@@ -246,17 +246,18 @@ export class FormatControllerNode extends ClassicPreset.Node {
         resolved = concreteTypeOfOutput(editor, this.hostNodeId, this.socketKey);
       } else {
         const sock = editor.getNode(this.hostNodeId)?.inputs[this.socketKey]?.socket;
-        if (sock instanceof SolenoidSocket) resolved = sock.dataType;
+        // A family-less rung stays the provisional wildcard (see isWildcardRung).
+        if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) resolved = sock.dataType;
       }
     } else {
       // Wired: resolve from the cable feeding FC.in (or the socket FC.out feeds).
       for (const c of editor.getConnections()) {
         if (c.target === this.id && c.targetInput === "in") {
           const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput);
-          if (!isWildcardType(t)) { resolved = t; break; }
+          if (!isWildcardRung(t)) { resolved = t; break; }
         } else if (c.source === this.id && c.sourceOutput === "out") {
           const sock = editor.getNode(c.target)?.inputs[c.targetInput]?.socket;
-          if (sock instanceof SolenoidSocket && !isWildcardType(sock.dataType)) { resolved = sock.dataType; break; }
+          if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) { resolved = sock.dataType; break; }
         }
       }
     }

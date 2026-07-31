@@ -267,7 +267,9 @@ Read the relevant section there before touching one of these. The one-line "don'
   variables — SOCK-9/D23: matrices in, frames/cubes never), `trueany` = the
   adopt-anything supremum (hollow ring). Adoption (`trueAnyAdopt.ts`) never drops cables and never persists;
   rank-bearing wildcards keep their rank and adopt only the element family; every
-  "resolve past untyped passthroughs" check routes through `isWildcardType()`. Cross-type
+  "resolve past untyped passthroughs" check routes through `isWildcardType()` (the two
+  RANKLESS rungs) — except FAMILY resolution (the FC), which uses `isWildcardRung()`: all
+  six carry no family, so none may be adopted as one. Cross-type
   dimensional edges are explicit in `accepts()`, machine-checked by the full sweep in
   `socketConnect.test.ts` — adding a socket type is a small, derived edit.
 - **Conduit lane faces**: NO flip rule — inputs on the local −x face, outputs on +x, both
