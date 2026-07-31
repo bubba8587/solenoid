@@ -169,6 +169,37 @@ Rewritten to the real distinction: @ is how you reach a name that ISN'T a
 column. Re-verified through the headless runner, values unchanged (margin
 90/140/135/100, scaled 360/1120/1620/1600).
 
+### The distributions tranche closes the ops-list program (2026-08-01b)
+
+Author ruling, asked directly: the right-tail forms stay **SEARCH ROWS, not
+leaves** — a row per form would triple the Distributions section and bury it,
+the same failure mode as the data pickers. So all 17 distribution families
+went from kind-only to declaring their ops, which generates a search row per
+form. The Add-menu tree is unchanged (pinned).
+
+**FX-4 decided the `kind`, and it overruled the signal the module doc had
+recorded.** That doc argued cdf/pdf were *operations* ("nobody computes
+whether they want a probability density"), and by the pick-it-by-hand test
+that's right. But an operation-kind op claims a formula name derived from its
+label, and the forms don't have 17 families' worth of distinct names — Excel
+models cdf/pdf as a `cumulative` ARGUMENT on one function, so "CDF"/"PDF"
+collide across every family at once and with the leaves' own names. The full
+FX-4 sweep caught it the moment the ops were declared. They're argument-kind:
+the family takes one formula name, the form rides in as an argument, exactly
+like the Excel signature. Nothing was traded away — `kind` and the menu are
+separate axes, so the search rows are unaffected. The classification doc now
+carries "does it have its own NAME?" as the signal that can overrule the
+others, with this as the worked example.
+
+Search quality got the same treatment as the ruling implies: since search IS
+the discoverability mechanism now, the form labels are declared rather than
+inherited (the SET_OPS precedent). The metas disagreed across families —
+T.DIST said "RT" where CHISQ.DIST said "Right-tail" — so a query for one
+form ranked another's row first. They now read the same everywhere
+("Right-tail (RT)", "Two-tail (2T)"), and "right tail" ranks all four RT rows
+first. Pinned: every form has a row, no family grew a leaf, and the natural
+query ranks the right rows.
+
 ### Two audit findings built out: FC family resolution + INTERPOLATE grid (2026-08-01a)
 
 Cashing the two items the harmonization sweep left actionable.
