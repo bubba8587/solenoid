@@ -31,9 +31,17 @@
 //
 //   • Would the user PICK this, or could it arrive computed? Something a person
 //     always picks by hand is part of what the node IS; something that can arrive
-//     from a lookup or a column is a parameter. (Nobody computes whether they want
-//     a probability density or a cumulative distribution — so those are operations
-//     even though Excel models the choice as a `cumulative` flag.)
+//     from a lookup or a column is a parameter.
+//   • Does it have its own NAME? This one can OVERRULE the others, because FX-4
+//     is a rule and the rest are signals: an operation-kind op claims a formula
+//     name derived from its label, so a family whose ops share a name cannot be
+//     one. The distribution FORMS are the worked example — a person always picks
+//     cdf vs pdf by hand (which reads "operation"), but Excel models the choice
+//     as a `cumulative` ARGUMENT on one function, so "CDF"/"PDF" would collide
+//     across all seventeen families and with the leaves' own names. They are
+//     argument-kind. Searchability is NOT what was traded away: `kind` and the
+//     menu are separate axes (below), so declaring the ops still generates a
+//     search row per form.
 //   • Would the user SEARCH the Add menu for it by name? "Column chart", "Sankey",
 //     "speed of light" — yes. "avg", "4-band" — no.
 //   • Is it meaningless without its host? "avg" says nothing without GROUP BY.
@@ -45,9 +53,21 @@
 // is data that can plainly come from a column, and a row per element would bury the
 // menu — so it stays an argument. A RESISTOR band count is picked by hand and never
 // computed, yet nobody thinks of "4-band decode" as a different operation from
-// "5-band" — so it stays an argument too.
+// "5-band" — so it stays an argument too. A DISTRIBUTION form is picked by hand and
+// has a real Excel spelling for its tails (CHISQ.DIST.RT), which is why it was
+// nearly a leaf — but the forms share one function name, so it is an argument
+// with search rows (author ruling 2026-08-01: search rows, not leaves).
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
+import {
+  CHISQ_DIST_OP_META, CHISQ_INV_OP_META, NORM_DIST_OP_META, NORM_S_DIST_OP_META, T_DIST_OP_META, T_INV_OP_META,
+} from "./nodes/dist-normal";
+import {
+  BINOM_DIST_OP_META, HYPGEOM_DIST_OP_META, NEGBINOM_DIST_OP_META, POISSON_DIST_OP_META,
+} from "./nodes/dist-discrete";
+import {
+  BETA_DIST_OP_META, EXPON_DIST_OP_META, F_DIST_OP_META, F_INV_OP_META, GAMMA_DIST_OP_META, LOGNORM_DIST_OP_META, WEIBULL_DIST_OP_META,
+} from "./nodes/dist-continuous";
 
 import { ChartNode, SparklineNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
@@ -156,6 +176,30 @@ export interface OpEntryDecl { op: string; label: string; fx?: string }
  *  the table declares one. */
 function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntryDecl[] {
   return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}) }));
+}
+
+/** SEARCH labels for the distribution FORMS. The meta labels are dropdown prose
+ *  and they disagree across families — T.DIST says "RT" where CHISQ.DIST says
+ *  "Right-tail" — which reads fine on a card but makes the generated search rows
+ *  inconsistent AND costs the ranking: querying "CHISQ.DIST.RT" ranked the PDF
+ *  row above the Right-tail one, because no row carried the token `rt`.
+ *
+ *  These names carry the Excel spelling's distinguishing token in parentheses, so
+ *  one form reads the same way in every family and the query that names it ranks
+ *  it first. The card keeps its own terse label (the SET_OPS precedent: the meta
+ *  is the dropdown, the declaration is the menu). Author ruling 2026-08-01: the
+ *  .RT forms stay SEARCH ROWS, not leaves — so search has to actually find them. */
+const DIST_FORM_LABEL: Record<string, string> = {
+  cdf:  "CDF",
+  pdf:  "PDF",
+  rt:   "Right-tail (RT)",
+  "2t": "Two-tail (2T)",
+  left: "Left-tail",
+};
+/** `fromMeta` for a distribution family: meta ops with search-facing form names.
+ *  No per-op `fx` — the family takes ONE formula name (see the kind note below). */
+function fromDistMeta(meta: Record<string, { label: string; fx?: string }>): OpEntryDecl[] {
+  return fromMeta(meta).map((o) => ({ ...o, label: DIST_FORM_LABEL[o.op] ?? o.label }));
 }
 
 /** Names for the ops whose OP_META `label` is dropdown PROSE rather than a name.
@@ -297,8 +341,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "bondprice-price", ctor: BondPriceNode, kind: "operation" },
   { type: "bool-and", ctor: BooleanOpNode, kind: "operation" },
   { type: "char-code-char", ctor: CharCodeNode, kind: "operation" },
-  { type: "chisqdist", ctor: ChisqDistNode, kind: "operation" },
-  { type: "chisqinv", ctor: ChisqInvNode, kind: "operation" },
+  { type: "chisqdist", ctor: ChisqDistNode, kind: "argument", ops: fromDistMeta(CHISQ_DIST_OP_META),
+    create: (op) => new ChisqDistNode({ op: op as never }) },
+  { type: "chisqinv", ctor: ChisqInvNode, kind: "argument", ops: fromDistMeta(CHISQ_INV_OP_META),
+    create: (op) => new ChisqInvNode({ op: op as never }) },
   { type: "comb-fact", ctor: CombinatoricsNode, kind: "operation" },
   { type: "cx-binary-sum", ctor: ComplexBinaryNode, kind: "operation" },
   { type: "cx-unary-conj", ctor: ComplexUnaryNode, kind: "operation" },
@@ -317,7 +363,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "depr-sln", ctor: DepreciationNode, kind: "operation" },
   { type: "dollar-dollarde", ctor: DollarNode, kind: "operation" },
   { type: "duration-duration", ctor: DurationNode, kind: "operation" },
-  { type: "finv", ctor: FInvNode, kind: "operation" },
+  { type: "finv", ctor: FInvNode, kind: "argument", ops: fromDistMeta(F_INV_OP_META),
+    create: (op) => new FInvNode({ op: op as never }) },
   { type: "fisher-fisher", ctor: FisherNode, kind: "operation" },
   { type: "ipmt-ipmt", ctor: IpmtPpmtNode, kind: "operation" },
   { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
@@ -345,7 +392,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "secdesc-disc", ctor: SecurityDiscNode, kind: "operation" },
   { type: "sp-sumproduct", ctor: SumProductNode, kind: "operation" },
   { type: "tbill-tbilleq", ctor: TBillNode, kind: "operation" },
-  { type: "tinv", ctor: TInvNode, kind: "operation" },
+  { type: "tinv", ctor: TInvNode, kind: "argument", ops: fromDistMeta(T_INV_OP_META),
+    create: (op) => new TInvNode({ op: op as never }) },
   { type: "t-test-paired", ctor: TTestNode, kind: "operation" },
   { type: "reshape-wraprows", ctor: TableReshapeNode, kind: "operation" },
   { type: "tblsel-chooserows", ctor: TableSelectNode, kind: "operation" },
@@ -368,27 +416,40 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // Everything else came out an operation — including the distribution forms, the
   // chart types and the E-series, which a person picks and never computes.
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
-  { type: "betadist", ctor: BetaDistNode, kind: "operation" },
-  { type: "binomdist", ctor: BinomDistNode, kind: "operation" },
+  { type: "betadist", ctor: BetaDistNode, kind: "argument", ops: fromDistMeta(BETA_DIST_OP_META),
+    create: (op) => new BetaDistNode({ op: op as never }) },
+  { type: "binomdist", ctor: BinomDistNode, kind: "argument", ops: fromDistMeta(BINOM_DIST_OP_META),
+    create: (op) => new BinomDistNode({ op: op as never }) },
   { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
   { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
   { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
   { type: "ch-element", ctor: ElementNode, kind: "argument" },
-  { type: "expodist", ctor: ExponDistNode, kind: "operation" },
-  { type: "fdist", ctor: FDistNode, kind: "operation" },
-  { type: "gammadist", ctor: GammaDistNode, kind: "operation" },
+  { type: "expodist", ctor: ExponDistNode, kind: "argument", ops: fromDistMeta(EXPON_DIST_OP_META),
+    create: (op) => new ExponDistNode({ op: op as never }) },
+  { type: "fdist", ctor: FDistNode, kind: "argument", ops: fromDistMeta(F_DIST_OP_META),
+    create: (op) => new FDistNode({ op: op as never }) },
+  { type: "gammadist", ctor: GammaDistNode, kind: "argument", ops: fromDistMeta(GAMMA_DIST_OP_META),
+    create: (op) => new GammaDistNode({ op: op as never }) },
   { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
-  { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "operation" },
-  { type: "lognormdist", ctor: LognormDistNode, kind: "operation" },
-  { type: "negbinomdist", ctor: NegbinomDistNode, kind: "operation" },
-  { type: "normdist", ctor: NormDistNode, kind: "operation" },
-  { type: "normsdist", ctor: NormSDistNode, kind: "operation" },
+  { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "argument", ops: fromDistMeta(HYPGEOM_DIST_OP_META),
+    create: (op) => new HypgeomDistNode({ op: op as never }) },
+  { type: "lognormdist", ctor: LognormDistNode, kind: "argument", ops: fromDistMeta(LOGNORM_DIST_OP_META),
+    create: (op) => new LognormDistNode({ op: op as never }) },
+  { type: "negbinomdist", ctor: NegbinomDistNode, kind: "argument", ops: fromDistMeta(NEGBINOM_DIST_OP_META),
+    create: (op) => new NegbinomDistNode({ op: op as never }) },
+  { type: "normdist", ctor: NormDistNode, kind: "argument", ops: fromDistMeta(NORM_DIST_OP_META),
+    create: (op) => new NormDistNode({ op: op as never }) },
+  { type: "normsdist", ctor: NormSDistNode, kind: "argument", ops: fromDistMeta(NORM_S_DIST_OP_META),
+    create: (op) => new NormSDistNode({ op: op as never }) },
   { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
   { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
   { type: "pivot", ctor: PivotNode, kind: "argument" },
-  { type: "poissondist", ctor: PoissonDistNode, kind: "operation" },
-  { type: "tdist", ctor: TDistNode, kind: "operation" },
-  { type: "weibulldist", ctor: WeibullDistNode, kind: "operation" },
+  { type: "poissondist", ctor: PoissonDistNode, kind: "argument", ops: fromDistMeta(POISSON_DIST_OP_META),
+    create: (op) => new PoissonDistNode({ op: op as never }) },
+  { type: "tdist", ctor: TDistNode, kind: "argument", ops: fromDistMeta(T_DIST_OP_META),
+    create: (op) => new TDistNode({ op: op as never }) },
+  { type: "weibulldist", ctor: WeibullDistNode, kind: "argument", ops: fromDistMeta(WEIBULL_DIST_OP_META),
+    create: (op) => new WeibullDistNode({ op: op as never }) },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));

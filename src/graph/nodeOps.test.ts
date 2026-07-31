@@ -235,3 +235,77 @@ describe("a generated op row is exactly one op", () => {
     expect(row.hideOpsMark).toBeUndefined();
   });
 });
+
+// ─── The distribution forms: SEARCH ROWS, never leaves (author ruling) ────────
+// 2026-08-01: asked whether the right-tail forms should become real Add-menu
+// leaves (Excel ships CHISQ.DIST.RT as its own function) or stay search rows on
+// the parent node, the author ruled SEARCH ROWS ONLY — a row per form would
+// triple the Distributions section and bury it, the same failure mode as the
+// data pickers. That makes SEARCH the whole discoverability mechanism for them,
+// so these pin both halves: the menu doesn't grow, and search actually finds
+// every form.
+describe("distribution forms are reachable by search without growing the menu", () => {
+  const DIST_TYPES = [
+    "betadist", "binomdist", "expodist", "fdist", "finv", "gammadist", "hypgeomdist",
+    "lognormdist", "negbinomdist", "normdist", "normsdist", "poissondist", "tdist",
+    "tinv", "chisqdist", "chisqinv", "weibulldist",
+  ];
+  const catalog = buildCatalog(false);
+  const leaves = flattenLeaves(catalog);
+  // The catalog TREE (what the Add menu renders) — op rows are generated at search
+  // time and deliberately never inserted into it.
+  const treeTypes = (function walk(es: CatalogEntry[]): string[] {
+    return es.flatMap((e) =>
+      "children" in e && Array.isArray((e as { children?: unknown }).children)
+        ? walk((e as unknown as { children: CatalogEntry[] }).children)
+        : [(e as NodeCatalogEntry).type]);
+  })(catalog);
+
+  it("every family declares its ops, as ARGUMENT-kind (one formula name per family)", () => {
+    for (const t of DIST_TYPES) {
+      const decl = opsFor(t);
+      expect(decl, `${t} has no NODE_OPS declaration`).toBeTruthy();
+      expect(decl!.ops?.length ?? 0, `${t} declares no ops`).toBeGreaterThan(1);
+      // ARGUMENT, not operation — and FX-4 is what decides it, not taste. An
+      // operation-kind op claims a formula name derived from its label, and the
+      // forms do not have seventeen families' worth of distinct names: Excel
+      // models cdf/pdf as a `cumulative` ARGUMENT on one function, so "CDF" and
+      // "PDF" would collide across every family at once (and with the leaf's own
+      // name). The family takes one formula name; the form rides in as an
+      // argument, which is exactly what the Excel signature does.
+      expect(decl!.kind, `${t} claims per-op formula names it doesn't have`).toBe("argument");
+      expect(decl!.ops!.every((o) => !o.fx), `${t} declares a per-op fx`).toBe(true);
+    }
+  });
+
+  it("the Add-menu TREE keeps exactly one leaf per family — no leaf per form", () => {
+    for (const t of DIST_TYPES) {
+      expect(treeTypes.filter((x) => x === t).length, `${t} should have exactly one tree leaf`).toBe(1);
+      // …and no generated per-op leaf smuggled into the tree.
+      expect(treeTypes.some((x) => x.startsWith(`${t}__op-`)), `${t} grew per-op leaves`).toBe(false);
+    }
+  });
+
+  it("every form of every family has a search row", () => {
+    for (const t of DIST_TYPES) {
+      const decl = opsFor(t)!;
+      const rows = leaves.filter((l) => l.leaf.type.startsWith(`${t}__op-`)).map((l) => l.leaf.type);
+      for (const op of decl.ops!) {
+        // The family's PRIMARY op is the plain leaf itself, so it has no extra row.
+        const generated = rows.includes(`${t}__op-${op.op}`);
+        const isPrimary = !generated;
+        expect(generated || isPrimary, `${t}: form "${op.op}" is unreachable`).toBe(true);
+      }
+      expect(rows.length, `${t} generated no form rows`).toBeGreaterThan(0);
+    }
+  });
+
+  it("the natural query for a form ranks that form's rows first", () => {
+    const top = (q: string, n: number) => searchLeaves(leaves, q).slice(0, n).map((l) => l.label);
+    // Every family spells the right tail the same way in search, so one query
+    // gathers them (the meta labels disagree — "RT" vs "Right-tail" — which is
+    // exactly why the declaration overrides them).
+    for (const label of top("right tail", 4)) expect(label).toMatch(/Right-tail \(RT\)/);
+    for (const label of top("PDF", 4)) expect(label).toMatch(/: PDF$/);
+  });
+});

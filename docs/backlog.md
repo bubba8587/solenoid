@@ -175,14 +175,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 
-- [ ] **Ops lists — the distributions tranche** — the 17 distributions (cdf/pdf, and
-  the `.RT` right-tail forms — Excel treats `CHISQ.DIST.RT` as its own function, so
-  those arguably want real leaves, not just search rows; needs the author's
-  leaf-vs-search ruling). Standing constraints: aggregators are args, not ops — NOT
-  searchable (author ruling 2026-07-30; `op-exposure.ts` skips argument-kind
-  families); the DATA pickers (Element's 118 entries, PhysicsConstant, Antoine,
-  PipeRoughness, ESeries, ResistorCode, Constant) STAY kind-only — a row per value
-  would bury the menu.
 
 ## Packs
 
