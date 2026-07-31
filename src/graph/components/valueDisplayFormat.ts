@@ -22,6 +22,12 @@ import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnno
 // DECISIONS"). A scalar is still number | string | SolError | null.
 export type DisplayValue =
   | number
+  // A tagged complex rides RAW into the value box: the display layer resolves it
+  // (ValueDisplay, via formatCxWithAnnotation) so a docked FC's style, precision
+  // and unit reach it. A card that pre-formatted in its own component produced a
+  // fixed string no annotation could touch — that was the complex-render defect.
+  | Cx
+  | (Cx | null | SolError)[]
   | UnitCell
   | (number | UnitCell | null | SolError)[]
   | (number | null | SolError)[]

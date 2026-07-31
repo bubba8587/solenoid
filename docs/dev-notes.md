@@ -169,6 +169,40 @@ Rewritten to the real distinction: @ is how you reach a name that ISN'T a
 column. Re-verified through the headless runner, values unchanged (margin
 90/140/135/100, scaled 360/1120/1620/1600).
 
+### FC annotations reach complex values — and a Display bug falls out (2026-08-01c)
+
+The popup half had gated correctly since 2026-07-29; the annotation just had
+nothing to act on, because the complex cards pre-formatted to a fixed string
+in their own components. Fixed at the layer that owns formatting: a `Cx` now
+rides RAW into the value box (`DisplayValue`/`OutputRowValue` carry it), and
+`ValueDisplay` resolves it right after the annotation, before the rest of the
+pipeline — so every downstream branch (box, chip, clipboard) keeps working
+unchanged while finally honouring the FC. `formatCxValue` is deleted, not
+kept as a shim.
+
+`assembleCx` (cxValue.ts) now owns the WRITTEN FORM — "a + bi", the elided
+unit coefficient, the dropped zero term — and both `formatCx` (default trim)
+and the new `formatCxWithAnnotation` come through it, so they can't drift
+into two spellings. The three complex-specific rules, each forced by two
+components and one sign structure: style falls back to `auto` outside
+`COMPLEX_FORMAT_STYLES` (an annotation can still carry `percent` from before
+a retype); **precision applies to BOTH components** (the visible defect —
+one formatted, one trimmed); and the unit wraps the WHOLE value, "(3 + 2i) V",
+parenthesised only in the two-term form. The advanced tier is deliberately
+not consulted — a complex has no single sign to parenthesise, no magnitude
+to scale.
+
+**Bug found on the way:** a complex wired into a **Display** rendered
+`[object Object]`. The Display's fallthrough casts its value to
+`number | string | …` and hands it to a number formatter whose backstop is
+`String(v)` — which is `"[object Object]"` for a tagged Cx. Verified against
+the old path before fixing. The same normalization fixes it, because it runs
+before the component's own `render`.
+
+Also queued from this work: `InlineOutputRows` resolves no annotation for ANY
+type, so an FC on a multi-output card (Quadratic Roots, Equation, Regression)
+doesn't reach its rows. Not complex-specific, not a regression — backlog.
+
 ### The distributions tranche closes the ops-list program (2026-08-01b)
 
 Author ruling, asked directly: the right-tail forms stay **SEARCH ROWS, not

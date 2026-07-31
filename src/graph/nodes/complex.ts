@@ -3,7 +3,7 @@ import { numListIn, numListOut, complexComboIn, complexComboOut, readInput, type
 import { isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 import {
-  cx, isCx, formatCx, type Cx,
+  cx, isCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
   cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
   cxSech, cxCsch, quadraticRoots,
@@ -85,29 +85,6 @@ function broadcastComplex(
     out.push(call(...ops));
   }
   return out;
-}
-
-/** SolError-safe wrapper for a complex node's value box. An upstream error makes
- *  installErrorGuards set cachedResult to a SolError (these nodes aren't in
- *  SEES_ERRORS), and formatCx array-destructures its argument — so formatCx(err)
- *  throws during render and blacks out the app (the exact failure CLAUDE.md warns
- *  about). Pass the error through unchanged for ValueDisplay to render as a red
- *  #CODE! badge; null → null; otherwise the formatted complex string. A broadcast
- *  LIST formats per cell, so every complex value box renders one for free. A tagged
- *  Cx (VAL-15) is not an array, so Array.isArray IS the list test. */
-export function formatCxValue(z: CellResult<Cx>): SolError | string | (string | SolError | null)[] | null {
-  if (z == null) return null;
-  if (isSolError(z)) return z;
-  if (Array.isArray(z)) return z.map(formatCxCell);
-  return formatCx(z);
-}
-
-/** One cell of a formatted complex list — same error/missing handling as the
- *  scalar path above. */
-function formatCxCell(c: Cx | SolError | null): string | SolError | null {
-  if (c == null) return null;
-  if (isSolError(c)) return c;
-  return formatCx(c);
 }
 
 // ─── COMPLEX ──────────────────────────────────────────────────────────────────

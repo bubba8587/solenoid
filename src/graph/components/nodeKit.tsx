@@ -11,6 +11,7 @@ import { processGraph } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { sharedAnnotationResolver } from "../unitFlow";
+import { formatCx, isCx, type Cx } from "../cxValue";
 import { NodeCard, HEADER_TAP_SLOP } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
@@ -23,7 +24,7 @@ import { ResizeHandle } from "./ResizeHandle";
 import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
 import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
@@ -168,7 +169,10 @@ export function PortSockets({
 // A row's value: scalar (number / logical), a list of them (rendered as a short
 // preview), an error, or blank. Lists/logicals arrived with the Equation node's
 // per-variable outputs; plain numeric rows are unaffected.
-export type OutputRowValue = number | boolean | string | (number | boolean | string | SolError | null)[] | SolError | null;
+// A Cx rides RAW rather than pre-formatted: the display layer owns formatting,
+// so a docked FC's style/precision/unit can reach it (a card that formatted in
+// its own component produced a fixed string the annotation could never touch).
+export type OutputRowValue = number | boolean | string | Cx | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
 
 export type OutputRowDef = {
   key: string;
@@ -176,10 +180,11 @@ export type OutputRowDef = {
   value: OutputRowValue;
 };
 
-function formatRowCell(v: number | boolean | string | SolError | null): string {
+function formatRowCell(v: number | boolean | string | Cx | SolError | null): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  if (typeof v === "string") return v; // pre-formatted (e.g. a complex "3+2i")
+  if (typeof v === "string") return v;
+  if (isCx(v)) return formatCx(v); // unannotated fallback; the box annotates first
   if (isSolError(v)) return v.code;
   return formatScalar(v);
 }
@@ -650,7 +655,22 @@ export function ValueDisplay({
   // the chip's own cell scan is the honest fallback.
   const elemFam = nodeOutputElemFamily(ctxNodeId);
   const isDate = elemFam === "date";
-  const value = dateFormatDisplay(unwrapUnitCells(rawValue, ann), isDate, !!ann);
+  // A complex is the one scalar the display layer formats itself: it has no
+  // meaningful magnitude to unwrap or date to render, and its written form
+  // (assembleCx) is shared with the annotated formatter. Resolving it to a
+  // string HERE — after `ann`, before everything else — means every downstream
+  // branch (box, chip, clipboard) keeps working unchanged while finally
+  // honouring the FC. Cards used to pre-format in their own components, which is
+  // exactly why no annotation ever reached a complex.
+  const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCx(c));
+  // Typed off rawValue, not OutputRowValue: the raw box value also carries
+  // UnitCells (unwrapped on the next line), and a Cx never survives past here.
+  const cxResolved: Exclude<typeof rawValue, Cx> = isCx(rawValue)
+    ? cxFmt(rawValue)
+    : Array.isArray(rawValue) && rawValue.some(isCx)
+      ? (rawValue as unknown[]).map((c) => (isCx(c) ? cxFmt(c) : c)) as Exclude<typeof rawValue, Cx>
+      : rawValue as Exclude<typeof rawValue, Cx>;
+  const value = dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
 
   // An empty array (a 0-element list/matrix — e.g. a filter that matched nothing, or
   // Split Frame with no columns of the chosen type) is "nothing to show", same as no

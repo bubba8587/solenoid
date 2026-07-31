@@ -26,18 +26,32 @@ export function isCx(v: unknown): v is Cx {
   return typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true;
 }
 
-// Format a Cx as "a+bi", "a-bi", "bi", "a", "0"
-export function formatCx(z: Cx, digits = 4): string {
+/** Assemble a complex from a component formatter, applying the WRITTEN FORM:
+ *  "a + bi", "a - bi", "bi", "-bi", "i", "a", "0". The sign lives in the
+ *  structure (never on the imaginary component), the unit coefficient is elided,
+ *  and a zero component drops its whole term.
+ *
+ *  This is the ONE place that knows how a complex is spelled. `formatCx` (the
+ *  default trim) and `formatCxWithAnnotation` (FC style + precision) differ ONLY
+ *  in how they render a component, so they share this and cannot drift into two
+ *  different spellings of the same value. `hasBothParts` tells a caller whether
+ *  it produced the two-term form — the unit wrapper needs it, because "3 + 2i V"
+ *  would read as the unit attaching to the imaginary term alone. */
+export function assembleCx(z: Cx, fmtNum: (n: number) => string): { text: string; hasBothParts: boolean } {
   const { re, im } = z;
-  if (Number.isNaN(re) || Number.isNaN(im)) return "NaN";
-  const fmtNum = (n: number) =>
-    Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "");
+  if (Number.isNaN(re) || Number.isNaN(im)) return { text: "NaN", hasBothParts: false };
   const rStr = fmtNum(re);
-  if (im === 0) return rStr;
+  if (im === 0) return { text: rStr, hasBothParts: false };
   const iAbs = Math.abs(im);
   const iStr = iAbs === 1 ? "i" : `${fmtNum(iAbs)}i`;
-  if (re === 0) return im < 0 ? `-${iStr}` : iStr;
-  return im < 0 ? `${rStr} - ${iStr}` : `${rStr} + ${iStr}`;
+  if (re === 0) return { text: im < 0 ? `-${iStr}` : iStr, hasBothParts: false };
+  return { text: im < 0 ? `${rStr} - ${iStr}` : `${rStr} + ${iStr}`, hasBothParts: true };
+}
+
+// Format a Cx as "a+bi", "a-bi", "bi", "a", "0"
+export function formatCx(z: Cx, digits = 4): string {
+  return assembleCx(z, (n) =>
+    Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "")).text;
 }
 
 /** Parse a complex out of text: Excel's forms ("3+4i", "-2.5j", "i", "4", "3+i",
