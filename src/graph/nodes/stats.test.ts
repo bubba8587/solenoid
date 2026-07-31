@@ -14,9 +14,8 @@ import {
   RegressionNode,
   ForecastNode,
   InterpolateNode,
-  fillBorderedGrid,
 } from "./stats";
-import { interpolateLinear } from "./mathUtils";
+import { interpolateLinear, fillBorderedGrid } from "./mathUtils";
 import { isSolError, solError } from "../errorValue";
 import { extractInit } from "../copyPaste";
 

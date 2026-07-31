@@ -4,7 +4,7 @@ import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
-import { interpolateLinear } from "./nodes/mathUtils";
+import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
@@ -708,7 +708,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   VALUETOTEXT:     { returns: "string", arity: [1, 2], family: "text" },
 
   COUNTDISTINCT:   { returns: "number", listArgs: true, arity: [1, 1], family: "statistics", native: true },
-  INTERPOLATE:     { returns: "number", listArgs: true, arity: [3, 3], family: "statistics", native: true },
+  // Both of the node's MODES, dispatched on the first argument's rank (see the
+  // registration): 3 args = List mode, a matrix = Grid mode (D23 unblocked it).
+  INTERPOLATE:     { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 3], family: "statistics", native: true },
   SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 
   // ── D23 tranche 1: the matrix core. `matrixArgs` is FX-9's gate; `listArgs`
@@ -1501,10 +1503,32 @@ registerInternal("COUNTDISTINCT", (list) => {
   return seen.size;
 });
 
-// INTERPOLATE covers the node's LIST mode only — grid mode is 2-D; D23 unblocked a
-// rank-2 registration but it isn't built (backlog). Argument order follows the node's
-// sockets, which is Excel's own known_ys / known_xs / new_xs convention (FORECAST, TREND).
+// INTERPOLATE covers BOTH of the node's modes, dispatched on the first argument's
+// RANK — the node is one node with a mode SegToggle, so it is one formula name
+// (FX-4 injectivity: a second name would claim the same node twice).
+//   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)  — 3 args, rank ≤ 1.
+//     Argument order follows the node's sockets, which is Excel's own
+//     known_ys / known_xs / new_xs convention (FORECAST, TREND).
+//   Grid mode:  INTERPOLATE(bordered_table [, forecast]) — a MATRIX first arg
+//     (D23 lifted the rank cap that kept this out).
+// FX-1: both arms call the same kernels the node's data() calls.
 registerInternal("INTERPOLATE", (ys, xs, newXs) => {
+  // GRID mode — a 2-D first argument. `xs` is then the optional forecast flag.
+  if (Array.isArray(ys) && ys.some((r) => Array.isArray(r))) {
+    if (newXs !== undefined) {
+      return solError("#VALUE!", "INTERPOLATE: grid mode takes the table and an optional forecast flag");
+    }
+    // Per-cell errors and non-finite cells read as BLANK (a hole to fill), exactly
+    // as the node's dataGrid does — a stray dirty cell must not poison the fill.
+    const grid: (number | null)[][] = (ys as unknown[]).map((row) =>
+      (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
+    );
+    const forecast = xs === undefined ? true : coerceLogical(xs) !== false;
+    return fillBorderedGrid(grid, forecast);
+  }
+  if (newXs === undefined) {
+    return solError("#VALUE!", "INTERPOLATE: list mode needs known_ys, known_xs and new_xs");
+  }
   // The node's own pair policy (pairPresent): a cell error in the known data
   // propagates, an incomplete pair drops — the raw cast once interpolated
   // against a fabricated (0, y) point when a known-x was null.
