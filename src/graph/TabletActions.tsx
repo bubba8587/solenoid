@@ -25,16 +25,12 @@ import {
  *     Quiet Accent Rule says accent conveys type/state, not emphasis.
  *
  * NARROW (2026-08-01): the desktop bar does not fit a tablet in portrait, so
- * below ~1100px it WRAPS. Row 1 = identity · file · layout · (gap) · the pinned
- * trio THEME / Reference / Settings, flush right. Row 2 = cable · palette ·
- * undo/redo · select/group/delete. Row 1 deliberately carries a SHARE of the
- * tools rather than only the wordmark — an otherwise near-empty first row was
- * the author's second correction.
- *
- * The split is a FORCED break element, not flex fill: a flexible spacer
- * collapses to zero in a wrapping container, so the first attempt just filled
- * row 1 with whatever fit. Above the breakpoint nothing is reordered at all —
- * reordering a row that already fits only scrambled it.
+ * below ~1100px it WRAPS — fill the line, push the overflow to the next one.
+ * Nothing here is reordered or forced onto a chosen row. The pinned trio (THEME
+ * · Reference · Settings, in `AppToolbar`) leaves the flow and holds the
+ * top-right corner; the bar reserves its column, and everything else wraps into
+ * what's left. These actions are ordinary wrapping content — the palette is NOT
+ * pinned.
  *
  * Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
  * selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` —

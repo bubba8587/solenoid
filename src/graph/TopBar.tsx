@@ -204,12 +204,6 @@ export function TopBar() {
 
       <AppToolbar />
 
-      {/* Forced line break — zero-height, full-width, and `display:none` until the
-          bar actually wraps (TopBar.css). Everything before it stays on row 1;
-          everything ordered after it starts row 2. A flexible spacer can't do this
-          job: it collapses to zero in a wrapping container, so the line fills with
-          whatever fits instead of breaking where we mean. */}
-      <span className="solenoid-topbar__break" aria-hidden="true" />
     </div>
   );
 }

@@ -185,34 +185,28 @@ outline on the one device with no keyboard to Ctrl-click with. Also IS_COARSE
 now; its plain-click branch stays IS_MOBILE (that one is about double-click,
 which a tablet shares with desktop).
 
-**2. The bar doesn't fit in portrait** → it wraps to a second row on tablet,
-per the author's call. Row 1 = identity · file · layout · (gap) · **theme ·
-Reference · Settings** flush right; row 2 = cable · command palette ·
-undo/redo · select/group/delete.
+**2. The bar doesn't fit in portrait** → it wraps below 1100px: fill the
+line, push the overflow to the next one. The pinned trio is **theme ·
+Reference · Settings**; "palette" in the original request meant the THEME
+control, not the command palette, which is ordinary wrapping content.
 
-Two corrections from the author after the first attempt: "palette" in the
-original request meant the THEME control, not the command palette (which is
-therefore unpinned and wraps with the rest), and row 1 was supposed to carry
-a SHARE of the tools — pinning only the trio left it holding just the
-wordmark, wasting exactly the width the wrap was meant to buy.
+Three wrong attempts before this landed, all worth not repeating:
+- **`order` rules, unscoped.** A landscape tablet fits on one row and needs
+  no help, but got reordered anyway — Reference/Settings shoved into the
+  middle, edit clusters pinned right. Scoped to the narrow case.
+- **A flexible spacer to hold the gap.** `__art` has `min-width:0`, so in a
+  WRAPPING container it collapses to zero and the line just fills; the pinned
+  trio ended up beside the wordmark.
+- **A forced break element** (`flex-basis:100%`, zero height). This is the one
+  the author caught: it ends the line whether or not more would have fit, so
+  the bar broke after the layout pills with usable width left over. That is a
+  two-row split, not a wrap.
 
-The first attempt was wrong in both orientations and the device shots showed
-it. In PORTRAIT the split came out as "whatever fit" — row 1 filled with the
-file/layout/cable tools and only the edit clusters wrapped, leaving the
-pinned trio beside the wordmark. The bad assumption: that the flexible art
-slot would hold a gap. It has `min-width:0`, so in a wrapping container it
-collapses to zero and the line just fills. The fix is a FORCED break element
-(`flex-basis:100%`, zero height) — everything ordered before it stays on row
-1 regardless of what fits. In LANDSCAPE the rules applied even though nothing
-wrapped, so a row that fitted fine got REORDERED, pushing Reference/Settings
-into the middle and pinning the edit clusters right — the opposite of the
-request. Now scoped to `@media (max-width:1100px)`; above it the bar is
-untouched.
-
-Verified in real Chromium rather than by eye (no jsdom in the vitest env, so
-the layout can't be unit-tested) at 768 / 800 / 1280: the two narrow widths
-put the rows at y=7 and y=43 with the trio flush to the 12px padding edge and
-the bar 80px tall; 1280 is one 44px row with nothing reordered.
+What actually works: the trio leaves the flow (`position:absolute`, top-right)
+and the bar reserves its column with `padding-right`. Everything else wraps
+normally against the narrower line — no orders, no break, no spacer. Measured
+in Chromium at 768/800/1024/1280; at 1024 row 1 correctly takes `cable` and
+the palette too, and only `sel/grp/del` wraps.
 
 **The wrap forced the envelope fix, and that's the durable part.** Six
 top-anchored overlays hard-coded an offset derived from the same 66px header
