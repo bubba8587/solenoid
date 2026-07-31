@@ -3,6 +3,7 @@ import wordmark from "../logo/solenoidwordmark.svg";
 import icon from "../logo/solenoidicon.svg";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
+import { TabletActions } from "./TabletActions";
 import { autoArrange, cleanup } from "./process";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { frStore } from "./frStore";
@@ -190,6 +191,11 @@ export function TopBar() {
       <span className="solenoid-topbar__divider" />
 
       <CableShapeSelector />
+
+      {/* Tablet only: the keyboard-less edit actions (a tablet has no bottom bar).
+          Placed BEFORE the art slot so they sit with the other tool pills and the
+          flexible art gap absorbs the width. */}
+      <TabletActions />
 
       {/* Decorative art slot — fills the middle gap. Drop an SVG here later,
           e.g. <img className="solenoid-topbar__art-svg" src={...} /> or inline

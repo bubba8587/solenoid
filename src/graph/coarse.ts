@@ -35,6 +35,20 @@ const IS_MOBILE_UA =
 export const IS_MOBILE = IS_COARSE && IS_MOBILE_UA;
 
 /**
+ * THE tablet flag: a touch-primary device that is NOT in mobile mode. iPadOS
+ * ships a desktop UA by default and that is deliberate (see IS_MOBILE), so a
+ * tablet deliberately runs the DESKTOP interaction model and the desktop chrome
+ * — which means it never gets the mobile bottom action bar, and a tablet user
+ * has no touch target for delete / group / select-mode / undo / the palette.
+ * The top bar grows them instead (`TabletActions`, gated on `html.is-tablet`).
+ *
+ * Derived, never sniffed at a call site: it is exactly "coarse, but not mobile",
+ * so a device can never be both and never neither. main.tsx mirrors it onto
+ * `html.is-tablet` for the CSS gate, the same way it mirrors IS_MOBILE.
+ */
+export const IS_TABLET = IS_COARSE && !IS_MOBILE;
+
+/**
  * pointerdown handler for a node's read-only chrome and its single-line fields.
  * Desktop: swallow it, so clicking the element doesn't begin a node drag.
  * Mobile: let it bubble, so a canvas pan that happens to start over the element

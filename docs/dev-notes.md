@@ -169,6 +169,40 @@ Rewritten to the real distinction: @ is how you reach a name that ISN'T a
 column. Re-verified through the headless runner, values unchanged (margin
 90/140/135/100, scaled 360/1120/1620/1600).
 
+### Tablet: the top bar grows the touch actions (2026-08-01d)
+
+Author request. A tablet fell between the two chromes: `IS_MOBILE` is
+`IS_COARSE && IS_MOBILE_UA` and iPadOS ships a desktop UA deliberately, so
+`MobileControls` never mounts — and a tablet user had NO touch target for
+delete, group, select-mode, undo/redo or the palette. They're in the top bar
+now (`TabletActions.tsx`), gated on `html.is-tablet` from the new derived
+`IS_TABLET = IS_COARSE && !IS_MOBILE` (never sniffed at a call site, so a
+device can't be both or neither — pinned).
+
+**The height does not change, and that was the design constraint.** The bar
+stays 44px inside the 66px header envelope because four overlays clear that
+envelope with hand-keyed offsets (nav pill 80, align pill 76, HUD 124, report
+dock 66) — growing the bar would have pushed its bottom edge under all four
+at once, which is the exact recurring bug `layout-chrome.md` exists for. The
+controls are ordinary 28px pill buttons in the existing row; the touch target
+widens to 44px via a pseudo-element, so the laid-out pill height stays 30px
+like every other pill in the bar.
+
+Per the instruction to reuse the mobile bar exactly, the shared pieces moved
+to `touchActions.tsx` — handlers, the selection poll, and the glyphs — and
+`MobileControls` now consumes them too. Undo/redo/group still dispatch the
+same synthetic keydowns Canvas already handles, so neither bar owns a private
+path into the editor. The drift risk is silent (redraw a glyph in one bar and
+both still compile and render), so `touchActions.test.ts` greps both files:
+every shared symbol imported, no local re-declaration, and no inlined glyph
+except the bottom bar's Add FAB, which the top bar deliberately doesn't carry.
+Mutation-checked — inlining one glyph fails it.
+
+Not carried over: the Add FAB (the bar has its own Add, and the canvas has
+double-tap) and the raised accent treatment, which is a thumb-reach
+accommodation for a phone's bottom edge and up here would just be a loud
+button against the Quiet Accent Rule.
+
 ### FC annotations reach complex values — and a Display bug falls out (2026-08-01c)
 
 The popup half had gated correctly since 2026-07-29; the annotation just had
