@@ -16,7 +16,7 @@ import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
-import { IS_MOBILE } from "./graph/coarse";
+import { IS_MOBILE, IS_TABLET } from "./graph/coarse";
 import "@fontsource-variable/atkinson-hyperlegible-next";
 // The italic FACE — without it, `*em*` / FC-italic render upright: the base
 // import loads only the upright axis, and `font-synthesis: none` (App.css,
@@ -36,6 +36,9 @@ if (isDesktop()) document.documentElement.dataset.shell = "desktop";
 // phone's "Request desktop site" (desktop UA, still a coarse pointer) gets the
 // desktop layout. Single source of truth: coarse.ts.
 if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
+// A tablet runs the desktop chrome, so it gets no bottom action bar — the top bar
+// grows the touch actions instead (TabletActions). Mutually exclusive with is-mobile.
+if (IS_TABLET) document.documentElement.classList.add("is-tablet");
 
 // Last-resort error surfacing (v1.0 audit, quality). The codebase leans on
 // `void asyncFn()` fire-and-forget for graph mutations (group ops, Tauri invoke

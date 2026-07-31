@@ -109,23 +109,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Build queue (decided, unbuilt)
 
-- [ ] **Tablet: the top bar grows the mobile bar's actions** (author, 2026-08-01).
-  A tablet gets the DESKTOP chrome today — `IS_MOBILE` is `IS_COARSE && IS_MOBILE_UA`
-  and iPadOS ships a desktop UA on purpose (`coarse.ts`), so `MobileControls` never
-  mounts and a tablet user has no touch target for any of it. Put them in the **top
-  bar** (`TopBar.tsx` / `AppToolbar.tsx`) on tablet only: **delete**, **group**,
-  **select mode**, a **command-palette pill**, and an **undo/redo pill**.
-  REUSE THE MOBILE BAR'S EXACT CONTROLS — same handlers, same icons, same disabled
-  logic, new location; every one already exists in `MobileControls.tsx`
-  (`paletteStore.open()`, `fireUndo(false|true)`, select mode, delete selection,
-  group selection). Do NOT re-implement or re-style them, and don't fork the
-  behavior — lift the shared pieces so the two bars can't drift.
-  The predicate is the one thing that doesn't exist yet: a tablet is
-  `IS_COARSE && !IS_MOBILE` (coarse pointer, not phone-sized) — add it to
-  `coarse.ts` beside the other two rather than sniffing UA at the call site.
-  Read `docs/layout-chrome.md` FIRST: top-bar offsets are hand-keyed magic numbers
-  with no shared envelope var, and this widens the bar on a class of device the
-  overlay offsets were never checked against.
 
 - [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
   UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence

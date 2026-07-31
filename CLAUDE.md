@@ -93,9 +93,12 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
 Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term → code handle.
 - **File / menu bar** — top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
 - **Top bar** — toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
+  On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
 - **Navigator** — left outline panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
   `body.solenoid-nav-open`).
 - **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
+  A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
+  both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
 - **Zoom pill** (desktop) / **Lock pill** (mobile) — upper-right canvas controls. `NavMenu.tsx`.
 - **Align bar** — top-center align/distribute pill (≥2 selected). `SelectionActionsBar.tsx`.
 - **Minimap** — bottom-right. `Minimap.tsx` (hidden on mobile).

@@ -27,6 +27,7 @@ bottom; everything else floats over the canvas.
 | Header wrapper | `.solenoid-header` | `top:0`, full width, flex column | 6 | `Header.css:1` |
 | — Menu bar (row 1) | `.solenoid-menubar` | height **22px** | 2 | `MenuBar.css:5,8` |
 | — App/top toolbar (row 2) | `.solenoid-topbar` / `.solenoid-apptools` | height **44px** | 1 / 6 | `TopBar.css:9`, `AppToolbar.css:43` |
+| — ↳ tablet touch actions (in row 2) | `.solenoid-topbar__group--tablet` | **inside** the 44px row — adds no height | — | `TopBar.css` (gated `html.is-tablet`) |
 | Status bar (footer) | `.solenoid-statusbar` | `bottom:0`, height **19px**, full width | 6 | `StatusBar.css:3,6,10` |
 | Nav/zoom pill | `.solenoid-nav` | `top:80px; right:12px` (upper-right) | 5 | `NavMenu.css:3,20` |
 | Navigator (outline) | `.solenoid-outline` | `left:12px` (upper-left); open-pill also `top:80px` | 5 | `OutlinePanel.css:5` |
@@ -37,6 +38,14 @@ bottom; everything else floats over the canvas.
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css:10` |
 | Command palette | `.solenoid-cmdk` | bottom-docked (`left:50%; bottom:40px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css:4,12` |
 | Docked report panel | `.report-panel--docked` | `top:66px; right:0; bottom:19px; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css:321` |
+
+> **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
+> tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
+> touch actions (palette · undo/redo · select · group · delete — `TabletActions.tsx`) as
+> ordinary pill groups INSIDE the existing 44px row. **The envelope below is unchanged, and
+> must stay so:** all four offsets in it are hand-keyed against 66px, so a taller bar would
+> push the bar's bottom edge under every one of them at once. Reach comes from a
+> pseudo-element tap target, not from padding.
 
 **The header envelope is 66px** (22 + 44), plus a 2px accent underline ≈ **68px** to the
 canvas. That 66 is what `--report-dock-top` encodes and what the nav pill's `top:80px`

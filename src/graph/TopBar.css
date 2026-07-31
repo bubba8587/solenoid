@@ -121,3 +121,43 @@
 .solenoid-topbar__doctitle {
   display: none;
 }
+
+/* ─── Tablet touch actions ────────────────────────────────────────────────────
+   A tablet runs the DESKTOP chrome (IS_MOBILE is false there — iPadOS ships a
+   desktop UA on purpose), so it never gets the bottom action bar and had no
+   touch target for delete / group / select-mode / undo / the palette. The top
+   bar carries them instead, gated on `html.is-tablet` (set in main.tsx from
+   IS_TABLET = coarse && !mobile).
+
+   HEIGHT IS UNCHANGED — deliberately. The bar stays 44px inside the 66px header
+   envelope, because four overlays clear that envelope with hand-keyed offsets
+   (nav pill top:80, align pill top:76, HUD top:124, report dock top:66 — see
+   docs/layout-chrome.md). Growing the bar would silently push the bar's bottom
+   edge under all four. These are ordinary 28px pill buttons in the existing row. */
+.solenoid-topbar__group--tablet {
+  display: none;
+}
+html.is-tablet .solenoid-topbar__group--tablet {
+  display: flex;
+}
+
+/* Dimmed = needs a selection. Still TAPPABLE (not `disabled`): the selection
+   state is polled at 200ms, so a hard-disabled button would swallow the first
+   tap after a fresh select. Matches the bottom bar's rule and its opacity. */
+.solenoid-nav__btn--dim {
+  opacity: 0.3;
+}
+
+/* A tablet is a touch device on the desktop layout, where buttons are sized for
+   a cursor. Widen the touch target without changing the LAID-OUT size: the pill
+   row must stay 30px tall to match every other pill in the bar, so the extra
+   reach comes from a pseudo-element, not from padding. */
+html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn {
+  position: relative;
+}
+html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn::after {
+  content: "";
+  position: absolute;
+  /* 28px button + 8px top/bottom = a 44px tap target, the platform minimum. */
+  inset: -8px -2px;
+}
