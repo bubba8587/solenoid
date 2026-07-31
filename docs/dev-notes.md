@@ -169,6 +169,44 @@ Rewritten to the real distinction: @ is how you reach a name that ISN'T a
 column. Re-verified through the headless runner, values unchanged (margin
 90/140/135/100, scaled 360/1120/1620/1600).
 
+### Tablet portrait: the bar wraps, and the envelope becomes measured (2026-08-01e)
+
+Two device-test findings from the author, fixed together.
+
+**1. Select mode panned AND lassoed.** `Canvas.tsx`'s effect that disables
+rete's area Drag while select mode is on was gated `if (!IS_MOBILE) return`.
+A tablet is not IS_MOBILE, so it kept its pan handler: one finger did both.
+Now gated on `IS_COARSE` — the real condition is "a touch device where select
+mode is reachable", and the tablet reaches it from the top bar. Desktop stays
+excluded on purpose (shift-lasso blocks the pan per-gesture). The Navigator
+had the identical bug from the identical cause — its accumulate test was
+`IS_MOBILE && touchSelectStore.get()`, so select mode did nothing in the
+outline on the one device with no keyboard to Ctrl-click with. Also IS_COARSE
+now; its plain-click branch stays IS_MOBILE (that one is about double-click,
+which a tablet shares with desktop).
+
+**2. The bar doesn't fit in portrait** → it wraps to a second row on tablet,
+per the author's call. Row 1 keeps the identity plus the pinned cluster
+(palette · Reference · Settings); everything else wraps. Split by `order`,
+because flex-wrap fills lines in ORDER, not DOM sequence — the flexible art
+slot grows to push the pinned cluster right and every order-4 item lands on
+the next line. Dividers hidden so none orphans at a row edge.
+
+**The wrap forced the envelope fix, and that's the durable part.** Six
+top-anchored overlays hard-coded an offset derived from the same 66px header
+(nav 80, Navigator 80, banner 80, align 76, HUD 124, report dock 66) — the
+exact hand-keyed duplication `layout-chrome.md` was started for, and which it
+deferred as "a cross-cutting refactor, do it author-present". A wrapped bar
+makes the height CONDITIONAL — two rows in portrait, one in landscape, the
+wrap point depending on the viewport — so the number stopped being writable
+down at all and the deferral stopped being viable. `Header.tsx` now measures
+itself with a ResizeObserver and publishes `--chrome-top` on `:root`; all six
+derive from it, each keeping a static fallback so the first paint is right
+before the observer fires. Mobile's overrides are untouched (they carry
+safe-area insets and win later in the cascade). Pinned in
+`touchActions.test.ts`. The bottom edge is the same shape of problem and is
+now backlogged.
+
 ### Tablet: the top bar grows the touch actions (2026-08-01d)
 
 Author request. A tablet fell between the two chromes: `IS_MOBILE` is

@@ -1,7 +1,9 @@
 .solenoid-nav {
   position: absolute;
   /* Vertical pill on the upper-right, clear of the full-width header. */
-  top: 80px;
+  /* 14px below the header envelope (measured — Header.tsx publishes --chrome-top;
+     66px fallback = menu bar 22 + top bar 44). */
+  top: calc(var(--chrome-top, 66px) + 14px);
   right: 12px;
   display: flex;
   flex-direction: row;
