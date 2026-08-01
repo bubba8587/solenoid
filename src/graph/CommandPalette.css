@@ -188,8 +188,10 @@
   overflow-y: auto;
 }
 
+/* Status hues are the DESIGN.md literals (the codebase pattern — no app-wide
+   status vars; errorChip.css does the same), shared across both themes. */
 .solenoid-cmdpalette__aierror {
-  color: var(--danger, #e0473a);
+  color: #e0473a;
   font-size: 12px;
   line-height: 1.4;
   padding: 2px 4px;
@@ -200,8 +202,8 @@
 }
 
 .solenoid-cmdpalette__aidiff {
-  background: var(--surface-sunken, #141414);
-  border: 1px solid var(--border, #2d2d2d);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-family: var(--font-mono, monospace);
   font-size: 12px;
@@ -212,20 +214,20 @@
   overflow: auto;
 }
 .solenoid-cmdpalette__aidiffline { padding: 0 8px; white-space: pre; }
-.solenoid-cmdpalette__aidiffline--add { background: color-mix(in srgb, var(--success, #2fae7a) 14%, transparent); }
+.solenoid-cmdpalette__aidiffline--add { background: color-mix(in srgb, #2fae7a 14%, transparent); }
 .solenoid-cmdpalette__aidiffline--del {
-  background: color-mix(in srgb, var(--danger, #e0473a) 12%, transparent);
+  background: color-mix(in srgb, #e0473a 12%, transparent);
   color: var(--text-dim);
   text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--danger, #e0473a) 55%, transparent);
+  text-decoration-color: color-mix(in srgb, #e0473a 55%, transparent);
 }
 
-.solenoid-cmdpalette__aiwarnings { color: var(--warning, #d9a93b); font-size: 11px; line-height: 1.4; padding: 0 4px; }
+.solenoid-cmdpalette__aiwarnings { color: #d9a93b; font-size: 11px; line-height: 1.4; padding: 0 4px; }
 
 .solenoid-cmdpalette__aiactions { display: flex; justify-content: flex-end; gap: 6px; }
 .solenoid-cmdpalette__aibtn {
-  background: var(--surface-sunken, #141414);
-  border: 1px solid var(--border, #2d2d2d);
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
   border-radius: 999px;
   color: var(--text);
   font: inherit;
@@ -233,7 +235,7 @@
   padding: 5px 14px;
   cursor: pointer;
 }
-.solenoid-cmdpalette__aibtn:hover { background: var(--btn-hover, #262626); border-color: var(--border-strong, #3a3a3a); }
+.solenoid-cmdpalette__aibtn:hover { background: var(--btn-hover); border-color: var(--btn-border-hover); }
 /* The one confirming action: accent-filled with the readable-on-accent ink. */
 .solenoid-cmdpalette__aibtn--apply {
   background: var(--accent);

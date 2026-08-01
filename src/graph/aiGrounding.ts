@@ -13,6 +13,7 @@ import type { CatalogEntry, NodeCatalogEntry, CatalogCategory } from "./AddNodeM
 import { SolenoidSocket, SOCKET_TYPE_LABELS, elementFamilyOf, latticeRank, type SocketDataType } from "./sockets";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "./copyPaste";
 import { NODE_OPS } from "./nodeOps";
+import { opVocabByCtor } from "./opVocab";
 import type { FilterOp } from "./frameVerbs";
 import type { FrameColType } from "./frame";
 
@@ -252,6 +253,14 @@ export function buildGroundingSpec(): string {
         const opPart = v.op !== null ? `op=${JSON.stringify(v.op)} — ` : "";
         const sockets = allSameSockets ? "" : ` (in: ${v.inputs || "—"} → out: ${v.outputs || "—"})`;
         w(`- ${opPart}${v.leaf.label}${sockets}`);
+      }
+    } else {
+      // A dropdown-only op family (Group By's aggregate select and kin): no
+      // declared NODE_OPS family, one catalog leaf — the shared vocabulary
+      // derivation still knows the tokens.
+      const vocab = opVocabByCtor().get(ctorName);
+      if (vocab && vocab.size >= 2) {
+        w(`- ops: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
       }
     }
     // Ops the class hosts that have no Add-menu leaf of their own (the catalog

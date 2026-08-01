@@ -45,7 +45,7 @@
       "y": 286,
       "init": {
         "label": "Average since 2015",
-        "op": "average"
+        "op": "avg"
       }
     },
     {
