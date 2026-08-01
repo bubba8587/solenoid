@@ -3,6 +3,10 @@ import { fieldScore } from "./fuzzy";
 import { IS_MOBILE } from "./coarse";
 import { apiKeyStore } from "./apiKeyStore";
 import { aiConnected } from "./aiKey";
+import { runAiPrompt, type AiOutcome } from "./aiService";
+import { diffLines, hasChanges, type DiffLine } from "./textDiff";
+import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
+import { writeTextForm, readTextForm } from "./textForm";
 import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
 import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
@@ -41,6 +45,21 @@ type PaletteItem = {
   shortcut?: string;
   run: () => void;
 };
+
+// The AI turn's lifecycle. One turn at a time: a prompt replaces the previous
+// result, Escape steps back to idle, Apply/Cancel resolve an edit.
+type AiState =
+  | { phase: "idle" }
+  | { phase: "busy" }
+  | { phase: "answer"; text: string }
+  | { phase: "edit"; newText: string; diff: DiffLine[]; warnings: string[] }
+  | { phase: "error"; message: string };
+
+/** The open document as its text form — what the model reads and rewrites. */
+function currentTextForm(): string {
+  const g: SavedGraph = serializeGraph() ?? { v: 2, nodes: [], connections: [] };
+  return writeTextForm(g);
+}
 
 function buildCommands(): PaletteItem[] {
   // EVERY menubar action (single-sourced in menuModel) is a command — so the palette
@@ -97,7 +116,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   // AI mode: the palette stops being a command launcher and becomes a prompt box.
   // Local state, not a store — the mode is a property of THIS palette session, so a
   // modal that's dismissed and reopened comes back in command mode (the default a
-  // blind Enter should land in). UI ONLY: nothing is sent anywhere yet.
+  // blind Enter should land in).
   const [aiMode, setAiMode] = useState(false);
   // The sparkle appears only once an AI account is connected (a key stored in
   // Settings ▸ AI). Subscribed so storing or clearing the key shows/hides it live.
@@ -106,6 +125,49 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   // Clearing the key while the palette sits in AI mode must not strand it in a mode
   // whose only exit control just disappeared.
   useEffect(() => { if (!aiAvailable) setAiMode(false); }, [aiAvailable]);
+  const [aiState, setAiState] = useState<AiState>({ phase: "idle" });
+  // A reply landing after the palette unmounted (modal dismissed mid-request)
+  // must not set state on a dead component; the flag outlives the closure.
+  const aliveRef = useRef(true);
+  useEffect(() => () => { aliveRef.current = false; }, []);
+  // Leaving AI mode drops the turn — coming back starts fresh, matching the
+  // mode itself being palette-session-local.
+  useEffect(() => { if (!aiMode) setAiState({ phase: "idle" }); }, [aiMode]);
+
+  async function submitAiPrompt() {
+    const prompt = query.trim();
+    if (!prompt || aiState.phase === "busy") return;
+    setAiState({ phase: "busy" });
+    const outcome: AiOutcome = await runAiPrompt(prompt, currentTextForm());
+    if (!aliveRef.current) return;
+    if (outcome.kind === "answer") {
+      setAiState({ phase: "answer", text: outcome.text });
+    } else if (outcome.kind === "edit") {
+      const diff = diffLines(currentTextForm(), outcome.newText);
+      if (!hasChanges(diff)) {
+        setAiState({ phase: "answer", text: "The document already matches that request." });
+      } else {
+        setAiState({ phase: "edit", newText: outcome.newText, diff, warnings: outcome.warnings });
+      }
+    } else {
+      setAiState({ phase: "error", message: outcome.message });
+    }
+  }
+
+  async function applyAiEdit() {
+    if (aiState.phase !== "edit") return;
+    // The same governed path a file open takes: parse the validated text form,
+    // rebuild the editor from it. The validator already passed this text.
+    const ok = await loadGraph(readTextForm(aiState.newText));
+    if (!aliveRef.current) return;
+    if (!ok) {
+      setAiState({ phase: "error", message: "The rewrite failed to load. The document is unchanged." });
+      return;
+    }
+    setQuery("");
+    setAiState({ phase: "idle" });
+    if (!persistent) onClose();
+  }
   // -1 = nothing selected. The palette opens with NO active row — a blind
   // Enter must never fire an action the user didn't pick (the browse list is
   // a menu, not a ranked answer). Typing a query DOES auto-select the top
@@ -176,12 +238,20 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    // AI mode: only Escape still means anything. Submitting is deliberately inert —
-    // there is no service wired up, and faking a reply would read as a working
-    // feature. TODO: send `query` to the AI here once a provider is connected.
-    if (aiMode && e.key !== "Escape") {
-      if (e.key === "Enter") e.preventDefault();
-      return;
+    // AI mode: Enter submits the prompt; Escape steps back — first out of a
+    // shown result, then out of the palette (the shared handler below).
+    if (aiMode) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void submitAiPrompt();
+        return;
+      }
+      if (e.key === "Escape" && aiState.phase !== "idle" && aiState.phase !== "busy") {
+        e.preventDefault();
+        setAiState({ phase: "idle" });
+        return;
+      }
+      if (e.key !== "Escape") return;
     }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
@@ -204,6 +274,49 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
         }
         onMouseDown={(e) => e.stopPropagation()}
       >
+        {aiMode && aiState.phase !== "idle" && (
+          // The turn's output. A NEUTRAL overlay surface even in AI mode — the
+          // accent marks the input's rerouted Enter; the output is content.
+          // preventDefault on mousedown for the same focus-keeping reason as the
+          // results list.
+          <div className="solenoid-cmdpalette__airesult" onMouseDown={(e) => e.preventDefault()}>
+            {aiState.phase === "busy" && (
+              <div className="solenoid-cmdpalette__aibusy">Working…</div>
+            )}
+            {aiState.phase === "answer" && (
+              <div className="solenoid-cmdpalette__aianswer">{aiState.text}</div>
+            )}
+            {aiState.phase === "error" && (
+              <div className="solenoid-cmdpalette__aierror">{aiState.message}</div>
+            )}
+            {aiState.phase === "edit" && (
+              <>
+                <div className="solenoid-cmdpalette__aidiff">
+                  {aiState.diff.map((d, i) => (
+                    <div key={i} className={`solenoid-cmdpalette__aidiffline solenoid-cmdpalette__aidiffline--${d.kind}`}>
+                      {d.text || " "}
+                    </div>
+                  ))}
+                </div>
+                {aiState.warnings.length > 0 && (
+                  <div className="solenoid-cmdpalette__aiwarnings">
+                    {aiState.warnings.map((wText, i) => (
+                      <div key={i}>{wText}</div>
+                    ))}
+                  </div>
+                )}
+                <div className="solenoid-cmdpalette__aiactions">
+                  <button type="button" className="solenoid-cmdpalette__aibtn" onClick={() => setAiState({ phase: "idle" })}>
+                    Cancel
+                  </button>
+                  <button type="button" className="solenoid-cmdpalette__aibtn solenoid-cmdpalette__aibtn--apply" onClick={() => void applyAiEdit()}>
+                    Apply
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {results.length > 0 && (
           // preventDefault on mousedown so clicking a row doesn't blur the input —
           // in docked mode a blur would hide the suggestion list before the click fires.

@@ -334,8 +334,6 @@ function ApiKeysSection() {
 
 // The AI account. Its own section rather than a third row under the data providers:
 // the key gates a different surface (the command palette's AI mode), not a data node.
-// Storing a key is the whole "connect an account" step for now; nothing calls a
-// service yet, so the key's only effect is to reveal the palette's sparkle.
 function AiSection() {
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   return (
@@ -343,10 +341,10 @@ function AiSection() {
       <div className="solenoid-settings__section-title">AI</div>
       <ApiKeyRow
         id={AI_PROVIDER}
-        label="API key"
+        label="Anthropic API key"
         help="Connects an AI account. The command palette gains a sparkle that switches it to asking the AI."
       />
-      <div className="solenoid-settings__note">Stored only on this device. No requests are sent yet.</div>
+      <div className="solenoid-settings__note">Stored only on this device and sent only to Anthropic.</div>
     </div>
   );
 }

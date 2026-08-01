@@ -131,39 +131,26 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   Mobile's `safe-area` overrides are the wrinkle — they must keep winning.
 
 
-- [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
-  UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence
-  reveals a sparkle that flips the palette to an accent-filled prompt box
-  (`--ai` in `CommandPalette.css`). Nothing calls a service — submitting is inert, with
-  the TODO at the send site in `onKeyDown`. Undecided and needed before building:
-  which provider(s) and whether the key is per-provider (today it's the single `"ai"`
-  slot); what a prompt is allowed to DO (answer about the graph, vs. author/modify nodes
-  — the latter needs an action-approval step, not a chat log); where a response renders
-  (the suppressed result panel is the obvious slot, but the palette is a launcher, not a
-  transcript); whether AI mode should persist across palette opens (today it's local
-  state and resets, deliberately). Also unresolved: the key is in localStorage like the
-  data-provider keys, which is fine for a key the user pastes, but an OAuth-style
-  "connect an account" flow would change that shape.
-  Scope ruling: D27 (the AI layer is IN; the cage framing is the design rule — AI edits
-  go through the same governed path as human edits, modify actions behind approval).
-  **The prerequisite layer LANDED 2026-07-31** (`graphValidate.ts` strict validating
-  reader — every silently-repaired load condition is a repair-grade, line-anchored
-  issue, seeds sweep-tested clean; `npm run validate-graph`; `npm run ai-grounding`
-  generates the model-facing spec from the catalog + live classes; `run-graph` accepts
-  the text form and gates on the validator — the full generate → validate → run loop
-  works headlessly). **Edit granularity DECIDED (D28): whole-doc text-form rewrite,
-  validator-gated, approval shows the old→new diff** — no edit-op layer (prototyped
-  2026-08-01: three docs authored from the spec converged in ≤2 repair rounds; the
-  spec gaps that surfaced — per-class init keys, op vocabularies, frameText/condConfig
-  payload formats, empty-default inline maps — were fixed in the generator). Still
-  open before wiring the send site:
-  - **Provider + key shape** (author call): today one `"ai"` slot; Anthropic is the
-    presumed target (browser calls need its CORS opt-in header; desktop is free via
-    `httpBridge`).
-  - **Where a response renders + AI-mode persistence** (author-present UI calls, per
-    the shell notes above).
+- [ ] **AI command palette — the tail.** The full authoring loop is WIRED (2026-08-01;
+  author calls: Anthropic only, full authoring first, D27/D28 as designed).
+  `aiService.ts` sends the prompt + the document's text form to `claude-opus-5`
+  (official SDK, browser opt-in; the ~30k-token grounding spec is a cached system
+  block; server-side refusal fallback on). A fenced rewrite is validator-gated with
+  up to 2 repair rounds fed back from `graphValidate`; a clean rewrite renders as an
+  old→new line diff in the palette (`textDiff.ts`) with Cancel / Apply, and Apply
+  loads via the same `loadGraph` path a file open takes. Prose replies render as an
+  answer panel. Key: Settings ▸ AI (Anthropic; localStorage). Desktop CSP allowlists
+  api.anthropic.com. Remaining:
+  - **Author eyeball on the preview**: palette result panel + diff view + Apply flow
+    (first live end-to-end run needs a real key).
+  - **Apply drops undo history** — it rides the destructive load path; the pre-apply
+    doc survives in autosave but Ctrl+Z won't restore it. Acceptable v1; revisit if
+    it stings.
   - **Tidy on a cold graph** — verify auto-layout handles an all-at-0,0 generated
-    graph (needs the app; the headless loop can't check it).
+    graph.
+  - **Desktop check** — the CSP addition needs one desktop build smoke test.
+  - Later, if wanted: streamed reply rendering; an OAuth-style connect flow instead
+    of a pasted key.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19, all tiers LANDED; the program's
   history lives in `formula-node-parity.md` + the dev-notes archive). Current state
