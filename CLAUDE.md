@@ -315,7 +315,9 @@ Read the relevant section there before touching one of these. The one-line "don'
   Tidy/Cleanup (ELK), isolate, minimap (canvas-drawn), lasso, snap-to-grid, undo/copy/paste,
   single-key shortcuts (A/G/I/T/E/F/C/N; F9 calculate), command palette, presenter mode,
   cinematic load reveal, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  html-in-canvas GPU render mode (DOM stays the permanent default/fallback).
+  html-in-canvas GPU render mode (DOM stays the permanent default/fallback); AI palette mode
+  (D27/D28: prompt → prose answer or validator-gated whole-doc rewrite with diff approval;
+  Anthropic key in Settings ▸ AI; `aiService.ts`/`graphValidate.ts`/`aiGrounding.ts`).
 - **Value model**: frames (named typed columns), cubes (recursive nesting), matrices/lists/
   scalars; first-class null/logical/SolError; units by dimensionality with `#UNIT!` algebra;
   Format Controller (value-mutating unit author + display-format annotations); type-default
