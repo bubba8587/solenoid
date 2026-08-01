@@ -244,6 +244,22 @@
 }
 .solenoid-cmdpalette__aibtn--apply:hover { background: var(--accent); filter: brightness(1.06); }
 
+/* ── AI-added node reveal (aiReveal.ts) ───────────────────────────────────────
+   New nodes from an applied AI edit settle in: fade + a small rise, staggered.
+   The class sits on rete's node holder; the animation runs on the CHILD card
+   root so the holder's translate positioning stays untouched. `backwards` fill
+   keeps a delayed node hidden until its turn. Short and functional. */
+.solenoid-ainew > * {
+  animation: solenoid-ainew-in 480ms ease var(--ainew-delay, 0ms) backwards;
+}
+@keyframes solenoid-ainew-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .solenoid-ainew > * { animation: none; }
+}
+
 /* The transform between the two states. Short and functional per DESIGN.md's motion
    rule — long enough to read as a change of mode, not a choreographed reveal. The
    transition lives on the resting rules so it plays in BOTH directions. */

@@ -149,6 +149,29 @@ prerequisite layer was built:
 Open before wiring the palette send site: the edit-granularity call and the
 cold-graph Tidy check (backlog).
 
+### AI demo mode + added-node reveal (2026-08-01j)
+
+Two author asks: a fake-AI demo and animated AI additions.
+- **`aiDemo.ts`** — type `demo` in Settings ▸ AI instead of a key and the palette
+  runs against a canned local model, offline. The fake sits at the TRANSPORT seam
+  (`makeDemoFetch` answers like the Messages API), so the production pipeline —
+  fence extraction, strict validator, canonicalization, diff, Apply — runs
+  unchanged; only the reply is canned. Behavior: a STAGED BUILD (sales frame +
+  computed Revenue → regional totals via Group By → column chart), each stage
+  appended to the RIGHT of whatever the document holds under Demo* names, so
+  repeated prompt → Apply rounds grow the graph; a question-shaped prompt gets a
+  computed summary of the current document instead; after stage 3, prose "done".
+  `aiDemo.test.ts` executes the finished build headlessly to the real numbers
+  (North 3250 / South 2402.5) and proves user content survives untouched.
+- **`aiReveal.ts`** — an applied AI edit now animates ONLY its additions: the
+  palette diffs node names before/after, maps them through `getLastLoadIdMap` to
+  the fresh live ids, and stamps a class on each rete node holder; the keyframes
+  (fade + 6px rise, 90ms stagger, `backwards` fill) run on the holder's CHILD so
+  rete's translate positioning is untouched (and socket measurement reads offset
+  boxes, transform-blind). Kept nodes stay put. Honors prefers-reduced-motion at
+  both layers; the class self-removes after the last node settles.
+- Settings note names the demo key. Real-key applies get the same reveal.
+
 ### Validator depth: op vocabularies, composite recursion — and a live seed bug (2026-08-01i)
 
 The blind-hardening pass after the wiring:

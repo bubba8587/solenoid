@@ -142,7 +142,9 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   answer panel. Key: Settings ▸ AI (Anthropic; localStorage). Desktop CSP allowlists
   api.anthropic.com. The validator now also checks op vocabularies (`opVocab.ts`)
   and recurses into composite internals; `npm run ai-prompt` runs the exact palette
-  loop from a terminal with a real key. Remaining:
+  loop from a terminal with a real key. Demo mode: type `demo` as the key — a canned
+  staged build through the real pipeline, offline (`aiDemo.ts`); applied additions
+  animate in (`aiReveal.ts`). Remaining:
   - **First real-key end-to-end** — cheapest via `ANTHROPIC_API_KEY=… npm run
     ai-prompt -- "make a mortgage calculator"`; then the palette on the preview
     (result panel + diff view + Apply flow, author eyeball).

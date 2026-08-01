@@ -344,7 +344,10 @@ function AiSection() {
         label="Anthropic API key"
         help="Connects an AI account. The command palette gains a sparkle that switches it to asking the AI."
       />
-      <div className="solenoid-settings__note">Stored only on this device and sent only to Anthropic.</div>
+      <div className="solenoid-settings__note">
+        Stored only on this device and sent only to Anthropic. Type demo instead of a key
+        to preview the assistant with canned replies.
+      </div>
     </div>
   );
 }
