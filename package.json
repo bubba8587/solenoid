@@ -15,7 +15,8 @@
     "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-build.ps1",
     "run-graph": "tsx scripts/run-graph.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",
-    "ai-grounding": "tsx scripts/ai-grounding.ts"
+    "ai-grounding": "tsx scripts/ai-grounding.ts",
+    "ai-prompt": "tsx scripts/ai-prompt.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

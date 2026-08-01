@@ -140,6 +140,40 @@ describe("validateGraph — semantics", () => {
     expect(issues.some((i) => i.message.includes("newer than this build"))).toBe(true);
   });
 
+  it("flags an op outside the class's vocabulary", () => {
+    const { issues } = validateText(`A: AggregateNode op="summ" lit:list=1\n---\n{}`);
+    const issue = issues.find((i) => i.message.includes('unknown op "summ"'));
+    expect(issue?.message).toContain("`sum`");
+  });
+
+  it("flags a bad aggregate op on Group By (dropdown-only vocabulary)", () => {
+    const { issues } = validateText(`G: GroupByFrameNode op="average"\n---\n{}`);
+    const issue = issues.find((i) => i.message.includes('unknown op "average"'));
+    expect(issue?.message).toContain("Ops: sum, avg");
+  });
+
+  it("recurses into a composite's internal subgraph", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        {
+          id: "C", type: "CompositeNode", name: "C", x: 0, y: 0,
+          init: {
+            internal: {
+              nodes: [{ id: "n1", type: "NumberInputNod", init: { value: 1 } }],
+              connections: [],
+            },
+          },
+        },
+      ],
+      connections: [],
+    };
+    const issues = validateGraph(g);
+    const issue = issues.find((i) => i.message.includes("inside the composite"));
+    expect(issue?.message).toContain('unknown node type "NumberInputNod"');
+    expect(issue?.node).toBe("C");
+  });
+
   it("flags sidecar references to unknown nodes", () => {
     const { issues } = validateText(
       `A: NumberInputNode value=1\n---\n{ "positions": { "Ax": { "x": 0, "y": 0 } }, "pins": [{ "nodeId": "Bx", "outputKey": "value" }] }`,
@@ -158,7 +192,35 @@ describe("formatIssues", () => {
   });
 });
 
-// ─── The false-positive guard: every shipped seed validates clean ───────────────
+// ─── The false-positive guards ──────────────────────────────────────────────────
+// Every Add-menu leaf, saved exactly as its factory constructs it, must
+// validate clean — this is what makes the validator's checks (init keys, op
+// vocabulary, literal declarations) safe to enforce across the whole surface.
+
+describe("catalog sweep", () => {
+  it("every catalog leaf validates clean as a single-node save", async () => {
+    const { FLAT_CATALOG } = await import("./catalogUtils");
+    const { extractInit } = await import("./copyPaste");
+    const bad: string[] = [];
+    for (const [type, leaf] of FLAT_CATALOG) {
+      let inst;
+      try {
+        inst = leaf.create() as import("rete").ClassicPreset.Node;
+      } catch {
+        continue;
+      }
+      const anyInst = inst as unknown as Record<string, unknown>;
+      const sn: SavedGraph["nodes"][number] = {
+        id: "n1", type: inst.constructor.name, x: 0, y: 0, init: extractInit(inst),
+      };
+      if (anyInst.literals && typeof anyInst.literals === "object") sn.literals = { ...(anyInst.literals as Record<string, number>) };
+      if (anyInst.stringLiterals && typeof anyInst.stringLiterals === "object") sn.stringLiterals = { ...(anyInst.stringLiterals as Record<string, string>) };
+      const issues = hardIssues(validateGraph({ v: 2, nodes: [sn], connections: [] }));
+      if (issues.length > 0) bad.push(`${type}: ${issues[0].message}`);
+    }
+    expect(bad).toEqual([]);
+  });
+});
 
 describe("seed sweep", () => {
   const dir = join(__dirname, "seedGraphs");

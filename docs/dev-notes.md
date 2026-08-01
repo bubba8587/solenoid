@@ -149,6 +149,35 @@ prerequisite layer was built:
 Open before wiring the palette send site: the edit-granularity call and the
 cold-graph Tidy check (backlog).
 
+### Validator depth: op vocabularies, composite recursion — and a live seed bug (2026-08-01i)
+
+The blind-hardening pass after the wiring:
+- **`opVocab.ts`** — per-class `op=` vocabulary derived once (NODE_OPS families +
+  every catalog leaf's constructed op + builder `hiddenOps` + the dropdown-only
+  aggregate families via `AGG_OP_META`/`GROUP_BY_OP_META`, compile-complete).
+  Shared by the validator and the grounding spec (Group By and kin now list their
+  op tokens; before, a model had only description prose).
+- **`graphValidate.ts`** — two new checks: an op OUTSIDE a known vocabulary of 2+
+  (an unknown op constructs fine and then miscomputes — the reduce switch just
+  never matches); and RECURSION into `init.internal`, so a generated composite's
+  subgraph is held to the same standard (internal rete ids skip the name check).
+- **Whole-catalog sweep test** — every Add-menu leaf, saved exactly as its factory
+  constructs it, validates clean. This is the license to enforce the new checks.
+- **It immediately caught a shipped bug**: `live-market-data.json` had
+  `AggregateNode op="average"` ("Average since 2015") — not a `ReduceOp` token
+  (`avg` is), so the reduce switch matched nothing and the card showed a wrong
+  value. Seed fixed to `avg`.
+- **`scripts/ai-prompt.ts`** (`npm run ai-prompt -- "<prompt>" [doc.txt] [--out]`) —
+  the palette's EXACT loop from a terminal (same aiService), for the first
+  real-key end-to-end without the UI. Needs ANTHROPIC_API_KEY; unrunnable in the
+  container (no key), guards tested.
+- **Authoring round 2** (blind, spec-only): join + computed column + XLOOKUP +
+  chart doc converged; two stumbles were both spec-answerable (D24 `@Col`
+  row-cell semantics; the output column name is `str:name`, not `addAs`) — noted
+  as prompt-quality intel, no spec change needed.
+- Palette CSS reconciled to real tokens (status hues as DESIGN literals — no
+  app-wide status vars exist; buttons on the `--btn-*` set so both themes hold).
+
 ### The AI palette send site goes live: Anthropic, full authoring (2026-08-01h)
 
 Author calls: Anthropic only · full authoring as the first scope · Vercel-preview

@@ -140,9 +140,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   old→new line diff in the palette (`textDiff.ts`) with Cancel / Apply, and Apply
   loads via the same `loadGraph` path a file open takes. Prose replies render as an
   answer panel. Key: Settings ▸ AI (Anthropic; localStorage). Desktop CSP allowlists
-  api.anthropic.com. Remaining:
-  - **Author eyeball on the preview**: palette result panel + diff view + Apply flow
-    (first live end-to-end run needs a real key).
+  api.anthropic.com. The validator now also checks op vocabularies (`opVocab.ts`)
+  and recurses into composite internals; `npm run ai-prompt` runs the exact palette
+  loop from a terminal with a real key. Remaining:
+  - **First real-key end-to-end** — cheapest via `ANTHROPIC_API_KEY=… npm run
+    ai-prompt -- "make a mortgage calculator"`; then the palette on the preview
+    (result panel + diff view + Apply flow, author eyeball).
   - **Apply drops undo history** — it rides the destructive load path; the pre-apply
     doc survives in autosave but Ctrl+Z won't restore it. Acceptable v1; revisit if
     it stings.

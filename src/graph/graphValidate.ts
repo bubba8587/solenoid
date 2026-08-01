@@ -18,9 +18,10 @@
 // (e.g. a Composite hydrating its saved ports) reports an EMPTY socket record —
 // key checks are skipped for that side rather than false-positived.
 
-import type { SavedGraph, SavedNode } from "./persistence";
+import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
 import { ctorRegistry } from "./nodeCtorRegistry";
+import { opVocabByCtor } from "./opVocab";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
 import { NAME_RE } from "./nodeNaming";
 import {
@@ -177,6 +178,38 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       if (!initOk(k)) {
         const candidates = new Set<string>([...INIT_KEY_SET, ...litKeys, ...strKeys]);
         issues.push({ line: at(name), node: name, message: `unknown init field "${k}"${nearest(k, candidates)} — ${sn.type} carries no such field, so this value would be silently ignored.` });
+      }
+    }
+
+    // An op OUTSIDE the class's vocabulary constructs without complaint and
+    // then miscomputes — the constructor stores whatever it's handed. Enforce
+    // only against a vocabulary of 2+ known ops: a single-entry vocabulary
+    // (one leaf, no declared family) is too weak an assertion of completeness.
+    const opValue = sn.init?.op;
+    if (typeof opValue === "string") {
+      const vocab = opVocabByCtor().get(sn.type);
+      if (vocab && vocab.size >= 2 && !vocab.has(opValue)) {
+        issues.push({ line: at(name), node: name, message: `unknown op "${opValue}" for ${sn.type}${nearest(opValue, vocab.keys())}. Ops: ${keyList([...vocab.keys()])}.` });
+      }
+    }
+
+    // A Composite carries its ENTIRE internal subgraph in init.internal —
+    // recurse so a generated composite is held to the same standard. Internal
+    // ids are live rete ids, not user names, so they skip the name check.
+    const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;
+    if (internal && Array.isArray(internal.nodes) && Array.isArray(internal.connections)) {
+      const sub: SavedGraph = {
+        v: CURRENT_SAVE_VERSION, // the outer graph's version is checked once, above
+        nodes: (internal.nodes as Array<{ id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string>; x?: number; y?: number }>).map((n) => {
+          const mapped: SavedNode = { id: n.id, type: n.type, x: n.x ?? 0, y: n.y ?? 0, init: n.init ?? {} };
+          if (n.literals) mapped.literals = n.literals;
+          if (n.stringLiterals) mapped.stringLiterals = n.stringLiterals;
+          return mapped;
+        }),
+        connections: internal.connections as SavedConnection[],
+      };
+      for (const si of validateGraph(sub)) {
+        issues.push({ line: at(name), node: name, severity: si.severity, message: `inside the composite: ${si.message}` });
       }
     }
     const info = {
