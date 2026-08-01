@@ -4,6 +4,7 @@ import { IS_MOBILE } from "./coarse";
 import { apiKeyStore } from "./apiKeyStore";
 import { aiConnected } from "./aiKey";
 import { runAiPrompt, type AiOutcome } from "./aiService";
+import { revealAddedNodes } from "./aiReveal";
 import { diffLines, hasChanges, type DiffLine } from "./textDiff";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
 import { writeTextForm, readTextForm } from "./textForm";
@@ -158,12 +159,16 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     if (aiState.phase !== "edit") return;
     // The same governed path a file open takes: parse the validated text form,
     // rebuild the editor from it. The validator already passed this text.
-    const ok = await loadGraph(readTextForm(aiState.newText));
+    const before = new Set(readTextForm(currentTextForm()).nodes.map((n) => n.name ?? n.id));
+    const graph = readTextForm(aiState.newText);
+    const ok = await loadGraph(graph);
     if (!aliveRef.current) return;
     if (!ok) {
       setAiState({ phase: "error", message: "The rewrite failed to load. The document is unchanged." });
       return;
     }
+    // Only what the edit ADDED animates in — kept nodes stay put.
+    revealAddedNodes(graph.nodes.map((n) => n.name ?? n.id).filter((n) => !before.has(n)));
     setQuery("");
     setAiState({ phase: "idle" });
     if (!persistent) onClose();

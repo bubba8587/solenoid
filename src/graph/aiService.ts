@@ -18,6 +18,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAiKey } from "./aiKey";
+import { DEMO_KEY, makeDemoFetch } from "./aiDemo";
 import { groundingSpec } from "./aiGrounding";
 import { validateText, formatIssues, hardIssues } from "./graphValidate";
 import { writeTextForm, readTextForm } from "./textForm";
@@ -99,10 +100,14 @@ export async function runAiPrompt(
   const apiKey = getAiKey();
   if (!apiKey) return { kind: "error", message: "No AI key is stored. Add one in Settings." };
 
+  // Typing `demo` instead of a key swaps the transport for the canned local
+  // model (aiDemo.ts) — every layer above the wire (validator, repair rounds,
+  // canonicalization, diff) still runs for real.
+  const fetchImpl = opts?.fetch ?? (apiKey === DEMO_KEY ? makeDemoFetch() : undefined);
   const client = new Anthropic({
     apiKey,
     dangerouslyAllowBrowser: true, // the key is the user's own, stored on this device
-    ...(opts?.fetch ? { fetch: opts.fetch } : {}),
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
 
   const messages: Anthropic.Beta.BetaMessageParam[] = [
