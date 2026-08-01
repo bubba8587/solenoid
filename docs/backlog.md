@@ -151,13 +151,19 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   issue, seeds sweep-tested clean; `npm run validate-graph`; `npm run ai-grounding`
   generates the model-facing spec from the catalog + live classes; `run-graph` accepts
   the text form and gates on the validator — the full generate → validate → run loop
-  works headlessly). Still open before wiring the send site:
-  - **Edit granularity call** — whole-doc text-form rewrite vs validated edit-ops (the
-    archived #35 MCP sketch); prototype prompts against the headless loop to decide.
+  works headlessly). **Edit granularity DECIDED (D28): whole-doc text-form rewrite,
+  validator-gated, approval shows the old→new diff** — no edit-op layer (prototyped
+  2026-08-01: three docs authored from the spec converged in ≤2 repair rounds; the
+  spec gaps that surfaced — per-class init keys, op vocabularies, frameText/condConfig
+  payload formats, empty-default inline maps — were fixed in the generator). Still
+  open before wiring the send site:
+  - **Provider + key shape** (author call): today one `"ai"` slot; Anthropic is the
+    presumed target (browser calls need its CORS opt-in header; desktop is free via
+    `httpBridge`).
+  - **Where a response renders + AI-mode persistence** (author-present UI calls, per
+    the shell notes above).
   - **Tidy on a cold graph** — verify auto-layout handles an all-at-0,0 generated
     graph (needs the app; the headless loop can't check it).
-  - Transport is already solved: `httpBridge` (desktop CORS-free; web needs the
-    provider's browser-CORS opt-in header) + `apiKeyStore`.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19, all tiers LANDED; the program's
   history lives in `formula-node-parity.md` + the dev-notes archive). Current state

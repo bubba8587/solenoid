@@ -149,6 +149,30 @@ prerequisite layer was built:
 Open before wiring the palette send site: the edit-granularity call and the
 cold-graph Tidy check (backlog).
 
+### The authoring loop proven; the spec fixed where it failed; D28 (2026-08-01g)
+
+Acted as the model in the backlog-prescribed prototype: authored three docs from
+`ai-grounding` output alone (TVM mortgage — correct −2528.27 after wiring fv=0,
+which the spec's "any four wired" prose did cover; frame filter+group-by; Expression
+`pv*(1+r)^n` broadcast over a list), validating and running each headlessly. Every
+failure was a SPEC gap, and each got a mechanical generator fix:
+- **`- init:` per class** from `extractInit(defaultInstance)` keys (how a model
+  learns TextInput's `value` or FrameInput's `frameText` exist), width/height
+  filtered as geometry noise.
+- **Op vocabularies**: NODE_OPS registry by ctor where declared; catalog-leaf
+  variants otherwise; leaf `hiddenOps` appended (ops with no menu leaf). Residual:
+  an op dropdown living only in a component (GroupBy's agg select) still isn't
+  enumerated — its tokens ride the description prose only.
+- **"Structured init payloads" section**: `frameText` = JSON `[{name, type
+  (number|string|date|logical), values[]}]`; `condConfig` = row-index-keyed
+  `{op, matchCase}` with the full FilterOp list (a `Record<FilterOp, string>` in the
+  generator so tsc enforces completeness); row-literal convention (`str:v0="1, 2"`).
+- **Empty-default inline maps** (List Input, Filter rows) now emit
+  `inline: str: (input-row keys)` instead of silence.
+**D28 recorded**: whole-doc text-form rewrite is the AI edit granularity —
+validator-gated, approval = old→new diff; no edit-op layer (reversal conditions:
+docs outgrowing whole-doc regeneration, or #35's MCP tools shipping).
+
 ### Note markdown reads the note's accent, not the app's (2026-07-30i)
 
 `.solenoid-note__rendered.sol-md` inherited the shared doc styles wholesale, so

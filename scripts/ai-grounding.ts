@@ -12,17 +12,31 @@ import { ClassicPreset } from "rete";
 import { buildCatalog } from "../src/graph/catalogUtils";
 import type { CatalogEntry, NodeCatalogEntry, CatalogCategory } from "../src/graph/AddNodeMenu";
 import { SolenoidSocket, SOCKET_TYPE_LABELS, elementFamilyOf, latticeRank, type SocketDataType } from "../src/graph/sockets";
-import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../src/graph/copyPaste";
+import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "../src/graph/copyPaste";
+import { NODE_OPS } from "../src/graph/nodeOps";
+import type { FilterOp } from "../src/graph/frameVerbs";
+import type { FrameColType } from "../src/graph/frame";
+
+// The condition-row op vocabulary (frame/list Filter, SUMIFS `condConfig`).
+// Record over the UNION so tsc enforces the list is complete and current.
+const FILTER_OP_DOC: Record<FilterOp, string> = {
+  gt: "greater than", gte: "at least", lt: "less than", lte: "at most",
+  eq: "equals", neq: "not equal",
+  contains: "contains", startsWith: "starts with", endsWith: "ends with",
+  isblank: "is blank (no value field)", notblank: "not blank (no value field)",
+  iserror: "has error (no value field)", noterror: "no error (no value field)",
+};
+const FRAME_COL_TYPES: Record<FrameColType, true> = { number: true, string: true, date: true, logical: true };
 
 // ─── Socket signature of a headless instance ────────────────────────────────────
 
-function sig(record: Record<string, unknown> | undefined): string {
+function sig(record: Record<string, unknown> | undefined, markMulti: boolean): string {
   const parts: string[] = [];
   for (const [k, port] of Object.entries(record ?? {})) {
     if (!port || typeof port !== "object") continue;
     const p = port as { socket?: unknown; multipleConnections?: unknown };
     const t = p.socket instanceof SolenoidSocket ? p.socket.dataType : "?";
-    parts.push(`${k}:${t}${p.multipleConnections === true ? "*" : ""}`);
+    parts.push(`${k}:${t}${markMulti && p.multipleConnections === true ? "*" : ""}`);
   }
   return parts.join(", ");
 }
@@ -33,6 +47,11 @@ interface ClassInfo {
   variants: Array<{ leaf: NodeCatalogEntry; op: string | null; inputs: string; outputs: string }>;
   litKeys: string[];
   strKeys: string[];
+  /** Declares the map but with no default keys (rows materialize as they're
+   *  added) — inline values are accepted on the input-row keys. */
+  litOpen: boolean;
+  strOpen: boolean;
+  initKeys: string[];
   hidden: boolean;
 }
 
@@ -59,12 +78,26 @@ function visit(entries: CatalogEntry[], path: string[]): void {
       const ctorName = inst.constructor.name;
       let info = classes.get(ctorName);
       if (!info) {
+        // The init keys this class round-trips: extractInit reads them OFF the
+        // instance, so a default instance names exactly the fields the class
+        // persists — which is what an author may set (minus the inline-literal
+        // spread, listed separately as "inline:").
+        // width/height are geometry defaults, not logic — the sidecar carries
+        // real sizes; listing them on every class would only be noise.
+        const roundTrip = Object.keys(extractInit(inst)).filter((k) => k !== "width" && k !== "height");
+        const hasLits = typeof anyInst.literals === "object" && anyInst.literals !== null;
+        const hasStrs = typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null;
+        const lits = hasLits ? Object.keys(anyInst.literals as object) : [];
+        const strs = hasStrs ? Object.keys(anyInst.stringLiterals as object) : [];
         info = {
           ctorName,
           path,
           variants: [],
-          litKeys: typeof anyInst.literals === "object" && anyInst.literals ? Object.keys(anyInst.literals as object) : [],
-          strKeys: typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals ? Object.keys(anyInst.stringLiterals as object) : [],
+          litKeys: lits,
+          strKeys: strs,
+          litOpen: hasLits && lits.length === 0,
+          strOpen: hasStrs && strs.length === 0,
+          initKeys: roundTrip.filter((k) => !lits.includes(k) && !strs.includes(k)),
           hidden: leaf.hidden === true,
         };
         classes.set(ctorName, info);
@@ -74,14 +107,21 @@ function visit(entries: CatalogEntry[], path: string[]): void {
       info.variants.push({
         leaf,
         op: typeof anyInst.op === "string" ? (anyInst.op as string) : null,
-        inputs: sig(anyInst.inputs as Record<string, unknown> | undefined),
-        outputs: sig(anyInst.outputs as Record<string, unknown> | undefined),
+        inputs: sig(anyInst.inputs as Record<string, unknown> | undefined, true),
+        outputs: sig(anyInst.outputs as Record<string, unknown> | undefined, false),
       });
     }
   }
 }
 
 visit(buildCatalog(false), []);
+
+// Full op vocabulary per class from the NODE_OPS registry — the catalog's
+// leaves can be a subset (hidden ops have no Add-menu leaf of their own).
+const opsByCtor = new Map<string, Array<{ op: string; label: string }>>();
+for (const decl of NODE_OPS) {
+  if (decl.ops) opsByCtor.set(decl.ctor.name, decl.ops.map((o) => ({ op: o.op, label: o.label })));
+}
 
 // ─── Emit ───────────────────────────────────────────────────────────────────────
 
@@ -148,13 +188,28 @@ for (const [t, label] of Object.entries(SOCKET_TYPE_LABELS)) {
 w();
 w(`## Init-field whitelist`);
 w();
-w(`Only these keys ever persist as \`key=\` init fields (which apply to which class`);
-w(`follows from the class's own config — \`op\` selects a variant, \`label\` titles the`);
-w(`card, etc.):`);
+w(`Only these keys ever persist as \`key=\` init fields; each class's own "init:"`);
+w(`line below names the ones it actually reads (\`op\` selects a variant, \`label\``);
+w(`titles the card, etc.):`);
 w();
 w("```");
 w([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER].join(" "));
 w("```");
+w();
+w(`## Structured init payloads`);
+w();
+w(`A few init fields carry a structured value (JSON-encoded like every init value —`);
+w(`inside a text-form line that means an escaped JSON string):`);
+w();
+w(`- \`frameText\` (FrameInputNode) — the table's data: a JSON array of columns,`);
+w(`  each \`{"name": string, "type": ${Object.keys(FRAME_COL_TYPES).map((t) => `"${t}"`).join("|")}, "values": [...]}\`.`);
+w(`  Values may be \`null\` (a missing cell); date cells are "YYYY-MM-DD" strings.`);
+w(`- \`condConfig\` (Frame Filter / List Filter / SUMIFS) — per condition-row config,`);
+w(`  keyed by row index as a STRING: \`{"0": {"op": "gt"}, "1": {"op": "contains", "matchCase": true}}\`.`);
+w(`  Row 0's column/value are the \`column0\`/\`value0\` sockets (inline via \`str:\`), row 1's`);
+w(`  are \`column1\`/\`value1\`, and so on. Ops: ${Object.entries(FILTER_OP_DOC).map(([op, d]) => `\`${op}\` (${d})`).join(", ")}.`);
+w(`- Row inputs like \`v0\`, \`value1\` on list-building nodes take comma-separated`);
+w(`  values per row (\`str:v0="1, 2, 3"\`); every row concatenates into one list.`);
 w();
 w(`## Node classes`);
 w();
@@ -174,7 +229,6 @@ for (const ctorName of order) {
   }
   const first = info.variants[0];
   const allSameSockets = info.variants.every((v) => v.inputs === first.inputs && v.outputs === first.outputs);
-  const ops = info.variants.filter((v) => v.op !== null);
   w();
   w(`#### \`${ctorName}\`${info.variants.length === 1 ? ` — ${first.leaf.label}` : ""}`);
   if (first.leaf.description) w(first.leaf.description);
@@ -182,16 +236,31 @@ for (const ctorName of order) {
     w(`- in: ${first.inputs || "—"}`);
     w(`- out: ${first.outputs || "—"}`);
   }
+  if (info.initKeys.length > 0) w(`- init: ${info.initKeys.join(", ")}`);
   const inline: string[] = [];
   if (info.litKeys.length > 0) inline.push(`lit: ${info.litKeys.join(", ")}`);
+  else if (info.litOpen) inline.push(`lit: (input-row keys)`);
   if (info.strKeys.length > 0) inline.push(`str: ${info.strKeys.join(", ")}`);
+  else if (info.strOpen) inline.push(`str: (input-row keys)`);
   if (inline.length > 0) w(`- inline: ${inline.join(" · ")}`);
-  if (info.variants.length > 1) {
+  // The op vocabulary: the registry's full list when the class has one (catalog
+  // leaves can be a subset — hidden ops have no menu leaf); else the leaves.
+  const registryOps = opsByCtor.get(ctorName);
+  if (registryOps && allSameSockets) {
+    w(`- ops: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
+  } else if (info.variants.length > 1) {
     for (const v of info.variants) {
       const opPart = v.op !== null ? `op=${JSON.stringify(v.op)} — ` : "";
       const sockets = allSameSockets ? "" : ` (in: ${v.inputs || "—"} → out: ${v.outputs || "—"})`;
       w(`- ${opPart}${v.leaf.label}${sockets}`);
     }
+  }
+  // Ops the class hosts that have no Add-menu leaf of their own (the catalog
+  // builder derives these from NODE_OPS) — still valid `op=` values.
+  const hidden = info.variants.flatMap((v) => v.leaf.hiddenOps ?? []);
+  const listed = new Set(info.variants.map((v) => v.op));
+  for (const h of hidden.filter((h, i, a) => !listed.has(h.op) && a.findIndex((x) => x.op === h.op) === i)) {
+    w(`- op=${JSON.stringify(h.op)} — ${h.label}`);
   }
 }
 w();
