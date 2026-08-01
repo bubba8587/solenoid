@@ -656,6 +656,25 @@ capability).
 approval) or the feature starts distorting the Excel-refugee focus into an AI-first
 pitch — the positioning ruling is the tripwire.
 
+### D28 — AI edit granularity: whole-document text-form rewrite, gated and diffed
+**When:** 2026-08-01, decided on prototype evidence (three docs — TVM mortgage, frame
+filter+group-by, Expression broadcast — authored from the generated grounding spec
+against the headless validate→run loop; each converged in ≤2 repair rounds, and every
+stumble was a SPEC gap, not a grammar/granularity problem).
+**Where:** the loop: `graphValidate.ts` + `scripts/ai-grounding.ts` + `run-graph`.
+**The decision:** the model reads the document's current text form and emits a FULL
+replacement; the strict validator gates the apply and the approval step shows the
+old→new text diff (the canonical byte-identical writer makes that diff honest and
+minimal). NO edit-op layer (add/remove/rewire operations) for the in-app AI: a second
+grammar to ground, a second validator, and partial-state semantics — pure cost while
+documents are model-sized (tens of lines, well inside reliable model output), and the
+validator + diff already deliver the safety an op layer would claim.
+**Cost accepted:** token cost scales with document size (the model echoes the whole
+doc per edit); a very large canvas would pay it on every prompt.
+**What would reverse it:** documents that outgrow reliable whole-doc regeneration
+(hundreds of nodes), or the #35 external-agent MCP port shipping — its typed tools ARE
+the op layer, and the in-app path could then reuse them.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
