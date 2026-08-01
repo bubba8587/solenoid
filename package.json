@@ -18,6 +18,7 @@
     "ai-grounding": "tsx scripts/ai-grounding.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.2.5",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.2.6",
     "@formulajs/formulajs": "^4.6.0",

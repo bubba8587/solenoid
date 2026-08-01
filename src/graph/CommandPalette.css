@@ -159,6 +159,89 @@
   background: color-mix(in srgb, var(--accent-ink) 16%, transparent);
 }
 
+/* ── AI turn output ───────────────────────────────────────────────────────────
+   The panel above the prompt field carrying the turn's result. A NEUTRAL overlay
+   surface (the accent stays on the input, marking the mode); diff-line tints are
+   state colors per the Quiet Accent Rule — success = added, danger = removed. */
+.solenoid-cmdpalette__airesult {
+  order: -1;
+  margin-bottom: 4px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 6px;
+  box-shadow: var(--overlay-shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.solenoid-cmdpalette__aibusy { color: var(--text-dim); font-size: 12px; padding: 2px 4px; }
+
+.solenoid-cmdpalette__aianswer {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 4px;
+  white-space: pre-wrap;
+  max-height: min(280px, 40vh);
+  max-height: min(280px, 40dvh);
+  overflow-y: auto;
+}
+
+.solenoid-cmdpalette__aierror {
+  color: var(--danger, #e0473a);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 4px;
+  white-space: pre-wrap;
+  max-height: min(280px, 40vh);
+  max-height: min(280px, 40dvh);
+  overflow-y: auto;
+}
+
+.solenoid-cmdpalette__aidiff {
+  background: var(--surface-sunken, #141414);
+  border: 1px solid var(--border, #2d2d2d);
+  border-radius: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 0;
+  max-height: min(280px, 40vh);
+  max-height: min(280px, 40dvh);
+  overflow: auto;
+}
+.solenoid-cmdpalette__aidiffline { padding: 0 8px; white-space: pre; }
+.solenoid-cmdpalette__aidiffline--add { background: color-mix(in srgb, var(--success, #2fae7a) 14%, transparent); }
+.solenoid-cmdpalette__aidiffline--del {
+  background: color-mix(in srgb, var(--danger, #e0473a) 12%, transparent);
+  color: var(--text-dim);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--danger, #e0473a) 55%, transparent);
+}
+
+.solenoid-cmdpalette__aiwarnings { color: var(--warning, #d9a93b); font-size: 11px; line-height: 1.4; padding: 0 4px; }
+
+.solenoid-cmdpalette__aiactions { display: flex; justify-content: flex-end; gap: 6px; }
+.solenoid-cmdpalette__aibtn {
+  background: var(--surface-sunken, #141414);
+  border: 1px solid var(--border, #2d2d2d);
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.solenoid-cmdpalette__aibtn:hover { background: var(--btn-hover, #262626); border-color: var(--border-strong, #3a3a3a); }
+/* The one confirming action: accent-filled with the readable-on-accent ink. */
+.solenoid-cmdpalette__aibtn--apply {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.solenoid-cmdpalette__aibtn--apply:hover { background: var(--accent); filter: brightness(1.06); }
+
 /* The transform between the two states. Short and functional per DESIGN.md's motion
    rule — long enough to read as a change of mode, not a choreographed reveal. The
    transition lives on the resting rules so it plays in BOTH directions. */
@@ -182,7 +265,8 @@ html.is-mobile .solenoid-cmdpalette {
   top: calc(env(safe-area-inset-top, 0px) + 92px);
   bottom: auto;
 }
-html.is-mobile .solenoid-cmdpalette__results {
+html.is-mobile .solenoid-cmdpalette__results,
+html.is-mobile .solenoid-cmdpalette__airesult {
   order: 1;
   margin-bottom: 0;
   margin-top: 4px;

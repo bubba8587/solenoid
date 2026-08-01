@@ -149,6 +149,33 @@ prerequisite layer was built:
 Open before wiring the palette send site: the edit-granularity call and the
 cold-graph Tidy check (backlog).
 
+### The AI palette send site goes live: Anthropic, full authoring (2026-08-01h)
+
+Author calls: Anthropic only · full authoring as the first scope · Vercel-preview
+verification. The palette's inert TODO is now the working loop:
+- **`aiGrounding.ts`** — the spec emitter moved from the script into src (the script
+  is a thin CLI shell; output byte-identical). The app builds the system prompt from
+  it at runtime, cached per session so the provider prompt-cache prefix stays stable.
+- **`aiService.ts`** — official `@anthropic-ai/sdk` (browser opt-in; the key is the
+  user's own from Settings ▸ AI), `claude-opus-5`, `max_tokens` 16000, server-side
+  refusal fallback (`fallbacks: "default"`). Protocol: prose answer OR a full
+  replacement text form in a ```solenoid fence; the fence is validator-gated
+  (`graphValidate`), hard issues go back as repair rounds (≤2), the accepted rewrite
+  is canonicalized through readTextForm→writeTextForm so the diff shows semantic
+  changes only. Typed-error mapping to plain messages. Injectable fetch; the test
+  file drives every branch against a fake transport (`aiService.test.ts`).
+- **`textDiff.ts`** — pure LCS line diff for the approval view (`textDiff.test.ts`).
+- **`CommandPalette.tsx`** — Enter in AI mode submits; result panel above the field
+  (neutral overlay surface — the accent stays on the input marking the mode): busy /
+  answer / error / diff-with-Cancel+Apply. Apply parses the validated text and rides
+  `loadGraph` (the file-open path; undo history drops, recorded in the backlog).
+  Escape steps out of a result before it closes the palette.
+- **`Settings.tsx`** — the AI key row names Anthropic; stale "no requests are sent
+  yet" copy corrected.
+- **Tauri CSP** gains `https://api.anthropic.com` in connect-src (untested on a
+  desktop build — backlogged).
+tsc + vitest green (3916); `npm run build` clean for the preview.
+
 ### The authoring loop proven; the spec fixed where it failed; D28 (2026-08-01g)
 
 Acted as the model in the backlog-prescribed prototype: authored three docs from
