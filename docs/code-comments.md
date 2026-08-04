@@ -46,6 +46,30 @@ the exception that must be argued. Test files (`*.test.ts[x]`) are exempt, for n
 7. **TODOs → backlog.md** (the single to-do home). **Commented-out code → delete**
    (git has it).
 
+## The blast-radius test — comment vs spec
+
+A constraint earns a COMMENT (not a spec entry) only when all three hold:
+1. **Blast radius is one edit site** — the knowledge is about these exact lines and
+   constrains nothing elsewhere (a spec's unit is a subsystem; a comment's is a line).
+2. **No doc is on the path to the mistake** — the person who'd break it is at the
+   line, with nothing signalling there's anything to look up (e.g. deleting one of
+   two "redundant" listeners). If the file reads as a governed subsystem, route it.
+3. **The stronger homes are unavailable** — it can't be a name, a type, or a test.
+Same-looking prose flips the other way when it governs a module's architecture:
+that's a spec, and the sweep promotes it.
+
+## Compression rules (a keeper is not a keepsake)
+
+- **A surviving comment is ONE sentence** stating the constraint — not the essay
+  around it. Exceptions: enumerated contracts/tables (an op list, a truth table,
+  a case analysis) where the enumeration IS the content.
+- **Module headers: max 2 lines** (scope + hard constraint). On ROUTED files:
+  zero scope prose — the routing table and the filename carry it.
+- **Section banners** only in genuinely long files (~400+ lines), one line each;
+  the export's name usually already announces the section.
+- **No Excel-equivalent/duplicate annotations** that restate what the catalog or a
+  spec already carries.
+
 ## What a GOOD surviving comment looks like
 
 - A non-obvious mechanism at exactly the line it governs: "The sig is
