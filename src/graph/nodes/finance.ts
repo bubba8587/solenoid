@@ -66,7 +66,6 @@ export class BitwiseNode extends ClassicPreset.Node {
   data(inputs: { a?: number[]; b?: number[] }) {
     const aRaw = readInput(inputs.a, this.literals.a ?? 0);
     const bRaw = readInput(inputs.b, this.literals.b ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (aRaw === null || bRaw === null) { this.cachedResult = null; return { result: null }; }
     const a = Math.trunc(aRaw);
     const b = Math.trunc(bRaw);
@@ -118,9 +117,8 @@ export class DepreciationNode extends ClassicPreset.Node {
     const life    = readInput(inputs.life, this.literals.life ?? null);
     const per     = readInput(inputs.per, this.literals.per ?? null);
     const factor  = readInput(inputs.factor, this.literals.factor ?? 2);
-    // SLN/SYD/DDB/DB are closed-form and verified byte-identical to Formula.js across
-    // the domain this node allows — the domain GUARDS above stay hand-rolled (they gate
-    // which op even runs), only the actual depreciation formula routes through the seam.
+    // The domain GUARDS below stay hand-rolled (they gate which op even runs); only
+    // the depreciation formula itself routes through the seam.
     let result: number | null = null;
     if (cost !== null && salvage !== null && life !== null && life > 0) {
       if (this.op === "sln") {
@@ -129,8 +127,6 @@ export class DepreciationNode extends ClassicPreset.Node {
         if (this.op === "syd") {
           result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
         } else if (this.op === "ddb") {
-          // A wired blank factor leaves the result unknown (value-semantics.md,
-          // "Reading an input") — the other operands already null-guard above.
           result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
         } else if (this.op === "db") {
           result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
@@ -144,13 +140,11 @@ export class DepreciationNode extends ClassicPreset.Node {
 }
 
 // â”€â”€â”€ TVM (Time Value of Money) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ONE acausal node for the whole PMT / PV / FV / NPER / RATE family: the
-// annuity relation as a locked Equation. Wire any four of {rate, nper, pmt,
-// pv, fv} and the fifth solves — pv/pmt/fv symbolically, nper/rate through the
-// numeric fallback (which subsumes RATE's old Newton iteration and its guess
-// input; the smallest-magnitude-root rule picks the meaningful rate over the
-// spurious 1+r < 0 crossing). Wire all five and Check truth-checks the books.
-// Payment timing stays a CONFIG dropdown, not a variable: it swaps which
+// ONE acausal node for the whole PMT / PV / FV / NPER / RATE family: the annuity
+// relation as a locked Equation. Wire any four of {rate, nper, pmt, pv, fv} and the
+// fifth solves — pv/pmt/fv symbolically, nper/rate through the numeric fallback (the
+// smallest-magnitude-root rule picks the meaningful rate over the spurious 1+r < 0
+// crossing). Payment timing stays a CONFIG dropdown, not a variable: it swaps which
 // locked relation is compiled, exactly like Excel's 0/1 `type` argument.
 
 export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
@@ -172,7 +166,7 @@ export class TvmNode extends EquationNode {
     super({
       label: init?.label ?? "Time Value of Money",
       expr: TVM_TIMING_EXPRS[timing],
-      // Locked by default (the relation is the node); honored from init so the
+      // Locked by default (the relation IS the node); honored from init so the
       // persistence fixed-point sweep round-trips.
       locked: init?.locked ?? true,
     });
@@ -239,13 +233,11 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
     const nper = readInput(inputs.nper, this.literals.nper ?? 0);
     const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
     const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || per === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { result: null }; }
     const type = this.paymentTiming === "beg" ? 1 : 0;
 
     let result: number | null = null;
 
-    // Compute PMT first
     let pmt: number;
     if (Math.abs(rate) < 1e-12) {
       pmt = nper !== 0 ? -(pv + fv) / nper : 0;
@@ -255,10 +247,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
     }
 
     if (Number.isFinite(pmt)) {
-      // IPMT/PPMT are closed-form and verified byte-identical to Formula.js (incl. the
-      // type=1 "no interest in period 1" case) once rate is non-negligible — the
-      // rate≈0 case stays hand-rolled (trivially 0 interest either way, untested
-      // against Formula.js at that degenerate input).
+      // The rate≈0 case stays hand-rolled (trivially 0 interest either way).
       let ipmt: number;
       if (Math.abs(rate) < 1e-12) {
         ipmt = 0;
@@ -299,9 +288,7 @@ export class NpvNode extends ClassicPreset.Node {
   data(inputs: { rate?: number[]; list?: (number | null | SolError)[][] }) {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
-    // An error outranks an unknown — same precedence installErrorGuards gives it.
     if (error) { this.cachedResult = error; return { result: error }; }
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (cashflows.length > 0) {
@@ -396,9 +383,7 @@ export class MirrNode extends ClassicPreset.Node {
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     const finrate    = readInput(inputs.finrate, this.literals.finrate ?? 0.1);
     const reinrate   = readInput(inputs.reinrate, this.literals.reinrate ?? 0.12);
-    // An error outranks an unknown — same precedence installErrorGuards gives it.
     if (error) { this.cachedResult = error; return { result: error }; }
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (finrate === null || reinrate === null) { this.cachedResult = null; return { result: null }; }
     if (cashflows.length <= 1) {
       this.cachedResult = null;
@@ -434,9 +419,6 @@ export class MirrNode extends ClassicPreset.Node {
   }
 }
 
-// PDURATION / RRI collapsed into the "Compound Growth" locked Equation preset
-// (nodeCatalog.ts): fv = pv·(1+rate)^nper — wire three, the fourth solves.
-
 // â”€â”€â”€ FVSCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const FVSCHEDULE_META = {
   label: "FVSCHEDULE",
@@ -460,9 +442,7 @@ export class FvScheduleNode extends ClassicPreset.Node {
   data(inputs: { pv?: number[]; schedule?: (number | null | SolError)[][] }) {
     const pv    = readInput(inputs.pv, this.literals.pv ?? 1000);
     const { error, nums: rates } = cashPrep(inputs.schedule?.[0] ?? null);
-    // An error outranks an unknown — same precedence installErrorGuards gives it.
     if (error) { this.cachedResult = error; return { result: error }; }
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (pv === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     {
@@ -502,7 +482,6 @@ export class IspmtNode extends ClassicPreset.Node {
     const per  = readInput(inputs.per, this.literals.per ?? 1);
     const nper = readInput(inputs.nper, this.literals.nper ?? 0);
     const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || per === null || nper === null || pv === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (nper > 0) {
@@ -541,7 +520,6 @@ export class DollarNode extends ClassicPreset.Node {
   data(inputs: { dollar?: number[]; fraction?: number[] }) {
     const dollar      = readInput(inputs.dollar, this.literals.dollar ?? 0);
     const fractionRaw = readInput(inputs.fraction, this.literals.fraction ?? 32);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (dollar === null || fractionRaw === null) { this.cachedResult = null; return { result: null }; }
     const fraction = Math.floor(fractionRaw);
     let result: number | null = null;
@@ -591,7 +569,6 @@ export class VdbNode extends ClassicPreset.Node {
     const start   = readInput(inputs.start, this.literals.start ?? 0);
     const end     = readInput(inputs.end, this.literals.end ?? 0);
     const factor  = readInput(inputs.factor, this.literals.factor ?? 2);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (cost === null || salvage === null || life === null || start === null || end === null || factor === null) {
       this.cachedResult = null; return { result: null };
     }
@@ -636,7 +613,6 @@ export class CumPmtNode extends ClassicPreset.Node {
     const pv    = readInput(inputs.pv, this.literals.pv ?? 0);
     const startRaw = readInput(inputs.start, this.literals.start ?? 1);
     const endRaw   = readInput(inputs.end, this.literals.end ?? 1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
       this.cachedResult = null; return { result: null };
     }
@@ -647,7 +623,6 @@ export class CumPmtNode extends ClassicPreset.Node {
     let result: number | null = null;
 
     if (start >= 1 && end >= start && nper > 0) {
-      // Compute PMT
       let pmt: number;
       if (Math.abs(rate) < 1e-12) {
         pmt = nper !== 0 ? -(pv + 0) / nper : 0; // fv = 0 assumed
@@ -722,21 +697,18 @@ export class TBillNode extends ClassicPreset.Node {
     switch (this.op) {
       case "tbilleq": {
         const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
-        // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
         if (d === null) { this.cachedResult = null; return { result: null }; }
         result = (365 * d) / (360 - d * dsm);
         break;
       }
       case "tbillprice": {
         const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
-        // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
         if (d === null) { this.cachedResult = null; return { result: null }; }
         result = 100 * (1 - d * dsm / 360);
         break;
       }
       case "tbillyield": {
         const pr = readInput(inputs.price, this.literals.price ?? 97.5);
-        // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
         if (pr === null) { this.cachedResult = null; return { result: null }; }
         result = ((100 - pr) / pr) * (365 / dsm);
         break;
@@ -787,7 +759,6 @@ export class SecurityDiscNode extends ClassicPreset.Node {
     const m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (basis === null) { this.cachedResult = null; return { result: null }; }
     // `a` is the price (DISC) or the investment (INTRATE/RECEIVED); `b` the
     // redemption (DISC/INTRATE) or the discount rate (RECEIVED).
@@ -839,7 +810,6 @@ export class CouponNode extends ClassicPreset.Node {
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const freq  = readInput(inputs.frequency, this.literals.frequency ?? 2);
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (freq === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = couponValue(this.op, s, m, freq, basis);
     this.cachedResult = result;
@@ -875,7 +845,6 @@ export class AccrintNode extends ClassicPreset.Node {
     const par   = readInput(inputs.par, this.literals.par ?? 1000);
     const freqRaw = readInput(inputs.frequency, this.literals.frequency ?? 2);
     const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || par === null || freqRaw === null || basisRaw === null) { this.cachedResult = null; return { result: null }; }
     const freq = Math.round(freqRaw);
     const basis = Math.round(basisRaw);
@@ -916,7 +885,6 @@ export class AccrintMNode extends ClassicPreset.Node {
     const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
     const par   = readInput(inputs.par, this.literals.par ?? 1000);
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || par === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = accrintM(is, ss, rate, par, basis);
     this.cachedResult = result;
@@ -956,7 +924,6 @@ export class PriceDiscNode extends ClassicPreset.Node {
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const basis      = readInput(inputs.basis, this.literals.basis ?? 0);
     const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (basis === null || redemption === null) { this.cachedResult = null; return { result: null }; }
     // The discount rate for PRICEDISC, the market price for YIELDDISC.
     const rateOrPrice = this.op === "pricedisc"
@@ -1002,7 +969,6 @@ export class PriceMatNode extends ClassicPreset.Node {
     if (s == null || m == null || is == null) { this.cachedResult = null; return { result: null }; }
     const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || basis === null) { this.cachedResult = null; return { result: null }; }
     // The yield for PRICEMAT, the market price for YIELDMAT.
     const yldOrPrice = this.op === "pricemat"
@@ -1049,7 +1015,6 @@ export class DurationNode extends ClassicPreset.Node {
     const yld    = readInput(inputs.yld, this.literals.yld ?? 0.09);
     const freq   = readInput(inputs.frequency, this.literals.frequency ?? 2);
     const basis  = readInput(inputs.basis, this.literals.basis ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (coupon === null || yld === null || freq === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = durationValue(this.op, s, m, coupon, yld, freq, basis);
     this.cachedResult = result;
@@ -1091,7 +1056,6 @@ export class BondPriceNode extends ClassicPreset.Node {
     const rate       = readInput(inputs.rate, this.literals.rate ?? 0.065);
     const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
     const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
     // The yield for PRICE, the market price for YIELD.
     const yldOrPrice = this.op === "price"
@@ -1205,7 +1169,6 @@ export class OddCouponNode extends ClassicPreset.Node {
     const rate       = readInput(inputs.rate, this.literals.rate ?? 0.0775);
     const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
     const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
     // The yield for the *PRICE ops, the market price for the *YIELD ops (which
     // Newton-solve for the yield that reproduces it).
@@ -1246,7 +1209,6 @@ export class XnpvNode extends ClassicPreset.Node {
 
   data(inputs: { rate?: number[]; values?: number[][]; dates?: number[][] }): { result: number | SolError | null } {
     const rate   = readInput(inputs.rate, this.literals.rate ?? 0.1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (rate === null) { this.cachedResult = null; return { result: null }; }
     // Same prep as XIRR: error first, null cash → 0, null date → unknown
     // (value-semantics.md, "an error outranks an unknown").
@@ -1257,10 +1219,8 @@ export class XnpvNode extends ClassicPreset.Node {
     if (datesRaw.some((d) => d == null)) { this.cachedResult = null; return { result: null }; }
     const dates = datesRaw as number[];
     if (values.length === 0 || dates.length === 0) { this.cachedResult = null; return { result: null }; }
-    // Truncate to equal length BEFORE handing off — verified Formula.js's XNPV takes
-    // our date serials directly (no Date-object conversion needed) and matches this
-    // year-fraction-from-365 formula exactly, but its own ragged-array behavior is
-    // untested, so keep that truncation hand-rolled.
+    // Truncate to equal length BEFORE handing off: Formula.js's XNPV takes our date
+    // serials directly, but its ragged-array behavior is untested.
     const n      = Math.min(values.length, dates.length);
     const raw    = resolveExcelFunction("XNPV")!(rate, values.slice(0, n), dates.slice(0, n)) as number;
     // A non-finite result is not a number the graph can carry (no-NaN rule).

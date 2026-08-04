@@ -1,11 +1,6 @@
-// Shared CSV parsing. The app reads comma-separated text in several places
-// (Table Input, Frame Input, the CSV-view popup, and the Web Source / CSV File
-// connection). CSV is a deceptively deep format — quoted fields with embedded
-// commas, doubled-quote escaping, fields that span physical lines, BOMs, CRLF,
-// alternate delimiters — so rather than hand-maintain a parser we delegate to
-// Papa Parse (RFC 4180, no transitive deps, synchronous). These wrappers keep a
-// small `string[][]` interface so the call sites stay simple and the engine can
-// be swapped without touching them.
+// Shared CSV parsing — delegates to Papa Parse (RFC 4180, synchronous). These
+// wrappers keep a small `string[][]` interface so the engine can be swapped
+// without touching the call sites.
 
 import Papa from "papaparse";
 
@@ -16,10 +11,9 @@ export interface CsvOptions {
    *  Source connection) turns it on so a European semicolon export still loads. */
   detectDelimiter?: boolean;
   /** Keep blank / whitespace-only lines as single-empty-field rows instead of
-   *  dropping them. File ingestion wants them GONE (the default); a LITERAL
-   *  source whose raw text is the stored truth (Table Input) wants them KEPT —
-   *  a blank row the user typed is data (a row of missing cells), and dropping
-   *  it here silently deleted it from the Source on the next popup save. */
+   *  dropping them. File ingestion wants them GONE (the default); a LITERAL source
+   *  whose raw text is the stored truth (Table Input) wants them KEPT — a blank row
+   *  the user typed is data (a row of missing cells). */
   keepBlankLines?: boolean;
 }
 

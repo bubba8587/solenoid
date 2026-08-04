@@ -7,8 +7,7 @@ import {
  * A drop-in `<select>` that keeps its option list OUT of the DOM until the user
  * is about to open it. Native options render zero pixels while the dropdown is
  * closed, yet a mounted catalog-sized list (the FC's unit dropdown, Convert's
- * unit pickers) was the single largest DOM-weight bucket on a formula-heavy
- * graph — thousands of invisible <option>/<optgroup> elements.
+ * unit pickers) is thousands of invisible <option>/<optgroup> elements.
  *
  * Width: node cards are max-content-sized, so the WIDEST option is what holds a
  * select (and its card) wide — dropping to one option would shrink the card,

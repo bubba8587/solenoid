@@ -43,7 +43,7 @@ type State = { tree: Row[]; flat: Row[] };
 
 function colorOf(n: unknown, mode: "dark" | "light"): string {
   const base = n instanceof GroupNode
-    ? resolveColor((n as GroupNode).color) // resolve the palette SLOT to a hex, exactly like GroupNode does
+    ? resolveColor((n as GroupNode).color)
     : NODE_KIND_ACCENTS[nodeKindOf(n as never)] ?? "#8a8f98";
   return themeAccent(base, mode);
 }
@@ -82,8 +82,6 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   const nodes = editor.getNodes();
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
-  // Wiring, for the "input" category (see catOf): which nodes have a cable INTO them
-  // (targets) vs OUT of them (sources). A source = wired out, not wired in.
   const conns = editor.getConnections();
   const wiredIn = new Set(conns.map((c) => c.target));
   const wiredOut = new Set(conns.map((c) => c.source));
@@ -93,8 +91,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   // row bands, then left→right within a band. ROW_BAND is intentionally GENEROUS
   // (biased toward left-right): nodes within ~120px of vertical land in one band
   // and read left→right, so the order tracks columns/rows the way the eye scans
-  // rather than reacting to small y jitter. Reads coords from area.nodeViews, so
-  // the order tracks the canvas as nodes move.
+  // rather than reacting to small y jitter.
   const labelOf = (n: (typeof nodes)[number]) => (n as { label?: string }).label ?? "";
   const posOf = (n: (typeof nodes)[number]) => area?.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
   const ROW_BAND = 120;
@@ -128,10 +125,8 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
     };
   };
 
-  // Flat list (all real nodes, FCs excluded) for search / filters.
   const flat = sorted(nodes.filter((n) => !(n instanceof FormatControllerNode))).map((n) => rowOf(n, 0));
 
-  // Tree (respects membership + collapse) for browsing.
   const tree: Row[] = [];
   const seen = new Set<string>();
   const push = (n: (typeof nodes)[number], depth: number) => {
@@ -161,9 +156,8 @@ export async function focusNode(id: string) {
   if (!node || !box) return;
   const { k } = area.area.transform;
   const rect = area.container.getBoundingClientRect();
-  // measuredBox reads the LIVE rendered size first — the old node.width-first
-  // read centered a collapsed group on its stored EXPANDED box, off-centering
-  // the camera by half the size difference.
+  // measuredBox reads the LIVE rendered size first: a collapsed group's STORED
+  // box is its expanded one, which would off-center the camera.
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
   await area.area.translate(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
@@ -175,22 +169,19 @@ function toggleGroup(id: string) {
   if (!editor || !area) return;
   const g = editor.getNode(id);
   if (!(g instanceof GroupNode)) return;
-  // Centralised toggle: flip + sync + re-render + settle + push/restore.
   void setGroupsCollapsed(editor, area, [g], !g.collapsed);
 }
 
 // Collapse every group, or expand them all if they're already collapsed.
 // Routes through setGroupsCollapsed so the neighbor-push (and the top-left →
 // bottom-right expand sweep) is applied, same as the single-group toggle.
-// Exported so the TopBar's layout pill can host a duplicate of this button
-// (shared handler, no behavior change).
 export function toggleAllGroups() {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return;
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   if (groups.length === 0) return;
-  const collapse = groups.some((g) => !g.collapsed); // any expanded → collapse all
+  const collapse = groups.some((g) => !g.collapsed);
   void setGroupsCollapsed(editor, area, groups, collapse);
 }
 
@@ -208,10 +199,6 @@ const FILTERS: { key: "input" | "display"; label: string }[] = [
   { key: "input", label: "Inputs" },
   { key: "display", label: "Displays" },
 ];
-
-// Touch has no Ctrl/Shift, so a plain row tap has to do something. In mobile
-// mode a tap selects + focuses the node, and a tap while select mode is on
-// accumulates (the navigator's multi-select path on mobile).
 
 export function OutlinePanel() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -339,11 +326,9 @@ export function OutlinePanel() {
   const handleRowClick = (e: MouseEvent, id: string) => {
     // Ctrl/Cmd (desktop) or select mode (touch) accumulates; Shift range-selects.
     // IS_COARSE, not IS_MOBILE: a tablet reaches select mode from the top bar
-    // (TabletActions) while IS_MOBILE is false there, so the mobile-only test
-    // left the Navigator ignoring select mode on exactly the device that has no
-    // keyboard to Ctrl-click with. The plain-click branch below stays IS_MOBILE:
-    // that one is about there being no double-click, which a tablet shares with
-    // the desktop pointer model.
+    // (TabletActions) while IS_MOBILE is false there. The plain-click branch
+    // below stays IS_MOBILE: that one is about there being no double-click,
+    // which a tablet shares with the desktop pointer model.
     const accumulate = e.ctrlKey || e.metaKey || (IS_COARSE && touchSelectStore.get());
     const range = e.shiftKey;
     if (!accumulate && !range) {
@@ -379,9 +364,6 @@ export function OutlinePanel() {
     });
 
   if (!open) {
-    // Collapsed: a small pill pairing the navigator toggle with a search button.
-    // Search is just "open the navigator AND focus its search field", so the two
-    // live together rather than search hiding off in the app menu.
     return (
       <div className="solenoid-outline__open-pill" onPointerDown={(e) => e.stopPropagation()}>
         <button
@@ -540,7 +522,6 @@ export function OutlinePanel() {
                   onClick={(e) => { e.stopPropagation(); toggleConns(r.id); }}
                 >
                   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    {/* Two sockets joined by a cable — the app's own connection metaphor. */}
                     <path d="M5 11 L11 5" />
                     <circle cx="3.5" cy="12.5" r="2" fill="currentColor" stroke="none" />
                     <circle cx="12.5" cy="3.5" r="2" fill="currentColor" stroke="none" />

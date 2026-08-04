@@ -22,16 +22,10 @@ type Props = {
   className?: string;
 };
 
-/**
- * Measures an element's vertical center relative to its offsetParent — the
- * `.solenoid-node__content` wrapper, which sits BELOW the header — and returns the
- * `top` to hand NodeSocket so its 12×12 dot centers on that row. Because the
- * offsetParent excludes the header, this value is header-INDEPENDENT: when the
- * header grows (e.g. a 2-line title) the whole content wrapper slides down and the
- * browser carries the row + socket with it, with no re-measure. Runs in a layout
- * effect (before paint, no visible jump) and only re-renders when the value
- * actually moves — i.e. the BODY layout changed (a row added, a value box grew).
- */
+/** Measures an element's vertical center relative to its offsetParent — the
+ *  `.solenoid-node__content` wrapper, which sits BELOW the header — so the returned
+ *  `top` is header-INDEPENDENT and needs no re-measure when the header grows. Runs in
+ *  a layout effect (before paint) and re-renders only when the value actually moves. */
 function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -44,13 +38,9 @@ function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | und
   return top;
 }
 
-/**
- * An `.solenoid-node__io-row` whose socket dot is auto-centered on the row by
- * measurement — immune to header height, label wrapping, and surrounding
- * layout. The dot stays anchored to the card edge (the row is not a positioning
- * context). `children` are the row's flow content (label, field, value, etc.);
- * the absolutely-positioned socket is order-independent.
- */
+/** An `.solenoid-node__io-row` whose socket dot is auto-centered on the row by
+ *  measurement. The dot stays anchored to the card edge — the row must NOT become a
+ *  positioning context. The absolutely-positioned socket is order-independent. */
 export function MeasuredSocketRow({
   side, socketKey, nodeId, emit, payload, children, hero = false,
 }: {
@@ -68,8 +58,8 @@ export function MeasuredSocketRow({
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
   return (
-    // Output rows get a modifier so they SURVIVE collapse (a multi-output node —
-    // TableInfo, SplitFrame, … — collapses to its output values, not a blank box).
+    // Output rows get a modifier so they SURVIVE collapse — a multi-output node
+    // collapses to its output values, not a blank box.
     <div ref={ref} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
       {top !== undefined && (
         <NodeSocket
@@ -148,10 +138,9 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
         >
           {isCube
             ? (
-              // The cube silhouette (shared transform, so it matches the oversized
-              // glyph). Fill + a round-joined white stroke rounds the hexagon corners
-              // and fattens past the fill to cover the ring; group opacity (not
-              // per-element) so the fill/stroke overlap doesn't double into a dark rim.
+              // Fill + a round-joined white stroke rounds the hexagon corners and
+              // fattens past the fill to cover the ring; group opacity (never
+              // per-element) so the fill/stroke overlap can't double into a dark rim.
               <g transform={cubeTransform(1)} opacity="0.35" style={{ mixBlendMode: "overlay" }}>
                 <path d={CUBE_FILL_PATH} fill="white" stroke="white" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" />
               </g>

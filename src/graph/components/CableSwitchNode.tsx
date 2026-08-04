@@ -1,8 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: an Input Switch inside a
-// composite drill-in must retype/prune/refresh on its OWN graph (the 9316c2d
-// resolver sweep missed this component — every gesture no-op'd against main).
+// composite drill-in must retype/prune/refresh on its OWN graph, not main.
 import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
@@ -198,9 +197,6 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await processGraph();
   }
 
-  // Collapsed: the option rows fold into the shared stadium input pill (≥2 inputs)
-  // or a lone centered socket, matching every other extensible node; the selected
-  // value (or collected cube) still shows below.
   if (collapsed) {
     return (
       <NodeShell node={data} emit={emit}>

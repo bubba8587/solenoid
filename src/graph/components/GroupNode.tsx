@@ -107,15 +107,13 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   // Group tint reads heavier on a light canvas — give it a touch more fill.
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
 
-  // Expanded: pin BEHIND members (it's a frame). Collapsed: members are hidden,
-  // so sit ABOVE the cables like a normal node — otherwise cables draw over the
-  // edge pill sockets.
   useLayoutEffect(() => {
     const el = getArea()?.nodeViews.get(node.id)?.element;
-    // Expanded groups sit behind members AND behind member Conduits (which are
-    // at -1 so wires plug in over their grid) — so a Conduit inside a group stays
-    // clickable. Layering: standoffs -3 < group -2 < conduit -1 < nodes 0. Raise
-    // above everything while the color palette is open so it isn't hidden.
+    // Expanded: BEHIND members and member Conduits (standoffs -3 < group -2 <
+    // conduit -1 < nodes 0), so a Conduit inside a group stays clickable.
+    // Collapsed: members are hidden, so sit ABOVE the cables like a normal node or
+    // they draw over the edge pill sockets. Raise above everything while the color
+    // palette is open so it isn't hidden.
     if (el) el.style.zIndex = pickerOpen ? "20" : node.collapsed ? "1" : "-2";
   });
 

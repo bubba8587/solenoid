@@ -72,10 +72,9 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
       {/* The authoring node's own box stays the compact signature at a FIXED
-          size — the FC's view-as (and its text attributes) applies downstream
-          (Display / Report), never to the source card. A plain div, not
-          ValueDisplay: its string path applies a docked FC's textScale, which
-          made the hero text jump on attach. */}
+          size — the FC's view-as applies downstream (Display / Report), never
+          to the source card. A plain div, not ValueDisplay: its string path
+          applies a docked FC's textScale. */}
       {node.cachedValue
         ? <div className="solenoid-node__display-value">{formatLambda(node.cachedValue)}</div>
         : <ValueDisplay value={null} />}

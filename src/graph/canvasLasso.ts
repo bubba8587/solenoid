@@ -1,4 +1,4 @@
-// Shift-drag lasso selection (extracted from Canvas.tsx). AutoCAD-style:
+// Shift-drag lasso selection. AutoCAD-style:
 // CW winding (positive signed area in screen coords) = touch / crossing —
 // any overlap with a node selects it. CCW winding = window / enclose — only
 // nodes fully inside the lasso are selected.
@@ -113,10 +113,8 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     // Don't start a lasso when the click landed on a node or a socket inside
     // one (so click-drag-on-socket cable creation isn't stolen, and tapping a
     // note/group in touch-select mode selects it rather than lassoing). Test
-    // area.nodeViews containment — the authoritative node-root check per
-    // CLAUDE.md. A CSS class list (`.solenoid-node, …`) silently misses
-    // whichever roots it forgot: this one omitted `.solenoid-note` and
-    // `.solenoid-group`, so a touch on either wrongly began a lasso.
+    // area.nodeViews containment — the authoritative node-root check; a CSS class
+    // list silently misses whichever roots it forgot.
     const target = e.target as Element | null;
     const area = areaRef.current;
     if (target && area) {
@@ -127,8 +125,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     // while you lasso. Mobile select mode does NOT stopPropagation — rete's Drag
     // (pan) handler is disabled for the duration instead (see the select-mode
     // effect), and the ZOOM handler must still SEE this pointer so a second finger
-    // makes a 2-finger pinch/pan (stopPropagation here hid finger 1 from it, which
-    // is why zoom never worked in select mode).
+    // makes a 2-finger pinch/pan (stopPropagation here would hide finger 1 from it).
     if (!selectMode) e.stopPropagation();
     active = true;
     points.length = 0;

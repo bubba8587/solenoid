@@ -10,18 +10,15 @@ import { beginGraphRebuild, endGraphRebuild, bulkSettle, getEditor } from "./pro
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { measuredBox } from "./nodeSize";
 
-// ─── "Select N → make composite" — mirrors createGroupFromSelection ────────────
-// (groupLogic.ts:63-94) exactly for the selection-read + bounding-box pattern,
-// but instead of wrapping the selection in a spatial frame, it PHYSICALLY
-// RELOCATES the selected nodes into a new CompositeNode's private internal
-// editor and rewires the boundary: every cable crossing the selection becomes
-// a typed, declared port on the composite card. See nodes/composite.ts.
+// ─── "Select N → make composite" ──────────────────────────────────────────────
+// PHYSICALLY RELOCATES the selected nodes into a new CompositeNode's private
+// internal editor and rewires the boundary: every cable crossing the selection
+// becomes a typed, declared port on the composite card. See nodes/composite.ts.
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  // Non-zero guaranteed — an unpainted member used to read offsetWidth/Height = 0.
   return measuredBox(area, id, getEditor() ?? undefined);
 }
 
@@ -149,12 +146,6 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
 }
 
 // ─── Unpack — the exact inverse of createCompositeFromSelection ────────────────
-// Dissolves the card: internal nodes return to the outer canvas at the
-// composite's position plus their bbox-relative layout (internalPositions),
-// internal wiring is rebuilt, and each boundary port collapses back into a
-// direct cable (outer source → the internal target its marker fed; internal
-// source → the outer target its port drove). Markers dissolve; run-mode
-// config (scenarios / data-table / steps) is tied to the card and goes with it.
 
 /** Returns true if the node was a composite and was unpacked. */
 export async function unpackComposite(editor: Editor, area: Area, compositeId: string): Promise<boolean> {
@@ -184,11 +175,10 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
     for (const c of outerConns) await editor.removeConnection(c.id);
     // Do NOT mutate the internal editor — it (and its area/history plugin from a
     // prior drill-in open) is discarded whole with the composite. Removing nodes
-    // from it fired `noderemoved` at that history plugin, which throws Error("node")
+    // from it fires `noderemoved` at that history plugin, which throws Error("node")
     // for any node it never saw *created* — and the internal nodes predate the
-    // plugin (they're hydrated at collapse/load), so EVERY internal removal threw
-    // once the editor had been opened. Moving the shared node INSTANCES onto the
-    // outer editor is all that's needed; the internal editor is dropped as garbage.
+    // plugin (they're hydrated at collapse/load). Moving the shared node INSTANCES
+    // onto the outer editor is all that's needed; the internal editor is garbage.
     for (const n of internalNodes) {
       if (markerIds.has(n.id)) continue; // boundary markers dissolve with the card
       await editor.addNode(n as SolenoidNode);

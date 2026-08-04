@@ -36,7 +36,6 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  *  (nodes + connections, both sides) — a small doc still swaps with no flash. */
 const SWITCH_CURTAIN_MIN_WORK = 60;
 
-// ─── Graph persistence ─────────────────────────────────────────────────────────
 // Serialize the whole graph to plain JSON and rebuild it. The save format mirrors
 // copy/paste's reconstruction path: each node is { type, init } where `type` is
 // the class name (kept stable in prod by esbuild `keepNames`) and `init` is the
@@ -102,7 +101,7 @@ export interface SavedGraph {
   // and/or per-slot hex overrides, layered over the app-wide palette choice when
   // this doc is open (see paletteStore). Absent on docs that follow the app palette.
   palette?: { base?: string; overrides?: Record<string, string> };
-  // Optional REPORT/EXPORT-only palette declaration (bundle 13 #52) — scoped to
+  // Optional REPORT/EXPORT-only palette declaration — scoped to
   // report/export rendering surfaces (the static HTML export), never the editing
   // canvas. Same shape as `palette`, same "no editor UI yet — hand/seed-authored"
   // precedent (see reportPaletteStore).
@@ -119,7 +118,6 @@ export interface SavedGraph {
   packs?: string[];
 }
 
-// ─── Serialize ──────────────────────────────────────────────────────────────────
 // serializeGraph extracts the live editor into a SavedGraph, then round-trips it
 // through the text form (textForm.ts) before returning — so the JSON save is
 // GENERATED from the text form, not hand-maintained in parallel (the addressable
@@ -218,8 +216,6 @@ function buildRawSavedGraph(): SavedGraph | null {
   return g;
 }
 
-// ─── Deserialize ────────────────────────────────────────────────────────────────
-
 // Saved-id → live-id remap from the most recent rebuildGraph. Tooling only (the
 // seed-tune harness reads geometry back out by SAVED id — see seedTune.ts);
 // nothing in the app itself consumes it.
@@ -309,9 +305,9 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
     // The rebuild (and any rollback) just recorded ~2(N+E) add/remove actions
     // in the history plugin. Left in place, Ctrl+Z after a load would unwind
     // the load itself — resurrecting the PREVIOUS document's node objects into
-    // this canvas, which autosave then persists (audit P0-5). It also pinned
-    // every removed node instance (frames, image dataUrls) in memory forever
-    // (audit finding 20). Undo history is per-document-session: drop it.
+    // this canvas, which autosave then persists — and it pins every removed node
+    // instance (frames, image dataUrls) in memory forever. Undo history is
+    // per-document-session: drop it.
     clearHistory();
   }
 }
@@ -385,8 +381,7 @@ async function rebuildGraph(
   // Bulk-reset every node-keyed store in one pass. The per-node `noderemoved`
   // handler skips `forgetNode` while rebuilding (isGraphRebuilding), because
   // some stores scan their whole map per forget — over a big graph that's
-  // O(nodes × entries) and was the main cost of clearing the current graph
-  // (e.g. when deleting/switching the open Personal Finance doc).
+  // O(nodes × entries).
   forgetAllNodes(); // every node-keyed store registers its own bulk reset (STORE-1)
   // Overlay singletons keyed to a node id from the OUTGOING graph: a docked
   // report would otherwise keep the `sol-report-docked` canvas squeeze (and a
@@ -419,8 +414,8 @@ async function rebuildGraph(
   const phSockets = deriveMissingNodeSockets(unknownIds, g.connections ?? []);
 
   // Construct every node synchronously (id remap + per-instance state restore),
-  // THEN add + position them concurrently. The old per-node `await addNode` +
-  // `await translate` was ~2N sequential microtask hops, each gated on the prior
+  // THEN add + position them concurrently. A per-node `await addNode` +
+  // `await translate` is ~2N sequential microtask hops, each gated on the prior
   // node's DOM layout settling before the next — the dominant load cost. addNode
   // and translate are independent per node, so Promise.all collapses the 2N-deep
   // await chain into one barrier. Each node still goes straight to its final spot
@@ -445,13 +440,6 @@ async function rebuildGraph(
     } else {
       node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
-      // Restore mutable per-instance maps the constructor reset to defaults —
-      // but ONLY onto a class that declares the map. Declaring `literals` /
-      // `stringLiterals` is the class's statement that the card edits them
-      // inline; a wire-driven card (Equation family) declares neither, so a
-      // hand-authored save/seed can't smuggle in a hardcoded value the user
-      // could never see or edit on the card. (Any node whose data() reads a
-      // literal necessarily initializes the field, so nothing legit is lost.)
       if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
       if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
     }
@@ -521,9 +509,7 @@ async function rebuildGraph(
   // so an FC resolves against the real type, not the wildcard. ORDER MATTERS:
   // dockSelf's adaptTypeFromConnections resolves the HOST socket, and before
   // this settle a projected wildcard output (INDEX over a frame) still reads
-  // as its upstream's raw type — the docked FC adopted "frame" and nothing
-  // re-adapted it after the settle (the "false Frame type on reload" bug;
-  // re-docking by hand fixed it because that re-ran the adapt post-settle).
+  // as its upstream's raw type.
   settleWildcardTypes(editor);
   // Register each FC's positional dock now that its host + cables exist and
   // the derived socket types are settled.
@@ -672,7 +658,6 @@ async function runReveal(
   }
 }
 
-// ─── Autosave ─────────────────────────────────────────────────────────────────
 // The live graph is persisted shortly after any change. The actual storage is
 // the documents library (documentStore): autosave just serializes the live graph
 // into the CURRENT document. This module keeps the debounce + suspend gate that
@@ -697,10 +682,10 @@ export function scheduleAutosave(): void {
   }, AUTOSAVE_DELAY);
 }
 
-// Flush a pending (debounced) autosave when the window/tab goes away — without
-// this, closing within ~700 ms of the last edit silently dropped it (audit
-// finding 36). captureCurrent is synchronous (a localStorage write), so it's
-// safe in pagehide; it no-ops while suspended/rebuilding, same as the timer.
+// Flush a pending (debounced) autosave when the window/tab goes away — otherwise
+// closing within ~700 ms of the last edit silently drops it. captureCurrent is
+// synchronous (a localStorage write), so it's safe in pagehide; it no-ops while
+// suspended/rebuilding, same as the timer.
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => {
     if (_timer === null || _suspend > 0) return;
@@ -710,5 +695,5 @@ if (typeof window !== "undefined") {
   });
 }
 
-// Disk save/open moved to fileSession.ts (native dialogs on desktop, download/
+// Disk save/open lives in fileSession.ts (native dialogs on desktop, download/
 // upload in the browser). serializeGraph + loadGraph above are its building blocks.

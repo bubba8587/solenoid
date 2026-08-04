@@ -237,8 +237,7 @@ export function FormulaPopup() {
   useFormulaFit(renderRef, [katexHtml, nodeId], { useHeight: false, max: 1 });
 
   // Owning editor, not main: an Expression/Equation card inside a composite
-  // drill-in opens this same popup — main lookup found nothing and the popup
-  // silently never rendered (and commits no-opped) for those nodes.
+  // drill-in opens this same popup, and a main-only lookup finds nothing there.
   const node = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const host = formulaHostOf(node);
   if (!node || !host) return null;

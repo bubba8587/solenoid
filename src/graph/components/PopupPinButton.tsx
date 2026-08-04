@@ -55,7 +55,7 @@ const LocateGlyph = () => (
  * (`resolveValueOrigin`). On a Display that's the producer feeding it — the
  * host itself is where you just clicked, so jumping there is a no-op. A
  * producer node (Aggregate, Join…) resolves to itself. Sits beside the Pin
- * action in every value popup (the backlog's "+ more" follow-up on Pin).
+ * action in every value popup.
  */
 export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
   return (
@@ -65,7 +65,7 @@ export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: 
       onClick={() => {
         onClose();
         // Owning editor: a popup opened from a node inside a drill-in resolves
-        // its origin within the SUBGRAPH (main lookup made this a silent no-op).
+        // its origin within the SUBGRAPH, not main.
         const editor = getOwningEditor(nodeId);
         flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
       }}

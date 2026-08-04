@@ -8,8 +8,7 @@
 //
 // The convention: a NEW node-keyed store adds ONE `registerNodeForget(...)` call
 // at module scope and is done — it never has to remember to thread cleanup into
-// Canvas.tsx. (Before this, each store re-answered the question ad hoc, and most
-// answered it by leaking; collapse-state answered it wrong.)
+// Canvas.tsx.
 
 type Forgetter = (nodeId: string) => void;
 

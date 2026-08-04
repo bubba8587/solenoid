@@ -22,9 +22,7 @@ export { cx, isCx, formatCx, type Cx } from "../cxValue";
 // broadcasts, like the number / date / text families. It doesn't reuse shared.ts's
 // `broadcastCells`, whose element type is constrained to string | number | boolean;
 // the per-operand tags below also carry each operand's element type, so `fn`'s
-// parameters infer per position with no casts. (Historically this broadcaster
-// existed because a complex WAS a bare [re, im] array and had to be sniffed apart
-// from a 2-list — VAL-15 removed that; `isCx` is now the whole scalar test.)
+// parameters infer per position with no casts.
 //
 // No `guardFinite` here, unlike the numeric broadcasters: the complex ops already
 // have their own non-finite conventions (IMDIV by zero yields cx(NaN, NaN), which
@@ -136,8 +134,6 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
   }
 
   data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }) {
-    // Each of the four outputs broadcasts independently over the same operand, so
-    // a list of complexes unpacks into four parallel numeric lists.
     const z = inputs.z?.[0] ?? null;
     const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z));
     this.cachedRe  = part((c) => c.re);
@@ -320,10 +316,7 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
     b?: (number | number[] | null)[];
     c?: (number | number[] | null)[];
   }): { x1: CellResult<Cx>; x2: CellResult<Cx> } {
-    // Both roots broadcast over the same coefficients, so a list of quadratics
-    // solves into two parallel lists of roots. The math is the shared kernel
-    // (cxValue.ts), so a = 0 is a per-cell #DOMAIN! — one degenerate row in a
-    // list errors alone.
+    // a = 0 is a per-cell #DOMAIN! — one degenerate row in a list errors alone.
     const root = (which: 1 | 2) => broadcastComplex((a: number, b: number, c: number): Cx | SolError => {
       const r = quadraticRoots(a, b, c);
       return isSolError(r) ? r : r[which - 1];

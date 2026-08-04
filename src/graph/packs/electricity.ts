@@ -1,7 +1,6 @@
 // Electricity & Circuits — the everyday electrical formula set: Ohm's law and
 // power, dividers, reactance and resonance, RC/RL transients, decibels, and the
-// component/wire references (E-series, AWG). Replaces the ad-ridden
-// single-purpose calculator sites (docs/archive/reference-packs.md thesis).
+// component/wire references (E-series, AWG).
 // SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
 //
 // Ships OFF by default. The Electromagnetism pack builds on this one.

@@ -1,11 +1,7 @@
 // Shared rendering for a single Cube cell — used by the nested-data viewer's grid.
 // A cell can be anything (the recursive value model), so this is the one place that
 // maps each cell kind to how it shows + what drilling into it pushes onto the
-// breadcrumb stack (every nested container drills IN PLACE — no second popup):
-//   scalar / null / error  → inline text (no drill)
-//   Frame                  → "R×C Frame" chip → drills a frame view
-//   list / matrix          → "List n" / "n×m" chip → drills a grid view
-//   Cube                   → "R×C×D Cube" chip → drills a cube view
+// breadcrumb stack (every nested container drills IN PLACE — no second popup).
 import type { ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
@@ -29,7 +25,6 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType): string {
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
   if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : `List ${cell.length}`;
   if (isSolError(cell)) return cell.code;
-  // A typed flat cell (from a source frame column): render by its type.
   if (type) { const f = formatFrameCell(type, cell as FrameCell); return f === null ? "" : String(f); }
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
   if (typeof cell === "number") return formatScalar(cell);
@@ -116,8 +111,6 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
     return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
   }
   if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>; // "5 km"
-  // A typed flat cell (from a source frame column): render by its type — a date
-  // serial as a date, a logical as TRUE/FALSE (frameCellNode shares the frame path).
   if (type) return frameCellNode(type, cell as FrameCell);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;

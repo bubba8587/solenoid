@@ -11,7 +11,7 @@ import { AGG_OP_OPTIONS } from "./FrameNodes";
 // ─── BUILD CUBE ────────────────────────────────────────────────────────────────
 // A leading `name` (the column header) + extensible `any` cell rows. Each row is
 // one cell of the single column: wire a frame/list/cube, or type a scalar into an
-// unwired row. The direct answer to "how does a non-frame get into a cube cell".
+// unwired row.
 
 export function BuildCubeComponent({ data, emit }: NodeProps<BuildCubeNodeType>) {
   return (
@@ -28,8 +28,7 @@ export function BuildCubeComponent({ data, emit }: NodeProps<BuildCubeNodeType>)
 }
 
 // ─── NEST JOIN ───────────────────────────────────────────────────────────────────
-// Parent + child frame + key column + nested-column name → a cube. All four inputs
-// render as the standard inline rows (the two text fields commit on Enter/blur).
+// Parent + child frame + key column + nested-column name → a cube.
 
 export function NestJoinComponent({ data, emit }: NodeProps<NestJoinNodeType>) {
   return (

@@ -87,7 +87,17 @@ relapse.
 
 | Code | Governing docs |
 |---|---|
-| `zoomSettle.ts`, renderer gesture/settle handling | `dev-notes.md` § choppy zoom BAND |
+| `zoomSettle.ts`, renderer gesture/settle handling | `dev-notes.md` § choppy zoom BAND; `subsystem-invariants.md` § Renderer gesture GPU layers |
+| `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
+| `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
+| `semanticZoomStore.ts` | `subsystem-invariants.md` § Semantic zoom gate |
+| `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `subsystem-invariants.md` § HTML-in-Canvas raster atlas |
+| `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
+| `excelFunctions.ts` overrides / dispatch walk | `formula-node-parity.md` § Formula.js divergence catalogue |
+| `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
+| `stringOrder.ts` | D32 (byte order, not locale) |
+| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | D31 (raw text is the stored truth) |
+| `palette.ts` socket-color siblings | `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `cablePaths.ts`, `ribbonCable.ts` | `subsystem-invariants.md` § Cable routing |
 | `groupPushCore.ts`, group expand/collapse | `subsystem-invariants.md` § Group expand push |
 | `standoffSolver.ts`, `standoffs.ts` | `subsystem-invariants.md` § Standoffs |

@@ -14,8 +14,8 @@ import { GpuCableRenderer, makeColorResolver } from "../gpuCableRenderer";
 // The <canvas> is portaled INTO `.solenoid-canvas` at z-index:-1 (the CableFlourish
 // trick) so cables draw behind nodes, above the dot grid. The invisible per-cable hit
 // <svg> stays in the DOM, so hover/click/lasso are unchanged. WebGPU init is async;
-// if it fails (no adapter / flag off) we fall back to DOM. Selected-above z-jump and
-// ghost dashes are follow-ups (all cables draw behind, solid).
+// if it fails (no adapter / flag off) we fall back to DOM. All cables draw behind,
+// solid.
 
 export function CableCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);

@@ -1,26 +1,9 @@
-// ─── Unit value layer — units riding through the value model (Bundle 05: FC A4) ──
-// This is the value-model integration layer that sits ON TOP of the pure
-// dimensional algebra in `dimension.ts` (exponent-vector units, ×/÷/^,
-// commensurability, conversion, derived-unit formatting). It mirrors the shape of
-// `valueKinds.ts`: one small pure module every value-consuming node calls, with no
-// React / Rete / editor dependency, so it unit-tests in isolation.
+// Units riding through the value model: the integration layer on top of the
+// pure dimensional algebra in `dimension.ts`. Pure — no React / Rete / editor.
 //
-// Author decisions on record (docs/archive/units-format-controller.md):
-//   • Per-element list units = TAGGED CELLS. A list is a ROW and must allow mixed
-//     units, so a unit rides INSIDE a numeric list cell exactly the way
-//     valueKinds.ts carries per-cell `null` / `SolError`. The tag is a `UnitCell`.
-//   • Matrix = unit-AGNOSTIC always — a matrix cell is never tagged.
-//   • Frame = one unit PER COLUMN (`ColumnUnit`), not per cell — a frame column is
-//     homogeneous, so the unit lives on the column, not each cell.
-//
-// Canonical-storage invariant: a tagged value is ALWAYS stored as its magnitude in
-// BASE SI for its dimension (metre, second, kilogram, …). The friendly display
-// unit a user chose (km, mph, $) is NOT the value's business — that lock rides the
-// value through the Format Controller layer (`unitFlow.ts`). Keeping the value at
-// base SI makes the algebra trivial and total: `+`/`−` of two same-dimension cells
-// is a plain magnitude add (both already base), and derived-unit display is just
-// `formatDim` over the dimension vector. "True dimensional algebra, not
-// label-carrying" (author) falls straight out of this.
+// Canonical-storage invariant: a tagged value is ALWAYS stored as its magnitude
+// in BASE SI for its dimension. The display unit a user chose (km, mph, $) is
+// not the value's business.
 
 import {
   type Dim, type Unit, DIMENSIONLESS,
@@ -29,11 +12,9 @@ import {
 import { solError, isSolError, type SolError } from "./errorValue";
 import { isMissing } from "./valueKinds";
 
-// ─── The tagged cell ────────────────────────────────────────────────────────────
-// A numeric value carrying a dimension. `value` is the magnitude in BASE SI (see
-// the storage invariant above); `dim` is the exponent vector. A dimensionless
-// quantity is NEVER a UnitCell — it stays a bare `number` — so today's untagged
-// number lists are unchanged and `isUnitCell` is a clean discriminator.
+// A numeric value carrying a dimension. `value` is the magnitude in BASE SI;
+// `dim` is the exponent vector. A dimensionless quantity is NEVER a UnitCell —
+// it stays a bare `number`, so `isUnitCell` is a clean discriminator.
 export interface UnitCell {
   readonly __unitCell: true;
   readonly value: number;
@@ -54,15 +35,11 @@ export interface UnitCell {
   readonly ratio?: true;
 }
 
-// ── Bare-number unit adoption (author 2026-07-16: SUM(5 km, 3) = 8 km) ─────────
-// A dimensionless operand adopting a united one reads in that operand's DISPLAY
-// unit, not base-SI — the bare 3 next to "5 km" means 3 km, so it scales to base
-// by the display unit's factor. SCALE only, never the affine offset (adopting
-// into °C treats the bare number as degree-sized — delta semantics, and °C has
-// scale 1 anyway). The resolver defaults to the pure dimension.ts table (SI
-// prefixes + base symbols); unitBridge upgrades it at load to the full FC unit
-// table (miles, gallons, currency — currency scale is 1, so $5+3=$8 either way).
-// An unresolvable display id (a custom unit) keeps the face value.
+// Bare-number unit adoption: a dimensionless operand adopting a united one
+// reads in that operand's DISPLAY unit, not base-SI. SCALE only, never the
+// affine offset (adopting into °C is degree-sized — delta semantics). The
+// resolver defaults to the dimension.ts table; unitBridge upgrades it at load
+// to the full FC unit table. An unresolvable display id keeps the face value.
 let _displayScale: (id: string) => number | null = (id) => parseUnit(id)?.scale ?? null;
 
 /** Upgrade the display-id → base-SI scale resolver (unitBridge, at module load). */
@@ -154,15 +131,10 @@ export function formatUnitCell(v: number | UnitCell, fmtNum: (n: number) => stri
   return sym ? `${mag} ${sym}` : mag;
 }
 
-// ─── Currency: the one axis where display id IS the unit identity ────────────────
-// FX is out of scope, so every currency collapses onto the single `currency` base
-// axis with scale 1 (see unitBridge's DIRECT). That makes `$5` and `5€` store the
-// SAME base magnitude (5) — so a plain magnitude comparison/addition would treat
-// them as identical, which is wrong ($5 is not 5€). For every OTHER dimension,
-// differing display units (km vs m) carry differing SCALES, so their base magnitudes
-// already encode the relationship and compare/combine correctly. Currency is the
-// sole exception: with no exchange rate, the display id (the currency code) is the
-// real unit identity, so two currency cells with DIFFERENT codes are incommensurable.
+// Currency is the one axis where the display id IS the unit identity: every
+// currency collapses onto the single `currency` base axis with scale 1, so `$5`
+// and `5€` store the SAME base magnitude. With no exchange rate, two currency
+// cells with DIFFERENT codes are incommensurable.
 const CURRENCY_DIM: Dim = { currency: 1 };
 function isPureCurrency(v: unknown): boolean {
   return dimEqual(dimOf(v), CURRENCY_DIM);
@@ -178,7 +150,6 @@ export function currencyMismatch(a: unknown, b: unknown): boolean {
   return ca != null && cb != null && ca !== cb;
 }
 
-// ─── The #UNIT! helper ──────────────────────────────────────────────────────────
 export function unitError(detail = ""): SolError {
   return solError(
     "#UNIT!",
@@ -187,30 +158,16 @@ export function unitError(detail = ""): SolError {
   );
 }
 
-// ─── Per-cell dimensional algebra: arithmeticCell ────────────────────────────────
-// THE arithmetic unit algebra — one implementation for all seven ops (it moved
-// here from nodes/scalar.ts, 2026-07-28, replacing a stale parallel set of per-op
-// combinators that had already drifted: they lacked the adoption-scaling author
-// call AND were dead code, while the live copy lacked the currency check the dead
-// one carried — the exact both-directions drift SSOT-1 exists for).
-//
-// Operands are `number | UnitCell` (a bare number is dimensionless). This is the
+// THE arithmetic unit algebra — one implementation for all seven ops. Operands
+// are `number | UnitCell` (a bare number is dimensionless). This is the
 // dimensional half of an element-wise op — the caller's per-cell error/null
-// contract (`cellShortCircuit` in valueKinds.ts) runs FIRST, so it only ever sees
-// present operands. Returns a tagged result (or a bare number when the result is
-// dimensionless) OR a `#UNIT!`/`#DIV/0!` `SolError`.
+// contract (`cellShortCircuit` in valueKinds.ts) runs FIRST, so it only ever
+// sees present operands.
 
 type Operand = number | UnitCell;
 
 export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
 
-// Per-cell arithmetic WITH dimensional algebra (Bundle 05: FC A4, step 2). Every
-// op does the numeric math on the base-SI magnitudes and combines the dimension
-// vectors per its rule:
-//   × adds exponents · ÷ subtracts · +/− require commensurability (else #UNIT!) ·
-//   pow scales by the (dimensionless) exponent · cancellation collapses to a bare
-//   number via tagDim. QUOTIENT divides dimensionally; MOD keeps the dividend's
-//   unit (commensurable divisor required, like subtraction).
 export function arithmeticCell(
   op: ArithmeticOp,
   a: Operand,
@@ -229,14 +186,11 @@ export function arithmeticCell(
   if (currencyMismatch(a, b)) {
     return unitError(`Can't combine ${dispA} and ${dispB} — different currencies, no exchange rate. Convert one side first.`);
   }
-  // +/−/mod need commensurable dimensions — BUT a dimensionless operand ADOPTS the
-  // other side's unit, read in that side's DISPLAY unit (author 2026-07-16:
-  // `5 km + 3 = 8 km` — the bare 3 means 3 km, so it scales to base by the display
-  // factor; `$5 + 2 = $7` unchanged, currency scale is 1). The result keeps the
-  // dimensioned side's display id so `$` survives. Only two genuinely different
-  // dimensions (meters + seconds) are a `#UNIT!`. xc/yc are the adoption-scaled
-  // magnitudes for these commensurable ops ONLY — ×/÷ keep the face value (a bare
-  // factor is a factor: `$5 × 2 = $10`, never "×2 km").
+  // +/−/mod need commensurable dimensions — BUT a dimensionless operand ADOPTS
+  // the other side's unit, read in that side's DISPLAY unit, and the result
+  // keeps the dimensioned side's display id. xc/yc are the adoption-scaled
+  // magnitudes for these commensurable ops ONLY — ×/÷ keep the face value (a
+  // bare factor is a factor: `$5 × 2 = $10`, never "×2 km").
   const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;
   const yc = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(y, dispA) : y;
   const combine = (r: number): number | UnitCell | SolError => {
@@ -286,10 +240,8 @@ export function arithmeticCell(
  *  the base-magnitude pair for the caller's comparator, or the error. */
 export function compareUnits(a: Operand, b: Operand): { l: number; r: number } | SolError {
   const da = dimOf(a), db = dimOf(b);
-  // A dimensionless operand ADOPTS the other's unit (`$5 > 1000` compares 5 vs 1000)
-  // — the spreadsheet reading, matching addUnits, and it reads in the united side's
-  // DISPLAY unit (`5 km > 3` compares against 3 km — author 2026-07-16). Only two
-  // genuinely-different REAL dimensions are incomparable.
+  // A dimensionless operand ADOPTS the other's unit, read in the united side's
+  // DISPLAY unit. Only two genuinely-different REAL dimensions are incomparable.
   if (!isDimensionless(da) && !isDimensionless(db) && !dimEqual(da, db))
     return unitError("Can't compare values with different units.");
   // …and two different currencies (same dimension, but no exchange rate).
@@ -302,19 +254,10 @@ export function compareUnits(a: Operand, b: Operand): { l: number; r: number } |
   return { l, r };
 }
 
-// ─── Aggregator prep (step 6) ────────────────────────────────────────────────────
-// The unit-aware sibling of valueKinds.ts `forAggregate`: the single chokepoint a
-// list reducer (SUM/AVERAGE/MIN/…) runs first. Semantics parallel the value one:
-//   • a `SolError` anywhere PROPAGATES (the aggregate is that error);
-//   • `null` (missing) is SKIPPED;
-//   • DIMENSIONLESS cells (bare numbers) ADOPT the list's real unit — `SUM($5, $2, 3)`
-//     is `$10` (author decision 2026-07-13: a dimensionless number adopts the unit of
-//     the operation it's in). Only TWO genuinely different real dimensions (a length
-//     mixed with a mass) are a `#UNIT!`. Because every tagged cell is stored base SI,
-//     commensurable-but-differently-authored cells (km + m) are ALREADY unified.
-// Returns the shared dim (+ the display of the first dimensioned cell, so the reducer's
-// result renders in that unit) + the base magnitudes; the reducer runs on `nums`, then
-// re-tags its result with `dim`/`display` via `tagDim`.
+// The unit-aware sibling of valueKinds.ts `forAggregate`: the single chokepoint
+// a list reducer runs first. Returns the shared dim (+ the display of the first
+// dimensioned cell, so the reducer's result renders in that unit) + the base
+// magnitudes; the reducer runs on `nums`, then re-tags via `tagDim`.
 export type UnitAggregatePrep =
   | { error: SolError }
   | { error?: undefined; dim: Dim; display?: string; nums: number[] };
@@ -348,20 +291,16 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
       }
     }
   }
-  // Pass 2 — magnitudes: a dimensionless cell ADOPTS `dim` in the list's DISPLAY
-  // unit (SUM(5 km, 3): the 3 reads as 3 km → 3000 base — author 2026-07-16),
-  // a united cell contributes its base-SI magnitude directly.
+  // Pass 2 — magnitudes: a dimensionless cell ADOPTS `dim` in the list's
+  // DISPLAY unit; a united cell contributes its base-SI magnitude directly.
   const nums = present.map((v) =>
     isDimensionless(dimOf(v)) ? adoptMagnitude(magnitudeOf(v), display) : magnitudeOf(v),
   );
   return { dim: dim ?? DIMENSIONLESS, display, nums };
 }
 
-// ─── Per-column frame units (step 1: frames) ─────────────────────────────────────
-// A frame column is homogeneous, so its unit is ONE `ColumnUnit` (the dimension +
-// the display unit the column was locked to), not a per-cell tag. The cells stay
-// bare base-SI numbers; the column carries the dimension. This is the frame analog
-// of a list's tagged cells.
+// A frame column is homogeneous, so its unit is ONE `ColumnUnit`, not a
+// per-cell tag. The cells stay bare base-SI numbers.
 export interface ColumnUnit {
   /** The dimension the column's magnitudes carry. */
   dim: Dim;
@@ -376,16 +315,11 @@ export function sameColumnUnit(a: ColumnUnit | undefined, b: ColumnUnit | undefi
   return dimEqual(a.dim, b.dim) && (a.display ?? "") === (b.display ?? "");
 }
 
-// ─── Homogeneous matrix units (D20) ──────────────────────────────────────────────
-// A matrix guarantees ONE element family across the whole grid, so it carries ONE
-// unit for the WHOLE matrix (decisions.md D20), NOT a per-cell tag like a list. The
-// cells stay bare numbers; the unit is a `ColumnUnit` (dim + display id) attached to
-// the outer array under a symbol key — co-located with the value like a frame's
-// `__totalRows`, invisible to iteration / JSON / structural detection
-// (`Array.isArray(v[0])` still works), and read only by unit-aware code. It is LOSSY
-// by design: a fresh array from a transform drops it, so the unit-aware matrix ops
-// re-tag explicitly and everything else strips (documented-strip, per D20). Matrix
-// unit PERSISTENCE rides the producing node (like Frame Input), not the array.
+// A matrix carries ONE unit for the WHOLE grid, attached to the outer array
+// under a symbol key so it stays invisible to iteration / JSON / structural
+// detection. It is LOSSY by design: a fresh array from a transform drops it, so
+// unit-aware matrix ops re-tag explicitly and everything else strips. Matrix
+// unit PERSISTENCE rides the producing node, not the array.
 const MATRIX_UNIT = Symbol("solMatrixUnit");
 
 /** The unit a matrix carries, or undefined (a plain/structural matrix). */

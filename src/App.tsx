@@ -80,9 +80,6 @@ function MainApp() {
       <PresentationOverlay />
       <ConnectionDialog />
       <FormulaPopup />
-      {/* The cube popup is a self-contained nested-data viewer (every nested
-          container drills in place via its breadcrumb), so it never opens a second
-          overlay alongside the table popup. */}
       <CubePopup />
       <TablePopup />
       <ChartPopup />

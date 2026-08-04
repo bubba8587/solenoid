@@ -32,30 +32,14 @@ import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";
 import "./nodeCard.css";
 
-/**
- * Shared building blocks for standard node components. A typical node
- * goes from ~50 lines of socket-mapping / label-header / op-select /
- * value-display boilerplate down to ~12 lines:
- *
- *   export function FooComponent({ data, emit }: NodeProps<FooNode>) {
- *     const [op, setOp] = useNodeField(data, "op");
- *     return (
- *       <NodeShell node={data} emit={emit}>
- *         <InlineInputs node={data} emit={emit} />
- *         <OpSelect value={op} onChange={setOp} options={FOO_OPS} />
- *         <ValueDisplay value={data.cachedResult} />
- *       </NodeShell>
- *     );
- *   }
- */
+/** Shared building blocks for standard node components: socket mapping, the
+ *  label header, op selects, and the value display box. */
 
 /**
  * Render a string value with leading/trailing whitespace shown as middots and
- * an empty string as a dim placeholder, so spaces are never invisible. This is
- * display-only: the underlying value (and what gets copied) keeps its real
- * whitespace. Quotes are deliberately not used here — they belong to the
- * authoring context (input fields), not the result/display "cell" (Excel's
- * split: `=A1&" "` has quotes, the resulting cell does not).
+ * an empty string as a dim placeholder. Display-only: the underlying value (and
+ * what gets copied) keeps its real whitespace. No quotes — they belong to the
+ * authoring context (input fields), not the result cell.
  */
 function renderTextValue(s: string): ReactNode {
   if (s === "") return <span className="solenoid-node__text-empty">(empty)</span>;
@@ -73,9 +57,8 @@ function renderTextValue(s: string): ReactNode {
 
 /**
  * Sanitized markdown → HTML for a text FC's "Markdown" advanced option. FULL
- * (block) parse so headers / lists / blockquotes render — `# heading` becomes a
- * real <h1>, which is the point (inline-only parse left `#` literal). The string
- * is untrusted (arrives in shared .solenoid files), so sanitize before injecting.
+ * (block) parse so headers / lists / blockquotes render. The string is untrusted
+ * (arrives in shared .solenoid files), so sanitize before injecting.
  */
 export function renderTextMarkdownHtml(s: string): string {
   return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
@@ -156,22 +139,14 @@ export function PortSockets({
 }
 
 /**
- * The card chrome shared by every standard node: output sockets, an
- * editable label header, and a body wrapper. Body content (InlineInputs,
- * any op-select / controls, a ValueDisplay) goes in `children`.
- *
- * `leading` renders before the output sockets — used by pass-through
- * nodes (e.g. Display) that draw bare input sockets at the top instead
- * of routing them through InlineInputs.
+ * NodeShell's `leading` renders before the output sockets — for pass-through
+ * nodes (e.g. Display) that draw bare input sockets at the top instead of
+ * routing them through InlineInputs.
  */
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
-// A row's value: scalar (number / logical), a list of them (rendered as a short
-// preview), an error, or blank. Lists/logicals arrived with the Equation node's
-// per-variable outputs; plain numeric rows are unaffected.
 // A Cx rides RAW rather than pre-formatted: the display layer owns formatting,
-// so a docked FC's style/precision/unit can reach it (a card that formatted in
-// its own component produced a fixed string the annotation could never touch).
+// so a docked FC's style/precision/unit can reach it.
 export type OutputRowValue = number | boolean | string | Cx | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
 
 export type OutputRowDef = {
@@ -197,11 +172,6 @@ function formatRowValue(v: Exclude<OutputRowValue, SolError>): string {
   return formatRowCell(v);
 }
 
-/**
- * Renders a labeled row for each output with the socket dot measured-centered
- * on the row (see MeasuredSocketRow) — immune to label height, padding, and
- * header height.
- */
 function MeasuredOutputRow({
   rowKey, label, value, node, emit,
 }: {
@@ -213,8 +183,6 @@ function MeasuredOutputRow({
 }) {
   const port = node.outputs[rowKey];
   if (!port) return null;
-  // A SolError reaching an output row renders as its red #CODE! badge (not
-  // formatScalar, which would print "[object Object]").
   return (
     <MeasuredSocketRow side="output" socketKey={rowKey} nodeId={node.id} emit={emit} payload={port.socket}>
       <span className="solenoid-node__io-label">{label}</span>
@@ -265,7 +233,6 @@ export function InlineOutputRows({
 // clamp (.solenoid-node__label-display) so editing and static title agree.
 const LABEL_MAX_HEIGHT = 60;
 
-/** Derive a short type label from the node's class name for the hover hint. */
 function typeHint(node: ShellNode): string {
   return (node as unknown as { constructor: { name: string } }).constructor.name
     .replace(/Node$/, "")
@@ -280,11 +247,8 @@ const CommentDot = () => (
   </svg>
 );
 
-/** The small corner indicator every node gets automatically when it has a
- *  comment thread (#14) — reuses the ErrorChip-style pill treatment (a quiet
- *  round badge) and points back to the Comments panel on click. Mounted
- *  unconditionally by NodeShell (so every node type gets it for free, no
- *  per-component wiring) but renders nothing for the common case (no thread). */
+/** The corner indicator shown when a node has a comment thread. Mounted
+ *  unconditionally by NodeShell; renders nothing when there is no thread. */
 function CommentIndicator({ nodeId }: { nodeId: string }) {
   const hasThread = useSyncExternalStore(commentStore.subscribe, () => commentStore.hasAny(nodeId));
   if (!hasThread) return null;
@@ -353,20 +317,17 @@ export function NodeShell({
   const labelDownPos = useRef<{ x: number; y: number } | null>(null);
 
   // Every node gets a header placeholder: an explicit prop wins, else the node's
-  // catalog name. So a cleared title still reads as the node's name AND the header
-  // never collapses to a zero-height sliver (was a bug with blank labels).
+  // catalog name — so a cleared title still reads as the node's name AND the
+  // header never collapses to a zero-height sliver.
   const effectivePlaceholder = labelPlaceholder ?? nodeName(node) ?? undefined;
 
   // The SETTING, not the zoom state — changes only on a Settings click, so the
   // full-graph re-render it triggers is fine; see the semantic div below.
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
 
-  // Auto-size the textarea to content, capped at 4 lines (edit mode only).
   // useLayoutEffect (not useEffect): the height must settle BEFORE paint, in the
   // same frame NodeCard measures the output socket (--out-socket-top tracks the
-  // result box, which the header height pushes down). A passive effect resized the
-  // textarea AFTER the socket was measured and painted, so the socket visibly
-  // slid a frame late on every keystroke that changed the header height.
+  // result box, which the header height pushes down).
   useLayoutEffect(() => {
     if (!editing) return;
     const el = taRef.current;
@@ -375,11 +336,9 @@ export function NodeShell({
     el.style.height = `${Math.min(el.scrollHeight, LABEL_MAX_HEIGHT)}px`;
   }, [labelField.draft, editing]);
 
-  // A corner badge sits just below the header, but the header's height changes
-  // with the title (it clamps to 2 lines). The badge can't anchor to the body (it
-  // can't be a positioning context — see NodeSocket), so publish the measured
-  // header height as a CSS var on the card and let the badge offset by it.
-  // Measured only when a badge is present, so plain nodes pay nothing.
+  // The badge can't anchor to the body (it can't be a positioning context — see
+  // NodeSocket), so publish the measured header height as a CSS var on the card
+  // and let the badge offset by it.
   useLayoutEffect(() => {
     const header = headerRef.current;
     if (!cornerBadge || !header) return;
@@ -604,9 +563,6 @@ export function ValueDisplay({
     return <div className="solenoid-node__display-value">{kindLabel}</div>;
   }
 
-  // Local-display formatting: if a Format Controller is docked to this node,
-  // render the value through its annotation. Only kicks in when the component
-  // doesn't already supply its own `render` (custom displays keep theirs).
   // A multi-box card names its socket: read THAT socket's annotation only, so an
   // FC on one hero row can't smear over its siblings. Single-box cards keep the
   // any-socket read (a node carries at most one FC there).
@@ -639,14 +595,6 @@ export function ValueDisplay({
     }
   }
 
-  // Date serials → date strings when this node's OUTPUT socket is a date type,
-  // so every date-producing node formats dates in its box (scalar AND list)
-  // without an ad-hoc `render`. Deferred to the FC when one is docked (it owns
-  // date patterns then). After this, a date value is a string / string[] and
-  // flows through the normal text / chip rendering below.
-  // Dimensioned cells (Bundle 05 units) unwrap first: with an FC docked → the
-  // magnitude in its display unit; without → a "5 m/s" string. No-op for plain data.
-  // Resolved ONCE and reused below: the chip needs it too, and it walks the graph.
   // The declared element family of this box's output socket — the chip's tint and
   // the popup's cell type both come from HERE, not from scanning cells. A cell scan
   // can't see a date (a serial looks numeric) and can't see anything at all when
@@ -655,13 +603,9 @@ export function ValueDisplay({
   // the chip's own cell scan is the honest fallback.
   const elemFam = nodeOutputElemFamily(ctxNodeId);
   const isDate = elemFam === "date";
-  // A complex is the one scalar the display layer formats itself: it has no
-  // meaningful magnitude to unwrap or date to render, and its written form
-  // (assembleCx) is shared with the annotated formatter. Resolving it to a
-  // string HERE — after `ann`, before everything else — means every downstream
-  // branch (box, chip, clipboard) keeps working unchanged while finally
-  // honouring the FC. Cards used to pre-format in their own components, which is
-  // exactly why no annotation ever reached a complex.
+  // A complex is the one scalar the display layer formats itself. It must resolve
+  // to a string HERE — after `ann`, before everything else — so every downstream
+  // branch (box, chip, clipboard) keeps working while honouring the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCx(c));
   // Typed off rawValue, not OutputRowValue: the raw box value also carries
   // UnitCells (unwrapped on the next line), and a Cx never survives past here.

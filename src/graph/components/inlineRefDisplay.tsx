@@ -88,15 +88,6 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   return String(value);
 }
 
-/**
- * The live value swapped in for a `` `=name` `` span in rendered prose (see
- * InlineRefBody). A frame/cube renders as the shared compact table preview
- * (capped rows/cols, `full={false}`) — the one place this reuses the node-card
- * display components, since a table is legitimately block-level. Everything else
- * renders as PLAIN TEXT in the Value face (no box/pill/fill — DESIGN.md's Quiet
- * Accent Rule: a decorative chip mid-sentence would read as a hero-metric, which
- * this system explicitly rejects).
- */
 /** Plain-text form of a lambda — the inline preview + the KaTeX fallback. */
 function lambdaText(v: LambdaValue): string {
   const sig = `λ(${v.params.join(", ")})`;
@@ -163,9 +154,8 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
 }
 
 /** A wired chart's plot, sized to its CONTAINER (the report's content width,
- *  inside its side padding), never a fixed pixel width — a fixed 360px chart
- *  overflowed a narrow/mobile report by a few px and scrolled sideways for no
- *  reason. Capped so it doesn't stretch comically wide on a big report. Renders
+ *  inside its side padding), never a fixed pixel width (which overflows a narrow
+ *  report). Capped so it doesn't stretch comically wide on a big report. Renders
  *  the plot ONLY (no caption); the caller supplies the title/collapse bar. */
 function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -391,12 +381,9 @@ export function InlineRefBody({
   renderEmbedRef.current = renderEmbed;
 
   // Set the rendered HTML IMPERATIVELY (not via dangerouslySetInnerHTML) so
-  // React never "owns" these children. The previous version passed the HTML as
-  // a prop, then the code→span swap below mutated React-owned DOM — and the
-  // setSlots re-render made React re-apply the prop, restoring the raw
-  // `<code>=name</code>` and orphaning the portals. Net effect: NO ref ever
-  // rendered its value in a Note or the Report. Imperative innerHTML keeps the
-  // swap stable across re-renders (the whole reason Report refs looked dead).
+  // React never "owns" these children: the code→span swap below mutates this DOM,
+  // and a React-owned subtree would be re-applied on the setSlots re-render,
+  // restoring the raw `<code>=name</code>` and orphaning the portals.
   useLayoutEffect(() => {
     const root = htmlRef.current;
     if (!root) return;

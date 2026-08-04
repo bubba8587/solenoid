@@ -1,9 +1,4 @@
-// Shelf packer for the HTML-in-Canvas paint-raster ATLAS. The pyramid-build fallback
-// (htmlCanvasRenderer.rasterPendingInPaint) used to snapshot each node's raster with its
-// own createImageBitmap(canvas, region) — a GPU read-back PER NODE, ~16 per paint, which
-// is the expensive pattern on mobile GPUs. Packing the batch into one atlas region lets
-// the whole paint be snapshotted with ONE canvas read-back; per-node textures then come
-// from bitmap→bitmap crops (createImageBitmap(atlas, x, y, w, h) — no canvas read-back).
+// Shelf packer for the HTML-in-Canvas paint-raster ATLAS.
 //
 // Pure geometry (no DOM) so the packing is unit-testable: rasterAtlas.test.ts.
 
@@ -41,8 +36,8 @@ export const ATLAS_GUTTER = 2;
 /**
  * Shelf-pack `items` into a maxW×maxH region. Items are placed tallest-first
  * (classic shelf heuristic — keeps shelves dense); an item larger than the whole
- * atlas is scaled down to fit alone (its `scale` rides into the mip pyramid, as
- * the old per-node path did). Items that don't fit the remaining space are
+ * atlas is scaled down to fit alone (its `scale` rides into the mip pyramid).
+ * Items that don't fit the remaining space are
  * returned in `unplaced` for the next round, in their tallest-first order.
  */
 export function packAtlas(items: AtlasItem[], maxW: number, maxH: number): AtlasLayout {
@@ -59,12 +54,12 @@ export function packAtlas(items: AtlasItem[], maxW: number, maxH: number): Atlas
 
   let x = 0, y = 0, shelfH = 0, usedW = 0, usedH = 0;
   for (const s of sized) {
-    if (x > 0 && x + s.w > maxW) { // wrap to a new shelf
+    if (x > 0 && x + s.w > maxW) {
       y += shelfH + ATLAS_GUTTER;
       x = 0;
       shelfH = 0;
     }
-    if (y + s.h > maxH) { unplaced.push(s.it.id); continue; } // out of atlas — next round
+    if (y + s.h > maxH) { unplaced.push(s.it.id); continue; }
     placements.push({ id: s.it.id, x, y, w: s.w, h: s.h, scale: s.scale });
     x += s.w + ATLAS_GUTTER;
     shelfH = Math.max(shelfH, s.h);

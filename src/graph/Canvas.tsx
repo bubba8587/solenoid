@@ -97,16 +97,6 @@ import type { NodeCatalogEntry } from "./AddNodeMenu";
 
 import "./canvas.css";
 
-// ─── Canvas-local constants ───────────────────────────────────────────────────
-
-// Zoom feel + double-click suppression are shared with every canvas-substituting
-// surface (the composite drill-in) via areaPresets.ts CappedZoom — so they can't drift.
-
-// Mobile mode drives the touch interaction model (tap selects, drag moves only
-// selected, unselected nodes are transparent to pan/pinch). Keyed on IS_MOBILE
-// (not raw pointer coarseness) so "Request desktop site" gets desktop behavior.
-
-
 // Quick-wire: a menu opened from a cable dropped on empty canvas carries the
 // origin socket + a pre-filtered entry list (compatible nodes only), so picking
 // one both creates it AND wires the dragged cable into it.
@@ -133,7 +123,7 @@ export function Canvas() {
   const tapNodeIdRef = useRef<string | null>(null);
   // Set when a touch lands on a form control (checkbox/input/…) INSIDE a node, so
   // toggling e.g. a Boolean checkbox doesn't get treated as a background tap that
-  // clears the node's selection (which forced a re-tap before each toggle).
+  // clears the node's selection.
   const tapControlNodeIdRef = useRef<string | null>(null);
   const tapMovedRef = useRef(false);
   const gestureMultiRef = useRef(false);
@@ -422,9 +412,7 @@ export function Canvas() {
   //
   // Gated on IS_COARSE, not IS_MOBILE: the gate is "a touch device where select
   // mode is reachable", and a TABLET reaches it from the top bar (TabletActions)
-  // while IS_MOBILE is false there. Under the old mobile-only gate a tablet
-  // toggled select mode, kept its pan handler, and a one-finger drag both panned
-  // AND drew the lasso. Desktop is still excluded on purpose: shift-lasso blocks
+  // while IS_MOBILE is false there. Desktop is still excluded on purpose: shift-lasso blocks
   // the pan per-gesture (stopPropagation) and drag-to-pan must keep working.
   useEffect(() => {
     if (!IS_COARSE) return;
@@ -499,9 +487,7 @@ export function Canvas() {
       // arrive in bursts not aligned to paint frames — each one re-reads layout
       // (getNodesRect touches offsetWidth/Height for collapsed groups) and re-
       // normalizes every node against a bounding box that shifts as the dragged
-      // node moves, so the map jittered. Collapsing to at most one render per frame
-      // gives a smooth, frame-aligned cadence (backlog: "smoothness over jump-to-
-      // latest") and drops the redundant mid-frame layout reads.
+      // node moves. At most one render per frame keeps the cadence frame-aligned.
       {
         const mm = minimap as unknown as { render: () => void };
         const rawRender = mm.render.bind(minimap);
@@ -597,8 +583,7 @@ export function Canvas() {
           // still < 4 (a "tap"), but that counter is only re-armed by a CONTAINER
           // pointerdown. So an off-canvas tap (a mobile-bar button, a panel) fires a
           // window pointerup with twitch still armed from an earlier canvas press
-          // and wipes the selection — this is why tapping Delete deselected instead
-          // of deleting, and why deactivating select mode dropped the selection.
+          // and wipes the selection.
           // The gesture that started off-canvas has no business touching the canvas
           // selection, so swallow its pointerup before selectableNodes sees it.
           if ((IS_MOBILE || tapTouchRef.current) && !tapOnCanvasRef.current) {
@@ -1140,13 +1125,10 @@ export function Canvas() {
             reconcileFcTypes(editor, area);
             bumpConnectionVersion();
             rescanMismatches();
-            // TARGETED recompute (audit finding 40): one cable only invalidates
-            // its TARGET's downstream closure — the bare processGraph() here
-            // reset every engine cache and re-rendered every node (each
-            // unrelated Polars chain re-collected) for wiring one scalar. The
-            // `topology` flag refreshes the loop cache, the one global a cable
-            // change touches. A vanished target (cables removed as part of a
-            // node delete) falls back to the full pass.
+            // TARGETED recompute: one cable only invalidates its TARGET's
+            // downstream closure. The `topology` flag refreshes the loop cache,
+            // the one global a cable change touches. A vanished target (cables
+            // removed as part of a node delete) falls back to the full pass.
             const cable = ctx.data as { source?: string; target?: string };
             if (cable.target && editor.getNode(cable.target)) {
               void processGraph(cable.target, undefined, { topology: true });
@@ -1198,11 +1180,9 @@ export function Canvas() {
       });
 
       // NOTE: we deliberately do NOT promote the holder to a GPU layer for PAN.
-      // Promoting it made collapsed pan smooth but the holder surface is larger
-      // than the mobile GPU max texture, so the layer tiles and re-rasterizes as
-      // a translate reveals new tiles — which flickered the visible heavy content
-      // (recharts/cards) when a group was expanded. Pan relies on culling instead
-      // (few elements painted → cheap un-layered repaint). Zoom is the exception:
+      // The holder surface is larger than the mobile GPU max texture, so the
+      // layer tiles and re-rasterizes as a translate reveals new tiles. Pan
+      // relies on culling instead. Zoom is the exception:
       // it gets a transient layer for the pinch only (see onZoomActivity below),
       // because a bounded scale stays within already-rastered tiles.
 
@@ -1215,10 +1195,8 @@ export function Canvas() {
       // NOT on touch devices (IS_COARSE, not IS_MOBILE: a tablet runs the DESKTOP
       // UI on the same mobile-class GPU): the holder (whole graph) is larger than
       // the mobile GPU max texture, so promoting it tiles and re-rasterizes
-      // erratically during the pinch — visible flicker/redraws of the heavy
-      // content, and on tablets outright raster-tile allocation failure (Chrome's
-      // green placeholder squares: the promoted layer wants holder-bounds ×
-      // zoom × dpr texture memory). Touch zoom stays un-layered: a touch
+      // erratically during the pinch, and on tablets fails raster-tile
+      // allocation outright. Touch zoom stays un-layered: a touch
       // choppier, but stable. Pan never promotes either (a translate
       // continuously reveals un-rastered tiles).
       const holderEl = area.area.content.holder as HTMLElement;
@@ -1229,13 +1207,8 @@ export function Canvas() {
       // true`, then pan or zoom — on gesture end it logs frames, mean frame time /
       // fps, the worst frame, and the dropped-frame count (>16.7ms = below 60fps).
       // A single rAF sampler shared by pan + zoom; concurrent triggers coalesce.
-      //
       // Each frame is tagged with the camera scale `k` it was drawn at, and the log
-      // reports the k RANGE the gesture covered plus the k of the WORST frame. That's
-      // the instrument for the open "choppy zoom BAND" problem (dev-notes): the chop
-      // sits at some interior range of scales with both extremes smooth, so pinning
-      // the band numerically is step one, and a bare fps number can't do it. Zoom
-      // slowly across the range and read off which k the worst frames cluster at.
+      // reports the k RANGE the gesture covered plus the k of the WORST frame.
       const fpsProbe = (() => {
         let raf = 0, last = 0, label = "", active = false;
         let samples: { dt: number; k: number }[] = [];
@@ -1277,13 +1250,10 @@ export function Canvas() {
       // Settle window before the zoom layer drops. Wheel zoom is NOTCHY — deliberate
       // notch-by-notch ticks often arrive slower than a pan-tuned ~160ms timer, and
       // every promote↔demote flip re-creates the compositor layer + re-rasters the
-      // whole holder at the new scale; the frame where the fresh layer's tiles aren't
-      // rastered yet is the reported "cables flash during zoom" (thin strokes blink
-      // hardest). Hold the layer through notch pauses and pay ONE demote/re-raster at
-      // the true settle. The window itself lives in `zoomSettle.ts` — HtmlCanvasLayer's
-      // gesture timer had the identical thrash (dev-notes 2026-07-20d) and must hold for
-      // the same duration, and the shared module carries the console override used to
-      // A/B it on a deployed preview.
+      // whole holder at the new scale. Hold the layer through notch pauses and pay
+      // ONE demote/re-raster at the true settle. The window itself lives in
+      // `zoomSettle.ts` — HtmlCanvasLayer's gesture timer must hold for the same
+      // duration.
       function onZoomActivity() {
         if (IS_COARSE) return; // mobile-class GPU — see the layer note above
         // Promote the holder for the pinch so the scale is a cheap GPU bitmap-scale.
@@ -1375,8 +1345,8 @@ export function Canvas() {
       };
 
       // Live standoff settle, rAF-throttled. The solver is a full solve from
-      // current positions and worst-case O(network²); it used to run on EVERY
-      // `nodetranslated` (per pointermove, faster than the refresh rate). Since
+      // current positions and worst-case O(network²), and `nodetranslated` fires
+      // per pointermove, faster than the refresh rate. Since
       // each run reads the latest boxes, collapsing many pointer events into one
       // solve per frame converges to the same towed positions — you can't see
       // faster than a frame anyway — and the exact final settle still runs on
@@ -1439,10 +1409,8 @@ export function Canvas() {
         dragPromotedEls = [];
       }
 
-      // Pan telemetry only. The former gesture-time quality/paint cuts (the
-      // `--panning` class) were removed 2026-07-04 — DOM mode stays full-quality
-      // while panning; the HTML-in-canvas renderer is the performance path. fpsProbe
-      // still brackets the gesture for the perf overlay.
+      // Pan telemetry only. DOM mode stays full-quality while panning; the
+      // HTML-in-canvas renderer is the performance path.
       const onPanStart = () => { fpsProbe.start("pan"); };
       const onPanEnd = () => { fpsProbe.stop(); };
       container!.addEventListener("pointerdown", onPanStart, true);
@@ -1691,8 +1659,7 @@ export function Canvas() {
           // drag that actually MOVED the node counts: rete fires `nodedragged`
           // on every pointerup after a pick, so a plain click (select a group
           // before collapsing it, select a Conduit to inspect its lanes) must
-          // NOT wipe the push records — that left pushed nodes stranded because
-          // the restore-on-collapse found nothing to restore.
+          // NOT wipe the push records (the restore-on-collapse needs them).
           const endPos = area.nodeViews.get(ctx.data.id)?.position;
           const draggedFar = !pickedPos || !endPos ||
             Math.abs(endPos.x - pickedPos.x) > 1 || Math.abs(endPos.y - pickedPos.y) > 1;
@@ -1937,9 +1904,7 @@ export function Canvas() {
 
       // A freshly-added node has no connections, so it can't affect any existing
       // node. Use the ADDITIVE path (no engine reset → existing caches survive →
-      // nothing re-sources/re-materializes) and render only the new node. A full
-      // processGraph here re-ran the whole graph — on a big-frame graph that meant
-      // re-uploading every source frame to Rust just to drop one node on the canvas.
+      // nothing re-sources/re-materializes) and render only the new node.
       await processGraph(undefined, new Set([node.id]));
       setMenu(null);
     },

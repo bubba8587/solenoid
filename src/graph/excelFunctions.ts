@@ -28,43 +28,12 @@ import {
   cxSech, cxCsch, quadraticRoots,
 } from "./cxValue";
 
-// ─── EXCEL_FUNCTIONS — the one declared home for "where does each function live?" ──
-// The app computes through TWO parallel implementations of the same Excel functions:
-// the ~150 native nodes (hand-rolled JS) and Formula.js (reached via excelFormula.ts
-// `dispatch`). The same op (e.g. ROUND, STDEV) exists twice and can DRIFT. This module
-// is the single place that decides, per function, which backing is authoritative —
-// per the per-family verdicts in docs/formulajs-vs-native-audit.md.
-//
-// Status (2026-06-23): the foundation (policy + seam) PLUS a first wave is live —
-//   • `dispatch` (excelFormula.ts) now resolves through `resolveExcelFunction`, so a
-//     registered internal impl wins and every other name still falls through to
-//     Formula.js (behavior-identical for those).
-//   • A first wave of native impls is registered below: overlap functions owned for a
-//     reason (ROUND / SQRT / STANDARDIZE / YEAR / EOMONTH / LEN), PLUS Solenoid-only ones
-//     that don't exist in Formula.js at all (CLAMP / ORDINAL / BETWEEN) — the registry
-//     ADDS those to the formula language. Output types span number / string / date /
-//     logical (the scalar types the formula evaluator carries unambiguously — complex is
-//     excluded with 2-D: a [re,im] tuple is indistinguishable from a list to the
-//     broadcaster). Each returns a tagged SolError on a domain error (error integration
-//     is free for an owned fn).
-// Still NOT done (the larger, coordinated migration): a blanket Formula.js→SolError
-//   mapping at the dispatch boundary for the LIBRARY half; registering the rest of the
-//   "internal" families; routing the NODES through the same seam; and deleting the
-//   redundant native math once a "formulajs" family is flipped. Add an entry → that
-//   name flips; nothing else changes.
+// EXCEL_FUNCTIONS — the per-function decision of which backing (a native impl or
+// Formula.js) is authoritative, plus the registry that seam reads. Per-family
+// verdicts: docs/formulajs-vs-native-audit.md.
 
-// ─── Formula.js → SolError mapping (the P5 boundary, shared) ────────────────────
-// Formula.js signals a failure by RETURNING an `Error` instance whose `.message` is
-// the Excel code ("#NUM!", "#N/A", …) — NOT a Solenoid `SolError`. Left alone it
-// leaks through a formula host untagged: an in-formula error that doesn't render
-// like #DIV/0! (the hole in the flagship error system). This is the ONE shared
-// mapping every formula host (Expression / LAMBDA / MAP / BYROW / REDUCE / formula
-// packs) routes its result through, via `normalizeFxResult` at the evaluator's
-// final boundary. #NUM! splits to #DOMAIN! (the usual in-formula cause is a domain
-// violation, e.g. ASIN(2)); #NULL! has no Solenoid analogue → #VALUE!; an
-// unrecognised code → #VALUE!. Errors INSIDE the formula still flow as native FX
-// `Error`s so Formula.js's own IFERROR/ISERROR catch them — only the FINAL result
-// is mapped (after that internal propagation is done).
+// Errors INSIDE a formula stay native Formula.js `Error`s so its own IFERROR/ISERROR
+// catch them — only the FINAL result is mapped, at `normalizeFxResult`.
 const FX_CODE_MAP: Record<string, SolErrorCode> = {
   "#DIV/0!": "#DIV/0!", "#N/A": "#N/A", "#NAME?": "#NAME?",
   "#REF!": "#REF!", "#VALUE!": "#VALUE!", "#NULL!": "#VALUE!", "#NUM!": "#DOMAIN!",
@@ -122,29 +91,22 @@ export const FAMILY_BACKING: Record<FuncFamily, { backing: Backing; why: string 
   "units":             { backing: "internal",  why: "The flagship — Formula.js has no unit system; nothing to consolidate." },
 };
 
-// Classification of the OVERLAP functions — those a native node AND Formula.js both
-// implement, i.e. the actual decision surface for consolidation. Names that exist
-// ONLY in Formula.js aren't listed: they default to Formula.js (nothing to consolidate),
-// which `excelFunctionInfo` reports as a null family. UPPERCASE per the dispatch
-// convention (excelFormula.ts calls `dispatch(name.toUpperCase(), …)`). Not exhaustive —
-// extend as families are flipped; the per-FAMILY verdict above is the load-bearing part.
+// Only the OVERLAP functions (a native node AND Formula.js both implement one). A name
+// absent here is Formula.js-only, which `excelFunctionInfo` reports as a null family.
+// UPPERCASE — `dispatch` calls `dispatch(name.toUpperCase(), …)`.
 export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
-  // ── scalar math (wrap Math.*) ──
   ABS: "scalar-math", SIGN: "scalar-math", SQRT: "scalar-math", SQRTPI: "scalar-math",
   POWER: "scalar-math", EXP: "scalar-math", LN: "scalar-math", LOG: "scalar-math", LOG10: "scalar-math",
   SIN: "scalar-math", COS: "scalar-math", TAN: "scalar-math", ASIN: "scalar-math", ACOS: "scalar-math", ATAN: "scalar-math", ATAN2: "scalar-math",
   SINH: "scalar-math", COSH: "scalar-math", TANH: "scalar-math", ASINH: "scalar-math", ACOSH: "scalar-math", ATANH: "scalar-math",
   DEGREES: "scalar-math", RADIANS: "scalar-math", MOD: "scalar-math", QUOTIENT: "scalar-math", GCD: "scalar-math", LCM: "scalar-math",
 
-  // ── rounding (half-rule edge cases — verify) ──
   ROUND: "rounding", ROUNDUP: "rounding", ROUNDDOWN: "rounding", MROUND: "rounding",
   CEILING: "rounding", FLOOR: "rounding", "CEILING.MATH": "rounding", "FLOOR.MATH": "rounding", INT: "rounding", TRUNC: "rounding", EVEN: "rounding", ODD: "rounding",
 
-  // ── combinatorics / engineering (extremes — verify) ──
   FACT: "combinatorics", FACTDOUBLE: "combinatorics", COMBIN: "combinatorics", COMBINA: "combinatorics",
   PERMUT: "combinatorics", PERMUTATIONA: "combinatorics", MULTINOMIAL: "combinatorics",
 
-  // ── statistics (numerically stable on purpose — internal) ──
   AVERAGE: "statistics", AVERAGEA: "statistics", AVEDEV: "statistics", MEDIAN: "statistics", MODE: "statistics",
   GEOMEAN: "statistics", HARMEAN: "statistics", TRIMMEAN: "statistics",
   STDEV: "statistics", "STDEV.S": "statistics", STDEVP: "statistics", "STDEV.P": "statistics",
@@ -156,7 +118,6 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   CORREL: "statistics", COVAR: "statistics", "COVARIANCE.P": "statistics", "COVARIANCE.S": "statistics",
   SLOPE: "statistics", INTERCEPT: "statistics", RSQ: "statistics", FORECAST: "statistics", STANDARDIZE: "statistics", FISHER: "statistics",
 
-  // ── distributions + inverses (accuracy — internal) ──
   "NORM.DIST": "distributions", "NORM.INV": "distributions", "NORM.S.DIST": "distributions", "NORM.S.INV": "distributions",
   "T.DIST": "distributions", "T.INV": "distributions", "CHISQ.DIST": "distributions", "CHISQ.INV": "distributions",
   "F.DIST": "distributions", "F.INV": "distributions", "BETA.DIST": "distributions", "BETA.INV": "distributions",
@@ -164,28 +125,23 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   "WEIBULL.DIST": "distributions", "EXPON.DIST": "distributions",
   "BINOM.DIST": "distributions", "BINOM.INV": "distributions", "POISSON.DIST": "distributions", "HYPGEOM.DIST": "distributions", "NEGBINOM.DIST": "distributions",
 
-  // ── finance: closed-form (formulajs) vs iterative root-finders (internal) ──
   PMT: "finance", FV: "finance", PV: "finance", NPER: "finance", NPV: "finance",
   IPMT: "finance", PPMT: "finance", CUMIPMT: "finance", CUMPRINC: "finance",
   SLN: "finance", SYD: "finance", DB: "finance", DDB: "finance", VDB: "finance",
   RATE: "finance-iterative", IRR: "finance-iterative", MIRR: "finance-iterative", XIRR: "finance-iterative", XNPV: "finance",
 
-  // ── text (Excel parity is the spec — formulajs) ──
   CONCAT: "text", CONCATENATE: "text", LEFT: "text", RIGHT: "text", MID: "text", LEN: "text",
   UPPER: "text", LOWER: "text", PROPER: "text", TRIM: "text", REPT: "text", FIND: "text", SEARCH: "text",
   SUBSTITUTE: "text", REPLACE: "text", TEXTJOIN: "text", TEXTSPLIT: "text", EXACT: "text",
   CHAR: "text", CODE: "text", VALUE: "text", FIXED: "text", TEXTBEFORE: "text", TEXTAFTER: "text",
 
-  // ── date / time (serial + timezone semantics — internal) ──
   DATE: "datetime", TIME: "datetime", DATEDIF: "datetime", EOMONTH: "datetime", EDATE: "datetime",
   WORKDAY: "datetime", "WORKDAY.INTL": "datetime", NETWORKDAYS: "datetime", "NETWORKDAYS.INTL": "datetime",
   WEEKDAY: "datetime", WEEKNUM: "datetime", ISOWEEKNUM: "datetime", YEAR: "datetime", MONTH: "datetime", DAY: "datetime",
   HOUR: "datetime", MINUTE: "datetime", SECOND: "datetime", DATEVALUE: "datetime", TIMEVALUE: "datetime", YEARFRAC: "datetime",
 
-  // ── lookup + unit conversion (richer / unit-aware — internal) ──
   XLOOKUP: "lookup", XMATCH: "lookup", CONVERT: "lookup", CHOOSE: "lookup",
 
-  // ── complex (internal — the whole IM* family is owned over tagged Cx) ──
   COMPLEX: "complex", IMABS: "complex", IMREAL: "complex", IMAGINARY: "complex",
   IMARGUMENT: "complex", IMCONJUGATE: "complex", IMEXP: "complex", IMLN: "complex",
   IMLOG10: "complex", IMLOG2: "complex", IMSQRT: "complex",
@@ -194,7 +150,6 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   IMSECH: "complex", IMCSCH: "complex",
   IMSUM: "complex", IMSUB: "complex", IMPRODUCT: "complex", IMDIV: "complex", IMPOWER: "complex",
 
-  // ── matrix (shape semantics — internal) ──
   MMULT: "matrix", MINVERSE: "matrix", MDETERM: "matrix", TRANSPOSE: "matrix",
 };
 
@@ -215,17 +170,11 @@ export function excelFunctionInfo(name: string): ExcelFunctionInfo | null {
   return { name: key, family, backing, why };
 }
 
-// ─── Resolution seam ──────────────────────────────────────────────────────────
-// The future single point where a function name → its callable. Internal impls are
-// registered here (none in increment 1); everything else falls through to Formula.js,
-// exactly as `dispatch` does today. When dispatch + nodes are later rewired through
-// this, registering a native impl flips that function with no call-site change.
 const INTERNAL_IMPLS = new Map<string, (...a: unknown[]) => unknown>();
 
-// Bumped on every registration. The formula NAME list is derived from this registry
-// and is read on every keystroke (highlighting, autocomplete), so it memoizes
-// against this counter — and, because packs register AFTER module load, it can no
-// longer be a load-time snapshot the way it was.
+// The derived formula NAME list is read on every keystroke (highlighting,
+// autocomplete) and memoizes against this counter; packs register AFTER module
+// load, so it can never be a load-time snapshot.
 let registryGen = 0;
 
 /** How many registrations have happened — the memo key for any derived list. */
@@ -236,12 +185,9 @@ export function registryGeneration(): number {
 /** Declare a native implementation as authoritative for `name` (a "keep internal"
  *  family, or a flipped one). UPPERCASE-keyed.
  *
- *  A DUPLICATE registration throws (FX-4's registry half): `Map.set` overwrote
- *  silently, so two modules claiming one name was a lottery decided by import
- *  order — the same silent-collision class the despacing injectivity check
- *  guards on the naming side. Packs re-register on rebuild by design, so a
- *  REVOCABLE name (one that went through unregisterInternal) may return; a live
- *  name may not be claimed twice. */
+ *  A DUPLICATE registration throws (FX-4's registry half). Packs re-register on
+ *  rebuild by design, so a REVOCABLE name (one that went through
+ *  unregisterInternal) may return; a live name may not be claimed twice. */
 export function registerInternal(name: string, fn: (...a: unknown[]) => unknown): void {
   const key = name.toUpperCase();
   if (INTERNAL_IMPLS.has(key)) {
@@ -274,13 +220,8 @@ export function resolveExcelFunction(name: string): ((...a: unknown[]) => unknow
  *
  *  A FUNCTION is a walkable container here, not just an object: Formula.js hangs
  *  `.MATH`/`.PRECISE`/`.INTL`/`.TEST` straight off a callable parent (FX.CEILING is
- *  the CEILING function AND the home of CEILING.MATH). The old object-only guard
- *  bailed on `typeof cur !== "object"` at the parent, so ten CURRENT-Excel names —
- *  CEILING.MATH / CEILING.PRECISE / FLOOR.MATH / FLOOR.PRECISE / GAMMALN.PRECISE /
- *  SKEW.P / T.TEST / NETWORKDAYS.INTL / WORKDAY.INTL / BINOM.DIST.RANGE — were
- *  ADVERTISED by the name walk (which does descend into functions) and then threw
- *  "Unknown function" when actually called. Autocomplete and dispatch must walk the
- *  same way; that mismatch is exactly what this parity program exists to catch. */
+ *  the CEILING function AND the home of CEILING.MATH). Autocomplete and dispatch
+ *  must walk the same way or a name is advertised and then throws when called. */
 function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
   let cur: unknown = FX;
   for (const part of name.split(".")) {
@@ -295,17 +236,13 @@ function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
  *  so a dotted Excel function is recognised, not flagged as a typo. */
 export const FX_FUNCTION_NAMES: string[] = (() => {
   const names: string[] = [];
-  // Recursive walk (depth-capped): dotted namespaces nest two deep (NORM.S.DIST),
-  // and a FUNCTION can itself carry namespaced children (FX.T is the T() text
-  // function AND the T.DIST/T.INV home) — the old one-level object-only walk
-  // missed both, so T.DIST / NORM.S.INV worked at eval but highlighted as
-  // unknowns and never autocompleted.
+  // Depth-capped: dotted namespaces nest two deep (NORM.S.DIST), and a FUNCTION can
+  // itself carry namespaced children (FX.T is the T() text function AND the
+  // T.DIST/T.INV home).
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
-      // `FX.utils` is Formula.js's INTERNAL helper namespace (utils.symbols.ADD,
-      // utils.date.serialToDate) — library plumbing, not an Excel surface. It was
-      // being advertised in the formula editor's autocomplete as if a user could
-      // call it.
+      // `FX.utils` is Formula.js's INTERNAL helper namespace — library plumbing,
+      // not an Excel surface.
       if (!prefix && k === "utils") continue;
       const path = prefix ? `${prefix}.${k}` : k;
       if (typeof v === "function") {
@@ -320,43 +257,10 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
   return names;
 })();
 
-// ─── LEGACY_ALIASES — D10 on the formula surface (D19 decision 1) ─────────────
-// "Excel parity" means CURRENT Excel: an eliminated function stays eliminated on
-// EVERY surface. The node surface honored that; the formula surface did not, because
-// Formula.js drags in decades of superseded spellings and nobody decided to support
-// them. `VLOOKUP(...)` dispatched fine in an Expression while VLOOKUP was marked
-// out-of-scope in EXCEL_GAP — nobody chose that, it was drift.
-//
-// Each name here is BLOCKED: calling it returns #NAME? naming the current function
-// to use instead, and the name is dropped from autocomplete/highlighting (so the
-// editor flags it as unknown rather than teaching it). Two populations:
-//
-//  1. Superseded EXCEL names — the pre-2010 statistics family Microsoft replaced with
-//     dotted names, plus the lookup classics. A user typing NORMDIST gets pointed at
-//     NORM.DIST rather than silently computing through a function Excel itself calls
-//     a compatibility artifact.
-//  2. Formula.js SPELLINGS THAT WERE NEVER EXCEL — the library exposes squashed
-//     aliases (CEILINGMATH, MODESNGL, RANKEQ, STDEVS, TDISTRT) alongside the real
-//     dotted names. Advertising these actively teaches syntax that fails in Excel.
-//
-// Every replacement named here is verified callable by `excelFunctions.test.ts` — a
-// redirect pointing at a dead name is worse than no redirect. Blocking a name whose
-// replacement does NOT already dispatch means registering that replacement first.
-// ─── FRAME_SURFACE_NAMES — the frame/cube verbs, recognized but refused ───────
-// D23 rejected rung 4 on record: frames and cubes stay OUT of formulas (no
-// Excel semantics to copy, competes with the verb engine, breaks the
-// lazy-FrameRef economics). But their names are REAL surface vocabulary — the
-// Add menu teaches JOIN and PIVOTBY — so typing one must not read as a typo.
-// Each name here short-circuits dispatch with a #TYPE! naming the node to use
-// (the frame surface IS the canvas), and the editor colors it in the frame
-// socket violet (`fx-frame`) instead of the unknown-name red. Distinct from
-// LEGACY_ALIASES on purpose: a legacy spelling is a WRONG name with a right
-// one to substitute; these are RIGHT names whose data type can't flow here.
-//
-// Value = the node label the message points at. Machine-checked against the
-// catalog (frameSurfaceNames.test.ts): every visible Tables & Frames leaf
-// whose typeable name doesn't dispatch appears here, no entry collides with a
-// dispatchable name or a legacy alias, and every label is a real leaf.
+// FRAME_SURFACE_NAMES — frame/cube verb names recognized but REFUSED on the formula
+// surface (D23): each short-circuits dispatch with a #TYPE! naming the node to use,
+// and the editor colors it frame violet (`fx-frame`) rather than unknown-name red.
+// Value = that node label. Machine-checked in frameSurfaceNames.test.ts.
 export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Frames (named columns)
   BUILDFRAME: "Build Frame", FRAMEFROMLISTS: "Frame from Lists", SPLITFRAME: "Split Frame",
@@ -379,11 +283,13 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   CUBEROLLUP: "Cube Rollup",
 };
 
+// D10 on the formula surface (D19 decision 1): each key is BLOCKED — calling it
+// returns #NAME? naming the current replacement, and the name is dropped from
+// autocomplete/highlighting. Blocking a name whose replacement does not already
+// dispatch means registering that replacement first (excelFunctions.test.ts checks).
 export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
-  // ── lookup classics (the original D10 four) ──
   VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",
 
-  // ── superseded Excel statistics/distribution names ──
   NORMDIST: "NORM.DIST", NORMINV: "NORM.INV", NORMSDIST: "NORM.S.DIST", NORMSINV: "NORM.S.INV",
   LOGNORMDIST: "LOGNORM.DIST", LOGINV: "LOGNORM.INV", LOGNORMINV: "LOGNORM.INV",
   TDIST: "T.DIST.RT", TINV: "T.INV.2T", // MS compat mapping: TDIST's tails arg splits into .RT/.2T; TINV was always two-tailed
@@ -399,7 +305,6 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   FORECAST: "FORECAST.LINEAR",
   NETWORKDAYSINTL: "NETWORKDAYS.INTL", WORKDAYINTL: "WORKDAY.INTL",
 
-  // ── Formula.js squashed spellings (never valid Excel) ──
   CEILINGMATH: "CEILING.MATH", CEILINGPRECISE: "CEILING.PRECISE",
   FLOORMATH: "FLOOR.MATH", FLOORPRECISE: "FLOOR.PRECISE",
   GAMMALNPRECISE: "GAMMALN.PRECISE",
@@ -432,18 +337,6 @@ export function internalFunctionNames(): string[] {
   return [...INTERNAL_IMPLS.keys()];
 }
 
-// ─── First wave of native impls (scaffold) ────────────────────────────────────
-// A representative spread — rounding / scalar-math / statistics / date — of EASY
-// functions with unambiguous output types, registered through the seam so the
-// typed-formula path (excelFormula.ts `dispatch`, now routed via
-// `resolveExcelFunction`) resolves THESE instead of Formula.js. Each returns a
-// tagged `SolError` on a domain failure, so error integration is free — no
-// Formula.js→SolError mapping needed for an owned function. Chosen to exercise the
-// reasons a function is owned: ROUND (Excel half-AWAY-from-zero, the rounding edge),
-// SQRT (a real `#DOMAIN!` on a negative), STANDARDIZE (a "keep internal" stat), and the
-// date extractors (Solenoid's serial model). `EOMONTH` returns a `date`, the rest a
-// `number` — a spread of output socket types for tests + future result inference.
-
 /** Declared output ELEMENT type (a SocketDataType subset) — metadata for tests + a
  *  future result-type inference, not yet wired to the result socket. */
 // "any" = type-neutral: the function returns whichever type its arguments carry
@@ -452,9 +345,7 @@ export function internalFunctionNames(): string[] {
 export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
- *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name.
- *  `matrix` (2-D) is spellable since D23 lifted the cap — before that only the two
- *  D2 ranks existed, with `matrix` deliberately reserved for the Tier 4 decision. */
+ *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name. */
 export type ExcelRank = "scalar" | "list" | "matrix";
 
 export interface ExcelImplMeta {
@@ -471,9 +362,7 @@ export interface ExcelImplMeta {
   /** The function takes a whole 2-D MATRIX as an argument (D23). This is the ONLY
    *  gate through which a rank-2 value reaches a dispatch whole: an undeclared
    *  owned impl answers #SHAPE!, a range aggregate flattens row-major first, and
-   *  Formula.js NEVER sees a matrix (the D23 containment rule — its array
-   *  functions are written against 2-D ranges with unvetted quirks, and it has
-   *  been caught mutating arguments in place). */
+   *  Formula.js NEVER sees a matrix (the D23 containment rule). */
   matrixArgs?: boolean;
   /** The function COMPUTES ON tagged Cx values (the IM* family). This is the only
    *  gate through which a complex reaches a dispatch (the D23-amendment
@@ -514,7 +403,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   SECOND:      { returns: "number", arity: [1, 1], family: "datetime" },
   EOMONTH:     { returns: "date",   arity: [2, 2], family: "datetime" },
   LEN:         { returns: "number", arity: [1, 1], family: "text" },
-  // statistics flat names made callable in a formula (see the registrations below)
   STDEV:       { returns: "number", arity: [1, 255], family: "statistics" },
   VAR:         { returns: "number", arity: [1, 255], family: "statistics" },
   MODE:        { returns: "number", arity: [1, 255], family: "statistics" },
@@ -526,16 +414,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "RANK.EQ":   { returns: "number", arity: [2, 3], family: "statistics" },
   "RANK.AVG":  { returns: "number", arity: [2, 3], family: "statistics" },
   TRIMMEAN:    { returns: "number", arity: [2, 2], family: "statistics" },
-  // Solenoid-only — these don't exist in Formula.js, so the registry is what makes
-  // them callable in a formula at all (and covers the string + logical output types).
   CLAMP:       { returns: "number",  arity: [3, 3], native: true },
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
 
-  // ── Tier 1 (D19): names Formula.js lacks entirely, so the registry is what
-  // makes them callable at all. `native: true` says exactly that — it is not a
-  // claim about who authored the math.
-  // Modern text functions:
   TEXTSPLIT:    { returns: "string", arity: [2, 2], family: "text", native: true },
   TEXTAFTER:    { returns: "string", arity: [2, 2], family: "text", native: true },
   TEXTBEFORE:   { returns: "string", arity: [2, 2], family: "text", native: true },
@@ -543,18 +425,12 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   REGEXTEST:    { returns: "number", arity: [2, 3], family: "text", native: true },
   REGEXEXTRACT: { returns: "string", arity: [2, 4], family: "text", native: true },
   REGEXREPLACE: { returns: "string", arity: [3, 5], family: "text", native: true },
-  // The statistical tests Formula.js gets WRONG: its T.TEST ignores tails/type and
-  // its F.TEST returns the variance ratio instead of the p-value. Registered
-  // against the nodes' own impls (mathUtils) so both surfaces answer the same.
+  // Formula.js's T.TEST ignores tails/type and its F.TEST returns the variance
+  // ratio instead of the p-value — these run the nodes' own impls (mathUtils).
   "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
   PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
 
-  // ── The registered internals that predate the meta requirement (FX-3) ──
-  // Every `registerInternal` name declares its contract here; the completeness is
-  // machine-checked ("every registered internal declares its meta"), so a new
-  // registration without an entry fails loudly instead of quietly taking default
-  // routing.
   CONCAT:      { returns: "string", arity: [1, 255], family: "text" },
   CONCATENATE: { returns: "string", arity: [1, 255], family: "text" },
   TEXTJOIN:    { returns: "string", arity: [3, 255], family: "text" },
@@ -614,8 +490,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   DATEVALUE:  { returns: "date", arity: [1, 1], family: "datetime" },
   WORKDAY:    { returns: "date", arity: [2, 3], family: "datetime" },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
-  // Bond / security block. COUPNCD and COUPPCD return a date SERIAL, so they carry
-  // the `date` return type; every other one is a number.
   COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPDAYSNC: { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPNUM:    { returns: "number", arity: [2, 4], family: "finance", native: true },
@@ -637,9 +511,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
   ODDLYIELD:  { returns: "number", arity: [5, 7], family: "finance", native: true },
 
-  // ── Tier 3 (D19): the Solenoid-native data-op core. `listArgs` routes the call
-  // past the element-wise broadcaster; `rank: "list"` declares a 1-D result.
-  // Shape — list in, list out:
   REVERSE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   SLICE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   NTHELEMENT:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
@@ -658,7 +529,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ROLLINGMAX:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   ROLLINGSTDEV:    { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   ROLLINGMEDIAN:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  // Find / aggregate — list in, scalar out:
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
@@ -666,15 +536,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   WAVG:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
   WVAR:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
   WSTDEV:          { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
-  // Build — scalars in, list out. `listArgs` here says "never broadcast me": without
+  // `listArgs` on a scalars-in/list-out builder says "never broadcast me": without
   // it LINSPACE(list, 1, 5) would map element-wise into a 2-D result, which D2 bans.
   LINSPACE:        { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
   REPEAT:          { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   GEOMETRIC:       { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
   FIBONACCI:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 
-  // Sets + Fill + the remaining builders. Names DECLARED on the OP_META tables
-  // (SET_OP_META / SET_RELATION_META / FILL_OP_META) because the labels are prose.
+  // These names are DECLARED on the OP_META tables (SET_OP_META /
+  // SET_RELATION_META / FILL_OP_META) because the node labels are prose.
   SETUNION:        { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
   SETINTERSECT:    { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
   SETDIFFERENCE:   { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
@@ -695,7 +565,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RANGE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   CONCATLISTS:     { returns: "number", rank: "list", listArgs: true, arity: [1, 255], native: true },
 
-  // Names the node surface already claimed (see the registrations at the bottom).
   LENB:            { returns: "number", arity: [1, 1], family: "text" },
   LEFTB:           { returns: "string", arity: [1, 2], family: "text" },
   MIDB:            { returns: "string", arity: [3, 3], family: "text" },
@@ -708,15 +577,13 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   VALUETOTEXT:     { returns: "string", arity: [1, 2], family: "text" },
 
   COUNTDISTINCT:   { returns: "number", listArgs: true, arity: [1, 1], family: "statistics", native: true },
-  // Both of the node's MODES, dispatched on the first argument's rank (see the
-  // registration): 3 args = List mode, a matrix = Grid mode (D23 unblocked it).
+  // Both of the node's MODES, dispatched on the first argument's rank: 3 args =
+  // List mode, a matrix = Grid mode.
   INTERPOLATE:     { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 3], family: "statistics", native: true },
   SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 
-  // ── D23 tranche 1: the matrix core. `matrixArgs` is FX-9's gate; `listArgs`
-  // routes the rank-≤1 case whole too (TRANSPOSE of a list is a column, not an
-  // element-wise map). TRANSPOSE/MMULT/MUNIT override Formula.js (no `native`);
-  // the rest add names it lacks.
+  // Matrix core: `matrixArgs` is FX-9's gate; `listArgs` routes the rank-≤1 case
+  // whole too (TRANSPOSE of a list is a column, not an element-wise map).
   TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
   MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
@@ -728,8 +595,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TOROW:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
 
-  // ── D23 tranche 2: the array-returning core. UNIQUE/SORT/MODE.MULT/FREQUENCY
-  // override Formula.js (they were broadcasting garbage); the rest add names.
   UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
   SORT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 3] },
   SORTBY:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
@@ -740,8 +605,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   FREQUENCY:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], family: "statistics" },
   RANDARRAY:   { returns: "number", rank: "matrix", listArgs: true, arity: [0, 5], native: true },
 
-  // ── D23 lambda tranche. LAMBDA is a special form (see the stub); the hosts
-  // receive arrays whole at every rank.
+  // LAMBDA is a special form (see the stub); the hosts receive arrays whole at
+  // every rank.
   LAMBDA:    { returns: "number", listArgs: true, arity: [1, 255], native: true },
   MAP:       { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
   BYROW:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
@@ -751,7 +616,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MAKEARRAY: { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
   GROUPBY:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
 
-  // ── The non-pack straggler sweep.
   REVERSETEXT: { returns: "string", arity: [1, 1], family: "text", native: true },
   SPELLNUMBER: { returns: "string", arity: [1, 1], family: "text", native: true },
   DECODEURL:   { returns: "string", arity: [1, 1], family: "text", native: true },
@@ -761,11 +625,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOR:         { returns: "logical", arity: [1, 255], native: true },
   XNOR:        { returns: "logical", arity: [1, 255], native: true },
 
-  // ── D23 amendment: the complex tranche. The IM* family owned over tagged Cx
-  // (VAL-15) — arguments accept a Cx, a real number, or Excel's "a+bi" text;
-  // results are tagged Cx (formatCx renders them), not Excel's text complexes.
-  // `cxArgs` is the containment gate (excelFormula.ts). COMPLEX and
-  // QUADRATICROOTS take REAL arguments, deliberately no cxArgs.
+  // The IM* family over tagged Cx (VAL-15): arguments accept a Cx, a real number,
+  // or Excel's "a+bi" text; results are tagged Cx, not Excel's text complexes.
+  // `cxArgs` is the containment gate. COMPLEX and QUADRATICROOTS take REAL
+  // arguments, deliberately no cxArgs.
   COMPLEX:     { returns: "complex", arity: [2, 3], family: "complex" },
   IMREAL:      { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
   IMAGINARY:   { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
@@ -796,8 +659,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // in, whole [x₁, x₂] out — a list-returner must never be broadcast.
   QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, arity: [3, 3], family: "complex", native: true },
 
-  // ── The regression quartet, owned over the nodes' fitting kernels (FX-1).
-  // Excel's optional trailing const/stats arguments are not taken.
+  // The regression quartet: Excel's optional trailing const/stats arguments are
+  // not taken.
   TREND:  { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
   GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
   LINEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
@@ -809,12 +672,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
  *  text fn via `toStr`): 15 significant digits, trailing zeros stripped — so
- *  `(0.1+0.2) & " kg"` is "0.3 kg", not "0.30000000000000004 kg". The rationale is
- *  IEEE, not Excel: a double carries ~15 clean decimal digits; digits 16–17 are
- *  representation noise, so printing them into user-built text publishes garbage.
- *  Scientific-notation thresholds are deliberately NOT chased — `.toString()`'s
- *  own e-notation for very large/small magnitudes is fine. Non-finite falls back
- *  to `String` (guardFinite normally tags those before they reach here). */
+ *  `(0.1+0.2) & " kg"` is "0.3 kg", not "0.30000000000000004 kg". Scientific-notation
+ *  thresholds are deliberately NOT chased. Non-finite falls back to `String`. */
 export function numberToText(x: number): string {
   if (!Number.isFinite(x)) return String(x);
   return parseFloat(x.toPrecision(15)).toString();
@@ -839,8 +698,7 @@ function excelRound(n: number, digits: number): number {
 
 /** Excel RANK of `value` within `ref` — descending (largest = rank 1); ties share
  *  the lowest rank (`avg=false`, RANK.EQ) or the average rank (RANK.AVG). A value not
- *  present is #N/A (Excel); Formula.js wrongly returns 0. The single source RankNode
- *  ALSO calls, so the formula path and the visual node agree. */
+ *  present is #N/A (Excel). The single source RankNode ALSO calls. */
 export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false): number | SolError {
   if (Number.isNaN(value)) return VALUE("RANK");
   const above = ref.filter((x) => x > value).length;
@@ -850,8 +708,8 @@ export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false
 }
 
 /** Excel TRIMMEAN: drop `floor(n·percent/2)` values from EACH end (Excel rounds the
- *  total trimmed count down to a multiple of 2), then average the rest. Formula.js
- *  over-trims. Shared with TrimMeanNode. Over-trimming everything is #DOMAIN!. */
+ *  total trimmed count down to a multiple of 2), then average the rest. Shared with
+ *  TrimMeanNode. Over-trimming everything is #DOMAIN!. */
 export function excelTrimmean(values: ReadonlyArray<number>, percent: number): number | SolError {
   const n = values.length;
   if (n === 0 || Number.isNaN(percent)) return VALUE("TRIMMEAN");
@@ -866,7 +724,7 @@ export function excelTrimmean(values: ReadonlyArray<number>, percent: number): n
  *  decimal digits — both required for Excel parity. INC uses an (n−1) position basis;
  *  EXC an (n+1) basis. A value outside the data range is #N/A. For an exact match
  *  the position is the FIRST occurrence (= count of values strictly below). Shared by
- *  PercentrankNode + the formula path, so node and formula agree. */
+ *  PercentrankNode + the formula path. */
 export function excelPercentRank(
   arr: ReadonlyArray<number>, x: number, sig = 3, exc = false,
 ): number | SolError {
@@ -913,11 +771,9 @@ registerInternal("EOMONTH", (x, months) => {
 });
 registerInternal("LEN", (x) => toStr(x).length);
 
-// ── text join: own them so numbers format at 15 sig digits (numberToText via
-// toStr), not Formula.js's raw String (17-digit float noise). CONCAT/TEXTJOIN are
-// range functions (whole arrays, nulls already skipped / errors propagated by
-// prepRangeArgs); CONCATENATE is element-wise (scalar args). `flat` handles a
-// range arg that arrives as a (possibly nested) array. ──
+// Owned so numbers format at 15 sig digits (numberToText via toStr). CONCAT/TEXTJOIN
+// are range functions (whole arrays, nulls already skipped / errors propagated by
+// prepRangeArgs); CONCATENATE is element-wise (scalar args).
 const flat = (xs: unknown[]): unknown[] => xs.flatMap((x) => (Array.isArray(x) ? flat(x) : [x]));
 registerInternal("CONCAT", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("CONCATENATE", (...xs) => flat(xs).map(toStr).join(""));
@@ -928,12 +784,8 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   return kept.join(toStr(delim));
 });
 
-// ── text-family pass-throughs, wrapped for OUR number→text coercion (B-4b sweep,
-// 2026-07-05): FX stringifies a numeric arg with raw String() — 17-digit float
-// noise (UPPER(0.1+0.2) → "0.30000000000000004") — and SUBSTITUTE outright THROWS
-// on a number. Route each function's text-position args through toStr (the same
-// numberToText 15-sig-digit contract CONCAT/TEXTJOIN enforce above), then delegate
-// to FX for the actual semantics (FIND case-sensitivity, SEARCH wildcards, …). ──
+// Text-family pass-throughs: each function's TEXT-position args route through toStr
+// (the numberToText 15-sig-digit contract), then delegate to FX for the semantics.
 const TEXT_ARG_POSITIONS: Record<string, number[]> = {
   LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
   TRIM: [0], REPT: [0], SUBSTITUTE: [0, 1, 2], REPLACE: [0, 3],
@@ -944,26 +796,18 @@ for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
   registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
 }
 
-// ── datetime extractors (the rest of YEAR's family) ──
-// Each reads OUR date serial through `serialToJsDate`, identical to DatePartNode's
-// data() (getUTC* on the same Date), so the typed-formula path and the visual node
-// now agree — the reason the datetime family is owned (one serial / UTC model, not
-// Formula.js's Date/1900 conventions). All number-out, single-arg.
+// Datetime extractors read OUR date serial through `serialToJsDate`, identical to
+// DatePartNode's data() (getUTC* on the same Date) — one serial/UTC model, not
+// Formula.js's Date/1900 conventions.
 registerInternal("MONTH",  (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("MONTH")  : serialToJsDate(n).getUTCMonth() + 1; });
 registerInternal("DAY",    (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("DAY")    : serialToJsDate(n).getUTCDate(); });
 registerInternal("HOUR",   (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("HOUR")   : serialToJsDate(n).getUTCHours(); });
 registerInternal("MINUTE", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("MINUTE") : serialToJsDate(n).getUTCMinutes(); });
 registerInternal("SECOND", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("SECOND") : serialToJsDate(n).getUTCSeconds(); });
 
-// ── statistics: flat names Formula.js hides behind namespaced OBJECTS ──
-// `STDEV`/`VAR`/`MODE`/`PERCENTILE`/`QUARTILE`/`COVAR`/`PERCENTRANK` are objects in
-// Formula.js (FX.STDEV.S, FX.PERCENTILE.INC, …) and the formula tokenizer can't read a
-// dotted name, so every one of these THREW "Unknown function" in an Expression/LAMBDA.
-// Register the flat Excel name → FX's namespaced impl, with Excel's flat-name default
+// Flat Excel names bound to FX's namespaced impls, with Excel's flat-name default
 // (STDEV/VAR = sample, PERCENTILE/QUARTILE = inclusive, MODE = single, COVAR =
-// population, PERCENTRANK = inclusive). The divergence audit (dev-notes 2026-06-25)
-// confirmed our visual nodes match FX for these, so the formula path and the node now
-// agree — they just couldn't be CALLED in a formula before.
+// population, PERCENTRANK = inclusive).
 const FXNS = FX as unknown as Record<string, Record<string, (...a: unknown[]) => unknown>>;
 registerInternal("STDEV",       (...a) => FXNS.STDEV.S(...a));
 registerInternal("VAR",         (...a) => FXNS.VAR.S(...a));
@@ -972,14 +816,8 @@ registerInternal("PERCENTILE",  (...a) => FXNS.PERCENTILE.INC(...a));
 registerInternal("QUARTILE",    (...a) => FXNS.QUARTILE.INC(...a));
 registerInternal("COVAR",       (...a) => FXNS.COVARIANCE.P(...a));
 
-// RANK + TRIMMEAN + PERCENTRANK: OUR impl is the Excel-correct one (FX wrong or — for
-// PERCENTRANK — the node was wrong), so register ours — the single source the visual
-// node (RankNode / TrimMeanNode / PercentrankNode) ALSO calls.
-//  • RANK returns #N/A for a value not in the list (Excel); FX wrongly returns 0.
-//  • TRIMMEAN trims floor(n·pct/2) per end = Excel's "round the trimmed count DOWN to a
-//    multiple of 2"; FX over-trims (TRIMMEAN([2,4,4,4,5,5,7,9],0.2) is 5 in Excel, 4.83 in FX).
-//  • PERCENTRANK interpolates between data points + truncates to significance (Excel);
-//    the formula path takes the inclusive (n−1) basis with default 3 digits.
+// RANK / TRIMMEAN / PERCENTRANK run the single source the visual nodes also call.
+// PERCENTRANK takes the inclusive (n−1) basis with default 3 digits here.
 registerInternal("RANK",     (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], false));
 registerInternal("RANK.EQ",  (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], false));
 registerInternal("RANK.AVG", (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], true));
@@ -987,16 +825,9 @@ registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? 
 // Excel arg order PERCENTRANK(array, x, [significance]); range arg passes whole.
 registerInternal("PERCENTRANK", (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), false));
 
-// ── scalar-math: override where Formula.js diverges from Excel (full sweep 2026-06-25) ──
-// Found by comparing every scalar-math NODE vs Formula.js:
-//  • MOD — Excel's result takes the DIVISOR's sign (MOD(10,-3) = -2); FX returns -1. The
-//    node's `x - y·floor(x/y)` is the Excel definition.
-//  • ATAN2 — Excel ATAN2(x, y) = atan2(y, x) (x first); FX wrongly computes atan2(x, y).
-//  • QUOTIENT / MOD ÷0 — a real #DIV/0! (Excel), not FX's null.
-//  • LN / LOG10 / SQRTPI / ASIN / ACOS / ACOSH / ATANH on an out-of-domain input — our node
-//    tags #DOMAIN!; FX silently returns null/blank for some of these, so the formula would go
-//    blank instead of erroring. Register ours so formula == node == the flagship error system.
-//    (SQRT is already owned above.) These match the MathFnNode `compute()` exactly.
+// Scalar math owned to match MathFnNode `compute()` exactly. Excel's MOD takes the
+// DIVISOR's sign (MOD(10,-3) = -2), Excel ATAN2(x, y) = atan2(y, x) (x first), ÷0 is
+// a real #DIV/0!, and an out-of-domain input tags #DOMAIN! rather than blanking.
 const domErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
 const num1 = (fn: string, f: (x: number) => number | SolError) =>
   registerInternal(fn, (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE(fn) : f(n); });
@@ -1020,12 +851,9 @@ num1("ACOS",   (x) => (x < -1 || x > 1 ? domErr() : Math.acos(x)));
 num1("ACOSH",  (x) => (x < 1 ? domErr() : Math.acosh(x)));
 num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
 
-// ── distributions Formula.js LACKS — register OUR impls (same formulas the dist nodes
-// use, reusing mathUtils) so EVERY Excel distribution is callable in a formula. The ones
-// FX HAS (NORM.*, CHISQ.DIST/INV, F.DIST/INV, BETA.*, LOGNORM.*, WEIBULL, EXPON, BINOM.*,
-// POISSON, HYPGEOM, NEGBINOM) already resolve through the dotted-name namespace walk. FX
-// lacks the whole T family, the right-tail variants, and GAMMA.DIST/INV. Invalid params
-// return null (a blank — matching the visual node), not a fabricated number.
+// The distributions Formula.js lacks (the T family, the right-tail variants,
+// GAMMA.DIST/INV), on the same mathUtils the dist nodes use. Invalid params return
+// null (a blank — matching the visual node), not a fabricated number.
 const PI = Math.PI;
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);
@@ -1060,11 +888,8 @@ registerInternal("GAMMA.DIST", (x, a, b, cum) => {
 });
 registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => (x <= 0 ? 0 : regularizedGamma(al, x / be)), pn, 0, 1e6)); });
 
-// ── CONVERT — register OUR unit system (the flagship), not Formula.js's. Ours is
-// richer (FX.CONVERT even errors on C→F) and uses the SAME unit keys as the ConvertNode
-// dropdown, so a formula CONVERT matches the visual node. Unknown / cross-category units
-// are #N/A (Excel). The node's own from/to dropdowns are the primary path; this just lets
-// =CONVERT(x, "m", "ft") work in a formula too.
+// CONVERT runs OUR unit system on the SAME unit keys as the ConvertNode dropdown.
+// Unknown / cross-category units are #N/A (Excel).
 registerInternal("CONVERT", (x, from, to) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("CONVERT");
@@ -1072,11 +897,8 @@ registerInternal("CONVERT", (x, from, to) => {
   return r == null ? solError("#N/A", "CONVERT: unknown or incompatible units") : r;
 });
 
-// ── Lookup family — registered against OUR 1-D list model. Formula.js implements
-// these against 2-D ranges (and XLOOKUP/XMATCH not at all), so unregistered they
-// either threw or — worse — broadcast element-wise and returned all-#N/A garbage.
-// Text matching is case-INSENSITIVE, Excel's default for every lookup function
-// (EXACT is the case-sensitive escape hatch).
+// Lookup family, against OUR 1-D list model. Text matching is case-INSENSITIVE,
+// Excel's default for every lookup function (EXACT is the case-sensitive escape hatch).
 const lookupEq = (a: unknown, b: unknown): boolean =>
   typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
 const exactIndex = (lookup: unknown, keys: unknown[]): number =>
@@ -1095,16 +917,10 @@ registerInternal("XMATCH", (lookup, keys) => {
   const idx = exactIndex(lookup, ks);
   return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
 });
-// Classic lookups are eliminated permanently (docs/decisions.md D10 — an
-// eliminated function stays eliminated on every surface). Typing one in a formula
-// doesn't silently work; it redirects to the current-Excel replacement. Registered
-// as internals so this wins over Formula.js's own VLOOKUP etc. INDEX stays (current
-// Excel, never superseded).
-// IF honors a BLANK branch (the parser's omitted-argument form, `IF(x,,y)`):
-// the blank arrives as null and STAYS null — Solenoid's first-class missing —
-// where Formula.js coerced it to 0 (and real Excel's omitted arg IS 0; author
-// 2026-07-16 chose null, which Excel doesn't have). Arg-count defaults keep
-// Excel's shape: IF(test, then) with a false test → FALSE.
+// IF honors a BLANK branch (the parser's omitted-argument form, `IF(x,,y)`): the
+// blank arrives as null and STAYS null — a deliberate deviation, real Excel's
+// omitted arg is 0. Arg-count defaults keep Excel's shape: IF(test, then) with a
+// false test → FALSE.
 registerInternal("IF", (test, thenV, elseV) => {
   if (test == null) return null; // a MISSING condition stays missing (app contract) — only the branches may be blank
   const cond = typeof test === "number" ? test !== 0 : Boolean(test);
@@ -1112,8 +928,7 @@ registerInternal("IF", (test, thenV, elseV) => {
   return elseV === undefined ? false : elseV;
 });
 // The blocklist registers itself: a blocked name resolves to a redirect stub, which
-// WINS over Formula.js's own implementation (internal impls are checked first). This
-// is the gate — without it the library's VLOOKUP/NORMDIST/… would still answer.
+// WINS over Formula.js's own implementation (internal impls are checked first).
 for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
   registerInternal(name, () => solError("#NAME?", `Use ${use}`));
 }
@@ -1125,45 +940,29 @@ registerInternal("INDEX", (list, row, col) => {
   return r <= ks.length ? ks[Math.trunc(r) - 1] : solError("#REF!", "INDEX position is past the end of the list");
 });
 
-// ── datetime: date-RETURNING functions emit a Date OBJECT via Formula.js, not our
-// serial — so `=DATE(2026,3,15)` in a formula would yield a Date and break the numeric
-// value model (every downstream op expects a number). FX computes the right calendar
-// date (it shares Excel's 1900 epoch — verified), so wrap it and convert the Date back
-// to our serial. The NUMBER-returning datetime functions (YEAR…SECOND, WEEKDAY, WEEKNUM,
-// ISOWEEKNUM, DAYS, YEARFRAC, TIME, NETWORKDAYS) already agree with FX and need nothing.
-//
-// TZ care: FX builds a LOCAL midnight Date (`new Date(y, m-1, d)`); reading it back via
-// `jsDateToSerial` (UTC getTime) shifts an integer date serial by the machine's TZ
-// offset — `DATE(2026,3,15)` came out 46095.9583 instead of 46096 on a UTC+1 box (green
-// in UTC CI, red locally). These four are all DATE-ONLY (no time component), so the true
-// serial is an integer; rounding recovers it on any timezone within ±12h.
+// Date-RETURNING Formula.js functions emit a Date OBJECT, not our serial, so wrap
+// them. FX builds a LOCAL midnight Date; reading it back via `jsDateToSerial` (UTC
+// getTime) shifts an integer date serial by the machine's TZ offset. These four are
+// DATE-ONLY, so the true serial is an integer and rounding recovers it within ±12h.
 const toSerialIfDate = (v: unknown): unknown => (v instanceof Date ? Math.round(jsDateToSerial(v)) : v);
 for (const fn of ["DATE", "EDATE", "DATEVALUE", "WORKDAY"]) {
   const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
   if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
 }
-// NOW/TODAY: FX returns a raw JS `Date` object, which is garbage to the numeric
-// value model (`YEAR(TODAY())` was #VALUE!, `NOW()+1` a string). Register serial
-// versions matching the TodayNow node exactly — TODAY an integer (UTC midnight),
-// NOW keeping the time fraction (so it can't share toSerialIfDate's rounding).
+// Serial versions matching the TodayNow node exactly — TODAY an integer (UTC
+// midnight), NOW keeping the time fraction (so it can't share toSerialIfDate's
+// rounding).
 registerInternal("TODAY", () => {
   const n = new Date();
   return jsDateToSerial(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())));
 });
 registerInternal("NOW", () => jsDateToSerial(new Date()));
-// TEXT: FX date-formats JS Date OBJECTS, not our serials — TEXT(46096,
-// "yyyy-mm-dd") returned "46096" (audit finding 29). When the format code is
-// date/time-shaped, hand FX the serial's UTC Date directly: FX formats via UTC
-// getters (probed 2026-07-02 — the earlier local-wall-clock rebuild double-
-// shifted the day on any non-UTC machine, "green in UTC CI, red locally").
-// The 2026-07-05 TEXT-family sweep (B-4b) patched four more FX holes up front:
-// a non-numeric text value passes through unchanged (Excel) instead of THROWING;
-// "@" / "General" use our numberToText (FX rounds "@" and zeroes "General");
-// pure zero-pad codes ("00000") actually pad (FX drops the pad); scientific
-// ("0.00E+00") formats as 1.23E+06 (FX emitted a plain decimal). Still FX,
-// still known-broken (documented, not chased): section codes ("pos;neg"),
-// fractions ("# ?/?"), and time tokens (hh:mm renders the date part only).
-// Plain numeric codes ("0.00", "#,##0", "%", "$") pass straight through to FX.
+// TEXT: FX date-formats JS Date OBJECTS, not our serials, so a date/time-shaped
+// format code gets the serial's UTC Date handed over directly — FX formats via UTC
+// getters, and rebuilding a local wall-clock Date double-shifts the day off UTC.
+// The cases patched up front (non-numeric passthrough, "@"/"General", zero-pad
+// codes, scientific) are FX holes; section codes, fractions and time tokens remain
+// known-broken. Plain numeric codes pass straight through to FX.
 registerInternal("TEXT", (value, fmt) => {
   const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
   const f = toStr(fmt);
@@ -1182,18 +981,16 @@ registerInternal("TEXT", (value, fmt) => {
   if (dateish) return fxText(serialToJsDate(n), f);
   return fxText(n, f);
 });
-// DOLLAR: FX prints a negative as "$(1,234.57)"; Excel's accounting form is
-// "($1,234.57)" — the $ sits INSIDE the parens. Positive/rounding behavior is
-// already Excel-correct, so just relocate the paren.
+// Excel's accounting form for a negative is "($1,234.57)" — the $ sits INSIDE the
+// parens, where FX prints "$(1,234.57)".
 registerInternal("DOLLAR", (value, decimals) => {
   const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(value, decimals);
   return typeof out === "string" && out.startsWith("$(") ? `($${out.slice(2)}` : out;
 });
-// VALUE: FX returns 0 for ANY unparseable text — VALUE("abc") = 0 silently
-// corrupts downstream math. Excel is strict: #VALUE!. Own it: plain numbers,
-// $ prefix, thousands commas, trailing % (each ÷100), (parens) as negative.
-// Date/time text is NOT parsed (Excel's VALUE does; ours routes through
-// DATEVALUE — documented deviation, keeps VALUE's contract number-only).
+// VALUE is strict (unparseable text is #VALUE!, as in Excel): plain numbers, $
+// prefix, thousands commas, trailing % (each ÷100), (parens) as negative. Date/time
+// text is deliberately NOT parsed — that routes through DATEVALUE, keeping VALUE's
+// contract number-only (a documented deviation from Excel).
 registerInternal("VALUE", (x) => {
   if (typeof x === "number") return x;
   const s = toStr(typeof x === "boolean" ? "" : x).trim(); // Excel: VALUE(TRUE) is #VALUE!
@@ -1205,12 +1002,10 @@ registerInternal("VALUE", (x) => {
   if (Number.isNaN(n)) return VALUE("VALUE");
   return (neg ? -n : n) / Math.pow(100, pct);
 });
-// NUMBERVALUE: FX returns null when only a decimal separator is given —
-// NUMBERVALUE("3,5%", ",") must be 0.035 (Excel). Own it: first char of each
-// separator arg counts (Excel), whitespace stripped anywhere, trailing %s each
-// ÷100, group separator legal only BEFORE the decimal point, "" → 0. The ","
-// group DEFAULT yields when the decimal sep claims it; only two EXPLICITLY
-// identical separators are #VALUE!.
+// NUMBERVALUE (Excel): first char of each separator arg counts, whitespace stripped
+// anywhere, trailing %s each ÷100, group separator legal only BEFORE the decimal
+// point, "" → 0. The "," group DEFAULT yields when the decimal sep claims it; only
+// two EXPLICITLY identical separators are #VALUE!.
 registerInternal("NUMBERVALUE", (text, dec, grp) => {
   const d = (toStr(dec ?? "") || ".")[0];
   const gRaw = toStr(grp ?? "");
@@ -1229,16 +1024,10 @@ registerInternal("NUMBERVALUE", (text, dec, grp) => {
   return n / Math.pow(100, pct);
 });
 
-// ── Tier 1: the bond / security block Formula.js lacks (D19) ──
-// Twenty Excel-named finance nodes whose names gave #NAME? in a formula. Scope is
-// deliberately only what FX LACKS: `FAMILY_BACKING.finance` already ruled that the
-// closed-form finance functions FX *does* implement stay on Formula.js ("no
-// difference that matters"), so DISC and COUPDAYS are untouched here.
-//
-// Each calls the node's own compute (financeOps.ts) with Excel's argument order.
-// An out-of-range argument — a frequency that isn't 1/2/4, a maturity at or before
-// settlement — yields null (a blank), matching what the node shows rather than
-// fabricating a number. Optional `basis` defaults to 0 (30/360) as in Excel.
+// The bond / security block, each calling the node's own compute (financeOps.ts)
+// with Excel's argument order. An out-of-range argument — a frequency that isn't
+// 1/2/4, a maturity at or before settlement — yields null (a blank), matching the
+// node rather than fabricating a number. Optional `basis` defaults to 0 (30/360).
 const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 
 for (const op of ["coupdaybs", "coupdaysnc", "coupncd", "couppcd", "coupnum"] as const) {
@@ -1280,11 +1069,8 @@ registerInternal("ODDLPRICE", (settle, maturity, lastInterest, rate, yld, redemp
 registerInternal("ODDLYIELD", (settle, maturity, lastInterest, rate, pr, redemption, freq) =>
   oddCoupon("oddlyield", toNum(settle), toNum(maturity), NaN, toNum(lastInterest), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
 
-// ── Tier 1: FORECAST.LINEAR ──
-// Excel renamed FORECAST → FORECAST.LINEAR; the node carries the current name, but
-// only the superseded spelling dispatched (through Formula.js), so the node's own
-// name gave #NAME?. Now the current name runs the NODE'S fit and the old one
-// redirects (LEGACY_ALIASES). A range function — both known-value args arrive whole.
+// FORECAST.LINEAR runs the NODE'S fit; the superseded FORECAST redirects
+// (LEGACY_ALIASES). A range function — both known-value args arrive whole.
 registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("FORECAST.LINEAR");
@@ -1292,18 +1078,13 @@ registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
   return fit ? fit.intercept + fit.slope * n : solError("#DIV/0!", "Known Xs have zero variance");
 });
 
-// ── Tier 1: modern-Excel TEXT functions Formula.js predates (D19) ──
-// Each node already existed and carried the Excel name; typing that name in an
-// Expression still gave #NAME?. These register the NODE'S OWN compute — imported,
-// not re-written — so the two surfaces cannot drift by construction. TEXTSPLIT
-// returns a list (1-D, inside the D2 cap); the rest are scalar.
+// Modern-Excel TEXT functions, registered against the NODE'S OWN compute — imported,
+// not re-written — so the two surfaces cannot drift by construction.
 registerInternal("TEXTSPLIT",  (text, delim) => splitText(toStr(text), toStr(delim)));
 registerInternal("TEXTAFTER",  (text, delim) => textAfterBefore("after",  toStr(text), toStr(delim)));
 registerInternal("TEXTBEFORE", (text, delim) => textAfterBefore("before", toStr(text), toStr(delim)));
 registerInternal("ENCODEURL",  (text) => urlEncode("encode", toStr(text)));
-// Excel's REGEX* optional arguments, as DOCUMENTED — not JS flag strings. An
-// earlier cut passed the third arg through as RegExp flags, so Excel's
-// REGEXTEST(text, pat, 1) (1 = case-INsensitive) blanked on the invalid flag "1".
+// Excel's REGEX* optional arguments are as DOCUMENTED, not JS flag strings.
 // case_sensitivity: 0 = case-sensitive (default), 1 = case-insensitive.
 const caseFlag = (fn: string, cs: unknown): string | SolError => {
   const v = cs == null ? 0 : Number(cs);
@@ -1335,9 +1116,6 @@ registerInternal("REGEXEXTRACT", (text, pat, mode, cs) => {
   return solError("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2");
 });
 
-// ── Solenoid-native (no Formula.js equivalent) — the registry ADDS these ──
-// Cover the string + logical output types and show the registry isn't limited to
-// the Excel surface: these would throw "Unknown function" through Formula.js alone.
 registerInternal("CLAMP", (x, lo, hi) => {
   const n = toNum(x), a = toNum(lo), b = toNum(hi);
   return badNum(n, a, b) ? VALUE("CLAMP") : Math.min(Math.max(n, a), b);
@@ -1354,19 +1132,10 @@ registerInternal("BETWEEN", (x, lo, hi) => {
   return badNum(n, a, b) ? VALUE("BETWEEN") : n >= a && n <= b;
 });
 
-// ── Tier 3 (D19): the Solenoid-native data-op core ────────────────────────────
-// The list ops the node surface has always had, now callable from a formula. Every
-// one delegates to `nodes/listOps.ts` — the SAME function the node's `data()` calls,
-// so `REVERSE(x)` in a formula and a REVERSE node cannot answer differently
-// (`formulaTier3.test.ts` pins that equality op by op).
-//
-// NAMING (D19 decision 2(a), per-op and uniform): the formula name is the node's
-// LABEL despaced, taken from the family's OP_META table rather than reinvented here —
-// so "Rolling SUM" is ROLLINGSUM and "Running MAX" is RUNNINGMAX. The tables are the
-// same ones the dropdown and the Add-menu search rows read.
-//
-// Every one of these declares `listArgs` and/or `rank: "list"`, which is what routes
-// the call past the element-wise broadcaster (see `takesWholeArgs` in excelFormula).
+// The Solenoid-native data-op core, each delegating to `nodes/listOps.ts` — the SAME
+// function the node's `data()` calls. NAMING (D19 decision 2(a)): the formula name is
+// the node's LABEL despaced, taken from the family's OP_META table rather than
+// reinvented here — so "Rolling SUM" is ROLLINGSUM.
 
 /** A formula argument that should be a 1-D list. A bare scalar widens to a 1-element
  *  list — the same scalar→list widening the socket lattice does on a cable, so
@@ -1375,9 +1144,8 @@ function toList(x: unknown): unknown[] {
   return Array.isArray(x) ? x : x == null ? [] : [x];
 }
 const numList = (x: unknown) => toList(x) as ListCell[];
-/** Guard the generators at the formula boundary. A node's Count is a spinner the user
- *  watches; a formula field is where a typo asks for ten million elements, so the
- *  existing RANDARRAY/SEQUENCE overflow convention applies here too. */
+/** Guard the generators at the formula boundary — the RANDARRAY/SEQUENCE overflow
+ *  convention, since a formula field is where a typo asks for ten million elements. */
 function capped(fn: string, count: number, make: () => unknown[]): unknown[] | SolError {
   if (!Number.isFinite(count)) return VALUE(fn);
   if (count > MAX_GENERATED) {
@@ -1386,7 +1154,6 @@ function capped(fn: string, count: number, make: () => unknown[]): unknown[] | S
   return make();
 }
 
-// Shape: list in, list out.
 registerInternal("REVERSE",    (list) => reverseList(toList(list)));
 registerInternal("SLICE",      (list, start, end) =>
   sliceList(toList(list), Number(start), end == null ? undefined : Number(end)));
@@ -1407,8 +1174,8 @@ registerInternal("ROLLINGMAX",    (list, w) => rolling("max",    numList(list), 
 registerInternal("ROLLINGSTDEV",  (list, w) => rolling("stdev",  numList(list), Number(w)));
 registerInternal("ROLLINGMEDIAN", (list, w) => rolling("median", numList(list), Number(w)));
 
-// Find / aggregate: list in, scalar out. LENGTH counts every slot including the
-// missing ones, which is exactly why these need the raw whole-list routing.
+// LENGTH counts every slot including the missing ones, which is exactly why these
+// need the raw whole-list routing.
 registerInternal("LENGTH",   (list) => toList(list).length);
 registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
 registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list)));
@@ -1417,14 +1184,13 @@ registerInternal("WAVG",     (x, w) => weighted("wavg",   numList(x), numList(w)
 registerInternal("WVAR",     (x, w) => weighted("wvar",   numList(x), numList(w)));
 registerInternal("WSTDEV",   (x, w) => weighted("wstdev", numList(x), numList(w)));
 
-// Build: scalars in, list out.
 registerInternal("LINSPACE",  (a, b, n) => capped("LINSPACE", Number(n), () => linspace(Number(a), Number(b), Number(n))));
 registerInternal("REPEAT",    (v, n) => capped("REPEAT", Number(n), () => repeatValue(v, Number(n))));
 registerInternal("GEOMETRIC", (a, r, n) => capped("GEOMETRIC", Number(n), () => geometric(Number(a), Number(r), Number(n))));
 registerInternal("FIBONACCI", (n) => fibonacci(Number(n)));
 
-// Sets — the gap Excel never filled (it ships UNIQUE and nothing else). Prose labels,
-// so these names are DECLARED on SET_OP_META / SET_RELATION_META rather than despaced.
+// The set labels are prose, so these names are DECLARED on SET_OP_META /
+// SET_RELATION_META rather than despaced.
 registerInternal("SETUNION",      (a, b) => setOperation("union",      toList(a), toList(b)));
 registerInternal("SETINTERSECT",  (a, b) => setOperation("intersect",  toList(a), toList(b)));
 registerInternal("SETDIFFERENCE", (a, b) => setOperation("difference", toList(a), toList(b)));
@@ -1434,8 +1200,8 @@ registerInternal("SETSUBSET",     (a, b) => setRelation("subset",   toList(a), t
 registerInternal("SETSUPERSET",   (a, b) => setRelation("superset", toList(a), toList(b)));
 registerInternal("SETDISJOINT",   (a, b) => setRelation("disjoint", toList(a), toList(b)));
 
-// Fill / Coalesce — the opt-in to treat a missing as something. COALESCE is variadic
-// (List, then each fallback in order), matching the node's extensible Else rows.
+// COALESCE is variadic (List, then each fallback in order), matching the node's
+// extensible Else rows.
 registerInternal("FILLVALUE",       (list, v) => fillList("constant", numList(list), { constant: (v ?? null) as ListCell }));
 registerInternal("FILLFORWARD",     (list) => fillList("ffill",       numList(list)));
 registerInternal("FILLBACKWARD",    (list) => fillList("bfill",       numList(list)));
@@ -1449,28 +1215,20 @@ registerInternal("COALESCE", (list, ...rest) => fillList("coalesce", numList(lis
   fallbacks: rest.map((f) => (Array.isArray(f) ? f as ListCell[] : typeof f === "number" ? f : null)),
 }));
 
-// Build (continued). RANGE is half-open [start, stop) walking by step, like the node
-// and like Python — NOT Excel's "a range of cells", which has no formula spelling here.
+// RANGE is half-open [start, stop) walking by step, like the node — NOT Excel's "a
+// range of cells", which has no formula spelling here.
 registerInternal("RANGE", (start, stop, step) => {
   const a = Number(start), b = stop == null ? undefined : Number(stop), st = step == null ? 1 : Number(step);
-  // Same convention as LINSPACE/REPEAT — no Count arg, so cap on the IMPLIED
-  // length (an infinite walk is #VALUE!, a too-long one #OVERFLOW!). The old
-  // implementation silently truncated at 1000 elements.
+  // No Count arg, so cap on the IMPLIED length: an infinite walk is #VALUE!, a
+  // too-long one #OVERFLOW!.
   return capped("RANGE", rangeCount(a, b, st), () => rangeList(a, b, st));
 });
 registerInternal("CONCATLISTS", (...lists) => concatLists(...lists.map(toList)));
 
-// ── Names the NODE surface already claims, made callable ──────────────────────
-// Surfaced by tightening gap A to "every Excel name this node stands in for
-// dispatches" (it used to pass if ANY did, which hid these). Each one is already
-// declared in `nodeExcel.ts` against a real node, so the formula answering #NAME?
-// was the inconsistency — not these registrations.
-//
 // The B-suffixed text functions are Excel's BYTE-indexed variants for double-byte
-// locales. Solenoid has no byte model, and `nodeExcel.ts` has always said so
-// (`parity: false`, "Byte-indexed; treated as character-indexed"). Delegating to the
-// character-indexed form is that stated position, now true on both surfaces instead
-// of one. In a single-byte locale the two agree exactly, which is the common case.
+// locales. Solenoid has no byte model (`nodeExcel.ts`: `parity: false`,
+// "Byte-indexed; treated as character-indexed"), so they delegate to the
+// character-indexed form.
 const delegate = (name: string, to: string) =>
   registerInternal(name, (...args: unknown[]) => {
     const fn = resolveExcelFunction(to);
@@ -1485,15 +1243,12 @@ for (const [name, to] of [
   ["ERF.PRECISE", "ERF"], ["ERFC.PRECISE", "ERFC"],
 ] as const) delegate(name, to);
 
-// VALUETOTEXT(value, [format]): format 0 (default) is the plain string conversion,
-// format 1 is the "strict" form that quotes text and shows an array in braces. Only
-// the concise form is meaningful here — Cast to Text with an empty format, which is
-// what the node does.
+// VALUETOTEXT: only Excel's concise form (format 0) is meaningful here — Cast to Text
+// with an empty format, which is what the node does.
 registerInternal("VALUETOTEXT", (v) => toStr(v));
 
-// The last of the list family. COUNTDISTINCT keys by VALUE (`setKey`) rather than by
-// JS identity, so two equal complex tuples count as one — the bug `setKey` exists to
-// stop, which the Aggregate node avoids only because its socket admits plain numbers.
+// COUNTDISTINCT keys by VALUE (`setKey`) rather than by JS identity, so two equal
+// complex tuples count as one.
 registerInternal("COUNTDISTINCT", (list) => {
   const arr = toList(list);
   const err = firstListError(arr);
@@ -1503,15 +1258,10 @@ registerInternal("COUNTDISTINCT", (list) => {
   return seen.size;
 });
 
-// INTERPOLATE covers BOTH of the node's modes, dispatched on the first argument's
-// RANK — the node is one node with a mode SegToggle, so it is one formula name
-// (FX-4 injectivity: a second name would claim the same node twice).
+// INTERPOLATE covers BOTH of the node's modes under ONE name (FX-4 injectivity),
+// dispatched on the first argument's RANK:
 //   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)  — 3 args, rank ≤ 1.
-//     Argument order follows the node's sockets, which is Excel's own
-//     known_ys / known_xs / new_xs convention (FORECAST, TREND).
-//   Grid mode:  INTERPOLATE(bordered_table [, forecast]) — a MATRIX first arg
-//     (D23 lifted the rank cap that kept this out).
-// FX-1: both arms call the same kernels the node's data() calls.
+//   Grid mode:  INTERPOLATE(bordered_table [, forecast]) — a MATRIX first arg.
 registerInternal("INTERPOLATE", (ys, xs, newXs) => {
   // GRID mode — a 2-D first argument. `xs` is then the optional forecast flag.
   if (Array.isArray(ys) && ys.some((r) => Array.isArray(r))) {
@@ -1519,7 +1269,7 @@ registerInternal("INTERPOLATE", (ys, xs, newXs) => {
       return solError("#VALUE!", "INTERPOLATE: grid mode takes the table and an optional forecast flag");
     }
     // Per-cell errors and non-finite cells read as BLANK (a hole to fill), exactly
-    // as the node's dataGrid does — a stray dirty cell must not poison the fill.
+    // as the node's dataGrid does.
     const grid: (number | null)[][] = (ys as unknown[]).map((row) =>
       (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
     );
@@ -1530,8 +1280,7 @@ registerInternal("INTERPOLATE", (ys, xs, newXs) => {
     return solError("#VALUE!", "INTERPOLATE: list mode needs known_ys, known_xs and new_xs");
   }
   // The node's own pair policy (pairPresent): a cell error in the known data
-  // propagates, an incomplete pair drops — the raw cast once interpolated
-  // against a fabricated (0, y) point when a known-x was null.
+  // propagates, an incomplete pair drops.
   const { error, xs: kx, ys: ky } = pairPresent(numList(xs), numList(ys));
   if (error) return error;
   const qRaw = toList(newXs);
@@ -1544,7 +1293,6 @@ registerInternal("INTERPOLATE", (ys, xs, newXs) => {
   return Array.isArray(newXs) ? result : result[0] ?? null;
 });
 
-// ── The statistical tests Formula.js computes WRONGLY (see EXCEL_IMPL_META) ──
 // These stay in RANGE_FUNCTIONS (excelFormula) so their arrays arrive whole with
 // the right null/error policy; dispatch prefers the internal over FX.
 registerInternal("T.TEST", (a, b, tails, type) => {
@@ -1565,27 +1313,19 @@ registerInternal("PROB", (range, probs, lo, hi) => {
   return probBetween(numList(range), numList(probs), l, h);
 });
 
-// SHUFFLE is VOLATILE — a fresh permutation per evaluation, exactly like the RAND and
-// RANDBETWEEN already reachable here. The node is volatile too, just on a coarser
-// clock: it holds its keys until the next recalc so an unrelated edit doesn't
-// reshuffle the card. Both call `shuffleList`; only the key source differs.
+// SHUFFLE is VOLATILE — a fresh permutation per evaluation, like RAND/RANDBETWEEN.
+// The node is volatile on a coarser clock (it holds its keys until the next recalc);
+// both call `shuffleList`, only the key source differs.
 registerInternal("SHUFFLE", (list) => {
   const arr = toList(list);
   return shuffleList(arr, arr.map(() => Math.random()));
 });
 
-// ── D23 tranche 1: the matrix core ────────────────────────────────────────────
-// Every registration here declares `matrixArgs` (FX-9: the ONLY gate through
-// which a rank-2 value reaches a dispatch whole) and delegates to the same
-// kernels the matrix nodes run (`nodes/matrixOps.ts`, FX-1) — MMULT in a formula
-// and an MMULT node cannot disagree, and the pre-D23 Formula.js fallthrough
-// (which silently BROADCAST these element-wise: MMULT answered the Hadamard
-// grid of [object Object]s) is overridden by ownership, not blocked by luck.
-//
-// Error codes are the node family's, by shared implementation: #TYPE! wrong
-// element family, #VALUE! incomplete data, #SHAPE! wrong dimensions, #DIV/0!
-// singular. Shape CONSTRUCTION (WRAPROWS/WRAPCOLS) pads #N/A per D15; the
-// element-wise broadcaster's null pad (P3) never applies to these.
+// The matrix core: every registration below declares `matrixArgs` (FX-9: the ONLY
+// gate through which a rank-2 value reaches a dispatch whole) and delegates to the
+// kernels the matrix nodes run (`nodes/matrixOps.ts`). Shape CONSTRUCTION
+// (WRAPROWS/WRAPCOLS) pads #N/A per D15; the element-wise broadcaster's null pad
+// (P3) never applies to these.
 
 /** A formula argument as a MATRIX: a matrix stays itself, a list is a ROW
  *  (SOCK-2's orientation convention), a scalar is 1×1, null stays null. */
@@ -1651,9 +1391,8 @@ registerInternal("TOROW", (v) => {
   const m = toMatrix(v);
   return m === null ? null : matTranspose(m).flat();
 });
-// SEQUENCE(rows, [cols], [start], [step]) — Excel's 2-D form. The 1-argument /
-// cols=1 call IS the Sequence node (one shared kernel, a LIST out, matching the
-// node's 1-D socket); cols > 1 wraps the same arithmetic row-major.
+// SEQUENCE(rows, [cols], [start], [step]) — Excel's 2-D form. The cols=1 call IS the
+// Sequence node (a LIST out, matching its 1-D socket); cols > 1 wraps row-major.
 registerInternal("SEQUENCE", (rows, cols, start, step) => {
   if (rows == null) return null; // the required arg: a wired blank stays unknown (the node agrees)
   const r = Math.max(0, Math.floor(Number(rows)));
@@ -1667,13 +1406,6 @@ registerInternal("SEQUENCE", (rows, cols, start, step) => {
   if (c === 1) return flat;
   return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
 });
-
-// ── D23 tranche 2: the array-returning core ───────────────────────────────────
-// UNIQUE, SORT, MODE.MULT and FREQUENCY were already dispatchable through
-// Formula.js and BROADCASTING element-wise — UNIQUE([3,1,3,2]) answered a column
-// of singletons, SORT a list of empty objects. Same displacement as the matrix
-// tranche: own the name, share the node's kernel (FX-1), and the fallthrough
-// never sees an array again. FILTER/SORTBY/TAKE close their gap-A rows.
 
 registerInternal("UNIQUE", (v) => (v == null ? null : uniqueList(toList(v))));
 // Excel SORT(array, [sort_index], [sort_order], [by_col]) — 1-D scope: the index
@@ -1728,9 +1460,8 @@ registerInternal("FREQUENCY", (data, bins) => {
   if (data == null || bins == null) return null;
   return frequencyBins(numList(data), numList(bins));
 });
-// RANDARRAY([rows], [cols], [min], [max], [integer]) — volatile, like the RAND
-// already in the language and the SHUFFLE precedent: fresh values per evaluation
-// (the node holds its rolls for a recalc pass; same kernel-free arithmetic).
+// RANDARRAY is volatile — fresh values per evaluation (the node holds its rolls for
+// a recalc pass).
 registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
   const r = rows == null ? 1 : Math.max(0, Math.floor(Number(rows)));
   const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
@@ -1748,13 +1479,9 @@ registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
   return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
 });
 
-// ── D23 lambda tranche: the host functions ────────────────────────────────────
-// LAMBDA itself is a SPECIAL FORM in the evaluator (excelFormula.ts) — its
-// parameters and body must not be evaluated as expressions, so it cannot be a
-// registration. The hosts CAN be: each receives its arrays whole (listArgs +
-// matrixArgs) and the tagged LambdaValue — the SAME currency the LAMBDA node
-// emits and the host NODES consume, so a formula lambda and a wired lambda run
-// the identical fn (FX-1: compilePositional / evalAst is the one core).
+// LAMBDA itself is a SPECIAL FORM in the evaluator (excelFormula.ts) — its parameters
+// and body must not be evaluated as expressions, so it cannot be a registration. The
+// hosts below take their arrays whole plus the tagged LambdaValue.
 //
 // Argument shapes mirror the host NODES' positional calls (tableLambda.ts), so a
 // multi-parameter lambda binds identically on both surfaces: MAP passes
@@ -1882,25 +1609,16 @@ registerInternal("GROUPBY", (keys, values, fn) => {
   return [...groups.values()].map((g) => [g.key, call(g.vals)]);
 });
 
-// LAMBDA is intercepted as a special form BEFORE dispatch ever runs — this stub
-// exists so the name is REGISTERED (autocomplete, the parity measurement, the
-// meta contract) and so a direct resolveExcelFunction caller gets an honest
+// LAMBDA is intercepted as a special form BEFORE dispatch ever runs; this stub exists
+// so the name is REGISTERED and a direct resolveExcelFunction caller gets an honest
 // answer instead of a Formula.js fallthrough.
 registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
-
-// ── The non-pack straggler sweep (2026-07-28) ─────────────────────────────────
-// The last genuinely-registrable non-pack names. Everything else the parity walk
-// still lists is deliberate: sources/sinks/UI (no formula meaning), the D23
-// endpoint (frames/cubes — complex landed with the amendment tranche below),
-// preset-FORMULA leaves (their own `expr` IS the formula equivalent — the
-// measurement now detects them mechanically), and the operator nodes (covered
-// by the language's own + − × / and comparisons).
 
 registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
 registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
 registerInternal("DECODEURL", (t) => (t == null ? null : urlEncode("decode", toStr(t))));
-// LOG2's node answers null for x ≤ 0 (the quiet-null convention of its family) —
-// match the node, not a #DOMAIN! the card never shows (FX-1).
+// LOG2's node answers null for x ≤ 0 (its family's quiet-null convention), not a
+// #DOMAIN! the card never shows.
 registerInternal("LOG2", (x) => {
   if (x == null) return null;
   const n = Number(x);
@@ -1910,9 +1628,8 @@ registerInternal("HYPOTENUSE", (x, y) => {
   if (x == null || y == null) return null;
   return Math.hypot(Number(x), Number(y));
 });
-// The negated Boolean trio — variadic, Kleene three-valued like the node
-// (logic.ts BooleanOpNode): coerceLogical per operand (the shared liberal
-// parse), null = unknown flows by Kleene, result is a real boolean.
+// Variadic and Kleene three-valued like the node (logic.ts BooleanOpNode):
+// coerceLogical per operand, null = unknown flows by Kleene, result is a boolean.
 const kleeneFold = (vals: unknown[], f: (a: Tri, b: Tri) => Tri, seed: Tri): Tri =>
   vals.map((v) => coerceLogical(v)).reduce<Tri>((a, t) => f(a, t), seed);
 registerInternal("NAND", (...vals) => kleeneNot(kleeneFold(vals, kleeneAnd, true)));
@@ -1928,21 +1645,15 @@ registerInternal("XNOR", (...vals) => {
   return !acc;
 });
 
-// ── D23 amendment: the complex tranche (2026-07-28) ───────────────────────────
-// The IM* family over tagged Cx, running the node family's kernels (cxValue.ts —
-// FX-1: one math, two surfaces). These shadow Formula.js's text-complex IM*
-// implementations, which were the split-brain: IMSUM("3+4i","1+2i") worked while
-// IMSUM on the graph's own tagged values answered #VALUE!. Element-wise like the
-// nodes: no listArgs, so broadcastCall lifts each over complex LISTS with the
-// per-cell error/missing contract — the same broadcast the node family runs.
-// Note IMSUM/IMPRODUCT over two lists therefore zip PAIRWISE (the node's
-// semantics), not Excel's sum-a-whole-range (a range is one cell here anyway).
+// The IM* family over tagged Cx, running the node family's kernels (cxValue.ts).
+// Element-wise like the nodes: no listArgs, so broadcastCall lifts each over complex
+// LISTS with the per-cell error/missing contract. IMSUM/IMPRODUCT over two lists
+// therefore zip PAIRWISE (the node's semantics), not Excel's sum-a-whole-range.
 
 /** Coerce one argument into the family: a tagged Cx as-is, a real number as
  *  re+0i, text via Excel's "a+bi" grammar. Invalid text is a #VALUE! (Excel says
- *  #NUM!, a code this vocabulary deliberately splits — a malformed text form is
- *  a value problem, not a domain/overflow/convergence one). Anything else —
- *  logicals included, matching the node's socket refusal — is a typed #TYPE!. */
+ *  #NUM!, a code this vocabulary deliberately splits). Anything else — logicals
+ *  included, matching the node's socket refusal — is a typed #TYPE!. */
 function asCxArg(v: unknown, name: string): Cx | SolError {
   if (isCx(v)) return v;
   if (typeof v === "number") return cx(v, 0);
@@ -1961,8 +1672,8 @@ function regCxUnary(name: string, f: (z: Cx) => Cx | number): void {
 regCxUnary("IMREAL", (z) => z.re);
 regCxUnary("IMAGINARY", (z) => z.im);
 regCxUnary("IMABS", cxAbs);
-// IMARGUMENT(0) is 0 here (atan2's convention, the IM Unpack node's answer);
-// Excel makes it #DIV/0! — FX-1 sides with the node.
+// IMARGUMENT(0) is 0 here (atan2's convention, the IM Unpack node's answer); Excel
+// makes it #DIV/0!.
 regCxUnary("IMARGUMENT", cxArg);
 regCxUnary("IMCONJUGATE", cxConj);
 regCxUnary("IMEXP", cxExp);
@@ -2028,26 +1739,21 @@ registerInternal("COMPLEX", (re, im, suffix) => {
   return cx(r, i);
 });
 
-// Both roots as the 2-element list [x₁, x₂] — the Quadratic Roots node's two
-// outputs side by side, same kernel (cxValue.ts).
+// Both roots as the 2-element list [x₁, x₂] — the Quadratic Roots node's two outputs
+// side by side.
 registerInternal("QUADRATICROOTS", (a, b, c) => {
   const na = Number(a), nb = Number(b), nc = Number(c);
   if ([na, nb, nc].some(Number.isNaN)) return solError("#VALUE!", "QUADRATICROOTS takes numeric coefficients a, b, c");
   return quadraticRoots(na, nb, nc);
 });
 
-// ── The regression quartet (owned; closed rules.md known-violation 7) ─────────
-// TREND / GROWTH / LINEST / LOGEST were the last array-RETURNING names still
-// BROADCAST: Formula.js writes them against 2-D ranges, so a 1-D list mapped the
-// call element-wise and answered a plausible-looking list of garbage (the same
-// silent class rangeRouting.test.ts pinned for T.TEST). Owned over the fitting
-// kernels the nodes run (mathUtils linearFit / linearFitR2 / expFit — FX-1).
-// Pair prep is pairPresent (an error propagates, a pair with a missing side
-// drops, ragged tails truncate — the paired-range policy). Excel's optional
+// The regression quartet, over the fitting kernels the nodes run (mathUtils
+// linearFit / linearFitR2 / expFit). Pair prep is pairPresent (an error propagates,
+// a pair with a missing side drops, ragged tails truncate). Excel's optional
 // arguments, which the node sockets can't express: xs omitted/blank → 1..n;
-// TREND/GROWTH's new_xs omitted/blank → the known xs. Excel's `const`/`stats`
-// tail arguments are not taken — LINEST answers [slope, intercept, r²] (the
-// node's three outputs as a list), LOGEST [m, b] (y = b·mˣ).
+// TREND/GROWTH's new_xs omitted/blank → the known xs. Excel's `const`/`stats` tail
+// arguments are not taken — LINEST answers [slope, intercept, r²], LOGEST [m, b]
+// (y = b·mˣ).
 
 /** ys + optional xs → pairPresent-prepped numeric arrays (xs defaults 1..n). */
 function regressionPair(ys: unknown, xs: unknown): { error?: SolError; xs: number[]; ys: number[] } {
@@ -2099,13 +1805,10 @@ registerInternal("LOGEST", (ys, xs) => {
   return fit ? [fit.m, fit.b] : [];
 });
 
-// TEXTFILTER(strings, pattern, [condition]) — the Text Filter node's one
-// operation; the condition is an ARGUMENT (the family reclassified to
-// argument-kind, so it takes one formula name — the nodeOps convention). Same
-// kernel as the node (textOps filterTextList, case-sensitive); condition
-// spellings are the op keys, with spaces/hyphens tolerated ("not contains").
-// A cell error propagates; null cells drop (a missing string matches nothing —
-// the Filter-verb policy for nulls).
+// TEXTFILTER(strings, pattern, [condition]) — the condition is an ARGUMENT, so the
+// family takes one formula name. Same kernel as the node (textOps filterTextList,
+// case-sensitive); condition spellings are the op keys, with spaces/hyphens tolerated
+// ("not contains"). A cell error propagates; null cells drop.
 registerInternal("TEXTFILTER", (strings, pattern, op) => {
   if (strings == null || pattern == null) return null;
   const which = String(op ?? "contains").trim().toLowerCase().replace(/[\s-]+/g, "_") as TextFilterOp;

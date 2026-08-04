@@ -33,8 +33,7 @@ export interface ParityRow {
   /** Is every EXCEL name this node stands in for dispatchable? False for a node with
    *  no Excel names. Kept separate from `inFormula` on purpose: a node can be fully
    *  reachable under its Solenoid name and STILL leave its Excel spelling answering
-   *  #NAME?, which is exactly what gap A is for. Folding the two together let SCAN
-   *  quietly drop out of the gap the moment RUNNINGSUM was registered. */
+   *  #NAME?, which is exactly what gap A is for. */
   excelCovered: boolean;
 }
 
@@ -46,9 +45,8 @@ export interface ParityRow {
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
 /** The SSOT-8 quantifier, extracted so it is directly pinnable: a node claiming
- *  Excel names is `excelCovered` only when EVERY one of them dispatches — `some`
- *  would report a half-registered node as covered, which is exactly the drift the
- *  completeness rule forbids. Empty claims are never covered (vacuous ≠ complete). */
+ *  Excel names is `excelCovered` only when EVERY one of them dispatches. Empty
+ *  claims are never covered (vacuous ≠ complete). */
 export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
   return excel.length > 0 && excel.every(dispatches);
 }
@@ -56,8 +54,7 @@ export function excelCoverage(excel: string[], dispatches: (name: string) => boo
 // Leaves the LANGUAGE itself covers: the four operator nodes (+ − × ÷ are the
 // formula surface's own operators), Comparison (= <> < > <= >=), and the two
 // formula HOSTS (Expression/Equation ARE the surface being measured). A name for
-// any of these would be noise; counting them as gaps was a measurement artifact
-// (author-reviewed 2026-07-28).
+// any of these would be noise.
 const LANGUAGE_LEAVES = new Set([
   "arith-add", "arith-sub", "arith-mul", "arith-div", "comparison", "expression", "equation",
 ]);
@@ -93,8 +90,7 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     // A COLLAPSED op family is a second case: its leaf label ("Pad", "Coalesce / Fill")
     // names the family, not any one function, so the leaf is covered when every OP is
     // callable — PADLEFT and PADRIGHT, not PAD. An op's formula name is its declared
-    // `fx` where the label is prose, else the despaced label. Reading the host label
-    // alone reported nine registered FILL* functions as a gap.
+    // `fx` where the label is prose, else the despaced label.
     // OPERATION-kind families only: an argument-kind family takes ONE formula name
     // (the doc above), and its op labels are argument VALUES that can collide with
     // unrelated dispatchable names — Group Lists' SUM/AVERAGE/MIN/MAX/COUNT all
@@ -137,9 +133,7 @@ export interface ParityMeasurement {
    *
    *  **This is the denominator a coverage claim must use.** Reporting against
    *  `rows.length` counts leaves that were never candidates — a Slider and a Note
-   *  can't be "formula-callable" — so it understates coverage and answers a
-   *  question nobody asked (author ruling, 2026-08-01: don't report x/646 when
-   *  that includes deliberate exclusions). SSOT-7: one metric, one question. */
+   *  can't be "formula-callable". SSOT-7: one metric, one question. */
   inScope: ParityRow[];
   /** Dispatchable names with no node home. */
   noNode: string[];

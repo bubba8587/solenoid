@@ -1,16 +1,8 @@
 // Resolve which sockets and cables should highlight when hovering a socket.
-//
-// Rules:
-//  1. The hovered socket itself.
-//  2. Every cable directly attached to it.
-//  3. The socket at the far end of each of those cables.
-//  4. If that far-end socket is a Conduit lane (in_i ↔ out_i pass-through),
-//     follow through to the paired socket, then include the cables and
-//     endpoints attached to the paired socket — but stop there.
-//
-// This means: hover origin → see all its cables + destinations.
-//             hover destination → see that cable + the origin only.
-//             A Conduit is transparent (treated as a single logical wire).
+// The traversal is deliberately asymmetric and depth-limited:
+//   hover origin      → all its cables + their destinations.
+//   hover destination → that cable + the origin only.
+//   a Conduit lane is transparent (one logical wire), followed through ONCE.
 
 import { getEditor } from "./process";
 import { dragSocketKey } from "./cableState";
@@ -18,7 +10,7 @@ import { dragSocketKey } from "./cableState";
 type Side = "input" | "output";
 
 // Pair an `in_N` lane socket with its `out_N` sibling (and vice-versa) on a
-// multi-lane bundler — the Conduit. (Same scheme the removed Manifold used.)
+// multi-lane bundler — the Conduit.
 function pairedLaneKey(
   inputs: Record<string, unknown>,
   outputs: Record<string, unknown>,
@@ -54,7 +46,6 @@ export function resolveSocketHighlights(
 
   const startSide: Side = startSocketKey in startNode.inputs ? "input" : "output";
 
-  // Step 1: cables directly on the hovered socket.
   const direct = editor.getConnections().filter(c =>
     startSide === "output"
       ? c.source === startNodeId && c.sourceOutput === startSocketKey
@@ -68,7 +59,7 @@ export function resolveSocketHighlights(
     const farSocketKey = startSide === "output" ? conn.targetInput : conn.sourceOutput;
     socketKeys.add(dragSocketKey(farNodeId, farSocketKey));
 
-    // Step 2: if the far end is a Conduit lane, follow through once.
+    // If the far end is a Conduit lane, follow through ONCE — never further.
     const farNode = editor.getNode(farNodeId);
     if (!farNode) continue;
     const paired = pairedLaneKey(farNode.inputs, farNode.outputs, farSocketKey);

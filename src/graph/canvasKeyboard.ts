@@ -1,11 +1,5 @@
-// Canvas keyboard shortcuts (extracted from Canvas.tsx). Skipped when focus is
-// in an editable form element so typing in a label / number field doesn't fire
-// them. Graph actions are single letters (hands stay on the graph); OS
-// conventions keep their Ctrl form.
-//   A add node · I isolate · G group · T tidy · E expand/collapse groups
-//   F autofit groups · C cleanup · Del delete · Esc exit isolate
-//   Ctrl+Z/Y undo/redo · Ctrl+C/V copy/paste · Ctrl+A select all
-//   Ctrl+S save · Ctrl+O open · Ctrl+/ reference · Ctrl+, settings
+// Canvas keyboard shortcuts. Skipped when focus is in an editable form element
+// so typing in a label / number field doesn't fire them.
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
@@ -54,13 +48,11 @@ export interface CanvasKeyboardDeps {
   deleteSelected: () => Promise<void>;
 }
 
-// Installs the window-level keydown handler; returns the remover.
 export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
   const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, deleteSelected } = deps;
 
   // Expand/collapse + autofit resolve the same target set: selected groups +
   // the group of any selected member, or all groups when nothing is selected.
-  // Factored out so the key handler stays readable.
   function resolveGroupTargets(): GroupNode[] {
     const editor = editorRef.current;
     if (!editor) return [];
@@ -81,9 +73,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     if (!editor || !area) return;
     const targets = resolveGroupTargets();
     if (targets.length === 0) return;
-    const collapse = targets.some((g) => !g.collapsed); // any expanded → collapse all
-    // Persist the collapse state (saved via each Group's init.collapsed) — else
-    // an expand/collapse was lost on reload.
+    const collapse = targets.some((g) => !g.collapsed);
+    // Persist the collapse state (saved via each Group's init.collapsed).
     void setGroupsCollapsed(editor, area, targets, collapse).then(() => scheduleAutosave());
   }
   function autofitGroups() {
@@ -140,11 +131,9 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     const editor = editorRef.current;
     const area = areaRef.current;
     if (!editor || !area) return;
-    // Build the full move set: a selected GROUP carries its members, and
-    // touching any node in a STANDOFF cluster carries the whole cluster, so a
-    // standoffed pair moves rigidly (moving only one end and re-settling pulls
-    // it half-way back — the bug: a standoffed note/group nudged half as far as
-    // a free one). See expandMoveSet.
+    // A selected GROUP carries its members, and touching any node in a STANDOFF
+    // cluster carries the whole cluster, so a standoffed pair moves rigidly —
+    // moving only one end and re-settling pulls it half-way back.
     const selectedIds = editor.getNodes()
       .filter((n) => (n as { selected?: boolean }).selected === true)
       .map((n) => n.id);
@@ -253,29 +242,29 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
           // the e.code switch below has no bracket case, so it's a no-op).
         }
         switch (e.code) {
-          case "KeyI": // Isolate the selection / exit if already isolating
+          case "KeyI":
             if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
             e.preventDefault(); return;
-          case "KeyA": // Add node at the cursor
+          case "KeyA":
             addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
             e.preventDefault(); return;
-          case "KeyG": // Group the selection (no-op if nothing is selected)
+          case "KeyG":
             if (editor && area && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
               void createGroupFromSelection(editor, area).then(() => processGraph());
             }
             e.preventDefault(); return;
-          case "KeyT": // Tidy / auto-arrange the selection, or all
+          case "KeyT":
             void tidyGraph(); e.preventDefault(); return;
-          case "KeyC": // Cleanup: tidy groups → collapse → tidy top level → fit
+          case "KeyC":
             void cleanupGraph(); e.preventDefault(); return;
-          case "KeyE": // Expand / collapse groups
+          case "KeyE":
             expandCollapseGroups(); e.preventDefault(); return;
-          case "KeyF": // Autofit group box to members
+          case "KeyF":
             autofitGroups(); e.preventDefault(); return;
-          case "KeyN": // Toggle the Navigator (outline) panel
+          case "KeyN":
             toggleChrome("navigator"); e.preventDefault(); return;
-          case "BracketLeft":  // Rotate the selected rotatable thing one step CCW
-          case "BracketRight": // …or CW (Conduit / Angle Dial node / Standoff)
+          case "BracketLeft":
+          case "BracketRight":
             if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
               e.preventDefault(); return;
             }
@@ -284,7 +273,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
     }
 
-    // Ctrl/Cmd shortcuts
     if (e.ctrlKey || e.metaKey) {
       // Ctrl+/ opens function reference, Ctrl+, opens settings (both allowed
       // even when an input is focused). e.key (not e.code) for the slash: it's
@@ -333,7 +321,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         }
         e.preventDefault(); return;
       }
-      // Copy/paste
       if (e.code === "KeyC") {
         copySelected(); e.preventDefault(); return;
       }
@@ -350,7 +337,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         }
         e.preventDefault(); return;
       }
-      // History
       const history = historyRef.current;
       if (!history) return;
       // Gate undo/redo: a single action can restore/remove MANY cables (undoing a
@@ -363,7 +349,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       return;
     }
 
-    // Delete: selected cable first, then selected nodes.
     if (e.key !== "Delete" && e.key !== "Backspace") return;
     if (editable) return;
     await deleteSelected();

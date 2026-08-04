@@ -23,8 +23,6 @@ let active: Drag | null = null;
 
 function onMove(e: PointerEvent) {
   if (!active) return;
-  // Clamp to the node's content-type minimum (a chart needs more than a scalar),
-  // floored by the global minimums.
   const min = nodeSizeStore.getMin(active.nodeId);
   const minW = Math.max(MIN_CARD_W, min?.w ?? 0);
   const minH = Math.max(MIN_BOX_H, min?.h ?? 0);
@@ -43,7 +41,6 @@ function onUp() {
   window.removeEventListener("pointermove", onMove);
   window.removeEventListener("pointerup", onUp);
   window.removeEventListener("pointercancel", onUp);
-  // One sync now that the drag is done (sockets / minimap / docked FCs).
   void getActiveArea()?.update("node", id);
   scheduleAutosave();
 }
@@ -91,7 +88,6 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
       className="solenoid-node__resize-handle"
       onPointerDown={onPointerDown}
     >
-      {/* Same corner icon as the Group resize grip. */}
       <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
         <path d="M11 5 5 11M11 9l-2 2" />
       </svg>

@@ -3,18 +3,13 @@ import { COLOR_PALETTE, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, 
 import "./SwatchGrid.css";
 
 /**
- * Reusable color-swatch grid. The Group header color picker and the app-wide accent
- * picker render it interactively; Settings renders it `readOnly` as a legend of the
- * active palette's colors. The host owns the trigger button + open/close state and
- * positions this via `className`. `value`/`onPick` deal in palette SLOT ids (not
- * hexes); each swatch resolves its slot to a hex only to paint the disc. In
- * `readOnly` mode the swatches are plain (non-clickable) spans — no buttons, no
- * selected ring — just a swatch display.
+ * Reusable color-swatch grid. The host owns the trigger button + open/close
+ * state and positions this via `className`. `value`/`onPick` deal in palette
+ * SLOT ids (not hexes). `readOnly` renders plain non-clickable spans.
  *
- * The `gray` slot is special: it renders as a tri-diagonal split disc (upper-left
- * white, middle the palette gray, bottom-right a much darker gray) and clicking it
- * CYCLES through those three neutral shades (white → gray → dark) rather than picking
- * a single color. The two extreme neutrals are sentinel slot ids (see palette.ts).
+ * The `gray` slot is special: clicking it CYCLES through three neutral shades
+ * (white → gray → dark) rather than picking a single color. The two extreme
+ * neutrals are sentinel slot ids (see palette.ts).
  */
 export function SwatchGrid({
   value,
@@ -59,12 +54,11 @@ export function SwatchGrid({
 }
 
 /**
- * SVG disc instead of a CSS border-radius button. A CSS circle inscribes its own
- * border box, so its edge sits on the box boundary and gets clipped a side at a
- * time on fractional device pixels (the grid lives inside the zoom-scaled canvas).
- * Drawing it as SVG with overflow:visible and a padded viewBox keeps the disc —
- * and the selected ring, which overflows the 16px button —
- * off every clip boundary, so it stays a clean circle at any zoom.
+ * SVG disc, never a CSS border-radius button: a CSS circle inscribes its own
+ * border box, so its edge gets clipped a side at a time on fractional device
+ * pixels inside the zoom-scaled canvas. overflow:visible + a padded viewBox
+ * keeps the disc (and the selected ring, which overflows the 16px button) off
+ * every clip boundary.
  */
 function Swatch({ color, on }: { color: string; on: boolean }) {
   return (
@@ -85,11 +79,9 @@ function Swatch({ color, on }: { color: string; on: boolean }) {
 }
 
 /**
- * The neutral (gray) swatch: one disc split into three diagonal bands by two lines
- * perpendicular to the upper-left→bottom-right axis — upper-left white, the middle
- * band the palette gray, bottom-right a much darker gray. Clicking it cycles those
- * three (see SwatchGrid). A thin outline keeps the white band visible on a light
- * panel. Same padded viewBox + overflow:visible as `Swatch` so it never clips.
+ * The neutral (gray) swatch: one disc split into three diagonal bands — white,
+ * the palette gray, a much darker gray — which clicking cycles through. Same
+ * padded viewBox + overflow:visible as `Swatch` so it never clips.
  */
 function NeutralSwatch({ on }: { on: boolean }) {
   const clipId = useId();

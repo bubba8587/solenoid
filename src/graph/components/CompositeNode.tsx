@@ -25,13 +25,8 @@ import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 
-/**
- * The value a Composite boundary carries (a port output, or an input/output
- * marker in the drill-in) — rendered by its KIND, not stringified. A frame/cube
- * shows the same compact table preview as everywhere else; a chart/mermaid
- * renders its figure; a lambda its
- * signature; scalars/lists/logicals/errors keep the hero ValueDisplay box.
- */
+/** The value a Composite boundary carries (a port output, or an input/output
+ *  marker in the drill-in) — rendered by its KIND, never stringified. */
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} full={false} />;
@@ -214,25 +209,19 @@ const STOP_OPS: ReadonlyArray<{ value: CompositeStopOp; label: string }> = [
   { value: "ne", label: "≠" },
 ];
 
-// A "Stop when" threshold is a numeric comparison, so it only makes sense for a
-// NUMBER or LOGICAL (→ 1/0) output. Output markers are trueany and ADOPT the
-// wired type, so we don't constrain the node — we filter the picker by the
-// adopted socket type, keeping the general node but hiding frame/string/date/
-// cube/list outputs (which have no meaningful `> value`). Unresolved scalar
-// wildcards (`any`/`trueany`, e.g. not yet wired) are kept — they may adopt a
-// number. A non-numeric value is a no-op at run time anyway, so this is a
-// discoverability guardrail, not a correctness gate.
+// A "Stop when" threshold is a numeric comparison. Output markers are trueany
+// and ADOPT the wired type, so the node isn't constrained — the PICKER is
+// filtered by the adopted socket type instead. Unresolved scalar wildcards are
+// kept (they may still adopt a number): a discoverability guardrail, not a
+// correctness gate.
 const STOP_COMPARABLE = new Set(["number", "numlist", "logical", "logicalcombo", "any", "trueany"]);
 function outputComparable(node: CompositeNodeType, portId: string): boolean {
   const dt = (node.outputs[portId]?.socket as { dataType?: string } | undefined)?.dataType;
   return dt === undefined || STOP_COMPARABLE.has(dt);
 }
 
-// Simulation's container-level parameters: how many feedback steps to run, and
-// an optional "Stop when [output] [op] [value]" condition that halts the loop
-// early the round it holds (the step count becomes the CAP). A loop-bound output
-// collects one entry per step run (the time series); see nodes/composite.ts
-// runSimulation for the algorithm. A logical output compares as 1 (true) / 0.
+// Simulation's container-level parameters. With a stop condition the step count
+// becomes a CAP. A logical output compares as 1 (true) / 0.
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
   const hasStop = !!node.stopWhenPortId;
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
@@ -289,10 +278,7 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
-// By-Row mode: pick which exposed input port to iterate — the subgraph runs once
-// per row of that port's wired value (list → element, matrix → row, frame →
-// single-row frame), collecting a per-output series. Heavy (arm-and-run) — see
-// nodes/composite.ts runByRow.
+// By-Row mode: pick which exposed input port to iterate. Heavy (arm-and-run).
 function ByRowEditor({ node }: { node: CompositeNodeType }) {
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
@@ -336,9 +322,7 @@ function MiniHistogram({ samples }: { samples: readonly number[] }) {
   );
 }
 
-// A compact line sparkline for a numeric series — the Simulation output's
-// per-step trend, drawn inside the drill-in output marker (D-2) so the series
-// reads as a curve, not only as a list chip.
+// A compact line sparkline for a numeric series (a Simulation per-step output).
 function MiniSparkline({ series }: { series: readonly number[] }) {
   const nums = series.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   if (nums.length < 2) return null;
@@ -365,9 +349,8 @@ function isNumericSeries(v: unknown): v is number[] {
 }
 
 // Monte Carlo: declare a ± spread (and distribution) on each exposed input's
-// drill-in marker, then sample the container N times. The output boxes show each
-// port's mean ± sd; the first output's sample distribution renders as a histogram.
-// Sample count + seed live in the advanced foot (a fixed seed = reproducible draws).
+// drill-in marker, then sample the container N times. A fixed seed makes the
+// draws reproducible.
 function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const [advanced, setAdvanced] = useState(false);
@@ -427,9 +410,7 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
-// Goal-seek: drive one exposed input until a chosen output hits a target (Excel's
-// Goal Seek). Reads "Set <output> To <value> By changing <input>"; the solved driver
-// value (or #CONV!) shows below. The solve runs in composite.ts runGoalSeek.
+// Goal-seek: drive one exposed input until a chosen output hits a target.
 function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const outputs = node.outputPorts;
@@ -484,19 +465,13 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
         </div>
       </AdvancedFoot>
       {result != null && node.outputs[outputId] && (
-        // The solved driver value is the HERO of a goal-seek composite (the whole
-        // point — the achieved output just equals the target you set). It carries the
-        // target output port's socket, so the composite's OUTPUT is its solution:
-        // the Solution value is wireable downstream (composite.ts runGoalSeek emits
-        // the solved driver on this port).
         <div className="solenoid-composite__output" style={{ marginTop: 4 }}>
           <span className="solenoid-node__io-label">
             Solution: {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
-          {/* ValueDisplay renders a SolError (#CONV!) the SAME as everywhere — the red
-              #CODE! badge + errorTip. On the OUTER card (emit) the Solution carries the
-              target port's output socket (wireable); inside the drill-in (no emit) it's
-              a plain display — the socket belongs to the outer node, not this editor. */}
+          {/* On the OUTER card (emit) the Solution carries the target port's
+              output socket (wireable); inside the drill-in (no emit) it's a plain
+              display — the socket belongs to the outer node, not this editor. */}
           {emit ? (
             <MeasuredSocketRow side="output" socketKey={outputId} nodeId={node.id} emit={emit} payload={node.outputs[outputId]!.socket}>
               <ValueDisplay value={result} />
@@ -510,17 +485,8 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   );
 }
 
-// The Composite card: an editable title (NodeShell), one row per exposed
-// input (InlineInputs — reuses the generic input-row renderer off
-// node.inputs; every port socket is `any`, so a row is socket+label, or a
-// "↩ <source>" marker once wired), a run-mode selector, the Scenarios editor
-// when that mode is active, and one row per output (custom, since
-// ValueDisplay doesn't know about frame/cube previews — a v1 gap noted below).
-// In Scenarios mode each output's cachedOutputs value is already an ARRAY
-// (one entry per scenario, in order) — ValueDisplay renders that as a list
-// chip with no changes needed here, which is the "lay outputs side by side".
-// Solve status — an SVG circle so it's perfectly round regardless of the flex row
-// (a small CSS box read as an oval). Ring while stale, filled otherwise.
+// An SVG circle so it's perfectly round regardless of the flex row (a small CSS
+// box reads as an oval). Ring while stale, filled otherwise.
 function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
   const color = state === "stale" ? "#d9822b" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
   const title = state === "stale" ? "Stale" : state === "failed" ? "No solution" : "Up to date";
@@ -636,10 +602,9 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         const port = node.outputs[p.id];
         if (!port) return null;
         const value = node.cachedOutputs[p.id] ?? null;
-        // Label ABOVE its value box, stacked — a hero ValueDisplay box is too tall
-        // to sit horizontally beside a label in a compact io-row (it pushed the box
-        // off the card). The MeasuredSocketRow wraps only the box (height:auto via
-        // --output modifier), so the output dot centers on the box, not the label.
+        // Label ABOVE its value box, stacked — a hero ValueDisplay box is too
+        // tall to sit beside a label in a compact io-row. The MeasuredSocketRow
+        // wraps only the box, so the output dot centers on the box, not the label.
         return (
           <div key={p.id} className="solenoid-composite__output">
             <span className="solenoid-node__io-label">{p.label}</span>
@@ -657,15 +622,10 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   );
 }
 
-// ─── Boundary markers (drill-in editor only) ───────────────────────────────────
-// These render ONLY inside the Composite drill-in editor's own rete root — the
-// markers never live on the main canvas. A marker's value can be anything the
-// `any` boundary carries; CompositeBoundaryValue renders every kind (frame/cube
-// tables, chart/mermaid figures, lambda, scalars/lists/errors).
+// Boundary markers render ONLY inside the Composite drill-in editor's own rete
+// root — they never live on the main canvas.
 
-// A compact run-mode readout appended to a boundary marker (e.g. goal-seek's
-// "solves to" / "target"). The markers aren't fixed to being plain — they carry
-// whatever the active run mode needs to explain itself in the drill-in.
+// A compact run-mode readout appended to a boundary marker.
 function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginTop: 4 }}>
@@ -676,10 +636,9 @@ function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode 
 }
 
 export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
-  // Editable seed/default — the value this input carries when the port isn't externally
-  // wired (and the goal-seek seed). A wired value or a solve overrides it (a solve
-  // writes the solved value back here), but it stays editable from inside. Same field
-  // as the Number Input node (the larger `value-input`, commit on Enter/blur).
+  // Editable seed/default — the value this input carries when the port isn't
+  // externally wired (and the goal-seek seed). A wired value or a solve
+  // overrides it, but it stays editable from inside.
   const field = useDraftCommit<number>(
     data.defaultValue ?? 0,
     String,
@@ -693,9 +652,8 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
       {data.externallyWired ? (
-        // Fed from outside — show what's actually coming in (any kind: scalar,
-        // list, frame…), read-only. The seed field is dormant when wired, and a
-        // number field can't even represent a wired list/frame.
+        // Fed from outside — read-only: a number field can't represent a wired
+        // list/frame.
         <CompositeBoundaryValue value={data.value} label={data.label} />
       ) : (
         <input

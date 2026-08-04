@@ -220,12 +220,9 @@ export function ChartView({
       </FunnelChart>
     );
   } else if (op === "scatter") {
-    // A dot plot for a single series. When the wired first column is all numbers
-    // (e.g. a "Frame from Lists" X column, or a Point Plotter's X list through
-    // Build Frame), place each dot at its REAL x — so the plot honours x spacing
-    // and order instead of the ROW INDEX (which made a hand-drawn / unsorted point
-    // set read "out of order" and ignored the x values entirely). Category
-    // (non-numeric) labels, or a plain values list, keep the index x.
+    // A dot plot for a single series. An all-numeric first column places each dot
+    // at its REAL x, so the plot honours x spacing and order rather than the row
+    // index. Category labels, or a plain values list, keep the index x.
     const numericX = !!labels && series.length > 0 && series.every((d) => typeof labels![d.i] === "number");
     const scatterData = numericX ? series.map((d) => ({ i: d.i, x: Number(labels![d.i]), v: d.v })) : series;
     chart = (
@@ -269,9 +266,7 @@ export function ChartView({
   );
 }
 
-// ─── Treemap ──────────────────────────────────────────────────────────────────
-// A flat labeled treemap — each name/value is a rectangle sized by value, colored
-// from the categorical set. recharts hands the cell renderer geometry + index.
+// A flat labeled treemap. recharts hands the cell renderer geometry + index.
 type TreemapCellProps = {
   x?: number; y?: number; width?: number; height?: number;
   index?: number; name?: string; colors?: string[]; fscale?: number;
@@ -306,7 +301,6 @@ export function TreemapView({ names, values, width, height, fscale = 1 }: {
   );
 }
 
-// ─── Sankey ───────────────────────────────────────────────────────────────────
 // Flow edges: source[i] → target[i] carries value[i]. Nodes are the unique names.
 // recharts needs numeric source/target indices into the nodes array; cycles/self-
 // loops are dropped (recharts' layout assumes a DAG).
@@ -378,7 +372,6 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
   );
 }
 
-// ─── Composed (multi-series) ──────────────────────────────────────────────────
 // Each COLUMN of the matrix is a series over the row index: column 0 draws as bars,
 // the rest as lines (the classic "bars + trend line" combo), colored categorically.
 export function ComposedView({ matrix, width, height, fscale = 1 }: {
@@ -408,7 +401,6 @@ export function ComposedView({ matrix, width, height, fscale = 1 }: {
   );
 }
 
-// ─── Bubble ───────────────────────────────────────────────────────────────────
 // Each ROW is a point: column 0 = x, 1 = y, 2 = bubble size (defaults if absent).
 export function BubbleView({ matrix, width, height, fscale = 1 }: {
   matrix: (number | null)[][]; width: number; height: number; fscale?: number;
@@ -436,11 +428,9 @@ export function BubbleView({ matrix, width, height, fscale = 1 }: {
   );
 }
 
-// ─── Gauge dial (RadialBarChart) ──────────────────────────────────────────────
 // The semicircular arc for GaugeComponent. `pct` is 0–100, `size` the square the
 // polar chart draws into (cropped to the top half by the caller's wrapper).
 export function GaugeArc({ pct, track, size }: { pct: number; track: string; size: number }) {
-  // The arc fill tracks the active palette (was a frozen hex).
   const { viz } = useChartColors();
   return (
     <RadialBarChart
@@ -462,7 +452,6 @@ export function GaugeArc({ pct, track, size }: { pct: number; track: string; siz
   );
 }
 
-// ─── Tornado bars (stacked horizontal BarChart) ───────────────────────────────
 const RISING = "#e0524d";
 const FALLING = "#4c8bf5";
 // A diverged leaf (its extreme sent the output non-finite) has no finite swing —
@@ -505,9 +494,8 @@ function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { pay
   );
 }
 
-// Fits the wide card (240px) minus body padding — a hardcoded 260 overflowed the
-// card and clipped on the right (matches ChartNode's W). Exported so the Suspense
-// fallback box reserves the same width.
+// Fits the wide card minus body padding (matches ChartNode's W). Exported so
+// the Suspense fallback box reserves the same width.
 export const TORNADO_W = 218;
 
 export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: string; axis: string }) {

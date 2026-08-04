@@ -37,22 +37,12 @@ type Props = {
 };
 
 /**
- * Shared wrapper for every standard Solenoid node body. Provides:
- *
- *  1. The .solenoid-node card chrome (with selection modifier).
- *  2. A capture-phase pointer / mouse handler that stops native
- *     propagation for events targeting form fields (INPUT, TEXTAREA,
- *     SELECT, [contenteditable]). Without this, rete-area-plugin's
- *     per-node drag listener — which sits on the node element in
- *     bubble phase — sees the pointerdown, sets pointerStart, and
- *     then calls preventDefault on every subsequent pointermove,
- *     hijacking text-selection drag inside the input.
- *
- *     Capture is required (not bubble) because rete's native bubble
- *     listener fires BEFORE React's bubble-phase synthetic handlers
- *     reach the root. A native capture-phase listener on the card
- *     fires during the capture descent from root → target, before
- *     anything in bubble.
+ * Shared wrapper for every standard Solenoid node body: the .solenoid-node card
+ * chrome, plus a CAPTURE-phase pointer/mouse handler that stops native propagation
+ * for events targeting form fields. Without it, rete-area-plugin's per-node drag
+ * listener preventDefaults every pointermove and hijacks text-selection drag inside
+ * the input. Capture, not bubble: rete's native bubble listener fires before React's
+ * synthetic handlers reach the root.
  */
 export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -119,20 +109,16 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // collapse toggle, which re-lays-out the body.
   useLayoutEffect(syncOutputSocketTop);
 
-  // Defensive: tidy now drops the height pin at the source (Canvas arrangeFn),
-  // but clear it on collapse too in case a fixed inline `height` ever lingers on
-  // the card (stamped via area.resize) — a direct DOM style React's collapse
-  // re-render can't clear, which would keep the card full-height (inner content
-  // hides but the body doesn't shrink). Clearing it lets the card reflow to its
-  // value box.
+  // Defensive: clear any fixed inline `height` on collapse (stamped via area.resize)
+  // — a direct DOM style React's collapse re-render can't clear, which would keep
+  // the card full-height while its inner content hides.
   useLayoutEffect(() => {
     if (collapsed) ref.current?.style.removeProperty("height");
   }, [collapsed]);
 
-  // Report rendered size back to the node instance so the minimap
-  // silhouette matches reality. We update node.width/height directly
-  // and ping `area.update("node", id)` — the minimap plugin listens
-  // for 'render' on nodes and re-renders on each one.
+  // Report rendered size back to the node instance so the minimap silhouette matches
+  // reality: update node.width/height and ping `area.update("node", id)` — the
+  // minimap plugin re-renders on each node 'render'.
   useEffect(() => {
     const el = ref.current;
     if (!el || !node) return;
@@ -164,9 +150,8 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     return () => observer.disconnect();
   }, [node]);
 
-  // Header accent: resolve the node's kind → color. `node` is typed
-  // minimally here but is the live instance at runtime, so instanceof
-  // inside nodeKindOf works.
+  // `node` is typed minimally here but is the live instance at runtime, so
+  // instanceof inside nodeKindOf works.
   // Re-render on theme change so the accent shift (light vs dark) is live.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
@@ -181,11 +166,9 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const groupColor = node ? groupMembershipStore.color(node.id) : undefined;
 
   // ─── Manual resize (resizable nodes only) ──────────────────────────────────
-  // A persisted user size (set by the ResizeHandle inside the value box)
-  // overrides the CSS fixed width / content height. We apply it as an inline
-  // style; the ResizeObserver above then reports the new box back to the node
-  // instance, keeping sockets + minimap in sync. The drag itself lives in
-  // ResizeHandle — here we only read the size and tag the card.
+  // A persisted user size overrides the CSS fixed width / content height, applied
+  // as an inline style; the ResizeObserver above reports the new box back. The drag
+  // itself lives in ResizeHandle.
   useSyncExternalStore(
     nodeSizeStore.subscribe,
     () => (node ? nodeSizeStore.get(node.id) : undefined),

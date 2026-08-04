@@ -2,7 +2,12 @@
 
 **Status: TIERS 1–4 BUILT (D23 + same-day amendment, 2026-07-28).**
 **548 of 548 IN-SCOPE leaves callable** — the denominator excludes the 98
-non-function leaves (sources, sinks, UI, chrome, the verb surface); **gap A is ZERO**;
+non-function leaves (sources, sinks, UI, chrome, the verb surface) and the leaves the
+LANGUAGE itself covers: the four operator nodes (+ − × ÷ are the formula surface's own
+operators), Comparison (= <> < > <= >=), and the two formula HOSTS (Expression/Equation
+ARE the surface being measured) — a name for any of these would be noise; counting them
+as gaps was a measurement artifact (author-reviewed 2026-07-28, `LANGUAGE_LEAVES` in
+`formulaNodeParity.ts`); **gap A is ZERO**;
 gap C is 0. Formulas compute at rank ≤ 2 — matrices, the lambda hosts, and the
 tagged-complex IM* family all landed; frames/cubes stay out by design (the verb
 engine is their surface). Build spec: `v2.0/17-matrix-formulas.md`; containment:
@@ -19,6 +24,58 @@ this design, not as walls.
 Regenerate every number here with `npx tsx scripts/formula-node-parity.ts` (companion to
 `scripts/parity.ts`, which measures the Excel→Solenoid gap; this one measures Solenoid
 against itself).
+
+## The Formula.js divergence catalogue — why Solenoid owns each overridden name
+
+The standing evidence behind every `registerInternal` override in `excelFunctions.ts`;
+without it, "simplify by falling back to the library" looks safe and isn't.
+
+- **Scalar math** (full sweep 2026-06-25): MOD — Excel's result takes the DIVISOR's
+  sign (`MOD(10,-3) = -2`), FX returns −1. ATAN2 — Excel's `ATAN2(x, y)` is
+  `atan2(y, x)` (x first); FX computes `atan2(x, y)`. QUOTIENT/MOD ÷0 — a real
+  `#DIV/0!`, not FX's null. LN/LOG10/SQRTPI/ASIN/ACOS/ACOSH/ATANH out-of-domain —
+  ours tags `#DOMAIN!`; FX silently returns null/blank for some.
+- **RANK / TRIMMEAN / PERCENTRANK**: RANK returns `#N/A` for a value not in the list
+  (FX: 0). TRIMMEAN trims `floor(n·pct/2)` per end (FX over-trims:
+  `TRIMMEAN([2,4,4,4,5,5,7,9],0.2)` is 5 in Excel, 4.83 in FX). PERCENTRANK
+  interpolates + truncates to significance.
+- **Statistical tests FX gets wrong**: its T.TEST ignores tails/type; its F.TEST
+  returns the variance ratio instead of the p-value.
+- **T.TEST / F.TEST are deliberately NOT range-paired**: their arrays are two SAMPLES
+  which may legitimately differ in length for an independent test — the paired
+  min-length zip would silently discard the longer tail on every such call, while the
+  pooled policy misaligns only a paired test that also contains a null (rarer and
+  narrower). Excel requires equal lengths for type 1 anyway.
+- **Text/number parsing**: VALUE — FX returns 0 for ANY unparseable text (silent
+  corruption); Excel is strict `#VALUE!`. Ours also deliberately does NOT parse
+  date/time text (routes through DATEVALUE; keeps VALUE number-only — a documented
+  deviation). NUMBERVALUE — FX nulls when only a decimal separator is given. DOLLAR —
+  FX prints `$(1,234.57)` where Excel's accounting form is `($1,234.57)`. CONVERT —
+  FX.CONVERT errors even on C→F.
+- **TEXT** stays FX with patched holes (the 2026-07-05 B-4b sweep: non-numeric text
+  passes through instead of THROWING; `@`/General use our numberToText; pure zero-pad
+  codes actually pad; scientific formats as 1.23E+06) and KNOWN-BROKEN, deliberately
+  unchased codes: section codes ("pos;neg"), fractions ("# ?/?"), time tokens (hh:mm
+  renders the date part only). FX formats via UTC getters — a local-wall-clock rebuild
+  is the ELIMINATED approach (double-shifted the day on any non-UTC machine: "green in
+  UTC CI, red locally").
+- **Array-returning names**: FX writes them against 2-D ranges with unvetted quirks
+  and has been caught mutating arguments in place (a reason for the D23
+  matrix-containment rule). Before internal registration, UNIQUE/SORT/MODE.MULT/
+  FREQUENCY dispatched through FX and BROADCAST element-wise (`UNIQUE([3,1,3,2])`
+  answered a column of singletons); TREND/GROWTH/LINEST/LOGEST were the last
+  array-returning names still broadcast (plausible-looking garbage, the class
+  `rangeRouting.test.ts` pins). FX's text-complex IM* was the split-brain: string
+  args worked while the graph's own tagged complex values answered `#VALUE!`.
+- **The dispatch/name-walk parity class**: a Formula.js FUNCTION is a walkable
+  container (`FX.CEILING` is the CEILING function AND the home of CEILING.MATH). An
+  object-only walk advertised ten current-Excel names (CEILING.MATH, FLOOR.PRECISE,
+  T.TEST, NETWORKDAYS.INTL, …) that then threw "Unknown function" at dispatch, and a
+  one-level walk missed two-deep namespaces (NORM.S.DIST) and function-parented
+  children while advertising FX's internal `utils` namespace in autocomplete.
+  **Autocomplete and dispatch must walk identically** — the mismatch is exactly what
+  the parity program exists to catch (machine-checked by `formulaPathIsReteFree` /
+  parity tests).
 
 ## How the two surfaces work today (mechanics)
 

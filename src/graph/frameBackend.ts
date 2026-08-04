@@ -1,16 +1,7 @@
-// ─── FrameBackend: the engine seam ────────────────────────────────────────────
-// The frame layer runs on one of two backends without the node layer knowing
-// which: the in-process JS model (web demo + dev) or the native Polars engine
-// (desktop). A backend OWNS its data and hands out opaque string HANDLES; data
-// only crosses back as a value at a MATERIALIZATION boundary — `preview` (schema
-// + head-N + row count, for display/inspector) and `column` (one column back as
-// an eager list, the bridge to the scalar/list world). See docs/archive/v1.0-plan.md WS2.
-//
-// This module is the seam + the JS backend only. The Polars backend (desktop)
-// implements the SAME interface over IPC (`ipcBridge.ts` → `ipc.rs`), where a
-// handle is an id into a Rust-side LazyFrame map and `preview`/`column` are the
-// only `.collect()` points. Nothing migrates the nodes onto this yet — that's a
-// later increment; today nothing consumes it, so the live app is unchanged.
+// The engine seam: the JS backend (web demo + dev) and the Polars backend
+// (desktop, over IPC). A backend OWNS its data and hands out opaque string
+// HANDLES; data only crosses back as a value at a MATERIALIZATION boundary —
+// `preview` and `column`.
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
@@ -27,12 +18,9 @@ import { calcModeStore } from "./calcModeStore";
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
 /** The value a LAZY frame carries on a cable: a backend handle plus a queue of
- *  pending unary ops NOT YET sent to the backend. Verb nodes chain by extending
- *  `__plan` (`extendRef`, in `runFrameUnary`) — no backend call happens until a
- *  materialization boundary (`readFrame`/`collectPreview`) or a binary op
- *  (join/append, which need a real handle for both sides) FLUSHES it via
- *  `applyMany` (`flushRef`) — the compile/fuse win: a chain of N verb
- *  applications costs one round trip, not N. */
+ *  pending unary ops NOT YET sent to the backend. No backend call happens until
+ *  a materialization boundary (`readFrame`/`collectPreview`) or a binary op
+ *  (join/append, which need a real handle for both sides) flushes it. */
 export interface FrameRef {
   readonly __frameRef: FrameHandle;
   readonly __plan: readonly FrameOp[];
@@ -49,15 +37,11 @@ function extendRef(ref: FrameRef, op: FrameOp): FrameRef {
  *  node) or a lazy FrameRef (from a verb node). The runners + readFrame accept both. */
 export type FrameInput = FrameValue | FrameRef;
 
-// ── Per-pass flush + collect memos (audit finding 24, extended for plan batching) ──
-// A lazy ref fanned out to N consumers was fully collected N TIMES per pass —
-// a Filter feeding 3 Get Columns + Display + Chart on 500k rows meant 5
-// identical full-frame serializations. Memoize by the REF OBJECT (not the base
-// handle string): two refs can share a base handle while carrying DIFFERENT
-// pending plans (a fan-out point followed by different downstream verbs), so
-// keying by handle would wrongly collapse them. processGraph clears both at
-// each pass start — refs are never reused across passes, so within one pass
-// the cached result is always the right one.
+// Memoize by the REF OBJECT (not the base handle string): two refs can share a
+// base handle while carrying DIFFERENT pending plans (a fan-out point followed
+// by different downstream verbs), so keying by handle would wrongly collapse
+// them. processGraph clears both at each pass start — refs are never reused
+// across passes, so within one pass the cached result is always the right one.
 let _flushMemo = new Map<FrameRef, Promise<FrameHandle>>();
 let _collectMemo = new Map<FrameRef, Promise<FrameValue | SolError | null>>();
 
@@ -76,16 +60,12 @@ export async function flushRef(ref: FrameRef): Promise<FrameHandle> {
   return p;
 }
 
-/** Run a ref's whole pending plan through `applyMany` in ONE round trip (the
- *  fusion win), while still honoring sketch mode: the plan's BASE handle is
- *  sampled once (if sketch mode is active and it isn't already sample-derived)
- *  instead of per-op — fusion means the backend never sees the individual
- *  verbs anymore, so sampling has to happen at this single flush point. Sketch
- *  scaling is keyed off the LAST groupBy op in the plan (a later select/sort/
- *  filter/… after it just inherits the marking, matching the un-fused
- *  semantics: "propagates through a non-aggregating verb, resets at the next
- *  groupBy") — falling back to inheriting the sampled input's own marking when
- *  the plan has no groupBy at all (an earlier, already-flushed groupBy). */
+/** Run a ref's whole pending plan through `applyMany` in ONE round trip. Fusion
+ *  means the backend never sees the individual verbs, so sketch sampling has to
+ *  happen here, once, on the plan's BASE handle. Sketch scaling is keyed off the
+ *  LAST groupBy in the plan (marking propagates through a non-aggregating verb
+ *  and resets at the next groupBy), falling back to the sampled input's own
+ *  marking when the plan has no groupBy. */
 async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readonly FrameOp[]): Promise<FrameHandle> {
   const be = frameBackend();
   const sample = await maybeSketchSample(be, baseHandle);
@@ -93,9 +73,8 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
   try {
     const outHandle = await be.applyMany(sample.h, plan);
     const lastGroupBy = [...plan].reverse().find((op): op is Extract<FrameOp, { kind: "groupBy" }> => op.kind === "groupBy");
-    // Record the plan's aggregate provenance for the non-finite guard (B-1b):
-    // which output columns are aggregates of which BASE column. Keyed off the
-    // UNSAMPLED base so the guard's input scan survives the sampledTemp drop.
+    // Aggregate provenance for the non-finite guard, keyed off the UNSAMPLED
+    // base so the guard's input scan survives the sampledTemp drop.
     if (lastGroupBy) {
       _aggGuardInfo.set(outHandle, {
         baseHandle,
@@ -271,18 +250,13 @@ export function framePreview(frame: FrameValue, n: number): FramePreview {
   };
 }
 
-// ─── JS backend: data lives in-process, the handle is an id into a Map ─────────
-// Mirrors the Polars handle model (id → backing frame) so the lifecycle code —
-// create a handle, materialize on demand, drop it — is identical across backends.
-// Here it's all cheap object refs; on desktop the same calls cross IPC.
 class JsFrameBackend implements FrameBackend {
   // A SOURCED frame is held weakly: the producing node's memoized value is its
-  // real owner, and the GC-driven drop that was supposed to free the handle
-  // (frameBackend's FinalizationRegistry) is keyed on that same FrameValue — a
-  // strong entry here pinned its own registry key, so the finalizer never fired
-  // and every Frame Input edit leaked the previous frame for the whole web
-  // session (audit finding 18). DERIVED frames (apply/join/append results) stay
-  // strong — their owning verb node drops them explicitly.
+  // real owner, and the GC-driven drop that frees the handle (frameBackend's
+  // FinalizationRegistry) is keyed on that same FrameValue — a strong entry
+  // here would pin its own registry key and the finalizer would never fire.
+  // DERIVED frames (apply/join/append results) stay strong — their owning verb
+  // node drops them explicitly.
   private store = new Map<string, FrameValue | WeakRef<FrameValue>>();
   private seq = 0;
 
@@ -349,19 +323,8 @@ class JsFrameBackend implements FrameBackend {
   }
 }
 
-// ─── Polars backend: the same interface, over IPC to the Rust engine ───────────
-// The desktop path. Every method is one `invoke` (see `src-tauri/src/engine.rs`):
-// a handle is an opaque id into the Rust-side frame store; data only crosses back
-// at `preview`/`column`. The arg names match the Rust command parameters exactly.
-// Wire shape: a frame is sent as its typed columns ({name,type,values}); the Rust
-// side coerces (a per-cell SolError → null) and tags each column with its SolType.
-// ── The non-finite wire sentinel (B-1b, decided 2026-07-02) ───────────────────
-// JSON can't carry Infinity/NaN (JSON.stringify → null), so both directions use
-// a tagged object: {"__nf":"inf"|"-inf"|"nan"}. A per-cell SolError uploads as
-// {"__err": code} — the engine deliberately degrades it to Null (Polars-typed
-// columns can't hold errors); the explicit tag makes that a contract, not an
-// accident. Downloads decode the sentinel back to real numbers; an {"__err"}
-// coming BACK (the aggregate guard, below) decodes to a tagged SolError.
+// The arg names below must match the Rust command parameters exactly
+// (`src-tauri/src/engine.rs`).
 type WireCell = unknown;
 
 function encodeWireCell(v: unknown): WireCell {
@@ -438,10 +401,6 @@ class PolarsBackend implements FrameBackend {
   }
 }
 
-// ─── Backend selection ─────────────────────────────────────────────────────────
-// One module singleton. The JS backend is the default everywhere; WS2's desktop
-// wiring calls `setFrameBackend(new PolarsBackend())` at startup when the native
-// engine is available (`engineAvailable()` in ipcBridge.ts).
 let _backend: FrameBackend | null = null;
 
 export function frameBackend(): FrameBackend {
@@ -455,9 +414,7 @@ export function frameBackend(): FrameBackend {
  *  per-instance) — so a bare string like "jsf:2" is NOT globally unique across
  *  backend instances. Without this, a stale `_collectMemo`/`_sampleFactor`/
  *  `_sketchInfo` entry keyed by a re-used string can leak a PREVIOUS backend's
- *  cached result onto an unrelated frame in the new one (hit in testing: a suite
- *  calling `resetFrameBackendToJs()` between cases got another case's stale
- *  `_collectMemo` entry back for a colliding handle string). */
+ *  cached result onto an unrelated frame in the new one. */
 function clearHandleKeyedCaches(): void {
   _sourceCache = new WeakMap();
   clearCollectMemo();
@@ -479,12 +436,9 @@ export function resetFrameBackendToJs(): void {
   clearHandleKeyedCaches();
 }
 
-/** Pick the frame backend once at startup. On desktop, ping the native engine; if
- *  it answers with the Polars backend live, switch the seam to `PolarsBackend` so
- *  every frame node (once migrated) runs on Polars. Off-desktop, or if the native
- *  side is absent/older (no `"polars"` backend), the in-process JS backend stays —
- *  the web demo is unchanged. Best-effort + idempotent; safe to call before any
- *  node touches a frame (nothing consumes the seam until the node migration). */
+/** Pick the frame backend once at startup: `PolarsBackend` when the native
+ *  engine answers `"polars"`, the in-process JS backend otherwise. Best-effort
+ *  and idempotent. */
 export async function initFrameBackend(): Promise<void> {
   if (!engineAvailable()) return;
   try {
@@ -492,7 +446,7 @@ export async function initFrameBackend(): Promise<void> {
     if (info?.backend === "polars") {
       // The Rust store is process-global but every handle lives in JS state — a
       // webview reload (Ctrl+R / HMR) discards that state and would orphan every
-      // stored frame for the process lifetime (audit finding 35). Fresh start.
+      // stored frame for the process lifetime. Fresh start.
       await ipcInvoke("engine_clear", {}).catch(() => {});
       setFrameBackend(new PolarsBackend());
     }
@@ -501,18 +455,9 @@ export async function initFrameBackend(): Promise<void> {
   }
 }
 
-// ─── Native CSV read (desktop-only — bypasses the JS Papa Parse + inference) ───
-// The JS path (csv.ts `parseCsvRows` + frame.ts `frameFromCells`'s type inference)
-// stays the only option on web. On desktop, `engine_read_csv` (engine.rs) reads
-// the file straight off disk through Polars' own CSV reader (multi-threaded,
-// SIMD-accelerated) and returns it already collected to typed columns — the whole
-// file never round-trips through JS as text, and JS never re-parses/re-infers it.
-// Known divergence from `frameFromCells`: the native reader infers number/string/
-// logical only (Polars dtypes) — NOT date (frame.ts's conservative unambiguous-ISO
-// check has no Rust-side equivalent yet), so a date column arrives as text on the
-// native path where the JS path would have detected it. Acceptable for now — an
-// explicit Get Column "read as Date" still converts it; full inference parity is a
-// follow-up, not a blocker for the perf win this exists for.
+// Desktop-only: `engine_read_csv` (engine.rs) reads the file off disk through
+// Polars' CSV reader, already collected to typed columns. The JS path
+// (csv.ts + frame.ts `frameFromCells`) stays the only option on web.
 export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {
   try {
     const columns = await ipcInvoke<FrameColumn[]>("engine_read_csv", { folder, name });
@@ -522,29 +467,13 @@ export async function readCsvFrame(folder: string, name: string): Promise<FrameV
   }
 }
 
-// ─── Node-facing verb runners (the seam the frame verb nodes speak) ────────────
-// A frame verb node's data() calls one of these instead of the pure `frameVerbs`
-// function directly: source the eager input(s) to handle(s), compose the verb, and
-// collect the full frame back. On web this is the JS backend — identical to calling
-// the verb (it wraps the same `frameVerbs`); on desktop the verb runs in Polars.
-// Handles are created and dropped within the call, so nothing leaks. A verb's
-// structural failure (#REF! for a bad column, #TYPE! for an append clash) comes back
-// as a tagged SolError VALUE — never a throw out of data() (which the error guard
-// would flatten to a generic #ERROR!; see `materialize`).
-
 function asErrorValue(e: unknown): SolError {
   return isSolError(e) ? e : solError("#ERROR!", e instanceof Error ? e.message : String(e));
 }
 
-// ─── Source-handle cache ────────────────────────────────────────────────────────
-// The profiler showed `engine_source` dominating (whole frames re-serialized to Rust
-// over and over): a fan-out where N verb nodes read the SAME source FrameValue used to
-// upload it N times, and every recompute re-uploaded from scratch. Cache the handle by
-// FrameValue IDENTITY so a frame is uploaded ONCE and reused by every consumer. A source
-// node that returns a stable object across recomputes (memoized) keeps its handle across
-// passes too; a fresh object each pass just re-sources once and the stale handle is freed
-// when the old FrameValue is GC'd (FinalizationRegistry → backend.drop). The handle is now
-// owned by the cache, never dropped per-call — hence `temp: false` for the cached path.
+// Keyed by FrameValue IDENTITY, so a source node that returns a stable object
+// across recomputes keeps its handle across passes; a stale handle is freed when
+// the old FrameValue is GC'd (FinalizationRegistry → backend.drop).
 let _sourceCache = new WeakMap<FrameValue, Promise<FrameHandle>>();
 const _dropReg: FinalizationRegistry<{ be: FrameBackend; h: FrameHandle }> | null =
   typeof FinalizationRegistry !== "undefined"
@@ -572,50 +501,22 @@ async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: b
   return { h: await p, temp: false };
 }
 
-// ─── Sketch mode (#24): sample instead of the full frame while active ──────────
-// While `calcModeStore.sketchActive()` is true, a verb's WORKING SET is capped to
-// a deterministic sample (never random) so a chain on a huge frame stays fast — F9
-// / Calculate Now bracket `calcModeStore.beginForceExact()/endForceExact()` around
-// the ONE forced pass (process.ts `requestRecalc`), so sketchActive() reads false
-// there and that pass always runs on the full data.
-//
-// `_sampleFactor` records which handles are sample-derived + by how much
-// (trueRows/sampleRows), propagated down a verb chain so a filter/sort AFTER a
-// sampled source is still recognized as sample-derived (no re-sampling, and the
-// factor is available if a LATER groupBy in the chain needs it).
-//
-// `_sketchInfo` marks a handle whose STORED value needs scaling at every
-// materialization: set on a groupBy's output for its sum/count aggregate
-// columns (avg/min/max/median/mode/stdev/var/percentof are never scaled —
-// extrapolating those would be wrong, not just approximate), and propagated
-// unchanged through a later non-aggregating verb. Scaling is applied at
-// `readFrame`/`collectPreview` time (`applySketchScaling`), NOT baked into the
-// backend-stored data: re-sourcing a scaled frame back into the Polars backend
-// would round-trip through `engine_source`/`engine_collect`, which carry only
-// plain columns — `__approx` (a JS-side-only field) would silently vanish. This
-// way the raw sample sums stay in the backend and every read applies the SAME
-// scaling, on either backend, however many times it's read.
+// Sketch mode. `_sampleFactor` marks sample-derived handles (trueRows/sampleRows)
+// so a verb AFTER a sampled source is not re-sampled. `_sketchInfo` marks a
+// handle whose sum/count columns need scaling; scaling is applied at read time
+// (`applySketchScaling`), never baked into backend-stored data — a re-source
+// round trip carries only plain columns, so the `__approx` marking would
+// silently vanish.
 export const SKETCH_SAMPLE_ROWS = 10_000;
 const _sampleFactor = new Map<FrameHandle, number>();
 interface SketchInfo { factor: number; scaleColumns: ReadonlySet<string> }
 const _sketchInfo = new Map<FrameHandle, SketchInfo>();
 const SKETCH_EXTRAPOLATABLE: ReadonlySet<AggOp> = new Set(["sum", "count"]);
 
-// ── Aggregate non-finite guard (B-1b, decided 2026-07-02) — the engine half ──
-// The JS oracle guards INSIDE groupByFrame (guardFinite per output cell). The
-// engine can't: Polars-typed columns can't hold a per-cell error, so a ±Inf/NaN
-// aggregate result rides the wire (as the __nf sentinel) and is CLASSIFIED here
-// at the materialization boundary, per the decided column-level rule: a
-// non-finite result PASSES when the input column contained ±Inf (SUM of ∞ is
-// ∞); otherwise ±Inf → #OVERFLOW! and NaN → #DOMAIN! (guardFinite's exact
-// semantics, fed a synthetic ∞ input when the scan found one). The input scan
-// reads the plan's BASE column — one extra IPC, only when a non-finite result
-// actually appears. Accepted corners (documented in polarsBackend.test.ts): a
-// mid-plan filter that removed the only ∞ still counts as "input had ∞" (the
-// scan is on the base), and a later rename/select of the agg column skips the
-// guard (the cell then displays as ∞/NaN rather than an error — honest, just
-// unclassified). On the JS backend the oracle already errored the cells, so
-// this guard sees no non-finite numbers and no-ops.
+// The engine half of the aggregate non-finite guard: a Polars-typed column
+// can't hold a per-cell error, so a non-finite aggregate is classified here at
+// the materialization boundary, scanning the plan's BASE column. On the JS
+// backend the oracle already errored the cells, so this no-ops.
 interface AggGuardInfo { baseHandle: FrameHandle; aggCols: ReadonlyMap<string, string> } // out name → source column
 const _aggGuardInfo = new Map<FrameHandle, AggGuardInfo>();
 
@@ -674,12 +575,9 @@ function applySketchScaling(handle: FrameHandle, f: FrameValue): FrameValue {
   return { ...f, columns, __approx: { factor: info.factor } };
 }
 
-/** Run a unary verb (select/drop/rename/sort/distinct/head/filter/groupBy/
- *  unpivot — NOT pivot, which is deliberately eager) — returning a LAZY ref.
- *  Chaining onto an existing ref just EXTENDS its pending plan (`extendRef`) —
- *  no backend call at all, the compile/fuse win: a chain of N verb nodes costs
- *  nothing here, only a `flushRef` at a materialization boundary or a card
- *  preview pays for it, and then only ONCE per boundary, not once per verb. */
+/** Run a unary verb (NOT pivot, which is deliberately eager) — returning a LAZY
+ *  ref. Chaining onto an existing ref just EXTENDS its pending plan; no backend
+ *  call happens here. */
 export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<FrameRef | SolError> {
   try {
     if (isFrameRef(input)) return extendRef(input, op);

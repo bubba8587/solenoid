@@ -4,16 +4,13 @@ import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
 
-// ─── Formula syntax highlighting + autocomplete helpers ───────────────────────
-// A position-PRESERVING tokenizer (every character, incl. whitespace + unknowns,
-// ends up in the output) so the highlighted <pre> mirrors the <textarea> exactly,
-// character-for-character. It reuses the same lexical rules as excelFormula.ts's
-// tokenizer but emits classed <span>s instead of tokens, and never bails on a
-// half-typed formula. Pure (no React) so it's unit-testable.
+// Formula syntax highlighting + autocomplete helpers. A position-PRESERVING
+// tokenizer (every character, incl. whitespace + unknowns, ends up in the output)
+// so the highlighted <pre> mirrors the <textarea> character-for-character, and it
+// never bails on a half-typed formula. Pure (no React) so it's unit-testable.
 
-// Recomputed when the advertised set changes (a pack toggling on or off, or a
-// late registration) — it can't be a module-level constant any more, because pack
-// functions register after load and the set shrinks when a pack is switched off.
+// Can't be a module-level constant: pack functions register after load and the
+// advertised set shrinks when a pack is switched off.
 let _fnSet = new Set<string>();
 let _fnSetSource: string[] | null = null;
 function fnSet(): Set<string> {
@@ -34,9 +31,8 @@ const isIdChar = (c: string) => /[A-Za-z0-9_]/.test(c);
  * The CSS class for an identifier given what follows it: a name in CALL position
  * (next non-space char is `(`) is a function — `fx-fn` if it's a real Formula.js
  * name, `fx-frame` if it's a FRAME VERB (a real name whose data type can't flow
- * through formulas — colored in the frame socket violet so it reads as "this is
- * frame territory", not as a typo), else `fx-unknown`. A bare name is a math
- * constant (`fx-const`) or a variable (`fx-var`).
+ * through formulas, so it must not read as a typo), else `fx-unknown`. A bare name
+ * is a math constant (`fx-const`) or a variable (`fx-var`).
  */
 function identClass(word: string, isCall: boolean): string {
   if (isCall) {
@@ -56,7 +52,6 @@ export function highlightFormula(src: string): string {
   while (i < src.length) {
     const c = src[i];
     if (c === " " || c === "\t" || c === "\n" || c === "\r") { out += esc(c); i++; continue; }
-    // number (with optional exponent)
     if (isDigit(c) || (c === "." && isDigit(src[i + 1] ?? ""))) {
       let j = i + 1;
       while (j < src.length && /[0-9.]/.test(src[j])) j++;
@@ -67,15 +62,14 @@ export function highlightFormula(src: string): string {
       }
       out += span("fx-num", src.slice(i, j)); i = j; continue;
     }
-    // string literal (color through the end even if unterminated, mid-type)
+    // An unterminated string literal colors through to the end (mid-type).
     if (c === '"') {
       let j = i + 1;
       while (j < src.length && src[j] !== '"') j++;
       const end = j < src.length ? j + 1 : j;
       out += span("fx-str", src.slice(i, end)); i = end; continue;
     }
-    // @name — the this-row reference: one token, colored like the variable it
-    // behaves as (it reads row data).
+    // @name — the this-row reference: ONE token, colored like a variable.
     if (c === "@" && isIdStart(src[i + 1] ?? "")) {
       let j = i + 2;
       while (j < src.length && isIdChar(src[j])) j++;
@@ -95,7 +89,6 @@ export function highlightFormula(src: string): string {
       }
       out += span("fx-var", src.slice(i, j)); i = j; continue;
     }
-    // identifier — look past whitespace for a '(' to decide function vs name
     if (isIdStart(c)) {
       let j = i + 1;
       while (j < src.length && isIdChar(src[j])) j++;

@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { clamp } from "./mathUtils";
 
 // ─── Presentation ───────────────────────────────────────────────────────────
-// Bundle 13 #51 — presenter mode, kept deliberately light. Stores an ORDERED list
+// Presenter mode, kept deliberately light. Stores an ORDERED list
 // of steps (a title + an explicit node-id set per step, picked from the current
 // canvas selection — like a navigator list, not typed by hand). Stepping calls a
 // per-step camera function built on flyToNode's pattern (flyToNodes, flyToNode.ts)

@@ -16,19 +16,12 @@ import {
   type FrontmatterValue,
 } from "../noteFrontmatter";
 
-// ─── Note ─────────────────────────────────────────────────────────────────────
-// A free-floating canvas annotation — a sticky note with a title + body. Like the
-// Group node it's a real Rete node (selection, drag, delete, copy/paste, undo,
-// persistence for free). Its body's optional Obsidian-style `---`-fenced YAML
-// frontmatter turns each key into a typed OUTPUT socket — so a Note doubles as a
-// lightweight typed-record / constants source (see noteFrontmatter.ts). A plain
-// note (no frontmatter) keeps zero output sockets, exactly as before.
+// A free-floating canvas annotation whose body's optional `---`-fenced YAML
+// frontmatter turns each key into a typed OUTPUT socket.
 //
-// A Note is a pure SOURCE: it emits (frontmatter outputs) and never consumes. It
-// deliberately does NOT parse `` `=name` `` inline refs or mint input sockets — a
-// `` `=name` `` span in a note body is just literal inline code. Reading live graph
-// values into a document is the REPORT node's job (nodes/report.ts): Note = source,
-// Report = sink, and the two are intentionally opposites (not convertible).
+// A Note is a pure SOURCE: it emits and never consumes. It deliberately does NOT
+// parse `` `=name` `` inline refs or mint input sockets — that is the Report
+// node's job, and the two are intentionally opposites (not convertible).
 
 // A field type → its socket singleton. Names align with FrontmatterFieldType.
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
@@ -109,14 +102,11 @@ export class NoteNode extends ClassicPreset.Node {
     this.height = init?.height ?? 150;
     this.collapsed = init?.collapsed ?? false;
     this.fieldTypes = { ...(init?.fieldTypes ?? {}) };
-    // The FIXED `document` output — the whole note as a DocumentValue (its raw body,
-    // which is already Obsidian-ready markdown-with-frontmatter), for a document sink
-    // like Write-to-Obsidian. syncFields skips it when reconciling the dynamic
-    // per-frontmatter-key outputs.
+    // The FIXED `document` output — syncFields skips it when reconciling the
+    // dynamic per-frontmatter-key outputs.
     this.addOutput("document", documentOut("Document"));
-    // Build outputs from the initial body. At construction `outputs` is empty, so
-    // this only ADDS — connections (restored after node creation on load) then find
-    // their frontmatter-key outputs already present.
+    // At construction `outputs` is empty, so this only ADDS — connections
+    // (restored after node creation on load) then find their outputs present.
     this.syncFields();
   }
 
@@ -141,9 +131,6 @@ export class NoteNode extends ClassicPreset.Node {
    *    which references the KEY, survives that as long as the caller doesn't drop it.
    * Connection cleanup is the CALLER's job (the node has no editor handle); at
    * construction there are none.
-   *
-   * A Note is output-only — no inline-ref inputs to reconcile (that's the Report's
-   * job, nodes/report.ts).
    */
   syncFields(): {
     removed: string[];
@@ -185,13 +172,8 @@ export class NoteNode extends ClassicPreset.Node {
     return { removed, retyped };
   }
 
-  // Each frontmatter key emits its value on the matching OUTPUT. A plain note
-  // (no frontmatter) returns {} — no output sockets, exactly as before. A Note has
-  // no inputs (output-only source), so data() takes none.
+  // A Note has no inputs (output-only source), so data() takes none.
   data(): Record<string, FrontmatterValue | DocumentValue> {
-    // Each frontmatter key on its output + the whole note as a `document` value (raw
-    // body = already Obsidian-ready markdown-with-frontmatter; a Note is a pure
-    // source, so no refs to resolve).
     return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
   }
 
@@ -208,18 +190,13 @@ export class NoteNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Image ──────────────────────────────────────────────────────────────────
-// A free-floating image annotation — show a picture on the canvas, from a web URL
-// or a local file. Like Note it's a real sockets-less node (selection, drag,
-// delete, copy/paste, undo, persistence for free) and produces no data.
+// A free-floating image annotation, from a web URL or a local file.
 //
-// Persistence: a web `url` round-trips through the JSON save. A LOCAL file is read
-// into `dataUrl` (a base64 data: URL) for the session — the bytes are never written
-// into the save JSON (no base64 bloat; `dataUrl` stays off copyPaste's extractInit
-// whitelist). On DESKTOP, saving the doc to disk bundles the attachment as a plain
-// image file in an `images/` folder beside the doc (imageAssets.ts) and persists the
-// relative `assetPath`; loading hydrates `dataUrl` back from that file. On web there
-// is no filesystem, so a local attach stays session-only ("not saved").
+// Persistence: a web `url` round-trips through the JSON save. A LOCAL file's
+// bytes are never written into the save JSON — `dataUrl` stays off copyPaste's
+// extractInit whitelist. On DESKTOP, saving bundles the attachment beside the
+// doc (imageAssets.ts) and persists the relative `assetPath`; on web a local
+// attach stays session-only.
 
 export class ImageNode extends ClassicPreset.Node {
   url: string;        // web URL — persisted
@@ -236,14 +213,11 @@ export class ImageNode extends ClassicPreset.Node {
     this.dataUrl = "";
     this.fileName = init?.fileName ?? "";
     this.assetPath = init?.assetPath ?? "";
-    // Default sizes that fit a reasonable card: a 240px-wide node with a 160px-tall
-    // image well (letterboxed via object-fit, so any aspect ratio looks intentional).
     this.height = init?.height ?? 160;
     this.width = init?.width ?? 240;
     this.collapsed = init?.collapsed ?? false;
-    // Emit the picture as a chart-family figure value so it can be wired into a
-    // Report (or any `chart`/`any` consumer) — carrying the node's `height` and,
-    // as the node grows transforms, whatever else shapes the rendered image.
+    // A chart-family figure value, so it wires into a Report (or any
+    // `chart`/`any` consumer).
     this.addOutput("image", chartOut("Image"));
   }
 
@@ -259,22 +233,13 @@ export class ImageNode extends ClassicPreset.Node {
   }
 }
 
-// ─── SVG Picker ───────────────────────────────────────────────────────────────
-// An interactive picture that doubles as a visual slicer. Load an SVG (a local
-// `.svg` file or a web URL, like Image), then CLICK a shape or layer inside it —
-// the node outputs that layer's NAME on its `Layer` (string) socket. Wire that
-// into a Filter's comparison value and you slice a dataset by whatever region you
-// clicked (a clickable map / floorplan / schematic → a data selector). Hovering a
-// selectable element highlights it in the chosen color.
+// An interactive picture that doubles as a visual slicer: clicking a shape or
+// layer outputs that layer's NAME on the `Layer` socket, and the picture flows
+// out the `chart` socket carrying the current selection.
 //
-// It ALSO flows the picture out the `chart` object socket (like Image / Mermaid)
-// carrying the current selection, so a Report embeds it with the same highlight.
-//
-// Persistence: unlike Image (whose bytes can't sit in the JSON), an SVG is just
-// text, so the markup persists directly in `stringLiterals.source` (the Mermaid
-// pattern — persistence restores stringLiterals for every node, no bundling). The
-// `url` is kept as the last web source; `hoverColor` + `selectedLayer` round-trip
-// as plain fields (both added to copyPaste's INIT_FIELD_ORDER whitelist).
+// Persistence: an SVG is just text, so the markup persists in
+// `stringLiterals.source`; `hoverColor` + `selectedLayer` round-trip as plain
+// fields (both on copyPaste's INIT_FIELD_ORDER whitelist).
 
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
@@ -299,10 +264,8 @@ export class SvgPickerNode extends ClassicPreset.Node {
     this.selectedLayer = init?.selectedLayer ?? "";
     this.height = init?.height ?? 200;
     this.width = init?.width ?? 260;
-    // The picture as a chart-family figure (Report-embeddable), carrying the pick.
     this.addOutput("chart", chartOut("SVG"));
-    // The picked layer name — the whole point: feed a Filter to slice by region.
-    // `null` (missing) until something is clicked.
+    // The picked layer name — `null` (missing) until something is clicked.
     this.addOutput("layer", strOut("Layer"));
   }
 

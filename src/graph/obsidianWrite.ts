@@ -43,8 +43,8 @@ async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
   // Ensure the root carries explicit pixel dimensions + the SVG namespace so the
   // off-document Image can size it. Set them through the DOM, not a string prepend:
   // a recharts root already HAS width/height attributes, and a duplicated attribute
-  // is a fatal XML parse error (the blob is image/svg+xml), which silently killed
-  // every chart raster. XMLSerializer emits the xmlns declaration itself.
+  // is a fatal XML parse error (the blob is image/svg+xml). XMLSerializer emits the
+  // xmlns declaration itself.
   const holder = document.createElement("div");
   holder.innerHTML = markup;
   const root = holder.querySelector("svg");

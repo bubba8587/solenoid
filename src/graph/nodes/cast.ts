@@ -8,11 +8,8 @@ import { formatNumberPattern } from "./text";
 import { getEditor } from "../process";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// ─── Cast — universal data-type conversion ────────────────────────────────────
-// One node that coerces any scalar or list value to a chosen target type:
+// Cast — one node that coerces any scalar or list value to a chosen target type:
 // number, text, date (Excel serial), or complex. Element-wise over lists.
-// Supersedes the deprecated single-purpose coercers (TEXT, VALUE, Format Date —
-// hidden in the catalog but still loadable).
 //
 // The optional `format` applies when casting TO text: a number pattern
 // ("0.00", "0.00%") for numeric sources, a date pattern (YYYY-MM-DD …) for
@@ -59,10 +56,9 @@ export function parseCx(s: string): Cx {
 
 type CastScalar = number | string | Cx | boolean | null;
 
-// Cast one scalar. A complex is self-identifying now (tagged, VAL-15), so no caller
-// flag — which also means a cell of a complex LIST casts correctly (the old flag was
-// only ever set for the scalar path). `dateish` makes "to text" use the date
-// formatter for numeric serials.
+// Cast one scalar. A complex is self-identifying (tagged), so no caller flag —
+// which also means a cell of a complex LIST casts correctly. `dateish` makes
+// "to text" use the date formatter for numeric serials.
 function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean): CastScalar {
   if (x == null) return null;
   switch (target) {
@@ -116,10 +112,9 @@ function castFailed(v: CastScalar, target: CastTarget): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-// ─── Display ──────────────────────────────────────────────────────────────────
 // Shape the cast result for ValueDisplay so it renders like every other node: a
-// LIST becomes a chip, never a pre-joined "[a, b, c]" string (the bug this
-// fixes). Number AND date targets stay numeric serials — ValueDisplay formats
+// LIST becomes a chip, never a pre-joined "[a, b, c]" string. Number AND date
+// targets stay numeric serials — ValueDisplay formats
 // the date ones for us, since the output socket is a date type (datecombo); the
 // complex target renders formatted "a+bi" strings (ValueDisplay can't format a
 // complex tuple). A blank/failed cell is "" in a string list / NaN in a numeric
@@ -185,9 +180,8 @@ export class CastNode extends ClassicPreset.Node {
     const raw = inputs.value?.[0];
     // Text casts use the default representation (no custom format code).
     const format = "";
-    // The socket is consulted only for `dateish` now — a serial and a plain number
-    // really are the same value, so the source type is the only witness. A complex
-    // is self-identifying (tagged, VAL-15), and Array.isArray means exactly "list".
+    // The socket is consulted only for `dateish` — a serial and a plain number
+    // really are the same value, so the source type is the only witness.
     const kind = this.sourceKind();
     const dateish = kind != null && isDateType(kind);
 

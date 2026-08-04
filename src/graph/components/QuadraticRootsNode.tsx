@@ -4,9 +4,7 @@ import { InlineInputs } from "./inlineInput";
 
 // The roots ride RAW: OutputRowValue carries a Cx (scalar, error, or the
 // broadcast LIST case — `numlist` coefficients solve a list of quadratics), and
-// formatRowCell spells it. NOTE: InlineOutputRows resolves no annotation for ANY
-// type, so an FC docked here doesn't reach these rows — a multi-row gap, not a
-// complex one (backlog).
+// formatRowCell spells it.
 const rootValue = (v: QuadraticRootsNodeType["cachedX1"]): OutputRowValue => v;
 
 export function QuadraticRootsComponent({ data, emit }: NodeProps<QuadraticRootsNodeType>) {

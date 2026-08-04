@@ -12,7 +12,7 @@
 // node. It self-corrects: any gap entry whose Excel name has become node-backed is
 // dropped, so implementing a node always removes it from the missing list. And the
 // dev catalog validator fails loudly if a mapped node lacks its Excel metadata, so
-// the reverse (a shipped node missing from the reference — the LAMBDA bug) is caught.
+// the reverse (a shipped node missing from the reference) is caught.
 
 import { buildCatalog } from "./catalogUtils";
 import { EXCEL_GAP } from "./nodeExcel";

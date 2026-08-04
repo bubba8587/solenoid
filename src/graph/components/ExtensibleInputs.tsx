@@ -17,11 +17,8 @@ import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
-/**
- * A node with a variable number of value inputs the user can add/remove,
- * where each value can also be typed directly into the node. Implemented
- * by the node class (see ListInputNode).
- */
+/** A node with a variable number of value inputs the user can add/remove, where each
+ *  value can also be typed directly into the node (see ListInputNode). */
 export interface ExtensibleNode {
   id: string;
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
@@ -33,16 +30,13 @@ export interface ExtensibleNode {
   removeValueInput: (key: string) => void;
 }
 
-// The rows an add/remove gesture touches must be UNDOABLE alongside the
-// connection add/removes the classic history preset already records — without
-// this, Ctrl+Z after removing a WIRED row re-added the cable into an input key
-// that no longer existed (a ghost cable until reload, then a silent drop).
-// Generic over every extensible node: undo re-adds the very same
-// `ClassicPreset.Input` OBJECTS (socket type + label survive by identity) and
-// restores the node's original input-key ORDER (positional nodes — CHOOSE —
-// change meaning if rows reorder). Call BEFORE the rows are actually removed,
-// and AFTER the connection removals, so undo pops row-restore first and the
-// cable re-add that follows lands on a live socket.
+// Row add/removes must be UNDOABLE alongside the connection add/removes the classic
+// history preset records, or Ctrl+Z re-adds a cable into an input key that no longer
+// exists. Undo re-adds the very same `ClassicPreset.Input` OBJECTS (socket type +
+// label survive by identity) and restores the input-key ORDER (positional nodes like
+// CHOOSE change meaning if rows reorder). Call BEFORE the rows are removed and AFTER
+// the connection removals, so undo pops row-restore first and the cable re-add that
+// follows lands on a live socket.
 type RowHost = {
   id: string;
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
@@ -96,17 +90,10 @@ export function pushRowAddUndo(node: RowHost, keys: string[], removeIt: () => vo
   );
 }
 
-/**
- * Reusable renderer for extensible value inputs: one editable row per
- * input (socket + literal field + remove ×) plus a "+ Add" button. Use
- * this for nodes that take an arbitrary number of distinct values that
- * can be defined in-node (List, future Concat, etc.). For arbitrary
- * inputs that can't be defined in-node (e.g. multiple arrays), use a
- * single pill/multi-connection socket instead — not this.
- *
- * Each input dot centers on its own row (see .solenoid-node__io-row), so the
- * rows can sit anywhere in the body — no fixed header-offset assumption.
- */
+/** Reusable renderer for extensible value inputs. Use it for nodes taking an
+ *  arbitrary number of DISTINCT values definable in-node; for interchangeable inputs
+ *  that can't be defined in-node use a single multi-connection socket instead.
+ *  Each input dot centers on its own row, so rows can sit anywhere in the body. */
 export function ExtensibleInputs({
   node, emit, leadingKeys, valueKeys, minRows = 1,
 }: {
@@ -162,10 +149,9 @@ export function ExtensibleInputs({
     await processGraph();
   }
 
-  // Collapsed: ≥2 inputs aggregate into a single pill (avoids dots
-  // spilling past the small node); a lone input centers on the display
-  // box (no explicit top → --out-socket-top). The pill spans fixed leading
-  // inputs AND value rows so a collapsed CHOOSE shows one combined pill.
+  // Collapsed: ≥2 inputs aggregate into one pill (dots would spill past the small
+  // node); a lone input centers on the display box (no explicit top →
+  // --out-socket-top). The pill spans leading inputs AND value rows.
   if (collapsed) {
     if (allKeys.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={allKeys} />;
@@ -197,16 +183,13 @@ export function ExtensibleInputs({
         if (!input) return null;
         const isConn = connected.has(key);
         const dt = input.socket instanceof SolenoidSocket ? input.socket.dataType : undefined;
-        // A list-typed row (List Input's numlist/strlist/datelist/logicallist) is typed
-        // as a comma-separated list in the same text field a string row uses; the node
-        // parses it per element type. So every List Input type gets CSV entry.
+        // A list-typed row is typed as CSV in the same text field a string row uses;
+        // the node parses it per element type.
         const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
-        // A container-typed row (the append family: Concat Lists / VSTACK /
-        // HSTACK / frame Append) is WIRE-ONLY — a typed literal has no meaning
-        // for a list/table/frame operand. Unwired it shows just its position
-        // (order = stack order); wired it names the incoming node. A logical
-        // operand (BooleanOp's AND/OR/… rows) is wire-only too — you wire a
-        // condition, matching IfNode; a number still bridges in via the socket.
+        // A container-typed row is WIRE-ONLY — a typed literal has no meaning for a
+        // list/table/frame operand. Unwired it shows its position (order = stack
+        // order); wired it names the incoming node. Logical operands are wire-only
+        // too, matching IfNode; a number still bridges in via the socket.
         const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>

@@ -6,15 +6,10 @@ import { appThemeStore } from "../appTheme";
 import { themeAccent, resolveColor } from "../palette";
 import "./Minimap.css";
 
-// A drop-in replacement for rete-react-plugin's minimap render preset. Two
-// differences from the stock one:
-//   1. Each node draws in its real accent color (groups as a faint wash of
-//      their own color) instead of a single flat blue.
-//   2. Node rects are `box-sizing: border-box`, so the 1px outline doesn't
-//      inflate the silhouette — the stock MiniNode's content-box border made
-//      every node read ~2px bigger than its true footprint, crowding the map.
-// The geometry still comes from the plugin (already in sync with real node
-// width/height, which NodeCard reports back from the rendered DOM).
+// A drop-in replacement for rete-react-plugin's minimap render preset: each
+// node draws in its real accent color, and node rects are border-box so the 1px
+// outline doesn't inflate the silhouette. The geometry still comes from the
+// plugin.
 
 type Rect = { left: number; top: number; width: number; height: number };
 type Transform = { x: number; y: number; k: number };
@@ -83,9 +78,8 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
       return { background: hexToRgba(c, 0.2), borderColor: hexToRgba(c, 0.75) };
     }
     if (n instanceof NoteNode) {
-      // Notes carry their own palette slot too (gray default came from falling
-      // through to the util kind accent). They read more solid than a group's
-      // wash on canvas, so paint a touch more present than the group branch.
+      // Notes read more solid than a group's wash on canvas, so paint a touch
+      // more present than the group branch.
       const c = themeAccent(resolveColor(n.color), mode);
       return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
     }

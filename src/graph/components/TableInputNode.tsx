@@ -33,7 +33,6 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
 // so a bad cell is never silently coerced away; it derives to NaN (dirty data)
 // and the Source view still shows what was typed.
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {
-  // Local mirror so the toggle re-renders on change; the handler swaps the socket type.
   const [dt, setDt] = useState<TableElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
 
@@ -42,7 +41,6 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
       node={data}
       emit={emit}
       labelPlaceholder="Table"
-      // Header accent tracks the element family, matching the output socket.
       accentOverride={SOCKET_COLORS[TABLE_ELEM_SOCKET[dt].dataType]}
     >
       <SegToggle

@@ -11,10 +11,9 @@ import { readCsvFrame, dropFrameRef, collectPreview, type FrameRef, type FrameHa
 import { solError, isSolError, type SolError } from "../errorValue";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
-// A connection node references outside data (a URL now; a folder-relative CSV
-// next) and fetches a Frame on refresh — it never bakes the data into the project
-// file. v1 frames are all-numeric, so non-numeric cells parse to NaN (shown as
-// N/A) rather than dropping the column; text columns arrive with mixed-type frames.
+// A connection node references outside data (a URL, or a file inside the Settings
+// target folder) and fetches a Frame on refresh — it never bakes the data into the
+// project file.
 
 // ─── Remote text → numeric Frame ────────────────────────────────────────────────
 
@@ -323,8 +322,8 @@ export class CsvConnectionNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "loading" });
     try {
       // Desktop: read + parse natively in Rust (Polars' own CSV reader) — the file
-      // text never crosses IPC and JS never re-parses/re-infers it (#24 WS-E). Web
-      // has no native engine, so it keeps the JS Papa Parse + inference path.
+      // text never crosses IPC and JS never re-parses/re-infers it. Web has no
+      // native engine, so it keeps the JS Papa Parse + inference path.
       const frame = engineAvailable()
         ? await (async () => {
             const r = await readCsvFrame(folder, name);
@@ -349,9 +348,9 @@ export class CsvConnectionNode extends ClassicPreset.Node {
 
 // ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
 // Like CSV Connection, but the file goes straight from disk into the Rust engine
-// (`engine_read_parquet`) — never parsed or type-inferred in JS (bundle 34's
-// "native file → engine" ask). Desktop + native-engine only: unlike CSV/JSON
-// there's no JS Parquet reader to fall back to. Emits a LAZY FrameRef off the
+// (`engine_read_parquet`) — never parsed or type-inferred in JS. Desktop +
+// native-engine only: unlike CSV/JSON there's no JS Parquet reader to fall back
+// to. Emits a LAZY FrameRef off the
 // fresh handle, so a verb chain built on a Parquet source never re-uploads
 // through `engine_source` — the frame is already living in the backend the
 // moment the file is read.

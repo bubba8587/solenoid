@@ -1,40 +1,6 @@
 // ─── The computed-column core — one row-wise evaluator, many surfaces ─────────
-// A "computed column" is a column whose cells come from a per-row computation
-// over the frame's other columns. Several surfaces offer it (author direction
-// 2026-07-29: "a very large percentage of Excel work is table computed
-// columns"): the Computed Column VERB node today, the Frame Input's per-column
-// sources next (docs/v2.0/19-computed-column-surface.md). They must agree on
-// every rule — binding precedence, builtins, the bracket references, the per-row
-// error/null contract — so the rules live HERE once, and a surface only
-// supplies its own port plumbing.
-//
-// The contract — EXCEL TABLE SEMANTICS (author ruling 2026-07-30, D24): a bare
-// column name is the WHOLE column, `@name` is this row — `[Amount]` vs
-// `[@Amount]`. One uniform rule: bare = whole (columns and side values alike),
-// @ = this row. `@revenue / SUM(revenue)` is percent-of-total;
-// `SUMIFS(amount, category, @category)` is a per-group subtotal.
-//   • a bare VARIABLE (inline exprs) binds, in precedence order: a COLUMN of
-//     that name → the WHOLE column as a list (nulls and per-cell errors ride
-//     along as cells) → the `row`/`rows` builtins (1-based row number / total
-//     count) → a SIDE value the surface supplies (row-invariant — a wired
-//     scalar or list, an inline literal default), also whole;
-//   • a λ PARAM stays ROW-bound — params are the λ's explicit per-row
-//     interface (`LAMBDA(revenue, revenue * 0.25)` reads this row's cell);
-//   • `@name` resolves per row: the column's cell → `row`/`rows` → the
-//     DEFINITION's own environment (a λ's captures — `@list` rides the Lambda
-//     card's capture socket) → the surface's SIDE value. A ROW-ALIGNED list
-//     reads element-per-row (length-checked against the frame); a scalar
-//     reads the same every row;
-//   • the bracket references spell both for names a variable can't:
-//     `[Unit Price]` is the WHOLE column, `@[Unit Price]` (Excel also writes
-//     `[@Unit Price]` / `[@[Unit Price]]`) is this row. Name-exact — a
-//     numeric name is a NAME, never an index;
-//   • an error cell in a ROW-bound value (a λ param's cell) propagates to
-//     that row's output; inside a whole-column list it flows INTO the formula
-//     (aggregates apply their own error rules); a null flows in likewise
-//     (ISBLANK can see it);
-//   • a NaN result is #DOMAIN!, a list-shaped result is #SHAPE! (one value
-//     per row — reach for @), undefined reads as blank.
+// The per-row rules (binding precedence, builtins, bracket references, the
+// error/null contract) live HERE once; a surface only supplies its port plumbing.
 
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
@@ -47,9 +13,8 @@ export type ComputedSpec =
   | { kind: "expr"; evaluator: ExprEvaluator; vars: string[] }
   | { kind: "lambda"; lam: LambdaValue };
 
-/** How one variable resolves — see the module note for the precedence.
- *  `col` is a ROW-bound column (λ params); `wholecol` is the whole column as a
- *  list (bare variables in an inline expr — Excel's `[Amount]`). */
+/** How one variable resolves. `col` is a ROW-bound column (λ params);
+ *  `wholecol` is the whole column as a list (bare variables in an inline expr). */
 type Binding =
   | { kind: "col"; col: FrameColumn }
   | { kind: "wholecol"; col: FrameColumn }
@@ -58,21 +23,10 @@ type Binding =
   | { kind: "side"; value: unknown };
 
 // ─── The dynamic row context — what `@price` and `[Unit Price]` read ─────────
-// A row formula runs INSIDE a row: the core pushes an accessor for the current
-// row around every evaluation (the inline expr AND a wired λ's body alike —
-// dynamic scope is what lets a ZERO-param λ read `@price` with no binding
-// ceremony), and the `@` / bracket references resolve against the top
-// of the stack. Synchronous by construction — the engine's recompute is
-// single-threaded, and nesting (a λ whose captures carry another computed
-// frame) stacks cleanly.
-//
-// Resolution order for `@name`: the COLUMN → the `row`/`rows` builtins → the
-// DEFINITION's own environment (a λ's captures, an expr's variables — the
-// `fallback` the evaluator passes) → the SURFACE's side value. Columns first
-// means an unwired capture can never shadow real data; the definition's env
-// before the surface means a λ's `@list` reads the Lambda card's capture
-// socket (author ruling 2026-07-30 — the λ owns its names), and only an
-// inline expr's @-miss falls to the host node's side ports.
+// The core pushes an accessor for the current row around every evaluation (the
+// inline expr AND a wired λ's body alike — dynamic scope is what lets a ZERO-param
+// λ read `@price` with no binding ceremony). Synchronous by construction: the
+// engine's recompute is single-threaded, and nesting stacks cleanly.
 type RowFrame = {
   /** Column / builtin resolution — a hit is authoritative. */
   strong: (name: string) => { hit: boolean; v?: unknown };
@@ -173,9 +127,8 @@ export function computeColumnCells(
   const params = spec.kind === "lambda" ? spec.lam.params : spec.vars;
   const reserved = opts.reserved ?? [];
 
-  // A λ PARAM binds this row's cell (the λ's explicit per-row interface); a
-  // bare inline-expr VARIABLE binds the WHOLE column (Excel's `[Amount]` —
-  // D24). Explicit picker bindings follow the same split.
+  // A λ PARAM binds this row's cell; a bare inline-expr VARIABLE binds the WHOLE
+  // column. Explicit picker bindings follow the same split.
   const colKind = spec.kind === "lambda" ? ("col" as const) : ("wholecol" as const);
   const bindings: Binding[] = [];
   const sideVars: string[] = [];
@@ -206,19 +159,15 @@ export function computeColumnCells(
   }
 
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-  // The row context behind `@name` / `[Name]`: one frame object serves
-  // every row via the cursor; columns pre-indexed in a Map so an @-read is
-  // O(1), not a per-row column scan. Exact name match — a numeric name is a
-  // NAME, never a positional index. A non-column, non-env name falls to the
-  // surface's SIDE value (cached — row-invariant by contract).
+  // One frame object serves every row via the cursor; columns pre-indexed in a Map
+  // so an @-read is O(1). Exact name match — a numeric name is a NAME, never a
+  // positional index. Side values are cached: row-invariant by contract.
   let cursor = 0;
   const colByName = new Map(f.columns.map((c) => [c.name, c] as const));
   const sideCache = new Map<string, unknown>();
-  // This-row read of an arbitrary value: a row-aligned list reads its element
-  // (length-checked), a scalar reads the same every row, a matrix has no
-  // single this-row value. The list VALIDATION (matrix scan + length) is
-  // memoized per name — @-values are row-invariant by contract, and running
-  // the O(list) matrix scan per row made an @-list read quadratic in rows.
+  // The list VALIDATION (matrix scan + length) is memoized per name — @-values are
+  // row-invariant by contract, and an O(list) matrix scan per row would make an
+  // @-list read quadratic in rows.
   const atVerdict = new Map<string, { v: unknown; err: SolError | null }>();
   const at = (key: string, v: unknown): unknown => {
     if (!Array.isArray(v)) return v;
@@ -261,18 +210,14 @@ export function computeColumnCells(
   const cells: FrameCell[] = [];
   for (let i = 0; i < rows; i++) {
     cursor = i;
-    // Frame cells are plain values — units live on the COLUMN (D20), so
-    // there is nothing to unwrap per cell. A wholecol binding passes the SAME
-    // values array every row (row-invariant by construction).
+    // Frame cells are plain values — units live on the COLUMN (D20), so there is
+    // nothing to unwrap per cell.
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)
       : b.kind === "wholecol" ? b.col.values
       : b.kind === "row" ? i + 1
       : b.kind === "rows" ? rows
       : b.value);
-    // A ROW-bound cell that is itself an error propagates to this row's
-    // output; an error INSIDE a whole-column list flows into the formula
-    // (aggregates apply their own error rules).
     const errIdx = bindings.findIndex((b, k) => b.kind === "col" && isSolError(rowCells[k]));
     if (errIdx >= 0) { cells.push(rowCells[errIdx] as SolError); continue; }
     const r = withRow(rowFrame, () => {

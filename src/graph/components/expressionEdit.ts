@@ -4,11 +4,10 @@ import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { dropInputCables } from "./cablePrune";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
-// Default card height for an Expression node: header + the (now taller) formula
-// box + value display, plus one row per input variable. Shared so the inline
-// component and the popup grow the node identically.
+// Default card height for an Expression node: header + formula box + value display
+// + the polyform result-type toggle row, plus one row per input variable. Shared so
+// the inline component and the popup grow the node identically.
 export function computeExprHeight(varCount: number): number {
-  // +26 for the polyform result-type toggle row.
   return 188 + Math.max(varCount, 0) * INPUT_ROW_PITCH;
 }
 

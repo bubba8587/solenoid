@@ -53,20 +53,17 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
   const leaves = findUpstreamLeaves(editor, tornado.id);
   const results: TornadoResult[] = [];
 
-  // Two recompute passes per leaf is irreducibly heavy on a big graph — show the
-  // busy curtain for the whole sweep. Each processGraph() brackets ITSELF with
-  // begin/endCompute, but those fast sub-passes drop the counter to 0 between
-  // perturbations and cancel the deferred reveal before it fires; an outer bracket
-  // across the entire sweep keeps the counter ≥1 so the 150ms reveal lands and the
-  // curtain also BLOCKS interaction during the multi-pass run (same pattern as
-  // modelFuzz).
+  // Each processGraph() brackets ITSELF with begin/endCompute, but those fast
+  // sub-passes drop the counter to 0 between perturbations and cancel the deferred
+  // reveal before it fires; an outer bracket across the entire sweep keeps the
+  // counter ≥1 so the reveal lands and the curtain BLOCKS interaction for the run.
   beginCompute();
-  // Drive the sweep the way modelFuzz does. beginGraphRebuild exempts the manual-mode
-  // short-circuit in processGraph (else EVERY perturbation recompute no-ops → base ==
-  // high == low → all-zero swings, silently) AND suppresses Expect/Alert edge-detect
-  // so synthetic extremes can't raise real HUD alerts. beginForceExact keeps a sketch-
-  // sampled pass from returning APPROXIMATE sensitivities. Every value restore is in a
-  // `finally` so a throw mid-sweep can't leave the user's real leaf pinned at an extreme.
+  // beginGraphRebuild exempts the manual-mode short-circuit in processGraph (else
+  // EVERY perturbation recompute no-ops → base == high == low → all-zero swings,
+  // silently) AND suppresses Expect/Alert edge-detect so synthetic extremes can't
+  // raise real HUD alerts. beginForceExact keeps a sketch-sampled pass from returning
+  // APPROXIMATE sensitivities. Every value restore is in a `finally` so a throw
+  // mid-sweep can't leave the user's real leaf pinned at an extreme.
   beginGraphRebuild();
   calcModeStore.beginForceExact();
   try {
@@ -101,8 +98,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
         await processGraph(node.id);
         const lowResult = typeof tornado.cachedResult === "number" ? tornado.cachedResult : NaN;
 
-        // KEEP the leaf even when an extreme diverged (non-finite) — previously it
-        // was dropped, hiding the most dramatic sensitivity. Mark it instead.
+        // KEEP the leaf even when an extreme diverged (non-finite) — mark it.
         const diverged = !Number.isFinite(highResult) || !Number.isFinite(lowResult);
         results.push({
           nodeId: node.id, label, base,
@@ -123,9 +119,8 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
   return rankTornado(results);
 }
 
-/** Order the sweep results. RAW swing stays the ranking key (a tornado
- *  traditionally shows raw swing — the author's explicit lean over normalizing
- *  by perturbation width). Diverged leaves have no finite swing to rank, so they
+/** Order the sweep results. RAW swing is the ranking key, NOT swing normalized
+ *  by perturbation width. Diverged leaves have no finite swing to rank, so they
  *  surface at the TOP, marked, as the most sensitive findings (the model blew up
  *  on them); finite leaves follow, biggest swing first. */
 export function rankTornado(results: TornadoResult[]): TornadoResult[] {

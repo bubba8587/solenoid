@@ -61,14 +61,11 @@ const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "alpha", "fontsize"];
 
 /**
- * Chart Builder — a labeled "Concat for chart options". A chart-type dropdown
- * shapes the form: only the rows that type's renderer reads are shown
- * (CHART_BUILDER_TARGETS). A row that is wired or holds a value stays visible
- * regardless — dimmed when the chosen type ignores it — so switching type never
- * hides live state; and the node still serializes every set field, so one
- * builder can feed several chart types. Most rows are InlineInputs (text/number
- * fields that are also input sockets); Grid and Markers are On/Off toggles. The
- * output socket sits on the preview row, next to the string it emits.
+ * Chart Builder — a labeled "Concat for chart options". The chart-type dropdown
+ * shapes the form (CHART_BUILDER_TARGETS), but a row that is WIRED or holds a
+ * value stays visible regardless — dimmed when the chosen type ignores it — so
+ * switching type never hides live state; the node serializes every set field, so
+ * one builder can feed several chart types.
  */
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;

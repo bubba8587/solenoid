@@ -11,10 +11,8 @@ import "./SessionHistoryNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-// Live, no config: recompute the digest on an interval while the node is
-// mounted. rete-history-plugin exposes no change event to subscribe to (Canvas
-// only calls history.add() imperatively), so polling is the simplest honest way
-// to keep this "auto-generating" per the plan, without patching the plugin.
+// rete-history-plugin exposes no change event to subscribe to, so the digest is
+// recomputed on an interval while the node is mounted.
 const POLL_MS = 1000;
 
 function buildDigest(): string {
@@ -27,10 +25,8 @@ function buildDigest(): string {
 }
 
 /**
- * A live readout of the session's undo/redo stack, distilled into a dated,
- * human-readable log (historyDigest.ts). No inputs/outputs, no persisted state —
- * it's a dashboard onto app history, not graph data. Copy button is the whole UI
- * beyond the readout itself.
+ * A live readout of the session's undo/redo stack (historyDigest.ts). No
+ * inputs/outputs, no persisted state — a dashboard onto app history, not graph data.
  */
 export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeType>) {
   const [digest, setDigest] = useState(buildDigest);

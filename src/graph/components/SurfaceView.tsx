@@ -3,23 +3,18 @@ import { appThemeStore } from "../appTheme";
 import { heightRampColor } from "../palette";
 import type { SurfacePayload } from "../chartValue";
 
-// A simple shaded 3-D surface plot, drawn to a <canvas> (one DOM element regardless
-// of grid size). The grid is projected axonometrically; each cell is a flat-shaded
-// quad (per-face Lambert lighting + a height colormap), painted back-to-front. A null
-// Z cell is a hole (its quads are skipped). This is a lightweight faceted surface —
-// no WebGL / z-buffer — which reads as 3-D and stays cheap.
+// A shaded 3-D surface plot drawn to a <canvas>: the grid is projected
+// axonometrically; each cell is a flat-shaded quad painted back-to-front. A null
+// Z cell is a hole (its quads are skipped). No WebGL / z-buffer.
 
 type V3 = [number, number, number];
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 function unit(v: V3): V3 { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / m, v[1] / m, v[2] / m]; }
 
-// Height colormap — the PALETTE-derived sequential ramp (heightRampColor), so the
-// field figures retint with the active palette (viridis-like in Default; the
-// forced lightness ladder keeps it reading as height in every palette). Re-exported
-// for the other field figures (Contour, Vector Field) so height/magnitude reads
-// identically across the family; the views already redraw on appThemeStore bumps,
-// which palette changes funnel through.
+// Height colormap — the PALETTE-derived sequential ramp, so the field figures
+// retint with the active palette. Re-exported for the other field figures
+// (Contour, Vector Field) so height/magnitude reads identically across the family.
 export function heightColor(t: number): [number, number, number] {
   return heightRampColor(t);
 }
@@ -32,7 +27,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   // Supersample: render the backing store above device resolution and let the browser
-  // downscale it to the CSS size — crisper edges than a 1:1 canvas (the quality bump).
+  // downscale it to the CSS size — crisper edges than a 1:1 canvas.
   const scale = Math.min(4, (window.devicePixelRatio || 1) * 2);
   canvas.width = Math.round(W * scale);
   canvas.height = Math.round(H * scale);
@@ -47,7 +42,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
 
   let zmin = Infinity, zmax = -Infinity;
   for (const row of z) for (const v of row) if (fin(v)) { if (v < zmin) zmin = v; if (v > zmax) zmax = v; }
-  if (!Number.isFinite(zmin)) return; // no data to draw
+  if (!Number.isFinite(zmin)) return;
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
   const nrm = (v: number, a: number, b: number) => (b > a ? (v - a) / (b - a) : 0.5);
@@ -56,8 +51,8 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const gz = (ix: number, iy: number) => { const v = z[iy]?.[ix]; return fin(v) ? nrm(v, zmin, zmax) : null; };
 
   // Camera: yaw around the vertical (Z) axis, then pitch (elevation) around the
-  // screen-horizontal — an orthographic view the rotate buttons drive. Points are
-  // centered on the base so the box spins about its middle.
+  // screen-horizontal — orthographic. Points are centered on the base so the box
+  // spins about its middle.
   const yaw = (p.yaw ?? 45) * Math.PI / 180, pitch = (p.pitch ?? 45) * Math.PI / 180;
   const cyaw = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
   const viewPt = (a: number, b: number, c: number): V3 => {
@@ -68,7 +63,6 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const model = (a: number, b: number, c: number): [number, number] => { const v = viewPt(a, b, c); return [v[0], -v[1]]; }; // canvas y is down
   const depthOf = (a: number, b: number, c: number) => viewPt(a, b, c)[2];
 
-  // Fit the projected grid — and the axis tripod corner — into the canvas with padding.
   let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
   const fold = (mx: number, my: number) => { if (mx < mnx) mnx = mx; if (mx > mxx) mxx = mx; if (my < mny) mny = my; if (my > mxy) mxy = my; };
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) { const [x, y] = model(gx(ix), gy(iy), gz(ix, iy) ?? 0); fold(x, y); }
@@ -81,8 +75,8 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const proj = (a: number, b: number, c: number): [number, number] => { const [x, y] = model(a, b, c); return [ox + s * x, oy + s * y]; };
   const screen = (ix: number, iy: number, c: number) => proj(gx(ix), gy(iy), c);
 
-  // ── Reference frame: a light gridded floor + two BACK walls, drawn BEHIND the
-  // surface so the surface sits inside the box and occludes the near parts. ──
+  // Reference frame: a light gridded floor + two BACK walls, drawn BEHIND the
+  // surface so the surface sits inside the box and occludes the near parts.
   const frameCol = getComputedStyle(canvas).getPropertyValue("--text").trim() || "#888";
   const gridPlane = (o: V3, u: V3, v: V3, div = 4) => {
     const at = (sd: number, td: number) => proj(o[0] + u[0] * sd + v[0] * td, o[1] + u[1] * sd + v[1] * td, o[2] + u[2] * sd + v[2] * td);
@@ -96,7 +90,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   };
   gridPlane([0, 0, 0], [1, 0, 0], [0, 1, 0]); // floor (z = min), always behind
   // The two vertical walls FARTHEST from the viewer (smallest depth) — recomputed each
-  // draw so the box stays correct as it rotates; the near two stay open (matplotlib style).
+  // draw so the box stays correct as it rotates; the near two stay open.
   const WALLS: Array<{ o: V3; u: V3; v: V3; c: V3 }> = [
     { o: [0, 0, 0], u: [0, 1, 0], v: [0, 0, 1], c: [0, 0.5, 0.5] }, // x = min
     { o: [1, 0, 0], u: [0, 1, 0], v: [0, 0, 1], c: [1, 0.5, 0.5] }, // x = max
@@ -116,10 +110,10 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   }
   cells.sort((a, b) => a.d - b.d);
 
-  ctx.globalAlpha = SURFACE_ALPHA; // let the frame show through faintly
+  ctx.globalAlpha = SURFACE_ALPHA;
   for (const { ix, iy } of cells) {
     const c00 = gz(ix, iy)!, c10 = gz(ix + 1, iy)!, c01 = gz(ix, iy + 1)!, c11 = gz(ix + 1, iy + 1)!;
-    // Face normal (model space, z scaled to match the projection) → Lambert brightness.
+    // Face normal in model space — z scaled to match the projection.
     const P = (ix2: number, iy2: number, c: number): V3 => [gx(ix2), gy(iy2), c * DH];
     let n = cross(sub(P(ix + 1, iy, c10), P(ix, iy, c00)), sub(P(ix, iy + 1, c01), P(ix, iy, c00)));
     if (n[2] < 0) n = [-n[0], -n[1], -n[2]];
@@ -132,14 +126,13 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
     ctx.moveTo(q00[0], q00[1]); ctx.lineTo(q10[0], q10[1]); ctx.lineTo(q11[0], q11[1]); ctx.lineTo(q01[0], q01[1]); ctx.closePath();
     ctx.fillStyle = `rgb(${shade(r)},${shade(g)},${shade(b)})`;
     ctx.fill();
-    // A faint edge (the fill, darkened) defines the mesh without a heavy wireframe.
     ctx.strokeStyle = `rgb(${Math.round(shade(r) * 0.7)},${Math.round(shade(g) * 0.7)},${Math.round(shade(b) * 0.7)})`;
     ctx.lineWidth = 0.5;
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
 
-  // ── X / Y / Z labels on the frame's far edges (the box edges ARE the axes). ──
+  // X / Y / Z labels on the frame's far edges (the box edges ARE the axes).
   const O = proj(0, 0, 0);
   const ends: Array<[[number, number], string]> = [[proj(1, 0, 0), "X"], [proj(0, 1, 0), "Y"], [proj(0, 0, 1), "Z"]];
   ctx.globalAlpha = 0.9;

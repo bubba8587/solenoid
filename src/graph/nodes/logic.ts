@@ -13,20 +13,12 @@ function frameCells(f: FrameValue): unknown[][] {
   return Array.from({ length: rows }, (_, i) => f.columns.map((c) => c.values[i] ?? null));
 }
 
-// Element-wise over up to N args (each a number, a `null`, or a list of those),
-// broadcasting scalars against any list arg; the per-element fn returns T. This
-// is the logic family's null-aware broadcaster — a `null` operand flows through
-// to the fn (Kleene / comparison / IF-propagation) rather than being coerced to 0
-// (which would silently turn `null > 2` into FALSE). Unlike `broadcast`, it never
-// NaN-collapses a null the fn returns. Ragged lists zip to the LONGEST length,
-// the shorter padded with `null` INTO the fn — the fn's own null semantics
-// decide the cell (Kleene: null AND FALSE is FALSE, not null), unlike the
-// numeric broadcasters where a padded position is null outright.
-// A per-cell SolError short-circuits UNMORPHED (first in arg order), matching the
-// numeric broadcasters and applyOp — an error operand in a comparison / boolean /
-// IF-branch propagates as that error rather than being coerced. `null` is NOT
-// short-circuited here: it flows into `fn`, whose own Kleene rule decides the cell
-// (null AND FALSE is FALSE, not null). See valueKinds `cellError`.
+// The logic family's null-aware broadcaster: a `null` operand flows INTO `fn`
+// (whose own Kleene rule decides the cell) rather than being coerced or
+// short-circuited, and a null the fn returns is never NaN-collapsed. Ragged lists
+// zip to the LONGEST length, shorter args padded with `null` into the fn — unlike
+// the numeric broadcasters, where a padded position is null outright.
+// A per-cell SolError short-circuits UNMORPHED (first in arg order).
 function broadcastEl<A, T>(
   fn: (...xs: A[]) => T,
   ...args: Array<A | A[]>
@@ -47,14 +39,12 @@ function broadcastEl<A, T>(
 }
 // After coerceInputs a WIRED logical operand is a real boolean (`numsToBools`),
 // while a typed literal stays a raw 0/1 number — so a bare `x !== 0` reads a wired
-// FALSE as true (`false !== 0`). Same trap `truthy` documents below; accept both
-// encodings here too.
+// FALSE as true (`false !== 0`). Accept both encodings.
 const triBool = (x: number | boolean | null): Tri =>
   isMissing(x) ? null : x === true || (typeof x === "number" && x !== 0);
 
-// Truthiness of a CONDITION for the value-selectors (IF / IFS). After coerceInputs,
-// a logical socket delivers a real boolean — so a bare `x !== 0` is wrong
-// (`false !== 0` is true). Accept the coerced boolean AND a raw 0/1 literal.
+// Truthiness of a CONDITION for the value-selectors (IF / IFS): the coerced
+// boolean AND a raw 0/1 literal.
 const truthy = (x: unknown): boolean => x === true || (typeof x === "number" && x !== 0);
 
 /** A fallback/branch slot is SET when a cable feeds it OR the user typed a literal.
@@ -298,9 +288,8 @@ export class BooleanOpNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, (number | null | (number | null)[])[] | undefined>) {
-    // `readInput`, not `?? 0`: a WIRED blank is UNKNOWN, and `?? 0` collapsed it to
-    // FALSE — a wrong answer under Kleene, where AND(unknown, TRUE) is unknown but
-    // AND(false, TRUE) is FALSE. `foldBoolean` already reasons about null.
+    // `readInput`, not `?? 0`: a WIRED blank is UNKNOWN, not FALSE — under Kleene
+    // AND(unknown, TRUE) is unknown. `foldBoolean` already reasons about null.
     const operands = this.valueInputKeys().map((k) => readInput(inputs[k], this.literals[k] ?? 0));
     const result = broadcastEl((...xs) => foldBoolean(this.op, xs), ...operands);
     this.cachedResult = result;
@@ -327,7 +316,7 @@ export class NotNode extends ClassicPreset.Node {
   }
 
   data(inputs: { in?: (number | null | (number | null)[])[] }) {
-    // A wired blank is unknown; `?? 0` made it FALSE, so NOT(blank) answered TRUE.
+    // A wired blank is unknown, not FALSE — `?? 0` would make NOT(blank) answer TRUE.
     const v = readInput(inputs.in, this.literals.in ?? 0);
     const result = broadcastEl((x) => kleeneNot(triBool(x)), v);
     this.cachedResult = result;
@@ -342,8 +331,6 @@ export type IFErrorMode = "iferror" | "ifna";
 export class IFErrorNode extends ClassicPreset.Node {
   label: string;
   op: IFErrorMode;
-  // A list now carries per-cell errors + null, so the result can too (caught
-  // cells → fallback; uncaught errors/nulls pass through).
   // IFERROR/IFNA pass a value THROUGH, swapping only caught error cells for the
   // fallback — a selector, not a transform — so value / fallback / result are `any`.
   cachedResult: unknown = null;
@@ -351,8 +338,7 @@ export class IFErrorNode extends ClassicPreset.Node {
   width = 180;
   height = 200;
   // IFERROR/IFNA SELECT value-or-fallback unchanged → both branches' type + unit ride
-  // through when they agree (passthrough.ts). Now carries units (it didn't before —
-  // the same drift Expect / Cable Switch had: in the type set, missing from units).
+  // through when they agree (passthrough.ts).
   passthrough(): PassthroughSpec[] { return [{ output: "result", inputs: ["value", "fallback"], combine: "agree" }]; }
 
   constructor(init?: { label?: string; op?: IFErrorMode }) {
@@ -481,9 +467,8 @@ export class IsTestNode extends ClassicPreset.Node {
       return { result: this.cachedResult };
     }
     // Every remaining check is per-CELL to any depth (scalar / list / matrix / frame),
-    // so a 2-D table tests each cell instead of mis-mapping over its rows (the bug
-    // ISNULL already fixed). Each cell's own type answers — a mixed list resolves per
-    // element, a per-cell `null` is not a number/error, a per-cell SolError flags ISERROR.
+    // so a 2-D table tests each cell instead of mapping over its rows. Each cell's own
+    // type answers — a mixed list resolves per element.
     const test = (x: unknown): boolean => {
       switch (this.op) {
         case "istext":    return typeof x === "string";
@@ -523,21 +508,16 @@ export class NaNode extends ClassicPreset.Node {
     super("Na");
     this.label = init?.label ?? "NA";
     this.cachedResult = solError("#N/A", "Not available");
-    // TYPE-NEUTRAL (2026-07-25), not `number`. NA emits a tagged #N/A SolError, which
-    // is not a number — an error rides through every socket regardless of type
-    // (coerceValue passes it untouched, installErrorGuards propagates it). Declaring
-    // `number` made it VOTE in a selector's `agree`: `IFERROR(aDate, NA())` had
-    // branches date + number, which disagree, so the result resolved to "unknown" and
-    // the date lost its formatting downstream. The abstention now rides on
-    // `errorOnlyOutput` above (a wired trueany otherwise VETOES the agreement);
-    // `trueany` also connects everywhere #N/A is legal, which is anywhere.
+    // TYPE-NEUTRAL, not `number`: a typed output would VOTE in a selector's `agree`
+    // (`IFERROR(aDate, NA())` would resolve to "unknown" and lose the date format).
+    // The abstention rides on `errorOnlyOutput` above; `trueany` connects everywhere
+    // #N/A is legal, which is anywhere.
     this.addOutput("result", staticTrueAnyOut("N/A"));
   }
 
   data() {
-    // The TAGGED #N/A (Excel =NA()): the catalog promises "catch it with
-    // IFERROR / IFNA", which only works for a SolError — a bare null/NaN reads
-    // FALSE to ISNA and passes through IFNA untouched (audit finding 13).
+    // The TAGGED #N/A (Excel =NA()): only a SolError is catchable by IFERROR/IFNA —
+    // a bare null/NaN reads FALSE to ISNA and passes through IFNA untouched.
     return { result: this.cachedResult };
   }
 }
@@ -829,9 +809,6 @@ export class IfsNode extends ClassicPreset.Node {
 }
 
 // ─── ISEVEN / ISODD (parity test → logical) ──────────────────────────────────
-// Extracted from the Math op-dropdown (which has one shared NUMBER output) so it
-// can emit a real logical (TRUE/FALSE, purple socket) like its sibling predicates
-// instead of 1/0. One node, even/odd toggle.
 
 export type ParityOp = "iseven" | "isodd";
 

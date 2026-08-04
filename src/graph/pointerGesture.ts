@@ -1,6 +1,5 @@
-// ─── Live pointer census — is a pinch in flight, right now ──────────────────────
-// The ONE definition of the two-finger gesture, read by everything that has to
-// yield to it.
+// Live pointer census — the ONE definition of the two-finger gesture, read by
+// everything that has to yield to it.
 //
 // WHY A MODULE SINGLETON ON WINDOW CAPTURE: the question has to be answerable from
 // three unrelated places — rete's Zoom handler (a plugin instance), the area pipe

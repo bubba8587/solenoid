@@ -4,9 +4,8 @@
 //
 // STALENESS GUARD: every node that declares an Excel equivalence (NODE_EXCEL, or
 // inline `excel` on a pack entry) must resolve to a real catalog node. This is
-// what stops the Function Reference from silently going stale — the failure mode
-// that left the LAMBDA nodes marked "to-do" long after they shipped. (The reverse
-// direction can't drift: EXCEL_TO_CATALOG is now derived from this same metadata.)
+// what stops the Function Reference from silently going stale. (The reverse
+// direction can't drift: EXCEL_TO_CATALOG is derived from this same metadata.)
 
 import { NODE_EXCEL } from "./nodeExcel";
 import { FLAT_CATALOG, classifyType, buildCatalog } from "./catalogUtils";

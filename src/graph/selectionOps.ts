@@ -1,11 +1,8 @@
 // Multi-node operations over the current selection: align, distribute, batch
-// collapse/expand (scope-features #57(b)). Explicitly does NOT do paste-anywhere
-// or wrap-in-subgraph — both are a different gesture (bundle 09 owns the latter).
-//
-// Reads the selection the same way nudgeSelection (Canvas.tsx) and
-// createGroupFromSelection (groupLogic.ts) do: editor.getNodes().filter(n =>
-// n.selected). Uses the process.ts singletons (getEditor/getArea) rather than
-// Canvas-local refs so this is callable from anywhere (the command palette).
+// collapse/expand. Reads the selection the way nudgeSelection (Canvas.tsx) and
+// createGroupFromSelection (groupLogic.ts) do, and uses the process.ts singletons
+// (getEditor/getArea) rather than Canvas-local refs, so it is callable from
+// anywhere (the command palette).
 
 import { GroupNode } from "./rete-nodes";
 import { getEditor, getArea, repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
@@ -57,10 +54,8 @@ type Move = { seedId: string; dx: number; dy: number };
 /** Apply a batch of per-seed deltas, moving each seed's rigid attachments (group
  *  members + standoff cluster) with it — but translating every physical node EXACTLY
  *  ONCE. A node carried by more than one seed (e.g. a selected group and a separately
- *  selected member of it) follows the FIRST seed only. This is the fix for the
- *  double-move bug: the old per-item loop re-expanded and re-translated from each
- *  node's LIVE position while deltas were computed from boxes captured up front, so
- *  shared members drifted by the sum of every seed's delta. */
+ *  selected member of it) follows the FIRST seed only — deltas are computed from
+ *  boxes captured up front, so a second translate would drift it. */
 async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<void> {
   const delta = new Map<string, { dx: number; dy: number }>();
   for (const { seedId, dx, dy } of moves) {

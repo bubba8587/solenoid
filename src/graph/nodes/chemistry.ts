@@ -217,8 +217,7 @@ export class ElementNode extends ClassicPreset.Node {
   }
 
   /** The mass output carries g/mol (per-output, unitFlow `annotationFor`);
-   *  the atomic number stays unitless — the case that was waiting on
-   *  per-output annotations. */
+   *  the atomic number stays unitless. */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "mass" ? { format: "auto", unit: "custom", customUnit: " g/mol" } : undefined;
   }

@@ -9,13 +9,9 @@ import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
 
-// Auto-generated boundary endpoints for the Isolate overlay. The chain's
-// crossings (boundaryCrossings) become an "Inputs" terminal on the LEFT and an
-// "Outputs" terminal on the RIGHT — a multi-lane Conduit-style box when several
-// lanes cross, a single socket when one — with a cable from each lane to the
-// focused socket it stands in for. Rendered in the area's transformed plane
-// (canvas coords), so it pans/zooms with the graph. Shares its look with the
-// future Portal nodes.
+// Auto-generated boundary endpoints for the Isolate overlay: the chain's crossings
+// become an "Inputs" terminal on the LEFT and an "Outputs" terminal on the RIGHT.
+// Rendered in the area's transformed plane (canvas coords), so it pans/zooms.
 
 type Pt = { x: number; y: number };
 
@@ -55,9 +51,8 @@ export function IsolateEndpoints() {
   const editor = getEditor();
   const area = getArea();
 
-  // Terminals are selectable + draggable (ephemeral — reset when the isolated
-  // set changes, like every other layout change inside isolate). Offsets are in
-  // canvas coords, applied on top of the auto-centered position.
+  // Drag offsets are ephemeral (reset when the isolated set changes) and in canvas
+  // coords, applied on top of the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });
   const dragRef = useRef<{ which: "entry" | "exit"; sx: number; sy: number; base: Pt } | null>(null);
   const focusKey = focus ? [...focus].sort().join(",") : "";
@@ -136,9 +131,8 @@ export function IsolateEndpoints() {
     paths.push(getCablePath(shape, { sourceX: l.pos.x, sourceY: l.pos.y, sourcePosition: Position.Right, targetX: b.x, targetY: b.y, targetPosition: Position.Left }));
   });
 
-  // Reuse the node card chrome (border, accent header, io rows) so the terminals
-  // are visually identical to real nodes — and so sockets straddle the edge
-  // without being clipped (no overflow:hidden), the way real node sockets do.
+  // Reuse the node card chrome so terminals match real nodes AND so sockets straddle
+  // the edge without being clipped (no overflow:hidden).
   const terminal = (side: "entry" | "exit", x: number, y: number, lanes: { cr: { externalNodeId: string } }[]) => (
     <div
       className={`solenoid-node solenoid-node--no-chevron solenoid-iso-ep solenoid-iso-ep--${side}${selected === side ? " solenoid-node--selected" : ""}`}

@@ -5,9 +5,8 @@ const FOCUSABLE_SELECTOR =
 
 /**
  * Keeps Tab / Shift+Tab cycling within a modal dialog instead of escaping to
- * the canvas behind it — the a11y gap every hand-rolled overlay here shares
- * (only Escape-to-close was wired). Mirrors useDismissOnOutside's shape: a
- * capture-phase listener, active only while the dialog is open.
+ * the canvas behind it. Mirrors useDismissOnOutside's shape: a capture-phase
+ * listener, active only while the dialog is open.
  */
 export function useFocusTrap(active: boolean, containerRef: RefObject<HTMLElement | null>) {
   useEffect(() => {

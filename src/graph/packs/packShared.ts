@@ -49,19 +49,13 @@ export interface PackFormula {
 }
 
 // ─── Formula packs: the default, no-new-code pack shape ─────────────────────────
-// A formula pack is pure data: a list of {label, expr} records that base Solenoid
-// compiles. Each node is a pre-set Expression node — the SAME node the user could
-// type by hand, with the formula and its label fixed. The variables in `expr`
-// become the node's input sockets automatically (see ExpressionNode._rebuild), so
-// no per-node class, component, or registry entry is needed.
+// A formula pack is pure data: {label, expr} records compiled into pre-set
+// Expression nodes, whose variables become input sockets automatically.
 //
-// Because the result is a plain ExpressionNode, it serializes as one
-// (type "ExpressionNode", formula in init.expr) and reloads even when the pack is
-// switched off — the "a formula node is just data" guarantee in
-// docs/pack-architecture.md. Reach for a real node class ONLY when a node needs
-// logic the Expression compiler can't evaluate (root-finding, embedded datasets,
-// list reduction, multi-output); those are the declared exceptions, not the
-// common case.
+// Because the result is a plain ExpressionNode, it serializes as one and reloads
+// even when the pack is switched off — the "a formula node is just data"
+// guarantee in docs/pack-architecture.md. Reach for a real node class ONLY when a
+// node needs logic the Expression compiler can't evaluate.
 export interface FormulaPackEntry {
   type: string;          // unique catalog id (prefix by pack, e.g. "geo-circle-area")
   label: string;         // node title
@@ -94,8 +88,6 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     keywords: e.keywords,
     // No `accent`: the Add-menu highlight is reserved for key nodes (Number, List,
     // the core Expression node…), not these presets.
-    // `locked`: a preset's formula is fixed (the pack's promise — the node stays
-    // reliable); the title stays editable.
     create: () => e.equation
       ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions })
       : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions }),

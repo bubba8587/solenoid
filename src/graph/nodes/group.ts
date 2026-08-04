@@ -1,12 +1,7 @@
 import { ClassicPreset } from "rete";
 
-// ─── Group node ─────────────────────────────────────────────────────────────────
-// A visual container that wraps a set of member nodes. It is a real Rete node (so
-// it participates in selection, drag, persistence, copy/paste) but has no sockets
-// when expanded — it's purely a frame. Membership is an explicit id set, seeded
-// from the selection at creation and reconciled spatially as nodes are dragged in
-// and out of the box (the "hybrid" model). Move-together, z-ordering (behind its
-// members), and the collapse engine live in Canvas.
+// A visual container wrapping a set of member nodes. A real Rete node (selection,
+// drag, persistence, copy/paste) with no sockets when expanded.
 
 export class GroupNode extends ClassicPreset.Node {
   label: string;
@@ -33,7 +28,7 @@ export class GroupNode extends ClassicPreset.Node {
     this.height = init?.height ?? 220;
   }
 
-  // No outputs — the group produces no data. (DataflowEngine still fetches it.)
+  // No outputs, but DataflowEngine still fetches it.
   data(): Record<string, never> {
     return {};
   }

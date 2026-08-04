@@ -1,4 +1,4 @@
-// ─── DocumentValue — a Note/Report's whole renderable content on a cable ──────
+// DocumentValue — a Note/Report's whole renderable content on a cable.
 // A first-class value carrying everything needed to write a document out (to an
 // Obsidian vault, an HTML file, …): its frontmatter, its RAW markdown body (with
 // `` `=name` `` refs and `![[Note]]` embeds left intact), and the resolved VALUES of
@@ -6,10 +6,6 @@
 // (the Write node's Run handler) walks the body and serializes each ref by kind
 // (frame → table, mermaid → code, chart → a rendered image asset), which keeps this
 // value lean and defers the DOM-dependent chart render to where it belongs.
-//
-// A Report has refs but no frontmatter (it's a pure sink for `=name`); a Note has
-// frontmatter but no refs (a pure source — its body is literal). The type carries
-// both so either producer fits.
 
 /** A resolved embed value keyed by its ref/embed name (a frame, chart, mermaid,
  *  scalar, or — for `![[Note]]` — an embedded note's raw markdown body). */

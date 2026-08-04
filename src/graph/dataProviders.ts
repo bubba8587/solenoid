@@ -1,14 +1,10 @@
-// Provider presets for the Finance/Data connection node (E-2). ONE node family with
-// a provider dropdown, not N bespoke nodes: each preset knows how to build its fetch
-// URL from the user's input (+ an API key where needed) and how to parse the response
-// into a Frame. Pure + side-effect-free so it unit-tests without the network — the
-// node layer wires these to httpBridge + apiKeyStore + connectionStore.
+// Provider presets for the Finance/Data connection node: each preset builds its
+// fetch URL from the user's input (+ an API key where needed) and parses the
+// response into a Frame. Must stay pure + side-effect-free so it unit-tests without
+// the network — the node layer wires these to httpBridge/apiKeyStore/connectionStore.
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./nodes/connection";
 
-// Stooq is unusable: its keyless CSV endpoint sits behind a JavaScript
-// proof-of-work bot-check, so a plain HTTP GET returns a challenge page, not data —
-// unfixable without a real browser. Stock history goes through Alpha Vantage (key).
 export type ProviderId = "fred" | "alphavantage";
 
 /** Optional per-fetch refinements the node folds into the URL (all in the cache key,

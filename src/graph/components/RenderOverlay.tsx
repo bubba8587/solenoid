@@ -3,10 +3,6 @@ import { overlayBus, deviceMatrix, type AreaTransform } from "../overlayTransfor
 import { useRenderMode } from "../renderMode";
 import { createToggleStore } from "../storeKit";
 
-// Phase 0 — the transparent canvas overlay that mirrors rete's pan/zoom EXACTLY.
-// It draws nothing real yet: its only job is to prove the area-transform → canvas
-// device-pixel mapping (overlayTransform.ts) before any geometry moves onto it.
-//
 // The <canvas> is pinned over the rete container (pointer-events:none, so it never
 // steals interaction) and its backing store is sized to devicePixelRatio. We bake
 // the area transform into a single ctx.setTransform so geometry is authored in
@@ -19,7 +15,7 @@ import { createToggleStore } from "../storeKit";
 // and confirm the grid tracks the DOM nodes lockstep. When off, the canvas stays
 // fully transparent.
 
-/** Debug toggle for the Phase-0 verification grid. Off by default. */
+/** Debug toggle for the verification grid. Off by default. */
 export const overlayDebugStore = createToggleStore(false);
 
 // Expose a console hook so the author can flip the verification grid on the build
@@ -128,9 +124,6 @@ export function RenderOverlay() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Phase 0: only the verification grid draws, and only when debug is on AND the
-    // canvas path is selectable (mode flips it on later phases). Until then the
-    // overlay is a transparent, inert layer — zero visual change.
     if (debug) drawDebug(ctx, transform, dpr, viewport.width, viewport.height);
   }, [state, mode, debug]);
 

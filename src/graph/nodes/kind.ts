@@ -73,17 +73,13 @@ import {
   DateDiffNode, DateAddNode, WorkdayNode, NetworkdaysNode,
 } from "./date";
 
-// ─── Kind resolver ─────────────────────────────────────────────────────────────
 // Central instanceof map. Runs at call-time (after module init), so
-// forward-referencing every class above is safe. Minification-proof —
-// doesn't rely on constructor.name.
+// forward-referencing every class above is safe. Minification-proof — never
+// relies on constructor.name.
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
-  // Composite boundary markers (drill-in only): input marker reads as a SOURCE
-  // (amber), output marker as a SINK/display (gold) — so the two ends of the
-  // subgraph are told apart at a glance, and from the compute nodes between them.
-  // Composite boundary markers read green ("special"); the Composite node itself
-  // stays neutral gray (util, below).
+  // Composite boundary markers read green ("special"); the Composite node
+  // itself stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "display";
@@ -94,9 +90,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComplexUnaryNode || node instanceof ComplexBinaryNode ||
     node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode
   ) return "complex";
-  // Nodes that EMIT the logical type (purple TRUE/FALSE socket) read as logic, so
-  // their header color matches what they output: Boolean source, the IS-checks,
-  // and the parity test — alongside Comparison / Logical.
+  // Nodes that EMIT the logical type read as logic, so their header color
+  // matches what they output.
   if (
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode ||
@@ -233,26 +228,16 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   return "math";
 }
 
-// ─── DOM weight (HTML-in-Canvas engage threshold) ───────────────────────────────
-// Approximate how much a node contributes to the DOM cost the HTML-in-Canvas
-// renderer exists to relieve. The renderer auto-engages once a graph is "big
-// enough", but a RAW node count undercounts: one recharts figure is a large SVG
-// subtree, an inlined source SVG (a county map) is tens of thousands of elements,
-// a frame grid is a small table — while a scalar / logic card is a handful of
-// elements. So a chart-heavy graph reads as "10 nodes" and never trips the gate
-// even though it's as DOM-heavy as 100 scalar cards. Weighting by KIND fixes that.
-//
-// Weights are deliberately COARSE (author: "to some degree") and summed off the
-// same nodecreated/noderemoved recount HtmlCanvasLayer already runs — never a live
-// DOM element count (too expensive, and it's a threshold, not a budget). Baseline
-// is 1 == one scalar card; the heavy tiers are calibrated so ~10 full charts ≈ the
-// 100-unit default threshold, matching the observed "10 charts ≈ 100 scalars".
+// How much a node contributes to the DOM cost the HTML-in-Canvas renderer
+// exists to relieve — a RAW node count undercounts a chart-heavy graph.
+// Weights are deliberately COARSE and summed off the same nodecreated /
+// noderemoved recount HtmlCanvasLayer already runs — never a live DOM element
+// count. Baseline is 1 == one scalar card; the heavy tiers are calibrated so
+// ~10 full charts ≈ the 100-unit default threshold.
 export function nodeDomWeight(node: ClassicPreset.Node): number {
-  // SVG Picker's IDLE state is a single <img> (rasterized for display); the heavy
-  // inline SVG (an inlined source map is tens of thousands of paths) mounts only
+  // SVG Picker's IDLE state is a single <img>; the heavy inline SVG mounts only
   // while the pointer is over the well, which never coincides with a pan/zoom
-  // gesture (the only time this gate matters). So at rest it's a small figure;
-  // weight it like a grid preview.
+  // gesture (the only time this gate matters).
   if (node instanceof SvgPickerNode) return 2;
   // Full chart / diagram figures: a big recharts SVG subtree or a rendered mermaid
   // diagram. Ten of these ≈ the default threshold.
@@ -269,10 +254,8 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
     node instanceof SparklineNode || node instanceof GaugeNode ||
     node instanceof ChartBuilderNode
   ) return 3;
-  // A frame / table / cube grid PREVIEW is a small DOM table on the node's value
-  // box — heavier than a scalar card, far lighter than a chart. Detected from the
-  // OUTPUT sockets (where the grid actually renders) so any new grid-emitting node
-  // counts without a class list. Consumers whose output is a scalar don't qualify.
+  // A grid PREVIEW is detected from the OUTPUT sockets (where the grid actually
+  // renders), so any new grid-emitting node counts without a class list.
   const grid = Object.values(node.outputs ?? {}).some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube");
@@ -281,30 +264,22 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
   return 1;
 }
 
-// Which nodes expose a manual resize handle (width+height). The rule: boxes
-// that hold user-entered text or a string / lookup result are worth widening;
-// pure numeric compute results don't get a handle and truncate instead. Kept
-// here next to nodeKindOf so the resizable set has one source of truth.
+// Which nodes expose a manual resize handle (width+height) — the one source of
+// truth for the resizable set.
 export function nodeResizable(node: ClassicPreset.Node): boolean {
-  // Resize is a DISPLAY-only affordance (author 2026-07-06): the body-level grip
-  // grows the Display's box — a frame scrolls to show more rows, a chart scales to
-  // fill. Other nodes wrap/truncate at their content-driven size.
+  // Resize is a DISPLAY-only affordance: the body-level grip grows the Display's
+  // box. Other nodes wrap/truncate at their content-driven size.
   return node instanceof DisplayNode;
 }
 
-// ─── Width tier ────────────────────────────────────────────────────────────────
-// A node that carries 2D data (a table/matrix or a frame socket on either side)
-// gets a wider default card so grid + named-column previews aren't cramped —
-// and so does any node with a LAMBDA socket, whose card shows a formula
-// (signature + body text cramps badly at the narrow width). Heights stay
-// content-driven. Detected from sockets, so any new table/frame/lambda node
-// is wide automatically — no per-class list to maintain. A manual resize still
-// overrides this (inline width wins over the class).
+// A node carrying 2D data (table/frame socket on either side) or a LAMBDA
+// socket gets a wider default card. Detected from sockets, so any new
+// table/frame/lambda node is wide automatically — no per-class list. A manual
+// resize still overrides this (inline width wins over the class).
 export function nodeWide(node: ClassicPreset.Node): boolean {
-  // The inline charts draw a fixed-width plot that needs the wide card to fit;
-  // Heatmap qualifies on its table socket below.
-  // The drawing controls' pads need the wide card too (the base card is a fixed
-  // 180px — a class `width` field is only the layout mirror, not a style).
+  // The inline charts and the drawing controls' pads need the wide card to fit
+  // their fixed-width plot (a class `width` field is only the layout mirror,
+  // not a style).
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof TreemapNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;

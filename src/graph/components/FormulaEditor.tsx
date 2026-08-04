@@ -16,14 +16,9 @@ interface FormulaEditorProps {
   className?: string;
 }
 
-/**
- * A formula text editor with live syntax highlighting + fuzzy function/variable
- * autocomplete. The highlight is a classic overlay: a transparent <textarea> (real
- * caret + selection + editing) layered exactly over a colored <pre> mirror. The
- * autocomplete menu drops below the field; ↑/↓ move, Enter/Tab accept (a function
- * inserts its `(`), and it dismisses itself once the typed word no longer matches.
- * Pure presentational — no graph deps; used by FormulaPopup + FormulaField.
- */
+/** A formula text editor with live syntax highlighting + fuzzy autocomplete. The
+ *  highlight is an overlay: a transparent <textarea> (real caret, selection, editing)
+ *  layered exactly over a colored <pre> mirror. Pure presentational — no graph deps. */
 export function FormulaEditor({
   value, onChange, onBlur, readOnly, placeholder, autoFocus, rows = 2, extraNames = [], className,
 }: FormulaEditorProps) {

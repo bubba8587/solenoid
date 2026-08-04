@@ -7,14 +7,9 @@ import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
 // ─── Format Controller ────────────────────────────────────────────────────────
-// Docks to a socket on a host node. Two responsibilities, on two layers:
-//   • the number FORMAT (style / precision / negatives / K-M-B) is a DISPLAY
-//     annotation, written to the box behind this FC (refreshAnnotation) and carried
-//     to a downstream passthrough box by `unitFlow.ts` `makeAnnotationResolver`;
-//   • the UNIT is VALUE-MUTATING (FC A4): `data()` tags the value's `UnitCell` via
-//     `applyFcUnit` (author a dimensionless value, re-display a commensurable one,
-//     `#UNIT!` on a clash). The unit is a property of the value, so it computes
-//     downstream and drops at a transform on its own — no graph unit-walk.
+// Docks to a socket on a host node. The number FORMAT is a DISPLAY annotation
+// written to the box behind this FC; the UNIT is VALUE-MUTATING — data() tags the
+// value's `UnitCell` via `applyFcUnit`, so there is no graph unit-walk.
 
 /** The first dimensioned cell in a scalar-or-list value — the lock-state probe:
  *  its presence means an upstream (FC / Convert / unit source) authored the unit. */
@@ -207,8 +202,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
         socketKey:  this.socketKey,
         side:       this.side,
       });
-      // Resolve the host socket's data type (through passthrough wildcard sockets)
-      // and mirror it onto our sockets.
       if (editor) {
         this.adaptTypeFromConnections(editor);
         this.refreshAnnotation(editor);
@@ -241,16 +234,13 @@ export class FormatControllerNode extends ClassicPreset.Node {
   ): boolean {
     let resolved: SocketDataType = "trueany";
     if (this.hostNodeId) {
-      // Docked: resolve from the host socket.
       if (this.side === "output") {
         resolved = concreteTypeOfOutput(editor, this.hostNodeId, this.socketKey);
       } else {
         const sock = editor.getNode(this.hostNodeId)?.inputs[this.socketKey]?.socket;
-        // A family-less rung stays the provisional wildcard (see isWildcardRung).
         if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) resolved = sock.dataType;
       }
     } else {
-      // Wired: resolve from the cable feeding FC.in (or the socket FC.out feeds).
       for (const c of editor.getConnections()) {
         if (c.target === this.id && c.targetInput === "in") {
           const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput);
@@ -276,21 +266,13 @@ export class FormatControllerNode extends ClassicPreset.Node {
   refreshAnnotation(
     editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
   ): void {
-    // What feeds FC.in?
     let inSrcId = "", inSrcSock = "";
     for (const c of editor.getConnections()) {
       if (c.target === this.id && c.targetInput === "in") { inSrcId = c.source; inSrcSock = c.sourceOutput; break; }
     }
 
-    // FC A4: the FC is VALUE-MUTATING — it AUTHORS the value's unit (tags the
-    // `UnitCell` in data()), so the unit is a property of the value and rides it
-    // downstream through passthroughs & selectors and DROPS at a transform, WITHOUT
-    // any graph unit-walk. The three lock states (authored / forwarding /
-    // Convert-dictated) are derived from the incoming VALUE in data(); the one
-    // graph fact data() can't see — "do I FEED a Convert (through pure
-    // passthroughs)?" — is computed here, where the editor is at hand. Convert has
-    // PRIMACY: its fromUnit dictates the FC in front of it (← ← arrows, locked
-    // dropdown), so the value is tagged in the unit the Convert reads it as.
+    // The one graph fact data() can't see — "do I FEED a Convert (through pure
+    // passthroughs)?" — is computed here, where the editor is at hand.
     this.dictatedFromUnit = "";
     {
       let nid = this.id, depth = 0;
@@ -304,7 +286,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
             this.dictatedFromUnit = consumer.fromUnit as string;
             break walk;
           }
-          if (isPurePassthroughNode(consumer)) { next = c.target; break; } // continue through the Display / Expect
+          if (isPurePassthroughNode(consumer)) { next = c.target; break; }
         }
         nid = next;
       }
@@ -319,7 +301,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
     if (inSrcId) targets.push({ nodeId: inSrcId, socketKey: inSrcSock });
 
     const ann = this.annotation();
-    // Reconcile: clear any socket we no longer target, (re)write the rest.
     for (const w of this._written) {
       if (!targets.some((t) => t.nodeId === w.nodeId && t.socketKey === w.socketKey)) {
         formatAnnotationStore.delete(w.nodeId, w.socketKey);
@@ -365,8 +346,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
   }
 
   undock(): void {
-    // Clear our annotations (reverts their displays) and stop following the
-    // dock socket. Position fields are cleared last.
     for (const w of this._written) formatAnnotationStore.delete(w.nodeId, w.socketKey);
     this._written = [];
     dockedNodeStore.undock(this.id);
@@ -386,15 +365,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
-    // Live lock state (the A2 three-state arrows) from the VALUE layer:
-    //   ← ← lockedByConvert — this FC FEEDS a Convert (refreshAnnotation's walk):
-    //        the Convert's fromUnit dictates the unit, dropdown locked (primacy).
-    //   → → forwarding — the incoming value already carries a unit (an upstream
-    //        FC / Convert / unit source / a unit-tagged frame column authored
-    //        it); the dropdown MIRRORS it and LOCKS (author ruling 2026-07-31:
-    //        an inherited unit is the value's, set elsewhere in the chain — this
-    //        FC never re-authors over it; Convert is the re-display tool).
-    //   ← → authored — neither: this FC is the author.
     const cell = firstUnitCell(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
     const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
@@ -410,10 +380,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
     // applyFcUnit would read it as a re-author).
     if (this.forwarding && inherited && isFcUnit(inherited) && this.unit !== inherited) this.unit = inherited;
     this.unitLocked = this.lockedByConvert || this.forwarding;
-    // FC A4 — value-mutating: tag the value with this FC's unit (author a base-SI
-    // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash). A
-    // `custom` free-text unit becomes an opaque custom dimension (`poop`). A
-    // `none`/text/frame/matrix value passes through untouched. See applyFcUnit.
     return { out: applyFcUnit(val, this.unit, this.customUnit) };
   }
 }

@@ -45,8 +45,6 @@ function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"
     : node;
 }
 
-// Pan/zoom the viewport to center a node — the one "go to this node" action
-// shared by the pins HUD, the alerts HUD, and the cable inspector.
 export function flyToNode(nodeId: string): void {
   // Owning graph (drill-in aware): a "go to" targeting a node inside an open
   // composite flies the DRILL-IN camera; main ids resolve to main as before.
@@ -59,10 +57,10 @@ export function flyToNode(nodeId: string): void {
 }
 
 /**
- * Fly to fit MULTIPLE nodes in one view — the Presentation node's per-step camera
- * (bundle 13 #51): zoomAt already fits a bounding box over every ref it's given,
- * so this is flyToNode's single-target resolution applied per id, then one
- * zoomAt call over the whole resolved set. Unknown/removed ids are skipped
+ * Fly to fit MULTIPLE nodes in one view — the Presentation node's per-step camera.
+ * zoomAt fits a bounding box over every ref it's given, so this is flyToNode's
+ * single-target resolution applied per id, then one zoomAt call over the whole
+ * resolved set. Unknown/removed ids are skipped
  * (a step surviving a node deletion just frames what's left); an empty result
  * is a no-op (nothing to fly to).
  */
@@ -81,11 +79,9 @@ const FLASH_CLASS = "solenoid-node-flash";
 const FLASH_MS = 1000;
 const _flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-/** Toggle a timed CSS flash on a node's rendered element — there is no existing
- *  "jump and flash" gesture anywhere in the codebase (only jump, via flyToNode /
- *  OutlinePanel's focusNode), so this builds the flash half from scratch. Flashes
- *  the nearest VISIBLE ancestor, same resolution as flyToNode, so flashing a node
- *  hidden inside a collapsed group lights up the group box instead of nothing. */
+/** Toggle a timed CSS flash on a node's rendered element. Flashes the nearest
+ *  VISIBLE ancestor, same resolution as flyToNode, so flashing a node hidden
+ *  inside a collapsed group lights up the group box instead of nothing. */
 export function flashNode(nodeId: string): void {
   const editor = getOwningEditor(nodeId); // drill-in aware, like flyToNode
   const area = getOwningArea(nodeId);

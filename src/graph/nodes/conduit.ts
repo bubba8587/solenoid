@@ -6,8 +6,6 @@ import { trueAnySocket, MutableSocket } from "../sockets";
 // A single-block cable bundler. Lane i routes in_i → out_i (output mirrors
 // input). Up to CONDUIT_MAX_LANES "Any" cables enter one face and leave the
 // opposite face. One rotation angle for the whole block (no per-lane spacing):
-// when deselected the block compresses so the lanes bunch into a single pill,
-// and expands (sockets fan out) when it's selected or a cable is dragged near.
 // All MAX lanes are declared up-front so the
 // engine + connection validator can address any lane; the component renders only
 // as many as are in use.
@@ -104,8 +102,8 @@ export class ConduitNode extends ClassicPreset.Node {
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
       // Input is a shared `trueany` singleton — the SUPREMUM wildcard, so a lane
       // accepts ANY cable (the Conduit's whole point): scalars, lists (an `anylist`
-      // off a List Filter), tables, frames, cubes. (A plain `any` is scalar-only —
-      // it rejected an `anylist`, the bug.) The OUTPUT is a per-lane MUTABLE socket
+      // off a List Filter), tables, frames, cubes — a plain `any` is scalar-only
+      // and would reject an `anylist`. The OUTPUT is a per-lane MUTABLE socket
       // that ADOPTS the wired-in type (see reconcileConduitTypes in conduitTrace.ts),
       // so a lane genuinely carries its type downstream — a date leaves as a date
       // (FC can lock it, a Display formats it), not an opaque wildcard.

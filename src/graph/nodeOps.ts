@@ -1,22 +1,14 @@
 // ─── Multi-op node declarations ───────────────────────────────────────────────
-// Several node classes host a FAMILY of operations behind an op selector on the
-// card. The dropdown is a navigation convenience for closely-related work — each op
-// is still its own thing — so the ops are normally ALSO listed individually in the
-// Add menu, and nobody has to know which card hosts which op.
+// The one place that declares, per node class hosting an op selector, what ops it
+// has and how they surface:
 //
-// Not all of them are. This module is the one place that declares, per class, what
-// ops it has and how they should surface:
-//
-//   expose: "collapsed" (the DEFAULT) — one Add-menu leaf. It carries the `{ }`
-//     marker, and every op with no leaf of its own is still reachable from SEARCH
-//     as "Chart: Column". Nothing is undiscoverable just because it's folded up.
+//   expose: "collapsed" (the DEFAULT) — one Add-menu leaf; every op with no leaf of
+//     its own is still reachable from SEARCH as "Chart: Column".
 //   expose: "leaves" — one leaf per op, generated for any op that doesn't already
-//     have a hand-written one. Flipping this single word is the whole change.
+//     have a hand-written one.
 //
 // The `{ }` marker is DERIVED, never declared: a leaf shows it iff the node has ops
-// with no leaf of their own. So it cannot drift out of agreement with the menu the
-// way a hand-maintained flag would — which is the same discipline the formula-parity
-// ratchet enforces on the other surface.
+// with no leaf of their own.
 //
 // `kind` is a separate axis and does NOT affect the menu:
 //   "operation" — the op stands alone as a name (SETUNION, ISODD, REGEXREPLACE), so
@@ -24,39 +16,6 @@
 //   "argument"  — the op is meaningless without its host ("avg" is a parameter of
 //     GROUPBY, not a function), so the family takes ONE formula name and the op
 //     rides in as an argument.
-//
-// CLASSIFYING ONE — a JUDGEMENT, informed by several partial signals. None of these
-// is decisive on its own, and they do disagree; when they do, weigh them rather than
-// letting whichever was written last win.
-//
-//   • Would the user PICK this, or could it arrive computed? Something a person
-//     always picks by hand is part of what the node IS; something that can arrive
-//     from a lookup or a column is a parameter.
-//   • Does it have its own NAME? This one can OVERRULE the others, because FX-4
-//     is a rule and the rest are signals: an operation-kind op claims a formula
-//     name derived from its label, so a family whose ops share a name cannot be
-//     one. The distribution FORMS are the worked example — a person always picks
-//     cdf vs pdf by hand (which reads "operation"), but Excel models the choice
-//     as a `cumulative` ARGUMENT on one function, so "CDF"/"PDF" would collide
-//     across all seventeen families and with the leaves' own names. They are
-//     argument-kind. Searchability is NOT what was traded away: `kind` and the
-//     menu are separate axes (below), so declaring the ops still generates a
-//     search row per form.
-//   • Would the user SEARCH the Add menu for it by name? "Column chart", "Sankey",
-//     "speed of light" — yes. "avg", "4-band" — no.
-//   • Is it meaningless without its host? "avg" says nothing without GROUP BY.
-//   • Is it already an Excel function in its own right? Corroborating, not deciding:
-//     Excel's own spelling reflects its grid, not this app's dataflow.
-//
-// The signals mostly agree. Where they don't, the interesting cases are the ones
-// worth reading twice: an ELEMENT symbol is picked by hand AND searchable, yet it
-// is data that can plainly come from a column, and a row per element would bury the
-// menu — so it stays an argument. A RESISTOR band count is picked by hand and never
-// computed, yet nobody thinks of "4-band decode" as a different operation from
-// "5-band" — so it stays an argument too. A DISTRIBUTION form is picked by hand and
-// has a real Excel spelling for its tails (CHISQ.DIST.RT), which is why it was
-// nearly a leaf — but the forms share one function name, so it is an argument
-// with search rows (author ruling 2026-08-01: search rows, not leaves).
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import {
@@ -178,17 +137,11 @@ function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntry
   return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}) }));
 }
 
-/** SEARCH labels for the distribution FORMS. The meta labels are dropdown prose
- *  and they disagree across families — T.DIST says "RT" where CHISQ.DIST says
- *  "Right-tail" — which reads fine on a card but makes the generated search rows
- *  inconsistent AND costs the ranking: querying "CHISQ.DIST.RT" ranked the PDF
- *  row above the Right-tail one, because no row carried the token `rt`.
- *
- *  These names carry the Excel spelling's distinguishing token in parentheses, so
- *  one form reads the same way in every family and the query that names it ranks
- *  it first. The card keeps its own terse label (the SET_OPS precedent: the meta
- *  is the dropdown, the declaration is the menu). Author ruling 2026-08-01: the
- *  .RT forms stay SEARCH ROWS, not leaves — so search has to actually find them. */
+/** SEARCH labels for the distribution FORMS. The meta labels are dropdown prose and
+ *  disagree across families — T.DIST says "RT" where CHISQ.DIST says "Right-tail" —
+ *  so these carry the Excel spelling's distinguishing token in parentheses, and the
+ *  query that names a form ranks it first. The card keeps its own terse label (the
+ *  meta is the dropdown, the declaration is the menu). */
 const DIST_FORM_LABEL: Record<string, string> = {
   cdf:  "CDF",
   pdf:  "PDF",
@@ -203,15 +156,10 @@ function fromDistMeta(meta: Record<string, { label: string; fx?: string }>): OpE
 }
 
 /** Names for the ops whose OP_META `label` is dropdown PROSE rather than a name.
- *
- *  The two roles pull in opposite directions: the DROPDOWN wants "Union: in A or B",
- *  which explains the choice while you are looking at the card, but a SEARCH row
- *  wants a name — composing the prose gives "Set: Union: in A or B", which reads as
- *  a mangled sentence and, worse, matches every sibling equally (the ops stop
- *  discriminating, so searching "symmetric" surfaced Union). The meta keeps its
- *  prose for the card; these are what the menu and search use. */
-// The SEARCH labels are overridden here (the meta labels are dropdown prose), but the
-// FORMULA names still come from the meta table — one declaration per op, not two.
+ *  Composing the prose gives "Set: Union: in A or B", which reads as a mangled
+ *  sentence and matches every sibling equally, so the ops stop discriminating. The
+ *  meta keeps its prose for the card; these are what the menu and search use — the
+ *  FORMULA names still come from the meta table, one declaration per op. */
 const SET_OPS: OpEntryDecl[] = [
   { op: "union", label: "Union", fx: SET_OP_META.union.fx },
   { op: "intersect", label: "Intersection", fx: SET_OP_META.intersect.fx },
@@ -243,8 +191,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // Aggregators are arguments of Group By, not searchable ops (D29).
   { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles: ascending/descending and first/last are parameters of ONE
-  // operation — nobody searches the Add menu for "Descending". These families
-  // previously named the field `dir`, so they could not declare at all (VAL-12).
+  // operation — nobody searches the Add menu for "Descending".
   { type: "list-sort", ctor: SortNode, kind: "argument" },
   { type: "list-take", ctor: TakeNode, kind: "argument" },
   { type: "list-drop", ctor: DropNode, kind: "argument" },
@@ -252,8 +199,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "drop-blank-rows", ctor: DropBlankRowsNode, kind: "argument" },
   // The trigger CONDITION (range / equals / boolean / text) is a parameter of the
   // one Alert; a blend formula ("multiply", "screen") is a parameter of Color
-  // Blend — nobody searches the Add menu for either. These two previously named
-  // the field `mode`, the last VAL-12 misnames, so they could not declare at all.
+  // Blend — nobody searches the Add menu for either.
   { type: "alert", ctor: AlertNode, kind: "argument" },
   { type: "color-blend", ctor: ColorBlendNode, kind: "argument" },
 
@@ -264,9 +210,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new FillNode({ op: op as never }) },
   { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
-  // Pad's selector was called `dir` — the only op family that named its op something
-  // else, which is why it had no declaration at all and PADLEFT/PADRIGHT were
-  // unsearchable. Renamed to `op` like every other family.
   { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
   { type: "list-set", ctor: SetOpNode, kind: "operation", ops: SET_OPS,
@@ -281,13 +224,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new IFErrorNode({ op: op as never }) },
   { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
-  // RECLASSIFIED operation → argument (2026-07-28, the FX-4 full sweep): Text
-  // Filter is ONE operation — keep the strings that match — and the ops are its
-  // CONDITION ("contains", "starts with"), meaningless without the host, exactly
-  // the Frame Filter's condition parameter. As operations they also claimed
-  // formula names they can't own: "Contains" despaces to CONTAINS, which is the
-  // list-membership function. The ops stay searchable ("Text Filter: Starts
-  // with") via the ops list.
+  // Text Filter is ONE operation — keep the strings that match — and the ops are its
+  // CONDITION ("contains", "starts with"), meaningless without the host. As
+  // operations they would also claim formula names they can't own: "Contains"
+  // despaces to CONTAINS, the list-membership function.
   { type: "text-filter", ctor: TextFilterNode, kind: "argument", ops: fromMeta(TEXT_FILTER_OP_META),
     create: (op) => new TextFilterNode({ op: op as never }) },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
@@ -324,12 +264,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // ── Kind-only declarations ───────────────────────────────────────────────────
   // These families are ALREADY listed op-by-op in the Add menu, so there is nothing
   // to hide, mark or add to search — the declaration exists purely to say what the
-  // dropdown selects between, which is what tints its edge (and, later, what decides
-  // whether Tier 3 gives each op its own formula name).
-  //
-  // OPERATION: the variant is a distinct thing you would search the catalog for —
-  // SUM, ARGMIN, LEFT, EOMONTH, PRICE, ROMAN. Nearly all of them are Excel function
-  // names in their own right, which is the same test from the other direction.
+  // dropdown selects between, which is what tints its edge.
   { type: "reduce-sum", ctor: AggregateNode, kind: "operation" },
   { type: "arg-argmax", ctor: ArgMinMaxNode, kind: "operation" },
   { type: "arith-add", ctor: ArithmeticNode, kind: "operation" },
@@ -351,9 +286,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "cov-pop", ctor: CovarianceNode, kind: "operation" },
   { type: "cumpmt-cumipmt", ctor: CumPmtNode, kind: "operation" },
   { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
-  // ONE date-difference family (2026-07-28 merge). The day-count ops have their
-  // own Excel-name leaves; the DATEDIF units are hidden ops on the DATEDIF leaf
-  // (search: "DATEDIF: Whole months"), which is why that leaf hosts the decl.
+  // ONE date-difference family: the day-count ops have their own Excel-name leaves;
+  // the DATEDIF units are hidden ops on the DATEDIF leaf, which is why that leaf
+  // hosts the declaration.
   { type: "date-datedif", ctor: DateDiffNode, kind: "operation", ops: fromMeta(DATE_DIFF_OP_META),
     create: (op) => new DateDiffNode({ op: op as never }), leafOps: ["days", "days360", "yearfrac", "years"] },
   { type: "date-part-year", ctor: DatePartNode, kind: "operation" },
@@ -404,14 +339,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "date-week-weekday", ctor: WeekInfoNode, kind: "operation" },
   { type: "weighted-wavg", ctor: WeightedNode, kind: "operation" },
 
-  // ARGUMENT — what survives the weighing above. Two groups:
-  //   • the aggregator a host verb runs (Pivot / CubeRollup / GroupByFrame): "avg"
-  //     means nothing without them, and can plausibly arrive computed;
-  //   • the data-driven pickers (element symbol, Antoine substance, pipe material,
-  //     resistor band count): each is a VALUE the graph could supply from a column
-  //     or a spec table, and a menu row per value would bury the menu.
-  // Everything else came out an operation — including the distribution forms, the
-  // chart types and the E-series, which a person picks and never computes.
+  // ARGUMENT — the aggregator a host verb runs (Pivot / CubeRollup / GroupByFrame),
+  // and the data-driven pickers (element symbol, Antoine substance, pipe material,
+  // resistor band count), each a VALUE the graph could supply from a column.
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
   { type: "betadist", ctor: BetaDistNode, kind: "argument", ops: fromDistMeta(BETA_DIST_OP_META),
     create: (op) => new BetaDistNode({ op: op as never }) },
@@ -510,14 +440,11 @@ export function opEntry(
     create: () => decl.create(op.op),
     // NOT the host's keywords. Those describe the FAMILY, so inheriting them makes
     // every sibling row match a family-level query identically and the ops stop
-    // discriminating between themselves — searching "symmetric" surfaced Union,
-    // because both rows matched the host's keyword list equally well. Nothing is
-    // lost: the host row is still there to answer family-level queries, and each op
-    // row keeps its own name plus the host's name in its label.
+    // discriminating between themselves.
     keywords: undefined,
     // NOT the host's ops-mark either: by search time applyNodeOps has stamped
-    // `hiddenOps` onto the host entry, and inheriting it put the `{ }` marker on
-    // every generated op row — a row that IS exactly one op has nothing folded up.
+    // `hiddenOps` onto the host entry, and a row that IS exactly one op has nothing
+    // folded up.
     hiddenOps: undefined,
     hideOpsMark: undefined,
   };

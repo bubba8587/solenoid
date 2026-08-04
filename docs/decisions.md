@@ -632,6 +632,12 @@ downstream dropdown relabel a value's unit in place — the exact overwrite this
 forbids.
 **Cost accepted:** changing a display unit downstream takes a Convert node, not a
 dropdown flick.
+**Join-key equality for dimensioned values (2026-07-16, same principle):** a tagged
+unit does NOT match across dimensions or against a bare number. The key is the
+dimension symbol plus the BASE-SI magnitude, so `5 km` == `5000 m` (the same
+quantity) while `5 km` ≠ `5 kg` ≠ bare `5`. Currency is the one axis where the
+display CODE is the unit identity (no FX) — it joins the key, so $5 ≠ 5€
+(`frame.ts`).
 **What would reverse it:** nothing — this is the value model's integrity, the same
 class as D5's first-class null/error.
 
@@ -649,6 +655,7 @@ is a capability, not the pitch (marketing minimal, per the author). The **cage f
 survives as the design rule**: an AI edit proposes through the same governed, typed,
 validated path a human edit takes — never blind blob surgery, and graph-modifying
 actions need an approval step, not a chat log.
+**Provider:** Anthropic (author call, 2026-08-01; `aiService.ts`).
 **Cost accepted:** a provider dependency + a pasted-key UX; prompt-driven edits raise
 the bar on validation (a strict, repair-message-grade reader precedes any modify
 capability).
@@ -691,6 +698,27 @@ an aggregator, they search for the verb. Same reasoning as direction toggles
 find Group By — that would argue for search ALIASES on the host, not per-aggregator
 rows.
 
+**The general framework (promoted from the `nodeOps.ts` header):** classifying an op
+declaration as OPERATION vs ARGUMENT is a judgement over partial signals — weigh them,
+don't let the last one written win. (1) Would the user PICK it, or could it arrive
+computed? Hand-picked reads "operation"; computable reads "parameter". (2) Does it have
+its own NAME? This can OVERRULE the others because FX-4 is a rule, not a signal: an
+operation-kind op claims a formula name from its label, so a family whose ops SHARE a
+name cannot be operations. (3) Would the user SEARCH the Add menu for it ("Sankey" yes,
+"avg" no)? (4) Is it meaningless without its host? (5) Is it an Excel function in its
+own right (corroborating, not deciding)? The contested worked examples: an ELEMENT
+symbol is hand-picked AND searchable, yet is data a column could supply and a row per
+element would bury the menu — argument. A RESISTOR band count is never computed, yet
+"4-band decode" isn't a different operation from "5-band" — argument. DISTRIBUTION
+forms (cdf/pdf) are hand-picked and Excel spells the tails (CHISQ.DIST.RT), but the
+forms share one function name per family — argument, WITH search rows (`kind` and the
+menu are separate axes, so declaring the ops still generates a search row per form).
+**Author ruling 2026-08-01: the .RT forms stay SEARCH ROWS, not leaves — so search has
+to actually find them** (the meta labels are dropdown prose and disagree across
+families — T.DIST says "RT" where CHISQ.DIST says "Right-tail" — which cost the
+ranking: querying "CHISQ.DIST.RT" ranked the PDF row above the Right-tail one because
+no row carried the token `rt`).
+
 ### D30 — Comment minimalism: knowledge lives in specs/tests/commits, comments are last resort
 **When:** 2026-08-04 (author: spec-driven development; "fight the instinct to put
 everything in code comments").
@@ -710,6 +738,39 @@ behind it.
 **What would reverse it:** evidence that agents repeatedly miss routed specs and
 introduce regressions a comment would have prevented — that argues for better routing
 (or machine checks), and only as a last resort for reinstating comment copies.
+
+### D31 — Table Input: the raw text is the STORED TRUTH; blank rows are preserved everywhere
+**When:** 2026-07-16 (author: "tables get set up with blank rows for operations").
+**Where:** `nodes/matrix.ts` (`keepBlankLines`), `TablePopup.tsx` (the grid popup
+re-serializes through the same parse).
+**The decision:** the editors never coerce the Source text; only the DERIVED matrix
+coerces (blank → null). A blank line the user typed is a row of missing cells and
+stays wherever it is — leading, interior, AND trailing. The only thing dropped is the
+phantom row from the text's final newline terminator.
+**Why:** dropping blank lines didn't just blank the derived row — a popup save
+re-serialized through the parse and permanently DELETED the row from the text.
+**What would reverse it:** nothing foreseeable — silent data deletion is the failure
+this guards.
+
+### D32 — String ordering is BYTE order, not locale
+**When:** 2026-07-12 (previously recorded only in archived plans + the
+`stringOrder.ts` header).
+**Where:** `stringOrder.ts` — the `<`/`>`/`≤`/`≥` comparisons and every string SORT.
+**The decision:** compare by JS `<`/`>` on the raw string (UTF-16 code-unit order),
+NOT `localeCompare`. (1) DETERMINISM — `localeCompare` depends on the host's
+ICU/locale data, so the same graph could sort differently on two machines; byte order
+is a pure function of the strings. (2) BACKEND PARITY — native Polars orders strings
+by UTF-8 byte order; the JS oracle must match for byte-identical Frame Sort/Filter on
+both backends. Ordering is case- and accent-SENSITIVE ("Z" < "a", "e" < "é"). This
+does NOT govern UI list ordering — the Navigator, file lists, and menus keep
+locale/natural sort.
+**Cost accepted:** UTF-16 code-unit order equals UTF-8 codepoint order across the
+whole BMP, so this is Polars-exact for ordinary text; it diverges only for
+astral-plane characters (U+10000+, some emoji), where surrogate pairs sort against
+U+E000–U+FFFF differently — an edge case deliberately not chased.
+**What would reverse it:** a user-facing demand for locale-aware data sorts — which
+would have to come with a per-document locale pin to preserve determinism, recorded
+as a new decision.
 
 ---
 

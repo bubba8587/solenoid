@@ -1,6 +1,6 @@
-// Cards for the 2026-07-09 pack tool wave: EM Spectrum Band (electromagnetism),
-// Heart-Rate Zones (health), Pipe Roughness (fluids), Triangle Solver
-// (geometry). All standard shells — the domain logic lives in their node files.
+// Cards for the pack tool nodes: EM Spectrum Band (electromagnetism), Heart-Rate
+// Zones (health), Pipe Roughness (fluids), Triangle Solver (geometry). All standard
+// shells — the domain logic lives in their node files.
 
 import {
   EmSpectrumNode as EmSpectrumNodeType,
@@ -123,10 +123,8 @@ function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
 
 const TRIANGLE_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 
-// The current Equation design applied to the triangle: every part is ONE hero
-// row (input socket left, output socket right), the figure draws to scale up
-// top, and Valid is the logical check — TRUE when the parts pin down (or, when
-// over-given, agree on) a real triangle.
+// The Equation design applied to the triangle: every part is ONE hero row (input
+// socket left, output socket right), the figure draws to scale up top.
 export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolverNodeType>) {
   const v = data.cachedValues;
   // The figure draws ONE triangle — index 0 when parts are broadcast lists.

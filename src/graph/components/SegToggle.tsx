@@ -1,12 +1,8 @@
 import "./SegToggle.css";
 import { stopDragStart } from "../coarse";
 
-/**
- * A segmented button toggle — the Format Controller's places/sig-figs button
- * style as a reusable control. Drag-safe (stops pointer/mouse-down so dragging a
- * button doesn't start a node drag, like the FC controls). One button per option;
- * the active one gets `--on`.
- */
+/** A segmented button toggle. Drag-safe: it stops pointer/mouse-down so dragging a
+ *  button doesn't start a node drag. The active option gets `--on`. */
 export function SegToggle<T extends string>({ value, onChange, options, className }: {
   value: T;
   onChange: (next: T) => void;

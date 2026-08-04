@@ -1,7 +1,7 @@
-// External-data connection layer. A "connection" node (Web Source now; CSV-folder
-// next) holds only a *reference* (a URL or a folder-relative filename) — never the
-// data — and fetches a Frame on demand. This store is the shared refresh + status
-// machinery both node types plug into, mirroring the volatile-recalc pattern in
+// External-data connection layer. A "connection" node holds only a *reference* (a
+// URL or a folder-relative filename) — never the data — and fetches a Frame on
+// demand. This store is the shared refresh + status machinery every such node
+// plugs into, mirroring the volatile-recalc pattern in
 // process.ts (getRecalcGen / requestRecalc) but for async, cached fetches.
 //
 // Caching model: a connection caches its fetched Frame keyed by a composite token
@@ -60,9 +60,8 @@ export const connectionStore = {
 };
 
 // Self-register on the node-forget seam like every other node-keyed store
-// (collapseStore, pinStore, …) — `forget` existed but nothing ever called it,
-// so a deleted connection node's status/token sat in the Maps for the tab's
-// lifetime (and across every document switch).
+// (collapseStore, pinStore, …), so a deleted node's status/token doesn't sit in
+// the Maps for the tab's lifetime.
 registerNodeForget((id) => connectionStore.forget(id));
 registerNodeForgetAll(() => {
   const had = _states.size > 0 || _tokens.size > 0;

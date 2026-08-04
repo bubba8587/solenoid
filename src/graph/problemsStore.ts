@@ -1,5 +1,5 @@
-// Problems log: every tagged SolError the graph has produced, plus (later) model-
-// fuzzing findings — the data feeding the Problems HUD panel (components/
+// Problems log: every tagged SolError the graph has produced, plus model-fuzzing
+// findings — the data feeding the Problems HUD panel (components/
 // ProblemsPanel.tsx). Companion to alertStore/pinStore: a module-level store so
 // both React roots (main app + rete node root) can read it.
 //

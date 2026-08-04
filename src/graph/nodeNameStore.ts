@@ -1,13 +1,3 @@
-// Per-node stable, user-editable, unique name (Bet 2 — the addressable model, see
-// docs/subsystem-invariants.md "Addressable model"). Module-level store (like
-// collapseStore / nodeSizeStore) so it's readable from Rete's separate React root.
-//
-// This is DELIBERATELY separate from rete's `node.id`, which stays random and
-// regenerated on every load (rebuildGraph's idMap) — the name is the stable,
-// human/AI-addressable handle; the id is still just rete's internal plumbing key.
-// Names ride through save/load as `SavedNode.name` (persistence.ts) and through the
-// text projection (textForm.ts) as the line's leading token.
-
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { NAME_RE, typePrefix, nextAvailableName, counterCheckpoint } from "./nodeNaming";
@@ -79,7 +69,6 @@ export const nodeNameStore = {
     return { ok: true };
   },
 
-  /** Forget a deleted node (noderemoved → forgetNode). */
   forget(id: string): void {
     const name = _names.get(id);
     if (!name) return;

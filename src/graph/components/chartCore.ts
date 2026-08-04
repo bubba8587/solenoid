@@ -34,7 +34,7 @@ export function useChartColors() {
     grid: get("--border-strong", "#3a3a3a"),
     axis: get("--text-dim", "#888"),
     // The Gauge's unfilled-arc track — a neutral gray tuned for clear contrast
-    // against the node body in both themes (--border-subtle was near-invisible).
+    // against the node body in both themes.
     track: get("--gauge-track", "#4d5157"),
     // The single-series fill (Sparkline / Chart line / the Gauge arc) — the
     // "display" node kind's accent, resolved through the ACTIVE palette (the map

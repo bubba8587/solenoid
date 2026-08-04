@@ -18,10 +18,8 @@ interface FormulaFieldProps {
   /** Pack preset: the formula is fixed, so the box is read-only — but rendered at
    *  full strength (it's the intended content, not an override) with a lock mark. */
   locked?: boolean;
-  /** When set, the box never edits in place — clicking it calls onOpen. Every
-   *  current host (Expression, LAMBDA, the lambda family) routes editing to the
-   *  formula popup this way; the inline-textarea path below is kept for hosts
-   *  that omit onOpen. */
+  /** When set, the box never edits in place — clicking it calls onOpen. Hosts that
+   *  omit it get the inline-textarea path instead. */
   onOpen?: () => void;
   /** Optional element seated in the field's corner (e.g. a resize grip). */
   grip?: ReactNode;
@@ -29,27 +27,16 @@ interface FormulaFieldProps {
   noPrefix?: boolean;
 }
 
-/**
- * Reusable "= [ formula ]" box. Shows the formula rendered with KaTeX (falling
- * back to raw text when it can't be parsed, or a placeholder when empty); click
- * to edit it as plain text in an auto-growing textarea. Shared by the Expression
- * node and the LAMBDA family — any node with a textual formula gets the same
- * rendered box for free, whether or not it exposes a formula input socket.
- */
 const LOCK_TITLE = "Formula set by its pack and locked. Rename the title freely.";
 
 export function FormulaField({
   value, onChange, placeholder = "a * b + c …", disabled, disabledTitle, locked, onOpen, grip, noPrefix,
 }: FormulaFieldProps) {
-  // Inline editing applies only to the click-to-edit (LAMBDA) case: not when
-  // wired/overridden, not when locked, and not when a popup owns editing (onOpen).
   const editable = !disabled && !locked && !onOpen;
   const [editing, setEditing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const renderRef = useRef<HTMLDivElement>(null);
 
-  // Rendered LaTeX (KaTeX → HTML), or null when the formula is empty, can't be
-  // parsed, or katex hasn't loaded yet; in that case we fall back to the raw text.
   const render = useKatexRender();
   const katexHtml = useMemo(() => {
     if (!render) return null;
@@ -62,7 +49,7 @@ export function FormulaField({
     }
   }, [value, render]);
 
-  // Auto-grow the textarea to its content, capped at ~3 lines (only while editing).
+  // Auto-grow the textarea to its content, capped at ~3 lines.
   useEffect(() => {
     const el = taRef.current;
     if (!el) return;
@@ -74,15 +61,10 @@ export function FormulaField({
     if (editing) taRef.current?.focus();
   }, [editing]);
 
-  // A non-editable field (wired/overridden, or a locked pack preset) can't be
-  // edited — leave edit mode if it becomes so.
   useEffect(() => {
     if (!editable && editing) setEditing(false);
   }, [editable, editing]);
 
-  // Fit the rendered formula to the box: scale down for a long formula, up to fill
-  // the (now taller) card box. Width-bound formulas still bottom out and scroll —
-  // structural wrapping is the separate lever.
   useFormulaFit(renderRef, [katexHtml, value, editing, disabled], { useHeight: true, max: 1.9 });
 
   return (
@@ -127,9 +109,6 @@ export function FormulaField({
             )}
           </div>
         )}
-        {/* Expand → open the formula popup. A FormulaField feature, so every node
-            with a rendered formula (Expression, LAMBDA family) gets it by passing
-            onOpen; the box click opens it too. */}
         {onOpen && (
           <button
             type="button"

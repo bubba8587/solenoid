@@ -42,8 +42,8 @@ export function TopBar() {
       {/* Masked rather than <img> so the single-color mark recolors per theme
           via --wordmark-color. The full wordmark shows on desktop (a plain,
           non-interactive mark); on a phone it's hidden and the compact square
-          icon takes its place — doubling as the app-menu button (the old
-          separate hamburger is gone; CSS swaps wordmark↔icon). */}
+          icon takes its place — doubling as the app-menu button (CSS swaps
+          wordmark↔icon). */}
       <span
         className="solenoid-topbar__mark"
         role="img"
@@ -78,9 +78,9 @@ export function TopBar() {
         </svg>
       </button>
 
-      {/* Mobile-only: the current document name + caret. On desktop it's centered
-          in the menu bar; on mobile it moves UP to the thin accent row (the menu
-          bar), so this in-app-bar copy is CSS-hidden on mobile now too. */}
+      {/* The current document name + caret. On desktop it's centered in the menu
+          bar; on mobile it moves UP to the thin accent row (the menu bar), so
+          this in-app-bar copy is CSS-hidden there. */}
       <div className="solenoid-topbar__doctitle">
         <DocumentTitle />
       </div>
@@ -185,9 +185,6 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Find/search lives with the navigator toggle now (see OutlinePanel's
-          collapsed pill) — it only opens the navigator + focuses its search. */}
-
       <span className="solenoid-topbar__divider" />
 
       <CableShapeSelector />
@@ -197,9 +194,7 @@ export function TopBar() {
           bar wraps they go to row 2 with them. */}
       <TabletActions />
 
-      {/* Decorative art slot — fills the middle gap. Drop an SVG here later,
-          e.g. <img className="solenoid-topbar__art-svg" src={...} /> or inline
-          <svg>. Empty for now; it just holds the space. */}
+      {/* Decorative art slot — fills the middle gap; empty for now. */}
       <div className="solenoid-topbar__art" />
 
       <AppToolbar />

@@ -57,11 +57,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const full = !collapsed;
   // A chart scales to fill only once the Display has a manual size (a definite
-  // box); before that it renders at its fixed default — measuring the
-  // content-driven card would feed back and oscillate.
-  // The hook must run UNCONDITIONALLY — `!collapsed && !!useSyncExternalStore(…)`
-  // short-circuited it away while collapsed, so toggling collapse changed the
-  // per-render hook count (React #310) and crashed the node.
+  // box); before that it renders at its fixed default.
+  // The hook must run UNCONDITIONALLY — guarding it behind `!collapsed` would make
+  // the per-render hook count change with collapse (React #310).
   const manualSize = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
   const sized = !collapsed && !!manualSize;
 
@@ -94,8 +92,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
   // Object-valued figures/values that must NOT reach the number formatter (fmt
-  // calls .toFixed) — that crashed the whole Display node off the canvas when a
-  // Chart (or Mermaid / lambda) was wired in. Render each by kind instead.
+  // calls .toFixed). Render each by kind instead.
   const isChart = isChartValue(v);
   const isMermaid = isMermaidValue(v);
   const isSvg = isSvgValue(v);

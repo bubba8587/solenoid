@@ -16,8 +16,7 @@ const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 /**
  * The Report's canvas presence — a small, fixed-size anchor card, deliberately NOT
- * a full editing surface (per the plan: "separate from the graph's node set"). It
- * exists so the report's `` `=name` `` refs have a real place for their wireable
+ * a full editing surface. It exists so the report's `` `=name` `` refs have a real place for their wireable
  * INPUT sockets to live (same NodeSocket/RefInputRow machinery as a Note); the
  * actual markdown editing happens in the full-screen ReportOverlay, opened here.
  */
@@ -132,9 +131,8 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
             {data.embeds.length} embed{data.embeds.length === 1 ? "" : "s"}
           </span>
         )}
-        {/* The `document` OUTPUT — wire the whole report into a document sink (Write
-            to Obsidian). Hosted in the content row so it lines up with "Open report";
-            the row is the positioning context (its 50% centers the dot on the button). */}
+        {/* Hosted in the content row: the row is the positioning context, so its
+            50% centers the dot on the "Open report" button. */}
         {data.outputs.document && (
           <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
         )}

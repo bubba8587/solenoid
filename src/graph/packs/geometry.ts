@@ -33,8 +33,6 @@ const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
     description: "Area of a regular n-sided polygon with side length s   (=n*s²/(4·tan(π/n)))" },
 ];
 
-// Second wave (2026-07-09): circles & arcs, 3-D solids, and the Ramanujan
-// ellipse circumference. Same conventions — radians, any consistent length unit.
 export const GEOMETRY_CIRCLES: FormulaPackEntry[] = [
   { type: "geo-arc-length", label: "Arc Length", expr: "r*theta",
     description: "Arc of a circle: radius r × central angle theta (radians)   (s = rθ)" },
@@ -71,8 +69,7 @@ export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
     description: "Surface of a torus: ring radius rr, tube radius r   (A = 4π²Rr)" },
 ];
 
-// Decimal degrees → D°M′S″ (a real geometry/navigation format — demonstrates a
-// pack contributing display logic the core doesn't ship).
+// Decimal degrees → D°M′S″.
 function toDMS(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   const sign = n < 0 ? "-" : "";
@@ -145,11 +142,10 @@ export const GEOMETRY_PACK: Pack = {
       },
     },
     // Formula-data nodes — each a pre-set Expression node, no new class.
-    // Placement is by SUBJECT, not by wave (2026-07-16 — all first-wave
-    // formulas at top level made a 15-row pane): circle/ellipse and solid
-    // formulas file under their subcategories, and the two point-distance
-    // formulas from the solids wave surface beside Distance (2D). The arrays
-    // stay grouped by wave — that's how the tests slice them.
+    // Placement is by SUBJECT, not by wave: circle/ellipse and solid formulas
+    // file under their subcategories, and the two point-distance formulas from
+    // the solids wave surface beside Distance (2D). The arrays stay grouped by
+    // wave — that's how the tests slice them.
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS.filter((f) => !CIRCLE_IDS.has(f.type) && !SOLID_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_SOLIDS.filter((f) => DISTANCE_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], [...GEOMETRY_FORMULAS.filter((f) => CIRCLE_IDS.has(f.type)), ...GEOMETRY_CIRCLES]),

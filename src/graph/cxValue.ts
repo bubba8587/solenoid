@@ -1,16 +1,12 @@
 // ─── Tagged complex values — the Cx scalar ────────────────────────────────────
 // A complex number is a TAGGED OBJECT, like every other special scalar (SolError,
-// UnitCell) — rules.md VAL-15. The earlier [re, im] tuple collided with the 1-D list
-// representation, which forced a bespoke broadcaster in nodes/complex.ts, complex
-// special-cases in coerceInputs, array canonicalization in setKey, and a chip that
-// drew a complexlist as a 2-column table. Tagged, `Array.isArray` means exactly one
-// thing everywhere: "this is a 1-D list".
+// UnitCell) — rules.md VAL-15. So `Array.isArray` means exactly one thing
+// everywhere: "this is a 1-D list".
 //
 // This module is RETE-FREE (FX-2): the formula path (listOps → excelFunctions) and
 // the display layer both need the type and its formatter without loading the editor.
-// The MATH kernels live here too (D23 amendment, 2026-07-28): the IM* formula
-// registrations and the complex nodes run the identical functions (FX-1), so the
-// kernels can't sit in the rete-tangled node module.
+// The MATH kernels live here too — the IM* formula registrations and the complex
+// nodes run the identical functions (FX-1).
 
 import { solError, type SolError } from "./errorValue";
 
@@ -31,12 +27,10 @@ export function isCx(v: unknown): v is Cx {
  *  structure (never on the imaginary component), the unit coefficient is elided,
  *  and a zero component drops its whole term.
  *
- *  This is the ONE place that knows how a complex is spelled. `formatCx` (the
- *  default trim) and `formatCxWithAnnotation` (FC style + precision) differ ONLY
- *  in how they render a component, so they share this and cannot drift into two
- *  different spellings of the same value. `hasBothParts` tells a caller whether
- *  it produced the two-term form — the unit wrapper needs it, because "3 + 2i V"
- *  would read as the unit attaching to the imaginary term alone. */
+ *  The ONE place that knows how a complex is spelled — `formatCx` and
+ *  `formatCxWithAnnotation` share it so they cannot drift. `hasBothParts` tells a
+ *  caller whether it produced the two-term form: the unit wrapper needs it, since
+ *  "3 + 2i V" would read as the unit attaching to the imaginary term alone. */
 export function assembleCx(z: Cx, fmtNum: (n: number) => string): { text: string; hasBothParts: boolean } {
   const { re, im } = z;
   if (Number.isNaN(re) || Number.isNaN(im)) return { text: "NaN", hasBothParts: false };
@@ -72,9 +66,8 @@ export function parseCx(text: string): Cx | null {
 }
 
 // ─── Math kernels ─────────────────────────────────────────────────────────────
-// No error-classification here, matching the node family's convention: the ops
-// carry their own non-finite forms (IMDIV by zero is cx(NaN, NaN), which formats
-// as "NaN") rather than minting tagged errors.
+// No error-classification here: the ops carry their own non-finite forms (IMDIV by
+// zero is cx(NaN, NaN)) rather than minting tagged errors.
 
 export function cxAdd(a: Cx, b: Cx): Cx { return cx(a.re+b.re, a.im+b.im); }
 export function cxSub(a: Cx, b: Cx): Cx { return cx(a.re-b.re, a.im-b.im); }

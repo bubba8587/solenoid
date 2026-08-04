@@ -29,8 +29,8 @@ export class ExpectNode extends ClassicPreset.Node {
   checkAllowed: boolean;
   cachedValue: unknown = null;
   // Expect checks the value and forwards it unchanged → a PURE passthrough on `in`
-  // (min/max/pattern/allowed are check parameters, NOT value branches). Now carries
-  // the value's type + unit like Display (it didn't before — the drift this fixes).
+  // (min/max/pattern/allowed are check parameters, NOT value branches), so it
+  // carries the value's type + unit like Display.
   passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
   /** Which checks currently fail (empty = passing) — the component's red badge. */
   violations: ExpectCheck[] = [];
@@ -89,8 +89,8 @@ export class ExpectNode extends ClassicPreset.Node {
     const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
     // A Frame checks its CELLS (a lazy FrameRef was already materialized by
     // coerceInputs — Expect isn't a lazy verb node, so `raw` is a FrameValue
-    // here). Without this branch a frame fell into the `[raw]` arm and every
-    // check silently no-opped on the app's core data shape.
+    // here). Without this branch a frame falls into the `[raw]` arm and every
+    // check silently no-ops.
     const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
     const values: unknown[] = frame
       ? frame.columns.flatMap((c) => c.values as unknown[])

@@ -6,37 +6,6 @@ import { reconcileConduitTypes } from "./conduitTrace";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 
-// ─── trueany type adoption ─────────────────────────────────────────────────────
-// A `trueany` port drawn as the hollow ring is a PLACEHOLDER: it accepts anything,
-// and once a cable lands it ADOPTS the cable's type (reverting on disconnect) —
-// author decision on D17. That keeps the hollow ring meaning "unknown until it
-// flows" while `any`/`anylist`/`anytable` stay the deliberately NEUTRAL rungs.
-//
-// Two rules, applied to a fixpoint (chains of passthroughs settle over passes):
-//  • INPUTS adopt universally. Any `AdoptiveSocket` input takes the wired output's
-//    current dataType. Purely informative — the cable is already accepted and an
-//    input holds one cable — but it colors the dot/cable and lets downstream
-//    resolution stop at a concrete type.
-//  • OUTPUTS adopt only where honest. Pure passthroughs (Display, Expect, Input
-//    Switch in One mode) adopt their input's resolved type — the same move the
-//    Conduit lanes make in conduitTrace. Selector results (IF / IFERROR / CHOOSE /
-//    SWITCH / IFS) adopt when every WIRED branch agrees, else stay `trueany`
-//    (the result type genuinely depends on runtime). An EXTRACTION (INDEX) forwards
-//    its container's element family at its OWN rank, via the spec's `project` — a
-//    homogeneous list/matrix has one family however you slice it. A FRAME is
-//    heterogeneous, so its family lives per COLUMN, not in the socket: the projection
-//    reads the static column shape + the node's own Column selection through the
-//    `ProjectContext` this pass hands it, and only an unresolvable one (a runtime
-//    column, a CSV source's unknown shape, a cube cell) lands on `trueany`. Genuinely
-//    generative outputs (XLOOKUP — a cube cell's type varies per row) use a STATIC
-//    trueany socket and never appear here.
-//
-// Like the Conduit reconcile, adoption NEVER drops existing cables — it is derived
-// state; the mismatch scan flags a cable that adoption reveals as ill-typed.
-// (Explicit user retypes — a Cast target, a List Input SegToggle — still go
-// through retypeOutputCables and drop dead cables.) Adopted types are NOT
-// persisted: the pass re-runs after load/paste, from the wiring.
-
 interface AdoptNode {
   id: string;
   inputs?: Record<string, { socket?: ClassicPreset.Socket } | undefined>;

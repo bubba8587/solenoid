@@ -11,7 +11,6 @@ const R_GAS = "8.314462618";   // J/(mol·K)
 const SIGMA = "5.670374419*10^-8"; // Stefan–Boltzmann
 
 export const THERMO_GAS: FormulaPackEntry[] = [
-  // One equation instead of the four solved forms it shipped as pre-Equation.
   { type: "th-ideal-gas", label: "Ideal Gas (pV = nRT)", expr: `p * vol = n * ${R_GAS} * tk`, equation: true,
     description: "The ideal-gas law with any one of p (Pa), vol (m³), n (mol), tk (K) unwired — the node solves for it",
     keywords: "pv nrt pressure volume moles temperature gas law",

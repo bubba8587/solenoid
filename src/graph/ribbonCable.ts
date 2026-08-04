@@ -1,12 +1,3 @@
-// ─── Conduit output ribbons ────────────────────────────────────────────────────
-// A Conduit's output cables going to ONE entity — another visible Conduit, or a
-// single collapsed group — render as one entity: a wide neutral "conduit cable"
-// trunk that only splits into per-lane branches near the target Conduit's
-// entrance (or terminates whole on the group's combined pill). This module owns
-// the pieces shared by ConduitComponent (geometry + layout publishing),
-// ConnectionComponent (ribbon detection + trunk endpoints) and Canvas (ribbon
-// deletion as one unit).
-
 import { ConduitNode } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
@@ -21,7 +12,6 @@ export const CONDUIT_SQ = 10;
 export const CONDUIT_COL_GAP = 1.5;
 export const CONDUIT_ROW_GAP = 1.5;
 
-// ─── Layout store ─────────────────────────────────────────────────────────────
 // ConduitComponent publishes its live angle + scale (the connector shrinks when
 // deselected, expands when selected / a drag is near). Connection components
 // read it to place the trunk's face-center endpoints, and subscribe so the
@@ -70,7 +60,6 @@ export function conduitFacePoint(
   };
 }
 
-// ─── Ribbon hover ─────────────────────────────────────────────────────────────
 // The hovered ribbon key. The trunk and every fan branch are drawn by different
 // ConnectionComponents; sharing hover through a store is what makes the whole
 // ribbon light up together.
@@ -87,8 +76,6 @@ export const ribbonHoverStore = {
   },
   subscribe(l: () => void) { _hoverListeners.add(l); return () => { _hoverListeners.delete(l); }; },
 };
-
-// ─── Ribbon detection ─────────────────────────────────────────────────────────
 
 type Conn = {
   id: string;
@@ -137,16 +124,6 @@ function ribbonTargetOf(editor: EditorLike, c: Conn): { kind: "conduit" | "group
   return null;
 }
 
-// ─── Separation pins ──────────────────────────────────────────────────────────
-// Selecting a Conduit separates its ribbons into individual lanes. Clicking one
-// of those lanes selects the CABLE and deselects the node — without a pin the
-// ribbon would instantly re-form under the click. So selecting a separated lane
-// pins its Conduits open, keyed by the cable ids that justified it: a pin is
-// only honoured while at least one of its cables remains selected, so it
-// expires by itself (deselect / select elsewhere / delete) with no cleanup
-// subscription. Trunk clicks select the representative WITHOUT pinning, which
-// is what keeps whole-ribbon selection bundled.
-
 const _separationPins = new Map<string, Set<string>>(); // conduit id → pinning cable ids
 
 export function pinRibbonSeparation(conduitIds: string[], cableId: string): void {
@@ -171,13 +148,9 @@ function isSeparated(conduitId: string): boolean {
  * The ribbon this connection belongs to, or null when it renders as a normal
  * cable. A ribbon = 2+ non-ghost cables from one visible Conduit's outputs to
  * the same entity. Computed fresh from the editor each call (cheap), so there
- * is no membership state to keep in sync.
- *
- * A SELECTED Conduit temporarily separates the ribbons touching it into
- * individual cables so single lanes can be inspected, selected, or deleted —
- * and a selected separated lane keeps them separated (see pins above).
- * `ignoreSeparation` asks for the would-be ribbon regardless (used to decide
- * whether a clicked cable should pin).
+ * is no membership state to keep in sync. `ignoreSeparation` asks for the
+ * would-be ribbon regardless of separation (used to decide whether a clicked
+ * cable should pin).
  */
 export function ribbonForConnection(
   editor: EditorLike,
@@ -188,9 +161,6 @@ export function ribbonForConnection(
   if (cableGhostStore.isGhost(conn.id)) return null;
   if (!(editor.getNode(conn.source) instanceof ConduitNode)) return null;
   if (!conn.sourceOutput.startsWith("out_")) return null;
-  // Inverse case: a Conduit hidden in a collapsed group whose outputs leave the
-  // group bundle out of the group's combined output pill (no separation — the
-  // Conduit can't be selected while hidden).
   if (groupCollapseStore.isNodeHidden(conn.source)) return groupSourceRibbon(editor, conn);
   const separate = !opts?.ignoreSeparation;
   if (separate && isSeparated(conn.source)) return null;
@@ -217,12 +187,6 @@ export function ribbonForConnection(
   };
 }
 
-// The inverse ribbon: a Conduit hidden in a collapsed group whose outputs land on
-// ONE external bundling-destination — a visible Conduit, or another collapsed
-// group (the SAME `ribbonTargetOf` test the forward ribbon uses). Those 2+ cables
-// bundle out of the source group's combined output pill and the trunk runs all
-// the way to the destination (fanning into a Conduit's lanes, or landing whole on
-// a collapsed group's pill). Outputs to plain nodes / uncollapsed groups → null.
 function groupSourceRibbon(editor: EditorLike, conn: Conn): RibbonCable | null {
   const dest = ribbonTargetOf(editor, conn);
   if (!dest) return null;

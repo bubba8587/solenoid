@@ -28,7 +28,7 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
       return formatNumberWithAnnotation(v, { ...ann, unit: "none" });
     }
   }
-  const c = formatFrameCell(type, v); // date serials → date strings
+  const c = formatFrameCell(type, v);
   if (c === null || c === undefined || c === "") return "";
   if (typeof c === "string") return type === "string" ? applyTextCase(c, ann?.textCase) : c;
   if (Number.isNaN(c)) return "NaN";

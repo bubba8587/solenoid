@@ -1,7 +1,6 @@
 // ─── Runtime perf probe ─────────────────────────────────────────────────────────
-// A lightweight, zero-cost-when-off instrument for the compute pipeline. It answers
-// the two questions the desktop Polars backend made urgent: which NODE is slow, and
-// how much time each processGraph spends crossing IPC to Rust.
+// A lightweight, zero-cost-when-off instrument for the compute pipeline: which NODE
+// is slow, and how much time each processGraph spends crossing IPC to Rust.
 //
 // Turn it on from the devtools console with `window.__solenoidPerf = true` (the same
 // flag process.ts's compute/render log and Canvas's pan/zoom fps probe already read).

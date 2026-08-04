@@ -2,7 +2,6 @@ import { ClassicPreset } from "rete";
 import { numIn, numOut, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
 import { lnCombin, lnGamma, regularizedBeta, regularizedGamma } from "./mathUtils";
 
-// ─── BINOM.DIST ───────────────────────────────────────────────────────────────
 export type BinomDistOp = "pmf" | "cdf";
 
 export const BINOM_DIST_OP_META = {
@@ -62,7 +61,6 @@ export class BinomDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── BINOM.INV ────────────────────────────────────────────────────────────────
 export const BINOM_INV_META = {
   label: "BINOM.INV",
   description: "Smallest k such that BINOM.DIST(k, n, p) ≥ alpha. Excel: BINOM.INV / CRITBINOM.",
@@ -110,7 +108,6 @@ export class BinomInvNode extends ClassicPreset.Node {
   }
 }
 
-// ─── POISSON.DIST ─────────────────────────────────────────────────────────────
 export type PoissonDistOp = "pmf" | "cdf";
 
 export const POISSON_DIST_OP_META = {
@@ -156,7 +153,6 @@ export class PoissonDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── HYPGEOM.DIST ─────────────────────────────────────────────────────────────
 export type HypgeomDistOp = "pmf" | "cdf";
 
 export const HYPGEOM_DIST_OP_META = {
@@ -219,7 +215,6 @@ export class HypgeomDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── NEGBINOM.DIST ────────────────────────────────────────────────────────────
 export type NegbinomDistOp = "pmf" | "cdf";
 
 export const NEGBINOM_DIST_OP_META = {

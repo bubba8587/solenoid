@@ -42,18 +42,12 @@ const CABLE_HIT_W = IS_COARSE ? 28 : 20;
 const TRUNK_HIT_W = IS_COARSE ? 30 : 22;
 const FAN_HIT_W = IS_COARSE ? 24 : 14;
 
-// Each cable used to render into a 9999×9999px <svg> anchored at the holder
-// origin. With C cables that's C ~100-megapixel layers, which is the keystone
-// blocking GPU compositing of the area holder (promoting it would blow GPU
-// memory), so pan/zoom repaint every cable every frame instead of moving a
-// cached texture. Instead, bound each cable's <svg> to its own content bbox:
-// position it at (minX,minY) with a matching `viewBox`, so absolute path coords
-// still land in the same holder pixels (no path-string changes), but the layer
-// box shrinks from 100MP to the cable's footprint. `overflow: visible` is kept
-// so stroke/bow/corner ink that spills past the padded bbox still draws — the
-// bbox only needs to be *roughly* right for the layer-size win; correctness
-// doesn't depend on it. Flow beads and hit-strokes are untouched (they live
-// inside this same <svg>), so all cable interaction stays identical.
+// Each cable's <svg> is bounded to its own content bbox: positioned at
+// (minX,minY) with a matching `viewBox`, so absolute path coords still land in
+// the same holder pixels (no path-string changes) while the layer box stays the
+// size of the cable's footprint. `overflow: visible` is kept so stroke/bow/corner
+// ink that spills past the padded bbox still draws — the bbox only needs to be
+// *roughly* right; correctness doesn't depend on it.
 const SVG_BBOX_PAD = 64; // covers stroke half-width, corner radius, spline bow
 function boundedSvgProps(
   pts: Array<{ x: number; y: number }>,
@@ -122,13 +116,10 @@ function pathLength(d: string, a: { x: number; y: number }, b: { x: number; y: n
 }
 
 // ── Conduit hit clearance ─────────────────────────────────────────────────────
-// Cable hit strokes are ~20px wide and end exactly on the socket. A compressed
-// Conduit is a ~10×17px pill rendered at z -1 (UNDER the cables, so wires plug
-// in over the block) — the converging hit strokes blanket it completely, and
-// the dead zone matches the conduit's EXPANDED footprint. Clicks meant for the
-// block hit cables instead, and it can't be re-selected once compressed. Trim
-// the HIT coverage (never the visible path) just short of conduit
-// endpoints via a dash pattern, so the block keeps its own hitbox.
+// Cable hit strokes are ~20px wide and end exactly on the socket; a compressed
+// Conduit is a ~10×17px pill at z -1 (UNDER the cables), so the converging hit
+// strokes would blanket it. Trim the HIT coverage (never the visible path) just
+// short of conduit endpoints via a dash pattern, so the block keeps its hitbox.
 const BLOCK_HIT_CLEAR = 14;
 
 function hitTrimDash(total: number, trimStart: number, trimEnd: number): string | undefined {
@@ -140,13 +131,10 @@ function hitTrimDash(total: number, trimStart: number, trimEnd: number): string 
 }
 
 // ── Per-connection path cache ─────────────────────────────────────────────────
-// getCablePath (the routeWalk/spline solve) is the expensive part of a cable
-// render. This component subscribes to ~13 stores, most of which change only
-// *appearance* (hover, selection, flow, value tint) — yet every bump re-renders
-// us AND re-solves the path. Cache the last solve keyed on the geometry that
-// actually feeds the solver, so appearance-only re-renders reuse the string and
-// only genuine endpoint/shape/angle changes re-run getCablePath. Keyed by
-// connection id; entries for deleted cables are harmless (bounded by session).
+// Caches the last getCablePath solve keyed on the geometry that feeds the solver,
+// so the appearance-only re-renders (hover, selection, flow, value tint) reuse the
+// string. Keyed by connection id; entries for deleted cables are harmless
+// (bounded by session).
 const _pathCache = new Map<string, { key: string; d: string }>();
 // The cache key is shape+coords+angles, which DON'T change when the "direct cables"
 // perf toggle flips (same shape, different routing) — so clear the whole cache on any
@@ -186,14 +174,11 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
   // Subscribe to ghost membership changes so a ghost commit re-renders us.
   useSyncExternalStore(cableGhostStore.subscribe, cableGhostStore.version);
-  // Socket-hover re-render trigger, narrowed to kill the all-cables fan-out.
-  // Hovering one socket bumps the store once but used to re-render EVERY cable
-  // (all subscribed to the global version). A standalone cable now watches only
-  // its OWN hover flag, so an unrelated hover is an Object.is-equal snapshot and
-  // skips its re-render. Ribbon members share appearance (one member hovered
-  // lights the whole bundle), so they must still react to any member's change —
-  // they fall back to the global version. ribbonRef is set after `ribbon` is
-  // known below; the value is used only as a re-render key, never as logic
+  // Socket-hover re-render trigger, narrowed to kill the all-cables fan-out: a
+  // standalone cable watches only its OWN hover flag, so an unrelated hover is an
+  // Object.is-equal snapshot. Ribbon members share appearance (one member hovered
+  // lights the whole bundle), so they stay on the global version. ribbonRef is set
+  // after `ribbon` is known below; the value is only a re-render key, never logic
   // (socketHovered, the real boolean, is read separately).
   const ribbonRef = useRef(false);
   // Render mode: in "canvas" we publish this cable's visible stroke to cableScene
@@ -233,8 +218,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // The editor that OWNS this cable's endpoints — the drill-in's internal editor
   // when the cable renders inside an open composite, else main. Keyed on an
   // endpoint node id (a pseudo cable mid-drag has only one end). Resolving via
-  // getEditor() (main) made every drill-in cable fall back to the default color
-  // (no socket found), skip ribbon bundling, and miss the Conduit hit-trim.
+  // getEditor() (main) instead loses the socket — hence the color, ribbon
+  // bundling and Conduit hit-trim — for every drill-in cable.
   const editor = getOwningEditor(data.source || data.target);
   // Conduit-output ribbon this cable belongs to (2+ lanes to one Conduit/group).
   const ribbon = editor && data.source && data.target ? ribbonForConnection(editor, data) : null;
@@ -793,9 +778,6 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
         strokeDasharray={revealActive ? drawLen : ghost ? "6 5" : undefined}
         strokeDashoffset={revealActive ? (revealed ? 0 : drawLen) : undefined}
         style={revealActive ? { transition: "stroke-dashoffset 440ms ease" } : undefined}
-        // Idle cables sit slightly dimmer than before; hover / selected
-        // stay at the previous 0.9 so hovering now lifts a cable out of
-        // the pack — easier to trace where overlapping ones go.
         opacity={cableOpacity}
         pointerEvents="none"
       />}

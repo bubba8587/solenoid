@@ -1,10 +1,8 @@
 // CSS color parsing + sRGB mixing — pure helpers the canvas renderer needs.
-// NOT WIRED IN beyond what imports it (currently nothing). A 2D/WebGL canvas can't
-// evaluate `color-mix(in srgb, …)` (the cable flow tint) or `var(--…)`, so any
-// canvas drawing of those has to compute them in JS. This is the design-agnostic
-// math for that — reusable by cable flow beads AND node-body tints, whichever
-// renderer path we land on. Pure (no DOM); var() resolution is the caller's job
-// (it needs getComputedStyle) and feeds resolved literals in here.
+// A 2D/WebGL canvas can't evaluate `color-mix(in srgb, …)` (the cable flow tint)
+// or `var(--…)`, so any canvas drawing of those has to compute them in JS. Pure
+// (no DOM); var() resolution is the caller's job (it needs getComputedStyle) and
+// feeds resolved literals in here.
 
 export interface RGBA { r: number; g: number; b: number; a: number }
 

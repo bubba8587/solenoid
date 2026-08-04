@@ -112,9 +112,8 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
 // blob download / file-input upload (no persistent path). Each returns the chosen
 // absolute path on desktop (so the doc can be bound to it), or null in the browser.
 
-/** Temp + rename so a crash mid-write can't destroy the previous good file
- *  (audit finding 37) — the disk mirror of the localStorage two-slot rotation.
- *  Falls back to a direct write when the `.tmp` sibling is outside the granted
+/** Temp + rename so a crash mid-write can't destroy the previous good file —
+ *  the disk mirror of the localStorage two-slot rotation. Falls back to a direct write when the `.tmp` sibling is outside the granted
  *  fs scope (a dialog-picked path grants exactly the picked file). */
 async function writeTextFileAtomic(path: string, content: string): Promise<void> {
   const tmp = `${path}.tmp`;
@@ -133,12 +132,10 @@ export async function writeTextFilePath(path: string, content: string): Promise<
 
 // ── Binary files + folders (the image-asset bundle needs these) ──────────────
 
-/** The directory containing an absolute file path. */
 export function dirOfPath(path: string): Promise<string> {
   return dirname(path);
 }
 
-/** Join path segments (Tauri-side, OS-correct separator). */
 export function joinPath(...parts: string[]): Promise<string> {
   return join(...parts);
 }
@@ -219,7 +216,6 @@ export async function saveHtmlFileDialog(suggestedName: string, content: string)
   return null;
 }
 
-/** Trigger a browser download of an HTML string as `name`. */
 function downloadHtml(name: string, content: string): void {
   const blob = new Blob([content], { type: "text/html" });
   const url = URL.createObjectURL(blob);
@@ -244,7 +240,6 @@ export async function openTextFileDialog(): Promise<{ path: string | null; conte
   return openTextFileBrowser();
 }
 
-/** Trigger a browser download of `content` as `name`. */
 function downloadText(name: string, content: string): void {
   const blob = new Blob([content], { type: "application/json" });
   const url = URL.createObjectURL(blob);

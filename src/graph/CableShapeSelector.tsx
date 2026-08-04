@@ -40,11 +40,8 @@ export function CableShapeIcon({ shape, className }: { shape: CableShape; classN
   );
 }
 
-/**
- * Floating segmented control to pick the active cable shape. Lives in
- * the top-left corner of the canvas. Moveable / resizable / hideable
- * toolbar chrome (per user direction) is a later customisation slice.
- */
+/** Floating segmented control to pick the active cable shape. Lives in the
+*  top-left corner of the canvas. */
 export function CableShapeSelector() {
   const { shape, setShape } = useCableShape();
   const { flow, toggleFlow } = useCableFlow();

@@ -1,11 +1,7 @@
-// ─── Static frame shape ─────────────────────────────────────────────────────────
-// Column names + types computed AHEAD of running anything — the static sibling of
-// the relational verbs in frameVerbs.ts. Each arm mirrors the real verb's column-
-// reshaping logic without touching row data, so a mismatch between this and the
-// actual JS/Rust output (frameShape.test.ts) is a caught bug, not a silent
-// divergence. Reuses FrameColType (sockets.ts's element-family names, via frame.ts)
-// and FrameSchemaColumn (frameBackend.ts's runtime preview schema) rather than a
-// new type universe — a Shape's columns are exactly what a real preview() reports.
+// Column names + types computed AHEAD of running anything — the static sibling
+// of the relational verbs in frameVerbs.ts. Each arm mirrors the real verb's
+// column-reshaping logic without touching row data; a Shape's columns are
+// exactly what a real preview() reports.
 //
 // Nest/Unnest (frame ⟷ cube boundary) and Frame Lookup (scalar output) fall
 // outside this module on purpose: their outputs aren't a Frame shape at all.
@@ -36,8 +32,7 @@ function requireCol(s: Shape, name: string): ShapeColumn {
   return col;
 }
 
-/** One arm per `FrameOp` member, mirroring `applyVerb`'s switch (frameVerbs.ts:851)
- *  kind for kind. */
+/** One arm per `FrameOp` member, mirroring `applyVerb`'s switch kind for kind. */
 export function shapeOf(op: FrameOp, input: Shape): Shape {
   switch (op.kind) {
     case "select": {
@@ -68,7 +63,7 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       const aggOut: ShapeColumn[] = aggCols.map(({ spec, col }) => ({
         name: spec.as,
         // min/max preserve the SOURCE column's type; every other agg is numeric —
-        // mirrors groupByFrame's aggOut (frameVerbs.ts:277-283).
+        // mirrors groupByFrame's aggOut (frameVerbs.ts).
         type: spec.op === "min" || spec.op === "max" ? col.type : "number",
       }));
       const out = [...keyOut, ...aggOut];
@@ -104,7 +99,7 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
 }
 
 /** Join (binary — its own entry point in frameVerbs.ts, like joinFrames, not a
- *  FrameOp member). Mirrors joinFrames' column assembly (frameVerbs.ts:378-428). */
+ *  FrameOp member). Mirrors joinFrames' column assembly (frameVerbs.ts). */
 export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
   requireCol(left, opts.leftKey);
   requireCol(right, opts.rightKey);
@@ -124,7 +119,7 @@ export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
 }
 
 /** Append (n-ary — union by name; a shared name with conflicting types is a
- *  #TYPE!, mirroring appendFrames, frameVerbs.ts:827-848). */
+ *  #TYPE!, mirroring appendFrames, frameVerbs.ts). */
 export function shapeOfAppend(shapes: readonly Shape[]): Shape {
   const names: string[] = [];
   const typeOf = new Map<string, FrameColType>();
@@ -141,7 +136,7 @@ export function shapeOfAppend(shapes: readonly Shape[]): Shape {
 }
 
 /** Add Index (Power Query, eager JS-only): always exactly one new numeric column —
- *  fully static, no data dependency. Mirrors addIndexColumn (frameVerbs.ts:340-348). */
+ *  fully static, no data dependency. Mirrors addIndexColumn (frameVerbs.ts). */
 export function shapeOfAddIndex(input: Shape, name: string): Shape {
   const nm = name.trim() || "Index";
   const unique = makeHeaders([nm, ...input.columns.map((c) => c.name)], 1 + input.columns.length);
@@ -156,7 +151,7 @@ export function shapeOfAddIndex(input: Shape, name: string): Shape {
 /** Split Column (Power Query, eager JS-only): the source column is replaced by N
  *  text columns, N = the max part count across ROWS — data-dependent, so this
  *  states only what's certain (the untouched columns) and flags the rest dynamic.
- *  Mirrors splitColumn (frameVerbs.ts:322-336). */
+ *  Mirrors splitColumn (frameVerbs.ts). */
 export function shapeOfSplitColumn(input: Shape, column: string, delimiter: string): Shape {
   if (delimiter === "") return input;
   const idx = input.columns.findIndex((c) => c.name === column);

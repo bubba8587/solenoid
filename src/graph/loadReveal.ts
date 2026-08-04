@@ -2,13 +2,10 @@
 // when it's loaded on startup or via File → Open. Document switches reuse ONLY the
 // building phase as a plain progress curtain (rebuildGraph's `curtain` path) —
 // they snap to idle from loadGraph's finally, never entering "revealing".
-// A module-level store (read from both React roots through useSyncExternalStore,
-// like cableShapeStore) holds the phase + per-connection reveal flags; the
-// orchestration (build, topological reveal, deferred compute) lives in
-// persistence.ts's rebuildGraph. Nodes fade in via their area-view element's
-// opacity (the orchestrator styles those directly — transform would clobber
-// rete's position translate); cables read this store and both fade + draw on
-// (stroke-dashoffset) in input→output order.
+// A module-level store holds the phase + per-connection reveal flags; the
+// orchestration lives in persistence.ts's rebuildGraph. Nodes fade in via their
+// area-view element's opacity (transform would clobber rete's position translate);
+// cables read this store and both fade + draw on in input→output order.
 //
 //   idle      → nothing animating; components render normally.
 //   building  → graph being constructed behind the progress overlay; cables hide.

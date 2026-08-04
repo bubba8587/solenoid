@@ -30,8 +30,8 @@ export type MenuItem =
   | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean };
 export type Menu = { label: string; items: MenuItem[] };
 
-// Dispatch a synthetic keydown so the Canvas keyboard handler runs the real command
-// (it listens on window). Reuses all the existing edit/graph shortcut logic.
+// Dispatch a synthetic keydown so the Canvas keyboard handler (on window) runs the
+// real command, reusing the existing edit/graph shortcut logic.
 export function fireMenuKey(code: string, opts: { key?: string; ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -66,8 +66,7 @@ export function buildMenus(): Menu[] {
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
         // A genuine reload of the current document (full rebuild from the saved
-        // graph), which replays the cinematic load reveal — a browser refresh
-        // doesn't. A deliberate combo, not a stray single key.
+        // graph), which replays the cinematic load reveal — a browser refresh doesn't.
         { label: "Reload document", shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
         ...(isDesktop() ? ([{ sep: true }, {
           label: "Open documents folder",

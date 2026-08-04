@@ -43,11 +43,11 @@ export const isolateStore = {
   version,
 };
 
-// Registered like every node-keyed store (nodeStoreRegistry / STORE-1). Before
-// this, NOTHING exited isolate on a document load: the focus set kept the old
-// graph's ids, every regenerated id was a non-member, and the entire new graph
-// dimmed. A deleted node also leaves the focus set (exiting when it empties —
-// an empty focus would dim everything with no members).
+// Registered like every node-keyed store (nodeStoreRegistry / STORE-1): a document
+// load must exit isolate (the focus set holds the OLD graph's ids, so every
+// regenerated id would be a non-member and the whole new graph would dim). A
+// deleted node also leaves the focus set, which exits when it empties — an empty
+// focus would dim everything.
 registerNodeForget((id) => {
   if (_focus?.has(id)) {
     _focus.delete(id);

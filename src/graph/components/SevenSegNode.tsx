@@ -6,10 +6,6 @@ import { SevenSegView } from "./chartCanvasViews";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 
-// The 7-Segment card: input rows + the shared SevenSegView (the same renderer a
-// Report embed uses, via ChartFigure's `sevenseg` branch). Collapses to the
-// [Chart] chip like the other figure nodes.
-
 export function SevenSegComponent({ data, emit }: NodeProps<SevenSegNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const cv = data.cachedChart;

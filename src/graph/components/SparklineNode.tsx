@@ -26,8 +26,6 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [op, setOp] = useNodeField(data, "op");
   const rawSeries = toSeries(data.cachedResult);
-  // Win/Loss draws as a column chart of the signs (+1 up / −1 down / 0 flat),
-  // colored up = palette green, down = the palette error red (vermilion).
   const chartOp: ChartShape = op === "winloss" ? "column" : op;
   const series = op === "winloss" ? rawSeries.map((s) => ({ ...s, v: Math.sign(s.v) })) : rawSeries;
   const signColors = op === "winloss"
@@ -47,8 +45,6 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
           </>
         )}
       </div>
-      {/* Minified (square) readout: a tiny axis-less spark filling the square;
-          double-click the square to expand (the chevron is hidden — see NodeCard). */}
       <div className="solenoid-node__collapsed-only">
         {series.length === 0
           ? <span className="solenoid-node__display-value solenoid-node__display-value--empty">—</span>

@@ -1,11 +1,7 @@
-// Boundary analysis for the Isolate overlay (and, later, Portal nodes): given a
-// focus set, which connections cross its boundary? Entry = an outside output
-// feeding a focused input (rendered on the LEFT); exit = a focused output feeding
-// an outside input (rendered on the RIGHT). The overlay turns each side into an
-// auto-generated endpoint — a Conduit when several lanes cross, a single socket
-// when one — and the future Portal node pair will reuse the same endpoints +
-// styling (an exit portal publishes a focused output to a named store; an entry
-// portal selects one to read). Pure + testable; no editor/DOM.
+// Boundary analysis for the Isolate overlay: given a focus set, which connections
+// cross its boundary? Entry = an outside output feeding a focused input (rendered
+// on the LEFT); exit = a focused output feeding an outside input (rendered on the
+// RIGHT). Pure + testable; no editor/DOM.
 
 export interface BoundaryCrossing {
   connId: string;

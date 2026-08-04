@@ -13,18 +13,9 @@ import "./rendererSpike.css";
 
 /**
  * Renderer spike (Pixi) — a proof-of-architecture for the GPU node renderer (see
- * docs/archive/renderer-decision.md). Two modes:
- *
- *  • Synthetic — N grid cards + cheap cables, the raw perf ceiling (500–10k), with
- *    a BitmapText↔Text A/B toggle (the text-batching decision to make).
- *  • Live — the REAL rete graph snapshotted onto the GPU: faithful cards (scraped
- *    title/value, kind color, real socket positions) + the app's real cable
- *    router. Drag a card and it persists back to the editor via area.translate.
- *
- * All interaction is hand-rolled on the canvas (mouse + pen + multi-touch pinch),
- * driven by the pure Camera + the spatial-index CardPicker. Nothing of the real
- * editor is mutated except node positions on a live drag; the overlay just covers
- * the app while open. pixi.js is dynamic-imported (code-split out of the bundle).
+ * docs/archive/renderer-decision.md). Synthetic and Live (the real rete graph)
+ * modes. All interaction is hand-rolled on the canvas. Nothing of the real editor
+ * is mutated except node positions on a live drag. pixi.js is dynamic-imported.
  */
 
 const COUNTS = [500, 2000, 5000, 10000] as const;
@@ -112,7 +103,6 @@ export function RendererSpike() {
         setMsdf(true);
       } catch { setMsdf(false); }
 
-      // ── Build the scene for the current mode ──────────────────────────────
       const cam = new Camera();
       const W = host.clientWidth, H = host.clientHeight;
       let scene: SpikeScene;
@@ -121,7 +111,7 @@ export function RendererSpike() {
         const snap = snapshotGraph();
         if (!snap || snap.nodes.length === 0) {
           setStats({ nodes: 0, cables: 0, note: "No nodes in the current graph. Switch to Synthetic, or add nodes first." });
-          scene = buildSyntheticScene(PIXI, 0, textMode, theme, fonts); // empty placeholder
+          scene = buildSyntheticScene(PIXI, 0, textMode, theme, fonts);
           cam.fit(scene.bounds, W, H);
         } else {
           scene = buildLiveScene(PIXI, snap, cableShapeStore.get(), textMode, fonts);
@@ -145,9 +135,8 @@ export function RendererSpike() {
       dotG.circle(GRID / 2, GRID / 2, 1.1).fill({ color: gridColor, alpha: 0.35 });
       const dotTex = app.renderer.generateTexture(dotG);
       const grid = new PIXI.TilingSprite({ texture: dotTex, width: host.clientWidth, height: host.clientHeight });
-      app.stage.addChildAt(grid, 0); // behind the world
+      app.stage.addChildAt(grid, 0);
 
-      // Minimap — a screen-space overview (bottom-right) with the viewport rect.
       const minimapG = new PIXI.Graphics();
       app.stage.addChild(minimapG);
       const MM_W = 180, MM_H = 120, MM_PAD = 12;
@@ -209,9 +198,8 @@ export function RendererSpike() {
       scene.setCablesVisible(cablesRef.current); // a rebuild respects the current toggle
       apply();
       camRef.current = cam; sceneRef.current = scene; applyRef.current = apply;
-      selectedRef.current = new Set(); // fresh selection per (re)build
+      selectedRef.current = new Set();
 
-      // A box-select rectangle + a temp cable (world space, above the cards).
       const boxG = new PIXI.Graphics();
       boxG.visible = false;
       scene.world.addChild(boxG);
@@ -311,14 +299,12 @@ export function RendererSpike() {
             else if (!sel.has(hit)) { sel.clear(); sel.add(hit); }
             scene.setSelected(sel);
           }
-          // Drag the whole selection (or just the hit card outside live mode).
           const ids = mode === "live" && sel.has(hit) ? [...sel] : [hit];
           gmode = "drag"; dragMoved = false; downWorld = { wx, wy };
           dragOrigins = new Map();
           for (const id of ids) { const h = scene.cards.get(id); if (h) dragOrigins.set(id, { x: h.x, y: h.y }); }
           return;
         }
-        // Empty space: a cable click selects it; else box-select / pan.
         if (mode === "live") {
           const cid = scene.pickCable(wx, wy, 6 / cam.scale);
           if (cid) { sel.clear(); scene.setSelected(sel); selectedCableRef.current = cid; scene.selectCable(cid); gmode = "pan"; last = { x: s.x, y: s.y }; return; }
@@ -389,7 +375,6 @@ export function RendererSpike() {
         e.preventDefault(); const s = screenOf(e);
         cam.zoomBy(Math.exp(-e.deltaY * 0.0015), s.x, s.y); apply();
       };
-      // Double-click a live card → open the floating rename editor over its header.
       const onDbl = (e: MouseEvent) => {
         if (mode !== "live") return;
         const s = screenOf(e);
@@ -453,7 +438,6 @@ export function RendererSpike() {
       if (e.key === "Escape") { rendererSpikeStore.close(); return; }
       if ((e.key === "Delete" || e.key === "Backspace") && mode === "live" && !editing) {
         const ids = selectedRef.current;
-        // A selected cable deletes first if no nodes are selected.
         if (!ids.size && selectedCableRef.current) {
           e.preventDefault();
           const cid = selectedCableRef.current;
@@ -484,8 +468,7 @@ export function RendererSpike() {
   }, [open, mode, editing]);
 
   // Commit/cancel the floating rename — writes node.label back to the real editor
-  // and updates the Pixi title in place (the round-trip the production renderer
-  // does via a single floating input instead of a per-node DOM field).
+  // and updates the Pixi title in place.
   const commitEdit = (save: boolean) => {
     setEditing((cur) => {
       if (cur && save) {
@@ -509,11 +492,9 @@ export function RendererSpike() {
     applyRef.current();
   };
 
-  // Programmatic stress: a fixed-zoom PAN sweep across the real scene bounds for
-  // ~3s (figure-8 over the graph, via panSweep), sampling real rAF-to-rAF frame
-  // intervals, then report avg + worst-frame fps. Pan — not an in-place orbit — is
-  // what users feel as jank; holding zoom fixed isolates that cost. The measurement
-  // the whole spike exists to produce.
+  // A fixed-zoom PAN sweep across the scene bounds for ~3s, sampling real
+  // rAF-to-rAF frame intervals, then reporting avg + worst-frame fps. Holding
+  // zoom fixed isolates the pan cost.
   const runBench = () => {
     const cam = camRef.current, host = hostRef.current, scene = sceneRef.current;
     if (!cam || !host || !scene || benching) return;

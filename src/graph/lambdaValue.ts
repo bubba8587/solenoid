@@ -1,9 +1,8 @@
 // ─── Tagged lambda values — the function currency (VAL-15's shape rules) ──────
 // A lambda is a TAGGED OBJECT flowing between the LAMBDA node, the host nodes
-// (MAP/BYROW/…) and — since the D23 lambda tranche — the formula language's own
-// LAMBDA(...) special form. RETE-FREE (FX-2): the formula path constructs and
-// consumes these without loading the editor. Extracted from nodes/lambda.ts,
-// which re-exports for its existing importers.
+// (MAP/BYROW/…) and the formula language's own LAMBDA(...) special form.
+// RETE-FREE (FX-2): the formula path constructs and consumes these without
+// loading the editor. nodes/lambda.ts re-exports for its importers.
 
 export interface LambdaValue {
   __lambda: true;

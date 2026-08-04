@@ -9,8 +9,6 @@ import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
-// ─── Format style (how the number renders) ───────────────────────────────────
-
 export type FormatStyle =
   | "auto"
   | "decimal"      // flexible: N places or N sig figs (decimalDigits/decimalMode)
@@ -164,13 +162,6 @@ function toFraction(n: number, maxDen = 99): string {
   return whole > 0 ? `${sign}${whole} ${num}/${den}` : `${sign}${num}/${den}`;
 }
 
-// ─── Fraction (advanced): rational multiples of constants ──────────────────────
-// Established method (no home-grown heuristic): recognize x ≈ (p/q)·c by dividing
-// by each candidate constant c and finding the best low-denominator rational p/q
-// via the continued-fraction convergents algorithm — the standard way to get the
-// closest rational with a bounded denominator. (This is the lightweight cousin of
-// PSLQ / the Inverse Symbolic Calculator, restricted to a single-constant basis.)
-
 /** Best rational p/q ≈ x with q ≤ maxDen, via continued-fraction convergents. */
 function cfConvergent(x: number, maxDen: number): { num: number; den: number } {
   let h0 = 0, h1 = 1, k0 = 1, k1 = 0; // numerator/denominator recurrences
@@ -239,8 +230,6 @@ function applyCustomPattern(n: number, pattern: string): string {
     useGrouping,
   });
 }
-
-// ─── Unit labels (physical/semantic annotation) ───────────────────────────────
 
 export type UnitGroup =
   | "none"
@@ -339,13 +328,9 @@ export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
   custom:      "Custom",
 };
 
-// ─── Pack extensions (units + number formats) ─────────────────────────────────
-// Packs can contribute extra FC units and number formats. Like pack node
-// constructors, these are registered for EVERY known pack (active or not) so a
-// saved graph that uses a pack's unit/format still renders when the pack is
-// deactivated. The FC dropdown offers only ACTIVE packs' entries — see
-// fcExtensions.ts, which owns the active filtering; this module stays
-// pack-agnostic and only holds the merged resolution maps.
+// Pack units/formats are registered for EVERY known pack (active or not) so a saved
+// graph using one still renders when the pack is deactivated. Active-only filtering
+// for the dropdown lives in fcExtensions.ts; this module stays pack-agnostic.
 
 export interface PackUnit {
   id: string;
@@ -409,16 +394,11 @@ export function unitsCompatible(a: string, b: string): boolean {
   return ga === gb;
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
-
 export type TextCase = "none" | "upper" | "lower" | "proper";
 
-// Text-value advanced tier (format-model.md): horizontal alignment override
-// (the display box is right-aligned by default), render-as-markdown, and a
-// monospace toggle (text renders in the sans face by default). All display-only.
+// The display box is right-aligned by default; this overrides it. Display-only.
 export type TextAlign = "left" | "center" | "right";
 
-// Logical "show-as" (format-model.md): how a boolean renders through an FC.
 export type LogicalStyle = "truefalse" | "binary" | "yesno" | "check";
 
 export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
@@ -428,9 +408,8 @@ export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
   check:     "✓ / ✗",
 };
 
-// Lambda-socket view-as (display only): how a flowing LambdaValue renders in a
-// value box. The value already carries its source (`expr`/`params`), so every
-// view derives from the same object — nothing extra travels the cable.
+// Display only: the LambdaValue already carries its source (`expr`/`params`), so
+// every view derives from the same object — nothing extra travels the cable.
 export type LambdaView = "signature" | "katex" | "syntax" | "mono";
 
 export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
@@ -440,8 +419,7 @@ export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
   mono:      "Monospace formula",
 };
 
-// Chart-socket text scale (display only): multiplies every text size inside a
-// chart figure (axis ticks, title, labels, KPI digits). 1 = the built-in sizes.
+// Multiplies every text size inside a chart figure. 1 = the built-in sizes.
 export const CHART_FONT_SCALES: number[] = [0.8, 1, 1.25, 1.5, 2];
 
 /** Display-only boolean rendering (default = the Excel TRUE/FALSE form). */
@@ -454,10 +432,8 @@ export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
   }
 }
 
-// The advanced tier (format-model.md): number-family extras behind the chip's
-// expander. Scale divides the value and appends K/M/B; negative style is a
-// string transform (parens) plus a render hint (red — surfaces apply the color
-// via annotationRendersNegativeRed, the string form stays minus/parens).
+// Negative style is a string transform (parens) plus a render hint: red is applied
+// by surfaces via annotationRendersNegativeRed, the string form stays minus/parens.
 export type NegativeStyle = "minus" | "paren" | "red" | "redparen";
 export type ScaleMode = "none" | "k" | "m" | "b";
 
@@ -524,12 +500,8 @@ export function applyTextCase(s: string, c: TextCase | undefined): string {
 }
 
 const _store = new Map<string, FormatAnnotation>();
-// Per-node index so getForNode is O(1) — every value box calls it every render,
-// and the startsWith scan over the whole map multiplied out on big graphs
-// (audit finding 41).
+// Per-node index so getForNode is O(1) — every value box calls it every render.
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
-// Version bumps on every change so useSyncExternalStore consumers (every node's
-// value box) re-render when an annotation is added / edited / removed.
 const { notify, subscribe, version } = createNotifier();
 
 function key(nodeId: string, socketKey: string): string {
@@ -589,11 +561,8 @@ export const formatAnnotationStore = {
   },
 };
 
-// ─── Mismatch store ───────────────────────────────────────────────────────────
-// Tracks which Format Controller node IDs are in a "unit mismatch" state
-// (a cable connects them to a socket annotated with an incompatible unit group).
-// Written by the Canvas connection pipe; read by FormatControllerComponent.
-
+// FC node ids in a "unit mismatch" state (cabled to a socket annotated with an
+// incompatible unit group). Written by the Canvas connection pipe.
 const _mismatch = new Set<string>();
 const mismatchNotifier = createNotifier();
 
@@ -644,25 +613,11 @@ export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): st
   return paren ? `(${out})` : out;
 }
 
-/** Format a COMPLEX value through an FC annotation (VAL-15 + the format-model
- *  truth table). Three things differ from the number path, each forced by the
- *  value having two components and one sign structure:
- *
- *   • **Style is the reduced complex list.** percent / fraction / integer /
- *     custom and the date styles are meaningless on a complex (COMPLEX_FORMAT_
- *     STYLES is the popup's own list), so anything outside it falls back to
- *     `auto` rather than rendering nonsense — the popup can't offer them, but an
- *     annotation can still carry one from before the socket was retyped.
- *   • **Precision applies to BOTH components.** A 3-place complex shows 3 places
- *     on the real AND the imaginary part; formatting one and trimming the other
- *     was the visible defect this closes.
- *   • **The unit wraps the WHOLE value**, never each component: "(3 + 2i) V",
- *     not "3 V + 2i V". Parenthesised only in the two-term form, where
- *     "3 + 2i V" would read as the unit attaching to the imaginary term alone.
- *
- *  The advanced tier (grouping / negative / scale) is number-and-text only per
- *  `controlsFor`, so it is deliberately not consulted: a complex has no single
- *  sign to parenthesise and no magnitude to scale. */
+/** Format a COMPLEX value through an FC annotation (VAL-15 + the format-model truth
+ *  table). A style outside COMPLEX_FORMAT_STYLES falls back to `auto` — an annotation
+ *  can still carry one from before the socket was retyped. Precision applies to BOTH
+ *  components, and the unit wraps the WHOLE value ("(3 + 2i) V", never "3 V + 2i V").
+ *  The advanced tier is number-and-text only per `controlsFor`, so it isn't consulted. */
 export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
   const style: FormatStyleId =
     (COMPLEX_FORMAT_STYLES as readonly string[]).includes(ann.format) ? ann.format : "auto";
@@ -690,9 +645,8 @@ export function formatWithAnnotation(
   return formatNumberWithAnnotation(n, ann);
 }
 
-// Registered like every node-keyed store (nodeStoreRegistry / STORE-1): a
-// deleted node's annotations go with it (they were re-derived per reconcile
-// pass but the DEAD-id entries lingered — the recorded leak), and a rebuild
-// clears node state in one pass without touching pack registrations.
+// Registered like every node-keyed store (nodeStoreRegistry / STORE-1): a deleted
+// node's annotations go with it, and a rebuild clears node state in one pass without
+// touching pack registrations.
 registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));
 registerNodeForgetAll(() => formatAnnotationStore.clearNodes());

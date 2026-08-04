@@ -1,12 +1,8 @@
-// ─── Dimensional interpretation of a formula (Bundle 05: FC A4, step 3) ──────────
+// ─── Dimensional interpretation of a formula ─────────────────────────────────────
 // A SECOND interpretation over the same `excelFormula.ts` `Ast` the numeric
 // evaluator walks — it computes the DIMENSION a formula's result carries, given
-// the dimensions of its named inputs. Operators follow the dimensional algebra
-// (× adds exponents, ÷ subtracts, +/− demand commensurability, ^ scales by a
-// constant exponent); catalog functions follow a per-function dimensional
-// SIGNATURE (SIN wants a dimensionless/angle arg and yields a number; SQRT halves
-// the exponents; ABS/MIN/MAX preserve; PRODUCT multiplies). Pure — it imports the
-// Ast type and the dimension algebra only, and never evaluates a value.
+// the dimensions of its named inputs. Pure — it imports the Ast type and the
+// dimension algebra only, and never evaluates a value.
 //
 // Returns one of:
 //   • a `Dim`      — the determined result dimension (`{}` = dimensionless);
@@ -15,10 +11,6 @@
 //   • `null`       — INDETERMINATE (a non-constant exponent, an unknown function,
 //                    IF branches that disagree): the caller drops the unit rather
 //                    than guessing. Distinct from a conflict — no error is raised.
-//
-// This is the Expression/LAMBDA half of the units feature. The value engine is
-// unchanged; this rides alongside so an Expression node can show its result's unit
-// (and an FC downstream can lock to it) without the formula runtime knowing units.
 
 import type { Ast } from "./excelFormula";
 import {
@@ -36,8 +28,6 @@ export type DimEnv = Record<string, Dim>;
 const isDim = (r: DimResult): r is Dim => r !== null && !isSolError(r);
 
 // ─── Per-function dimensional signatures ─────────────────────────────────────────
-// Each entry says how a function transforms its argument dimensions. Only the
-// dimension matters here — the numeric behavior lives in excelFormula.ts.
 
 /** Functions whose result is ALWAYS dimensionless, and which REQUIRE every numeric
  *  argument to be dimensionless (angle counts as dimensionless for trig). Feeding
@@ -153,10 +143,6 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
   return null;
 }
 
-/**
- * Compute the dimension a formula AST yields, given its inputs' dimensions.
- * The dimensional twin of `excelFormula.ts`'s numeric `evalAst`.
- */
 /** Constant-fold a pure-number subtree (num literals under unary/± × ÷ ^) to its
  *  value, else null — the exponent form `1/2` an isolated SQRT produces. */
 function constNum(node: Ast): number | null {
@@ -182,17 +168,10 @@ function constNum(node: Ast): number | null {
   }
 }
 
-// ─── Currency codes on the dim pass (VAL-19's formula-surface half) ───────────
-// Currency is the one dimension whose IDENTITY is the display CODE (unitValue's
-// currencyMismatch): $5 and 5€ share `{currency: 1}` at the same base magnitude,
-// so the DIMENSIONS agree while the values are incommensurable. The numeric
-// evaluator computes on stripped magnitudes and can't see codes — so `$5 + 5€`
-// answered 10 in an Expression while the node-side arithmeticCell refused. The
-// codes ride THIS pass: the caller supplies each currency input's code, the
-// operators refuse a mismatch exactly like arithmeticCell, and the code carries
-// with the same display-carry rule. CALLS drop codes — a recorded limitation
-// (SUM over two coded inputs still combines in a formula; the node-side
-// aggregators refuse), scoped to operators where the wound was live.
+// ─── Currency codes on the dim pass (rules.md VAL-19) ────────────────────────
+// Currency's IDENTITY is the display CODE, so dimensions can agree while the
+// values are incommensurable. The numeric evaluator computes on stripped
+// magnitudes and can't see codes, so the codes ride THIS pass. CALLS drop codes.
 export type CodeEnv = Record<string, string>;
 
 /** Internal operand: a determined dim plus, for pure-currency operands, the
@@ -213,7 +192,7 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
     case "blank": // an omitted argument is a bare missing value
     case "atcol": // a this-row cell is a plain value — frame units live on the COLUMN (D20)
     case "wholecol": // likewise the whole column (a list of plain values)
-      return { dim: DIMENSIONLESS }; // literals carry no unit (a string result is unitless)
+      return { dim: DIMENSIONLESS };
     case "name":
       return { dim: env[node.name] ?? DIMENSIONLESS, code: codes[node.name] };
     case "unary":
@@ -253,7 +232,7 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
         case "-": {
           if (l === null || r === null) return null;
           // A dimensionless operand ADOPTS the other's unit (`price + 2` keeps the
-          // price's unit — author decision 2026-07-13); two different dims → #UNIT!.
+          // price's unit); two different dims → #UNIT!.
           if (codeClash(l, r)) return clashError(l, r);
           if (dimEqual(l.dim, r.dim)) return { dim: l.dim, code: l.code ?? r.code };
           if (isDimensionless(l.dim)) return r;

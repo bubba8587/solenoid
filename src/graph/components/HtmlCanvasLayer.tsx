@@ -25,7 +25,7 @@ import "./htmlCanvasLayer.css";
 // mermaid / inlined-SVG / frame-grid card is far more DOM than a scalar, so it counts for
 // more (~10 charts ≈ this threshold). A plain scalar graph still needs ~100 nodes to trip,
 // so the number's feel is unchanged for the common case. Tunable live via
-// `window.__hcMinNodes` (now a weighted-unit threshold) for testing. (2026-06-30; weighted 2026-07-15)
+// `window.__hcMinNodes` (a weighted-unit threshold) for testing.
 const RENDERER_MIN_NODES = 100;
 
 // Sum every node's DOM weight — the value the engage gate compares against the threshold.
@@ -71,7 +71,7 @@ export function HtmlCanvasLayer() {
   // [active] it never re-runs, so the canvas stays inert even though render mode persisted
   // as "html" (the Setting reads ON but nothing draws until you toggle it off→on, which
   // re-runs the effect after init). Poll until both exist, flip `ready`, and the setup
-  // effect (which depends on it) runs once the editor is live. (2026-06-30)
+  // effect (which depends on it) runs once the editor is live.
   const [ready, setReady] = useState(() => !!getEditor() && !!getArea());
   useEffect(() => {
     if (!active || ready) return;
@@ -143,13 +143,12 @@ export function HtmlCanvasLayer() {
     const isDomOnly = (inner: HTMLElement) => inner.classList.contains("solenoid-conduit");
     const domOnlyIds = new Set<string>();
     let domOnlyEls: HTMLElement[] = [];
-    // Show/hide are OVERRIDE-AWARE, not blind writes (the post-collapse "conduit ghost" fix,
-    // kept through the cables-back-to-canvas revert). Group collapse hides member elements by
+    // Show/hide are OVERRIDE-AWARE, not blind writes. Group collapse hides member elements by
     // stamping inline `visibility:hidden` on the SAME elements (groupCollapse.ts
     // syncGroupCollapse), and domOnlyEls is only recollected on the debounced rebuild — so a
-    // blind `visibility = "visible"` here resurrected a conduit that had just been collapsed
-    // into a group (and a blind `""` on exit could clear collapse's hidden). Rules: never
-    // override an element something else hid; only ever clear a "visible" WE stamped.
+    // blind `visibility = "visible"` here resurrects a conduit that was just collapsed into a
+    // group, and a blind `""` on exit clears collapse's hidden. Rules: never override an
+    // element something else hid; only ever clear a "visible" WE stamped.
     const showDomOnly = () => { for (const el of domOnlyEls) if (el.style.visibility !== "hidden") el.style.visibility = "visible"; };
     const hideDomOnly = (els: HTMLElement[] = domOnlyEls) => { for (const el of els) if (el.style.visibility === "visible") el.style.visibility = ""; };
     // Per-ELEMENT compositor promotion for DOM-only content on coarse pointers. The
@@ -235,8 +234,8 @@ export function HtmlCanvasLayer() {
       const canvasCables = snap ? snap.cables.filter((c) => !domOnlyIds.has(c.source) && !domOnlyIds.has(c.target)) : [];
       const canvasCableIds = new Set(canvasCables.map((c) => c.id));
       // Replacing the set mid-gesture: clear the overrides stamped on the OLD set first, or an
-      // element dropped from it (e.g. a conduit whose group just collapsed) would keep its
-      // inline "visible" forever — the post-collapse "conduit ghost" bug.
+      // element dropped from it (e.g. a conduit whose group just collapsed) keeps its inline
+      // "visible" forever.
       const prevEls = domOnlyEls;
       domOnlyEls = collectDomOnlyEls(canvasCableIds);
       if (hidden) holder.style.visibility = "hidden";
@@ -372,11 +371,10 @@ export function HtmlCanvasLayer() {
     let rebuildTimer = 0;
     // Accumulated ids whose card re-rendered since the last (re)build; null =
     // something of unknown scope changed → full rebuild. A full setNodes releases
-    // every ImageBitmap, re-clones every DOM card and rebuilds every mip pyramid —
-    // editing one value on a 300-node graph paid all of that per commit (audit
-    // finding 43). The area render pipe carries the changed node's id, so value
-    // edits take the targeted engine.updateNodes path; topology/theme/collapse
-    // (below) stay full rebuilds.
+    // every ImageBitmap, re-clones every DOM card and rebuilds every mip pyramid.
+    // The area render pipe carries the changed node's id, so value edits take the
+    // targeted engine.updateNodes path; topology/theme/collapse (below) stay full
+    // rebuilds.
     let dirtyIds: Set<string> | null = new Set();
     const scheduleRebuild = (id?: string) => {
       // Mid-lasso the only thing changing is selection; re-capturing on every node it touches
@@ -427,16 +425,15 @@ export function HtmlCanvasLayer() {
     const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
     // NOT subscribed: cableValueStore — every value change that repaints a card
     // already arrives through the render pipe WITH its node id (processGraph
-    // calls area.update per affected node); the store bump carried no ids and
-    // forced the full-rebuild path every pass (finding 43).
+    // calls area.update per affected node); the store bump carries no ids and
+    // would force the full-rebuild path every pass.
     const unsubConn = connectionVersionStore.subscribe(fullRebuild("connection"));
     const unsubCollapse = collapseStore.subscribe(fullRebuild("collapse"));
     // GROUP collapse/expand hides/shows members via inline visibility on their
     // node views — a state only collectSpecs' visibility check sees, and the
     // collapse fires area.update for the GROUP id alone, so the targeted path
-    // never drops the members. Without this, collapsed-group members kept their
-    // cached bitmaps and were drawn on every pan (regression once targeted
-    // re-capture landed — the old full-rebuild-on-anything behavior had masked it).
+    // never drops the members. Without this, collapsed-group members keep their
+    // cached bitmaps and are drawn on every pan.
     const unsubGroupCollapse = groupCollapseStore.subscribe(fullRebuild("groupCollapse"));
     const unsubSize = nodeSizeStore.subscribe(fullRebuild("nodeSize"));
     const unsubMembership = groupMembershipStore.subscribe(fullRebuild("membership")); // recolor member dots on group color/membership change
@@ -532,11 +529,11 @@ export function HtmlCanvasLayer() {
         // motion and — once gesturing — hold it while the pointer stays down. That last clause
         // stops a SLOW pan (speed momentarily 0 between frames) from settling back to the DOM
         // and flickering until the real pointerUp.
-        // A LASSO deliberately does NOT enter gesture mode (pre-37995b5b leftover): it moves
-        // no transform, so swapping the live DOM for the cached bitmap bought nothing and
-        // showed a stale, mip-scaled snapshot over the canvas. Selection feedback runs on the
-        // independent selection-delta path above; the mid-lasso rebuild suppression
-        // (scheduleRebuild's lassoActiveStore gate) stays.
+        // A LASSO deliberately does NOT enter gesture mode: it moves no transform, so
+        // swapping the live DOM for the cached bitmap buys nothing and shows a stale,
+        // mip-scaled snapshot over the canvas. Selection feedback runs on the independent
+        // selection-delta path above; the mid-lasso rebuild suppression (scheduleRebuild's
+        // lassoActiveStore gate) stays.
         else if (moved || (gesturing && pointerDown)) enterGesture();
       }
       raf = requestAnimationFrame(sync);

@@ -13,18 +13,11 @@ import "./Header.css";
  * Navigator, align pill, HUD stack, docked report, web-demo banner — see
  * docs/layout-chrome.md).
  *
- * Why measured rather than written down: those offsets were six hand-keyed
- * magic numbers all encoding the same 66px envelope, and keeping them in sync
- * by hand is the documented source of the recurring "overlay overlaps a bar"
- * bug (the align pill shipped at 56px against an 82px bar and landed inside the
- * toolbar). Once the bar's height became CONDITIONAL — a tablet wraps it to two
- * rows, and where it wraps depends on the viewport — a written-down number
- * stopped being knowable at all. Measuring is the only form that can't drift.
- *
- * The CSS keeps a static fallback in every `var()` call, so the layout is right
- * on the first paint before the observer fires, and right if it never fires.
- * Mobile keeps its own explicit overrides (they carry safe-area insets and win
- * later in the cascade) — untouched here.
+ * The height is CONDITIONAL (a tablet wraps the bar to two rows), so it must be
+ * measured, never written down. The CSS keeps a static fallback in every `var()`
+ * call, so the layout is right on the first paint before the observer fires, and
+ * right if it never fires. Mobile keeps its own explicit overrides (they carry
+ * safe-area insets and win later in the cascade).
  */
 export function Header() {
   const ref = useRef<HTMLDivElement>(null);

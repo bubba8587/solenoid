@@ -44,7 +44,6 @@ export const apiKeyStore = {
   get(provider: string): string {
     return keys[provider] ?? "";
   },
-  /** Whether a non-empty key is stored for the provider. */
   has(provider: string): boolean {
     return !!keys[provider];
   },
@@ -58,7 +57,6 @@ export const apiKeyStore = {
     persist();
     notify();
   },
-  /** Remove a provider's key entirely. */
   remove(provider: string): void {
     if (!(provider in keys)) return;
     const next = { ...keys };
@@ -67,7 +65,6 @@ export const apiKeyStore = {
     persist();
     notify();
   },
-  /** Providers that currently have a stored key (for the Settings list). */
   providers(): string[] {
     return Object.keys(keys);
   },

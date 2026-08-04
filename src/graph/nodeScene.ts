@@ -6,25 +6,23 @@ import { parseColor, type RGBA } from "./cssColor";
 import type { NodeCard } from "./nodeInstances";
 
 // Node scene — reads the LIVE node rectangles + kind colors from rete's area, for
-// the WebGPU node-card renderer (the LOD stand-in for the DOM node bodies). Kept
-// separate from the renderer so the geometry read is testable-by-eye and the GPU
-// plumbing stays thin. nodeGeomBus is bumped by Canvas when nodes move/resize/add/
-// remove, so the card layer rebuilds only then (pan/zoom just re-draws — node world
-// rects don't change on pan).
+// the WebGPU node-card renderer (the LOD stand-in for the DOM node bodies).
+// nodeGeomBus is bumped by Canvas when nodes move/resize/add/remove, so the card
+// layer rebuilds only then (pan/zoom just re-draws — node world rects don't change
+// on pan).
 
-/** Bumped (by Canvas's area pipe) whenever node geometry changes. */
 export const nodeGeomBus = createNotifier();
 
 const DEFAULT_RADIUS = 8;
 const DEFAULT_HEADER_H = 26;
 const FALLBACK_BODY: RGBA = { r: 30, g: 33, b: 40, a: 1 };
 
-// The card body fill, read once from a real node element's computed background so we
-// don't hard-code a theme var name. Re-read each collect (cheap; covers theme flips).
+// The card body fill, read from a real node element's computed background so we
+// don't hard-code a theme var name.
 function readBodyColor(sampleEl: HTMLElement | null): RGBA {
   if (!sampleEl) return FALLBACK_BODY;
   try {
-    const bg = getComputedStyle(sampleEl).backgroundColor; // "rgb(r, g, b)" / "rgba(...)"
+    const bg = getComputedStyle(sampleEl).backgroundColor;
     return parseColor(bg) ?? FALLBACK_BODY;
   } catch { return FALLBACK_BODY; }
 }
@@ -44,13 +42,11 @@ export function collectNodeCards(radius = DEFAULT_RADIUS): NodeCard[] {
     const view = area.nodeViews.get(node.id);
     const el = view?.element;
     if (!view || !el) continue;
-    // Only regular node cards (skip group/note/conduit roots).
     const card = el.querySelector<HTMLElement>(".solenoid-node") ?? (el.classList.contains("solenoid-node") ? el : null);
     if (!card) continue;
     if (!body) body = readBodyColor(card);
     const w = card.offsetWidth, h = card.offsetHeight;
     if (w <= 0 || h <= 0) continue;
-    // Measure the real header so the GPU header bar matches a 1- vs 2-line title.
     const headerEl = card.querySelector<HTMLElement>(".solenoid-node__header");
     const headerH = headerEl && headerEl.offsetHeight > 0 ? headerEl.offsetHeight : DEFAULT_HEADER_H;
     const header = parseColor(NODE_KIND_ACCENTS[nodeKindOf(node)]) ?? { r: 120, g: 130, b: 150, a: 1 };

@@ -17,9 +17,6 @@ const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   label: COND_AGG_OP_META[op].label,
 }));
 
-// Excel's SUMIFS mental model over ONE FRAME (D16, amended): pick the op, name
-// the Values column, and add criteria rows (column + op + value, AND-combined
-// like the *IFS family). The frame Filter's condition-row UI plus an aggregate.
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
   const [op, setOp] = useNodeField(data, "op");

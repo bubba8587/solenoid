@@ -3,15 +3,6 @@
 // layer ONLY on a real, hardware-backed GPU context; on failure (or a SOFTWARE
 // context — SwiftShader, llvmpipe, the WebKitGTK comp-mode-off fallback) stay on
 // the DOM renderer, because a software canvas is SLOWER than DOM, not faster.
-//
-// Tiers, best first:
-//   • "webgpu" — navigator.gpu.requestAdapter() returned an adapter.
-//   • "webgl2" — a real WebGL2 context whose UNMASKED_RENDERER isn't software.
-//   • "none"   — no usable context, OR the only one is software → MUST use DOM.
-//
-// The string-classification half is pure + unit-tested (gpuProbe.test.ts); the
-// async probe touches real browser APIs and is exercised by the author on the
-// build, not in the node-env vitest.
 
 export type GpuTier = "webgpu" | "webgl2" | "none";
 
@@ -25,14 +16,8 @@ export interface GpuCapability {
   canUseCanvas: boolean;
 }
 
-// Known software-rasterizer fingerprints. These appear in the WebGL
-// UNMASKED_RENDERER_WEBGL string when the browser falls back to CPU rendering:
-//   • SwiftShader — Chrome/Chromium's software GL (also Vulkan SwiftShader).
-//   • llvmpipe / softpipe — Mesa's software paths (Linux, incl. WebKitGTK
-//     comp-mode-off fallback).
-//   • "Google Inc. (Google)" + "ANGLE ... SwiftShader" — Chromium's ANGLE-on-
-//     SwiftShader wrapper.
-//   • Generic "software"/"microsoft basic render driver" — Windows WARP.
+// Known software-rasterizer fingerprints, as they appear in the WebGL
+// UNMASKED_RENDERER_WEBGL string when the browser falls back to CPU rendering.
 const SOFTWARE_FINGERPRINTS = [
   "swiftshader",
   "llvmpipe",
@@ -54,14 +39,9 @@ export function isSoftwareRenderer(renderer: string | null | undefined): boolean
 
 /** Pure decision: given the WebGPU adapter result (or null when none) and the
  *  WebGL2 renderer string (or null when no WebGL2 context), pick the tier.
- *  Separated from the I/O so it's unit-testable.
- *    • WebGPU adapter, NOT fallback           → "webgpu" (real hardware).
- *    • WebGPU adapter that IS fallback        → ignored (software) — fall through
- *      to the WebGL2 check, which routes software → none. Chrome can return a
- *      SwiftShader-backed `isFallbackAdapter` adapter on GPU-less machines; lighting
- *      up the canvas there would violate "never choose software over DOM".
- *    • else WebGL2 context, non-software      → "webgl2".
- *    • else (no context, or software WebGL2)  → "none" (use DOM). */
+ *  A WebGPU adapter that IS fallback is ignored — Chrome can return a
+ *  SwiftShader-backed `isFallbackAdapter` adapter on GPU-less machines, and
+ *  lighting up the canvas there would violate "never choose software over DOM". */
 export function classifyCapability(
   webgpu: { isFallback: boolean } | null,
   webgl2Renderer: string | null,

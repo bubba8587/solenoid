@@ -34,9 +34,7 @@ const COMBO_COLORS: Record<string, [string, string]> = {
   // same fixed value-drop every glyph's border uses), which keeps the split visible
   // without inventing a hue (DESIGN.md's Sibling Rule).
   anycombo:     [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
-  // `anydata` (SOCK-9) is anycombo's rank-≤2 sibling and wears the SAME plain
-  // split square — the matrix-cross overlay it once carried matched no other
-  // combo glyph's construction and read as noise (author call, 2026-07-29).
+  // `anydata` (SOCK-9) is anycombo's rank-≤2 sibling and shares its split square.
   // Unambiguous in practice: no node instantiates an anycombo socket, and an
   // adoptive anydata recolors to the wired type anyway; the hover/legend layer
   // carries the rank story.
@@ -53,9 +51,8 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const color = dataType ? SOCKET_COLORS[dataType] ?? "#888" : "#888";
   // Point this glyph's ring at the border shade of its OWN fill (`--sock-x` →
   // `--sock-x-ring`, written per-fill by appTheme). Every `stroke="var(--socket-ring)"`
-  // below inherits it, so the border darkens the actual fill by a constant step
-  // instead of the old fixed translucent black (whose contrast drifted with fill
-  // lightness). Non-typed sockets (`#888`) keep the global ring.
+  // below inherits it, so the border darkens the actual fill by a constant step.
+  // Non-typed sockets (`#888`) keep the global ring.
   const ringVar = /^var\(--sock-/.test(color) ? color.replace(/\)\s*$/, "-ring)") : undefined;
   const ringStyle = ringVar ? ({ "--socket-ring": ringVar } as CSSProperties) : undefined;
 
@@ -92,9 +89,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
             // The rank-2 mark, kept INSIDE the combo language: a small grid
             // cross in the lower half only — "one value, or up to a matrix".
             // The lower triangle is where every combo's list-ness lives, so
-            // the cross extends that half rather than restyling the glyph
-            // (the old full-square cross matched no other combo and read as
-            // noise — author call, 2026-07-29).
+            // the cross extends that half rather than restyling the glyph.
             <path d="M7.9 5.8 V10.2 M5.8 7.9 H10.2" fill="none" stroke="var(--socket-ring)" strokeWidth="1.2" />
           )}
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
@@ -106,7 +101,6 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
         </>
       ) : isTable ? (
         <>
-          {/* 2D matrix: a square split into a 2×2 grid, distinct from the number circle. */}
           <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
           {/* Grid cross kept clear of the inset border ring (inner edge ≈2/10). */}
           <path d="M6 2.5 V9.5 M2.5 6 H9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
@@ -122,10 +116,10 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
         </>
       ) : isCube ? (
         <>
-          {/* Recursive container glyph (author-drawn). Shared with the legend +
-              highlight via cubeGlyph.tsx. Oversized past the 12-box so the hexagon
-              reads the same size as the other sockets — the socket SVG paints
-              overflow-visible (socket.css) so its top/bottom can extend out. */}
+          {/* Shared with the legend + highlight via cubeGlyph.tsx. Oversized past
+              the 12-box so the hexagon reads the same size as the other sockets —
+              the socket SVG paints overflow-visible (socket.css) so its top/bottom
+              can extend out. */}
           <CubeGlyphFaces fill={color} dy={1} />
         </>
       ) : isLambda ? (

@@ -1,14 +1,12 @@
 import { solError, type SolError } from "../errorValue";
 // ─── Pure text ops — the ONE implementation behind both surfaces ─────────────
 // Each function here is called by BOTH the visual node (`text.ts`) and the formula
-// registration (`excelFunctions.ts`). Same pattern as `mathUtils.ts`, and for the
-// same reason: the node set and the formula language drifted apart because every
-// op got written twice, once per surface (docs/formula-node-parity.md, D19).
+// registration (`excelFunctions.ts`).
 //
 // It lives in its own module rather than in `text.ts` because `text.ts` already
-// imports `excelFunctions` (for UPPER/LOWER/TRIM) — importing back the other way
-// would cycle, and would drag rete into the headless formula path. Nothing here
-// imports rete or touches a socket: pure string in, pure value out.
+// imports `excelFunctions` — importing back the other way would cycle, and would
+// drag rete into the headless formula path. Nothing here imports rete or touches a
+// socket: pure string in, pure value out.
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode";

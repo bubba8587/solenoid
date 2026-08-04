@@ -1,11 +1,3 @@
-// ─── SVG as a first-class figure value ───────────────────────────────────────
-// A sibling of ImageValue / MermaidValue / ChartValue: a self-describing picture
-// that rides the `chart` object socket (the green "Special" family — identity-only
-// + `any`) and renders wherever a chart does — inline in a Report where its
-// `=name` ref sits. The SVG Picker node emits one, carrying the inlined SVG markup
-// plus the currently-picked layer (so the embed can highlight the same selection
-// the node shows) and the highlight color.
-//
 // Unlike ImageValue this carries the SVG *markup* (not a URL / data URL): the
 // picker needs the live DOM to hover + click inner elements, so the source is
 // inlined, and it persists as plain text (like Mermaid's source) — no bundling.

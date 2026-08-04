@@ -1,27 +1,6 @@
-// ─── Calculation mode ───────────────────────────────────────────────────────────
-// Excel's Automatic vs Manual calculation, PLUS a third Solenoid-only mode, Sketch
-// (#24). In MANUAL, a live edit or topology change no longer propagates:
-// processGraph short-circuits (see process.ts) and just flags the graph DIRTY; the
-// user recomputes on demand with Calculate Now / F9. This is the honest escape
-// hatch for a heavy graph — nothing recomputes until you ask.
-//
-// In SKETCH, the graph keeps recomputing live (like auto), but frame-verb execution
-// (frameBackend.ts) runs on a deterministic SAMPLE of each source frame instead of
-// the full data — fast previews on a huge table. F9 / Calculate Now still forces one
-// EXACT pass regardless of mode (`beginForceExact`/`endForceExact`, bracketing
-// `requestRecalc` in process.ts) — sketch mode never intercepts it. Auto and sketch
-// are mutually exclusive with manual (one CalcMode at a time); an aggregate computed
-// over a sample is scaled + marked `__approx` (frame.ts) rather than shown as exact —
-// see frameBackend.ts `applySketchScaling`.
-//
-// What still computes in manual mode: a LOAD / seed / document open (they run inside the
-// graph-rebuild gate, which the short-circuit exempts), because we don't persist computed
-// values — an opened doc would otherwise be blank. A forced Calculate Now clears dirty.
-//
-// The mode persists (localStorage) like Excel's per-workbook flag, so a session remembers
-// it. `dirty` and the force-exact bracket are runtime-only. This store stays
-// dependency-free (process.ts imports IT, one-way) — switching back to Automatic
-// triggers the catch-up recompute at the call site.
+// Calculation mode: Excel's Automatic vs Manual, PLUS a third Solenoid-only mode,
+// Sketch. This store stays dependency-free (process.ts imports IT, one-way) —
+// switching back to Automatic triggers the catch-up recompute at the call site.
 import { createNotifier } from "./storeKit";
 
 export type CalcMode = "auto" | "manual" | "sketch";

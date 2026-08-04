@@ -1,7 +1,7 @@
 // Thin wrapper over Tauri's `invoke` — the web layer's door to the native Rust
 // engine. Guarded like `fileBridge.ts`: the browser/dev build has no Tauri
 // runtime, so `engineAvailable()` is false there and callers fall back to the
-// in-process JS path (the `FrameBackend` seam in WS2). The Rust side is in
+// in-process JS path (the `FrameBackend` seam). The Rust side is in
 // `src-tauri/src/ipc.rs`.
 //
 // Error convention: a Rust command returns its failure SolError-shaped
@@ -44,7 +44,6 @@ function isCanonicalCode(c: unknown): c is SolErrorCode {
  *  string / Error / unknown collapses to `#ERROR!` so a failure is never swallowed. */
 export function toSolError(thrown: unknown): SolError {
   if (isSolError(thrown)) {
-    // Tagged, but still must carry a canonical code; re-mint if Rust sent a bad one.
     return isCanonicalCode(thrown.code) ? thrown : solError("#ERROR!", thrown.message);
   }
   if (thrown && typeof thrown === "object") {
@@ -77,9 +76,8 @@ export async function ipcInvoke<T>(command: string, args?: Record<string, unknow
   }
 }
 
-/** Identity the native engine reports — mirrors `ipc::EngineInfo`. `backend` is
- *  "polars" now that WS2's engine is wired; `initFrameBackend` selects the Polars
- *  frame backend when it sees that. */
+/** Identity the native engine reports — mirrors `ipc::EngineInfo`. `initFrameBackend`
+ *  selects the Polars frame backend when `backend` is "polars". */
 export interface EngineInfo {
   name: string;
   version: string;

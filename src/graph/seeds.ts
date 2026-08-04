@@ -2,11 +2,9 @@ import { loadGraph } from "./persistence";
 import type { SavedGraph } from "./persistence";
 
 // ─── Seed graphs ──────────────────────────────────────────────────────────────
-// Seeds are plain JSON files in ./seedGraphs/ — the SAME shape the Export button
-// (serializeGraph) produces, optionally with a top-level `label`. Drop a new
-// `*.json` in that folder and it shows up in the seed menu automatically; no
-// code change. To author one: build the graph in-app, Export it, drop the file
-// in, optionally add `"label": "..."`.
+// Seeds are plain JSON files in ./seedGraphs/ — the SAME shape serializeGraph
+// produces. Drop a new `*.json` in that folder and it shows up in the seed menu
+// automatically; no code change.
 
 // A seed file is the exported-graph shape plus two optional menu-only fields:
 // `label` (display name) and `order` (sort key for the "New from example" list —
@@ -33,9 +31,8 @@ function labelFromId(id: string): string {
 
 export type SeedId = string;
 
-// Build in display order: by `order` ascending, then alphabetically by id (the
-// previous behavior for the unordered majority). Object insertion order is what
-// the menu renders (DocumentTitle maps Object.entries(SEEDS)).
+// Build in display order: by `order` ascending, then alphabetically by id. Object
+// insertion order is what the menu renders (DocumentTitle maps Object.entries).
 export const SEEDS: Record<string, { label: string; graph: SavedGraph }> = {};
 const ordered = Object.entries(modules)
   .map(([path, mod]) => ({ id: idFromPath(path), mod, order: mod.order ?? DEFAULT_ORDER }))

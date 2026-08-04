@@ -1,17 +1,6 @@
-// ─── Standoffs ─────────────────────────────────────────────────────────────────
-// A standoff is a user-declared arrangement constraint between two items
-// (nodes or groups): a pale, thick bar living UNDER everything that pins a
-// cardinal (side↔side) or diagonal (corner↔corner) relationship with a
-// min/max distance band along its axis. Layout passes (drag chain-pull, group
-// expand push, post-tidy settle) keep the band satisfied via standoffSolver.
-//
-// Semantics are AXIS-BAND: ordering + distance along the standoff's axis only;
-// the perpendicular offset is wherever the user put it and is never touched by
-// the solver (the bar just slants). Direction is encoded by `a.anchor`: the
-// axis points from a toward b, so `min ≤ dot(Pb − Pa, axis) ≤ max` with
-// positive min/max.
-//
-// Module-level store (no React context — same reasons as cableState).
+// The standoff model + its module-level store (no React context). Direction is
+// encoded by `a.anchor`: the axis points from a toward b, so
+// `min ≤ dot(Pb − Pa, axis) ≤ max` with positive min/max.
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 export type StandoffAnchor = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
@@ -110,8 +99,6 @@ export function standoffClusters(standoffs: readonly Standoff[] = _standoffs): s
   }
   return clusters;
 }
-
-// ─── Store ──────────────────────────────────────────────────────────────────────
 
 type Listener = () => void;
 
@@ -215,10 +202,8 @@ export const standoffStore = {
   },
 };
 
-// ─── Layout tick ────────────────────────────────────────────────────────────────
 // Bumped by Canvas whenever node positions/sizes may have changed, so the
-// standoff layer re-measures and redraws. Cheap: the layer renders a handful
-// of bars.
+// standoff layer re-measures and redraws.
 
 let _tick = 0;
 const _tickListeners = new Set<Listener>();
@@ -235,10 +220,8 @@ export const standoffLayoutTick = {
   },
 };
 
-// ─── Settle hook ────────────────────────────────────────────────────────────────
 // Canvas owns the editor/area and registers the actual settle routine (solve +
-// apply translates). Other modules (the toolbar's min/max inputs) request a
-// settle through this indirection.
+// apply translates); other modules request a settle through this indirection.
 
 export type SettleOpts = { forceLock?: boolean };
 let _settle: (pinned?: Set<string>, opts?: SettleOpts) => void = () => {};
@@ -250,8 +233,6 @@ export function settleStandoffs(pinned?: Set<string>, opts?: SettleOpts) {
 }
 
 // Registered like every node-keyed store (nodeStoreRegistry): a deleted node's
-// standoffs go with it, and a wholesale rebuild clears in one pass — this was
-// previously wired ad hoc in Canvas.tsx (unconditionally, so a big rebuild paid
-// the per-node scan the registry's skip exists to avoid) and persistence.ts.
+// standoffs go with it, and a wholesale rebuild clears in one pass.
 registerNodeForget((nodeId) => standoffStore.removeForNode(nodeId));
 registerNodeForgetAll(() => standoffStore.clear());

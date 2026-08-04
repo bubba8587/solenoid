@@ -16,9 +16,8 @@ import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
 /**
- * Rudimentary Settings page. A modal rendered from SETTINGS_SCHEMA — add a field
- * there and a toggle shows up here automatically. (Node Packs will get their own
- * section here in a later pass.)
+ * Settings page: a modal rendered from SETTINGS_SCHEMA — add a field there and a
+ * toggle shows up here automatically.
  */
 
 // A setting whose feature has no mobile counterpart renders inert and grayed, with
@@ -216,9 +215,8 @@ function PaletteSection() {
   );
 }
 // Renderer toggle — the HTML-in-Canvas ("html") renderer vs the permanent DOM renderer.
-// Unlike the parked WGSL "canvas" mode (which was net-negative and stayed console-only),
-// html is perf-validated, so it gets a real UI toggle — gated on the Chrome flag being on
-// (supportsHtmlInCanvas). Off → DOM. The choice persists (renderModeStore).
+// Gated on the Chrome flag being on (supportsHtmlInCanvas). Off → DOM. The choice
+// persists (renderModeStore).
 function RendererSection() {
   const mode = useRenderMode();
   const [supported] = useState(supportsHtmlInCanvas);

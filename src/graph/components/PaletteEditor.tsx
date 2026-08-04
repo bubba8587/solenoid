@@ -37,7 +37,7 @@ const SLOT_ROLES: { slot: PaletteSlot; label: string }[] = [
 type Draft = Record<PaletteSlot, string>;
 
 /**
- * The custom-palette editor (F-1). A modal you open from Settings and Save/Cancel
+ * The custom-palette editor. A modal you open from Settings and Save/Cancel
  * out of. Edits live in a local DRAFT that previews ONLY in the sample — the whole
  * app is retinted once on Save, never live on every color-drag tick. The sample is
  * the REAL node / group / note chrome (their actual classes + CSS), colored from the
@@ -126,9 +126,6 @@ export function PaletteEditorModal() {
   );
 }
 
-// The live sample — the REAL node/group/note chrome (their own classes + CSS),
-// colored from the DRAFT (not the applied palette) via the same inline vars the
-// real components set. Preview-only; nothing here touches the canvas until Save.
 function PaletteSample({ draft }: { draft: Draft }) {
   const mode = appThemeStore.getMode();
   const gc = themeAccent(draft.gold, mode);

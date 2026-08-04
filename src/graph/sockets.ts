@@ -1,75 +1,43 @@
 import { ClassicPreset } from "rete";
 
 // ─── Socket data types ────────────────────────────────────────────────────────
-// Naming convention: single-word scalars (number, string, date, complex),
-// plain-concat arrays (list, strlist, datelist, complexlist), combos (numlist,
-// strcombo, datecombo, complexcombo — scalar OR its list), 2-D matrices (table,
-// strtable, datetable, complextable — one homogeneous matrix per element family;
-// `frame` is the heterogeneous named-column cross-type), the recursive container
-// (`cube` — a frame of any values, the data supremum), special (any/trueany). The
-// regular types form an (element × dimension) lattice — see FAMILIES below; the
-// accept-sets / areCompatible / canConnect are DERIVED from it, not hand-written.
-//   number  → number  / list        / numlist      / table
-//   string  → string  / strlist     / strcombo     / strtable
-//   date    → date    / datelist    / datecombo    / datetable
-//   complex → complex / complexlist / complexcombo / complextable
-// "percentage" and "weighted-list" were removed — no active socket instances.
+// The regular types form an (element × dimension) lattice — see FAMILIES below;
+// the accept-sets / areCompatible / canConnect are DERIVED from it, not hand-written.
 export type SocketDataType =
   | "number"    // scalar number
   | "list"      // number[]
-  | "numlist"   // number | number[] — flexible, used by element-wise math nodes
+  | "numlist"   // number | number[]
   | "string"    // scalar string
   | "strlist"   // string[]
-  | "strcombo"  // string | string[] — flexible, element-wise text nodes
+  | "strcombo"  // string | string[]
   | "date"      // date serial (numeric, like Excel)
   | "datelist"  // date[]
-  | "datecombo" // date | date[] — flexible, element-wise date nodes
-  | "complex"   // tagged { __cx, re, im } (VAL-15) — complex number (engineering / signal processing)
-  | "complexlist" // Cx[] — list of complex numbers
-  | "complexcombo"// complex | complex[] — flexible, element-wise complex nodes
+  | "datecombo" // date | date[]
+  | "complex"   // tagged { __cx, re, im }
+  | "complexlist" // Cx[]
+  | "complexcombo"// complex | complex[]
   | "complextable"// 2-D complex matrix
-  | "logical"     // scalar boolean (TRUE/FALSE) — see valueKinds.ts
+  | "logical"     // scalar boolean (TRUE/FALSE)
   | "logicallist" // boolean[]
-  | "logicalcombo"// boolean | boolean[] — flexible, element-wise logic nodes
+  | "logicalcombo"// boolean | boolean[]
   | "logicaltable"// 2-D boolean matrix
-  | "table"     // 2-D numeric matrix (linear algebra)
-  | "strtable"  // 2-D string matrix (polyform MAP/MAKEARRAY over text)
-  | "datetable" // 2-D date-serial matrix (polyform MAP/MAKEARRAY over dates)
-  | "anytable"  // 2-D matrix of any element type — the reshapers' output (Any 2D)
-  | "anylist"   // 1-D list of ANY element type — the element-agnostic list wildcard
-                // (Any List), the rank-1 sibling of `anytable`. Used by element-
-                // agnostic list ops (Set). STRICT: a scalar widens to a singleton.
-  | "anydata"   // ANY element type, rank ≤ 2 (scalar | list | matrix) — SOCK-9, the D23
-                // rung for Expression variables/results: matrices in, frames/cubes out
-  | "anycombo"  // ANY element type, scalar OR 1-D list — the element-agnostic COMBO,
-                // what `numlist` is to `number`. Accepts exactly what `anylist` does;
-                // the difference is that a scalar STAYS a scalar (no singleton
-                // widening), so a broadcaster reads its natural rank. For a producer
-                // whose result rank follows its input (Expression) or its op (Regex).
+  | "table"     // 2-D numeric matrix
+  | "strtable"  // 2-D string matrix
+  | "datetable" // 2-D date-serial matrix
+  | "anytable"  // 2-D matrix of any element type
+  | "anylist"   // 1-D list of ANY element type; a scalar widens to a singleton
+  | "anydata"   // ANY element type, rank ≤ 2 (scalar | list | matrix)
+  | "anycombo"  // ANY element type, scalar OR 1-D list; a scalar STAYS a scalar
   | "frame"     // named-column data table (Matrix + headers) — see frame.ts
-  | "cube"      // recursive container: a frame whose cells hold ANY value (incl. a
-                // nested frame/cube) — the lattice SUPREMUM. See frame.ts CubeValue.
+  | "cube"      // recursive container — the lattice SUPREMUM. See frame.ts CubeValue.
   | "lambda"    // first-class function value — see nodes/lambda.ts
-  | "chart"     // first-class chart/visual-output value — the OBJECT socket family's
-                // other member alongside lambda; identity-only (self + trueany), like lambda
-  | "document"  // a whole Note/Report's renderable content (DocumentValue) — an OBJECT
-                // socket, identity-only (self + trueany), like chart/lambda. Report/Note
-                // OUTPUT it; a document sink (Write to Obsidian) INPUTs it.
-  | "any"       // element-agnostic SCALAR — the rank-0 rung of the wildcard ladder
-                // (any → anylist → anytable). Accepts any family's scalar (and combos,
-                // which can be scalars); its output is a scalar of unknown family, so
-                // it widens anywhere data flows. NOT the supremum — that's `trueany`.
-  | "trueany";  // the TRUE wildcard/supremum — accepts and flows to everything,
-                // object family included. For genuine anything-nodes (Display,
-                // selectors, Cast, Report refs, composite ports, unwired lanes).
+  | "chart"     // first-class chart/visual-output value
+  | "document"  // a whole Note/Report's renderable content (DocumentValue)
+  | "any"       // element-agnostic SCALAR — rank-0 wildcard rung
+  | "trueany";  // the TRUE wildcard/supremum
 
-// SocketComponent renders: scalars/complex/any as circles, list types as
-// squares, combos as bicolor split squares, table/frame as 2×2-grid squares,
-// and `cube` as a 3-rhombus hexagon (a flat isometric cube — the recursive
-// container).
-// Values are CSS variables (defined in App.css) so the colors theme live —
-// light mode lightens the dark array variants. Used as fills/strokes/inline
-// colors everywhere (dots, cables, conduit, legend); never parsed as hex.
+// Values are CSS variables (defined in App.css) so the colors theme live.
+// Used as fills/strokes/inline colors everywhere; never parsed as hex.
 export const SOCKET_COLORS: Record<SocketDataType, string> = {
   number:   "var(--sock-number)",   // amber         — circle
   list:     "var(--sock-list)",     // dark amber    — square (array of number)
@@ -142,22 +110,6 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
 };
 
 // ─── The (element × dimension) lattice ────────────────────────────────────────
-// Every "regular" socket is one cell of an (element family × dimensionality)
-// grid. Rather than hand-maintain the accept-sets, we DERIVE them from ONE rule:
-// a value widens UP in dimensionality (scalar → list → matrix) for free, and
-// narrowing back down is blocked at the socket. A `combo` is the scalar-or-list
-// union a polymorphic op emits (Add(2,3) → scalar, Add([…],[…]) → list).
-//
-//   element   scalar    list          combo           matrix
-//   number    number    list          numlist         table
-//   string    string    strlist       strcombo        strtable
-//   date      date      datelist      datecombo       datetable
-//   complex   complex   complexlist   complexcombo    complextable
-//
-// To add a 5th element family: add a row here, its colors (App.css + SOCKET_COLORS),
-// a render branch (SocketComponent), and a case in formatModel.ts `familyOf`
-// (else the FC shows no controls for it — fail-safe but blank). The accept-sets,
-// areCompatible, and canConnect all fall out — no other edits.
 type Dim = "scalar" | "list" | "combo" | "matrix";
 
 const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
@@ -168,60 +120,36 @@ const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
   logical: { scalar: "logical", list: "logicallist", combo: "logicalcombo", matrix: "logicaltable" },
 };
 
-// Highest concrete dimensionality a dim can carry: scalar 0-D, list/combo 1-D
-// (combo = scalar-or-list, so 0-or-1-D ⇒ rank 1), matrix 2-D. An INPUT of dim Di
-// accepts an OUTPUT of dim Do (SAME family) iff Do never exceeds Di's capacity —
-// i.e. DIM_RANK[Do] ≤ DIM_RANK[Di]. That single inequality encodes most of the
-// "widening flows up, narrowing is blocked" policy: a scalar feeds a list
-// (singleton broadcast); a list feeds a matrix; a matrix feeds nothing narrower.
-// ONE exception rides on top in `dimFlows` below: a COMBO may feed its element
-// SCALAR (a combo is scalar-or-list, so it can be a scalar) — a plain `list` still
-// cannot. The rank model can't express that (combo/list both rank 1).
 const DIM_RANK: Record<Dim, number> = { scalar: 0, list: 1, combo: 1, matrix: 2 };
 const DIMS: Dim[] = ["scalar", "list", "combo", "matrix"];
 
-/** May a value of dim `dOut` flow into an input of dim `dIn`? The whole
- *  dimensional policy in one predicate: widening up the rank ladder, plus the ONE
- *  exception the rank model can't express — a COMBO may narrow into its element
- *  SCALAR (a combo IS scalar-or-list, so it can be a scalar). Used for BOTH the
- *  within-family accept-sets and the logical↔number bridge, so the exception can't
- *  drift out of one of them (it used to be bolted onto the within-family case only,
- *  which left `logicalcombo → number` blocked while `logical → number` flowed). */
+/** May a value of dim `dOut` flow into an input of dim `dIn`? Used for BOTH the
+ *  within-family accept-sets and the logical↔number bridge, so the combo→scalar
+ *  exception can't drift out of one of them. */
 function dimFlows(dOut: Dim, dIn: Dim): boolean {
   return DIM_RANK[dOut] <= DIM_RANK[dIn] || (dOut === "combo" && dIn === "scalar");
 }
 
-// The homogeneous 2-D matrix types + the 2-D wildcard `anytable`, but NOT `frame`
-// (heterogeneous named columns — structurally distinct). `anytable` flows both
-// ways among these (a reshaper's element type is unknown statically), staying 2-D
-// so the narrowing block still keeps it out of 1-D/0-D inputs.
+// The homogeneous 2-D matrix types + the 2-D wildcard `anytable`, but NOT `frame`.
 const MATRIX_TYPES = new Set<SocketDataType>([
   "table", "strtable", "datetable", "complextable", "logicaltable", "anytable",
 ]);
 
-// Every concrete family value type (number/string/date/complex/logical ×
-// scalar/list/combo/matrix) — i.e. any value of rank ≤ 2. A 2-D `anytable` INPUT
-// accepts all of these (a lower-rank value widens in); excludes `frame` (named
-// heterogeneous columns) and `lambda` (a function), which are structurally distinct.
+// Every concrete family value type — i.e. any value of rank ≤ 2. Excludes `frame`
+// and `lambda`, which are structurally distinct.
 const FAMILY_VALUE_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => Object.values(fam)),
 );
 
-// Rank-≤1 family values (scalar / list / combo of every family) — what an `anylist`
-// INPUT accepts by dimensional widening (a matrix does NOT: that would be narrowing).
-// The 1-D analogue of FAMILY_VALUE_TYPES. Derived, so a new family needs no edit.
+// Rank-≤1 family values (scalar / list / combo of every family).
 const RANK1_VALUE_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.list, fam.combo]),
 );
-// Rank-0-capable family values — what an `any` (element-agnostic SCALAR) INPUT
-// accepts: every family's scalar, plus its combo (a combo CAN be a scalar — the
-// same exception each family scalar makes; runtime-accepted risk if it's a list).
+// Rank-0-capable family values: every family's scalar, plus its combo.
 const SCALAR_COMBO_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.combo]),
 );
-// The concrete 1-D list + combo types — where an `anylist` OUTPUT may drop (its
-// element type is unknown statically, so this is a runtime-accepted risk, exactly
-// like `anytable` flowing into a concrete matrix).
+// The concrete 1-D list + combo types.
 const LIST_COMBO_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => [fam.list, fam.combo]),
 );
@@ -232,25 +160,13 @@ const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() =>
   const map: Partial<Record<SocketDataType, SocketDataType[]>> = {};
   for (const fam of Object.values(FAMILIES)) {
     for (const di of DIMS) {
-      // `dimFlows` carries the combo→scalar exception, so e.g. an Expression's
-      // `numlist` output feeds a `number` rate/count input while a plain `list`
-      // (1-D only) still cannot. The runtime half of this lives in coerceInputs'
-      // `collapseSingleton`: a ONE-element list arriving at a combo or scalar rung IS
-      // that scalar, which is what makes "a combo can be a scalar" true rather than
-      // merely permitted. A longer list reaching a scalar input remains the accepted
-      // risk (same as `anytable`), and `toScalar` raises `#SHAPE!` for the numeric one.
       map[fam[di]] = DIMS
         .filter((dof) => dof !== di && dimFlows(dof, di))
         .map((dof) => fam[dof]);
     }
   }
-  // Cross-family coercion: logical ↔ number. A logical coerces to 1/0 in any
-  // numeric context (Excel + Polars), and a 0/1 number feeds a logic input
-  // (the spreadsheet multiply-by-a-condition trick). coerceInputs does the
-  // runtime boolean↔number conversion; this just permits the connection. The
-  // bridge mirrors the SAME dimensional rule as a within-family edge — including
-  // combo→scalar, so EXACT's `logicalcombo` result reaches a `number` input just
-  // as a bare `logical` does.
+  // Cross-family coercion: logical ↔ number — the ONE cross-family bridge.
+  // coerceInputs does the runtime conversion; this just permits the connection.
   const NUM = FAMILIES.number, LOG = FAMILIES.logical;
   for (const di of DIMS) {
     for (const dof of DIMS) {
@@ -270,11 +186,9 @@ export function is2DType(dt: SocketDataType): boolean {
   return MATRIX_TYPES.has(dt) || dt === "frame" || dt === "cube";
 }
 
-/** Does this socket type carry date serials (scalar, list, the scalar-or-list
- * combo, OR the matrix)? A date serial is just a number, so the SOCKET TYPE is the
- * only signal that a value should format as a date — every "is this a date?" check
- * must agree, so they all route through here (was duplicated, and `datecombo` —
- * Cast(date)'s output — kept getting forgotten, so the FC showed a raw serial). */
+/** Does this socket type carry date serials? A date serial is just a number, so the
+ * SOCKET TYPE is the only signal that a value should format as a date — every
+ * "is this a date?" check must agree, so they all route through here. */
 export function isDateType(dt: SocketDataType): boolean {
   return dt === "date" || dt === "datelist" || dt === "datecombo" || dt === "datetable";
 }
@@ -338,23 +252,15 @@ export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): S
   if (base === "anylist" || base === "anytable") {
     const baseRank = latticeRank(base);
     const wiredRank = latticeRank(wired);
-    // A FAMILY-LESS wire (another wildcard — `any`/`anylist`/`anycombo`/`trueany`, or a
-    // frame/cube) carries nothing to adopt, so the port KEEPS ITS BASE. Returning the
-    // wired type here broke the restriction this port's whole doc comment promises: a
-    // `trueany` cable into a Concat-Lists row turned that row INTO a `trueany` port, which
-    // then accepted a frame or a lambda — values the node can't handle. It also erased the
-    // rank glyph (a hollow ring where a list square belongs). Matches
-    // `projectTypeToBase`'s family-less branch, so the two agree on every connectable pair
-    // (machine-checked in socketConnect.test.ts).
+    // A FAMILY-LESS wire (another wildcard, or a frame/cube) carries nothing to adopt,
+    // so the port KEEPS ITS BASE. Matches `projectTypeToBase`'s family-less branch, so
+    // the two agree on every connectable pair (machine-checked in socketConnect.test.ts).
     if (fam === null || baseRank === null || wiredRank === null) return base;
     if (wiredRank >= baseRank) return wired;
     return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
   }
-  // The rank-0/combo wildcard bases (`any`, `anycombo`) keep the SAME family-less
-  // rule: a `trueany` cable (NA(), XLOOKUP, Get Cell) into a SWITCH row or an
-  // Expression variable must not turn the port INTO `trueany` — that erased the
-  // rank glyph AND made every drag-time/connection-dialog check treat the occupied
-  // port as accept-anything (the exact defect the anylist/anytable branch fixed).
+  // The rank-0/combo wildcard bases (`any`, `anycombo`, `anydata`) keep the SAME
+  // family-less rule.
   if ((base === "any" || base === "anycombo" || base === "anydata") && fam === null) return base;
   // Everything else (a `trueany` base, a family-typed wire) adopts verbatim.
   return wired;
@@ -380,70 +286,32 @@ export function projectTypeToBase(base: SocketDataType, t: SocketDataType): Sock
 /**
  * DIRECTIONAL: can a value from an OUTPUT of type `out` flow into an INPUT of
  * type `in`? The one primitive both areCompatible and canConnect build on.
- *  - identity / `trueany` (the supremum wildcard, either side) always connect;
- *  - `any` is the element-agnostic SCALAR (the rank-0 wildcard rung): its INPUT
- *    takes any family scalar/combo; its OUTPUT — a scalar of unknown family —
- *    widens anywhere data flows (never into the object family, lambda/chart);
- *  - `anytable` is a 2-D wildcard among MATRIX_TYPES (both directions);
- *  - otherwise the derived lattice accept-set decides (same-family widening).
- * Narrowing (list → scalar, matrix → list, anytable → 1-D, …) is simply absent
- * from every accept-set, so it's blocked here without a separate dimension rule.
+ * Narrowing is simply absent from every accept-set, so it's blocked here without
+ * a separate dimension rule.
  */
 function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === outT) return true;
   if (inT === "trueany" || outT === "trueany") return true;
   // `anycombo` may be a scalar at runtime, so it reaches an `any` input exactly as
-  // every family combo reaches its own scalar (the combo→scalar exception) — without
-  // this, retyping a Result socket from `any` to `anycombo` silently REMOVED the
-  // Regex→SWITCH/CHOOSE/Set-row edges (and load silently dropped such cables).
+  // every family combo reaches its own scalar (the combo→scalar exception).
   if (inT === "any") return SCALAR_COMBO_TYPES.has(outT) || outT === "anycombo";
   if (outT === "any") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // `anytable` as an INPUT is a 2-D, element-agnostic wildcard that any lower-rank
-  // value WIDENS into — a 1-D list or a scalar of any family (TRANSPOSE of a list →
-  // a column; MAP over a list), exactly as a `list` widens into a `table` input.
   if (inT === "anytable" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
-  // `anytable` as an OUTPUT stays strictly 2-D: it drops into a concrete matrix
-  // input but never narrows into a 1-D/0-D one.
   if (outT === "anytable" && MATRIX_TYPES.has(inT)) return true;
-  // `anylist` — the 1-D element-agnostic wildcard, the rank-1 sibling of `anytable`.
-  // As an INPUT, any scalar / list / combo of ANY family widens in (a matrix does not
-  // — that's narrowing). As an OUTPUT, it stays 1-D: it drops into any concrete list/
-  // combo input (element unknown statically → runtime-accepted, like anytable→matrix)
-  // and widens UP into the 2-D containers (handled by the anytable/frame/cube rules,
-  // which accept `anylist` too).
   if (inT === "anylist" && (RANK1_VALUE_TYPES.has(outT) || outT === "anycombo")) return true;
   if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
-  // `anycombo` — the element-agnostic COMBO, `anylist`'s scalar-or-list sibling. It
-  // ACCEPTS exactly what `anylist` accepts (the two differ only in coercion: a scalar
-  // stays a scalar here). As an OUTPUT it may be a scalar, so unlike `anylist` it also
-  // reaches a scalar input — i.e. it flows wherever `any` flows.
   if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // `anydata` — the rank-≤2 element-agnostic wildcard (SOCK-9, D23): the rung between
-  // `anycombo` (refuses the matrices D23 admits) and `trueany` (admits the frames and
-  // cubes D23 excludes). As an INPUT any family value of rank ≤ 2 widens in, and the
-  // lower wildcards join it. As an OUTPUT it flows exactly where `anycombo` flows —
-  // runtime-shaped, the same accepted risk.
-  // (An `anycombo`/`any` OUTPUT already reached every non-object input via their own
-  // permissive lines above, so only `anylist`/`anytable` outputs need naming here.)
+  // `anydata` — the rank-≤2 element-agnostic wildcard (SOCK-9, D23). An
+  // `anycombo`/`any` OUTPUT already reached every non-object input via their own
+  // permissive lines above, so only `anylist`/`anytable` outputs need naming here.
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // A `frame` INPUT accepts ANY lower-rank value by DIMENSIONAL widening — the type
-  // system enforces ELEMENT separation (date/number/complex/string never auto-cross;
-  // only the deliberate logical↔number bridge does) but allows DIMENSIONAL flow. So a
-  // 2-D matrix → rows×cols, a 1-D list → a single ROW (CSV-consistent — transpose for
-  // a column), a scalar → 1×1. coerceInputs builds the frame. (A frame OUTPUT does NOT
-  // flow into a matrix input — it'd lose its headers / assume homogeneity.)
+  // A 1-D list widens into a `frame` as a single ROW (CSV-consistent — transpose for
+  // a column); coerceInputs builds the frame.
   if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
-  // A `cube` INPUT is the lattice SUPREMUM — the universal recursive container (a
-  // frame whose cells may themselves hold any value). EVERY data value widens UP
-  // into it: a scalar/list/matrix (→ a 1×1 / row / body of flat cells), an
-  // `anytable`, or a `frame` (its flat cells). Another cube flows in as itself
-  // (identity, above). Like a frame it enforces no element separation — it holds
-  // whatever. A cube OUTPUT does NOT flow into any narrower container (frame /
-  // matrix / list / anytable) — the nesting would be silently dropped — so it
-  // reaches only another cube (identity) or `any` (both handled above). This is
-  // what "closes" the socket lattice: a single top type every value reaches.
+  // A cube OUTPUT does NOT flow into any narrower container — the nesting would be
+  // silently dropped — so it reaches only another cube (identity) or `any`.
   if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
   return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
 }
@@ -453,14 +321,7 @@ export function areCompatible(a: SocketDataType, b: SocketDataType): boolean {
   return accepts(a, b) || accepts(b, a);
 }
 
-/**
- * DIRECTIONAL connection check used by the connection guard: can a value from an
- * OUTPUT of type `out` flow into an INPUT of type `in`? Widening (scalar → list /
- * table, list → table, scalar → numlist, an `anytable` into a concrete matrix) is
- * allowed; narrowing a wider value into a smaller input is refused at the socket —
- * the user reshapes explicitly (TOCOL / Get Column) when they really do have a
- * lower-dim slice. `trueany` accepts/flows-to everything; `any` is scalar-only.
- */
+/** DIRECTIONAL connection check used by the connection guard. */
 export function canConnect(out: SocketDataType, inp: SocketDataType): boolean {
   return accepts(inp, out);
 }
@@ -498,12 +359,9 @@ export class MutableSocket extends SolenoidSocket {
  *  sockets by `instanceof`, so a node opts a port in just by constructing one.
  *  One instance per port, never shared (a retype must not leak across cards). */
 export class AdoptiveSocket extends MutableSocket {
-  /** The type this port reverts to when unwired. Default `trueany` (the hollow-ring
-   *  placeholder). A narrower base (e.g. `anytable`, `anylist`) keeps the port
-   *  RESTRICTED to that rung's acceptance while still adopting the wired cable's
-   *  CONCRETE type — a `datetable` in still reads as `datetable`, but a scalar/frame
-   *  is refused. Used by Build Frame / Frame from Lists to learn a matrix/list's
-   *  element family (the one thing values can't recover — a date serial looks numeric). */
+  /** The type this port reverts to when unwired. A narrower base (e.g. `anytable`,
+   *  `anylist`) keeps the port RESTRICTED to that rung's acceptance while still
+   *  adopting the wired cable's CONCRETE type. */
   constructor(public readonly base: SocketDataType = "trueany") {
     super(base);
   }
@@ -550,18 +408,10 @@ export function isWildcardType(dt: SocketDataType): boolean {
   return dt === "any" || dt === "trueany";
 }
 
-/** EVERY wildcard rung — the six types that carry no ELEMENT FAMILY, whether or
- *  not they pin a rank. A resolver asking "what family is on this socket, so I
- *  can format/display by it?" gets nothing from any of them and must keep
- *  looking (or fall back to the provisional wildcard).
- *
- *  Use this, not `isWildcardType`, for FAMILY resolution: an FC wired into an
- *  Expression variable (`anydata`) once adopted "anydata" and rendered NO
- *  controls, while the same FC into a Display (`trueany`) showed the
- *  provisional number set — the same intent answered two ways because two
- *  family-less rungs were classified differently (2026-08-01). Family-less is
- *  family-less; only `frame`/`cube`/`lambda`/`chart`/`document` are genuinely
- *  resolved non-family types, and they stay resolvable. */
+/** EVERY wildcard rung — the types that carry no ELEMENT FAMILY, whether or not
+ *  they pin a rank. Use this, not `isWildcardType`, for FAMILY resolution: only
+ *  `frame`/`cube`/`lambda`/`chart`/`document` are genuinely resolved non-family
+ *  types, and they stay resolvable. */
 export function isWildcardRung(dt: SocketDataType): boolean {
   return isWildcardType(dt) || dt === "anycombo" || dt === "anylist"
     || dt === "anytable" || dt === "anydata";

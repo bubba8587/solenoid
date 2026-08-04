@@ -1,18 +1,6 @@
-// ─── Array-shape coercion ─────────────────────────────────────────────────────
+// Array-shape coercion: normalize whatever arrives to the shape a node wants.
 // (type-only import — erased at runtime, so no module cycle with errorValue)
 import type { SolError } from "../errorValue";
-// Solenoid's numeric data forms one lattice: a scalar is a 1×1 array, a list is
-// a single ROW (CSV orientation: [1,2,3] → [[1,2,3]], 1×3), a table is M×N. The
-// `table` socket is the supertype, so a node may receive a number, a number[],
-// or a number[][] on any numeric input regardless of its declared shape (cables
-// are validated on static type, not live dimensions — see sockets.ts).
-//
-// These helpers normalize whatever arrives to the shape a node actually wants.
-// When the incoming data can't fit (e.g. a 3×3 table where a single value is
-// required), they throw ShapeError; the node catches it and shows the message
-// in its value box rather than breaking the cable. CSV row-orientation is the
-// one rule to remember: a 1-D list is a row, and TRANSPOSE turns it into a
-// column when a node needs that.
 
 export type Mat = number[][];
 
@@ -57,8 +45,8 @@ export function toList(v: Numeric | null | undefined): number[] | null {
   if (v.length === 0) return [];
   if (!is2D(v)) return v as number[];
   const m = v as Mat;
-  if (m.length === 1) return [...m[0]];                 // single row
-  if (m.every((r) => r.length === 1)) return m.map((r) => r[0]); // single column
+  if (m.length === 1) return [...m[0]];
+  if (m.every((r) => r.length === 1)) return m.map((r) => r[0]);
   throw new ShapeError(`Expected a list, got a ${m.length}×${m[0]?.length ?? 0} table`);
 }
 
@@ -74,11 +62,6 @@ export function toScalar(v: Numeric | null | undefined): number | null {
   throw new ShapeError(`Expected a single value, got ${flat.length}`);
 }
 
-// A 2-D cell under the array-semantics value model: number (date serial
-// included), text, a real boolean, a first-class null (missing), or a per-cell
-// SolError (#N/A padding, propagated failures). The reshape nodes accept an
-// `any` input (so text/date matrices connect), which coerceInputs leaves raw;
-// they promote it to a matrix themselves with this element-agnostic widener.
 export type Cell = number | string | boolean | SolError | null;
 
 /**

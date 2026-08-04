@@ -1,32 +1,7 @@
-// ─── Tagged error values — Solenoid's #DIV/0! ─────────────────────────────────
-// Excel's most load-bearing UX feature is arguably that #DIV/0! / #NUM! /
-// #VALUE! are VISIBLE and PROPAGATE, so a failure is traceable to its source.
-// Solenoid nodes historically signalled every failure with `null`, which
-// renders identically to "not wired yet" — the answer just went blank
-// somewhere upstream. This module is the error-value story:
+// Tagged error values (`SolError`) + the per-node data() guard.
+// `SolError` is a tagged plain object, not a class: it survives structuredClone
+// and avoids cross-module instanceof pitfalls.
 //
-//  • `SolError` — a tagged plain object (tag property, not a class: survives
-//    structuredClone and avoids cross-module instanceof pitfalls) carrying an
-//    Excel-style code plus a structural message.
-//  • `installErrorGuards(node)` — wraps a node's `data()` once, at nodecreated:
-//      1. error in → error out: if any input value is an error, every output
-//         is that error and the node's own logic never runs (first error wins),
-//      2. a THROWING data() yields a local #ERROR! on its outputs instead of
-//         killing the whole recompute pass (review §4.3),
-//      3. `cachedResult` mirrors the error so the value box shows it.
-//    Pass-through nodes (Conduit/Cable Switch — lane i must carry
-//    lane i's error, not poison every lane) and error CONSUMERS (IFERROR,
-//    IS checks) skip the input guard and see raw error values.
-//  • Producers return `solError(code, msg)` instead of null where the failure
-//    is a real error (not merely "blank"): division by zero, lookup miss,
-//    formula eval failure, … Convert sites incrementally — null remains the
-//    legitimate "no value" (empty cell) signal.
-//
-// Value model (array-semantics): a list/matrix/frame CARRIES per-cell SolErrors
-// (and first-class nulls) — lists CAN contain errors. Aggregators propagate the first per-cell error
-// (forAggregate); element-wise ops carry an error cell through unmorphed.
-// See valueKinds.ts + subsystem-invariants "Error values".
-
 // The code set is deliberately MORE specific than Excel's seven, while keeping
 // the #CODE! surface form Excel users recognize. Granularity follows two
 // outside standards — SQLSTATE class 22 (ISO 9075 data exceptions) and
@@ -40,25 +15,19 @@
 //             Err:523)
 //   #OVERFLOW! result magnitude exceeds a ceiling — a finite computation whose true
 //             answer is a really-big NUMBER the float type can't hold (2^5000), or a
-//             generator asked for more elements than the cap. More descriptive than
-//             #RANGE!, which only shadowed Excel #NUM!'s vague naming — Solenoid
-//             names the cause. (splits Excel #NUM!; SQLSTATE 22003; Err:512)
+//             generator asked for more elements than the cap.
+//             (splits Excel #NUM!; SQLSTATE 22003; Err:512)
 //   #SYNTAX!  formula text didn't parse        (splits Excel #VALUE!; Err:516)
 //   #VALUE!   wrong type / operand misuse      (Excel; SQLSTATE 22018)
-//   #TYPE!    wrong ELEMENT TYPE for the op     (Solenoid-specific — no Excel
-//             equivalent; Excel folds this into #VALUE!). Solenoid's sockets track
-//             element FAMILIES (number / text / date / complex), so feeding text
-//             into a numeric op — or numbers that merely resemble date serials into
-//             a date op — is a distinct, more informative failure than #VALUE!.
+//   #TYPE!    wrong ELEMENT TYPE for the op     (Solenoid-specific; Excel folds
+//             this into #VALUE!)
 //   #SHAPE!   list/matrix dimension mismatch   (no Excel scalar equivalent;
 //             nearest is #SPILL!)
 //   #NAME?    unknown name                     (Excel; Err:525)
 //   #REF!     dangling reference               (Excel; Err:524)
 //   #CIRC!    circular dependency              (Err:522; Excel only warns)
-//   #UNIT!    incommensurable units in an op     (Solenoid-specific — dimensional
-//             algebra; adding meters to seconds, or converting across dimensions.
-//             Distinct from #TYPE! (wrong element type) — same type, wrong
-//             DIMENSION. See dimension.ts.)
+//   #UNIT!    incommensurable units in an op     (Solenoid-specific — same element
+//             type, wrong DIMENSION; see dimension.ts)
 //   #ERROR!   unexpected internal failure      (Err:517) — the guard's catch-all
 //
 // IFERROR catches every code; IFNA / ISNA match only #N/A.
@@ -171,12 +140,9 @@ export function firstInputError(
 //    span); a bad ref must show its own error badge in place, not blank every
 //    other ref in the same report. NoteNode is output-only (frontmatter fields,
 //    never inputs) — kept here only so its bare data() read path stays uniform.
-//  - ChartNode is a figure SINK: a #DIV/0! (or a list/frame carrying error cells)
-//    wired into its Data socket must render as an empty "no data" figure, not turn
-//    the `chart` output into a SolError object (which every chart consumer — the
-//    inline node figure, Display, a Report embed — would then have to special-case,
-//    and which historically crashed the node). Its data() sanitizes every cell to
-//    a finite number or null, so it needs to SEE the raw error to drop it.
+//  - ChartNode is a figure SINK: it must render an errored Data input as an empty
+//    figure and never emit a SolError out its `chart` output, so its data() needs
+//    to SEE the raw error to drop it.
 const SEES_ERRORS = new Set([
   "IFErrorNode", "IsTestNode",
   "ConduitNode", "CableSwitchNode",
@@ -199,17 +165,6 @@ export function isFrameLike(v: unknown): v is FrameLike {
     Array.isArray((v as { columns?: unknown }).columns);
 }
 
-// ─── Bounded per-cell error scan ──────────────────────────────────────────────
-// A per-cell SolError inside a list/matrix/frame must surface in the Problems
-// panel and the model fuzzer — but a FULL O(rows×cols) scan on EVERY node's
-// output EVERY recompute pass was rejected on perf (see subsystem-invariants
-// "Error values"). So the scan is BOUNDED: per 1-D container we examine the HEAD
-// (first CELL_SCAN_HEAD cells) plus a stride SAMPLE across the remainder — at
-// most CELL_SCAN_HEAD + CELL_SCAN_STRIDE_SAMPLES indices, a constant. A
-// systematic (whole-column) per-cell error — the overwhelmingly common case, a
-// bad transform applied to every row — is always caught by the head; a lone bad
-// cell buried past the head between two sampled strides can be missed. That miss
-// is the accepted cost of keeping the hot path O(1)-per-output.
 export const CELL_SCAN_HEAD = 64;
 export const CELL_SCAN_STRIDE_SAMPLES = 32;
 

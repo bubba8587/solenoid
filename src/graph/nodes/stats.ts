@@ -101,8 +101,7 @@ export class PercentileNode extends ClassicPreset.Node {
         result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       } else {
         // Excel PERCENTILE.EXC: p must lie strictly inside (1/(n+1), n/(n+1)) —
-        // outside it Excel returns #NUM!. Clamping here silently returned the
-        // min/max element instead.
+        // outside it Excel returns #NUM!.
         if (p < 1 / (n + 1) || p > n / (n + 1)) {
           const err = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
           this.cachedResult = err; return { result: err };
@@ -159,9 +158,8 @@ export class QuartileNode extends ClassicPreset.Node {
         result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       } else {
         // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): p must lie in [1/(n+1), n/(n+1)]
-        // or Excel returns #NUM! — clamping (as this did) silently returned the
-        // min/max element instead. Same fix as PercentileNode EXC above; the q=0/4
-        // guard catches the endpoints, this catches an interior q at small n.
+        // or Excel returns #NUM!. The q=0/4 guard catches the endpoints; this
+        // catches an interior q at small n.
         if (p < 1 / (n + 1) || p > n / (n + 1)) {
           const err = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
           this.cachedResult = err; return { result: err };
@@ -682,7 +680,6 @@ export class ConfidenceNode extends ClassicPreset.Node {
 
 // ─── Shared helpers for test nodes ────────────────────────────────────────────
 
-// arrMean / arrSampleVar / tCDF moved to mathUtils (shared with the formula surface).
 function binomPmfLocal(k: number, n: number, p: number): number | null {
   if (p === 0) return k === 0 ? 1 : 0;
   if (p === 1) return k === n ? 1 : 0;
@@ -1109,9 +1106,6 @@ export class ProbNode extends ClassicPreset.Node {
     const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
     if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
     // ONE implementation with the formula surface (mathUtils.probBetween — FX-1).
-    // The old inline loop compared raw cells, so a null range cell coerced to 0
-    // (`null >= 0` is true) and silently joined the sum; a cell error now
-    // propagates as itself (VAL-6).
     const result = probBetween(range, probs, lo, hi);
     this.cachedResult = result;
     return { result };

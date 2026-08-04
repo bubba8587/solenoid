@@ -1,6 +1,5 @@
 import type { CableShape } from "./cableShape";
 
-// Cardinal direction enum used by socket-position math.
 export enum Position {
   Left = "left",
   Right = "right",
@@ -24,11 +23,6 @@ type PathArgs = {
 
 type Pt = { x: number; y: number };
 
-// Below this Euclidean socket distance the cable is drawn as a literal
-// straight line — the one allowed exception to every shape's routing rules.
-// It is deliberately NOT a per-axis test: a target merely *aligned* with the
-// source (directly below an east-facing arm, say) must still get a real
-// route that exits the socket outward.
 const STRAIGHT_THRESHOLD = 15;
 
 const straightLine = (sx: number, sy: number, tx: number, ty: number) =>
@@ -41,7 +35,6 @@ function unitDeg(deg: number): Pt {
   return { x: Math.cos(r), y: Math.sin(r) };
 }
 
-// Exit unit vector for a cardinal Position (outward from that side).
 function posExit(p: Position): Pt {
   switch (p) {
     case Position.Right:  return { x: 1, y: 0 };
@@ -65,12 +58,6 @@ function entryDir(args: PathArgs): Pt {
   return { x: -out.x, y: -out.y };
 }
 
-// ─── Spline (bezier) ──────────────────────────────────────────────────────────
-// One tangent-exact cubic: the control arms sit along the exit / entry
-// directions, so the curve leaves the source precisely along its exit
-// direction and reaches the target precisely along its entry direction, and
-// may start bending immediately after the socket — the "spacer" next to the
-// socket is itself part of the bezier rather than a rigid straight lead.
 function getAngleBezierPath(args: PathArgs): string {
   const dx = args.targetX - args.sourceX;
   const dy = args.targetY - args.sourceY;
@@ -88,35 +75,6 @@ function getAngleBezierPath(args: PathArgs): string {
   return `M ${args.sourceX},${args.sourceY} C ${c1x},${c1y} ${c2x},${c2y} ${args.targetX},${args.targetY}`;
 }
 
-// ─── Compass-walk router (diagonal + straight modes) ──────────────────────────
-// Both polyline shapes route through the same machinery, parametrised by how
-// many compass headings exist: `div` = 8 for diagonal (segments on 45°
-// multiples, turns of exactly ±45°) and 4 for straight (segments on 90°
-// multiples, turns of exactly ±90°, rendered with rounded corners). The hard
-// constraints hold by construction — there is no sharper-turn fallback:
-//   • a rigid stub leaves the source along its exit direction and a rigid stub
-//     arrives at the target along its entry direction (when the stub angle is
-//     off the compass grid — rotated connector arms — the single stub junction
-//     absorbs the difference, up to half a compass step);
-//   • every other segment lies on a compass heading;
-//   • consecutive segments turn by exactly one compass step or continue straight.
-//
-// A route is a WALK: the sequence of compass headings the cable visits, moving
-// ±1 step between consecutive legs. The walk family is canonical — rotate
-// backward `b` steps, forward `b + r + e` steps, backward `e` steps, where `r`
-// is the step distance from exit heading to entry heading in rotation direction
-// `sigma`. Candidates are tried in order of total turning and the FIRST solvable
-// walk wins (never a cost comparison between rivals, which is what made earlier
-// routers flicker: near-ties flip under 1px of drag). A walk that sweeps the
-// full circle can absorb any displacement, so the search always terminates.
-//
-// Leg lengths come from a closed-form solve (see solveWalk). The solution is a
-// continuous function of the endpoints for a fixed walk, and when a walk stops
-// being solvable the next one's solution degenerates to exactly the shape the
-// old one ended at — so dragging morphs the cable smoothly instead of snapping.
-// The only true discontinuities left are the straight-line collapse for
-// near-touching sockets and the over/under choice for head-on loops, both of
-// which are inherent to the problem.
 
 const DIR_LEAD = 14; // exit/entry stub — and the minimum visible staircase leg
 
@@ -153,23 +111,6 @@ function addToHeading(heads: number[], lens: number[], head: number, amount: num
   for (let i = 0; i < heads.length; i++) if (heads[i] === head) lens[i] += amount / n;
 }
 
-// Solve leg lengths for a walk so the legs sum to the displacement D, or null
-// if this walk can't reach D. Two kinds of legs:
-//   • between two SAME-direction turns: gets at least minLeg — a staircase step
-//     must be visible, and collapsing it would fuse two turns into a sharper one;
-//   • between OPPOSITE turns (or adjoining a stub): may collapse to zero. Its
-//     neighbors share a heading, so the collapse merges them into one straight
-//     run — never a sharp corner. This is what lets adjacent walk shapes meet
-//     continuously at their boundary.
-// Exception to the second rule: a leg adjoining an OFF-GRID stub (a rotated
-// connector arm whose exact angle isn't a compass heading) keeps minFirst /
-// minLast. If it collapsed, the stub's snap offset and the first turn would
-// merge into one corner sharper than a compass step (up to 135° in the
-// orthogonal mode). Kept apart, the junction is a small snap turn (≤ half a
-// step) followed by a clean full-step turn.
-// The remaining displacement is decomposed on the unique adjacent pair of fan
-// headings that brackets it (both coefficients ≥ 0 ⇔ it lies in their wedge)
-// and spread across those headings' legs.
 function solveWalk(
   heads: number[], D: Pt, minLeg: number, div: number,
   minFirst: number, minLast: number,
@@ -194,7 +135,6 @@ function solveWalk(
   let lo = heads[0], hi = heads[0];
   for (const h of heads) { lo = Math.min(lo, h); hi = Math.max(hi, h); }
   if (lo === hi) {
-    // Straight walk: solvable only when the residual lies along the heading.
     const d = dirOfK(lo, div);
     const along = rx * d.x + ry * d.y;
     if (Math.abs(rx * d.y - ry * d.x) > SOLVE_EPS || along < -SOLVE_EPS) return null;
@@ -221,16 +161,12 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   const T: Pt = { x: args.targetX, y: args.targetY };
   const dx = T.x - S.x, dy = T.y - S.y;
   const dist = Math.hypot(dx, dy);
-  // Near-touching sockets: the one allowed exception — a literal straight line.
   if (dist < STRAIGHT_THRESHOLD) return [S, T];
   const dS = exitDir(args);
   const dT = entryDir(args);
-  // Stubs and the staircase minimum shrink as the sockets close in, so the
-  // route degrades gracefully toward the straight-line collapse instead of
-  // knotting up at close range. The staircase minimum shrinks faster: a walk
-  // through k same-direction turns consumes k·minLeg of displacement before
-  // any slack is distributed, so at close range a large minimum can make every
-  // walk unsolvable (the residual points backward out of every fan).
+  // The staircase minimum must shrink FASTER than the stub: a walk through k
+  // same-direction turns consumes k·minLeg before any slack is distributed, so at
+  // close range a large minimum makes every walk unsolvable.
   const lead = Math.min(DIR_LEAD, dist / 4);
   const minLeg = Math.min(DIR_LEAD, dist / 8);
   const A: Pt = { x: S.x + dS.x * lead, y: S.y + dS.y * lead };
@@ -265,15 +201,9 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   // hold — the steps just get smaller.
   for (let m = minLeg; m >= 0.25; m /= 2) {
     // Globally SHORTEST solvable walk; the sort order (fewest turns, then
-    // preferred rotation) only settles exact length ties. Length must be the
-    // primary criterion for continuity: when a walk enters feasibility it does
-    // so at exactly the length of its own wider extension (its boundary
-    // solution IS the extension's degenerate solution), and that extension was
-    // already competing — so the handoff is seamless. Gating by turn count
-    // first would bar the extension from winning and make the entry a visible
-    // jump. With length primary, every selection switch is either seamless or
-    // an equal-length swap between genuinely interchangeable routes (e.g.
-    // mirror loops around a head-on target), which is inherent.
+    // preferred rotation) only settles exact length ties. LENGTH must stay the
+    // primary criterion — gating by turn count first turns seamless handoffs
+    // into visible jumps.
     let best: { heads: number[]; lens: number[]; total: number } | null = null;
     for (const c of cands) {
       const heads = buildHeads(kS, c.sigma, c.b, c.r, c.e);

@@ -101,7 +101,7 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
 }
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
-// A URL → numeric Frame. The URL field commits on blur/Enter (not per keystroke)
+// A URL → Frame. The URL field commits on blur/Enter (not per keystroke)
 // so typing never fires a fetch; committing changes the cache key and the node's
 // async data() re-fetches on the next recompute.
 

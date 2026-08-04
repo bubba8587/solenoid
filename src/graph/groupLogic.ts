@@ -14,10 +14,8 @@ import { measuredBox } from "./nodeSize";
 
 export const GROUP_DEFAULT_COLOR = "gray"; // palette slot — neutral gray when there's no clear majority
 
-// The group takes the color of the most common node kind in the selection — a
-// chain of mostly-number nodes reads as a number-colored group. A tie (or all
-// distinct) falls back to gray. Returns a palette SLOT id (the group stores the
-// slot, like every other color in the app), not a hex.
+// The color of the most common node kind in the selection; a tie (or all
+// distinct) falls back to gray. Returns a palette SLOT id, not a hex.
 function majorityColor(nodes: ClassicPreset.Node[]): string {
   const tally = new Map<string, number>();
   for (const n of nodes) {
@@ -32,9 +30,9 @@ function majorityColor(nodes: ClassicPreset.Node[]): string {
   return bestN > 0 && !tie ? best : GROUP_DEFAULT_COLOR;
 }
 
-// ─── Group geometry + membership (the "hybrid" model) ───────────────────────────
-// A group is a frame around a set of member node ids. The set is seeded from the
-// selection at creation, then reconciled as nodes are dragged in/out of the box.
+// Group geometry + membership: a group is a frame around a set of member node
+// ids, seeded from the selection at creation, then reconciled as nodes are
+// dragged in/out of the box.
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
@@ -50,8 +48,8 @@ export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  // measuredBox guarantees a non-zero size: an unpainted member used to read
-  // offsetWidth/Height = 0, collapsing the wrapped bbox to that member's corner.
+  // measuredBox guarantees a non-zero size: an unpainted member reading
+  // offsetWidth/Height = 0 collapses the wrapped bbox to that member's corner.
   return measuredBox(area, id, getEditor() ?? undefined);
 }
 
@@ -68,14 +66,11 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
   // A group is built only from selected NODES. Clear any lingering cable
   // selection first: it's a separate selection channel that can survive a
   // lasso/multi-select, and carrying a "selected" cable into the group-forming
-  // reflow garbles its rendering. (Membership never includes cables — this just
-  // drops the stale highlight state.)
+  // reflow garbles its rendering.
   cableSelectionStore.set(null);
-  // Exclude members hidden inside a collapsed group. Belt-and-suspenders behind
-  // the lasso fix (which no longer selects them): a node hidden in a collapsed
-  // group must never be silently absorbed into a NEW group — it already belongs
-  // to one, and it isn't visible to be reasoned about. Guards any selection path
-  // (Ctrl+A + G, etc.), not just the lasso.
+  // Exclude members hidden inside a collapsed group: such a node must never be
+  // silently absorbed into a NEW group — it already belongs to one, and it isn't
+  // visible to be reasoned about. Guards any selection path (Ctrl+A + G, etc.).
   const sel = editor
     .getNodes()
     .filter((n) => n.selected && !(n instanceof GroupNode) && !groupCollapseStore.isNodeHidden(n.id));
@@ -129,7 +124,7 @@ export async function autofitGroupBox(
     maxX = Math.max(maxX, b.x + b.w);
     maxY = Math.max(maxY, b.y + b.h);
   }
-  if (!Number.isFinite(minX)) return null; // nothing to wrap
+  if (!Number.isFinite(minX)) return null;
 
   const before: GroupGeom = { x: gv.position.x, y: gv.position.y, width: group.width, height: group.height };
   const after: GroupGeom = {
@@ -159,10 +154,8 @@ export async function autofitGroupWithHistory(editor: Editor, area: Area, group:
   if (!res) return;
   // Autofit ONLY resizes the box around the EXISTING members — it must NOT
   // re-derive membership from the new geometry (no reconcileGroupBox here).
-  // Membership changes only on an explicit drag in/out or a select→group action,
-  // so a bystander sitting among the members isn't silently absorbed when the box
-  // shrinks to wrap them. (rebuildGroupMembership just refreshes the color
-  // markers from the unchanged members list.)
+  // rebuildGroupMembership just refreshes the color markers from the unchanged
+  // members list.
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, area);
   // Autofit moved the box edges; re-settle any standoffs anchored to this group
@@ -189,8 +182,8 @@ export function moveGroupMembers(
   // When a user DRAGS a group whose members are ALSO selected, rete's selector
   // already translates those members by the same delta (it moves the whole
   // selection off the picked/lead node). Moving them again here doubles their
-  // speed — the recurring "members outrun their group" bug. So the drag + drop-snap
-  // callers pass `skipSelected` to move ONLY the members the group is solely
+  // speed, so the drag + drop-snap callers pass `skipSelected` to move ONLY the
+  // members the group is solely
   // responsible for. A programmatic push (translatePushed) is NOT selector-driven,
   // so it leaves this off and moves every member.
   skipSelected = false,
@@ -238,7 +231,7 @@ export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: 
   const current = groups.find((g) => g.members.includes(draggedId));
   let host = current;
   if (current && !centerInside(area, current, b)) {
-    current.members = current.members.filter((m) => m !== draggedId); // left → leave it
+    current.members = current.members.filter((m) => m !== draggedId);
     host = undefined;
   }
   if (!host) {

@@ -226,8 +226,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               onMouseEnter={() => onHover([...prefix, i, 0])}
               // Submenus render as DOM children of this category div, so a click
               // on a nested category/leaf bubbles up here too. Stop it, or the
-              // outermost ancestor's handler wins and re-pins/collapses to the top
-              // (this is why pinning a 3rd-level submenu didn't work).
+              // outermost ancestor's handler wins and re-pins/collapses to the top.
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
             >
               <span>{it.entry.label}</span>

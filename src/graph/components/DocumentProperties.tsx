@@ -43,10 +43,10 @@ function TextRow({ label, value, placeholder, onCommit }: {
 const splitTags = (v: string) => v.split(",").map((t) => t.trim()).filter(Boolean);
 
 /**
- * Document Properties window (F-2). Title (the documentStore name), author + tags
- * (docMetaStore → SavedGraph.meta), and a per-document color palette base override.
+ * Document Properties window: title (the documentStore name), author + tags
+ * (docMetaStore → SavedGraph.meta), and a per-document palette base override.
  * Edits capture into the current document so they persist; the palette override
- * retints the canvas live. Reuses the Settings modal chrome.
+ * retints the canvas live.
  */
 export function DocumentProperties() {
   const open = useSyncExternalStore(docPropertiesPanel.subscribe, docPropertiesPanel.get);
