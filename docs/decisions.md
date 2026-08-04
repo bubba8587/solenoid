@@ -675,6 +675,42 @@ doc per edit); a very large canvas would pay it on every prompt.
 (hundreds of nodes), or the #35 external-agent MCP port shipping — its typed tools ARE
 the op layer, and the in-app path could then reuse them.
 
+### D29 — Aggregators are ARGUMENTS of their host verb, not searchable ops
+**When:** 2026-07-30 (author ruling, previously recorded only at the `nodeOps.ts`
+declaration site).
+**Where:** `nodeOps.ts` — the Group By hosts (list + frame) and every aggregator-host
+declaration are `kind: "argument"`.
+**The decision:** an aggregator (`avg`, `median`, …) is an argument of GROUP BY (and of
+the other aggregator hosts), not an operation in its own right. The Add menu / search
+never shows "Group By: MEDIAN"-style rows; the host node appears once and the
+aggregator is picked on the card.
+**Why:** `avg` on its own is meaningless at the Add-menu altitude — nobody searches for
+an aggregator, they search for the verb. Same reasoning as direction toggles
+(ascending/descending) and trigger conditions: parameters of ONE operation.
+**What would reverse it:** evidence that users search for aggregator names and fail to
+find Group By — that would argue for search ALIASES on the host, not per-aggregator
+rows.
+
+### D30 — Comment minimalism: knowledge lives in specs/tests/commits, comments are last resort
+**When:** 2026-08-04 (author: spec-driven development; "fight the instinct to put
+everything in code comments").
+**Where:** the policy spec is `docs/code-comments.md`; routing lives in `README.md`
+"Code → spec routing".
+**The decision:** the default outcome for a comment under review is deletion; a
+surviving comment must state a line-granular constraint invisible in code, types,
+tests, specs, and commit history. Revision history → commit messages; rulings →
+decisions/specs; investigations → dev-notes with ZERO code-side residue for routed
+files; headers cite specs, never excerpt them; no signature-restating JSDoc; no
+English translations of adjacent code. Test files exempt, for now.
+**Why:** comment copies are how specs stop being authoritative — every copy is a place
+the spec can be contradicted, and pointer residue regrows into thousands of lines.
+**Cost accepted:** a future session may occasionally hit a wall a deleted comment would
+have padded; the padding cost every reader on every visit, and the wall has a spec
+behind it.
+**What would reverse it:** evidence that agents repeatedly miss routed specs and
+introduce regressions a comment would have prevented — that argues for better routing
+(or machine checks), and only as a last resort for reinstating comment copies.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)

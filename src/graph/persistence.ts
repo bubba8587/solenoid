@@ -262,9 +262,7 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
     return false;
   }
 
-  // Snapshot the live graph so a mid-rebuild failure can roll back to it. The
-  // old code cleared first and had no way back: one throwing constructor and the
-  // user's work was gone, then the next autosave persisted the wreckage.
+  // Snapshot the live graph so a mid-rebuild failure can roll back to it.
   const snapshot = serializeGraph();
 
   suspendAutosave();

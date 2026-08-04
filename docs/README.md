@@ -49,6 +49,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
+- **`code-comments.md`** — the comment policy (D30): comments are the last-resort
+  home for knowledge; the cut rules and the homes hierarchy. Read before writing
+  (or reviewing) comment prose.
 
 ## Work queue (forward-looking — verify against code; these rot)
 
@@ -74,6 +77,39 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`agent-coordination.md`** — parallel-agent scratchpad (dormant in solo sessions).
 
 ---
+
+## Code → spec routing (grep your file here before editing)
+
+The per-FILE version of the cheat-sheet below. Files listed here carry ZERO comment
+pointers by design (D30) — this table IS the pointer. Editing a listed file without
+reading its docs is how recorded negative results get retried and settled rulings
+relapse.
+
+| Code | Governing docs |
+|---|---|
+| `zoomSettle.ts`, renderer gesture/settle handling | `dev-notes.md` § choppy zoom BAND |
+| `cablePaths.ts`, `ribbonCable.ts` | `subsystem-invariants.md` § Cable routing |
+| `groupPushCore.ts`, group expand/collapse | `subsystem-invariants.md` § Group expand push |
+| `standoffSolver.ts`, `standoffs.ts` | `subsystem-invariants.md` § Standoffs |
+| `tidyArrange.ts` (ELK) | `subsystem-invariants.md` § Auto-arrange |
+| `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; `subsystem-invariants.md` § Error values |
+| `fcReconcile.ts`, in-place socket retype | `subsystem-invariants.md` § Type propagation |
+| `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `subsystem-invariants.md` § Unit flow; D20, D26 |
+| `formatModel.ts`, `formatController.ts`, FC controls | `format-model.md` |
+| `alertStore.ts` | `subsystem-invariants.md` § Alert node + HUD |
+| `nodeNameStore.ts`, `textForm.ts` | `subsystem-invariants.md` § Addressable model |
+| `documentStore.ts`, `documentStoreCore.ts` | `subsystem-invariants.md` § Per-doc autosave |
+| `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
+| `CompositeEditorOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
+| `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; D17 |
+| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formula-node-parity.md`; `rules.md` FX rules; D24 |
+| `computedColumnCore.ts` | D24, D25; `rules.md` FX-13 |
+| `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); D1, D5; cargo parity tests |
+| `nodeOps.ts` (op declarations) | D29 (aggregators are arguments); `node-coverage.md` |
+| `nodeCatalog.ts` | `node-coverage.md`; D10 (eliminated functions stay eliminated) |
+| any `.css`, any visual change | `../DESIGN.md` |
+| any bar/overlay position or z-index | `layout-chrome.md` |
+| `ConduitComponent.tsx`, conduit faces/lanes | `subsystem-invariants.md` § Conduit perpendicular-face sign |
 
 ## Task → docs cheat-sheet
 

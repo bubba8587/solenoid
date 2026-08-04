@@ -22,7 +22,7 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 1. **The gesture-exit settle.** Held `ZOOM_SETTLE_MS` at 3000ms on a live preview (`dc96159`,
    reverted here). The band survived the long hold unchanged, so it is NOT the per-notch
    exit/re-enter scale-change repaint that 2026-07-20d diagnosed. That 420ms fix stays valid for
-   its own symptom; it is not this one. Recorded as a negative result in `zoomSettle.ts`.
+   its own symptom; it is not this one.
 2. **Element count / DOM weight.** `semanticZoom` defaults OFF (`settingsStore.ts`), so at far-out
    zoom EVERY card is on screen and fully painted — and that is the SMOOTH case, while the choppy
    band has strictly fewer elements on screen. Element count is *maximal* in the good case, so it

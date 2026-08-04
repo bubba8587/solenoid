@@ -345,7 +345,6 @@ export const documentStore = {
     await loadGraph(seed.graph, { animate });
   },
 
-  /** Switch to an existing document. */
   async open(id: string): Promise<void> {
     if (id === _lib.currentId) return;
     if (isGraphRebuilding()) return; // (21p)

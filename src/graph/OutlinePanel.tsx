@@ -300,7 +300,7 @@ export function OutlinePanel() {
   }, [searchSignal, open]);
 
   useEffect(() => {
-    if (!open) return; // no need to track the graph while the panel is hidden
+    if (!open) return;
     let prev = "";
     const tick = () => {
       const next = buildState(appThemeStore.getMode(), sortMode);
