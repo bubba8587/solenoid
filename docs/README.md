@@ -49,9 +49,12 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
+- **`renderer-performance.md`** — the settled renderer-perf policies: zoom settle,
+  GPU layer promotion (pan never / desktop pinch only), the semantic-zoom gate, the
+  HIC capture pipeline. The OPEN choppy-band investigation stays in `dev-notes.md`.
 - **`code-comments.md`** — the comment policy (D30): comments are the last-resort
-  home for knowledge; the cut rules and the homes hierarchy. Read before writing
-  (or reviewing) comment prose.
+  home for knowledge; the cut rules, compression rules, the blast-radius test, and
+  the homes hierarchy. Read before writing (or reviewing) comment prose.
 
 ## Work queue (forward-looking — verify against code; these rot)
 
@@ -87,11 +90,11 @@ relapse.
 
 | Code | Governing docs |
 |---|---|
-| `zoomSettle.ts`, renderer gesture/settle handling | `dev-notes.md` § choppy zoom BAND; `subsystem-invariants.md` § Renderer gesture GPU layers |
+| `zoomSettle.ts`, `Canvas.tsx` gesture/layer handling | `renderer-performance.md`; `dev-notes.md` § choppy zoom BAND (open) |
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
-| `semanticZoomStore.ts` | `subsystem-invariants.md` § Semantic zoom gate |
-| `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `subsystem-invariants.md` § HTML-in-Canvas raster atlas |
+| `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
+| `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `renderer-performance.md` § HTML-in-Canvas capture pipeline |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
 | `excelFunctions.ts` overrides / dispatch walk | `formula-node-parity.md` § Formula.js divergence catalogue |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
