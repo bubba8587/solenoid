@@ -3,11 +3,8 @@ import { useEffect, type RefObject } from "react";
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-/**
- * Keeps Tab / Shift+Tab cycling within a modal dialog instead of escaping to
- * the canvas behind it. Mirrors useDismissOnOutside's shape: a capture-phase
- * listener, active only while the dialog is open.
- */
+/** Keeps Tab / Shift+Tab cycling inside a modal instead of escaping to the canvas;
+ *  a capture-phase listener, active only while open. */
 export function useFocusTrap(active: boolean, containerRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!active) return;

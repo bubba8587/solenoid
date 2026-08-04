@@ -1,11 +1,5 @@
-// The model-facing grounding spec for authoring Solenoid graphs in the text
-// form (backlog "AI command palette", D27/D28): the grammar, the socket-type
-// lattice, and the full node inventory — every class with its text-form `Type`
-// token, sockets, inline-literal inputs, and op variants. GENERATED from
-// `nodeCatalog.ts` and the live classes, never hand-authored (the same
-// generate-don't-author move as the Add menu and the Function Reference).
-// One emission, two consumers: `scripts/ai-grounding.ts` (the CLI, for humans
-// and headless prototyping) and `aiService.ts` (the palette's system prompt).
+// The model-facing grounding spec for authoring graphs in the text form, GENERATED from
+// `nodeCatalog.ts` and the live classes — never hand-authored.
 
 import { ClassicPreset } from "rete";
 import { buildCatalog } from "./catalogUtils";
@@ -17,8 +11,7 @@ import { opVocabByCtor } from "./opVocab";
 import type { FilterOp } from "./frameVerbs";
 import type { FrameColType } from "./frame";
 
-// The condition-row op vocabulary (frame/list Filter, SUMIFS `condConfig`).
-// Record over the UNION so tsc enforces the list is complete and current.
+// A Record over the UNION, so tsc enforces the condition-row op list stays complete.
 const FILTER_OP_DOC: Record<FilterOp, string> = {
   gt: "greater than", gte: "at least", lt: "less than", lte: "at most",
   eq: "equals", neq: "not equal",
@@ -47,16 +40,14 @@ interface ClassInfo {
   variants: Array<{ leaf: NodeCatalogEntry; op: string | null; inputs: string; outputs: string }>;
   litKeys: string[];
   strKeys: string[];
-  /** Declares the map but with no default keys (rows materialize as they're
-   *  added) — inline values are accepted on the input-row keys. */
+  /** Declares the map with no default keys; inline values are accepted on input-row keys. */
   litOpen: boolean;
   strOpen: boolean;
   initKeys: string[];
   hidden: boolean;
 }
 
-/** Emit the full spec. Fresh walk each call — use `groundingSpec()` for the
- *  cached read (the catalog and classes don't change within a session). */
+/** Emit the full spec; a fresh walk each call — `groundingSpec()` is the cached read. */
 export function buildGroundingSpec(): string {
   const classes = new Map<string, ClassInfo>();
   const order: string[] = [];
@@ -80,12 +71,8 @@ export function buildGroundingSpec(): string {
         const ctorName = inst.constructor.name;
         let info = classes.get(ctorName);
         if (!info) {
-          // The init keys this class round-trips: extractInit reads them OFF the
-          // instance, so a default instance names exactly the fields the class
-          // persists — which is what an author may set (minus the inline-literal
-          // spread, listed separately as "inline:").
-          // width/height are geometry defaults, not logic — the sidecar carries
-          // real sizes; listing them on every class would only be noise.
+          // extractInit reads OFF the instance, so a default instance names exactly the
+          // fields the class persists. width/height are geometry, carried by the sidecar.
           const roundTrip = Object.keys(extractInit(inst)).filter((k) => k !== "width" && k !== "height");
           const hasLits = typeof anyInst.literals === "object" && anyInst.literals !== null;
           const hasStrs = typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null;
@@ -118,8 +105,7 @@ export function buildGroundingSpec(): string {
 
   visit(buildCatalog(false), []);
 
-  // Full op vocabulary per class from the NODE_OPS registry — the catalog's
-  // leaves can be a subset (hidden ops have no Add-menu leaf of their own).
+  // The registry's full vocabulary; catalog leaves can be a subset (hidden ops).
   const opsByCtor = new Map<string, Array<{ op: string; label: string }>>();
   for (const decl of NODE_OPS) {
     if (decl.ops) opsByCtor.set(decl.ctor.name, decl.ops.map((o) => ({ op: o.op, label: o.label })));
@@ -243,8 +229,7 @@ export function buildGroundingSpec(): string {
     if (info.strKeys.length > 0) inline.push(`str: ${info.strKeys.join(", ")}`);
     else if (info.strOpen) inline.push(`str: (input-row keys)`);
     if (inline.length > 0) w(`- inline: ${inline.join(" · ")}`);
-    // The op vocabulary: the registry's full list when the class has one (catalog
-    // leaves can be a subset — hidden ops have no menu leaf); else the leaves.
+    // The registry's full list when the class has one, else the catalog leaves.
     const registryOps = opsByCtor.get(ctorName);
     if (registryOps && allSameSockets) {
       w(`- ops: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
@@ -255,16 +240,14 @@ export function buildGroundingSpec(): string {
         w(`- ${opPart}${v.leaf.label}${sockets}`);
       }
     } else {
-      // A dropdown-only op family (Group By's aggregate select and kin): no
-      // declared NODE_OPS family, one catalog leaf — the shared vocabulary
-      // derivation still knows the tokens.
+      // A dropdown-only op family has no NODE_OPS entry, but the shared vocabulary
+      // derivation still knows its tokens.
       const vocab = opVocabByCtor().get(ctorName);
       if (vocab && vocab.size >= 2) {
         w(`- ops: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
       }
     }
-    // Ops the class hosts that have no Add-menu leaf of their own (the catalog
-    // builder derives these from NODE_OPS) — still valid `op=` values.
+    // Ops with no Add-menu leaf of their own are still valid `op=` values.
     const hidden = info.variants.flatMap((v) => v.leaf.hiddenOps ?? []);
     const listed = new Set(info.variants.map((v) => v.op));
     for (const h of hidden.filter((h, i, a) => !listed.has(h.op) && a.findIndex((x) => x.op === h.op) === i)) {
@@ -280,8 +263,8 @@ export function buildGroundingSpec(): string {
 
 let _spec: string | null = null;
 
-/** The spec, built once per session — the palette's system prompt must be
- *  byte-identical across requests so the provider's prompt cache hits. */
+/** Built once per session: the system prompt must be byte-identical across requests or the
+ *  provider's prompt cache misses. */
 export function groundingSpec(): string {
   if (_spec === null) _spec = buildGroundingSpec();
   return _spec;

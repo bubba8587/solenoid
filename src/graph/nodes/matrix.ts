@@ -18,12 +18,8 @@ type Mat = (number | null)[][];  // numeric matrix; a null cell is MISSING (line
 type CellMat = Cell[][];          // element-agnostic matrix (the pure-reshape ops)
 
 // ─── TABLE INPUT ──────────────────────────────────────────────────────────────
-// A LITERAL source, exactly like Frame Input: `tableText` stores the raw text the
-// user typed, the typed matrix is DERIVED at compute, and the grid editor edits
-// the raw cells — never a parse→serialize round trip (that would silently coerce
-// bad text away). A blank cell is null (missing); an unparseable cell is NaN —
-// dirty data, deliberately NOT an error badge. One homogeneous element type per
-// table (mixed columns is Frame Input's job).
+// A LITERAL source: the grid editor edits the RAW cells, never a parse→serialize
+// round trip, which would silently coerce bad text away.
 
 export type TableElemType = "number" | "string" | "date" | "logical";
 
@@ -37,44 +33,33 @@ export const TABLE_ELEM_SOCKET = {
 /** Split the literal text into RAW CELLS — lossless (parseCsvRows handles
  *  quoting); ragged rows pad with "" so the grid always shows a rectangle. */
 export function tableRawCells(text: string): string[][] {
-  // keepBlankLines: the raw text is the STORED TRUTH — a blank line the user typed
-  // is a row of missing cells, and the grid popup re-serializes through this parse,
-  // so dropping blank lines here permanently DELETES the row on a popup save. Blank
-  // rows stay leading, interior, AND trailing; only the phantom row from the text's
-  // final newline TERMINATOR is dropped (parseCsvRows handles that distinction).
+  // keepBlankLines: the popup re-serializes through this parse, so dropping a blank
+  // line here permanently DELETES that row on a popup save.
   const raw = parseCsvRows(text, { keepBlankLines: true });
   if (raw.length === 0) return [];
   let cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
-  // A TRAILING all-empty column is a typing artifact (a trailing comma on each
-  // line), not data — left in, it silently promotes a list to a 2-D table and
-  // flips downstream shape rules (Filter's predicate refuses genuine 2-D).
-  // Interior blanks are real missing cells and stay.
+  // A TRAILING all-empty column is a typing artifact — left in, it promotes a list
+  // to a 2-D table and flips downstream shape rules. Interior blanks stay.
   while (cols > 1 && raw.every((r) => (r[cols - 1] ?? "").trim() === "")) cols--;
   return raw.map((r) => Array.from({ length: cols }, (_, j) => (r[j] ?? "").trim()));
 }
 
-/** Serialize raw cells back to the text form — re-quoting a cell that would
- *  otherwise be ambiguous (RFC 4180), so the round trip is verbatim. The
- *  friendly ", " separator drops to a bare "," when any cell needs quoting: a
- *  quoted field must start immediately after the comma (Papa is RFC-strict —
- *  a space before the opening quote de-quotes the field). */
+/** Serialize raw cells back to text, re-quoting ambiguous cells so the round trip is
+ *  verbatim. The ", " separator drops to "," when any cell needs quoting — a quoted
+ *  field must start immediately after the comma or the parser de-quotes it. */
 export function rawCellsToText(cells: string[][]): string {
   const needsQuote = (c: string) => /[",\n]/.test(c);
   const q = (c: string) => (needsQuote(c) ? `"${c.replace(/"/g, '""')}"` : c);
   const sep = cells.some((r) => r.some(needsQuote)) ? "," : ", ";
   const lines = cells.map((r) => r.map(q).join(sep));
   const text = lines.join("\n");
-  // A single-column TRAILING blank row serializes as an empty final line — which
-  // reads as a bare newline terminator on the way back in. Terminate it with its
-  // own "\n" so the round trip keeps the row (multi-column blank rows serialize
-  // as ", " and never hit this).
+  // A single-column TRAILING blank row would read back as a bare newline terminator;
+  // its own "\n" keeps the row across the round trip.
   return lines.length > 0 && lines[lines.length - 1] === "" ? text + "\n" : text;
 }
 
-/** Derive the typed matrix from raw cells via the frame family's OWN per-type
- *  coercion (coerceFrameCell): blank → null, an unparseable number/date → NaN
- *  (dirty data), a bad logical → null (coerceLogical's contract) — so Table
- *  Input's bad-cell semantics are Frame Input's by construction. */
+/** Derives via the frame family's own `coerceFrameCell`, so Table Input's bad-cell
+ *  semantics are Frame Input's by construction. */
 export function deriveTable(cells: string[][], dt: TableElemType): CellMat {
   return cells.map((row) => row.map((c) => coerceFrameCell(dt, c) as Cell));
 }
@@ -84,9 +69,8 @@ export class TableInputNode extends ClassicPreset.Node {
   cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
   dataType: TableElemType;
-  /** The homogeneous unit AUTHORED on this literal source (D20) — an FC unit id
-   *  ("km", "usd", "none"). A LITERAL source may tag its own unit, exactly like a
-   *  Frame Input column; only applies to a NUMBER table. Persisted (whitelisted). */
+  /** The homogeneous unit AUTHORED on this literal source (D20) — an FC unit id;
+   *  NUMBER tables only. Persisted (whitelisted). */
   unit: string = "none";
   width = 220; height = 250;
 
@@ -102,9 +86,8 @@ export class TableInputNode extends ClassicPreset.Node {
   /** The raw text cells — the grid editor's truth. */
   rawCells(): string[][] { return tableRawCells(this.tableText); }
 
-  /** Switch the element type IN PLACE (re-types the output socket; the component
-   *  follows with retypeOutputCables — an in-place retype fires no connection
-   *  event). Returns false when unchanged. */
+  /** Re-types the output socket IN PLACE, which fires no connection event — the
+   *  component must follow with retypeOutputCables. */
   setDataType(dt: TableElemType): boolean {
     if (this.dataType === dt) return false;
     this.dataType = dt;
@@ -116,8 +99,7 @@ export class TableInputNode extends ClassicPreset.Node {
   data() {
     const cells = this.rawCells();
     let result = cells.length ? deriveTable(cells, this.dataType) : null;
-    // applyFcUnit interprets the as-typed cells AS this unit and tags a COPY of
-    // the outer array (cells stay bare).
+    // applyFcUnit tags a COPY of the outer array; cells stay bare.
     if (result && this.dataType === "number" && this.unit !== "none") {
       result = applyFcUnit(result, this.unit) as CellMat;
     }
@@ -165,8 +147,7 @@ export class MatDetNode extends ClassicPreset.Node {
       if (this.op === "mdeterm") this.cachedScalar = m; else this.cachedMatrix = m;
       return { result: m };
     }
-    // A non-square matrix has no determinant or inverse — a dimension problem
-    // (#SHAPE!). A square matrix that the solver rejects is singular (#DIV/0!).
+    // Non-square is a dimension problem (#SHAPE!); a rejected square one is singular.
     if (matRows(m) !== matCols(m)) {
       const err = solError("#SHAPE!", "Matrix must be square");
       if (this.op === "mdeterm") this.cachedScalar = err; else this.cachedMatrix = err;
@@ -280,25 +261,18 @@ export class TableTransposeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (decisions.md D15) ──
-// N extensible element-agnostic rows (anytable — a scalar widens to 1×1, a list
-// to ONE ROW per the lattice rule), stacked in row order. Ragged inputs pad
-// with #N/A cells exactly like Excel's VSTACK/HSTACK — a hole is visible and
-// recoverable (IFNA/Fill), unlike a whole-result #SHAPE! that would make the
-// common "stack a 3-list on a 5-list" case unusable.
+// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (D15) ───────────────
+// Ragged inputs pad with #N/A cells (recoverable via IFNA/Fill) rather than failing
+// the whole result with #SHAPE!.
 
 /** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine). */
 function padCell(what: string): Cell {
   return solError("#N/A", `Padded: this input is ${what} than the largest one`);
 }
 
-/** A matrix never holds `UnitCell`s — it carries ONE whole-grid unit as a tag (D20).
- *  But a LIST widened into an `anytable` stack row arrives with its PER-ELEMENT tags
- *  (the stackers are unitAware, so the boundary leaves them on), so reduce it here the
- *  same way WRAPROWS does: bare as-typed magnitudes plus the one unit the cells share
- *  (undefined when they disagree). An already-bare matrix comes back untouched, keeping
- *  its own tag — so `sharedMatrixUnit` then sees a uniform "tagged grid" story either
- *  way and a list of km stacked on a km grid still yields a km result. */
+/** A matrix carries ONE whole-grid unit tag, never per-cell `UnitCell`s (D20): reduce
+ *  a widened LIST row to bare magnitudes plus the one unit its cells share (undefined
+ *  when they disagree). An already-bare matrix comes back untouched. */
 function demoteUnitCells(m: CellMat): CellMat {
   if (!m.some((row) => row.some(isUnitCell))) return m;
   const { mags, unit } = matrixCellsFromList(m.flat());
@@ -310,9 +284,8 @@ function demoteUnitCells(m: CellMat): CellMat {
 
 /** Shared extensible-row plumbing for the two stackers. */
 abstract class StackNodeBase extends ClassicPreset.Node {
-  /** The rows keep their `UnitCell` tags at the boundary so a dimensioned LIST row can
-   *  be lifted to a grid unit by `demoteUnitCells` (a plain passthrough decl would keep
-   *  them too, but the tags would then ride INTO the matrix, which D20 forbids). */
+  /** Rows keep their `UnitCell` tags at the boundary so `demoteUnitCells` can lift a
+   *  dimensioned LIST row to a grid unit — tags riding INTO the matrix break D20. */
   unitAware = true;
   label: string;
   cachedResult: CellMat | SolError | null = null;
@@ -328,10 +301,8 @@ abstract class StackNodeBase extends ClassicPreset.Node {
     this.addOutput("result", adoptiveTableOut("Stacked"));
   }
 
-  /** Element-preserving, like its 1-D sibling Concat Lists: the result is exactly the
-   *  rows' cells rearranged, so it adopts the agreed row type (all strtable rows — or
-   *  strlist rows, which the adoptive `anytable` input already lifts to strtable — give
-   *  a strtable out) instead of decaying to a neutral `anytable`. */
+  /** Element-preserving: the result is the rows' cells rearranged, so it adopts the
+   *  agreed row type instead of decaying to a neutral `anytable`. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: this.valueInputKeys(), combine: "agree" }];
 
   private addInputWithKey(key: string): void {
@@ -355,8 +326,8 @@ abstract class StackNodeBase extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
-  /** Wired inputs as matrices, in row order; empties (zero-row) drop out. Each is
-   *  reduced to the D20 matrix shape (bare cells + a whole-grid tag) on the way in. */
+  /** Wired inputs as matrices in row order (empties drop out), each reduced to the
+   *  D20 matrix shape on the way in. */
   protected matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
     return this.valueInputKeys()
       .map((k) => toAnyMatrix(inputs[k]?.[0]))
@@ -388,9 +359,8 @@ export class HStackTableNode extends StackNodeBase {
   }
 }
 
-// VSTACK — the top-to-bottom sibling of HSTACK, and the FAST lists→table path:
-// a bare list widens to ONE ROW, so stacking two lists yields a 2×n table —
-// Excel's VSTACK of two rows.
+// VSTACK is also the lists→table path: a bare list widens to ONE ROW, so stacking
+// two lists yields a 2×n table.
 export class VStackNode extends StackNodeBase {
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("VStack", "VSTACK", init);
@@ -425,9 +395,8 @@ export const TABLE_RESHAPE_OP_META = {
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its LIST input (WRAPROWS/WRAPCOLS): it converts a
-   *  uniform-unit list into a whole-grid matrix unit itself (see coerceInputs). The
-   *  matrix→list direction (TOCOL/TOROW) reads the grid's Symbol tag, unaffected. */
+  /** Keeps `UnitCell` tags on its LIST input — WRAPROWS/WRAPCOLS convert a
+   *  uniform-unit list into a whole-grid matrix unit itself. */
   unitAware = true;
   label: string;
   op: TableReshapeOp;
@@ -436,9 +405,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
   literals: Record<string, number> = { wrapCount: 3 };
   width = 180; height = 200;
 
-  /** Element-preserving, rank-CROSSING: the output adopts the input's element
-   *  FAMILY at its own declared rank (strlist → WRAPROWS → strtable; strtable →
-   *  flatten → strlist) — the projectTypeToBase half of output adoption. */
+  /** Element-preserving, rank-CROSSING: the output adopts the input's element FAMILY
+   *  at its own declared rank (the projectTypeToBase half of output adoption). */
   passthrough = (): PassthroughSpec[] => [{
     output: "result",
     inputs: [this.op === "wraprows" || this.op === "wrapcols" ? "list" : "matrix"],
@@ -529,9 +497,8 @@ export class TableSelectNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     const idx = inputs.indices?.[0] ?? null;
     if (!m || !idx) { this.cachedResult = null; return { result: null }; }
-    // Excel: a 1-based index (negative counts from the end); a fractional index
-    // truncates toward zero; ANY zero/out-of-range index errors the whole call
-    // with #VALUE! — the same edge convention EXPAND uses for a shrink.
+    // Excel edge convention: 1-based (negative counts from the end), fractional
+    // truncates toward zero, any zero/out-of-range index errors the whole call.
     const kind = this.op === "chooserows" ? "row" : "column";
     const size = this.op === "chooserows" ? matRows(m) : matCols(m);
     const resolved: number[] = [];
@@ -556,11 +523,8 @@ export class TableSelectNode extends ClassicPreset.Node {
 }
 
 // ─── TAKE / DROP (2-D) ────────────────────────────────────────────────────────
-// Excel's TAKE/DROP are 2-D edge selectors: rows AND columns in one call,
-// positive counts from the start, negative from the end. The 1-D Take/Drop
-// (list.ts) stay the list spellings; these are the table ones. 0 (the default)
-// means "all" for TAKE and "none" for DROP, standing in for Excel's omitted
-// argument.
+// 0 (the default) stands in for Excel's omitted argument: "all" for TAKE, "none"
+// for DROP. The 1-D spellings live in list.ts.
 
 export type TableTakeDropOp = "take" | "drop";
 
@@ -581,8 +545,7 @@ export class TableTakeDropNode extends ClassicPreset.Node {
     super("TableTakeDrop");
     this.op    = init?.op    ?? "take";
     this.label = init?.label ?? TABLE_TAKEDROP_OP_META[this.op].label;
-    // Labels stay op-neutral — the op dropdown swaps at runtime but sockets
-    // (and their labels) are fixed at construction.
+    // Labels stay op-neutral: the op swaps at runtime, sockets are fixed here.
     this.addInput("matrix", adoptiveTableIn("Table"));
     this.addInput("rows",   numIn("Rows (± from end)"));
     this.addInput("cols",   numIn("Cols (± from end)"));
@@ -609,8 +572,7 @@ export class TableTakeDropNode extends ClassicPreset.Node {
 }
 
 // ─── EXPAND (grow a table, padding new cells) ─────────────────────────────────
-// The 2-D Pad: grow to R×C, new cells fill with the wired Fill value or #N/A
-// (Excel's default). Shrinking is #VALUE! like Excel — TAKE is the shrinker.
+// Shrinking is #VALUE! like Excel — TAKE is the shrinker.
 
 export class ExpandNode extends ClassicPreset.Node {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
@@ -645,8 +607,7 @@ export class ExpandNode extends ClassicPreset.Node {
       this.cachedResult = e;
       return { result: e };
     }
-    // Unwired Fill pads with `null` (first-class missing), NOT Excel's #N/A: wire
-    // the NA node into Fill to get Excel's pad_with-omitted form.
+    // Unwired Fill pads with `null`, NOT Excel's #N/A (wire the NA node for that).
     const fill = (inputs.fill?.[0] ?? null) as Cell;
     const result: CellMat = [];
     for (let i = 0; i < R; i++) {
@@ -672,9 +633,7 @@ export class TableInfoNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("TableInfo");
     this.label = init?.label ?? "Table Info";
-    // A `frame` input: a frame flows in directly, and a raw matrix widens in
-    // (coerceInputs builds a default-header frame). So Table Info inspects either a
-    // matrix or a frame; 1-D lengths are List Length's job.
+    // A `frame` input takes both: a raw matrix widens in with default headers.
     this.addInput("matrix", frameIn("Table"));
     this.addOutput("rows", numOut("ROWS"));
     this.addOutput("cols", numOut("COLUMNS"));
@@ -682,8 +641,7 @@ export class TableInfoNode extends ClassicPreset.Node {
 
   data(inputs: { matrix?: unknown[] }) {
     const input = inputs.matrix?.[0];
-    // A Frame is a distinct type (named columns), not a row-major matrix, so
-    // toAnyMatrix would read it as a scalar (1×1). Report its real shape directly.
+    // toAnyMatrix reads a Frame as a scalar (1×1) — report its real shape directly.
     if (isFrameValue(input)) {
       this.cachedRows = frameRowCount(input);
       this.cachedCols = input.columns.length;

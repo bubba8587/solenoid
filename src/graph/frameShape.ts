@@ -1,10 +1,5 @@
-// Column names + types computed AHEAD of running anything — the static sibling
-// of the relational verbs in frameVerbs.ts. Each arm mirrors the real verb's
-// column-reshaping logic without touching row data; a Shape's columns are
-// exactly what a real preview() reports.
-//
-// Nest/Unnest (frame ⟷ cube boundary) and Frame Lookup (scalar output) fall
-// outside this module on purpose: their outputs aren't a Frame shape at all.
+// The static sibling of frameVerbs.ts: a Shape's columns must be exactly what a real
+// preview() reports. Nest/Unnest and Frame Lookup are out — not frame shapes at all.
 import { makeHeaders, type FrameColType, type FrameValue } from "./frame";
 import { solError } from "./errorValue";
 import type { FrameSchemaColumn } from "./frameBackend";
@@ -14,10 +9,8 @@ export type ShapeColumn = FrameSchemaColumn;
 
 export interface Shape {
   columns: ShapeColumn[];
-  /** True when the verb's OUTPUT column count depends on the DATA itself (PIVOTBY's
-   *  distinct column-field combinations, Split Column's max part count) — `columns`
-   *  lists everything known ahead of running; more columns may appear at compute
-   *  time. Absent/false = the shape is exact. */
+  /** The OUTPUT column count depends on the DATA: `columns` lists what is known
+   *  ahead of running, and more may appear at compute time. Absent = exact. */
   dynamic?: boolean;
 }
 
@@ -62,8 +55,7 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       const keyOut: ShapeColumn[] = keyCols.map((c) => ({ name: c.name, type: c.type }));
       const aggOut: ShapeColumn[] = aggCols.map(({ spec, col }) => ({
         name: spec.as,
-        // min/max preserve the SOURCE column's type; every other agg is numeric —
-        // mirrors groupByFrame's aggOut (frameVerbs.ts).
+        // min/max preserve the SOURCE column's type; every other agg is numeric.
         type: spec.op === "min" || spec.op === "max" ? col.type : "number",
       }));
       const out = [...keyOut, ...aggOut];
@@ -91,15 +83,13 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       if (valueNames.length === 0) throw solError("#VALUE!", "PIVOTBY needs at least one value field");
       const rowCols = rowFields.map((n) => requireCol(input, n));
       const keyNames = makeHeaders(rowFields, rowFields.length);
-      // Body columns (one per distinct column-field combination × value) depend on
-      // the DATA — pivotFrame's cross-tab width can't be known without running it.
+      // The cross-tab width depends on the DATA and can't be known without running.
       return { columns: rowCols.map((c, k) => ({ name: keyNames[k], type: c.type })), dynamic: true };
     }
   }
 }
 
-/** Join (binary — its own entry point in frameVerbs.ts, like joinFrames, not a
- *  FrameOp member). Mirrors joinFrames' column assembly (frameVerbs.ts). */
+/** Binary, so it is its own entry point, not a FrameOp member; mirrors joinFrames. */
 export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
   requireCol(left, opts.leftKey);
   requireCol(right, opts.rightKey);
@@ -118,8 +108,7 @@ export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
   return { columns: out };
 }
 
-/** Append (n-ary — union by name; a shared name with conflicting types is a
- *  #TYPE!, mirroring appendFrames, frameVerbs.ts). */
+/** Union by NAME; a shared name with conflicting types is a #TYPE!. */
 export function shapeOfAppend(shapes: readonly Shape[]): Shape {
   const names: string[] = [];
   const typeOf = new Map<string, FrameColType>();
@@ -135,8 +124,7 @@ export function shapeOfAppend(shapes: readonly Shape[]): Shape {
   return { columns: names.map((name) => ({ name, type: typeOf.get(name)! })) };
 }
 
-/** Add Index (Power Query, eager JS-only): always exactly one new numeric column —
- *  fully static, no data dependency. Mirrors addIndexColumn (frameVerbs.ts). */
+/** Always exactly one new numeric column — fully static, no data dependency. */
 export function shapeOfAddIndex(input: Shape, name: string): Shape {
   const nm = name.trim() || "Index";
   const unique = makeHeaders([nm, ...input.columns.map((c) => c.name)], 1 + input.columns.length);
@@ -148,10 +136,8 @@ export function shapeOfAddIndex(input: Shape, name: string): Shape {
   };
 }
 
-/** Split Column (Power Query, eager JS-only): the source column is replaced by N
- *  text columns, N = the max part count across ROWS — data-dependent, so this
- *  states only what's certain (the untouched columns) and flags the rest dynamic.
- *  Mirrors splitColumn (frameVerbs.ts). */
+/** N = the max part count across ROWS, so this states only the untouched columns
+ *  and flags the rest dynamic. */
 export function shapeOfSplitColumn(input: Shape, column: string, delimiter: string): Shape {
   if (delimiter === "") return input;
   const idx = input.columns.findIndex((c) => c.name === column);

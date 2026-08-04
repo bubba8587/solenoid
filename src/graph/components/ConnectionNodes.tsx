@@ -20,8 +20,6 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 
-// Status line shown under a connection node's reference field: a colored dot +
-// a short summary (or the error). Reads the shared connectionStore.
 function statusText(s: ConnectionState): string {
   switch (s.status) {
     case "loading": return "Loading…";
@@ -31,11 +29,8 @@ function statusText(s: ConnectionState): string {
   }
 }
 
-// Tier 2 live-data: an optional per-node "refresh every N minutes" timer that
-// calls the exact same refreshConnection(id) a manual click does — so a source
-// backed by an interval and one backed by a click are indistinguishable to the
-// rest of the graph (same token bump, same processGraph recompute, so anything
-// downstream — including an Alert's edge-detect — reacts identically).
+// The timer calls the SAME refreshConnection(id) a manual click does, so an interval-
+// backed source is indistinguishable downstream from a clicked one.
 function useAutoRefresh(nodeId: string, minutes: number) {
   useEffect(() => {
     if (minutes <= 0) return;
@@ -101,14 +96,11 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
 }
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
-// A URL → Frame. The URL field commits on blur/Enter (not per keystroke)
-// so typing never fires a fetch; committing changes the cache key and the node's
-// async data() re-fetches on the next recompute.
+// The URL field commits on blur/Enter, never per keystroke, so typing can't fire a fetch.
 
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
   const [minutes, setMinutes] = useState(data.refreshMinutes);
-  // Mirror external changes to the field (e.g. load / paste).
   useEffect(() => { setUrl(data.url); }, [data.url]);
   useAutoRefresh(data.id, minutes);
 
@@ -250,11 +242,8 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 }
 
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// Pick a .csv from the Settings target folder. The dropdown is populated by
-// listing the folder; the node reads the chosen file on refresh. Desktop only —
-// the browser build shows a note instead (no filesystem). Native <LazySelect> needs
-// pointerdown/mousedown stopPropagation so the node-drag re-render doesn't close
-// the OS dropdown mid-pick (see CLAUDE.md).
+// Desktop only (no filesystem in the browser). The native <LazySelect> needs
+// pointerdown/mousedown stopPropagation or the node-drag re-render closes it mid-pick.
 
 export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
@@ -264,7 +253,6 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
   const desktop = isDesktop();
   useAutoRefresh(data.id, minutes);
 
-  // (Re)list the folder's CSVs whenever the target folder changes.
   useEffect(() => {
     let alive = true;
     listCsvFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
@@ -280,7 +268,6 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
   }
 
   function refresh() {
-    // Re-scan the folder (a new file may have appeared) and re-read.
     listCsvFiles(folder).then(setFiles).catch(() => setFiles([]));
     void refreshConnection(data.id);
   }
@@ -316,12 +303,8 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
 }
 
 // ─── DATA FEED (Finance / economic data) ────────────────────────────────────────
-// A provider dropdown (FRED / Alpha Vantage) + a series/ticker field → a
-// Frame. FRED is KEYLESS (public fredgraph.csv) and offers common-series quick-picks;
-// stock history is Alpha Vantage (keyed) — see dataProviders.ts for why Stooq
-// was cut. Wire the frame
-// into a Chart node to "embed a FRED graph" natively. Same fetch/cache/refresh shape
-// as the other connection nodes (data() stays sync; one background fetch per key).
+// FRED is KEYLESS (public fredgraph.csv); Alpha Vantage is keyed. Same fetch/cache
+// shape as the other connection nodes — data() stays sync, one background fetch per key.
 
 const stopDrag = {
   onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
@@ -329,7 +312,6 @@ const stopDrag = {
 };
 
 export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
-  // Re-render when a key is added/removed so the "add key" note + fetch-ability update.
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   const [provider, setProvider] = useState<ProviderId>(data.provider);
   const [input, setInput] = useState(data.stringLiterals.input ?? "");
@@ -346,8 +328,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   function pickProvider(next: ProviderId) {
     setProvider(next);
     data.provider = next;
-    // Refinements are provider-specific (a FRED frequency word isn't an AV one) — reset
-    // them on a provider switch so a stale value can't build a bad URL for the new one.
+    // Refinements are provider-specific, so a stale one would build a bad URL — reset them.
     data.stringLiterals.freq = ""; data.stringLiterals.start = ""; data.stringLiterals.end = "";
     setFreq(""); setStart(""); setEnd("");
     void processGraph();
@@ -412,9 +393,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
 }
 
 // ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
-// Same folder-picker shape as CSV Connection, but the read never touches JS — the
-// file goes straight from disk into the Rust engine, so typed columns arrive
-// intact (no CSV-style inference step).
+// The read never touches JS, so typed columns arrive intact (no inference step).
 
 export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConnectionNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));

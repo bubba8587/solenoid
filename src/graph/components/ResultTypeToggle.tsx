@@ -1,8 +1,5 @@
-// Polyform result-type selector — the control the value-polymorphic formula
-// producers (Expression, MAP, BYROW/BYCOL, REDUCE, MAKEARRAY) carry to declare
-// their output element type. Swaps the output socket in place to the chosen
-// type at the node's dimensionality level and drops now-incompatible outgoing
-// cables — same mechanics as Cast's target toggle / the frame nodes' read-as.
+// Result-type selector for the value-polymorphic producers (Expression, MAP,
+// BYROW/BYCOL, REDUCE, MAKEARRAY) — an in-place socket retype, so it must reconcile.
 import { useEffect, useState } from "react";
 import type { ClassicPreset } from "rete";
 import { resultSocket, RESULT_TYPE_META, type ResultType, type ResultDim } from "../nodes/shared";
@@ -31,8 +28,6 @@ export async function applyResultAs(node: Producer, dim: ResultDim, resultAs: Re
   const area = getActiveArea();
   const out = node.outputs.result;
   if (out) out.socket = resultSocket(dim, resultAs);
-  // Keep cables the new type can still feed (an `any` input survives) and re-adapt
-  // downstream FCs so the type change propagates the whole chain.
   if (editor && area) await retypeOutputCables(editor, area, node.id, "result");
 
   if (area) await area.update("node", node.id);
@@ -40,8 +35,6 @@ export async function applyResultAs(node: Producer, dim: ResultDim, resultAs: Re
 }
 
 export function ResultTypeToggle({ node, dim }: { node: Producer; dim: ResultDim }) {
-  // Local mirror so the control re-renders on change; the handler swaps the
-  // output socket (see applyResultAs).
   const [resultAs, setResultAs] = useState<ResultType>(node.resultAs);
   useEffect(() => { setResultAs(node.resultAs); }, [node.resultAs]);
 

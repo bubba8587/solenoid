@@ -10,10 +10,8 @@ import { getActiveArea } from "../activeGraph";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 
-// The Element card: one button showing the pick (`26 · Fe — Iron`) that opens
-// the picker popup (search + clickable periodic table) — 118 entries outgrew a
-// dropdown. The popup lives in App (ElementPicker.tsx, module store), since
-// this card renders in rete's separate React root.
+// The picker popup lives in App (ElementPicker.tsx, module store) because this
+// card renders in rete's separate React root.
 export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
   const el = ELEMENT_BY_SYMBOL.get(data.op)!;
   const openPicker = () => {

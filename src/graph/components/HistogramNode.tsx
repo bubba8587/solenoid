@@ -22,8 +22,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     options: opts, title: opts.title || data.label || "Histogram",
   };
 
-  // The Values feed socket is centered on the plot (its main input), measured
-  // against the card — separate from the Bins / Options rows below it.
+  // The Values socket centers on the PLOT, measured against the card.
   const chartRef = useRef<HTMLDivElement>(null);
   const [valuesTop, setValuesTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -38,8 +37,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     <NodeShell
       node={data}
       emit={emit}
-      // Collapsed: the leading Values socket folds into the pill with bins/options
-      // (the plot it centers on is hidden), so render it only while expanded.
+      // Collapsed folds this socket into the pill — the plot it centers on is gone.
       leading={!collapsed && valuesPort && valuesTop !== undefined
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}

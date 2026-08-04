@@ -24,10 +24,8 @@ function buildDigest(): string {
   return digestHistory(records, { nodeName: (id) => names.get(id) });
 }
 
-/**
- * A live readout of the session's undo/redo stack (historyDigest.ts). No
- * inputs/outputs, no persisted state — a dashboard onto app history, not graph data.
- */
+/** A live readout of the session's undo/redo stack — no sockets and no persisted
+ *  state; a dashboard onto app history, not graph data. */
 export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeType>) {
   const [digest, setDigest] = useState(buildDigest);
   const [copied, setCopied] = useState(false);

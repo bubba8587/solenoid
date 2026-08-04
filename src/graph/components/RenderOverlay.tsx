@@ -3,35 +3,24 @@ import { overlayBus, deviceMatrix, type AreaTransform } from "../overlayTransfor
 import { useRenderMode } from "../renderMode";
 import { createToggleStore } from "../storeKit";
 
-// The <canvas> is pinned over the rete container (pointer-events:none, so it never
-// steals interaction) and its backing store is sized to devicePixelRatio. We bake
-// the area transform into a single ctx.setTransform so geometry is authored in
-// WORLD units — the same units node positions use — and lands pixel-aligned with
-// the DOM nodes at every zoom level.
-//
-// VERIFICATION MODE (off by default → no visual change ships): toggle
-// `overlayDebugStore` (e.g. from the console: `window.__solenoidOverlayDebug?.()`)
-// to draw a world-anchored grid + origin axes + a marker at world (0,0). Pan/zoom
-// and confirm the grid tracks the DOM nodes lockstep. When off, the canvas stays
-// fully transparent.
+// A canvas pinned over the rete container; the area transform is baked into ONE
+// ctx.setTransform so geometry is authored in WORLD units and stays DOM-aligned at any zoom.
+// `window.__solenoidOverlayDebug?.()` draws a verification grid; off, the canvas is empty.
 
 /** Debug toggle for the verification grid. Off by default. */
 export const overlayDebugStore = createToggleStore(false);
 
-// Expose a console hook so the author can flip the verification grid on the build
-// without any UI. Idempotent; guarded for SSR / non-browser test envs.
+// Console hook to flip the grid on a build with no UI; idempotent, SSR-guarded.
 if (typeof window !== "undefined") {
   (window as unknown as { __solenoidOverlayDebug?: () => void }).__solenoidOverlayDebug =
     () => overlayDebugStore.toggle();
 }
 
-/** World-space spacing of the verification grid lines, in world units. Matches a
- *  comfortable on-screen density at k≈1. Purely a debug aid. */
+/** Grid spacing in world units — a comfortable on-screen density at k≈1. */
 const DEBUG_GRID_WORLD = 120;
 
 function drawDebug(ctx: CanvasRenderingContext2D, t: AreaTransform, dpr: number, cssW: number, cssH: number) {
-  // Work out the world-space rectangle currently visible, so we only stroke the
-  // grid lines on screen (not the whole infinite plane).
+  // Stroke only the visible world rect, not the whole infinite plane.
   if (t.k === 0) return;
   const wLeft = (0 - t.x) / t.k;
   const wTop = (0 - t.y) / t.k;
@@ -41,7 +30,7 @@ function drawDebug(ctx: CanvasRenderingContext2D, t: AreaTransform, dpr: number,
   ctx.save();
   // Author in WORLD units: one matrix carries pan, zoom, and dpr.
   ctx.setTransform(...deviceMatrix(t, dpr));
-  // Keep stroke ~1 CSS px regardless of zoom (lineWidth is in world units here).
+  // lineWidth is in WORLD units here, so divide to keep the stroke ~1 CSS px.
   ctx.lineWidth = 1 / t.k;
 
   ctx.strokeStyle = "rgba(120, 170, 255, 0.35)";
@@ -58,7 +47,6 @@ function drawDebug(ctx: CanvasRenderingContext2D, t: AreaTransform, dpr: number,
   }
   ctx.stroke();
 
-  // Origin axes + a solid marker at world (0,0) — the anchor the eye checks.
   ctx.strokeStyle = "rgba(255, 80, 80, 0.7)";
   ctx.lineWidth = 2 / t.k;
   ctx.beginPath();
@@ -76,14 +64,10 @@ export function RenderOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mode = useRenderMode();
   const debug = useSyncExternalStore(overlayDebugStore.subscribe, overlayDebugStore.get);
-  // Re-read overlay state on every notify (transform / viewport change).
   const state = useSyncExternalStore(overlayBus.subscribe, overlayBus.get);
 
-  // Feed the container size + dpr to the bus via a ResizeObserver on the canvas's
-  // parent (the canvas wrapper). Also catches devicePixelRatio changes on a
-  // cross-monitor move via a matchMedia listener — re-armed each flip, since the
-  // `(resolution: Ndppx)` query is bound to the dpr at registration and goes stale
-  // after one change. setViewport's notify drives the redraw (no manual force).
+  // The dpr matchMedia listener must be RE-ARMED on each flip — an `(resolution: Ndppx)`
+  // query binds to the dpr at registration and goes stale after one change.
   useEffect(() => {
     const canvas = canvasRef.current;
     const parent = canvas?.parentElement;
@@ -107,7 +91,6 @@ export function RenderOverlay() {
     return () => { ro.disconnect(); mq?.removeEventListener?.("change", onDpr); };
   }, []);
 
-  // Redraw whenever the transform, viewport, mode, or debug flag changes.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -135,8 +118,7 @@ export function RenderOverlay() {
         position: "absolute",
         inset: 0,
         pointerEvents: "none",
-        // Above the grid background, below interactive node chrome / menus. The
-        // cable layer it will eventually replace lives in this band too.
+        // Above the grid background, below interactive node chrome / menus.
         zIndex: 1,
       }}
     />

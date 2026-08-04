@@ -8,12 +8,9 @@ import {
   CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
 } from "./touchActions";
 
-/** The keyboard-less edit actions (command palette, undo/redo, selection cluster) in
- *  the TOP BAR, for a tablet — `MobileControls` never mounts there. Everything shared
- *  with the bottom bar lives in `touchActions.tsx` so the two cannot drift.
- *  Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
- *  selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` — so a
- *  desktop never pays to watch a control it cannot see. */
+/** The keyboard-less edit actions in the TOP BAR, for a tablet — `MobileControls` never
+ *  mounts there. Rendered unconditionally and gated by `html.is-tablet` in CSS; only the
+ *  selection poll is gated in JS, so a desktop never watches a control it can't see. */
 export function TabletActions() {
   const hasSelection = useHasSelection(IS_TABLET);
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
@@ -40,9 +37,8 @@ export function TabletActions() {
         </button>
       </div>
 
-      {/* Select mode · Group · Delete — the selection cluster. Group and Delete
-          dim without a selection but stay tappable, so a fresh select isn't
-          blocked by the 200ms poll (the bottom bar's rule, kept). */}
+      {/* Group and Delete dim without a selection but stay tappable, so a fresh select
+          isn't blocked by the 200ms poll. */}
       <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
         <button
           className={`solenoid-nav__btn${selectMode ? " solenoid-nav__btn--on" : ""}`}

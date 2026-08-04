@@ -25,15 +25,12 @@ for (const [key, def] of Object.entries(CONVERT_UNIT_DEFS)) {
   arr.push([key, def]);
 }
 
-// A value + its unit's short code, formatted via the box's own format style.
 function withUnit(n: number, code: string, format: FormatStyle): string {
   if (Number.isNaN(n)) return "—";
   const body = applyFormatStyle(n, format);
   return code ? `${body} ${code}` : body;
 }
 
-// The in/out format dropdown — Convert's own display format for each box,
-// reusing the FC number-format groups.
 function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: ChangeEvent<HTMLSelectElement>) => void }) {
   return (
     <LazySelect
@@ -59,9 +56,8 @@ function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: C
   );
 }
 
-// A unit-imposing arrow shown on Convert when an FC is wired adjacent. "up"
-// points back toward the input (Convert dictates the upstream FC's unit); "down"
-// points forward toward the output (it dictates the downstream FC's unit).
+// The unit-imposing arrow: "up" dictates the upstream FC's unit, "down" the
+// downstream one's.
 function DirArrow({ dir }: { dir: "up" | "down" }) {
   return (
     <span
@@ -88,8 +84,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const [outFormat, setOutFormat] = useState(node.outFormat);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
 
-  // Convert has unit primacy: when its from/to changes, any adjacent FC must
-  // relock to the new unit. Re-project every FC's annotation, like FC's syncNode.
+  // Convert has unit primacy, so every adjacent FC must relock on a from/to change.
   function refreshFcs() {
     const editor = getOwningEditor(node.id); // relock FCs in this node's own graph (drill-in too)
     if (!editor) return;
@@ -123,8 +118,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     await processGraph();
   }
 
-  // Display-only: re-render this node with the new box format. No recompute or
-  // FC refresh — these formats affect only Convert's own in/out boxes.
+  // Display-only: these formats affect Convert's own boxes, so no recompute.
   function onInFormatChange(e: ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as FormatStyle;
     node.inFormat = next;
@@ -141,9 +135,8 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const fromCode   = CONVERT_UNIT_DEFS[fromUnit]?.excelCode ?? "";
   const toCode     = CONVERT_UNIT_DEFS[toUnit]?.excelCode ?? "";
 
-  // The input/output sockets align to the in/out display boxes (the data enters
-  // at the input box, leaves at the output box). Measure each box's center from
-  // the DOM after layout so the dots track regardless of font/padding shifts.
+  // Sockets align to the in/out boxes, measured from the DOM after layout so the
+  // dots track regardless of font/padding shifts.
   const inBoxRef  = useRef<HTMLDivElement>(null);
   const outBoxRef = useRef<HTMLDivElement>(null);
   const [inTop, setInTop]   = useState<number | undefined>(undefined);
@@ -159,9 +152,8 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
 
   const inputPort  = node.inputs["in"];
   const outputPort = node.outputs["out"];
-  // Sockets are placed by us (aligned to the boxes), so suppress NodeShell's
-  // default output socket. When collapsed the boxes are hidden — fall back to
-  // the default socket position.
+  // We place the sockets, so NodeShell's default output is suppressed; collapsed
+  // hides the boxes, so it falls back to the default position.
   const sockets = (
     <>
       {inputPort && (

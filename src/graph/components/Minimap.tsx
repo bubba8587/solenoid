@@ -6,10 +6,8 @@ import { appThemeStore } from "../appTheme";
 import { themeAccent, resolveColor } from "../palette";
 import "./Minimap.css";
 
-// A drop-in replacement for rete-react-plugin's minimap render preset: each
-// node draws in its real accent color, and node rects are border-box so the 1px
-// outline doesn't inflate the silhouette. The geometry still comes from the
-// plugin.
+// A drop-in for rete-react-plugin's minimap preset: nodes draw in their real accent
+// color, rects border-box so the 1px outline doesn't inflate the silhouette.
 
 type Rect = { left: number; top: number; width: number; height: number };
 type Transform = { x: number; y: number; k: number };
@@ -34,13 +32,10 @@ function hexToRgba(hex: string, a: number): string {
 
 interface Fill { background: string; borderColor: string }
 
-// The nodes the minimap should draw, in a stable order shared by the geometry
-// override and the color lookup so the two stay index-aligned. Members hidden
-// inside a collapsed group are dropped — they aren't visible on the canvas, so
-// they shouldn't crowd the map either.
+// ONE stable order shared by the geometry override and the color lookup, so the two
+// stay index-aligned; members hidden inside a collapsed group are dropped.
 function minimapNodes() {
-  // Active graph: while drilled into a Composite the fit/minimap geometry follows
-  // the subgraph (getActive* = the drill-in editor/area, else main).
+  // getActive* follows the drill-in subgraph when one is open, else main.
   const editor = getActiveEditor();
   const area = getActiveArea();
   if (!editor || !area) return { area: null, nodes: [] as ReturnType<NonNullable<typeof editor>["getNodes"]> };
@@ -50,9 +45,8 @@ function minimapNodes() {
   return { area, nodes };
 }
 
-// Geometry override for the minimap plugin's `getNodesRect`. Same shape as the
-// stock method, but it skips hidden members and sizes a collapsed group to its
-// real (compact) rendered box instead of its stored expanded width/height.
+// The plugin's `getNodesRect` shape, but skipping hidden members and sizing a
+// collapsed group to its real compact box, not its stored expanded one.
 export function collapsedAwareNodesRect() {
   const { area, nodes } = minimapNodes();
   if (!area) return [];
@@ -69,8 +63,7 @@ export function collapsedAwareNodesRect() {
   });
 }
 
-// Recover per-node colors aligned to the geometry array — same filtered list,
-// same order. Group nodes paint as a faint wash of their own color.
+// Index-aligned to the geometry array — same filtered list, same order.
 function nodeFills(mode: "dark" | "light"): Fill[] {
   return minimapNodes().nodes.map((n) => {
     if (n instanceof GroupNode) {
@@ -78,8 +71,7 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
       return { background: hexToRgba(c, 0.2), borderColor: hexToRgba(c, 0.75) };
     }
     if (n instanceof NoteNode) {
-      // Notes read more solid than a group's wash on canvas, so paint a touch
-      // more present than the group branch.
+      // Notes read more solid than a group's wash on canvas.
       const c = themeAccent(resolveColor(n.color), mode);
       return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
     }
@@ -88,11 +80,9 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
   });
 }
 
-// The node rectangles live in GRAPH coordinates, so panning the canvas doesn't
-// move them — only the viewport box moves. They draw into ONE <canvas> (a single
-// element at any graph size, vs. a div per node). The draw effect is keyed on a
-// geometry+fill+width signature, so a pan/zoom frame — where node graph-coords
-// are unchanged — skips the redraw entirely and only the DOM viewport box updates.
+// Node rects live in GRAPH coordinates, so a pan moves only the viewport box: the
+// draw effect keys on a geometry+fill+width signature, letting pan/zoom frames skip
+// the canvas redraw entirely.
 function drawMinimapNodes(
   canvas: HTMLCanvasElement,
   nodes: Rect[],
@@ -119,8 +109,7 @@ function drawMinimapNodes(
     const rw = scale(n.width);
     const rh = scale(n.height);
     if (rw <= 0 || rh <= 0) return;
-    // Match the old div look: border-box 1px border + 1.5px radius — fill the
-    // half-pixel-inset rounded rect, stroke its edge.
+    // Fill the half-pixel-inset rounded rect, then stroke its edge (border-box look).
     const r = Math.min(1.5, rw / 2, rh / 2);
     ctx.beginPath();
     ctx.roundRect(x + 0.5, y + 0.5, Math.max(rw - 1, 0.5), Math.max(rh - 1, 0.5), r);
@@ -133,9 +122,7 @@ function drawMinimapNodes(
 
 export function SolenoidMinimap(props: MinimapProps) {
   const ref = useRef<HTMLDivElement>(null);
-  // Track the container's content width so node positions scale correctly. The
-  // plugin emits a fresh render on every pan/zoom, but the very first paint has
-  // no measured width yet — a ResizeObserver fills it in.
+  // The very first paint has no measured width yet — a ResizeObserver fills it in.
   const [measured, setMeasured] = useState(0);
   useEffect(() => {
     const el = ref.current;
@@ -147,22 +134,16 @@ export function SolenoidMinimap(props: MinimapProps) {
   }, []);
 
   const containerWidth = ref.current?.clientWidth || measured;
-  // The minimap plugin can hand us a non-finite normalized rect for a beat when
-  // the node bounding box is degenerate (a lone node, or mid graph load/clear
-  // before sizes settle). Coerce to 0 so React never sees `NaN` in a style.
+  // The plugin hands back a non-finite rect for a beat when the bounding box is
+  // degenerate — coerce to 0 so React never sees `NaN` in a style.
   const scale = (v: number) => (Number.isFinite(v) ? v * containerWidth : 0);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const fills = nodeFills(appThemeStore.getMode());
-  // Cheap signatures so the canvas redraw skips on a pan/zoom that didn't
-  // actually move a node. Pan leaves node graph-coords (and the bounding
-  // box they're normalized against) unchanged, so geomSig is identical frame to
-  // frame; only the viewport rect below updates.
+  // Pan leaves node graph-coords (and the box they normalize against) unchanged, so
+  // geomSig is identical frame to frame and only the viewport rect updates.
   const geomSig = props.nodes.map((n) => `${n.left},${n.top},${n.width},${n.height}`).join(";");
   const fillSig = fills.map((f) => f.background).join(";");
 
-  // Redraw the node canvas only when geometry/colors/size actually changed —
-  // the plugin re-renders this component every pan/zoom frame, and the sig deps
-  // make those frames skip the effect (canvas pixels are position-independent).
   const nodesCanvasRef = useRef<HTMLCanvasElement>(null);
   const nodesRef = useRef(props.nodes);
   nodesRef.current = props.nodes;
@@ -175,7 +156,6 @@ export function SolenoidMinimap(props: MinimapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geomSig, fillSig, containerWidth]);
 
-  // Incremental drag of the mini-viewport → pan the real area.
   const startDrag = (e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();

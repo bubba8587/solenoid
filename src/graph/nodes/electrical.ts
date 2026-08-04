@@ -1,17 +1,13 @@
-// Custom-logic nodes for the Electricity & Circuits pack — the declared
-// exceptions to the formula-preset default (docs/pack-architecture.md): a list
-// reducer (Parallel Combine), and two embedded-dataset lookups (E-Series, AWG).
-// Pure TypeScript, web-safe; registered always so saved graphs keep working
-// with the pack switched off.
+// The Electricity pack's declared exceptions to the formula-preset default
+// (docs/pack-architecture.md); registered always, so saved graphs survive pack-off.
 
 import { ClassicPreset } from "rete";
 import { listIn, numIn, numOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate } from "../valueKinds";
 
-// Parallel Combine: 1 / Σ(1/xᵢ) — resistors in parallel, capacitors in series, springs in series,
-// thermal resistances in parallel. A list reducer, so it can't be a pre-set
-// Expression (the formula engine is strictly element-wise over lists).
+// Parallel Combine: 1 / Σ(1/xᵢ). A list REDUCER, so it can't be a pre-set Expression —
+// the formula engine is strictly element-wise over lists.
 
 export class ParallelCombineNode extends ClassicPreset.Node {
   label: string;
@@ -50,10 +46,8 @@ export function parallelCombine(cells: readonly (number | null | SolError)[]): n
     : 1 / sum;
 }
 
-// E-Series preferred value: nearest IEC 60063 standard component value (resistors, capacitors). E3–E24 are
-// the historic published tables (they deviate from the pure geometric series —
-// 2.7, 3.0, 3.3 …); E48/E96 follow 10^(k/N) rounded to 3 significant figures
-// exactly, so they're generated.
+// Nearest IEC 60063 preferred value. E3–E24 are the published tables (they DEVIATE from
+// the geometric series); E48/E96 follow 10^(k/N) exactly, so they're generated.
 
 export type ESeriesOp = "E3" | "E6" | "E12" | "E24" | "E48" | "E96";
 
@@ -129,10 +123,8 @@ export class ESeriesNode extends ClassicPreset.Node {
   }
 }
 
-// AWG wire properties. American Wire Gauge n → the exact geometric definition d(mm) = 0.127·92^((36−n)/39),
-// cross-section, and copper resistance at 20 °C (ρ = 1.724×10⁻⁸ Ω·m). Ampacity is
-// the NEC 310.16 copper 75 °C column (a fact table; sizes NEC doesn't list — odd
-// small gauges, magnet-wire sizes — output blank rather than a guess).
+// Diameter/resistance are exact definitions; ampacity is the NEC 310.16 copper 75 °C
+// column — a fact table, so gauges NEC doesn't list output blank rather than a guess.
 
 const AWG_AMPACITY_75C: Record<number, number> = {
   [-3]: 230, [-2]: 200, [-1]: 175, 0: 150, 1: 130, 2: 115, 3: 100,
@@ -181,11 +173,8 @@ export class AwgNode extends ClassicPreset.Node {
   }
 }
 
-/** AWG geometry + copper resistance for gauge n (fractional allowed): Ø mm,
- *  area mm², Ω/km (ρ·L/A with ρ_cu = 1.724e-8 Ω·m, per km); NEC 75 °C copper
- *  ampacity for the table's integer gauges, null otherwise (blank, never a
- *  guess). #DOMAIN! outside 4/0 (−3) … 40. Shared by the node and the pack's
- *  AWGWIRE formula. */
+/** Ø mm, area mm², Ω/km (ρ_cu = 1.724e-8 Ω·m); ampacity only for the table's INTEGER
+ *  gauges, else null. #DOMAIN! outside 4/0 (−3) … 40. Fractional n allowed. */
 export function awgWire(n: number): { diameter: number; area: number; resistance: number; ampacity: number | null } | SolError {
   if (!(n >= -3 && n <= 40)) return solError("#DOMAIN!", "AWG runs 4/0 (enter -3) through 40");
   const d = 0.127 * 92 ** ((36 - n) / 39);
@@ -193,9 +182,7 @@ export function awgWire(n: number): { diameter: number; area: number; resistance
   return { diameter: d, area: a, resistance: 17.24 / a, ampacity: Number.isInteger(n) ? AWG_AMPACITY_75C[n] ?? null : null };
 }
 
-// Resistor color code. Decode 4- or 5-band resistor markings: digit bands + multiplier → ohms, the
-// tolerance band → ±%. The IEC 60062 code; the component renders the actual
-// band colors on a resistor glyph, so the node doubles as a visual reference.
+// The IEC 60062 color code: digit bands + multiplier → ohms, tolerance band → ±%.
 
 export const RESISTOR_DIGIT: Record<string, number> = {
   black: 0, brown: 1, red: 2, orange: 3, yellow: 4,

@@ -1,10 +1,6 @@
-// Fit a smooth surface z = f(x, y) through scattered (x, y, z) points — the Grid
-// Interpolate node's Forecast fill (the cells the bilinear pass can't enclose). Uses a
-// THIN-PLATE SPLINE: the standard minimum-bending interpolant through scattered points —
-// it passes through every point exactly and extrapolates a LINEAR trend at the edges
-// (which is the "forecast" we want). Degenerate inputs (fewer than 3 points, or all
-// collinear — where the spline's linear system is singular) fall back to a ridge-
-// regularised least-squares PLANE, which still gives a sensible linear trend.
+// A THIN-PLATE SPLINE fit through scattered (x, y, z) points: exact through every
+// point, extrapolating a LINEAR trend at the edges (the "forecast"). Degenerate
+// inputs fall back to a ridge-regularised least-squares plane.
 
 export interface FitPoint { x: number; y: number; z: number; }
 
@@ -31,8 +27,7 @@ export function solveLinear(A: number[][], b: number[]): number[] | null {
 // r²·log(r), the thin-plate kernel (= ½·r²·log r²); 0 at r = 0.
 const phi = (r2: number): number => (r2 <= 1e-12 ? 0 : 0.5 * r2 * Math.log(r2));
 
-// Ridge-regularised least-squares plane z = a + b·nx + c·ny over pre-normalized coords.
-// The slope terms are regularised so it's always solvable (collinear / <3 points).
+// The slope terms are regularised so the plane is always solvable.
 function planeFit(P: Array<[number, number]>, z: number[]): (nx: number, ny: number) => number {
   const n = P.length;
   const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
@@ -48,15 +43,14 @@ function planeFit(P: Array<[number, number]>, z: number[]): (nx: number, ny: num
   return (nx, ny) => c[0] + c[1] * nx + c[2] * ny;
 }
 
-// Above this many known points the O(n³) spline solve isn't worth it — fall back to the
-// plane. Lookup tables are tiny, so this only guards a pathological wired grid.
+// Above this the O(n³) spline solve isn't worth it — fall back to the plane.
 const TPS_MAX_POINTS = 220;
 
 export function fitSurface(points: FitPoint[]): ((x: number, y: number) => number) | null {
   const n = points.length;
   if (n === 0) return null;
-  // Normalize x,y to ~[0,1] for numerical stability (z stays raw). Loop (not
-  // Math.min(...spread)) so a huge wired grid can't blow the argument limit.
+  // Normalize x,y for numerical stability; a loop, not Math.min(...spread), so a
+  // huge wired grid can't blow the argument limit.
   let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
   for (const p of points) {
     if (p.x < xmin) xmin = p.x;

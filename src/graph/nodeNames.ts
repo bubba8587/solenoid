@@ -1,7 +1,5 @@
-// Human-addressable node names + connectable endpoints, for the connection
-// dialog. Names are derived live, never stored: the header title, with a 1-based
-// index appended only when several nodes share a title. Untitled nodes fall back
-// to their type.
+// Node names + connectable endpoints for the connection dialog. Names are derived live,
+// never stored: header title + a 1-based index when shared; untitled falls back to type.
 import type { ClassicPreset } from "rete";
 import { getEditor } from "./process";
 import { SolenoidSocket, type SocketDataType } from "./sockets";
@@ -25,7 +23,6 @@ function baseName(n: AnyNode): string {
   return label || typeName(n);
 }
 
-/** Map of node id → display name (title, + index when the title isn't unique). */
 export function nodeDisplayNames(nodes: AnyNode[]): Map<string, string> {
   const groups = new Map<string, AnyNode[]>();
   for (const n of nodes) {
@@ -81,18 +78,15 @@ export function findEndpoint(side: "output" | "input", nodeId: string, socketKey
 }
 
 export type ConnRow = {
-  id: string;                 // connection id
+  id: string;
   dir: "in" | "out";          // relative to the queried node
   thisSocketLabel: string;    // the queried node's socket
   otherNodeName: string;      // the connected node's display name
   otherSocketLabel: string;   // the connected node's socket
 };
 
-/**
- * Every connection touching `nodeId`, described from that node's point of view
- * ("out" = its output feeds another's input; "in" = another's output feeds it).
- * Connections to Groups / Format Controllers are skipped (internal plumbing).
- */
+/** From the queried node's point of view ("out" = its output feeds another's input);
+ *  Group / Format Controller connections are skipped as internal plumbing. */
 export function nodeConnections(nodeId: string): ConnRow[] {
   const editor = getEditor();
   if (!editor) return [];

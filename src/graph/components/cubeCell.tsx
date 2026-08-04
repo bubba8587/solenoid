@@ -1,7 +1,5 @@
-// Shared rendering for a single Cube cell — used by the nested-data viewer's grid.
-// A cell can be anything (the recursive value model), so this is the one place that
-// maps each cell kind to how it shows + what drilling into it pushes onto the
-// breadcrumb stack (every nested container drills IN PLACE — no second popup).
+// The one place mapping a Cube cell's kind to how it renders and what drilling it
+// pushes onto the breadcrumb stack — a nested container drills IN PLACE.
 import type { ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
@@ -15,9 +13,8 @@ import { formatListCell } from "./valueDisplayFormat";
 import { errorTip } from "./ErrorChip";
 import "./ArrayChip.css";
 
-/** A short, drill-free token for the compact preview (no click). `type` (the source
- *  frame column's element type, carried onto the cube column) renders a flat scalar
- *  cell correctly — a date serial as a date, a logical as TRUE/FALSE. */
+/** A short, drill-free token for the compact preview; `type` renders a flat scalar
+ *  cell by its source column's element type. */
 export function cubeCellToken(cell: CubeCell, type?: FrameColType): string {
   if (cell === null || cell === undefined) return "";
   if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
@@ -31,8 +28,8 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType): string {
   return String(cell);
 }
 
-/** Render a flat Frame cell (no nesting — frame cells are scalars) by column type:
- *  a date serial → date string, a logical → TRUE/FALSE, an error → red #CODE!. */
+/** A flat Frame cell by column type: serial → date, logical → TRUE/FALSE, error →
+ *  red #CODE!. */
 export function frameCellNode(type: FrameColType, cell: FrameCell): ReactNode {
   if (cell === null || cell === undefined || cell === "") {
     return <span style={{ color: "var(--text-muted)" }}>—</span>;
@@ -57,7 +54,6 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
   if (cell === null || cell === undefined) {
     return <span className="solenoid-node__text-empty" style={{ color: "var(--text-muted)" }}>—</span>;
   }
-  // Per-kind chip color (see ArrayChip.css): cube/frame violet, list/grid gold.
   const chip = (mod: "cube" | "frame" | "array") =>
     `solenoid-array-chip solenoid-array-chip--${mod}${size === "sm" ? " solenoid-array-chip--sm" : ""}`;
   const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();

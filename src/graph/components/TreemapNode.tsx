@@ -27,8 +27,6 @@ export function TreemapComponent({ data, emit }: NodeProps<TreemapNodeType>) {
           ? <TreemapView names={p!.names} values={p!.values} width={W} height={H} />
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
       </div>
-      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup),
-          right-aligned like every other value chip. */}
       <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={chartValue} /></div>
     </NodeShell>
   );

@@ -1,10 +1,5 @@
-// ─── Pure date-serial layer — rete-free by design (FX-2) ─────────────────────
-// Serial ↔ JS Date conversion, text parsing and token formatting, extracted from
-// date.ts so the formula path (excelFunctions), financeOps, frameVerbs and
-// coerceInputs can read a date serial without dragging rete and the socket
-// lattice into the headless evaluator. date.ts (the NODES) imports from here;
-// nothing here may import a module that reaches rete (rules.md FX-2, enforced
-// by formulaPathIsReteFree.test.ts).
+// Nothing here may import a module that reaches rete — the formula path stays
+// headless (rules.md FX-2, enforced by formulaPathIsReteFree.test.ts).
 
 // Excel serial 1 = Jan 1, 1900; JS epoch (Jan 1, 1970) = serial 25569.
 
@@ -16,32 +11,20 @@ export function jsDateToSerial(d: Date): number {
   return d.getTime() / 86400000 + 25569;
 }
 
-// Parse a date string ("2026-01-03", "Jan 3 2026", ISO datetime, …) to an Excel
-// serial. Returns NaN when it isn't a parseable date. The ONE canonical text→date
-// parser — shared by DateValue (DATEVALUE), Cast(date), and Get Column's read-as
-// Date — so all three agree on what a date string means. Does NOT floor the time
-// component; callers that want date-only (DATEVALUE) floor the result themselves.
+// The ONE canonical text→date parser (DATEVALUE, Cast(date), Get Column read-as):
+// NaN when unparseable, and the time component is NOT floored — callers do that.
 export function parseDateToSerial(s: string): number {
   const t = s.trim();
   if (!t) return NaN;
-  // A year token must be EXACTLY four digits — no 2-digit-year century guessing
-  // (Excel's 00–29 pivot goes stale; it's 2026 now), in ANY form. A date string
-  // with no 4-digit run anywhere can only parse by guessing the century (or the
-  // whole year), so it is NOT a date: "1/15/26", "20-Mar-26" (JS would guess
-  // 2026), bare "Mar 20" (JS guesses 2001!) → NaN; write the 4-digit year.
-  // ISO date-only ("0026-01-15") has a 4-digit token and parses as 26 AD.
+  // Without a 4-digit run the year can only be guessed (JS reads bare "Mar 20" as
+  // 2001), so it is not a date — no 2-digit-year century pivot in any form.
   if (!/\d{4}/.test(t)) return NaN;
   const d = new Date(t);
   if (Number.isNaN(d.getTime())) return NaN;
-  // Zone-less text must mean the same calendar date on every machine. new Date()
-  // reads ISO date-only forms ("2026-01-03") as UTC midnight but everything else
-  // ("01-Jan-2026", "Jan 3 2026", "2026-01-03T10:00") as LOCAL wall-clock, so a
-  // raw getTime()-based serial shifts with the machine's timezone (off-by-one day
-  // east of UTC, fractional serials everywhere else). Rebuild the wall-clock via
-  // Date.UTC from whichever getters match the parse interpretation; an explicit
-  // zone designator means an absolute instant, which is already TZ-independent.
-  // A zone designator only counts after a time component — a bare trailing
-  // "[+-]dddd" is otherwise indistinguishable from a "-2026" year.
+  // Zone-less text must mean the same calendar date on every machine: new Date()
+  // reads ISO date-only as UTC but every other form as LOCAL, so rebuild the wall
+  // clock via Date.UTC. A zone designator counts only after a time component — a bare
+  // trailing "[+-]dddd" is indistinguishable from a "-2026" year.
   const hasTime = /\d\s*:\s*\d/.test(t);
   const hasZone = hasTime && /(?:Z|GMT|UTC|[+-]\d{2}:?\d{2})\s*$/i.test(t);
   const isoDateOnly = /^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t);
@@ -59,10 +42,7 @@ const FORMAT_MONTHS = ["January","February","March","April","May","June",
                        "July","August","September","October","November","December"];
 const FORMAT_DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-/**
- * Format a date serial with a token pattern (YYYY, MM, DD, MMMM, HH, mm, A, …).
- * Shared by Cast-to-text and the Format Controller's date styles.
- */
+/** Format a date serial with a token pattern (YYYY, MM, DD, MMMM, HH, mm, A, …). */
 export function formatDateSerial(serial: number, pattern: string): string {
   if (!Number.isFinite(serial)) return String(serial);
   const d = serialToJsDate(serial);

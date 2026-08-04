@@ -7,17 +7,9 @@ import { CubeChip } from "./CubeChip";
 import { ChartChip } from "./ChartChip";
 import { DocumentChip } from "./DocumentChip";
 
-/**
- * The ONE chip registry for OBJECT-valued kinds with a real click affordance
- * (frame → grid popup, cube → cube popup, chart → chart popup, document → its
- * source Report/Note). Returns null for everything else — plain values, and
- * object kinds with no chip (mermaid/svg/image/lambda render figures or labels).
- *
- * Every chip surface goes through here, so a NEW kind added here lands on all of
- * them at once at a consistent per-surface size. describeValueKind
- * (valueKindLabel.ts) is the TEXT net behind this for chip-less kinds and
- * text-only surfaces; keep the two in sync when adding a kind.
- */
+/** The ONE chip registry for object kinds with a click affordance; null for
+ *  everything else. describeValueKind is the TEXT net behind it for chip-less
+ *  kinds — keep the two in sync when adding a kind. */
 export function valueChipFor(
   value: unknown,
   opts: { label?: string; pinNodeId?: string; size: "sm" | "md" },

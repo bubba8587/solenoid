@@ -11,11 +11,8 @@ const isOnValue = (s: string | undefined) => {
   return v === "on" || v === "true" || v === "1" || v === "yes";
 };
 
-/**
- * A boolean option rendered as a checkbox that writes "on"/"off" into the
- * options string — but still a wireable input socket (shows the wired source
- * instead of the checkbox when a cable feeds it).
- */
+/** A checkbox writing "on"/"off" into the options string, still a wireable input
+ *  (a cable replaces the checkbox with its source). */
 function ToggleInputRow({ node, emit, socketKey, label }: {
   node: ShellNode & { stringLiterals: Record<string, string> };
   emit: Emit;
@@ -60,20 +57,16 @@ const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "alpha", "fontsize"];
 
-/**
- * Chart Builder — a labeled "Concat for chart options". The chart-type dropdown
- * shapes the form (CHART_BUILDER_TARGETS), but a row that is WIRED or holds a
- * value stays visible regardless — dimmed when the chosen type ignores it — so
- * switching type never hides live state; the node serializes every set field, so
- * one builder can feed several chart types.
- */
+/** The chart-type dropdown shapes the form, but a WIRED or valued row stays
+ *  visible (dimmed) so switching type never hides live state — and every set field
+ *  serializes, so one builder can feed several chart types. */
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;
   const [target, setTarget] = useNodeField(data, "target");
   const connected = useConnectedInputs(data.id);
   const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.chart;
   const accepted = new Set<string>(spec.keys);
-  // Wired, or holding a typed value — must stay on screen even when inert.
+  // Wired or valued — stays on screen even when inert.
   const live = (k: ChartBuilderKey) =>
     connected.has(k) || (data.stringLiterals[k] ?? "") !== "" || data.literals[k] !== undefined;
   const acc = (keys: readonly ChartBuilderKey[]) => keys.filter((k) => accepted.has(k));

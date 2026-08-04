@@ -22,9 +22,8 @@ import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 
-// Date nodes don't format their own serials: ValueDisplay does it for any
-// node whose OUTPUT socket is a date type (see valueDisplayFormat.ts), so the
-// value box shows a formatted date for scalars AND lists, consistently.
+// Date nodes never format their own serials — ValueDisplay does it for any date-typed
+// output socket, so scalars and lists format consistently.
 
 const TODAY_NOW_OPS = (Object.keys(TODAY_NOW_OP_META) as TodayNowOp[]).map(op => ({
   value: op, label: TODAY_NOW_OP_META[op].label,
@@ -131,9 +130,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const [, setLabel] = useNodeField(data, "label");
   async function handleOp(next: DateDiffOp) {
-    // Leaving a basis op: drop any basis cable BEFORE the socket goes away
-    // (removeInput while a cable references the socket is unsafe — the
-    // Interpolate variant-switch rule).
+    // removeInput while a cable still references the socket is unsafe, so drop it first.
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
       await dropInputCables(data.id, ["basis"]);
     }

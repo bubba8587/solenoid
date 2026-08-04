@@ -14,12 +14,8 @@ import "./ReportNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/**
- * The Report's canvas presence — a small, fixed-size anchor card, deliberately NOT
- * a full editing surface. It exists so the report's `` `=name` `` refs have a real place for their wireable
- * INPUT sockets to live (same NodeSocket/RefInputRow machinery as a Note); the
- * actual markdown editing happens in the full-screen ReportOverlay, opened here.
- */
+/** A small anchor card, deliberately NOT an editing surface: it exists so the
+ *  report's refs have somewhere for their INPUT sockets to live. */
 export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [color, setColor] = useState(data.color);
@@ -35,8 +31,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function pick(c: string) { setColor(c); data.color = c; scheduleAutosave(); }
 
-  // Re-render on theme/palette change — the tint below resolves through the
-  // ACTIVE palette (appThemeStore bumps on a palette switch too, same as NoteNode).
+  // The tint resolves through the ACTIVE palette, so a palette switch must re-render.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const refKeys = data.refKeys();
   const mode = appThemeStore.getMode();

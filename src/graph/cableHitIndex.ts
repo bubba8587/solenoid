@@ -1,17 +1,8 @@
 import { SpatialGrid, polylineBBox } from "./spatialIndex";
 import { parsePathPoints, pointPolylineDistance, type Pt, type CableHit } from "./cableHitTest";
 
-// CableHitIndex — the composed Phase-3 cable hit-test API. NOT WIRED IN (nothing
-// constructs it yet; no behavior change). It glues the two primitives together:
-//   • SpatialGrid     → narrow a pointer query to nearby candidates (O(1)-ish),
-//   • cableHitTest    → precise point→polyline distance on those candidates.
-// so Phase 3 can drop the per-cable invisible hit <svg> for a single index query.
-//
-// Decoupled from the live cableScene for testability: feed it geometry via
-// `update(cables)`; it diffs against what it holds (add new, re-flatten changed
-// `d`, drop removed) so a per-frame call after the scene changes is cheap. All
-// coordinates are in ONE space the caller chooses (world is natural — flatten the
-// cable `d` once in world units, query with a world-space tolerance = screen px / k).
+// SpatialGrid + cableHitTest composed; NOT WIRED IN yet. All coordinates are in ONE
+// space the caller chooses (world means a tolerance of screen px / k).
 
 export interface CableGeomInput { id: string; d: string }
 
@@ -21,14 +12,13 @@ export class CableHitIndex {
   private readonly grid: SpatialGrid<string>;
   private readonly entries = new Map<string, Entry>();
 
-  /** cellSize is in the index's coordinate space; pick ~the typical cable span /
-   *  a few so most queries touch one or two cells. */
+  /** cellSize is in the index's coordinate space; size it so most queries touch one
+   *  or two cells. */
   constructor(cellSize = 240) {
     this.grid = new SpatialGrid<string>(cellSize);
   }
 
-  /** Sync the index to exactly this set of cables. Unchanged `d`s are left in place
-   *  (no re-flatten/re-bucket); changed ones are rebuilt; absent ones are removed. */
+  /** Sync to exactly this set of cables; an unchanged `d` is never re-flattened. */
   update(cables: CableGeomInput[]): void {
     const seen = new Set<string>();
     for (const c of cables) {
@@ -44,8 +34,7 @@ export class CableHitIndex {
     }
   }
 
-  /** Nearest cable to `point` within `tolerance`, or null. Grid narrows to nearby
-   *  candidates; the precise test runs only on those. */
+  /** Nearest cable to `point` within `tolerance`, or null. */
   hitTest(point: Pt, tolerance: number): CableHit | null {
     let best: CableHit | null = null;
     for (const id of this.grid.queryPoint(point, tolerance)) {

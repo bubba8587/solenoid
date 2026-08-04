@@ -1,6 +1,5 @@
-// Feature-detect the WICG HTML-in-Canvas API (`ctx.drawElementImage`) that the
-// html-canvas render mode is built on. Chromium-only, behind a flag / origin trial.
-// Synchronous + cheap; safe to call at startup.
+// Feature-detect the WICG HTML-in-Canvas API (`ctx.drawElementImage`) — Chromium
+// only, behind a flag; synchronous and cheap, so it is safe at startup.
 export function supportsHtmlInCanvas(): boolean {
   try {
     const c = document.createElement("canvas");

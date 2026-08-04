@@ -1,13 +1,11 @@
 import "./SegToggle.css";
 import { stopDragStart } from "../coarse";
 
-/** A segmented button toggle. Drag-safe: it stops pointer/mouse-down so dragging a
- *  button doesn't start a node drag. The active option gets `--on`. */
+/** Stops pointer/mouse-down so dragging a button doesn't start a node drag. */
 export function SegToggle<T extends string>({ value, onChange, options, className }: {
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<{ value: T; label: string; title?: string }>;
-  /** Extra class on the group — e.g. the FC's inline-row sizing variant. */
   className?: string;
 }) {
   return (

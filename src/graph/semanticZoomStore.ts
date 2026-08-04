@@ -1,9 +1,3 @@
-// Whether the canvas is currently far enough zoomed out that node cards should
-// swap to a simplified representation (Settings toggle "semanticZoom", gated on a
-// raw CSS-scale threshold — SEMANTIC_ZOOM_SCALE below — so it fires at the same
-// APPARENT zoom on every display, which is what body-text legibility depends on).
-// Canvas.tsx recomputes this on every pan/zoom event and on the setting toggling;
-// NodeShell reads it to add a CSS class.
 import { createNotifier } from "./storeKit";
 import { settingsStore } from "./settingsStore";
 
@@ -21,18 +15,13 @@ export const semanticZoomStore = {
   subscribe,
 };
 
-// A root-level class (same pattern as settingsStore's PERF_CLASS_MAP) so plain
-// CSS — not a React subscription in every node component — does the swap.
+// A root-level class so plain CSS — not a React subscription in every node
+// component — does the swap.
 subscribe(() => {
   if (typeof document === "undefined") return; // node/test env
   document.documentElement.classList.toggle("solenoid-semantic-zoom", _far);
 });
 
-// Semantic zoom: below this CSS scale a node body's detail is too small to read,
-// so it hides and the card frame + title + socket dots stay as overview landmarks.
-// Gated on the RAW CSS scale, NOT the mip level — dpr is a texture-resolution
-// concern, and apparent size is what legibility depends on. 0.3 ≈ a card drawn at
-// ~30% (a ~200px card → ~60px): body text unreadable, card still a clear block.
 const SEMANTIC_ZOOM_SCALE = 0.3;
 export function syncSemanticZoomFor(scale: number): void {
   semanticZoomStore.set(settingsStore.get("semanticZoom") && scale <= SEMANTIC_ZOOM_SCALE);

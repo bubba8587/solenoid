@@ -1,6 +1,5 @@
-// Per-node manual size set by dragging a node's resize handle. Module-level store so
-// it's readable from Rete's separate React root; persisted with the graph. Only
-// `nodeResizable` nodes expose a handle; everything else auto-sizes and truncates.
+// Per-node manual size, persisted with the graph. Only `nodeResizable` nodes expose a
+// handle; everything else auto-sizes and truncates.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -8,9 +7,8 @@ import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 export type NodeSize = { w: number; h: number };
 
 const _sizes = new Map<string, NodeSize>();
-// Per-node minimum size (card width, box height), published by the node from its
-// CURRENT content type — a chart needs more room than a scalar. The resize grip
-// clamps to it so a Display can't shrink its content into uselessness.
+// Per-node minimum size, published by the node from its CURRENT content type; the resize
+// grip clamps to it so a Display can't shrink its content into uselessness.
 const _mins = new Map<string, NodeSize>();
 const { notify, subscribe } = createNotifier();
 

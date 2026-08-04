@@ -9,8 +9,7 @@ import { solError, type SolError } from "../errorValue";
 export class BuildCubeNode extends ClassicPreset.Node {
   label: string;
   cachedResult: CubeValue | null = null;
-  // Unwired `any` rows accept a typed numeric scalar as their cell; `name` (the
-  // column header) is a string input backed here.
+  // Unwired `any` rows accept a typed numeric scalar as their cell; `name` is a string.
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { name: "" };
   nextInputId = 0;
@@ -56,8 +55,7 @@ export class BuildCubeNode extends ClassicPreset.Node {
       if (wired && wired.length) return wired[0] as CubeCell;
       return (k in this.literals ? this.literals[k] : null) as CubeCell;
     });
-    // Read raw, guard, THEN trim: a wired blank name is unknown, not "Items"
-    // (value-semantics.md, "Reading an input").
+    // Read raw, guard, THEN trim: a wired blank name is unknown, not "Items".
     const nameRaw = readInput(inputs.name as string[] | undefined, this.stringLiterals.name ?? "");
     if (nameRaw === null) { this.cachedResult = null; return { cube: null }; }
     const name = nameRaw.trim() || "Items";
@@ -66,10 +64,9 @@ export class BuildCubeNode extends ClassicPreset.Node {
   }
 }
 
-// The child socket is `any` so it takes a Frame OR a Cube (a cube can't narrow into a
-// frame socket; and a `cube` socket would wrongly widen a frame child TO a cube, turning
-// depth-1 sub-frames into sub-cubes). A bare list/matrix/scalar still widens to a frame
-// (coerceValue's frame case, mirrored here).
+// The child socket is `any` so it takes a Frame OR a Cube: a cube can't narrow into a
+// frame socket, and a `cube` socket would widen a frame child TO a cube, turning depth-1
+// sub-frames into sub-cubes.
 function asNestChild(v: unknown): FrameValue | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v)) return v;
@@ -99,18 +96,17 @@ export class NestJoinNode extends ClassicPreset.Node {
   data(inputs: { parent?: unknown[]; child?: unknown[]; key?: string[]; name?: string[] }) {
     const parent = inputs.parent?.[0] ?? null;
     const child = asNestChild(inputs.child?.[0] ?? null);
-    // Read raw, guard, THEN trim: `?? ""` here would collapse a wired blank into
-    // the empty literal's "not chosen" reading (value-semantics.md, "Reading an input").
+    // Read raw, guard, THEN trim: `?? ""` would collapse a wired blank into the empty
+    // literal's "not chosen" reading.
     const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
     if (keyRaw === null || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
     const key = keyRaw.trim();
     const name = nameRaw.trim();
     if (!child || key === "") { this.cachedResult = null; return { cube: null }; }
-    // Cube parent → deepen one level into the nested sub-frames; Frame parent →
-    // the original nest join. A WIRED parent that's neither (a bare list / scalar) is
-    // a type mistake → #TYPE!, not a silent blank (error-value rule); an UNWIRED
-    // parent (null) stays blank, like any incomplete input.
+    // Cube parent → deepen one level into the nested sub-frames; Frame parent → the
+    // original nest join; a WIRED parent that is neither → #TYPE!, never a silent blank;
+    // an UNWIRED parent stays blank.
     this.cachedResult = isCubeValue(parent)
       ? relateCubeToFrame(parent, child, key, name)
       : isFrameValue(parent)
@@ -122,9 +118,8 @@ export class NestJoinNode extends ClassicPreset.Node {
   }
 }
 
-// Each extensible `any` input is one COLUMN: a wired list → its elements are the
-// cells; a single-column cube → that column's cells; a frame/scalar → one cell. A
-// `names` CSV labels the columns positionally.
+// Each extensible `any` input is one COLUMN: a wired list → its elements are the cells;
+// a single-column cube → that column's cells; a frame/scalar → one cell.
 
 export class CubeColumnsNode extends ClassicPreset.Node {
   label: string;
@@ -181,9 +176,8 @@ export class CubeColumnsNode extends ClassicPreset.Node {
   }
 }
 
-// Aggregates one column INSIDE each row's nested sub-frame, flattening the cube back
-// to a Frame with the roll-up appended. Reuses `aggregateGroup` (the Group By
-// aggregator) so a roll-up and a Group By agree on every op's edge cases.
+// Reuses `aggregateGroup` (the Group By aggregator) so a roll-up and a Group By agree
+// on every op's edge cases.
 
 export class CubeRollupNode extends ClassicPreset.Node {
   label: string;
@@ -207,8 +201,7 @@ export class CubeRollupNode extends ClassicPreset.Node {
   data(inputs: { cube?: (CubeValue | null)[]; nested?: string[]; column?: string[]; as?: string[] }) {
     const cube = inputs.cube?.[0] ?? null;
     if (!cube) { this.cachedResult = null; return { frame: null }; }
-    // Read raw, guard, THEN trim — a wired blank is unknown, never the default
-    // ("Total" would name a column from a value the graph withheld).
+    // Read raw, guard, THEN trim — a wired blank is unknown, never the default.
     const nestedRaw = readInput(inputs.nested, this.stringLiterals.nested ?? "");
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     const asRaw = readInput(inputs.as, this.stringLiterals.as ?? "Total");

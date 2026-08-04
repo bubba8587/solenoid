@@ -4,13 +4,11 @@ import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
 
-// Formula syntax highlighting + autocomplete helpers. A position-PRESERVING
-// tokenizer (every character, incl. whitespace + unknowns, ends up in the output)
-// so the highlighted <pre> mirrors the <textarea> character-for-character, and it
-// never bails on a half-typed formula. Pure (no React) so it's unit-testable.
+// A position-PRESERVING tokenizer: every character reaches the output, so the
+// highlighted <pre> mirrors the <textarea> and a half-typed formula never bails.
 
-// Can't be a module-level constant: pack functions register after load and the
-// advertised set shrinks when a pack is switched off.
+// Can't be a module-level constant: packs register after load and the advertised
+// set shrinks when a pack is switched off.
 let _fnSet = new Set<string>();
 let _fnSetSource: string[] | null = null;
 function fnSet(): Set<string> {
@@ -27,13 +25,9 @@ const isDigit = (c: string) => c >= "0" && c <= "9";
 const isIdStart = (c: string) => /[A-Za-z_]/.test(c);
 const isIdChar = (c: string) => /[A-Za-z0-9_]/.test(c);
 
-/**
- * The CSS class for an identifier given what follows it: a name in CALL position
- * (next non-space char is `(`) is a function — `fx-fn` if it's a real Formula.js
- * name, `fx-frame` if it's a FRAME VERB (a real name whose data type can't flow
- * through formulas, so it must not read as a typo), else `fx-unknown`. A bare name
- * is a math constant (`fx-const`) or a variable (`fx-var`).
- */
+/** The CSS class for an identifier: in CALL position `fx-fn` / `fx-frame` (a real
+ *  name whose type can't flow through formulas, so never a typo) / `fx-unknown`;
+ *  bare, `fx-const` or `fx-var`. */
 function identClass(word: string, isCall: boolean): string {
   if (isCall) {
     const up = word.toUpperCase();
@@ -75,10 +69,8 @@ export function highlightFormula(src: string): string {
       while (j < src.length && isIdChar(src[j])) j++;
       out += span("fx-var", src.slice(i, j)); i = j; continue;
     }
-    // Structured references (D24): `[Unit Price]` (whole column), `@[Name]` /
-    // `[@Name]` / `[@[Name]]` (this row). One token through the closing
-    // bracket — colored like the variables they behave as; left open
-    // mid-type, color to the end.
+    // Structured references (D24) are ONE token through the closing bracket,
+    // colored like the variables they behave as; left open mid-type, color runs on.
     if (c === "[" || (c === "@" && src[i + 1] === "[")) {
       let j = i + (c === "@" ? 2 : 1);
       let depth = 1;
@@ -132,13 +124,13 @@ export function suggestFor(word: string, extraNames: string[] = [], limit = 8): 
   const scored: Array<{ s: Suggestion; score: number }> = [];
   for (const s of pool) {
     const name = s.name.toLowerCase();
-    // A fully-typed match is dropped UNLESS it's a function — accepting a function
-    // still adds its `(`, so `SUM` stays useful even once fully typed; `pi` doesn't.
+    // A fully-typed match is dropped unless it's a function, where accepting still
+    // adds the `(`.
     if (name === q && s.kind !== "fn") continue;
     const fz = fuzzyScore(word, s.name);
     if (fz == null) continue;
-    // Prefix matches rank highest, then fuzzy score; a kind tie-break keeps a
-    // node variable / constant ahead of the long function list when equal.
+    // Prefix first, then fuzzy score, then kind — so a node variable outranks the
+    // long function list on a tie.
     const prefix = name.startsWith(q) ? 1000 : 0;
     const kindBonus = s.kind === "var" ? 3 : s.kind === "const" ? 2 : 0;
     scored.push({ s, score: prefix + fz + kindBonus });
@@ -151,10 +143,9 @@ export function suggestFor(word: string, extraNames: string[] = [], limit = 8): 
   });
 }
 
-/** The innermost function call the caret sits inside — `{ name, argIndex }` — or
- *  null at the top level. Drives the param-hint bar: `INDEX(c, |` → INDEX, arg 1.
- *  String literals are skipped; an anonymous `(` group still nests (its enclosing
- *  named call keeps counting ITS OWN commas, not the group's). */
+/** The innermost function call the caret sits inside, or null at the top level;
+ *  string literals are skipped and an anonymous `(` group still nests, so the
+ *  enclosing named call keeps counting ITS OWN commas. */
 export function enclosingCall(src: string, caret: number): { name: string; argIndex: number } | null {
   const stack: Array<{ name: string | null; argIndex: number }> = [];
   let i = 0;
@@ -181,9 +172,8 @@ export function enclosingCall(src: string, caret: number): { name: string; argIn
   for (let k = stack.length - 1; k >= 0; k--) {
     const frame = stack[k];
     if (frame.name) {
-      // Commas inside an anonymous ( ) group between the named call and the caret
-      // belong to the group — the named frame's own count is already correct
-      // because only the TOP frame increments.
+      // Only the TOP frame increments, so a named frame's count already excludes
+      // commas belonging to an inner anonymous group.
       return { name: frame.name, argIndex: frame.argIndex };
     }
   }

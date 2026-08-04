@@ -16,9 +16,8 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: string; title: 
   { value: "logical", label: "Bool", title: "TRUE / FALSE table" },
 ];
 
-/** Switch the table's element type in place — the List Input pattern: re-type
- *  the output socket, drop downstream cables the new type can't feed, re-adapt
- *  downstream Format Controllers, recompute. */
+/** Switch the element type in place (the List Input pattern): an in-place retype
+ *  must drop the cables it can't feed and re-adapt downstream FCs itself. */
 async function applyTableType(node: TableInputNodeType, dt: TableElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   const editor = getActiveEditor();
@@ -28,10 +27,8 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   await processGraph();
 }
 
-// A LITERAL source, like Frame Input: the grid popup edits the RAW text cells
-// (via onSaveRaw — Source is the editable truth, Formatted the derived preview),
-// so a bad cell is never silently coerced away; it derives to NaN (dirty data)
-// and the Source view still shows what was typed.
+// A LITERAL source (D31): the popup edits the RAW text cells, so a bad cell is
+// never coerced away — it derives to NaN and Source still shows what was typed.
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {
   const [dt, setDt] = useState<TableElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
@@ -60,10 +57,8 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
             data.tableText = rawCellsToText(cells);
             void processGraph(data.id);
           },
-          // A NUMBER table is a unit-taggable source (D20), like a Frame Input
-          // column: the matrix bar's unit dropdown writes the homogeneous unit onto
-          // the node so it rides the value downstream. (formatControls/columnUnits
-          // are derived from the tagged cachedResult by the chip.)
+          // A NUMBER table is a unit-taggable source (D20): the unit dropdown
+          // writes the homogeneous unit onto the node so it rides the value.
           ...(dt === "number"
             ? {
                 unitTaggable: true,

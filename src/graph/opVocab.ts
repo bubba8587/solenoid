@@ -1,22 +1,5 @@
-// The `op=` vocabulary per node class — the values a saved/authored `op` init
-// field may legally take. One derivation, two consumers: the strict validator
-// (an unknown op constructs "fine" and then silently miscomputes — exactly the
-// class of would-be-silent repair `graphValidate.ts` exists to surface) and the
-// grounding spec (a model needs the exact tokens, not the dropdown labels).
-//
-// Sources, in layers:
-// 1. NODE_OPS — the declared op families (the formula surface's registry).
-// 2. Every Add-menu leaf's own constructed `op` (op-selected leaves), plus the
-//    leaf's builder-derived `hiddenOps` (ops with no menu leaf of their own).
-// 3. The dropdown-only families whose ops live in a component select rather
-//    than the catalog: the aggregate ops (Group By / Cube Rollup, AGG_OP_META)
-//    and the 1-D Group By (GROUP_BY_OP_META). Their meta tables are
-//    Record<Union, …>, so tsc keeps these complete.
-//
-// A class ABSENT from the map has no enumerable vocabulary (no declared family,
-// single-op or op-less leaves) — callers must skip the check for it rather than
-// reject; the derivation is a whitelist of KNOWN vocabularies, not a claim of
-// full coverage.
+// The legal `op=` tokens per node class, derived from the catalog. It is a whitelist
+// of KNOWN vocabularies: an ABSENT class must be skipped by callers, never rejected.
 
 import { NODE_OPS } from "./nodeOps";
 import { FLAT_CATALOG } from "./catalogUtils";

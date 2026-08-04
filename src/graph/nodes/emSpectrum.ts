@@ -1,8 +1,5 @@
-// EM Spectrum Band — the Electromagnetism pack's classifier: give a frequency
-// OR a wavelength and get the named band (Radio … Gamma; the visible range
-// names its color), plus both quantities computed from c. The companion to the
-// pack's Wavelength ↔ Frequency equation: that node converts, this one tells
-// you what you're looking at.
+// Classifier half of the Electromagnetism pack — the Wavelength ↔ Frequency
+// equation node does the conversion.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, strOut, readInput } from "./shared";
@@ -10,8 +7,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 
 const C = 299792458; // m/s
 
-/** Band name for a wavelength in meters. Boundaries are the conventional ones
- *  (ISO 21348-adjacent, rounded): the visible range names its color too. */
+/** Wavelength in METERS; boundaries are the conventional ISO 21348-adjacent ones. */
 export function emBand(wavelengthM: number): string {
   const nm = wavelengthM * 1e9;
   if (wavelengthM >= 1) return "Radio";
@@ -66,10 +62,8 @@ export class EmSpectrumNode extends ClassicPreset.Node {
   }
 }
 
-/** Band + both quantities from EITHER a frequency (Hz, wins when both given) or
- *  a wavelength (m). null = no usable input; #DOMAIN! for a non-positive or
- *  non-finite frequency. Shared by the node and the pack's EMSPECTRUMBAND
- *  formula. */
+/** Frequency WINS when both are given; null = no usable input, #DOMAIN! for a
+ *  non-positive or non-finite frequency. Shared with the EMSPECTRUMBAND formula. */
 export function emSpectrum(f: number | null, wl: number | null): { band: string; freq: number; wavelength: number } | SolError | null {
   const fq = typeof f === "number" ? f : typeof wl === "number" && wl > 0 ? C / wl : null;
   if (fq === null) return null;

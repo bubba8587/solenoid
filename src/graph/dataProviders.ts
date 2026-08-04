@@ -1,14 +1,12 @@
-// Provider presets for the Finance/Data connection node: each preset builds its
-// fetch URL from the user's input (+ an API key where needed) and parses the
-// response into a Frame. Must stay pure + side-effect-free so it unit-tests without
-// the network — the node layer wires these to httpBridge/apiKeyStore/connectionStore.
+// Provider presets for the Data connection node. Must stay pure + side-effect-free
+// so they unit-test without the network.
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./nodes/connection";
 
 export type ProviderId = "fred" | "alphavantage";
 
-/** Optional per-fetch refinements the node folds into the URL (all in the cache key,
- *  so changing any of them re-fetches). Provider-gated by the fields below. */
+/** Per-fetch refinements folded into the URL; all are in the cache key, so
+ *  changing any of them re-fetches. */
 export type DataFeedOpts = { start?: string; end?: string; freq?: string };
 
 export interface ProviderPreset {
@@ -22,11 +20,10 @@ export interface ProviderPreset {
   keyUrl?: string;
   inputLabel: string;
   placeholder: string;
-  /** Show start/end (YYYY-MM-DD) date fields — only when the provider can filter by
-   *  date in the URL (FRED can; Alpha Vantage can't). */
+  /** Show start/end date fields — only when the provider filters by date in-URL. */
   supportsDateRange?: boolean;
-  /** Frequency options (undefined/[] = no frequency control). `value: ""` = the
-   *  provider's own default (FRED = as-published; AV = daily). */
+  /** Frequency options (undefined/[] = no control); `value: ""` = the provider's
+   *  own default. */
   frequencies?: ReadonlyArray<{ value: string; label: string }>;
   /** Symbol/series quick-picks that fill the input field (the ids are cryptic). */
   quickPicks?: ReadonlyArray<{ id: string; label: string }>;
@@ -36,9 +33,8 @@ export interface ProviderPreset {
   parse(text: string): FrameValue;
 }
 
-/** FRED returns `{observations: [{date, value}, …]}` with value "." for a gap —
- *  reduce it to a two-column date/value frame (gaps → missing). Kept for the keyed
- *  API path (not the default). */
+/** FRED's keyed JSON route: `{observations: […]}` with "." for a gap → a
+ *  two-column date/value frame. */
 export function parseFredObservations(text: string): FrameValue {
   const data = JSON.parse(text) as { observations?: Array<{ date?: string; value?: string }> };
   const obs = data.observations ?? [];
@@ -52,10 +48,8 @@ export function parseFredObservations(text: string): FrameValue {
   return frameFromColumnar({ date, value });
 }
 
-/** The KEYLESS FRED route: `fredgraph.csv?id=SERIES` returns a 2-column CSV
- *  (`observation_date,SERIES_ID`) with `.` for a gap. Parse it directly (csvToFrame
- *  would turn the whole column to text on the first `.`), keeping the real column
- *  names (so the value column is named after the series) and mapping gaps → missing. */
+/** The KEYLESS FRED route (`fredgraph.csv`) is parsed here rather than through
+ *  csvToFrame, which would turn the whole column to text on the first `.` gap. */
 export function parseFredCsv(text: string): FrameValue {
   const lines = text.trim().split(/\r?\n/).filter((l) => l.length > 0);
   const header = (lines[0] ?? "date,value").split(",");
@@ -75,8 +69,7 @@ export function parseFredCsv(text: string): FrameValue {
   return frameFromColumnar({ [dateCol]: date, [valCol]: value });
 }
 
-/** Common FRED series — the ids are cryptic, so the node offers these as quick-picks
- *  that fill the Series ID field (you can still type any id). */
+/** Quick-picks that fill the Series ID field; any id can still be typed. */
 export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "UNRATE", label: "Unemployment rate" },
   { id: "CPIAUCSL", label: "CPI (inflation)" },
@@ -88,7 +81,7 @@ export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "SP500", label: "S&P 500" },
 ];
 
-/** Common Alpha Vantage symbols — the same quick-fill convenience for stocks/ETFs. */
+/** The same quick-fill for stocks/ETFs. */
 export const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "AAPL", label: "Apple" },
   { id: "MSFT", label: "Microsoft" },
@@ -99,8 +92,7 @@ export const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "SPY", label: "S&P 500 ETF" },
 ];
 
-// FRED aggregates to a coarser frequency in-URL (fq=…) with a mean aggregation
-// (fam=avg); AV exposes frequency as separate TIME_SERIES_* functions.
+// FRED aggregates in-URL (fq/fam); AV uses separate TIME_SERIES_* functions.
 const FRED_FREQUENCIES = [
   { value: "", label: "As published" },
   { value: "Daily", label: "Daily" },

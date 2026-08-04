@@ -1,12 +1,6 @@
-// Bridges packs → Format Controller. Every known pack's units/formats are
-// registered for resolution at startup, so a saved graph that uses a pack's
-// unit/format still renders even when the pack is deactivated — mirroring how
-// pack node constructors are always registered. The FC dropdowns, in contrast,
-// offer only ACTIVE packs' entries (the activePack* helpers below).
-//
-// This module is the only place that knows BOTH packs and the FC store, keeping
-// formatAnnotationStore pack-agnostic (it just holds the merged resolution maps)
-// and packs.ts FC-agnostic (it just declares unit/format data).
+// EVERY known pack's units/formats register for resolution, so a saved graph still renders
+// a deactivated pack's unit; only ACTIVE packs' entries reach the dropdowns. The one module
+// that knows both packs and the FC store, keeping each side agnostic of the other.
 
 import { allPacks, packsStore } from "./packs";
 import {

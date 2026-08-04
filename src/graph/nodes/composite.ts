@@ -18,10 +18,8 @@ import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
-// Composite node — a computing subgraph container. See docs/pack-architecture.md
-// "Composite pack node". Members are relocated into a private NodeEditor +
-// DataflowEngine pair driven only by this node; nothing about the internals may
-// leak into the outer engine's traversal or cache.
+// Composite node — a subgraph container (docs/pack-architecture.md). Members run in a
+// private NodeEditor/DataflowEngine; internals never leak into the outer engine or cache.
 
 export type PortTier = "basic" | "advanced";
 export type PortExposure = "hidden" | "exposed";
@@ -66,20 +64,12 @@ export interface CompositeInternalSnapshot {
   connections: CompositeSavedConnection[];
 }
 
-// A mode is added to this union in the same commit its data() branch + UI land.
-// "manual" is one pass like "single" but ALWAYS heavy, so the arm-and-run hold
-// applies — it recomputes only on Refresh and flags stale on upstream ticks.
+// "manual" is one pass like "single" but ALWAYS heavy, so the arm-and-run hold applies.
 export type CompositeRunMode = "single" | "manual" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
 
 /** Goal-seek mode: drive ONE exposed input port until a chosen output port reaches
- *  `target`. Excel's Goal Seek. Both ports are `any`-typed (no static numeric type),
- *  so numeric-ness is enforced at solve time — a non-numeric objective or a failure
- *  to converge yields a `#CONV!` on the target output.
- *
- *  The solver-parameter fields are all OPTIONAL and only present when the user
- *  overrides a default from the advanced tier (so a plain goal-seek config stays
- *  `{inputPortId, outputPortId, target}` and its round-trip test is unaffected).
- *  `solveGoalSeek` falls back to its built-in constants for any unset field. */
+ *  `target`. Ports are `any`-typed, so a non-numeric objective or a failure to converge
+ *  yields `#CONV!`; unset solver fields fall back to solveGoalSeek's own constants. */
 export interface CompositeGoalSeek {
   inputPortId: string;
   outputPortId: string;
@@ -93,24 +83,21 @@ export interface CompositeGoalSeek {
   boundsHi?: number;
 }
 
-/** Monte Carlo mode config: how many draws + the RNG seed (a fixed seed makes the
- *  run reproducible). Null until the mode is first configured, exactly like
- *  goalSeek; the driver falls back to DEFAULT_MC_* when it reads a null config. */
+/** Monte Carlo config: draw count + RNG seed (a fixed seed makes the run reproducible).
+ *  Null until first configured — the driver then falls back to DEFAULT_MC_*. */
 export interface CompositeMonteCarlo {
   samples: number;
   seed: number;
 }
 
-/** The comparator for Simulation's "Stop when" condition (see `stopWhenOp`).
- *  `>= / <= / > / < / = / !=` over the chosen output's numeric value (a logical
- *  output reads as 1 / 0). */
+/** Simulation "Stop when" comparator, over the chosen output's numeric value
+ *  (a logical output reads as 1 / 0). */
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
 
 /** By-Row iterates a WIRED input value into its rows. A frame → one single-row
  *  frame per row (keeps the port frame-typed for downstream frame ops); an array
  *  → its outer elements (a 1-D list yields scalars, a 2-D matrix yields its rows);
- *  a scalar → itself (one row); null/undefined → no rows. Pure + exported so the
- *  row semantics are unit-tested directly. */
+ *  a scalar → itself (one row); null/undefined → no rows. */
 export function byRowValues(v: unknown): unknown[] {
   if (v === null || v === undefined) return [];
   if (isFrameValue(v)) {
@@ -124,11 +111,8 @@ export function byRowValues(v: unknown): unknown[] {
   return [v];
 }
 
-/** Safety cap on By-Row passes — each row is a full internal-engine reset, so an
- *  accidentally-wired huge frame (a CSV import) would freeze the arm-and-run
- *  Solve. The mode targets dozens-to-hundreds of rows; the Polars verb chain is
- *  the bulk path. Rows beyond this are dropped (surfaced in the dev-notes as a
- *  known limitation to replace with a Problems-panel warning). */
+/** Safety cap on By-Row passes — each row is a full internal-engine reset, so a huge
+ *  wired frame would freeze the Solve. Rows beyond this are silently dropped. */
 export const BY_ROW_MAX_ROWS = 500;
 
 /** Evaluate a "Stop when" comparison. Non-finite (null / #ERR / NaN) never
@@ -147,60 +131,42 @@ export function stopConditionMet(raw: unknown, op: CompositeStopOp, value: numbe
   }
 }
 
-/** One named input set for Scenarios mode. `overrides` is keyed by
- *  CompositeInputPort.id; a port with no entry falls back to its normal
- *  wired/default value for that run — a scenario only needs to name the
- *  inputs it actually changes. */
+/** One named input set for Scenarios mode; `overrides` is keyed by
+ *  CompositeInputPort.id and a port with no entry keeps its normal wired/default value. */
 export interface CompositeScenario {
   id: string;
   name: string;
   overrides: Record<string, unknown>;
 }
 
-/** Data Table mode: a full-factorial parameter grid instead of named sets.
- *  Keyed by CompositeInputPort.id → the sweep values for that port. A port
- *  with no entry (or an empty list) doesn't vary — it just keeps using its
- *  normal wired/default value on every run, the same "only name what
- *  changes" contract Scenarios uses. 1 varying port = Excel's one-variable
- *  Data Table; 2 = the two-variable grid; N generalizes past what Excel
- *  can express (the Cartesian product over every varying port). */
+/** Data Table mode: sweep values keyed by CompositeInputPort.id; a port with no entry
+ *  doesn't vary. N varying ports = the Cartesian product (Excel stops at 2). */
 export type CompositeDataTableValues = Record<string, unknown[]>;
 
-// Internal boundary markers: not user-addable (no catalog entry), they only live
-// inside a CompositeNode's internalEditor as the wire-end for one promoted port.
-// `internalEditor` has no ConnectionPlugin, so there is no drag-time type-compat
-// check — only the runtime VALUE shape matters, regardless of the dot's type.
+// Internal boundary markers: not user-addable, they live only inside a CompositeNode's
+// internalEditor, which has no ConnectionPlugin — no drag-time type check, only the
+// runtime VALUE shape matters.
 
 export class CompositeInputNode extends ClassicPreset.Node {
   label: string;
   value: unknown = null;
-  /** Transient (not persisted): true when the exposed port is EXTERNALLY WIRED, so
-   *  `value` is coming from outside rather than from the editable seed. Stamped by
-   *  the container's data() each pass; the drill-in marker shows a read-only value
-   *  chip when true (what's actually flowing in) instead of the seed field. */
+  /** Transient: the exposed port is EXTERNALLY WIRED, so `value` comes from outside
+   *  rather than the editable seed. Stamped by the container's data() each pass. */
   externallyWired = false;
-  /** Transient: true when this input is the ACTIVE goal-seek driver (the value the
-   *  solver adjusts). The drill-in shows a "solves to" readout instead of letting
-   *  the solved value silently overwrite the seed. Stamped in data(). */
+  /** Transient: this input is the ACTIVE goal-seek driver, so the drill-in shows a
+   *  "solves to" readout instead of overwriting the seed. Stamped in data(). */
   goalDriver = false;
-  /** Transient: the goal-seek solution for this driver (or a `#CONV!` SolError, or
-   *  null before a solve) — the readout above. Set by runGoalSeek, cleared off the
-   *  driver in data(); NOT persisted (re-solves on load). */
+  /** Transient (re-solves on load): the goal-seek solution for this driver, a `#CONV!`
+   *  SolError, or null before a solve. */
   solvedValue: number | SolError | null = null;
-  /** Transient: a small run-mode readout the drill-in appends to this input marker
-   *  — MC shows its ± spread, By-Row "one run per row", Scenarios/Data-Table that it
-   *  varies. So the marker explains its role in the ACTIVE mode. Stamped in data();
-   *  goal-seek is handled by goalDriver/solvedValue instead, so it's null there. */
+  /** Transient: the drill-in's run-mode readout for this marker, stamped in data();
+   *  null under goal-seek, which uses goalDriver/solvedValue instead. */
   modeNote: { tag: string; text: string } | null = null;
-  /** An editable DEFAULT/seed, set on the marker INSIDE the drill-in — used as the
-   *  input value when the exposed port isn't externally wired (and as the goal-seek
-   *  seed). A wired value or a solve overrides it, so it's editable "even if it gets
-   *  overridden". Persisted (INIT_FIELD_ORDER "defaultValue"). */
+  /** Editable seed, set on the marker inside the drill-in: the input value when the
+   *  exposed port isn't externally wired, and the goal-seek seed. Persisted. */
   defaultValue: number | null = null;
-  /** Monte-Carlo uncertainty declared on THIS input, inside the drill-in: the ±
-   *  spread of the marker's value (a 1σ for a normal draw, a ± half-width for a
-   *  uniform one). `null`/0 = a point value (not sampled). SCOPED to composites —
-   *  only the container's Monte Carlo run mode reads it (see monteCarlo.ts). */
+  /** Monte-Carlo ± spread of this marker's value (1σ normal, half-width uniform);
+   *  `null`/0 = a point value. Read ONLY by the container's Monte Carlo run mode. */
   uncertainty: number | null = null;
   /** Which distribution the Monte Carlo driver samples this input from. */
   distribution: DistributionKind = "normal";
@@ -213,8 +179,7 @@ export class CompositeInputNode extends ClassicPreset.Node {
     this.uncertainty = init?.uncertainty ?? null;
     this.distribution = init?.distribution === "uniform" ? "uniform" : "normal";
     // Per-instance MutableSocket (not the shared trueAnySocket) so the container can
-    // mirror the flowing type onto it (syncMarkerSocketTypes); plain MutableSocket
-    // keeps it OUT of the trueany adoption fixpoint — display only.
+    // mirror the flowing type onto it, and it stays OUT of the trueany adoption fixpoint.
     this.addOutput("value", new ClassicPreset.Output(new MutableSocket("trueany"), this.label));
   }
   data(): { value: unknown } {
@@ -224,11 +189,10 @@ export class CompositeInputNode extends ClassicPreset.Node {
 
 export class CompositeOutputNode extends ClassicPreset.Node {
   label: string;
-  /** Last value seen — the drill-in editor's value box. (Named cachedResult
-   *  so the error guard's short-circuit mirrors an error into it.) */
+  /** Last value seen — the drill-in editor's value box (named cachedResult so the
+   *  error guard's short-circuit mirrors an error into it). */
   cachedResult: unknown = null;
-  /** Transient (not persisted): the goal-seek TARGET when this output is the one
-   *  being driven to it — the drill-in shows a "target N" readout. null otherwise.
+  /** Transient: the goal-seek TARGET when this output is the driven one, else null.
    *  Stamped in data(). */
   goalTarget: number | null = null;
   width = 140;
@@ -236,8 +200,8 @@ export class CompositeOutputNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Composite Output");
     this.label = init?.label ?? "Output";
-    // Per-instance MutableSocket so the dot adapts to the internal source's type
-    // (syncMarkerSocketTypes); display only, outside the trueany fixpoint.
+    // Per-instance MutableSocket so the dot adapts to the internal source's type;
+    // display only, outside the trueany fixpoint.
     this.addInput("value", new ClassicPreset.Input(new MutableSocket("trueany"), this.label));
   }
   data(inputs: Record<string, unknown[]>): { value: unknown } {
@@ -255,76 +219,57 @@ export class CompositeNode extends ClassicPreset.Node {
   outputPorts: CompositeOutputPort[];
   internalEditor: NodeEditor<Schemes>;
   internalEngine: DataflowEngine<Schemes>;
-  /** True only during hydrate()'s bulk node/connection build — suppresses the
-   *  per-item internal type settle (run ONCE at the end of hydrate instead). */
+  /** True only during hydrate()'s bulk build — the internal type settle runs ONCE
+   *  at its end instead of per item. */
   private _hydrating = false;
-  /** Last computed output per port id, keyed by CompositeOutputPort.id — read
-   *  by the component to render each output row's value box. In "single" mode
-   *  each value is a scalar/list/etc as usual; in a multi-run mode (Scenarios,
+  /** Last computed value per CompositeOutputPort.id; in a multi-run mode (Scenarios,
    *  Data Table…) each value is an ARRAY, one entry per run, in run order. */
   cachedOutputs: Record<string, unknown> = {};
   runMode: CompositeRunMode;
   scenarios: CompositeScenario[];
   dataTableValues: CompositeDataTableValues;
-  /** Simulation mode's step count — the container parameter the plan calls
-   *  for. With no stop condition it's the exact number of rounds; with one
-   *  (`stopWhenPortId`) it's the hard CAP. Clamped to >= 1 at run time (see
-   *  runSimulation). */
+  /** Simulation step count: the exact number of rounds, or the hard CAP when
+   *  `stopWhenPortId` is set. Clamped to >= 1 at run time. */
   simulationSteps: number;
-  /** Simulation "Stop when": an OUTPUT port + comparator + threshold checked
-   *  after each round — the loop halts early the round `port <op> value` holds
-   *  (the series ends on that round). `stopWhenPortId === ""` = no condition, run
-   *  the full `simulationSteps`. Lets a model self-terminate (e.g. stop when a
-   *  population passes a cap, or a logical "solved?" output reaches 1) instead of
-   *  hand-tuning the step count. A logical output compares as 1 (true) / 0. */
+  /** Simulation "Stop when": the loop halts on the round `port <op> value` holds (the
+   *  series ends there); `""` = no condition. A logical output compares as 1 / 0. */
   stopWhenPortId: string;
   stopWhenOp: CompositeStopOp;
   stopWhenValue: number;
-  /** By-Row mode: the id of the exposed INPUT port to iterate — the subgraph runs
-   *  once per ROW of that port's wired value (a list → per element, a matrix →
-   *  per row, a frame → per single-row frame), the row bound to that port while
-   *  the others stay fixed; each output collects a per-row series. "" = not set
-   *  (falls back to a single pass). See `runByRow`. */
+  /** By-Row mode: the exposed INPUT port to iterate — one pass per row of its value
+   *  (see `byRowValues`), other ports fixed. `""` = not set, so a single pass. */
   byRowPortId: string;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
   /** Monte Carlo config (null until the mode is configured). */
   monteCarlo: CompositeMonteCarlo | null;
-  /** The solved driver value (or a `#CONV!` SolError), surfaced in the editor.
-   *  Component-read only; not persisted (re-solved on every pass). */
+  /** The solved driver value (or a `#CONV!` SolError), surfaced in the editor;
+   *  not persisted. */
   goalSeekResult: number | SolError | null = null;
-  /** How many rounds the LAST simulation actually ran — < `simulationSteps` means
-   *  a Stop-when condition halted it early. null when it hasn't run a stepped loop.
-   *  Component-read only; transient (re-derives on the next solve). */
+  /** Rounds the LAST simulation actually ran — < `simulationSteps` means a Stop-when
+   *  condition halted it early; null when no stepped loop has run. Transient. */
   simLastSteps: number | null = null;
 
-  // Arm-and-run state for the HEAVY modes — session-transient (not persisted), so a
-  // fresh load solves once, matching the load-reveal's compute pass.
+  // Arm-and-run state for the HEAVY modes — session-transient, so a fresh load solves once.
   /** Set by the Solve button; consumed by the next data() to force one solve. */
   solveRequested = false;
-  /** When the solve was triggered from INSIDE the drill-in: ignore the outside wired
-   *  inputs and run on the markers' own seeds (defaultValue) — you're testing the
-   *  subgraph in isolation. An outside Solve (drilled up) uses the wired values. */
+  /** A solve triggered INSIDE the drill-in runs on the markers' own seeds, ignoring
+   *  the outside wired inputs. */
   solveInsideOnly = false;
   /** Signature of the inputs+config at the last solve; null = never solved. */
   lastSolveKey: string | null = null;
   /** True when inputs/config changed since the last solve — drives the stale dot. */
   stale = false;
-  /** Bumped on any edit to the INTERNAL graph (topology via the editor pipe in the
-   *  constructor; value edits via the retargeted pass — see process.ts). Folded into
-   *  solveKey so a held heavy solve reads stale when the subgraph ITSELF changes,
-   *  not just its inputs/config — otherwise a drill-in edit left the old solution
-   *  under a green "Up to date" dot. Session-transient, like the rest. */
+  /** Bumped on any edit to the INTERNAL graph and folded into solveKey, so a held
+   *  heavy solve reads stale when the subgraph itself changes, not just its inputs. */
   internalEditSeq = 0;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
-  /** Internal-graph layout, keyed by LIVE internal node id (remapped on
-   *  hydrate, like port internalNodeIds). Written at collapse time and by the
-   *  drill-in editor on close; read by the editor on open and by unpack. */
+  /** Internal-graph layout keyed by LIVE internal node id (remapped on hydrate,
+   *  like port internalNodeIds). */
   internalPositions: Record<string, { x: number; y: number }> = {};
 
-  // Holds the saved internal graph until `hydrate()` rebuilds it against a class
-  // registry — see the module-init cycle note on `hydrate`.
+  // Holds the saved internal graph until `hydrate()` rebuilds it against a class registry.
   private _pending: CompositeInternalSnapshot | null = null;
 
   constructor(init?: {
@@ -364,10 +309,8 @@ export class CompositeNode extends ClassicPreset.Node {
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new NodeEditor<Schemes>();
-    // Same two wrappers the outer Canvas installs on the real editor (see
-    // errorIntegration.test.ts's makeEditor): coercion first (inner), so a
-    // relocated node keeps narrowing/widening its inputs to its declared
-    // socket shape exactly as it did on the outer canvas.
+    // Coercion first (inner), like the outer Canvas, so a relocated node keeps narrowing
+    // its inputs to its declared socket shape exactly as it did outside.
     installInputCoercion(this.internalEditor);
     // Internal VALUE edits can't fire editor events; they reach markInternalEdit
     // via the retargeted pass (process.ts).
@@ -375,7 +318,6 @@ export class CompositeNode extends ClassicPreset.Node {
       const t = (ctx as { type?: string }).type;
       if (t === "nodecreated" || t === "noderemoved" || t === "connectioncreated" || t === "connectionremoved") {
         this.markInternalEdit();
-        // Suppressed during hydrate's bulk build (settled once at its end instead).
         if (!this._hydrating && (t === "connectioncreated" || t === "connectionremoved")) {
           this.settleInternalTypes();
         }
@@ -390,28 +332,19 @@ export class CompositeNode extends ClassicPreset.Node {
       if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(new AdoptiveSocket(), p.label));
     }
     for (const p of this.outputPorts) {
-      // Adoptive (not the shared static `trueAnySocket`): an output port ADOPTS the
-      // type feeding its internal Output marker (adoptBoundaryTypes).
+      // Adoptive (not the shared `trueAnySocket`): an output port ADOPTS the type
+      // feeding its internal Output marker.
       this.addOutput(p.id, new ClassicPreset.Output(new AdoptiveSocket(), p.label));
     }
   }
 
-  /** True once the internal graph reflects live node instances (either built
-   *  live by createCompositeFromSelection, or hydrated from a save/paste). */
   get isHydrated(): boolean {
     return this._pending === null;
   }
 
-  /**
-   * Build the internal editor's nodes/connections from a saved snapshot, using
-   * the SAME class registry the outer graph loader uses. Deliberately NOT
-   * called from the constructor: nodeCtorRegistry ultimately depends on the
-   * Add-menu catalog, which depends on rete-nodes.ts (the barrel that
-   * re-exports this very file) — resolving that at construction time would be
-   * a module-init cycle. Callers (persistence.ts's rebuildGraph, copyPaste's
-   * cloneNode) already have a registry in hand and call this once the node
-   * exists. A no-op if already hydrated (live creation hydrates inline).
-   */
+  /** Build the internal editor from a saved snapshot with the outer loader's class
+   *  registry. Deliberately NOT called from the constructor: nodeCtorRegistry depends
+   *  on the catalog → rete-nodes.ts → this file, a module-init cycle. */
   async hydrate(reg: Map<string, NodeCtor>): Promise<void> {
     const pending = this._pending;
     if (!pending) return;
@@ -420,15 +353,14 @@ export class CompositeNode extends ClassicPreset.Node {
     const built = new Map<string, ClassicPreset.Node>();
     for (const sn of pending.nodes) {
       const Ctor = reg.get(sn.type);
-      if (!Ctor) continue; // unknown internal type (pack off / renamed) — dropped, not placeholdered (v1 gap)
+      if (!Ctor) continue; // unknown internal type (pack off / renamed) — dropped, not placeholdered
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
       if (sn.literals) anyNode.literals = { ...sn.literals };
       if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
       built.set(sn.id, node);
-      // AFTER addNode: the constructor's installInputCoercion pipe wraps data()
-      // at nodecreated, and the guard must wrap OUTSIDE coercion so a ShapeError
-      // thrown while narrowing lands in the guard as #SHAPE! (the Canvas order).
+      // Guard AFTER addNode: it must wrap OUTSIDE the coercion pipe so a ShapeError
+      // thrown while narrowing lands in the guard as #SHAPE!.
       await this.internalEditor.addNode(node as SolenoidNode);
       installErrorGuards(node);
       if (typeof sn.x === "number" && typeof sn.y === "number") {
@@ -447,10 +379,8 @@ export class CompositeNode extends ClassicPreset.Node {
         // Skip incompatible/duplicate connections.
       }
     }
-    // rete mints a FRESH id per node at construction (it's not settable via
-    // init), so every port's internalNodeId — captured against the OLD saved
-    // ids — must be remapped through `built` to the freshly-constructed
-    // instances, or data() can never find its marker again.
+    // rete mints a FRESH id per node at construction, so every port's internalNodeId
+    // must be remapped through `built` or data() can never find its marker again.
     for (const p of this.inputPorts) {
       const mapped = built.get(p.internalNodeId);
       if (mapped) p.internalNodeId = mapped.id;
@@ -463,10 +393,8 @@ export class CompositeNode extends ClassicPreset.Node {
     this.settleInternalTypes();
   }
 
-  /** Snapshot the internal graph as plain JSON — the `internal` constructor arg.
-   *  Wired into persistence via extractInit's special-case branch (copyPaste.ts),
-   *  so save/load and copy/paste round-trip without persistence.ts knowing about
-   *  composites. */
+  /** Snapshot the internal graph as plain JSON (the `internal` constructor arg), wired
+   *  in via extractInit so persistence.ts needn't know about composites. */
   snapshotInternal(): CompositeInternalSnapshot {
     if (!this.isHydrated) return this._pending!; // never computed since load — hand back untouched
     const nodes: CompositeSavedNode[] = this.internalEditor.getNodes().map((n) => {
@@ -491,8 +419,7 @@ export class CompositeNode extends ClassicPreset.Node {
     return { nodes, connections };
   }
 
-  /** Register a new input port (exposed ports also get a real outer socket).
-   *  Returns the port id, which doubles as the composite's socket key. */
+  /** Returns the port id, which doubles as the composite's socket key. */
   addInputPort(spec: Omit<CompositeInputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `in_${this.inputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.inputPorts.push({ ...spec, id });
@@ -500,15 +427,11 @@ export class CompositeNode extends ClassicPreset.Node {
     return id;
   }
 
-  /** Sync each surviving port's label from its boundary marker's CURRENT label, so
-   *  renaming a Composite Input/Output marker inside the drill-in propagates to the
-   *  outer card's socket labels (updates both the port record and the rete socket
-   *  the card renders). Called on leave; markers with no node are reconciled away
-   *  separately (leaveLevel). */
+  /** Sync each port's label (record + rete socket) from its boundary marker's CURRENT
+   *  label, so a rename inside the drill-in reaches the outer card. Called on leave. */
   syncPortLabels(): void {
-    // When a marker's label is CLEARED, it falls back to its placeholder ("Input" /
-    // "Output") on the card — so the port must show the same placeholder, not the
-    // stale old label. If the marker isn't hydrated yet, keep the saved port label.
+    // A CLEARED marker label falls back to the card's placeholder, so the port must show
+    // the same placeholder; an unhydrated marker keeps the saved port label.
     const labelOf = (nodeId: string, placeholder: string, current: string): string => {
       const n = this.internalEditor.getNode(nodeId) as { label?: string } | undefined;
       if (!n) return current;
@@ -526,12 +449,10 @@ export class CompositeNode extends ClassicPreset.Node {
     }
   }
 
-  /** Mirror the flowing type onto the internal boundary-marker sockets so their
-   *  dots ADAPT visually (display only — the markers are plain MutableSockets,
-   *  outside the trueany adoption fixpoint). An INPUT marker takes the shell input
-   *  port's adopted type (what's wired in from outside); an OUTPUT marker takes the
-   *  type of the internal node feeding it (read straight from the internal wiring,
-   *  so it never depends on the shell output — which itself adopts from here). */
+  /** Mirror the flowing type onto the boundary-marker sockets (display only — they sit
+   *  outside the trueany fixpoint): an INPUT marker takes the shell port's adopted type,
+   *  an OUTPUT marker the type of the internal node feeding it (never the shell output,
+   *  which adopts from here). */
   private syncMarkerSocketTypes(): void {
     const typeOf = (s: ClassicPreset.Socket | undefined): SocketDataType =>
       (s as { dataType?: SocketDataType } | undefined)?.dataType ?? "trueany";
@@ -549,9 +470,8 @@ export class CompositeNode extends ClassicPreset.Node {
     }
   }
 
-  /** The run-mode readout for an input marker (see `CompositeInputNode.modeNote`).
-   *  Goal-seek is deliberately absent — its driver uses the richer solvedValue
-   *  readout instead. Returns null when this input has no role in the active mode. */
+  /** Null when this input has no role in the active mode; goal-seek is absent because
+   *  its driver uses the richer solvedValue readout instead. */
   private inputModeNote(port: CompositeInputPort, m: CompositeInputNode): { tag: string; text: string } | null {
     switch (this.runMode) {
       case "montecarlo":
@@ -569,7 +489,6 @@ export class CompositeNode extends ClassicPreset.Node {
     }
   }
 
-  /** Register a new output port + its outer socket. Returns the port id. */
   addOutputPort(spec: Omit<CompositeOutputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `out_${this.outputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.outputPorts.push({ ...spec, id });
@@ -577,9 +496,8 @@ export class CompositeNode extends ClassicPreset.Node {
     return id;
   }
 
-  /** Drop an input port (and its outer socket + any run-mode state keyed to
-   *  it). The caller removes outer cables into the socket FIRST — rete
-   *  requires a socket's connections gone before the socket. */
+  /** The caller removes outer cables into the socket FIRST — rete requires a socket's
+   *  connections gone before the socket. */
   removeInputPort(id: string): void {
     if (!this.inputPorts.some((p) => p.id === id)) return;
     this.inputPorts = this.inputPorts.filter((p) => p.id !== id);
@@ -621,15 +539,13 @@ export class CompositeNode extends ClassicPreset.Node {
     else s.overrides[portId] = value;
   }
 
-  /** Set (or clear, with an empty array) the sweep values for one input
-   *  port's axis of the parameter grid. */
+  /** An empty array clears this port's axis. */
   setDataTableValues(portId: string, values: unknown[]): void {
     if (values.length === 0) delete this.dataTableValues[portId];
     else this.dataTableValues[portId] = values;
   }
 
-  /** Merge a patch into the goal-seek config (creating it, defaulting the ports
-   *  to the first exposed input / first output, if not set yet). */
+  /** Creates the config if unset, defaulting to the first exposed input / first output. */
   setGoalSeek(patch: Partial<CompositeGoalSeek>): void {
     const base: CompositeGoalSeek = this.goalSeek ?? {
       inputPortId: this.inputPorts.find((p) => p.exposure === "exposed")?.id ?? "",
@@ -639,15 +555,12 @@ export class CompositeNode extends ClassicPreset.Node {
     this.goalSeek = { ...base, ...patch };
   }
 
-  /** Merge a patch into the Monte Carlo config (creating it with the defaults if
-   *  unset). Values are clamped/normalized at solve time in runMonteCarlo. */
+  /** Creates the config with the defaults if unset; values are clamped at solve time. */
   setMonteCarlo(patch: Partial<CompositeMonteCarlo>): void {
     const base: CompositeMonteCarlo = this.monteCarlo ?? { samples: DEFAULT_MC_SAMPLES, seed: DEFAULT_MC_SEED };
     this.monteCarlo = { ...base, ...patch };
   }
 
-  /** The exposed input ports whose drill-in marker declares a positive Monte Carlo
-   *  spread — the set the sampler actually varies. */
   private uncertainInputPorts(): CompositeInputPort[] {
     return this.inputPorts.filter((p) => {
       const m = this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined;
@@ -657,10 +570,8 @@ export class CompositeNode extends ClassicPreset.Node {
 
   // ─── Compute ─────────────────────────────────────────────────────────────
 
-  /** Pre-seed the internal engine's cache with #CIRC! for every TRUE loop
-   *  member (Tarjan SCC, self-loops included) so a subsequent `fetch` dead-
-   *  ends into the cached error instead of recursing forever — the exact
-   *  mechanism process.ts's outer pass uses, scoped to internalEditor. */
+  /** Pre-seed the cache with #CIRC! for every TRUE loop member (Tarjan SCC, self-loops
+   *  included) so a later `fetch` dead-ends instead of recursing forever. */
   private seedInternalLoopErrors(): void {
     const loop = loopMembers(this.internalEditor);
     if (loop.size === 0) return;
@@ -675,10 +586,8 @@ export class CompositeNode extends ClassicPreset.Node {
     }
   }
 
-  /** One internal engine pass: inject each input port's value (an explicit
-   *  `overrides` entry wins, else the port's normal wired/default value),
-   *  reset, fetch every output marker. Shared by every run mode — a mode is
-   *  just "call this N times with different overrides and collect". */
+  /** One internal engine pass: inject each input port's value (an `overrides` entry
+   *  wins), reset, fetch every output marker. Every run mode is N of these. */
   private async runPass(
     inputs: Record<string, unknown[]>,
     overrides?: Record<string, unknown>,
@@ -687,8 +596,7 @@ export class CompositeNode extends ClassicPreset.Node {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
       if (!marker) continue;
       const override = overrides?.[port.id];
-      // Fallback order: a solve/scenario override, else the externally wired value,
-      // else the marker's inside-editable defaultValue (seed), else the port default.
+      // Fallback order: override, else the wired value, else the marker's seed, else the default.
       marker.value = override !== undefined
         ? override
         : port.exposure === "exposed"
@@ -696,9 +604,8 @@ export class CompositeNode extends ClassicPreset.Node {
           : (marker.defaultValue ?? port.default ?? null);
     }
     this.internalEngine.reset();
-    // A cable cycle among the relocated internal nodes would make `fetch` below
-    // recurse forever; seeding #CIRC! first dead-ends it. Simulation mode bypasses
-    // this via runSimulation, resolving the same loop as bounded feedback.
+    // A cable cycle among the internal nodes would make `fetch` recurse forever; seeding
+    // #CIRC! dead-ends it. Simulation mode instead resolves the loop as bounded feedback.
     this.seedInternalLoopErrors();
     const row: Record<string, unknown> = {};
     for (const port of this.outputPorts) {
@@ -714,9 +621,7 @@ export class CompositeNode extends ClassicPreset.Node {
     return row;
   }
 
-  /** Run one pass per entry in `overridesList` and transpose the per-run
-   *  results into one ARRAY per output port (run order preserved) — the
-   *  "collect side by side" step every multi-run mode shares. */
+  /** Transposes the per-run results into one ARRAY per output port, run order preserved. */
   private async collectMultiple(
     inputs: Record<string, unknown[]>,
     overridesList: Array<Record<string, unknown>>,
@@ -727,17 +632,16 @@ export class CompositeNode extends ClassicPreset.Node {
     for (const port of this.outputPorts) {
       const series = rows.map((r) => r[port.id]);
       outputs[port.id] = series;
-      // Mirror the collected series onto the output marker, or the drill-in value
-      // box shows only the last runPass's final row while the outer card shows all.
+      // Mirror the series onto the output marker, or the drill-in value box shows only
+      // the last run's row while the outer card shows all.
       const marker = this.internalEditor.getNode(port.internalNodeId);
       if (marker instanceof CompositeOutputNode) marker.cachedResult = series;
     }
     return outputs;
   }
 
-  /** Simulation mode: resolve a real cable cycle among the relocated internal nodes
-   *  as bounded feedback instead of #CIRC!. Round 0 is never recorded; the returned
-   *  series has one entry per round actually run (≤ `simulationSteps`). */
+  /** Simulation mode: resolve a real cable cycle as bounded feedback instead of #CIRC!.
+   *  One series entry per round actually run (≤ `simulationSteps`). */
   private async runSimulation(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     for (const port of this.inputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -759,8 +663,7 @@ export class CompositeNode extends ClassicPreset.Node {
       (incomingByTarget.get(c.target) ?? incomingByTarget.set(c.target, []).get(c.target)!).push(c);
     }
 
-    // Non-cyclic inputs are round-invariant — resolve them once via the
-    // normal engine (a plain fetch works fine; they aren't on the cycle).
+    // Non-cyclic inputs are round-invariant — resolve them once via the normal engine.
     const staticInputs = new Map<string, Record<string, unknown[]>>();
     for (const id of loop) {
       const nodeInputs: Record<string, unknown[]> = {};
@@ -772,10 +675,9 @@ export class CompositeNode extends ClassicPreset.Node {
       staticInputs.set(id, nodeInputs);
     }
 
-    // Gauss-Seidel relaxation: loop members step in a FIXED order (insertion order)
-    // over a single shared `state` map mutated IN PLACE, so a later node sees this
-    // round's value and an earlier one the previous round's.
-    // "Stop when" is resolved once; its truthiness is read each round to halt early.
+    // Gauss-Seidel relaxation: loop members step in a FIXED order over one shared `state`
+    // map mutated IN PLACE, so a later node sees this round's value, an earlier one the
+    // previous round's.
     const stopFeed = this.resolveStopFeed(conns);
 
     const loopOrder = this.internalEditor.getNodes().map((n) => n.id).filter((id) => loop.has(id));
@@ -802,9 +704,8 @@ export class CompositeNode extends ClassicPreset.Node {
     }
     this.simLastSteps = fullSeries.length; // < steps ⇒ a Stop-when condition halted early
 
-    // Seed the FINAL state into the engine cache so an output port fed by a
-    // NON-loop node downstream of the cycle resolves normally through the
-    // pull engine instead of tripping the loop guard.
+    // Seed the FINAL state into the engine cache so an output fed by a NON-loop node
+    // downstream of the cycle resolves through the pull engine instead of the loop guard.
     for (const id of loop) {
       const finalOut = state.get(id) ?? {};
       const seeded = Object.assign(Promise.resolve(finalOut), { cancel() {} });
@@ -818,8 +719,8 @@ export class CompositeNode extends ClassicPreset.Node {
       const feed = conns.find((c) => c.target === marker.id && c.targetInput === "value");
       if (feed && loop.has(feed.source)) {
         const series = fullSeries.map((snap) => snap[feed.source]?.[feed.sourceOutput] ?? null);
-        // The marker's own data() never runs on this path, so mirror the series
-        // into cachedResult or the drill-in's value box stays "—".
+        // The marker's data() never runs on this path — mirror the series into
+        // cachedResult or the drill-in's value box stays "—".
         if (marker instanceof CompositeOutputNode) marker.cachedResult = series;
         outputs[port.id] = series;
       } else {
@@ -845,13 +746,10 @@ export class CompositeNode extends ClassicPreset.Node {
     return conns.find((c) => c.target === marker.id && c.targetInput === "value") ?? null;
   }
 
-  /** Evaluate the "Stop when" condition (`port <op> value`) against a round's
-   *  loop `state`. If the chosen output is fed straight off a loop node it's read
-   *  from the snapshot (cheap). Otherwise it's a downstream OBSERVER (e.g. an
-   *  "is-solved?" check, or a running total, that reads loop outputs) — resolve it
-   *  by seeding this round's loop outputs into the pull engine and fetching. The
-   *  engine is reset first so a prior round's cached observer value can't leak;
-   *  loop stepping never touches the engine, so this is safe mid-loop. */
+  /** Evaluate "Stop when" against a round's loop `state`: read from the snapshot when the
+   *  output is fed straight off a loop node, else re-resolve the downstream observer by
+   *  seeding this round's loop outputs into the RESET pull engine (a reset is required or
+   *  a prior round's cached observer value leaks). */
   private async stopSignalTrue(
     feed: NonNullable<ReturnType<CompositeNode["resolveStopFeed"]>>,
     state: Map<string, Record<string, unknown>>,
@@ -879,8 +777,7 @@ export class CompositeNode extends ClassicPreset.Node {
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     this.syncPortLabels();
     this.syncMarkerSocketTypes();
-    // Marker stamps are topology/config-only, so they stay current even on a held
-    // heavy pass; runGoalSeek fills the driver's solvedValue after this.
+    // Marker stamps are topology/config-only, so they stay current even on a held heavy pass.
     const gsDriverId = this.runMode === "goal-seek" ? this.goalSeek?.inputPortId : undefined;
     for (const port of this.inputPorts) {
       const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -901,13 +798,13 @@ export class CompositeNode extends ClassicPreset.Node {
     if (this.isHeavyMode()) {
       const key = this.solveKey(inputs);
       if (this.solveRequested || this.lastSolveKey === null) {
-        // An inside-the-drill-in Solve ignores the outside wired inputs and runs on
-        // the markers' seeds (empty inputs → runPass falls back to defaultValue).
+        // An inside-the-drill-in Solve runs on the markers' seeds (empty inputs → runPass
+        // falls back to defaultValue).
         const solveInputs = this.solveInsideOnly ? {} : inputs;
         const outputs = await this.runActiveMode(solveInputs);
         this.cachedOutputs = outputs;
-        // Recompute the key AFTER the solve (a goal-seek writes back onto the driver
-        // marker's seed), and on `inputs` — not solveInputs — to match the hold branch.
+        // Recompute the key AFTER the solve, and on `inputs` — not solveInputs — to match
+        // the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
         this.solveRequested = false;
         this.solveInsideOnly = false;
@@ -927,16 +824,14 @@ export class CompositeNode extends ClassicPreset.Node {
     return outputs;
   }
 
-  /** True when the active run mode does multi-pass work worth gating behind Solve —
-   *  a data-table with no axes / empty scenarios collapse to a single pass (light). */
+  /** True when the active run mode does multi-pass work worth gating behind Solve. */
   isHeavyMode(): boolean {
     // Manual refresh isn't heavy by COST (one pass) — holding is its entire point.
     if (this.runMode === "manual") return true;
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
-    // Monte Carlo is only heavy when something actually varies — with no uncertain
-    // input it collapses to a single pass (like a data-table with no axes).
+    // Monte Carlo is only heavy when some input actually varies.
     if (this.runMode === "montecarlo") return this.uncertainInputPorts().length > 0;
     if (this.runMode === "by-row") return this.inputPorts.some((p) => p.id === this.byRowPortId);
     if (this.runMode === "data-table") {
@@ -947,11 +842,8 @@ export class CompositeNode extends ClassicPreset.Node {
     return false;
   }
 
-  /** Request the next data() to solve (the Solve button). `insideOnly` runs on the
-   *  markers' seeds, ignoring outside wiring (an inside-the-drill-in Solve). Caller
-   *  triggers a recompute. Manual refresh has no numeric seeds worth isolating (its
-   *  input is typically a wired frame), so a drill-in Refresh always means "re-run
-   *  on the real wired inputs" — insideOnly never applies there. */
+  /** Request the next data() to solve (the Solve button); `insideOnly` runs on the
+   *  markers' seeds, which never applies in manual mode (no numeric seeds to isolate). */
   requestSolve(insideOnly = false): void {
     this.solveRequested = true;
     this.solveInsideOnly = insideOnly && this.runMode !== "manual";
@@ -960,20 +852,16 @@ export class CompositeNode extends ClassicPreset.Node {
   /** An edit landed in the internal graph — a held heavy solve is no longer current. */
   markInternalEdit(): void { this.internalEditSeq++; }
 
-  /** Re-derive every DERIVED socket type inside the subgraph, then the boundary
-   *  OUTPUT-port types from it. The main canvas's connection-pipe settle never
-   *  reaches the internal editor, so this joint fixpoint must run here. Returns
-   *  true if any boundary type changed. */
+  /** The main canvas's connection-pipe settle never reaches the internal editor, so this
+   *  joint fixpoint must run here. Returns true if any boundary type changed. */
   settleInternalTypes(): boolean {
     settleWildcardTypes(this.internalEditor);
     return this.adoptBoundaryTypes();
   }
 
-  /** The mirror of the input ports adopting from OUTSIDE: each EXPOSED output port
-   *  adopts the concrete type feeding its internal Output marker's `value` input
-   *  (reverting to `trueany` when the marker is unwired). Adoption NEVER drops an
-   *  outer cable — it is derived state (the D17 rule). Returns true if a type
-   *  changed (the caller re-renders the outer card + its cables). */
+  /** Each exposed output port adopts the type feeding its internal Output marker
+   *  (`trueany` when unwired). Adoption NEVER drops an outer cable (D17). Returns true
+   *  if a type changed, so the caller re-renders the card + its cables. */
   adoptBoundaryTypes(): boolean {
     const conns = this.internalEditor.getConnections();
     let changed = false;
@@ -993,10 +881,8 @@ export class CompositeNode extends ClassicPreset.Node {
     return changed;
   }
 
-  /** A cheap signature of the inputs + the active mode's config: a change to either
-   *  makes the last solve stale. Objects (frames/cubes) contribute a stable reference
-   *  token (a recomputed upstream frame = a new reference = stale) rather than a deep
-   *  serialize, so this stays cheap on every tick. */
+  /** A cheap signature of the inputs + the active mode's config. Objects contribute a
+   *  stable reference token, not a deep serialize, so this stays cheap on every tick. */
   private solveKey(inputs: Record<string, unknown[]>): string {
     const token = (v: unknown): unknown => {
       if (v === null || typeof v !== "object") return v; // primitive → by value
@@ -1012,13 +898,11 @@ export class CompositeNode extends ClassicPreset.Node {
       inputs: inputTokens,
       // Inside-editable seeds affect the solve, so a seed edit marks it stale too.
       seeds: this.inputPorts.map((p) => (this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined)?.defaultValue ?? null),
-      // Per-input Monte-Carlo spec (spread + distribution): editing a marker's error
-      // bar or distribution kind restales a held MC solve.
+      // A marker's spread/distribution edit restales a held MC solve.
       uncertainty: this.inputPorts.map((p) => {
         const m = this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined;
         return m ? [m.uncertainty ?? null, m.distribution] : null;
       }),
-      // Any other internal edit (topology, an internal node's value) — see the field.
       edits: this.internalEditSeq,
       mode: this.runMode,
       goalSeek: this.goalSeek,
@@ -1033,15 +917,14 @@ export class CompositeNode extends ClassicPreset.Node {
     });
   }
 
-  /** The raw mode dispatch (no arm/hold) — the original data() body. */
+  /** The raw mode dispatch, with no arm/hold. */
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     if (this.runMode === "simulation") {
       return this.runSimulation(inputs);
     } else if (this.runMode === "scenarios" && this.scenarios.length > 0) {
       return this.collectMultiple(inputs, this.scenarios.map((s) => s.overrides));
     } else if (this.runMode === "data-table") {
-      // Only exposed ports with a non-empty sweep list are axes of the grid;
-      // a port with no entry keeps its normal wired/default value on every run.
+      // Only exposed ports with a non-empty sweep list are axes; the rest keep their value.
       const axes = this.inputPorts
         .filter((p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0)
         .map((p) => ({ portId: p.id, values: this.dataTableValues[p.id] }));
@@ -1065,16 +948,12 @@ export class CompositeNode extends ClassicPreset.Node {
     } else if (this.runMode === "by-row") {
       return this.runByRow(inputs);
     }
-    // "single" and "manual" both land here: one plain pass. Manual differs only
-    // in the arm-and-run hold around this dispatch (isHeavyMode).
+    // "single" and "manual" both land here; manual differs only in the arm-and-run hold.
     return this.runPass(inputs);
   }
 
-  /** By-Row driver: run the subgraph once per ROW of the chosen input port,
-   *  binding that row to the port while every other port keeps its wired/default
-   *  value. Each output collects a per-row series (same shape as Scenarios / Data
-   *  Table). Reuses `collectMultiple` with one override per row. A missing/unwired
-   *  port, or a value with no rows, collapses to a single normal pass. */
+  /** One pass per ROW of the chosen input port, other ports fixed, collected as a
+   *  per-row series. A missing port or a value with no rows collapses to one pass. */
   private async runByRow(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     const port = this.inputPorts.find((p) => p.id === this.byRowPortId);
     if (!port) return this.runPass(inputs);
@@ -1088,15 +967,9 @@ export class CompositeNode extends ClassicPreset.Node {
     return this.collectMultiple(inputs, rows.map((r) => ({ [port.id]: r })));
   }
 
-  /**
-   * Sample every uncertain input `samples` times from a seeded RNG, re-run the
-   * container on each draw, and summarize each output port into an UncertainNumber
-   * (mean ± sample sd, carrying the raw draws for a histogram). A non-uncertain
-   * input keeps its normal wired/default value on every draw (runPass handles it);
-   * an input's mean is its wired value if exposed+wired, else its inside seed. With
-   * no uncertain input at all this collapses to a single ordinary pass (nothing to
-   * sample). The draws are deterministic in the seed — same seed, same result.
-   */
+  /** Sample every uncertain input `samples` times from a seeded RNG, re-run on each
+   *  draw, and summarize each output into an UncertainNumber (mean ± sd + the raw
+   *  draws). No uncertain input collapses to one ordinary pass. */
   private async runMonteCarlo(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     const uncertainPorts = this.uncertainInputPorts();
     if (uncertainPorts.length === 0) return this.runPass(inputs);
@@ -1104,8 +977,8 @@ export class CompositeNode extends ClassicPreset.Node {
     const draws = Math.max(1, Math.round(cfg.samples));
     const rng = mulberry32((cfg.seed | 0) >>> 0);
 
-    // Each uncertain port's mean: the wired value if exposed+wired, else the
-    // marker's inside seed (defaultValue), else the port default (else 0).
+    // Each uncertain port's mean: the wired value if exposed+wired, else the marker's
+    // seed, else the port default.
     const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number => {
       const wired = port.exposure === "exposed" ? inputs[port.id]?.[0] : undefined;
       const raw = wired ?? marker.defaultValue ?? port.default ?? 0;
@@ -1129,25 +1002,23 @@ export class CompositeNode extends ClassicPreset.Node {
       const nums = rows.map((r) => toNumber(r[port.id]));
       const summary = summarizeSamples(nums);
       outputs[port.id] = summary;
-      // Mirror into the output marker so the drill-in value box shows mean ± sd too
-      // (its own data() never runs on this driver path — same fix as runSimulation).
+      // Mirror into the output marker (its data() never runs on this driver path) so the
+      // drill-in value box shows mean ± sd too.
       const marker = this.internalEditor.getNode(port.internalNodeId);
       if (marker instanceof CompositeOutputNode) marker.cachedResult = summary;
     }
     return outputs;
   }
 
-  /** Drive `gs.inputPortId` until `gs.outputPortId` reaches `gs.target`, then run
-   *  one final pass at the solution so every output box reflects it. On failure the
-   *  target output carries a `#CONV!` (and `goalSeekResult` too). The objective is a
-   *  full internal pass per evaluation, so the solver keeps evaluation counts low. */
+  /** Drive `gs.inputPortId` until `gs.outputPortId` reaches `gs.target`, then run one
+   *  final pass at the solution. On failure the target output carries `#CONV!`. The
+   *  objective is a full internal pass per evaluation — keep evaluation counts low. */
   private async runGoalSeek(inputs: Record<string, unknown[]>, gs: CompositeGoalSeek): Promise<Record<string, unknown>> {
     const objective = async (x: number): Promise<number> => {
       const row = await this.runPass(inputs, { [gs.inputPortId]: x });
       return toNumber(row[gs.outputPortId]) - gs.target;
     };
-    // Seed from the input's current wired value, else the marker's inside seed, else
-    // the port default (else 0).
+    // Seed from the wired value, else the marker's seed, else the port default.
     const driverPort = this.inputPorts.find((p) => p.id === gs.inputPortId);
     const driverMarker = driverPort ? this.internalEditor.getNode(driverPort.internalNodeId) as CompositeInputNode | undefined : undefined;
     const seedRaw = inputs[gs.inputPortId]?.[0] ?? driverMarker?.defaultValue ?? driverPort?.default ?? 0;
@@ -1161,40 +1032,33 @@ export class CompositeNode extends ClassicPreset.Node {
     if (solvedRaw === null) {
       const err = solError("#CONV!", `Goal seek couldn't drive "${gs.inputPortId}" to make "${gs.outputPortId}" reach ${gs.target}`);
       this.goalSeekResult = err;
-      if (driverMarker) driverMarker.solvedValue = err; // the drill-in readout reads this
+      if (driverMarker) driverMarker.solvedValue = err;
       const row = await this.runPass(inputs); // show the un-solved state
       row[gs.outputPortId] = err;
       return row;
     }
-    // Clean the raw solver float to the precision the app actually exposes
-    // (formatScalar = integer or 4 decimals) — so the driver input doesn't show a
-    // 19.999999998 tail nothing else in the app would.
+    // Clean the raw solver float to the precision the app exposes (formatScalar), so the
+    // driver never shows a 19.999999998 tail.
     const solved = Number(formatScalar(solvedRaw));
     this.goalSeekResult = solved;
-    // The solver's answer goes to a dedicated readout (solvedValue), NOT back onto
-    // the seed — so the driver's editable seed stays the user's starting guess
-    // instead of silently becoming the solution. The drill-in shows "solves to N".
+    // The answer goes to a dedicated readout (solvedValue), NOT back onto the seed, so
+    // the driver's editable seed stays the user's starting guess.
     if (driverMarker) driverMarker.solvedValue = solved;
-    // The composite's OUTPUT is its solution: emit the solved DRIVER value on the
-    // target port (not the achieved output, which just equals the target). So the
-    // Solution hero's socket carries the answer downstream — wire the break-even
-    // units into the next calc, not the trivially-zero profit.
+    // The composite's OUTPUT is its solution: emit the solved DRIVER value on the target
+    // port, not the achieved output (which just equals the target).
     const row = await this.runPass(inputs, { [gs.inputPortId]: solved });
     row[gs.outputPortId] = solved;
     return row;
   }
 }
 
-/** Solve f(x) = 0 for x (f = observed output − target). Secant first (few
- *  evaluations for smooth objectives), then a bracket-expand + bisection fallback
- *  for robustness. Returns null when it can't converge (non-numeric objective, no
- *  sign change found, or a diverging step). */
+/** Solve f(x) = 0 for x (f = observed output − target): secant first, then a
+ *  bracket-expand + bisection fallback. Returns null when it can't converge. */
 async function solveGoalSeek(
   f: (x: number) => Promise<number>,
   x0: number,
   opts?: { maxIterations?: number; tolerance?: number; boundsLo?: number; boundsHi?: number },
 ): Promise<number | null> {
-  // Advanced-tier overrides fall back to the built-in defaults when unset/invalid.
   const FTOL = opts?.tolerance != null && opts.tolerance > 0 ? opts.tolerance : 1e-7; // |output − target|
   const XTOL = 1e-9;   // step size
   const MAX = opts?.maxIterations != null && opts.maxIterations >= 1 ? Math.round(opts.maxIterations) : 80;
@@ -1222,14 +1086,12 @@ async function solveGoalSeek(
     const step = Math.abs(c - b);
     a = b; fa = fb;
     b = c; fb = await f(c);
-    // A tiny step with a small residual is a solution; a tiny step with a LARGE
-    // residual means secant stalled — fall through to the bracketing fallback.
+    // A tiny step with a LARGE residual means secant stalled — fall through to bracketing.
     if (step < XTOL) { if (Number.isFinite(fb) && Math.abs(fb) <= 1e-4) return c; break; }
   }
 
   // ── Bracket-expand + bisection fallback ──
-  // With bounds, bisect the whole [lo, hi] window directly — it already brackets
-  // the driver's admissible range, so expansion isn't needed (and mustn't escape it).
+  // With bounds, bisect [lo, hi] directly — it already brackets the admissible range.
   let lo = hasBounds ? LO! : x0;
   let flo = await f(lo);
   if (!Number.isFinite(flo)) return null;

@@ -1,6 +1,3 @@
-// Add-menu catalog: leaf factories + full category tree. Edit this file to
-// add/move/rename entries in the Add menu.
-
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -96,8 +93,7 @@ import {
 } from "./rete-nodes";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 
-// Label + description come from OP_META (single source of truth). Tree
-// structure, pairs, and ordering are hand-authored in NODE_CATALOG below.
+// Label + description come from OP_META; tree structure and ordering are hand-authored.
 
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
 const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFnNode({ op }), ...overrides });
@@ -237,8 +233,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        // General-purpose plotters stay top-level; the specialist figures
-        // cluster by what they show.
+        // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
         children: [
           { type: "chart",     label: "Chart",     description: "Plots a list as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart, or a 2-D Series for a composed (bars + lines) or bubble chart. Options takes a Chart Builder for styling.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series" },
@@ -288,10 +283,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block; they travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it from the inspector.", create: () => new ConduitNode(), parity: false },
       { type: "format-controller", label: "Format", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like °C, m, or kg. Units must match on connected cables.", create: () => new FormatControllerNode() },
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together; collapse it to a summary.", create: () => new GroupNode(), parity: false },
-      // Query is the Composite class pre-seeded with a Table→Result passthrough
-      // in Manual refresh mode. It ships a pending internal snapshot, so every
-      // add path must hydrate a CompositeNode right after create() (Canvas /
-      // addNodeByCatalogType / the drill-in add menu).
+      // Query ships a PENDING internal snapshot, so every add path must hydrate the
+      // CompositeNode right after create().
       { type: "pair", children: [
         { type: "composite", label: "Composite", description: "A reusable computing subgraph: one card with a typed input/output boundary. Built inside via Edit contents, or by selecting nodes and pressing Ctrl+Shift+G to collapse them into one.", create: () => new CompositeNode(), parity: false },
         { type: "query", label: "Query", description: "A Composite pre-shaped for data transformation: a table in, the verb chain built inside (Edit contents), the result out. Runs in Manual refresh mode — upstream changes only mark it stale until you press Refresh. Excel: Power Query (Get & Transform).", create: () => new CompositeNode({
@@ -308,9 +301,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         }), parity: false, keywords: "power query get transform etl refresh manual steps applied pipeline shape clean data table verbs" },
       ]},
-      // The boundary markers live INSIDE a Composite's private internal graph,
-      // never on the main canvas: FLAT_CATALOG-only, so hydrate() can
-      // reconstruct them from a save/paste snapshot.
+      // FLAT_CATALOG-only: these live inside a Composite's internal graph, never on
+      // the main canvas, but hydrate() must rebuild them from a save/paste snapshot.
       { type: "composite-input", label: "Composite Input", description: "Internal: a Composite's exposed-input boundary marker.", create: () => new CompositeInputNode(), parity: false, hidden: true },
       { type: "composite-output", label: "Composite Output", description: "Internal: a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },
       { type: "pair", children: [
@@ -354,8 +346,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [mathLeaf("gamma"), mathLeaf("gammaln")] },
         ],
       },
-      // Standard-normal curve helpers (PHI/GAUSS/STANDARDIZE) live under
-      // Distributions ▸ Normal with their NORM.* kin.
+      // PHI/GAUSS/STANDARDIZE live under Distributions ▸ Normal with their NORM.* kin.
       {
         type: "category", label: "Rounding", description: "Round and constrain numbers.",
         children: [
@@ -394,8 +385,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [mathLeaf("cot"), mathLeaf("acot")] },
           { type: "pair", children: [mathLeaf("csc"), mathLeaf("sec")] },
           twoMathLeaf("atan2"),
-          // HYPOT lives in the Geometry / Timesavers packs as HYPOTENUSE (it's
-          // not an Excel function); inserted here by the catalog builder.
+          // HYPOT ships as HYPOTENUSE in the Geometry/Timesavers packs; the catalog
+          // builder inserts it here.
           { type: "pair", children: [mathLeaf("sinh"), mathLeaf("asinh")] },
           { type: "pair", children: [mathLeaf("cosh"), mathLeaf("acosh")] },
           { type: "pair", children: [mathLeaf("tanh"), mathLeaf("atanh")] },
@@ -991,8 +982,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully-blank spacer rows, or any row with a blank cell (keep complete rows only). Errors count as values, not blanks. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
             ],
           },
-          // The everyday verbs stay top-level; column surgery, layout reshapes,
-          // and the score/compare trio fold into subcategories.
+          // Everyday verbs stay top-level; surgery/reshape/compare fold into subcategories.
           {
             type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
             children: [
@@ -1040,19 +1030,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // The domain packs' home row. Declared EMPTY so it sits before "Other" — the
-  // catalog builder inserts each active pack's nodes under ["Packs", <domain>]
-  // and prunes the row entirely when no pack targets it. Cross-woven pack nodes
-  // (Timesavers presets beside their Excel kin, HYPOTENUSE in Trigonometry)
-  // deliberately stay where they are, marked by the pack dot.
+  // Declared EMPTY so it sits before "Other": the catalog builder fills it per active
+  // pack and prunes the row when no pack targets it. Cross-woven pack nodes stay put.
   {
     type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
     children: [],
   },
 
-  // Catch-all home: the Promo easter egg (below) plus any pack node that doesn't
-  // target a specific category. The catalog builder prunes it only if it ends up
-  // empty — it won't here, since Promo is a permanent core member.
+  // Pruned only if it ends up empty — it won't, since Promo is a permanent member.
   {
     type: "category", label: "Other", description: "Catch-all for odd one-offs and uncategorized pack nodes.",
     children: [

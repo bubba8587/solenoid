@@ -8,16 +8,14 @@ import { runTornado } from "../tornadoRun";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 
-// The watched value only makes sense wired (Tornado perturbs UPSTREAM of it) —
-// no literal field.
+// Cable-only: Tornado perturbs UPSTREAM of the watched value.
 const TORNADO_CABLE_ONLY = new Set(["value"]);
 
 export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   const [busy, setBusy] = useState(false);
   const { grid, axis } = useChartColors();
-  // Collapsed → the body (recharts bars) is CSS-hidden and only the hero value
-  // box shows, so drop the whole TornadoBars tree instead of leaving it mounted
-  // (a full BarChart per sensitivity row). Same pattern as Chart/Histogram.
+  // Collapsed hides the body in CSS, so unmount the bars rather than leave a
+  // BarChart per row mounted.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
   async function onRun() {
@@ -31,18 +29,15 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   }
 
   const results = data.results ?? [];
-  // The chart floor/ceiling come from the FINITE swings only; a diverged leaf
-  // has no finite low/high to contribute (and would poison the min/max).
+  // FINITE swings only — a diverged leaf would poison the min/max.
   const finiteRs = results.filter((r) => !r.diverged);
   const starts = finiteRs.map((r) => Math.min(r.low, r.high));
   const ends = finiteRs.map((r) => Math.max(r.low, r.high));
   const floor = starts.length ? Math.min(...starts) : 0;
   const ceil = ends.length ? Math.max(...ends) : floor + 1;
   const fullSpan = ceil - floor || 1;
-  // recharts stacks from 0, so the "offset" spacer starts every row at the SAME
-  // floor, with `range` the visible swing. A diverged row spans the full extent
-  // (a muted full-width bar — "off the chart"), carrying the raw values for the
-  // basis-marker tooltip.
+  // recharts stacks from 0, so the "offset" spacer starts every row at the same
+  // floor and `range` is the visible swing; a diverged row spans the full extent.
   const normalized = results.map((r) => {
     const common = {
       label: r.label, outLow: r.low, outHigh: r.high,

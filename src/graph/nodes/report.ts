@@ -3,17 +3,10 @@ import { trueAnyIn, documentOut } from "./shared";
 import { extractInlineRefs } from "../noteInlineRefs";
 import { makeDocument, type DocumentValue } from "../documentValue";
 
-// A standalone markdown DOCUMENT node; the editing surface is the full-screen
-// ReportOverlay (reportStore.ts), the canvas card is only an anchor. Unlike Note,
-// a Report has NO frontmatter output half — it is a terminal consumer, a sink,
-// not a constants source.
-//
-// `embeds`: ids of existing Note nodes placed as objects in the report. An explicit
-// list rather than an inline placement token, so embedding doesn't require new
-// markdown syntax on top of the inline-ref one.
+// A markdown DOCUMENT node edited in ReportOverlay; the canvas card is only an
+// anchor. Unlike Note it is a pure SINK — no frontmatter output half.
 
 export class ReportNode extends ClassicPreset.Node {
-  // `label` (from ClassicPreset.Node) is the editable header name — not redeclared.
   body: string;         // markdown — blank by default
   embeds: string[];     // embedded Note node ids, placed-object style
   color: string;        // palette SLOT id — tints the anchor card, like Note
@@ -35,8 +28,7 @@ export class ReportNode extends ClassicPreset.Node {
     this.width = init?.width ?? 200;
     this.height = init?.height ?? 96;
     this.collapsed = init?.collapsed ?? false;
-    // The one OUTPUT: the report's whole content as a DocumentValue (body + resolved
-    // ref values), for a document sink like Write-to-Obsidian.
+    // The whole content as a DocumentValue, for a sink like Write-to-Obsidian.
     this.addOutput("document", documentOut("Document"));
     this.syncRefs();
   }
@@ -46,11 +38,8 @@ export class ReportNode extends ClassicPreset.Node {
   /** The last value resolved for a ref input (undefined until the first compute). */
   refValue(key: string): unknown { return this._refValues.get(key); }
 
-  /**
-   * Reconcile `any`-typed INPUT sockets from the body's `` `=name` `` spans.
-   * `removedInputs` is for the caller (ReportOverlay's commit) to drop dangling
-   * cables — same contract as NoteNode's syncFields.
-   */
+  /** Reconcile INPUT sockets from the body's `` `=name` `` spans; the caller drops
+   *  the cables of `removedInputs`, as with NoteNode's syncFields. */
   syncRefs(): { removedInputs: string[] } {
     const wanted = extractInlineRefs(this.body);
     const removedInputs: string[] = [];
@@ -75,9 +64,8 @@ export class ReportNode extends ClassicPreset.Node {
     this.embeds = this.embeds.filter((id) => id !== noteId);
   }
 
-  // Serialization (refs → markdown, `![[Note]]` → note bodies, charts → images) is
-  // the sink's job at write time. `inputs` is optional for the same reason as
-  // NoteNode: a bare `new ReportNode().data()` must not throw with no engine.
+  // `inputs` is optional so a bare `new ReportNode().data()` can't throw with no
+  // engine; serialization is the sink's job at write time.
   data(inputs?: Record<string, unknown[]>): { document: DocumentValue } {
     this._refValues = new Map(this._refKeys.map((k) => [k, inputs?.[k]?.[0] ?? null]));
     return { document: makeDocument(this.body, Object.fromEntries(this._refValues), undefined, this.id) };

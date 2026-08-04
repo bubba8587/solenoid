@@ -2,14 +2,11 @@ import { ClassicPreset } from "rete";
 import { colord, extend, type Colord } from "colord";
 import namesPlugin from "colord/plugins/names";
 
-// Named CSS colors ("tomato", "white") parse everywhere colord is used — a typed
-// Color Blend / Chart color literal shouldn't demand hex. extend() is global.
+// Global: named CSS colors ("tomato") must parse everywhere colord is used.
 extend([namesPlugin]);
 import { numberSocket } from "../sockets";
 import { numIn, strIn, strOut, logicalOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
-
-// ─── Number Input ────────────────────────────────────────────────────────────
 
 export class NumberInputNode extends ClassicPreset.Node {
   label: string;
@@ -29,20 +26,15 @@ export class NumberInputNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Color Picker ─────────────────────────────────────────────────────────────
-
 export type ColorMode = "rgb" | "hsv" | "hex";
-// Output formats are CSS-valid only: there is no `hsv()` in CSS, so we don't
-// offer an HSL output either (it'd mismatch the HSV input model) — hex / rgb
-// cover everything a chart color needs.
+// Output formats stay CSS-VALID only — there is no `hsv()` in CSS.
 export type ColorFormat = "hex" | "rgb";
 
 export class ColorPickerNode extends ClassicPreset.Node {
   label: string;
   mode: ColorMode;
   format: ColorFormat;
-  // c0/c1/c2 read per mode — rgb: r,g,b ∈ [0,255]; hsv: h ∈ [0,360], s,v ∈ [0,100].
-  // In "hex" mode the color comes from stringLiterals.hex instead.
+  // c0/c1/c2 read per mode (rgb 0–255; hsv 0–360 / 0–100); "hex" reads stringLiterals.
   literals: Record<string, number> = { c0: 86, c1: 180, c2: 233 }; // #56b4e9
   stringLiterals: Record<string, string> = { hex: "#56b4e9" };
   cachedString = "";
@@ -80,13 +72,8 @@ export class ColorPickerNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Color Blend ──────────────────────────────────────────────────────────────
-// Blend two CSS color strings with a standard blend mode. Parsing is colord's
-// (anything it reads: hex, rgb(), hsl(), named colors), so a Color Picker, a
-// Chart Builder color, or a typed literal all wire in. Blends run per RGB
-// channel on [0,1] with the W3C separable-compositing formulas — A is the
-// backdrop, B the blend layer (matters for the asymmetric modes: overlay,
-// soft/hard light, dodge, burn). Output is always hex; alpha is ignored.
+// W3C separable compositing per RGB channel on [0,1]: A is the BACKDROP, B the blend
+// layer — the order matters for overlay, soft/hard light, dodge and burn.
 
 export type BlendMode =
   | "mix" | "multiply" | "screen" | "overlay" | "soft-light" | "hard-light"
@@ -114,8 +101,7 @@ export class ColorBlendNode extends ClassicPreset.Node {
   label: string;
   /** The blend-op selector — named `op` per VAL-12 so the family can declare. */
   op: BlendMode;
-  // Unwired inputs are typed inline (InlineInputs renders string fields for
-  // these) — defaults are two palette colors so the node shows a result cold.
+  // Defaults are two palette colors so the node shows a result cold.
   stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };
   cachedString: string | SolError | null = null;
   width = 210;
@@ -154,8 +140,6 @@ export class ColorBlendNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Constant (predefined library) ───────────────────────────────────────────
-
 // There is no `na` constant: the NaNode (tagged SolError #N/A) is the one true NA.
 export type ConstantOp =
   | "pi" | "tau" | "e" | "phi"
@@ -185,8 +169,7 @@ export class ConstantNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ConstantOp }) {
     super("Constant");
-    // Guard a stale op from an old save (e.g. the removed "na") — fall back
-    // rather than crash data() on CONSTANTS[op].value.
+    // Guard a stale op from an old save rather than crash data() on CONSTANTS[op].
     this.op = init?.op && init.op in CONSTANTS ? init.op : "pi";
     this.label = init?.label ?? "Constant";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
@@ -196,8 +179,6 @@ export class ConstantNode extends ClassicPreset.Node {
     return { value: CONSTANTS[this.op].value };
   }
 }
-
-// ─── Slider Input ─────────────────────────────────────────────────────────────
 
 export class SliderInputNode extends ClassicPreset.Node {
   label: string;
@@ -224,9 +205,8 @@ export class SliderInputNode extends ClassicPreset.Node {
   }
 
   data(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
-    // A Slider is a SOURCE whose CONTROL needs finite bounds to exist at all, so a
-    // wired blank bound falls back to the card's own — the one case in this sweep
-    // where the literal is the right answer rather than the bug.
+    // A Slider's CONTROL needs finite bounds to exist, so a wired blank bound — uniquely —
+    // falls back to the card's own literal.
     const litMin  = this.literals.min  ?? 0;
     const litMax  = this.literals.max  ?? 100;
     const litStep = this.literals.step ?? 1;
@@ -238,8 +218,6 @@ export class SliderInputNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Boolean Input ────────────────────────────────────────────────────────────
-
 export class BooleanInputNode extends ClassicPreset.Node {
   label: string;
   value: 0 | 1;
@@ -250,14 +228,11 @@ export class BooleanInputNode extends ClassicPreset.Node {
     super("BooleanInput");
     this.label = init?.label ?? "Boolean Input";
     this.value = init?.value ?? 0;
-    // First-class logical output (purple, TRUE/FALSE) — NOT a number. It still feeds
-    // numeric inputs via the logical↔number socket bridge (coerced to 1/0).
+    // A first-class logical output, NOT a number; the socket bridge coerces it to 1/0.
     this.addOutput("value", logicalOut("Value"));
   }
 
-  // `value` stays 0|1 for the toggle UI + persistence; the emitted value is a real
-  // boolean (the runtime form of the logical type), so it renders TRUE/FALSE and
-  // coerces to 1/0 only where a numeric input pulls it.
+  // `value` stays 0|1 for the toggle UI + persistence; the EMITTED value is a real boolean.
   data() {
     return { value: this.value === 1 };
   }

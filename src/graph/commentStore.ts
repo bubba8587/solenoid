@@ -1,9 +1,5 @@
-// Node-anchored comments: {author, text, resolved} threads attached to a node
-// id, the data behind the Comments HUD panel (components/CommentsPanel.tsx) and
-// the small corner indicator NodeShell draws when a node has one. Same shape as
-// pinStore (module-level store, additive optional field in SavedGraph) — see
-// persistence.ts. No identity/permissions infra: a plain author-name string
-// (remembered locally, not per-document) is the whole 1.0.
+// Node-anchored comment threads, shaped like pinStore (module store + an additive optional
+// SavedGraph field). No identity/permissions infra — a local author-name string is all of it.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -76,8 +72,7 @@ export const commentStore = {
 registerNodeForget((nodeId) => commentStore.removeForNode(nodeId));
 registerNodeForgetAll(() => commentStore.clear());
 
-// ─── Remembered author name — local to this machine, not per-document. No
-// identity/permissions: just the plain string the next comment is stamped with.
+// Local to this machine, not per-document.
 const AUTHOR_KEY = "solenoid.commentAuthor";
 let _author = "";
 try { _author = localStorage.getItem(AUTHOR_KEY) ?? ""; } catch { /* private mode */ }
@@ -93,8 +88,7 @@ export const commentAuthorStore = {
   version: authorNotifier.version,
 };
 
-// ─── Panel open/collapse — same lifted-state shape as problemsPanelUi, so a
-// right-click "Add comment" can force the panel open (and focus a node).
+// Lifted like problemsPanelUi, so a right-click "Add comment" can force the panel open.
 let _panelOpen = false;
 let _focusNodeId: string | null = null;
 const panelNotifier = createNotifier();

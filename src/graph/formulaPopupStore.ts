@@ -1,8 +1,5 @@
-// Which Expression node's formula popup is open (its node id), or null.
-// Module store (not React context): the expand button lives inside a node, which
-// Rete renders in a separate React root, so it can't reach an app-level overlay
-// through context. The popup is mounted once in App and reads this store. Mirrors
-// connectionDialogStore / frStore.
+// Which Expression node's formula popup is open. Must stay a module store: the
+// opener sits in rete's separate React root and can't reach App through context.
 import { createValueStore } from "./storeKit";
 
 const core = createValueStore<string>();

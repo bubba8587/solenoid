@@ -1,18 +1,9 @@
-// Canvas cable hit-testing — pure geometry (no DOM/React/store). Flattens an SVG
-// cable path to a polyline and measures point→polyline distance; `hitTestCables` is
-// the O(cables) brute-force query (cableHitIndex narrows candidates via a spatial
-// grid first). Also feeds the GPU cable renderer and cable tessellation.
-//
-// The cable path is an SVG `d` string (from `getCablePath`): M / L / C / Q commands,
-// comma- OR space-separated (the walk router uses commas, one straight branch uses
-// spaces). We flatten curves to a polyline once, then it's point→polyline distance.
+// Pure geometry — no DOM/React/store. Cable paths are absolute M/L/C/Q `d` strings,
+// comma- or space-separated, flattened once to a polyline.
 
 export interface Pt { x: number; y: number }
 
-// ── Path parsing → polyline ────────────────────────────────────────────────────
-
-/** Tokenize an SVG path `d` into command letters and numbers. Handles comma or
- *  whitespace separators and signed decimals. Only M/L/C/Q/Z appear in our paths. */
+/** Tokenize a path `d`; only M/L/C/Q/Z appear in our paths. */
 function tokenize(d: string): Array<string | number> {
   const out: Array<string | number> = [];
   const re = /([MLCQZmlcqz])|(-?\d*\.?\d+(?:e[-+]?\d+)?)/gi;
@@ -35,9 +26,8 @@ function quadAt(t: number, p0: Pt, p1: Pt, p2: Pt): Pt {
   return { x: a * p0.x + b * p1.x + c * p2.x, y: a * p0.y + b * p1.y + c * p2.y };
 }
 
-/** Flatten an SVG `d` (absolute M/L/C/Q only — what our cables emit) into a
- *  polyline. Curves are sampled into `curveSegs` segments each. Returns [] for an
- *  empty/garbage string. */
+/** Flatten an absolute-M/L/C/Q `d` into a polyline, sampling curves into `curveSegs`
+ *  segments each; [] for an empty or garbage string. */
 export function parsePathPoints(d: string, curveSegs = 18): Pt[] {
   const t = tokenize(d);
   const pts: Pt[] = [];
@@ -73,8 +63,6 @@ export function parsePathPoints(d: string, curveSegs = 18): Pt[] {
   return pts.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
 }
 
-// ── Distance ─────────────────────────────────────────────────────────────────
-
 /** Distance from point p to segment a–b. */
 export function pointSegmentDistance(p: Pt, a: Pt, b: Pt): number {
   const dx = b.x - a.x, dy = b.y - a.y;
@@ -97,8 +85,6 @@ export function pointPolylineDistance(p: Pt, pts: Pt[]): number {
   return best;
 }
 
-// ── Cable hit-test ─────────────────────────────────────────────────────────────
-
 export interface CableGeom {
   id: string;
   /** Either the raw SVG `d` (flattened on the fly) or a pre-flattened polyline. */
@@ -108,10 +94,8 @@ export interface CableGeom {
 
 export interface CableHit { id: string; distance: number }
 
-/** The nearest cable to `point` within `tolerance` (all in the SAME coordinate
- *  space — world or screen; the caller picks and converts tolerance accordingly),
- *  or null if none is within range. Ties resolve to the smallest distance, then to
- *  the earlier cable in the list (caller orders by z so the topmost wins). */
+/** The nearest cable within `tolerance`, everything in the SAME coordinate space;
+ *  ties go to the earlier cable, so the caller orders by z for topmost-wins. */
 export function hitTestCables(point: Pt, cables: CableGeom[], tolerance: number): CableHit | null {
   let best: CableHit | null = null;
   for (const c of cables) {

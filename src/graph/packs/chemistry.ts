@@ -1,7 +1,4 @@
-// Chemistry Basics — the periodic table as a node, a molar-mass calculator
-// that parses real formulas (parentheses, hydrates), and the lab-bench formula
-// set: moles/mass/molarity, dilution, pH, Nernst, Arrhenius, Gibbs, decay.
-// SI-ish lab units: grams, moles, litres, kelvin where absolute.
+// Lab units throughout: grams, moles, litres, kelvin where absolute.
 
 import { ElementNode, MolarMassNode, molarMass, ELEMENTS, ELEMENT_BY_SYMBOL } from "../rete-nodes";
 import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
@@ -50,7 +47,7 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
 
 export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_EQUILIBRIA];
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4).
+// The pack's custom-logic nodes exposed as formula functions (D19 decision 4).
 const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "ELEMENT",

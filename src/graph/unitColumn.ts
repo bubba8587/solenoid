@@ -1,9 +1,4 @@
-// ─── Per-column frame units — header parsing + display ───────────────────────────
-// A frame column locks to a dimensional unit two ways: a header written `Name (unit)`
-// (the literal source path — Build Frame / Add Column strip the parenthetical and
-// lock the column), or a Format Controller docked on the header string list. This
-// module owns the header-spec parser and the column-value display helper; it sits
-// between the value-layer `ColumnUnit` (unitValue.ts) and the FC unit ids
+// Sits between the value-layer `ColumnUnit` (unitValue.ts) and the FC unit ids
 // (unitBridge.ts). Pure — no React/Rete.
 
 import { type ColumnUnit, fromUnit, tagDim, isUnitCell, sameColumnUnit } from "./unitValue";
@@ -13,16 +8,8 @@ import { formatDim } from "./dimension";
 // Currency symbol → FC unit id (the header spec "$0.00" means the currency $).
 const CURRENCY_SYMBOL: Record<string, string> = { "$": "usd", "€": "eur", "£": "gbp", "¥": "jpy" };
 
-/**
- * Parse a `Name (spec)` header into a clean column name + an optional `ColumnUnit`.
- * The parenthetical spec is a unit and/or number format: a currency symbol ("$0.00"
- * → $), or a unit token ("km", "m/s", "kg"). A header with no parenthetical, or a
- * spec that doesn't resolve to a dimensional unit, returns just the trimmed name.
- *
- *   "Revenue ($0.00)" → { clean: "Revenue", unit: { dim: currency, display: "usd" } }
- *   "Distance (km)"   → { clean: "Distance", unit: { dim: length, display: "km" } }
- *   "Item"            → { clean: "Item" }
- */
+/** Splits a `Name (spec)` header; a missing or non-dimensional spec leaves the
+ *  trimmed name alone. */
 export function parseColumnUnitFromHeader(header: string): { clean: string; unit?: ColumnUnit } {
   const name = (header ?? "").trim();
   const m = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(name);
@@ -37,7 +24,6 @@ export function parseColumnUnitFromHeader(header: string): { clean: string; unit
  *  when it names no dimensional unit. */
 export function columnUnitFromSpec(spec: string): ColumnUnit | null {
   const s = spec.trim();
-  // Currency symbol anywhere in the spec ("$0.00", "€").
   for (const [sym, id] of Object.entries(CURRENCY_SYMBOL)) {
     if (s.includes(sym)) {
       const u = fcUnitToUnit(id)!;
@@ -63,42 +49,27 @@ export function columnUnitLabel(cu: ColumnUnit): string {
   return formatDim(cu.dim);
 }
 
-/**
- * Tag a frame cell — the AS-TYPED magnitude the user sees (5 for a `km` column,
- * 5 for a `$` column) — as a base-SI `UnitCell` carrying the column's unit +
- * display id, so the unit rides correctly OUT of the frame into a list / scalar
- * (Get Column, INDEX). `fromUnit` interprets the stored value AS the column's
- * display unit and normalises to base SI (`5 km` → 5000 m, display "km"; `$5` →
- * 5, display "usd") — the currency case is why the display id must be carried:
- * currency collapses to one axis, so its identity IS the id ("$" vs "€"). A
- * non-numeric cell (null / error / text) passes through untouched; a column whose
- * display id doesn't resolve falls back to a base-SI dim tag.
- */
+/** Normalises the AS-TYPED cell to a base-SI `UnitCell` so the unit rides out of the
+ *  frame. The display id must be CARRIED: currency collapses to one dimension axis,
+ *  so its identity is the id ("$" vs "€"). */
 export function tagFrameCellUnit(v: unknown, cu: ColumnUnit): unknown {
   if (typeof v !== "number" || !Number.isFinite(v)) return v;
   const u = cu.display ? fcUnitToUnit(cu.display) : null;
   return u ? fromUnit(v, u, cu.display) : tagDim(v, cu.dim);
 }
 
-// ─── The matrix ↔ list unit bridge (rank-changing reshapes) ──────────────────────
-// A matrix carries ONE whole-grid unit over AS-TYPED cells (D20); a list carries
-// per-cell base-SI `UnitCell`s. A rank-changing reshape (TOCOL/TOROW flatten a
-// matrix to a list; WRAPROWS/WRAPCOLS build a matrix from a list) must CONVERT
-// between the two carriers, not just move cells — otherwise the unit vanishes.
+// A matrix carries ONE whole-grid unit over AS-TYPED cells (D20) while a list carries
+// per-cell base-SI `UnitCell`s, so a rank-changing reshape must CONVERT between the
+// two carriers or the unit vanishes.
 
-/** Matrix → list: tag each as-typed grid cell with the grid's unit, yielding list
- *  cells (base-SI `UnitCell`s carrying the display id). No unit ⇒ cells unchanged.
- *  Used by TOCOL / TOROW (and mirrors INDEX's whole-row/column extraction). */
+/** Matrix → list: each as-typed cell becomes a base-SI `UnitCell`; no unit ⇒ unchanged. */
 export function taggedListFromMatrix(cells: readonly unknown[], cu: ColumnUnit | undefined): unknown[] {
   return cu ? cells.map((c) => tagFrameCellUnit(c, cu)) : [...cells];
 }
 
-/** List → matrix: reduce a flat list to bare as-typed magnitudes + the ONE unit the
- *  list shares (undefined if the dimensioned cells disagree, or none are tagged) — a
- *  matrix is one homogeneous unit (D20), so a wrap can only claim a unit when the
- *  list is uniform. Cells always come back bare (a matrix never holds `UnitCell`s);
- *  a dimensionless cell keeps its number and adopts the shared unit. Used by
- *  WRAPROWS / WRAPCOLS. */
+/** List → matrix: bare as-typed magnitudes + the ONE unit the list shares (undefined
+ *  when the tagged cells disagree) — a matrix is homogeneous (D20) and never holds
+ *  `UnitCell`s. */
 export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[]; unit: ColumnUnit | undefined } {
   const mags = cells.map((c) => (isUnitCell(c) ? displayMagnitudeOf(c) : c));
   let unit: ColumnUnit | undefined;

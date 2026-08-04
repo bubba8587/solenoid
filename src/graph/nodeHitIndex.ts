@@ -1,15 +1,8 @@
 import { SpatialGrid } from "./spatialIndex";
 import type { Pt } from "./cableHitTest";
 
-// NodeHitIndex — point→node hit-testing for a canvas node layer. NOT WIRED IN
-// (nothing constructs it). The node-layer counterpart to CableHitIndex, for when
-// node bodies are drawn on canvas and no DOM node catches the click. Nodes are
-// axis-aligned world-space rectangles, so this is point-in-rect narrowed by the
-// shared SpatialGrid; among overlapping hits the highest `z` wins (the topmost
-// card), matching how the DOM stacks selected/dragged nodes above the rest.
-//
-// Pure data structure (no DOM/React). Reuses SpatialGrid so the big-graph query
-// stays O(candidates), not O(nodes).
+// Point→node hit-testing for a canvas node layer — NOT WIRED IN (nothing constructs it).
+// Rects are axis-aligned world space; the highest `z` wins, matching the DOM stacking.
 
 export interface NodeRect {
   id: string;
@@ -27,15 +20,14 @@ export class NodeHitIndex {
     this.grid = new SpatialGrid<string>(cellSize);
   }
 
-  /** Sync to exactly this set of node rectangles. Unchanged rects are left as-is;
-   *  moved/resized ones are re-bucketed; absent ones removed. */
+  /** Syncs to exactly this set — moved/resized rects re-bucket, absent ones are removed. */
   update(nodes: NodeRect[]): void {
     const seen = new Set<string>();
     for (const n of nodes) {
       seen.add(n.id);
       const prev = this.rects.get(n.id);
       if (prev && prev.minX === n.minX && prev.minY === n.minY && prev.maxX === n.maxX && prev.maxY === n.maxY && (prev.z ?? 0) === (n.z ?? 0)) {
-        continue; // unchanged
+        continue;
       }
       this.rects.set(n.id, n);
       this.grid.insert(n.id, n);
@@ -45,9 +37,7 @@ export class NodeHitIndex {
     }
   }
 
-  /** The topmost node whose rectangle contains `point`, or null. "Topmost" = the
-   *  highest `z`; ties break to the larger id-insertion-independent rule of last
-   *  wins by id string only as a deterministic fallback. */
+  /** Topmost (highest `z`) node containing `point`, or null; ties break by id string. */
   hitTest(point: Pt): string | null {
     let best: NodeRect | null = null;
     for (const id of this.grid.queryPoint(point, 0)) {

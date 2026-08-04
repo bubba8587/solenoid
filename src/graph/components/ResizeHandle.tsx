@@ -1,23 +1,18 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
-// Active/owning accessors, not getEditor/getArea: a resizable node inside a
-// composite drill-in isn't in the MAIN editor, so the grip wouldn't render there
-// (and the drag would read the wrong area's zoom).
+// Active/owning accessors, not getEditor/getArea — a node inside a composite drill-in
+// isn't in the MAIN editor, so the grip wouldn't render and the zoom would be wrong.
 import { getOwningEditor, getActiveArea } from "../activeGraph";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { scheduleAutosave } from "../persistence";
 import { nodeResizable } from "../rete-nodes";
 
-// Floors (canvas px). Width drives the card; the card-width floor sits below the
-// CSS default (180) on purpose. Height drives only the value box, so its floor
-// is a small box minimum — the card auto-sizes around it, so other card elements
-// are never hidden no matter how short the box gets.
+// Floors (canvas px). The card-width floor sits below the CSS default (180) on purpose;
+// the height floor bounds only the value box, so no card element can ever be hidden.
 const MIN_CARD_W = 140;
 const MIN_BOX_H = 40;
 
-// The drag lives at MODULE scope and listens on `window`, so the whole gesture
-// survives a re-render that recreates this component's DOM (which a per-element
-// pointer capture / component ref would not — the drag would die after one
-// move). Only one resize can be active at a time.
+// The drag lives at MODULE scope and listens on `window` so it survives a re-render
+// that recreates this component's DOM; a pointer capture would die after one move.
 type Drag = { sx: number; sy: number; startW: number; startH: number; k: number; nodeId: string };
 let active: Drag | null = null;
 
@@ -27,8 +22,7 @@ function onMove(e: PointerEvent) {
   const minW = Math.max(MIN_CARD_W, min?.w ?? 0);
   const minH = Math.max(MIN_BOX_H, min?.h ?? 0);
   nodeSizeStore.set(active.nodeId, {
-    // Integer dims so the right/bottom edge lands on a whole pixel (a fractional
-    // size renders the inset:-2px selection ring 0.5px off on that edge).
+    // Integer dims — a fractional size renders the inset:-2px selection ring 0.5px off.
     w: Math.round(Math.max(minW, active.startW + (e.clientX - active.sx) / active.k)),
     h: Math.round(Math.max(minH, active.startH + (e.clientY - active.sy) / active.k)),
   });
@@ -45,12 +39,8 @@ function onUp() {
   scheduleAutosave();
 }
 
-/**
- * Corner grip inside a node's value/result box. Dragging resizes the BOX: width
- * is applied to the card (the box fills it), height to the box alone (card
- * height stays content-driven so the header / rows are never covered).
- * Renders nothing for non-resizable nodes.
- */
+/** Width is applied to the card, height to the value box alone — card height stays
+ *  content-driven so the header / rows are never covered. */
 export function ResizeHandle({ nodeId }: { nodeId: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const node = getOwningEditor(nodeId)?.getNode(nodeId);
@@ -63,8 +53,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
     e.preventDefault();
     const area = getActiveArea();
     const card = area?.nodeViews.get(nodeId)?.element;
-    // offsetParent is the positioned box the grip sits in — its height is what
-    // the drag controls.
+    // offsetParent is the positioned box the grip sits in — the height the drag controls.
     const box = ref.current?.offsetParent as HTMLElement | null;
     if (!area || !card || !box) return;
     const k = area.area.transform.k || 1;

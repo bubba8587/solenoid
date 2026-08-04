@@ -1,5 +1,3 @@
-// Value-kind predicates (null = missing, SolError = failure), Kleene three-valued
-// logic, logical↔number coercion, aggregator prep. No React/Rete deps.
 import { isSolError, solError, type SolError } from "./errorValue";
 
 // Call sites use the predicate rather than `=== null` so a representation change
@@ -21,11 +19,9 @@ export function numberToLogical(n: number): boolean {
   return n !== 0;
 }
 
-// Liberal coercion for the EXPLICIT coercion path (Cast → Boolean, Get Column
-// read-as Logical). Deliberately distinct from the CONSERVATIVE column inference in
-// frame.ts (`isLogicalCell`). Returns `null` when the value can't be read as a
-// logical at all; the CALLER decides what that means (Cast tags it #VALUE!, read-as
-// treats it as a missing cell).
+// Liberal coercion for the EXPLICIT path (Cast → Boolean, Get Column read-as Logical),
+// deliberately distinct from frame.ts's conservative `isLogicalCell`. `null` = not
+// readable as a logical at all; the CALLER decides what that means.
 export function coerceLogical(v: unknown): boolean | null {
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return Number.isFinite(v) ? numberToLogical(v) : null;
@@ -49,9 +45,8 @@ export function coerceNumber(v: unknown): number {
   return NaN;
 }
 
-// `value ± error`, where `error` is a 1σ standard deviation (non-negative). SCOPED
-// to the composite subsystem — deliberately NOT threaded through general graph
-// arithmetic; a downstream numeric consumer coerces it to its central `value`.
+// `value ± error`, `error` a non-negative 1σ. SCOPED to the composite subsystem — NOT
+// threaded through general graph arithmetic; a numeric consumer takes the central `value`.
 export interface UncertainNumber {
   readonly kind: "uncertain";
   readonly value: number;
@@ -70,22 +65,19 @@ export function isUncertain(v: unknown): v is UncertainNumber {
   );
 }
 
-/** Build an UncertainNumber, normalizing the error bar to |error| (a σ is
- *  non-negative). `samples` rides along when a Monte Carlo summary supplies them. */
+/** Normalizes the error bar to |error| (a σ is non-negative). */
 export function uncertain(value: number, error: number, samples?: readonly number[]): UncertainNumber {
   const e = Math.abs(error);
   return samples ? { kind: "uncertain", value, error: e, samples } : { kind: "uncertain", value, error: e };
 }
 
-/** The central estimate of any scalar: an UncertainNumber's `value`, else the
- *  number itself. The one place error bars collapse when an uncertain value meets
- *  a plain-number context. */
+/** The one place error bars collapse when an uncertain value meets a plain-number
+ *  context. */
 export function uncertainCenter(v: number | UncertainNumber): number {
   return isUncertain(v) ? v.value : v;
 }
 
-/** Widen a plain number to a zero-error UncertainNumber; pass an uncertain
- *  through unchanged. The normalizer every propagation op runs on its operands. */
+/** The normalizer every propagation op runs on its operands. */
 export function asUncertain(v: number | UncertainNumber): UncertainNumber {
   return isUncertain(v) ? v : { kind: "uncertain", value: v, error: 0 };
 }
@@ -116,8 +108,8 @@ export function divUncertain(a: number | UncertainNumber, b: number | UncertainN
 export const COMPUTE = Symbol("compute");
 export type CellShort = SolError | Missing | typeof COMPUTE;
 
-/** The full contract (error → missing → compute). Returns the short-circuit value
- *  for a determined cell, or the COMPUTE sentinel when the op should run. */
+/** The full contract (error → missing → compute): the short-circuit value for a
+ *  determined cell, or COMPUTE when the op should run. */
 export function cellShortCircuit(args: ReadonlyArray<unknown>): CellShort {
   for (const a of args) if (isSolError(a)) return a; // first error wins, unmorphed
   for (const a of args) if (isMissing(a)) return null; // else missing → missing
@@ -131,8 +123,7 @@ export function cellError(args: ReadonlyArray<unknown>): SolError | undefined {
   return undefined;
 }
 
-// Runs per output cell AFTER the op, composing with the per-cell error/null
-// contract: cellShortCircuit gates the inputs, this classifies the RESULT.
+// Runs per output cell AFTER the op: cellShortCircuit gates the inputs, this the RESULT.
 export function guardFinite(result: number, ...inputs: unknown[]): number | SolError {
   if (Number.isFinite(result)) return result;
   if (Number.isNaN(result)) {
@@ -170,9 +161,8 @@ export function forAggregate(values: ReadonlyArray<unknown>): AggregatePrep {
   for (const v of values) {
     if (isSolError(v)) return { error: v };
   }
-  // Only NUMERIC cells aggregate (dates are serials; callers coerce logicals to 1/0
-  // first). A text cell must not ride into sum's `+` (which would CONCATENATE) or
-  // min/max's `<` (lexical by accident).
+  // Only NUMERIC cells aggregate (callers coerce logicals first): a text cell must not
+  // ride into sum's `+` (concatenation) or min/max's `<` (lexical).
   const nums = values.filter((v): v is number => typeof v === "number");
   return { nums };
 }

@@ -1,9 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import "./SocketContextMenu.css";
 
-// Right-click menu for a node / group body: Isolate (and Isolate chain), Pin,
-// and — when exactly two linkable items are selected and one was clicked — the
-// Standoff link. One menu so a node's right-click has a single home.
+// The single right-click menu for a node / group body — a node's right-click has
+// one home, so new items land here rather than in a second menu.
 
 // Lucide "pin" icon — https://lucide.dev/icons/pin
 const PinSvg = () => (

@@ -11,9 +11,7 @@ type PathArgs = {
   sourceX: number;
   sourceY: number;
   sourcePosition: Position;
-  // Exact exit angle in degrees (CW from +X). When supplied, the cable
-  // leaves the socket along this direction in every shape mode (a rotated
-  // Conduit sets it via cableAngleStore).
+  // Exit angle in degrees CW from +X; when supplied the cable leaves along it in every shape.
   sourceAngleDeg?: number | null;
   targetX: number;
   targetY: number;
@@ -78,9 +76,8 @@ function getAngleBezierPath(args: PathArgs): string {
 
 const DIR_LEAD = 14; // exit/entry stub — and the minimum visible staircase leg
 
-// Nearest compass heading as an index, and the unit vector for an index.
-// Indices are deliberately UNWRAPPED through the walk math (e.g. -3 or 9) so
-// adjacency is plain integer succession; dirOfK wraps.
+// Heading indices stay UNWRAPPED through the walk math (e.g. -3 or 9) so adjacency is plain
+// integer succession; dirOfK wraps.
 function compassIndex(d: Pt, div: number): number {
   const step = (2 * Math.PI) / div;
   return ((Math.round(Math.atan2(d.y, d.x) / step) % div) + div) % div;
@@ -103,8 +100,7 @@ function buildHeads(kS: number, sigma: number, b: number, r: number, e: number):
 
 const SOLVE_EPS = 0.01;
 
-// Spread `amount` evenly over every leg with the given heading. Even split is
-// what centers a Z's diagonal between its two straight runs.
+// Even split is what centers a Z's diagonal between its two straight runs.
 function addToHeading(heads: number[], lens: number[], head: number, amount: number) {
   let n = 0;
   for (const h of heads) if (h === head) n++;
@@ -164,9 +160,8 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   if (dist < STRAIGHT_THRESHOLD) return [S, T];
   const dS = exitDir(args);
   const dT = entryDir(args);
-  // The staircase minimum must shrink FASTER than the stub: a walk through k
-  // same-direction turns consumes k·minLeg before any slack is distributed, so at
-  // close range a large minimum makes every walk unsolvable.
+  // Must shrink FASTER than the stub: k same-direction turns consume k·minLeg before any
+  // slack is distributed, so at close range a large minimum makes every walk unsolvable.
   const lead = Math.min(DIR_LEAD, dist / 4);
   const minLeg = Math.min(DIR_LEAD, dist / 8);
   const A: Pt = { x: S.x + dS.x * lead, y: S.y + dS.y * lead };
@@ -180,8 +175,7 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   const offS = Math.abs(dS.x * gridS.y - dS.y * gridS.x) > 0.02;
   const offT = Math.abs(dT.x * gridT.y - dT.y * gridT.x) > 0.02;
   const D: Pt = { x: B.x - A.x, y: B.y - A.y };
-  // Rotation-direction preference: which side of the exit/entry axes the far
-  // socket sits on. Continuous in the endpoints, so it only flips at genuinely
+  // Continuous in the endpoints, so the rotation preference only flips at genuinely
   // ambiguous (collinear head-on) configurations.
   const pref = dS.x * dy - dS.y * dx + (dx * dT.y - dy * dT.x) >= 0 ? 1 : -1;
   const cands: { sigma: number; r: number; b: number; e: number; turns: number }[] = [];
@@ -195,15 +189,11 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   }
   // Stable sort: ties keep insertion order (preferred sigma first, then small b).
   cands.sort((p, q) => p.turns - q.turns);
-  // If no walk solves at the full staircase minimum (only possible in cramped
-  // configurations), halve it and retry: shrinking the minimum only enlarges
-  // each walk's solvable set, so this terminates and the constraints still
-  // hold — the steps just get smaller.
+  // Halving the minimum only enlarges each walk's solvable set, so the retry terminates
+  // with the constraints intact.
   for (let m = minLeg; m >= 0.25; m /= 2) {
-    // Globally SHORTEST solvable walk; the sort order (fewest turns, then
-    // preferred rotation) only settles exact length ties. LENGTH must stay the
-    // primary criterion — gating by turn count first turns seamless handoffs
-    // into visible jumps.
+    // LENGTH must stay the primary criterion — gating by turn count first turns seamless
+    // handoffs into visible jumps; the sort order only settles exact ties.
     let best: { heads: number[]; lens: number[]; total: number } | null = null;
     for (const c of cands) {
       const heads = buildHeads(kS, c.sigma, c.b, c.r, c.e);
@@ -228,11 +218,8 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   return [S, T]; // unreachable in practice: tiny-step walks absorb anything
 }
 
-// ─── Polyline rendering ───────────────────────────────────────────────────────
-
-// Collapsed walk legs produce exact duplicate points; drop those. The
-// threshold must stay well under a pixel — a coarser one would delete real
-// (tiny but on-grid) vertices and skew the headings of their neighbors.
+// The threshold must stay well under a pixel — a coarser one deletes real (tiny but
+// on-grid) vertices and skews the headings of their neighbors.
 const DEDUP_EPS = 0.01;
 
 function ptsToPath(pts: Pt[]): string {
@@ -246,10 +233,7 @@ function ptsToPath(pts: Pt[]): string {
 
 const CORNER_RADIUS = 8;
 
-// Rounded-corner rendering for the straight (orthogonal) shape: duplicate
-// points and collinear runs are merged, then every remaining corner becomes a
-// quadratic round whose radius caps at half the shorter adjacent leg, so
-// rounds can never overlap.
+// Each corner radius caps at half the shorter adjacent leg, so rounds can never overlap.
 function roundedPtsToPath(pts: Pt[], radius: number): string {
   const clean: Pt[] = [];
   for (const p of pts) {

@@ -13,8 +13,7 @@ import {
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 
-// Commits on Enter / blur, never per keystroke, so clearing digits to retype doesn't
-// recompute the band mid-edit (the project-wide typed-field rule, useDraftCommit).
+// Commits on Enter / blur so clearing digits to retype doesn't recompute the band mid-edit.
 function BandField({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const field = useDraftCommit<number>(
     value,
@@ -40,10 +39,9 @@ import { scheduleAutosave } from "../persistence";
 import "./conduit.css"; // reuse the docked-toolbar chrome
 import "./StandoffLayer.css";
 
-// Bars render UNDER the graph: the layer's holder sits at z-index -3 in the area's
-// transformed plane (below expanded groups at -2, conduits at -1, nodes at 0). A bar
-// is drawn between the two live anchor points, so it slants to show perpendicular
-// slack — the constrained axis is the line between the anchors' boxes, not the angle.
+// Bars render UNDER the graph at z-index -3 (below expanded groups -2, conduits -1,
+// nodes 0). A bar slants to show perpendicular slack — the constrained axis is the line
+// between the anchors' boxes, not the drawn angle.
 
 const BAR_WIDTH = 9;
 const HIT_WIDTH = 18;
@@ -118,8 +116,7 @@ function StandoffToolbar({ s }: { s: Standoff }) {
     settleStandoffs();
     scheduleAutosave();
   };
-  // The axis direction as a screen-space angle (0° = east, 90° = south) so the
-  // dial's needle points the way the standoff constrains.
+  // Screen-space angle (0° = east, 90° = south), so the needle points the constrained way.
   const dir = ANCHOR_DIR[s.a.anchor];
   const angle = ((Math.atan2(dir.y, dir.x) * 180) / Math.PI + 360) % 360;
   return createPortal(

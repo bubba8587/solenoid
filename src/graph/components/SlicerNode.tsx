@@ -12,8 +12,7 @@ function label(v: SlicerCell): string {
   return typeof v === "number" ? formatScalar(v) : v;
 }
 
-// Intelligent sizing: long values / many values need a wider card. The classes
-// override the default frame "wide" tier via higher specificity (see CSS).
+// These classes override the default frame "wide" tier by CSS specificity.
 function widthClass(vals: SlicerCell[]): string | undefined {
   if (vals.length === 0) return undefined;
   const maxLen = vals.reduce<number>((m, v) => Math.max(m, label(v).length), 0);
@@ -24,21 +23,18 @@ function widthClass(vals: SlicerCell[]): string | undefined {
 }
 
 export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
-  // Selection / column / mode are React state mirrored onto the instance (the
-  // controlled UI). The unique values + column list are recomputed by data() and
-  // read straight off the instance — processGraph re-renders the node each run.
+  // React state is mirrored onto the instance; the values/columns come the other way, off
+  // the instance, since processGraph re-renders the node after each data() run.
   const [selected, setSelected] = useState<SlicerCell[]>(data.selectedValues);
   const [multiSelect, setMultiSelect] = useState(data.multiSelect);
   const [column, setColumn] = useState(data.selectedColumn);
-  // Collapsed → only the "X of N" summary shows; the interactive block (column
-  // dropdown + every value pill, up to dozens) is CSS-hidden but stays mounted.
-  // Drop it while collapsed so a folded Slicer isn't 30+ live buttons of DOM.
+  // The interactive block is only CSS-hidden when collapsed, so DROP it — a folded Slicer
+  // shouldn't stay 30+ live buttons of DOM.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
   const columns = data.cachedColumns;
   const uniqueVals = data.cachedUniqueValues;
-  // Resolve the displayed column the same way data() does (selected if it still
-  // exists, else the first), so the dropdown and the buttons always agree.
+  // Resolve the column exactly as data() does, so dropdown and buttons always agree.
   const activeColumn = column && columns.includes(column) ? column : columns[0] ?? "";
 
   const isSelected = useCallback(
@@ -72,7 +68,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
     (next: string) => {
       setColumn(next);
       data.selectedColumn = next;
-      // A new column's values are unrelated to the old selection — reset it.
+      // A new column's values are unrelated to the old selection.
       setSelected([]);
       data.selectedValues = [];
       void processGraph(data.id);

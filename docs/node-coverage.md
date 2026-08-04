@@ -6,6 +6,8 @@ Reference entry. This file is a human-readable inventory by category plus the
 non-obvious per-node notes. (Moved out of CLAUDE.md to keep the always-loaded doc
 lean; update it when the catalog changes meaningfully.)
 
+**Multi-op declarations (`nodeOps.ts`)** — one declaration per op-selector node class, two independent axes. `expose` is the MENU axis: `"collapsed"` (default) gives one Add-menu leaf with every op reachable from SEARCH ("Chart: Column"); `"leaves"` generates a leaf per op — a family earns per-op leaves deliberately, the default keeps dropdowns from spraying the tree. The `{ }` marker is DERIVED, never declared (shown iff the node has ops with no leaf of their own; `mark: false` suppresses it for labels that already enumerate, e.g. "GCD / LCM"). `kind` is the SEMANTIC axis and does NOT affect the menu: `"operation"` = the op stands alone as a name (SETUNION, ISODD) and earns its own formula name under D19 2(a); `"argument"` = meaningless without its host (D29) — the family takes ONE formula name, the op rides as an argument. Kind-only declarations (no `ops`/`create`) are for families already listed op-by-op, or whose variants are DATA rather than operations (element symbol, pipe material, resistor band count). The coverage test fails the build until every op-selector family is classified.
+
 **Add-menu pane ROW BUDGET** — the rule behind every catalog regrouping: a category
 pane holds about **12 rows** before it needs a scrollbar, so a pane growing past ~12
 gets its tail folded into subcategories rather than left flat (the 2026-07-16 sweep

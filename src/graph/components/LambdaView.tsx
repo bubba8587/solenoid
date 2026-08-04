@@ -1,10 +1,5 @@
-// Lambda view-as rendering (the FC's `lambdaView` annotation): how a flowing
-// LambdaValue draws in a value box. The value already carries its source
-// (`expr`, `params`), so every view derives from the same object — signature
-// (the compact default), a KaTeX equation, the highlighted formula, or the
-// plain monospace source. Shared by the Lambda node's hero box and the
-// Display node; the Report's inline embed has its own KaTeX-first variant
-// (inlineRefDisplay's LambdaFormula) that honors the same annotation.
+// Every view derives from the value's own `expr`/`params`; the Report's inline embed
+// has a separate KaTeX-first variant honoring the same annotation.
 import { useKatexRender } from "./katexLoader";
 import { formulaToLatex } from "../excelFormula";
 import { highlightFormula } from "../formulaSyntax";
@@ -52,8 +47,7 @@ export function LambdaValueView({ value, view }: { value: LambdaValue; view: Lam
   }
 
   if (view === "mono" || view === "syntax" || view === "katex") {
-    // Monospace source — also the fallback while KaTeX is still loading, and
-    // for an empty/unparseable body.
+    // Also the fallback while KaTeX loads and for an empty/unparseable body.
     return (
       <div className="solenoid-node__display-value solenoid-lambda-view solenoid-lambda-view--mono">
         {lambdaSourceText(value)}
@@ -61,6 +55,5 @@ export function LambdaValueView({ value, view }: { value: LambdaValue; view: Lam
     );
   }
 
-  // Default / "signature": the compact λ(params) readout.
   return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
 }

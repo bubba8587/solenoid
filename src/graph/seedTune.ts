@@ -1,10 +1,6 @@
-// Seed-tune harness (tooling, console-only — no UI). True group fit needs the
-// LIVE app (tidy/autofit measure painted DOM), so this hook loads a seed, runs
-// the same per-group tidy → autofit the group Tidy button does, and returns ONLY
-// the resulting geometry keyed by SAVED node id. scripts/tune-seeds.mjs drives it
-// headlessly and patches x/y (+ group width/height) back into the seed files in
-// place — deliberately NOT a full re-export, which would rewrite every id to a
-// generated name (serializeGraph normalizes ids) and wreck the hand-authored files.
+// Console-only tooling: true group fit needs the LIVE app, since tidy/autofit measure
+// painted DOM. scripts/tune-seeds.mjs patches the returned geometry back in place —
+// deliberately NOT a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
 import { getEditor, getArea, autoArrange } from "./process";
 import { GroupNode } from "./rete-nodes";
@@ -27,9 +23,8 @@ const frames = (n: number) =>
     step(n);
   });
 
-/** Load a seed, tidy + autofit every group (expanding collapsed ones around the
- *  pass so the box wraps REAL member sizes, then re-collapsing), settle
- *  standoffs, and return the final geometry keyed by the seed file's node ids. */
+/** Collapsed groups are expanded around the pass so each box wraps REAL member
+ *  sizes; the geometry comes back keyed by the seed file's node ids. */
 async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> {
   if (!SEEDS[id]) throw new Error(`unknown seed "${id}"`);
   const ok = await clearAndLoadSeed(id);
@@ -37,16 +32,14 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) throw new Error("editor/area not ready");
-  // Saved id → live id, captured before anything else can reload the graph.
   const idMap = new Map(getLastLoadIdMap());
 
-  // Let async values land (Web Source CSV fetches, chart renders) — they grow
-  // cards, and tidy must measure the settled sizes.
+  // Async values (CSV fetches, chart renders) grow cards, and tidy must measure
+  // the settled sizes.
   await sleep(2500);
   await frames(2);
 
-  // One group at a time: expand → tidy members → autofit the box → re-collapse.
-  // Sequential + per-group so expand-push displacements restore on re-collapse
+  // Sequential and per-group so expand-push displacements restore on re-collapse
   // and the seed's overall composition survives.
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   for (const g of groups) {
@@ -57,7 +50,6 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
     }
     if (g.members.length > 1) {
       await autoArrange({ groupId: g.id });
-      // Docked FCs snap back in a deferred frame (same wait as the Tidy button).
       await frames(2);
     }
     await autofitGroupWithHistory(editor, area, g);
@@ -68,8 +60,7 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
     }
   }
 
-  // Final constraint pass over the settled boxes (autofit re-settles per group;
-  // this catches note→group ties whose group just moved under them).
+  // Catches note→group ties whose group moved under them after its own settle.
   if (!standoffStore.isEmpty()) {
     settleStandoffs();
     await frames(2);

@@ -6,16 +6,8 @@ import { groupCollapseStore } from "./groupCollapse";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
 
-// Pan/zoom the viewport to center one or more nodes — the "go to this node"
-// action shared by the pins HUD, the alerts HUD, the cable inspector, and (for a
-// multi-node step) the Presentation node.
-//
-// A node hidden inside a COLLAPSED group has no visible element, so a raw
-// AreaExtensions.zoomAt(area, [node]) targets a stale (~0,0) position and the
-// view jumps way off. Resolve the nearest VISIBLE ancestor instead: walk up
-// through nested collapsed groups until we hit one that is itself visible (the
-// collapsed box you can actually see). Shared by flyToNode/flyToNodes (pan/zoom
-// target) and flashNode (which DOM element to flash).
+// A node hidden inside a COLLAPSED group has no visible element, so zoomAt would
+// target a stale (~0,0) position — fly to the nearest VISIBLE ancestor instead.
 function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
   let targetId = nodeId;
   const seen = new Set<string>();
@@ -30,12 +22,8 @@ function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): stri
   return targetId;
 }
 
-// zoomAt's getNodesRect frames `node.width`/`node.height` when they're defined —
-// but a COLLAPSED group still carries its EXPANDED dimensions, so it frames the
-// wrong (large, offset) box and the view lands off the compact card. Pass a
-// SIZELESS ref in that case so zoomAt falls back to the rendered element size
-// (the compact collapsed box) — the same compact-box sizing the minimap's
-// collapsedAwareNodesRect uses. Plain nodes keep the real node (unchanged).
+// A collapsed group still carries its EXPANDED width/height, which zoomAt would frame;
+// pass a SIZELESS ref so it falls back to the rendered (compact) element size.
 function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"] | null {
   const targetId = resolveVisibleTarget(editor, nodeId);
   const node = editor.getNode(targetId);
@@ -46,8 +34,7 @@ function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"
 }
 
 export function flyToNode(nodeId: string): void {
-  // Owning graph (drill-in aware): a "go to" targeting a node inside an open
-  // composite flies the DRILL-IN camera; main ids resolve to main as before.
+  // Drill-in aware: a node inside an open composite flies the DRILL-IN camera.
   const editor = getOwningEditor(nodeId);
   const area = getOwningArea(nodeId);
   if (!editor || !area) return;
@@ -56,14 +43,8 @@ export function flyToNode(nodeId: string): void {
   void AreaExtensions.zoomAt(area, [ref]);
 }
 
-/**
- * Fly to fit MULTIPLE nodes in one view — the Presentation node's per-step camera.
- * zoomAt fits a bounding box over every ref it's given, so this is flyToNode's
- * single-target resolution applied per id, then one zoomAt call over the whole
- * resolved set. Unknown/removed ids are skipped
- * (a step surviving a node deletion just frames what's left); an empty result
- * is a no-op (nothing to fly to).
- */
+/** Fits a bounding box over every node; unknown/removed ids are skipped and an empty
+ *  result is a no-op. */
 export function flyToNodes(nodeIds: string[]): void {
   const editor = getEditor();
   const area = getArea();
@@ -79,9 +60,8 @@ const FLASH_CLASS = "solenoid-node-flash";
 const FLASH_MS = 1000;
 const _flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-/** Toggle a timed CSS flash on a node's rendered element. Flashes the nearest
- *  VISIBLE ancestor, same resolution as flyToNode, so flashing a node hidden
- *  inside a collapsed group lights up the group box instead of nothing. */
+/** Flashes the nearest VISIBLE ancestor, so a node inside a collapsed group lights up
+ *  the group box rather than nothing. */
 export function flashNode(nodeId: string): void {
   const editor = getOwningEditor(nodeId); // drill-in aware, like flyToNode
   const area = getOwningArea(nodeId);
@@ -102,7 +82,6 @@ export function flashNode(nodeId: string): void {
   }, FLASH_MS));
 }
 
-/** The full jump-and-flash gesture: pan/zoom to the node, then flash it. */
 export function flyToNodeAndFlash(nodeId: string): void {
   flyToNode(nodeId);
   flashNode(nodeId);

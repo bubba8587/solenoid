@@ -16,8 +16,6 @@ import type { Schemes, AreaExtra } from "./schemes";
 let _editor: NodeEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
 let _area: AreaPlugin<Schemes, AreaExtra> | null = null;
-// The rete-history-plugin instance Canvas owns — read by the Session History node;
-// undo/redo go through pushHistory/clearHistory below.
 let _history: HistoryPlugin<Schemes> | null = null;
 
 export function setHistoryPlugin(h: HistoryPlugin<Schemes>) {
@@ -46,17 +44,14 @@ export function getEditor() {
   return _editor;
 }
 
-// "Graph is being rebuilt wholesale" guard. Load/seed create every node via addNode
-// (firing `nodecreated`); behaviors meant only for live, one-off user creation (e.g.
-// absorbing a new node into the group it's dropped inside) must NOT run for those —
-// membership on load comes from the saved `members`, never from spatial overlap.
+// "Graph is being rebuilt wholesale" guard: behaviors meant only for live user creation
+// (e.g. absorbing a dropped node into a group) must NOT run for a load/seed's addNode.
 let _rebuilding = 0;
 export function beginGraphRebuild() { _rebuilding++; }
 export function endGraphRebuild() { _rebuilding = Math.max(0, _rebuilding - 1); }
 export function isGraphRebuilding() { return _rebuilding > 0; }
 
-// Registered by Canvas (which owns the selectableNodes selector instance). Node and
-// cable selections are mutually exclusive.
+// Node and cable selections are mutually exclusive.
 let _unselectAllNodes: () => void = () => {};
 
 export function setUnselectAllNodes(fn: () => void) {
@@ -67,7 +62,7 @@ export function unselectAllNodes() {
   _unselectAllNodes();
 }
 
-// Registered by Canvas. `autoArrange({ groupId })` lays out just that group's members.
+// `autoArrange({ groupId })` lays out just that group's members.
 let _autoArrange: (opts?: { groupId?: string }) => Promise<void> = async () => {};
 
 export function setAutoArrange(fn: (opts?: { groupId?: string }) => Promise<void>) {
@@ -89,8 +84,7 @@ export function cleanup() {
   return _cleanup();
 }
 
-// Registered by Canvas — the same path Delete/Backspace takes, so keyboard-less
-// chrome (the mobile controls) deletes through identical logic.
+// The same path Delete/Backspace takes, so keyboard-less chrome deletes identically.
 let _deleteSelected: () => Promise<void> = async () => {};
 
 export function setDeleteSelected(fn: () => Promise<void>) {
@@ -101,8 +95,7 @@ export function deleteSelected() {
   return _deleteSelected();
 }
 
-// Registered by Canvas. Called when a host node resizes so docked Format
-// Controllers follow their socket to its new position.
+// Called when a host node resizes so docked Format Controllers follow their socket.
 let _repositionDocked: (hostId: string) => void = () => {};
 
 export function setRepositionDocked(fn: (hostId: string) => void) {
@@ -115,8 +108,7 @@ export function repositionDockedNodes(hostId: string) {
 
 import type { SeedId } from "./seeds";
 
-// "custom" = the live graph is no longer a pristine seed (edited, restored from
-// autosave, or imported), so the dropdown must not name a seed it no longer matches.
+// "custom" = the live graph no longer matches any seed (edited, restored, or imported).
 export type SeedSelection = SeedId | "custom";
 
 let _loadSeed: (id: SeedId) => Promise<void> = async () => {};
@@ -142,9 +134,8 @@ export function getCurrentSeedId(): SeedSelection {
   return _currentSeedId;
 }
 
-// No-op while a graph is loading: loadGraph wraps the whole rebuild (including its
-// final processGraph) in begin/endGraphRebuild, so seed and autosave loads don't
-// self-mark custom — they set their selection explicitly.
+// No-op while a graph is loading: loadGraph wraps the whole rebuild in
+// begin/endGraphRebuild, so seed and autosave loads don't self-mark custom.
 export function markGraphCustom() {
   if (isGraphRebuilding()) return;
   setSeedSelection("custom");
@@ -158,7 +149,6 @@ export const seedStore = {
   },
 };
 
-// Registered by Canvas (wrapping the selectableNodes helper's `select`).
 let _selectNode: (id: string, accumulate: boolean) => void = () => {};
 
 export function setSelectNode(fn: (id: string, accumulate: boolean) => void) {
@@ -169,9 +159,8 @@ export function selectNode(id: string, accumulate: boolean) {
   _selectNode(id, accumulate);
 }
 
-// Class-name → constructor registry, registered by Canvas. copyPaste.ts can't import
-// nodeCtorRegistry directly — catalogUtils → nodeCatalog → rete-nodes →
-// nodes/composite.ts → copyPaste.ts is a cycle; this hook breaks it.
+// Class-name → constructor registry: copyPaste.ts can't import nodeCtorRegistry
+// directly (catalogUtils → nodeCatalog → rete-nodes → composite → copyPaste cycle).
 let _ctorRegistryProvider: () => Map<string, new (init?: Record<string, unknown>) => object> = () => new Map();
 
 export function setCtorRegistryProvider(fn: typeof _ctorRegistryProvider) {
@@ -199,8 +188,7 @@ export const connectionVersionStore = {
   },
 };
 
-// True across the pickup → drop window; set by Canvas from rete-connection-plugin's
-// connectionpick / connectiondrop.
+// True across the pickup → drop window (connectionpick / connectiondrop).
 let _cableDragging = false;
 const _cableDragListeners = new Set<() => void>();
 
@@ -219,8 +207,7 @@ export const cableDragStore = {
 };
 
 // Bumped whenever a Conduit's `angle` is mutated from OUTSIDE its own React root
-// (the Canvas keyboard rotate) — ConduitComponent derives its angle from
-// `node.angle` and subscribes here. The in-component AngleDial bumps it too.
+// (the Canvas keyboard rotate); ConduitComponent subscribes here.
 let _conduitAngleVersion = 0;
 const _conduitAngleListeners = new Set<() => void>();
 
@@ -237,10 +224,8 @@ export const conduitAngleStore = {
   },
 };
 
-// Recalculation generation for volatile nodes. A volatile node rolls a fresh value
-// only when it sees a generation it hasn't rolled for yet, so ordinary evaluations
-// keep its value stable. Global on purpose: every "roll everything" entry point
-// (node button, toolbar, palette) shares one generation, like Excel's F9.
+// Recalculation generation: a volatile node rolls a fresh value only on a generation it
+// hasn't seen. Global on purpose — every "roll everything" entry point shares one, like F9.
 let _recalcGen = 0;
 
 export function getRecalcGen() {
@@ -249,8 +234,7 @@ export function getRecalcGen() {
 
 export async function requestRecalc() {
   _recalcGen++;
-  // beginForceExact suppresses sketch mode's sampling (frameBackend.ts) for this ONE
-  // pass — F9 forces an exact recompute regardless of the selected calc mode.
+  // F9 forces one exact recompute (no sketch sampling) regardless of the calc mode.
   calcModeStore.beginForceExact();
   try {
     await processGraph(undefined, undefined, { force: true });
@@ -259,8 +243,7 @@ export async function requestRecalc() {
   }
 }
 
-// For changes the classic preset doesn't track on its own — e.g. a group resize
-// (width/height + membership).
+// For changes the classic preset doesn't track — e.g. a group resize.
 let _pushHistory: (action: { undo: () => void; redo: () => void }) => void = () => {};
 
 export function setPushHistory(fn: (action: { undo: () => void; redo: () => void }) => void) {
@@ -271,10 +254,8 @@ export function pushHistory(undo: () => void, redo: () => void) {
   _pushHistory({ undo, redo });
 }
 
-// MUST be called after every document load/rebuild: the classic preset records each
-// add/remove `rebuildGraph` makes, so an uncleared history lets Ctrl+Z unwind the
-// LOAD itself — re-adding the previous document's nodes into the current canvas,
-// which the next autosave then persists into the current slot.
+// MUST be called after every document load/rebuild: the classic preset records
+// rebuildGraph's adds, so an uncleared history lets Ctrl+Z unwind the LOAD itself.
 let _clearHistory: () => void = () => {};
 
 export function setClearHistory(fn: () => void) {
@@ -285,41 +266,35 @@ export function clearHistory() {
   _clearHistory();
 }
 
-// Graph-changed callback (registered by Canvas → persistence.scheduleAutosave).
-// Kept as a registered hook so process.ts doesn't import persistence (cycle).
+// A registered hook, not an import, so process.ts doesn't import persistence (cycle).
 let _graphChanged: () => void = () => {};
 
 export function setGraphChanged(fn: () => void) {
   _graphChanged = fn;
 }
 
-// "Settle after a BULK topology change" hook, registered by Canvas. A bulk mutation
-// must NOT let the per-cable `connectioncreated` settle fire once per cable — that is
-// O(cables × nodes) and freezes the tab. The caller wraps its add loop in
-// begin/endGraphRebuild (skipping the per-cable pipe) and calls this ONCE at the end.
+// "Settle after a BULK topology change": a per-cable `connectioncreated` settle is
+// O(cables × nodes) and freezes the tab, so wrap the add loop in begin/endGraphRebuild
+// and call this ONCE at the end.
 let _bulkSettle: (renderOnly?: Set<string>) => Promise<void> = async (r) => { await processGraph(undefined, r); };
 
 export function setBulkSettle(fn: (renderOnly?: Set<string>) => Promise<void>) {
   _bulkSettle = fn;
 }
 
-// `renderOnly` (additive bulk add, e.g. paste): the added nodes form a self-contained
-// set that doesn't touch existing nodes, so compute without resetting (originals keep
-// their cache → no recompute) and re-render only the new nodes.
+// `renderOnly` (additive bulk add, e.g. paste): the added nodes are self-contained, so
+// compute without resetting (originals keep their cache) and re-render only them.
 export function bulkSettle(renderOnly?: Set<string>) {
   return _bulkSettle(renderOnly);
 }
 
-// Set by the Canvas connection pipe when a cable is added/removed WHILE a rebuild
-// gate is held, so `withGraphRebuild` can skip the settle for an op that changed no
-// topology (e.g. undoing a node move).
+// Set when a cable changes WHILE a rebuild gate is held, so `withGraphRebuild` can skip
+// the settle for an op that changed no topology (e.g. undoing a node move).
 let _bulkTopoDirty = false;
 export function markBulkTopoDirty() { _bulkTopoDirty = true; }
 
-// Run a bulk graph mutation with the per-event `connectioncreated` settle suppressed,
-// then settle ONCE — and only if the mutation actually changed topology. Use for any
-// op that adds/removes many nodes/cables in a loop. Not safe for nested use (the
-// dirty flag is a single global).
+// Runs a bulk mutation with the per-event settle suppressed, then settles ONCE if
+// topology actually changed. Not safe for nested use (the dirty flag is a single global).
 export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
   _bulkTopoDirty = false;
   beginGraphRebuild();
@@ -333,12 +308,9 @@ export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-// The TRUE members of every dependency loop — the nodes that actually sit on a
-// cycle (a self-loop, or a strongly-connected component of 2+ nodes), NOT the
-// innocent nodes downstream of one. Tarjan's SCC. We seed only these with #CIRC!
-// so everything downstream computes normally and shows the *propagated* error
-// (a Display still shows the badge; an ISERROR still explains it). Marking the
-// descendants too would blank their own computation.
+// The TRUE members of every dependency loop (a self-loop or an SCC of 2+), NOT the nodes
+// downstream of one: seeding only these with #CIRC! leaves everything downstream computing
+// normally and showing the propagated error.
 export function loopMembers(editor: NodeEditor<Schemes>): Set<string> {
   const ids = editor.getNodes().map((n) => n.id);
   const adj = new Map<string, string[]>();
@@ -397,16 +369,12 @@ export function loopMembers(editor: NodeEditor<Schemes>): Set<string> {
 // Perf probe counter; enable logging with `window.__solenoidPerf = true`.
 let _pgCount = 0;
 
-// Cached loop-member set (Tarjan SCC). Every TOPOLOGY change routes through a FULL
-// processGraph, which recomputes and stores the set; the targeted (changedNodeId) and
-// additive (renderOnly) paths reuse it — guaranteed fresh, since any topology change
-// came through a full pass first.
+// Cached loop-member set: every TOPOLOGY change routes through a FULL processGraph, which
+// recomputes it, so the targeted and additive paths can reuse it.
 let _cachedLoop: Set<string> | null = null;
 
-// Downstream closure of a node over outgoing connections — exactly the set
-// rete-engine's `reset(nodeId)` invalidates (it walks `source === id → target`
-// recursively). Used by a TARGETED processGraph to recompute + re-render only the
-// nodes a single value-edit can affect. Exported for the targeted-recompute test.
+// Downstream closure over outgoing connections — exactly the set rete-engine's
+// `reset(nodeId)` invalidates, and the nodes a single value edit can affect.
 export function downstreamClosure(editor: NodeEditor<Schemes>, startId: string): Set<string> {
   const out = new Map<string, string[]>();
   for (const c of editor.getConnections()) {
@@ -421,32 +389,23 @@ export function downstreamClosure(editor: NodeEditor<Schemes>, startId: string):
   return seen;
 }
 
-// `changedNodeId` — a single node's VALUE changed (a literal/slider/dropdown edit, no
-// topology change). Reset only that node + its downstream dependents and re-render
-// only that cone; untouched branches keep their cached outputs and their DOM. Omit it
-// (the default) for any structural change, load, or when unsure → full reset +
-// render-all. The targeted path is only safe for pure value edits because data flows
-// solely through cables, so the downstream cone is the complete set of affected nodes.
-// `renderOnly` — ADDITIVE bulk mode (paste): the given nodes were just added and form
-// a self-contained set (no edges to pre-existing nodes), so DON'T reset the engine
-// (originals keep their cached outputs → no recompute; only the new, uncached nodes
-// fetch) and re-render only that set. Mutually exclusive with changedNodeId.
+// `changedNodeId` — one node's VALUE changed (no topology change): reset + re-render only
+// its downstream cone. Safe ONLY for pure value edits, since data flows solely through
+// cables; omit it for any structural change, load, or when unsure.
+// `renderOnly` — ADDITIVE bulk mode (paste): the given nodes are self-contained, so DON'T
+// reset the engine and re-render only that set. Mutually exclusive with changedNodeId.
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
-  // Manual calculation mode: a live value edit or topology change does NOT propagate.
-  // Skip the pass and flag the graph dirty; the user recomputes on demand with Calculate
-  // Now / F9 (which passes force). A load / seed / paste rebuild is exempt (it runs inside
-  // the graph-rebuild gate) so an opened document isn't blank — we don't persist results.
+  // Manual calculation mode: skip the pass and flag dirty (F9 passes force). A load /
+  // seed / paste rebuild is exempt, via the rebuild gate, so an opened document isn't blank.
   if (calcModeStore.isManual() && !opts?.force && !isGraphRebuilding()) {
     calcModeStore.markDirty();
     return;
   }
-  // The `finally` guarantees the compute-overlay counter balances on every exit path
-  // (the no-editor guard, the Cancelled early-return, a throw).
+  // The `finally` balances the compute-overlay counter on every exit path.
   beginCompute();
   try {
     const result = await runGraphPass(changedNodeId, renderOnly, opts?.topology === true);
-    // A completed pass brings the graph up to date — clear the manual-mode dirty flag
-    // (idempotent no-op in auto mode).
+    // A completed pass clears the manual-mode dirty flag (no-op in auto mode).
     calcModeStore.clearDirty();
     return result;
   } finally {
@@ -454,9 +413,8 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   }
 }
 
-// A composite's internal node isn't in the outer editor — find the OUTERMOST
-// composite card whose (possibly nested) internal editor holds it. Duck-typed
-// on `internalEditor` to avoid a module cycle (composite.ts imports from here).
+// The OUTERMOST composite card whose (possibly nested) internal editor holds `innerId`.
+// Duck-typed on `internalEditor` to avoid a module cycle (composite.ts imports from here).
 function findCompositeOwner(editor: NodeEditor<Schemes>, innerId: string): string | null {
   for (const n of editor.getNodes()) {
     const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
@@ -466,9 +424,8 @@ function findCompositeOwner(editor: NodeEditor<Schemes>, innerId: string): strin
   return null;
 }
 
-// An internal VALUE edit fires no editor event (only topology is piped inside
-// composite.ts), so this is where a held heavy solve learns its subgraph changed.
-// EVERY composite in the nesting chain must be bumped so each level's stale dot lights.
+// An internal VALUE edit fires no editor event, so this is where a held heavy solve learns
+// its subgraph changed; EVERY composite in the nesting chain must be bumped.
 function markInternalEditChain(editor: NodeEditor<Schemes>, innerId: string): boolean {
   for (const n of editor.getNodes()) {
     const c = n as unknown as { internalEditor?: NodeEditor<Schemes>; markInternalEdit?: () => void };
@@ -483,9 +440,8 @@ function markInternalEditChain(editor: NodeEditor<Schemes>, innerId: string): bo
 
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_area) return;
-  // An edit made inside a composite's drill-in editor targets an internal node
-  // id. Retarget the pass at the owning card: its cache entry is what must be
-  // invalidated, and its data() re-runs the whole internal graph anyway.
+  // An edit inside a drill-in targets an internal node id — retarget at the owning card,
+  // whose cache entry is the one that must be invalidated.
   if (changedNodeId && !_editor.getNode(changedNodeId)) {
     const owner = findCompositeOwner(_editor, changedNodeId);
     if (owner) {
@@ -493,32 +449,24 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       changedNodeId = owner;
     }
   }
-  // Fresh per-pass memo for lazy-frame collects: within one pass a ref fanned out to
-  // N consumers materializes once, not N times.
+  // Fresh per-pass memo: a lazy ref fanned out to N consumers materializes once.
   clearCollectMemo();
   // Must run BEFORE the engine pull, so each MathFn.data() reads a fresh angle mode.
-  // The one place compute consults the unit plane.
   resolveTrigModes(_editor);
   const perf = perfEnabled();
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;
   const t0 = perf ? performance.now() : 0;
   const affected = changedNodeId ? downstreamClosure(_editor, changedNodeId) : null;
-  // Targeted invalidation is done by hand over the BFS cone, NOT via the library's
-  // `_engine.reset(nodeId)`: rete-engine walks outgoing connections RECURSIVELY with
-  // no visited set, so a cable cycle blows the stack before the #CIRC! seeding below
-  // runs. `downstreamClosure` is the same set, cycle-safe; cache.delete fires the
-  // same cancel hook reset uses.
+  // Targeted invalidation walks the BFS cone by hand, NOT `_engine.reset(nodeId)`:
+  // rete-engine recurses over outgoing connections with no visited set, so a cable cycle
+  // blows the stack before the #CIRC! seeding below runs.
   if (affected) for (const id of affected) _engine.cache.delete(id);
   else if (!renderOnly) _engine.reset(); // additive bulk add keeps existing caches
 
-  // A dependency loop must be handled BEFORE fetching: the pull-based engine resolves
-  // inputs recursively before calling data(), so it would deadlock. Pre-seeding the
-  // loop's true members with #CIRC! dead-ends only them; everything downstream
-  // computes normally and shows the propagated error. (engine.cache is a documented
-  // public field; the seeded value mimics the engine's own Cancellable.)
-  // A TOPOLOGY-targeted pass must refresh the loop set — the one thing a cable
-  // change invalidates.
+  // A dependency loop must be seeded BEFORE fetching: the pull engine resolves inputs
+  // recursively before calling data(), so it would deadlock. A TOPOLOGY-targeted pass must
+  // refresh the loop set — the one thing a cable change invalidates.
   const loop = (changedNodeId || renderOnly) && !topologyChanged
     ? (_cachedLoop ?? (_cachedLoop = loopMembers(_editor)))
     : (_cachedLoop = loopMembers(_editor));
@@ -528,9 +476,9 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
     if (!node) continue;
     const outputs: Record<string, unknown> = {};
     for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circErr;
-    // The member never runs, so set its value box directly: most render
-    // `cachedResult`, a Display reads `cachedValue`, list nodes render `cachedList`
-    // — all three must be seeded or that family shows a stale value, not the badge.
+    // The member never runs, so seed its value box directly: `cachedResult` (most),
+    // `cachedValue` (Display), `cachedList` (list nodes) — all three, or that family
+    // shows a stale value instead of the badge.
     const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown };
     if ("cachedResult" in n) n.cachedResult = circErr;
     if ("cachedValue" in n) n.cachedValue = circErr;
@@ -539,9 +487,8 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
     try { _engine.cache.add(id, seeded); } catch { _engine.cache.patch(id, seeded); }
   }
 
-  // Early-cutoff bookkeeping (targeted path only): which cone nodes' outputs
-  // actually CHANGED value, and which are display sinks (no outputs). Compared by
-  // reference/primitive vs the last stored value BEFORE we overwrite it.
+  // Early-cutoff bookkeeping (targeted path only): which cone nodes' outputs CHANGED, and
+  // which are display sinks. Compared against the stored value BEFORE it is overwritten.
   const changedOut = affected ? new Set<string>() : null;
   const sinks = affected ? new Set<string>() : null;
   try {
@@ -555,24 +502,20 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       cableValueStore.setNodeOutputs(node.id, outputs);
     }
   } catch (e) {
-    // A newer processGraph() reset the engine and canceled this in-flight fetch —
-    // expected when calls overlap; the newer run finishes and renders. Swallow only
-    // cancellation; rethrow anything real.
+    // A newer processGraph() canceled this in-flight fetch — swallow only cancellation.
     if (e instanceof Cancelled) return;
     throw e;
   }
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();
-  // Re-render node React roots. Updates are independent per node (each its own root),
-  // so fire them concurrently and await one barrier, not an N-deep await chain.
+  // Node updates are independent (each its own React root), so fire them concurrently.
   let toRender = _editor.getNodes();
   if (renderOnly) {
     toRender = toRender.filter((n) => renderOnly.has(n.id));
   } else if (affected) {
-    // Early cutoff within the cone: render a node only if its OWN output changed, or
-    // it's a display sink (no outputs) fed by a source whose output changed. Object
-    // outputs (lists/frames) get a fresh reference each run, so they always count as
-    // changed; the cutoff mainly prunes scalar/primitive chains.
+    // Early cutoff within the cone: render a node only if its OWN output changed, or it's
+    // a display sink fed by a changed source. Object outputs get a fresh reference each
+    // run, so the cutoff mainly prunes scalar chains.
     const srcOf = new Map<string, string[]>();
     for (const c of _editor.getConnections()) {
       (srcOf.get(c.target) ?? srcOf.set(c.target, []).get(c.target)!).push(c.source);

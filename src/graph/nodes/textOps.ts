@@ -1,12 +1,7 @@
 import { solError, type SolError } from "../errorValue";
-// ─── Pure text ops — the ONE implementation behind both surfaces ─────────────
-// Each function here is called by BOTH the visual node (`text.ts`) and the formula
-// registration (`excelFunctions.ts`).
-//
-// It lives in its own module rather than in `text.ts` because `text.ts` already
-// imports `excelFunctions` — importing back the other way would cycle, and would
-// drag rete into the headless formula path. Nothing here imports rete or touches a
-// socket: pure string in, pure value out.
+// The ONE implementation behind both the visual node and the formula registration.
+// Separate from `text.ts` because that imports `excelFunctions` — the other
+// direction would cycle and drag rete into the headless formula path.
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode";
@@ -87,7 +82,6 @@ export function replaceNth(text: string, pattern: string, replacement: string, n
   });
 }
 
-// ─── Spell Number + Reverse Text (the custom-logic text transforms) ───────────
 const SPELL_ONES = [
   "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
   "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
@@ -143,8 +137,6 @@ export function spellNumber(n: number): string | SolError {
 export function reverseText(t: string): string {
   return [...t].reverse().join("");
 }
-
-// ─── Text Filter (the family's one operation; the condition is an argument) ───
 
 export type TextFilterOp = "contains" | "not_contains" | "starts_with" | "ends_with";
 export const TEXT_FILTER_OPS: readonly TextFilterOp[] = ["contains", "not_contains", "starts_with", "ends_with"];

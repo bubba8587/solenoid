@@ -1,18 +1,15 @@
-// Unlike ImageValue this carries the SVG *markup* (not a URL / data URL): the
-// picker needs the live DOM to hover + click inner elements, so the source is
-// inlined, and it persists as plain text (like Mermaid's source) — no bundling.
+// Carries SVG *markup*, never a URL — the picker hovers/clicks inner elements, so
+// the source must be inlined (and persists as plain text, no bundling).
 
 export interface SvgValue {
   __svg: true;
-  /** The inlined SVG markup — never a URL (the picker needs the live DOM). */
   source: string;
-  /** The currently-picked layer name, if any — so a Report render highlights it. */
+  /** Picked layer name — carried so a Report render highlights the same one. */
   selected?: string | null;
-  /** Highlight color (hex) — so a Report render matches the node's pick. */
+  /** Highlight color (hex). */
   hoverColor?: string;
-  /** Rendered height in px (the SVG Picker node's `height`); width fills. */
+  /** Rendered height in px; width fills. */
   height: number;
-  /** Display title — the node label (a quiet caption above the figure). */
   title?: string;
 }
 

@@ -18,10 +18,8 @@ export type {
   CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
 
-// Cashflow-list prep for NPV/IRR/MIRR/FVSCHEDULE: propagate the first SolError in the
-// list (error-in → error-out), and coerce a null cell
-// to 0 — a missing period IS a zero cashflow for a position-discounted sum (skipping
-// would misalign every later period's exponent).
+// Propagates the first SolError, and coerces a null cell to 0 — skipping it would
+// misalign every later period's exponent in a position-discounted sum.
 function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {
   if (!raw) return { nums: [] };
   for (const v of raw) if (isSolError(v)) return { error: v, nums: [] };
@@ -140,21 +138,17 @@ export class DepreciationNode extends ClassicPreset.Node {
 }
 
 // â”€â”€â”€ TVM (Time Value of Money) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ONE acausal node for the whole PMT / PV / FV / NPER / RATE family: the annuity
-// relation as a locked Equation. Wire any four of {rate, nper, pmt, pv, fv} and the
-// fifth solves — pv/pmt/fv symbolically, nper/rate through the numeric fallback (the
-// smallest-magnitude-root rule picks the meaningful rate over the spurious 1+r < 0
-// crossing). Payment timing stays a CONFIG dropdown, not a variable: it swaps which
-// locked relation is compiled, exactly like Excel's 0/1 `type` argument.
+// ONE acausal node for the PMT/PV/FV/NPER/RATE family: wire any four, the fifth solves
+// (nper/rate numerically — the smallest-magnitude root avoids the spurious 1+r < 0
+// crossing). Payment timing is a CONFIG dropdown, not a variable.
 
 export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
   end: "pv*(1+rate)^nper + pmt*((1+rate)^nper - 1)/rate + fv = 0",
   beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };
 
-// rate = 0 sits exactly on the relation's removable singularity (the
-// ((1+r)ⁿ−1)/r annuity factor); this is its exact limit, same for both
-// timings, so a zero-interest loan still solves and truth-checks exactly.
+// The exact limit at the annuity factor's removable singularity (rate = 0), identical
+// for both timings, so a zero-interest loan still solves exactly.
 const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
 
 export class TvmNode extends EquationNode {
@@ -400,9 +394,8 @@ export class MirrNode extends ClassicPreset.Node {
         fvPos += cf * Math.pow(1 + reinrate, n - 1 - i);
       }
     }
-    // MIRR needs at least one negative AND one positive flow — otherwise the
-    // present-value-of-outflows / future-value-of-inflows ratio divides by zero
-    // (Excel returns #DIV/0! for an all-same-sign series).
+    // MIRR needs one negative AND one positive flow, or the outflow/inflow ratio
+    // divides by zero (Excel returns #DIV/0! for an all-same-sign series).
     if (pvNeg === 0 || fvPos === 0) {
       const err = solError("#DIV/0!", "MIRR needs both a negative (investment) and a positive (return) cash flow");
       this.cachedResult = err;
@@ -1084,10 +1077,8 @@ export class XirrNode extends ClassicPreset.Node {
   }
 
   data(inputs: { values?: number[][]; dates?: number[][] }): { result: number | SolError | null } {
-    // An error outranks an unknown (value-semantics.md): scan BOTH lists for cell
-    // errors before any arithmetic, so an upstream #DIV/0! surfaces as itself
-    // rather than masquerading as a #CONV! Newton stall. Null cash flows read as 0
-    // (cashPrep — position keeps the date pairing); a null DATE has no such
+    // An error outranks an unknown: scan BOTH lists before any arithmetic, or an
+    // upstream #DIV/0! masquerades as a #CONV! Newton stall. A null DATE has no
     // reading, so the schedule is unknown and the result propagates blank.
     const { error, nums: values } = cashPrep((inputs.values?.[0] ?? null) as (number | null | SolError)[] | null);
     if (error) { this.cachedResult = error; return { result: error }; }
@@ -1177,10 +1168,8 @@ export class OddCouponNode extends ClassicPreset.Node {
       ? (readInput(inputs.yld, this.literals.yld ?? 0.085))
       : (readInput(inputs.pr, this.literals.pr ?? 99.5));
     if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    // `issue` exists on the ODDF* ops alone. UNWIRED keeps the settlement-date
-    // fallback the card has always used; a WIRED blank is unknown — pricing the
-    // bond as if issued at settlement would be a fabricated answer
-    // (value-semantics.md, "Reading an input").
+    // UNWIRED `issue` keeps the settlement-date fallback; a WIRED blank is unknown,
+    // since pricing as if issued at settlement would fabricate an answer.
     const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
     const issue = isFirst ? readInput(inputs.issue, s) : s;
     if (issue === null) { this.cachedResult = null; return { result: null }; }

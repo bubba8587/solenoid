@@ -5,9 +5,8 @@ import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
 import { SolenoidSocket, canConnect } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 
-/** Call after an OUTPUT socket's type is changed IN PLACE. Drops only the outgoing
- *  cables the new type can no longer feed. The caller swaps the socket first and owns
- *  the node re-render + recompute. */
+/** Call after an OUTPUT socket's type changes IN PLACE; drops only the outgoing cables
+ *  the new type can no longer feed. The caller owns the re-render + recompute. */
 export async function retypeOutputCables(
   editor: NodeEditor<Schemes>,
   area: AreaPlugin<Schemes, AreaExtra>,
@@ -71,9 +70,8 @@ export function reconcileFcTypes(
   }
 }
 
-/** Call after a LITERAL edit commits — no connection event fires there, yet a socket
- *  type can be derived from static CONFIG as well as from wiring. Cheap: the full
- *  reconcile is paid only when a type actually moved. */
+/** Call after a LITERAL edit commits — no connection event fires there, yet a socket type
+ *  can derive from static CONFIG; the full reconcile is paid only when a type moved. */
 export function reconcileTypesAfterEdit(
   editor: NodeEditor<Schemes>,
   area: AreaPlugin<Schemes, AreaExtra>,

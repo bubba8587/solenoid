@@ -1,5 +1,4 @@
-// Open/close state for the Add/Edit Connection dialog (module store; the dialog
-// is mounted once in App).
+// Open/close state for the Add/Edit Connection dialog, mounted once in App.
 type Prefill = { nodeId: string; socketKey: string };
 
 export type ConnDialogReq = {

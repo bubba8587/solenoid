@@ -31,8 +31,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     void processGraph();
   }
 
-  // Local draft while typing; commit to the node + recompute on blur only (Enter
-  // must insert a newline in a diagram, so this can't use the Enter-commits helper).
+  // Enter must insert a newline in a diagram, so this can't use the Enter-commits helper.
   const [draft, setDraft] = useState(data.stringLiterals.source ?? "");
   useLayoutEffect(() => { setDraft(data.stringLiterals.source ?? ""); }, [data.stringLiterals.source]);
   function commit() {
@@ -41,8 +40,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     void processGraph();
   }
 
-  // The source socket sits centered on the editor (its main feed), measured against
-  // the card so it lines up with the textarea / preview block.
+  // Measured against the card so the socket lines up with the textarea / preview block.
   const feedRef = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {

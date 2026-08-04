@@ -1,9 +1,5 @@
-// Line diff for the AI apply-approval view (D28: the model rewrites the whole
-// text form; the approval step shows old → new). Pure LCS over lines — the
-// text form is model-sized (tens of lines), so the quadratic table is fine and
-// buys exact minimal diffs, which matter here: the canonical writer makes an
-// unmodified region byte-identical, so every add/del row the user sees is a
-// REAL change.
+// Line diff for the AI apply-approval view. The quadratic LCS table is affordable at
+// text-form size, and exactness matters: every add/del row shown is a REAL change.
 
 export interface DiffLine {
   kind: "same" | "add" | "del";

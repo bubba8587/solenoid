@@ -15,19 +15,14 @@ import "./PresentationNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/**
- * Presenter mode, kept light: an ordered step list, each step an
- * explicit node-id set captured from the current canvas SELECTION (picked like a
- * navigator list, not typed). Stepping calls flyToNodes — pan/zoom only, no
- * isolate/highlight/dim (those are separate mechanisms this doesn't touch).
- */
+/** Each step is an explicit node-id set captured from the canvas SELECTION; stepping
+ *  is pan/zoom only and must not touch isolate/highlight/dim. */
 export function PresentationComponent({ data }: NodeProps<PresentationNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [color, setColor] = useState(data.color);
   const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  // `steps`/`activeIndex` mutate on the node instance directly (like GroupNode's
-  // members or Note's fieldTypes) — `bump` forces a re-render after each mutation.
+  // `steps`/`activeIndex` mutate on the node instance directly, so re-render by hand.
   const [, bump] = useState(0);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
@@ -36,9 +31,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setColor(data.color); }, [data.color]);
 
-  // Re-resolve the accent on theme/palette change (palette edits funnel through
-  // appThemeStore) — otherwise the card holds its stale hex until some unrelated
-  // re-render.
+  // Without this the card holds a stale accent hex until some unrelated re-render.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }

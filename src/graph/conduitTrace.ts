@@ -3,15 +3,9 @@ import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey, CONDUIT_MAX_LA
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "./sockets";
 import type { Schemes } from "./schemes";
 
-// ─── Conduit type tracing ──────────────────────────────────────────────────────
-// A Conduit is a pure passthrough (out_i = in_i), but its lane sockets are all
-// `any`, so a value leaving a Conduit resolves its cable color by the JS VALUE
-// type — lossy: a date is a serial number, a boolean/frame/cube an object, so
-// they'd all color as number/gray. Trace a Conduit output lane back to whatever
-// feeds the matching input lane (recursively, for chained Conduits) so the cable
-// takes the REAL source socket's type + value — the type color carries through
-// the Conduit unchanged (date stays pink, logical purple, frame violet, …).
-// Kept in a pure module (no React) so it's unit-testable.
+// A Conduit's lane sockets are all `any`, so typing a leaving value by its JS VALUE
+// is lossy (a date is a number, a frame an object). Tracing the lane back to its real
+// source keeps the type through the Conduit unchanged. Pure module — no React.
 
 export type TypedSource = {
   socket: ClassicPreset.Socket | undefined;
@@ -43,15 +37,9 @@ export function resolveTypedSource(
   return { socket: node?.outputs?.[outputKey]?.socket, source: nodeId, sourceOutput: outputKey };
 }
 
-/**
- * Make every Conduit's OUTPUT lanes adopt the type feeding the matching input
- * lane (via resolveTypedSource, so it sees through upstream Conduits), so a lane
- * carries its real type downstream instead of an opaque `any`. Mutates the lane's
- * MutableSocket in place. Returns true if ANY lane's type changed — the caller
- * loops to a fixpoint (chained Conduits settle over a couple of passes) and then
- * re-validates downstream cables + Format Controllers. An unwired lane reverts to
- * `any`. Pure w.r.t. the store; the caller owns re-render + recompute.
- */
+/** Mutates each lane's MutableSocket in place and returns true if ANY type changed,
+ *  so the caller can loop to a fixpoint; an unwired lane reverts to `any`. The
+ *  caller owns re-render, recompute, and re-validating downstream cables/FCs. */
 function reconcileConduitTypesOnce(editor: NodeEditor<Schemes>): boolean {
   let changed = false;
   const conns = editor.getConnections();
@@ -72,14 +60,9 @@ function reconcileConduitTypesOnce(editor: NodeEditor<Schemes>): boolean {
   return changed;
 }
 
-// ─── Conduit path tracing ──────────────────────────────────────────────────────
-// A Conduit is WIRING, not computation, so the cable you clicked is one SEGMENT
-// of a longer run. `conduitPath` walks that whole run: upstream along each lane
-// to the node that actually PRODUCES the value, and downstream — fanning out,
-// since one output lane can feed several cables — to every input that actually
-// CONSUMES it. Two callers: the Cable inspector (report the real ends, not the
-// Conduit sitting in the middle) and double-click cable selection (light up the
-// whole run). Pure; the editor is read-only here.
+// A Conduit is WIRING, not computation, so a clicked cable is one SEGMENT of a run:
+// `conduitPath` walks upstream to the real producer and downstream (fanning out) to
+// every real consumer.
 
 /** The subset of a rete connection the walk needs. */
 export interface PathConn {
@@ -112,8 +95,7 @@ interface PathEditor {
   getConnections(): ReadonlyArray<PathConn>;
 }
 
-// Bounds the walk on a #CIRC! conduit loop and on a pathological fan-out; the
-// `seen` set already breaks true cycles, this just caps the work.
+// The `seen` set already breaks true cycles; this just caps pathological fan-out.
 const MAX_HOPS = 512;
 
 export function conduitPath(editor: PathEditor | null | undefined, conn: PathConn): ConduitPath {
@@ -136,11 +118,8 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
     head = feed;
   }
 
-  // Downstream is a tree — one output lane can drive many cables — and it is
-  // walked from the ORIGIN cable, not from the clicked one, so EVERY segment of
-  // a run resolves to the same run (clicking one branch of a fan-out must not
-  // hide its siblings, which carry the very same value). The walk from the head
-  // re-crosses the Conduits climbed above, so they need no separate bookkeeping.
+  // Downstream is a tree, walked from the ORIGIN cable rather than the clicked one,
+  // so every segment of a run resolves to the SAME run and no fan-out sibling hides.
   const connIds: string[] = [head.id];
   const seen = new Set<string>([head.id]);
   const conduits: string[] = [];
@@ -172,9 +151,8 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
 }
 
 export function reconcileConduitTypes(editor: NodeEditor<Schemes>): boolean {
-  // Fixpoint: a chain of Conduits settles in as many passes as the chain is deep
-  // (each pass resolves through one more already-adapted Conduit). Capped well
-  // above any real chain length (a #CIRC! conduit loop is also bounded by the cap).
+  // A chain of Conduits settles in as many passes as it is deep; the cap sits well
+  // above any real chain and also bounds a #CIRC! loop.
   let anyChanged = false;
   for (let pass = 0; pass < 32; pass++) {
     if (!reconcileConduitTypesOnce(editor)) break;

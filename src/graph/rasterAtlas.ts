@@ -1,7 +1,3 @@
-// Shelf packer for the HTML-in-Canvas paint-raster ATLAS.
-//
-// Pure geometry (no DOM) so the packing is unit-testable: rasterAtlas.test.ts.
-
 export interface AtlasItem {
   id: string;
   /** Natural (padded) capture size in raster px. */
@@ -29,17 +25,12 @@ export interface AtlasLayout {
   usedH: number;
 }
 
-/** Gutter between placements so a crop never bleeds a neighbor's edge pixels
- *  (drawElementImage anti-aliases the card edge into adjacent px). */
+/** Gutter so a crop never bleeds a neighbor's edge pixels — drawElementImage
+ *  anti-aliases the card edge into adjacent px. */
 export const ATLAS_GUTTER = 2;
 
-/**
- * Shelf-pack `items` into a maxW×maxH region. Items are placed tallest-first
- * (classic shelf heuristic — keeps shelves dense); an item larger than the whole
- * atlas is scaled down to fit alone (its `scale` rides into the mip pyramid).
- * Items that don't fit the remaining space are
- * returned in `unplaced` for the next round, in their tallest-first order.
- */
+/** Shelf-pack `items` tallest-first into a maxW×maxH region; an item larger than the
+ *  whole atlas is scaled to fit alone, and leftovers come back in `unplaced`. */
 export function packAtlas(items: AtlasItem[], maxW: number, maxH: number): AtlasLayout {
   const placements: AtlasPlacement[] = [];
   const unplaced: string[] = [];

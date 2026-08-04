@@ -10,10 +10,7 @@ import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 
-// ─── Visual output nodes ────────────────────────────────────────────────────
-// Terminal figures: a node reads a value and emits a chart VALUE (the `chart`
-// object socket a Report renders inline) — NOT a pass-through (this app only
-// passes values through Display + the Format Controller).
+// Terminal figures: each node emits a chart VALUE and is never a pass-through.
 
 export type SparklineOp = "line" | "column" | "winloss";
 
@@ -46,11 +43,9 @@ export class SparklineNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
     const raw = inputs.values?.[0] ?? null;
     this.cachedResult = raw;
-    // Finite numbers only — a non-number OR a NaN/Infinity (dirty data, a #DIV/0!
-    // cell) becomes 0, so the emitted chart value never carries a value the sign /
-    // toSeries path would render as garbage (parity with ChartNode.data()).
+    // Finite numbers only — the emitted chart value must never carry a NaN/Infinity/error
+    // the sign / toSeries path would render as garbage (parity with ChartNode.data()).
     const nums = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : 0));
-    // Win/Loss renders as a column chart of the signs (+1 up / −1 down / 0 flat).
     const chart: ChartValue = {
       __chart: true,
       op: this.op === "winloss" ? "column" : this.op,
@@ -69,9 +64,7 @@ export type ChartOp =
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
   | "composed" | "bubble";
 
-// `group` is the card dropdown's optgroup heading — declared here so the dropdown
-// DERIVES from this table like the Add-menu search rows do (SSOT-1), instead of a
-// second hand-written options list drifting beside it.
+// The card dropdown DERIVES from this table (SSOT-1) — never hand-write a second list.
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
   bar:       { label: "Bar",      group: "Cartesian" },
@@ -86,24 +79,18 @@ export const CHART_OP_META = {
   bubble:    { label: "Bubble",   group: "Multi-series: wire Series" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
 
-// The 2-D ops read the `series` matrix input (composed = columns are series;
-// bubble = rows are [x, y, size]); the 1-D ops read `values`.
+// The 2-D ops read the `series` matrix input; the 1-D ops read `values`.
 export const CHART_MATRIX_OPS = new Set<ChartOp>(["composed", "bubble"]);
 
 export class ChartNode extends ClassicPreset.Node {
   label: string;
   op: ChartOp;
   cachedResult: number | number[] | null = null;
-  // The 2-D feed for the composed/bubble ops (a matrix on the `series` socket).
   cachedMatrix: (number | null)[][] | null = null;
   // X-axis category labels from a wired Frame's FIRST column (dates as dates, etc.).
   cachedLabels: (string | number)[] | null = null;
-  // The data feed is received UNCOERCED so a list stays a list (see the input note);
-  // data() branches on the raw shape (frame → labels+values, list → values).
+  // The data feed arrives UNCOERCED so a list stays a list; data() branches on raw shape.
   rawInputs: ReadonlySet<string> = new Set(["values"]);
-  // Parsed matplotlib-style options from the `options` socket (Chart Builder, or
-  // a string typed into the inline field). The component reads this to apply
-  // title/axes/color/grid/etc.; what sets Chart apart from the minimal Sparkline.
   chartOptions: ChartOptions = {};
   // The inline options text (used when the Options socket isn't wired).
   stringLiterals: Record<string, string> = {};
@@ -114,31 +101,17 @@ export class ChartNode extends ClassicPreset.Node {
     super("Chart");
     this.label = init?.label ?? "Chart";
     this.op = init?.op ?? "column";
-    // The data feed. Accepts a plain list (values, index x-axis) OR — our convention,
-    // columns not parallel sockets — a FRAME: col 0 = x-axis labels (dates/categories),
-    // col 1 = the values. `rawInputs` keeps it UNCOERCED so a list stays a list (a frame
-    // socket would otherwise widen a list into a single ROW).
+    // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
+    // into a single ROW instead of leaving it a list.
     this.addInput("values", frameIn("Data"));
-    // The 2-D feed: composed reads each column as a series, bubble each row as an
-    // [x, y, size] point. Unwired for the 1-D ops (they read `values`).
     this.addInput("series", anyTableIn("Series (2-D)"));
     this.addInput("options", strIn("Options"));
-    // A Chart is a terminal figure, not a data pass-through. Its output is the
-    // first-class chart VALUE: the `chart` object socket (identity-only + `any`, like lambda)
-    // carries a self-describing figure a consumer redraws — the Report renders it
-    // inline where its `=name` ref sits (charts' main destination).
     this.addOutput("chart", chartOut("Chart"));
   }
 
   data(inputs: { values?: unknown[]; series?: unknown[][][]; options?: string[] }): { chart: ChartValue } {
-    // The data feed (raw, uncoerced): a FRAME drives a LABELED chart — col 0 → x-axis
-    // labels (formatted per type, so dates read as dates), col 1 → the values; a single-
-    // column frame is just values. A plain LIST charts as values against the index.
-    // Every cell is coerced to a FINITE number or null: a #DIV/0! (SolError object),
-    // a first-class null, NaN/Infinity (dirty-data coercions from the input nodes),
-    // or text all become null — so the emitted chart VALUE never carries a non-number
-    // that recharts / a Report embed would choke on. Bad cells become null in place
-    // (not dropped), so the x-axis labels (indexed by row) stay aligned.
+    // A 2+-column FRAME drives a LABELED chart (col 0 → x-axis labels, col 1 → values).
+    // Every non-finite cell becomes null IN PLACE, so row-indexed labels stay aligned.
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw = inputs.values?.[0] ?? null;
     this.cachedLabels = null;
@@ -147,8 +120,7 @@ export class ChartNode extends ClassicPreset.Node {
       const cols = raw.columns;
       const asNums = (col: FrameColumn) => col.values.map(num);
       if (cols.length >= 2) {
-        // formatFrameCell already renders a SolError cell as its #CODE! text and a
-        // date serial as a date; coerce the (never-object) result to a plain label.
+        // formatFrameCell already renders errors and date serials as label text.
         this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
         v = asNums(cols[1]) as unknown as number[];
       } else {
@@ -160,17 +132,13 @@ export class ChartNode extends ClassicPreset.Node {
       v = num(raw);
     }
     this.cachedResult = v;
-    // A wired matrix → coerce every cell to number|null (anyTable is element-
-    // agnostic; a non-number becomes null so the charts skip it).
+    // anyTable is element-agnostic, so coerce every cell to number|null.
     const rawMatrix = inputs.series?.[0] ?? null;
     this.cachedMatrix = Array.isArray(rawMatrix)
       ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map(num))
       : null;
-    // Only a real string configures the options; a SolError/number wired into the
-    // Options socket (it reaches here now the node sees raw errors) falls back to
-    // the inline literal rather than being parsed as text. A wired BLANK is not
-    // garbage though — it means "no styling given", so it must not reinstate the
-    // card's string (value-semantics.md, "Reading an input").
+    // Only a real string configures the options — a wired SolError/number falls back to the
+    // inline literal, but a wired BLANK means "no styling given" and must not.
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
@@ -230,10 +198,8 @@ export class HistogramNode extends ClassicPreset.Node {
     const raw = inputs.values?.[0] ?? null;
     const list = Array.isArray(raw) ? raw : raw === null ? [] : [raw];
     const bins = readInput(inputs.bins, this.literals.bins ?? 10);
-    // Bins is a SHAPE, not styling — a wired blank leaves the binning unknown, so the
-    // figure is empty (value-semantics.md, "Reading an input"). Mirror to the card
-    // ONLY when unwired (the KPI/Bullet pattern): writing a WIRED value into
-    // `literals` would permanently overwrite the typed value and persist it.
+    // Bins is a SHAPE, not styling — a wired blank empties the figure. Mirror to the card
+    // ONLY when unwired; writing a WIRED value into `literals` would overwrite and persist it.
     if (inputs.bins?.[0] === undefined && bins !== null) this.literals.bins = bins;
     const counts = bins === null ? [] : histogramBins(list as (number | null)[], bins);
     this.cachedResult = counts;
@@ -255,9 +221,7 @@ const DEFAULT_MERMAID = "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do
 
 export class MermaidNode extends ClassicPreset.Node {
   label: string;
-  // The inline diagram source (used when the `source` socket isn't wired). Stored
-  // in stringLiterals so it round-trips through persistence with no extra plumbing
-  // (persistence.ts restores stringLiterals for every node).
+  // The inline diagram source (used when the `source` socket isn't wired).
   stringLiterals: Record<string, string> = {};
   cachedSource = "";
   width = 260;
@@ -272,8 +236,7 @@ export class MermaidNode extends ClassicPreset.Node {
   }
 
   data(inputs: { source?: string[] }): { diagram: MermaidValue } {
-    // The diagram IS the source — a wired blank renders an empty diagram rather than
-    // the text typed on the card (value-semantics.md, "Reading an input").
+    // The diagram IS the source — a wired blank renders empty, not the card's text.
     const src = readInput(inputs.source, this.stringLiterals.source ?? "") ?? "";
     this.cachedSource = src;
     const diagram: MermaidValue = {
@@ -297,8 +260,7 @@ export class GaugeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Gauge");
     this.label = init?.label ?? "Gauge";
-    // A single value read as a fraction of 100% (1 = 100%, 1.5 = 150%). The dial
-    // scale is always 0→100%; no Min/Max inputs.
+    // A fraction of 100% (1 = 100%): the dial scale is fixed 0→100%, with no Min/Max inputs.
     this.addInput("value", numIn("Value"));
     this.addOutput("result", numOut("Pass-through"));
   }
@@ -328,11 +290,9 @@ export class SevenSegNode extends ClassicPreset.Node {
 
   data(inputs: { value?: number[]; decimals?: number[] }): { chart: ChartValue } {
     const v = readInput(inputs.value, this.literals.value ?? null);
-    // `decimals` is PRESENTATION: a wired blank means "no formatting given", which is
-    // the neutral 0 — not the number typed on the card.
+    // `decimals` is PRESENTATION: a wired blank is the neutral 0, not the card's number.
     const d = clamp(Math.round(readInput(inputs.decimals, this.literals.decimals ?? 0) ?? 0), 0, 6);
-    // Normalize the card's own value only when unwired — never clobber the typed
-    // literal with a wired one (the KPI/Bullet pattern).
+    // Mirror to the card only when unwired — never clobber the typed literal.
     if (inputs.decimals?.[0] === undefined) this.literals.decimals = d;
     if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
     const payload: SevenSegPayload = { kind: "sevenseg", text: sevenSegText(v, d) };
@@ -374,8 +334,7 @@ export class KpiNode extends ClassicPreset.Node {
 
   data(inputs: { value?: number[]; prev?: number[]; options?: string[] }): { chart: ChartValue } {
     const value = readInput(inputs.value, this.literals.value ?? null);
-    // A wired blank `prev` shows NO comparison — it does not compare against the
-    // number typed on the card (value-semantics.md, "absent is not unknown").
+    // A wired blank `prev` shows NO comparison, never a compare against the card's number.
     const prev = readInput(inputs.prev, this.literals.prev ?? null);
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.prev?.[0] === undefined) this.literals.prev = prev ?? 0;
@@ -418,9 +377,8 @@ export class BulletNode extends ClassicPreset.Node {
   data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
     const value = readInput(inputs.value, this.literals.value ?? null);
     const target = readInput(inputs.target, this.literals.target ?? null);
-    // `max` is the track's SCALE, not a datum — the figure cannot render without one,
-    // so it keeps the card's bound exactly as a Slider does (value-semantics.md,
-    // "a control's bound"). `value` and `target` are data and go blank.
+    // `max` is the track's SCALE, so it keeps the card's bound like a Slider does;
+    // `value` and `target` are data and go blank.
     const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
@@ -556,11 +514,8 @@ export function parseBorderedGrid(
   const rawXs = (table[0] ?? []).slice(1).map(num);
   const rawYs = table.slice(1).map((r) => num(r?.[0]));
   const rawZ = table.slice(1).map((r) => (Array.isArray(r) ? r.slice(1) : []).map(num));
-  // Drop any column / row whose AXIS coordinate is non-finite (an error, text, or
-  // blank cell): left as NaN it would make `Math.min(...xs)` NaN in the viewers and
-  // blank the WHOLE surface/contour while the empty-check (which only tests z) still
-  // thinks there's data. Dropping the matching z column / row keeps the axes aligned
-  // with the height grid.
+  // Drop any column/row whose AXIS coordinate is non-finite — left as NaN it makes
+  // `Math.min(...xs)` NaN and blanks the WHOLE figure while the z-only empty-check passes.
   const keptX: number[] = [];
   rawXs.forEach((x, i) => { if (x !== null) keptX.push(i); });
   const keptY: number[] = [];
@@ -573,8 +528,7 @@ export function parseBorderedGrid(
 
 export class SurfaceNode extends ClassicPreset.Node {
   label: string;
-  // View angles (degrees) live in `literals` so they persist (extractInit spreads it)
-  // and the rotate buttons can nudge them by 45°. Default ≈ the isometric starting view.
+  // View angles (degrees) live in `literals` so they persist and the rotate buttons nudge them.
   literals: Record<string, number> = { yaw: 45, pitch: 45 };
   cachedChart: ChartValue | null = null;
   width = 240;
@@ -621,8 +575,7 @@ export class ContourNode extends ClassicPreset.Node {
 
   data(inputs: { grid?: (number | null | unknown)[][][]; levels?: number[] }): { chart: ChartValue } {
     const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
-    // Levels is a SHAPE — it decides how many bands the figure has, so a wired blank
-    // leaves the figure empty rather than reusing the card's count.
+    // Levels is a SHAPE, so a wired blank empties the figure rather than reusing the card's count.
     const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
     const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
     // Mirror only when unwired — never clobber the typed literal with a wired value.
@@ -805,8 +758,7 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    // The date column must stay SERIALS (colAsNumbers formats dates into display
-    // text first); pair each valid serial with its value.
+    // The date column must stay SERIALS — colAsNumbers would format them into text first.
     const serials = colAsRawNumbers(cols[0]);
     const vals = colAsRawNumbers(cols[1]);
     const days: number[] = [], values: number[] = [];
@@ -889,16 +841,12 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-// The string fields go through `stringLiterals`, the numeric ones through
-// `literals` — the same inline stores InlineInputs reads/writes, so they
-// round-trip through persistence with no extra plumbing.
 const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker"] as const;
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   label: string;
-  /** The chart type this builder is aimed at — shapes which option rows the
-   *  card shows (CHART_BUILDER_TARGETS). Serialization stays full-width. */
+  /** Shapes which option rows the card shows; serialization stays full-width. */
   target: ChartTargetId;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
@@ -926,10 +874,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>) {
-    // Every field here is PRESENTATION. A wired blank means "this option was not
-    // given" — it must NOT fall back to the card's own value, or a blank cable
-    // silently reinstates styling the graph withheld (value-semantics.md, "Reading
-    // an input"). `undefined` is what serializeChartOptions omits.
+    // Every field is PRESENTATION: a wired blank must NOT fall back to the card's value,
+    // or a blank cable silently reinstates styling the graph withheld.
     const str = (k: string) => readInput(inputs[k] as string[] | undefined, this.stringLiterals[k]) ?? undefined;
     const num = (k: string) => readInput(inputs[k] as number[] | undefined, this.literals[k]) ?? undefined;
     const out = serializeChartOptions({

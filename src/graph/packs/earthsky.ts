@@ -1,8 +1,5 @@
-// Earth & Sky — navigation, gravity, orbits, and the sun/moon almanac nodes.
-// The custom nodes implement the NOAA solar formulation (a published standard);
-// everything else is closed-form. Angles in DEGREES at every socket here
-// (navigation convention — these formulas bake their own radian conversion),
-// distances in meters unless a description says km.
+// The custom nodes implement the NOAA solar formulation. Angles are in DEGREES at every
+// socket here (the formulas bake their own radian conversion), distances in meters.
 
 import {
   SolarPositionNode, SunriseSunsetNode, MoonPhaseNode,
@@ -47,9 +44,8 @@ export const ORBIT_FORMULAS: FormulaPackEntry[] = [
 
 export const EARTHSKY_FORMULAS: FormulaPackEntry[] = [...EARTH_FORMULAS, ...ORBIT_FORMULAS];
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4). The
-// Sunrise / Sunset node splits into three names — a formula returns one value,
-// and SUNRISE / SUNSET / DAYLENGTH are what its three outputs are called.
+// The Sunrise / Sunset node splits into three names — a formula returns one value, so
+// its three outputs become SUNRISE / SUNSET / DAYLENGTH.
 const geo = (when: unknown, lat: unknown, lon: unknown): { w: number; la: number; lo: number } | ReturnType<typeof latLonError> | null => {
   if (when == null || lat == null || lon == null) return null;
   const w = Number(when), la = Number(lat), lo = Number(lon);

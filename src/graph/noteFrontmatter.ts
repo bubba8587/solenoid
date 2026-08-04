@@ -1,22 +1,10 @@
 import { parseDateToSerial } from "./nodes/dateSerial";
 
-// ─── Note frontmatter → typed fields ──────────────────────────────────────────
-// A Note's markdown body may open with an Obsidian-style YAML frontmatter block
-// (between `---` fences at the very top). Each key becomes a typed OUTPUT socket
-// so a Note doubles as a lightweight typed-record / constants source the graph
-// pulls from. This module is the PURE parser + type guesser: it turns the body
-// text into ordered fields (key, parsed value, guessed type) and the remaining
-// markdown body. The NoteNode owns the socket lifecycle + per-key type overrides;
-// the component renders the sockets. No graph/DOM deps here — fully unit-tested.
-//
-// We parse a deliberately small YAML subset (the constants-source shape): scalar
-// `key: value`, inline flow arrays `key: [a, b]`, and block lists (`- item` lines
-// under a bare `key:`). Nested maps / arrays-of-maps (→ table/frame) are deferred.
+// The PURE frontmatter parser + type guesser, over a deliberately small YAML subset:
+// scalar `key: value`, inline flow arrays, and block lists. Keep it graph/DOM-free.
 
-// The field types a frontmatter value can guess to. A SUBSET of SocketDataType
-// (the names are identical ON PURPOSE) so the node maps a field type to a socket
-// by identity (FIELD_SOCKETS in annotation.ts) — scalars + 1-D lists; 2-D
-// table/frame come later with nested maps.
+// A SUBSET of SocketDataType with IDENTICAL names, so the node maps field type → socket
+// by identity (FIELD_SOCKETS in annotation.ts).
 export type FrontmatterFieldType =
   | "number"
   | "string"
@@ -27,8 +15,7 @@ export type FrontmatterFieldType =
   | "logicallist"
   | "datelist";
 
-// The value a field emits on its output — dates are serials (numbers), like the
-// rest of Solenoid. A list carries the element values (possibly mixed / null).
+// Dates emit as serials, like the rest of Solenoid.
 export type FrontmatterScalar = number | string | boolean | null;
 export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[];
 
@@ -58,8 +45,7 @@ type ScalarKind = "number" | "string" | "logical" | "date";
 function parseScalar(raw: string): { value: FrontmatterScalar; kind: ScalarKind } {
   const t = raw.trim();
   if (t === "" || t === "~" || t === "null") return { value: null, kind: "string" };
-  // Quoted → always a string (strip the matching quotes; no escape handling needed
-  // for a constants source).
+  // Quoted → ALWAYS a string; no escape handling needed for a constants source.
   if (
     (t.startsWith('"') && t.endsWith('"') && t.length >= 2) ||
     (t.startsWith("'") && t.endsWith("'") && t.length >= 2)
@@ -121,15 +107,10 @@ function fieldFromArray(key: string, values: FrontmatterScalar[]): FrontmatterFi
   return { key, value: values, guessed: listType(values) };
 }
 
-/**
- * Parse a note body. Returns its frontmatter fields (typed) and the markdown body
- * below the block. With no valid top-of-file `---…---` block, `fields` is empty,
- * `body` is the input unchanged, and `hasBlock` is false.
- */
+/** With no valid top-of-file `---…---` block: no fields, `body` unchanged, `hasBlock` false. */
 export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
   const lines = text.split("\n");
-  // The block must open on the very first line (Obsidian rule). A lone leading
-  // blank line or anything else means "no frontmatter".
+  // The block must open on the very FIRST line (Obsidian rule).
   if (lines.length === 0 || lines[0].trim() !== "---") {
     return { fields: [], body: text, hasBlock: false };
   }
@@ -148,8 +129,7 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
   for (let i = 0; i < yamlLines.length; i++) {
     const line = yamlLines[i];
     if (line.trim() === "") continue;
-    // Block-list items belonging to the previous key are consumed by it below,
-    // so a stray `- item` at top level (no owning key) is ignored.
+    // A stray `- item` with no owning key is ignored — owned ones are consumed below.
     const m = /^([A-Za-z0-9_][\w .-]*?)\s*:\s*(.*)$/.exec(line);
     if (!m) continue;
     const key = m[1].trim();
@@ -158,8 +138,7 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
     seen.add(key);
 
     if (rest.trim() === "") {
-      // Either a bare `key:` introducing a block list, or an empty value. Look
-      // ahead for `- item` lines.
+      // A bare `key:` may introduce a block list, so look ahead for `- item` lines.
       const items: FrontmatterScalar[] = [];
       let j = i + 1;
       for (; j < yamlLines.length; j++) {

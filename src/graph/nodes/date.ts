@@ -4,9 +4,8 @@ import { solError, type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial, parseDateToSerial } from "./dateSerial";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
-/** The whole-day key of a date serial (integer part = the day; fractional = time),
- *  so WORKDAY/NETWORKDAYS compare a day against a holiday regardless of time-of-day.
- *  The `+1e-9` absorbs float drift from serial↔ms round-tripping. */
+/** The whole-day key of a date serial, so a holiday matches regardless of
+ *  time-of-day; `+1e-9` absorbs float drift from serial↔ms round-tripping. */
 function dayKey(serial: number): number {
   return Math.floor(serial + 1e-9);
 }
@@ -112,9 +111,8 @@ export class DateConstructNode extends ClassicPreset.Node {
     // A numeric year is LITERAL — no century guessing: DATE(26) is 26 AD. Range
     // 1–9999, else #DOMAIN!. Pre-1900 works via negative serials.
     if (year < 1 || year > 9999) return solError("#DOMAIN!", "Year must be between 1 and 9999");
-    // Date.UTC handles month/day overflow (month 13 → Jan of next year) BUT remaps a
-    // 0–99 year to 1900–1999; shift that back by 1900 years (setUTCFullYear doesn't
-    // remap), preserving any overflow carry, so a small literal year lands right.
+    // Date.UTC handles month/day overflow BUT remaps a 0–99 year to 1900–1999;
+    // shift that back (setUTCFullYear doesn't remap), keeping the overflow carry.
     const d = new Date(Date.UTC(year, month - 1, day));
     if (year <= 99) d.setUTCFullYear(d.getUTCFullYear() - 1900);
     return jsDateToSerial(d);
@@ -171,8 +169,7 @@ export class DateValueNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
-    // Blank in → blank out; non-empty text that won't parse is a real
-    // #VALUE! error (Excel DATEVALUE behaves the same).
+    // Blank in → blank out; unparseable non-empty text is a real #VALUE!.
     if (!text) { this.cachedResult = null; return { result: null }; }
     const serial = parseDateToSerial(text);
     if (Number.isNaN(serial)) {
@@ -204,9 +201,8 @@ export class TimeValueNode extends ClassicPreset.Node {
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
     if (!text) { this.cachedResult = null; return { result: null }; }
-    // Parse the time text directly. Do NOT route it through `new Date("1970-01-01T…")`:
-    // that reads zone-less text as LOCAL time while the getters read UTC, so the
-    // fraction differs per machine.
+    // Do NOT route this through `new Date("1970-01-01T…")`: that reads zone-less
+    // text as LOCAL time while the getters read UTC, so the fraction varies by machine.
     const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
     let result: number | SolError;
     if (m) {
@@ -299,9 +295,8 @@ export class WeekInfoNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "weekday";
     this.label = init?.label ?? WEEK_INFO_OP_META[this.op].label;
     this.addInput("date",        dateComboIn("Date"));
-    // `return_type` is a MODE selector, not an operand — a per-element return type is
-    // meaningless, so it stays a scalar. Same rule for DateDiff's basis and the two
-    // weekend_code inputs below.
+    // `return_type` is a MODE selector, not an operand — per-element return types
+    // are meaningless, so it stays scalar (same for basis / weekend_code).
     this.addInput("return_type", numIn("Return type"));
     this.addOutput("result", numListOut("Number"));
   }
@@ -335,11 +330,8 @@ export class WeekInfoNode extends ClassicPreset.Node {
 }
 
 // ─── Date difference (DAYS / DAYS360 / YEARFRAC + the DATEDIF units) ──────────
-// ONE family for "difference between two dates". The day-count ops take the basis
-// argument; the calendar-component ops are DATEDIF's units as first-class ops
-// (DATEDIF "D" is not an op — it duplicates DAYS; the formula surface still
-// dispatches all six unit strings). The basis input exists ONLY while the op uses
-// it (syncBasisInput).
+// DATEDIF "D" is deliberately not an op (it duplicates DAYS), though the formula
+// surface still dispatches all six unit strings.
 
 export type DateDiffOp =
   | "days" | "days360" | "yearfrac"          // day-count functions (basis input)
@@ -378,10 +370,8 @@ export class DateDiffNode extends ClassicPreset.Node {
     this.syncBasisInput();
   }
 
-  /** Add/remove the basis input to match the current op. The COMPONENT drops any
-   *  basis cable before switching away (removeInput while a cable references the
-   *  socket is unsafe — the Interpolate rule) and area-updates after. Returns
-   *  whether the socket set changed. */
+  /** Add/remove the basis input to match the op; the COMPONENT must drop any basis
+   *  cable first — removeInput under a live cable is unsafe. */
   syncBasisInput(): boolean {
     const needs = dateDiffNeedsBasis(this.op);
     const has = !!this.inputs.basis;
@@ -422,9 +412,8 @@ export class DateDiffNode extends ClassicPreset.Node {
         result = ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
         break;
       case "md": {
-        // Day difference borrowing from the month BEFORE the end month when the end
-        // day is smaller. Excel's MD is documented unreliable when the borrow goes
-        // negative (e.g. Jan 31 → Mar 1); we return the consistent borrow result.
+        // Excel's MD is documented unreliable when the borrow goes negative
+        // (Jan 31 → Mar 1); we return the consistent borrow result.
         if (eday >= sday) {
           result = eday - sday;
         } else {
@@ -506,8 +495,8 @@ export class DateAddNode extends ClassicPreset.Node {
     const m = Math.floor(rawM);
     const y  = d.getUTCFullYear();
     const mo = d.getUTCMonth() + m; // may overflow; Date.UTC handles it
-    // EDATE clamps to the target month's last day (Excel: Jan 31 + 1mo = Feb 28/29,
-    // never Mar 3 — an unclamped day rolls the Date over into the next month).
+    // EDATE clamps to the target month's last day (Jan 31 + 1mo = Feb 28/29) —
+    // an unclamped day rolls the Date over into the next month.
     const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
     const serial = this.op === "edate"
       ? jsDateToSerial(new Date(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay))))
@@ -534,8 +523,8 @@ export class WorkdayNode extends ClassicPreset.Node {
     this.addInput("start",        dateComboIn("Start date"));
     this.addInput("days",         numListIn("Days"));
     this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
-    // `holidays` is a genuine LIST PARAMETER — the whole set is consulted for every
-    // result, so it is NOT an element-wise operand and stays a plain datelist.
+    // `holidays` is a LIST PARAMETER — the whole set is consulted per result, so it
+    // is NOT an element-wise operand and stays a plain datelist.
     this.addInput("holidays",     dateListIn("Holidays (optional)"));
     this.addOutput("result", dateComboOut("Date"));
   }
@@ -604,9 +593,3 @@ export class NetworkdaysNode extends ClassicPreset.Node {
     return { result };
   }
 }
-
-// ─── Date serial formatting (shared by Cast-to-text + Format Controller) ──────
-
-/** The default date / datetime display pattern, used everywhere a date is shown
- *  without an explicit Format Controller (e.g. `01-Jan-2026`). Change here to
- *  re-default the whole app. */

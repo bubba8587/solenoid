@@ -7,9 +7,8 @@ import { IS_MOBILE } from "../coarse";
 import { registerChrome } from "../chromeToggle";
 import "./SocketLegend.css";
 
-// Circles = scalars, squares = arrays, grid = 2D. A group pairs the scalar and
-// its list/2D sibling under one type label (number + numlist = "Numeric"). Each
-// dot carries `tip` — its precise per-dimension name, shown in the hover pill.
+// Circles = scalars, squares = arrays, grid = 2D; a group pairs the scalar with its
+// list/2D siblings under one type label.
 type Dot = {
   kind: "circle" | "square" | "grid" | "frame" | "cube" | "lambda" | "chart" | "document" | "ring";
   color: string;
@@ -48,16 +47,14 @@ const GROUPS: LegendGroup[] = [
     { kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" },
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
-  // The OBJECT family — non-lattice, identity-only values distinguished by glyph,
-  // not color.
+  // The OBJECT family — non-lattice, identity-only values distinguished by glyph.
   { label: "Special", dots: [
     { kind: "lambda",   color: SOCKET_COLORS.lambda,   tip: "LAMBDA" },
     { kind: "chart",    color: SOCKET_COLORS.chart,    tip: "Chart" },
     { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
   ] },
-  // The wildcard ladder: any (one value) → anylist (1-D) → anytable (2-D), plus the
-  // hollow ring = trueany. The in-between rungs (anycombo / anydata) are deliberately
-  // NOT rows here — as legend entries they only restate the ladder.
+  // The in-between wildcard rungs (anycombo / anydata) are deliberately NOT rows here —
+  // as legend entries they only restate the ladder.
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
@@ -67,8 +64,6 @@ const GROUPS: LegendGroup[] = [
 ];
 
 export type SocketGlyph = Dot;
-
-// Hover tooltip: an SVG stadium pill (no OS-native delay, no CSS shapes).
 
 /** Resolve any CSS color expression (incl. `var(--sock-*)`, palette-overridden) to a
  *  #rrggbb hex, so contrastInk picks the readable ink for the EXACT rendered color. */
@@ -84,8 +79,7 @@ function cssColorToHex(css: string): string {
   return "#" + m.slice(0, 3).map((n) => Math.round(Number(n)).toString(16).padStart(2, "0")).join("");
 }
 
-/** The app's UI font stack (`--font-sans`, Atkinson Hyperlegible) — resolved so the
- *  canvas measurer uses the SAME font the pill renders in, or the pill sizes wrong. */
+/** Resolved so the canvas measurer uses the SAME font the pill renders in. */
 function appFontFamily(): string {
   const v = getComputedStyle(document.documentElement).getPropertyValue("--font-sans").trim();
   return v || "system-ui, sans-serif";
@@ -103,8 +97,7 @@ function SocketTip({ label, color, anchor }: { label: string; color: string; anc
   const ink = contrastInk(cssColorToHex(color));
   const H = 20, PAD_X = 9, SW = 2.5;
   const W = Math.ceil(measureTipText(label)) + PAD_X * 2;
-  // Center on the dot, but clamp so the pill never clips the viewport edge (the
-  // legend sits bottom-RIGHT, so its dots are close to the right edge).
+  // Clamped so the pill never clips the viewport edge — the legend sits bottom-RIGHT.
   const half = W / 2 + 4;
   const cx = Math.max(half, Math.min(anchor.left + anchor.width / 2, window.innerWidth - half));
   return createPortal(
@@ -134,8 +127,7 @@ export function SocketDot({ entry }: { entry: Dot }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setAnchor(r); };
-  // Set on the span so both the glyph and its hover pill (which inherit
-  // --socket-ring) pick up this fill's own border shade.
+  // Set on the span so the glyph and its pill both inherit this fill's border shade.
   const ringVar = /^var\(--sock-/.test(entry.color) ? entry.color.replace(/\)\s*$/, "-ring)") : undefined;
   return (
     <span
@@ -152,9 +144,8 @@ export function SocketDot({ entry }: { entry: Dot }) {
 }
 
 function SocketGlyphSvg({ entry }: { entry: Dot }) {
-  // viewBox is padded 1 unit per side ("-1 -1 14 14") so shapes whose fills reach the
-  // 0/12 bounds never sit on the rendered edge — without it, fractional device-pixel
-  // rounding (the legend is scaled 0.85) clips the outermost row.
+  // viewBox is padded 1 unit per side so shapes reaching the 0/12 bounds never sit on the
+  // rendered edge — fractional device-pixel rounding otherwise clips the outermost row.
   if (entry.kind === "square") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
@@ -183,8 +174,7 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   }
   if (entry.kind === "cube") {
     return (
-      // The -1..13 viewBox padding lets the oversized cube (shared CubeGlyphFaces)
-      // extend past the 12-box without clipping — no overflow-visible needed here.
+      // The viewBox padding lets the oversized cube extend past the 12-box without clipping.
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
         <CubeGlyphFaces fill={entry.color} />
       </svg>
@@ -280,8 +270,7 @@ export function SocketLegend() {
   );
 }
 
-/** Dimensionality-flow explainer for the Reference overlay's Socket Types tab —
- *  canConnect()'s rule in plain language. */
+/** canConnect()'s rule in plain language, for the Reference overlay. */
 export function DimensionalityFlow() {
   return (
     <div className="solenoid-dimflow">
@@ -328,8 +317,8 @@ function DimStep({ dot, dim, name, sub }: { dot: Dot; dim: string; name: string;
   );
 }
 
-/** The socket-type rows on their own — reused by the Reference overlay's Sockets
- *  tab (on mobile the floating legend is hidden and lives there instead). */
+/** The socket-type rows on their own — on mobile the floating legend is hidden and the
+ *  Reference overlay's Sockets tab is where they live. */
 export function SocketLegendRows() {
   return (
     <>

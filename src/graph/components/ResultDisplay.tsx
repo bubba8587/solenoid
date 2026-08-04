@@ -1,6 +1,4 @@
-// One result box that dispatches on container kind: a Cube → CubeDisplay, a Frame
-// → FrameDisplay, everything else → ValueDisplay (scalar / list / string / error).
-// Centralized so components don't each re-do the isFrame/isCube branch.
+// The ONE result box, so components don't each re-do the isFrame/isCube branch.
 import type { ReactNode } from "react";
 import { isFrameValue, isCubeValue } from "../frame";
 import { ValueDisplay } from "./nodeKit";

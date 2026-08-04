@@ -6,9 +6,8 @@ import type { PresentationNode } from "../nodes/presentation";
 import { CloseIcon } from "./CloseIcon";
 import "./PresentationOverlay.css";
 
-// Presenter mode: a full-screen layer that drives the camera through a
-// Presentation node's steps. It hides the app chrome (restored on exit) — the
-// canvas itself is the slide.
+// Drives the camera through a Presentation node's steps and hides the app chrome (restored
+// on exit) — the canvas itself is the slide.
 
 export function PresentationOverlay() {
   useSyncExternalStore(presentationStore.subscribe, presentationStore.version);
@@ -43,9 +42,7 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
-  // Keyboard: Space / → / ↓ / PageDown / Enter advance; ← / ↑ / PageUp step back;
-  // Home/End jump to ends; Esc exits. No dep array so each render's handler closes
-  // over the current idx.
+  // No dep array, so each render's handler closes over the current idx.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -68,8 +65,7 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
   const step = steps[idx];
 
   return (
-    // The whole layer advances on click (the slide IS the canvas below); the
-    // control bar stops propagation so its buttons don't also advance.
+    // The whole layer advances on click, so the control bar must stop propagation.
     <div className="solenoid-present" onClick={next}>
       <div className="solenoid-present__bar" onClick={(e) => e.stopPropagation()}>
         <button

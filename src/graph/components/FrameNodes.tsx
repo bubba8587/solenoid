@@ -74,28 +74,24 @@ import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
-// Like Table Input: the single result box doubles as the editor. The chip opens
-// the grid popup (editable cells + column names); Save serializes the body +
-// headers back into the node's frameText.
+// Like Table Input: the single result box doubles as the editor, and Save serializes
+// the popup's body + headers back into the node's frameText.
 
 export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType>) {
-  // The editor edits the RAW source (what you typed); Save stores it back verbatim
-  // and the node derives the typed frame in data(). So a "1" you typed in a Boolean
-  // column stays "1" — the Source/Formatted toggle in the popup shows raw vs derived.
+  // The RAW source is stored verbatim and the typed frame derived in data(), so a "1"
+  // typed into a Boolean column stays "1" (D31).
   const source = useMemo(() => parseFrameSource(data.frameText), [data.frameText]);
   const onSaveSource = useCallback((columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
-    // The source IS this frame's static shape, so a column retyped/renamed/added here
-    // can retype a downstream socket that reads it (INDEX over a named column). No
-    // connection event fires on a text edit — settle the derived types by hand.
+    // A text edit fires no connection event, so settle the derived downstream types by
+    // hand — a retyped/renamed column can retype a socket that reads it.
     const ed = getOwningEditor(data.id);
     const ar = getOwningArea(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     void processGraph();
   }, [data]);
-  // LIVE write-through (the column-source model): a blurred formula / rebound λ /
-  // computed column's unit pick commits NOW, recomputes this node, and hands the
-  // open popup the fresh derived cells + types — no Save/close round trip.
+  // LIVE write-through: an in-popup edit commits and recomputes NOW, handing the open
+  // popup fresh derived cells + types with no Save/close round trip.
   const onCommitSource = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
     const ed = getOwningEditor(data.id);
@@ -197,9 +193,8 @@ export const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
   { value: "notblank", label: "not blank" },
 ];
 
-// The Filter-node op list adds the ERROR predicates (drop / keep #DIV/0!-style
-// error cells). Kept OFF the base FILTER_OP_OPTIONS so SUMIFS — whose criteria are
-// a different idea — doesn't offer them; only the List/Frame Filters do.
+// The ERROR predicates stay OFF the base FILTER_OP_OPTIONS so SUMIFS doesn't offer
+// them; only the List/Frame Filters do.
 export const FILTER_OP_OPTIONS_WITH_ERROR: { value: FilterOp; label: string }[] = [
   ...FILTER_OP_OPTIONS,
   { value: "noterror", label: "no error" },
@@ -219,10 +214,8 @@ export const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; titl
   { value: "or", label: "OR", title: "Keep rows matching any condition" },
 ];
 
-// Extensible AND/OR condition rows. Each pair: a wireable Column row (with the
-// remove ×) and a wireable Value row whose op select + Match-case toggle live in the
-// row when unwired. Per-row {op, matchCase} mirrors onto data.condConfig (local
-// useState drives the controlled selects — the useNodeField rule, per-key).
+// Paired Column/Value rows; per-row {op, matchCase} mirrors onto data.condConfig, with
+// local useState driving the controlled selects (the useNodeField rule, per-key).
 export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeType>) {
   const connected = useConnectedInputs(data.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
@@ -401,9 +394,8 @@ export function DropColumnsComponent({ data, emit }: NodeProps<DropColumnsNodeTy
 
 // ─── GROUP BY / PIVOT (shared aggregate-op selector) ─────────────────────────
 
-// Derived from AGG_OP_META (SSOT-1) — the table the search rows and the Pivot
-// editor read too. `pivotOnly` ops (percentof) stay off these cards: only the
-// pivot assembly can run them.
+// Derived from AGG_OP_META (SSOT-1); `pivotOnly` ops stay off these cards because only
+// the pivot assembly can run them.
 export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] =
   (Object.keys(AGG_OP_META) as AggOp[])
     .filter((op) => !AGG_OP_META[op].pivotOnly)
@@ -430,9 +422,8 @@ export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNode
 }
 
 // ─── PIVOT (full Excel PIVOTBY) ────────────────────────────────────────────────
-// The node face is compact: the wireable sockets, a one-line summary of the current
-// pivot, and a "Configure fields" button that opens the Excel-style 2×2 field editor
-// (PivotEditorPopup). All of Rows/Columns/Values/functions/totals/sort/% live there.
+// The card keeps only the sockets and a summary line — all of Rows/Columns/Values/
+// functions/totals/sort/% live in PivotEditorPopup.
 
 const PIVOT_CABLE_ONLY = new Set(["rowFields", "colFields", "values", "filter"]);
 const splitNames = (s: string | undefined) => (s ?? "").split(",").map((x) => x.trim()).filter(Boolean);
@@ -642,10 +633,8 @@ const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; t
 
 const DECISION_CABLE_ONLY = new Set(["weights"]);
 
-// One row per detected criterion: a labeled, default-1 weight box plus a per-column
-// normalize override. Criteria come from the upstream Scores frame (data.criteria,
-// refreshed each compute), so the rows are named, not blind positional slots. A wired
-// `weights` cable overrides the weights; the per-column modes still apply.
+// One row per criterion, NAMED from the upstream Scores frame rather than blind
+// positional slots. A wired `weights` cable overrides the weights, not the modes.
 export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrixNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
   const [detail, setDetail] = useNodeField(data, "detail");
@@ -702,9 +691,7 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
 }
 
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
-// Scores × weight-scenarios → a Cube of rankings (one nested Option·Score·Rank table
-// per scenario). Both inputs are frames (cable-only rows); `normalize` is the same
-// default-mode toggle as the Decision Matrix.
+// Scores × weight-scenarios → a Cube of rankings, one nested table per scenario.
 
 export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionSensitivityNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
@@ -719,9 +706,8 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
-// Two frame outputs would be one too many dots to auto-place, so — like Split
-// Frame — this hand-places both rows: the reconciliation Frame, then the
-// readable Summary line (added/removed/changed/unchanged, + PVM if applicable).
+// Two frame outputs are one too many dots to auto-place, so both rows are hand-placed
+// (like Split Frame).
 
 export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>) {
   const frameOut = data.outputs.frame;

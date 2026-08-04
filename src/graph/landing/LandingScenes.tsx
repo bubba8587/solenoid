@@ -4,22 +4,12 @@ import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
 
 // ─── Landing scene primitives ───────────────────────────────────────────────────
-// The deep-feature sections illustrate themselves with STATIC vignettes built
-// from the app's real design recipes: the node-card header-tint formula
-// (nodeCard.css), the real SocketDot glyphs, the real chip classes
-// (ArrayChip.css / errorChip.css), and cables drawn as the same
-// horizontal-tangent cubics the canvas uses. One live rete stage exists on the
-// page (LandingGraph); everything here is plain DOM+SVG, so scenes can repeat
-// freely without a second editor (see the one-live-stage gotcha in
-// LandingGraph.tsx).
-//
-// Each scene is a fixed-coordinate plane scaled to its container (the same
-// fit-to-width trick as the live stage), so cable endpoints and socket dots
-// stay glued at every viewport size.
+// STATIC vignettes rebuilding the app's design recipes in plain DOM+SVG — the page
+// allows only ONE live rete stage (LandingGraph), so scenes must never mount one.
 
 // ── Reveal: scroll-triggered entrance ──
-// The initial hidden state only exists under `.sol-landing--anim` (set on mount
-// when reduced-motion is off), so content is never gated on the transition.
+// The hidden state exists only under `.sol-landing--anim`, so content is never
+// gated on the transition.
 export function Reveal({
   children,
   className = "",
@@ -192,7 +182,6 @@ export function AnatomyScene() {
   const ny = 60;
   return (
     <Diagram w={W} h={H}>
-      {/* Hairline connectors from each caption to the part it names. */}
       <svg className="sol-diagram__cables" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
         <g className="sol-callout__lines">
           <path d={`M 178 84 H ${nx - 6}`} />

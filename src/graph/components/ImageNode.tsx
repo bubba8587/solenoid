@@ -12,16 +12,9 @@ import "./ImageNode.css";
 const MIN_H = 60;
 const MAX_H = 800;
 
-/**
- * A canvas Image — a free-floating picture annotation. The header bar is the drag
- * handle (inputs/buttons stop pointerdown so editing doesn't start a node drag).
- * The source is a web URL (persisted) or a locally-attached file (read to a data
- * URL, session-only — see ImageNode). The height field sizes the image well; the
- * image is letterboxed (object-fit: contain) so any aspect ratio looks tidy. The
- * node emits an ImageValue (src/height/title) on its `chart`-family output, so a
- * value-affecting edit (label/URL/height/attachment) recomputes the downstream
- * cone on commit; edits also persist via scheduleAutosave.
- */
+/** The header bar is the drag handle, so its inputs/buttons must stop pointerdown.
+ *  Label/URL/height/attachment all ride the emitted ImageValue, so each commit
+ *  recomputes the downstream cone. */
 export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [url, setUrl] = useState(data.url);
@@ -32,30 +25,21 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
   useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setUrl(data.url); }, [data.url]);
-  // Asset hydration (imageAssets.ts) sets data.dataUrl AFTER mount — sync it in.
+  // Asset hydration sets data.dataUrl AFTER mount — sync it in.
   useEffect(() => { setDataUrl(data.dataUrl); }, [data.dataUrl]);
-  // Desktop: a bundled image (assetPath, no session dataUrl yet) loads itself
-  // from the doc's images/ folder on mount — covers doc load, paste, restore.
   useEffect(() => { void hydrateImageAsset(data); }, [data]);
   useEffect(() => { setHeight(data.height); }, [data.height]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
   const src = dataUrl || url;
 
-  // Unlike an ordinary node, the Image bakes its label into the emitted value
-  // (ImageValue.title / alt), so the header label IS data. Keep the input live per
-  // keystroke, but the downstream propagation — a wired Report re-reading the new
-  // title — commits on blur/Enter (never per keystroke; see the commit-on-Enter
-  // principle + "never processGraph from onChange"). processGraph(id) resets this
-  // node + its downstream cone so data() re-runs with the new label.
+  // The label IS data here (it becomes ImageValue.title), but propagation still
+  // waits for blur/Enter — never processGraph from onChange.
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
-  // Recompute this node + its downstream cone so consumers re-read the new value
-  // (title/alt/src). Shared by the label + URL commit paths.
   function commitValue() { void processGraph(data.id); }
 
-  // Typing a URL takes over as the source and drops any local attachment (its
-  // bundled-file binding included — the asset stays on disk, the node just no
-  // longer points at it). The src rides the value too, so it commits on blur.
+  // A URL takes over as the source and drops any local attachment, bundled-file
+  // binding included — the asset stays on disk, the node just stops pointing at it.
   function onUrl(v: string) {
     setUrl(v); data.url = v;
     if (dataUrl) { setDataUrl(""); data.dataUrl = ""; }
@@ -63,9 +47,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     scheduleAutosave();
   }
 
-  // Height commits on Enter/blur (not per keystroke), so you can clear the field
-  // and type a new value; an empty/invalid entry reverts to the current height
-  // instead of snapping to the min. (useDraftCommit is the project-wide pattern.)
+  // An empty/invalid entry reverts to the current height instead of snapping to MIN_H.
   const heightField = useDraftCommit<number>(
     height,
     (v) => String(v),
@@ -77,10 +59,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     (h) => { setHeight(h); data.height = h; scheduleAutosave(); void processGraph(data.id); },
   );
 
-  // Attaching a local file reads it to a data URL (session) and takes over as the
-  // source, dropping any URL. The data URL is never written into the save JSON;
-  // on desktop the next save-to-disk bundles it as a plain file under images/
-  // beside the doc (imageAssets.ts) — fileName names that copy, and assetPath
+  // The data URL is session-only and never written into the save JSON; assetPath
   // resets so the new attachment gets its own bundle slot.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -94,7 +73,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       data.assetPath = "";
       if (url) { setUrl(""); data.url = ""; }
       scheduleAutosave();
-      void processGraph(data.id); // the new src rides the value → refresh consumers
+      void processGraph(data.id);
     };
     reader.readAsDataURL(file);
   }
@@ -143,9 +122,8 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
           </svg>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
-        {/* Chart-family output — wire the image into a Report. The bar is a
-            positioning context and isn't overflow-clipped, so the dot straddles the
-            card's right edge and stays reachable even when collapsed. */}
+        {/* The bar is a positioning context and isn't overflow-clipped, so the dot
+            straddles the card edge and stays reachable when collapsed. */}
         {data.outputs.image && (
           <NodeSocket side="output" socketKey="image" nodeId={data.id} emit={emit} payload={data.outputs.image.socket} />
         )}

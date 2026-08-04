@@ -1,8 +1,5 @@
-// Test-only helpers for formula packs: instantiate a pack's pre-set Expression
-// entry exactly the way the Add menu would, feed it inputs, and return the
-// computed result. Each pack's vitest file asserts its formulas against
-// hand-checked / published reference values, so a typo'd formula string can't
-// ship silently — the whole point of a locked preset is that it's RIGHT.
+// Test-only: instantiate a pack's pre-set Expression entry exactly the way the Add
+// menu would, so a typo'd formula string can't ship silently.
 
 import { ExpressionNode, EquationNode } from "../rete-nodes";
 import { parseEquation } from "../equationSolve";
@@ -10,10 +7,8 @@ import { initPackFormulas } from "../formulaExtensions";
 import { compileEvaluator } from "../excelFormula";
 import type { FormulaPackEntry, Pack } from "./packShared";
 
-/** Compile-and-evaluate an expression with every known pack's FORMULA FUNCTIONS
- *  registered (initPackFormulas is idempotent) — the pin path for a pack's
- *  custom-logic PackFormula entries, mirroring how a typed Expression resolves
- *  them on canvas. */
+/** Evaluates with every pack's FORMULA FUNCTIONS registered, mirroring how a typed
+ *  Expression resolves them on canvas. */
 export function evalPackFormula(expr: string, env: Record<string, unknown> = {}): unknown {
   initPackFormulas();
   const f = compileEvaluator(expr);
@@ -27,15 +22,12 @@ export function evalFormula(
   inputs: Record<string, number | string | (number | string)[]>,
 ): unknown {
   const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs });
-  // Unknown/missing variables default to 0 via node.literals — same as on canvas.
   const env: Record<string, unknown[]> = {};
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;
 }
 
-/** Run one EQUATION entry with the given knowns; returns the node's full output
- *  record (each variable + `holds`), so a test reads the solved unknown or the
- *  truth check directly. */
+/** Returns the node's full output record (each variable + `holds`). */
 export function evalEquation(
   e: FormulaPackEntry,
   inputs: Record<string, number | number[]>,
@@ -46,15 +38,14 @@ export function evalEquation(
   return node.data(env);
 }
 
-/** Find a formula entry by catalog type; throws if absent (test misspelling). */
+/** Throws if absent — a test misspelling. */
 export function entryByType(entries: FormulaPackEntry[], type: string): FormulaPackEntry {
   const e = entries.find((x) => x.type === type);
   if (!e) throw new Error(`no formula entry "${type}"`);
   return e;
 }
 
-/** Every variable in every formula compiles and the entry set has unique types.
- *  Returns the list of {type, problem} findings (empty = pack is well-formed). */
+/** Returns {type, problem} findings; empty = the pack is well-formed. */
 export function auditFormulaPack(entries: FormulaPackEntry[]): string[] {
   const problems: string[] = [];
   const seen = new Set<string>();

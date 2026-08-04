@@ -4,12 +4,10 @@ import { createValueStore } from "./storeKit";
 import type { PivotNode } from "./rete-nodes";
 
 export interface PivotEditorState {
-  /** The live Pivot node being configured — the popup mutates it + reprocesses. */
   node: PivotNode;
   nodeId: string;
   title: string;
-  /** Resolved accent color (the host node's `--node-accent`) so the popup header
-   *  matches the node it opened from. */
+  /** Resolved host `--node-accent`, so the popup header matches its node. */
   accent?: string;
 }
 

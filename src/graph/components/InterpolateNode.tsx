@@ -17,18 +17,14 @@ const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).m
   title: INTERPOLATE_MODE_META[m].title,
 }));
 
-/**
- * Switch the node between its two modes. LIST and GRID are different operations
- * with different socket sets, so this rebuilds the whole I/O set — dropping every
- * cable on the node first (removeInput/removeOutput is unsafe while a cable still
- * references the socket, and a list cable can't feed the grid's table anyway).
- * Mirrors applyEquationChange's drop-cables-then-reconcile shape.
- */
+/** LIST and GRID carry different socket sets, so every cable on the node must be
+ *  dropped first — removeInput/removeOutput is unsafe while a cable still references
+ *  the socket. */
 export async function applyInterpolateMode(node: InterpolateNodeType, mode: InterpolateMode): Promise<void> {
   if (node.mode === mode) return;
   node.mode = mode;
 
-  const editor = getActiveEditor(); // active graph: works inside a composite drill-in too
+  const editor = getActiveEditor();
   const area = getActiveArea();
   if (editor) {
     const conns = editor.getConnections().filter((c) => c.target === node.id || c.source === node.id);
@@ -41,8 +37,7 @@ export async function applyInterpolateMode(node: InterpolateNodeType, mode: Inte
 }
 
 export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeType>) {
-  // Local mirror so the toggle re-renders immediately; the change handler swaps the
-  // socket set (see applyInterpolateMode).
+  // Local mirror so the toggle re-renders before the socket swap completes.
   const [mode, setMode] = useState<InterpolateMode>(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
   const [forecast, setForecast] = useState(data.forecast);

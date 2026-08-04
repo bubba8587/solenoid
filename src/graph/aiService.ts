@@ -1,20 +1,5 @@
-// The AI command palette's service layer (D27/D28): one prompt in, either a
-// prose answer about the graph or a validated whole-document rewrite out.
-// The model reads the document's current text form and emits a FULL
-// replacement inside a ```solenoid fence; the strict validator gates every
-// candidate, hard issues go back to the model as a repair round, and only a
-// clean result reaches the approval diff. Modify actions never touch the doc
-// from here — the palette shows the old→new diff and applies on explicit
-// approval (the cage rule: an AI edit goes through the same governed path as
-// a human edit).
-//
-// The key is the user's own,
-// pasted in Settings ▸ AI (`aiKey.ts` → localStorage) — so the browser build
-// calls the API directly with the SDK's explicit browser opt-in, which sends
-// the CORS opt-in header. The desktop webview takes the same path (its CSP
-// allowlists api.anthropic.com). Requests carry a server-side refusal
-// fallback ("default") and cache the big grounding-spec system block, which
-// is byte-identical across requests by construction.
+// The AI palette's service layer (D27/D28). The cage rule: nothing here touches the
+// document — a validated rewrite only ever reaches the palette's approval diff.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAiKey } from "./aiKey";
@@ -29,9 +14,8 @@ const MAX_REPAIRS = 2;
 
 export type AiOutcome =
   | { kind: "answer"; text: string }
-  /** A validated rewrite: `newText` is the CANONICAL text form (round-tripped
-   *  through the reader/writer, so the apply diff never shows formatting-only
-   *  noise) and `warnings` carries the soft findings (e.g. a #CIRC! cycle). */
+  /** A validated rewrite; `newText` is CANONICAL (round-tripped through the
+   *  reader/writer) so the apply diff never shows formatting-only noise. */
   | { kind: "edit"; newText: string; warnings: string[] }
   | { kind: "error"; message: string };
 
@@ -66,9 +50,7 @@ function systemPrompt(): Anthropic.Beta.BetaTextBlockParam[] {
     {
       type: "text",
       text: groundingSpec(),
-      // The spec is ~30k tokens and byte-identical every call — the classic
-      // cacheable prefix. The breakpoint sits after it; only the (small,
-      // varying) user turn is billed at full rate on later requests.
+      // The spec is byte-identical every call by construction — the cacheable prefix.
       cache_control: { type: "ephemeral" },
     },
   ];
@@ -88,10 +70,7 @@ function textOf(message: Anthropic.Beta.BetaMessage): string {
     .join("");
 }
 
-/**
- * Run one palette prompt against the model. `currentText` is the document's
- * text form (the writer's canonical output). `fetch` is injectable for tests.
- */
+/** Run one palette prompt against the model; `fetch` is injectable for tests. */
 export async function runAiPrompt(
   prompt: string,
   currentText: string,
@@ -100,9 +79,8 @@ export async function runAiPrompt(
   const apiKey = getAiKey();
   if (!apiKey) return { kind: "error", message: "No AI key is stored. Add one in Settings." };
 
-  // Typing `demo` instead of a key swaps the transport for the canned local
-  // model (aiDemo.ts) — every layer above the wire (validator, repair rounds,
-  // canonicalization, diff) still runs for real.
+  // The demo key swaps only the transport — validator, repair rounds and
+  // canonicalization still run for real.
   const fetchImpl = opts?.fetch ?? (apiKey === DEMO_KEY ? makeDemoFetch() : undefined);
   const client = new Anthropic({
     apiKey,
@@ -121,8 +99,7 @@ export async function runAiPrompt(
         max_tokens: 16000,
         system: systemPrompt(),
         messages,
-        // Safety classifiers can decline a request; "default" re-runs it on
-        // Anthropic's recommended fallback model server-side.
+        // A classifier decline re-runs server-side on the recommended fallback model.
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
       });
@@ -146,8 +123,7 @@ export async function runAiPrompt(
       const { issues, graph } = validateText(candidate);
       const hard = hardIssues(issues);
       if (hard.length === 0 && graph) {
-        // Canonicalize through the real writer so the approval diff shows
-        // semantic changes only, and applying is byte-stable.
+        // Canonicalize through the real writer: semantic diffs only, byte-stable apply.
         const canonical = writeTextForm(readTextForm(candidate));
         return {
           kind: "edit",
@@ -165,7 +141,6 @@ export async function runAiPrompt(
         };
       }
 
-      // Repair round: the validator's messages are written to be fixed from.
       messages.push(
         { role: "assistant", content: response.content },
         {

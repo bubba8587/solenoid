@@ -1,10 +1,5 @@
-/**
- * Shared close/dismiss glyph. An SVG "×" (two crossed lines) rather than a text
- * "×"/"✕" character: a font glyph's ink isn't vertically centered on its em, so
- * `align-items: center` (which centers the line-box, not the ink) still leaves it
- * reading low. This SVG is symmetric about both axes, so its optical center IS the
- * viewBox center — it lands dead-center in any flex-centered button at any size.
- */
+/** Shared close glyph as SVG, never a text "×"/"✕": a font glyph's ink isn't centered
+ *  on its em, so a flex-centered button still renders it low. */
 export const CloseIcon = ({ size = 14 }: { size?: number }) => (
   <svg
     viewBox="0 0 24 24"

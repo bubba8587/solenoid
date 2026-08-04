@@ -29,8 +29,7 @@ type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, 
  *  supersedes the inline text. */
 function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
-  // Re-render when processGraph refreshes live values — the wired lambda's
-  // signature can change without a topology change.
+  // The wired lambda's signature can change without a topology change.
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const lambdaSrc = incoming.get("lambda");
   const [val, setVal] = useState(node.stringLiterals.formula ?? "");
@@ -49,10 +48,8 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   if (lambdaSrc) {
     const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind to this node's variables BY NAME (D18). A body variable that is
-    // one of this node's variables but ISN'T declared as a param can't be bound —
-    // it silently reads as a captured constant (0), not the live value. Advise it;
-    // a param that isn't one of the node's variables is a hard cachedError, not here.
+    // Params bind BY NAME (D18), so a body variable that is one of this node's variables
+    // but isn't declared a param silently reads as a captured constant rather than binding.
     const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (
       <>

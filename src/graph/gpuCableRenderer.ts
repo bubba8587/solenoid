@@ -5,15 +5,9 @@ import { parsePathPoints } from "./cableHitTest";
 import { cableScene } from "./cableScene";
 import { parseColor, type RGBA } from "./cssColor";
 
-// WebGPU cable renderer — the desktop (Tauri/WebView2) GPU path. Cable polylines are
-// tessellated to triangle ribbons (cableTessellate) and uploaded to a GPU vertex
-// buffer ONCE per scene change; pan/zoom only rewrites a 16-byte uniform (world→clip
-// scale+offset) and submits one draw. 4× MSAA keeps cables smooth in motion.
-//
-// WebView2 needs `--enable-unsafe-webgpu` (set in src-tauri/tauri.conf.json
-// additionalBrowserArgs). Creation is async (requestAdapter/requestDevice); the
-// factory resolves null on any failure so the caller falls back to DOM. Premultiplied
-// alpha so the transparent canvas composites correctly over the DOM behind it.
+// Geometry uploads ONCE per scene change; pan/zoom only rewrites a 16-byte world→clip
+// uniform. WebView2 needs `--enable-unsafe-webgpu` (tauri.conf.json additionalBrowserArgs),
+// and the factory resolves null on any failure so the caller falls back to DOM.
 
 const SAMPLE_COUNT = 4;
 
@@ -66,9 +60,8 @@ export class GpuCableRenderer {
     private readonly bindGroup: GPUBindGroup,
     onLost?: () => void,
   ) {
-    // Device loss (driver reset, TDR, sleep/wake) blanks the GPU layer. Mark disposed
-    // and notify so the caller can fall back to DOM — the renderer-plan flags GPU
-    // context loss as a real hazard; cables must never silently vanish.
+    // Device loss blanks the GPU layer, so notify and let the caller fall back to DOM —
+    // cables must never silently vanish.
     device.lost
       .then(() => { if (!this.disposed) { this.disposed = true; onLost?.(); } })
       .catch(() => { if (!this.disposed) { this.disposed = true; onLost?.(); } });
@@ -128,7 +121,7 @@ export class GpuCableRenderer {
     }
   }
 
-  /** Rebuild + upload geometry for the current cable scene. On scene change, not pan. */
+  /** Rebuild + upload geometry: on scene change, never on pan. */
   setGeometry(resolve: CableColorResolver, want: (above: boolean) => boolean = () => true): void {
     if (this.disposed) return;
     const positions: number[] = [];

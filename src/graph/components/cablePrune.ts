@@ -1,15 +1,9 @@
 import { getActiveEditor } from "../activeGraph";
 
-// THE input-cable pruning loop (SSOT). Every "this input socket is going away"
-// moment must drop the cables wired into it first; `sourceInvariants.test.ts`
-// pins that components don't hand-roll it again. The rules:
-//  • prune BEFORE the socket is hidden or removed — removeInput while a cable
-//    still references the socket is unsafe, and a hidden socket with a live
-//    cable is an invisible wire;
-//  • go through the ACTIVE editor — a node inside a composite drill-in edits
-//    its own graph, not the main one;
-//  • snapshot, then remove — removals mutate the connection list;
-//  • await each removal — every removeConnection is its own undo entry.
+// THE input-cable pruning SSOT (`sourceInvariants.test.ts` pins that components don't
+// hand-roll it): prune BEFORE the socket is hidden or removed, go through the ACTIVE
+// editor (a drill-in node edits its own graph), snapshot before removing, and await
+// each removal (each is its own undo entry).
 
 /** Remove every cable wired INTO the given input keys of `nodeId`. `gone` is the
  *  set of departing keys, or a predicate over the target-input key for the

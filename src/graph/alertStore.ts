@@ -1,6 +1,3 @@
-// Fired-alert log: a screen-fixed list of recent alert events, the companion to
-// pinStore for the right-side HUD. The log is transient (not persisted).
-
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { pushNotice, type NoticeTone } from "./noticeStore";
@@ -56,10 +53,7 @@ export const alertStore = {
   version,
 };
 
-/**
- * Raise an alert: log it to the HUD panel AND surface a toast of the matching
- * tone. The single entry point.
- */
+/** The single entry point: logs to the HUD panel AND raises a matching-tone toast. */
 export function fireAlert(e: Omit<AlertEvent, "id" | "time">): void {
   alertStore.push(e);
   pushNotice(e.message, ALERT_TONE[e.kind]);

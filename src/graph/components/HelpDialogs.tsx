@@ -4,8 +4,8 @@ import { CloseIcon } from "./CloseIcon";
 import pkg from "../../../package.json";
 import "./helpDialogs.css";
 
-// ── What's New slides — the [slide]-tagged headliners from
-//    docs/release-notes-features.md. Keep in sync with WHATS_NEW_VERSION. ──
+// The [slide]-tagged headliners from docs/release-notes-features.md — keep them in
+// sync with WHATS_NEW_VERSION.
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {

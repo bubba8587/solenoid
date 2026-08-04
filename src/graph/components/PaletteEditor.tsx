@@ -17,8 +17,7 @@ import "./PaletteEditor.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-// Each palette slot's semantic role — what recoloring it changes. Slot ids are
-// opaque (see palette.ts), so a human role reads better than "lime".
+// Slot ids are opaque, so each slot's role is spelled out here.
 const SLOT_ROLES: { slot: PaletteSlot; label: string }[] = [
   { slot: "gold",      label: "Number" },
   { slot: "lime",      label: "Text" },
@@ -36,13 +35,8 @@ const SLOT_ROLES: { slot: PaletteSlot; label: string }[] = [
 
 type Draft = Record<PaletteSlot, string>;
 
-/**
- * The custom-palette editor. A modal you open from Settings and Save/Cancel
- * out of. Edits live in a local DRAFT that previews ONLY in the sample — the whole
- * app is retinted once on Save, never live on every color-drag tick. The sample is
- * the REAL node / group / note chrome (their actual classes + CSS), colored from the
- * draft via inline vars, so it looks exactly like the canvas will.
- */
+/** Edits live in a local DRAFT that previews only in the sample — the app is retinted once
+ *  on Save, never on every color-drag tick. The sample uses the REAL node chrome + CSS. */
 export function PaletteEditorModal() {
   const open = useSyncExternalStore(paletteEditorPanel.subscribe, paletteEditorPanel.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -50,7 +44,6 @@ export function PaletteEditorModal() {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(open, panelRef);
 
-  // Re-seed the draft from the saved custom map each time the editor opens.
   useEffect(() => { if (open) setDraft(paletteStore.customMap()); }, [open]);
 
   useEscapeToClose(() => paletteEditorPanel.close(), open);
@@ -134,7 +127,7 @@ function PaletteSample({ draft }: { draft: Draft }) {
   const nodeAccent = themeAccent(draft.blue, mode);
   const nodeAccentDark = darkenAccent(draft.blue);
   const nc = themeAccent(draft.pink, mode);
-  const numberColor = themeAccent(draft.gold, mode); // the sample node's output socket
+  const numberColor = themeAccent(draft.gold, mode);
   return (
     <div className="sol-pal-sample">
       <div

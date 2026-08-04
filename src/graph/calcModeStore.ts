@@ -1,6 +1,5 @@
-// Calculation mode: Excel's Automatic vs Manual, PLUS a third Solenoid-only mode,
-// Sketch. This store stays dependency-free (process.ts imports IT, one-way) —
-// switching back to Automatic triggers the catch-up recompute at the call site.
+// Calculation mode (auto / manual / the Solenoid-only sketch). Must stay
+// dependency-free — process.ts imports IT, one way.
 import { createNotifier } from "./storeKit";
 
 export type CalcMode = "auto" | "manual" | "sketch";
@@ -35,9 +34,8 @@ export const calcModeStore = {
   /** useSyncExternalStore snapshot — changes on any mode/dirty transition. */
   version: _notifier.version,
 
-  /** Switch mode. Returns true when it actually changed (the caller runs the
-   *  catch-up recompute when switching to "auto" or "sketch" — both recompute
-   *  live, so a stale dirty flag from Manual is moot going forward). */
+  /** Returns true when the mode actually changed — the caller owes a catch-up
+   *  recompute when switching to "auto" or "sketch". */
   setMode(m: CalcMode): boolean {
     if (_mode === m) return false;
     _mode = m;
@@ -57,15 +55,12 @@ export const calcModeStore = {
     if (_dirty) { _dirty = false; _notifier.notify(); }
   },
 
-  /** True only while sketch mode is selected AND no forced-exact pass is in
-   *  flight — the gate frame-verb execution (frameBackend.ts) checks before
-   *  sampling a source. */
+  /** The gate frame-verb execution checks before sampling: sketch selected AND no
+   *  forced-exact pass in flight. */
   sketchActive: (): boolean => _mode === "sketch" && _forceExact === 0,
 
-  /** Bracket a forced-exact recompute (F9 / Calculate Now — see `requestRecalc`
-   *  in process.ts): sketch mode's sampling is suppressed for the pass's
-   *  duration, so it always runs on the full data even while sketch stays the
-   *  selected mode afterward. */
+  /** Bracket a forced-exact recompute (F9): sketch sampling is suppressed for the
+   *  pass, so it runs on full data while sketch stays selected. */
   beginForceExact(): void { _forceExact++; },
   endForceExact(): void { _forceExact = Math.max(0, _forceExact - 1); },
 };

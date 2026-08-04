@@ -13,9 +13,7 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
   const [expr, setExpr] = useState(node.expr);
   const [, forceUpdate] = useState(0);
 
-  // Keep local expr in sync when the node changes elsewhere — undo/redo, or an
-  // edit made in the formula popup (which mutates the node + calls area.update,
-  // re-rendering this component).
+  // Resync when the node changes elsewhere — undo/redo, or the formula popup.
   useEffect(() => {
     if (node.expr !== expr) setExpr(node.expr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,8 +36,7 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
 
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Expression" cornerBadge={lockBadge}>
-      {/* Expression infers its inputs from the formula text, so it has no formula
-          socket — just the rendered box. */}
+      {/* Expression infers its inputs from the text, so there is no formula socket. */}
       <FormulaField
         value={expr}
         onChange={handleExprChange}
@@ -56,8 +53,7 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
       <ResultTypeToggle node={node} dim="combo" />
-      {/* cachedResult is value-polymorphic (number | string | their lists |
-          error); ValueDisplay already branches on each of those shapes. */}
+      {/* cachedResult is value-polymorphic; ValueDisplay branches on each shape. */}
       <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
     </NodeShell>
   );

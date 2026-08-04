@@ -1,5 +1,4 @@
 // Barrel re-export — mirrors rete-nodes.ts for node classes.
-// To add a new node: create the component file, add one line below.
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────
 export { SocketComponent } from "./SocketComponent";
@@ -196,9 +195,7 @@ export { GroupComponent } from "./GroupNode";
 // ─── Composite (computing subgraph container) ──────────────────────────────────
 export { CompositeComponent, CompositeInputMarkerComponent, CompositeOutputMarkerComponent } from "./CompositeNode";
 // CompositeEditorOverlay is deliberately NOT re-exported here: it imports
-// nodeRegistry (for the drill-in's render preset), and nodeRegistry imports
-// this barrel — a barrel export would close a module-init cycle (TDZ on
-// whatever component the registry touches first). Import it from its file.
+// nodeRegistry, which imports this barrel — that closes a module-init cycle (TDZ).
 
 // ─── Complex numbers ──────────────────────────────────────────────────────────
 export { ComplexFromComponent } from "./ComplexFromNode";

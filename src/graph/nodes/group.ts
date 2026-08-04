@@ -1,7 +1,6 @@
 import { ClassicPreset } from "rete";
 
-// A visual container wrapping a set of member nodes. A real Rete node (selection,
-// drag, persistence, copy/paste) with no sockets when expanded.
+// A real Rete node (selection, drag, persistence) with no sockets when expanded.
 
 export class GroupNode extends ClassicPreset.Node {
   label: string;

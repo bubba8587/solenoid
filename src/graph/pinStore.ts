@@ -1,9 +1,5 @@
-// Pinned value chips: a screen-fixed HUD of a few nodes' live values, readable
-// while you pan/zoom or isolate elsewhere. We pin the VALUE (label + live output
-// read from cableValueStore), NOT the rete node view — re-parenting a live node
-// element would break socket measurement and drag handling.
-//
-// Persisted additively in SavedGraph (like standoffs). One pin per node.
+// A pin holds the VALUE, never the rete node view — re-parenting a live node element
+// would break socket measurement and drag handling. One pin per node.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -29,7 +25,6 @@ export const pinStore = {
     notify();
   },
 
-  /** Drop a node's pin (also the noderemoved cleanup — see registration below). */
   remove(nodeId: string): void {
     const next = _pins.filter((p) => p.nodeId !== nodeId);
     if (next.length !== _pins.length) { _pins = next; notify(); }
@@ -52,12 +47,9 @@ export const pinStore = {
   version,
 };
 
-/** Pin (or unpin) a node's primary output value to the HUD. The one place that
- *  resolves a node id → (nodeId, outputKey): shared by the node right-click menu
- *  (Canvas) and the value popups' Pin button. A group has no single output — it
- *  pins with an empty key, and the chip shows the group's readouts instead. Tests
- *  the constructor NAME (not `instanceof`) so a Vite hot-swap of the class doesn't
- *  silently stop matching live node instances. */
+/** The ONE place resolving a node id → (nodeId, outputKey); a group has no single
+ *  output and pins with an empty key. Tests the constructor NAME, not `instanceof`,
+ *  so a Vite hot-swap can't silently stop matching live instances. */
 export function pinNodeValue(nodeId: string): void {
   const node = getEditor()?.getNode(nodeId);
   if (!node) return;
@@ -66,7 +58,5 @@ export function pinNodeValue(nodeId: string): void {
   if (outputKey) pinStore.toggle(nodeId, outputKey);
 }
 
-// A deleted node drops its pin — same lifecycle convention as the other
-// node-keyed stores (nodeStoreRegistry).
 registerNodeForget((nodeId) => pinStore.remove(nodeId));
 registerNodeForgetAll(() => pinStore.clear());

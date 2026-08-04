@@ -1,10 +1,5 @@
-// Add-menu search scoring. The searchable text for a leaf is deliberately WIDER
-// than what's shown:
-// the label + description + Excel function names, PLUS the ancestor category path
-// (so "arithmetic" finds the Add/Subtract/… leaves under the Arithmetic category,
-// and "table input" finds the leaf labeled "Table" under the Input category),
-// the kebab `type` id turned into words ("table-input" → "table input"), and an
-// optional explicit `keywords` string for synonyms the label doesn't carry.
+// Add-menu search scoring. A leaf's searchable text is deliberately WIDER than what
+// is shown — label, description, Excel names, category path, kebab type, keywords.
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { fuzzyScore, fieldScore } from "./fuzzy";
@@ -22,16 +17,9 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 /** A leaf plus the labels of the categories it lives under (outermost first). */
 export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };
 
-/** Flatten the catalog tree to leaves, PLUS a row per hidden op.
- *
- *  A node whose ops are collapsed onto one leaf (`nodeOps.ts`) shows `{ }` in the
- *  menu, but every one of those ops is still findable here as its own row — "Chart:
- *  Column" — which creates the card already set to that op. Folding a family up is a
- *  navigation decision; it must never make an operation undiscoverable.
- *
- *  The rows are generated at SEARCH time rather than inserted into the tree, so
- *  nothing that walks the catalog (the parity ratchet, the copy lint, the socket
- *  filter) starts counting them as extra nodes. */
+/** Flatten the catalog to leaves, PLUS a row per hidden op — folding a family onto
+ *  one leaf must never make an op unfindable. The rows are generated at SEARCH time,
+ *  never inserted into the tree, so catalog walkers don't count them as extra nodes. */
 export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
   const out = flattenTree(entries, ancestors);
   for (const { leaf, categoryPath } of [...out]) {
@@ -58,9 +46,8 @@ function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
 
-// "+ Add" / "× Multiply" → "Add" / "Multiply". An op-glyph prefix on the label
-// otherwise demotes an exact query ("add") to the word-start tier, letting
-// "Add Column" (prefix tier) outrank the Add node itself.
+// An op-glyph prefix ("+ Add") otherwise demotes an exact query to the word-start
+// tier, letting "Add Column" outrank the Add node itself.
 function stripGlyphPrefix(label: string): string {
   return label.replace(/^[^\p{L}\p{N}]+\s*/u, "");
 }
@@ -74,10 +61,8 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const haystack = `${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`;
   const s = fuzzyScore(query, haystack);
   if (s === null) return null;
-  // Tiered bonus = the strongest tier among: the label, the label+category combo
-  // (so "table input" EXACT-matches "Table Input" for a leaf labeled "Table"
-  // under the Input category), the kebab type, keywords, and Excel names (Excel
-  // weighed slightly under the rest so an exact label still wins a tie).
+  // Strongest tier across the fields; Excel names weigh slightly under the rest so
+  // an exact label still wins a tie.
   const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   const bare = stripGlyphPrefix(leaf.label);
   if (bare && bare !== leaf.label) fields.push(bare);
@@ -104,13 +89,9 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
   return scored.map((x) => x.leaf);
 }
 
-// Quick-wire drops a cable on empty canvas and needs the Add menu narrowed to
-// nodes that can actually receive the dragged value. There's no static
-// socket-type metadata on a catalog leaf, so the SET of socket types is read off a
-// throwaway `leaf.create()` (the same constructor a real pick calls) — but a node
-// type's INITIAL sockets are deterministic per catalog `type`, so that signature is
-// memoized: the first drop instantiates each leaf once, every later drop reuses the
-// cached type set and only re-runs the (cheap) per-origin compatibility check.
+// Quick-wire narrows the Add menu by socket type, which a leaf carries no metadata
+// for: the types come off a throwaway `leaf.create()`, memoized because a node
+// type's INITIAL sockets are deterministic per catalog `type`.
 
 type PortLike = { socket?: unknown };
 type NodeLike = {

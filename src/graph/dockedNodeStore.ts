@@ -28,8 +28,8 @@ export const dockedNodeStore = {
     }
     return result;
   },
-  /** Registry forget: the node may be the DOCKED FC (its own entry) or a HOST
-   *  (every FC docked to it undocks — the relationship is dead either way). */
+  /** Registry forget: the node may be the DOCKED FC or a HOST, and every relationship
+   *  it takes part in is dead either way. */
   removeForNode(nodeId: string): void {
     let changed = _store.delete(nodeId);
     for (const [id, rel] of [..._store]) {
@@ -45,6 +45,5 @@ export const dockedNodeStore = {
   subscribe,
 };
 
-// Registered like every node-keyed store (nodeStoreRegistry / STORE-1).
 registerNodeForget((nodeId) => dockedNodeStore.removeForNode(nodeId));
 registerNodeForgetAll(() => dockedNodeStore.clear());

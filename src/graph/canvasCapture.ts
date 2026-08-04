@@ -1,20 +1,10 @@
 import { getArea } from "./process";
 
-// ─── Canvas image capture — for static export, NOT the live renderer ──────────
-// The live HTML-in-Canvas renderer (htmlCanvasRenderer.ts) draws real node DOM via
-// `ctx.drawElementImage`, a WICG API behind a Chrome flag
-// (--enable-blink-features=CanvasDrawElement) — unusable for a portable exported
-// .html file a recipient opens in ANY browser. This is a SEPARATE, self-contained
-// capture path built for that: serialize the live canvas viewport DOM into an SVG
-// `<foreignObject>`, rasterize it through an off-screen `<canvas>`. Best-effort —
-// complex CSS (backdrop-filter, some gradients) can render slightly differently
-// than the live DOM, which is acceptable for a static export snapshot.
+// Capture for STATIC EXPORT, deliberately separate from the live HTML-in-Canvas
+// renderer, whose `drawElementImage` needs a Chrome flag a recipient won't have.
 
-/** Inline every same-origin stylesheet rule into one <style> text block — a
- *  foreignObject rasterized via an off-document Image element doesn't inherit the
- *  page's live stylesheets, so the clone needs its CSS travelling with it. A
- *  cross-origin sheet (a CDN font, if any) throws on .cssRules access; skipped
- *  rather than failing the whole capture. */
+/** Inline every same-origin stylesheet rule — a rasterized foreignObject inherits no
+ *  live stylesheets; an unreadable cross-origin sheet is skipped, not fatal. */
 function inlineStylesheetText(): string {
   const chunks: string[] = [];
   for (const sheet of Array.from(document.styleSheets)) {
@@ -36,13 +26,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Rasterizes the CURRENT canvas viewport (what's on screen, not the whole
- * infinite world) into a PNG data URL. Returns null if the canvas area isn't
- * mounted or the browser taints/refuses the foreignObject rasterization (some
- * older WebKit builds do, for cross-origin-tainted external content — none of
- * ours is, but the guard keeps export failing soft rather than throwing).
- */
+/** Rasterizes the CURRENT viewport (not the whole world) to a PNG data URL; null
+ *  when unmounted or the browser refuses the foreignObject, so export fails soft. */
 export async function captureCanvasImage(): Promise<string | null> {
   const container = getArea()?.container;
   if (!container) return null;
@@ -83,27 +68,15 @@ export async function captureCanvasImage(): Promise<string | null> {
   }
 }
 
-// Style properties that matter for how SVG marks/axes/text render. The exported
-// document ships only buildExportCss — NOT the app stylesheet — so anything a
-// chart gets from class rules or CSS custom properties (recharts text fill,
-// `var(--…)` colors) would silently recolor or vanish in the exported file.
-// Baking the COMPUTED values in as inline style makes the markup self-contained:
-// getComputedStyle returns concrete, var-free values, so `var(--…)` resolves
-// automatically.
+// The exported document ships no app stylesheet, so anything a chart takes from class
+// rules or `var(--…)` must be baked in as computed inline style.
 const SVG_STYLE_PROPS = [
   "fill", "stroke", "stroke-width", "stroke-dasharray", "opacity",
   "font-family", "font-size", "font-weight", "color",
 ] as const;
 
-/** Serialize a live, in-document SVG with its rendered styles baked in as inline
- *  `style`. Clone the tree, then walk ORIGINAL and CLONE in lockstep — a deep
- *  clone's `querySelectorAll("*")` document order is element-for-element identical
- *  to the original's — reading getComputedStyle off the original (computed style
- *  needs the element live in the DOM; the detached clone would return blanks) and
- *  writing onto the clone. A property already stated verbatim as a presentation
- *  attribute is skipped; a computed color usually normalizes to `rgb(…)` and so
- *  won't match its hex attribute — that just means it's inlined redundantly,
- *  which is bloat, not a bug. */
+/** Serialize a live in-document SVG with its rendered styles inlined; original and
+ *  clone are walked in lockstep because getComputedStyle is blank on a detached node. */
 export function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
   const clone = svgEl.cloneNode(true) as SVGSVGElement;
   const origs: Element[] = [svgEl, ...Array.from(svgEl.querySelectorAll("*"))];
@@ -122,12 +95,8 @@ export function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
   return clone.outerHTML;
 }
 
-/** Every currently-rendered `<svg>` belonging to a "visual" node (Chart/Sparkline/
- *  Gauge/Heatmap — the nodeCatalog "Visuals" group), as inline SVG markup with its
- *  node's display name. Rendered styles are baked in as inline attributes (see
- *  serializeSvgWithComputedStyles) so the markup survives without the app
- *  stylesheet. `includeNodeIds`, when given, keeps only charts on those nodes —
- *  the report-referenced set — instead of every chart on the canvas. */
+/** Every currently-rendered visual-node `<svg>` as self-contained markup with its
+ *  node's display name; `includeNodeIds` narrows to the report-referenced set. */
 export function captureChartSvgs(
   names: Map<string, string>,
   includeNodeIds?: ReadonlySet<string>,
@@ -139,8 +108,7 @@ export function captureChartSvgs(
     if (includeNodeIds && !includeNodeIds.has(id)) continue;
     const svgEl = view.element.querySelector("svg");
     if (!svgEl) continue;
-    // Skip icon-sized furniture (socket dots, chevrons, buttons) — a chart SVG is
-    // always the node's main content, well past a glyph's ~20px footprint.
+    // Skip icon-sized furniture — a chart SVG is always the node's main content.
     const box = svgEl.getBoundingClientRect();
     if (box.width < 40 || box.height < 40) continue;
     out.push({ name: names.get(id) ?? "Chart", svg: serializeSvgWithComputedStyles(svgEl) });

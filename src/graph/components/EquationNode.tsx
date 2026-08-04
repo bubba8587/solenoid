@@ -7,15 +7,9 @@ import { formulaPopup } from "../formulaPopupStore";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
-// Same measurement idea as MeasuredSocketRow's hook (NodeSocket.tsx) — a
-// center relative to .solenoid-node__content, so the dots stay
-// header-independent. Local copy because this row carries TWO sockets — the
-// variable's input on the left edge and its output on the right — which the
-// single-socket MeasuredSocketRow can't. Unlike that hook it centers on the
-// HERO VALUE BOX, not the row: the label sits stacked ABOVE the box inside the
-// row, so the row's own center would land between label and box. The box's
-// offsetParent is the content wrapper (the row is deliberately NOT a
-// positioning context), so its offsetTop is already content-relative.
+// A local MeasuredSocketRow because this row carries TWO sockets, and it centers on
+// the HERO VALUE BOX, not the row — the label stacks above the box, so the row's own
+// center would land between them. The row must NOT become a positioning context.
 function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -29,19 +23,15 @@ function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined
   return top;
 }
 
-// The structural slice of a node these rows need — any acausal card (Equation,
-// TVM, the Triangle Solver) satisfies it.
+// The structural slice these rows need; any acausal card satisfies it.
 export interface AcausalRowNode {
   id: string;
   inputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
   outputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
 }
 
-// One variable = one hero row: label, value box (chips for lists, error badge
-// for #CODE!), input socket on the left edge and output socket on the right —
-// the acausal card in miniature. The `--output` modifier keeps the rows visible
-// when the node is collapsed. Shared by every acausal card (Equation, TVM,
-// Triangle Solver) — the CURRENT Equation design, don't rebuild it per node.
+// One variable = one hero row with sockets on BOTH edges. Shared by every acausal
+// card — don't rebuild it per node. `--output` keeps rows visible when collapsed.
 export function EquationVarRow({
   node, emit, varKey, value, solved, label, desc,
 }: {
@@ -79,8 +69,7 @@ export function EquationVarRow({
   );
 }
 
-// A single-OUTPUT hero row measured the same way — the Check row, and the
-// derived rows on acausal cards (Triangle Solver's Area / Perimeter / Valid).
+// A single-OUTPUT hero row measured the same way.
 export function EquationOutRow({
   node, emit, socketKey, label, value,
 }: {
@@ -111,9 +100,7 @@ export function EquationComponent({ data: node, emit, config }: NodeProps<Equati
 }) {
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Equation" hideOutputSockets>
-      {/* The relation, KaTeX-rendered; sockets derive from its variables. Clicking
-          opens the formula popup — the same syntax-highlighted editor Expression
-          uses. No "=" prefix: the equation text carries its own. */}
+      {/* No "=" prefix — the equation text carries its own. */}
       <FormulaField
         value={node.expr}
         onChange={() => {}}

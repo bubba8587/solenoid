@@ -1,8 +1,5 @@
 import { ClassicPreset } from "rete";
 
-// ─── Socket data types ────────────────────────────────────────────────────────
-// The regular types form an (element × dimension) lattice — see FAMILIES below;
-// the accept-sets / areCompatible / canConnect are DERIVED from it, not hand-written.
 export type SocketDataType =
   | "number"    // scalar number
   | "list"      // number[]
@@ -36,8 +33,7 @@ export type SocketDataType =
   | "any"       // element-agnostic SCALAR — rank-0 wildcard rung
   | "trueany";  // the TRUE wildcard/supremum
 
-// Values are CSS variables (defined in App.css) so the colors theme live.
-// Used as fills/strokes/inline colors everywhere; never parsed as hex.
+// CSS variables (App.css) so the colors theme live — never parsed as hex.
 export const SOCKET_COLORS: Record<SocketDataType, string> = {
   number:   "var(--sock-number)",   // amber         — circle
   list:     "var(--sock-list)",     // dark amber    — square (array of number)
@@ -72,9 +68,8 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   trueany:  "var(--sock-any)",      // gray          — HOLLOW circle (border only; anything)
 };
 
-// Human-readable type name for a socket dot's hover title — the only
-// colorblind-accessible path to "what type is this" (color alone isn't
-// enough). Kept terse; the Socket Legend panel carries the fuller picture.
+// A socket dot's hover title — the only colorblind-accessible path to "what
+// type is this".
 export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   number:       "Number",
   list:         "List (number)",
@@ -109,7 +104,6 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   trueany:      "Anything",
 };
 
-// ─── The (element × dimension) lattice ────────────────────────────────────────
 type Dim = "scalar" | "list" | "combo" | "matrix";
 
 const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
@@ -123,9 +117,8 @@ const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
 const DIM_RANK: Record<Dim, number> = { scalar: 0, list: 1, combo: 1, matrix: 2 };
 const DIMS: Dim[] = ["scalar", "list", "combo", "matrix"];
 
-/** May a value of dim `dOut` flow into an input of dim `dIn`? Used for BOTH the
- *  within-family accept-sets and the logical↔number bridge, so the combo→scalar
- *  exception can't drift out of one of them. */
+/** May dim `dOut` flow into dim `dIn`? Shared by the within-family accept-sets
+ *  and the logical↔number bridge so the combo→scalar exception can't drift. */
 function dimFlows(dOut: Dim, dIn: Dim): boolean {
   return DIM_RANK[dOut] <= DIM_RANK[dIn] || (dOut === "combo" && dIn === "scalar");
 }
@@ -135,27 +128,24 @@ const MATRIX_TYPES = new Set<SocketDataType>([
   "table", "strtable", "datetable", "complextable", "logicaltable", "anytable",
 ]);
 
-// Every concrete family value type — i.e. any value of rank ≤ 2. Excludes `frame`
-// and `lambda`, which are structurally distinct.
+// Every concrete family value type (rank ≤ 2) — excludes the structurally
+// distinct `frame` and `lambda`.
 const FAMILY_VALUE_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => Object.values(fam)),
 );
 
-// Rank-≤1 family values (scalar / list / combo of every family).
 const RANK1_VALUE_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.list, fam.combo]),
 );
-// Rank-0-capable family values: every family's scalar, plus its combo.
 const SCALAR_COMBO_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.combo]),
 );
-// The concrete 1-D list + combo types.
 const LIST_COMBO_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => [fam.list, fam.combo]),
 );
 
-/** Derived directional accept-sets: for each lattice type, which OTHER types
- *  (same family, lower-or-equal rank) widen INTO it. Built once at module load. */
+/** Derived directional accept-sets: which same-family, lower-or-equal-rank
+ *  types widen INTO each lattice type. */
 const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() => {
   const map: Partial<Record<SocketDataType, SocketDataType[]>> = {};
   for (const fam of Object.values(FAMILIES)) {
@@ -165,39 +155,34 @@ const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() =>
         .map((dof) => fam[dof]);
     }
   }
-  // Cross-family coercion: logical ↔ number — the ONE cross-family bridge.
-  // coerceInputs does the runtime conversion; this just permits the connection.
+  // The ONE cross-family bridge — coerceInputs does the runtime conversion.
   const NUM = FAMILIES.number, LOG = FAMILIES.logical;
   for (const di of DIMS) {
     for (const dof of DIMS) {
       if (dimFlows(dof, di)) {
-        map[NUM[di]]!.push(LOG[dof]); // logical output → numeric input
-        map[LOG[di]]!.push(NUM[dof]); // numeric output → logical input
+        map[NUM[di]]!.push(LOG[dof]);
+        map[LOG[di]]!.push(NUM[dof]);
       }
     }
   }
   return map;
 })();
 
-/** The 2-D socket types — homogeneous matrices, the 2-D wildcard, the
- *  heterogeneous frame, and the recursive cube (tabular at its top level).
- *  Public predicate for "is this value 2-D?". */
+/** Is this type 2-D? — matrices, the 2-D wildcard, `frame`, and `cube`. */
 export function is2DType(dt: SocketDataType): boolean {
   return MATRIX_TYPES.has(dt) || dt === "frame" || dt === "cube";
 }
 
-/** Does this socket type carry date serials? A date serial is just a number, so the
- * SOCKET TYPE is the only signal that a value should format as a date — every
- * "is this a date?" check must agree, so they all route through here. */
+/** A date serial is just a number, so the SOCKET TYPE is the only date signal —
+ * every "is this a date?" check must route through here. */
 export function isDateType(dt: SocketDataType): boolean {
   return dt === "date" || dt === "datelist" || dt === "datecombo" || dt === "datetable";
 }
 
-export type ElementFamily = keyof typeof FAMILIES; // number | string | date | complex | logical
+export type ElementFamily = keyof typeof FAMILIES;
 
 /** The ELEMENT family of a lattice type (any rank), or null for the structural
- *  types outside the 5-family lattice (frame, cube, anytable, chart, lambda,
- *  any, trueany). Derived from FAMILIES so a new family/dim needs no edit here. */
+ *  types outside the 5-family lattice. */
 export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
   for (const [fam, dims] of Object.entries(FAMILIES)) {
     if (Object.values(dims).includes(dt)) return fam as ElementFamily;
@@ -205,31 +190,23 @@ export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
   return null;
 }
 
-/** The COMBO rung of a type's element family — "a scalar OR a list of F, and which
- *  one isn't knowable statically". That is the honest output type for an
- *  element-preserving EXTRACTION whose rank depends on runtime arguments: INDEX
- *  over a `datelist` yields one date for `Row 2` and the whole column for `Row [all]`,
- *  and `datecombo` is exactly the type that feeds BOTH a `date` and a `datelist`
- *  input. `null` for a type with no element family (frame / cube / the wildcards),
- *  where the extracted value genuinely could be anything. */
+/** The COMBO rung of a type's element family — the honest output type for an
+ *  element-preserving EXTRACTION whose rank depends on runtime arguments (INDEX);
+ *  `null` for a type with no element family. */
 export function comboOfType(dt: SocketDataType): SocketDataType | null {
   const fam = elementFamilyOf(dt);
   return fam ? FAMILIES[fam].combo : null;
 }
 
-/** The COMBO rung of a NAMED element family — `comboOfType`'s sibling for a caller
- *  that already holds a family instead of a socket type. A frame column's `type`
- *  (`FrameColType`) IS a family name, so an extraction out of a named column resolves
- *  through here (INDEX over a frame: which family you get is decided by the COLUMN,
- *  not by the container's socket, which is the family-less `frame`). `null` for a
- *  name outside the lattice. */
+/** `comboOfType` for a caller holding a family name instead of a socket type — a
+ *  frame column's `type` IS a family name, so an extraction out of a named column
+ *  resolves through here. */
 export function comboOfFamily(fam: string): SocketDataType | null {
   return FAMILIES[fam]?.combo ?? null;
 }
 
-/** The lattice rank of a type: 0 scalar, 1 list/combo, 2 matrix — including the
- *  rank-bearing wildcard rungs any(0)/anylist(1)/anytable(2). null for the rankless
- *  structural types (frame/cube/lambda/chart/document/trueany). */
+/** Lattice rank — 0 scalar, 1 list/combo, 2 matrix (incl. the rank-bearing
+ *  wildcard rungs); null for the rankless structural types. */
 export function latticeRank(dt: SocketDataType): number | null {
   if (dt === "any") return 0;
   if (dt === "anylist" || dt === "anycombo") return 1;
@@ -241,38 +218,28 @@ export function latticeRank(dt: SocketDataType): number | null {
   return null;
 }
 
-/** The type an adoptive INPUT should take when a cable of type `wired` lands, given
- *  the port's declared `base`. A rank-bearing wildcard base (anylist / anytable) KEEPS
- *  its rank and adopts only the wired ELEMENT family, so a lower-rank value widening in
- *  (a scalar number → a Concat-Lists `anylist` input) reads as a LIST square, not a
- *  scalar circle — the socket still represents a list. Everything else (trueany / any
- *  bases, a same-or-higher-rank wire, a non-family structural type) adopts verbatim. */
+/** The type an adoptive INPUT takes when a cable lands: a rank-bearing wildcard
+ *  base (anylist / anytable) KEEPS its rank and adopts only the wired ELEMENT
+ *  family; everything else adopts verbatim. */
 export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): SocketDataType {
   const fam = elementFamilyOf(wired);
   if (base === "anylist" || base === "anytable") {
     const baseRank = latticeRank(base);
     const wiredRank = latticeRank(wired);
-    // A FAMILY-LESS wire (another wildcard, or a frame/cube) carries nothing to adopt,
-    // so the port KEEPS ITS BASE. Matches `projectTypeToBase`'s family-less branch, so
-    // the two agree on every connectable pair (machine-checked in socketConnect.test.ts).
+    // A FAMILY-LESS wire carries nothing to adopt, so the port KEEPS ITS BASE —
+    // must match `projectTypeToBase`'s family-less branch (socketConnect.test.ts).
     if (fam === null || baseRank === null || wiredRank === null) return base;
     if (wiredRank >= baseRank) return wired;
     return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
   }
-  // The rank-0/combo wildcard bases (`any`, `anycombo`, `anydata`) keep the SAME
-  // family-less rule.
+  // The rank-0/combo wildcard bases keep the SAME family-less rule.
   if ((base === "any" || base === "anycombo" || base === "anydata") && fam === null) return base;
-  // Everything else (a `trueany` base, a family-typed wire) adopts verbatim.
   return wired;
 }
 
-/** The OUTPUT-side sibling of adoptTypeForBase: project a resolved passthrough
- *  type onto an adoptive OUTPUT's declared wildcard rank, in BOTH directions —
- *  so a rank-crossing element-preserving reshape adopts the element FAMILY at
- *  the output's own rank (WRAPROWS: strlist in → strtable out on an `anytable`
- *  base; flatten: strtable in → strlist out on an `anylist` base). A family-less
- *  resolution (an un-adopted wildcard, a frame) reverts to the declared base;
- *  a non-wildcard base (trueany) adopts verbatim. */
+/** The OUTPUT-side sibling of `adoptTypeForBase`: project a resolved passthrough
+ *  type onto an adoptive output's declared wildcard rank, in BOTH directions
+ *  (WRAPROWS widens, flatten narrows). */
 export function projectTypeToBase(base: SocketDataType, t: SocketDataType): SocketDataType {
   if (base !== "anylist" && base !== "anytable") return t;
   const baseRank = latticeRank(base);
@@ -283,12 +250,9 @@ export function projectTypeToBase(base: SocketDataType, t: SocketDataType): Sock
   return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
 }
 
-/**
- * DIRECTIONAL: can a value from an OUTPUT of type `out` flow into an INPUT of
- * type `in`? The one primitive both areCompatible and canConnect build on.
- * Narrowing is simply absent from every accept-set, so it's blocked here without
- * a separate dimension rule.
- */
+/** DIRECTIONAL: may an OUTPUT of type `out` flow into an INPUT of type `in`? The
+ *  one primitive under areCompatible/canConnect; narrowing is blocked by its
+ *  absence from every accept-set, not by a separate rule. */
 function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === outT) return true;
   if (inT === "trueany" || outT === "trueany") return true;
@@ -302,9 +266,8 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
   if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // `anydata` — the rank-≤2 element-agnostic wildcard (SOCK-9, D23). An
-  // `anycombo`/`any` OUTPUT already reached every non-object input via their own
-  // permissive lines above, so only `anylist`/`anytable` outputs need naming here.
+  // `anydata` (SOCK-9, D23): only `anylist`/`anytable` outputs need naming —
+  // `anycombo`/`any` outputs already reached every non-object input above.
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   // A 1-D list widens into a `frame` as a single ROW (CSV-consistent — transpose for
@@ -343,25 +306,19 @@ export class SolenoidSocket extends ClassicPreset.Socket {
   }
 }
 
-/** A SolenoidSocket whose dataType can change after construction — for a node
- *  that ADOPTS the type flowing into it (Format Controller, Conduit lanes). Each
- *  such node owns its own instances so retyping never touches a shared singleton.
- *  The base declares `dataType` readonly for callers; the owner mutates it here. */
+/** A SolenoidSocket whose dataType can change after construction (FC, Conduit
+ *  lanes) — each node owns its instances so a retype never hits a shared one. */
 export class MutableSocket extends SolenoidSocket {
   setType(type: SocketDataType): void {
     (this as unknown as { dataType: SocketDataType }).dataType = type;
   }
 }
 
-/** A `trueany` PLACEHOLDER socket that ADOPTS the type of the cable plugged into
- *  it and reverts to `trueany` on disconnect — see `reconcileTrueAnyTypes`
- *  (trueAnyAdopt.ts). Marker subclass: the central reconcile pass finds adopting
- *  sockets by `instanceof`, so a node opts a port in just by constructing one.
- *  One instance per port, never shared (a retype must not leak across cards). */
+/** A port that ADOPTS its cable's type and reverts on disconnect; the reconcile
+ *  pass finds these by `instanceof`, one instance per port, never shared. */
 export class AdoptiveSocket extends MutableSocket {
-  /** The type this port reverts to when unwired. A narrower base (e.g. `anytable`,
-   *  `anylist`) keeps the port RESTRICTED to that rung's acceptance while still
-   *  adopting the wired cable's CONCRETE type. */
+  /** The type this port reverts to when unwired; a narrower base keeps the port
+   *  restricted to that rung while still adopting the wired CONCRETE type. */
   constructor(public readonly base: SocketDataType = "trueany") {
     super(base);
   }
@@ -398,20 +355,14 @@ export const documentSocket = new SolenoidSocket("document");
 export const anySocket     = new SolenoidSocket("any");
 export const trueAnySocket = new SolenoidSocket("trueany");
 
-/** The two RANKLESS wildcard rungs — no family AND no rank. Every "walk past
- *  untyped passthrough sockets" check (type-default display, conduit tracing)
- *  routes through here. NOTE: this is deliberately narrower than
- *  `isWildcardRung` — a rank-bearing wildcard (`anylist` &c.) is a real
- *  dimensional constraint, so a rank-sensitive check must NOT treat it as
- *  "untyped". */
+/** The two RANKLESS wildcard rungs — deliberately narrower than `isWildcardRung`:
+ *  a rank-bearing wildcard is a real dimensional constraint, not "untyped". */
 export function isWildcardType(dt: SocketDataType): boolean {
   return dt === "any" || dt === "trueany";
 }
 
-/** EVERY wildcard rung — the types that carry no ELEMENT FAMILY, whether or not
- *  they pin a rank. Use this, not `isWildcardType`, for FAMILY resolution: only
- *  `frame`/`cube`/`lambda`/`chart`/`document` are genuinely resolved non-family
- *  types, and they stay resolvable. */
+/** EVERY wildcard rung — the types carrying no ELEMENT FAMILY. Use this, not
+ *  `isWildcardType`, for FAMILY resolution. */
 export function isWildcardRung(dt: SocketDataType): boolean {
   return isWildcardType(dt) || dt === "anycombo" || dt === "anylist"
     || dt === "anytable" || dt === "anydata";

@@ -1,19 +1,17 @@
-// Boundary analysis for the Isolate overlay: given a focus set, which connections
-// cross its boundary? Entry = an outside output feeding a focused input (rendered
-// on the LEFT); exit = a focused output feeding an outside input (rendered on the
-// RIGHT). Pure + testable; no editor/DOM.
+// Isolate-overlay boundary analysis: entry = an outside output feeding a focused
+// input (rendered LEFT); exit = a focused output feeding an outside input (RIGHT).
 
 export interface BoundaryCrossing {
   connId: string;
-  focusNodeId: string;   // the focused node at the boundary
-  focusSocket: string;   // its input socket (entry) or output socket (exit)
+  focusNodeId: string;
+  focusSocket: string;   // input socket on an entry, output socket on an exit
   externalNodeId: string;
   externalSocket: string;
 }
 
 export interface IsolateBoundary {
-  entry: BoundaryCrossing[]; // inbound: external output → focused input  (left)
-  exit: BoundaryCrossing[];  // outbound: focused output → external input (right)
+  entry: BoundaryCrossing[];
+  exit: BoundaryCrossing[];
 }
 
 type Conn = { id: string; source: string; sourceOutput: string; target: string; targetInput: string };
@@ -27,7 +25,7 @@ export function boundaryCrossings(
   for (const c of connections) {
     const sIn = focus.has(c.source);
     const tIn = focus.has(c.target);
-    if (sIn === tIn) continue; // both inside (internal) or both outside — not a boundary
+    if (sIn === tIn) continue;
     if (tIn) {
       entry.push({ connId: c.id, focusNodeId: c.target, focusSocket: c.targetInput, externalNodeId: c.source, externalSocket: c.sourceOutput });
     } else {

@@ -2,10 +2,8 @@ import { CABLE_SHAPES, useCableShape, type CableShape } from "./cableShape";
 import { useCableFlow } from "./cableFlowStore";
 import "./CableShapeSelector.css";
 
-// Schematic icons (not literal cable paths): exaggerated so the three shapes
-// stay distinct at icon size. Same two endpoints (S → T) for all three. The
-// span is near-square (32×28) so the diagonal reads ≈45° and the spline corner
-// stays tight.
+// Schematic, not literal cable paths: exaggerated so the three shapes stay distinct at icon
+// size, over a near-square span so the diagonal reads ≈45°.
 const S = { x: 0, y: 0 };
 const T = { x: 32, y: 28 };
 const MID_X = (S.x + T.x) / 2;
@@ -18,9 +16,8 @@ const SHAPE_ICON: Record<CableShape, string> = {
   straight: `M ${S.x},${S.y} L ${MID_X},${S.y} L ${MID_X},${T.y} L ${T.x},${T.y}`,
 };
 
-/** One cable-shape glyph — shared by the toolbar's segmented control and the
- *  collapsed Cable Inspector chip, so "a cable" is the same drawing everywhere.
- *  The ring's hollow fills with `--icon-bg` (set it on the host element). */
+/** Shared by the toolbar control and the collapsed Cable Inspector chip, so "a cable" is
+ *  one drawing; the ring's hollow fills with `--icon-bg`, set on the host element. */
 export function CableShapeIcon({ shape, className }: { shape: CableShape; className?: string }) {
   return (
     <svg className={className} viewBox="-7 -8 46 44" aria-hidden="true">
@@ -40,8 +37,6 @@ export function CableShapeIcon({ shape, className }: { shape: CableShape; classN
   );
 }
 
-/** Floating segmented control to pick the active cable shape. Lives in the
-*  top-left corner of the canvas. */
 export function CableShapeSelector() {
   const { shape, setShape } = useCableShape();
   const { flow, toggleFlow } = useCableFlow();

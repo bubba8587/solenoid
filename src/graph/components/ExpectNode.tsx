@@ -30,20 +30,13 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-/**
- * Expect — "Data Validation, generalized". Four opt-in checks against whatever
- * flows through; always pass-through (the value keeps moving even on failure).
- * A failure shows the shared red ErrorChip badge (not the output — that stays
- * the real value) and fires an Alert on the first occurrence of a NEW failure.
- */
+/** Always pass-through: a failed check badges an ErrorChip and fires an Alert, but the
+ *  output stays the real value. */
 export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   const connected = useConnectedInputs(data.id);
   const incoming = useIncomingSources(data.id);
-  // The checkboxes are CONTROLLED, so their `checked` must be React state — mutating
-  // the node property + processGraph doesn't re-render this component (the pass-through
-  // value is unchanged), so React would reset the box to its last-rendered value and
-  // the toggle would appear to do nothing. Mirror to state here; write to the node in
-  // the handler. (Same pattern the Format Controller uses — see nodeKit gotchas.)
+  // The checkboxes are CONTROLLED and the pass-through value never changes, so a node-only
+  // write wouldn't re-render — mirror to state here and write the node in the handler.
   const [checks, setChecks] = useState({
     checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
     checkRange: data.checkRange, checkRegex: data.checkRegex, checkAllowed: data.checkAllowed,
@@ -61,8 +54,7 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
     void processGraph(data.id);
   };
 
-  // A wired socket must never disappear (its cable endpoint would dangle), so a
-  // check's rows stay visible while connected even with the check toggled off.
+  // A wired socket must never disappear (dangling endpoint), so connected rows stay shown.
   const showRange = checks.checkRange || connected.has("min") || connected.has("max");
   const showRegex = checks.checkRegex || connected.has("pattern");
   const showAllowed = checks.checkAllowed || connected.has("allowed");

@@ -1,7 +1,5 @@
-// Clipboard writes, guarded. `navigator.clipboard` is undefined in a non-secure
-// context (a plain-http LAN preview) and its promise can reject (permissions,
-// blurred document). Falls back to the legacy execCommand path; resolves true only
-// when something actually copied (callers gate their "Copied" feedback on it).
+// `navigator.clipboard` is undefined in a non-secure context and can reject, so
+// this falls back to execCommand; true ONLY when something actually copied.
 export async function copyText(text: string): Promise<boolean> {
   try {
     if (typeof navigator !== "undefined" && navigator.clipboard) {

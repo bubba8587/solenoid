@@ -1,18 +1,5 @@
-// ─── Node ↔ formula parity measurement (the ONE source) ───────────────────────
-// The app has two surfaces for the same functions: the node catalog and the
-// expression/equation formula language. Nothing structurally connects them (a node
-// op is callable in a formula only if someone registered a native impl; a formula
-// name has a node only if someone built one), which is exactly why they drifted —
-// see `docs/formula-node-parity.md`.
-//
-// This module MEASURES the drift in both directions. It is imported by two callers
-// that must never disagree:
-//   • `scripts/formula-node-parity.ts` — the human-readable report (regenerates the
-//     numbers quoted in the doc);
-//   • `formulaNodeParity.test.ts` — the RATCHET, which pins today's gaps and fails
-//     CI when a new one appears.
-// Keep the measurement here, not in either caller: a report that computes the gap
-// differently from the test is how a ratchet silently stops ratcheting.
+// Node ↔ formula parity measurement, shared by the report script and the ratchet
+// test — keep it here, or the two compute the gap differently and stop ratcheting.
 
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
@@ -30,40 +17,29 @@ export interface ParityRow {
   excel: string[];
   /** Is any of those names (or the node's own label / ops) callable in a formula? */
   inFormula: boolean;
-  /** Is every EXCEL name this node stands in for dispatchable? False for a node with
-   *  no Excel names. Kept separate from `inFormula` on purpose: a node can be fully
-   *  reachable under its Solenoid name and STILL leave its Excel spelling answering
-   *  #NAME?, which is exactly what gap A is for. */
+  /** Is every EXCEL name this node stands in for dispatchable? Separate from
+   *  `inFormula`: a Solenoid-reachable node can still answer #NAME? in Excel spelling. */
   excelCovered: boolean;
 }
 
-// A leaf's `type` is a free-form node type, so `e.type === "category"` doesn't
-// discriminate the union on its own — the same predicates AddNodeMenu uses.
-/** The D19 2(a) formula name for a node label: despaced and uppercased, so
- *  "Rolling SUM" is ROLLINGSUM and "COUNT DISTINCT" is COUNTDISTINCT. The Tier 3
- *  registrations derive their names the same way, from the family OP_META tables. */
+/** The D19 2(a) formula name for a node label: despaced and uppercased; the Tier 3
+ *  registrations derive their names the same way. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
-/** The SSOT-8 quantifier, extracted so it is directly pinnable: a node claiming
- *  Excel names is `excelCovered` only when EVERY one of them dispatches. Empty
- *  claims are never covered (vacuous ≠ complete). */
+/** SSOT-8: a node claiming Excel names is covered only when EVERY one dispatches;
+ *  empty claims are never covered (vacuous ≠ complete). */
 export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
   return excel.length > 0 && excel.every(dispatches);
 }
 
-// Leaves the LANGUAGE itself covers: the four operator nodes (+ − × ÷ are the
-// formula surface's own operators), Comparison (= <> < > <= >=), and the two
-// formula HOSTS (Expression/Equation ARE the surface being measured). A name for
-// any of these would be noise.
+// Leaves the LANGUAGE itself covers: the operator nodes, Comparison, and the two
+// formula HOSTS (Expression/Equation ARE the surface being measured).
 const LANGUAGE_LEAVES = new Set([
   "arith-add", "arith-sub", "arith-mul", "arith-div", "comparison", "expression", "equation",
 ]);
 
-/** A PRESET-FORMULA leaf (a locked ExpressionNode with its `expr` baked in — the
- *  timesaver pattern, and most pack nodes): its formula equivalent is its OWN
- *  expr, typeable today, so a per-leaf function name would only rename it.
- *  Detected MECHANICALLY (instantiate, look for the locked formula) rather than
- *  by a hand-kept list — SSOT-3. */
+/** A PRESET-FORMULA leaf (a locked ExpressionNode): its formula equivalent is its
+ *  own expr, so it counts as covered. Detected mechanically, never listed (SSOT-3). */
 function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   try {
     const inst = leaf.create() as { expr?: unknown; locked?: unknown };
@@ -83,27 +59,17 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     const leaf: NodeCatalogEntry = e;
     if (leaf.hidden) continue;
     const excel = (leaf.excel ?? NODE_EXCEL[leaf.type] ?? []).map((x) => x.excel.toUpperCase());
-    // A Solenoid-native leaf is matched by its LABEL DESPACED — D19 decision 2(a),
-    // which is how "Rolling SUM" becomes ROLLINGSUM. Without the despace this
-    // under-reports every multi-word native the Tier 3 registrations cover.
-    //
-    // A COLLAPSED op family is a second case: its leaf label ("Pad", "Coalesce / Fill")
-    // names the family, not any one function, so the leaf is covered when every OP is
-    // callable — PADLEFT and PADRIGHT, not PAD. An op's formula name is its declared
-    // `fx` where the label is prose, else the despaced label.
-    // OPERATION-kind families only: an argument-kind family takes ONE formula name
-    // (the doc above), and its op labels are argument VALUES that can collide with
-    // unrelated dispatchable names — Group Lists' SUM/AVERAGE/MIN/MAX/COUNT all
-    // resolve to the plain aggregators, which would count the leaf "callable"
-    // while GROUPBY itself still answers #NAME?.
+    // An op family's leaf label names the family, so it is covered when every OP is
+    // callable. OPERATION-kind only: an argument-kind family's op labels are argument
+    // VALUES that collide with unrelated names (Group Lists' SUM/AVERAGE/…), which
+    // would count the leaf callable while GROUPBY itself answers #NAME?.
     const decl = opsFor(leaf.type);
     const ops = decl?.kind === "operation" ? decl.ops : undefined;
     const excelCovered = excelCoverage(excel, (x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))
-      // A leaf-level `fx` names the function(s) where the despaced label can't
-      // ("Sunrise / Sunset" → SUNRISE/SUNSET/DAYLENGTH) — covered when ALL are
-      // dispatchable, like an op family.
+      // A leaf-level `fx` names the function(s) the despaced label can't; covered
+      // when ALL are dispatchable, like an op family.
       || (leaf.fx !== undefined && leaf.fx.length > 0
           && leaf.fx.every((n) => formulaNames.has(n.toUpperCase())))
       || LANGUAGE_LEAVES.has(leaf.type)
@@ -122,18 +88,11 @@ export interface ParityMeasurement {
   /** GAP A — an Excel-named node whose name is NOT dispatchable. Typing it in an
    *  Expression gives #NAME? while the node sits in the Add menu. */
   excelNamedGap: ParityRow[];
-  /** GAP B — Solenoid-native ops with no formula name at all. Not one population:
-   *  pack formulas and visual/IO nodes make parity moot; only the data-op core is
-   *  meaningful (Tier 3). Not ratcheted for that reason. */
+  /** GAP B — Solenoid-native ops with no formula name; not one population (visual/IO
+   *  nodes make parity moot), so it is not ratcheted. */
   nativeGap: ParityRow[];
-  /** Leaves that are IN SCOPE for a formula name — every leaf EXCEPT the
-   *  deliberate exclusions in `nativeGap` (sources, sinks, UI controls, canvas
-   *  chrome, the frame-verb surface: a verb's surface is the node, and bundle 08's
-   *  transpiler is the "text in, graph out" answer).
-   *
-   *  **This is the denominator a coverage claim must use.** Reporting against
-   *  `rows.length` counts leaves that were never candidates — a Slider and a Note
-   *  can't be "formula-callable". SSOT-7: one metric, one question. */
+  /** Leaves IN SCOPE for a formula name — the denominator a coverage claim must use;
+   *  `rows.length` counts leaves (Slider, Note) that were never candidates. */
   inScope: ParityRow[];
   /** Dispatchable names with no node home. */
   noNode: string[];
@@ -152,11 +111,8 @@ export function measureParity(): ParityMeasurement {
   for (const eqs of Object.values(NODE_EXCEL)) for (const x of eqs) nodeExcelNames.add(x.excel.toUpperCase());
   const gapNames = new Set(EXCEL_GAP.map((g) => g.excel.toUpperCase()));
   const noNode = formulaFunctionNames().filter((n) => !nodeExcelNames.has(n.toUpperCase()));
-  // A name we deliberately REGISTERED is tracked by definition, even when no node
-  // claims it: the Solenoid-only natives (CLAMP/ORDINAL/BETWEEN) and the flat Excel
-  // compatibility spellings we own on purpose (STDEV/VAR/MODE/PERCENTILE/…, each with
-  // an Excel-correct impl behind it). Counting those as "uncurated drift" would make
-  // the ratchet fight the registry — the exact work this program is doing.
+  // A deliberately REGISTERED name is tracked even with no node claiming it; counting
+  // those as uncurated drift would make the ratchet fight the registry.
   const registered = new Set(Object.keys(EXCEL_IMPL_META).map((n) => n.toUpperCase()));
 
   return {
@@ -164,8 +120,8 @@ export function measureParity(): ParityMeasurement {
     covered: rows.filter((r) => r.inFormula),
     excelNamedGap: rows.filter((r) => r.excel.length > 0 && !r.excelCovered),
     nativeGap: rows.filter((r) => !r.inFormula && r.excel.length === 0),
-    // The complement of nativeGap — derived from the same predicate, so the two
-    // can't drift into overlapping or leaving a leaf uncounted.
+    // The complement of nativeGap, from the same predicate, so no leaf is double- or
+    // un-counted.
     inScope: rows.filter((r) => r.inFormula || r.excel.length > 0),
     noNode,
     untracked: noNode.filter((n) => {
@@ -175,9 +131,8 @@ export function measureParity(): ParityMeasurement {
   };
 }
 
-/** GAP A as a flat, sorted, de-duplicated name list — the ratchet's unit. A node
- *  standing in for several names (REGEX → REGEXTEST/REGEXEXTRACT/REGEXREPLACE)
- *  contributes each name separately, so closing one of them shows up. */
+/** GAP A as a flat, sorted, de-duplicated NAME list — the ratchet's unit, so closing
+ *  one name of a multi-name node shows up. */
 export function excelNamedGapNames(m: ParityMeasurement): string[] {
   const formulaNames = new Set(formulaFunctionNames().map((n) => n.toUpperCase()));
   const out = new Set<string>();

@@ -2,8 +2,7 @@ import type { HeatmapCellNode as HeatmapCellNodeType } from "../rete-nodes";
 import { NodeShell, PortSockets, type NodeProps } from "./nodeKit";
 import { formatScalar } from "./format";
 
-// A 3-stop cool→warm scale (blue → pale yellow → red), the familiar
-// conditional-formatting color ramp.
+// The familiar conditional-formatting ramp: blue → pale yellow → red.
 const STOPS: [number, number, number][] = [
   [44, 123, 182],   // blue
   [255, 255, 191],  // pale yellow
@@ -20,7 +19,6 @@ function rampColor(t: number): string {
   return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
 }
 
-// Choose a readable text color against the swatch (perceived luminance).
 function textOn(rgb: string): string {
   const m = /(\d+), (\d+), (\d+)/.exec(rgb);
   if (!m) return "#000";
@@ -36,7 +34,6 @@ export function HeatmapCellComponent({ data, emit }: NodeProps<HeatmapCellNodeTy
   const rows = Array.isArray(table) ? table : null;
   const cols = rows ? rows.reduce((m, r) => Math.max(m, r.length), 0) : 0;
 
-  // Data range across all finite cells; a flat table collapses to a single hue.
   let min = Infinity, max = -Infinity;
   if (rows) {
     for (const row of rows) for (const v of row) {
@@ -45,7 +42,6 @@ export function HeatmapCellComponent({ data, emit }: NodeProps<HeatmapCellNodeTy
   }
   const span = max - min;
   const finite = Number.isFinite(min);
-  // Show the number inside the cell only when there's room.
   const showText = cols > 0 && cols <= 8 && (rows?.length ?? 0) <= 10;
   const cellH = Math.max(16, Math.min(34, Math.round(140 / Math.max(1, rows?.length ?? 1))));
 

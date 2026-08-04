@@ -1,7 +1,5 @@
-// Lazy loader for KaTeX. renderToString is synchronous, so consumers get either the
-// real renderer (once the chunk arrives) or null — and fall back to raw formula text
-// in the meantime, snapping to typeset math a beat later. This module stays katex-free
-// so importing it doesn't drag katex into the main bundle; katexRender.ts holds it.
+// Lazy KaTeX loader: consumers get the renderer or null (raw text meanwhile). This
+// module must stay katex-free, or importing it drags katex into the main bundle.
 import { useSyncExternalStore } from "react";
 import type { KatexOptions } from "katex";
 
@@ -20,9 +18,8 @@ function load(): void {
   });
 }
 
-/** Sync accessor for module-level (non-hook) helpers. Kicks off the one-time load
- *  and returns the renderer once available, else null (caller shows raw text). A
- *  subscribed ancestor re-renders the subtree when the load completes. */
+/** Sync accessor for non-hook callers: kicks off the one-time load, null until it
+ *  lands — a subscribed ancestor re-renders the subtree then. */
 export function getKatexRenderer(): TexRenderer | null {
   load();
   return cached;
@@ -34,8 +31,7 @@ const subscribe = (cb: () => void) => {
 };
 const snapshot = () => cached;
 
-/** Hook: triggers the load and re-renders the component when katex arrives. Returns
- *  the renderer, or null while still loading. */
+/** Triggers the load and re-renders when katex arrives; null while loading. */
 export function useKatexRender(): TexRenderer | null {
   const r = useSyncExternalStore(subscribe, snapshot);
   load();

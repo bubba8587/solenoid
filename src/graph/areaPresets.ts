@@ -11,42 +11,29 @@ import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
 import { canvasLockStore } from "./canvasLock";
 
-// The rete render + connection config that MUST be identical across every editing
-// surface: the MAIN canvas (Canvas.tsx) and every surface that substitutes for it
-// (the Composite drill-in in CompositeEditorOverlay's getDrillMount). One source so
-// a socket-render or connection-rule change can't silently apply to the main canvas
-// but not the subgraph. See activeGraph.ts for the behavioral half of the
-// canvas-substitution seam.
+// The rete render + connection config that MUST be identical across every editing surface,
+// so a socket-render or connection-rule change can't apply to the canvas but not a subgraph.
 
-// Zoom feel — proportional + clamped wheel (rete's stock Zoom applies a fixed
-// ±intensity per wheel event, so a trackpad pinch races while a mouse notch crawls).
+// Proportional + clamped wheel: rete's stock fixed ±intensity races on a trackpad pinch and
+// crawls on a mouse notch.
 const ZOOM_SCALE = 0.0028;
 const ZOOM_STEP_CAP = 0.24;
 const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
 const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
 
-/**
-* Custom zoom handler: proportional + clamped wheel, and a pinch that CANNOT be
-* vetoed. Shared by the main canvas and every canvas-substituting surface.
-*
-* THE PINCH-PRIORITY RULE (subsystem-invariants.md § Pointer gestures): the finger
-* count is registered in CAPTURE phase so no `stopPropagation` below the container
-* can break a pinch; pan and node-drag stay in BUBBLE so a control CAN veto them.
-* Never move the pan handler to capture, and never move the zoom count back to bubble.
-*/
+/** THE PINCH-PRIORITY RULE: the finger count registers in CAPTURE phase so nothing below the
+ * container can break a pinch, while pan and node-drag stay in BUBBLE so a control CAN veto
+ * them — never move either. */
 export class CappedZoom extends Zoom {
-  /** Count only real FINGERS toward a pinch — not a mouse, not a stylus (in capture
-  *  phase every contact arrives, so a resting stylus plus a finger would read as a
-  *  pinch). Mirrors `isPinching()` (pointerGesture.ts), the single definition. */
+  /** Only real FINGERS count: in capture phase every contact arrives, so a resting stylus
+  *  plus a finger would otherwise read as a pinch. Mirrors `isPinching()`. */
   protected down = (e: PointerEvent) => {
     if (e.pointerType !== "touch") return;
     this.pointers.push(e);
   };
 
-  /** Re-seat the finger count from BUBBLE to CAPTURE. `super.initialize` binds every
-   *  stock listener (wheel, dblclick, the window move/up pair) — we keep all of them
-   *  and move only `down`, so nothing else about the handler's behavior changes. The
-   *  listener reference is this subclass's `down`, so the remove matches. */
+  /** Re-seat the finger count from BUBBLE to CAPTURE, moving only `down` so every other
+   *  stock listener `super.initialize` bound is untouched. */
   initialize(
     container: HTMLElement,
     element: HTMLElement,
@@ -57,10 +44,8 @@ export class CappedZoom extends Zoom {
     container.addEventListener("pointerdown", this.down, true);
   }
 
-  /** Stock `destroy` removes `pointerdown` WITHOUT the capture flag, which does not
-   *  match a capture listener — so the base teardown would leave ours attached and
-   *  every drill-in open/close would stack another. Remove the one we actually
-   *  added; `super.destroy()` handles the rest (its own no-op remove is harmless). */
+  /** Stock `destroy` removes `pointerdown` WITHOUT the capture flag, so it never matches
+   *  ours and every drill-in open/close would stack another listener. */
   destroy(): void {
     this.container.removeEventListener("pointerdown", this.down, true);
     super.destroy();
@@ -84,10 +69,8 @@ export class CappedZoom extends Zoom {
   };
 }
 
-/** Install the pointer/zoom behavior every editing surface needs, so a substituting
- *  surface (the drill-in) matches the main canvas: the capped proportional zoom + the
- *  double-click-to-zoom SUPPRESSION (rete's Zoom attaches its dblclick handler to the
- *  container in bubble phase; a capture-phase swallow stops it). Returns a cleanup fn. */
+/** Install the pointer/zoom behavior every editing surface needs; the double-click-to-zoom
+ *  suppression works by swallowing in capture, since rete binds its dblclick in bubble. */
 export function installSurfacePointer(
   area: AreaPlugin<Schemes, AreaExtra>,
   container: HTMLElement,
@@ -98,18 +81,15 @@ export function installSurfacePointer(
   return () => container.removeEventListener("dblclick", swallowDblClick, true);
 }
 
-/** The classic React render preset: our node/socket/connection components + the
- *  identity socket-position offset (our sockets sit centered ON the node border,
- *  not pushed 12px outside it like rete's default). */
+/** The classic React preset with an IDENTITY socket-position offset — our sockets sit
+ *  centered ON the node border, not pushed 12px outside it like rete's default. */
 export function solenoidClassicRenderSetup() {
   return ReactPresets.classic.setup({
     socketPositionWatcher: getGuardedSocketPosition({ offset: (p) => p }),
     customize: {
       node({ payload }) {
-        // Boundaried per NODE: rete gives each node its own React root, so an
-        // unguarded throw in one card's render blanks the whole canvas and says
-        // nothing about which card did it. Wrapped, the broken one shows a small
-        // red box naming itself and every other node keeps working.
+        // Boundaried per NODE: rete gives each node its own React root, so an unguarded
+        // throw in one card's render blanks the whole canvas and names no culprit.
         return withNodeBoundary(componentForNode(payload));
       },
       socket() {
@@ -122,10 +102,8 @@ export function solenoidClassicRenderSetup() {
   });
 }
 
-/** The connection flow with our compatibility gate: veto a drop BEFORE
- *  makeConnection runs (so an incompatible drop can't evict a valid cable),
- *  reject self-loops, and refuse all wiring while the canvas is locked. Checks the
- *  sockets of `editor` — pass the surface's own editor. */
+/** Vetoes a drop BEFORE makeConnection runs, so an incompatible drop can't evict a valid
+ *  cable; also rejects self-loops and all wiring while locked. Pass the surface's editor. */
 export function makeSolenoidConnectionFlow(editor: NodeEditor<Schemes>) {
   return new ClassicFlow({
     canMakeConnection(initial, socket) {

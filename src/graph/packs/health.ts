@@ -1,9 +1,5 @@
-// Health & Fitness — the classic body/energy/cardio formulas behind a whole
-// genre of calculator sites: BMI, body surface area, BMR and TDEE, body-fat
-// estimates, heart-rate zones, and the standard clinical estimates. Metric
-// inputs throughout (kg, cm, years); wire a Convert node from imperial.
-// Sex-specific equations ship as two presets (the constants differ; a locked
-// formula stays reliable instead of hiding a ±sign input).
+// Metric inputs throughout (kg, cm, years). Sex-specific equations ship as TWO presets
+// rather than one formula hiding a ±sign input.
 
 import { HrZonesNode, hrZonesMatrix } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
@@ -84,8 +80,7 @@ export const HEALTH_FORMULAS: FormulaPackEntry[] = [
   ...HEALTH_BODY, ...HEALTH_COMPOSITION, ...HEALTH_ENERGY, ...HEALTH_CARDIO, ...HEALTH_CLINICAL,
 ];
 
-// The zone table as a formula function (D19 decision 4): five [low, high] rows,
-// Z1…Z5 — the matrix form of the node's frame (frames stay out of formulas).
+// The MATRIX form of the node's frame — frames stay out of formulas.
 const HEALTH_PACK_FORMULAS: PackFormula[] = [
   {
     name: "HEARTRATEZONES",

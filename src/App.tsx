@@ -30,14 +30,12 @@ import "./App.css";
 import "./graph/StatusBar.css";
 import "./mobile.css";
 
-// ?showcase[=<catalog type>] swaps the whole app for the node-showcase harness —
-// one real node on a static stage, for node-level UI audits (see showcase/
-// NodeShowcase.tsx). Read once at module load; entering/leaving is a reload.
+// ?showcase[=<type>] swaps the whole app for the node-showcase harness. Read once at
+// module load, so entering/leaving is a reload.
 const SHOWCASE_TYPE = new URLSearchParams(window.location.search).get("showcase");
 const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 
-// ?landing swaps the whole app for the landing page (see landing/LandingPage.tsx).
-// Same route mechanism as ?showcase: read once, entering/leaving is a reload.
+// ?landing swaps the whole app for the landing page, the same way.
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
@@ -60,8 +58,7 @@ function App() {
 }
 
 function MainApp() {
-  // Show the What's New slides once per release (returning users; first-ever visitors
-  // are recorded silently). Deferred so it lands after the cinematic load reveal.
+  // Once per release, deferred so it lands after the cinematic load reveal.
   useEffect(() => {
     const t = setTimeout(autoShowWhatsNewOnce, 1400);
     return () => clearTimeout(t);

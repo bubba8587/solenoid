@@ -9,7 +9,6 @@ import { appThemeStore } from "../appTheme";
 import { collapseStore } from "../collapseStore";
 import { resolveColor } from "../palette";
 
-// Derived from SPARKLINE_OP_META (SSOT-1) — the table the search rows read too.
 const OPTIONS: ReadonlyArray<{ value: SparklineOp; label: string }> = (Object.keys(SPARKLINE_OP_META) as SparklineOp[])
   .map((value) => ({ value, label: SPARKLINE_OP_META[value].label }));
 
@@ -19,10 +18,8 @@ const H = 56;
 
 export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version); // re-resolve on palette/theme change
-  // Exactly one of the two figures (live / minified) is visible at a time (CSS,
-  // .solenoid-node__collapsed-only) — mount only that one instead of both, since
-  // each is a full recharts tree (~dozens of SVG elements). Animations are off
-  // globally (isAnimationActive={false}), so the remount on toggle is instant.
+  // Mount only the visible figure of the live/minified pair — each is a full
+  // recharts tree, and animations are off globally so the remount is instant.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [op, setOp] = useNodeField(data, "op");
   const rawSeries = toSeries(data.cachedResult);

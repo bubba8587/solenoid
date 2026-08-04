@@ -1,22 +1,19 @@
-// Non-recharts figures — a KPI stat card and a bullet graph. They carry
-// structured data rather than a numeric series, so they render as plain CSS/SVG
-// instead of going through the lazy recharts chunk.
+// Structured-payload figures, so they render as plain CSS/SVG rather than going
+// through the lazy recharts chunk.
 import type { KpiPayload, BulletPayload } from "../chartValue";
 import { formatScalar } from "./format";
 import "./chartCards.css";
 
-// Positive-delta green — a semantic state color (like --sol-error for negatives),
-// deliberately NOT a palette slot: a KPI trend reads up=good / down=bad, not "teal".
-// Matches the connection "ok" dot so green means the same thing across the app.
+// A semantic state color, deliberately NOT a palette slot: a KPI trend reads
+// up=good / down=bad, not "teal".
 const POS = "#2fae7a";
 
-// Text-scale multiplier (FC chartFontScale × options fontsize) — published as a
-// CSS var the stylesheet's calc() sizes read, so one factor scales every label.
+// Published as a CSS var the stylesheet's calc() sizes read, so one factor scales
+// every label.
 function fscaleStyle(fscale: number | undefined): React.CSSProperties | undefined {
   return fscale && fscale !== 1 ? ({ "--chart-fscale": fscale } as React.CSSProperties) : undefined;
 }
 
-/** A big-number stat card with an optional ↑/↓ delta vs a prior value. */
 export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: number }) {
   const { value, prev, unit, goodUp } = payload;
   const has = value !== null && Number.isFinite(value);
@@ -42,11 +39,10 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-/** A bullet graph — a value bar on a min..max track with a target tick. */
 export function BulletBar({ payload, width, fscale }: { payload: BulletPayload; width?: number; fscale?: number }) {
   const { value, target } = payload;
-  // Guard the scale bounds: a non-finite min/max (dirty upstream data — a NaN or a
-  // #DIV/0! cell) would make every frac() NaN → a "NaN%" bar width + "NaN" labels.
+  // A non-finite min/max from dirty upstream data makes every frac() NaN — a
+  // "NaN%" bar width and "NaN" labels.
   const min = Number.isFinite(payload.min) ? payload.min : 0;
   const max = Number.isFinite(payload.max) ? payload.max : min + 1;
   const span = max - min || 1;

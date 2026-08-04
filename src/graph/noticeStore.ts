@@ -1,9 +1,5 @@
-// Transient in-app notices ("toasts"), module-store style like confirmStore.
-// Used instead of window.alert — which is unreliable in the Tauri WebView (the
-// same reason confirmStore exists for window.confirm) — to surface things the
-// user must not silently miss: a partially-loaded file, a load that was rolled
-// back, autosave failing. Rendered by <NoticeToasts/> (mounted near the canvas
-// root); readable/writable from either React root.
+// Transient in-app notices, used instead of window.alert — unreliable in the Tauri WebView
+// — for things the user must not silently miss.
 
 import { createNotifier } from "./storeKit";
 
@@ -21,11 +17,7 @@ let _notices: Notice[] = [];
 let _seq = 0;
 const { notify, subscribe } = createNotifier();
 
-/**
- * Show a notice. Returns its id so a sticky notice (ttl 0) can later be
- * dismissed programmatically (e.g. clear the "autosave failing" banner once a
- * save succeeds again).
- */
+/** Returns the notice id, so a sticky notice (ttl 0) can be dismissed programmatically. */
 export function pushNotice(message: string, tone: NoticeTone = "info", ttl = DEFAULT_TTL): number {
   const id = ++_seq;
   _notices = [..._notices, { id, message, tone }];

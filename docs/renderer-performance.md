@@ -35,6 +35,13 @@ tiles/flickers mid-pinch and on tablets fails raster-tile allocation outright
 (Chrome's green placeholder squares). Touch zoom stays un-layered: a touch
 choppier, but stable.
 
+**Negative result — do NOT also drop raster quality on the desktop zoom path.**
+Desktop pinch/wheel zoom is PROMOTED, so content is rasterized once and GPU-scaled,
+not re-rastered per frame: the quality drops save nothing, and toggling them forces
+extra re-rasters plus a box-shadow transition that made desktop zoom measurably
+WORSE. Quality drops belong to the un-promoted paths only (the `--panning` class:
+pan and mobile pinch).
+
 ## Semantic zoom gate (`semanticZoomStore.ts`) — raw CSS scale, not the mip level
 
 The gate is the RAW CSS scale (threshold 0.3), never
@@ -47,7 +54,40 @@ renderer. 0.3 ≈ a card drawn at ~30% (a ~200px card → ~60px): body text unre
 card still a clear block — conservative (far-overview only) but actually reachable
 and visible.
 
-## HTML-in-Canvas capture pipeline (`rasterAtlas.ts`, `htmlCanvasRenderer.ts`)
+## HTML-in-Canvas capture pipeline (`rasterAtlas.ts`, `htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx`)
+
+**Engage gate:** `RENDERER_MIN_NODES = 100`, in KIND-WEIGHTED DOM units
+(`nodeDomWeight`), not a raw node count — a chart/mermaid/inlined-SVG/frame-grid
+card is far more DOM than a scalar (~10 charts ≈ the threshold; a plain scalar graph
+still needs ~100 nodes). Below the threshold the layer stays fully inert even with
+render mode 'html' ON: the native DOM pans/zooms fine there and the capture/swap
+cost (plus any momentary stale-clone flash) isn't worth it. Tunable live via
+`window.__hcMinNodes`.
+
+**WICG spec-drift the engine is built around** (verified 2026-07; Chromium origin
+trial 148–150, Android DevTrial since 138; behind
+`chrome://flags/#canvas-draw-element`):
+- `ElementImage` is only `{width, height, close()}` — NOT an ImageBitmapSource, by
+  spec, permanently. Neither `createImageBitmap(refImg)` nor a scratch-canvas bitmap
+  path works on shipping builds; the mip pyramid must build via in-paint raster +
+  region snapshot.
+- The paint model: a snapshot of the canvas children is recorded just prior to the
+  `paint` event, so a `drawElementImage` OUTSIDE the paint handler draws the
+  PREVIOUS snapshot. Every frame that must call it routes through `requestPaint`,
+  and the paint handler re-reads the freshest camera (the paint can land a frame
+  after the rAF that scheduled it — the "canvas a frame behind the DOM" bug at its
+  source).
+- `drawElementImage` returns (and `getElementTransform` computes) the CSS matrix
+  that places the element exactly where it was drawn — what reports the PRESENTED
+  camera for domSync. Spec home for `getElementTransform` is the 2D context, but
+  some builds hang it off the canvas — probe both.
+
+**Reference capture resolution `REF = 1`** (CSS `zoom` on the clone): kept at 1 so
+the clone lays out at true 1×. REF>1 supersamples for zoom-in crispness BUT rounds
+text line-boxes differently than the live DOM — a measured ~0.9px text drift. At
+REF=1 zooming past 100% softens (upscaled capture); accepted trade for faithful
+text/alignment. The crisp escape hatch is `live` mode (`window.__hcLive`), which
+re-rasterizes at the exact CTM per frame.
 
 **One read-back per paint.** The shelf packer exists solely to collapse GPU
 read-backs: snapshotting each node's raster with its own
@@ -56,6 +96,26 @@ the expensive pattern on mobile GPUs. Packing the batch into one atlas region le
 the whole paint be snapshotted with ONE canvas read-back; per-node textures then
 come from bitmap→bitmap crops (`createImageBitmap(atlas, x, y, w, h)` — no canvas
 read-back).
+
+## DOM↔canvas transform sync (`domSync.ts`)
+
+During a gesture the canvas draws the graph while DOM-only content (conduits, their
+cables, the standoff svg) stays live DOM inside rete's holder — two presentation
+pipelines that can skew by a frame or more (the "conduit trails the pan" complaint):
+the canvas presents the camera it PAINTED with, while the holder composites rete's
+freshest CSS transform. The fix: while gesturing, steer the holder's transform to
+the camera the canvas actually presented (`holderSyncTransform`), deriving that
+presented camera from the WICG API itself when the build exposes it —
+`drawElementImage` returns (and `getElementTransform` computes) the CSS matrix that
+places an element exactly where the canvas drew it, browser rounding included
+(`camFromDrawMatrix`): for a capture box drawn at world (anchorX, anchorY) at
+natural size (REF=1, dest == padded box) the matrix is `translate(k·anchor + t)
+scale(k)`, so `k = a` and `t = (e,f) − k·anchor`. The WICG surface is experimental —
+a build could hand back backing-store px or an unexpected origin — so a
+native-derived camera is trusted only within tolerance of our own bookkeeping
+(`plausibleNativeCam`, defaults 2% of scale / 4 CSS px); anything further is treated
+as a misparse and the bookkeeping wins. Pure math, no DOM; covered by
+`domSync.test.ts`.
 
 **Clone position (`cloneFor`).** Do NOT set `position` on the clone — let each
 root's own CSS class govern it, exactly like the original. `.solenoid-node` is

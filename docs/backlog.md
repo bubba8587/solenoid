@@ -138,6 +138,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   at `CableShapeSelector.tsx`) — a later customisation slice.
 - [ ] **WebGPU cable layer follow-ups** (`CableCanvas.tsx`): selected-above z-jump
   and ghost dashes (all cables currently draw behind, solid).
+- [ ] **By-Row cap: silent truncation → Problems-panel warning** (`composite.ts`
+  `BY_ROW_MAX_ROWS` = 500; each row is a full internal-engine reset, so the cap
+  protects the arm-and-run Solve from an accidentally-wired huge frame).
+- [ ] **Lazy-handle-on-cable** (`frameBackend.ts`): `collect()` is the transitional
+  handle→eager bridge keeping whole frames on cables; once handles flow, the only
+  materialization points are `preview` (display) and `column` (the scalar/list
+  bridge), and `collect` goes.
 - [ ] **WebGPU node-card LOD swap** (`NodeCanvas.tsx`): the current GPU card layer
   is an ALIGNMENT-CHECK overlay (semi-transparent `DEBUG_ALPHA`, drawn above the
   real DOM nodes to confirm size/position/color). The perf win is the unbuilt next

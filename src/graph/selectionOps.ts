@@ -1,8 +1,5 @@
-// Multi-node operations over the current selection: align, distribute, batch
-// collapse/expand. Reads the selection the way nudgeSelection (Canvas.tsx) and
-// createGroupFromSelection (groupLogic.ts) do, and uses the process.ts singletons
-// (getEditor/getArea) rather than Canvas-local refs, so it is callable from
-// anywhere (the command palette).
+// Align / distribute / batch collapse over the selection. Uses the process.ts
+// singletons rather than Canvas-local refs, so it is callable from anywhere.
 
 import { GroupNode } from "./rete-nodes";
 import { getEditor, getArea, repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
@@ -28,10 +25,8 @@ function boxOf(area: Area, id: string): Box | null {
   return measuredBox(area, id, getEditor() ?? undefined);
 }
 
-// Same expansion Canvas's arrow-key nudge uses (and now shares this copy of): a
-// selected group carries its members, and touching a standoff-clustered node
-// carries the whole cluster, so aligning one end of a standoffed pair doesn't
-// leave it wrenched away from the bar.
+// A seed carries its group members and its whole standoff cluster, so moving one end
+// of a standoffed pair can't wrench it away from the bar.
 export function expandMoveSet(editor: Editor, seedIds: Iterable<string>): Set<string> {
   const clusterOf = new Map<string, string[]>();
   for (const c of standoffClusters()) for (const id of c) clusterOf.set(id, c);
@@ -51,11 +46,8 @@ export function expandMoveSet(editor: Editor, seedIds: Iterable<string>): Set<st
 
 type Move = { seedId: string; dx: number; dy: number };
 
-/** Apply a batch of per-seed deltas, moving each seed's rigid attachments (group
- *  members + standoff cluster) with it — but translating every physical node EXACTLY
- *  ONCE. A node carried by more than one seed (e.g. a selected group and a separately
- *  selected member of it) follows the FIRST seed only — deltas are computed from
- *  boxes captured up front, so a second translate would drift it. */
+/** Translates every physical node EXACTLY ONCE: a node carried by two seeds follows the
+ *  FIRST only, since deltas come from boxes captured up front and would drift. */
 async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<void> {
   const delta = new Map<string, { dx: number; dy: number }>();
   for (const { seedId, dx, dy } of moves) {
@@ -64,13 +56,8 @@ async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<vo
       if (!delta.has(id)) delta.set(id, { dx, dy });
     }
   }
-  // Clear the selection for the duration of the moves, then restore it. A SELECTED
-  // node's translate triggers the selector's group-follow (rete moves every other
-  // selected node by the same delta — the multi-drag mechanism), which compounds
-  // across our per-node placement and corrupts the result: nodes shift instead of
-  // aligning, only some land, and distribute nets to nothing. Same guard Tidy uses
-  // (Canvas arrangeFn). expandMoveSet's group/cluster carries are NOT selected, so
-  // they don't trigger it — only the selected seeds do.
+  // Translating a SELECTED node triggers rete's multi-drag group-follow, which compounds
+  // across per-node placement and corrupts the result — so drop the selection meanwhile.
   const restore = editor.getNodes()
     .filter((n) => (n as { selected?: boolean }).selected === true)
     .map((n) => n.id);
@@ -157,11 +144,8 @@ export function distributeDeltas(items: Placed[], axis: "h" | "v"): Move[] {
   return moves;
 }
 
-/** Align the selected top-level nodes' edges (or centers) to the selection's own
- *  bounding-box edge — Figma/Illustrator semantics. A deliberate manual gesture,
- *  so (unlike an automated layout pass) it isn't guaranteed overlap-free: two
- *  selected nodes that already share the OTHER axis will land on top of each
- *  other, exactly as every other design tool's align does. */
+/** Figma/Illustrator semantics: a manual gesture, deliberately NOT overlap-free —
+ *  nodes already sharing the other axis land on top of each other. */
 export async function alignSelection(kind: AlignKind): Promise<void> {
   const editor = getEditor();
   const area = getArea();
@@ -174,12 +158,8 @@ export async function alignSelection(kind: AlignKind): Promise<void> {
   await settle();
 }
 
-/** Evenly space the selected nodes along one axis, keeping the two extreme
- *  (first/last, by leading edge) nodes fixed. Distributes the GAPS between edges,
- *  not the centers: with Solenoid's very different node heights (a Number vs a
- *  Frame) equal-center spacing left big nodes overlapping their neighbors while
- *  small ones got large gaps — equal-gap spacing is overlap-free by construction.
- *  Needs at least 3 (2 nodes have nothing between them to redistribute). */
+/** Distributes the GAPS between edges, not the centers: node heights vary so widely
+ *  that equal-center spacing overlapped big nodes. Needs at least 3 nodes. */
 export async function distributeSelection(axis: "h" | "v"): Promise<void> {
   const editor = getEditor();
   const area = getArea();
@@ -192,20 +172,15 @@ export async function distributeSelection(axis: "h" | "v"): Promise<void> {
   await settle();
 }
 
-// A node opts out of collapse via NodeCard's `collapsible={false}` (NumberInput,
-// Gauge, Chart, Slicer, Sparkline, HeatmapCell, AngleDial, DatePicker, …), which
-// stamps `.solenoid-node--no-chevron` on its rendered card — no central registry
-// exists to check outside the render tree, so read that class directly (the same
-// DOM-containment idiom Canvas's context-menu hit-testing uses for node lookup).
+// `collapsible={false}` stamps `.solenoid-node--no-chevron` on the card; no registry
+// exists outside the render tree, so the class is the only readable signal.
 function isCollapsible(el: HTMLElement): boolean {
   const inner = el.querySelector<HTMLElement>(".solenoid-node")
     ?? (el.classList.contains("solenoid-node") ? el : null);
   return !!inner && !inner.classList.contains("solenoid-node--no-chevron");
 }
 
-/** Collapse or expand every selected node that supports it (silently skips
- *  groups/notes/conduits and chevron-less nodes — same DOM check the chevron
- *  itself is gated on). */
+/** Silently skips groups/notes/conduits and chevron-less nodes. */
 export function collapseSelection(collapsed: boolean): void {
   const editor = getEditor();
   const area = getArea();

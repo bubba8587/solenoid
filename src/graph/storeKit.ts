@@ -1,7 +1,5 @@
-// Shared kernel for the module-level "external stores" the app reads through
-// useSyncExternalStore. Rete renders node components in a separate React root,
-// so any state both roots touch lives in these module singletons instead of
-// React context.
+// Rete renders node components in a SEPARATE React root, so any state both roots
+// touch must live in these module singletons rather than React context.
 
 export interface Notifier {
   /** Call after mutating state to re-render subscribers (also bumps version). */
@@ -49,16 +47,14 @@ export function createToggleStore(initial = false): ToggleStore {
 export interface ValueStore<T> {
   /** The current value, or null when closed. */
   get: () => T | null;
-  /** Set the value (replacing any previous one) and notify. */
   open: (value: T) => void;
-  /** Clear the value; no-op when already closed. */
+  /** No-op when already closed. */
   close: () => void;
   subscribe: (listener: () => void) => () => void;
   version: () => number;
 }
 
-/** A "current value or null (closed)" store. Stores with extra verbs or a
- *  non-standard open spread this core and layer them on via get()/open(). */
+/** Stores needing extra verbs spread this core and layer them on via get()/open(). */
 export function createValueStore<T>(): ValueStore<T> {
   const { notify, subscribe, version } = createNotifier();
   let value: T | null = null;

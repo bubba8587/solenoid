@@ -24,9 +24,8 @@ export const nodeNameStore = {
   get: (id: string): string | undefined => _names.get(id),
   byName: (name: string): string | undefined => _ids.get(name),
 
-  /** Current name for `id`, assigning a fresh type-scoped default (`Filter_2`) if
-   *  none is set yet. `ctorName` is the node's constructor name (or, for a
-   *  placeholder, its missing-type string) — the source of the default prefix. */
+  /** Current name for `id`, assigning a type-scoped default (`Filter_2`) if none is
+   *  set; `ctorName` (a placeholder's missing-type string) sources the prefix. */
   ensure(id: string, ctorName: string): string {
     const existing = _names.get(id);
     if (existing) return existing;
@@ -37,10 +36,8 @@ export const nodeNameStore = {
     return name;
   },
 
-  /** Force-assign a SPECIFIC name (loading a saved graph, restoring a name the
-   *  user already chose). If `name` is invalid or already claimed by a different
-   *  id, falls back to `ensure` with `fallbackCtorName` instead of clobbering the
-   *  other node's name — this is the load path, not the validated rename path. */
+  /** Force-assign a SPECIFIC name (the LOAD path, not the validated rename): an
+   *  invalid or already-claimed name falls back to `ensure` rather than clobber. */
   claim(id: string, name: string | undefined, fallbackCtorName: string): string {
     if (typeof name === "string" && NAME_RE.test(name) && _ids.get(name) !== id && !_ids.has(name)) {
       _names.set(id, name);
@@ -77,8 +74,7 @@ export const nodeNameStore = {
     notify();
   },
 
-  /** Drop every entry — loadGraph calls this so stale ids/names from the previous
-   *  graph can't leak into the new one. */
+  /** Drop every entry, so a previous graph's ids/names can't leak into the new one. */
   clear(): void {
     if (_names.size === 0 && _counters.size === 0) return;
     _names.clear();

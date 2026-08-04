@@ -1,25 +1,13 @@
-// ─── Obsidian-flavored markdown serialization ────────────────────────────────
-// The PURE half of writing a Solenoid Report/Note to an Obsidian vault: turn the
-// document's parts into portable markdown that Obsidian renders NATIVELY — no HTML
-// unless a construct genuinely can't be expressed in markdown (none of ours can):
-//   • frontmatter  → a `---`-fenced YAML block
-//   • frame/table  → a GitHub-flavored pipe table (Obsidian renders these)
-//   • mermaid      → a ```mermaid fenced block (Obsidian renders from the source)
-//   • lambda/math  → `$$…$$` (Obsidian math)
-//   • image        → `![[asset]]` (handled at write time — see the Run-time half)
-//   • chart        → a rendered image asset (DOM render, so it's the Run-time half)
-// This module is pure + unit-tested; the chart-render + file-write half lives with
-// the Write node's Run handler (it needs the DOM + the vault path).
+// The PURE half of writing a Report/Note to an Obsidian vault: markdown Obsidian renders
+// NATIVELY, never HTML. The chart-render + file-write half lives with the Write node's Run
+// handler, which has the DOM and the vault path.
 
 import { type FrameValue, formatFrameCell, isFrameValue } from "./frame";
 import { isMermaidValue, type MermaidValue } from "./mermaidValue";
 import { type DocumentValue } from "./documentValue";
 
-// Matches a `` `=name` `` inline-ref code span — the same grammar noteInlineRefs.ts
-// mints input sockets from (incl. the optional `!` highlight flag). Duplicated
-// (not imported) so this module stays a pure, dependency-light serializer; the
-// identifier grammar is fixed and machine-checked against noteInlineRefs in
-// obsidianMarkdown.test.ts.
+// Duplicates noteInlineRefs.ts's grammar rather than importing it, so this module stays
+// dependency-light; obsidianMarkdown.test.ts machine-checks the two agree.
 const INLINE_REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 
 /** Escape the markdown table-breaking characters in a cell (pipe, newline). */
@@ -27,10 +15,8 @@ function mdCell(s: string): string {
   return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
 
-/** A frame → a GitHub-flavored markdown pipe table (header row, `---` separator,
- *  one row per record). Cells format by column type (dates as dates, etc.) via the
- *  shared `formatFrameCell`; a null/blank cell is an empty cell. An empty frame (no
- *  columns) yields "". */
+/** A frame → a GitHub-flavored pipe table; cells format by column type via the shared
+ *  `formatFrameCell`, a blank cell is empty, and a frame with no columns yields "". */
 export function frameToMarkdownTable(frame: FrameValue): string {
   const cols = frame.columns;
   if (cols.length === 0) return "";
@@ -47,8 +33,7 @@ export function frameToMarkdownTable(frame: FrameValue): string {
   return [header, sep, ...body].join("\n");
 }
 
-/** A mermaid value → a fenced ```mermaid block. Obsidian renders the diagram from
- *  the source directly, so this is the ideal (editable, themeable) embed — no image. */
+/** A mermaid value → a fenced ```mermaid block, which Obsidian renders from the source. */
 export function mermaidToMarkdown(m: MermaidValue): string {
   return "```mermaid\n" + m.source.trim() + "\n```";
 }
@@ -60,12 +45,9 @@ export function mathToMarkdown(latex: string): string {
 
 // ─── Frontmatter YAML ─────────────────────────────────────────────────────────
 
-/** A single scalar → its YAML form. Numbers/booleans emit bare; a string is quoted
- *  ONLY when it would otherwise be ambiguous YAML (has a leading/trailing space, a
- *  `:`/`#`, an embedded newline/tab, looks like a number/bool, or is empty) — so
- *  clean text stays unquoted and readable. A quoted value uses a double-quoted flow
- *  scalar with `\`, `"`, and newlines/tabs escaped, so a multi-line frontmatter
- *  value stays valid YAML on ONE line (a raw newline would splice the block). */
+/** A scalar → its YAML form, quoted ONLY when it would otherwise be ambiguous YAML, so
+ *  clean text stays readable. A quoted value is a double-quoted flow scalar with newlines
+ *  and tabs escaped, keeping a multi-line value valid on ONE line. */
 export function yamlScalar(v: unknown): string {
   if (v === null || v === undefined) return "";
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : `"${v}"`;
@@ -78,8 +60,8 @@ export function yamlScalar(v: unknown): string {
     /[\n\r\t]/.test(s) ||
     /^(true|false|null|yes|no|on|off)$/i.test(s) ||
     /^-?\d/.test(s) ||
-    // Leading YAML indicators: anchors/aliases/tags/block scalars/directives
-    // (*&!|>%@`), a bare or space-followed -/?/~, or a leading-dot number (.5/.inf).
+    // Leading YAML indicators: anchors/aliases/tags/block scalars/directives (*&!|>%@`),
+    // a bare or space-followed -/?/~, or a leading-dot number (.5/.inf).
     /^[*&!|>%@`~]/.test(s) ||
     /^[-?](\s|$)/.test(s) ||
     /^\.\d|^\.(inf|nan)$/i.test(s);
@@ -103,8 +85,8 @@ function yamlLine(key: string, v: unknown): string {
   return `${key}: ${yamlScalar(v)}`;
 }
 
-/** A record → a `---`-fenced YAML frontmatter block (with a trailing newline), or ""
- *  when there are no keys. Insertion order is preserved. */
+/** A record → a `---`-fenced YAML block with a trailing newline, or "" when there are no
+ *  keys; insertion order is preserved. */
 export function frontmatterToYaml(fm: Record<string, unknown>): string {
   const keys = Object.keys(fm);
   if (keys.length === 0) return "";
@@ -113,17 +95,14 @@ export function frontmatterToYaml(fm: Record<string, unknown>): string {
 
 // ─── The value-kind dispatcher ────────────────────────────────────────────────
 
-/** A resolved embed value serialized to a markdown BLOCK, OR a deferral for a chart
- *  (which must be rendered to an image at write time — it needs the DOM). The caller
- *  substitutes `md` inline, or resolves `chart` at Run. A plain scalar/string is the
- *  caller's job (it already has the FC-formatted preview text). */
+/** A markdown BLOCK, or a deferral for a chart (which needs the DOM at write time); a plain
+ *  scalar is the caller's job, since it already has the FC-formatted preview text. */
 export type ObsidianBlock =
   | { kind: "md"; md: string }
   | { kind: "chart"; value: unknown }; // render to an image asset at Run time
 
-/** Serialize a resolved embed value to an Obsidian markdown block by its KIND. A
- *  frame/mermaid/math value gets native markdown; a chart is deferred to the
- *  DOM-render pass; anything else falls back to its plain string form. */
+/** Frame/mermaid/math get native markdown, a chart is deferred to the DOM-render pass, and
+ *  anything else falls back to its plain string form. */
 export function valueToObsidianBlock(value: unknown): ObsidianBlock {
   if (isFrameValue(value)) return { kind: "md", md: frameToMarkdownTable(value) };
   if (isMermaidValue(value)) return { kind: "md", md: mermaidToMarkdown(value) };
@@ -134,19 +113,11 @@ export function valueToObsidianBlock(value: unknown): ObsidianBlock {
   return { kind: "md", md: value === null || value === undefined ? "" : String(value) };
 }
 
-// ─── Document assembly (the walk) ─────────────────────────────────────────────
-// The pure half of writing a DocumentValue out: prepend the frontmatter block and
-// substitute every `` `=name` `` inline ref with a resolved markdown string. The
-// per-ref resolution is a CALLBACK — the Write node passes one that serializes each
-// value via valueToObsidianBlock and, for a chart/image, writes an image asset to
-// the vault and returns the `![[asset]]` embed. That keeps the DOM-render + file-io
-// out of this module (it stays testable with a synchronous stub resolver). A
-// `![[Note]]` embed is left INTACT — it's already native Obsidian transclusion.
+// Per-ref resolution is a CALLBACK so the DOM-render and file-io stay out of this module,
+// which keeps it testable with a synchronous stub resolver.
 
-/** Assemble a document's final Obsidian markdown: `frontmatter + body`, with each
- *  `` `=name` `` span replaced by `resolveRef(name, value)` (all occurrences). The
- *  resolver may be async (a chart write). A ref with no resolver result ("") drops
- *  the span. */
+/** `frontmatter + body`, with every `` `=name` `` span replaced by `resolveRef(name,
+ *  value)`; the resolver may be async, and an empty result drops the span. */
 export async function assembleDocumentMarkdown(
   doc: DocumentValue,
   resolveRef: (name: string, value: unknown) => string | Promise<string>,
@@ -160,8 +131,7 @@ export async function assembleDocumentMarkdown(
   for (const name of names) {
     resolved.set(name, await resolveRef(name, doc.refs[name]));
   }
-  // The `!` highlight flag exports as Obsidian's native ==mark== (skipped when the
-  // ref resolved to nothing, or to a block — an embed/fence can't sit inside a mark).
+  // The `!` flag exports as ==mark==, skipped for a block — an embed can't sit in a mark.
   const body = doc.body.replace(INLINE_REF_RE, (_full, name: string, flag: string) => {
     const v = resolved.get(name) ?? "";
     return flag === "!" && v !== "" && !v.includes("\n") ? `==${v}==` : v;

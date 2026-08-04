@@ -14,11 +14,8 @@ import { formatAnnotationStore } from "../formatAnnotationStore";
 import type { ChartValue } from "../chartValue";
 import { dropInputCables } from "./cablePrune";
 
-// A Chart reads ONE data input per op: the 2-D `series` matrix for composed/bubble,
-// the 1-D `values` list for everything else. Both ports stay defined on the node,
-// but only the op's active one is rendered — so the card never shows the dead
-// socket. Switching op FAMILIES (1-D ↔ matrix) drops the cable on the now-inactive
-// socket so there's no invisible live wire.
+// Both data ports stay defined but only the op's active one renders, so an op-FAMILY
+// switch (1-D ↔ matrix) must drop the inactive socket's cable — else it lives invisibly.
 async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
   const wasMatrix = CHART_MATRIX_OPS.has(node.op);
   const nowMatrix = CHART_MATRIX_OPS.has(newOp);
@@ -32,9 +29,7 @@ async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> 
   await processGraph();
 }
 
-// Grouped so the dropdown reads by family — too many types now for a seg toggle.
-// Derived from CHART_OP_META (labels AND groups), the same table the Add-menu
-// search rows read, so the two surfaces cannot drift (SSOT-1).
+// Derived from CHART_OP_META so the dropdown can't drift from the Add-menu rows (SSOT-1).
 const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = (Object.keys(CHART_OP_META) as ChartOp[])
   .map((value) => ({ value, label: CHART_OP_META[value].label, group: CHART_OP_META[value].group }));
 
@@ -51,8 +46,6 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
   const isMatrix = CHART_MATRIX_OPS.has(op);
-  // Has anything to draw? Matrix ops read cachedMatrix (with a values fallback);
-  // 1-D ops read the values series.
   const hasMatrix = !!data.cachedMatrix && data.cachedMatrix.length > 0;
   const series = toSeries(data.cachedResult);
   const hasData = isMatrix ? hasMatrix || series.length > 0 : series.length > 0;
@@ -62,9 +55,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     options: opts, title: opts.title || data.label || "Chart",
   };
 
-  // The data input socket is centered vertically on the chart (its main feed),
-  // measured against the card — separate from the Options socket (its own row
-  // below) so the two don't overlap.
+  // The data socket is measured against the card so it can't collide with the Options row.
   const chartRef = useRef<HTMLDivElement>(null);
   const [valuesTop, setValuesTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
