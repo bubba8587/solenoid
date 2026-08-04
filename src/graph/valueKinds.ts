@@ -1,18 +1,5 @@
-// ── Value kinds: missing (null), logical, and how they flow ──────────────────
-// The formula/value model carries, besides plain numbers/strings/dates/complex,
-// two special kinds that ride INSIDE lists and matrices:
-//
-//   • `null`  — a MISSING value. Distinct from 0 and from an error. Rendered
-//               literally as `null`. SKIPPED by aggregators; PROPAGATES through
-//               element-wise ops (a missing operand makes the result missing).
-//   • `SolError` — a computation FAILURE (#DIV/0!, #TYPE!, …). PROPAGATES
-//               everywhere (element-wise and through aggregators).
-//
-// (See dev-notes "Array-semantics policy DECISIONS" + "Second-ring decisions".)
-// This module is the pure home for the predicates, the Kleene three-valued
-// boolean logic, logical↔number coercion, and the aggregator-prep helper. It is
-// engine-agnostic and has no React/Rete deps so it can be unit-tested in
-// isolation and reused by every host node.
+// Value-kind predicates (null = missing, SolError = failure), Kleene three-valued
+// logic, logical↔number coercion, aggregator prep. No React/Rete deps.
 import { isSolError, solError, type SolError } from "./errorValue";
 
 // The missing sentinel is JS `null` (the value frames already store). Use the

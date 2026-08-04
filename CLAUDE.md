@@ -88,6 +88,11 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
   `docs/cube-node-scope.md`, `docs/pack-architecture.md`, `docs/excel-toolbar-supplementals.md`,
   `docs/formula-node-parity.md`, `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/`
   (open plan bundles). Finished/point-in-time docs: `docs/archive/` (see its README).
+- **`docs/code-comments.md` (D30) — the comment policy: comments are the LAST-RESORT home;
+  default outcome for an existing comment is deletion.** History → commits; rulings →
+  decisions/specs; investigations → dev-notes. Before editing a file, grep it in the
+  "Code → spec routing" table in `docs/README.md` — routed files carry zero comment
+  pointers by design. Read the policy before writing comment prose.
 
 ### Author's UI vocabulary (aliases) — what a name maps to in code
 Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term → code handle.

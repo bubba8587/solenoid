@@ -240,10 +240,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // pair of settings on one card rather than as two operations.
   { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
     create: (op) => new HeadersNode({ op: op as never }) },
-  // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless
-  // here — and NOT searchable (author ruling 2026-07-30: aggregators are args,
-  // not ops; no "Group By: MEDIAN" rows). Kind-only, like the frame aggregator
-  // hosts below.
+  // Aggregators are arguments of Group By, not searchable ops (D29).
   { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles: ascending/descending and first/last are parameters of ONE
   // operation — nobody searches the Add menu for "Descending". These families
