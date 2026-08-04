@@ -1,4 +1,4 @@
-// ─── Per-column frame units — header parsing + display (Bundle 05: FC A4, step 5) ─
+// ─── Per-column frame units — header parsing + display ───────────────────────────
 // A frame column locks to a dimensional unit two ways: a header written `Name (unit)`
 // (the literal source path — Build Frame / Add Column strip the parenthetical and
 // lock the column), or a Format Controller docked on the header string list. This

@@ -11,12 +11,11 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 
-// ─── The canvas-figure cards (2026-07-16 chart wave) ──────────────────────────
+// ─── The canvas-figure cards ──────────────────────────────────────────────────
 // Every one of these nodes is the same card: input rows, a divider, the figure
 // (via ChartFigure, so the node and a Report embed render identically), and the
-// [Chart] chip when collapsed — exactly SurfaceComponent minus its rotate D-pad.
-// One factory instead of seven near-identical files; the per-node knobs are the
-// figure height and a payload emptiness check.
+// [Chart] chip when collapsed. The per-node knobs are the figure height and a
+// payload emptiness check.
 
 type FigureNode = ClassicPreset.Node & {
   id: string;

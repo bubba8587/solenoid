@@ -11,8 +11,6 @@ import {
 
 const { PI, exp, log, sqrt, abs } = Math;
 
-// ─── Helper: t-distribution CDF ───────────────────────────────────────────────
-// Used by both TDistNode and TInvNode.
 function tDistCDF(x: number, df: number): number {
   const t2 = x * x;
   const z = df / (df + t2);
@@ -20,7 +18,6 @@ function tDistCDF(x: number, df: number): number {
   return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
 }
 
-// ─── 1. NormDistNode — NORM.DIST ──────────────────────────────────────────────
 export type NormDistOp = "cdf" | "pdf";
 
 export const NORM_DIST_OP_META = {
@@ -61,7 +58,6 @@ export class NormDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 2. NormInvNode — NORM.INV ────────────────────────────────────────────────
 export class NormInvNode extends ClassicPreset.Node {
   label: string;
   cachedResult: BroadcastResult = null;
@@ -91,7 +87,6 @@ export class NormInvNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 3. NormSDistNode — NORM.S.DIST ──────────────────────────────────────────
 export type NormSDistOp = "cdf" | "pdf";
 
 export const NORM_S_DIST_OP_META = {
@@ -126,7 +121,6 @@ export class NormSDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 4. NormSInvNode — NORM.S.INV ────────────────────────────────────────────
 export class NormSInvNode extends ClassicPreset.Node {
   label: string;
   cachedResult: BroadcastResult = null;
@@ -152,7 +146,6 @@ export class NormSInvNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 5. TDistNode — T.DIST ───────────────────────────────────────────────────
 export type TDistOp = "cdf" | "pdf" | "2t" | "rt";
 
 export const T_DIST_OP_META = {
@@ -202,7 +195,6 @@ export class TDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 6. TInvNode — T.INV ─────────────────────────────────────────────────────
 export type TInvOp = "left" | "2t";
 
 export const T_INV_OP_META = {
@@ -241,7 +233,6 @@ export class TInvNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 7. ChisqDistNode — CHISQ.DIST ────────────────────────────────────────────
 export type ChisqDistOp = "cdf" | "pdf" | "rt";
 
 export const CHISQ_DIST_OP_META = {
@@ -288,7 +279,6 @@ export class ChisqDistNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 8. ChisqInvNode — CHISQ.INV ─────────────────────────────────────────────
 export type ChisqInvOp = "left" | "rt";
 
 export const CHISQ_INV_OP_META = {

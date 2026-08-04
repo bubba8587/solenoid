@@ -116,9 +116,7 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   // as the op select / Aa toggle changes) and keep only LIVE rows' entries — a
   // removed row leaves an orphan behind for undo's row-restore, which must not leak
   // into a save (it would break the text form's byte-identical second write). Match
-  // on EITHER key so a List Filter row (value-only) persists too — checking just
-  // `column${k}` silently dropped every List Filter op back to the "gt" default on
-  // reload.
+  // on EITHER key so a List Filter row (value-only) persists too.
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     init.condConfig = Object.fromEntries(
@@ -307,13 +305,10 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   }
 
   // Synchronous setup (carry per-node collapse, claim fresh sequence ids), then add +
-  // position the clones CONCURRENTLY under the rebuild gate. The node loop used to be
-  // sequential AND ungated, so each addNode fired `nodecreated` → the live "absorb into
-  // the group it's dropped inside" sweep (an O(nodes) membership rebuild) ran ~N times =
-  // O(N²), and the ~N React-root mounts ran one-at-a-time. That's the post-crash-fix
-  // "paste still hangs". Gating skips absorb (pasted nodes keep their COPIED group
-  // membership — they don't join whatever group they happen to land on, which is the
-  // correct paste behavior), and Promise.all de-serializes the mounts (mirrors load/B1).
+  // position the clones CONCURRENTLY under the rebuild gate. The gate skips the
+  // per-`nodecreated` absorb sweep (O(nodes) each, so O(N²) ungated) — pasted nodes
+  // keep their COPIED group membership rather than joining whatever group they land
+  // on — and Promise.all de-serializes the React-root mounts.
   const toAdd: Array<{ clone: SolenoidNode; x: number; y: number }> = [];
   for (let i = 0; i < clones.length; i++) {
     const clone = clones[i];

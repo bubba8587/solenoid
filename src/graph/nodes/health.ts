@@ -1,7 +1,6 @@
-// Heart-Rate Zones — the Health & Fitness pack's training-zone table. Age (or a
-// wired max HR from the pack's Tanaka node) → a five-zone Frame ready for a
-// table popup, a chart, or a lookup. With a resting HR it switches to the
-// Karvonen (heart-rate reserve) method; without one, plain %-of-max.
+// Heart-Rate Zones — the Health & Fitness pack's training-zone table. With a
+// resting HR the bands use the Karvonen (heart-rate reserve) method; without one,
+// plain %-of-max.
 
 import { ClassicPreset } from "rete";
 import { numIn, frameOut, readInput } from "./shared";
@@ -16,9 +15,6 @@ const ZONES: Array<{ name: string; lo: number; hi: number }> = [
   { name: "Z5 Maximum", lo: 0.9, hi: 1 },
 ];
 
-/** The zone table: %-of-max bands, or Karvonen bands off the heart-rate reserve
- *  when a resting HR is given (rest + pct·(max − rest)). BPM rounded — nobody
- *  trains to a tenth of a beat. */
 /** The one domain rule for the zone table (shared by the node and the pack's
  *  HEARTRATEZONES formula): a positive max, and any resting HR strictly
  *  between 0 and it. */

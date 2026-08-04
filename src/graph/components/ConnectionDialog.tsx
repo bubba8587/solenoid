@@ -23,10 +23,9 @@ const TYPE_LABEL: Record<SocketDataType, string> = {
 };
 const typeName = (t?: SocketDataType) => (t ? TYPE_LABEL[t] : "—");
 
-// ─── Endpoint combobox ────────────────────────────────────────────────────────
-// Conduit lanes are plumbing, not destinations — 8 declared lanes per block
-// swamp the list, so they're hidden unless the user opts in. Matched by
-// constructor name, not instanceof (see the FormulaPopup precedent).
+// Conduit lanes are plumbing, not destinations — 8 declared lanes per block swamp
+// the list, so they're hidden unless the user opts in. Matched by constructor name,
+// not instanceof.
 const isPlumbing = (nodeId: string) => {
   const name = (getEditor()?.getNode(nodeId) as { constructor?: { name?: string } } | undefined)
     ?.constructor?.name;
@@ -124,7 +123,6 @@ function EndpointCombo({
   );
 }
 
-// ─── Dialog ───────────────────────────────────────────────────────────────────
 export function ConnectionDialog() {
   const req = useSyncExternalStore(connectionDialog.subscribe, connectionDialog.get);
   const [src, setSrc] = useState<Endpoint | null>(null);
@@ -180,7 +178,6 @@ export function ConnectionDialog() {
     const srcNode = editor.getNode(src.nodeId);
     const tgtNode = editor.getNode(tgt.nodeId);
     if (!srcNode || !tgtNode) return;
-    // Editing re-wires: drop the old cable first.
     if (req?.editId) { try { await editor.removeConnection(req.editId); } catch { /* gone */ } }
     // Single-connection inputs: replace whatever's already on the target.
     for (const c of editor.getConnections().filter((c) => c.target === tgt.nodeId && c.targetInput === tgt.socketKey)) {

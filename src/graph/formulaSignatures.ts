@@ -1,17 +1,11 @@
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 
-// ─── Formula function signatures (display-only) ────────────────────────────────
-// Curated Excel-style parameter hints for the formula editor: the autocomplete
-// menu shows a function's arguments, and a param-hint bar tracks the argument the
-// caret is in. Display-only — nothing here affects evaluation (arity is NOT
-// enforced; Formula.js/our impls do their own checking), so an imperfect entry
-// can't break a formula, only mislabel a hint. Optional args in [brackets],
-// variadic tails as `…`. Names are UPPERCASE; dotted stat names included.
-//
-// Coverage is the widely-used set; anything absent falls back to the registered
-// impl's arity (EXCEL_IMPL_META) as a bare count, then to nothing. Add entries
-// freely — one line each.
+// Curated Excel-style parameter hints for the formula editor. Display-only —
+// nothing here affects evaluation (arity is NOT enforced; Formula.js/our impls do
+// their own checking), so an imperfect entry can't break a formula, only mislabel
+// a hint. Optional args in [brackets], variadic tails as `…`. Names are
+// UPPERCASE; dotted stat names included.
 export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── logical / branching ──
   IF: "condition, then, [else]",
@@ -185,10 +179,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── Solenoid extras ──
   CLAMP: "x, min, max",
 
-  // Tier 1 (D19) — the names whose nodes existed but whose formula spelling gave
-  // #NAME?. Curated rather than left to the bare arity count, because the bond
-  // functions are where an unnamed argument list is least readable: PRICE and
-  // YIELD differ only in whether the fourth argument is a yield or a price.
   TEXTSPLIT: "text, delimiter",
   TEXTAFTER: "text, delimiter",
   TEXTBEFORE: "text, delimiter",
@@ -222,8 +212,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
  *  else a bare argument count from the registered impl's arity, else null. */
 export function signatureFor(name: string): string | null {
   const up = name.toUpperCase();
-  // A frame verb's "signature" is the redirect — the hint bar is where the
-  // user is looking when they've just typed the name.
+  // A frame verb's "signature" is the redirect to its node.
   const frameNode = FRAME_SURFACE_NAMES[up];
   if (frameNode) return `frame verb — use the ${frameNode} node`;
   const sig = FORMULA_SIGNATURES[up];

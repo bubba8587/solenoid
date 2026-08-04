@@ -1,8 +1,5 @@
-// Electromagnetism — fields, forces, waves, and induction, one level deeper
-// than the Electricity & Circuits pack it builds on (dependsOn pulls that pack
-// in on activation). Constants are baked into each formula at CODATA 2018
-// precision — a locked preset's promise is that the number is RIGHT — and the
-// Physics Constant node exposes the same library as a wireable source.
+// Electromagnetism — builds on the Electricity & Circuits pack (dependsOn pulls it in
+// on activation). Constants are baked into each formula at CODATA 2018 precision.
 // SI units throughout; angles in radians (core Trigonometry convention).
 
 import { PhysicsConstantNode, EmSpectrumNode, emSpectrum, PHYS_CONSTANTS, type PhysConstOp } from "../rete-nodes";

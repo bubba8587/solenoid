@@ -30,12 +30,6 @@ export class NumberInputNode extends ClassicPreset.Node {
 }
 
 // ─── Color Picker ─────────────────────────────────────────────────────────────
-// Three sliders pick a color in RGB or HSV; a format dropdown chooses how the
-// output string reads (hex / rgb() / hsl()). The string drops straight into a
-// Chart Builder's Color field (all three formats are valid CSS colors).
-// Conversion is delegated to `colord` (zero-dependency color lib) so we don't
-// hand-roll RGB↔HSV maths. Channel values live in `literals` (c0/c1/c2,
-// interpreted per mode); `mode` + `format` are persisted via extractInit.
 
 export type ColorMode = "rgb" | "hsv" | "hex";
 // Output formats are CSS-valid only: there is no `hsv()` in CSS, so we don't
@@ -163,7 +157,6 @@ export class ColorBlendNode extends ClassicPreset.Node {
 // ─── Constant (predefined library) ───────────────────────────────────────────
 
 // There is no `na` constant: the NaNode (tagged SolError #N/A) is the one true NA.
-// No persistence alias (pre-alpha) — an old Constant saved as op:"na" loads as pi.
 export type ConstantOp =
   | "pi" | "tau" | "e" | "phi"
   | "inf" | "neg-inf"
@@ -234,14 +227,6 @@ export class SliderInputNode extends ClassicPreset.Node {
     // A Slider is a SOURCE whose CONTROL needs finite bounds to exist at all, so a
     // wired blank bound falls back to the card's own — the one case in this sweep
     // where the literal is the right answer rather than the bug.
-    //
-    // The tempting reading, "a blank bound stops constraining", breaks three things:
-    // `<input type="range" min="-Infinity">` is invalid so the browser substitutes
-    // its own 0–100; the play loop (`next > hi ? lo : next`) never wraps and runs
-    // away; and `tornadoRun` reads these bounds through `??`, which doesn't catch an
-    // Infinity, so a sensitivity sweep would run to infinity. Propagating null
-    // instead would drop the value the user physically set. Both alternatives are
-    // worse than honouring the bound printed on the card.
     const litMin  = this.literals.min  ?? 0;
     const litMax  = this.literals.max  ?? 100;
     const litStep = this.literals.step ?? 1;

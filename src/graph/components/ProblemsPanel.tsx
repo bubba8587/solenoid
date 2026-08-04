@@ -22,13 +22,10 @@ const ProblemsSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/**
- * The Problems HUD panel: a log of every tagged #CODE! error the graph has hit
- * (live compute-pass hits), plus model-fuzzing findings once run (origin "fuzz",
- * see #44). Each entry jumps-and-flashes to its node. Filterable by code.
- * Collapses to a count button, same shape as PinLayer/AlertLayer (its own state,
- * own registerChrome call) — HudStack is a hardcoded stack, not a generic API.
- */
+/** The Problems HUD panel: every tagged #CODE! error the graph has hit, plus
+ *  model-fuzzing findings (origin "fuzz"). Each entry jumps-and-flashes to its node.
+ *  Carries its own collapsed state + registerChrome call, like PinLayer/AlertLayer —
+ *  HudStack is a hardcoded stack, not a generic API. */
 export function ProblemsPanel() {
   const [collapsed, setCollapsed] = useState(true);
   const [codeFilter, setCodeFilter] = useState<string | null>(null);

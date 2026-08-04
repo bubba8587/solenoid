@@ -1,15 +1,7 @@
-// The AI palette's DEMO transport: type `demo` in Settings ▸ AI instead of a
-// key and the palette runs against a canned local "model" — no account, no
-// network, works offline. The fake sits at the TRANSPORT seam (a fetch that
-// answers like the Messages API), so every production layer above it runs for
-// real: fence extraction, the strict validator, canonicalization, the diff,
-// the approval Apply. What's canned is only the model's reply.
-//
-// The canned behavior is a STAGED BUILD: each edit prompt adds the next slice
-// of a small sales dashboard (data → totals → chart), placed to the right of
-// whatever the document already holds, so repeated prompt → Apply rounds grow
-// the graph the way a real session would. A question-shaped prompt gets a
-// prose summary of the current document instead.
+// The AI palette's DEMO transport: type `demo` in Settings ▸ AI instead of a key and
+// the palette runs against a canned local "model" — offline, no account. The fake
+// sits at the TRANSPORT seam (a fetch answering like the Messages API), so every
+// production layer above it runs for real; only the model's reply is canned.
 
 import { readTextForm, writeTextForm } from "./textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
@@ -18,8 +10,6 @@ import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 export const DEMO_KEY = "demo";
 
 const QUESTION_RE = /(\?\s*$)|^(what|how|why|which|who|where|when|does|do|is|are|can|show me)\b/i;
-
-// ─── The staged build ───────────────────────────────────────────────────────────
 
 interface DemoNode {
   name: string;
@@ -155,8 +145,6 @@ function describeDocument(g: SavedGraph): string {
     `This is the demo assistant; edit requests add the next slice of the demo dashboard.`
   );
 }
-
-// ─── The transport ──────────────────────────────────────────────────────────────
 
 const DOC_RE = /```solenoid\n([\s\S]*?)```/;
 const PROMPT_RE = /Request: ([\s\S]*)$/;

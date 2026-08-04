@@ -1,21 +1,5 @@
 // The Equation node's solver: rearrange `LHS = RHS` for whichever variable is
-// unknown. Two layers (docs/equation-node design, 2026-07-09):
-//
-//   1. SYMBOLIC ISOLATION over the formula AST — when the unknown appears
-//      exactly once, walk down to it inverting each step (+−×÷^, EXP/LN, trig,
-//      SQRT…). The result is a NEW FORMULA STRING for the unknown, compiled by
-//      the ordinary evaluator — so list broadcasting, function dispatch, and
-//      per-cell error semantics all come free. Exact and deterministic.
-//   2. NUMERIC ROOT-FINDING on residual(x) = LHS(x) − RHS(x) — the fallback
-//      when the unknown appears more than once (x² + x…) or behind a
-//      non-invertible step (ABS). Scalar-only; bracket scan over a log grid,
-//      then bisection. No outside library: the residual is our own compiled
-//      evaluator, and bisection is a dozen lines.
-//
-// Inversion picks PRINCIPAL branches (√ of a square, ASIN of a sine): the
-// returned value always SATISFIES the equation, but a negative/other-branch
-// solution is the numeric layer's job (it reports the root nearest the grid
-// scan). #SOLVE! is the failure code for "no root found".
+// unknown. #SOLVE! is the failure code for "no root found".
 
 import { parseFormula, compileEvaluator, type Ast, type ExprEvaluator } from "./excelFormula";
 import { solError, type SolError } from "./errorValue";

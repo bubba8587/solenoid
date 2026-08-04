@@ -65,14 +65,9 @@ export function hexToRgba(hex: string, alpha: number): string {
 }
 
 // Readable text/icon color (#fff or near-black) for a solid fill of `hex`.
-//
-// BAKED, not computed per call. Every accent that can reach this — node headers,
-// groups, notes, the FC's socket-type tint — resolves from a palette slot, so the
-// set of distinct inputs is tiny and fixed by the active palette. A node card asks
-// for its ink on every render, so parsing the hex each time is work with a known
-// answer. `bakeInks()` fills the cache for all twelve slots in both modes whenever
-// the palette changes; anything outside that set (a hand-picked custom color)
-// still resolves on first use and is cached from then on.
+// BAKED, not computed per call: a node card asks for its ink on every render and
+// the set of distinct inputs is fixed by the active palette. `bakeInks()` fills the
+// cache on every palette change; anything outside that set caches on first use.
 const _inkCache = new Map<string, string>();
 
 export function contrastInk(hex: string): string {
@@ -106,14 +101,12 @@ function bakeInks(map: Record<PaletteSlot, string>): void {
   }
 }
 
-// Saturated accents tuned for a dark canvas glow a little on white. In light
-// mode nudge them slightly darker (HSV value only) so they read as solid.
+// Light mode nudges accents slightly darker (HSV value only) so they read as solid.
 // Caller passes the current mode (palette can't import appThemeStore — that'd be
 // a cycle, since appTheme imports the helpers above).
-// This is the GLOBAL light-mode darkening: it runs on every palette-derived color
-// (node accents, groups, notes, the minimap, --sol-error) and on socket slots
-// BEFORE their array/matrix shade derives, so the drop compounds through exactly
-// once. Kept light — the accents only need to stop glowing, not go muddy.
+// The GLOBAL light-mode darkening: it runs on every palette-derived color and on
+// socket slots BEFORE their array/matrix shade derives, so the drop compounds
+// through exactly once. Kept light — the accents only need to stop glowing.
 const LIGHT_VALUE_DROP = 0.045;
 export function themeAccent(hex: string, mode: "dark" | "light"): string {
   if (mode !== "light") return hex;
@@ -133,13 +126,9 @@ export function darkenAccent(hex: string): string {
 }
 
 // The socket glyph's RING/border: a darker shade of the glyph's OWN fill, by a
-// FIXED HSV value drop (same technique as darkenAccent, deeper). A constant step is
-// the point — the old ring was one translucent black, whose visible contrast varied
-// with fill lightness (crisp on the light dots, faint on the dark array/matrix/frame
-// ones). Dropping value by a fixed amount gives every glyph — the Cube included —
-// the same border-to-fill contrast. This one number is the tuning knob: raise it for
-// a darker/heavier edge, lower it for a lighter one. Clamped so a near-black fill
-// still yields a valid shade.
+// FIXED HSV value drop, so every glyph gets the same border-to-fill contrast
+// regardless of fill lightness. This one number is the tuning knob. Clamped so a
+// near-black fill still yields a valid shade.
 const RING_VALUE_DROP = 0.23;
 export function socketRingShade(hex: string): string {
   const t = parseHex(hex);
@@ -153,60 +142,36 @@ export function socketRingShade(hex: string): string {
 // raw hex. Everything resolves the slot to a hex at render time via resolveColor,
 // so retuning a color here retints the whole app and nothing can drift out of
 // sync. Slot ids are OPAQUE keys — never assume `green` is actually green-hued;
-// a future user palette is just a different slot→hex map under the same ids, so
-// honoring that means treating the name as a lookup key, not a claim about hue.
-// (This is also why we store the slot, not a palette INDEX: the swatch order can
-// change, but the id is stable.)
-// Default slots are backfit to the (well-liked) scalar SOCKET colors where a socket
-// family maps to a slot — so the socket dots, cables and legend are literally the
-// palette (one source of truth) and a palette switch retints them too. See
-// SOCKET_SCALAR_SLOTS below. The socket-family slots ARE these hexes (one source of
-// truth); date-pink is pulled redward so it doesn't read like boolean-purple.
+// a user palette is a different slot→hex map under the same ids, so treat the name
+// as a lookup key, not a claim about hue. Store the slot, never a palette INDEX:
+// the swatch order can change, the id is stable.
 export const PALETTE = {
   gray:      "#8a8f98", // --sock-any
-  amber:     "#d9742b", // (input kind only — no socket family) — nudged more orange
-  blue:      "#3173e0", // (math kind) — nudged deeper (darker / more saturated)
-  teal:      "#4fc89a", // (convert kind) — pushed into green (jade), away from sky blue
-  purple:    "#c05dd1", // (logic kind) — nudged slightly redder, stays violet-purple
-  green:     "#00b862", // --sock-lambda — purer/yellower green, away from the jade teal
+  amber:     "#d9742b", // (input kind only — no socket family)
+  blue:      "#3173e0", // (math kind)
+  teal:      "#4fc89a", // (convert kind)
+  purple:    "#c05dd1", // (logic kind)
+  green:     "#00b862", // --sock-lambda
   gold:      "#f5b914", // --sock-number
   lime:      "#c8e040", // --sock-string
   pink:      "#de7cb0", // --sock-date
   sky:       "#56b4e9", // --sock-complex
-  vermilion: "#e0473a", // the semantic ERROR red (freed from --sock-table → amber); drives --sol-error
-  violet:    "#7b64ed", // --sock-frame — nudged a little bluer
+  vermilion: "#e0473a", // the semantic ERROR red; drives --sol-error
+  violet:    "#7b64ed", // --sock-frame
 } as const;
 
 export type PaletteSlot = keyof typeof PALETTE;
 
 // Order the swatch picker shows the slots in — ALSO the categorical series order
-// (chartCore useSeriesColors), so it doubles as chart-series priority. The picker
-// grid is 6 cols × 2 rows, so column pairs read top/bottom: gold/gray (accent +
-// neutral) and green/vermilion (the semantic positive/error pair) lead, then the
-// remaining hues alternate for contrast. gold is Solenoid's default accent → slot 1;
-// gray drops to slot 7 so the first six SERIES colors stay vivid.
+// (chartCore useSeriesColors), so it doubles as chart-series priority. gray sits at
+// slot 7 so the first six SERIES colors stay vivid.
 export const COLOR_PALETTE: PaletteSlot[] = [
   "gold", "green", "amber", "blue", "lime", "purple",
   "gray", "vermilion", "violet", "pink", "sky", "teal",
 ];
 
-// EVERY socket color is derived from a palette slot — so sockets are built entirely
-// from the palette (one source of truth) and a palette switch retints the whole
-// socket family. appTheme writes these --sock-* vars on every apply (see SOCKET_VARS),
-// so App.css does not define them.
-//   - scalar: the slot color itself (mode-shifted via themeAccent).
-//   - array (a list of the scalar): a darker sibling — HSV value ×0.85.
-//   - matrix (a 2-D grid): a punchier, hue-shifted sibling — −11° hue, S ×1.18, V ×0.92.
-// number's MATRIX is the Table socket — a matrix-shade of number (gold), like
-// every other 2-D socket derives from its scalar; the grid glyph (not color)
-// tells it apart from numlist.
-//
-// EVERY socket transform here works in HSV — same space as themeAccent /
-// darkenAccent / socketRingShade, so the whole family is tuned on one set of axes
-// and each knob does exactly one thing. Do NOT reintroduce an RGB multiply (it
-// silently couples value and saturation) or an HSL step (its L scale trades off
-// against saturation differently per hue, so the same constant read as
-// "darker" on saturated slots and "more chromatic" on dull ones).
+// EVERY socket color is derived from a palette slot. appTheme writes these --sock-*
+// vars on every apply (see SOCKET_VARS), so App.css does not define them.
 const ARRAY_VALUE_SCALE = 0.85;
 export function socketArrayShade(hex: string): string {
   const t = parseHex(hex);
@@ -215,9 +180,7 @@ export function socketArrayShade(hex: string): string {
   return hsvToHex(h, s, v * ARRAY_VALUE_SCALE);
 }
 // Hue shift is what actually separates a 2-D socket from its scalar (gold → orange,
-// sky → cyan); the S/V pair only keeps it in the same weight class. The gain/scale
-// are the HSV equivalent of the HSL step this replaced, averaged over the matrix
-// slots of every built-in palette, so swapping spaces didn't move the depth.
+// sky → cyan); the S/V pair only keeps it in the same weight class.
 const MATRIX_HUE_SHIFT = -11;
 const MATRIX_SAT_GAIN = 1.18;
 const MATRIX_VALUE_SCALE = 0.92;
@@ -244,11 +207,11 @@ export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind 
   { var: "--sock-logical",     slot: "purple",    kind: "scalar" }, // boolean — matches the logic node-kind
   { var: "--sock-logicallist", slot: "purple",    kind: "array" },
   { var: "--sock-logicaltable",slot: "purple",    kind: "matrix" },
-  { var: "--sock-table",       slot: "gold",      kind: "matrix" }, // numeric matrix — a matrix shade of Number (gold), like every other 2-D socket derives from its scalar (the grid glyph distinguishes it from numlist)
+  { var: "--sock-table",       slot: "gold",      kind: "matrix" }, // numeric matrix — the grid glyph distinguishes it from numlist
   { var: "--sock-frame",       slot: "violet",    kind: "scalar" },
-  { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // recursive container — shares the frame's violet (distinguished by its hexagon glyph, not color)
+  { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // shares the frame's violet — distinguished by its hexagon glyph
   { var: "--sock-lambda",      slot: "green",     kind: "scalar" },
-  { var: "--sock-chart",       slot: "green",     kind: "scalar" }, // OBJECT/"Special" family with lambda — shares its green (distinguished by glyph: lambda is a circle+λ, chart is a square+bars), one legend row "Special"
+  { var: "--sock-chart",       slot: "green",     kind: "scalar" }, // OBJECT/"Special" family with lambda — shares its green, distinguished by glyph
   { var: "--sock-any",         slot: "gray",      kind: "scalar" },
 ];
 
@@ -257,19 +220,10 @@ function isPaletteSlot(s: string): s is PaletteSlot {
 }
 
 // ── Built-in palettes (the app switcher picks among these) ────────────────────
-// Each is a full slot→hex map. "Default" is the canonical PALETTE above; the
-// alternates recolor every slot. Because everything stores a slot id and resolves
-// through the active map, switching the base retints the WHOLE app (notes, groups,
-// the accent AND node-kind headers). Author a new palette by adding an entry here.
-//   - Muted: Default hues at lower saturation — a calmer canvas.
-//   - Colorblind-safe: the Okabe–Ito CVD-safe set mapped onto the slots (see map comment).
-//   - Solarized: Ethan Schoonover's Solarized accent set mapped onto the slots — a warm,
-//     vintage character distinct from Muted's desaturation (see map comment).
+// Each is a full slot→hex map. Author a new palette by adding an entry here.
 export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox";
 
-// Default hues at ~0.62 of their saturation (an earlier pass at ~0.5 washed out),
-// lightness nudged slightly toward mid so nothing glares or muddies. Calmer than
-// Default without going gray.
+// Default hues at ~0.62 of their saturation, lightness nudged toward mid.
 const MUTED: Record<PaletteSlot, string> = {
   gray:      "#8a8f98",
   amber:     "#ba8551",
@@ -285,16 +239,10 @@ const MUTED: Record<PaletteSlot, string> = {
   violet:    "#9479d1",
 };
 
-// Derived from the Okabe–Ito 8-color qualitative palette — the established CVD-safe
-// set (https://jfly.uni-koeln.de/color/), distinguishable under protan/deutan/tritan.
-// Rather than home-grow 12 distinct hues (impossible under CVD), we lean on the proven
-// set and accept slots doubling up: the 8 SOCKET slots each get a UNIQUE Okabe–Ito
-// color (so the type system stays fully separable), and the 4 node-kind-only slots
-// (amber/blue/teal/purple) reuse the matching OI color — they're still mutually
-// distinct (orange / blue / sky / reddish-purple) and only coincide with a socket
-// color, a different UI role. Okabe–Ito has no neutral, so gray keeps #999999.
-//   OI: orange #E69F00 · sky #56B4E9 · green #009E73 · yellow #F0E442 ·
-//       blue #0072B2 · vermilion #D55E00 · reddish-purple #CC79A7 (black dropped — dark canvas).
+// The Okabe–Ito CVD-safe set (https://jfly.uni-koeln.de/color/). 12 distinct hues
+// are impossible under CVD, so slots double up: the 8 SOCKET slots each take a
+// UNIQUE OI color (the type system stays fully separable) and the 4 node-kind-only
+// slots reuse the matching one. OI has no neutral, so gray keeps #999999.
 const OI = {
   orange: "#e69f00", sky: "#56b4e9", green: "#009e73", yellow: "#f0e442",
   blue: "#0072b2", vermilion: "#d55e00", purple: "#cc79a7",
@@ -318,13 +266,10 @@ const COLORBLIND: Record<PaletteSlot, string> = {
   purple:    OI.purple,      // logic  ↔ date-socket reddish-purple
 };
 
-// Solarized accent set (https://ethanschoonover.com/solarized/) — proven legible on
-// dark backgrounds (it's a dark-theme staple). UNLIKE Colorblind, every slot here is a
-// DISTINCT color (the author wants slots doubling up ONLY where CVD forces it). Solarized
-// ships 8 accents, so the extra slots get base1 gray + 3 hues blended into Solarized's hue
-// gaps (leafy green ~100°, light azure ~200°, muted purple ~285°) at its sat/lightness band,
-// so all 12 read apart. Slot ids are opaque (hue need not match the name): `lime` carries
-// Solarized green (olive), `green` a leafier green, `purple` the blended purple.
+// Solarized accent set (https://ethanschoonover.com/solarized/). Every slot here is
+// a DISTINCT color — slots double up only where CVD forces it. Solarized ships 8
+// accents, so the extra slots take base1 gray + 3 hues blended into its hue gaps at
+// its sat/lightness band. Slot ids are opaque: `lime` carries Solarized green.
 const SOL = {
   yellow: "#b58900", orange: "#cb4b16", red: "#dc322f", magenta: "#d33682",
   violet: "#6c71c4", blue: "#268bd2", cyan: "#2aa198", green: "#859900",
@@ -333,7 +278,7 @@ const SOLARIZED: Record<PaletteSlot, string> = {
   gray:      "#93a1a1",   // any      (Solarized base1)
   vermilion: SOL.red,     // table
   amber:     SOL.orange,  // input
-  gold:      "#d9a521",   // number   (brightened — Solarized yellow #b58900 read too dark/dull)
+  gold:      "#d9a521",   // number   (brightened off Solarized yellow #b58900)
   lime:      SOL.green,   // string   (olive yellow-green)
   green:     "#5e9e4a",   // lambda   (blended leafy green — keeps it off teal/olive)
   teal:      SOL.cyan,    // convert
@@ -391,12 +336,10 @@ function baseMapFor(choice: PaletteChoice): Record<PaletteSlot, string> {
   return choice === "Custom" ? _customMap : (BUILTIN_PALETTES[choice] ?? BUILTIN_PALETTES.Default);
 }
 
-// REPORT/EXPORT-only override (bundle 13 #52) — a PARALLEL map, deliberately
-// separate from `_effective` above: `_effective` also drives the live editing
-// canvas (every node/group/cable color), and a brand override for an exported
-// report must NOT retint the canvas. Falls back to the SAME base resolution
-// (report/doc/app) when it declares no base of its own, but its per-slot
-// overrides are entirely independent of `_docOverrides`.
+// REPORT/EXPORT-only override — a PARALLEL map, deliberately separate from
+// `_effective`: a brand override for an exported report must NOT retint the live
+// canvas. Falls back to the same base resolution (report/doc/app) when it declares
+// no base, but its per-slot overrides are independent of `_docOverrides`.
 let _reportBase: PaletteName | null = null;
 let _reportOverrides: Partial<Record<PaletteSlot, string>> = {};
 let _reportEffective: Record<PaletteSlot, string> = { ...PALETTE };
@@ -506,14 +449,10 @@ export const paletteStore = {
 };
 
 /**
- * The REPORT/EXPORT-only palette (bundle 13 #52) — a colors-only brand override
- * scoped to report/export rendering surfaces (the static HTML export today; any
- * future report-branded surface reads through the same `resolve`), never the
- * editing canvas. Same shape + "no editor UI yet — hand/seed-authored" precedent
- * as `paletteStore`'s doc palette (see persistence.ts SavedGraph.reportPalette).
- * With no report-specific declaration, it just mirrors the canvas's effective
- * palette — so a document with no branding declared exports looking the same
- * as it always did.
+ * The REPORT/EXPORT-only palette — a colors-only brand override scoped to
+ * report/export rendering surfaces, never the editing canvas. No editor UI —
+ * hand/seed-authored (see persistence.ts SavedGraph.reportPalette). With no
+ * report-specific declaration it mirrors the canvas's effective palette.
  */
 export const reportPaletteStore = {
   subscribe: subscribeReportPalette,
@@ -573,12 +512,10 @@ export function initPalette() {
 }
 
 // ── Neutral shades (the gray swatch's 3-way cycle) ────────────────────────────
-// The palette's gray swatch cycles a note/group/accent through white → gray →
-// dark on each click (see SwatchGrid). `gray` is a real palette SLOT (retints with
-// the active palette); the two extremes are FIXED neutrals — white is white in any
-// palette — carried as sentinel slot ids so a card can store & serialize them like
-// any color. They resolve here, ahead of the palette lookup, and never appear as
-// their own swatch in the grid (they're reachable only through the gray cycler).
+// `gray` is a real palette SLOT (retints with the active palette); the two extremes
+// are FIXED neutrals carried as sentinel slot ids so a card can store & serialize
+// them like any color. They resolve ahead of the palette lookup and never appear as
+// their own swatch (reachable only through the gray cycler).
 export const NEUTRAL_WHITE = "neutral-white";
 export const NEUTRAL_DARK = "neutral-dark";
 // Null-prototype so a stray stored slot like "constructor" reads as undefined here
@@ -599,14 +536,10 @@ export function nextNeutral(current: string | undefined): string {
 }
 
 // ── Sequential height ramp (Surface / Contour / Vector Field) ────────────────
-// The field figures' height/magnitude colormap, built from PALETTE SLOTS instead
-// of a hard-coded viridis so the family retints with the active palette. The slot
-// order violet→blue→teal→green→gold walks the same hue path as viridis in the
-// Default palette (so the familiar look survives); lightness is FORCED onto a
-// monotonic dark→light ladder so the ramp always reads as height even when a
-// palette's own lightnesses don't line up (Equinox's all-gray set degrades to a
-// clean grayscale ramp). Memoized per palette version — heightRampColor runs per
-// subquad/arrow, thousands of times a draw.
+// Built from PALETTE SLOTS so the family retints with the active palette. Lightness
+// is FORCED onto a monotonic dark→light ladder so the ramp always reads as height
+// even when a palette's own lightnesses don't line up. Memoized per palette version
+// — heightRampColor runs per subquad/arrow, thousands of times a draw.
 const RAMP_SLOTS: PaletteSlot[] = ["violet", "blue", "teal", "green", "gold"];
 const RAMP_L = [0.26, 0.38, 0.5, 0.62, 0.78];
 let _ramp: Array<[number, number, number]> | null = null;

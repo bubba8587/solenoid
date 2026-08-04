@@ -1,7 +1,7 @@
 // Pinned value chips: a screen-fixed HUD of a few nodes' live values, readable
 // while you pan/zoom or isolate elsewhere. We pin the VALUE (label + live output
 // read from cableValueStore), NOT the rete node view — re-parenting a live node
-// element would break socket measurement and drag handling. See the scoping doc.
+// element would break socket measurement and drag handling.
 //
 // Persisted additively in SavedGraph (like standoffs). One pin per node.
 

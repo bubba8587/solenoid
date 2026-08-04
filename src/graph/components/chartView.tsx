@@ -1,8 +1,6 @@
-// Lazy indirection layer for the recharts renderers. recharts is heavy, so it's
-// isolated in chartRender.tsx and pulled in only when a chart first renders (one
-// shared chunk for Chart/Sparkline/Gauge/Tornado). This module stays recharts-free
-// so the many `import { ChartView, toSeries } from "./chartView"` sites don't drag
-// recharts into the main bundle. recharts-free helpers re-exported from chartCore.
+// Lazy indirection layer for the recharts renderers. This module must stay
+// recharts-free so the many `import … from "./chartView"` sites don't drag
+// recharts into the main bundle.
 import { lazy, Suspense, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries } from "./chartCore";
@@ -115,7 +113,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
     return <SurfaceView payload={value.payload} width={width} height={height} />;
-  // The canvas-figure wave (2026-07-16): each draws itself into one <canvas>.
+  // The canvas figures: each draws itself into one <canvas>.
   if (value.op === "contour" && value.payload?.kind === "contour")
     return <ContourView payload={value.payload} width={width} height={height} />;
   if (value.op === "waterfall" && value.payload?.kind === "waterfall")

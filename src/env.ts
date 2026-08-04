@@ -1,12 +1,7 @@
 /**
- * Runtime environment detection.
- *
- * `isTauri` is true when the app is running inside its Tauri desktop shell,
- * false when it's served as the plain web frontend (e.g. the Vercel demo).
- * Tauri v2 injects `__TAURI_INTERNALS__` onto `window` before any app code
- * runs, so checking for it is a reliable, synchronous test. We use this to
- * tell web-demo visitors they're on the demo and can download the desktop
- * build instead.
+ * True inside the Tauri desktop shell, false on the plain web frontend. Tauri v2
+ * injects `__TAURI_INTERNALS__` onto `window` before any app code runs, so this
+ * is a reliable synchronous test.
  */
 export const isTauri =
   typeof window !== "undefined" &&

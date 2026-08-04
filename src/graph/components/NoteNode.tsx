@@ -9,8 +9,7 @@ import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
-// drill-in must prune/reconcile/refresh on its OWN graph (same miss the Input
-// Switch had — the 9316c2d resolver sweep didn't reach this component).
+// drill-in must prune/reconcile/refresh on its OWN graph.
 import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
@@ -59,15 +58,13 @@ function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string 
 }
 
 // A body EDIT that removes a wired frontmatter key strands its cable: `syncFields`
-// drops the output socket (a body-derived change history doesn't track), while the
-// caller's `removeConnection` IS tracked — so a plain Ctrl+Z re-adds the cable onto a
-// socket that no longer exists (a zombie cable to a missing output). Record the body
-// edit as its OWN undo entry, pushed AFTER the cable removals so undo restores the body
-// + re-derives the socket FIRST and the cable re-add then lands on a live socket — the
-// same ordering `ExtensibleInputs.pushRowRemovalUndo` uses, adapted to the note's
-// body-derived sockets. `refresh` re-renders the note + re-routes cables + recomputes.
-// Exported for the unit test. (A per-key type override pruned on removal isn't restored
-// — the re-derived socket takes the guessed type; the rare override+remove+undo edge.)
+// drops the output socket (history doesn't track a body-derived change) while the
+// caller's `removeConnection` IS tracked, so a plain Ctrl+Z would re-add the cable onto
+// a socket that no longer exists. Record the body edit as its OWN undo entry, pushed
+// AFTER the cable removals, so undo restores the body + re-derives the socket FIRST and
+// the cable re-add lands on a live socket. `refresh` re-renders the note + re-routes
+// cables + recomputes. (A per-key type override pruned on removal isn't restored — the
+// re-derived socket takes the guessed type.)
 type NoteSyncHost = { body: string; syncFields: () => unknown };
 export function pushNoteFieldRemovalUndo(
   node: NoteSyncHost, prevBody: string, newBody: string, refresh: () => void,
@@ -151,13 +148,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     const { removed, retyped } = data.syncFields();
     const editor = getActiveEditor();
     const area = getActiveArea();
-    // Drop cables stranded by a removed/retyped key (shared with the Import node).
     const strandedByRemoval = await dropStrandedFrontmatterCables(data.id, removed, retyped);
-    // If a body EDIT stranded a cable by removing its key, make that body change undoable
-    // AS ONE with the cable removal (pushed AFTER the removeConnection entries so undo
-    // restores the body + socket before the cable re-add lands — else Ctrl+Z leaves a
-    // zombie cable to a missing output). Body-path only (`!force`); a type-override drop
-    // mutates fieldTypes, not the body, so it's a separate case.
+    // Body-path only (`!force`): a type-override drop mutates fieldTypes, not the
+    // body. See pushNoteFieldRemovalUndo for the ordering this depends on.
     if (!force && strandedByRemoval && prevBody !== newBody) {
       pushNoteFieldRemovalUndo(data, prevBody, newBody, () => {
         setBody(data.body);
@@ -213,8 +206,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   // Manual width + height (drag the corner grip — same model as a Group). The note
   // is a fixed box; the body fills it and scrolls. area.update re-renders on each
-  // move (width/height read straight off `data` in the style). No history (notes
-  // never recorded one), just an autosave on release.
+  // move (width/height read straight off `data` in the style). No history entry,
+  // just an autosave on release.
   function onResizeDown(e: React.PointerEvent) {
     e.stopPropagation();
     e.preventDefault();
@@ -257,24 +250,14 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     window.addEventListener("pointerup", up);
   }
 
-  // The markdown to render BELOW any frontmatter block — derived LIVE from the
-  // current `body` state, NOT from `data.renderBody`. `data.renderBody` only
-  // refreshes inside commitFields()→syncFields() on blur, and that path early-
-  // returns when `data.body === lastSyncRef.current`; if a mobile keystroke/blur
-  // races (the final delete didn't reach data.body before the commit, or blur fires
-  // in an unexpected order), the cached renderBody stays stale and the read view
-  // freezes — e.g. a leftover `<hr>` from a half-typed `---` keeps the first line
-  // shifted down until the next edit cycle. Parsing straight from `body` (a pure,
-  // cheap frontmatter strip) makes the visual a function of the live text alone, so
-  // it can never lag the socket-commit cycle. `body` is kept current everywhere:
-  // onBody on each keystroke, and the `[data.body]` effect on external changes
-  // (load / paste / undo). The socket lifecycle still commits on blur — only the
-  // RENDER is decoupled from it.
+  // Derived LIVE from the current `body` state, NOT from `data.renderBody`, which
+  // only refreshes on the blur commit and goes stale if a keystroke/blur races. The
+  // RENDER is deliberately decoupled from the socket-commit cycle; the socket
+  // lifecycle still commits on blur.
   const renderBody = useMemo(() => parseNoteFrontmatter(body).body, [body]);
-  // NOT trusted content: a Note body arrives in shared .solenoid files, and marked
-  // does no sanitization — an <img onerror=…> in a note was a stored XSS with Tauri
-  // IPC in reach (audit P0-6). Sanitize every render; the CSP is the second,
-  // independent layer. `breaks: true` so a lone newline becomes a line break.
+  // NOT trusted content: a Note body arrives in shared .solenoid files and marked does
+  // no sanitization, so sanitize every render (the CSP is the second, independent
+  // layer). `breaks: true` so a lone newline becomes a line break.
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
     [renderBody],
@@ -301,9 +284,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
   // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
-  // area.update fires the area "render"/node pipe the HTML-canvas renderer rebuilds on, so a
-  // recolor re-captures the note's clone (a bare setColor only re-renders rete's root — the
-  // canvas never sees it, leaving the next pan/zoom showing the OLD color).
+  // area.update fires the area "render"/node pipe the HTML-canvas renderer rebuilds on,
+  // so a recolor re-captures the note's clone; a bare setColor only re-renders rete's
+  // root and the canvas keeps showing the OLD color.
   function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
@@ -409,9 +392,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           })}
         </div>
       )}
-      {/* The `document` OUTPUT — the whole note as a DocumentValue for a document sink
-          (Write to Obsidian). Always present (independent of frontmatter fields).
-          Position: author to eyeball. */}
+      {/* The `document` OUTPUT — the whole note as a DocumentValue for a document sink.
+          Always present, independent of the frontmatter fields. */}
       {data.outputs.document && (
         <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} top={docDotTop} />
       )}
@@ -430,10 +412,10 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               autoFocus
               onChange={(e) => onBody(e.target.value)}
               onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitFields(); }}
-              // Unconditional stop (like the title input) — NOT the coarse-aware
-              // stopDragStart the read body uses. While editing, a tap must position
-              // the cursor / long-press to copy, not bubble to rete's drag (which on
-              // touch stole focus and closed the keyboard on every tap).
+              // Unconditional stop — NOT the coarse-aware stopDragStart the read body
+              // uses. While editing, a tap must position the cursor / long-press to
+              // copy, not bubble to rete's drag (which on touch steals focus and
+              // closes the keyboard).
               onPointerDown={stop}
               onMouseDown={stop}
             />
@@ -545,6 +527,3 @@ export function FieldRow({
   );
 }
 
-// Inline-ref rendering (InlineRefBody/InlineRefValue/RefInputRow/…) lives in
-// components/inlineRefDisplay.tsx and is used by the REPORT node only — a Note is
-// output-only (no `=name` inputs), so it renders its body as plain markdown above.

@@ -1,5 +1,5 @@
-// Add-menu search scoring — extracted from AddNodeMenu so it's unit-testable and
-// shared. The searchable text for a leaf is deliberately WIDER than what's shown:
+// Add-menu search scoring. The searchable text for a leaf is deliberately WIDER
+// than what's shown:
 // the label + description + Excel function names, PLUS the ancestor category path
 // (so "arithmetic" finds the Add/Subtract/… leaves under the Arithmetic category,
 // and "table input" finds the leaf labeled "Table" under the Input category),
@@ -54,7 +54,6 @@ function flattenTree(entries: CatalogEntry[], ancestors: string[] = []): LeafWit
   return out;
 }
 
-// "table-input" → "table input"; "arith-add" → "arith add".
 function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
@@ -72,7 +71,6 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  // Subsequence gate over everything searchable.
   const haystack = `${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`;
   const s = fuzzyScore(query, haystack);
   if (s === null) return null;
@@ -106,15 +104,13 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
   return scored.map((x) => x.leaf);
 }
 
-// ─── Quick-wire compatibility filter ───────────────────────────────────────────
 // Quick-wire drops a cable on empty canvas and needs the Add menu narrowed to
 // nodes that can actually receive the dragged value. There's no static
 // socket-type metadata on a catalog leaf, so the SET of socket types is read off a
 // throwaway `leaf.create()` (the same constructor a real pick calls) — but a node
 // type's INITIAL sockets are deterministic per catalog `type`, so that signature is
 // memoized: the first drop instantiates each leaf once, every later drop reuses the
-// cached type set and only re-runs the (cheap) per-origin compatibility check. Was
-// O(all leaves × create()) on EVERY drop.
+// cached type set and only re-runs the (cheap) per-origin compatibility check.
 
 type PortLike = { socket?: unknown };
 type NodeLike = {
@@ -156,8 +152,6 @@ function hasCompatibleSocket(
   originSide: "input" | "output",
 ): boolean {
   const sig = socketSignature(leaf);
-  // Origin is an OUTPUT → each candidate INPUT type must accept it: canConnect(origin, in).
-  // Origin is an INPUT → each candidate OUTPUT type must flow into it: canConnect(out, origin).
   const candidates = originSide === "output" ? sig.inputs : sig.outputs;
   for (const dt of candidates) {
     const ok = originSide === "output" ? canConnect(origin.dataType, dt) : canConnect(dt, origin.dataType);

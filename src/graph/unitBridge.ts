@@ -1,11 +1,6 @@
-// ─── Unit bridge — FC unit ids ⇄ dimensional Units (Bundle 05: FC A4) ────────────
-// The Format Controller layer names units by an ID string ("m", "km", "usd", "mph")
-// from UNIT_ANNOTATIONS (formatAnnotationStore.ts). The value layer computes with
-// dimensional `Unit`s (exponent vector + SI scale) from dimension.ts. This module
-// is the one-way lookup between them, so a source that carries an FC unit id can
-// mint a base-SI `UnitCell`, and a `UnitCell`'s dimension can be shown with the
-// user's chosen display id.
-//
+// ─── Unit bridge — FC unit ids ⇄ dimensional Units ───────────────────────────────
+// The lookup between the FC layer's unit ID strings (UNIT_ANNOTATIONS) and the value
+// layer's dimensional `Unit`s (dimension.ts).
 // Pure — imports the dimension algebra + the FC unit list only, no React/Rete.
 
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
@@ -79,28 +74,13 @@ export function isDimensionalFcUnit(id: string): boolean {
 }
 
 /**
- * Apply a Format Controller's chosen unit to a value — the FC is VALUE-MUTATING
- * (FC A4): the unit becomes a property of the VALUE (a base-SI `UnitCell` +
- * display id), not a display-only annotation, so it computes downstream and a
- * dimension clash surfaces as a real `#UNIT!`. Handles a scalar or a 1-D list
- * (per cell); a 2-D matrix is unit-agnostic (author decision) and passes through,
- * as do frames / lambdas / strings / objects.
- *
- *   • a dimensionless number + a real unit → tag it base SI, interpreting the
- *     magnitude AS that unit (`5` + km ⇒ 5000 m, display "km");
- *   • an already-dimensioned cell + a COMMENSURABLE unit → keep the base value,
- *     just RE-DISPLAY in the new unit (km → mi is a display change, base is
- *     dimension-invariant);
- *   • dimensioned + an INCOMMENSURABLE unit → `#UNIT!` (a true dimension clash —
- *     a length can't be re-labeled a mass);
- *   • unit `custom` with a free-text name → an OPAQUE custom dimension (`poop` is its
- *     own axis: `poop ÷ s` = `poop/s`, not Hz). The name renders via `formatDim`, so
- *     the cell carries no `display` id (there's no registry unit to resolve).
- *   • unit `none` / empty / unresolved → unchanged (any existing tag rides on).
+ * Apply a Format Controller's chosen unit to a value — the FC is VALUE-MUTATING:
+ * the unit becomes a property of the VALUE (a base-SI `UnitCell` + display id).
+ * Handles a scalar, a 1-D list (per cell), and a numeric matrix (one unit for the
+ * grid); frames / lambdas / strings / objects pass through.
  */
 export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: string): unknown {
-  // A custom free-text unit tags an opaque custom dimension; no display id (formatDim
-  // renders the name). A blank custom name is a no-op.
+  // A custom free-text unit carries no display id — formatDim renders the name.
   const custom = fcUnitId === "custom" && customUnit && customUnit.trim() !== "";
   const u: Unit | null = custom ? { dim: customDim(customUnit!.trim()), scale: 1 } : fcUnitToUnit(fcUnitId);
   const displayId = custom ? undefined : fcUnitId;
@@ -124,18 +104,11 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
   };
   if (Array.isArray(value)) {
     if (value.some((c) => Array.isArray(c))) {
-      // A homogeneous NUMERIC matrix carries ONE unit for the whole grid (D20). The
-      // cells stay bare numbers; the unit tags the outer array. A non-numeric matrix
-      // (text/logical) can't take a physical unit — pass it through unchanged.
+      // A homogeneous NUMERIC matrix carries ONE unit for the whole grid (D20).
       const firstRow = (value as unknown[]).find((r) => Array.isArray(r)) as unknown[] | undefined;
       const firstCell = firstRow?.find((c) => c !== null && c !== undefined && c !== "");
-      // Tag a COPY of the outer array, never `value` itself. rete-engine's
-      // DataflowEngine caches a node's output and hands the identical reference to
-      // every downstream consumer (no cloning), so mutating `value` in place would
-      // stamp the unit onto the UPSTREAM node's cached matrix — a second consumer
-      // (or a plain Display) would then see a unit it never authored, and two FCs on
-      // one source would race last-write-wins. The rows/cells stay shared (immutable
-      // numbers); only the outer array must be fresh so the symbol tag is private.
+      // Tag a COPY of the outer array, never `value` itself — the DataflowEngine hands
+      // the identical cached reference to every downstream consumer.
       return typeof firstCell === "number"
         ? withMatrixUnit((value as unknown[]).slice() as typeof value, { dim: u.dim, display: displayId })
         : value;
@@ -158,12 +131,10 @@ export function displayMagnitudeOf(cell: UnitCellT): number {
 
 /**
  * Unwrap every `UnitCell` in a value to its display magnitude — the UNIT-BLIND
- * BOUNDARY (FC A4): the dimension algebra runs only in unit-aware nodes
- * (`unitAware = true` / the passthrough markers — see coerceInputs); every OTHER
- * node receives plain numbers, in the unit the user sees, exactly as before units
- * existed. Without this, a `UnitCell` object reaches `coerceNumber` as NaN and a
- * comparison/threshold/chart silently breaks (the 2026-07-13 regression).
- * Returns the SAME reference when nothing is dimensioned (the common case).
+ * BOUNDARY: the dimension algebra runs only in unit-aware nodes (`unitAware = true`
+ * / the passthrough markers — see coerceInputs); every OTHER node receives plain
+ * numbers in the unit the user sees. Returns the SAME reference when nothing is
+ * dimensioned (the common case).
  */
 export function stripUnitCells(v: unknown): unknown {
   if (isUnitCell(v)) return displayMagnitudeOf(v);

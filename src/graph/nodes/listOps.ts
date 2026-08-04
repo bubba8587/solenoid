@@ -64,9 +64,8 @@ export function padList<T>(arr: readonly T[], n: number, fill: T, dir: PadDir): 
 }
 
 /** Successive differences — one shorter than the input. Element-wise over
- *  consecutive PAIRS: a missing neighbour makes that difference missing, and a
- *  cell error propagates into each difference it touches — bare arithmetic here
- *  once computed `v - null` as `v - 0` and string-concatenated a SolError. */
+*  consecutive PAIRS: a missing neighbour makes that difference missing, and a
+*  cell error propagates into each difference it touches. */
 export function diffList(arr: readonly Cell[]): Cell[] {
   return arr.slice(1).map((v, i) => {
     const prev = arr[i];
@@ -93,10 +92,9 @@ export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
 export type CumulativeOp = "cumsum" | "cumprod" | "cummax" | "cummin";
 
 /** Running aggregate with the reducer policy applied per PREFIX: a null cell
- *  contributes nothing (its output is the running value so far — null while
- *  nothing has been seen), and a cell error poisons its own position and every
- *  later one, since each later prefix contains it. Bare arithmetic here once made
- *  RUNNINGMAX([-5, null]) answer [-5, 0] via Math.max(-5, null). */
+*  contributes nothing (its output is the running value so far — null while
+*  nothing has been seen), and a cell error poisons its own position and every
+*  later one, since each later prefix contains it. */
 export function cumulative(op: CumulativeOp, arr: readonly Cell[]): Cell[] {
   const out: Cell[] = [];
   let err: SolError | null = null;
@@ -156,8 +154,7 @@ export function rolling(op: RollingOp, arr: readonly Cell[], window: number): Ce
 export type ArgMinMaxOp = "argmax" | "argmin";
 
 /** 1-based position of the extreme value; null for an empty (or all-missing)
- *  list. Reducer policy: a cell error propagates, a null is skipped — the bare
- *  comparison once let `null` compare as 0 and win argmin. */
+*  list. Reducer policy: a cell error propagates, a null is skipped. */
 export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolError | null {
   const err = firstError(arr);
   if (err) return err;
@@ -171,10 +168,9 @@ export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolEr
 }
 
 /** 1 / 0 rather than a logical, matching the node's numeric output socket.
- *  Membership keys by VALUE via setKey (VAL-8 — `includes` compares a complex
- *  [re, im] tuple by reference and never matched); blank and error cells are not
- *  members, exactly as the Set family treats them. Answers a LOGICAL — membership
- *  is a predicate (the Is In mask's scalar sibling), not a 0/1 number. */
+*  Membership keys by VALUE via setKey (VAL-8); blank and error cells are not
+*  members, exactly as the Set family treats them. Answers a LOGICAL — membership
+*  is a predicate (the Is In mask's scalar sibling), not a 0/1 number. */
 export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
   return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
@@ -185,8 +181,8 @@ export function containsValue(arr: readonly unknown[], v: unknown): boolean {
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
 /** Values paired to weights BY POSITION; a pair is skipped when either side is
- *  missing. Variance is the Bessel-corrected reliability-weight form
- *  `Σw·(x−μ)² / (Σw − Σw²/Σw)`, which is what the node has always computed. */
+*  missing. Variance is the Bessel-corrected reliability-weight form
+*  `Σw·(x−μ)² / (Σw − Σw²/Σw)`. */
 export function weighted(op: WeightedOp, values: readonly Cell[], weights: readonly Cell[]): number | SolError | null {
   const err = firstError(values) ?? firstError(weights);
   if (err) return err;
@@ -262,8 +258,7 @@ export function fibonacci(count: number): number[] {
 // ─── Sets ─────────────────────────────────────────────────────────────────────
 // Membership is by VALUE, not identity (VAL-8). JS Sets key OBJECTS by reference, so
 // a tagged complex (VAL-15) canonicalizes to a string; every primitive (number incl.
-// a date serial, string, boolean) stays itself. Precise now: only a complex takes the
-// detour — the old Array.isArray branch swept up ANY array cell.
+// a date serial, string, boolean) stays itself. ONLY a complex takes the detour.
 export function setKey(v: unknown): unknown {
   return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }

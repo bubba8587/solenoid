@@ -1,9 +1,6 @@
-// Per-node manual size set by dragging a node's resize handle. Module-level
-// store (like collapseStore / dockedNodeStore) so it's readable from Rete's
-// separate React root. Persisted with the graph (see persistence.ts).
-//
-// Only "resizable" nodes (inputs, text/string, Display, lookups — see
-// nodeResizable) expose a handle; everything else auto-sizes and truncates.
+// Per-node manual size set by dragging a node's resize handle. Module-level store so
+// it's readable from Rete's separate React root; persisted with the graph. Only
+// `nodeResizable` nodes expose a handle; everything else auto-sizes and truncates.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

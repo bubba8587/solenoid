@@ -50,6 +50,9 @@ The load-bearing distinctions:
   `@`-read of a mis-sized list — the DESIGNED loud failure for a bare column name in
   scalar position, D24), `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at
   representation overflow [decided]. Never a raw NaN as a failure signal.
+- **Fill's unwired pad is `null`** (first-class missing — author 2026-07-16), NOT
+  Excel's `#N/A` for EXPAND's omitted `pad_with`: wire the NA node into Fill to get
+  Excel's form (`nodes/matrix.ts`).
 - **The non-finite guard** (`guardFinite`, valueKinds.ts) [shipped]:
   for any numeric op — result `NaN` → `#DOMAIN!` (indeterminate: `(-8)^(1/3)`, `∞−∞`,
   `∞/∞`, `0×∞`, or a NaN input entering the op); result `±Inf` from all-FINITE inputs →
@@ -81,6 +84,26 @@ Which rule applies is decided by the CONTEXT, not the function's name. The conte
 The sanctioned divergence (decision D11): formula `AND(x)` is a *reduction* (nulls
 skipped → Excel behavior); the BooleanOp node is *element-wise* (Kleene). Same word,
 two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
+
+### Scalar operators — the P6 operator-parity table (settled 2026-06-22; shipped at the v1.0 audit, finding 26)
+
+`applyOp` (`excelFormula.ts`). Type-honest: match Excel where sane, diverge where
+Excel is incoherent.
+
+- A per-cell error propagates UNMORPHED (broadcast elements reach the operator raw).
+- `null` propagates through arithmetic, comparison and `&` (the SQL/pandas/Polars
+  model — `null+5` is null, not 5).
+- Logicals ride the number bridge in numeric contexts (TRUE = 1).
+- `=` / `<>` are TYPE-STRICT with case-INSENSITIVE text (EXACT is the case-sensitive
+  escape hatch): `"a" = "A"` is TRUE, `5 = "5"` is FALSE.
+- Ordering (`<` `>` `<=` `>=`): numbers numerically, text by dictionary collation,
+  CROSS-TYPE → `#TYPE!` (no invented number<text<logical order, no NaN-false).
+- `&` renders logicals TRUE/FALSE (not JS "true").
+
+**IF honors a BLANK branch** (the parser's omitted-argument form `IF(x,,y)`): the
+blank arrives as null and STAYS null — Solenoid's first-class missing — a deliberate
+Excel deviation (Excel's omitted arg IS 0; author chose null, 2026-07-16). Arg-count
+defaults keep Excel's shape: `IF(test, then)` with a false test → FALSE.
 
 ## Reading an input — a WIRED blank vs the TYPED literal
 

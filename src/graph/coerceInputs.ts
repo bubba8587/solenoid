@@ -39,21 +39,7 @@ export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist"
  *
  *  For a container rung (`any`/`anycombo`/`anylist`/`anytable`) that keeps the widening
  *  the socket promises: a lower-rank value still reaches the rank the node's data()
- *  expects (a scalar into an `anylist` op → `[scalar]`, not a bare scalar).
- *
- *  UNIFORM since 2026-07-25. A `trueany`-based adoptive used to be the exception —
- *  it coerced on the ADOPTED type, which this comment called "its established
- *  pre-existing behavior", i.e. grandfathered rather than derived. That made a node's
- *  runtime input SHAPE depend on whatever happened to be wired upstream: derived state,
- *  recomputed after every load/paste and never persisted, which is why a shape bug
- *  there was invisible from the node's own `data()`. It was also almost always a no-op,
- *  since the adopted type IS the upstream socket's type — so it coerced a value to the
- *  type it already had, and only did anything when the two disagreed (a combo carrying
- *  a scalar), where "anything" meant a distortion the node never asked for.
- *  Coercing on `trueany` means NO coercion, which is the honest reading of a port that
- *  declares it accepts and handles ANY shape — every one of these is a passthrough,
- *  selector, container builder or inspector (Display, IF/CHOOSE/SWITCH, Cast, INDEX,
- *  Expect, Build Cube, Report refs, composite ports, Placeholder). */
+ *  expects (a scalar into an `anylist` op → `[scalar]`, not a bare scalar). */
 function coercionType(socket: unknown): SocketDataType | undefined {
   if (socket instanceof AdoptiveSocket) return socket.base;
   return socket instanceof SolenoidSocket ? socket.dataType : undefined;
@@ -71,10 +57,7 @@ function coercionType(socket: unknown): SocketDataType | undefined {
 //
 // A BROADCASTER (Expression, a pack element-wise node) that handles scalar-or-list
 // itself declares the COMBO rung instead of opting out of the boundary: the family
-// combos, or `anycombo` when the element type is unknown. That used to be a
-// `noWidenInputs` side-channel — a node overriding what its own socket said about
-// rank — which is precisely the kind of invisible override this boundary shouldn't
-// have. Deleted 2026-07-25 with the `anycombo` rung; declare the type instead.
+// combos, or `anycombo` when the element type is unknown.
 
 /** TYPED text → logical. `coerceLogical` is the value-model rule for a WIRED value
  *  (TRUE/FALSE + the numeric bridge); a human typing into a list box also gets the
@@ -102,17 +85,13 @@ export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   if (dt === "numlist" || dt === "list") return parts.map((p) => (p !== "" && Number.isFinite(Number(p)) ? Number(p) : null));
   if (dt === "datelist") return parts.map((p) => { const n = parseDateToSerial(p); return Number.isFinite(n) ? n : null; });
   if (dt === "logicallist") return parts.map(parseBoolText);
-  return parts; // strlist — every part is valid text
+  return parts;
 }
 
 // ─── Central input coercion ───────────────────────────────────────────────────
-// The `table` socket is the supertype of the numeric lattice (see sockets.ts), so
-// any numeric input may receive a scalar, a list, or a 2-D table on a cable. This
-// module wraps every node's `data()` once, at creation, to normalize each incoming
-// value to the shape the consuming socket declares — one shared place rather than
-// coercion code duplicated across every node. Widening (scalar/list → table) is
-// always safe; narrowing (table → list/number) throws a ShapeError when the data
-// genuinely doesn't fit. CSV row-orientation lives in nodes/coerce.ts.
+// Wraps every node's `data()` once, at creation, to normalize each incoming value
+// to the shape the consuming socket declares. Narrowing (table → list/number)
+// throws a ShapeError when the data genuinely doesn't fit.
 //
 // A thrown ShapeError isn't caught here: it propagates out of data() to the
 // error-value guard (errorValue.ts), which wraps every node OUTSIDE this one
@@ -162,7 +141,7 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
     }
     case "list":
     case "anylist":
-      return isUnitCell(v) ? [v] : v; // strict list socket: a scalar cell widens to a singleton
+      return isUnitCell(v) ? [v] : v;
     case "numlist":
       return v; // numlist broadcasts number|number[]: a scalar cell STAYS scalar (matches the numeric branch)
     case "table":
@@ -182,20 +161,9 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
  * can be 0 — the COMBO rungs (`numlist`/`strcombo`/`datecombo`/`complexcombo`/
  * `logicalcombo`) and the scalar rungs.
  *
- * This is the runtime half of the lattice's combo→scalar edge (sockets.ts): the
- * connection is ALREADY allowed, on the grounds that "a combo can be a scalar", and
- * that edge is what sockets.ts calls a runtime-accepted risk. Collapsing here makes
- * the promise true for the degenerate case instead of leaving a 1-element array to
- * reach a node that asked for one value. `toScalar` has always done exactly this for
- * the numeric scalar rung (coerce.ts) — the combo, which is meant to be the MORE
- * permissive rung, was stricter than the scalar it generalizes.
- *
  * A STRICT list socket (`list`/`strlist`/`datelist`/`logicallist`/`anylist`) keeps its
  * list — that IS the difference between the two rungs, and it re-widens a scalar on
  * the way in, so the round trip is lossless.
- *
- * A complex is a tagged object (VAL-15), so no special case: `[cx]` (a one-element
- * complex list) collapses to the tagged scalar like any other family.
  */
 function collapseSingleton(v: unknown): unknown {
   return Array.isArray(v) && v.length === 1 ? v[0] : v;
@@ -225,9 +193,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
       return toScalar(boolsToNums(v) as Numeric);
     case "numlist": {
       // numlist nodes already accept number | number[] and broadcast; only a 2-D
-      // table needs flattening so their element-wise logic never sees rows. A
-      // logical wired here coerces to 1/0 first. A one-element list collapses to
-      // its scalar (see collapseSingleton).
+      // table needs flattening so their element-wise logic never sees rows.
       const n = boolsToNums(v);
       const flat = Array.isArray(n) && Array.isArray((n as unknown[])[0]) ? toList(n as Numeric) : n;
       return collapseSingleton(flat);
@@ -235,13 +201,9 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "logicalcombo":
       return collapseSingleton(numsToBools(v));
     case "logical":
-      // A 0/1 number wired into a logic input becomes a real boolean.
       return collapseSingleton(numsToBools(v));
     case "logicaltable":
       return numsToBools(v);
-    // The remaining scalar + combo rungs: no element coercion, but a one-element
-    // list is the scalar it holds (the numeric rungs get this from toScalar /
-    // the numlist case above).
     case "string":
     case "date":
     case "complex":
@@ -258,44 +220,33 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
       return collapseSingleton(v);
     case "logicallist": {
       const b = numsToBools(v);
-      return Array.isArray(b) ? b : [b]; // scalar widens to a singleton list
+      return Array.isArray(b) ? b : [b];
     }
     case "strlist":
     case "datelist":
     case "complexlist":
-      // Non-numeric 1-D lists: a plain `list` input now accepts a scalar (it
-      // widens to a singleton — see the lattice rule in sockets.ts), so promote a
-      // lone value to a 1-element array; an incoming list passes through. (The
-      // numeric `list` case above goes through toList, which already does this.
-      // A complex is a tagged object (VAL-15) — not an array — so it takes the
-      // same wrap as every other scalar, no outer-shape sniffing.)
+      // Non-numeric 1-D lists: a lone value widens to a 1-element array (the
+      // numeric `list` case above gets this from toList).
       if (v == null) return v;
       return Array.isArray(v) ? v : [v];
     case "anylist":
-      // The element-agnostic 1-D wildcard (Set nodes): the lattice lets a scalar of
-      // ANY family widen in, so promote a lone value to a singleton — without this a
-      // number throws in the node's for...of and a string iterates PER CHARACTER.
-      // (A complex is tagged (VAL-15), so it correctly wraps to a singleton here —
-      // under the old [re, im] tuple it slipped through as a fake 2-list.)
+      // The element-agnostic 1-D wildcard (Set nodes): promote a lone value to a
+      // singleton — without this a number throws in the node's for...of and a
+      // string iterates PER CHARACTER.
       if (v == null) return v;
       return Array.isArray(v) ? v : [v];
     case "frame":
-      // Any lower-rank value widens into a frame (dimensional flow): a 2-D matrix →
-      // named columns (Col1, Col2…, types inferred); a 1-D list → a single ROW
-      // (CSV-consistent — transpose for a column); a scalar → 1×1. A real frame
-      // passes through.
+      // A 1-D list widens into a frame as a single ROW (CSV-consistent —
+      // transpose for a column).
       if (isFrameValue(v)) return v;
       if (v == null) return v;
       if (Array.isArray(v)) return Array.isArray((v as unknown[])[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
       return frameFromRows([[v]]);
     case "cube":
-      // The lattice supremum: EVERY value widens up into a cube (see sockets.ts).
-      // A cube passes through; a frame re-brands as flat cells; a matrix → a grid
-      // of cells; a list → one ROW; a scalar → 1×1. null (missing) passes through.
       if (v == null) return v;
       return toCube(v);
     default:
-      return v; // scalars / combos / matrices / any — handled by the node
+      return v;
   }
 }
 
@@ -309,9 +260,9 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
 function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
   if (isFrameRef(v) || isSolError(v) || hasUnitCell(v)) return v;
   const fam = elementFamilyOf(dataType);
-  if (fam === "number") return boolsToNums(v);   // number / list / numlist / table
-  if (fam === "logical") return numsToBools(v);  // logical / logicallist / logicaltable
-  return v; // string / date / complex / element-agnostic wildcards: no element coercion
+  if (fam === "number") return boolsToNums(v);
+  if (fam === "logical") return numsToBools(v);
+  return v;
 }
 
 type NodeLike = {
@@ -348,13 +299,9 @@ export function wrapNodeData(node: NodeLike) {
   // variables) keeps the SAME Set object and mutates it in place, so this reference
   // stays live across rebuilds.
   const noWiden = node.noWidenInputs;
-  // The unit-blind boundary (FC A4), PER-INPUT: a unitAware node (runs the
-  // dimension algebra itself) keeps `UnitCell` tags on EVERY input; a
-  // passthrough/selector keeps them ONLY on the inputs its passthrough() spec
-  // names — the values it actually forwards. Its SIDE inputs (an IF condition,
-  // a sort key, a slice index) unwrap to display magnitudes like any other
-  // consumer, so a node can declare honest type/format adoption for its
-  // forwarded value without UnitCells NaN-poisoning the machinery around it.
+  // The unit-blind boundary, PER-INPUT: a unitAware node keeps `UnitCell` tags on
+  // EVERY input; a passthrough/selector keeps them ONLY on the inputs its
+  // passthrough() spec names. SIDE inputs unwrap to display magnitudes.
   const keepAllUnits = node.unitAware === true;
   const isPass = !keepAllUnits && isPassthroughNode(node);
 
@@ -369,19 +316,11 @@ export function wrapNodeData(node: NodeLike) {
       const keepUnits = keepAllUnits || (passKeys?.has(key) ?? false);
       const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
-      // Coerce to the socket's DECLARED base rung, not an adopted concrete type: an
-      // adoptive `anylist`/`anytable` input colors itself to the wired cable's type
-      // (a scalar that widens IN adopts e.g. `number`), but the node's data() was
-      // authored against the base rung — coercing on the adopted `number` would keep
-      // the scalar instead of widening it to `[scalar]`, breaking the widening the
-      // socket promises. The adopted type stays for color + downstream resolution.
+      // Coerce to the socket's DECLARED base rung, not an adopted concrete type —
+      // the node's data() was authored against the base rung.
       const dt = coercionType(socket);
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }
-      // A raw input (declared on node.rawInputs) bypasses coercion so the node sees
-      // the frame/cube exactly as it flowed in (a ref was already materialized above
-      // for non-lazy nodes).
       if (rawInputs?.has(key)) { coerced[key] = arr; continue; }
-      // An opt-out-of-widening key: element coercion only, keep the natural rank.
       if (noWiden?.has(key)) { coerced[key] = arr.map((v) => coerceValueNoWiden(dt, v)); continue; }
       // A narrowing failure throws ShapeError here; it propagates to the
       // error-value guard, which renders it as #SHAPE! (see the module header).
@@ -394,7 +333,7 @@ export function wrapNodeData(node: NodeLike) {
     const lits = node.stringLiterals;
     if (lits && node.inputs) {
       for (const key of Object.keys(node.inputs)) {
-        if ((coerced[key]?.length ?? 0) > 0) continue; // genuinely wired
+        if ((coerced[key]?.length ?? 0) > 0) continue;
         const socket = node.inputs[key]?.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
         if (!dt || !TYPEABLE_LIST.has(dt)) continue;
@@ -432,12 +371,7 @@ export function wrapNodeData(node: NodeLike) {
   };
 }
 
-/**
- * Install array-shape coercion for every node. Wraps each node's `data` as it's
- * created, so values are normalized to the consuming socket's declared shape
- * before the node runs. Call once, right after the editor is created and before
- * any nodes are added.
- */
+/** Call once, right after the editor is created and before any nodes are added. */
 export function installInputCoercion(editor: NodeEditor<Schemes>) {
   editor.addPipe((context) => {
     if (context.type === "nodecreated") {

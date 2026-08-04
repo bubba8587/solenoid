@@ -122,6 +122,28 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Build queue (decided, unbuilt)
 
+- [ ] **Top-bar decorative art slot** — `TopBar.tsx` holds an empty middle-gap div
+  (`.solenoid-topbar__art-svg` slot); drop an SVG (img or inline) into it.
+- [ ] **AUTHOR CALL — mode-selector inputs on a wired blank**: `text.ts` selector
+  inputs (delimiter/separator/pattern) and `date.ts` `basis`/`return_type`/
+  `weekend_code` deliberately fall back to the literal (`?? literal`) on a wired
+  blank — a mode blank is genuinely ambiguous (unknown → propagate, vs Excel's
+  omitted-optional-argument → default), unlike an operand blank (fixed on its own).
+  This DIVERGES from value-semantics.md's "a mode selector … PROPAGATES" row;
+  decide which way and reconcile the table or the code.
+- [ ] **Settings: Node Packs section** — planned but unbuilt (`Settings.tsx`).
+- [ ] **Matrix-null round-trip in Table Input** (`TableDisplay.tsx`, "Inc 6"): blanks
+  should round-trip as real null cells instead of collapsing the whole table.
+- [ ] **Moveable / resizable / hideable toolbar chrome** (author direction; recorded
+  at `CableShapeSelector.tsx`) — a later customisation slice.
+- [ ] **WebGPU cable layer follow-ups** (`CableCanvas.tsx`): selected-above z-jump
+  and ghost dashes (all cables currently draw behind, solid).
+- [ ] **WebGPU node-card LOD swap** (`NodeCanvas.tsx`): the current GPU card layer
+  is an ALIGNMENT-CHECK overlay (semi-transparent `DEBUG_ALPHA`, drawn above the
+  real DOM nodes to confirm size/position/color). The perf win is the unbuilt next
+  step: hide the DOM nodes when zoomed out and show opaque GPU cards, shrinking the
+  DOM compositing layer tree (where a node-heavy graph's zoom cost is).
+
 - [ ] **Hoist the BOTTOM chrome edge to a var**, the way `--chrome-top` was hoisted
   2026-08-01 (`Header.tsx` measures the header; six top overlays derive from it —
   `layout-chrome.md`). The bottom edge is still hand-keyed literals: status bar 19,

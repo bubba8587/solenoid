@@ -18,10 +18,7 @@ const selectedGlow = (color: string) => `drop-shadow(0 0 3px ${color}) drop-shad
 // Build the DISPLAY svg string shown in the idle <img>: the source with the
 // selected layer's steady glow baked in, so the selection still reads when the
 // live (hover-only) SVG isn't mounted. No selection → the source unchanged (no
-// parse — cheap for a huge map). Falls back to the raw source on any parse
-// failure. (The drop-shadow filter renders inside an <img>-loaded SVG in the
-// Chromium webview; if a future engine drops it, only the IDLE glow is lost —
-// the live hover glow, hit-testing and the textual Layer readout are unaffected.)
+// parse — cheap for a huge map). Falls back to the raw source on any parse failure.
 function bakeSelectionGlow(source: string, sel: string, color: string): string {
   if (!source || !sel) return source;
   try {
@@ -40,17 +37,12 @@ function bakeSelectionGlow(source: string, sel: string, color: string): string {
 
 /**
  * The SVG Picker — an interactive picture that outputs the name of whatever layer
- * you click, so it doubles as a visual data slicer (click a region on a map →
- * filter a dataset by it). Load an SVG (local `.svg` or a web URL, like Image); the
- * markup is inlined into the well so its inner shapes are hoverable + clickable.
- * Hover glows a selectable element in the chosen color; click commits it as the
- * `Layer` output (Enter/blur commits on the text fields; a pick is a discrete
- * action, committed immediately). Clicking the current pick again clears it.
+ * you click. Clicking the current pick again clears it.
  *
- * Highlighting is done imperatively (a pointermove that set React state per move
- * would thrash): we track the hovered + selected elements and paint filters onto
- * them directly, restoring on change. The header bar is the drag handle; the well
- * stops pointerdown so a click-to-pick never starts a node drag.
+ * Highlighting is IMPERATIVE (a pointermove that set React state per move would
+ * thrash): the hovered + selected elements are painted with filters directly and
+ * restored on change. The header bar is the drag handle; the well stops pointerdown
+ * so a click-to-pick never starts a node drag.
  */
 export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>) {
   const [label, setLabel] = useState(data.label);

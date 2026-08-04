@@ -13,9 +13,7 @@ import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 // ─── Visual output nodes ────────────────────────────────────────────────────
 // Terminal figures: a node reads a value and emits a chart VALUE (the `chart`
 // object socket a Report renders inline) — NOT a pass-through (this app only
-// passes values through Display + the Format Controller). The chart itself is
-// drawn by the React component (recharts); the class
-// only caches the value it received for the component to read.
+// passes values through Display + the Format Controller).
 
 export type SparklineOp = "line" | "column" | "winloss";
 
@@ -26,9 +24,6 @@ export const SPARKLINE_OP_META = {
 } satisfies Record<SparklineOp, { label: string }>;
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
-// A tiny, axis-less inline chart of a list — Excel's SPARKLINE (line / column /
-// win-loss). Emits a chart VALUE (not a pass-through) — a Report can embed it,
-// and it collapses to a headerless square.
 
 export class SparklineNode extends ClassicPreset.Node {
   label: string;
@@ -68,8 +63,6 @@ export class SparklineNode extends ClassicPreset.Node {
 }
 
 // ─── Chart ──────────────────────────────────────────────────────────────────
-// A larger chart with axes for a list — column / bar / line / area via an op
-// dropdown (the composable "one node, op selector" pattern).
 
 export type ChartOp =
   | "column" | "bar" | "line" | "area"
@@ -130,9 +123,8 @@ export class ChartNode extends ClassicPreset.Node {
     // [x, y, size] point. Unwired for the 1-D ops (they read `values`).
     this.addInput("series", anyTableIn("Series (2-D)"));
     this.addInput("options", strIn("Options"));
-    // A Chart is a terminal figure, not a data pass-through (nothing consumed the
-    // old numlist `result` — a chart is a sink). Its output is the first-class
-    // chart VALUE: the `chart` object socket (identity-only + `any`, like lambda)
+    // A Chart is a terminal figure, not a data pass-through. Its output is the
+    // first-class chart VALUE: the `chart` object socket (identity-only + `any`, like lambda)
     // carries a self-describing figure a consumer redraws — the Report renders it
     // inline where its `=name` ref sits (charts' main destination).
     this.addOutput("chart", chartOut("Chart"));
@@ -196,10 +188,6 @@ export class ChartNode extends ClassicPreset.Node {
 }
 
 // ─── Histogram ────────────────────────────────────────────────────────────────
-// Bins a numeric list into `bins` equal-width buckets and plots the counts as a
-// column chart. A terminal figure like Chart (emits the chart VALUE), so a Report
-// embeds it. Bin ranges are equal-width over the data's own [min, max]; the last
-// bin is closed so the maximum lands in it.
 
 /** Count how many values fall in each of `k` equal-width bins over [min,max]. */
 export function histogramBins(vals: (number | null)[], k: number): number[] {
@@ -262,12 +250,6 @@ export class HistogramNode extends ClassicPreset.Node {
 }
 
 // ─── Mermaid ──────────────────────────────────────────────────────────────────
-// A diagram node: mermaid.js source in → a figure out. Emits the first-class
-// mermaid VALUE down the same `chart` object socket a Chart uses (the green
-// "Special" family), so a Report renders it inline where its `=name` ref sits,
-// exactly like a chart. The source is typed on the card (or wired from a Text /
-// Note via the `source` socket); the SVG is drawn lazily in the component. Per
-// the standing rule, rich visuals are node outputs, not Report markdown features.
 
 const DEFAULT_MERMAID = "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]";
 
@@ -304,8 +286,6 @@ export class MermaidNode extends ClassicPreset.Node {
 }
 
 // ─── Gauge ────────────────────────────────────────────────────────────────────
-// A radial gauge of a single value read as a fraction of 100% (1 = 100%). The
-// dial always spans 0→100%; the value passes straight through.
 
 export class GaugeNode extends ClassicPreset.Node {
   label: string;
@@ -330,12 +310,6 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── 7-Segment display ────────────────────────────────────────────────────────
-// A flat seven-segment readout of a number — the electromechanical meter look,
-// on brand for a thing called Solenoid. Emits a chart VALUE (author 2026-07-16:
-// "chart output, not passthrough") so a Report embeds the readout inline.
-// Deliberately FLAT: lit segments in the accent, ghost segments barely-there;
-// no flap/LED skeuomorphism and no animation (author + DESIGN.md).
 
 export class SevenSegNode extends ClassicPreset.Node {
   label: string;
@@ -379,9 +353,6 @@ export function sevenSegText(v: number | null, decimals: number, maxDigits = 10)
 }
 
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
-// A big-number readout with a ↑/↓ delta vs a prior value. Emits a chart VALUE so a
-// Report embeds it. `goodUp` (1/0) picks whether a rise is green (revenue) or red
-// (cost); `unit` is a short suffix typed on the card.
 
 export class KpiNode extends ClassicPreset.Node {
   label: string;
@@ -424,8 +395,6 @@ export class KpiNode extends ClassicPreset.Node {
 }
 
 // ─── Bullet graph ─────────────────────────────────────────────────────────────
-// A value bar on a min..max track with a target tick (Stephen Few's bullet graph —
-// a compact gauge alternative). Emits a chart VALUE so a Report embeds it.
 
 export class BulletNode extends ClassicPreset.Node {
   label: string;
@@ -466,10 +435,6 @@ export class BulletNode extends ClassicPreset.Node {
 }
 
 // ─── Frame-column readers (Treemap / Sankey) ────────────────────────────────────
-// Treemap and Sankey take ONE frame (a table of rows), not parallel lists — a
-// treemap is a Label|Value table, a sankey is a From|To|Value edge table, so the
-// frame IS the natural shape (author it in a Frame Input, or pipe any verb chain
-// in). Columns are read POSITIONALLY (first N), so header names don't matter.
 async function readFrameColumns(f: FrameInput | null): Promise<FrameColumn[]> {
   if (f == null) return [];
   const fv = await readFrame(f);
@@ -495,8 +460,6 @@ function colAsNumbers(col: FrameColumn | undefined): number[] {
 }
 
 // ─── Treemap ──────────────────────────────────────────────────────────────────
-// A flat labeled treemap: each (label, value) pair is a rectangle sized by value.
-// Wire a 2-column frame (Label, Value) — read positionally. Emits a chart VALUE.
 
 export class TreemapNode extends ClassicPreset.Node {
   label: string;
@@ -528,9 +491,6 @@ export class TreemapNode extends ClassicPreset.Node {
 }
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
-// A flow diagram from an edge table: each row is source → target carrying value.
-// Nodes are the unique names across both ends. Wire a 3-column frame (From, To,
-// Value) — read positionally. Emits a chart VALUE.
 
 export class SankeyNode extends ClassicPreset.Node {
   label: string;
@@ -563,9 +523,6 @@ export class SankeyNode extends ClassicPreset.Node {
 }
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
-// Colors every cell of a Table on a cool→warm gradient spanning the data's own
-// min..max (conditional formatting). Pass-through: the Table flows on unchanged;
-// the color grid is drawn in the component.
 
 export class HeatmapCellNode extends ClassicPreset.Node {
   label: string;
@@ -588,11 +545,6 @@ export class HeatmapCellNode extends ClassicPreset.Node {
 }
 
 // ─── Surface (shaded 3-D plot) ──────────────────────────────────────────────────
-// Reads the SAME coordinate-bordered table the Grid Interpolate node fills (first
-// row = X coordinates, first column = Y coordinates, interior = Z heights) and emits
-// a `surface` ChartValue — a shaded axonometric mesh, drawn by SurfaceView. A blank
-// interior cell is a hole (no quad). Pair it with Grid Interpolate to see the filled
-// surface. Emits on the green `chart` socket, so it embeds in a Report like any chart.
 
 /** Split a bordered table into axes + heights. Row 0 (minus the ignored corner) is
  *  the X coordinates, column 0 the Y coordinates; a non-numeric cell is a blank. */
@@ -650,10 +602,6 @@ export class SurfaceNode extends ClassicPreset.Node {
 }
 
 // ─── Contour (flat height-band plot) ─────────────────────────────────────────
-// The flat twin of Surface: the SAME coordinate-bordered table (first row = X
-// coordinates, first column = Y coordinates, interior = Z heights), rendered as
-// filled height bands + iso-lines instead of a 3-D mesh. Wire the same grid into
-// both for two views of one surface.
 
 export class ContourNode extends ClassicPreset.Node {
   label: string;
@@ -703,9 +651,6 @@ export function quantileSorted(sorted: number[], p: number): number {
 }
 
 // ─── Waterfall ────────────────────────────────────────────────────────────────
-// The finance bridge chart: each (label, value) row is a signed delta from the
-// running total; a computed Total bar lands at the end. Wire a 2-column frame
-// (Label, Value) — read positionally, like Treemap.
 
 export class WaterfallNode extends ClassicPreset.Node {
   label: string;
@@ -739,9 +684,6 @@ export class WaterfallNode extends ClassicPreset.Node {
 }
 
 // ─── Candlestick ──────────────────────────────────────────────────────────────
-// OHLC candles — the chart the Data Feed's stock history is FOR. Wire a frame
-// whose columns are Date, Open, High, Low, Close (positional; with exactly four
-// numeric columns the date is omitted and candles index 1, 2, 3…).
 
 export class CandlestickNode extends ClassicPreset.Node {
   label: string;
@@ -784,10 +726,7 @@ export class CandlestickNode extends ClassicPreset.Node {
 }
 
 // ─── Boxplot ──────────────────────────────────────────────────────────────────
-// The visual for the Quartile/Percentile family: one box per numeric column of a
-// wired Frame (or a single box for a plain list). Whiskers reach the farthest
-// sample within 1.5·IQR of the box (Tukey); anything beyond plots as an outlier
-// dot. Received raw (like Chart) so a plain list doesn't widen into a 1-row frame.
+// Received raw (like Chart) so a plain list doesn't widen into a 1-row frame.
 
 /** Five-number summary + outliers for one sample (Tukey 1.5·IQR whiskers). */
 export function boxplotStats(sample: (number | null)[]): { lo: number; q1: number; med: number; q3: number; hi: number; outliers: number[] } | null {
@@ -847,9 +786,6 @@ export class BoxplotNode extends ClassicPreset.Node {
 }
 
 // ─── Calendar heatmap ─────────────────────────────────────────────────────────
-// The GitHub-style year grid: weeks × weekdays, each day tinted by its value.
-// Wire a 2-column frame (Date, Value) — read positionally; the view lays out the
-// data's own date span (capped at a year, keeping the most recent).
 
 export class CalendarHeatmapNode extends ClassicPreset.Node {
   label: string;
@@ -892,9 +828,6 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 }
 
 // ─── Waffle ───────────────────────────────────────────────────────────────────
-// Proportions as a 10×10 grid of squares — the honest pie. Wire a 2-column frame
-// (Label, Value) for category shares; a single row whose value is within [0, 1]
-// reads as a plain fraction of the grid (a compact progress readout).
 
 export class WaffleNode extends ClassicPreset.Node {
   label: string;
@@ -928,9 +861,6 @@ export class WaffleNode extends ClassicPreset.Node {
 }
 
 // ─── Vector field (quiver) ────────────────────────────────────────────────────
-// One arrow per grid cell from two same-shaped matrices (the x and y components),
-// colored by magnitude — gradients, flows, wind fields. A null in either
-// component skips that cell's arrow.
 
 export class QuiverNode extends ClassicPreset.Node {
   label: string;
@@ -958,10 +888,6 @@ export class QuiverNode extends ClassicPreset.Node {
 }
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
-// A labeled "Concat for chart options": many small fields (one per matplotlib
-// option) whose values are joined into the `key=value;…` string the Chart node's
-// Options socket consumes. Every field is also an input socket, so any value can
-// be wired from upstream (e.g. a computed title or a slider-driven Y max).
 
 // The string fields go through `stringLiterals`, the numeric ones through
 // `literals` — the same inline stores InlineInputs reads/writes, so they
@@ -1024,5 +950,4 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   }
 }
 
-// Exported so the component (and tests) share the field lists.
 export const CHART_BUILDER_FIELDS = { str: CB_STR_FIELDS, num: CB_NUM_FIELDS };

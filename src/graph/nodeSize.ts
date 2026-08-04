@@ -1,17 +1,7 @@
 // The ONE way to ask "how big is this node?". Every layout feature (align,
-// distribute, Tidy, group autofit, standoffs, minimap, new-node placement) needs a
-// node's box, and each used to re-derive it with its own `element.offsetWidth ||
-// node.width || <some constant>` — with the constant inconsistent across sites
-// (100×50 here, 180×160 there, 0/no-fallback elsewhere). That mismatch is the shared
-// root cause behind align/distribute misplacing nodes, Tidy needing rAF band-aids,
-// group autofit collapsing, and hand-authored seeds overlapping: a node reads size 0
-// (or a stale design-time guess) whenever its card hasn't painted yet.
-//
-// measuredBox() collapses that to one rule with a GUARANTEED non-zero result:
-//   1. live rendered size (element.offsetWidth/Height) — the truth once painted,
-//   2. else the size the ResizeObserver last wrote to the node (node.width/height),
-//   3. else a single documented default (an unpainted, never-measured node).
-// Prefer this over reading offsetWidth directly anywhere layout math depends on it.
+// distribute, Tidy, group autofit, standoffs, minimap, new-node placement) routes
+// its size read through measuredBox(), which GUARANTEES a non-zero result. Do not
+// read offsetWidth directly where layout math depends on it.
 
 import { collapseStore } from "./collapseStore";
 import type { Schemes, AreaExtra } from "./schemes";

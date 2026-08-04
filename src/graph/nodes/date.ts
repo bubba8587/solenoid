@@ -4,7 +4,6 @@ import { solError, type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial, parseDateToSerial } from "./dateSerial";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
-// Excel weekend code → set of JS day indices (0=Sun … 6=Sat).
 /** The whole-day key of a date serial (integer part = the day; fractional = time),
  *  so WORKDAY/NETWORKDAYS compare a day against a holiday regardless of time-of-day.
  *  The `+1e-9` absorbs float drift from serial↔ms round-tripping. */
@@ -105,16 +104,13 @@ export class DateConstructNode extends ClassicPreset.Node {
   }
 
   data(inputs: { year?: (number | number[])[]; month?: (number | number[])[]; day?: (number | number[])[] }): { result: BroadcastResult } {
-    // broadcastErr (not broadcast): an out-of-range year is a per-cell #DOMAIN!, so one
-    // bad year in a list errors THAT cell instead of the whole result.
+    // broadcastErr (not broadcast): an out-of-range year is a per-cell #DOMAIN!.
     const result = broadcastErr((rawY, rawM, rawD) => {
     const year  = Math.floor(rawY);
     const month = Math.floor(rawM);
     const day   = Math.floor(rawD);
-    // A numeric year is LITERAL — no century guessing (Excel's DATE(26)=1926 pivot
-    // goes stale). DATE(26) is 26 AD (renders 15-Jan-0026 — visibly odd beats
-    // silently wrong-century). Range 1–9999, else #DOMAIN! (kills formatter garbage
-    // for year ≤ 0). Pre-1900 works via negative serials.
+    // A numeric year is LITERAL — no century guessing: DATE(26) is 26 AD. Range
+    // 1–9999, else #DOMAIN!. Pre-1900 works via negative serials.
     if (year < 1 || year > 9999) return solError("#DOMAIN!", "Year must be between 1 and 9999");
     // Date.UTC handles month/day overflow (month 13 → Jan of next year) BUT remaps a
     // 0–99 year to 1900–1999; shift that back by 1900 years (setUTCFullYear doesn't
@@ -208,9 +204,9 @@ export class TimeValueNode extends ClassicPreset.Node {
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
     if (!text) { this.cachedResult = null; return { result: null }; }
-    // Parse the time text directly — routing it through `new Date("1970-01-01T…")`
-    // read the zone-less text as LOCAL time and then the getters as UTC, so
-    // TIMEVALUE("14:30") returned a different fraction on every machine.
+    // Parse the time text directly. Do NOT route it through `new Date("1970-01-01T…")`:
+    // that reads zone-less text as LOCAL time while the getters read UTC, so the
+    // fraction differs per machine.
     const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
     let result: number | SolError;
     if (m) {
@@ -339,13 +335,11 @@ export class WeekInfoNode extends ClassicPreset.Node {
 }
 
 // ─── Date difference (DAYS / DAYS360 / YEARFRAC + the DATEDIF units) ──────────
-// ONE family for "difference between two dates". The day-count ops are Excel's
-// own function names and take the basis argument; the calendar-component ops are
-// DATEDIF's units flattened into first-class ops (DATEDIF "D" had no life of its
-// own — it duplicated DAYS — so it's not an op; the formula surface still
-// dispatches all six unit strings). The basis input exists ONLY while the op
-// uses it (syncBasisInput — the Interpolate variant-switch pattern, narrowed to
-// one socket with no type changes).
+// ONE family for "difference between two dates". The day-count ops take the basis
+// argument; the calendar-component ops are DATEDIF's units as first-class ops
+// (DATEDIF "D" is not an op — it duplicates DAYS; the formula surface still
+// dispatches all six unit strings). The basis input exists ONLY while the op uses
+// it (syncBasisInput).
 
 export type DateDiffOp =
   | "days" | "days360" | "yearfrac"          // day-count functions (basis input)
@@ -406,8 +400,8 @@ export class DateDiffNode extends ClassicPreset.Node {
       basis = Math.floor(basisRaw);
     }
     const result = broadcast((s, e) => {
-    // The DATEDIF ops are undefined for a reversed range — null (MISSING) per
-    // cell, as before the merge. DAYS stays signed.
+    // The DATEDIF ops are undefined for a reversed range — null (MISSING) per cell.
+    // DAYS stays signed.
     if (s > e && !dateDiffNeedsBasis(this.op) && this.op !== "days") return null;
     const sd    = serialToJsDate(s);
     const ed    = serialToJsDate(e);
@@ -428,12 +422,9 @@ export class DateDiffNode extends ClassicPreset.Node {
         result = ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
         break;
       case "md": {
-        // Day difference borrowing from the month BEFORE the end month when the
-        // end day is smaller. The old form built Date.UTC(ey, em, sday) without
-        // clamping; JS rolls Feb 31 → Mar 2, and the step-back-a-month fix then
-        // landed on the wrong day (Jan 31 → Feb 28 gave 26; Excel gives 28).
-        // Excel's MD is documented unreliable when the borrow goes negative
-        // (e.g. Jan 31 → Mar 1); we return the consistent borrow result there.
+        // Day difference borrowing from the month BEFORE the end month when the end
+        // day is smaller. Excel's MD is documented unreliable when the borrow goes
+        // negative (e.g. Jan 31 → Mar 1); we return the consistent borrow result.
         if (eday >= sday) {
           result = eday - sday;
         } else {

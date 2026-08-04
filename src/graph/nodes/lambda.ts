@@ -5,28 +5,12 @@ export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
 
-// ─── LAMBDA: a first-class function value ───────────────────────────────────────
-// Excel's =LAMBDA(param, ..., calculation) as a node. The node compiles its
-// formula and emits a callable VALUE down a `lambda` cable; the lambda-family
-// consumers (MAP / BYROW / MAKEARRAY / REDUCE / SCAN) call it, overriding their
-// embedded formula text. MAP/BYROW/MAKEARRAY bind params by POSITION; SCAN/REDUCE
-// bind by NAME (D18) — a param named `acc` gets the accumulator, order-free.
-//
-// Variables split two ways:
-//   • declared PARAMETERS (the comma-separated `params` field) stay unbound and
-//     define the call signature — bound by position (MAP…) or by name (SCAN/
-//     REDUCE, D18) at the call site;
-//   • every OTHER variable in the formula becomes an input socket and is
-//     CAPTURED into the closure at compute time — the graph-shaped equivalent
-//     of Excel's LET/closure bindings (`LAMBDA(x, x * rate)` with `rate` from
-//     outside). Editing the captured wire re-emits a fresh closure, so
-//     consumers recompute automatically.
+// LAMBDA: Excel's =LAMBDA(param, ..., calculation) as a node. Declared PARAMETERS
+// stay unbound; every OTHER variable in the formula becomes an input socket and is
+// CAPTURED into the closure at compute time.
 //
 // Deliberately not supported: recursion (a self-referencing lambda is a graph
 // cycle, which the dataflow engine rejects) and lambdas returning lambdas.
-
-
-/** Duck-typed brand check — lambda values cross `any` sockets and React roots. */
 
 export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
@@ -109,8 +93,7 @@ export class LambdaNode extends ClassicPreset.Node {
     const params = this.paramList();
     const prev = new Set(this.captured);
     // Free variables AND @names (atColNames) both capture — `@list` grows a
-    // socket here like any free variable (author ruling 2026-07-30: the λ owns
-    // its names; @ swallowing them left no place to wire the value). At
+    // socket here like any free variable. At
     // row-eval columns/builtins win over the capture, so a table λ's `@price`
     // still reads the column and its unwired capture is inert; `row`/`rows`
     // are builtins in every row context, so @row/@rows capture nothing.
@@ -159,9 +142,7 @@ export class LambdaNode extends ClassicPreset.Node {
     // the last pass, return the SAME LambdaValue object. Consumers key their
     // own memos (and the backend keys its upload cache) on value identity, so
     // a full recompute that changed nothing must not mint a fresh closure.
-    // Captured values compare by Object.is — a wired list counts as changed
-    // when its producer rebuilt the array, which is exactly when recompute is
-    // due. varDescriptions ride the value for display; compare them too so a
+    // varDescriptions ride the value for display; compare them too so a
     // legend edit propagates.
     const descJson = JSON.stringify(this.varDescriptions);
     const last = this._lastBuild;

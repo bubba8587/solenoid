@@ -93,9 +93,9 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pts, xmin, xmax, ymin, ymax]);
 
-  // The pure sampler drives the output rows — NOT data.data(): the engine wraps
-  // data() with the coercion boundary, which expects an inputs record (calling it
-  // bare threw "Cannot convert undefined or null to object" and killed the card).
+  // The pure sampler drives the output rows — NEVER data.data(): the engine
+  // wraps data() with the coercion boundary, which expects an inputs record, so
+  // calling it bare throws and kills the card.
   const sampled = sampleCurve(data.pointsText, xmin, xmax, data.literals.samples ?? 32);
 
   return (

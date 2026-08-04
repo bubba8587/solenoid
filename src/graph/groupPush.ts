@@ -12,28 +12,8 @@ import { settingsStore } from "./settingsStore";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { measuredBox } from "./nodeSize";
 
-// ─── Expand-time neighbor displacement ────────────────────────────────────────
-// When a collapsed group expands, its footprint grows down/right and would land
-// on its neighbourhood. The displacement rules live in groupPushCore.ts (pure,
-// unit-tested): connected loose nodes land on their dataflow side (feeders
-// left, consumers right), everything else seam-stretches so the arrangement
-// keeps its shape, and moved boxes carry what they hit.
-//
-// Every displacement is recorded as an ABSOLUTE before/after position pair,
-// attributed to the set of expanded groups that caused it (a second group
-// shoving the same node further merges into one record). On collapse, a record
-// whose every contributing group is collapsed (or gone) slides its node back to
-// the original position — but only if the node is still exactly where our push
-// left it; a node moved by the user since is honoured-as-stale and the record
-// dropped, so we never yank a deliberately-repositioned node back. Records are
-// in-memory only: a reload just keeps everything in place.
-//
-// ELK note: we deliberately do NOT run ELK over the expansion neighbourhood.
-// Rails + seam stretch are deterministic, preserve the user's margins, and
-// invert exactly on collapse; ELK re-derives positions globally, which neither
-// preserves deliberate placement nor snaps back. If a "tidy the neighbourhood"
-// action is ever wanted, it should be an explicit user command (the existing
-// per-group Tidy button is that, scoped to members).
+// Expand-time neighbor displacement. Push records are in-memory only: a reload
+// keeps everything where it is.
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
@@ -295,12 +275,9 @@ function runExpandPushes(
     }
   }
 
-  // Standoff cohesion: a standoff-connected cluster must move as ONE rigid
-  // block. If only one member is pushed by the growing group, the rest lag and
-  // the band solver below would just pull the pushed one partway back (the
-  // "partly pushes" bug). So first give every member of a touched cluster the
-  // cluster's LARGEST push — the displacement that clears the group — keeping
-  // their relative offsets intact before the constraint solve confirms.
+  // Standoff cohesion: a standoff-connected cluster moves as ONE rigid block —
+  // every member of a touched cluster takes the cluster's LARGEST push, keeping
+  // relative offsets intact, BEFORE the constraint solve below confirms.
   if (!standoffStore.isEmpty()) {
     for (const cluster of standoffClusters(standoffStore.all())) {
       let lead: Disp = { dx: 0, dy: 0 };
@@ -352,14 +329,10 @@ function runExpandPushes(
     }
   }
 
-  // Hard backstop, the FINAL word: overlap on expand is unacceptable, and the
-  // heuristics above can still leave boxes overlapping. Separate EVERY overlap.
-  // A standoff CLUSTER is treated as ONE RIGID unit (its combined bbox): the
-  // de-overlap moves the whole cluster together, never tearing it — so the
-  // standoff stays intact (no stretch/unlock) and a member group can't desync
-  // from the cluster. The forceLock settle above already keeps a cluster
-  // internally non-overlapping; this only separates whole units from each other.
-  // Monotonic (+x/+y) ⇒ always terminates overlap-free.
+  // Hard backstop, the FINAL word: separate EVERY remaining overlap. A standoff
+  // CLUSTER is ONE RIGID unit (its combined bbox) so the de-overlap never tears
+  // it; the forceLock settle above already keeps a cluster internally
+  // non-overlapping. Monotonic (+x/+y) ⇒ always terminates overlap-free.
   {
     // Each world box belongs to a rigid unit: a standoff cluster, or itself.
     const unitOf = new Map<string, string>();        // boxId → unit id
@@ -411,21 +384,13 @@ function runExpandPushes(
     const p = position(area, id);
     if (!p) continue;
     // `record` off (tidy-grow push): the displacement is PERMANENT — translate
-    // only, no restore record, so a later collapse leaves the neighbor where
-    // tidy parked it. Any pre-existing record for this node goes stale (it's no
-    // longer at the recorded expX/expY), so collapse treats it as manually moved
-    // and won't snap it back — which is the intended permanent feel.
+    // only, no restore record.
     if (record) {
       const existing = _records.get(id);
-      // Merge only into a record whose node is STILL where our last push left
-      // it. If something else moved the node since — Tidy/Cleanup/align all
-      // reposition via bare area.translate, which fires no drag invalidation —
-      // the record's preX/preY restore target belongs to a layout that no
-      // longer exists. Merging would re-arm it (expX refreshed, ancient preX
-      // kept), so the next collapse "restores" the node to a pre-Tidy
-      // coordinate: the reported tidy-around-expanded-groups misplacement.
-      // Same staleness rule the restore path enforces; a stale record is
-      // replaced by a fresh one anchored at the node's CURRENT position.
+      // Merge only into a record whose node is STILL where our last push left it:
+      // Tidy/Cleanup/align reposition via bare area.translate, which fires no drag
+      // invalidation, so a merge would re-arm an obsolete preX/preY restore target.
+      // A stale record is replaced by a fresh one at the node's CURRENT position.
       const stale = existing &&
         (Math.abs(p.x - existing.expX) > EPS || Math.abs(p.y - existing.expY) > EPS);
       if (existing && !stale) {
@@ -450,15 +415,10 @@ function runExpandPushes(
 }
 
 /**
- * Run neighbor-push for groups whose already-EXPANDED box just GREW — e.g. a
- * within-group Tidy autogrew the box around freshly laid-out members. Same
- * engine as the expand-on-uncollapse push, gated by the same Push setting, but
- * the displacement is PERMANENT (no restore record): a Tidy is a deliberate
- * manual action, so the pushed neighbors stay put when the group later
- * collapses, rather than rushing back in. `preSizes` is each group's box size
- * BEFORE it grew; pass only groups whose box actually grew. Reads the grown size
- * from `n.width/height` (the ids land in `expandedIds` inside runExpandPushes, so
- * buildWorld uses the stored size).
+ * Run neighbor-push for groups whose already-EXPANDED box just GREW. The
+ * displacement is PERMANENT (no restore record). `preSizes` is each group's box
+ * size BEFORE it grew; pass only groups whose box actually grew. The grown size
+ * is read from `n.width/height`.
  */
 export function pushForGrownGroups(
   editor: Editor,

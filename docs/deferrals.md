@@ -13,6 +13,10 @@ duplicate them, just names them for the review).
   TZ Convert / QR. Tier 1 is autonomous-friendly and could be 1.3, but 4 gate
   calls come first: `v2.0/16-widget-nodes.md`.
 
+- **Timesaver date idioms needing a config widget or a judgment call** — Fiscal
+  Quarter (start month), Age (DATEDIF "MD" nuance), Nth Weekday. The zero-config
+  idioms (Quarter, Days in Month) already shipped in `packs/timesavers.ts`.
+
 - **Expression `/` doesn't mint a pure ratio** — the Divide NODE mints `5:1` on a
   same-dimension cancel; Expression strips UnitCells at its boundary, so `a/b`
   yields a bare number. Decide: leave (Expression is deliberately type-agnostic —

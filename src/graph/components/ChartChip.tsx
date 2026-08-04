@@ -17,8 +17,8 @@ export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
   /** Node whose value the popup's Pin/Go-to acts on; defaults to the host from
    *  context. A collapsed-group readout passes its member id explicitly. */
   pinNodeId?: string;
-  /** "sm" in node hero boxes (the historical hardcoded look); "md" matches the
-   *  Frame/Cube chips in collapsed-group readout rows (valueChipFor passes it). */
+  /** "sm" in node hero boxes; "md" matches the Frame/Cube chips in
+   *  collapsed-group readout rows (valueChipFor passes it). */
   size?: "sm" | "md";
 }) {
   const ctxHostId = useHostNodeId();

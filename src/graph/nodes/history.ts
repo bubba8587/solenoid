@@ -1,8 +1,8 @@
 import { ClassicPreset } from "rete";
 
 // ─── Session History ────────────────────────────────────────────────────────
-// Bundle 13 #49: a live readout of the undo/redo stack (rete-history-plugin,
-// wired Canvas.tsx ~1178), distilled into a dated human-readable digest
+// A live readout of the undo/redo stack (rete-history-plugin, wired in
+// Canvas.tsx), distilled into a dated human-readable digest
 // (historyDigest.ts). Doesn't persist any state of its own — it autogenerates
 // from `history.getHistorySnapshot()` whenever it's on canvas (see
 // SessionHistoryComponent). No inputs, no outputs: a pure readout, like a

@@ -11,9 +11,7 @@ import type { SolenoidNode } from "./schemes";
 import { chainClosure, isolateStore } from "./isolateStore";
 
 // Isolate resolves through the ACTIVE editor (the composite drill-in when one is
-// open, else main) so the focus-set / dim view works INSIDE a subgraph too — the
-// drill-in node cards read the same global isolateStore.isVisible(). getEditor()
-// === getActiveEditor() on the main canvas, so nothing changes there.
+// open, else main) so the focus-set / dim view works INSIDE a subgraph too.
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
 function selectedIds(editor: AnyEditor): Set<string> {
@@ -63,11 +61,8 @@ export function isolateChainOf(ids: Iterable<string>): boolean {
   return true;
 }
 
-/** Where-used: isolate the DOWNSTREAM stream from one node — "everything this
- *  value eventually feeds" (right-click → Where used). One-directional, unlike
- *  Isolate chain (which walks both ways) — reuses the same downstreamClosure
- *  the targeted-recompute path walks (process.ts), fed into the existing
- *  isolate/dim visual (no new dim CSS — see isolateStore + IsolatePill). */
+/** Where-used: isolate the DOWNSTREAM stream from one node. One-directional,
+ *  unlike Isolate chain (which walks both ways). */
 export function isolateWhereUsed(nodeId: string): boolean {
   const editor = getActiveEditor();
   if (!editor) return false;

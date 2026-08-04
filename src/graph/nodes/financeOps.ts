@@ -1,8 +1,6 @@
 // ─── Pure bond / security math — the ONE implementation behind both surfaces ──
 // Every function here is called by BOTH the visual node (`finance.ts`) and the
-// formula registration (`excelFunctions.ts`). Same pattern and same reason as
-// `textOps.ts` and `mathUtils.ts`: the node set and the formula language drifted
-// apart because each op got written twice (docs/formula-node-parity.md, D19).
+// formula registration (`excelFunctions.ts`) — see docs/formula-node-parity.md, D19.
 //
 // Separate module rather than living in `finance.ts` because that file imports
 // `excelFunctions` — importing back would cycle, and would drag rete into the
@@ -61,9 +59,8 @@ const VALID_FREQ = [1, 2, 4];
 
 // ─── Yield solving ────────────────────────────────────────────────────────────
 
-/** Newton solve for the yield that prices a bond at `target`. The three YIELD-shaped
- *  functions (YIELD, ODDFYIELD, ODDLYIELD) previously carried three copies of this
- *  identical loop. Damped to a sane yield range so a bad price can't diverge. */
+/** Newton solve for the yield that prices a bond at `target`. Damped to a sane
+ *  yield range so a bad price can't diverge. */
 export function solveYield(priceAt: (y: number) => number, target: number, couponRate: number): number {
   let yld = couponRate > 0 ? couponRate : 0.05;
   for (let i = 0; i < 100; i++) {

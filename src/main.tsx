@@ -42,12 +42,11 @@ if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
 // grows the touch actions instead (TabletActions). Mutually exclusive with is-mobile.
 if (IS_TABLET) document.documentElement.classList.add("is-tablet");
 
-// Last-resort error surfacing (v1.0 audit, quality). The codebase leans on
-// `void asyncFn()` fire-and-forget for graph mutations (group ops, Tauri invoke
-// chains, keyboard-driven processGraph); a rejection there previously vanished —
-// and on the desktop build the console is closed, so the sole bug reporter saw
-// "the button did nothing". Throttled so a rejection storm (one per node in a
-// broken pass) doesn't stack a wall of toasts.
+// Last-resort error surfacing. The codebase leans on `void asyncFn()`
+// fire-and-forget for graph mutations (group ops, Tauri invoke chains,
+// keyboard-driven processGraph), and on the desktop build the console is closed.
+// Throttled so a rejection storm (one per node in a broken pass) doesn't stack a
+// wall of toasts.
 {
   let lastNotice = 0;
   // "ResizeObserver loop completed with undelivered notifications" / "loop limit
@@ -55,9 +54,7 @@ if (IS_TABLET) document.documentElement.classList.add("is-tablet");
   // callback changed layout in a way that needs another pass (our node cards,
   // overlays and formula-fit all observe their own size). Browsers fire it at
   // window.onerror with no `error` object; surfacing it as a scary "something
-  // went wrong" toast on every mobile load is pure noise. Suppress it. (This is
-  // the standard, documented handling — the message is a signal to re-observe,
-  // not a fault.)
+  // went wrong" toast on every mobile load is pure noise. Suppress it.
   const isBenign = (detail: unknown): boolean => {
     const msg = detail instanceof Error ? detail.message : String(detail ?? "");
     return msg.includes("ResizeObserver loop");
@@ -123,7 +120,7 @@ initPackFcExtensions(); // register pack-contributed FC units/formats for resolu
 initPackFormulas();     // ...and pack-contributed formula functions (advertised only while active)
 
 // Select the native Polars frame backend on desktop (no-op on web — keeps the
-// in-process JS backend). Best-effort; the seam is inert until frame nodes migrate.
+// in-process JS backend).
 void initFrameBackend();
 
 // F12 / Ctrl+Shift+I → open the webview devtools (desktop only).
@@ -134,7 +131,7 @@ initFullscreenHotkey();
 
 if (import.meta.env.DEV) {
   import("./graph/catalogValidator").then(m => m.validateCatalog());
-  import("./graph/devHarness"); // DEV: window.__spike for the DOM-vs-Pixi screenshot harness
+  import("./graph/devHarness");
 }
 
 // NOTE: intentionally NOT wrapped in <React.StrictMode>. rete-react-plugin
@@ -145,8 +142,6 @@ if (import.meta.env.DEV) {
 // "Found more than one element for socket with same key and side". The graph
 // nodes render in rete's own root, so StrictMode wasn't checking them anyway.
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  // Without this the app had no boundary at all: any render throw blanked the
-  // screen and took its own diagnosis with it. Now it names what threw.
   <ErrorBoundary scope="app">
     <App />
   </ErrorBoundary>,

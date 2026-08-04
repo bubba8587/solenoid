@@ -2,8 +2,7 @@ import { parsePathPoints, type Pt } from "./cableHitTest";
 
 // Cable geometry → GPU triangles. Pure + tested; the WebGL2 renderer uploads the
 // output to a vertex buffer ONCE per geometry change, then pan/zoom only changes a
-// transform uniform (the whole point — no per-frame CPU re-tessellation, unlike the
-// rejected 2D-canvas attempt).
+// transform uniform — no per-frame CPU re-tessellation.
 //
 // A cable is a flattened polyline (from the SVG `d` via parsePathPoints). We expand
 // it into a triangle ribbon of the given width by offsetting each vertex along its

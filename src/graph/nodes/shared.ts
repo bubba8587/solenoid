@@ -6,9 +6,7 @@ import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
 import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
 
-// Socket-typed port factories. `new ClassicPreset.Input(numberSocket, "A")`
-// repeated across ~60 constructor lines is just noise; these name the
-// socket type and keep node constructors to one readable line per port.
+// Socket-typed port factories.
 export const numIn      = (label: string) => new ClassicPreset.Input(numberSocket, label);
 export const listIn     = (label: string) => new ClassicPreset.Input(listSocket, label);
 export const numListIn  = (label: string) => new ClassicPreset.Input(numListSocket, label);
@@ -22,7 +20,7 @@ export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSoc
 // `any` = element-agnostic SCALAR (a single value of any family). For a true
 // accept-anything port (containers + object family) use the adoptive/trueany
 // factories below.
-export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label); // adoptive: colors to the wired type (see anyTableIn note below)
+export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label);
 // ADOPTIVE trueany ports (the default for accept-anything): a fresh
 // AdoptiveSocket per port — it adopts the wired cable's type and reverts to the
 // hollow trueany on disconnect (reconcileTrueAnyTypes). Use the STATIC variants
@@ -49,20 +47,18 @@ export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new 
  *  `passthrough()` with `project` instead; see INDEX. There is no static trueany INPUT
  *  — every element-agnostic input adopts, so it can color to the wired cable.  */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
-// Element-agnostic INPUTS (any / anylist / anytable) are ADOPTIVE (2026-07-15): they
-// accept any element family (a lower-rank value widens IN, as before) AND color the
-// dot to the wired cable's concrete type, reverting to the neutral rung on disconnect
-// (settleWildcardTypes). Purely informative — acceptance is unchanged (the base rung),
-// and coerceInputs treats the adopted concrete type identically to the neutral one for
-// these (verified by the full suite). anyTableIn = 2-D (TRANSPOSE/HSTACK/reshape/MAP),
-// anyListIn = 1-D (Set/position ops), anyIn = scalar.
+// Element-agnostic INPUTS (any / anylist / anytable) are ADOPTIVE: they accept any
+// element family (a lower-rank value widens IN) AND color the dot to the wired
+// cable's concrete type, reverting to the neutral rung on disconnect
+// (settleWildcardTypes). Purely informative — acceptance is unchanged (the base
+// rung), and coerceInputs treats the adopted concrete type identically to the
+// neutral one for these. anyTableIn = 2-D, anyListIn = 1-D, anyIn = scalar.
 export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
 export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
 // `anycombo` — the element-agnostic COMBO: accepts what `anyListIn` accepts, but a
 // scalar reaches data() as a SCALAR instead of widening to a singleton. The port for a
 // producer whose result rank follows its input (Expression's formula variables) or its
-// op (Regex). Before this rung existed, the same effect needed the `noWidenInputs`
-// side-channel, which overrode the socket rather than being expressed by it.
+// op (Regex).
 export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
 /** The rank-≤2 element-agnostic input (SOCK-9): an Expression variable — the D23
  *  lift. Adoptive like anyComboIn, so a wired family type shows its real color. */
@@ -134,10 +130,9 @@ export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string
 const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, ClassicPreset.Socket>> = {
   scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,        auto: anySocket },
   // combo/auto is anyCOMBO, not `any`: an Auto Expression/BYROW result IS a list
-  // whenever a list variable broadcasts, so a scalar circle here was the same
-  // "lying dot" that retired `anyOut` on Regex — and it let a list-shaped result
-  // flow into strict scalar inputs (#SHAPE! at runtime) that the honest combo
-  // type routes correctly.
+  // whenever a list variable broadcasts, so a scalar circle here would lie — and
+  // would let a list-shaped result flow into strict scalar inputs (#SHAPE! at
+  // runtime) that the honest combo type routes correctly.
   combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anyComboSocket },
   matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket,   auto: anyTableSocket },
 };
@@ -154,15 +149,6 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): Classic
   return new ClassicPreset.Output(resultSocket(dim, t), label);
 }
 
-// Apply `fn` element-wise when any argument is a list (broadcasting any
-// scalar args against it), else apply once. Powers the list-aware ("Map")
-// behavior of element-wise nodes via the flexible `numlist` socket. An
-// invalid element (fn → null) becomes NaN within a result list. Ragged lists
-// zip to the LONGEST length: a position missing from a shorter list emits a
-// first-class `null` (missing) in the result, without calling `fn` — the
-// pad-to-longest policy settled with the array-semantics build. The result
-// list therefore carries nulls at runtime; the `number[]` return type follows
-// the node layer's loose-list convention (lists carry null/SolError cells).
 // Read a scalar/list input slot, distinguishing UNWIRED from a wired MISSING.
 // The `inputs.x?.[0] ?? this.literals.x` idiom is subtly wrong: `??` swallows a
 // WIRED `null` into the literal, so a blank/missing cell flowing in silently
@@ -212,9 +198,9 @@ export function broadcast(
 }
 
 // Like `broadcast`, but the per-element fn may emit a tagged `SolError` for a bad
-// element (e.g. ÷0 → #DIV/0!). Array-semantics build: a list carries per-cell
-// errors instead of collapsing a bad cell to NaN/null, so a scalar ÷0 and a
-// list ÷0 read identically (#DIV/0! either way). At scalar level it just returns
+// element (e.g. ÷0 → #DIV/0!): a list carries per-cell errors instead of
+// collapsing a bad cell to NaN/null, so a scalar ÷0 and a list ÷0 read
+// identically (#DIV/0! either way). At scalar level it just returns
 // fn's value (number | SolError | null). Use this over `broadcast` whenever the
 // element op has a genuine error case (vs a domain-`null` blank).
 export function broadcastErr(
@@ -255,11 +241,9 @@ export function broadcastErr(
 // a computed NaN/∞ classifies into a tagged error just as in the numeric path.
 //
 // Element types are constrained to `Cell` (string | number | boolean) because the
-// list check is `Array.isArray`. A complex is a tagged object (VAL-15), so it is NOT
-// the reason for the constraint anymore; the complex family still carries its own
-// broadcaster (`broadcastComplex` in nodes/complex.ts) for typed per-operand tags, with
-// an exact shape test and per-operand tags. Reach for that one, not this, if a
-// future element type is array-shaped.
+// list check is `Array.isArray`. The complex family carries its own broadcaster
+// (`broadcastComplex` in nodes/complex.ts) for typed per-operand tags; reach for
+// that one, not this, if a future element type is array-shaped.
 type Cell = string | number | boolean;
 
 export function broadcastCells<A extends Cell, R extends Cell>(
@@ -303,7 +287,7 @@ export function broadcastCells(
   return out;
 }
 
-// ─── Unit-aware broadcast (Bundle 05: FC A4, step 2) ────────────────────────────
+// ─── Unit-aware broadcast ───────────────────────────────────────────────────────
 // The dimensional twin of `broadcastErr`. Operands are `number | UnitCell` (a bare
 // number is dimensionless); the per-cell `fn` receives the RAW operands and returns
 // a tagged cell (a `UnitCell` when the result carries a dimension, a bare number
@@ -368,8 +352,7 @@ export { dimOf, magnitudeOf };
 
 // ─── Node kind → header accent ─────────────────────────────────────────────────
 // A node's "kind" is its family (what it does), distinct from socket
-// type (what flows through it). Drives the colored header bar, and is
-// reusable for future grouping / search / legend work.
+// type (what flows through it). Drives the colored header bar.
 
 export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary";
 

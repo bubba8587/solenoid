@@ -2,15 +2,14 @@ import { SpatialGrid } from "./spatialIndex";
 import type { Pt } from "./cableHitTest";
 
 // NodeHitIndex — point→node hit-testing for a canvas node layer. NOT WIRED IN
-// (nothing constructs it; no behavior change). The node-layer counterpart to
-// CableHitIndex: when Phase 2/3 draws node bodies on canvas, DOM nodes no longer
-// exist to catch clicks, so a point→node test is needed. Nodes are axis-aligned
-// world-space rectangles, so this is point-in-rect narrowed by the shared
-// SpatialGrid; among overlapping hits the highest `z` wins (the topmost card),
-// matching how the DOM stacks selected/dragged nodes above the rest.
+// (nothing constructs it). The node-layer counterpart to CableHitIndex, for when
+// node bodies are drawn on canvas and no DOM node catches the click. Nodes are
+// axis-aligned world-space rectangles, so this is point-in-rect narrowed by the
+// shared SpatialGrid; among overlapping hits the highest `z` wins (the topmost
+// card), matching how the DOM stacks selected/dragged nodes above the rest.
 //
-// Pure data structure (no DOM/React), fully tested. Reuses SpatialGrid so the
-// big-graph query stays O(candidates), not O(nodes).
+// Pure data structure (no DOM/React). Reuses SpatialGrid so the big-graph query
+// stays O(candidates), not O(nodes).
 
 export interface NodeRect {
   id: string;

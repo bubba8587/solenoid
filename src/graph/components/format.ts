@@ -13,16 +13,12 @@ export function extremeSci(n: number): string | null {
 }
 
 export function formatScalar(n: number): string {
-  // Defensive: a non-number reaching here (a frame/cube/array object, or a string
-  // in a numeric slot) would otherwise throw on `.toFixed` — and a throw during
-  // React render blacks out the whole app. A display formatter must degrade, not
-  // crash, so coerce anything unexpected to a readable string instead. (See
-  // CLAUDE.md "false.toFixed()/err.toFixed() throws -> blacked-out app".)
+  // A non-number reaching here would throw on `.toFixed`, and a throw during
+  // React render blacks out the whole app. A display formatter must degrade,
+  // never crash.
   if (typeof n !== "number") return n == null ? "" : String(n);
-  // A residual NaN is DIRTY DATA (an undefined value in the source), not an error:
-  // `#N/A` is a real, catchable tagged error, so NaN must NOT be labeled "N/A".
-  // Render it as the literal `NaN`; the value box gives it a quiet muted
-  // affordance + tooltip (see ValueDisplay / .solenoid-value--nan).
+  // A residual NaN is DIRTY DATA, not an error: `#N/A` is a real catchable
+  // tagged error, so NaN must NOT be labeled "N/A".
   if (Number.isNaN(n)) return "NaN";
   const sci = extremeSci(n);
   if (sci !== null) return sci;

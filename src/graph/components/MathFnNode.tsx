@@ -23,9 +23,6 @@ export function MathFnComponent({ data, emit }: NodeProps<MathFnNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      {/* Only trig ops read/emit an angle, so the deg/rad choice shows only
-          there. Auto follows the incoming unit (° → degrees), Rad is Excel's
-          convention, Deg forces degrees. */}
       {isTrigOp(op) && (
         <SegToggle value={angleMode} options={ANGLE_MODES} onChange={setAngleMode} />
       )}

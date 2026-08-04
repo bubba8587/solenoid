@@ -61,9 +61,6 @@ export function AwgComponent({ data, emit }: NodeProps<AwgNodeType>) {
   );
 }
 
-
-// ─── Resistor Color Code ───────────────────────────────────────────────────────
-
 // The PHYSICAL band colors (IEC 60062) — information, not decoration, so they
 // are fixed hexes rather than palette tokens (like a chart's data colors).
 const BAND_HEX: Record<string, string> = {

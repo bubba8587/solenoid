@@ -5,18 +5,15 @@ import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
-// Contextual align/distribute cluster: the six aligns + two distributes live only
-// in the Command Palette otherwise, and the standing rule is that nothing is
-// reachable solely via the palette. This floating pill appears at the TOP-center of
-// the canvas whenever ≥2 top-level nodes are selected — the visible surface for the
-// align/distribute ops (up top so it never collides with the always-on command
-// palette docked at the bottom). Logic is entirely in selectionOps.ts; this is surface.
+// Contextual align/distribute cluster — the visible surface for the ops in
+// selectionOps.ts, so they aren't reachable solely via the Command Palette. It
+// sits at the TOP-center so it never collides with the palette docked at the
+// bottom.
 //
-// Selection has no push-based store (OutlinePanel polls the graph the same way),
-// so a light interval reads how many selected nodes have a rendered view — the
-// same "measurable" set align/distribute actually act on. Fixed position (not
-// anchored to the selection bbox) so it never fights the area transform or lags a
-// drag; the selection itself is already highlighted on the canvas.
+// Selection has no push-based store, so a light interval reads how many selected
+// nodes have a rendered view — the same "measurable" set align/distribute act
+// on. Fixed position (not anchored to the selection bbox) so it never fights the
+// area transform or lags a drag.
 
 const POLL_MS = 150;
 
@@ -108,8 +105,7 @@ export function SelectionActionsBar() {
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   // Folded while a composite drill-in is open: the bar (and the selectionOps it
   // fronts) reads the MAIN graph's selection, so showing it over the drill-in
-  // would align invisible main-canvas nodes behind the subgraph. Same fold as
-  // the navigator/lasso (align-in-drill-in ships with that arc — see backlog).
+  // would align invisible main-canvas nodes behind the subgraph.
   const drilled = useSyncExternalStore(subscribeActiveGraph, isSubgraphActive);
 
   useEffect(() => {

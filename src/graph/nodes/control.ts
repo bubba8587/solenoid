@@ -9,14 +9,9 @@ import { compareStrings } from "../stringOrder";
 
 export type SlicerCell = number | string;
 
-// ─── Cable Switch ───────────────────────────────────────────────────────────────
-// A control multiplexer (not the logical SWITCH): several `any` cable inputs, each
-// with an editable title so they read as NAMED choices. Two modes:
-//   • single (default): a selector picks ONE live input; the output passes it through.
-//   • multi: check several inputs; the output is a Cube collecting the chosen values
-//     — a `name` column (the titles) + a `value` column (each wired value, whole).
-// Reuses the ExtensibleInputs add/remove machinery (addValueInput / nextInputId) so
-// the input set round-trips through copy/paste + persistence (valueKeys).
+// Cable Switch — a control multiplexer, not the logical SWITCH. Reuses the
+// ExtensibleInputs add/remove machinery (addValueInput / nextInputId) so the input
+// set round-trips through copy/paste + persistence (valueKeys).
 
 export class CableSwitchNode extends ClassicPreset.Node {
   label: string;
@@ -78,10 +73,9 @@ export class CableSwitchNode extends ClassicPreset.Node {
     return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
-  /** One mode: routes the ACTIVE input to `out` unchanged → its type + unit ride
-   *  through (now also units — it didn't before). Many mode collects a Cube, so it's
-   *  NOT a passthrough (syncOutputType owns that output). ONE declaration for type
-   *  adoption + unit flow (passthrough.ts). */
+  /** One mode routes the ACTIVE input to `out` unchanged, so its type + unit ride
+   *  through. Many mode collects a Cube and is NOT a passthrough (syncOutputType owns
+   *  that output). ONE declaration for type adoption + unit flow (passthrough.ts). */
   passthrough(): PassthroughSpec[] {
     if (this.multiSelect) return [];
     return [{ output: "out", inputs: Object.keys(this.inputs), combine: "active", activeIndex: () => this.activeIndex }];
@@ -117,8 +111,6 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Angle Dial ───────────────────────────────────────────────────────────────
-
 export class AngleDialNode extends ClassicPreset.Node {
   label: string;
   value: number;   // degrees, 0–359
@@ -139,10 +131,8 @@ export class AngleDialNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Date Picker ────────────────────────────────────────────────────────────
-// A source control: a native date field whose chosen day is emitted as an Excel
-// date serial. `value` is the serial (whitelisted in extractInit, so it persists
-// and copy/pastes). 0 / blank → no date selected yet (outputs null).
+// `value` is an Excel date serial (whitelisted in extractInit, so it persists and
+// copy/pastes). 0 / blank → no date selected yet (outputs null).
 
 export class DatePickerNode extends ClassicPreset.Node {
   label: string;
@@ -162,11 +152,8 @@ export class DatePickerNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Date Range ───────────────────────────────────────────────────────────────
-// A dual-date control: pick a start and end date. Outputs both as Excel serials —
-// duration is composable downstream (subtract with arithmetic), matching the XY
-// Pad's "emit the raw values, scale downstream" philosophy. The two serials live
-// in `literals` so they round-trip via the generic literals spread (no
+// Emits both dates as raw Excel serials; duration is composed downstream. The two
+// serials live in `literals` so they round-trip via the generic literals spread (no
 // INIT_FIELD_ORDER edit).
 
 export class DateRangeNode extends ClassicPreset.Node {
@@ -191,11 +178,8 @@ export class DateRangeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── XY Pad ─────────────────────────────────────────────────────────────────
-// A source control: drag a handle inside a square to set two values at once.
-// Outputs X and Y each in [0, 1] (fractions of the pad), the composable form —
-// scale downstream with arithmetic. `fx`/`fy` live in `literals` so they
-// round-trip through extractInit's literals spread.
+// Outputs X and Y each in [0, 1] (fractions of the pad) — scaled downstream.
+// `fx`/`fy` live in `literals` so they round-trip through extractInit's spread.
 
 export class XYPadNode extends ClassicPreset.Node {
   label: string;
@@ -217,11 +201,8 @@ export class XYPadNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Slicer ───────────────────────────────────────────────────────────────────
-// An Excel-style slicer over a Frame: pick a column, then click its unique values
-// to keep only the rows that match. Outputs the filtered Frame. selectedValues
-// empty = every row passes through. The active column + selection persist (see
-// extractInit); the cached* fields are component-read only and don't persist.
+// `selectedValues` empty = every row passes through. The active column + selection
+// persist (extractInit); the cached* fields are component-read only and don't.
 
 export class SlicerNode extends ClassicPreset.Node {
   label: string;
@@ -255,19 +236,15 @@ export class SlicerNode extends ClassicPreset.Node {
       return { result: frame };
     }
 
-    // Resolve the active column: the selected one if it still exists, else the
-    // first column (so a fresh / re-wired slicer always shows something).
     const col = (this.selectedColumn ? getColumn(frame, this.selectedColumn) : null) ?? frame.columns[0];
     this.cachedColumnType = col.type;
 
-    // Unique, non-blank values from that column, sorted (numeric or lexical).
     const uniq = [...new Set(col.values.filter((v): v is SlicerCell => v !== null && v !== ""))];
     uniq.sort((a, b) =>
       typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b)),
     );
     this.cachedUniqueValues = uniq;
 
-    // Filter rows: keep those whose active-column value is in the selection.
     if (this.selectedValues.length === 0) return { result: frame };
     const sel = new Set<SlicerCell>(this.selectedValues);
     const rows = frameRowCount(frame);
@@ -288,11 +265,9 @@ export class SlicerNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Point / curve text codec ───────────────────────────────────────────────────
 // Point Plotter and Curve persist their points as TEXT ("x, y" per line, the
-// pointsText init field) — same philosophy as Table Input's tableText: the string
-// is the stored truth, arrays derive. Trimmed to 4 decimals so a drag doesn't
-// bake float dust into the save.
+// pointsText init field): the string is the stored truth, arrays derive. Trimmed to
+// 4 decimals so a drag doesn't bake float dust into the save.
 
 export function parsePoints(text: string | undefined): Array<[number, number]> {
   const out: Array<[number, number]> = [];
@@ -310,12 +285,6 @@ const trimNum = (v: number) => String(Number(v.toFixed(4)));
 export function pointsToText(pts: ReadonlyArray<readonly [number, number]>): string {
   return pts.map(([x, y]) => `${trimNum(x)}, ${trimNum(y)}`).join("\n");
 }
-
-// ─── Point Plotter ──────────────────────────────────────────────────────────────
-// A source control: click a small plane to drop data points, drag to move them,
-// right-click to delete. Outputs the points as parallel X / Y lists — hand-drawn
-// data for scatter charts, regression, or (via Build Frame) Grid Interpolate.
-// XY Pad's big sibling: the pad emits one point, this emits a dataset.
 
 export class PointPlotterNode extends ClassicPreset.Node {
   label: string;
@@ -341,11 +310,6 @@ export class PointPlotterNode extends ClassicPreset.Node {
     return { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]) };
   }
 }
-
-// ─── Curve ──────────────────────────────────────────────────────────────────────
-// A response-curve editor: drag control points on a strip; a monotone cubic
-// spline (Fritsch–Carlson — no overshoot between points) passes through them and
-// is sampled into a list. Tuning curves, easing, tiered rates, lookup tables.
 
 /** Monotone cubic interpolator through (xs, ys) — xs strictly increasing, n ≥ 1.
  *  Flat beyond the endpoints. Fritsch–Carlson tangent limiting: the curve never
@@ -436,9 +400,6 @@ export class CurveNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Grid Painter ───────────────────────────────────────────────────────────────
-// A source control: paint cells of a small matrix with a brush value (right-drag
-// or Alt-drag erases back to blank). Hand-input for Heatmap / Surface / MAP masks.
 // The grid persists as CSV text (tableText, like Table Input): blank cell = null.
 
 export function parsePaintGrid(text: string | undefined, rows: number, cols: number): (number | null)[][] {

@@ -18,22 +18,15 @@ import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from 
 import type { SolError } from "../errorValue";
 import "./ExpressionNode.css";
 
-// cachedResult on these nodes is value-polymorphic (number | string | their
-// lists/matrices | error); the display components already branch on each shape.
 type ScalarVal = number | string | SolError | null;
 type ListVal = number[] | string[] | SolError | null;
-
-// The LAMBDA-family formula is edited in the roomy box below (or the big
-// FormulaPopup); a wired LAMBDA value supersedes it. Variables are fixed per
-// node — a small hint names them.
 
 const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
-/** Formula editor bound to node.stringLiterals.formula. When a wired LAMBDA
- *  supersedes the inline text, this shows WHAT actually runs and WHO sends it
- *  instead of dimming stale text: the lambda's live signature + source label. */
+/** Formula editor bound to node.stringLiterals.formula; a wired LAMBDA value
+ *  supersedes the inline text. */
 function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
   // Re-render when processGraph refreshes live values — the wired lambda's
@@ -91,8 +84,6 @@ function FormulaError({ msg }: { msg: string | null }) {
   return msg ? <div className="solenoid-expr__error">{msg}</div> : null;
 }
 
-// ─── MAP ──────────────────────────────────────────────────────────────────────
-
 export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="MAP">
@@ -104,8 +95,6 @@ export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
     </NodeShell>
   );
 }
-
-// ─── BYROW / BYCOL ──────────────────────────────────────────────────────────────
 
 const AXIS_OPTS: ReadonlyArray<{ value: ByAxis; label: string }> = [
   { value: "row", label: "By row" },
@@ -126,8 +115,6 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
   );
 }
 
-// ─── REDUCE ─────────────────────────────────────────────────────────────────────
-
 export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="REDUCE">
@@ -140,8 +127,6 @@ export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNode
   );
 }
 
-// ─── SCAN ───────────────────────────────────────────────────────────────────────
-
 export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="SCAN">
@@ -153,8 +138,6 @@ export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType
     </NodeShell>
   );
 }
-
-// ─── MAKEARRAY ──────────────────────────────────────────────────────────────────
 
 export function MakeArrayComponent({ data, emit }: NodeProps<MakeArrayNodeType>) {
   return (

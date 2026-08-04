@@ -1,21 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 /**
- * The app had NO error boundary anywhere, so any throw during render blanked the
- * screen and took its own diagnosis with it — you got a black rectangle and no
- * idea what threw. That has cost more than one debugging session (the standing
- * note: "black screens are usually a bad rete hook"), and a black screen is the
- * one failure a user can neither report nor work around.
- *
- * Two scopes, deliberately:
- *   • `scope="app"` wraps the main React root — the full blackout case. Renders
- *     the error with its stacks, selectable and copyable, plus Reload.
+ * Two scopes:
+ *   • `scope="app"` wraps the main React root — the full blackout case.
  *   • `scope="node"` wraps EACH rete-rendered node component. Rete gives every
  *     node its own React root, so one card that throws would otherwise blank the
- *     whole canvas; boundaried, the broken card shows as a small red box, names
- *     itself, and every other node keeps working. That is also the difference
- *     between "the app is dead" and "this node is broken", which is the actual
- *     information.
+ *     whole canvas; boundaried, the broken card shows as a small red box and every
+ *     other node keeps working.
  *
  * The component stack matters more than the error stack here (minified builds
  * make the latter nearly useless), so it is shown first and copied too.
@@ -55,7 +46,6 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error } = this.state;
     if (!error) return this.props.children;
 
-    // A node's box has to stay small — it sits on the canvas at node scale.
     if (this.props.scope === "node") {
       return (
         <div className="solenoid-errbound solenoid-errbound--node" title={this.report()}>
@@ -86,8 +76,6 @@ export class ErrorBoundary extends Component<Props, State> {
     );
   }
 }
-
-// ─── Per-node wrapper ────────────────────────────────────────────────────────
 
 /** Wrap a rete node component in a `scope="node"` boundary.
  *

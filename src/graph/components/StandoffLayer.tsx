@@ -13,9 +13,8 @@ import {
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 
-// A standoff band number input that commits on Enter / blur (Escape reverts),
-// never per keystroke — so clearing digits to retype a value doesn't recompute
-// the band mid-edit. The project-wide typed-field rule (see useDraftCommit).
+// Commits on Enter / blur, never per keystroke, so clearing digits to retype doesn't
+// recompute the band mid-edit (the project-wide typed-field rule, useDraftCommit).
 function BandField({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const field = useDraftCommit<number>(
     value,
@@ -41,16 +40,10 @@ import { scheduleAutosave } from "../persistence";
 import "./conduit.css"; // reuse the docked-toolbar chrome
 import "./StandoffLayer.css";
 
-// ─── Standoff layer ─────────────────────────────────────────────────────────────
-// Renders every standoff as a pale, thick bar UNDER the graph (the layer's
-// holder sits at z-index -3 inside the area's transformed plane — below
-// expanded groups at -2, conduits at -1 and all nodes). Bars are drawn between the two live anchor
-// points, so they slant to show perpendicular slack; the constrained axis is
-// the line between the anchors' boxes, not the bar's angle.
-//
-// Selection is standoff-local (standoffStore.selected) and mutually exclusive
-// with node/cable selection. A selected standoff shows a docked toolbar with
-// its min/max band and a delete button.
+// Bars render UNDER the graph: the layer's holder sits at z-index -3 in the area's
+// transformed plane (below expanded groups at -2, conduits at -1, nodes at 0). A bar
+// is drawn between the two live anchor points, so it slants to show perpendicular
+// slack — the constrained axis is the line between the anchors' boxes, not the angle.
 
 const BAR_WIDTH = 9;
 const HIT_WIDTH = 18;

@@ -5,12 +5,6 @@
 // bar, a tablet gets them in the top bar because it runs the DESKTOP chrome and
 // has no bottom bar at all (IS_MOBILE is false on a tablet: iPadOS ships a desktop
 // UA on purpose — see coarse.ts).
-//
-// Lifted here rather than copied so the two can't drift: a glyph redrawn or a
-// handler retargeted in one bar would otherwise silently disagree with the other.
-// The ACTIONS themselves stay single-sourced further down still — undo/redo and
-// group dispatch the same synthetic keydowns Canvas's window handler already
-// listens for, so neither bar owns a private code path into the editor.
 
 import { useEffect, useState } from "react";
 import { getEditor } from "./process";

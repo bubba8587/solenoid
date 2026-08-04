@@ -9,7 +9,7 @@ import { createToggleStore } from "../storeKit";
 import type { NodeCard } from "../nodeInstances";
 
 // Alignment-overlay alpha: semi-transparent so the real DOM node shows THROUGH the
-// GPU card — that's how you check they coincide. The eventual LOD swap draws opaque.
+// GPU card — that's how you check they coincide.
 const DEBUG_ALPHA = 0.55;
 function dim(cards: NodeCard[]): NodeCard[] {
   return cards.map((c) => ({
@@ -19,15 +19,11 @@ function dim(cards: NodeCard[]): NodeCard[] {
   }));
 }
 
-// WebGPU node-card layer — the LOD stand-in for the DOM node bodies (the heavy half
-// of the compositing layer tree, which is where a node-heavy graph's zoom cost is).
-//
-// THIS is currently an ALIGNMENT-CHECK overlay, not the perf win yet: it draws each
-// node as a GPU card ON TOP of the real DOM nodes (z above), so you can confirm the
-// cards match node size/position/color before the risky next step (the LOD SWAP —
-// hide the DOM nodes when zoomed out, show these cards, so the DOM layer tree shrinks).
-// Off by default; toggle from the console: `__solenoidNodeCards()` (requires canvas
-// render-mode on too). Reuses the same transform-uniform draw model as the cables.
+// WebGPU node-card layer. An ALIGNMENT-CHECK overlay: it draws each node as a GPU
+// card ON TOP of the real DOM nodes (z above), so the cards can be confirmed to match
+// node size/position/color. Off by default; toggle from the console:
+// `__solenoidNodeCards()` (requires canvas render-mode on too). Reuses the same
+// transform-uniform draw model as the cables.
 
 export const nodeCardsDebugStore = createToggleStore(false);
 if (typeof window !== "undefined") {

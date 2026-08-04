@@ -1,11 +1,8 @@
-// ─── Frontmatter socket reconcile — shared cable cleanup ──────────────────────
 // After a frontmatter SOURCE node (a Note, or an Imported Obsidian note) re-derives
 // its output sockets from its body (syncFields → { removed, retyped }), any cable
 // whose output key VANISHED or changed to an incompatible TYPE is now dangling. This
 // is the one place that cleanup lives, shared by NoteComponent's on-blur commit and
-// the Import node's file-load — the compatibility rule (an `any`/widening target
-// keeps a retyped cable; a removed key always drops) is subtle enough to not want
-// two copies of.
+// the Import node's file-load.
 
 import { getActiveEditor } from "./activeGraph";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
@@ -31,7 +28,7 @@ export async function dropStrandedFrontmatterCables(
       continue;
     }
     const newType = retypedMap.get(c.sourceOutput);
-    if (newType === undefined) continue; // unchanged output — leave it
+    if (newType === undefined) continue;
     const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
     const inType = inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
     if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);

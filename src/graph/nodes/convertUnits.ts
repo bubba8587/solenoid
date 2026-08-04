@@ -1,8 +1,6 @@
-// ─── Convert's unit table + scalar conversion — rete-free by design (FX-2) ───
-// Extracted from convert.ts so the formula surface (excelFunctions CONVERT) can
-// run a conversion without dragging rete, the socket lattice and the display
-// stores into the headless evaluator. convert.ts (the NODE) imports from here
-// and keeps the display-unit registration side effect.
+// Convert's unit table + scalar conversion — rete-free by design (FX-2), so the
+// formula surface (excelFunctions CONVERT) can convert without pulling rete, the
+// socket lattice and the display stores into the headless evaluator.
 
 import { convert as dimConvert, type Dim, type Unit } from "../dimension";
 
@@ -150,14 +148,13 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
 
 // Register every Convert unit id with the display bridge, so a `UnitCell.display`
 // authored here (yd, psi, km_h, …) resolves at render time even when the id has no
-// FC-registry twin — without this, Convert-to-yd emitted a display-less cell and the
-// downstream box rendered the base-SI derived symbol (meters), losing Convert's
-// primacy over the value's unit.
+// FC-registry twin — otherwise the downstream box renders the base-SI derived symbol
+// and Convert loses primacy over the value's unit.
 export function convertValue(x: number, fromKey: string, toKey: string): number | null {
   const from = CONVERT_UNIT_DEFS[fromKey];
   const to   = CONVERT_UNIT_DEFS[toKey];
   if (!from || !to) return null;
-  // Delegate to the dimensional-algebra core — commensurability (m² vs m) and
-  // the affine temperature case are handled there, one source of truth.
+  // Commensurability (m² vs m) and the affine temperature case live in the
+  // dimensional-algebra core — one source of truth.
   return dimConvert(x, from.dim, to.dim);
 }

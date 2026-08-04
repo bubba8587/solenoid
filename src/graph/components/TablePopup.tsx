@@ -43,9 +43,8 @@ function toGrid(data: CellValue[][], cellType: CellType, columnTypes?: CellType[
     Array.from({ length: cols }, (_, j) => {
       const v = row[j];
       if (v === undefined || v === null || v === "") return "";
-      // A list/matrix may now carry logicals and per-cell errors; render those
-      // directly rather than feed a non-number to formatScalar (false.toFixed() /
-      // err.toFixed() throws → blacked-out app).
+      // A list/matrix can carry logicals and per-cell errors; render those directly
+      // rather than feed a non-number to formatScalar (it would throw).
       if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
       if (isSolError(v)) return v.code;
       // A dimensioned cell (a list carrying UnitCells — from a pin / cable
@@ -68,9 +67,9 @@ function fromGrid(grid: string[][]): (number | null)[][] {
     }),
   );
 }
-// A blank cell stays blank (it's a missing/null value, NOT 0 — the CSV must match
-// the null-preserving save path; coercing to "0" here was the pre-null behavior).
-// Text keeps its value verbatim (incl. spaces); numeric/date/logical are trimmed.
+// A blank cell stays blank (a missing/null value, NOT 0 — the CSV must match the
+// null-preserving save path). Text keeps its value verbatim (incl. spaces);
+// numeric/date/logical are trimmed.
 function cell(c: string, cellType: CellType): string {
   if (cellType === "string") return c;
   return c.trim();
@@ -79,8 +78,8 @@ function cell(c: string, cellType: CellType): string {
 // or newline) — doubling embedded quotes, per RFC 4180. Numbers never need it.
 // With `escapeFormulas` (read-only popups — the export path), a text cell whose
 // first char is a formula trigger (= + - @, tab, CR) gets a leading apostrophe
-// so pasting into Excel/Sheets can't execute it (CSV/formula injection, audit
-// finding 39) — genuine numbers ("-5") are left alone. Editable grids skip it:
+// so pasting into Excel/Sheets can't execute it (CSV formula injection) —
+// genuine numbers ("-5") are left alone. Editable grids skip it:
 // their CSV view must round-trip the user's own text exactly.
 function csvField(c: string, cellType: CellType, escapeFormulas = false): string {
   let out = cell(c, cellType);
@@ -114,9 +113,9 @@ function toMarkdown(grid: string[][], cellType: CellType, columnTypes: CellType[
 }
 // Parse the CSV-view text back into a raw string grid (cells split on commas).
 // Blank lines are KEPT as blank rows wherever they sit — leading, interior,
-// trailing — the editors never coerce the Source (author 2026-07-16); a blank
-// row is a row of missing cells, and dropping it here deleted it on save. Only
-// the final newline TERMINATOR's phantom row drops (parseCsvRows handles it).
+// trailing: the editors never coerce the Source, and a blank row is a row of
+// missing cells. Only the final newline TERMINATOR's phantom row drops
+// (parseCsvRows handles it).
 // Cells stay strings — fromGrid coerces on save.
 function parseCSV(text: string): string[][] {
   return parseCsvRows(text, { keepBlankLines: true }).map((row) => row.map((c) => c.trim()));
@@ -156,7 +155,7 @@ export function TablePopup() {
   // Display mode for the Formatted/Source toggle. SOURCE = the raw text (a Frame
   // Input's literal cells, or a date column's raw serials); FORMATTED = the derived
   // render (TRUE/FALSE, formatted dates, units). For a literal-source editor BOTH
-  // modes edit the same raw truth (author 2026-07-16): Source edits it verbatim;
+  // modes edit the same raw truth: Source edits it verbatim;
   // Formatted shows the derived render, swaps to the raw text while a cell is
   // focused, and re-renders formatted on blur. A read-only date view just toggles
   // serial vs date string.
@@ -293,9 +292,9 @@ export function TablePopup() {
   const hasDateCols = state.columnTypes?.some(t => t === "date") || state.cellType === "date";
   // A frame popup carries per-column types; a plain Table/list does not.
   const isFramePopup = !!state.columnTypes;
-  // Show the Formatted/Source toggle on EVERY frame popup (and the literal-source
-  // editor) — author wants it always present, not column-dependent. (Plain
-  // number/text lists with no date column keep no toggle: there's nothing to swap.)
+  // The Formatted/Source toggle shows on EVERY frame popup (and the literal-source
+  // editor), not column-dependent. Plain number/text lists with no date column keep
+  // no toggle: there's nothing to swap.
   const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols));
   // Display-only grid. `grid` (raw text) is ALWAYS the edit/save truth; this only
   // changes what's SHOWN. Literal source + Formatted → derive each cell. Read-only
@@ -326,14 +325,10 @@ export function TablePopup() {
         }))
       : shownGrid;
 
-  // ── FC controls row (read-only frames / matrices) ──────────────────────────
-  // A format+unit controls row between the header and the body re-renders the
-  // ON-SCREEN grid only — it converts a column's base-SI values into the chosen
-  // unit and applies the number format. `displayGrid` / Copy / CSV stay the raw
-  // value (display-only, like the list Row/Column toggle).
-  // The format+unit controls row shows on any frame/matrix popup — read-only
-  // derived (format, display-only) and editable sources alike (Frame Input, Table
-  // Input; a taggable source also gets the unit dropdown).
+  // The format+unit controls row (between header and body) shows on any frame/matrix
+  // popup — read-only derived and editable sources alike; a taggable source also gets
+  // the unit dropdown. It re-renders the ON-SCREEN grid only: `displayGrid` / Copy /
+  // CSV stay the raw value.
   const showFmtControls = !!state.formatControls && view === "grid" && !state.list;
   // In-cell convert+format render: read-only grids directly, and an editable source
   // only in its FORMATTED preview (its Source view stays raw text you edit). Never
@@ -343,13 +338,10 @@ export function TablePopup() {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     return colFmt[idx] ?? { format: "auto", unit: "none" };
   }
-  // A read-only DERIVED frame has no unit dropdown, so its cells are converted into
-  // the column unit silently — surface that unit in the header so the numbers aren't
-  // ambiguous ("Distance (km)"). Taggable sources show it in the dropdown instead.
+  // The unit shows in the format row below the header (an editable picker on a
+  // taggable source, a locked one on a derived column), so the header is just the
+  // column name.
   function colHeaderLabel(c: number): string {
-    // The unit now shows in the format row below the header (an editable picker on a
-    // taggable source, a locked one on a derived column — the FC's flow language), so
-    // the header is just the column name.
     return headers?.[c] ?? colLabel(c);
   }
   function setColFmtAt(i: number, patch: Partial<FormatAnnotation>) {
@@ -454,18 +446,14 @@ export function TablePopup() {
   // column of N elements, is where a list sort means something.
   const sortable = !(state.list && !vertical);
 
-  // Per-column min width from CONTENT. The cells are <input>s, which contribute
-  // NO intrinsic width — columns never widen on their own, so a forced-scientific
-  // value ("1.6331e+16", 10ch) clipped in the 72px default column. The grid is
-  // mono (Atkinson Hyperlegible Mono, advance 27/42 em → 13px × 0.6429 ≈ 8.36px
-  // per char — measured from the shipped .fnt metrics), so the exact width is
-  // maxLen × advance + the input's 16px padding. Only columns needing MORE than
-  // the CSS 72px floor get an inline min-width; a 200px cap keeps a pathological
-  // cell from stretching the grid (mono columns only — text columns are sans).
+  // Per-column min width from CONTENT: the cells are <input>s, which contribute NO
+  // intrinsic width, so columns never widen on their own. The grid is mono (Atkinson
+  // Hyperlegible Mono, advance 27/42 em per the shipped .fnt metrics), so the width
+  // is maxLen × advance + the input's 16px padding; only columns needing MORE than
+  // the CSS 72px floor get an inline min-width, capped at 200px (mono columns only —
+  // text columns are sans).
   // Plain computation, NOT a hook: this sits below the `if (!state) return null`
-  // guard, so a hook here changes the hook count when the popup opens (the exact
-  // React violation that black-screened the app). The visible grid is capped at
-  // MAX_VISIBLE_ROWS, so a per-render scan is cheap.
+  // guard, so a hook here would change the hook count when the popup opens.
   const MONO_CH_PX = 13 * (27 / 42);
   const colMinWidths: Array<number | undefined> = [];
   for (let c = 0; c < viewCols; c++) {
@@ -554,8 +542,8 @@ export function TablePopup() {
   // is row-per-line CSV; a frame prepends a header line). Used for copy and the CSV view.
   // In formatted date mode, copy/CSV reflects the displayed strings, not raw serials.
   const headers = editableHeaders ? headerNames : state.headers;
-  // Read-only popups neutralize formula-injection prefixes on export (finding 39);
-  // editable ones must round-trip the typed text exactly.
+  // Read-only popups neutralize formula-injection prefixes on export; editable
+  // ones must round-trip the typed text exactly.
   const bodyCSV = toCSV(displayGrid, cellType, columnTypes, !editable);
   // A frame's CSV view prepends a header line (below); a plain table/list doesn't.
   const hasHeaderLine = !state.list && !!(headers && headers.length);
@@ -575,7 +563,7 @@ export function TablePopup() {
     const rows = parseCSV(v);
     // Symmetric with `asText`: when the CSV view carries a header line, parse it
     // back OUT into headerNames instead of dumping it into the data grid — else the
-    // header gets duplicated into row 0 of the data (the round-trip bug).
+    // header gets duplicated into row 0 of the data.
     // A CSV edit that changes the column COUNT reshapes the table — every sort
     // key's index means something else now, so the sort clears outright.
     const body = hasHeaderLine ? rows.slice(1) : rows;

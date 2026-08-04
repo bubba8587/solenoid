@@ -2,9 +2,8 @@
 import { clipScaleOffset, type AreaTransform } from "./overlayTransform";
 import { packNodeInstances, FLOATS_PER_INSTANCE, type NodeCard } from "./nodeInstances";
 
-// WebGPU node-card renderer — the LOD representation of node bodies. NOT YET wired
-// into the LOD swap (that's the next step); this draws the cards so alignment/color
-// can be verified first. Each node is ONE instance of a unit quad; the fragment
+// WebGPU node-card renderer — the LOD representation of node bodies. NOT wired
+// into the LOD swap. Each node is ONE instance of a unit quad; the fragment
 // shader does the rounded-rect SDF + header/body split, so ALL nodes draw in a single
 // instanced call — the cheap-to-composite stand-in for the DOM node layer when zoomed
 // out. Same transform-uniform model as the cable renderer (geometry uploaded once;

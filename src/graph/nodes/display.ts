@@ -8,8 +8,6 @@ import { isLambdaValue, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 
-// ─── Display ─────────────────────────────────────────────────────────────────
-
 export class DisplayNode extends ClassicPreset.Node {
   label: string;
   // `in` is an "any" socket, so the value may also be a 2D table (number[][]),
@@ -20,8 +18,6 @@ export class DisplayNode extends ClassicPreset.Node {
   // input's type/unit/format and carries a downstream FC's lock across a run of
   // Displays. ONE declaration, read by trueany adoption + unitFlow (passthrough.ts).
   passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
-  // A bit larger by default than a compute node — it's a display surface, and it's
-  // resizable (nodeResizable) so the user can grow it to show a full list/table.
   width = 220;
   height = 150;
 
@@ -46,12 +42,10 @@ export class DisplayNode extends ClassicPreset.Node {
     } else if (isLambdaValue(raw)) {
       // Keep the VALUE — the component renders it by kind (the compact signature
       // by default, or an FC's view-as: KaTeX / highlighted / mono). Stringifying
-      // here made the component's lambda branch unreachable, so the FC's
-      // lambdaView never applied (the string fell to the generic text path).
+      // here would make the component's lambda branch unreachable, so the FC's
+      // lambdaView would never apply.
       this.cachedValue = raw;
     } else if (Array.isArray(raw)) {
-      // 2D table → keep the matrix (rendered as a grid); string list and number
-      // list both keep the array so the value box shows a chip → popup.
       if (Array.isArray(raw[0])) this.cachedValue = raw as number[][];
       else if (typeof raw[0] === "string") this.cachedValue = raw as string[];
       else this.cachedValue = raw as number[];
@@ -61,8 +55,6 @@ export class DisplayNode extends ClassicPreset.Node {
     return { out: raw };
   }
 }
-
-// ─── Alert ────────────────────────────────────────────────────────────────────
 
 // What an Alert watches for. The mode picks the trigger condition AND which input
 // sockets are live (ALERT_MODE_KEYS) — like TVM hiding its solved-for input.
@@ -128,9 +120,9 @@ export class AlertNode extends ClassicPreset.Node {
     return { result };
   }
 
-  // Status code: 0 = calm. For "range", 1 = below Low, 2 = above High (kept for
-  // back-compat / the value box). Other modes use 1 = triggered. A list yields a
-  // per-element status; null = a needed input is missing (unknown — never fires).
+  // Status code: 0 = calm. For "range", 1 = below Low, 2 = above High; other modes
+  // use 1 = triggered. A list yields a per-element status; null = a needed input is
+  // missing (unknown — never fires).
   private evaluate(inputs: AlertInputs): number | number[] | null {
     switch (this.op) {
       case "range": {
@@ -152,9 +144,9 @@ export class AlertNode extends ClassicPreset.Node {
       case "boolean": {
         const v = scalarish(inputs.value, this.literals.value);
         if (v === null) return null;
-        // TRUE only — comparisons / logic ops now emit a real logical, which the
-        // numeric `value` socket coerces to 1/0; accept a raw `true` too for
-        // robustness. A stray 5 is NOT a boolean true (so not any-nonzero).
+        // TRUE only — comparisons / logic ops emit a real logical, which the numeric
+        // `value` socket coerces to 1/0; a raw `true` is accepted too. A stray 5 is
+        // NOT a boolean true (so not any-nonzero).
         return broadcast((x) => (((x as unknown) === true || x === 1) ? 1 : 0), v) as number | number[] | null;
       }
       case "text": {
@@ -176,8 +168,6 @@ export class AlertNode extends ClassicPreset.Node {
     const key = statusKey(result);
     const alerting = isAlerting(result);
     const opChanged = this.lastEvalOp !== this.op;
-    // A mode change discards the old mode's status (compare against NO_STATUS), so
-    // switching the Alert into an already-met condition fires once.
     const prevKey = opChanged ? NO_STATUS : this.lastStatusKey;
     this.lastEvalOp = this.op;
     this.lastStatusKey = key;
@@ -192,7 +182,6 @@ export class AlertNode extends ClassicPreset.Node {
     }
   }
 
-  // A short, human message for the toast + HUD chip.
   private buildMessage(result: number | number[], inputs: AlertInputs): string {
     const name = (this.label ?? "").trim() || "Alert";
     const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000));
@@ -232,8 +221,7 @@ export class AlertNode extends ClassicPreset.Node {
 // Resolve a numeric input slot: a CONNECTED cable wins even when blank (`null` —
 // the check can't run, so the status is unknown and the alert never fires against
 // a bound the graph withheld); only an UNWIRED slot falls back to the card's
-// literal (VAL-1). The old `got?.[0] ?? lit` swallowed a wired blank into the
-// literal, so a range Alert could fire on the card's bound instead of the wire's.
+// literal (VAL-1).
 function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
   return readInput(got, lit ?? null);
 }
@@ -248,12 +236,10 @@ function statusKey(result: number | number[]): string {
   return Array.isArray(result) ? result.join(",") : String(result);
 }
 
-// Whether a status is alerting (any nonzero element).
 function isAlerting(result: number | number[]): boolean {
   return Array.isArray(result) ? result.some((x) => x !== 0) : result !== 0;
 }
 
-// ─── RAND ─────────────────────────────────────────────────────────────────────
 // Consolidated RAND/RANDBETWEEN. Defaults to 0–1 float (like Excel RAND()).
 // Wire in Bottom/Top for a custom range (like Excel RANDBETWEEN but float).
 

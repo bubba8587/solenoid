@@ -1,14 +1,7 @@
-// ─── Dimensional algebra — the units foundation (Bundle 05, Phase D core) ──────
-// A unit is an exponent vector over base dimensions plus a linear scale to the
-// base-SI magnitude (and, for temperature, an affine offset). This is the pure,
-// graph-free core the whole units feature stands on: real unit CALCULATION
-// (5 m ÷ 1 s = 5 m/s), commensurability checking, conversion, unit-expression
-// parsing, and derived-unit display. The value-model integration (units riding
-// per-element through lists / per-column through frames) and the FC's lock/carry
-// semantics build ON this — they live elsewhere and are gated on the FC function
-// model. This file has no dependency on the editor, React, or any node.
-//
-// Mirrors valueKinds.ts's "one small pure module every consumer calls" shape.
+// Dimensional algebra — the units foundation. A unit is an exponent vector over
+// base dimensions plus a linear scale to the base-SI magnitude (and, for
+// temperature, an affine offset). This file has no dependency on the editor,
+// React, or any node.
 
 // The base dimensions. SI's seven, plus three the app treats as first-class:
 // `angle` (radian — dimensionless in strict SI but engineering tracks deg/rad),
@@ -59,8 +52,6 @@ export interface Unit {
 
 export const DIMENSIONLESS: Dim = {};
 
-// ─── Dimension-vector algebra ──────────────────────────────────────────────────
-
 /** Fold two dims elementwise with `f` (used by mul/div). Key-agnostic: folds over
  *  every base AND custom axis present in either operand. */
 function combine(a: Dim, b: Dim, f: (x: number, y: number) => number): Dim {
@@ -93,8 +84,6 @@ export function dimEqual(a: Dim, b: Dim): boolean {
 export function isDimensionless(a: Dim): boolean {
   return Object.keys(a).every((k) => (a[k] ?? 0) === 0);
 }
-
-// ─── Unit algebra ──────────────────────────────────────────────────────────────
 
 /** An offset (affine) unit can't be multiplied/divided/powered — °C·°C is
  *  meaningless. Callers get null and should surface #UNIT!. */
@@ -229,7 +218,6 @@ function resolveSymbol(sym: string): Unit | null {
 function parseFactor(tok: string): Unit | null {
   const t = tok.trim();
   if (t === "") return null;
-  // "m^2", "m2", "s^-1", "m^-1"
   const caret = /^([^\^]+)\^(-?\d+(?:\.\d+)?)$/.exec(t);
   const trailing = /^([A-Za-zµ¤%]+?)(-?\d+)$/.exec(t);
   let symStr = t;
@@ -273,8 +261,6 @@ export function parseUnit(expr: string): Unit | null {
   if (!den) return null;
   return unitDiv(num, den);
 }
-
-// ─── Formatting a dimension as a unit string ───────────────────────────────────
 
 /**
  * Render a dimension vector as a readable unit symbol: a named derived unit

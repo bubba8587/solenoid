@@ -116,10 +116,9 @@ function transpose<T>(m: T[][]): T[][] {
 }
 
 /** Guard one mapped result: a per-cell error PROPAGATES (`#DIV/0!` from `1/0`, …);
- *  text, a BOOLEAN (P7 logical — `MAP(x, x>2)` was an all-null matrix before,
- *  audit finding 27) and a finite number (a date serial is one) pass through;
+ *  text, a BOOLEAN and a finite number (a date serial is one) pass through;
  *  anything else (non-finite, undefined, a wired-in null) → `null`, the MISSING
- *  sentinel (skipped by aggregators). Lists/matrices now carry both kinds. */
+ *  sentinel (skipped by aggregators). */
 function cell(v: unknown): Cell {
   if (isSolError(v)) return v;
   if (typeof v === "string") return v;

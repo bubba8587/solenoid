@@ -32,14 +32,7 @@ const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
 /** Parse one row's comma-separated text into a typed list. Delegates to the ONE
  *  typed-list literal parser (`parseListLiteral`) so a row parses identically however
  *  the SegToggle is set: RFC-4180 quoting everywhere (`"First, Last", qty` is two
- *  fields in EVERY mode), and an unparseable part is first-class `null` in every mode.
- *
- *  This used to be a second, divergent parser — a naive `split(",")` with a
- *  drop-what-doesn't-parse rule — and it was DEAD for three of the four types:
- *  coerceInputs injects `parseListLiteral`'s result for any `TYPEABLE_LIST` socket
- *  (strlist/datelist/logicallist) before data() runs, so only Number mode ever reached
- *  it. That's why quoting worked in Text mode but not Number mode, and why Date mode
- *  emitted NaN where Number mode dropped the cell. One parser, one policy. */
+ *  fields in EVERY mode), and an unparseable part is first-class `null` in every mode. */
 function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
   return s ? (parseListLiteral(s, LIST_ELEM_SOCKET[dt].dataType) as AnyCell[]) : [];
 }
@@ -47,15 +40,8 @@ function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
 /** Convert ONE wired element to the row's element type, or `null` when it genuinely
  *  can't be. List Input is a typed literal SOURCE — its whole job is "emit a list of
  *  type T" — so a wired element is CONVERTED, exactly like the typed text on the same
- *  row. It used to be FILTERED (`typeof v === …`, anything else silently discarded),
- *  which had two bad consequences:
- *
- *   • The same value behaved differently typed vs wired: `01-Jan-2026` typed into a
- *     Date row parses to a serial, but wired in it was thrown away.
- *   • A WILDCARD source (`any`/`anylist`/`trueany` — a Display, a Conduit lane, an
- *     INDEX result) is ACCEPTED by every row socket via the wildcard ladder, but its
- *     runtime value is whatever flowed in. A number reaching a Text row made the whole
- *     list vanish — an empty output with no cable rejected and no error shown.
+ *  row — never filtered, since a WILDCARD source (`any`/`anylist`/`trueany`) is accepted
+ *  by every row socket but carries whatever value flowed in.
  *
  *  `null` (MISSING) and per-cell `SolError`s never reach here — they ride through any
  *  typed list unchanged and are handled by the caller. */
@@ -159,17 +145,16 @@ export class ListInputNode extends ClassicPreset.Node {
     const list: AnyCell[] = [];
     for (const key of Object.keys(this.inputs)) {
       // `readInput` semantics: a CONNECTED cable wins even when its value is `null` —
-      // only an UNWIRED row (undefined) falls back to the typed text. The old
-      // `wired != null` test resurrected the row's text for a wired MISSING, which is
-      // the `??`-swallowing bug (a blank flowing in became whatever was typed in the box).
+      // only an UNWIRED row (undefined) falls back to the typed text. A `wired != null`
+      // test would resurrect the row's text for a wired MISSING.
       const slot = inputs[key];
       const wired = slot === undefined || slot.length === 0 ? undefined : (slot[0] ?? null);
       if (wired !== undefined) {
         const arr = Array.isArray(wired) ? wired : [wired];
         // `null` (MISSING) and a per-cell SolError ride through UNCHANGED — dropping
-        // them compacted the list (positions shifted out of step with any parallel
-        // list) and made an upstream #DIV/0! vanish instead of propagating. Everything
-        // else is CONVERTED to the row's type rather than filtered (see coerceElem).
+        // them would compact the list (positions shifting out of step with any parallel
+        // list) and swallow an upstream #DIV/0!. Everything else is CONVERTED to the
+        // row's type rather than filtered (see coerceElem).
         for (const v of arr) {
           list.push(v === null || isSolError(v) ? (v as AnyCell) : coerceElem(this.dataType, v));
         }
@@ -211,8 +196,7 @@ export class RangeNode extends ClassicPreset.Node {
     const step  = readInput(inputs.step, this.literals.step ?? 1);
     if (start === null || stop === null || step === null) { this.cachedList = null; return { list: null }; }
     // The shared generator convention (RANDARRAY/SEQUENCE): a range that never
-    // terminates or exceeds the app ceiling is a LOUD error, not a silent
-    // truncation — the old hard cap quietly returned the first 1000 elements.
+    // terminates or exceeds the app ceiling is a LOUD error, not a silent truncation.
     const n = rangeCount(start, stop, step);
     if (!Number.isFinite(n)) {
       const err = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
@@ -245,7 +229,7 @@ export class ListLengthNode extends ClassicPreset.Node {
   }
 
   // `unknown[][]`, not `number[][]`: the input socket is element-BLIND (anylist) and
-  // this only reads `.length`, so declaring numbers understated what it accepts.
+  // this only reads `.length`.
   data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? null;
     this.cachedResult = arr ? arr.length : null;
@@ -255,20 +239,8 @@ export class ListLengthNode extends ClassicPreset.Node {
 
 // INDEX is cube/frame-aware: its input + output are `any` so it reads a cell out
 // of ANY container — the nth of a list, the (row, col) of a matrix, OR the cell of
-// a Frame / Cube. A frame/cube cell comes out as `any`, so a NESTED frame/cube
-// pulled from a cube cell flows on as a frame/cube you can keep working on. This
-// is how you read a relate-built cube back out (see docs/cube-node-scope.md). The
-// 1-D list path keeps Excel's INDEX(array, n); `column` is the 2-D second arg.
-//
-// Excel's whole-axis form (2026-07-15): a BLANK or 0 Row means ALL rows — the
-// whole column — and a blank/0 Column means ALL columns — the whole row — exactly
-// INDEX(range, 0, col) / INDEX(range, row, 0). Both blank passes the container
-// through whole. Slice shapes follow the app's existing accessor conventions:
-// a frame row-slice is a ONE-ROW FRAME (Get Row / XLOOKUP `*`), a frame
-// column-slice is the values LIST (Get Column); cube slices stay CUBES (nested
-// cells come out whole); matrix slices are 1-D lists. The Row/Column literal
-// fields default EMPTY with an `[all]` placeholder (the socket-label
-// `(default …)` convention).
+// a Frame / Cube. Whole-axis form + per-container slice shapes:
+// docs/node-coverage.md; cube behavior: docs/cube-node-scope.md.
 export class ListIndexNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
@@ -282,24 +254,14 @@ export class ListIndexNode extends ClassicPreset.Node {
     this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
     this.addInput("index", numIn("Row (default [all])"));
     this.addInput("column", numIn("Column (default [all])"));   // 2-D / frame / cube only
-    // ADOPTIVE (2026-07-25): the extracted value's ELEMENT FAMILY is the container's,
-    // so the output adopts it — see the passthrough() note below for why this used to
-    // be static and what's actually unknowable.
+    // ADOPTIVE: the extracted value's ELEMENT FAMILY is the container's, so the
+    // output adopts it — see the passthrough() note below for what stays unknowable.
     this.addOutput("result", trueAnyOut("Value"));
   }
 
   /** INDEX FORWARDS a value out of its container, so it declares a passthrough on
    *  `list` — that one declaration is what type adoption, unit flow, the type-default
    *  display walk and the Conduit trace all read.
-   *
-   *  It was STATIC `trueany` until 2026-07-25, on the grounds that "the result's type
-   *  varies per row/column". That is true of a CUBE cell (which may hold a nested
-   *  frame/cube) and a FRAME cell (heterogeneous columns, picked by a runtime index),
-   *  and false of everything else: a list or matrix is HOMOGENEOUS, so its element
-   *  family is fixed by the socket no matter which cell you pull. Treating the whole
-   *  node as unknowable cost real behavior — a date pulled out of a date list lost
-   *  its date-ness downstream (`isDateType` reads the socket, so it rendered as a raw
-   *  serial), and the output dot stayed a hollow ring while the input dot colored.
    *
    *  `project` maps the container type to the extraction's own rank: what varies with
    *  Row/Column is the RANK, not the family (one cell, or a whole axis), and the COMBO
@@ -310,7 +272,7 @@ export class ListIndexNode extends ClassicPreset.Node {
    *
    *  A FRAME resolves through `frameProjection` instead: a frame's element family is
    *  a property of the COLUMN, not of the `frame` socket, so the family is knowable
-   *  exactly when the column is (2026-07-27). */
+   *  exactly when the column is. */
   passthrough(): PassthroughSpec[] {
     return [{
       output: "result",
@@ -870,9 +832,8 @@ export class UniqueNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = (inputs.list?.[0] ?? []) as unknown[];
-    // Kernel: first-seen dedupe by VALUE (setKey — VAL-8; the old raw Set here
-    // keyed by identity, harmless only because the socket is numeric), with every
-    // error cell surviving deterministically ("10 values + 3 errors = 3 fixes").
+    // Kernel: first-seen dedupe by VALUE (setKey — VAL-8), with every error cell
+    // surviving deterministically ("10 values + 3 errors = 3 fixes").
     this.cachedList = uniqueList(arr) as number[];
     return { result: this.cachedList };
   }
@@ -881,8 +842,8 @@ export class UniqueNode extends ClassicPreset.Node {
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
 // A complex number is a tagged OBJECT (VAL-15), and a JS Set/Map keys objects by
-// REFERENCE — so two equal complexes from different sources would never match
-// (a known Set-node bug). Key membership by VALUE instead: a complex canonicalizes
+// REFERENCE — so two equal complexes from different sources would never match.
+// Key membership by VALUE instead: a complex canonicalizes
 // to a string via setKey (listOps.ts), every primitive (number incl. a date serial,
 // string, boolean) stays itself. Used by every Set/membership/tally node below.
 
@@ -1670,7 +1631,7 @@ export const REDUCE_OP_META = {
 // STDEV/…), so its input is a `list`, not a `table`. The internal op tokens
 // (`ReduceOp`, `REDUCE_OP_META`, the `reduce-${op}` catalog ids) keep the
 // `reduce` prefix — never user-visible.
-// How an aggregate transforms the shared dimension of its inputs (Bundle 05, step 6):
+// How an aggregate transforms the shared dimension of its inputs:
 //   preserve (sum/avg/min/max/median/geomean/harmean/stdev/spread) → same dim ·
 //   square (var/devsq/sumsq) → dim² · product → dimⁿ · everything else (count,
 //   normalized moments) → dimensionless. `n` = the number of aggregated cells.
@@ -1734,7 +1695,7 @@ export class AggregateNode extends ClassicPreset.Node {
           break;
         }
         case "stdev": {
-          if (arr.length < 2) break; // sample stdev undefined under 2 points — blank, like var_s (audit finding 30)
+          if (arr.length < 2) break; // sample stdev undefined under 2 points — blank, like var_s
           const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
           const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (arr.length - 1);
           result = Math.sqrt(variance);
@@ -1811,7 +1772,7 @@ export class AggregateNode extends ClassicPreset.Node {
       }
     } else if (this.op === "count" || this.op === "sum") {
       // Empty/all-null input: SUM is 0 and PRODUCT is 1 (the additive/multiplicative
-      // identities — matching the formula path and aggregateGroup; audit finding 30).
+      // identities — matching the formula path and aggregateGroup).
       result = 0;
     } else if (this.op === "product") {
       result = 1;
@@ -2098,7 +2059,7 @@ export class GroupByNode extends ClassicPreset.Node {
 // aggregators. One bundled node (op dropdown, like Aggregate) for missing-value
 // handling. A per-cell SolError is NOT missing, so every mode passes errors through
 // untouched (it FILLS gaps, it doesn't repair errors); statistics impute from the
-// PRESENT finite numbers only (skip null AND error). See dev-notes "Coalesce / Fill".
+// PRESENT finite numbers only (skip null AND error).
 
 export type FillOp =
   | "constant" | "ffill" | "bfill"

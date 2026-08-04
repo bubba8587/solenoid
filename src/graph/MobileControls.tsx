@@ -11,17 +11,12 @@ import {
 import "./MobileControls.css";
 
 /**
- * Touch-only bottom action bar (hidden ≥640px via CSS): one row of 6 buttons
- * around the raised accent Add FAB — Commands · Undo · Redo · ➕ · Select ·
- * Delete · Fit. The Commands button opens the command palette (typing a node's
- * name jumps to the node, and it carries every other action, so one button
- * covers both search and commands). Delete is disabled
- * (dimmed) when nothing's selected, so the bar never reflows and the buttons
- * keep fixed positions.
+ * Touch-only bottom action bar (hidden ≥640px via CSS): one row of buttons
+ * around the raised accent Add FAB. Delete is disabled (dimmed) when nothing's
+ * selected, so the bar never reflows and the buttons keep fixed positions.
  *
  * Selection state is polled the same cheap way the StatusBar does it (there is
- * no dedicated selection store), so Delete enables only when there's something
- * to remove.
+ * no dedicated selection store).
  */
 export function MobileControls() {
   // The bar only renders under html.is-mobile (== IS_MOBILE), so on desktop the
@@ -78,7 +73,7 @@ export function MobileControls() {
       {/* Group the current selection (G) — the highest-value keyboard-less edit op.
           Fires the same shortcut Canvas listens for. Dimmed when nothing's selected
           (it needs a selection), but still tappable so a fresh select isn't blocked
-          by the poll. Fit/autofit moved to the floating canvas pill. */}
+          by the poll. */}
       <button
         className={
           "solenoid-mobile-bar__btn" + (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")

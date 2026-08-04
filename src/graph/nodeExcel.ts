@@ -1,8 +1,7 @@
-// GENERATED ONCE from the former FUNCTION_ROWS, now the source of truth for
-// each node's Excel equivalence. Applied onto catalog leaves by buildCatalog
-// (like NODE_PACK_TAGS). Pack nodes may instead declare `excel` inline on their
-// entry. The dev catalog validator flags any Excel-mapped node missing metadata,
-// so this can't silently go stale (the bug that left LAMBDA marked "to-do").
+// The source of truth for each node's Excel equivalence. Applied onto catalog
+// leaves by buildCatalog (like NODE_PACK_TAGS). Pack nodes may instead declare
+// `excel` inline on their entry. The dev catalog validator flags any Excel-mapped
+// node missing metadata, so this can't silently go stale.
 import type { ExcelEquiv } from "./AddNodeMenu";
 
 /** catalog node type -> the Excel function(s) it stands in for. */
@@ -426,9 +425,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "stat-standardize": [{ excel: "STANDARDIZE", syntax: "=STANDARDIZE(x, μ, σ)", parity: true }],
   "switch": [{ excel: "SWITCH", syntax: "=SWITCH(expr, w1, t1, ...)", parity: false, note: "Fixed 3 cases; Excel is variadic" }],
   // All three leaves ARE T.TEST — Excel splits the variants by its `type` argument,
-  // Solenoid splits them into separate leaves. Only the equal-var one used to say so,
-  // which left the other two reading as Solenoid-native in the parity measurement when
-  // both are one `type` away from the same function.
+  // Solenoid splits them into separate leaves. All three must say so, or the parity
+  // measurement reads the other two as Solenoid-native.
   "t-test-paired": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 1)", parity: false, note: "This leaf is type 1 (paired); 2-tailed only" }],
   "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 2)", parity: false, note: "This leaf is type 2 (pooled variance); 2-tailed only, for 1-tailed divide result by 2" }],
   "t-test-unequal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 3)", parity: false, note: "This leaf is type 3 (Welch); 2-tailed only" }],
@@ -481,7 +479,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "MID", syntax: "=MID(text, start, chars)", parity: false },
     { excel: "MIDB", syntax: "=MIDB(text, start, bytes)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
-  // TEXT / VALUE / VALUETOTEXT live on Cast now (their dedicated nodes are
+  // TEXT / VALUE / VALUETOTEXT live on Cast (their dedicated nodes are
   // deprecated — hidden from the menu, load-only).
   "cast": [
     { excel: "TEXT", syntax: "=TEXT(value, format)", parity: false, note: "Cast to Text with a format — simplified formats: \"\", \"0\", \"0.00\", \"0.00%\"; date patterns (YYYY-MM-DD) for date sources" },

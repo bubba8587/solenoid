@@ -4,25 +4,10 @@ import { type FormatAnnotation } from "./formatAnnotationStore";
 import { isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "./nodes/passthrough";
 
 // ─── Unit flow ─────────────────────────────────────────────────────────────────
-// The UNIT of a value is a property of the *value* itself — a base-SI `UnitCell`
-// with a `display` id (unitValue.ts), authored by a Format Controller / Convert /
-// unit source (FC A4, value-mutating). It rides the value through passthroughs &
-// selectors and DROPS at a transform on its OWN, so there is NO graph unit-walk
-// here anymore. What remains is the FORMAT (number style / precision / negatives /
-// K-M-B) — a DISPLAY annotation an FC locks, which a passthrough box shows without
-// its own trailing FC. This module resolves THAT annotation forward/back, plus the
-// popup "Go to source" origin walk.
-//
-// Per-node rule (all duck-typed so this file imports no node classes):
-//   • Convert     (has fromUnit + toUnit) → transform: DROPS the inherited format.
-//   • FC / producer (has annotation / annotationFor) → LOCKS its own format.
-//   • passthrough — a node whose `passthrough()` declaration (passthrough.ts, the ONE
-//     source type adoption ALSO reads) says it forwards a value unchanged:
-//       · data-aware `selected()` names the ONE branch it's passing right now (IF from
-//         its condition, CHOOSE from its index) → carry THAT branch's annotation;
-//         `null` = indeterminate (a LIST condition picks per-element), so fall back to:
-//       · the spec's value-branch inputs COMBINED — the annotations must AGREE (else none).
-//   • anything else                       → clear: nothing locked (the value is transformed).
+// Resolves the FORMAT ANNOTATION (the display lock an FC imposes) forward and back
+// across the graph, plus the popup "Go to source" origin walk. Units themselves ride
+// on the VALUE, so there is no graph unit-walk here. Every node test is duck-typed,
+// so this module imports no node classes.
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
@@ -41,9 +26,9 @@ function isFc(n: unknown): n is FcLike {
   return !!o && typeof o.unit === "string" && typeof o.format === "string";
 }
 // The passthrough facts (which node passes a value through, which inputs are its value
-// branches, which branch is live) now come from the node's ONE `passthrough()`
-// declaration (passthrough.ts) — the same source trueany TYPE adoption reads, so a node
-// can't pass type-but-not-unit (the Expect / Cable Switch / IFERROR drift this closes).
+// branches, which branch is live) come from the node's ONE `passthrough()` declaration
+// (passthrough.ts) — the same source trueany TYPE adoption reads, so a node can't pass
+// type-but-not-unit.
 const isPassthrough = isPassthroughNode;
 const isPurePassthrough = isPurePassthroughNode;
 /** The explicit value-branch input keys (the selector's value rows, Display's `in`). */
@@ -92,21 +77,16 @@ export type AnnotationResolver = {
 };
 
 /**
- * Resolve the FORMAT ANNOTATION (not just the unit) locked onto a value, by the same
- * walk as the unit resolver: an FC LOCKS its own format+unit onto the value; a
- * passthrough node (Display, …) carries it across UNCHANGED; a transformative node
- * (anything not FC / passthrough) DROPS it — the value is now something new. So a
- * downstream Display shows the upstream FC's `$` format with no trailing FC of its
- * own, and the lock only breaks once the value enters a real transform. (Convert is a
- * unit transform → it drops the inherited format; it imposes its own unit, not format.)
+ * An FC LOCKS its format+unit onto the value; a passthrough carries it across
+ * UNCHANGED; anything else DROPS it. Convert is a unit transform, so it drops the
+ * inherited format — it imposes its own unit, not a format.
  */
 export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   const memo = new Map<string, FormatAnnotation | null>();
   const visiting = new Set<string>();
 
-  // Index the connections ONCE per resolver — each hop was a full scan of
-  // editor.getConnections(), which multiplied out to O(boxes × cables) per
-  // render pass on a big graph (audit finding 41).
+  // Index the connections ONCE per resolver: a per-hop scan of getConnections()
+  // multiplies out to O(boxes × cables) per render pass on a big graph.
   type AnyConn = ReturnType<AnyEditor["getConnections"]>[number];
   const byTarget = new Map<string, AnyConn[]>();
   const bySource = new Map<string, AnyConn[]>();
@@ -180,7 +160,6 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
       const consumer = editor.getNode(c.target);
       if (hasAnnotation(consumer)) { found = consumer.annotation(); break; } // an FC ahead
       if (isPurePassthrough(consumer)) {
-        // Recurse through the Display on each of its value outputs.
         for (const ok of Object.keys(consumer?.outputs ?? {})) {
           const a = downstreamAnnotation(c.target, ok);
           if (a) { found = a; break; }
@@ -246,13 +225,11 @@ export function resolveValueOrigin(editor: AnyEditor, nodeId: string): string {
   return id;
 }
 
-// ── Per-commit resolver sharing (audit finding 41) ───────────────────────────
-// Every value box built its OWN resolver in its component body, every render —
-// so one React commit over a 300-node graph re-walked the connection list per
-// box per hop. Annotations can change on ANY pass (an FC edit, a selector
-// picking its other branch), so the resolver can't be cached on the connection
-// version — but within ONE commit the graph is fixed. Share a single resolver
-// (and its memos) for the current microtask; the next tick rebuilds fresh.
+// ── Per-commit resolver sharing ──────────────────────────────────────────────
+// Annotations can change on ANY pass (an FC edit, a selector picking its other
+// branch), so the resolver can't be cached on the connection version — but within
+// ONE commit the graph is fixed. Share a single resolver (and its memos) for the
+// current microtask; the next tick rebuilds fresh.
 let _sharedResolver: AnnotationResolver | null = null;
 let _sharedResolverEditor: AnyEditor | null = null;
 

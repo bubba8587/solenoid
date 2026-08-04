@@ -1,6 +1,6 @@
-// Context-menu actions on canvas entities (extracted from Canvas.tsx):
-// splice Conduits into cables, link a Standoff, delete cables, attach a
-// Format Controller. All pure over (editor, area, container, target).
+// Context-menu actions on canvas entities: splice Conduits into cables, link a
+// Standoff, delete cables, attach a Format Controller. All pure over
+// (editor, area, container, target).
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra, SolenoidNode } from "./schemes";
@@ -173,7 +173,6 @@ export async function insertConduitForCables(
     }
     created.push(conduit.id);
   }
-  // Select the new Conduit(s) — feedback, and the expanded block shows its lanes.
   created.forEach((id, i) => selectNodeFromProcess(id, i > 0));
   await processGraph();
 }
@@ -187,8 +186,8 @@ export function linkStandoffBetween(
   area: AreaPlugin<Schemes, AreaExtra>,
   t: { aId: string; bId: string },
 ): void {
-  // measuredBox: the same size read the standoff SOLVER uses (Canvas
-  // standoffBoxes), so the band created here matches the boxes it constrains.
+  // The same size read the standoff SOLVER uses, so the band created here
+  // matches the boxes it constrains.
   const boxOf = (id: string): StandoffBox | null => measuredBox(area, id, editor);
   const ba = boxOf(t.aId);
   const bb = boxOf(t.bId);
@@ -377,7 +376,6 @@ export async function attachFormatController(
     const pos = computeDockedCanvasPos(area, container, rel.hostNodeId, rel.socketKey, rel.side, fc.width, fc.height);
     if (pos) await area.translate(fc.id, pos);
   }
-  // Insert it into the data path so the original value flows through it.
   await insertFcInline(editor, fc);
   await processGraph();
 }

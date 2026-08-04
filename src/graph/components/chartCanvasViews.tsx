@@ -9,11 +9,10 @@ import type {
 } from "../chartValue";
 
 // ─── Canvas figure views ───────────────────────────────────────────────────────
-// The 2026-07-16 chart wave (Waterfall / Candlestick / Boxplot / Calendar /
-// Waffle / Vector Field / Contour) draws to a <canvas> like SurfaceView — one DOM
-// element regardless of data size, supersampled for crispness, themed by reading
-// the live CSS vars + palette at draw time (the components subscribe to
-// appThemeStore so a theme/palette flip redraws).
+// Waterfall / Candlestick / Boxplot / Calendar / Waffle / Vector Field / Contour
+// draw to a <canvas> like SurfaceView — one DOM element regardless of data size,
+// supersampled for crispness, themed by reading the live CSS vars + palette at draw
+// time (the components subscribe to appThemeStore so a theme/palette flip redraws).
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -134,7 +133,6 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
     const yA = sy(b.a), yB = sy(b.b);
     ctx.fillStyle = b.kind === "up" ? ink.up : b.kind === "down" ? ink.down : ink.neutral;
     ctx.fillRect(x, Math.min(yA, yB), barW, Math.max(1, Math.abs(yB - yA)));
-    // Dashed connector from this bar's end to the next bar's start.
     if (i < bars.length - 1) {
       const yEnd = b.kind === "total" ? yB : sy(b.b);
       ctx.strokeStyle = ink.dim;
@@ -222,14 +220,12 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
     const cx = padL + (i + 0.5) * bw;
     ctx.strokeStyle = ink.accent;
     ctx.lineWidth = 1;
-    // Whiskers with end caps.
     for (const [from, to] of [[b.lo, b.q1], [b.q3, b.hi]] as const) {
       ctx.beginPath(); ctx.moveTo(cx, sy(from)); ctx.lineTo(cx, sy(to)); ctx.stroke();
     }
     for (const v of [b.lo, b.hi]) {
       ctx.beginPath(); ctx.moveTo(cx - boxW / 4, sy(v)); ctx.lineTo(cx + boxW / 4, sy(v)); ctx.stroke();
     }
-    // The IQR box (translucent fill so the grid shows through) + median.
     const yQ1 = sy(b.q1), yQ3 = sy(b.q3);
     ctx.globalAlpha = 0.22;
     ctx.fillStyle = ink.accent;
@@ -238,7 +234,6 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
     ctx.strokeRect(cx - boxW / 2, yQ3, boxW, Math.max(1, yQ1 - yQ3));
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(cx - boxW / 2, sy(b.med)); ctx.lineTo(cx + boxW / 2, sy(b.med)); ctx.stroke();
-    // Outlier dots.
     ctx.fillStyle = ink.down;
     for (const v of b.outliers) {
       ctx.beginPath(); ctx.arc(cx, sy(v), 1.6, 0, Math.PI * 2); ctx.fill();
@@ -314,7 +309,6 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
       lastMonth = m;
     }
   }
-  // Weekday hints (M/W/F rows).
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   for (const [row, ch] of [[0, "M"], [2, "W"], [4, "F"]] as const) {
@@ -365,7 +359,6 @@ function drawWaffle(canvas: HTMLCanvasElement, p: WafflePayload, W: number, H: n
     counts = floors.map((n, i) => ({ n, color: colors[i % colors.length], name: p.names[i] ?? "" }));
   }
 
-  // Legend below the grid when there's room and real categories to name.
   const legend = !single && counts.some((c) => c.name);
   const legendH = legend ? 12 : 0;
   const side = Math.min(W, H - legendH);
@@ -451,10 +444,9 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     // Thinner shaft on small arrows — a full-width stroke on a 3px arrow reads as a blob.
     ctx.lineWidth = Math.max(0.7, Math.min(cw, ch) * 0.07 * (0.55 + 0.45 * t));
     ctx.lineCap = "round";
-    // Arrowhead: a FILLED triangle (crisp at any size — the old two swept strokes
-    // smudged into the shaft at small magnitudes). The shaft stops at the head's
-    // base so it can't poke past the tip; arrows too small to carry a head draw
-    // as a bare shaft.
+    // Arrowhead: a FILLED triangle (crisp at any size). The shaft stops at the
+    // head's base so it can't poke past the tip; arrows too small to carry a head
+    // draw as a bare shaft.
     const hl = Math.min(4.5, len * 0.55);
     if (hl >= 2.2) {
       const bx = hx - hl * cosA, by = hy - hl * sinA; // head base on the shaft
@@ -488,8 +480,8 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   if (!Number.isFinite(zmin)) return;
   if (zmin === zmax) zmax = zmin + 1;
 
-  // Real gutters for the coordinate hints — drawn OVER the filled bands they were
-  // illegible (and looked clipped into the plot, esp. at Report sizes).
+  // Real gutters for the coordinate hints — drawn OVER the filled bands they are
+  // illegible, and read as clipped into the plot at Report sizes.
   const padL = 6, padR = 6, padT = 12, padB = 12;
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);

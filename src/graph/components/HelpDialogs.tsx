@@ -46,7 +46,6 @@ export function HelpDialogs() {
   const mode = useSyncExternalStore(helpDialogStore.subscribe, helpDialogStore.get);
   const [slide, setSlide] = useState(0);
 
-  // Reset to the first slide whenever What's New (re)opens.
   useEffect(() => {
     if (mode === "whatsnew") setSlide(0);
   }, [mode]);

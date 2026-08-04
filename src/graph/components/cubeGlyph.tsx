@@ -31,9 +31,8 @@ const CUBE_STROKE_WIDTH = 26;
 export function CubeGlyphFaces({ fill, dy = 0 }: { fill: string; dy?: number }) {
   // The seams/ring track the SAME per-fill border shade as every other socket glyph:
   // the ancestor (SocketComponent's svg / the legend dot) sets `--socket-ring` to this
-  // fill's ring, so the cube darkens by the same fixed HSV step as the rest (was a
-  // one-off color-mix, which is why the cube read darker than the others). Falls back
-  // to the global ring when drawn without that ancestor.
+  // fill's ring, so the cube darkens by the same fixed HSV step as the rest. Falls
+  // back to the global ring when drawn without that ancestor.
   const stroke = "var(--socket-ring)";
   return (
     <g transform={cubeTransform(dy)}>

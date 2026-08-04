@@ -1,9 +1,6 @@
 // Tidy (auto-arrange) + Cleanup — the ELK layout engine behind the NavMenu
-// buttons, T/C shortcuts and the group Tidy button. Extracted from Canvas.tsx:
-// the factories close over the per-mount editor/area the same way the init
-// effect did. Invariants live in docs/subsystem-invariants.md "Auto-arrange /
-// Tidy": SYMMETRIC port preset, left+center anchor, fixed-height pins dropped
-// after the size restores, standoff clusters as rigid ELK super-nodes.
+// buttons, T/C shortcuts and the group Tidy button. The factories close over
+// the per-mount editor/area.
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
 import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
@@ -45,14 +42,9 @@ export interface TidyDeps {
 
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
-// Port positions drive ELK's vertical node alignment (it lines up connected
-// ports). The stock `classic` preset puts OUTPUT ports at the node TOP and
-// INPUT ports at the BOTTOM, which staircases every chain upward — wrong for
-// our nodes. We place ports SYMMETRICALLY (same offset for in/out) so two
-// connected nodes line up, and read the Tidy-alignment setting per layout:
-//   "center" → ports at the node's vertical center → node CENTERS align;
-//   "top"    → ports near the node's top → node TOP edges align.
-// Exported so the headless tidy test drives ELK with the REAL preset.
+// Ports placed SYMMETRICALLY (same offset for in/out) so two connected nodes
+// line up — do NOT fall back to the plugin's `classic` preset. Exported so the
+// headless tidy test drives ELK with the REAL preset.
 export function symmetricPortPreset() {
   return {
     port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
@@ -65,12 +57,9 @@ export function symmetricPortPreset() {
   };
 }
 
-// ELK (rete-auto-arrange-plugin + its elkjs dependency) is a heavy chunk that
-// only Tidy needs, so it's LAZY: imported and wired on the first arrange, not
-// at Canvas init (recharts/KaTeX are lazy the same way). The returned
-// `ensureArrange` dynamically imports the plugin, builds it once, registers it
-// on the area, and memoizes; every later Tidy reuses the same instance. Until
-// then ELK stays out of the main bundle.
+// ELK (rete-auto-arrange-plugin + elkjs) is a heavy chunk only Tidy needs, so
+// it is imported and wired on the first arrange, not at Canvas init — keep it
+// out of the main bundle.
 export function makeEnsureArrange(
   area: AreaPlugin<Schemes, AreaExtra>,
   isDestroyed: () => boolean,
@@ -95,28 +84,20 @@ export function makeEnsureArrange(
 }
 
 // The auto-arrange behind the nav-menu "tidy" button (and T / the group Tidy
-// button). The Conduit declares all its lanes up-front, which would make ELK
-// treat it as a tall multi-port node and shove it far away from its
-// neighbors. We hand ELK a Proxy that exposes only the *in-use* ports, so the
-// Conduit lays out as the small node it visually is. The Proxy preserves `id`,
-// so the applier still translates the real node.
+// button). Nodes are handed to ELK as Proxies; a Proxy preserves `id`, so the
+// applier still translates the real node.
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
   const { editor, area, container, ensureArrange, repositionDockedTo, isDestroyed } = deps;
   return async (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => {
-    // Scope: selected nodes if any are selected, otherwise the whole
-    // graph. Tidy is a big, hard-to-undo visual change, so past a
-    // threshold we confirm before rearranging.
     const all = editor.getNodes();
     const selected = all.filter((n) => (n as { selected?: boolean }).selected);
 
-    // Group-aware Tidy. Build member→group for every group.
     const allGroups = all.filter((n): n is GroupNode => n instanceof GroupNode);
     const memberOf = new Map<string, GroupNode>();
     for (const g of allGroups) for (const m of g.members) memberOf.set(m, g);
 
-    // A group's own Tidy button (opts.groupId): lay out exactly that group's
-    // members within its box, regardless of the current selection. Same flow
-    // as Case A below, just forced and unconditional.
+    // A group's own Tidy button: lay out exactly that group's members within
+    // its box, regardless of the current selection.
     const forcedGroup = opts?.groupId
       ? allGroups.find((g) => g.id === opts.groupId) ?? null
       : null;
@@ -126,10 +107,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       : (selected.length > 0 ? selected : all);
     if (targets.length === 0) return;
 
-    // Case A — selection is entirely members of one group: lay them out
-    // WITHIN the box (and autogrow it). It runs through the same flow below
-    // (so docked-FC footprint reservation + edge bridging still apply); only
-    // the re-anchor target and the post-layout box-grow differ.
+    // Selection entirely inside one group: lay them out WITHIN the box (and
+    // autogrow it), through the same flow below.
     let withinGroup: GroupNode | null = forcedGroup;
     let tidyNodes: Schemes["Node"][] = targets;
     if (!forcedGroup && selected.length > 0 && selected.every((n) => memberOf.has(n.id))) {
@@ -141,12 +120,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     }
 
     if (!withinGroup) {
-      // Count what Tidy actually arranges: layout UNITS, not raw nodes. A
-      // global tidy positions each group as one rigid unit (its members move
-      // with it rather than being laid out individually) and skips docked
-      // FCs — so a collapsed group with many hidden members still counts as
-      // one. This mirrors layoutTargets' predicate below, keeping the dialog
-      // honest about the scope of the change.
+      // Count layout UNITS, not raw nodes — this must mirror layoutTargets'
+      // predicate below or the dialog misstates the scope of the change.
       const arrangedCount = targets.filter(
         (n) => !(n instanceof FormatControllerNode && !!dockedNodeStore.get(n.id)) && !memberOf.has(n.id),
       ).length;
@@ -160,12 +135,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Clear the selection for the duration of the layout. A selected
-    // node's translate triggers the selector's group-follow (it moves
-    // every other selected node by the same delta to keep the group
-    // together — the multi-drag mechanism), which compounds across the
-    // applier's per-node placement and corrupts the result. Drop the
-    // selection, lay out, then restore it.
+    // Clear the selection for the duration of the layout: a selected node's
+    // translate triggers the selector's group-follow (the multi-drag
+    // mechanism), which compounds across the applier's per-node placement.
     const selectedIds = selected.map((n) => n.id);
     if (selectedIds.length > 0) unselectAllNodesFromProcess();
 
@@ -179,10 +151,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         .filter((n) => n instanceof FormatControllerNode && !!dockedNodeStore.get(n.id))
         .map((n) => n.id),
     );
-    // Exclude docked FCs (positional adornments). For a global tidy also
-    // exclude groups + their members (they tidy together via Case A, not
-    // loose in the layout); for a within-group tidy, lay out exactly that
-    // group's members.
     // Global tidy: keep GROUPS in the layout (positioned as rigid units),
     // exclude their members (they move with the group afterward). Within-group
     // tidy: keep exactly that group's members.
@@ -191,13 +159,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       (n) => !dockedFcIds.has(n.id) && (withinGroup ? true : !memberIds.has(n.id)),
     );
 
-    // ── Standoff clusters lay out as ONE rigid block ──────────────────
-    // ELK has no idea two standoffed nodes must stay together, so it
-    // scatters them and the post-pass settle then yanks one onto the other
-    // (overlaps). Collapse each fully-loose cluster into a leader: ELK sees
-    // one bbox-sized node, and the members are re-placed at their stored
-    // offsets afterward. All maps stay empty when there are no qualifying
-    // clusters, so a graph without standoffs lays out exactly as before.
+    // Standoff clusters lay out as ONE rigid block: ELK has no idea two
+    // standoffed nodes must stay together. Collapse each fully-loose cluster
+    // into a leader — ELK sees one bbox-sized node, and the members are
+    // re-placed at their stored offsets afterward.
     const looseTargetIds = new Set(layoutTargets.map((n) => n.id));
     const clusterLeaderOf = new Map<string, string>();    // member -> leader
     const clusterMembersOf = new Map<string, string[]>(); // leader -> members
@@ -209,8 +174,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterLeaderRealSize = new Map<string, { w: number; h: number }>();
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
-      // measuredBox: same size chokepoint as align/autofit — live size first,
-      // collapse-aware stored fallback, guaranteed non-zero.
       const boxOf = (id: string) => measuredBox(area, id, editor);
       for (const cluster of standoffClusters(standoffStore.all())) {
         // Every member must be a loose layout target. A group qualifies — it
@@ -278,13 +241,11 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         } as unknown as Schemes["Connection"]);
       }
     }
-    // When arranging a subset, only feed ELK the edges whose BOTH
-    // endpoints are in the subset. An edge pointing at an excluded
-    // node makes ELK throw → the layout silently fails and nothing
-    // moves. (For the whole-graph case this keeps every edge.)
-    // ELK sees one node per cluster (the leader); followers are excluded and
-    // their edges remap to the leader as node-level edges (empty port key),
-    // exactly like the group remap above. Identity when there are no clusters.
+    // When arranging a subset, only feed ELK the edges whose BOTH endpoints
+    // are in the subset — an edge pointing at an excluded node makes ELK throw
+    // and the layout silently fails. ELK also sees one node per cluster (the
+    // leader); followers are excluded and their edges remap to the leader as
+    // node-level edges (empty port key), like the group remap above.
     const elkVisible = new Set(
       layoutTargets.filter((n) => !clusterFollowers.has(n.id)).map((n) => n.id),
     );
@@ -302,13 +263,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // it. ELK nodes are rectangles, so we feed it the bounding box of the
     // host + its output-docked FC: the host stays at the box's top-left and
     // the FC extends right (and down, from where its socket actually sits).
-    // ONLY hosts that are actually IN the layout: a host that's a group
-    // MEMBER (global tidy lays out the group as one unit, not its members)
-    // gets no proxy, so reserving it did nothing — but the "restore" below
-    // still ran area.resize on it, stamping a fixed inline height on a card
-    // the pin-drop loop (which walks layoutTargets) never clears. That froze
-    // the member's card height after every global Tidy (and, with a stale
-    // width/height mirror, visibly resized it).
+    // ONLY hosts that are actually IN the layout: reserving a host that isn't
+    // laid out does nothing, but the restore below would still area.resize it,
+    // stamping a fixed inline height the pin-drop loop (which walks
+    // layoutTargets) never clears.
     const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
     const hostFootprint = new Map<string, { w: number; h: number }>();
     const realHostSize = new Map<string, { w: number; h: number }>();
@@ -399,15 +357,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         },
       });
     });
-    // Anchor target. ELK lays out from origin (0,0); we shift the result back.
-    // HORIZONTALLY we keep the LEFT edge (graphs flow left→right from where they
-    // started). VERTICALLY we keep the CENTER, NOT the top: ELK routinely
-    // flattens a tall / vertically-stacked cluster into a compact row, and
-    // top-aligning that row drops the whole thing to the top of the old
-    // footprint — the "tidy floats nodes up" bug. For a within-group tidy the
-    // references are the box interior's left and vertical center. Both are
-    // deterministic, so a tidy→autofit cycle in Cleanup stays a fixed point
-    // (after autofit the interior wraps the members, so the center is unchanged).
+    // Anchor target. ELK lays out from origin (0,0); we shift the result back,
+    // keeping the LEFT edge and the vertical CENTER (never the top). Both
+    // references are deterministic, so a tidy→autofit cycle in Cleanup stays a
+    // fixed point.
     let origMinX = Infinity;   // left edge to preserve
     let targetCy = 0;          // vertical center to preserve
     if (withinGroup) {
@@ -440,16 +393,13 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // First Tidy pays the one-time ELK import here; later ones resolve instantly.
     // Null only if the area was destroyed mid-import — nothing left to lay out.
     const arrangePlugin = await ensureArrange();
     if (!arrangePlugin) return;
     await arrangePlugin.layout({
       nodes: proxyNodes as Schemes["Node"][],
       connections: subsetConns,
-      // ELK spacing (the preset's `spacing` is only port placement). Widen
-      // the gaps Tidy leaves so nodes — and their docked-FC footprints — get
-      // breathing room: between layers (columns) and within a layer (rows).
+      // ELK spacing (the preset's `spacing` is only port placement).
       options: {
         "elk.layered.spacing.nodeNodeBetweenLayers": "55",
         "elk.spacing.nodeNode": "38",
@@ -485,8 +435,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       await area.resize(id, sz.w, sz.h);
     }
 
-    // Shift the laid-out nodes: left edge → anchor left, vertical center →
-    // anchor center.
     let newMinX = Infinity, newTop = Infinity, newBottom = -Infinity;
     for (const n of layoutTargets) {
       const b = measuredBox(area, n.id, editor);
@@ -529,29 +477,14 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Drop the inline `height` AND `width` the applier / footprint restore stamped
-    // on every arranged card. area.resize (the applier's reserve-footprint trick,
-    // and the realHostSize/clusterLeaderRealSize restores above) writes FIXED inline
-    // dims on the card. The height pin freezes the card so the body can't shrink on
-    // collapse or grow when a taller value lands (the reason clearPinnedHeight exists).
-    // The width pin is WORSE than redundant: the restore stamps measuredBox().w —
-    // which is offsetWidth (border-box, so it INCLUDES the 1px border) — as
-    // style.width on the content-box `.solenoid-node` card, so each Tidy grows the
-    // card (and any group autofitting around it) by the border width. It compounds
-    // only when a footprint restore runs, i.e. when an FC is docked to the host —
-    // exactly the "num → Display + Format Controller widens on every Tidy" repro.
-    // Clearing both returns every node to its content/CSS/React-driven size; positions
-    // are already applied via translate. A manually-resized Display carries its width
-    // in nodeSizeStore (React sets it from the `style` prop, which the imperative pin
-    // overwrote and React won't re-diff), so re-apply that width instead of dropping
-    // it. ONLY NodeCard roots (.solenoid-node): every other root — Group, Note,
-    // Obsidian import, Image, Conduit — sets its inline width/height from React's
-    // `style` prop (data.width etc.), and removeProperty strips that very value;
-    // React doesn't re-stamp an unchanged style on the next commit, so the element
-    // sat unsized until something forced a re-render (a Note shrink-wrapped to its
-    // longest line — the "Tidy makes Notes very wide with misplaced sockets, fixed
-    // by touching the resize grip" bug). Their applier stamp equals the React value
-    // anyway and is overwritten on the next real render, so it needs no clearing.
+    // Drop the inline `height` AND `width` the applier / footprint restore
+    // stamped on every arranged card, returning it to its content/CSS/React
+    // size (positions are already applied via translate). A manually-resized
+    // node carries its width in nodeSizeStore — React won't re-diff the style
+    // the imperative pin overwrote, so re-apply it instead of dropping it.
+    // ONLY NodeCard roots (.solenoid-node): every other root sets its inline
+    // width/height from React's `style` prop, and removeProperty would strip
+    // that very value with no re-stamp on the next commit.
     for (const n of layoutTargets) {
       const card = area.nodeViews.get(n.id)?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");
       if (!card || !card.classList.contains("solenoid-node")) continue;
@@ -566,8 +499,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     if (withinGroup) {
       let maxX = -Infinity, maxY = -Infinity;
       for (const n of layoutTargets) {
-        // measuredBox, not raw offsetWidth: an unpainted member measured 0 and
-        // silently under-grew the box.
+        // measuredBox, not raw offsetWidth: an unpainted member measures 0 and
+        // silently under-grows the box.
         const b = measuredBox(area, n.id, editor);
         if (!b) continue;
         maxX = Math.max(maxX, b.x + b.w);
@@ -576,9 +509,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const gv = area.nodeViews.get(withinGroup.id);
       const preW = withinGroup.width, preH = withinGroup.height;
       if (gv && Number.isFinite(maxX)) {
-        // Integer dims, same rule as every other group resize source (creation,
-        // autofit, the grips — see 8622a72): ELK positions are fractional, and a
-        // fractional width puts the box edge on a half-pixel (selection-ring blur).
+        // Integer dims, same rule as every other group resize source: ELK
+        // positions are fractional, and a fractional width puts the box edge
+        // on a half-pixel (selection-ring blur).
         withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.position.x) + GROUP_PAD));
         withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.position.y) + GROUP_PAD));
         await area.update("node", withinGroup.id);
@@ -594,14 +527,11 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Persist the new layout. Tidy moves every node via area.translate, but
-    // nothing else schedules a save — so a whole-canvas or selection tidy was
-    // lost on reload (only the within-group branch used to call this). The
-    // 700ms autosave debounce reads positions at flush time, so the deferred
+    // Tidy moves every node via area.translate, which schedules nothing. The
+    // autosave debounce reads positions at flush time, so the deferred
     // standoff/FC settle below is still captured.
     scheduleAutosave();
 
-    // Restore the selection we cleared above.
     selectedIds.forEach((id, i) => selectNodeFromProcess(id, i > 0));
 
     // A SELECTION tidy frames just the arranged nodes, right away.
@@ -622,9 +552,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       // forceLock so a standoff-connected cluster is pulled back together as
       // a rigid block, not just band-satisfied.
       settleStandoffs(undefined, { forceLock: true });
-      // A WHOLE-CANVAS tidy fits AFTER the FCs settle, using the same chrome-
-      // and collapse-aware fit as the navmenu / Cleanup — a raw zoomAt would
-      // center in the full container and land content under the docked panels.
+      // A WHOLE-CANVAS tidy fits AFTER the FCs settle, via the chrome- and
+      // collapse-aware fitAll — a raw zoomAt centers in the full container and
+      // lands content under the docked panels.
       if (!withinGroup && selectedIds.length === 0) {
         await new Promise<void>((r) => requestAnimationFrame(() => r()));
         if (!isDestroyed()) await fitAll();
@@ -674,12 +604,10 @@ export function makeCleanupFn(
     const groups = groupsNow();
     for (const g of groups) await arrangeFn({ groupId: g.id, skipPush: true });
     // Let those deferred FC snap-backs (and their async translates) land
-    // before measuring, or autofit would wrap the stale far-right FC spots
-    // and pad the box on the right (the bug that didn't repro on a manual,
-    // already-settled grip double-click). Two frames: one for the rAF to
-    // fire, one for the translate guard to apply.
+    // before measuring, or autofit wraps the stale far-right FC spots and pads
+    // the box on the right. Two frames: one for the rAF to fire, one for the
+    // translate guard to apply.
     await nextFrame(); await nextFrame();
-    // Now shrink/grow each box to wrap its settled members.
     for (const g of groups) await autofitGroupBox(editor, area, g);
 
     // 2. Collapse every still-expanded group.
@@ -696,12 +624,9 @@ export function makeCleanupFn(
     // 3. Tidy the top level (groups as rigid collapsed units), no confirm.
     await arrangeFn({ skipConfirm: true });
 
-    // 4. Fit — reuse the navmenu's chrome-aware fitAll (drops hidden
-    // members, sizes collapsed groups to their compact box, frames into the
-    // free rectangle between the docked panels). A raw zoomAt here centered
-    // content in the full container, so it landed under the panels and
-    // scaled off. Wait a frame first so step-3's translates + the collapse
-    // settle before fitAll measures.
+    // 4. Fit — the chrome-aware fitAll, never a raw zoomAt (which centers in
+    // the full container, under the docked panels). Wait a frame first so
+    // step-3's translates + the collapse settle before fitAll measures.
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
     await fitAll();
 

@@ -10,13 +10,9 @@ import { type FormatStyleId, type FormatStyle } from "./formatAnnotationStore";
 export type FormatFamily = "number" | "date" | "text" | "logical" | "complex" | "lambda" | "chart" | "none";
 
 /**
- * The format family of an FC's adopted socket type. `any` (an FC docked to an
- * unresolved passthrough) is provisionally NUMBER — the common case — until a
- * concrete type flows in and fcReconcile re-adapts. `anytable` formats its
- * numeric cells. Lambda and chart are display-only families: a lambda's
- * view-as (signature / KaTeX / highlighted / monospace) and a chart's text
- * scale. Frames/cubes are `none`: per-column units/formats are the A4
- * representation problem, not a scalar annotation stretched over a table.
+ * The format family of an FC's adopted socket type. A wildcard (an FC docked to an
+ * unresolved passthrough) is provisionally NUMBER until a concrete type flows in
+ * and fcReconcile re-adapts.
  */
 export function familyOf(dt: SocketDataType): FormatFamily {
   if (isWildcardType(dt)) return "number";

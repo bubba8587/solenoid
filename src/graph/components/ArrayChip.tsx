@@ -21,9 +21,8 @@ function to2D(v: ArrayValue): Cell[][] {
 // Cell kind drives the popup's alignment / coercion / CSV-quoting (see TablePopup,
 // whose CellType has all four). The declared socket FAMILY decides it when the
 // caller knows one — the cell scan below is only a fallback for a wildcard output,
-// and it's a poor one: it reads the FIRST cell, so a leading `null` (an unparseable
-// first entry) made a text list open as numeric, and a boolean list could never
-// report "logical" at all.
+// and a poor one: it reads the FIRST cell only, so a leading `null` misreads a text
+// list as numeric and a boolean list can never report "logical".
 function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
   if (family) return family;
   const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];

@@ -175,8 +175,6 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit} leading={sockets} hideOutputSockets>
-      {/* Input value, in its from-unit. The ◀ marks that Convert sets the
-          upstream FC's unit; it sits by the input socket, beside the box. */}
       <div ref={inBoxRef} style={{ display: "flex", alignItems: "center", gap: 2 }}>
         {node.imposesUp && <DirArrow dir="up" />}
         <div style={{ flex: "1 1 auto", minWidth: 0 }}>
@@ -222,8 +220,6 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         ))}
       </LazySelect>
       <FormatSelect value={outFormat} onChange={onOutFormatChange} />
-      {/* Output value, in its to-unit. The ▶ marks that Convert sets the
-          downstream FC's unit; it sits by the output socket, beside the box. */}
       <div ref={outBoxRef} style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 4 }}>
         <div style={{ flex: "1 1 auto", minWidth: 0 }}>
           <ValueDisplay

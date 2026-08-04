@@ -1,5 +1,4 @@
 // Barrel re-export — mirrors rete-nodes.ts for node classes.
-// Canvas.tsx imports everything from here; individual files stay unchanged.
 // To add a new node: create the component file, add one line below.
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────
@@ -369,7 +368,7 @@ export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } fr
 // ─── Chemistry Basics pack ───────────────────────────────────────────────────────
 export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 
-// ─── Lists → tables fast path (2026-07-09) ──────────────────────────────────────
+// ─── Lists → tables fast path ─────────────────────────────────────────────────
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";

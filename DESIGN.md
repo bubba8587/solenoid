@@ -119,6 +119,8 @@ A neutral near-black workbench carrying a typed, saturated socket palette and a 
 
 ### Tertiary (Typed Socket Palette)
 The socket colors are the system's real palette: each data type owns a hue so a cable's color tells you what flows through it. They are tuned to stay distinguishable across common color-vision deficiencies, and array and matrix variants are systematic siblings of their scalar (a darker, desaturated shade for lists; a punchier, deeper, hue-shifted shade for tables/matrices).
+
+**The sibling derivation runs in HSV** (`palette.ts`) — the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the whole family is tuned on one set of axes and each knob does exactly one thing: array = HSV value ×0.85; matrix = hue −11°, S ×1.18, V ×0.92 (constants averaged over the matrix slots of every built-in palette when the space was swapped, so the depth didn't move). Do NOT reintroduce an RGB multiply (it silently couples value and saturation) or an HSL step (its L scale trades off against saturation differently per hue — the same constant reads "darker" on saturated slots and "more chromatic" on dull ones). The socket RING is a fixed HSV value drop rather than one translucent black: a translucent black's visible contrast varies with fill lightness — crisp on light dots, faint on the dark array/matrix/frame ones.
 - **Number Amber** (`#f5b914`): scalar numbers. List sibling `#c08512`.
 - **String Lime** (`#c8e040`): scalar text. List sibling `#7a9210`.
 - **Date Orchid** (`#d685b1`): scalar dates. List sibling `#c06a98`.

@@ -32,9 +32,9 @@ export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 //    and weekend_code.
 //  - Text Input and Promo are literal SOURCES: exactly one value each.
 //  - Regex stays on the wildcard ladder — its element type depends on the op, so it
-//    can't take a family combo. It emits `anycombo` (the element-agnostic combo, added
-//    2026-07-25) rather than the old `any`, which drew a SCALAR circle on a port that
-//    REGEXEXTRACT-all and the list path can both spill a list from.
+//    can't take a family combo. It emits `anycombo` (the element-agnostic combo) —
+//    a scalar `any` would draw a SCALAR circle on a port that REGEXEXTRACT-all and
+//    the list path can both spill a list from.
 
 // Reads a text operand from either a wired input or the node's stringLiterals
 // fallback. A `strcombo` input may deliver a LIST, so this yields `string |
@@ -47,9 +47,7 @@ function strVal(
 ): string | string[] | null {
   // `readInput`, NOT `?? literal`: a WIRED blank must propagate (null in → null out,
   // the settled P6 model) instead of being swallowed into whatever text sits in the
-  // box. `UPPER` with a blank flowing in and "abc" typed in its field returned
-  // "ABC". Only an UNWIRED slot falls back to the literal. The broadcasters already
-  // short-circuit a null operand per cell, so nothing downstream changes.
+  // box. Only an UNWIRED slot falls back to the literal.
   return readInput(input, node.stringLiterals?.[key] ?? def);
 }
 
@@ -61,9 +59,8 @@ function strVal(
  *  rather than carrying an operand, and a wired blank there is genuinely ambiguous:
  *  it could mean "the mode is unknown, so the answer is unknown" (propagate) or
  *  "nothing supplied, use the default" (Excel's reading of an omitted optional
- *  argument). An operand blank has no such ambiguity, which is why that half was
- *  fixed on its own. The same holds for `basis` / `return_type` / `weekend_code` in
- *  date.ts. Deciding it needs an author call, not a sweep — see backlog. */
+ *  argument). An operand blank has no such ambiguity. The same holds for `basis` /
+ *  `return_type` / `weekend_code` in date.ts. */
 function strScalar(
   input: string[] | undefined,
   node: { stringLiterals?: Record<string, string> },
@@ -452,9 +449,7 @@ export class TextReplaceNode extends ClassicPreset.Node {
 /**
  * TEXT-style simplified number formatting: "" / "general" → default string,
  * "0" / "0.00" → fixed decimals, "0%" / "0.00%" → percentage. Shared by the
- * TEXT node and Cast-to-text. (The decimal branch's regex was once
- * `/^0(\\.0+)?$/` — a double-escape that matched a literal backslash, so
- * "0.00" silently fell through to the default conversion.)
+ * TEXT node and Cast-to-text.
  */
 export function formatNumberPattern(v: number, format: string): string {
   if (format === "" || format === "general") return String(v);
@@ -764,10 +759,6 @@ export class NumberValueNode extends ClassicPreset.Node {
     return { result };
   }
 }
-
-// TextMap ("UPPER (list)") was retired with the combo pass: Text Transform now
-// takes a `strcombo`, so wiring a list into UPPER does exactly what it did. An old
-// save referencing it loads as a Placeholder (wiring + data kept).
 
 // ─── ENCODEURL / DECODEURL ────────────────────────────────────────────────────
 

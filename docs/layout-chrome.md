@@ -53,6 +53,13 @@ bottom; everything else floats over the canvas.
 > `1100px`: fill the line, push the overflow to the next one. Nothing is reordered and
 > nothing is forced onto a chosen row.
 >
+> Two things are deliberately NOT carried over from the mobile bottom bar — do not
+> "complete" the parity: **Add node** (the bar already has its own Add affordance and
+> the canvas double-tap; a second ➕ up top would be the third), and the **raised FAB
+> treatment** (a thumb-reach accommodation for a phone's bottom edge; up here it's
+> just a loud button, and the Quiet Accent Rule says accent conveys type/state, not
+> emphasis).
+>
 > The exception is the **pinned trio** — theme · Reference · Settings
 > (`.solenoid-apptools`) — which must hold the top-right corner. An in-flow flex item
 > can't do that (it lands wherever its line ends), so it is `position:absolute` and the bar

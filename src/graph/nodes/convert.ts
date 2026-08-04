@@ -15,8 +15,8 @@ import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../
 // Bundle 05) — the single source of truth for unit magnitudes. Each unit here
 // gets a `dim` Unit (dimension vector + SI scale); `convertValue` runs through
 // `dimConvert`, and the cross-family guard is a real commensurability check
-// (m² vs m is now caught by unequal dimension vectors, not just a category
-// label). The `category` stays for the dropdown's grouping + the legacy
+// (m² vs m is caught by unequal dimension vectors, not just a category
+// label). The `category` stays for the dropdown's grouping + the
 // toBase/fromBase pair for any direct caller.
 
 registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
@@ -87,10 +87,9 @@ export class ConvertNode extends ClassicPreset.Node {
     const x = (inputs.in?.[0] ?? null) as UnitOperand | UnitOperand[] | null;
     this.cachedInput = x;
     if (x === null) { this.cachedResult = null; return { out: null }; }
-    // Cross-family conversion (meters → kilograms) measures different things —
-    // Excel's CONVERT returns #N/A. This is the NODE's unit pick, not a per-cell
-    // condition, so it's a whole-value error at every dimensionality (a scalar OR
-    // an entire list becomes #N/A — no point per-celling a node-level mistake).
+    // A bad unit pick is the NODE's, not a per-cell condition, so it's a
+    // whole-value error at every dimensionality (a scalar OR an entire list
+    // becomes #N/A).
     const from = CONVERT_UNIT_DEFS[this.fromUnit];
     const to   = CONVERT_UNIT_DEFS[this.toUnit];
     // Incommensurable units (meters → kilograms, m² → m) measure different

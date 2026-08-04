@@ -16,7 +16,7 @@ import "./PresentationNode.css";
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 /**
- * Presenter mode, kept light (bundle 13 #51): an ordered step list, each step an
+ * Presenter mode, kept light: an ordered step list, each step an
  * explicit node-id set captured from the current canvas SELECTION (picked like a
  * navigator list, not typed). Stepping calls flyToNodes — pan/zoom only, no
  * isolate/highlight/dim (those are separate mechanisms this doesn't touch).
@@ -37,8 +37,8 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   useEffect(() => { setColor(data.color); }, [data.color]);
 
   // Re-resolve the accent on theme/palette change (palette edits funnel through
-  // appThemeStore) — without this the card kept its stale hex until some other
-  // re-render, so it looked like it ignored the palette.
+  // appThemeStore) — otherwise the card holds its stale hex until some unrelated
+  // re-render.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }

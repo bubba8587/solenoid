@@ -1,5 +1,5 @@
-// Right-click routing for the canvas (extracted from Canvas.tsx): socket →
-// socket menu, cable → cable menu, node body → node menu, blank → Add menu.
+// Right-click routing for the canvas: socket → socket menu, cable → cable menu,
+// node body → node menu, blank → Add menu.
 // Rete's synthetic React handler on the wrapper doesn't reliably resolve
 // `e.target` into the node DOM, so this is a NATIVE contextmenu listener on
 // the canvas element, which sees the true DOM target.
@@ -26,7 +26,6 @@ export interface ContextMenuDeps {
   openAddMenu: (screenX: number, screenY: number) => void;
 }
 
-// Installs the native contextmenu handler on the canvas element; returns the remover.
 export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
   const { el, editorRef, areaRef, setSocketCtx, setCableCtx, setNodeCtx, openAddMenu } = deps;
   const handler = (e: MouseEvent) => {
@@ -105,7 +104,6 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
     {
       const editor = editorRef.current;
       const area = areaRef.current;
-      // Which node element (if any) was clicked?
       let clickedId: string | null = null;
       if (editor && area) {
         for (const [id, view] of area.nodeViews) {

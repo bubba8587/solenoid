@@ -102,10 +102,9 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
         const lane = conduitLaneOf(outKey, "out");
         return lane < 0 ? null : inputShape(nodeId, conduitInKey(lane));
       }
-      // Everything else that forwards a value says so via the declaration. Without
-      // this, a frame routed through a Display / IF / Expect / Cable Switch lost its
-      // static shape and every verb downstream went "unknown" (the Cable Inspector's
-      // shape row blanked). This walk was the ONE that never read the declaration.
+      // Everything else that forwards a value says so via the declaration — read it,
+      // or a frame routed through a Display / IF / Expect / Cable Switch loses its
+      // static shape and every verb downstream goes "unknown".
       const pass = passthroughForOutput(n, outKey);
       if (pass) return passthroughShape(nodeId, pass);
 

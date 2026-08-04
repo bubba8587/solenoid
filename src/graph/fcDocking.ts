@@ -1,6 +1,6 @@
 // Format Controller docking: snap-target detection, dock positioning, and the
-// inline splice/unsplice of a docked FC into the host's data path. Extracted
-// from Canvas.tsx — everything here is pure over (editor, area, container, fc).
+// inline splice/unsplice of a docked FC into the host's data path. Everything
+// here is pure over (editor, area, container, fc).
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
@@ -25,13 +25,10 @@ export function computeDockedCanvasPos(
   // Host INPUT  → Transformer output (right edge) should meet it → Transformer goes LEFT.
   // Host OUTPUT → Transformer input  (left edge) should meet it → Transformer goes RIGHT.
   //
-  // ROUND to whole canvas px. `cx`/`cy` come from a screen round-trip
-  // (getBoundingClientRect → screenToCanvas ÷ zoom), so they land on sub-pixels —
-  // the FC docked a hair right + up, and, being fractional AND host-position-derived,
-  // its edge shifted with the host on every re-dock. That fed the group Tidy loop:
-  // when the FC was the box's extreme edge, autofit chased the drifting fractional
-  // edge and the group crept. Snapping the dock to the pixel grid removes the visible
-  // misalignment and makes the FC a stable edge the box can wrap without drift.
+  // ROUND to whole canvas px: `cx`/`cy` come from a screen round-trip
+  // (getBoundingClientRect → screenToCanvas ÷ zoom), so they land on sub-pixels.
+  // A fractional, host-position-derived dock edge shifts on every re-dock, and
+  // group autofit then chases it — the group creeps.
   return {
     x: Math.round(side === "input" ? cx - dockedWidth : cx),
     y: Math.round(cy - dockedHeight / 2),
@@ -41,8 +38,7 @@ export function computeDockedCanvasPos(
 // The docked node's real rendered size in canvas units (its DOM element's
 // unscaled offset box), falling back to the node's stored estimate before it
 // has painted. The dock math centers the FC on the host socket using its
-// height, so a stale estimate (e.g. the initial 64 vs a taller Decimal chip)
-// drops it a few — or ~15 — px low. Measuring the element avoids that.
+// height, so a stale estimate drops it several px low.
 export function dockedRenderedDims(
   area: AreaPlugin<Schemes, AreaExtra>,
   nodeId: string,
@@ -54,10 +50,9 @@ export function dockedRenderedDims(
 }
 
 // How close the FC's edge socket must be to a host socket to snap-dock — in
-// CANVAS units (screen distance ÷ zoom). Comparing raw SCREEN px let a
-// zoomed-out canvas snap an FC to hosts a huge canvas distance away (e.g. a
-// far-off Note's tall stack of frontmatter sockets — the random-repro
-// "FC mis-docks to a Note" bug). At zoom 1 this equals 34 screen px.
+// CANVAS units (screen distance ÷ zoom). Comparing raw SCREEN px lets a
+// zoomed-out canvas snap an FC to hosts a huge canvas distance away. At zoom 1
+// this equals 34 screen px.
 const DOCK_SNAP_CANVAS_PX = 34;
 
 // On drop, find the host socket the FC should dock to: the nearest one whose
@@ -96,7 +91,6 @@ export function findDockTarget(
 }
 
 
-// ─── Format Controller inline insertion ───────────────────────────────────────
 // An FC docked to a host OUTPUT is inserted into the data path: the host's
 // existing consumers are rerouted to pull from the FC, and the host output is
 // fed into the FC. The FC passes the original value through unchanged (display-
@@ -109,8 +103,6 @@ export async function insertFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
   if (!host) return;
 
   if (fc.side === "output") {
-    // Docked on a host OUTPUT: reroute the output's consumers to the FC out,
-    // and feed the host output into the FC. (origin-socket case)
     const downstream = editor.getConnections().filter(
       (c) => c.source === fc.hostNodeId && c.sourceOutput === fc.socketKey && c.target !== fc.id,
     );
@@ -129,10 +121,9 @@ export async function insertFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       } catch { /* incompatible — skip */ }
     }
   } else {
-    // Docked on a host INPUT (destination): reroute whatever feeds that input
-    // through the FC — source → FC.in, FC.out → host.input. Only splice when a
-    // cable actually feeds the input (a literal/unwired input has nothing to
-    // route; the FC then just annotates the host's display).
+    // Docked on a host INPUT: only splice when a cable actually feeds the input
+    // (a literal/unwired input has nothing to route; the FC then just annotates
+    // the host's display).
     const incoming = editor.getConnections().filter(
       (c) => c.target === fc.hostNodeId && c.targetInput === fc.socketKey && c.source !== fc.id,
     );
@@ -165,8 +156,8 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
     // A WIRED but undocked FC (hand-wired inline, now being drag-docked onto a
     // host): there is no host socket to reconnect through, so bridge whatever
     // feeds FC.in straight to FC.out's consumers, then drop the FC's own
-    // cables. Without this the host-gated reconnects below just DELETED the
-    // downstream cable (re-homing a hand-wired FC ate the wire).
+    // cables — the host-gated reconnects below would otherwise DELETE the
+    // downstream cable.
     const inConn = editor.getConnections().find((c) => c.target === fc.id && c.targetInput === "in");
     const src = inConn ? editor.getNode(inConn.source) : undefined;
     for (const c of editor.getConnections().filter((c) => c.source === fc.id && c.sourceOutput === "out")) {

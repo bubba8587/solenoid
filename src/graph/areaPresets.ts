@@ -11,15 +11,12 @@ import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
 import { canvasLockStore } from "./canvasLock";
 
-// ─── Shared editing-area presets ────────────────────────────────────────────────
 // The rete render + connection config that MUST be identical across every editing
 // surface: the MAIN canvas (Canvas.tsx) and every surface that substitutes for it
-// (the Composite drill-in in CompositeEditorOverlay's getDrillMount; future
-// focus/scratch canvases). These were hand-copied into both before — and had
-// already drifted (the drill-in's connection flow was missing the canvas-lock
-// veto). One source so a socket-render or connection-rule change can't silently
-// apply to the main canvas but not the subgraph. See activeGraph.ts for the
-// behavioral half of the canvas-substitution seam.
+// (the Composite drill-in in CompositeEditorOverlay's getDrillMount). One source so
+// a socket-render or connection-rule change can't silently apply to the main canvas
+// but not the subgraph. See activeGraph.ts for the behavioral half of the
+// canvas-substitution seam.
 
 // Zoom feel — proportional + clamped wheel (rete's stock Zoom applies a fixed
 // ±intensity per wheel event, so a trackpad pinch races while a mouse notch crawls).
@@ -29,42 +26,18 @@ const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
 const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
 
 /**
- * Custom zoom handler: proportional + clamped wheel, and a pinch that CANNOT be
- * vetoed. Shared by the main canvas and every canvas-substituting surface (the
- * composite drill-in).
- *
- * ── THE PINCH-PRIORITY RULE ────────────────────────────────────────────────────
- * Stock `Zoom` counts fingers from a BUBBLE-phase `pointerdown` on the container,
- * and `Zoom.move` is a `.map` over the pointers it already has — never an upsert.
- * So a finger whose pointerdown was swallowed anywhere below the container is
- * invisible to the zoom handler for the WHOLE gesture, with no recovery: two
- * fingers, one counted, `isTranslating()` false, no zoom. Every
- * `onPointerDown={(e) => e.stopPropagation()}` inside a node was therefore a
- * pinch-blocker, which is why a pinch died over most of the FC node, the
- * connection nodes and every inline field.
- *
- * The fix is positional, not a sweep: register the finger count in CAPTURE, which
- * runs before the target phase and so cannot be stopped. That splits the two
- * gestures by listener phase, permanently:
- *
- *   • PINCH  — capture phase. Unstoppable. A control cannot break a zoom.
- *   • PAN / node drag — bubble phase. Vetoable, and SHOULD be: a control that
- *     wants the pointer for itself keeps calling `stopPropagation()` and still
- *     gets to suppress the pan (rete's `Drag` stays bubble-phase, untouched).
- *
- * That's the invariant to preserve: never move the pan handler to capture, and
- * never move the zoom count back to bubble.
- */
+* Custom zoom handler: proportional + clamped wheel, and a pinch that CANNOT be
+* vetoed. Shared by the main canvas and every canvas-substituting surface.
+*
+* THE PINCH-PRIORITY RULE (subsystem-invariants.md § Pointer gestures): the finger
+* count is registered in CAPTURE phase so no `stopPropagation` below the container
+* can break a pinch; pan and node-drag stay in BUBBLE so a control CAN veto them.
+* Never move the pan handler to capture, and never move the zoom count back to bubble.
+*/
 export class CappedZoom extends Zoom {
-  /**
-   * Count only real FINGERS toward a pinch — not a mouse, not a stylus.
-   *
-   * Stock rete pushes every pointerdown regardless of type. That was harmless while
-   * this ran in bubble phase behind a hundred `stopPropagation`s; in capture phase it
-   * is not, because now every contact really does arrive. A stylus resting on the
-   * glass plus one finger would otherwise read as two pointers and zoom. Mirrors
-   * `isPinching()` (pointerGesture.ts), the single definition of the gesture.
-   */
+  /** Count only real FINGERS toward a pinch — not a mouse, not a stylus (in capture
+  *  phase every contact arrives, so a resting stylus plus a finger would read as a
+  *  pinch). Mirrors `isPinching()` (pointerGesture.ts), the single definition. */
   protected down = (e: PointerEvent) => {
     if (e.pointerType !== "touch") return;
     this.pointers.push(e);

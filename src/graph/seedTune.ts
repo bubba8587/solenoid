@@ -1,13 +1,10 @@
-// Seed-tune harness (tooling, console-only — no UI). The seed JSONs are authored
-// blind: group boxes are guessed from fake node sizes (the PF generator's 240×230
-// rect()), so they drift out of fit as cards' real content-driven sizes change.
-// True fit needs the LIVE app — tidy/autofit measure painted DOM (measuredBox
-// reads offsetWidth/Height) — so this hook loads a seed, runs the same per-group
-// tidy → autofit the group Tidy button does, and returns ONLY the resulting
-// geometry keyed by SAVED node id. scripts/tune-seeds.mjs drives it headlessly
-// and patches x/y (+ group width/height) back into the seed files in place —
-// deliberately NOT a full re-export, which would rewrite every id to a generated
-// name (serializeGraph normalizes ids) and wreck the hand-authored files.
+// Seed-tune harness (tooling, console-only — no UI). True group fit needs the
+// LIVE app (tidy/autofit measure painted DOM), so this hook loads a seed, runs
+// the same per-group tidy → autofit the group Tidy button does, and returns ONLY
+// the resulting geometry keyed by SAVED node id. scripts/tune-seeds.mjs drives it
+// headlessly and patches x/y (+ group width/height) back into the seed files in
+// place — deliberately NOT a full re-export, which would rewrite every id to a
+// generated name (serializeGraph normalizes ids) and wreck the hand-authored files.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
 import { getEditor, getArea, autoArrange } from "./process";
 import { GroupNode } from "./rete-nodes";

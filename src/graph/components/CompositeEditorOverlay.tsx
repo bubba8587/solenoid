@@ -31,31 +31,10 @@ import { IS_MOBILE } from "../coarse";
 import "./compositeEditor.css";
 import "./SocketContextMenu.css";
 
-// ─── The Composite drill-in editor ──────────────────────────────────────────────
-// Mounts a composite's PRIVATE internal graph (nodes/composite.ts
-// `internalEditor`) into a real rete area, LAYERED FULL-BLEED over the main
-// canvas (not a floating window) — so drilling in reads as "the app is now
-// showing this subgraph". A top-left breadcrumb (Canvas ▸ A ▸ B, compositeEditor-
-// Store's stack) is the "you're in a subgraph" affordance and the quick drill-up:
-// a composite card INSIDE the editor drills one level deeper (multi-layer), and
-// any crumb jumps straight back up. Edits at any depth retarget the MAIN-editor
-// ancestor (stack[0]) to recompute, and a level reconciles its ports against its
-// PARENT graph (the crumb above) on leave. The authoring surface
-// pack-architecture.md promises ("open to the author").
-// The rete plugin stack (area / connection / react render) is created ONCE per
-// composite and cached on the node instance: rete's Scope.use() can't be
-// undone, so re-running it on every open would stack duplicate pipes. The
-// container <div> stays alive between opens and is simply re-parented into
-// the overlay.
-//
-// Edit semantics:
-//  - move / rewire / literal edits / delete — live, recompute via the OUTER
-//    pass retargeted at the owning card (see process.ts findCompositeOwner).
-//  - "+ Input/Output" adds a boundary marker + its port (the promotion
-//    mechanism); deleting a marker drops its port. Both reconcile the outer
-//    card's sockets immediately (outer cables into a dropped port go first).
-//  - positions persist in composite.internalPositions (bbox-relative), synced
-//    back on every close.
+// Mounts a composite's PRIVATE internal graph (nodes/composite.ts `internalEditor`)
+// into a real rete area, layered full-bleed over the main canvas. Edits at any depth
+// retarget the MAIN-editor ancestor (stack[0]) to recompute, and a level reconciles
+// its ports against its PARENT graph (the crumb above) on leave.
 
 type DrillMount = {
   container: HTMLDivElement;
@@ -81,17 +60,12 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   const area = new AreaPlugin<Schemes, AreaExtra>(container);
   const connection = new ConnectionPlugin<Schemes, AreaExtra>();
   const reactPlugin = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
-  // Undo/redo inside the drill-in — same classic preset + 200-cap as Canvas
-  // (the plugin ctor doesn't expose the inner History limit). Lives as long as
-  // the mount (per composite), so the stack survives close/reopen.
   const history = new HistoryPlugin<Schemes>();
   history.addPreset(HistoryPresets.classic.setup());
   (history as unknown as { history: { limit?: number } }).history.limit = 200;
 
   const selector = AreaExtensions.selector();
   const accumulating = AreaExtensions.accumulateOnCtrl();
-  // Capture the selectable handle (`.select(id, accumulate)`) — the drill-in's
-  // Ctrl+A and any programmatic selection go through it, mirroring Canvas.
   const selectable = AreaExtensions.selectableNodes(area, selector, { accumulating });
   AreaExtensions.simpleNodesOrder(area);
 
@@ -136,17 +110,9 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   area.use(history);
   area.use(minimap);
   // Match the main canvas's pointer feel: capped proportional wheel zoom +
-  // double-click-to-zoom suppression (the drill-in used rete's stock defaults). The
-  // container is cached with the mount, so the listener lives as long as it — no
-  // cleanup needed (same lifetime as the mount itself).
+  // double-click-to-zoom suppression. The container is cached with the mount, so
+  // the listener lives as long as it — no cleanup needed.
   installSurfacePointer(area, container);
-
-  // Views are backfilled per OPEN (CompositeEditorInner's mount effect), not
-  // here — the close cleanup REMOVES every view (unmounting the React roots so
-  // component effect cleanups actually run; see the leak note there), so a
-  // reopened cached mount starts view-less. The mount itself stays cached: the
-  // internal editor has no `unuse`, so creating a fresh AreaPlugin per open
-  // would accumulate dead pipes on it.
 
   // Structural edits made in the drill-in recompute the OWNING card and
   // autosave — the same settle a Canvas cable edit gets, minus the outer-only
@@ -220,7 +186,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   // edit any levels deep still ripples out to the canvas.
   const recomputeTarget = () => compositeEditorStore.stack()[0]?.id ?? compositeId;
 
-  // Mount the (cached) rete stack into the overlay and lay the nodes out.
   useEffect(() => {
     if (!isComposite) { compositeEditorStore.close(); return; }
     const comp = composite as CompositeNode;
@@ -231,19 +196,12 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if (canceled) return;
       mountRef.current = mount;
       hostRef.current?.appendChild(mount.container);
-      // Backfill the internal graph's views — on the FIRST open because the
-      // graph predates the area (nodes hydrate at collapse/load time, before
-      // any nodecreated the plugins could see), and on every REOPEN because
-      // the close cleanup removed them (see below). Idempotent via the view maps.
-      //
       // Suppress history recording of the backfill: the open re-adds views and lays
-      // every node out via area.translate, which the HistoryPlugin would record — so an
-      // undo with NO user action reverted those, collapsing nodes onto their pre-translate
-      // origin. Gate the inner history's `active` flag (its own undo/redo-reentrancy
-      // guard: `add()` is a no-op while active) around the backfill. This drops the
-      // layout churn WITHOUT clearing real edits — the plugin is cached per-composite and
-      // persists across close/reopen, so a blanket clear() would wipe a PRIOR session's
-      // undo stack on every reopen.
+      // every node out via area.translate, which the HistoryPlugin would record — an
+      // undo with NO user action would then revert those. Gate the inner history's
+      // `active` flag (its own undo/redo-reentrancy guard: `add()` is a no-op while
+      // active) around the backfill; a blanket clear() would wipe a PRIOR session's
+      // undo stack, since the plugin is cached per-composite across close/reopen.
       const innerHistory = (mount.history as unknown as { history: { active: boolean } }).history;
       innerHistory.active = true;
       try {
@@ -254,8 +212,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
           if (!mount.area.connectionViews.has(c.id)) await mount.area.addConnectionView(c);
         }
         if (canceled) return;
-        // Restore the saved layout, stagger anything unplaced (a pre-positions
-        // save), then fit.
         let fallback = 0;
         for (const n of comp.internalEditor.getNodes()) {
           const pos = comp.internalPositions[n.id] ?? { x: (fallback % 4) * 260, y: Math.floor(fallback / 4) * 160 };
@@ -283,11 +239,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       const mount = mountRef.current;
       if (mount) {
         // Remove every internal view — unmounting each view's React ROOT so
-        // component effect cleanups actually run (a Connection node's
-        // auto-refresh interval dies with its component). Merely detaching the
-        // container kept the fibers alive: a refreshMinutes interval inside a
-        // closed (or even DELETED) composite kept firing full processGraph()s
-        // forever. Views re-backfill on the next open; the mount stays cached.
+        // component effect cleanups actually run. Merely detaching the container
+        // keeps the fibers (and their intervals) alive.
         for (const n of comp.internalEditor.getNodes()) mount.area.removeNodeView(n.id);
         for (const c of comp.internalEditor.getConnections()) mount.area.removeConnectionView(c.id);
         if (hostRef.current?.contains(mount.container)) {
@@ -327,7 +280,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         if (e.code === "KeyZ" && !e.shiftKey) { e.preventDefault(); void historyStep(false); }
         if ((e.code === "KeyZ" && e.shiftKey) || e.code === "KeyY") { e.preventDefault(); void historyStep(true); }
-        // Select all nodes in the subgraph (Ctrl+A), mirroring the canvas.
         if (e.code === "KeyA") {
           e.preventDefault();
           const mount = mountRef.current;
@@ -337,8 +289,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
             for (const n of comp.internalEditor.getNodes()) void mount.selectable.select(n.id, true);
           }
         }
-        // Copy / paste inside the subgraph (the active graph is this level — see
-        // activeGraph.ts), pasting at the cursor.
         if (e.code === "KeyC" && !e.shiftKey) { e.preventDefault(); copySelected(); }
         if (e.code === "KeyV" && !e.shiftKey) {
           e.preventDefault();
@@ -354,12 +304,10 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         e.preventDefault();
         void deleteSelection();
       }
-      // A — open the Add-node menu at the cursor (matches the canvas A shortcut).
       if (e.code === "KeyA") {
         e.preventDefault();
         setMenu({ screenX: cursorRef.current.x, screenY: cursorRef.current.y });
       }
-      // T — tidy / auto-arrange the subgraph (matches the canvas T shortcut).
       if (e.code === "KeyT") {
         e.preventDefault();
         void tidyDrill();
@@ -371,7 +319,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         e.preventDefault();
         if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
       }
-      // Arrow keys nudge the selected nodes (Shift = larger step), like the canvas.
       if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
         e.preventDefault();
         void nudgeSelection(e.key, e.shiftKey);
@@ -475,7 +422,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     // overlay's nodecreated pipe usually beat this call anyway (idempotent).
     await comp.internalEditor.addNode(marker as SolenoidNode);
     installErrorGuards(marker);
-    // Drop it at the viewport's left (input) / right (output) edge, vertically centered.
     const rect = mount.container.getBoundingClientRect();
     const pos = toAreaCoords(
       mount.area, mount.container,

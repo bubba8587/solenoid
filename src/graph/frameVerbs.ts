@@ -1,17 +1,12 @@
 // ─── Relational verbs — the pure engine ───────────────────────────────────────
-// One implementation of each relational verb, FrameValue → FrameValue (or a
-// binary FrameValue × FrameValue → FrameValue for join/append). This is:
-//   • the JS backend's `apply` body (web demo + dev path), and
-//   • the reference oracle the Polars backend (desktop) is parity-tested against.
-// Verb NODES (WS3) delegate here too, so there is ONE definition of "what FILTER
-// means" rather than a node copy and a backend copy that drift.
+// One implementation of each relational verb, FrameValue → FrameValue (binary for
+// join/append): the JS backend's `apply` body AND the reference oracle the Polars
+// backend is parity-tested against. Verb nodes delegate here too.
 //
 // Pure + total: a verb returns a new FrameValue and never mutates its input (it
 // may share unchanged columns' value arrays by reference — callers treat frames
 // as immutable). A structural failure (a missing column) is a tagged SolError
-// thrown, surfaced by the caller's error guard as #REF!. Value-model invariants
-// hold: a column keeps its FrameColType; `null`/`SolError` cells ride through
-// unless a verb's semantics say otherwise (documented per verb as they land).
+// thrown, surfaced by the caller's error guard as #REF!.
 import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
@@ -29,8 +24,7 @@ import { parseDateToSerial } from "./nodes/dateSerial";
  *  propagate a per-cell error (via forAggregate). `percentof` is the two-argument
  *  PIVOTBY op SUM(subset)/SUM(totalset) — it is resolved at pivot assembly (it
  *  needs the relative total set), not by `aggregateGroup`, which returns null for
- *  it. The set mirrors Excel PIVOTBY's eta-reduced lambdas (SUM, AVERAGE, COUNT,
- *  PRODUCT, MEDIAN, MODE.SNGL, STDEV.S/P, VAR.S/P, PERCENTOF). */
+ *  it. */
 export type AggOp =
   | "sum" | "avg" | "min" | "max" | "count"
   | "product" | "median" | "mode" | "stdev" | "stdevp" | "var" | "varp"
@@ -100,14 +94,6 @@ function requireColumn(f: FrameValue, name: string): FrameColumn {
   return col;
 }
 
-// Non-finite numbers are REAL cells (B-1b, decided 2026-07-02 — supersedes
-// audit finding 31, whose premise was "the IPC turns NaN into null"; the wire
-// now carries ±Inf/NaN via the __nf sentinel, so the engine sees them too).
-// Cross-backend behavior: distinct keys every non-finite into the shared
-// ["#",null] bucket (JSON.stringify parity, pinned both sides); count counts
-// them (they're present, not missing); sort puts NaN in the blanks-last tail
-// (deterministic — see sortByColumn); aggregates classify non-finite results
-// via guardFinite inside aggregateGroup.
 const cellAt = (col: FrameColumn, i: number): FrameCell =>
   i < col.values.length ? col.values[i] : null;
 
@@ -151,8 +137,7 @@ export function sortByColumn(f: FrameValue, by: string, dir: "asc" | "desc"): Fr
   const col = requireColumn(f, by);
   const cmp = comparatorFor(col.type);
   // NaN joins the tail: a `(a-b)` comparator makes NaN ordering depend on input
-  // order (every comparison is false) — tail-last is the one deterministic spot,
-  // matching the blanks/errors rule. ±Inf sorts normally (a real magnitude).
+  // order (every comparison is false). ±Inf sorts normally (a real magnitude).
   const isTail = (i: number) => {
     const v = cellAt(col, i);
     return v === null || isSolError(v) || (typeof v === "number" && Number.isNaN(v));
@@ -208,9 +193,7 @@ export function sampleFrame(f: FrameValue, n: number): FrameValue {
  *  matches like Excel's `=` (FILTER/AutoFilter); keys (Join/Group By/Distinct)
  *  stay identity, case-sensitive. String lt/gt ordering is untouched. */
 /** Coerce the (usually string) filter VALUE for a numeric comparison, by column
- *  type — the ONE spec both engines implement (audit finding 16; the two sides
- *  had drifted: JS `Number("")`=0 vs Rust NaN, JS truthy-"false"=1 vs Rust NaN).
- *  Logical columns go through coerceLogical (TRUE/FALSE/0/1 and the number
+ *  type — the ONE spec both engines implement. Logical columns go through coerceLogical (TRUE/FALSE/0/1 and the number
  *  bridge); number/date parse after a trim, with NO comma stripping. `null` =
  *  not comparable → the predicate matches no rows (deterministic, and visibly
  *  "misconfigured" rather than silently keeping or dropping everything). */
@@ -237,15 +220,13 @@ export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, ty
   // drop both.
   if (op === "iserror")  return isSolError(cell);
   if (op === "noterror") return !isSolError(cell);
-  // The blank predicates select on blankness (author 2026-07-16: blanks are data).
   // An error cell is present, not blank: isblank false, notblank true.
   if (op === "isblank")  return cell === null;
   if (op === "notblank") return cell !== null;
   if (cell === null || isSolError(cell)) return false;
-  // A null comparison VALUE matches no rows — the numeric path already answers
-  // this through filterValueToNumber; without the same guard the text path
-  // stringified null into the literal text "null" (corpus fuzz sweep). Blank
-  // predicates sit above because they ignore the value by design.
+  // A null comparison VALUE matches no rows (the text path would otherwise
+  // stringify it to the literal "null"). Blank predicates sit above because they
+  // ignore the value by design.
   if (value === null) return false;
   // Simple lowercase fold, NOT locale-aware — the one spec both engines
   // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).
@@ -328,24 +309,20 @@ function varianceOf(nums: readonly number[], sample: boolean): number | null {
 export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   if (op === "count") return values.filter((v) => v !== null).length;
   if (op === "percentof") return null;
-  // Logical cells aggregate as 1/0 (SUM over a logical column = count of TRUEs)
-  // — the Rust engine already coerced, the oracle silently skipped them.
+  // Logical cells aggregate as 1/0 (SUM over a logical column = count of TRUEs).
   const prep = forAggregate(values.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v)));
   if (prep.error) return prep.error;
-  // B-1b (decided 2026-07-02): ±Inf/NaN are REAL inputs, not filtered — Infinity
-  // is first-class (SUM of ∞ is ∞) and dirty-data NaN must poison LOUDLY, never
-  // vanish. Results are classified by guardFinite below; a NaN input poisons
-  // deterministically up front (reduce-order NaN comparisons aren't).
+  // ±Inf/NaN are REAL inputs, not filtered. Results are classified by guardFinite
+  // below; a NaN input poisons deterministically up front (reduce-order NaN
+  // comparisons aren't).
   const nums = prep.nums;
   if (nums.length === 0) return op === "sum" ? 0 : op === "product" ? 1 : null;
   if (nums.some((n) => Number.isNaN(n))) return guardFinite(NaN, ...nums);
   const r = rawAggregate(nums, op);
   // The TS union is exhaustive, but the WIRE path carries op as a free string
-  // (WireAgg / a save's aggs) — an unknown op fell off the switch to undefined
-  // and fabricated a silent null column. A bad op NAME is a request error, not
-  // a data error, so it refuses the whole verb (thrown, like a missing column's
-  // #REF!) rather than seeding per-cell errors (VAL-20's no-silent-garbage
-  // discipline applied to the verb surface).
+  // (WireAgg / a save's aggs). A bad op NAME is a request error, not a data
+  // error, so it refuses the whole verb (thrown, like a missing column's #REF!)
+  // rather than seeding per-cell errors.
   if (r === undefined) throw solError("#NAME?", `Unknown aggregation "${op}"`);
   return guardAgg(r, nums);
 }
@@ -402,13 +379,12 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
   }));
   const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
     const preserves = spec.op === "min" || spec.op === "max";
-    // The non-finite guard lives INSIDE aggregateGroup (B-1b) so pivot's
-    // re-aggregating totals get it too — not just this verb.
+    // The non-finite guard lives INSIDE aggregateGroup so pivot's re-aggregating
+    // totals get it too — not just this verb.
     let values = keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op));
     // A preserved LOGICAL column converts the 1/0 the aggregator computed back
     // to booleans — aggregateGroup coerces logicals to numbers on the way in,
-    // and a logical-typed column must not carry number cells (the engine's
-    // min over a bool column returns bools; corpus fuzz seed 910021).
+    // and a logical-typed column must not carry number cells.
     if (preserves && col.type === "logical") {
       values = values.map((v) => (typeof v === "number" ? v !== 0 : v));
     }
@@ -421,8 +397,7 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     };
   });
   // De-dupe output names ("count of Region grouped by Region" collides the agg
-  // `as` with the key) — two same-named columns here, a hard error in Rust
-  // before it grew the same makeHeaders pass (audit finding 32).
+  // `as` with the key).
   const out = [...keyOut, ...aggOut];
   const unique = makeHeaders(out.map((c) => c.name), out.length);
   out.forEach((c, i) => { c.name = unique[i]; });
@@ -431,8 +406,8 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
 
 /** Keep exactly `names`, in the given order. A missing name is a #REF!. */
 export function selectColumns(f: FrameValue, names: readonly string[]): FrameValue {
-  // Dedupe repeats, keeping the first: a duplicate selection made two
-  // same-named columns here but a hard Polars error on desktop (finding 32).
+  // Dedupe repeats, keeping the first — a duplicate selection is a hard Polars
+  // error on desktop.
   const seen = new Set<string>();
   const wanted = names.filter((n) => !seen.has(n) && (seen.add(n), true));
   return frame(wanted.map((n) => requireColumn(f, n)));
@@ -508,11 +483,9 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   const idx = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
     const cell = cellAt(col, i);
-    // null / error / NON-FINITE keys never join (corpus fuzz sweep): encKey
-    // buckets every non-finite as ["#",null], which would match NaN to −∞ —
-    // dedupe semantics (B-1a, distinct) but garbage as an equality MATCH.
-    // Skipping them here also blanks the probe side: a non-finite probe key
-    // encodes to the same bucket, which is now never stored.
+    // null / error / NON-FINITE keys never join: encKey buckets every non-finite
+    // as ["#",null], which would match NaN to −∞ — fine for dedupe, garbage as an
+    // equality MATCH. Skipping them here also blanks the probe side.
     if (cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell))) continue;
     const k = encKey(cell);
     const bucket = idx.get(k);
@@ -604,9 +577,8 @@ function asofPairs(
     throw solError("#VALUE!", "As-of join requires a numeric or date key");
   }
   const rn = frameRowCount(right);
-  // A non-finite key never matches, same as a null key (corpus fuzz sweep):
-  // ±∞/NaN on a time axis is dirty data, and the Polars kernel drops it —
-  // "nearest to ∞" is not an answer either engine should invent.
+  // A non-finite key never matches, same as a null key — the Polars kernel drops
+  // it too.
   const sortedRight: { key: number; idx: number }[] = [];
   for (let j = 0; j < rn; j++) {
     const cell = cellAt(rk, j);
@@ -635,10 +607,8 @@ function asofPairs(
 export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
-  // Keys of two different types can never match (families never auto-cross,
-  // SOCK-1's discipline at the verb surface) — refuse loudly instead of the
-  // silent empty result / engine-side error the mismatch used to produce
-  // (corpus fuzz sweep). Cast a key column first.
+  // Keys of two different types can never match (families never auto-cross) —
+  // refuse loudly rather than return a silent empty result. Cast a key first.
   if (lk.type !== rk.type) {
     throw solError("#TYPE!", `Join keys must share a type ("${lk.type}" vs "${rk.type}")`);
   }
@@ -661,7 +631,6 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
     })));
   }
 
-  // pairs of [leftRow | null, rightRow | null], in output order.
   let pairs: [number | null, number | null][];
   if (opts.how === "asof") {
     pairs = asofPairs(left, lk, right, rk, opts);
@@ -692,16 +661,8 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
 
 
 // ─── Reconcile ─────────────────────────────────────────────────────────────────
-// Compare two frames by key: classify each key as added (right-only) / removed
-// (left-only) / changed (a shared column differs) / unchanged, with a before /
-// after / Δ per shared numeric column. When both a price and a quantity column
-// are named (and both are numeric on both sides), also decomposes the total
-// (price×qty) change into the textbook three-term PRICE / VOLUME / MIX variance —
-// not novel math, the standard FP&A decomposition:
-//   price  = (P1−P0)·Q0
-//   volume = (Q1−Q0)·P0
-//   mix    = (P1−P0)·(Q1−Q0)
-// which sums EXACTLY to P1·Q1 − P0·Q0 (the total delta).
+// The PVM decomposition is the standard three-term FP&A one; price + volume + mix
+// sums EXACTLY to P1·Q1 − P0·Q0 (the total delta).
 export type ReconcileStatus = "added" | "removed" | "changed" | "unchanged" | "skipped";
 export interface ReconcileOpts {
   leftKey: string;
@@ -759,16 +720,13 @@ export function reconcileFrames(
   for (const k of lIdx.keys()) if (!seenKeys.has(k)) { seenKeys.add(k); allKeys.push(k); }
   for (const k of rIdx.keys()) if (!seenKeys.has(k)) { seenKeys.add(k); allKeys.push(k); }
 
-  // Shared non-key columns, matched by name — the delta candidates.
   const sharedCols = left.columns
     .filter((c) => c.name !== opts.leftKey)
     .map((c) => ({ name: c.name, left: c, right: right.columns.find((rc) => rc.name === c.name) ?? null }))
     .filter((s): s is { name: string; left: FrameColumn; right: FrameColumn } => s.right !== null);
 
-  // Non-key columns on ONE side only — the schema diff. Surfaced so a renamed or
-  // dropped/added column doesn't vanish (leaving an all-"unchanged" report that hides
-  // the change). A removed column carries its before-values (null after); an added one
-  // its after-values (null before), aligned to the same output rows via li/ri below.
+  // The schema diff: a removed column carries its before-values (null after); an
+  // added one its after-values (null before), aligned to the output rows via li/ri.
   const rightNames = new Set(right.columns.map((c) => c.name));
   const leftNames = new Set(left.columns.map((c) => c.name));
   const removedCols = left.columns.filter((c) => c.name !== opts.leftKey && !rightNames.has(c.name));
@@ -789,10 +747,8 @@ export function reconcileFrames(
   const removedColVals: FrameCell[][] = removedCols.map(() => []);
   const addedColVals: FrameCell[][] = addedCols.map(() => []);
 
-  // Emit one output row (key + status + per-shared-column before/after/Δ). Shared by
-  // the matched/added/removed rows AND the "skipped" keyless rows appended below, so
-  // nothing silently vanishes from the output. PVM is NOT computed here — it's row-
-  // shape-specific and handled inline in the match loop.
+  // Shared by the matched/added/removed rows AND the "skipped" keyless rows
+  // appended below. PVM is NOT computed here — it's handled inline in the match loop.
   const pushRow = (keyCell: FrameCell, status: ReconcileStatus, li: number | null, ri: number | null) => {
     keyValues.push(keyCell);
     statuses.push(status);
@@ -811,8 +767,7 @@ export function reconcileFrames(
 
   // A PVM factor is genuinely 0 when the row is ABSENT on that side (a new/removed row
   // truly had 0 before/after), but UNKNOWN (→ null) when the cell is PRESENT yet errored
-  // or non-numeric. The old code read the latter as 0 too, fabricating a bogus price/
-  // volume swing with no flag — those rows are now excluded from the decomposition.
+  // or non-numeric — those rows are excluded from the decomposition.
   const pvmFactor = (present: boolean, raw: FrameCell): number | null =>
     !present ? 0 : (typeof raw === "number" ? raw : null);
 
@@ -857,10 +812,10 @@ export function reconcileFrames(
     }
   }
 
-  // Finding (a): a row whose KEY is blank (null) or an error can't be matched — keyIndex
-  // drops it, so it never entered `allKeys`. Rather than let it vanish from both the
-  // output AND the counts, append it as its own "skipped" row (a left row shows its
-  // before-values, a right row its after-values) and tally it, so the row total is honest.
+  // A row whose KEY is blank (null) or an error can't be matched — keyIndex drops it,
+  // so it never entered `allKeys`. It is appended as its own "skipped" row (a left row
+  // shows its before-values, a right row its after-values) and tallied, so the row
+  // total stays honest.
   for (let i = 0; i < ln; i++) {
     const kc = cellAt(lk, i);
     if (kc === null || isSolError(kc)) { pushRow(kc, "skipped", i, null); skipped++; }
@@ -907,10 +862,9 @@ export function unpivotFrame(
 ): FrameValue {
   const idCols = idColumns.map((n) => requireColumn(f, n));
   const valCols = valueColumns.map((n) => requireColumn(f, n));
-  // The melted `value` column is ONE typed column — value columns of mixed
-  // types cannot honestly land in it (cells of the wrong type would silently
-  // null on the engine side; corpus fuzz sweep). Reject-on-mismatch, same as
-  // append's union rule; Cast the columns to one type first.
+  // The melted `value` column is ONE typed column — value columns of mixed types
+  // cannot land in it (cells of the wrong type silently null on the engine side).
+  // Reject-on-mismatch, same as append's union rule; Cast to one type first.
   const mixed = valCols.find((c) => c.type !== valCols[0].type);
   if (mixed) {
     throw solError("#TYPE!", `Unpivot value columns must share a type ("${valCols[0].name}" is ${valCols[0].type}, "${mixed.name}" is ${mixed.type})`);
@@ -1262,7 +1216,7 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue {
 // ─── Frame lookup (XLOOKUP / VLOOKUP over a table) ──────────────────────────────
 /** Does a key cell equal the typed-in `lookup` text, by the key column's type?
  *  string → case-INSENSITIVE text (Excel's default lookup match — "Apple" finds
- *  "apple"; audit finding 28); logical → 0/1 identity (so "1"/"true" both match
+ *  "apple"); logical → 0/1 identity (so "1"/"true" both match
  *  TRUE); date → the lookup parsed as a serial (digits) or an ISO date;
  *  number → numeric. */
 function keyMatches(cell: FrameCell, lookup: string, type: FrameColType): boolean {
@@ -1284,10 +1238,7 @@ export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
 
 /** XLOOKUP's `search_mode`: which end to scan from — so which row wins when the
  *  key column has DUPLICATES. "first" (default, Excel's search_mode 1) returns the
- *  first match top-to-bottom; "last" (search_mode -1) returns the last. Excel's
- *  binary modes (2 / -2) are omitted: on a materialized column a binary search over
- *  sorted data finds the SAME row a linear scan does, so it's a pure speed knob with
- *  no distinct result here — and we always scan linearly for correctness. Affects
+ *  first match top-to-bottom; "last" (search_mode -1) returns the last. Affects
  *  exact matching; an approximate (≤/≥) match already picks the closest key. */
 export type LookupSearchMode = "first" | "last";
 
@@ -1532,28 +1483,10 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
 }
 
 // ─── Decision matrix (weighted scoring) ────────────────────────────────────────
-// A port of the jortscity Decision Matrix Bases View. Given a Frame whose rows are
-// options and whose numeric columns are scoring criteria (an optional leading text
-// column names the options), score each option by the weighted average
-//   Σ(score × weight) / Σ|weight|
-// over the criteria, then competition-rank the options (ties share a rank). Using
-// Σ|weight| as the denominator is what lets a NEGATIVE weight penalise a criterion
-// where higher is worse (cost, risk) without skewing the scale.
-//
-// `normalize` makes criteria on incompatible scales comparable BEFORE weighting.
-// It's the DEFAULT mode for every criterion; `normalizeOverrides` (criterion name →
-// mode) overrides it per column — that's the DMBV per-column "Rank Raws" (rank only
-// the $-scale columns, leave the /10 ones raw). The three modes:
-//   • none — score with the raw values as-is.
-//   • max  — divide each criterion column by its largest magnitude (→ [0,1], or
-//            [-1,1] with negatives); the original DMBV "Normalize".
-//   • rank — replace each column's values with their within-column competition rank,
-//            normalized to [0,1] (best → 1, worst → 0); the DMBV "Rank Raws", which
-//            makes "$ vs out-of-10" comparable since only the order is kept.
-// max and rank share the [0,1] range, so mixing them across columns stays fair.
-// Missing / non-numeric / error cells count as 0 (a blank you haven't scored); a
-// logical cell coerces TRUE→1 / FALSE→0 (matching splitFrame). See decisionColumns
-// for which columns become criteria.
+// `normalize` is the DEFAULT mode for every criterion; `normalizeOverrides`
+// (criterion name → mode) overrides it per column. Missing / non-numeric / error
+// cells count as 0 (a blank you haven't scored); a logical cell coerces TRUE→1 /
+// FALSE→0 (matching splitFrame).
 
 export type DecisionNormalize = "none" | "max" | "rank";
 
@@ -1563,10 +1496,8 @@ function cellToScore(v: FrameCell): number {
   return 0; // null / text → unscored (0). A per-cell error is caught earlier (propagated)
 }
 
-// Normalize a criterion column so weights — not raw scale — decide influence. `max`
-// and `rank` BOTH land in [0,1] (max → [-1,1] if the column has negatives), so any
-// mix of normalized columns is comparable; `none` leaves raw values (use when the
-// criteria already share a scale, or you want their real magnitudes).
+// `max` and `rank` BOTH land in [0,1] (max → [-1,1] if the column has negatives),
+// so any mix of normalized columns stays comparable.
 function normalizeColumn(vals: number[], mode: DecisionNormalize): number[] {
   if (mode === "none") return vals;
   if (mode === "max") {
@@ -1582,10 +1513,9 @@ function normalizeColumn(vals: number[], mode: DecisionNormalize): number[] {
 
 const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 
-// The first text column (if any) names the options; number/logical columns are the
-// criteria. Date columns are deliberately NOT criteria — a date's serial is never a
+// Date columns are deliberately NOT criteria — a date's serial is never a
 // meaningful "score". One definition, shared by the verb and the node (which needs
-// the criteria NAMES to render a labeled weight box per criterion, in this order).
+// the criteria NAMES, in this order, to render a labeled weight box per criterion).
 export function decisionColumns(f: FrameValue): { labelCol: FrameColumn | null; criteriaCols: FrameColumn[] } {
   const labelCol = f.columns.find((c) => c.type === "string") ?? null;
   const criteriaCols = f.columns.filter(
@@ -1623,8 +1553,6 @@ export function decisionMatrix(
     ? Array.from({ length: rows }, (_, i) => labelCol.values[i] ?? null)
     : Array.from({ length: rows }, (_, i) => `Option ${i + 1}`);
 
-  // Per-criterion effective values: each column normalized by its own mode (its
-  // override, else the node default) — so Rank Raws can apply to just the $ columns.
   const effective = criteriaCols.map((c) =>
     normalizeColumn(
       Array.from({ length: rows }, (_, i) => cellToScore(c.values[i])),
@@ -1645,8 +1573,8 @@ export function decisionMatrix(
     return sumAbsW > 0 ? sw / sumAbsW : 0;
   });
 
-  // Order rows best-first; competition-rank (equal scores share a rank, the next
-  // distinct score skips the tied count).
+  // Competition rank: equal scores share a rank, the next distinct score skips the
+  // tied count.
   const order = scores.map((s, i) => ({ s, i })).sort((a, b) => b.s - a.s);
   const rankByRow = new Array<number>(rows).fill(0);
   for (let k = 0; k < order.length; k++) {
@@ -1655,12 +1583,10 @@ export function decisionMatrix(
   }
 
   const idx = order.map((o) => o.i);
-  // Always Option · …criteria? · Score · Rank, best first. With `breakdown` on, the
-  // per-criterion EFFECTIVE (post-normalize) value each option contributed is shown
-  // between the label and the Score — so under "rank"/"÷max" you see the transformed
-  // value that was actually scored (the DMBV "rank shown alongside the raw" idea),
-  // and under "none" you just see the raw scores. Names run through makeHeaders so a
-  // criterion literally named "Score"/"Rank" can't collide with the result columns.
+  // Option · …criteria? · Score · Rank, best first. With `breakdown` on, the
+  // per-criterion EFFECTIVE (post-normalize) value sits between the label and the
+  // Score. Names run through makeHeaders so a criterion literally named
+  // "Score"/"Rank" can't collide with the result columns.
   const out: FrameColumn[] = [
     { name: labelCol?.name ?? "Option", type: "string", values: idx.map((i) => labels[i]) },
   ];
@@ -1677,16 +1603,10 @@ export function decisionMatrix(
 }
 
 // ─── Decision matrix sensitivity (weight scenarios → a Cube of rankings) ────────
-// "How robust is the winner to the weights I chose?" Score the SAME options under
-// several weight scenarios and see whether the ranking holds. `scenarios` is a Frame
-// where each ROW is a scenario: its first text column names the scenario, and a
-// numeric column named after a criterion gives that criterion's weight in that
-// scenario (a missing/blank weight defaults to 1). For each scenario we run the
-// decision matrix and emit one Cube row: Scenario · Winner · Margin · Ranking, where
-// Ranking is the full Option·Score·Rank table NESTED in the cell (drill in to see it)
-// — the natural Cube use: a table per row. Margin = top score − runner-up, a quick
-// "how decisive" gauge (a thin margin = the choice flips easily). This is why a Cube
-// and not a flat frame: each scenario carries a whole sub-table, not one value.
+// `scenarios`: each ROW is a scenario — its first text column names it, and a numeric
+// column named after a criterion gives that criterion's weight (missing/blank → 1).
+// Output Cube row: Scenario · Winner · Margin · Ranking (the full Option·Score·Rank
+// table nested in the cell). Margin = top score − runner-up.
 export function decisionSensitivity(
   scores: FrameValue,
   scenarios: FrameValue,
@@ -1730,10 +1650,9 @@ export function decisionSensitivity(
   ]);
 }
 
-// ─── Timesaver verbs (2026-07-16) ────────────────────────────────────────────────
-// The everyday Power Query cleanup set, run EAGERLY like Split Column / Add Index
-// (materialization-boundary ops — no native-engine mirror needed; a lazy Polars
-// path is a perf follow-up if a real workload ever demands it).
+// ─── Timesaver verbs ─────────────────────────────────────────────────────────────
+// Run EAGERLY like Split Column / Add Index — materialization-boundary ops, with no
+// native-engine mirror.
 
 /** Fill blank (null) cells from the neighboring row: "down" carries the last
  *  present value forward, "up" the next one back — the classic un-merge of

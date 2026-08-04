@@ -1,7 +1,5 @@
-// DEV-ONLY harness hooks for the screenshot comparison workflow (DOM vs Pixi).
-// Tree-shaken out of production builds (import.meta.env.DEV guard). Lets a headless
-// browser load a seed, open/close the Pixi spike, and read node counts so DOM-vs-
-// Pixi screenshots can be captured at a matching view.
+// DEV-ONLY harness hooks for the renderer screenshot comparison workflow.
+// Tree-shaken out of production builds (import.meta.env.DEV guard).
 import { rendererSpikeStore } from "./rendererSpikeStore";
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
@@ -13,10 +11,10 @@ if (import.meta.env.DEV) {
     close: () => rendererSpikeStore.close(),
     seed: (id: string) => documentStore.newFromTemplate(id),
     // "idle" once the cinematic reveal has fully played — every node is mounted
-    // and opaque. The screenshot harness waits on this before capturing dom.png.
+    // and opaque. The screenshot harness waits on this before capturing.
     revealPhase: () => loadRevealStore.phase(),
-    // Frame one node large (by label substring) at zoom k, landing its top-left at
-    // screen (sx,sy) — so DOM-vs-Pixi fidelity can be judged at a readable size.
+    // Frame one node (by label substring) at zoom k, landing its top-left at
+    // screen (sx,sy).
     zoomNode: async (label: string, k = 1.7, sx = 260, sy = 200) => {
       const ed = getEditor(), ar = getArea();
       if (!ed || !ar) return false;

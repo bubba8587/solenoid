@@ -126,7 +126,7 @@ export function validateDoc(data: unknown): SolDoc | null {
 /** Structural validation of a parsed library blob — every document must have a
  *  string id/name and a structurally-valid graph; currentId must reference an
  *  existing document or be null. Returns the cleaned library, or null if the
- *  shape is unusable (the store then falls back to migration / default). */
+ *  shape is unusable. */
 export function validateLibrary(data: unknown): DocLibrary | null {
   if (typeof data !== "object" || data === null) return null;
   const lib = data as Record<string, unknown>;

@@ -15,9 +15,8 @@ import { alignSelection, distributeSelection, collapseSelection } from "./select
 import { buildMenus, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
 
-// Reuses the exact "dispatch a synthetic keydown" trick the menu model uses to run
-// graph-domain shortcuts (group/isolate/tidy/…) without a second copy of Canvas's
-// keydown logic.
+// Runs graph-domain shortcuts through Canvas's keydown handler (as menuModel does)
+// rather than duplicating its logic.
 function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -26,10 +25,9 @@ function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } =
   );
 }
 
-// Lucide "sparkle" (ISC) — the AI affordance. One four-point star, stroked like every
-// other icon here; deliberately NOT the three-star cluster or a filled gradient mark,
-// which is the AI-startup look DESIGN.md rejects. 16px in a 24px box: both even, so
-// the glyph centers on whole pixels (CLAUDE.md's even-icon rule).
+// Lucide "sparkle" (ISC). NOT the three-star cluster or a filled gradient mark
+// (the AI-startup look DESIGN.md rejects). 16px in a 24px box — both even, per the
+// even-icon rule.
 function SparkleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -330,12 +328,10 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
               <div
                 key={r.id}
                 className={`solenoid-cmdpalette__item${i === activeIndex ? " solenoid-cmdpalette__item--active" : ""}`}
-                // onMouseMove, NOT onMouseEnter: the palette mounts under
-                // wherever the pointer happens to sit, and the browser fires a
-                // synthetic mouseenter on the row beneath it — which stole the
-                // highlight from the keyboard's row 0, so Enter-Enter ran a
-                // pointer-position-dependent action. mousemove only fires on
-                // real movement, so the mouse must be USED to take over.
+                // onMouseMove, NOT onMouseEnter: the palette mounts under wherever
+                // the pointer sits and the browser fires a synthetic mouseenter on
+                // the row beneath it, stealing the highlight from the keyboard's
+                // row 0. mousemove only fires on real movement.
                 onMouseMove={() => setActiveIndex(i)}
                 onClick={() => run(r)}
               >

@@ -23,9 +23,7 @@ import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { conduitPath, type ConduitPathEnd } from "../conduitTrace";
 import "./cableInspector.css";
 
-// Render a value on the wire compactly. Mirrors PinLayer.renderValue: errors as
-// the red #CODE! badge, null/undefined as a dash, list/table/frame as the same
-// clickable chip the node shows, numbers through their source FC annotation.
+// Render a value on the wire compactly. Mirrors PinLayer.renderValue.
 function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
   if (isSolError(v)) {
     return <span className="solenoid-cable-inspector__value solenoid-cable-inspector__value--error" title={errorTip(v)}>{v.code}</span>;
@@ -63,19 +61,11 @@ const sameSet = (a: readonly string[], b: readonly string[]) => {
 
 /**
  * Lower-left panel shown when exactly ONE cable — or one whole Conduit run
- * (double-click) — is selected. Displays both ends of the connection: source
- * node + output port + the value on the wire, and target node + input port + the
- * value as received, so a cable is inspectable without opening either node.
+ * (double-click) — is selected.
  *
- * Conduits are WIRING, not computation, so the panel reports the ends of the
- * RUN, not of the segment: a cable leaving a Conduit names the node that really
- * produced the value, a cable entering one names every input it really reaches,
- * and the Conduits crossed on the way are listed on their own quiet "Via" row
- * (see conduitPath). The value + shape rows follow the resolved origin too.
- *
- * Reads cableValueStore (already holds every output value); no new computation.
- * Roadmap Phase 0 legibility slice. When the Rust engine lands (Phase 2) the
- * wire value just becomes a .collect()ed preview.
+ * Conduits are WIRING, not computation, so the panel reports the ends of the RUN,
+ * not of the segment (see conduitPath); the value + shape rows follow the resolved
+ * origin too. Reads cableValueStore; no new computation.
  */
 export function CableInspector() {
   useSyncExternalStore(cableSelectionStore.subscribe, cableSelectionStore.version);
@@ -231,9 +221,8 @@ export function CableInspector() {
         </div>
       ))}
 
-      {/* The value carried on the wire — what leaves the origin output and, for
-          now, exactly what each target input receives (Phase 2 may add a separate
-          received row if engine coercion ever diverges it). */}
+      {/* The value carried on the wire — what leaves the origin output, which is
+          exactly what each target input receives. */}
       <div className="solenoid-cable-inspector__wire">
         <span className="solenoid-cable-inspector__role">Value</span>
         {renderWireValue(value, origin.nodeId, origin.key)}

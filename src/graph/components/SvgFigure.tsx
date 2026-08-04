@@ -3,10 +3,8 @@ import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";
 
 // ─── SvgFigure — the read-only SVG renderer ────────────────────────────────────
-// Renders an SvgValue's markup inline (so it stays crisp and scales), highlighting
-// the picked layer to match the SVG Picker node. Non-interactive — this is the
-// figure a Display / Report embed / Composite boundary / Cable Switch shows when
-// an SvgValue flows into it; the pick itself happens only on the source node
+// Renders an SvgValue's markup inline, highlighting the picked layer to match the
+// SVG Picker node. Non-interactive — the pick happens only on the source node
 // (SvgPickerNode.tsx). The markup is trusted (author's own local file / URL), the
 // same trust model as the Image node's src.
 

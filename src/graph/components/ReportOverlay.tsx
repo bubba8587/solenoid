@@ -17,7 +17,7 @@ import "./ReportOverlay.css";
 
 /**
  * The Report's real editing surface — a standalone full-screen document, separate
- * from the graph's node cards (bundle 13 #13). Plain markdown source (left) + a
+ * from the graph's node cards. Plain markdown source (left) + a
  * live preview (right) that renders inline `` `=name` `` refs with their connected
  * value via the SAME InlineRefBody component the Note card uses, plus a strip of
  * embedded Notes (read-only mini previews of an existing Note node, placed as
@@ -44,9 +44,8 @@ export function ReportOverlay() {
   // Reset the editor's local draft ONLY when a different report opens (keyed on
   // nodeId, NOT node.body). onBody writes node.body live for autosave, so
   // depending on node.body here would re-run this mid-typing and clobber
-  // lastSyncRef — which made commitBody's "did it change since last sync?" guard
-  // always short-circuit, so the ref sockets were NEVER minted. (The whole
-  // reason Report sockets appeared broken.)
+  // lastSyncRef — short-circuiting commitBody's "did it change since last sync?"
+  // guard, so the ref sockets would never be minted.
   const lastSyncRef = useRef(node?.body ?? "");
   // The preview renders from a DEBOUNCED copy of the draft, not `body` itself:
   // re-parsing markdown + rebuilding the preview DOM on every keystroke tore the

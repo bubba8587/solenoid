@@ -1,13 +1,7 @@
-// Model fuzzing: property-based testing for the graph. Generates hundreds of
-// valid-shaped inputs per typed leaf (Number/Slider/Text sources), drives each
-// through the existing targeted-recompute path (processGraph(changedNodeId)),
-// and scans the downstream cone for what breaks: a tagged SolError, a leaked
-// NaN/Infinity, or a failing Expect node (#12). Findings land in the Problems
-// panel (problemsStore, origin "fuzz") — a mechanical numeric-domain finding
-// carries a one-click "insert Clamp" suggestion (insertClampBefore below),
-// since there's no existing mid-cable node-insertion primitive to reuse yet
-// (bundle 14 "quick-wire" is future work) — this builds the minimal splice
-// itself: remove the cable, drop a Clamp between source and target.
+// Model fuzzing: property-based testing for the graph. Generates valid-shaped inputs
+// per typed leaf (Number/Slider/Text sources), drives each through the targeted
+// recompute path, and scans the downstream cone for a tagged SolError or a leaked
+// NaN/Infinity. Findings land in the Problems panel (problemsStore, origin "fuzz").
 import { ClassicPreset } from "rete";
 import { getEditor, getArea, processGraph, downstreamClosure, beginGraphRebuild, endGraphRebuild } from "./process";
 import { beginCompute, endCompute } from "./computeOverlayStore";
@@ -24,9 +18,8 @@ type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
 const SAMPLES_PER_LEAF = 120;
 
-// Deterministic, dependency-free PRNG (mulberry32) — a fixed seed makes a run
-// reproducible (same graph, same findings), which matters for trusting a "no
-// findings" result.
+// Deterministic PRNG (mulberry32) — a fixed seed makes a run reproducible (same
+// graph, same findings), which is what makes a "no findings" result trustworthy.
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -37,10 +30,9 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-/** Valid-shaped numeric samples: boundary values plus a spread of magnitudes
- *  and signs, so an edge case (0, a tiny divisor, a huge magnitude) is covered
- *  alongside ordinary values — not fuzzing the TYPE (still real finite numbers),
- *  just the range a user could plausibly type. */
+/** Valid-shaped numeric samples: boundary values plus a spread of magnitudes and
+ *  signs. Never fuzzes the TYPE — every sample is a finite number a user could
+ *  plausibly type. */
 function sampleNumbers(rng: () => number, n: number): number[] {
   const out = [0, 1, -1, 0.0001, -0.0001, 100, -100, 1e6, -1e6, 1e-8];
   while (out.length < n) {
@@ -94,11 +86,9 @@ function scalarBad(v: unknown): Badness | null {
   return null;
 }
 
-/** Scan a value (scalar, list, matrix, or frame) for the first bad cell, using
- *  the SAME bounded head-plus-stride cap as errorValue's per-cell scan — a full
- *  per-cell scan was rejected on perf, and the fuzzer runs this on every
- *  downstream node after every one of hundreds of samples. So a per-cell error
- *  now surfaces (previously only top-level did), without the O(rows×cols) cost. */
+/** Scan a value (scalar, list, matrix, or frame) for the first bad cell, using the
+ *  SAME bounded head-plus-stride cap as errorValue's per-cell scan — a full per-cell
+ *  scan is too costly here (this runs on every downstream node, every sample). */
 function badValue(v: unknown): Badness | null {
   const s = scalarBad(v);
   if (s) return s;
@@ -154,16 +144,10 @@ function firstNumericInput(node: unknown): { socketKey: string; label: string } 
   return undefined;
 }
 
-// ─── Safe-range capture (Clamp seeding) ───────────────────────────────────────
-// To seed the "+ Clamp" fix with real bounds instead of an unconfigured
-// pass-through, we observe the value ARRIVING on a node's clamp-target input on
-// every CLEAN sample (the node didn't go bad) and track its [min, max]. Seeding
-// the Clamp with that observed-safe range keeps future values inside the
-// territory the sweep never saw fail. Heuristic, and inherently limited to
-// EXTREME-bound problems (a Clamp imposes only min/max, so it can't exclude an
-// interior bad point like a divisor of 0 — for #DIV/0! the seeded range still
-// spans 0); it genuinely helps the magnitude cases (#OVERFLOW!, a domain miss at
-// a large/small input).
+// The [min, max] arriving on a node's clamp-target input across every CLEAN sample,
+// used to seed the "+ Clamp" fix with real bounds. Heuristic, and limited to
+// EXTREME-bound problems — a Clamp imposes only min/max, so it cannot exclude an
+// interior bad point (for #DIV/0! the seeded range still spans 0).
 interface SafeRange { min: number; max: number }
 
 /** A "+ Clamp" suggestion: which input to splice onto, plus (when the sweep
@@ -242,19 +226,14 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
   for (const c of editor.getConnections()) inputSource.set(`${c.target}::${c.targetInput}`, c.source);
   let samples = 0;
 
-  // Hundreds of recompute passes per leaf is irreducibly heavy — show the busy
-  // curtain for the whole sweep. Each processGraph() brackets ITSELF with
-  // begin/endCompute, but those fast sub-passes drop the counter to 0 between
-  // samples and cancel the deferred reveal before it fires; an outer bracket
-  // across the entire sweep keeps the counter ≥1 so the 150ms reveal lands and
-  // the curtain also BLOCKS interaction during the multi-second run.
+  // Each processGraph() brackets ITSELF with begin/endCompute, but those fast
+  // sub-passes drop the counter to 0 between samples and cancel the deferred reveal;
+  // an outer bracket keeps it ≥1 so the curtain shows and blocks interaction.
   beginCompute();
-  // The whole sweep runs inside the graph-rebuild gate, which does two jobs at
-  // once: (1) the manual-calc short-circuit exempts rebuilds, so every sampled
-  // recompute actually RUNS in manual mode (it otherwise just marked dirty and
-  // the sweep inspected stale pre-fuzz values — a silent no-op reported as "no
-  // problems found"); (2) AlertNode/Expect suppress their edge-detect fire
-  // while rebuilding, so a synthetic sample can't raise a real toast/HUD alert.
+  // The rebuild gate does two jobs: (1) the manual-calc short-circuit exempts
+  // rebuilds, so every sampled recompute actually RUNS in manual mode instead of
+  // just marking dirty; (2) AlertNode/Expect suppress their edge-detect fire while
+  // rebuilding, so a synthetic sample can't raise a real toast/HUD alert.
   beginGraphRebuild();
   try {
     for (const leaf of leaves) {
@@ -271,8 +250,6 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
             if (!node) continue;
             const hit = inspectNode(node);
             const numInput = firstNumericInput(node);
-            // On a CLEAN pass, record the value arriving on this node's
-            // clamp-target input, so a later finding can seed real bounds.
             if (!hit && numInput) {
               const srcId = inputSource.get(`${id}::${numInput.socketKey}`);
               if (srcId) {
@@ -299,9 +276,6 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
     endCompute();
   }
 
-  // Seed each clampable finding with the observed-safe [min, max] for its node —
-  // but only a non-degenerate range (min < max); a single-point range would pin
-  // the value and break the model, so leave those as an unconfigured Clamp.
   const findings = [...found.values()].map((f) => {
     if (!f.suggestion) return f;
     const b = boundsFromSafeRange(safeRanges.get(f.nodeId));
@@ -312,11 +286,8 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
 }
 
 /** The one-click mechanical fix: splice a Clamp node onto the cable feeding
- *  `nodeId`'s `socketKey` input. Built from scratch (add node → remove the old
- *  connection → rewire through the Clamp) since no mid-cable insertion API
- *  exists yet. No-op if the input isn't actually wired (nothing to splice).
- *  `bounds` (from the fuzz finding's captured safe range) seeds the Clamp's
- *  min/max literals so it arrives CONFIGURED, not as a no-op pass-through. */
+ *  `nodeId`'s `socketKey` input. No-op if the input isn't wired. `bounds` seeds the
+ *  Clamp's min/max literals so it arrives CONFIGURED, not as a pass-through. */
 export async function insertClampBefore(
   nodeId: string,
   socketKey: string,
@@ -333,8 +304,7 @@ export async function insertClampBefore(
   if (!source) return false;
 
   const clamp = new ClampNode({ label: "Clamp" });
-  // Seed the bounds (each optional — Clamp applies floor/ceiling independently);
-  // an unwired min/max input reads its literal, so this makes the splice active.
+  // An unwired min/max input reads its literal, so this makes the splice active.
   if (typeof bounds?.min === "number") clamp.literals.min = bounds.min;
   if (typeof bounds?.max === "number") clamp.literals.max = bounds.max;
   await editor.addNode(clamp);

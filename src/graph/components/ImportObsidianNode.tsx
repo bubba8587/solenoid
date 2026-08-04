@@ -36,12 +36,10 @@ function baseName(rel: string): string {
 }
 
 /**
- * Import from Obsidian Vault — a read-only Note sourced from a vault `.md` file.
- * A file picker (search + list + refresh) drops the file's markdown into the card;
- * its frontmatter becomes typed output sockets (the Note machinery, inherited) and
- * the body renders read-only. The `document` output carries the whole note for
- * re-export. Desktop only for the file read; a loaded save still shows the imported
- * body anywhere (it's persisted).
+ * A read-only Note sourced from a vault `.md` file: its frontmatter becomes typed
+ * output sockets (the inherited Note machinery) and the body renders read-only.
+ * Desktop only for the file READ; a loaded save still shows the persisted body
+ * anywhere.
  */
 export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidianNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);

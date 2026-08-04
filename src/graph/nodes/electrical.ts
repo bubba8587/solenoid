@@ -9,8 +9,7 @@ import { listIn, numIn, numOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate } from "../valueKinds";
 
-// ─── Parallel Combine ─────────────────────────────────────────────────────────
-// 1 / Σ(1/xᵢ) — resistors in parallel, capacitors in series, springs in series,
+// Parallel Combine: 1 / Σ(1/xᵢ) — resistors in parallel, capacitors in series, springs in series,
 // thermal resistances in parallel. A list reducer, so it can't be a pre-set
 // Expression (the formula engine is strictly element-wise over lists).
 
@@ -51,8 +50,7 @@ export function parallelCombine(cells: readonly (number | null | SolError)[]): n
     : 1 / sum;
 }
 
-// ─── E-Series preferred value ─────────────────────────────────────────────────
-// Nearest IEC 60063 standard component value (resistors, capacitors). E3–E24 are
+// E-Series preferred value: nearest IEC 60063 standard component value (resistors, capacitors). E3–E24 are
 // the historic published tables (they deviate from the pure geometric series —
 // 2.7, 3.0, 3.3 …); E48/E96 follow 10^(k/N) rounded to 3 significant figures
 // exactly, so they're generated.
@@ -131,8 +129,7 @@ export class ESeriesNode extends ClassicPreset.Node {
   }
 }
 
-// ─── AWG wire properties ──────────────────────────────────────────────────────
-// American Wire Gauge n → the exact geometric definition d(mm) = 0.127·92^((36−n)/39),
+// AWG wire properties. American Wire Gauge n → the exact geometric definition d(mm) = 0.127·92^((36−n)/39),
 // cross-section, and copper resistance at 20 °C (ρ = 1.724×10⁻⁸ Ω·m). Ampacity is
 // the NEC 310.16 copper 75 °C column (a fact table; sizes NEC doesn't list — odd
 // small gauges, magnet-wire sizes — output blank rather than a guess).
@@ -196,8 +193,7 @@ export function awgWire(n: number): { diameter: number; area: number; resistance
   return { diameter: d, area: a, resistance: 17.24 / a, ampacity: Number.isInteger(n) ? AWG_AMPACITY_75C[n] ?? null : null };
 }
 
-// ─── Resistor color code ──────────────────────────────────────────────────────
-// Decode 4- or 5-band resistor markings: digit bands + multiplier → ohms, the
+// Resistor color code. Decode 4- or 5-band resistor markings: digit bands + multiplier → ohms, the
 // tolerance band → ±%. The IEC 60062 code; the component renders the actual
 // band colors on a resistor glyph, so the node doubles as a visual reference.
 

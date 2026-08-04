@@ -1,21 +1,17 @@
 import { useState } from "react";
 
 // ─── Visual-only column sort (the value popups) ─────────────────────────────────
-// A view control, NOT a transform: it reorders the RENDERED rows and touches
-// nothing else. The underlying grid keeps its order, so Copy / CSV / Save / the
-// node's own value are byte-for-byte what they were before you clicked, and the
-// graph never recomputes. That is the whole contract — anything that needs a real
-// sort has the Sort / Sort Frame verbs, which produce a new value.
+// A view control, NOT a transform: it reorders the RENDERED rows and touches nothing
+// else — Copy / CSV / Save / the node's value are unchanged and the graph never
+// recomputes.
 //
 // Because the data doesn't move, every consumer of a row index must keep using the
 // SOURCE index: `sortedOrder` returns source indices in display order, so a render
 // maps `order.map((srcRow) => …)` and passes `srcRow` to edits, drafts and the row
-// number. An editable grid (the frame/matrix editors) stays correct under a sort
-// for exactly that reason — the cell you type into is the row you were looking at.
+// number.
 //
-// The sort applies to the rows ON SCREEN. A grid past its visible cap is already
-// truncated ("first 1,000" in the header) before it reaches here, so sorting a
-// capped view orders that window, not the whole table.
+// The sort applies to the rows ON SCREEN — a grid past its visible cap is already
+// truncated before it reaches here.
 
 export type SortDir = "asc" | "desc";
 /** The active sort keys in PRIORITY order — `[0]` is primary, each later key breaks
@@ -28,15 +24,11 @@ export function sortDirOf(sort: ColumnSort, col: number): SortDir | null {
 }
 
 /**
- * The click cycle, as a pure step: what the sort becomes when `col`'s header is
- * clicked. Per column it runs unsorted → asc → desc → unsorted.
+ * The click cycle, as a pure step: per column, unsorted → asc → desc → unsorted.
  *
- * MULTI-COLUMN, Excel's model: keys accumulate, priority is the order they were
- * ADDED. Sort Category, then Name → Category then Name. Clear Category → just Name.
- * Add Category back and it lands at the END of the list, so now it's Name then
- * Category. A column changing direction keeps its place in the order; only clearing
- * and re-adding moves it. That's the whole rule, and it means the priority you get is
- * the priority you built, in the order you built it.
+ * MULTI-COLUMN, Excel's model: keys accumulate and priority is the order they were
+ * ADDED. A column changing direction keeps its place; only clearing and re-adding
+ * moves it.
  */
 export function nextSort(sort: ColumnSort, col: number): ColumnSort {
   const i = sort.findIndex((k) => k.col === col);
@@ -50,11 +42,9 @@ export function nextSort(sort: ColumnSort, col: number): ColumnSort {
 /**
  * Click-cycle state for one grid, over `nextSort` (which owns the cycle rule).
  *
- * `resetKey` identifies WHICH grid is on screen — the popup's state object, a cube's
- * drill level. When it changes the sort drops, because a column index means nothing
- * across two different tables: keeping it would silently sort a new value by whatever
- * sat in slot 2. Reset-on-key-change during render is React's own pattern for this;
- * an effect would render the new grid once in the old grid's order first.
+ * `resetKey` identifies WHICH grid is on screen. When it changes the sort drops — a
+ * column index means nothing across two different tables. Reset during render, not in
+ * an effect: an effect would render the new grid once in the old grid's order first.
  */
 export function useColumnSort(resetKey?: unknown): {
   sort: ColumnSort;
@@ -79,11 +69,9 @@ export function useColumnSort(resetKey?: unknown): {
 }
 
 /**
- * The sort under a structural column change, described as an old→new index map:
- * `fn` returns a column's new index, or null for a removed column — that key drops
- * and the surviving keys keep their relative priority. Without this, removing a
- * sorted column would leave its key pointing at whichever column slid into the
- * index (a silent sort by the wrong data).
+ * The sort under a structural column change, as an old→new index map: `fn` returns a
+ * column's new index, or null for a removed column — that key drops and the surviving
+ * keys keep their relative priority.
  */
 export function remapSort(sort: ColumnSort, fn: (col: number) => number | null): ColumnSort {
   const next: Array<{ col: number; dir: SortDir }> = [];
@@ -137,9 +125,9 @@ function compareKeys(a: SortKey, b: SortKey): number {
  * a caller can map through it unconditionally.
  *
  * Each key is consulted in priority order and the first one that separates two rows
- * decides; rows equal on every key keep their source order (the index tie-break makes
- * that explicit rather than leaning on sort stability). Blanks stay last in both
- * directions — the descending pass reverses the comparison of PRESENT values only.
+ * decides; rows equal on every key keep their source order (explicit index tie-break,
+ * not sort stability). Blanks stay last in both directions — the descending pass
+ * reverses the comparison of PRESENT values only.
  */
 export function sortedOrder(
   rowCount: number,
@@ -164,14 +152,9 @@ export function sortedOrder(
 }
 
 /**
- * The sort STATE — a tiny chevron overlaid on the right edge of a column header, and
- * nothing at all while the column is unsorted. It is an indicator, not a control: the
- * header cell itself is the click target (`sortTriggerProps`), so there is no button
- * here to aim at and no resting glyph on every column.
- *
- * Absolutely positioned, so it never adds to the column's width (the header cell is
- * what sizes a column here), on a translucent pad so it stays legible where it lands
- * on top of a long name.
+ * The sort STATE — a chevron on the right edge of a column header, nothing while the
+ * column is unsorted. An indicator, not a control: the header cell itself is the click
+ * target. Absolutely positioned, so it never adds to the column's width.
  */
 export function SortIndicator({ dir, onCycle, label }: {
   dir: SortDir | null;

@@ -77,8 +77,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
     // is all-blank → no numeric cells), keep a chip so the grid editor stays
     // reachable. Without this the node blanks to "—" and becomes wholly
     // uneditable. The starter is a 1×1 the user grows via the popup's Add Row/Col
-    // or CSV view. (Inc 6 / matrix-null will let blanks round-trip as real null
-    // cells instead of collapsing the whole table.)
+    // or CSV view.
     if (onSave || popupOverrides) {
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>

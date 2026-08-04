@@ -24,14 +24,12 @@ export function useFormulaFit(
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
-    // The size the box SETTLED at after our last fit(). We compare the
+    // The size the box SETTLED at after our last fit(). Compare the
     // ResizeObserver's reported size against this, NOT the pre-fit size, because
     // fit() itself changes the box's rendered size (setting fontSize scales the
-    // KaTeX content, which resizes a content-driven box). Recording the pre-fit
-    // size made every self-induced resize look like an external change, so the box
-    // ping-ponged between its natural and scaled sizes forever — the KaTeX
-    // "flashing" loop. It only surfaced with useHeight + a content-driven box (the
-    // formula field), where the box height tracks the scaled content.
+    // KaTeX content, which resizes a content-driven box) — recording the pre-fit
+    // size makes every self-induced resize look external and the box ping-pongs
+    // between its natural and scaled sizes forever.
     let settledW = -1, settledH = -1;
     const fit = () => {
       box.style.fontSize = ""; // reset to CSS default, then measure natural size

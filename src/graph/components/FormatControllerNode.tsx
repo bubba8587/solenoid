@@ -27,8 +27,6 @@ import "./nodeCard.css";
 import "./FormatControllerNode.css";
 import { stopDragStart } from "../coarse";
 
-// FcArrow (the flow-direction arrow) lives in fcControls now, shared with the
-// value-popup dropdowns so both speak the same ←/→ flow language.
 
 export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
   const node = data;
@@ -273,22 +271,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const accent = mismatch ? "#e06c2e" : socketAccent;
 
   // The FC adapts its controls to the host socket's type via the format model
-  // (formatModel.ts / docs/format-model.md) — the ONE truth table for which
-  // rows exist per family. A control outside the family is hidden, not
-  // disabled: dates get date styles (no units), text gets case/B/I/size,
-  // logical gets show-as, numbers get styles + precision + units, complex a
-  // reduced style list, structural types (frame/cube/chart/…) nothing.
+  // (formatModel.ts) — a control outside the family is hidden, not disabled.
   const family = familyOf(node.socketDataType);
   const c = controlsFor(family, format);
 
-  // Flow arrows flanking the controls — a three-state visual language matching
-  // the v0.9 annotation semantics (the WHOLE annotation rides the value forward
-  // through passthroughs; only the unit can be inherited or Convert-dictated):
-  //   ← →  authored HERE: applies to the box behind, travels ahead with the value
-  //   → →  inherited: the upstream value's unit passes through (forwarding FC)
-  //   ← ←  dictated from ahead (Convert primacy)
-  // The format/style row is always "authored here" (a downstream FC can
-  // re-format — format never inherits), so it gets the fixed ← → pair.
+  // Flow arrows flanking the controls (the three states are in fcControls). The
+  // format/style row is always "authored here" — format never inherits — so it
+  // gets the fixed ← → pair.
   const hasUnit = unit !== "none";
   let unitLeft: "back" | "fwd" | null = null;
   let unitRight: "back" | "fwd" | null = null;

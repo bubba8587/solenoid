@@ -9,23 +9,6 @@ import { createNotifier } from "./storeKit";
 // Collapse is visual-only: members stay wired and computing. When a group is
 // collapsed we (1) hide its member nodes and every cable touching them, and (2)
 // re-present the group's "terminal" readouts compactly in its header box. Pill
-// sockets that re-expose external cables on the group edge are a later step.
-//
-// Retain rule (which member readouts survive the collapse):
-//   Any member whose output leaves the group becomes a readout row. Two flavors:
-//   - Display members are the special-cased *visible* readout. A Display is
-//     retained iff its effective output has no connection, or that connection
-//     leaves the group. "Effective output" follows a single Display→FC hop: if a
-//     Display feeds a member FC, the FC's output is what's tested and exposed
-//     (the Display stays the visible readout; the FC is hidden). So:
-//       Display → FC → outside : retained (shown as the Display)
-//       Display → FC → inside  : hidden
-//       Display → (nothing)    : retained
-//   - Any *other* member with an output connection that leaves the group gets a
-//     generic readout row (its label + live value, read from cableValueStore).
-//     Unlike a Display it must actually cross the boundary — an unconnected
-//     internal node isn't a terminal worth surfacing. Nodes already exposed as a
-//     Display (or a Display's FC hop) are not double-counted.
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
@@ -45,11 +28,9 @@ export interface RetainedTerminal {
 
 // Virtual membership: a node DOCKED to a member (an FC that was never absorbed
 // as a member itself — docked from outside the group box, host sitting on the
-// group's edge, or an old save) collapses WITH its host. Without this the FC
-// chip stayed VISIBLE, floating over the collapsed box while its host hid
-// (v1.1 A3 audit). Treating it as a member here makes every downstream
-// computation — hiding, the Display→FC hop, crossing detection, pills —
-// consistent with the absorbed-member case.
+// group's edge, or an old save) collapses WITH its host. Treating it as a member
+// here makes every downstream computation — hiding, the Display→FC hop, crossing
+// detection, pills — consistent with the absorbed-member case.
 function extendedMembers(editor: Editor, group: GroupNode): string[] {
   const base = new Set(group.members);
   const ext = [...group.members];

@@ -47,7 +47,6 @@ export function regularizedGamma(a: number, x: number): number {
   if (a <= 0 || x < 0) return NaN;
   if (x === 0) return 0;
   if (x < a + 1) {
-    // Series expansion
     let term = 1 / a, sum = term;
     for (let i = 1; i <= 300; i++) {
       term *= x / (a + i);
@@ -56,7 +55,6 @@ export function regularizedGamma(a: number, x: number): number {
     }
     return Math.min(1, sum * Math.exp(-x + a * Math.log(x) - lnGamma(a)));
   } else {
-    // Lentz continued fraction for upper incomplete gamma; subtract from 1
     let b = x + 1 - a, c = 1 / 1e-30, d = 1 / b, h = d;
     for (let i = 1; i <= 300; i++) {
       const an = -i * (i - a);
@@ -82,7 +80,6 @@ export function regularizedBeta(x: number, a: number, b: number): number {
   if (x > (a + 1) / (a + b + 2)) return 1 - regularizedBeta(1 - x, b, a);
   const lbeta = lnGamma(a) + lnGamma(b) - lnGamma(a + b);
   const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a;
-  // Lentz CF
   let f = 1, cf = 1, df = 1 - (a + b) * x / (a + 1);
   if (Math.abs(df) < 1e-30) df = 1e-30;
   df = 1 / df; f = df;
@@ -105,8 +102,7 @@ export function regularizedBeta(x: number, a: number, b: number): number {
 
 // Standard normal CDF Φ(z) via erf (A&S 7.1.26 approximation, max err ≈1.5e-7).
 // Φ(z) = ½(1 + erf(z/√2)); the erf approximation takes the scaled argument
-// |z|/√2, so the √2 must be applied to z before tabulating — not doing so was a
-// bug that made Φ(1.96) read 0.997 instead of 0.975.
+// |z|/√2, so the √2 must be applied to z before tabulating.
 function stdNormCDF(z: number): number {
   const x = Math.abs(z) / Math.SQRT2;
   const t = 1 / (1 + 0.3275911 * x);
@@ -141,7 +137,6 @@ export function normSInv(p: number): number {
   }
 }
 
-// ─── Standard normal CDF (exported for nodes that need it directly) ────────────
 export { stdNormCDF };
 
 // ─── Generic inverse CDF via bisection ───────────────────────────────────────
@@ -476,14 +471,10 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
       const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
       // A box is only an HONEST bilinear cell when no OTHER known data lies within
       // it (coordinate-space, borders included): bilinear over the corners would
-      // ignore that nearer data. The sine-diagonal case made this concrete — the
-      // only all-known-corner box was the grid's four 0-corners, so every blank
-      // filled flat-0 while the whole diagonal sat inside the box. A DEGENERATE
-      // (1-D) span is likewise contested by data strictly between its two samples
-      // in the cross direction, ANY distance off-axis — otherwise the outer edges
-      // clamp to a corner-to-corner line while the interior curves (author
-      // 2026-07-16: edges defer to the spline). A contested cell falls through to
-      // the surface fit, which uses ALL the points.
+      // ignore that nearer data. A DEGENERATE (1-D) span is likewise contested by
+      // data strictly between its two samples in the cross direction, ANY distance
+      // off-axis. A contested cell falls through to the surface fit, which uses
+      // ALL the points.
       const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
       const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
       const degenRow = rLo === rHi, degenCol = cLo === cHi;

@@ -8,7 +8,7 @@
 // approval (the cage rule: an AI edit goes through the same governed path as
 // a human edit).
 //
-// Provider: Anthropic (author call, 2026-08-01). The key is the user's own,
+// The key is the user's own,
 // pasted in Settings ▸ AI (`aiKey.ts` → localStorage) — so the browser build
 // calls the API directly with the SDK's explicit browser opt-in, which sends
 // the CORS opt-in header. The desktop webview takes the same path (its CSP

@@ -7,9 +7,6 @@ import { useConnectedInputs } from "./inlineInput";
 import { MermaidView } from "./MermaidView";
 import { processGraph } from "../process";
 
-// Starter diagrams — picking one drops a minimal, valid example of that mermaid
-// type into the source so the user has a working shape to edit, instead of a
-// blank page + a syntax-error hunt. Kept small; the point is the skeleton.
 const MERMAID_TEMPLATES: ReadonlyArray<{ label: string; source: string }> = [
   { label: "Flowchart", source: "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]" },
   { label: "Sequence", source: "sequenceDiagram\n  Alice->>Bob: Request\n  Bob-->>Alice: Response\n  Alice->>Bob: Ack" },

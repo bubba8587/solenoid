@@ -1,13 +1,6 @@
 // Seeded, deterministic Monte Carlo sampling for the composite "montecarlo" run
-// mode. Pure — no React/Rete deps — so the composite driver's draws are
-// reproducible (same seed → identical sequence) and unit-testable in isolation.
-//
-// SCOPE (author, 2026-07-12): this is the ONLY sampler in the app and it drives
-// ONLY the composite subsystem. A composite input marker declares a distribution
-// (`uncertainty` spread + `distribution` kind); the driver samples every uncertain
-// input N times, re-runs the container, and summarizes each output port into an
-// UncertainNumber (mean ± sd). See valueKinds.ts `UncertainNumber` for the scope
-// rationale and the analytic-propagation companion.
+// mode. Pure — no React/Rete deps — so draws are reproducible (same seed → identical
+// sequence). SCOPED to the composite subsystem: this is the app's only sampler.
 
 import { uncertain, type UncertainNumber } from "./valueKinds";
 
@@ -24,9 +17,8 @@ export interface UncertaintySpec {
 export const DEFAULT_MC_SAMPLES = 500;
 export const DEFAULT_MC_SEED = 1;
 
-/** mulberry32 — a tiny, fast, well-distributed 32-bit seeded PRNG. Deterministic:
- *  the same seed yields the identical [0,1) sequence on every platform, which is
- *  exactly what makes a seeded Monte Carlo run reproducible. */
+/** mulberry32 — a 32-bit seeded PRNG. The same seed yields the identical [0,1)
+ *  sequence on every platform, which is what makes a run reproducible. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function () {

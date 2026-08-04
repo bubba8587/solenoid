@@ -1,8 +1,6 @@
-// Non-recharts figures — a KPI stat card and a bullet graph. They carry structured
-// data (value + prior, value vs target) rather than a numeric series, so they render
-// as plain CSS/SVG here instead of going through the lazy recharts chunk (nothing to
-// defer — a big number and two bars need no charting lib). Shared by the KPI / Bullet
-// node cards AND a wired KPI/Bullet figure inline in a Report (inlineRefDisplay).
+// Non-recharts figures — a KPI stat card and a bullet graph. They carry
+// structured data rather than a numeric series, so they render as plain CSS/SVG
+// instead of going through the lazy recharts chunk.
 import type { KpiPayload, BulletPayload } from "../chartValue";
 import { formatScalar } from "./format";
 import "./chartCards.css";

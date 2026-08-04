@@ -2,9 +2,8 @@ import { ClassicPreset } from "rete";
 import { numIn, numOut } from "./shared";
 
 // ─── Tornado — one-at-a-time sensitivity ranking ──────────────────────────────
-// Confirmed genuinely new (DecisionSensitivityNode is Decision-Matrix-specific
-// scenario sensitivity, not a generic parameter sweep). Wire any numeric value
-// in; the "Run sensitivity" button on the card (see components/TornadoNode.tsx +
+// Wire any numeric value in; the "Run sensitivity" button on the card (see
+// components/TornadoNode.tsx +
 // tornadoRun.ts) walks upstream to the leaf Number/Slider inputs feeding it,
 // perturbs each one ±10% (or its declared Slider min/max) one at a time, re-reads
 // this node's own value after each perturbation, and ranks the swings — the

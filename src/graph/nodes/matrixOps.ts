@@ -4,8 +4,8 @@ import { solError, type SolError } from "../errorValue";
 // The matrix nodes' `data()` and the D23 matrix-formula registrations both call
 // these, so MMULT in a formula and an MMULT node cannot disagree
 // (`formulaMatrix.test.ts` pins the equality). RETE-FREE per FX-2 — the formula
-// path must not load the editor. Extracted from nodes/matrix.ts, which now
-// imports them and keeps only the socket/unit plumbing.
+// path must not load the editor; nodes/matrix.ts imports these and keeps only
+// the socket/unit plumbing.
 //
 // Cells are element-agnostic where the op is a pure reshape (transpose, wrap) and
 // numerically guarded where it is linear algebra (asNumericMatrix). Error CODES

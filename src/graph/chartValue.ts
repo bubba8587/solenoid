@@ -1,19 +1,12 @@
 import type { ChartOp } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
 
-// ─── Chart as a first-class value ─────────────────────────────────────────────
-// The `chart` socket (sockets.ts — the object-socket family's member alongside
-// `lambda`, identity-only + `any`) carries THIS: a self-describing figure a
-// consumer can redraw without knowing about the Chart node. The Chart node emits
-// one; the Report renders it inline where its `=name` ref sits (the main
-// destination for charts). Deliberately flat + JSON-safe (op/values/options are
-// all primitives or plain objects) so it rides a cable and serializes like any
-// other value.
+// What the `chart` socket carries: a self-describing figure a consumer can redraw
+// without knowing about the Chart node. Must stay flat + JSON-safe (primitives or
+// plain objects only) so it rides a cable and serializes like any other value.
 
-// A few figure types don't fit a plain numeric series — a KPI card is a value +
-// its prior, a bullet graph is a value against a target on a scale. They still ride
-// the `chart` socket as a ChartValue (so a Report embeds them for free), carrying
-// their structured data in `payload` instead of `values`. JSON-safe (flat numbers).
+// Figure types that don't fit a plain numeric series carry their structured data in
+// `payload` instead of `values`. JSON-safe (flat numbers).
 export interface KpiPayload {
   kind: "kpi";
   value: number | null;
@@ -31,7 +24,6 @@ export interface BulletPayload {
   max: number;
 }
 // A flat labeled treemap — each name/value pair is a rectangle sized by value.
-// (Nested hierarchy is a later extension; v1 is one level.)
 export interface TreemapPayload {
   kind: "treemap";
   names: string[];

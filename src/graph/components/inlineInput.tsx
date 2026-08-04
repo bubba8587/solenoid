@@ -12,9 +12,9 @@ import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { stopDragStart } from "../coarse";
 
-// Vertical pitch between input rows. Socket *placement* no longer uses a fixed
+// Vertical pitch between input rows. Socket *placement* does NOT use a fixed
 // top offset — each input dot centers on its own row via CSS (.solenoid-node__io-row
-// sets --out-socket-top: 50%), so it's immune to header height. PITCH is still
+// sets --out-socket-top: 50%), so it's immune to header height. PITCH is
 // used to size nodes whose body grows by row count (e.g. Expression).
 export const INPUT_ROW_PITCH = 28;
 
@@ -123,8 +123,7 @@ const SCRUB_PX_PER_STEP = 6; // px of drag per unit step, at the unmodified rate
 type ScrubState = { startX: number; startY: number; startValue: number; currentValue: number; dragging: boolean };
 
 /** Pointer handlers for drag-to-scrub on a number field. Shared by the per-row
- *  inline literals AND the Number Input's main field (which shipped without
- *  scrub handlers at all — the "scrubber is bugged" report). `showValue` is the
+ *  inline literals AND the Number Input's main field. `showValue` is the
  *  live draft preview (also called to revert on cancel); `commitValue` applies
  *  the final value and owns its undo entry. */
 export function useNumberScrub(
@@ -201,10 +200,9 @@ export function useNumberScrub(
     }
     const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
     // Shift = coarse (10x), Alt = fine (0.1x), unmodified = 1 unit per
-    // SCRUB_PX_PER_STEP px. Steps are counted first, THEN scaled: the old
-    // Math.round(steps × mult) rounded the whole product to an integer, so
-    // Alt-fine could never actually produce a 0.1 — it just made a slower
-    // integer scrub. Fine steps snap to the 0.1 grid to avoid float dust.
+    // SCRUB_PX_PER_STEP px. Steps are counted first, THEN scaled — rounding the
+    // product instead would make Alt-fine a slower integer scrub, never a 0.1.
+    // Fine steps snap to the 0.1 grid to avoid float dust.
     const mult = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
     const raw = d.startValue + Math.round(delta / SCRUB_PX_PER_STEP) * mult;
     const next = mult < 1 ? Math.round(raw * 10) / 10 : raw;
@@ -276,9 +274,8 @@ export function QuotedTextInput(props: {
   nodeId?: string;
 }) {
   // The main text field (value variant) is a MULTI-LINE textarea: a single-line
-  // <input> silently strips newlines on paste, so a multi-line literal (a Mermaid
-  // diagram, an address block, wrapped prose) collapsed to one line — and it grew
-  // horizontally off the card instead of scaling. The per-row inline literals stay
+  // <input> silently strips newlines on paste, which would flatten a multi-line
+  // literal (a Mermaid diagram, an address block). The per-row inline literals stay
   // single-line (they fill a fixed 22px row).
   return props.variant === "value"
     ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />

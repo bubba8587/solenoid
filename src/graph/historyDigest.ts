@@ -1,12 +1,9 @@
 import { Presets as HistoryPresets } from "rete-history-plugin";
 import { nodeTypeName } from "./nodeNames";
 
-// ─── Session History digest ────────────────────────────────────────────────────
 // Turns rete-history-plugin's raw undo/redo record stream into a dated,
-// human-readable log for the Session History node (bundle 13 #49). Pure +
-// unit-tested (no editor/DOM deps) — the SessionHistoryComponent supplies the
-// live records (history.getHistorySnapshot()) and a node-name lookup, both of
-// which need the editor.
+// human-readable log for the Session History node. Pure (no editor/DOM deps) —
+// the caller supplies the live records and a node-name lookup.
 //
 // The classic preset's action classes mark most fields TypeScript-`private` —
 // compile-time only, not enforced at runtime (same as Canvas's own

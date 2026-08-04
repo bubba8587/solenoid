@@ -48,21 +48,16 @@ const GROUPS: LegendGroup[] = [
     { kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" },
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
-  // The OBJECT family — non-lattice, identity-only values distinguished by
-  // glyph, not color. Lambda = a function, Chart = a figure, Document = a Note/
-  // Report's whole content (for a document sink like Write to Obsidian).
+  // The OBJECT family — non-lattice, identity-only values distinguished by glyph,
+  // not color.
   { label: "Special", dots: [
     { kind: "lambda",   color: SOCKET_COLORS.lambda,   tip: "LAMBDA" },
     { kind: "chart",    color: SOCKET_COLORS.chart,    tip: "Chart" },
     { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
   ] },
-  // The wildcard ladder: any (one value) → anylist (1-D) → anytable (2-D),
-  // plus the hollow ring = trueany, the accept-ANYTHING supremum. The
-  // in-between rungs (anycombo / anydata) are deliberately NOT rows here —
-  // their split-square glyphs read fine in place on a card, but as legend
-  // entries they only restate the ladder (author call, 2026-07-29: the one
-  // that was here drew the matrix cross over the split, matching no real
-  // combo glyph).
+  // The wildcard ladder: any (one value) → anylist (1-D) → anytable (2-D), plus the
+  // hollow ring = trueany. The in-between rungs (anycombo / anydata) are deliberately
+  // NOT rows here — as legend entries they only restate the ladder.
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
@@ -73,9 +68,7 @@ const GROUPS: LegendGroup[] = [
 
 export type SocketGlyph = Dot;
 
-// ─── Hover tooltip: an SVG stadium pill (no OS-native delay, no CSS shapes) ──────
-// Body fill = the socket type color; border = the same --socket-ring that darkens
-// the socket edges; text = contrastInk(color) — the adaptive ink the menu bar uses.
+// Hover tooltip: an SVG stadium pill (no OS-native delay, no CSS shapes).
 
 /** Resolve any CSS color expression (incl. `var(--sock-*)`, palette-overridden) to a
  *  #rrggbb hex, so contrastInk picks the readable ink for the EXACT rendered color. */
@@ -141,10 +134,8 @@ export function SocketDot({ entry }: { entry: Dot }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setAnchor(r); };
-  // Point the ring at this fill's own border shade (var(--sock-x) → var(--sock-x-ring)),
-  // matching the real sockets. Set on the span so both the glyph and its hover pill
-  // (which inherit --socket-ring) pick it up. Kinds whose stroke is the fill itself
-  // (the hollow trueany ring) are unaffected.
+  // Set on the span so both the glyph and its hover pill (which inherit
+  // --socket-ring) pick up this fill's own border shade.
   const ringVar = /^var\(--sock-/.test(entry.color) ? entry.color.replace(/\)\s*$/, "-ring)") : undefined;
   return (
     <span
@@ -161,10 +152,9 @@ export function SocketDot({ entry }: { entry: Dot }) {
 }
 
 function SocketGlyphSvg({ entry }: { entry: Dot }) {
-  // viewBox is padded 1 unit on every side ("-1 -1 14 14") so the shapes — whose
-  // fills reach the 0/12 bounds — never sit on the rendered edge. Without the
-  // pad, fractional device-pixel rounding (the legend is scaled 0.85) clips the
-  // outermost row at most browser zoom levels.
+  // viewBox is padded 1 unit per side ("-1 -1 14 14") so shapes whose fills reach the
+  // 0/12 bounds never sit on the rendered edge — without it, fractional device-pixel
+  // rounding (the legend is scaled 0.85) clips the outermost row.
   if (entry.kind === "square") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
@@ -185,7 +175,6 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   if (entry.kind === "frame") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
-        {/* An "F" inside the square — same glyph as SocketComponent's frame socket. */}
         <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
         <path d="M4.15 8.9 V3.9 H8.95 M4.15 6.2 H8.15" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" />
         <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
@@ -205,7 +194,7 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
         <circle cx="6" cy="6" r="6" fill={entry.color} />
-        {/* λ glyph from Tabler Icons "lambda" (MIT) — same as SocketComponent. */}
+        {/* λ glyph from Tabler Icons "lambda" (MIT). */}
         <g transform="translate(6 6) scale(0.328) translate(-12.5 -12)">
           <path d="M6 20l6.5 -9 M19 20c-6 0 -6 -16 -12 -16" fill="none" stroke="var(--socket-ring)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
         </g>
@@ -216,7 +205,6 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   if (entry.kind === "ring") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
-        {/* Hollow circle — border only, no fill: the trueany "anything" socket. */}
         <circle cx="6" cy="6" r="4.5" fill="none" stroke={entry.color} strokeWidth="2.5" />
       </svg>
     );
@@ -224,7 +212,6 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   if (entry.kind === "chart") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
-        {/* Square + three sharp bars — same glyph as SocketComponent's chart socket. */}
         <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
         <g fill="var(--socket-ring)">
           <rect x="2.6" y="7" width="1.7" height="3" />
@@ -238,8 +225,6 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   if (entry.kind === "document") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
-        {/* Square + two left-aligned horizontal bars (long top, shorter below) — a
-            page/document; same glyph as SocketComponent's document socket. */}
         <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
         <g fill="var(--socket-ring)">
           <rect x="2.8" y="3.7" width="6.4" height="1.7" rx="0.85" />
@@ -267,16 +252,13 @@ function readPersistedCollapsed(): boolean | null {
 }
 
 export function SocketLegend() {
-  // Start collapsed in mobile mode — the full panel is a lot of screen on a
-  // phone, so show just the launcher there and let the user open it. A desktop
-  // user's open/collapsed choice persists across reloads (localStorage).
+  // Starts collapsed in mobile mode; a desktop user's choice persists (localStorage).
   const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed() ?? IS_MOBILE);
   useEffect(() => {
     try { localStorage.setItem(LEGEND_LS_KEY, collapsed ? "1" : "0"); }
     catch { /* private mode / quota — non-fatal */ }
   }, [collapsed]);
-  // Join the chrome-toggle group so Tab folds/unfolds the legend with the other
-  // panels (navigator + pin / alert HUDs).
+  // Chrome-toggle group: Tab folds/unfolds the legend with the other panels.
   useEffect(() => registerChrome("legend", { isOpen: () => !collapsed, setOpen: (o) => setCollapsed(!o) }), [collapsed]);
 
   return (
@@ -298,10 +280,8 @@ export function SocketLegend() {
   );
 }
 
-/** Dimensionality-flow explainer for the Reference overlay's Socket Types tab:
- *  the 0-D → 1-D → 2-D ladder, which way a cable can flow (widening), and why the
- *  reverse (narrowing a 2-D output into a 1-D/0-D input) is blocked at the socket.
- *  Mirrors the canConnect() rule in sockets.ts in plain language. */
+/** Dimensionality-flow explainer for the Reference overlay's Socket Types tab —
+ *  canConnect()'s rule in plain language. */
 export function DimensionalityFlow() {
   return (
     <div className="solenoid-dimflow">

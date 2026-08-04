@@ -17,15 +17,12 @@ import { dimEqual } from "../dimension";
 import { formatScalar } from "./format";
 import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 
-// Lists may now carry `null` (missing) and per-cell `SolError` as distinct kinds
-// (the relaxed array-semantics model — see dev-notes "Array-semantics policy
-// DECISIONS"). A scalar is still number | string | SolError | null.
 export type DisplayValue =
   | number
   // A tagged complex rides RAW into the value box: the display layer resolves it
   // (ValueDisplay, via formatCxWithAnnotation) so a docked FC's style, precision
-  // and unit reach it. A card that pre-formatted in its own component produced a
-  // fixed string no annotation could touch — that was the complex-render defect.
+  // and unit reach it. A card that pre-formats in its own component produces a
+  // fixed string no annotation can touch.
   | Cx
   | (Cx | null | SolError)[]
   | UnitCell
@@ -127,14 +124,6 @@ function fmtSerial(v: number): string {
  * The concrete data type of the value a node DISPLAYS — the type-default display
  * principle: a value shows in its TYPE's default format wherever it appears (a date
  * reads "20-Mar-2026", not its serial), even if physically carried as a number.
- *
- * This just READS the output socket. It used to walk the graph to re-derive the type
- * for a wildcard socket, which was a second answer to a question the ADOPTION pass
- * already answers and writes onto the socket (`reconcileTrueAnyTypes` →
- * `settleWildcardTypes`, run by `reconcileFcTypes` on every connection change and by
- * persistence on load). Two resolvers meant two rules, and they diverged: until
- * 2026-07-25 an `IF` over a date and a number rendered the number as a DATE, because
- * the walk returned the first wired branch while adoption correctly said "unknown".
  *
  * The precondition is machine-checked by `passthroughOutputMutable.test.ts`: every
  * passthrough whose output is a wildcard carries a MUTABLE socket, so adoption can and

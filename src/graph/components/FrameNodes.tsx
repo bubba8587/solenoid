@@ -219,11 +219,10 @@ export const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; titl
   { value: "or", label: "OR", title: "Keep rows matching any condition" },
 ];
 
-// Extensible AND/OR condition rows (B-2). Each pair: a wireable Column row
-// (with the remove ×) and a wireable Value row whose op select + Match-case
-// toggle live in the row when unwired. Per-row {op, matchCase} mirrors onto
-// data.condConfig (local useState drives the controlled selects — the
-// useNodeField rule, per-key). The AND/OR SegToggle appears from 2 rows up.
+// Extensible AND/OR condition rows. Each pair: a wireable Column row (with the
+// remove ×) and a wireable Value row whose op select + Match-case toggle live in the
+// row when unwired. Per-row {op, matchCase} mirrors onto data.condConfig (local
+// useState drives the controlled selects — the useNodeField rule, per-key).
 export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeType>) {
   const connected = useConnectedInputs(data.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
@@ -644,10 +643,9 @@ const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; t
 const DECISION_CABLE_ONLY = new Set(["weights"]);
 
 // One row per detected criterion: a labeled, default-1 weight box plus a per-column
-// normalize override (Rank Raws lives here). Criteria come from the upstream Scores
-// frame (data.criteria, refreshed each compute), so the rows are named, not blind
-// positional slots. A wired `weights` cable overrides the weights (computed weights),
-// and we say so — the per-column modes still apply.
+// normalize override. Criteria come from the upstream Scores frame (data.criteria,
+// refreshed each compute), so the rows are named, not blind positional slots. A wired
+// `weights` cable overrides the weights; the per-column modes still apply.
 export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrixNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
   const [detail, setDetail] = useNodeField(data, "detail");

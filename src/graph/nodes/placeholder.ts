@@ -2,17 +2,12 @@ import { ClassicPreset } from "rete";
 import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { solError } from "../errorValue";
 
-// A stand-in for a saved node whose `type` isn't registered in this build — a
-// node from a pack that's turned off, or a since-renamed type in an old save.
-// Rather than DROP the node (and its cables) on load, persistence builds a
-// PlaceholderNode that keeps the original type name + its serialized init /
-// literals, and synthesizes `any` sockets matching the saved connections so the
-// wiring survives. On save it re-emits as the ORIGINAL type (see serializeGraph),
-// so reopening in a build that HAS the type restores the real node losslessly.
-//
-// It can't compute, so every output carries a #REF! — downstream reads the break
-// loudly (the tagged-error story) instead of silently using nulls. It is NOT in
-// the Add-menu catalog: only the loader ever constructs one.
+// A stand-in for a saved node whose `type` isn't registered in this build. Keeps the
+// original type name + serialized init/literals and synthesizes `any` sockets
+// matching the saved connections, so wiring survives; on save it re-emits as the
+// ORIGINAL type (serializeGraph), making the round trip lossless. It can't compute,
+// so every output carries a #REF!. NOT in the Add-menu catalog — only the loader
+// ever constructs one.
 export class PlaceholderNode extends ClassicPreset.Node {
   label: string;
   /** The unregistered class name this stands in for. */

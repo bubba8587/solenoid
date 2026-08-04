@@ -23,8 +23,8 @@ import { SurfaceNode, ContourNode } from "../nodes/visual";
 //
 // ONE live stage only. The singletons and getOwningEditor support a single live
 // surface outside the composite-drill-in override — a second independent stack
-// renders its cards as unwired the moment the singletons move (see dev-notes
-// 2026-07-17). If another demo is ever wanted, add it as an island in THIS
+// renders its cards as unwired the moment the singletons move. If another demo
+// is ever wanted, add it as an island in THIS
 // editor or as a DOM-snapshot diorama, not as a second live stack.
 
 // Wider than the page column on purpose: the fit-to-width zoom lands around

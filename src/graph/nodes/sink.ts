@@ -7,22 +7,14 @@ import { isSolError, type SolError } from "../errorValue";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
 // ─── File sink nodes (Write CSV / Write JSON) ───────────────────────────────────
-// The write-side mirror of CsvConnectionNode/WebSourceNode (connection.ts): a
-// sink node references an output path and, on refresh… no — UNLIKE a source, a
-// sink must NEVER act on its own. data() only caches the frame currently on the
-// cable (exactly like a source caches its last fetch) so the node can render a
-// preview of what WOULD be written. The actual write happens in `run()`, called
-// ONLY from the node's Run button — never from data(), never on recompute.
+// UNLIKE a source, a sink must NEVER act on its own. data() only caches the frame
+// currently on the cable so the node can preview what WOULD be written; the actual
+// write happens in `run()`, called ONLY from the node's Run button — never from
+// data(), never on recompute.
 //
-// `enabled` is deliberately absent from copyPaste.ts's extractInit whitelist, so
-// it can NEVER round-trip through save/load/paste — every construction (a freshly
-// authored node, a reloaded save, a paste, a restored placeholder) starts
-// disarmed, and the user must arm it again before Run does anything. There's no
-// reliable "my own file vs. a shared/imported one" signal anywhere else in this
-// codebase (the packs/placeholder provenance breadcrumb in persistence.ts is a
-// compatibility signal, not a trust one) — so rather than invent one, this is the
-// strictly safer reading of "disabled by default when loaded from elsewhere":
-// EVERY load counts, not just an imported one.
+// `enabled` is deliberately absent from copyPaste.ts's extractInit whitelist, so it
+// can NEVER round-trip through save/load/paste: EVERY construction (fresh node,
+// reloaded save, paste, restored placeholder) starts disarmed.
 
 export type SinkStatus = "idle" | "writing" | "ok" | "error";
 
@@ -40,11 +32,8 @@ export function frameToCsvText(f: FrameValue): string {
   return Papa.unparse({ fields, data });
 }
 
-/** Unlike CSV (all-text, so formatFrameCell's display strings are exactly
- *  right), JSON has native number/boolean/null — collapsing a real `true` to
- *  the string "TRUE" would lose type information a JSON consumer expects. Only
- *  a date (no native JSON date type) and an error cell (no JSON error type)
- *  become display strings; everything else passes through as its own kind. */
+/** JSON has native number/boolean/null, so only a date and an error cell become
+ *  display strings; everything else passes through as its own kind. */
 function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {
   if (v === null) return null;
   if (isSolError(v)) return v.code;
@@ -83,8 +72,7 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
     this.addInput("in", frameIn("Frame"));
   }
 
-  // Caches only — never touches disk. Mirrors a source's cachedResult, so the
-  // node's preview always reflects the live upstream value.
+  // Caches only — never touches disk.
   data(inputs: { in?: (FrameValue | SolError)[] }): Record<string, never> {
     this.cachedFrame = inputs.in?.[0] ?? null;
     return {};

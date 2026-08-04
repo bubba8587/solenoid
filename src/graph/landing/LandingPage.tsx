@@ -20,14 +20,12 @@ import {
 } from "./LandingScenes";
 import "./LandingPage.css";
 
-// ─── The landing page (?landing) ────────────────────────────────────────────────
-// A standalone route: App.tsx swaps the whole app for this page when the URL
-// carries ?landing, same mechanism as the ?showcase harness. Copy follows the
-// house voice (DESIGN.md §7). The hero demo is the ONE live rete stage (see
-// LandingGraph.tsx); every other illustration is a static vignette built from
-// the app's real design recipes (LandingScenes.tsx). Motion is gated on a
-// `--anim` root class set on mount, so content never depends on a transition
-// firing, and prefers-reduced-motion gets the page with no entrance motion.
+// The landing page: a standalone route App.tsx swaps the whole app for when the
+// URL carries ?landing. The hero demo is the ONE live rete stage
+// (LandingGraph.tsx); every other illustration is a static vignette
+// (LandingScenes.tsx). Motion is gated on a `--anim` root class set on mount, so
+// content never depends on a transition firing, and prefers-reduced-motion gets
+// the page with no entrance motion.
 
 const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 

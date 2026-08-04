@@ -14,15 +14,11 @@ import { getEditor } from "../process";
 // catalog metadata undefined at eval time. run() only fires on a desktop click, so
 // the lazy import costs nothing and keeps this node module light.
 
-// ─── Write to Obsidian Vault ─────────────────────────────────────────────────
-// A document sink, the exact arm/disarm safety shape as the CSV/JSON sinks
-// (nodes/sink.ts): data() only CACHES the DocumentValue on the cable so the card
-// can preview what would be written; the actual `.md` write fires ONLY from the
-// Run button, and `enabled` is deliberately kept OUT of copyPaste's persistence
-// whitelist so every load/paste/restore starts disarmed. It takes the whole
-// document (a Note's or Report's `document` output) and writes it as portable
-// Obsidian markdown — frontmatter, GFM tables, native ```mermaid blocks, math,
-// and rasterized chart/image assets (see obsidianWrite.ts). Desktop only.
+// A document sink with the same arm/disarm safety shape as the CSV/JSON sinks:
+// data() only CACHES the DocumentValue for the card preview; the `.md` write
+// fires ONLY from the Run button, and `enabled` is deliberately kept OUT of
+// copyPaste's persistence whitelist so every load/paste/restore starts
+// disarmed. Desktop only.
 
 export type ObsidianWriteStatus = "idle" | "writing" | "ok" | "error";
 
@@ -47,8 +43,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     this.addInput("in", documentIn("Document"));
   }
 
-  // Caches only — never touches disk. Mirrors a source's cachedResult so the
-  // preview always reflects the live upstream document.
+  // Caches only — never touches disk.
   data(inputs: { in?: (DocumentValue | SolError)[] }): Record<string, never> {
     this.cachedDoc = inputs.in?.[0] ?? null;
     return {};
@@ -106,15 +101,11 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Import from Obsidian Vault ──────────────────────────────────────────────
-// The read side of the trio: pick a `.md` from the vault and it becomes a Note —
-// its frontmatter → typed OUTPUT sockets, its body rendered read-only, plus the
-// same `document` output every Note has. It IS a Note (extends NoteNode) so it
-// reuses the whole frontmatter-socket + document machinery and reads as a note
-// everywhere (minimap, report embeds, export); it only adds the source file path
-// and a read-only, file-sourced body (the card owns the picker + file read). The
-// body persists in the save, so a loaded doc shows the imported content on web too;
-// desktop can reload it from the vault.
+// The read side: a `.md` picked from the vault becomes a Note. It IS a Note
+// (extends NoteNode), so it reuses the frontmatter-socket + document machinery
+// and reads as a note everywhere; it only adds the source file path and a
+// read-only, file-sourced body. The body persists in the save, so a loaded doc
+// shows the imported content on web too.
 
 export class ImportObsidianNode extends NoteNode {
   /** Vault-relative path of the source `.md` file ("" until one is picked). */

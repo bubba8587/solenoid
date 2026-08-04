@@ -118,6 +118,29 @@ on the card; drawing frames in the HTML-in-canvas renderer only; quantizing the
 area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
+### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
+
+The comment-minimalism pass, author-driven over several rule-building turns. **Policy:**
+`docs/code-comments.md` (D30) — comments are the LAST-RESORT home; deletion is the
+default outcome; homes hierarchy code > tests > specs/decisions/dev-notes > commits >
+comments; test files exempt for now. **Routing:** `docs/README.md` gained the
+"Code → spec routing" table (file → governing doc; routed files carry zero comment
+pointers by design — the table IS the pointer). **The sweep:** 12 Opus agents over all
+651 non-test source files (pixi excluded, deprecated); ~5,900 comment-ish lines
+removed (22.1k → ~15.3k line comments + block trimming), `tsc` + full vitest green
+after every batch. **Promotions** (knowledge that existed ONLY in comments, now in
+docs): D29 (aggregators are arguments + the operation-vs-argument framework), D31
+(Table Input raw-text truth), D32 (string byte order); new subsystem-invariants
+sections (Group collapse retain rule, Equation solver, Renderer gesture GPU layers,
+Semantic zoom gate, HIC raster atlas + clone-position, Bordered-grid fill); the
+Formula.js divergence catalogue + P6 scalar-operator table into parity/value-semantics
+docs; palette HSV sibling derivation into DESIGN.md; the Add-menu ~12-row pane budget
+into node-coverage; tablet-bar deliberate omissions into layout-chrome; 6 latent
+TODOs into the backlog (incl. one OPEN AUTHOR CALL: mode-selector inputs on a wired
+blank diverge from value-semantics' propagate rule). One stale deferral (UNIQUE/SORT
+range functions) verified already-executed and dropped. Agents' uncertain keeps are
+flagged in the workflow outputs; nothing was deleted that lives nowhere else.
+
 ### D27 + the AI prerequisite layer: strict reader, grounding spec, headless loop (2026-08-01f)
 
 Author reversed the #7/#19 NL/AI ruled-OUT (recorded as **D27**: the AI layer is IN,

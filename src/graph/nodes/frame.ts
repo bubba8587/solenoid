@@ -83,17 +83,7 @@ async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | Frame
   return { frame: out };
 }
 
-// ─── Frame nodes ──────────────────────────────────────────────────────────────
-// The data-table family. Build / Split are the literal Matrix ⇄ Frame adapter;
-// Get Column / Add Column are the per-column path. Everything per-column or
-// per-cell reuses the existing list / matrix nodes via these, so there are no
-// redundant frame-side aggregation or math nodes. See docs/dev-notes.md.
-
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
-// A source node: type a data table directly. Like Table Input, the result box
-// doubles as the editor — its chip opens the grid popup (editable cells + column
-// names), and Save writes back through `frameText`. v1 columns are all numeric;
-// only the names are editable (the rest of the frame family is numeric-only too).
 
 export class FrameInputNode extends ClassicPreset.Node {
   label: string;
@@ -279,11 +269,6 @@ export class FrameInputNode extends ClassicPreset.Node {
 }
 
 // ─── DISTINCT ────────────────────────────────────────────────────────────────
-// Remove duplicate ROWS from a Frame, keeping the first of each (the frame analog
-// of the list UNIQUE). Delegates to the pure `distinctRows` verb (frameVerbs.ts),
-// the same definition the relational engine + the Polars backend use. v1 is
-// distinct-on-all-columns; a column-subset input is a later add (it can #REF! a
-// bad name, which needs the error-in-FrameDisplay path first).
 
 export class DistinctNode extends ClassicPreset.Node {
   label: string;
@@ -304,7 +289,6 @@ export class DistinctNode extends ClassicPreset.Node {
 }
 
 // ─── HEAD ────────────────────────────────────────────────────────────────────
-// The first N rows of a Frame (verb: headRows). N from the wired/typed input.
 
 export type HeadOp = "first" | "last" | "skip" | "range";
 
@@ -350,8 +334,6 @@ export class HeadNode extends ClassicPreset.Node {
 }
 
 // ─── SORT FRAME ────────────────────────────────────────────────────────────────
-// Order rows by one column (verb: sortByColumn); blanks/errors sort last. The
-// column is named (typed/wired, like Get Column); `dir` is a SegToggle field.
 
 export type FrameSortDir = "asc" | "desc";
 
@@ -382,15 +364,6 @@ export class SortFrameNode extends ClassicPreset.Node {
 }
 
 // ─── FILTER FRAME ──────────────────────────────────────────────────────────────
-// Keep rows passing extensible CONDITION rows combined with AND/OR (verb:
-// filterMulti, B-2 — SQL WHERE made visual). Each row: a column, an op (9
-// comparisons + text predicates), a value, and its OWN Match-case flag (text
-// matching ignores case by default — Excel's `=`). Pair `id` owns the wireable
-// `column${id}` / `value${id}` inputs plus a `condConfig[id]` {op, matchCase}.
-// A row missing its column or value is "not written yet" → EXCLUDED from the
-// predicate (the audit-16 policy, now per-row); no complete rows = pass-through.
-// Blanks/errors in the data fail that row's condition (under OR another
-// condition can still keep the row).
 
 export type { FilterCondConfig } from "../frameVerbs";
 
@@ -531,12 +504,6 @@ export class FilterFrameNode extends ClassicPreset.Node {
 }
 
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
-// Relational join of two Frames on a key (verb: joinFrames). inner/left/right/
-// outer/asof via the `how` SegToggle; a left row matching several right rows
-// fans out (asof never fans out — one match per left row). Right key defaults
-// to the left key's name (the common same-name case). `asofDirection`/
-// `asofTolerance` are read only when how === "asof" (an orderable number/date
-// key); Tolerance blank = unlimited.
 
 export class JoinNode extends ClassicPreset.Node {
   label: string;
@@ -591,9 +558,6 @@ export class JoinNode extends ClassicPreset.Node {
 }
 
 // ─── SELECT / DROP COLUMNS ───────────────────────────────────────────────────
-// Keep or drop a set of named columns (verbs: selectColumns / dropColumns). The
-// column list is a typeable strlist ("name, qty"). Select #REF!s a missing name;
-// Drop ignores unknowns. An empty list passes the frame through unchanged.
 
 // Read a wired/typeable column-name LIST slot. The empty literal already means
 // something on these nodes ("no columns chosen → pass the frame through"), which is
@@ -650,13 +614,6 @@ export class DropColumnsNode extends ClassicPreset.Node {
 }
 
 // ─── GROUP BY (FRAME) ──────────────────────────────────────────────────────────
-// Group rows by one or more key columns and aggregate one column (verb:
-// groupByFrame). Single aggregation for v1 (the aggregated column keeps its name);
-// the op is sum/avg/min/max/count. Distinct from the 1-D GroupByNode (list→list).
-// `totalDepth` (Excel GROUPBY's total_depth: 0 none · 1 grand · 2 grand+subtotals ·
-// negative ⇒ placed at top) adds total rows by routing a no-colFields pivotFrame —
-// the pivot engine RE-AGGREGATES the source for totals (a grand AVERAGE averages
-// all source rows, not the group averages), which the lazy groupBy verb can't do.
 
 // The ONE AggOp table (SSOT-1): the Group By / Cube Rollup cards, the Pivot
 // editor's per-value selector, and the Add-menu search rows all derive from it,
@@ -724,9 +681,6 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 }
 
 // ─── PIVOT / UNPIVOT ───────────────────────────────────────────────────────────
-// Reshape long ⟷ wide (verbs: pivotFrame / unpivotFrame). Pivot: one row per
-// Index value, one column per distinct Columns value, cells aggregated. Unpivot
-// (melt): keep Id columns, turn each Value column into (variable, value) rows.
 
 // A cell's stable string key for the field-value filter — the SAME stringification
 // the editor's distinct list uses, so an excluded key matches the row's cell.
@@ -896,9 +850,6 @@ export class UnpivotNode extends ClassicPreset.Node {
 }
 
 // ─── NEST / UNNEST (the flat ⟷ cube bridge) ───────────────────────────────────
-// Nest: group a flat Frame by key into a Cube whose nested column holds the rest
-// (verb: nestFrame). Unnest: expand a Cube's nested-frame column back to flat
-// (verb: unnestCube). The only verb nodes that cross the frame ⟷ cube boundary.
 
 export class NestNode extends ClassicPreset.Node {
   label: string;
@@ -953,11 +904,6 @@ export class UnnestNode extends ClassicPreset.Node {
 }
 
 // ─── APPEND ────────────────────────────────────────────────────────────────────
-// The Frame rung of the append ladder (decisions.md D15): N extensible frame
-// rows stacked top-to-bottom in row order, union by column NAME (verb:
-// appendFrames — a column missing from one input fills blank; a conflicting
-// column type is #TYPE!). One frame alone passes through (safe while you're
-// still wiring the others).
 
 export class AppendNode extends ClassicPreset.Node {
   label: string;
@@ -1005,9 +951,6 @@ export class AppendNode extends ClassicPreset.Node {
 }
 
 // ─── RENAME COLUMNS ────────────────────────────────────────────────────────────
-// Rename columns via two parallel name lists, zipped by position: From ["qty"]
-// → To ["Quantity"] (verb: renameColumns). Both are typeable strlists. A name in
-// From that isn't a column is ignored; a collision is de-duped (Date2…).
 
 export class RenameNode extends ClassicPreset.Node {
   label: string;
@@ -1085,10 +1028,6 @@ export class AddIndexNode extends ClassicPreset.Node {
     this.addInput("start", numIn("Start"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
-    // The TWO-WAY option (author 2026-07-16): the same data indexed on BOTH axes
-    // as a coordinate-bordered matrix — exactly the grid Surface / Contour /
-    // Grid Interpolate read. A matrix wired in (it widens to Col1…N) gets row +
-    // column indices counting from Start.
     this.addOutput("grid", tableOut("Bordered grid"));
   }
 
@@ -1105,11 +1044,6 @@ export class AddIndexNode extends ClassicPreset.Node {
     return { frame: this.cachedResult, grid };
   }
 }
-
-// ─── TIMESAVER CLEANUP VERBS (2026-07-16) ────────────────────────────────────────
-// The everyday Power Query cleanup set, all eager like Split Column: Fill Down /
-// Replace Values / Merge Columns / Promote Headers / Drop Blank Rows. Pure logic
-// in frameVerbs.ts; each node is the thin op-picker shell.
 
 export type FillDir = "down" | "up";
 
@@ -1265,17 +1199,6 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
 }
 
 // ─── DECISION MATRIX ───────────────────────────────────────────────────────────
-// Weighted-scoring + ranking of a Frame's rows — a port of the jortscity Decision
-// Matrix Bases View. Rows are options, number/logical columns are criteria, an
-// optional leading text column names the options. Scores each option by the weighted
-// average Σ(score × weight) / Σ|weight| (so a NEGATIVE weight penalises a "lower is
-// better" criterion) and competition-ranks them. Weights are edited inline as one
-// labeled, default-1 box per criterion (the component renders them from `criteria`);
-// the `weights` socket is an optional positional override for computed weights.
-// `normalize` makes incompatible scales comparable first (none / divide-by-max /
-// within-column rank). Output: Option · Score · Rank, best first — chart the podium
-// with Get Column "Score" → Chart. (Math + criteria detection in frameVerbs; the Raw
-// Scores table stays your own Frame Input.)
 
 export type DecisionDetail = "summary" | "breakdown";
 
@@ -1327,13 +1250,6 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 }
 
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
-// "How robust is the winner to my weights?" Score the same options under several
-// weight scenarios and see whether the ranking holds. `scores` is the usual options
-// frame; `scenarios` is a frame where each ROW is a scenario (first text column names
-// it, a numeric column named after a criterion is that criterion's weight; missing →
-// 1). Output is a CUBE — one row per scenario, Scenario · Winner · Margin · Ranking —
-// where Ranking is the full Option·Score·Rank table nested in the cell (drill in via
-// the cube popup). Margin (top − runner-up) flags how decisive each scenario is.
 
 export class DecisionSensitivityNode extends ClassicPreset.Node {
   label: string;
@@ -1360,11 +1276,6 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
-// Compare two versions of "the same" frame by a key column: classify each key as
-// added / removed / changed / unchanged with a before/after/Δ per shared numeric
-// column (verb: reconcileFrames, which reuses joinFrames' key-index machinery).
-// Naming a Price and a Quantity column (both numeric, present on both sides) also
-// runs the price/volume/mix variance breakdown, surfaced in the summary line.
 // Not a lazy verb — a materialization boundary like Decision Matrix, so its data()
 // takes plain FrameValue inputs (coerceInputs collects any upstream FrameRef).
 
@@ -1469,9 +1380,7 @@ export class BuildFrameNode extends ClassicPreset.Node {
   }
 
   // Identity-stable memoization (same pattern as FrameInputNode): a fresh
-  // FrameValue every data() call defeats the backend's identity source-cache —
-  // each pass re-serialized the whole matrix over engine_source (and, on web,
-  // leaked the previous handle) (audit finding 42).
+  // FrameValue every data() call defeats the backend's identity source-cache.
   private _builtFromMatrix: unknown;
   private _builtFromHeaders: unknown;
   private _builtFromType: unknown;
@@ -1504,14 +1413,6 @@ export class BuildFrameNode extends ClassicPreset.Node {
 }
 
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
-// The lists→Frame path: each extensible row pairs a column NAME (typed or wired)
-// with a LIST of values. Each list input ADOPTS its wired list's concrete type
-// (adoptiveListIn), so a datelist → a date column — the one family values can't
-// recover (a serial looks numeric). Type-PRESERVING (no CSV-style re-inference of
-// "1"→1); an untyped (anylist) source falls back to value inference (number/
-// logical/string); mixed cells coerce to text; ragged columns pad with blanks.
-// Build Frame stays the matrix+headers assembler; this one takes N typed lists —
-// the path to a genuinely MIXED frame (id:number, name:string, when:date).
 
 export class FrameFromListsNode extends ClassicPreset.Node {
   label: string;
@@ -1669,9 +1570,6 @@ export class SplitFrameNode extends ClassicPreset.Node {
 }
 
 // ─── GET COLUMN ────────────────────────────────────────────────────────────────
-// Pull one column out of a Frame as a typed list. The "read as" choice sets the
-// output socket type — Number → numeric list, Text → string list, Date → date
-// list (numeric serials, typed as dates so a date column re-tags at the socket).
 
 export type GetColumnReadAs = "number" | "text" | "date" | "logical";
 
@@ -1712,11 +1610,9 @@ export class GetColumnNode extends ClassicPreset.Node {
     // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
     if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
     // A LAZY upstream (verb chain): fetch the ONE column through the backend's
-    // column primitive instead of forcing a full-frame collect (audit finding
-    // 24 — Get Column wasn't in LAZY_FRAME_NODES, so a 500k-row chain hauled
-    // every column back to read one). The engine awaits a promise-returning
-    // data(); the cast keeps the sync signature the FrameValue path (and every
-    // existing test) uses.
+    // column primitive instead of forcing a full-frame collect. The engine
+    // awaits a promise-returning data(); the cast keeps the sync signature the
+    // FrameValue path uses.
     if (isFrameRef(f)) {
       return (async () => {
         const col = await materialize((async () => frameBackend().column(await flushRef(f), name))());
@@ -1783,9 +1679,6 @@ export class GetColumnNode extends ClassicPreset.Node {
 }
 
 // ─── ADD COLUMN ────────────────────────────────────────────────────────────────
-// Append a list to a Frame as a new column. The "add as" choice sets the Values
-// input socket type and the stored column type — Number/Date → numeric column
-// (Date is just serials), Text → text column.
 
 export type AddColumnAddAs = "number" | "text" | "date" | "logical";
 
@@ -1833,20 +1726,6 @@ export class AddColumnNode extends ClassicPreset.Node {
 }
 
 // ─── COMPUTED COLUMN ───────────────────────────────────────────────────────────
-// A row-wise formula over the frame's columns, appended (or replacing, by name)
-// as a new column — Power Query's Custom Column. This node is WHY frames stay
-// out of formulas (D23): the row iteration lives here, and the formula only
-// ever sees scalars. Two ways to define the math (author direction 2026-07-29 —
-// the frame stays pure data, the computation is a graph citizen):
-//   • the inline formula (`expr`) — its variables ARE column names;
-//   • a wired λ — its params bind to columns by name, so one lambda authored
-//     once computes the same column on any frame (and its capture sockets
-//     carry side parameters: scalars wired from anywhere in the graph).
-// Per-row contract mirrors the broadcast rules: an error cell in any BOUND
-// column propagates to that row's output (first in binding order); a null
-// flows INTO the formula (ISBLANK/IF can see it — a formula is not an
-// element-wise op); the output column's type is inferred from the computed
-// cells, and a `Name (unit)` header tags the unit like Add Column.
 
 /** How the computed column is typed: inferred from the computed cells, or
  *  declared (a formula over date serials can only BE a date column by saying
@@ -2024,10 +1903,6 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 }
 
 // ─── GET ROW ────────────────────────────────────────────────────────────────────
-// Pull one row out of a Frame. A row is heterogeneous (one cell per column, mixed
-// types), so the only lossless container is a Frame — Get Row outputs a 1-row Frame
-// (carrying the column names + types). That's the principled mirror of Get Column,
-// which leaves Frame-space because a column is homogeneous.
 
 export class GetRowNode extends ClassicPreset.Node {
   label: string;
@@ -2060,20 +1935,6 @@ export class GetRowNode extends ClassicPreset.Node {
 }
 
 // ─── XLOOKUP (VLOOKUP / XLOOKUP over a table, cube, or widened list) ─────────────
-// The universal lookup: find the row whose "In column" cell equals the Lookup
-// value and return that row's "Return" cell (or the WHOLE row when Return is `*`).
-// This ONE node handles list, frame, and cube lookups — XLOOKUP's two
-// arrays must be aligned, and by the standing rule aligned columns belong in a
-// Frame (Build Frame two lists together, or read a table), not two loose sockets.
-//
-// Output is `any` because the returned value's type is only known at compute — a
-// scalar cell, or (Return = *) a single-row Frame/Cube; it flows on the `any`
-// socket and can be Cast or Displayed downstream. A miss falls back to If-not-found
-// (numeric-looking text → a number), else #N/A. `matchMode` (Exact / ≤ next smaller
-// / ≥ next larger — Excel's match_mode 0/-1/1) opts into an approximate fallback on
-// a numeric/date key; `searchMode` (first / last — Excel's search_mode 1/-1) picks
-// which duplicate wins. (Verbs: lookupFrameCell / lookupCubeCell + the *RowIndex /
-// *RowAt whole-row helpers. Materialization-boundary op — eager JS like Get Column.)
 
 export class XLookupNode extends ClassicPreset.Node {
   label: string;

@@ -19,9 +19,8 @@ import { dropInputCables } from "./cablePrune";
 /**
  * A node with a variable number of input PAIRS the user can add/remove — e.g.
  * IFS (condition + value) and SWITCH (when + then). Each pair is two sockets
- * sharing one remove button; one "+ Add" appends a pair. Optional fixed leading
- * / trailing inputs (SWITCH's `expr` / `default`) render as plain rows around
- * the pairs. Implemented by the node class.
+ * sharing one remove button. Optional fixed leading / trailing inputs (SWITCH's
+ * `expr` / `default`) render as plain rows around the pairs.
  */
 export interface PairedExtensibleNode {
   id: string;
@@ -40,11 +39,9 @@ export interface PairedExtensibleNode {
 }
 
 /**
- * Renderer for paired extensible inputs. `leadingKeys` / `trailingKeys` are
- * fixed inputs (rendered via InlineInputs, no remove) before/after the pairs.
- *
- * Each socket dot centers on its own row (see .solenoid-node__io-row), so the
- * rows can sit anywhere in the body — no fixed header-offset assumption.
+ * `leadingKeys` / `trailingKeys` are fixed inputs (no remove) before/after the
+ * pairs. Each socket dot centers on its own row (see .solenoid-node__io-row), so
+ * the rows can sit anywhere in the body — no fixed header-offset assumption.
  */
 export function PairedExtensibleInputs({
   node, emit, leadingKeys, trailingKeys,
@@ -97,7 +94,6 @@ export function PairedExtensibleInputs({
     await processGraph();
   }
 
-  // Collapsed: aggregate every input (leading + pairs + trailing) into one pill.
   if (collapsed) {
     if (allKeys.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={allKeys} />;

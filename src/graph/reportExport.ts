@@ -11,16 +11,11 @@ import { reportPaletteStore } from "./palette";
 import { EMBED_RE } from "./reportEmbeds";
 import { APP_LOCALE } from "./locale";
 
-// ─── Static HTML export (bundle 13 #47) ────────────────────────────────────────
-// "Export as webpage": freezes a Report into ONE self-contained .html file — the
-// markdown with every `` `=name` `` ref substituted for its CURRENT formatted
-// value as plain text (not live — reuses the same resolver stack + formatting as
-// the live rendering, one more time, per the plan), embedded Notes frozen the
-// same way, key charts as inline SVG (already free — recharts/hand-drawn SVGs
-// serialize as-is), and a canvas snapshot via canvasCapture.ts's NEW rasterize
-// path (drawElementImage is Chrome-flag-gated, unusable in a portable file the
-// recipient opens in any browser). Everything inlines as data URIs / literal
-// markup — no external references, so the file is truly standalone.
+// ─── Static HTML export ───────────────────────────────────────────────────────
+// "Export as webpage": freezes a Report into ONE self-contained .html file. Charts
+// go in as inline SVG and the canvas snapshot via canvasCapture's rasterize path
+// (drawElementImage is Chrome-flag-gated, unusable in a portable file). Everything
+// inlines as data URIs / literal markup — no external references.
 
 const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)`/g;
 
@@ -54,13 +49,10 @@ function renderMarkdown(md: string): string {
 }
 
 /**
- * The export's CSS. `accent` is the resolved BRAND color (reportPaletteStore's
- * "sky" slot, the same slot the app's own accent defaults to — appTheme.ts
- * DEFAULT_ACCENT) — used for the title + section-heading rule ONLY WHEN the
- * document actually declares a report palette (`branded`). With no declaration
- * this renders byte-identical to the original neutral scheme: colors-only
- * branding must never change the default export's look for a doc that never
- * asked for it.
+ * The export's CSS. `accent` (reportPaletteStore's "sky" slot) tints the title +
+ * section-heading rule ONLY when the document declares a report palette
+ * (`branded`) — colors-only branding must never change the look of an export for
+ * a doc that never asked for it.
  */
 export function buildExportCss(branded: boolean, accent: string): string {
   const titleColor = branded ? accent : "#f3f4f5";

@@ -1,6 +1,5 @@
 // Subsequence fuzzy match: returns a score (higher = better, consecutive runs
-// weighted) or null when the query isn't a subsequence of the text. Shared by
-// the Add-node menu and the connection dialog.
+// weighted) or null when the query isn't a subsequence of the text.
 export function fuzzyScore(query: string, text: string): number | null {
   const q = query.toLowerCase().replace(/\s+/g, "");
   if (!q) return 0;

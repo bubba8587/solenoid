@@ -5,26 +5,13 @@
 // switch on/off.
 //
 // Each pack's DEFINITION lives in its own file under src/graph/packs/ (built on
-// packs/packShared.ts — the authoring types + the formula-preset helper). This
-// module is the registry + activation store.
+// packs/packShared.ts). This module is the registry + activation store.
 //
-// Placement, not a separate subtree: a pack's nodes are INSERTED into the existing
-// Add-menu category tree (or the catch-all "Other" category) at a target path, so
-// activating a pack never grows the top-level menu. Each placed node is marked with
-// a subtle "from a pack" indicator (see AddNodeMenu). A node `type` may be claimed
-// by several packs (e.g. HYPOTENUSE is both Geometry and Timesavers) — the catalog
-// builder inserts it once and records every owning pack (catalogUtils.buildCatalog).
-//
-// Activation is a PRESENTATION filter only:
-//   • The Add menu shows a pack's nodes only while it (or another pack claiming the
-//     same type) is active.
-//   • Every pack's node constructors are ALWAYS registered (nodeRegistry +
-//     FLAT_CATALOG over all packs), so a saved graph using a node from a deactivated
-//     pack still loads and renders. Deactivating never breaks a file.
-//
-// Custom packs (dropped into a user data folder) are stubbed: the interface and
-// loader exist, but loading real packs is a later step (needs the desktop shell's
-// filesystem access + a settled pack format). The web build has no folder.
+// Activation is a PRESENTATION filter only: the Add menu shows a pack's nodes only
+// while it (or another pack claiming the same type) is active, but every pack's node
+// constructors are ALWAYS registered (nodeRegistry + FLAT_CATALOG over all packs),
+// so a saved graph using a node from a deactivated pack still loads and renders.
+// Deactivating never breaks a file.
 
 import { createNotifier } from "./storeKit";
 import { GEOMETRY_PACK } from "./packs/geometry";

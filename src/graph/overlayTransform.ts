@@ -1,6 +1,6 @@
 import { createNotifier } from "./storeKit";
 
-// Coordinate math + a tiny store for the canvas render overlay (Phase 0).
+// Coordinate math + a tiny store for the canvas render overlay.
 //
 // rete's AreaPlugin positions its node holder with `translate(x, y) scale(k)` in
 // CSS pixels relative to the canvas container's top-left. A WORLD point (wx, wy)
@@ -11,9 +11,8 @@ import { createNotifier } from "./storeKit";
 // The overlay <canvas> is itself UNtransformed and pinned over the container; we
 // bake the area transform into the geometry we draw, so the canvas layer tracks
 // pan/zoom EXACTLY without a CSS transform of its own (which would blur at scale
-// and lag a frame behind rete's holder). Proving this mapping is the whole point
-// of Phase 0 — the math is pure here and unit-tested; the React overlay just
-// applies it.
+// and lag a frame behind rete's holder). The math is pure here and unit-tested;
+// the React overlay just applies it.
 
 export interface AreaTransform {
   /** CSS-px pan offset of the holder (area.area.transform.x). */

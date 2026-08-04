@@ -137,8 +137,7 @@ export class ArithmeticNode extends ClassicPreset.Node {
     // a scalar result is a tagged SolError, and an element divided by zero inside
     // a list carries a per-cell #DIV/0! (array-semantics: lists hold per-cell
     // errors, like the Expression / Map path). `broadcastErr` routes both. Same
-    // for MOD / QUOTIENT, which also divide. (Was: list ÷0 collapsed to NaN →
-    // surfaced as #N/A, inconsistent with the scalar and table+Map cases.)
+    // for MOD / QUOTIENT, which also divide.
     const divZero = () => solError("#DIV/0!", "Division by zero");
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {
@@ -456,7 +455,6 @@ export class BaseConvertNode extends ClassicPreset.Node {
     const sign   = intVal < 0 ? -1 : 1;
     const absVal = Math.abs(intVal);
 
-    // Step 1: parse decimal digit-string as a base-`from` number
     let decimal: number;
     if (from === 10) {
       decimal = absVal;
@@ -471,7 +469,6 @@ export class BaseConvertNode extends ClassicPreset.Node {
       decimal = d;
     }
 
-    // Step 2: encode decimal as base-`to` digit-string number
     let result: number;
     if (to === 10) {
       result = sign * decimal;
@@ -521,7 +518,6 @@ export class ClampNode extends ClassicPreset.Node {
     const max = maxWired ? (inputs.max?.[0] ?? null) : (this.literals.max ?? null);
     if (value === null) { this.cachedResult = null; return { result: null }; }
     if ((minWired && min === null) || (maxWired && max === null)) { this.cachedResult = null; return { result: null }; }
-    // Apply floor and ceiling independently — each is optional.
     let result: number | number[] = value;
     if (min !== null) result = broadcast((v, mn) => Math.max(v, mn), result, min) as number | number[];
     if (max !== null) result = broadcast((v, mx) => Math.min(v, mx), result, max) as number | number[];
@@ -813,7 +809,7 @@ export class TwoInputMathNode extends ClassicPreset.Node {
     const b = readInput(inputs.b, this.literals.b);
     // LOG(x, base) is out of domain for x ≤ 0 or a degenerate base — #DOMAIN!,
     // tagged per-cell in a list exactly as the scalar tags (matches LN/LOG10 in
-    // the Math node; was a silent null before).
+    // the Math node).
     const domainErr = () => solError("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {

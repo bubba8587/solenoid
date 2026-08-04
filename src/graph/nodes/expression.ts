@@ -19,10 +19,8 @@ import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension
 /**
  * Coerce one formula result for output. A finite number (a date serial is one)
  * passes through; a string passes through (text formulas); a BOOLEAN passes
- * through (P7 logical shipped for nodes but this guard still collapsed a
- * formula's `a > b` to blank — audit finding 27; display already renders
- * TRUE/FALSE, and the logical↔number bridge covers numeric consumers).
- * Everything else — a non-finite number, undefined — collapses to the empty
+ * through (display renders TRUE/FALSE, and the logical↔number bridge covers
+ * numeric consumers). Everything else — a non-finite number, undefined — collapses to the empty
  * sentinel (`null` for a scalar, `NaN` inside a list).
  */
 function guard(v: unknown, scalar: boolean): unknown {
@@ -37,11 +35,11 @@ function guard(v: unknown, scalar: boolean): unknown {
  * it propagates + renders like Excel's #DIV/0! instead of collapsing to a blank:
  * our own SolError passes through, a Formula.js error maps to a code (via the shared
  * `fxErrorToSol` — the evaluator already normalizes top-level FX errors, this is the
- * belt-and-suspenders for any that reach here). Overflow is now classified AT THE OP
+ * belt-and-suspenders for any that reach here). Overflow is classified AT THE OP
  * (applyOp / broadcastCall, via the shared `guardFinite`, with input awareness), so a
  * ±Inf that survives to here is a DEFINABLE infinity (an ∞ input passed through — the
  * Constant node's ∞ is first-class) and passes; only a stray NaN is caught as a
- * #DOMAIN! safety net. Anything finite/text falls through to `guard` (booleans → null, P7).
+ * #DOMAIN! safety net. Anything finite/text falls through to `guard`.
  */
 function tagResult(v: unknown): unknown {
   if (isSolError(v)) return v;
@@ -225,8 +223,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       // reaches the arithmetic as an object.
       const rawEnv: Record<string, unknown> = {};
       // A wired blank VARIABLE stays blank through the formula (`=x+1` with x blank
-      // is blank, not 1) — the evaluator already carries the missing contract. `?? 0`
-      // asserted a zero the graph never supplied.
+      // is blank, not 1) — the evaluator already carries the missing contract.
       for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
       const env: Record<string, unknown> = {};
       for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
@@ -236,15 +233,14 @@ export class ExpressionNode extends ClassicPreset.Node {
       // in-formula error → tagged SolError (#DIV/0! / #DOMAIN! / mapped Formula.js
       // error) that PROPAGATES per-cell; overflow/NaN is already classified at the
       // producing op (guardFinite), so tagResult just passes a definable ∞ and nets
-      // a stray NaN; a missing / boolean → null (P7 logical type pending). Lists now
-      // carry per-cell errors and `null` as distinct kinds (array-semantics build).
+      // a stray NaN.
       const raw = this.evaluator(env);
       let result: unknown = Array.isArray(raw)
         ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
         : tagResult(raw);
 
-      // Dimensional interpretation (Bundle 05: FC A4, step 3): only when an input
-      // actually carries a unit and the result is numeric. dimEval returns the
+      // Dimensional interpretation: only when an input actually carries a unit and
+      // the result is numeric. dimEval returns the
       // result dim, a #UNIT! conflict (surface it), or null (indeterminate — drop
       // the unit). Tag the numeric result cells with a determined dimension.
       if (this.ast && this.varNames.some((v) => envDim(rawEnv[v]) !== DIMENSIONLESS && !isDimensionless(envDim(rawEnv[v])))) {

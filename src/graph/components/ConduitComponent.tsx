@@ -45,12 +45,10 @@ type Props = {
 const BODY_SIZE = CONDUIT_BODY_SIZE;
 const PIVOT = BODY_SIZE / 2;
 
-// The body IS a 2×N grid of dark-gray squares, and each square IS a socket: the
-// left column is the inputs, the right column the outputs, one row per lane.
-// Base (full-scale) sizes; deselecting multiplies every dimension by
-// COLLAPSED_SCALE — a real layout scale (NOT a CSS transform, which rete's
-// offset-based socket measurement would ignore) so cable endpoints track it.
-// SQ / gaps live in ribbonCable.ts (shared with the ribbon-trunk geometry).
+// The body IS a 2×N grid of squares and each square IS a socket (left column in,
+// right column out, one row per lane). COLLAPSED_SCALE is a real LAYOUT scale, not a
+// CSS transform — rete's offset-based socket measurement would ignore a transform,
+// so cable endpoints would stop tracking. SQ / gaps live in ribbonCable.ts.
 const COLLAPSED_SCALE = 0.6;
 const SQ = CONDUIT_SQ;            // socket square size
 const COL_GAP = CONDUIT_COL_GAP;  // gap between the input and output columns
@@ -95,10 +93,8 @@ function countUsedLanes(nodeId: string): number {
 export function ConduitComponent({ data, emit }: Props) {
   const node = data;
 
-  // Angle is DERIVED from node.angle (not held in local state) so a rotate from
-  // OUTSIDE this React root — Canvas's `[` / `]` keys — re-renders the block too.
-  // Both the dial and the keyboard mutate node.angle then bump conduitAngleStore,
-  // which re-renders here; angle re-derives from the node. One source of truth.
+  // Angle is DERIVED from node.angle (never local state) so a rotate from OUTSIDE
+  // this React root — Canvas's `[` / `]` keys — re-renders the block too.
   useSyncExternalStore(conduitAngleStore.subscribe, conduitAngleStore.get);
   const angle = snap45(node.angle);
   const setAngle = (v: number) => {
@@ -144,8 +140,6 @@ export function ConduitComponent({ data, emit }: Props) {
   }, [dragging]);
 
   const selected = (node as { selected?: boolean }).selected ?? false;
-  // The connector is at full scale when selected OR when a cable is dragged near
-  // (easy targeting); otherwise it shrinks to COLLAPSED_SCALE.
   const expanded = selected || (dragging && near);
 
   const realLanes = countUsedLanes(node.id);
@@ -154,8 +148,7 @@ export function ConduitComponent({ data, emit }: Props) {
   // At least one lane is always shown so a fresh Conduit has a socket to grab.
   const lanes = Math.max(realLanes + (showPhantom ? 1 : 0), 1);
 
-  // One uniform scale drives the whole connector: full size when expanded,
-  // shrunk when compressed. Every dimension below is base × scale.
+  // One uniform scale drives the whole connector: every dimension is base × scale.
   const scale = expanded ? 1 : COLLAPSED_SCALE;
   const sq = SQ * scale;
   const halfW = (sq + COL_GAP * scale) / 2; // socket column x offset from center
@@ -175,9 +168,8 @@ export function ConduitComponent({ data, emit }: Props) {
   const inputHandles  = Array.from({ length: lanes }, (_, i) => place(-1, i));
   const outputHandles = Array.from({ length: lanes }, (_, i) => place(1, i));
 
-  // Housing wraps the square grid tightly (small SHELL_PAD) plus a stripe row at
-  // the top. The grid stays centered on the pivot; the housing pokes up a little
-  // for the stripe. `rot` spins everything together in pivot-local coords.
+  // The grid stays centered on the pivot; the housing pokes up for the stripe row.
+  // `rot` spins everything together in pivot-local coords.
   const gridHalfW = halfW + sq / 2;
   const gridHalfH = ((lanes - 1) * rowStep) / 2 + sq / 2;
   const shellPad = SHELL_PAD * scale;
@@ -226,15 +218,12 @@ export function ConduitComponent({ data, emit }: Props) {
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
 
-  // Re-process when the lane count changes so downstream nodes pick up newly
-  // routed lanes.
+  // Downstream nodes pick up newly routed lanes only on a recompute.
   useEffect(() => { void processGraph(); }, [realLanes]);
 
-  // Extend: spawn a new Conduit downstream (along the flow direction) and wire
-  // every current lane's output into it, continuing the ribbon.
   const extendToNewConduit = async () => {
-    // Owning graph: extending a Conduit that lives inside a drill-in must spawn
-    // the new block in the SAME subgraph, not on the main canvas.
+    // Extending a Conduit that lives inside a drill-in must spawn the new block in
+    // the SAME subgraph, not on the main canvas.
     const editor = getOwningEditor(node.id);
     const area = getOwningArea(node.id);
     if (!editor || !area) return;
@@ -257,15 +246,11 @@ export function ConduitComponent({ data, emit }: Props) {
     <div
       key={key}
       className={`solenoid-conduit__lane${isPhantom ? " solenoid-conduit__lane--phantom" : ""}`}
-      // Rotate the square to align with the housing. This is a visual-only
-      // transform around the square's center — it spins the box without moving
-      // its center, so rete still measures the cable endpoint at p (offsetLeft/Top
-      // ignore the transform).
-      // COMPRESSED sockets are pointer-transparent: the bunched squares cover
-      // the whole pill, so every click would start a cable drag and the block
-      // could never be (re)selected. Click-to-select expands it (and a cable
-      // dragged near expands it too), which re-enables the sockets exactly
-      // when they're big enough to aim at.
+      // The rotate is visual-only, around the square's center: it never moves the
+      // center, so rete still measures the cable endpoint at p (offsetLeft/Top ignore
+      // transforms). COMPRESSED sockets are pointer-transparent — the bunched squares
+      // cover the whole pill, so otherwise every click starts a cable drag and the
+      // block can never be re-selected.
       style={{
         left: PIVOT + p.x - socketSize / 2,
         top: PIVOT + p.y - socketSize / 2,
@@ -302,7 +287,6 @@ export function ConduitComponent({ data, emit }: Props) {
             className="solenoid-conduit__block"
             x={rectX} y={rectY} width={rectW} height={rectH} rx={radius}
           />
-          {/* Red pin-1 stripe row at the top, just above the square grid. */}
           <rect
             className="solenoid-conduit__stripe"
             x={stripeX} y={stripeY} width={stripeW} height={stripeH} rx={stripeH / 2}
@@ -313,18 +297,13 @@ export function ConduitComponent({ data, emit }: Props) {
       {inputHandles.map((p, i)  => renderSocket("input",  conduitInKey(i),  p, i === phantomIdx))}
       {outputHandles.map((p, i) => renderSocket("output", conduitOutKey(i), p, i === phantomIdx))}
 
-      {/* Inspector docks to the lower-left of the SCREEN (portal escapes the
-          canvas transform, so it's also zoom-invariant) rather than floating
-          by the node. */}
+      {/* Portal escapes the canvas transform, so the inspector is zoom-invariant. */}
       {selected && createPortal(
         <div
           className="solenoid-conduit-toolbar solenoid-conduit-toolbar--docked"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          {/* Header bar styled like a node-card header (accent border wrapping
-              top + sides, uppercase tinted label) — accent derived from the
-              Conduit's pin-1 stripe red. Holds the editable sequenced ID. */}
           <div className="solenoid-conduit-toolbar__header" title="Sequenced Conduit number. Drives the default name, Conduit N.">
             <span className="solenoid-conduit-toolbar__header-name">Conduit</span>
             <input

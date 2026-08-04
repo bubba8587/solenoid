@@ -8,37 +8,12 @@ import {
   CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
 } from "./touchActions";
 
-/**
- * The keyboard-less edit actions, in the TOP BAR, for a tablet.
- *
- * A tablet runs the desktop chrome — `IS_MOBILE` is false there because iPadOS
- * ships a desktop UA on purpose (coarse.ts) — so `MobileControls` never mounts
- * and none of these actions had a touch target on a tablet at all. Same handlers,
- * same glyphs, same disabled logic as the bottom bar; only the location differs.
- * Everything shared lives in `touchActions.tsx` so the two bars cannot drift.
- *
- * Two things are deliberately NOT carried over from the bottom bar:
- *   • **Add node** — the bar already has its own Add affordance and the canvas
- *     double-tap; a second ➕ in the top bar would be the third.
- *   • **The raised FAB treatment** — that's a thumb-reach accommodation for a
- *     phone's bottom edge. Up here it would just be a loud button, and the
- *     Quiet Accent Rule says accent conveys type/state, not emphasis.
- *
- * NARROW (2026-08-01): the desktop bar does not fit a tablet in portrait, so
- * below ~1100px it WRAPS — fill the line, push the overflow to the next one.
- * Nothing here is reordered or forced onto a chosen row. The pinned trio (THEME
- * · Reference · Settings, in `AppToolbar`) leaves the flow and holds the
- * top-right corner; the bar reserves its column, and everything else wraps into
- * what's left. These actions are ordinary wrapping content — the palette is NOT
- * pinned.
- *
- * Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
- * selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` —
- * so a desktop never pays to watch a control it cannot see.
- */
-/** The keyboard-less edit actions: command palette, undo/redo, and the selection
- *  cluster. All of them WRAP — the pinned trio is theme / Reference / Settings,
- *  which already live in `AppToolbar`. */
+/** The keyboard-less edit actions (command palette, undo/redo, selection cluster) in
+ *  the TOP BAR, for a tablet — `MobileControls` never mounts there. Everything shared
+ *  with the bottom bar lives in `touchActions.tsx` so the two cannot drift.
+ *  Rendered unconditionally; `html.is-tablet` gates the CSS (TopBar.css). The
+ *  selection poll is the one thing gated in JS — `useHasSelection(IS_TABLET)` — so a
+ *  desktop never pays to watch a control it cannot see. */
 export function TabletActions() {
   const hasSelection = useHasSelection(IS_TABLET);
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);

@@ -1,17 +1,8 @@
 // Common Excel Timesavers — Solenoid conveniences that aren't single Excel
 // functions. Three layers: a reclassification of existing core nodes (`tags`),
-// the cross-domain HYPOTENUSE claim, and — first landed 2026-07-09, from
-// docs/archive/timesavers-pack-proposal.md — a formula-preset batch (the [F]
-// idioms: percent change, CAGR, ordinal, whitespace cleanup, masking, counting)
-// plus the two marquee custom nodes with NO Excel answer at all (Reverse Text,
-// Spell Number), and the first date-serial [F] idioms. The serial-interop gate is
-// CLEARED (2026-07-10): the date extractors (MONTH/DAY/EOMONTH…) are OWNED
-// internally by excelFunctions.ts on Solenoid's serial model — not delegated to
-// Formula.js — so a preset Expression over them reads a date serial correctly.
-// Only the zero-config idioms land here (Quarter, Days in Month); the ones that
-// need a config widget or carry a judgment call (Fiscal Quarter's start month,
-// Age's DATEDIF "MD" nuance, Nth Weekday) stay for the author. Composites are in
-// the composite plan doc.
+// the cross-domain HYPOTENUSE claim, and a formula-preset batch (the [F] idioms)
+// plus the custom nodes with NO Excel answer at all (Reverse Text, Spell Number).
+// Only the zero-config date idioms land here (Quarter, Days in Month).
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode } from "../rete-nodes";
@@ -92,10 +83,8 @@ export const TIMESAVERS_PACK: Pack = {
   ],
   // Reclassification of EXISTING core catalog nodes into this pack. Because
   // Timesavers ships on, nothing disappears by default.
-  //
-  // Best-effort first pass (auto-derived: not core primitives, not Excel
-  // matchers). Fundamental list ops (Range, LinSpace, Reverse, Slice, Length)
-  // are intentionally left as core. Refine freely.
+  // Fundamental list ops (Range, LinSpace, Reverse, Slice, Length) are
+  // intentionally left as core.
   tags: [
     // Rolling window aggregates — Excel does these by hand with OFFSET/ranges.
     "rolling-sum", "rolling-avg", "rolling-min",

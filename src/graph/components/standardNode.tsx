@@ -6,16 +6,10 @@ import { ResultDisplay } from "./ResultDisplay";
 import { RecalcButton } from "./RecalcButton";
 
 // ─── Standard node-component factories ──────────────────────────────────────────
-// The vast majority of nodes render the exact same shape: input rows, then one
-// result box. Hand-writing that as a 12-line component per node is pure
-// boilerplate, so these factories collapse it to a one-liner:
-//
-//   export const ClampComponent = makeNodeComponent<ClampNode>((n) => n.cachedResult);
-//
-// A pack author gets the same primitive — a display node with zero JSX. Nodes
-// that need more (an op <select>, a custom value render, local state) still
-// hand-write their component against NodeShell directly; this only covers the
-// "inputs + value box" base case.
+// The vast majority of nodes render the same shape: input rows, then one result
+// box; these factories collapse that to a one-liner. Nodes that need more (an op
+// <select>, a custom value render, local state) hand-write their component
+// against NodeShell directly.
 
 // A converted producer can read its cachedResult straight into the value box.
 // ResultDisplay routes a Frame → FrameDisplay and a Cube → CubeDisplay; everything

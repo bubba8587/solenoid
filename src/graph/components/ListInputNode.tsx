@@ -48,7 +48,6 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
 
   return (
-    // Header accent tracks the element family, matching the output socket.
     <NodeShell node={data} emit={emit} accentOverride={SOCKET_COLORS[data.valueSocket.dataType]}>
       <SegToggle
         value={dt}

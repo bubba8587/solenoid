@@ -7,8 +7,6 @@ import { dropInputCables } from "./cablePrune";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, themeAccent } from "../palette";
 
-// The trigger condition. Picking one swaps which input rows show (ALERT_MODE_KEYS)
-// and what makes the alert fire.
 const MODES: { value: AlertMode; label: string }[] = [
   { value: "range",   label: "Out of range" },
   { value: "equals",  label: "Equals" },
@@ -26,8 +24,6 @@ const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = 
   text:    { calm: "no match", met: () => "match" },
 };
 
-// Calm is the neutral text ramp; met is the palette's AMBER slot (theme-tuned),
-// so the status color tracks a palette switch instead of a frozen hex.
 const CALM_COLOR = "var(--text-dim)";
 
 export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
@@ -37,12 +33,11 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
   const shownKeys = ALERT_MODE_KEYS[op];
 
   async function handleOpChange(next: AlertMode) {
-    // Inputs that leave the active set are about to be hidden — drop their
-    // cables first (the shared pruning loop).
+    // Inputs that leave the active set are about to be hidden — prune first.
     const keep = new Set(ALERT_MODE_KEYS[next]);
     await dropInputCables(data.id, (k) => !keep.has(k));
-    // setOp sets data.op + recomputes; the node re-evaluates the new condition
-    // fresh, so switching into an already-met condition fires once.
+    // The node re-evaluates the new condition fresh, so switching into an
+    // already-met condition fires once.
     setOp(next);
   }
 

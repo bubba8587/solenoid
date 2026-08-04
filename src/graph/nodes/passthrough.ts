@@ -7,15 +7,11 @@ import type { Shape } from "../frameShape";
 // passthrough carries it straight through (Display, Expect), and an element-agnostic
 // op reshapes it without touching its element type (Reverse, TRANSPOSE, …).
 //
-// Every one of those used to be re-declared in FOUR places that each cared about
-// "what flows to my output": trueany TYPE adoption (a hardcoded `instanceof` chain
-// in trueAnyAdopt.ts), UNIT passthrough (the `passesUnitThrough` / `unitPassInputs`
-// / `selectedUnitInput` duck markers in unitFlow.ts), the type-default DISPLAY walk,
-// and the Conduit trace. Same per-node fact, four copies → drift (Expect / Cable
-// Switch / IFERROR passed TYPE but not UNITS, silently). A node now declares it ONCE
-// via `passthrough()`, and every consumer reads THIS. Adding a type-agnostic node is a
-// one-method declaration; the resolvers need no edit. (Duck-typed on purpose — this
-// module imports no node classes, so trueAnyAdopt / unitFlow stay class-agnostic.)
+// A node declares it ONCE via `passthrough()`, and every consumer reads THIS:
+// trueany TYPE adoption (trueAnyAdopt.ts), UNIT passthrough (unitFlow.ts), the
+// type-default DISPLAY walk, and the Conduit trace. Adding a type-agnostic node is
+// a one-method declaration; the resolvers need no edit. (Duck-typed on purpose —
+// this module imports no node classes, so its consumers stay class-agnostic.)
 
 export type CombineMode =
   | "single" // one input forwarded unchanged (Display, Expect, Reverse, TRANSPOSE)
@@ -137,10 +133,9 @@ export function resolvePassthroughType(
  *  genuinely unknown. The caller encodes branch state: `null` = UNWIRED (contributes
  *  no value, doesn't vote); `"trueany"` = wired but statically UNKNOWABLE (XLOOKUP,
  *  Get Cell) — that VETOES, because the runtime value may be anything and a typed
- *  agreement would format it wrongly (the fa3565a "number rendered as a date" bug,
- *  reachable again through any static-trueany source if unknowable merely abstains).
- *  Lives here, not in a caller, so the socket pass and the display walk can't apply
- *  different notions of "the branches agree" — they did until 2026-07-25. */
+ *  agreement would format it wrongly (a number rendered as a date). Lives here, not
+ *  in a caller, so the socket pass and the display walk can't apply different
+ *  notions of "the branches agree". */
 export function agreeTypes(types: Array<SocketDataType | null>): SocketDataType {
   if (types.some((t) => t === "trueany")) return "trueany";
   const wired = types.filter((t): t is SocketDataType => t !== null);

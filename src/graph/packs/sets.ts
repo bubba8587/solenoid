@@ -1,4 +1,4 @@
-// Set & Relational — the pack scoped in backlog.md (author 2026-07-07). The
+// Set & Relational. The
 // core Set / Set Relation nodes stay core; this pack adds the two list-level
 // companions (Is In membership mask, Tally value counts) and claims the new
 // COUNT DISTINCT aggregate op. Its table-level siblings — the semi/anti join

@@ -1,8 +1,7 @@
 // Human-addressable node names + connectable endpoints, for the connection
-// dialog (and later the Navigator). Names are derived live, never stored:
-// the header title, with a 1-based index appended only when several nodes
-// share a title (so "Annual Total" stays bare, but two "Arithmetic" become
-// "Arithmetic 1" / "Arithmetic 2"). Untitled nodes fall back to their type.
+// dialog. Names are derived live, never stored: the header title, with a 1-based
+// index appended only when several nodes share a title. Untitled nodes fall back
+// to their type.
 import type { ClassicPreset } from "rete";
 import { getEditor } from "./process";
 import { SolenoidSocket, type SocketDataType } from "./sockets";
@@ -16,9 +15,6 @@ type AnyNode = {
   constructor: { name: string };
 };
 
-// Readable node-type string — class name minus the "Node" suffix, camelCase
-// split. Same derivation as the header hover hint; also shown in the status
-// bar for a single selection.
 export function nodeTypeName(n: { constructor: { name: string } }): string {
   return n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }

@@ -28,7 +28,6 @@ export interface FramePopupColumn {
 export interface TablePopupState {
   /** Header label (e.g. the node's name). */
   title: string;
-  /** The grid to show. */
   data: Cell[][];
   /** Cell content kind. "number" (default) right-aligns, coerces blanks to 0 and
    *  emits bare CSV; "string" left-aligns, preserves text and CSV-quotes cells
@@ -114,8 +113,7 @@ export interface TablePopupState {
   pinNodeId?: string;
   /** The host's λ input keys (Frame Input's addable lambda sockets) — when
    *  non-empty, the editable header grows the per-column SOURCE select
-   *  (Data | Formula | λ…), the column-source model
-   *  (v2.0/19-computed-column-surface.md). */
+   *  (Data | Formula | λ…), the column-source model (D24/D25). */
   lambdaOptions?: string[];
   /** Per-column initial λ binding (aligned with columns; undefined = Data). */
   sourceLambdas?: (string | undefined)[];

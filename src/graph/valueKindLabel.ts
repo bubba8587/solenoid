@@ -15,18 +15,10 @@ export function formatUncertain(v: UncertainNumber): string {
   return `${formatScalar(v.value)} ± ${formatScalar(v.error)}`;
 }
 
-/**
- * A short human label for an OBJECT-valued kind (chart, diagram, image, lambda,
- * frame, cube, document) that would otherwise stringify to "[object Object]" in a
- * compact text readout or a scalar value box. Returns null for plain values
- * (scalars, lists, null, errors) — the caller formats those itself.
- *
- * This is the safety net behind every value-rendering surface: a rich surface
- * (Display node, Input Switch) branches on the kind FIRST to draw the real
- * figure/grid; anything that falls through to a text/number path calls this so a
- * casted `any` object never reads as "[object Object]". Keep the kinds in sync
- * with the Display node's branches.
- */
+/** A short human label for an OBJECT-valued kind (chart, diagram, image, lambda,
+ *  frame, cube, document). Returns null for plain values (scalars, lists, null,
+ *  errors) — the caller formats those itself. The safety net behind every
+ *  value-rendering surface; keep the kinds in sync with the Display node's branches. */
 export function describeValueKind(v: unknown): string | null {
   if (isChartValue(v)) return "Chart";
   if (isMermaidValue(v)) return "Diagram";

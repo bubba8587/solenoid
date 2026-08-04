@@ -13,12 +13,9 @@ import { DocumentChip } from "./DocumentChip";
  * source Report/Note). Returns null for everything else — plain values, and
  * object kinds with no chip (mermaid/svg/image/lambda render figures or labels).
  *
- * Every chip surface goes through here — the hero-box safety net (nodeKit
- * ValueDisplay), collapsed-group readout rows (GroupNode) — so a NEW kind added
- * here lands on all of them at once, at a consistent per-surface size, instead
- * of each surface growing its own kind chain (the drift that shipped the Chart
- * chip a size smaller than its siblings in group readouts). describeValueKind
- * (valueKindLabel.ts) stays the TEXT net behind this for chip-less kinds and
+ * Every chip surface goes through here, so a NEW kind added here lands on all of
+ * them at once at a consistent per-surface size. describeValueKind
+ * (valueKindLabel.ts) is the TEXT net behind this for chip-less kinds and
  * text-only surfaces; keep the two in sync when adding a kind.
  */
 export function valueChipFor(

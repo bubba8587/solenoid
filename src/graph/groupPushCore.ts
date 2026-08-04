@@ -1,31 +1,7 @@
 // ─── Group expand push — pure geometry/topology core ──────────────────────────
-// When a collapsed group expands it grows right/down from a fixed top-left
-// (the collapsed card's corner). This module computes how the neighbourhood
-// moves, on plain boxes — no rete, no DOM — so the rules are unit-testable.
-//
-// Rules, in order:
-//  1. RAILS (connection-aware). A loose node wired to the group's members that
-//     the expansion would displace doesn't get shoved geometrically — it lands
-//     on its dataflow side: feeders on the LEFT edge, consumers on the RIGHT,
-//     vertically aligned with the member(s) it connects to. A consumer already
-//     right of the group keeps its clearance shift instead (it's on the
-//     correct side — just clear it, don't re-place it).
-//  2. CLEAR (minimal disturbance). ONLY boxes the expanded footprint would
-//     actually cover move, and only just far enough to clear the expanded
-//     edge plus a gap, along the axis matching where they sit relative to the
-//     collapsed card (right of it → right, below → down, beyond both edges →
-//     dominant axis from the card center). Free area is expanded into without
-//     anything moving.
-//  3. RESIDUAL. Belt-and-braces: anything still overlapping the expanded box
-//     (rare body-crossing shapes) clears along the cheaper axis.
-//  4. CASCADE. A moved box pushes anything it lands on (that it wasn't already
-//     overlapping) just clear of itself, along its own direction of travel.
-//     Movers are processed in original-position order and only push boxes that
-//     started ahead of them, so a band of cleared boxes re-stacks in its
-//     original order instead of flattening or inverting.
-//
-// Boxes that already overlapped the collapsed card were placed there by the
-// user — expansion neither "fixes" nor displaces them (exempt).
+// A collapsed group expands right/down from a fixed top-left (the collapsed
+// card's corner); this computes how the neighbourhood moves, on plain boxes —
+// no rete, no DOM — so the rules stay unit-testable.
 
 import { clamp } from "./nodes/mathUtils";
 
@@ -116,15 +92,6 @@ export function computeExpandPush(
     }
   }
 
-  // How the expansion displaces this box: nothing unless the expanded
-  // footprint would cover it; otherwise just far enough to clear the expanded
-  // edge plus a gap. The direction:
-  //  • with connection anchors — whichever of the four clears keeps its
-  //    cables shortest (mean distance to anchors, plus a displacement penalty
-  //    so a marginal cable saving doesn't justify a huge hop). A node wired
-  //    to something on the LEFT hops left out of the way, not right.
-  //  • without — the axis matching its position relative to the card (beside
-  //    → right, under → down, beyond both edges → dominant axis).
   const clearShift = (b: PushBox): Disp => {
     if (!rectsOverlap(b, A)) return { dx: 0, dy: 0 };
     const cx = b.x + b.w / 2;
@@ -215,11 +182,6 @@ export function computeExpandPush(
   }
 
   // ── 4. Cascade ────────────────────────────────────────────────────────────
-  // A mover pushes whatever it lands on just clear of itself, along its own
-  // dominant direction of travel. It only pushes boxes that started AHEAD of
-  // it along that direction — boxes that started behind get their turn as
-  // movers — so a band of cleared boxes re-stacks in its original order
-  // instead of flattening onto one line or inverting.
   const axisPos = (b: PushBox, horizontal: boolean) =>
     horizontal ? b.x + b.w / 2 : b.y + b.h / 2;
   const queue = [...disp.keys()].sort((a, b2) => {
@@ -240,8 +202,7 @@ export function computeExpandPush(
       if (o.id === mid || exempt.has(o.id)) continue;
       if (baseline.has(pairKey(mid, o.id))) continue;
       if (!rectsOverlap(M, moved(o))) continue;
-      // Original order decides who yields: only push boxes that started
-      // ahead of the mover along its direction of travel.
+      // Original order decides who yields: only push boxes that started ahead.
       if ((axisPos(o, horizontal) - axisPos(mBox, horizontal)) * dir < 0) continue;
       const O = moved(o);
       const cur = disp.get(o.id) ?? { dx: 0, dy: 0 };
@@ -264,14 +225,11 @@ export function computeExpandPush(
 }
 
 // ─── Guaranteed de-overlap (safety net) ───────────────────────────────────────
-// The heuristic expand pushes (rails / anchor-aware clears / cascade, composed
-// across several groups) can still leave two boxes overlapping — even fully
-// coincident — in awkward layouts. Overlap on expand is unacceptable, so this is
-// the hard backstop: separate every overlapping pair by moving the more
-// down-right box just clear along its cheaper axis. Moves are ALWAYS +x or +y, so
-// boxes only ever shift down/right (the expand growth direction) — monotonic, so
-// it always terminates (the guard is belt-and-braces). `baseline` pairKeys
-// (pre-existing user overlaps) are left alone. Returns extra displacements to add.
+// The hard backstop under the heuristic expand pushes: separate every overlapping
+// pair by moving the more down-right box just clear along its cheaper axis. Moves
+// are ALWAYS +x or +y (the expand growth direction) — monotonic, so it always
+// terminates (the guard is belt-and-braces). `baseline` pairKeys (pre-existing
+// user overlaps) are left alone. Returns extra displacements to add.
 export function separateOverlaps(
   boxes: PushBox[],
   baseline: Set<string> = new Set(),

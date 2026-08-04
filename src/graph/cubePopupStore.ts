@@ -1,10 +1,7 @@
 // The currently-open nested-data viewer, or null. A cube is recursive (a cell may
-// hold a nested cube, frame, list, or matrix), so the popup keeps a DRILL STACK:
-// opening shows [root]; clicking ANY nested-container cell pushes a deeper view;
-// the breadcrumb pops back. One popup, one breadcrumb, for every nesting kind --
-// nothing ever opens a second overlapping window. Nesting is never hidden: the
-// header shows a cube's cached depth, and the path shows how deep you've drilled.
-// Module store (like tablePopupStore) so it's readable from the separate Rete root.
+// hold a nested cube, frame, list, or matrix), so the popup keeps a DRILL STACK.
+// One popup, one breadcrumb, for every nesting kind — nothing ever opens a second
+// overlapping window.
 import { createValueStore } from "./storeKit";
 import type { CubeValue, FrameValue, CubeCell } from "./frame";
 
@@ -33,7 +30,6 @@ export const cubePopup = {
   open(view: DrillView, opts?: Omit<CubePopupState, "stack">) {
     core.open({ stack: [view], ...opts });
   },
-  /** Drill into a nested cell (push a level). */
   drill(view: DrillView) {
     const s = core.get();
     if (!s) return;

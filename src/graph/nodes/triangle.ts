@@ -1,8 +1,6 @@
 // Triangle Solver — the Geometry pack's task-shaped closer: give any three
 // parts (at least one side; angles in degrees) and every remaining side, angle,
-// the area, and the perimeter solve. The Equation-node spirit applied to the
-// one shape every geometry problem keeps coming back to — no picking the right
-// law-of-sines/cosines preset, no mode dropdown.
+// the area, and the perimeter solve.
 
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut, readInput } from "./shared";
