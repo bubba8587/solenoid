@@ -4,14 +4,8 @@ import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import { cableFlourishBridge } from "../cableFlourishStore";
 
-/**
- * Decorative flourish: a palette-colored open circle travels along an invisible
- * track that wanders semi-randomly on then off screen. Purely cosmetic: a
- * viewport-space overlay, pointer-events:none, unrelated to the graph.
- *
- * Triggered by the NavMenu button (via cableFlourishBridge) or by calling
- * window.__cableFlourish() from the console.
- */
+// Purely cosmetic viewport-space overlay (pointer-events:none), unrelated to the
+// graph; triggered by the NavMenu button or `window.__cableFlourish()`.
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
@@ -36,18 +30,15 @@ const angleDeg = (from: Pt, to: Pt) => (Math.atan2(to.y - from.y, to.x - from.x)
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
-// The cardinal side a unit-ish direction most points along — the router's
-// fallback when no angle hint is set.
+// The cardinal side a direction most points along — the router's no-angle-hint fallback.
 function posFromDir(dx: number, dy: number): Position {
   return Math.abs(dx) >= Math.abs(dy)
     ? (dx >= 0 ? Position.Right : Position.Left)
     : (dy >= 0 ? Position.Bottom : Position.Top);
 }
 
-// Each leg is routed by getCablePath with Catmull-Rom tangents as exact
-// exit/entry angles, so adjacent legs leave and enter a shared waypoint
-// collinearly — the joins stay smooth in every mode. The leading moveto of every
-// leg after the first becomes a lineto so the legs fuse into a single stroke.
+// Catmull-Rom tangents become exact exit/entry angles so adjacent legs meet a shared
+// waypoint collinearly; each later leg's leading moveto becomes a lineto to fuse them.
 function buildPathD(shape: ReturnType<typeof cableShapeStore.get>, wp: Pt[]): string {
   let d = "";
   for (let i = 0; i < wp.length - 1; i++) {
@@ -117,8 +108,7 @@ export function CableFlourish() {
   const runsRef = useRef(runs);
   runsRef.current = runs;
 
-  // Portal target: the rete canvas, so the flourish can paint behind the
-  // node/cable layer (z-index:-1) but above the grid background.
+  // Portal into the rete canvas so it paints behind nodes/cables but above the grid.
   useEffect(() => {
     setCanvasEl(document.querySelector<HTMLElement>(".solenoid-canvas"));
   }, []);
@@ -130,7 +120,6 @@ export function CableFlourish() {
     if (run.total > 0) setRuns((r) => [...r, run]);
   };
 
-  // Expose the trigger to chrome in the main React root (the NavMenu button).
   useEffect(() => {
     const unregister = cableFlourishBridge.register(trigger);
     (window as unknown as { __cableFlourish?: () => void }).__cableFlourish = trigger;
@@ -140,9 +129,8 @@ export function CableFlourish() {
     };
   }, []);
 
-  // Re-route every in-flight track when the cable shape changes. Progress is
-  // time-based (start/duration), so the head resumes at the same fraction along
-  // the freshly-routed track.
+  // Re-route in-flight tracks on a shape change; progress is time-based, so the head
+  // resumes at the same fraction of the freshly-routed track.
   useEffect(() => cableShapeStore.subscribe(() => {
     const shape = cableShapeStore.get();
     setRuns((rs) => rs.map((r) => ({ ...r, ...trackElement(r.waypoints, shape) })));

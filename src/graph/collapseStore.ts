@@ -1,9 +1,5 @@
-// Per-node collapsed state. Module-level store (like cableState /
-// dockedNodeStore) so it's readable from any React root — Rete renders
-// node components in a separate root from the main app.
-//
-// Collapsed nodes hide their body controls (input rows, op selectors)
-// but keep the result/display box and their socket dots.
+// Per-node collapsed state, a module-level store so it is readable from Rete's
+// separate React root. A collapsed node keeps its result box and socket dots.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

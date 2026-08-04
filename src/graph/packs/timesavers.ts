@@ -1,8 +1,5 @@
-// Common Excel Timesavers — Solenoid conveniences that aren't single Excel
-// functions. Three layers: a reclassification of existing core nodes (`tags`),
-// the cross-domain HYPOTENUSE claim, and a formula-preset batch (the [F] idioms)
-// plus the custom nodes with NO Excel answer at all (Reverse Text, Spell Number).
-// Only the zero-config date idioms land here (Quarter, Days in Month).
+// Conveniences that are not single Excel functions: reclassified core nodes, the shared
+// HYPOTENUSE claim, formula presets, and nodes with no Excel answer at all.
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode } from "../rete-nodes";
@@ -81,28 +78,18 @@ export const TIMESAVERS_PACK: Pack = {
       },
     },
   ],
-  // Reclassification of EXISTING core catalog nodes into this pack. Because
-  // Timesavers ships on, nothing disappears by default.
-  // Fundamental list ops (Range, LinSpace, Reverse, Slice, Length) are
-  // intentionally left as core.
+  // Reclassifies EXISTING core nodes; the pack ships ON, so nothing disappears by default.
+  // Fundamental list ops (Range, LinSpace, Reverse, Slice, Length) stay core deliberately.
   tags: [
-    // Rolling window aggregates — Excel does these by hand with OFFSET/ranges.
     "rolling-sum", "rolling-avg", "rolling-min",
     "rolling-max", "rolling-stdev", "rolling-median",
-    // Weighted statistics — no single Excel function.
     "weighted-wavg", "weighted-wstdev", "weighted-wvar",
-    // Position-of-extreme — Excel uses INDEX/MATCH.
     "arg-argmax", "arg-argmin",
-    // List utilities with no direct Excel equivalent.
     "list-contains", "list-diff", "list-normalize",
     "list-shuffle", "list-interleave", "list-nthelement",
     "list-geometric", "list-fibonacci", "list-repeat",
-    // List-wise text transform (a Solenoid extra — the case/trim transforms
-    // themselves broadcast now, so only the filter is left here).
     "text-filter",
-    // Excel ships ENCODEURL but not a decoder.
     "url-decode",
-    // Extended boolean logic (Excel has AND/OR/NOT/XOR, not these).
     "logic-xnor", "logic-nand", "logic-nor",
   ],
 };

@@ -7,16 +7,12 @@ type AnyEditor = NodeEditor<{
   Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 }>;
 
-// Auto angle-mode resolution. Resolves ONLY the annotation-tagged bare-degree case:
-// a `auto`-mode trig MathFn computes in degrees when its input is a BARE magnitude
-// carrying a `deg` display annotation. A dimensioned angle (UnitCell) is already
-// stored in base RADIANS and takes MathFnNode.data's unit-aware path instead.
-// Must run from processGraph BEFORE the engine fetch, so data() sees a fresh
-// `_resolvedAngleMode` (transient, never persisted).
+// Resolves ONLY the annotation-tagged bare-degree case — a dimensioned angle is
+// already base RADIANS and takes data()'s unit-aware path. Must run BEFORE the
+// engine fetch so data() sees a fresh `_resolvedAngleMode`.
 
-/** True when this unit id denotes degrees (so trig should interpret in degrees).
- *  `grad` (gradians) is also non-radian, but degrees is the only mode the toggle
- *  offers, so grad falls through to rad — a Convert bridges it. */
+/** True when this unit id denotes degrees; `grad` falls through to rad, since the
+ *  toggle offers no gradian mode — a Convert bridges it. */
 function isDegreeUnit(unit: string): boolean {
   return unit === "deg";
 }

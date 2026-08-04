@@ -18,7 +18,7 @@ function isoToSerial(iso: string): number {
 export function DatePickerComponent({ data, emit }: NodeProps<DatePickerNodeType>) {
   const [iso, setIso] = useState(serialToISO(data.value));
 
-  // Keep the field in sync if the serial changes from elsewhere (load/paste).
+  // Keep the field in sync when the serial changes from elsewhere (load/paste).
   useEffect(() => { setIso(serialToISO(data.value)); }, [data.value]);
 
   return (

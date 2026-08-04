@@ -1,8 +1,5 @@
-// The application menu model — ONE source of truth for the MenuBar dropdowns AND
-// the Command Palette. Every menubar action is therefore a palette command by
-// construction (add an item here and it shows up in both). `buildMenus()` reads the
-// current dynamic state (theme/lock/snap/calc mode) from the stores each call, so the
-// caller just re-renders on the relevant store change to pick up checkmarks/labels.
+// ONE source of truth for the MenuBar dropdowns AND the Command Palette, so every menubar
+// action is a palette command by construction. `buildMenus()` re-reads store state per call.
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";
 import { frStore } from "./frStore";
@@ -30,8 +27,7 @@ export type MenuItem =
   | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean };
 export type Menu = { label: string; items: MenuItem[] };
 
-// Dispatch a synthetic keydown so the Canvas keyboard handler (on window) runs the
-// real command, reusing the existing edit/graph shortcut logic.
+// A synthetic keydown, so the Canvas keyboard handler runs the real command.
 export function fireMenuKey(code: string, opts: { key?: string; ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -58,15 +54,13 @@ export function buildMenus(): Menu[] {
         { label: "New blank document", onClick: () => void documentStore.newBlank() },
         { label: "Open…", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
-        // Work autosaves to the in-app document continuously; Save writes the
-        // graph out to its .json file (prompting for one the first time).
+        // Work autosaves continuously; Save writes the graph out to its .json file.
         { label: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
         { label: "Save As…", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
         { sep: true },
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
-        // A genuine reload of the current document (full rebuild from the saved
-        // graph), which replays the cinematic load reveal — a browser refresh doesn't.
+        // A full rebuild from the saved graph, which replays the cinematic load reveal.
         { label: "Reload document", shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
         ...(isDesktop() ? ([{ sep: true }, {
           label: "Open documents folder",
@@ -161,8 +155,7 @@ export function buildMenus(): Menu[] {
         {
           label: "Sketch: approximate on a sample",
           checked: calcMode === "sketch",
-          // Sketch recomputes live, same as Automatic — catch up on anything
-          // suppressed while Manual, same as switching to Automatic does.
+          // Sketch recomputes live, so catch up like switching to Automatic does.
           onClick: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); },
         },
       ],

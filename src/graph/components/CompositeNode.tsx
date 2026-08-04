@@ -25,8 +25,7 @@ import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 
-/** The value a Composite boundary carries (a port output, or an input/output
- *  marker in the drill-in) — rendered by its KIND, never stringified. */
+/** A boundary value renders by its KIND, never stringified. */
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} full={false} />;
@@ -37,9 +36,8 @@ function CompositeBoundaryValue({ value, label }: { value: unknown; label: strin
   return <ValueDisplay value={value as DisplayValue} />;
 }
 
-// Only modes with a real data() branch appear here — see the CompositeRunMode
-// union's own comment (nodes/composite.ts) for why the list grows in lockstep
-// with the driver, not ahead of it.
+// Only modes with a real data() branch appear here — this list grows in lockstep
+// with the driver, never ahead of it.
 export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
   { value: "manual", label: "Manual refresh" },
@@ -51,9 +49,7 @@ export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "by-row", label: "By row" },
 ];
 
-// A collapsible "advanced" foot — the FC's chip-foot expander pattern (a centered
-// chevron that reveals extra controls), reused for the composite solver tiers.
-// Local-state open (not persisted) — these tiers are transient tuning knobs.
+// The FC's chip-foot expander pattern; open state is local, not persisted.
 function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onToggle: () => void; title: string; children: React.ReactNode }) {
   return (
     <>
@@ -78,10 +74,8 @@ function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onTo
   );
 }
 
-/** "3.5" → 3.5; "" → undefined (clears the override, falls back to the port's
- *  normal wired/default value); anything else stays a string. Scenario cells
- *  are a general-purpose scalar override, not type-checked against the port
- *  (ports are `any` end to end — see nodes/composite.ts). */
+/** "" → undefined, which CLEARS the override back to the port's wired/default value.
+ *  Scenario cells are untyped scalar overrides — ports are `any` end to end. */
 function parseOverride(text: string): unknown {
   const t = text.trim();
   if (t === "") return undefined;
@@ -155,8 +149,7 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
   );
 }
 
-/** "2, 4, 6.5, hot" → [2, 4, 6.5, "hot"] — same number-or-string-per-cell
- *  parsing as a scenario override, applied to a comma-separated sweep list. */
+/** "2, 4, 6.5, hot" → [2, 4, 6.5, "hot"] — one number-or-string per cell. */
 function parseCsvValues(text: string): unknown[] {
   return text.split(",").map((s) => s.trim()).filter((s) => s !== "").map((s) => {
     const n = Number(s);
@@ -168,10 +161,8 @@ function valuesToCsv(values: unknown[] | undefined): string {
   return (values ?? []).join(", ");
 }
 
-// One row per exposed input port: a CSV field of sweep values. Blank = this
-// port doesn't vary (a full-factorial grid over whichever ports DO have a
-// list — 1 varying port is Excel's one-variable Data Table, 2 is the
-// two-variable grid, N generalizes past that).
+// One row per exposed input port; a blank field means that port doesn't vary, so
+// the sweep is a full-factorial grid over whichever ports DO carry a list.
 function DataTableEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const recompute = () => { void processGraph(node.id); };
@@ -209,24 +200,19 @@ const STOP_OPS: ReadonlyArray<{ value: CompositeStopOp; label: string }> = [
   { value: "ne", label: "≠" },
 ];
 
-// A "Stop when" threshold is a numeric comparison. Output markers are trueany
-// and ADOPT the wired type, so the node isn't constrained — the PICKER is
-// filtered by the adopted socket type instead. Unresolved scalar wildcards are
-// kept (they may still adopt a number): a discoverability guardrail, not a
-// correctness gate.
+// Output markers are trueany and ADOPT the wired type, so the PICKER is filtered by
+// the adopted socket type; unresolved wildcards stay in (a guardrail, not a gate).
 const STOP_COMPARABLE = new Set(["number", "numlist", "logical", "logicalcombo", "any", "trueany"]);
 function outputComparable(node: CompositeNodeType, portId: string): boolean {
   const dt = (node.outputs[portId]?.socket as { dataType?: string } | undefined)?.dataType;
   return dt === undefined || STOP_COMPARABLE.has(dt);
 }
 
-// Simulation's container-level parameters. With a stop condition the step count
-// becomes a CAP. A logical output compares as 1 (true) / 0.
+// With a stop condition the step count becomes a CAP; a logical output compares as 1/0.
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
   const hasStop = !!node.stopWhenPortId;
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
-  // Only number/logical outputs can be a threshold target; keep the current pick
-  // even if its type drifted, so the user's choice never silently vanishes.
+  // Keep the current pick even if its type drifted, so the choice never vanishes.
   const candidates = node.outputPorts.filter((p) => outputComparable(node, p.id) || p.id === node.stopWhenPortId);
   return (
     <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
@@ -278,7 +264,6 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
-// By-Row mode: pick which exposed input port to iterate. Heavy (arm-and-run).
 function ByRowEditor({ node }: { node: CompositeNodeType }) {
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
@@ -306,7 +291,6 @@ const DIST_OPTIONS: ReadonlyArray<{ value: DistributionKind; label: string; titl
   { value: "uniform", label: "Uniform", title: "Flat — the ± is a half-width around the value" },
 ];
 
-// A compact SVG histogram of a Monte Carlo output's sample distribution.
 function MiniHistogram({ samples }: { samples: readonly number[] }) {
   const { counts } = histogram(samples, 16);
   const peak = Math.max(1, ...counts);
@@ -322,7 +306,6 @@ function MiniHistogram({ samples }: { samples: readonly number[] }) {
   );
 }
 
-// A compact line sparkline for a numeric series (a Simulation per-step output).
 function MiniSparkline({ series }: { series: readonly number[] }) {
   const nums = series.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   if (nums.length < 2) return null;
@@ -342,15 +325,13 @@ function MiniSparkline({ series }: { series: readonly number[] }) {
   );
 }
 
-/** True for a plain numeric series (a Simulation per-step output), so it earns a
- *  sparkline. An uncertain value / frame / string list is excluded. */
+/** A plain numeric series earns a sparkline; uncertain / frame / string lists don't. */
 function isNumericSeries(v: unknown): v is number[] {
   return Array.isArray(v) && v.length >= 2 && v.every((x) => typeof x === "number" && Number.isFinite(x));
 }
 
-// Monte Carlo: declare a ± spread (and distribution) on each exposed input's
-// drill-in marker, then sample the container N times. A fixed seed makes the
-// draws reproducible.
+// The ± spread lives on each exposed input's drill-in marker; the seed is fixed so
+// the draws are reproducible.
 function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const [advanced, setAdvanced] = useState(false);
@@ -366,7 +347,6 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
     node.internalEditor.getNode(portInternalId) as CompositeInputNode | undefined;
   const row = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,0.9fr) auto", gap: 6, alignItems: "center" } as const;
 
-  // First output that carries sampled draws → its distribution.
   const distSamples = (() => {
     for (const p of node.outputPorts) {
       const v = node.cachedOutputs[p.id];
@@ -410,7 +390,6 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
-// Goal-seek: drive one exposed input until a chosen output hits a target.
 function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const outputs = node.outputPorts;
@@ -485,8 +464,7 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   );
 }
 
-// An SVG circle so it's perfectly round regardless of the flex row (a small CSS
-// box reads as an oval). Ring while stale, filled otherwise.
+// An SVG circle, not a CSS box — a small CSS box reads as an oval in the flex row.
 function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
   const color = state === "stale" ? "#d9822b" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
   const title = state === "stale" ? "Stale" : state === "failed" ? "No solution" : "Up to date";
@@ -498,14 +476,14 @@ function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
   );
 }
 
-// Lucide "play" — the Solve trigger for arm-and-run heavy modes.
+// Lucide "play".
 const SolveSvg = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none" style={{ display: "block" }}>
     <path d="M6 4.5v15a1 1 0 0 0 1.5.87l12-7.5a1 1 0 0 0 0-1.74l-12-7.5A1 1 0 0 0 6 4.5z" />
   </svg>
 );
 
-// Lucide "refresh-cw" — the same trigger wearing Manual refresh's verb.
+// Lucide "refresh-cw".
 const RefreshSvg = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
     <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
@@ -515,7 +493,7 @@ const RefreshSvg = () => (
   </svg>
 );
 
-// Lucide "pencil" — the drill-in trigger. https://lucide.dev/icons/pencil
+// Lucide "pencil".
 const EditSvg = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
     <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
@@ -523,15 +501,11 @@ const EditSvg = () => (
   </svg>
 );
 
-/** The run-mode selector + Solve/status + the active mode's config editor. Shared by
- *  the outer Composite card AND the drill-in overlay, so you can switch modes and
- *  solve from INSIDE the subgraph too. `emit` is present only on the outer card (the
- *  goal-seek Solution's output socket anchors to the outer node); omitted inside the
- *  drill-in, where the Solution shows as a plain display. */
+/** Shared by the outer Composite card AND the drill-in overlay; `emit` is present
+ *  only outside, where the goal-seek Solution's output socket anchors. */
 export function CompositeRunControls({ node, emit, insideOnly = false }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"]; insideOnly?: boolean }) {
   const [runMode, setRunMode] = useNodeField(node, "runMode");
-  // A held composite's output doesn't change, so processGraph won't re-render it —
-  // subscribe to the store so the stale dot updates the moment data() flags it.
+  // A held composite's output doesn't change, so processGraph won't re-render it.
   useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
   const heavy = node.isHeavyMode();
   const stale = compositeStaleStore.isStale(node.id);
@@ -576,9 +550,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         type="button"
         className="solenoid-node__inline-input"
         style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-        // Same button on the main canvas AND on a composite card shown INSIDE the
-        // drill-in: open a fresh level from the canvas, drill one deeper when
-        // already editing (multi-layer). The breadcrumb tracks the chain.
+        // Open a fresh level from the canvas, drill one deeper when already editing.
         onClick={(e) => {
           e.stopPropagation();
           if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(node);
@@ -590,21 +562,18 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         <EditSvg />
         Edit contents
       </button>
-      {/* All exposed inputs show — incl. the goal-seek DRIVER: its unwired field / a
-          wired cable is how you feed the solver's SEED (there's no seed editor inside
-          the subgraph; the marker is just a boundary). */}
+      {/* The goal-seek DRIVER shows too: its field or cable is how you feed the
+          solver's SEED — the marker inside the subgraph is only a boundary. */}
       <InlineInputs node={node} emit={emit} />
       <CompositeRunControls node={node} emit={emit} />
-      {/* Goal-seek's Solution is the sole hero — the achieved output just equals
-          the target you set, so its value box is redundant and suppressed here
-          (the GoalSeekEditor above owns the one hero box). */}
+      {/* Goal-seek's achieved output just equals the target, so its box is suppressed
+          — the GoalSeekEditor owns the one hero box. */}
       {runMode !== "goal-seek" && node.outputPorts.map((p) => {
         const port = node.outputs[p.id];
         if (!port) return null;
         const value = node.cachedOutputs[p.id] ?? null;
-        // Label ABOVE its value box, stacked — a hero ValueDisplay box is too
-        // tall to sit beside a label in a compact io-row. The MeasuredSocketRow
-        // wraps only the box, so the output dot centers on the box, not the label.
+        // MeasuredSocketRow wraps only the box, so the output dot centers on the
+        // box rather than the label above it.
         return (
           <div key={p.id} className="solenoid-composite__output">
             <span className="solenoid-node__io-label">{p.label}</span>
@@ -622,10 +591,8 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   );
 }
 
-// Boundary markers render ONLY inside the Composite drill-in editor's own rete
-// root — they never live on the main canvas.
+// Boundary markers render ONLY inside the drill-in editor's own rete root.
 
-// A compact run-mode readout appended to a boundary marker.
 function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginTop: 4 }}>
@@ -636,9 +603,8 @@ function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode 
 }
 
 export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
-  // Editable seed/default — the value this input carries when the port isn't
-  // externally wired (and the goal-seek seed). A wired value or a solve
-  // overrides it, but it stays editable from inside.
+  // The value this input carries when the port isn't externally wired (and the
+  // goal-seek seed); a wired value or a solve overrides it.
   const field = useDraftCommit<number>(
     data.defaultValue ?? 0,
     String,
@@ -652,8 +618,7 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
       {data.externallyWired ? (
-        // Fed from outside — read-only: a number field can't represent a wired
-        // list/frame.
+        // Fed from outside — a number field can't represent a wired list/frame.
         <CompositeBoundaryValue value={data.value} label={data.label} />
       ) : (
         <input
@@ -666,8 +631,7 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
           step="any"
         />
       )}
-      {/* Goal-seek driver: the seed above stays the user's starting guess; the
-          solver's answer shows here (not silently overwriting the seed). */}
+      {/* The solver's answer shows here rather than overwriting the seed above. */}
       {data.goalDriver && (
         <MarkerNote tag="solves to">
           {data.solvedValue == null ? <span style={{ color: "var(--text-muted)" }}>—</span>
@@ -675,7 +639,6 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
             : <b>{formatScalar(data.solvedValue)}</b>}
         </MarkerNote>
       )}
-      {/* Other run modes: MC ± spread, By-Row per-row, Scenarios/Data-Table varies. */}
       {data.modeNote && <MarkerNote tag={data.modeNote.tag}>{data.modeNote.text}</MarkerNote>}
     </NodeShell>
   );
@@ -691,11 +654,8 @@ export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<Composi
       className="solenoid-node--composite-marker"
       leading={<PortSockets node={data} emit={emit} side="input" />}
     >
-      {/* A per-step numeric series (Simulation / a Monte-Carlo-free sweep) gets a
-          sparkline above its list chip, so the trend is legible inside the drill-in. */}
       {isNumericSeries(data.cachedResult) && <MiniSparkline series={data.cachedResult} />}
       <CompositeBoundaryValue value={data.cachedResult} label={data.label} />
-      {/* Goal-seek target: what the solver is driving this output to. */}
       {data.goalTarget != null && <MarkerNote tag="target">{formatScalar(data.goalTarget)}</MarkerNote>}
     </NodeShell>
   );

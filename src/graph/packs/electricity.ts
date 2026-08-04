@@ -1,9 +1,5 @@
-// Electricity & Circuits — the everyday electrical formula set: Ohm's law and
-// power, dividers, reactance and resonance, RC/RL transients, decibels, and the
-// component/wire references (E-series, AWG).
-// SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
-//
-// Ships OFF by default. The Electromagnetism pack builds on this one.
+// Electricity & Circuits pack. SI units throughout: volts, amps, ohms, farads,
+// henries, hertz, seconds.
 
 import {
   ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode,
@@ -11,8 +7,8 @@ import {
 } from "../rete-nodes";
 import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
-// Base category: Ohm's law, power, and the everyday one-liners. Rearrangement
-// groups ship as ONE locked Equation preset (wire any two, read the third).
+// A rearrangement group ships as ONE locked Equation preset, not several solved
+// forms.
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
     description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Check answers TRUE/FALSE",
@@ -49,7 +45,6 @@ export const ELECTRICITY_BASE: FormulaPackEntry[] = [
     keywords: "joules stored" },
 ];
 
-// AC behavior: reactance, impedance, resonance.
 export const ELECTRICITY_AC: FormulaPackEntry[] = [
   { type: "elec-cap-reactance", label: "Capacitive Reactance", expr: "1/(2*PI()*f*c)",
     description: "Reactance of a capacitor at frequency f   (Xc = 1/(2πfC))",
@@ -64,7 +59,6 @@ export const ELECTRICITY_AC: FormulaPackEntry[] = [
     keywords: "tank tuned lc" },
 ];
 
-// Transients & timing: first-order RC/RL responses and the 555.
 export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
   { type: "elec-rc-tau", label: "RC Time Constant", expr: "r*c",
     description: "First-order RC time constant: 63% of a step in one τ, ~settled in 5τ   (τ = R·C)" },
@@ -81,7 +75,6 @@ export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
     keywords: "oscillator ne555" },
 ];
 
-// Signal levels: decibel ratios and dBm.
 export const ELECTRICITY_DB: FormulaPackEntry[] = [
   { type: "elec-db-power", label: "Decibels (Power Ratio)", expr: "10*LOG10(p2/p1)",
     description: "Power ratio in dB   (10·log₁₀(P₂/P₁))",
@@ -98,8 +91,7 @@ export const ELECTRICITY_FORMULAS: FormulaPackEntry[] = [
   ...ELECTRICITY_BASE, ...ELECTRICITY_AC, ...ELECTRICITY_TRANSIENTS, ...ELECTRICITY_DB,
 ];
 
-// Engineering/SI-prefix display: 4700 → "4.7k", 0.0000022 → "2.2µ" — how every
-// component value is actually written. 3 significant figures.
+// Engineering/SI-prefix display at 3 significant figures: 4700 → "4.7k".
 function toSiPrefix(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   if (n === 0) return "0";
@@ -116,9 +108,8 @@ function toSiPrefix(n: number): string {
   return `${Number((n / 1e-12).toPrecision(3))}p`;
 }
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4) — each
-// impl delegates to the same exported core its node calls, so the two surfaces
-// cannot drift.
+// Each impl delegates to the same exported core its node calls, so the node and
+// formula surfaces cannot drift.
 const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "PARALLELCOMBINE",

@@ -1,10 +1,5 @@
-// ─── Dimensional interpretation of a formula ─────────────────────────────────────
-// A SECOND interpretation over the same `excelFormula.ts` `Ast` the numeric
-// evaluator walks — it computes the DIMENSION a formula's result carries, given
-// the dimensions of its named inputs. Pure — it imports the Ast type and the
-// dimension algebra only, and never evaluates a value.
-//
-// Returns one of:
+// A second interpretation over the numeric evaluator's `Ast`: the DIMENSION a
+// formula's result carries. Never evaluates a value. Returns one of:
 //   • a `Dim`      — the determined result dimension (`{}` = dimensionless);
 //   • a `SolError` — a genuine dimensional CONFLICT (`#UNIT!`: meters + seconds,
 //                    SIN of a length, comparing incommensurable quantities);
@@ -27,11 +22,8 @@ export type DimEnv = Record<string, Dim>;
 
 const isDim = (r: DimResult): r is Dim => r !== null && !isSolError(r);
 
-// ─── Per-function dimensional signatures ─────────────────────────────────────────
-
-/** Functions whose result is ALWAYS dimensionless, and which REQUIRE every numeric
- *  argument to be dimensionless (angle counts as dimensionless for trig). Feeding
- *  a length into SIN is a `#UNIT!`. */
+/** Result ALWAYS dimensionless AND every argument must be too (angle counts as
+ *  dimensionless for trig) — a length into SIN is a `#UNIT!`. */
 const DIMENSIONLESS_FNS = new Set([
   // trig + inverse
   "SIN", "COS", "TAN", "ASIN", "ACOS", "ATAN", "ATAN2", "SINH", "COSH", "TANH",
@@ -40,16 +32,14 @@ const DIMENSIONLESS_FNS = new Set([
   "EXP", "LN", "LOG", "LOG10",
 ]);
 
-/** Functions whose result is dimensionless but which place NO constraint on their
- *  arguments' dimensions — they count / test / read a sign, so a dimensioned input
- *  is fine and the result is just a plain number. */
+/** Result dimensionless, arguments UNCONSTRAINED — these count / test / read a
+ *  sign, so a dimensioned input is fine. */
 const RESULT_DIMLESS_FNS = new Set([
   "COUNT", "COUNTA", "ISNUMBER", "ISBLANK", "ISERROR", "SIGN",
   "LEN", "EXACT",
 ]);
 
-/** Functions that PRESERVE their arguments' (shared) dimension: the result reads in
- *  the same unit as the inputs, and mixed-dimension inputs are a `#UNIT!`. */
+/** PRESERVE the arguments' shared dimension; mixed-dimension inputs are a `#UNIT!`. */
 const PRESERVE_FNS = new Set([
   "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "AVG",
   "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR",
@@ -62,10 +52,8 @@ function isAngleOrScalar(d: Dim): boolean {
   return isDimensionless(d) || dimEqual(d, ANGLE_DIM);
 }
 
-/**
- * Combine argument dims that must AGREE (SUM/MIN/MAX, +/−). Returns the shared dim,
- * a `#UNIT!` on disagreement, or `null` if any arg was itself indeterminate.
- */
+/** Combine dims that must AGREE: the shared dim, `#UNIT!` on disagreement, or null
+ *  if any argument was itself indeterminate. */
 function requireSame(args: DimResult[], what: string): DimResult {
   let acc: Dim | null = null;
   for (const a of args) {
@@ -118,17 +106,16 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
     return dimPow(a, 0.5);
   }
   if (fn === "POWER") {
-    // POWER(base, exp): handled like the `^` operator — the exponent must be a
-    // constant, which we can't see here (only its dim). Determinable only when the
-    // base is dimensionless (result dimensionless) or the exponent is unknown → null.
+    // Only the exponent's DIM is visible here, not its value, so this is determinable
+    // only for a dimensionless base.
     const base = argDims[0] ?? DIMENSIONLESS;
     if (base === null) return null;
     if (isSolError(base)) return base;
     return isDimensionless(base) ? DIMENSIONLESS : null;
   }
   if (fn === "IF") {
-    // IF(cond, a, b): the two value branches must agree, else the result dim is
-    // runtime-dependent → indeterminate (not a conflict).
+    // Disagreeing branches make the dim runtime-dependent → indeterminate, not a
+    // conflict.
     const a = argDims[1] ?? DIMENSIONLESS;
     const b = argDims[2];
     if (a === null) return null;
@@ -168,14 +155,11 @@ function constNum(node: Ast): number | null {
   }
 }
 
-// ─── Currency codes on the dim pass (rules.md VAL-19) ────────────────────────
-// Currency's IDENTITY is the display CODE, so dimensions can agree while the
-// values are incommensurable. The numeric evaluator computes on stripped
-// magnitudes and can't see codes, so the codes ride THIS pass. CALLS drop codes.
+// Currency's IDENTITY is the display CODE (VAL-19), so dims can agree while values
+// are incommensurable; the numeric evaluator can't see codes, so they ride here.
 export type CodeEnv = Record<string, string>;
 
-/** Internal operand: a determined dim plus, for pure-currency operands, the
- *  display code that IS the currency's identity. */
+/** A determined dim plus, for pure-currency operands, its identifying display code. */
 type Op = { dim: Dim; code?: string };
 type OpResult = Op | SolError | null;
 
@@ -219,9 +203,8 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
         case "*":
         case "/": {
           if (l === null || r === null) return null;
-          // Different currencies refuse here too (÷ would fabricate an exchange
-          // rate — VAL-19); the code carries only while the result stays in the
-          // coded operand's dimension (arithmeticCell's display-carry rule).
+          // ÷ across currencies would fabricate an exchange rate; the code carries
+          // only while the result stays in the coded operand's dimension.
           if (codeClash(l, r)) return clashError(l, r);
           const rd = node.op === "*" ? dimMul(l.dim, r.dim) : dimDiv(l.dim, r.dim);
           const code = l.code && dimEqual(rd, l.dim) ? l.code
@@ -231,8 +214,7 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
         case "+":
         case "-": {
           if (l === null || r === null) return null;
-          // A dimensionless operand ADOPTS the other's unit (`price + 2` keeps the
-          // price's unit); two different dims → #UNIT!.
+          // A dimensionless operand ADOPTS the other's unit; two real dims → #UNIT!.
           if (codeClash(l, r)) return clashError(l, r);
           if (dimEqual(l.dim, r.dim)) return { dim: l.dim, code: l.code ?? r.code };
           if (isDimensionless(l.dim)) return r;
@@ -240,9 +222,7 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
           return unitError(`Can't ${node.op === "+" ? "add" : "subtract"} values with different units.`);
         }
         case "^": {
-          // Determinable for a CONSTANT exponent — a `num` literal or a pure-number
-          // subtree (`1/2` from an isolated SQRT: x² = A ⇒ x = A^(1/2), so the dim
-          // halves) — or a dimensionless base. Anything else → indeterminate.
+          // Determinable only for a CONSTANT exponent (or a dimensionless base).
           if (l === null) return null;
           const k = constNum(node.r);
           if (k !== null) return { dim: dimPow(l.dim, k) };
@@ -250,10 +230,8 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
         }
         case "&": return { dim: DIMENSIONLESS }; // string concatenation → unitless
         default: {
-          // Comparison operators (= <> < > <= >=): a boolean result (dimensionless).
-          // A dimensionless side is allowed against a dimensioned one (`price > 3`);
-          // only two genuinely different dimensions — or two different currency
-          // CODES (no exchange rate) — are a #UNIT!.
+          // A dimensionless side may compare against a dimensioned one; only two
+          // real dims — or two currency CODES — are a #UNIT!.
           if (l === null || r === null) return { dim: DIMENSIONLESS };
           if (codeClash(l, r)) return clashError(l, r);
           if (!dimEqual(l.dim, r.dim) && !isDimensionless(l.dim) && !isDimensionless(r.dim)) {
@@ -271,17 +249,14 @@ export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult 
   return r === null || isSolError(r) ? r : r.dim;
 }
 
-/** dimEval's code-carrying form — for callers whose TOP LEVEL is itself a
- *  combination (the Equation's `=` compares its two sides, so no operator inside
- *  either side ever sees both codes: `$P = €C` needs the sides' result codes to
- *  refuse the way an in-expression `+` would). */
+/** dimEval's code-carrying form, for a caller whose TOP LEVEL is itself a
+ *  combination — no operator inside either side ever sees both codes. */
 export function dimEvalWithCode(node: Ast, env: DimEnv, codes: CodeEnv = {}): { dim: Dim; code?: string } | SolError | null {
   return opEval(node, env, codes);
 }
 
-/** Convenience: the result dim as a plain `Dim | null`, folding a `#UNIT!` conflict
- *  into `null` for callers that only want "the unit, or none". Use `dimEval`
- *  directly when the conflict must surface as an error. */
+/** The result dim as `Dim | null`, folding a `#UNIT!` conflict into null — use
+ *  `dimEval` when the conflict must surface as an error. */
 export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {
   const r = dimEval(node, env);
   return isDim(r) ? r : null;

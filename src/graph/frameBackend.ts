@@ -1,7 +1,3 @@
-// The engine seam: the JS backend (web demo + dev) and the Polars backend
-// (desktop, over IPC). A backend OWNS its data and hands out opaque string
-// HANDLES; data only crosses back as a value at a MATERIALIZATION boundary —
-// `preview` and `column`.
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
@@ -12,15 +8,11 @@ import { guardFinite } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
 import { calcModeStore } from "./calcModeStore";
 
-/** Opaque handle to a frame living in a backend. Consumers pass it around and
- *  materialize via the backend; they never read it. (Branded so a bare string
- *  can't be passed by mistake.) */
+/** Opaque branded handle to a frame living in a backend; consumers never read it. */
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
-/** The value a LAZY frame carries on a cable: a backend handle plus a queue of
- *  pending unary ops NOT YET sent to the backend. No backend call happens until
- *  a materialization boundary (`readFrame`/`collectPreview`) or a binary op
- *  (join/append, which need a real handle for both sides) flushes it. */
+/** A backend handle plus a queue of pending unary ops; nothing reaches the backend
+ *  until a materialization boundary or a binary op (join/append) flushes it. */
 export interface FrameRef {
   readonly __frameRef: FrameHandle;
   readonly __plan: readonly FrameOp[];
@@ -33,23 +25,15 @@ function extendRef(ref: FrameRef, op: FrameOp): FrameRef {
   return { __frameRef: ref.__frameRef, __plan: [...ref.__plan, op] };
 }
 
-/** What a frame cable can carry: a materialized FrameValue (from a source / eager
- *  node) or a lazy FrameRef (from a verb node). The runners + readFrame accept both. */
 export type FrameInput = FrameValue | FrameRef;
 
-// Memoize by the REF OBJECT (not the base handle string): two refs can share a
-// base handle while carrying DIFFERENT pending plans (a fan-out point followed
-// by different downstream verbs), so keying by handle would wrongly collapse
-// them. processGraph clears both at each pass start — refs are never reused
-// across passes, so within one pass the cached result is always the right one.
+// Memoized by the REF OBJECT, never the base handle: two refs can share a handle
+// while carrying DIFFERENT pending plans, so keying by handle would collapse them.
 let _flushMemo = new Map<FrameRef, Promise<FrameHandle>>();
 let _collectMemo = new Map<FrameRef, Promise<FrameValue | SolError | null>>();
 
-/** Resolve a ref's pending plan to a REAL backend handle, one combined
- *  `applyMany` round trip for the whole queue — the fusion entry point. A ref
- *  with an empty plan already IS its own handle (a join/append result, or one
- *  already flushed this pass), so this is then a cheap no-op. Memoized per
- *  pass so multiple consumers of the SAME ref (fan-out) flush once. */
+/** Resolve a ref's pending plan to a real handle in ONE `applyMany` round trip —
+ *  the fusion entry point, memoized per pass so a fan-out ref flushes once. */
 export async function flushRef(ref: FrameRef): Promise<FrameHandle> {
   if (ref.__plan.length === 0) return ref.__frameRef;
   let p = _flushMemo.get(ref);
@@ -60,12 +44,8 @@ export async function flushRef(ref: FrameRef): Promise<FrameHandle> {
   return p;
 }
 
-/** Run a ref's whole pending plan through `applyMany` in ONE round trip. Fusion
- *  means the backend never sees the individual verbs, so sketch sampling has to
- *  happen here, once, on the plan's BASE handle. Sketch scaling is keyed off the
- *  LAST groupBy in the plan (marking propagates through a non-aggregating verb
- *  and resets at the next groupBy), falling back to the sampled input's own
- *  marking when the plan has no groupBy. */
+/** Fusion hides the individual verbs from the backend, so sketch sampling happens
+ *  here once on the plan's BASE handle, scaled off the LAST groupBy in the plan. */
 async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readonly FrameOp[]): Promise<FrameHandle> {
   const be = frameBackend();
   const sample = await maybeSketchSample(be, baseHandle);
@@ -73,8 +53,7 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
   try {
     const outHandle = await be.applyMany(sample.h, plan);
     const lastGroupBy = [...plan].reverse().find((op): op is Extract<FrameOp, { kind: "groupBy" }> => op.kind === "groupBy");
-    // Aggregate provenance for the non-finite guard, keyed off the UNSAMPLED
-    // base so the guard's input scan survives the sampledTemp drop.
+    // Keyed off the UNSAMPLED base so the guard's input scan survives the sampledTemp drop.
     if (lastGroupBy) {
       _aggGuardInfo.set(outHandle, {
         baseHandle,
@@ -102,18 +81,12 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
   }
 }
 
-/** Clear the per-pass memos, dropping every handle the LAST pass flushed (a
- *  flush registers a genuinely NEW backend handle nobody else owns — unlike a
- *  base/source handle, which the source-handle cache or an upstream node
- *  already tracks for its own drop). Safe at the top of the NEXT pass: by then
- *  every consumer of the finished pass's results (cachedResult/preview values)
- *  has already read them — they're plain JS objects, not handle-dependent. */
+/** Clear the per-pass memos, dropping every handle the LAST pass flushed — only a
+ *  flush registers a handle nobody else owns. Safe at the top of the NEXT pass. */
 export function clearCollectMemo(): void {
   const be = frameBackend();
   for (const p of _flushMemo.values()) {
-    // Drop the handle AND its sketch bookkeeping — same rule as dropFrameRef
-    // ("else a sketch-mode entry outlives its handle forever"); handles are
-    // monotonic (never recycled), so a missed delete is a per-pass leak.
+    // Drop the sketch bookkeeping with the handle, else it outlives the handle forever.
     p.then((h) => {
       be.drop(h);
       _sampleFactor.delete(h);
@@ -126,9 +99,7 @@ export function clearCollectMemo(): void {
 }
 
 /** Collect a cable's frame value back to an eager FrameValue — the materialization
- *  boundary. A FrameValue / SolError / null passes straight through; a FrameRef's
- *  pending plan is flushed then collected through the backend (instant on web, an
- *  IPC round trip on desktop), memoized per compute pass. */
+ *  boundary; memoized per compute pass. */
 export async function readFrame(v: FrameInput | SolError | null | undefined): Promise<FrameValue | SolError | null> {
   if (v == null) return null;
   if (isSolError(v)) return v;
@@ -154,14 +125,12 @@ function previewToFrame(p: FramePreview): FrameValue {
     name: c.name, type: c.type, values: p.rows.map((r) => r[i] ?? null),
   }));
   const f: FrameValue = { __frame: true, columns };
-  if (p.truncated) f.__totalRows = p.rowCount; // the chip shows the true count
+  if (p.truncated) f.__totalRows = p.rowCount;
   return f;
 }
 
-/** Collect a verb output for its CARD preview: a small frame in FULL (raw fidelity +
- *  test parity), a LARGE one as a head-N FrameValue carrying the true total row count
- *  — so an intermediate verb on a million-row chain never hauls the whole frame back.
- *  A FrameValue already materialized in JS passes through unchanged. */
+/** Collect a verb output for its CARD preview: a small frame in FULL, a large one as
+ *  a head-N FrameValue carrying the true total row count. */
 export async function collectPreview(out: FrameInput | SolError | null, n = CARD_PREVIEW_ROWS): Promise<FrameValue | SolError | null> {
   if (out == null) return null;
   if (isSolError(out)) return out;
@@ -169,72 +138,49 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   const handle = await flushRef(out);
   const p = await materialize((async () => frameBackend().preview(handle, n))());
   if (isSolError(p)) return p;
-  if (!p.truncated) return readFrame(out); // small enough to show whole — collect full
+  if (!p.truncated) return readFrame(out);
   const f = previewToFrame(p);
-  f.__ref = out; // let the grid popup fetch the FULL frame on demand (audit 22p)
+  f.__ref = out; // the grid popup fetches the FULL frame on demand
   return applyAggGuard(handle, applySketchScaling(out.__frameRef, f));
 }
 
-/** One column's identity in a preview (no values — schema only). */
 export interface FrameSchemaColumn {
   name: string;
   type: FrameColType;
 }
 
-/** A materialized snapshot for display: the schema, the first N rows, and the
- *  TRUE total row count (so the UI can show "1,000 rows" while holding N). */
+/** A display snapshot: schema, first N rows, and the TRUE total row count. */
 export interface FramePreview {
   schema: FrameSchemaColumn[];
   /** Head rows, row-major, aligned to `schema`; `null` for a short column. */
   rows: FrameCell[][];
   rowCount: number;
-  /** True when `rowCount > rows.length` — the preview is a head, not the whole. */
   truncated: boolean;
 }
 
-/** The two-implementation seam. Async because the Polars backend is IPC; the JS
- *  backend resolves immediately. `drop` is fire-and-forget (best-effort free). */
+/** The two-implementation seam — async because the Polars backend is IPC. */
 export interface FrameBackend {
-  /** Register an already-materialized frame, returning its handle. The eager →
-   *  handle bridge (Build Frame, a list widened to a frame row, a source node). */
+  /** The eager → handle bridge (Build Frame, a list widened to a row, a source node). */
   source(frame: FrameValue): Promise<FrameHandle>;
-  /** Compose a unary verb onto a handle, returning a NEW handle (the old one
-   *  stays valid until dropped). Cheap — no materialization; the JS backend
-   *  transforms in memory, the Polars backend extends a lazy plan. */
+  /** Returns a NEW handle; the old one stays valid until dropped. No materialization. */
   apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle>;
-  /** Compose MULTIPLE unary verbs onto a handle in ONE round trip, returning a
-   *  new handle — the fusion primitive (`flushRef` in this module): the Polars
-   *  backend threads them onto a single lazy plan and collects once; the JS
-   *  backend just folds `apply` over the list (already in-process, no IPC to
-   *  save, kept for interface symmetry + test parity). */
+  /** The fusion primitive: one round trip for the whole queue (`flushRef`). */
   applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle>;
-  /** Join two handles on a key, returning a new handle. */
   join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle>;
-  /** Stack handles vertically (union by column name), returning a new handle. */
+  /** Stacks vertically, union by column NAME. */
   append(handles: readonly FrameHandle[]): Promise<FrameHandle>;
-  /** Materialize a preview: schema + first `n` rows + total row count. */
   preview(handle: FrameHandle, n: number): Promise<FramePreview>;
-  /** Materialize the WHOLE frame back to an eager `FrameValue`. The transitional
-   *  handle → eager bridge the node layer uses to keep full frames flowing on
-   *  cables until lazy-handle-on-cable lands; then the only materialization points
-   *  are `preview` (display) + `column` (the scalar/list bridge). */
   collect(handle: FrameHandle): Promise<FrameValue>;
-  /** Materialize one column as an eager typed list — the handle → eager bridge
-   *  (Get Column). `null` when the column name isn't in the frame. */
+  /** `null` when the column name isn't in the frame. */
   column(handle: FrameHandle, name: string): Promise<FrameColumn | null>;
-  /** Free a handle's backing data. Safe to call on an unknown/already-dropped
-   *  handle (no-op). */
+  /** Safe on an unknown/already-dropped handle (no-op). */
   drop(handle: FrameHandle): void;
-  /** Sketch mode (#24): a deterministic (never random) sample of up to `n` rows,
-   *  returning a NEW handle plus the scale FACTOR (trueRows/sampleRows so a
-   *  sum/count aggregated over the sample can be extrapolated back toward the
-   *  true total — factor is 1 when the frame was already at or under `n` rows
-   *  (no sampling needed, the "sample" is unchanged from the source). */
+  /** A DETERMINISTIC (never random) sample of up to `n` rows plus the scale factor
+   *  trueRows/sampleRows — factor 1 means nothing was sampled. */
   sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }>;
 }
 
-/** Build a head-N preview from an in-memory frame (shared shaping logic; the
- *  Polars backend produces the same shape from a `.collect().head(n)`). */
+/** The Polars backend must produce this same shape from a `.collect().head(n)`. */
 export function framePreview(frame: FrameValue, n: number): FramePreview {
   const rowCount = frameRowCount(frame);
   const take = Math.max(0, Math.min(n, rowCount));
@@ -251,12 +197,9 @@ export function framePreview(frame: FrameValue, n: number): FramePreview {
 }
 
 class JsFrameBackend implements FrameBackend {
-  // A SOURCED frame is held weakly: the producing node's memoized value is its
-  // real owner, and the GC-driven drop that frees the handle (frameBackend's
-  // FinalizationRegistry) is keyed on that same FrameValue — a strong entry
-  // here would pin its own registry key and the finalizer would never fire.
-  // DERIVED frames (apply/join/append results) stay strong — their owning verb
-  // node drops them explicitly.
+  // A SOURCED frame is held WEAKLY — a strong entry would pin its own
+  // FinalizationRegistry key and the GC-driven drop would never fire; DERIVED
+  // frames stay strong (their owning verb node drops them explicitly).
   private store = new Map<string, FrameValue | WeakRef<FrameValue>>();
   private seq = 0;
 
@@ -341,9 +284,7 @@ function decodeWireCell(v: WireCell): unknown {
     if (o.__nf === "inf") return Infinity;
     if (o.__nf === "-inf") return -Infinity;
     if (o.__nf === "nan") return NaN;
-    // The code came from OUR encoder (or the engine's guard), so it's one of the
-    // app's tagged codes; the cast keeps solError's closed union honest without
-    // widening it for the wire.
+    // The code came from OUR encoder, so the cast keeps solError's union closed.
     if (typeof o.__err === "string") return solError(o.__err as Parameters<typeof solError>[0], "from the native engine");
   }
   return v;
@@ -391,8 +332,7 @@ class PolarsBackend implements FrameBackend {
   }
 
   drop(handle: FrameHandle): void {
-    // Fire-and-forget: a free can't fail meaningfully, and a dropped/unknown
-    // handle is a Rust-side no-op. Swallow any rejection (e.g. off-desktop).
+    // Fire-and-forget: a free can't fail meaningfully and an unknown handle no-ops.
     void ipcInvoke("engine_drop", { handle }).catch(() => {});
   }
 
@@ -408,13 +348,8 @@ export function frameBackend(): FrameBackend {
   return _backend;
 }
 
-/** Every handle-keyed cache/marker a backend swap invalidates: the OUTGOING
- *  backend's handles belong to it alone, and a fresh backend's OWN handles start
- *  renumbering from scratch (each `JsFrameBackend`/registration counter is
- *  per-instance) — so a bare string like "jsf:2" is NOT globally unique across
- *  backend instances. Without this, a stale `_collectMemo`/`_sampleFactor`/
- *  `_sketchInfo` entry keyed by a re-used string can leak a PREVIOUS backend's
- *  cached result onto an unrelated frame in the new one. */
+/** Handle strings are unique only WITHIN a backend instance, so every handle-keyed
+ *  cache must be cleared on a swap or a stale entry leaks onto an unrelated frame. */
 function clearHandleKeyedCaches(): void {
   _sourceCache = new WeakMap();
   clearCollectMemo();
@@ -423,30 +358,24 @@ function clearHandleKeyedCaches(): void {
   _aggGuardInfo.clear();
 }
 
-/** Override the active backend (Polars wiring on desktop; tests). */
 export function setFrameBackend(backend: FrameBackend): void {
   _backend = backend;
   clearHandleKeyedCaches();
 }
 
-/** Reset the seam to a fresh in-process JS backend. For tests that swap to the
- *  Polars backend and need to restore the default between cases. */
 export function resetFrameBackendToJs(): void {
   _backend = new JsFrameBackend();
   clearHandleKeyedCaches();
 }
 
-/** Pick the frame backend once at startup: `PolarsBackend` when the native
- *  engine answers `"polars"`, the in-process JS backend otherwise. Best-effort
- *  and idempotent. */
+/** Picks the backend once at startup; best-effort and idempotent. */
 export async function initFrameBackend(): Promise<void> {
   if (!engineAvailable()) return;
   try {
     const info = await enginePing();
     if (info?.backend === "polars") {
-      // The Rust store is process-global but every handle lives in JS state — a
-      // webview reload (Ctrl+R / HMR) discards that state and would orphan every
-      // stored frame for the process lifetime. Fresh start.
+      // The Rust store is process-global but handles live in JS state, so a webview
+      // reload would orphan every stored frame for the process lifetime.
       await ipcInvoke("engine_clear", {}).catch(() => {});
       setFrameBackend(new PolarsBackend());
     }
@@ -455,9 +384,7 @@ export async function initFrameBackend(): Promise<void> {
   }
 }
 
-// Desktop-only: `engine_read_csv` (engine.rs) reads the file off disk through
-// Polars' CSV reader, already collected to typed columns. The JS path
-// (csv.ts + frame.ts `frameFromCells`) stays the only option on web.
+// Desktop-only; the JS path (csv.ts + `frameFromCells`) stays the only option on web.
 export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {
   try {
     const columns = await ipcInvoke<FrameColumn[]>("engine_read_csv", { folder, name });
@@ -471,22 +398,17 @@ function asErrorValue(e: unknown): SolError {
   return isSolError(e) ? e : solError("#ERROR!", e instanceof Error ? e.message : String(e));
 }
 
-// Keyed by FrameValue IDENTITY, so a source node that returns a stable object
-// across recomputes keeps its handle across passes; a stale handle is freed when
-// the old FrameValue is GC'd (FinalizationRegistry → backend.drop).
+// Keyed by FrameValue IDENTITY, so a stable source object keeps its handle across
+// passes; the handle is freed when that FrameValue is GC'd.
 let _sourceCache = new WeakMap<FrameValue, Promise<FrameHandle>>();
 const _dropReg: FinalizationRegistry<{ be: FrameBackend; h: FrameHandle }> | null =
   typeof FinalizationRegistry !== "undefined"
     ? new FinalizationRegistry(({ be, h }) => be.drop(h))
     : null;
 
-/** Resolve a runner input to a backend handle. A FrameRef's pending plan is
- *  FLUSHED (memoized per pass — see `flushRef`), since a join/append needs a
- *  real handle for both sides. A FrameValue is sourced ONCE and cached by
- *  identity: repeat and concurrent consumers share the upload. `temp` is
- *  always false now — a cached source handle is owned by the cache (freed on
- *  GC), and a flushed handle is owned by the flush memo (freed at the next
- *  pass's `clearCollectMemo`) — neither is dropped by the calling runner. */
+/** Resolve a runner input to a backend handle. `temp` is always false: a cached
+ *  source handle is owned by the cache and a flushed one by the flush memo, so the
+ *  calling runner must drop neither. */
 async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: boolean }> {
   if (isFrameRef(input)) return { h: await flushRef(input), temp: false };
   let p = _sourceCache.get(input);
@@ -494,29 +416,22 @@ async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: b
     const be = frameBackend();
     p = be.source(input);
     _sourceCache.set(input, p);
-    // Register the Rust handle for GC-time drop; evict a rejected upload so a later
-    // pass can retry rather than caching the failure forever.
+    // Evict a rejected upload so a later pass retries instead of caching the failure.
     p.then((h) => _dropReg?.register(input, { be, h })).catch(() => _sourceCache.delete(input));
   }
   return { h: await p, temp: false };
 }
 
-// Sketch mode. `_sampleFactor` marks sample-derived handles (trueRows/sampleRows)
-// so a verb AFTER a sampled source is not re-sampled. `_sketchInfo` marks a
-// handle whose sum/count columns need scaling; scaling is applied at read time
-// (`applySketchScaling`), never baked into backend-stored data — a re-source
-// round trip carries only plain columns, so the `__approx` marking would
-// silently vanish.
+// Sketch scaling is applied at READ time, never baked into backend-stored data — a
+// re-source round trip carries only plain columns and would lose the `__approx` mark.
 export const SKETCH_SAMPLE_ROWS = 10_000;
 const _sampleFactor = new Map<FrameHandle, number>();
 interface SketchInfo { factor: number; scaleColumns: ReadonlySet<string> }
 const _sketchInfo = new Map<FrameHandle, SketchInfo>();
 const SKETCH_EXTRAPOLATABLE: ReadonlySet<AggOp> = new Set(["sum", "count"]);
 
-// The engine half of the aggregate non-finite guard: a Polars-typed column
-// can't hold a per-cell error, so a non-finite aggregate is classified here at
-// the materialization boundary, scanning the plan's BASE column. On the JS
-// backend the oracle already errored the cells, so this no-ops.
+// A Polars-typed column can't hold a per-cell error, so a non-finite aggregate is
+// classified here at the materialization boundary (a no-op on the JS backend).
 interface AggGuardInfo { baseHandle: FrameHandle; aggCols: ReadonlyMap<string, string> } // out name → source column
 const _aggGuardInfo = new Map<FrameHandle, AggGuardInfo>();
 
@@ -547,11 +462,8 @@ async function applyAggGuard(handle: FrameHandle, f: FrameValue): Promise<FrameV
   return { ...f, columns };
 }
 
-/** Sample `h` (if sketch mode is active and it isn't ALREADY a sample-derived
- *  handle from earlier in this same chain) and record the factor for
- *  propagation. Returns the handle to actually operate on + a handle to drop
- *  afterward (the sample is a short-lived intermediate; `null` when nothing was
- *  sampled). */
+/** Returns the handle to operate on plus a short-lived sample handle to drop
+ *  afterward (`null` when nothing was sampled). */
 async function maybeSketchSample(be: FrameBackend, h: FrameHandle): Promise<{ h: FrameHandle; sampledTemp: FrameHandle | null }> {
   if (!calcModeStore.sketchActive() || _sampleFactor.has(h)) return { h, sampledTemp: null };
   const { handle: sampled, factor } = await be.sample(h, SKETCH_SAMPLE_ROWS);
@@ -560,10 +472,7 @@ async function maybeSketchSample(be: FrameBackend, h: FrameHandle): Promise<{ h:
   return { h: sampled, sampledTemp: sampled };
 }
 
-/** Apply a handle's recorded sketch scaling (if any) to a freshly-materialized
- *  FrameValue: scale the marked sum/count columns by the factor and stamp
- *  `__approx` (frame.ts) so the UI never presents a sample number as exact.
- *  A no-op (returns `f` unchanged) for a handle with no sketch marking. */
+/** Stamps `__approx` so the UI never presents a scaled sample number as exact. */
 function applySketchScaling(handle: FrameHandle, f: FrameValue): FrameValue {
   const info = _sketchInfo.get(handle);
   if (!info) return f;
@@ -575,9 +484,8 @@ function applySketchScaling(handle: FrameHandle, f: FrameValue): FrameValue {
   return { ...f, columns, __approx: { factor: info.factor } };
 }
 
-/** Run a unary verb (NOT pivot, which is deliberately eager) — returning a LAZY
- *  ref. Chaining onto an existing ref just EXTENDS its pending plan; no backend
- *  call happens here. */
+/** Run a unary verb (not pivot — deliberately eager), returning a LAZY ref;
+ *  chaining onto an existing ref just extends its pending plan. */
 export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<FrameRef | SolError> {
   try {
     if (isFrameRef(input)) return extendRef(input, op);
@@ -588,7 +496,6 @@ export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<Fra
   }
 }
 
-/** Join two frames through the active backend, returning a lazy ref. */
 export async function runFrameJoin(left: FrameInput, right: FrameInput, opts: JoinOpts): Promise<FrameRef | SolError> {
   const be = frameBackend();
   const temps: FrameHandle[] = [];
@@ -603,7 +510,7 @@ export async function runFrameJoin(left: FrameInput, right: FrameInput, opts: Jo
   }
 }
 
-/** Append (union by name) frames through the active backend, returning a lazy ref. */
+/** Union by column NAME. */
 export async function runFrameAppend(frames: readonly FrameInput[]): Promise<FrameRef | SolError> {
   const be = frameBackend();
   const temps: FrameHandle[] = [];
@@ -618,12 +525,8 @@ export async function runFrameAppend(frames: readonly FrameInput[]): Promise<Fra
   }
 }
 
-/** Drop a verb node's previous output ref when it recomputes (or is removed).
- *  Only a ref with an EMPTY plan owns its `__frameRef` outright (a join/append
- *  result) — a unary-chain ref's `__frameRef` is a BORROWED base (the upstream
- *  node's own ref, or a source-cache handle), never independently owned, so
- *  dropping it here would sever a handle other consumers still need. A no-op
- *  for non-refs and for a pending (non-empty-plan) ref. */
+/** Only an EMPTY-plan ref owns its `__frameRef`; a unary-chain ref's handle is
+ *  BORROWED from upstream, so dropping it would sever a handle others still need. */
 export function dropFrameRef(v: unknown): void {
   if (isFrameRef(v) && v.__plan.length === 0) {
     frameBackend().drop(v.__frameRef);
@@ -634,12 +537,8 @@ export function dropFrameRef(v: unknown): void {
   }
 }
 
-/** Await a materialization (`preview` / `column`) and return a tagged `SolError`
- *  as a VALUE instead of throwing. A consuming node MUST use this: a raw throw
- *  out of `data()` is caught by `installErrorGuards` and flattened to a generic
- *  `#ERROR!` (subsystem-invariants §4.3), losing the specific code (e.g. `#REF!`
- *  for a dropped/unknown handle). This is the bridge from the async handle world
- *  back to the eager, error-as-value model the rest of the graph speaks. */
+/** A consuming node MUST wrap materializations in this: a raw throw out of `data()`
+ *  is flattened by `installErrorGuards` to a generic `#ERROR!`, losing the code. */
 export async function materialize<T>(p: Promise<T>): Promise<T | SolError> {
   try {
     return await p;

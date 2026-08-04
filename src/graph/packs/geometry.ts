@@ -1,6 +1,5 @@
-// The Geometry pack — the original worked example of the formula-data pack
-// shape (docs/pack-architecture.md). Trig is in radians (the core Trigonometry
-// convention); wire a Convert node to go from degrees.
+// The worked example of the formula-data pack shape; trig is in RADIANS, per the core
+// Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
 import { HypotenuseNode, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
@@ -82,10 +81,8 @@ function toDMS(n: number): string {
   return `${sign}${d}°${m}′${s}″`;
 }
 
-// HYPOTENUSE is the archetypal cross-domain timesaver: it belongs to Geometry AND
-// to a general "timesavers" bundle, and is neither core nor a true Excel matcher
-// (Excel has no HYPOT function). Defined once and claimed by both packs; the
-// catalog builder dedupes by `type` and records both owners.
+// Defined once and claimed by BOTH packs — the catalog builder dedupes by `type` and
+// records both owners.
 export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   type: "hypotenuse",
   label: "HYPOTENUSE",
@@ -93,15 +90,12 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   create: () => new HypotenuseNode(),
 };
 
-// Which formulas file under which Add-menu subcategory (see the placement
-// note in `nodes` below).
+// Which formulas file under which Add-menu subcategory.
 const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse-area"]);
 const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
 const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
 
-// The pack's custom-logic node as a formula function (D19 decision 4): the
-// solver core is the node's own `solveGivenParts`, so a typed
-// TRIANGLESOLVER(3, 4, , , , 90) and the node card agree on every edge.
+// Shares the node's own `solveGivenParts`, so the typed function and the card can't disagree.
 const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "TRIANGLESOLVER",
@@ -141,19 +135,15 @@ export const GEOMETRY_PACK: Pack = {
         create: () => new TriangleSolverNode(),
       },
     },
-    // Formula-data nodes — each a pre-set Expression node, no new class.
-    // Placement is by SUBJECT, not by wave: circle/ellipse and solid formulas
-    // file under their subcategories, and the two point-distance formulas from
-    // the solids wave surface beside Distance (2D). The arrays stay grouped by
-    // wave — that's how the tests slice them.
+    // Menu placement is by SUBJECT; the arrays stay grouped by WAVE, which is how the
+    // tests slice them.
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS.filter((f) => !CIRCLE_IDS.has(f.type) && !SOLID_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_SOLIDS.filter((f) => DISTANCE_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], [...GEOMETRY_FORMULAS.filter((f) => CIRCLE_IDS.has(f.type)), ...GEOMETRY_CIRCLES]),
     ...placeFormulas(["Packs", "Geometry", "Solids"], [...GEOMETRY_FORMULAS.filter((f) => SOLID_IDS.has(f.type)), ...GEOMETRY_SOLIDS.filter((f) => !DISTANCE_IDS.has(f.type))]),
   ],
-  // Pack contributions to the Format Controller: a unit in an existing group
-  // (angle: turns), a unit in a brand-new group (Geometry: pixels), and a number
-  // format with custom logic (degrees-minutes-seconds).
+  // Format Controller contributions: units in an existing and a new group, plus a
+  // custom-logic number format.
   units: [
     { id: "turn", label: " turns", group: "angle" },
     { id: "px", label: " px", group: "geometry", groupLabel: "Geometry" },

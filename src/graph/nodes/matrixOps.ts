@@ -1,16 +1,7 @@
 import { solError, type SolError } from "../errorValue";
 
-// ─── Pure matrix kernels — ONE implementation per op, two surfaces (FX-1) ─────
-// The matrix nodes' `data()` and the D23 matrix-formula registrations both call
-// these, so MMULT in a formula and an MMULT node cannot disagree
-// (`formulaMatrix.test.ts` pins the equality). RETE-FREE per FX-2 — the formula
-// path must not load the editor; nodes/matrix.ts imports these and keeps only
-// the socket/unit plumbing.
-//
-// Cells are element-agnostic where the op is a pure reshape (transpose, wrap) and
-// numerically guarded where it is linear algebra (asNumericMatrix). Error CODES
-// here are the node family's, verbatim — #TYPE! wrong element family, #VALUE!
-// incomplete data, #SHAPE! wrong dimensions, #DIV/0! singular.
+// ONE implementation per matrix op, called by both the nodes' `data()` and the formula
+// registrations (FX-1); RETE-FREE per FX-2, so the formula path never loads the editor.
 
 export type NumMat = number[][];
 
@@ -30,9 +21,8 @@ export function matUnit(n: number, offDiag: number | null = 0): (number | null)[
     Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
 }
 
-/** The numeric gate for linear algebra: a missing cell is #VALUE! (complete data
- *  needed), a non-number is #TYPE! (wrong element family — matrices are
- *  homogeneous, but an anytable can deliver text). */
+/** The numeric gate for linear algebra: a missing cell is #VALUE! (complete data needed),
+ *  a non-number is #TYPE! (an anytable can deliver text into a homogeneous matrix). */
 export function asNumericMatrix(m: unknown[][]): NumMat | SolError {
   for (const row of m)
     for (const cell of row) {
@@ -106,9 +96,8 @@ export function matInverse(m: NumMat): NumMat | null {
   return aug.map((row) => row.slice(n));
 }
 
-/** WRAPROWS / WRAPCOLS: wrap a 1-D list into a matrix, padding the leftover cells
- *  via `pad()` — D15's rule: shape CONSTRUCTION pads #N/A, Excel's default
- *  pad_with (the caller supplies it, so a pad_with argument overrides cleanly). */
+/** Wrap a 1-D list into a matrix; leftover cells take the caller's `pad()`, which defaults
+ *  to #N/A per D15 so a pad_with argument overrides cleanly. */
 export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {
   if (dir === "rows") {
     const rows: T[][] = [];

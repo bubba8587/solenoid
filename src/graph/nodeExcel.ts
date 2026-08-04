@@ -1,7 +1,5 @@
-// The source of truth for each node's Excel equivalence. Applied onto catalog
-// leaves by buildCatalog (like NODE_PACK_TAGS). Pack nodes may instead declare
-// `excel` inline on their entry. The dev catalog validator flags any Excel-mapped
-// node missing metadata, so this can't silently go stale.
+// The source of truth for each node's Excel equivalence, applied onto catalog leaves by
+// buildCatalog; pack nodes may instead declare `excel` inline on their entry.
 import type { ExcelEquiv } from "./AddNodeMenu";
 
 /** catalog node type -> the Excel function(s) it stands in for. */
@@ -231,9 +229,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
-  // Keys MUST track the catalog types (bool-*/if/not) — a drift test enforces
-  // it, catching stale keys. AND/OR/XOR are N-ary reducers, so there's no
-  // "binary only" caveat.
+  // Keys MUST track the catalog types; a drift test catches stale ones.
   "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: true }],
   "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],
   "not": [{ excel: "NOT", syntax: "=NOT(a)", parity: true }],
@@ -424,9 +420,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "stat-standardize": [{ excel: "STANDARDIZE", syntax: "=STANDARDIZE(x, μ, σ)", parity: true }],
   "switch": [{ excel: "SWITCH", syntax: "=SWITCH(expr, w1, t1, ...)", parity: false, note: "Fixed 3 cases; Excel is variadic" }],
-  // All three leaves ARE T.TEST — Excel splits the variants by its `type` argument,
-  // Solenoid splits them into separate leaves. All three must say so, or the parity
-  // measurement reads the other two as Solenoid-native.
+  // All three leaves ARE T.TEST (Excel splits by its `type` argument), and all three must
+  // say so or the parity measurement reads the other two as Solenoid-native.
   "t-test-paired": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 1)", parity: false, note: "This leaf is type 1 (paired); 2-tailed only" }],
   "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 2)", parity: false, note: "This leaf is type 2 (pooled variance); 2-tailed only, for 1-tailed divide result by 2" }],
   "t-test-unequal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 3)", parity: false, note: "This leaf is type 3 (Welch); 2-tailed only" }],
@@ -479,8 +474,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "MID", syntax: "=MID(text, start, chars)", parity: false },
     { excel: "MIDB", syntax: "=MIDB(text, start, bytes)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
-  // TEXT / VALUE / VALUETOTEXT live on Cast (their dedicated nodes are
-  // deprecated — hidden from the menu, load-only).
+  // TEXT / VALUE / VALUETOTEXT live on Cast; their dedicated nodes are load-only.
   "cast": [
     { excel: "TEXT", syntax: "=TEXT(value, format)", parity: false, note: "Cast to Text with a format — simplified formats: \"\", \"0\", \"0.00\", \"0.00%\"; date patterns (YYYY-MM-DD) for date sources" },
     { excel: "VALUE", syntax: "=VALUE(text)", parity: false, note: "Cast to Number" },
@@ -552,8 +546,8 @@ export interface ExcelGapRow {
   note?: string;
 }
 
-/** Excel functions with no Solenoid node. Self-heals: the reference drops any
- *  entry whose name later becomes node-backed. */
+/** Excel functions with no Solenoid node; the reference drops any entry whose name later
+ *  becomes node-backed. */
 export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "SUBTOTAL", syntax: "=SUBTOTAL(fn, range)", category: "Math & Trig", composition: true, note: "Use Aggregate with the matching op; hidden-row exclusion (101–111 variants) not applicable in a node graph" },
   { excel: "AGGREGATE", syntax: "=AGGREGATE(fn, opts, range)", category: "Math & Trig", composition: true, note: "Use Aggregate with the matching op; the ignore-errors/hidden-rows options are cell-grid concepts" },

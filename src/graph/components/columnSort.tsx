@@ -1,17 +1,8 @@
 import { useState } from "react";
 
-// ─── Visual-only column sort (the value popups) ─────────────────────────────────
-// A view control, NOT a transform: it reorders the RENDERED rows and touches nothing
-// else — Copy / CSV / Save / the node's value are unchanged and the graph never
-// recomputes.
-//
-// Because the data doesn't move, every consumer of a row index must keep using the
-// SOURCE index: `sortedOrder` returns source indices in display order, so a render
-// maps `order.map((srcRow) => …)` and passes `srcRow` to edits, drafts and the row
-// number.
-//
-// The sort applies to the rows ON SCREEN — a grid past its visible cap is already
-// truncated before it reaches here.
+// A view control, NOT a transform: it reorders RENDERED rows only. Because the
+// data doesn't move, every consumer of a row index must keep using the SOURCE
+// index — `sortedOrder` returns source indices in display order.
 
 export type SortDir = "asc" | "desc";
 /** The active sort keys in PRIORITY order — `[0]` is primary, each later key breaks
@@ -23,29 +14,21 @@ export function sortDirOf(sort: ColumnSort, col: number): SortDir | null {
   return sort.find((k) => k.col === col)?.dir ?? null;
 }
 
-/**
- * The click cycle, as a pure step: per column, unsorted → asc → desc → unsorted.
- *
- * MULTI-COLUMN, Excel's model: keys accumulate and priority is the order they were
- * ADDED. A column changing direction keeps its place; only clearing and re-adding
- * moves it.
- */
+/** The click cycle: unsorted → asc → desc → unsorted. MULTI-COLUMN (Excel's
+ *  model): priority is the order keys were ADDED, and changing a column's
+ *  direction keeps its place. */
 export function nextSort(sort: ColumnSort, col: number): ColumnSort {
   const i = sort.findIndex((k) => k.col === col);
-  if (i < 0) return [...sort, { col, dir: "asc" }];                          // new key, lowest priority
+  if (i < 0) return [...sort, { col, dir: "asc" }];
   if (sort[i].dir === "asc") {
-    return sort.map((k, j) => (j === i ? { col, dir: "desc" as SortDir } : k)); // keeps its place
+    return sort.map((k, j) => (j === i ? { col, dir: "desc" as SortDir } : k));
   }
-  return sort.filter((_, j) => j !== i);                                     // desc → cleared
+  return sort.filter((_, j) => j !== i);
 }
 
-/**
- * Click-cycle state for one grid, over `nextSort` (which owns the cycle rule).
- *
- * `resetKey` identifies WHICH grid is on screen. When it changes the sort drops — a
- * column index means nothing across two different tables. Reset during render, not in
- * an effect: an effect would render the new grid once in the old grid's order first.
- */
+/** Click-cycle state for one grid. `resetKey` identifies WHICH grid is on screen;
+ *  when it changes the sort drops, during RENDER — an effect would render the new
+ *  grid once in the old grid's order first. */
 export function useColumnSort(resetKey?: unknown): {
   sort: ColumnSort;
   cycle: (col: number) => void;
@@ -68,11 +51,8 @@ export function useColumnSort(resetKey?: unknown): {
   };
 }
 
-/**
- * The sort under a structural column change, as an old→new index map: `fn` returns a
- * column's new index, or null for a removed column — that key drops and the surviving
- * keys keep their relative priority.
- */
+/** The sort under a structural column change: `fn` returns a column's new index or
+ *  null (dropped); surviving keys keep their relative priority. */
 export function remapSort(sort: ColumnSort, fn: (col: number) => number | null): ColumnSort {
   const next: Array<{ col: number; dir: SortDir }> = [];
   for (const k of sort) {
@@ -82,15 +62,12 @@ export function remapSort(sort: ColumnSort, fn: (col: number) => number | null):
   return next;
 }
 
-/** A cell reduced to something comparable. `null` = nothing to sort on (blank, or a
- *  container cell in a cube) — those sink to the bottom in BOTH directions, the way
- *  a spreadsheet keeps blanks last rather than letting them lead a descending sort. */
+/** A cell reduced to something comparable; `null` = nothing to sort on, and those
+ *  sink to the bottom in BOTH directions (a spreadsheet keeps blanks last). */
 export type SortKey = string | number | null;
 
-/** Basic alphanumeric reading of a cell: a number (or numeric-looking text, commas
- *  and spaces stripped so a formatted "1,234" still sorts numerically) compares as a
- *  number; everything else compares as text. A nested frame/cube/list has no sensible
- *  scalar reading, so it sorts as blank. */
+/** Alphanumeric reading of a cell: a number — or numeric-looking text, so a
+ *  formatted "1,234" still sorts numerically — else text; a container sorts blank. */
 export function sortKeyOf(v: unknown): SortKey {
   if (v === null || v === undefined) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -109,10 +86,9 @@ export function sortKeyOf(v: unknown): SortKey {
 
 function compareKeys(a: SortKey, b: SortKey): number {
   if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1; // blanks last
-  // Type tier FIRST — all numbers before all text (ascending). Comparing a mixed
-  // pair as text while number pairs compare numerically is intransitive (numeric
-  // -2 < -1 but textual "-1…" < "-2…"), and an intransitive comparator lets
-  // Array.sort emit cycles like -2 after -1. The tier makes the order total.
+  // Type tier FIRST — all numbers before all text: comparing a mixed pair as text
+  // while numeric pairs compare numerically is intransitive, and an intransitive
+  // comparator lets Array.sort emit cycles.
   const an = typeof a === "number";
   if (an !== (typeof b === "number")) return an ? -1 : 1;
   if (an) return (a as number) - (b as number);
@@ -120,15 +96,9 @@ function compareKeys(a: SortKey, b: SortKey): number {
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 
-/**
- * Source row indices in display order. Identity (`0..rowCount-1`) when unsorted, so
- * a caller can map through it unconditionally.
- *
- * Each key is consulted in priority order and the first one that separates two rows
- * decides; rows equal on every key keep their source order (explicit index tie-break,
- * not sort stability). Blanks stay last in both directions — the descending pass
- * reverses the comparison of PRESENT values only.
- */
+/** Source row indices in display order — identity when unsorted, so a caller can
+ *  map through it unconditionally. Rows equal on every key keep their source order
+ *  by an explicit index tie-break, not by sort stability. */
 export function sortedOrder(
   rowCount: number,
   sort: ColumnSort,
@@ -151,18 +121,12 @@ export function sortedOrder(
   });
 }
 
-/**
- * The sort STATE — a chevron on the right edge of a column header, nothing while the
- * column is unsorted. An indicator, not a control: the header cell itself is the click
- * target. Absolutely positioned, so it never adds to the column's width.
- */
+/** The sort STATE — an indicator, not a control: the header cell itself is the
+ *  click target, and this is absolutely positioned so it adds no column width. */
 export function SortIndicator({ dir, onCycle, label }: {
   dir: SortDir | null;
-  /** Set on a header whose own content fills the cell — the FRAME editor, where the
-   *  name field leaves no reliable margin to tap on a phone. That makes the chevron a
-   *  real control: always drawn (a muted double chevron while unsorted, so there is
-   *  something to aim at) and clickable in its own right. Everywhere else the header
-   *  cell is the target and this stays a passive indicator. */
+  /** Set on a header whose own content fills the cell (the frame editor, with no
+   *  reliable margin to tap): the chevron becomes a real control, always drawn. */
   onCycle?: () => void;
   label?: string;
 }) {
@@ -194,10 +158,6 @@ export function SortIndicator({ dir, onCycle, label }: {
   );
 }
 
-/**
- * Spread onto an interactive control INSIDE a sortable header — the frame editor's
- * column-name field, its type toggle. The header cell itself is the click target, so
- * without this, typing a name or cycling a column type would also re-sort the table
- * under the cursor. Any control added inside a header needs it.
- */
+/** Spread onto ANY interactive control inside a sortable header — the header cell
+ *  is the click target, so without it the control also re-sorts the table. */
 export const stopSortTrigger = { onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() };

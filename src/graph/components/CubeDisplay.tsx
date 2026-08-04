@@ -1,6 +1,4 @@
-// Compact cube preview — column names + up to 3×3 cells (nested values shown as a
-// short token), then a chip. Mirrors FrameDisplay so the collapse-to-chip CSS
-// applies unchanged. The result box of every cube-producing node.
+// Mirrors FrameDisplay so the collapse-to-chip CSS applies unchanged.
 import { CubeChip } from "./CubeChip";
 import { cubeRowCount, isCubeValue, type CubeValue } from "../frame";
 import { cubeCellToken } from "./cubeCell";
@@ -11,10 +9,8 @@ import { flyToNode } from "../flyToNode";
 export function CubeDisplay({ cube, label, full }: {
   cube: CubeValue | SolError | null;
   label?: string;
-  /** Render every column/row (the Display node, whose card grows to fit). Default
-   *  is the compact 3×3 preview. MUST switch tableLayout to `auto` when full — a
-   *  width:100% `fixed` table inside the Display's `width:max-content` card is a
-   *  runaway-sizing loop (the node stretched infinitely). Mirrors FrameDisplay. */
+  /** Render every column/row instead of the compact 3×3 preview. MUST switch tableLayout to
+   *  `auto` — a `fixed` width:100% table inside a `width:max-content` card sizes runaway. */
   full?: boolean;
 }) {
   if (isSolError(cube)) {
@@ -34,7 +30,7 @@ export function CubeDisplay({ cube, label, full }: {
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = cubeRowCount(cube);
-  // Cap rendered rows even when "full" — a Display card stays small (100), not a browser.
+  // Cap rendered rows even when "full" — a Display card is not a browser.
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, 3);
   const maxC = full ? cube.columns.length : Math.min(cube.columns.length, 3);
   const extraCols = !full && cube.columns.length > maxC;

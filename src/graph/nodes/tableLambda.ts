@@ -9,54 +9,30 @@ import { dimEval, type DimEnv } from "../unitDimExpr";
 import { type Dim, dimEqual, isDimensionless } from "../dimension";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE ─────────────────
-// Excel's MAP/BYROW/BYCOL/MAKEARRAY/REDUCE take a LAMBDA. Each node holds its
-// formula as a string, typed inline in the node's "Formula" field (or the big
-// FormulaPopup editor); a wired LAMBDA value supersedes it. Those two authoring
-// paths (inline field/popup + the lambda socket) are the only ones — reuse-across-
-// nodes is the LAMBDA node's job.
-// Fixed variables — word names, and the fold pair uses stepped language (they run
-// in sequence) while MAP/MAKEARRAY are parallel-per-cell (positional, no stepping):
+// A wired LAMBDA supersedes the inline formula text; those are the only two authoring
+// paths. Fixed variables per host:
 //   MAP        → `value` (cell; `value2`,`value3` from optional 2nd/3rd tables),
 //                plus `row`,`col` (1-based position)
 //   BYROW/BYCOL→ `values` (the row/column as a list — reduce it with SUM/MAX/…)
 //   MAKEARRAY  → `row`,`col` (1-based indices)
 //   REDUCE/SCAN→ `acc` (running accumulator), `value` (element at this step),
 //                `step` (1-based position in the sequence)
-// Compiled by the shared excelFormula engine; Excel aggregates (SUM, AVERAGE, …)
-// resolve through Formula.js and accept the vector `v`.
-//
-// VALUE-POLYMORPHIC (polyform): the formula can return text or a date serial,
-// not just a number — `MAP(names, UPPER(x))`, `TEXTJOIN(" ", first, last)`,
-// `MAP(dates, EDATE(x, 1))`. A result-type selector swaps the output socket to
-// the matching type AT THE NODE'S DIMENSIONALITY (MAP/MAKEARRAY → matrix:
-// table/strtable/datetable; BYROW/BYCOL → combo; REDUCE → scalar). The mapped
-// value inputs are `any` so arrays of any element type connect. See
-// nodes/shared.ts (ResultType) and excelFormula.ts (compilePositional).
+// VALUE-POLYMORPHIC: the result-type selector swaps the output socket at the node's
+// OWN dimensionality (MAP/MAKEARRAY → matrix, BYROW/BYCOL → combo, REDUCE → scalar).
 
 type Cell = number | string | boolean | null | SolError; // a mapped value — number (date serial), text, logical, null (missing), or a per-cell error
 type Mat = Cell[][];
 type LambdaFn = (...args: unknown[]) => unknown;
 
-/** Compile a lambda body (Excel syntax) over fixed `varNames`, through the shared
- *  array-aware evaluator. Hosts call it positionally (MAP `fn(x,y,z,r,c)` per cell,
- *  BYROW `fn(vec)` per vector, REDUCE `fn(acc,x,i)` folding, MAKEARRAY `fn(r,c)`);
- *  the evaluator decides broadcast-vs-aggregate per call site, so a BYROW vector
- *  flows whole into `SUM(values)`. */
+/** Hosts call the compiled fn POSITIONALLY; the evaluator decides broadcast-vs-aggregate
+ *  per call site, so a BYROW vector flows whole into `SUM(values)`. */
 export function compileLambda(expr: string, varNames: string[]): LambdaFn | null {
   return compilePositional(expr, varNames) as LambdaFn | null;
 }
 
-/**
- * Resolve the function a lambda-family node runs. A wired LAMBDA value wins;
- * otherwise the inline formula text compiles over the node's fixed variable
- * names. Binding of a wired lambda's params: by POSITION by default (`provided`
- * = how many positional values the node passes; a lambda declaring more can't be
- * satisfied), or — with `byName` (SCAN/REDUCE, D18) — matched to `varNames` by
- * NAME (order-free; a param outside `varNames` is an error, see the branch).
- */
-// `err` is the short message shown inline in the node (FormulaError); `code` tags
-// the same failure for the propagating SolError so downstream nodes show the red
-// badge. An arity mismatch is a #VALUE! (wrong operand), a bad formula a #SYNTAX!.
+/** A wired LAMBDA wins over the inline text. Its params bind by POSITION (`provided` =
+ *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, D18).
+ *  `err` is the inline node message; `code` tags the propagating SolError. */
 function resolveFn(
   lam: unknown, inline: string | undefined,
   fallback: string, varNames: string[], provided: number,
@@ -64,12 +40,8 @@ function resolveFn(
 ): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
   if (isLambdaValue(lam)) {
     if (byName) {
-      // Bind the lambda's declared params to THIS node's variables BY NAME, not by
-      // position — a param named `acc` always receives the accumulator, whatever
-      // order it was declared in, so the param names can't silently lie. A param
-      // that isn't one of the node's variables can't be supplied → error (captured
-      // constants aren't params; they stay baked in the closure and pass through).
-      // See decisions.md D18.
+      // By NAME, not position (D18), so a param named `acc` always gets the accumulator
+      // and the names can't silently lie; an unknown param can't be supplied → error.
       const unknown = lam.params.filter((p) => !varNames.includes(p));
       if (unknown.length) {
         return { fn: null, err: `Lambda param ${unknown.join(", ")} isn't one of this node's variables (${varNames.join(", ")})`, code: "#VALUE!" };
@@ -87,10 +59,8 @@ function resolveFn(
   const src = inline && inline.trim() ? inline : fallback;
   const fn = compileLambda(src, varNames);
   if (!fn) return { fn: null, err: formulaSyntaxHint(src) ?? "Syntax error", code: "#SYNTAX!" };
-  // The inline formula sees ONLY this node's fixed variables — an outside name
-  // evaluates against undefined and produces garbage deep inside a function.
-  // Catch it here with the actual escape hatch spelled out (the LAMBDA node's
-  // extra names become capture inputs; wire its output into the Lambda socket).
+  // An outside name would evaluate against undefined and produce garbage deep inside a
+  // function, so reject it here and point at the LAMBDA node's capture inputs.
   const unknown = extractVariables(src).filter((v) => !varNames.includes(v));
   if (unknown.length) {
     return {
@@ -102,10 +72,8 @@ function resolveFn(
   return { fn, err: null, code: "#SYNTAX!" };
 }
 
-/** The error a lambda-family node returns when its formula won't resolve: keeps
- *  the inline `cachedError` hint (set by the caller) and ALSO propagates a tagged
- *  value so downstream nodes show the chain. `cachedResult` stays null — the
- *  node's own box shows the richer inline message, not a bare badge. */
+/** Propagates a tagged value for the downstream chain while `cachedResult` stays null,
+ *  so the node's own box keeps the richer inline message. */
 function fnError(err: string, code: SolErrorCode): { result: SolError } {
   return { result: solError(code, err) };
 }
@@ -127,14 +95,8 @@ function cell(v: unknown): Cell {
 }
 
 // ─── Unit carry over a 1-D list (FC A4) ────────────────────────────────────────
-// REDUCE / BYROW / BYCOL carry dimensional units the same way the Expression node
-// does: strip the tagged cells to base-SI magnitudes for the numeric fold, then
-// interpret the formula with `dimEval` (the fold/aggregate variables bound to the
-// input's element dimension) to determine the result's dimension, and re-tag it.
-// A dimension clash inside the formula surfaces as #UNIT!. MAP / MAKEARRAY / SCAN
-// are matrix producers — unit-agnostic by design — so they don't take this path,
-// and a genuine 2-D matrix is unit-agnostic too, so this only fires for a widened
-// 1-D list.
+// Strip to base-SI for the fold, dimEval the formula, re-tag. Matrix producers
+// (MAP/MAKEARRAY/SCAN) are unit-agnostic, so this fires only for a widened 1-D list.
 
 /** The single unit shared by a matrix's UnitCell cells (dim + a shared display id
  *  when every tagged cell agrees). `null` = nothing tagged; a `#UNIT!` = the tagged
@@ -160,10 +122,8 @@ function stripCells(m: Mat): Mat {
   return m.map((row) => row.map((c) => (isUnitCell(c) ? (c as unknown as UnitCell).value : c)));
 }
 
-/** The result dimension of a fold/aggregate formula given the input's element dim.
- *  `dimVars` are the formula variables to bind to that dim (REDUCE: acc, value;
- *  BYROW/BYCOL: values); every other variable (a step / index) stays dimensionless.
- *  Returns the result dim, a `#UNIT!` conflict, or `null` (indeterminate → no tag). */
+/** `dimVars` bind to the element dim (REDUCE: acc, value; BYROW/BYCOL: values); every
+ *  other variable stays dimensionless. Returns the dim, a `#UNIT!`, or null. */
 function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | SolError | null {
   const ast = parseFormula(expr);
   if (!ast) return null;
@@ -173,16 +133,14 @@ function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | Sol
   return r; // Dim | SolError | null
 }
 
-/** The formula text a lambda-family node is folding with — a wired lambda's source
- *  body, else the inline formula (or its fallback). Used for the dimensional twin. */
+/** A wired lambda's source body, else the inline formula — for the dimensional twin. */
 function foldExpr(lam: unknown, inline: string | undefined, fallback: string): string {
   if (isLambdaValue(lam)) return (lam as LambdaValue).expr || fallback;
   return inline && inline.trim() ? inline : fallback;
 }
 
-/** Re-tag a numeric fold result with a determined dimension, preserving the input
- *  list's display unit when the dimension is unchanged (a sum of km stays km). A
- *  non-number / dimensionless / indeterminate result is returned untouched. */
+/** Preserves the input list's display unit when the dimension is unchanged (a sum of
+ *  km stays km); anything non-numeric or indeterminate is returned untouched. */
 function retagFold(
   out: Cell,
   dr: Dim | SolError | null,
@@ -194,11 +152,8 @@ function retagFold(
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
-// Like Excel's MAP, takes up to three arrays zipped through one lambda: `value` is
-// the first table's cell, `value2`/`value3` the optional second/third tables'. An
-// extra table must match the first's shape, or be 1×1 (a wired scalar widens to
-// 1×1), which broadcasts over every cell — Solenoid's stand-in for a captured
-// constant.
+// Up to three zipped arrays; an extra table must match the first's shape or be 1×1,
+// which broadcasts — the stand-in for a captured constant.
 
 export class MapTableNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
@@ -320,10 +275,7 @@ export class ByAxisNode extends ClassicPreset.Node {
 }
 
 // ─── REDUCE ───────────────────────────────────────────────────────────────────────
-// Folds every cell (row-major, matching Excel) into one value, starting from
-// Initial. The `Values` input widens any shape to a matrix, so REDUCE over a
-// plain list is the everyday case and a matrix folds across all cells. The fold
-// can be textual (`acc & value` with an Initial of "") or numeric.
+// Row-major fold (matching Excel) from Initial; `Values` widens any shape to a matrix.
 
 export class ReduceLambdaNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
@@ -387,12 +339,8 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 }
 
 // ─── SCAN ───────────────────────────────────────────────────────────────────────
-// REDUCE's running-intermediate twin: the SAME row-major fold, but it EMITS the
-// accumulator after every cell, so the output keeps the input's shape (Excel
-// SCAN). A running total is `acc + value` from Initial 0; a running max is
-// `MAX(acc, value)`; text builds with `acc & value` from "". REDUCE gives only the
-// final value, so this covers the arbitrary-formula case the fixed-op Cumulative
-// can't.
+// REDUCE's twin: the same row-major fold, but it EMITS the accumulator after every
+// cell, so the output keeps the input's shape.
 
 export class ScanLambdaNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
@@ -431,9 +379,8 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     try {
       let acc: unknown = initial;
       let i = 0;
-      // The fold carries the RAW accumulator (fn's return); each output cell is
-      // only its normalized snapshot — normalizing the carried acc would corrupt
-      // the fold (e.g. a valid intermediate flattened to null).
+      // The carried accumulator stays RAW — normalizing it would corrupt the fold
+      // (a valid intermediate flattened to null).
       const out: Mat = m.map((row) => row.map((x) => { acc = fn(acc, x, ++i); return cell(acc); }));
       this.cachedResult = out;
       this.cachedError = null;
@@ -477,8 +424,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    // A blank dimension leaves the array's SHAPE unknown; the `< 1` guard below
-    // already answers blank for a non-positive size, so 0 routes into it.
+    // A blank dimension leaves the SHAPE unknown; the `< 1` guard below answers it.
     const rowsRaw = readInput(inputs.rows, this.literals.rows ?? 0);
     const colsRaw = readInput(inputs.cols, this.literals.cols ?? 0);
     const rows = rowsRaw === null ? 0 : Math.round(rowsRaw);

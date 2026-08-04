@@ -1,9 +1,5 @@
-// Bridges packs → the formula language (D19 decision 3). Sibling of
-// `fcExtensions.ts`. RESOLUTION is global (every KNOWN pack registers at startup, so
-// a deactivated pack's functions still compute); ADVERTISING is active-only.
-//
-// Must live outside `excelFormula.ts`: packs import node classes, which import the
-// formula engine, so a packs import there would cycle.
+// Packs → the formula language (D19 decision 3): RESOLUTION is global, ADVERTISING
+// is active-only. Must stay out of `excelFormula.ts` — a packs import there cycles.
 
 import { allPacks, packsStore } from "./packs";
 import { registerInternal, unregisterInternal, internalFunctionNames, FX_FUNCTION_NAMES, EXCEL_IMPL_META } from "./excelFunctions";
@@ -18,24 +14,16 @@ const PACK_FORMULA_OWNER = new Map<string, string>();
 /** name → its declared signature/arity, for the editor hint. */
 const PACK_FORMULA_META = new Map<string, PackFormula>();
 
-/** Register every known pack's formula functions for resolution. Call once at
- *  startup, alongside `initPackFcExtensions`.
- *
- *  A pack may not claim a name the core already dispatches, or one another pack
- *  already claimed — a collision THROWS at startup rather than silently shadowing
- *  a built-in. */
+/** Register every known pack's formula functions; a name the core or another pack
+ *  already claims THROWS at startup rather than silently shadowing it. */
 export function initPackFormulas(): void {
-  // Snapshotted on the FIRST call only (after every core registration has run at
-  // module load): against the LIVE registry a re-run would see its own previous
-  // registrations as core names and reject every one of them. Covers Formula.js's
-  // exports too — a pack claiming SUMPRODUCT must be caught even though nothing
-  // registered it — plus the blocked spellings a pack must not quietly revive.
+  // Snapshotted on the FIRST call only: against the LIVE registry a re-run would
+  // see its own previous registrations as core names and reject every one.
   if (!coreNames) {
     coreNames = new Set([...internalFunctionNames(), ...FX_FUNCTION_NAMES].map((n) => n.toUpperCase()));
   }
 
-  // Withdraw the previous run's registrations, so a pack that is no longer present
-  // stops answering instead of lingering as a ghost function.
+  // Withdraw the previous run's registrations, so a removed pack stops answering.
   for (const name of PACK_FORMULA_OWNER.keys()) {
     unregisterInternal(name);
     delete EXCEL_IMPL_META[name];
@@ -74,14 +62,12 @@ export function packFormulaSignature(name: string): string | null {
   return PACK_FORMULA_META.get(name.toUpperCase())?.signature ?? null;
 }
 
-// Highlighting runs on every keystroke while the advertised set changes only on a
-// pack toggle, so it's memoized against the store's version counter.
+// Memoized against the store version: highlighting runs on every keystroke.
 let cachedNames: string[] = [];
 let cachedVersion = -1;
 
-/** The function names the EDITOR should offer and highlight: everything the core
- *  registers, plus the functions of currently-ACTIVE packs. Inactive packs' names
- *  still dispatch — they just aren't advertised. */
+/** The names the EDITOR offers: the core plus ACTIVE packs — an inactive pack's
+ *  functions still dispatch, they just aren't advertised. */
 export function advertisedFunctionNames(): string[] {
   const v = packsStore.version();
   if (v === cachedVersion) return cachedNames;

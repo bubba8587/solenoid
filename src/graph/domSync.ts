@@ -1,32 +1,16 @@
-// DOM↔canvas transform sync for the HTML-in-Canvas renderer. During a gesture the
-// canvas draws the graph while DOM-only content (conduits, their cables, the standoff
-// svg) stays live DOM inside rete's holder — two presentation pipelines that can skew
-// by a frame or more (the "conduit trails the pan" complaint): the canvas presents the
-// camera it PAINTED with, the holder composites rete's freshest CSS transform.
-//
-// The fix: while gesturing, steer the holder's transform to the camera the canvas
-// actually presented (holderSyncTransform), and derive that presented camera from the
-// WICG API itself when the build exposes it — drawElementImage returns (and
-// getElementTransform computes) the CSS matrix that puts an element exactly where the
-// canvas drew it, browser-side rounding included (camFromDrawMatrix).
-//
-// Pure math (no DOM) → domSync.test.ts.
+// DOM↔canvas transform sync: during a gesture the holder is steered to the camera
+// the canvas actually PRESENTED, or DOM-only content skews a frame behind the paint.
 
 export interface CamXform { k: number; x: number; y: number }
 
-/** rete-area-plugin's exact holder transform serialization (Area.update → holder
- *  style.transform, transformOrigin '0 0'). Byte-identical so our sync write is
- *  indistinguishable from rete's own, and restoring is a plain re-serialize. */
+/** rete-area-plugin's holder serialization, byte-identical so a sync write is
+ *  indistinguishable from rete's own and restoring is a plain re-serialize. */
 export function holderTransform(t: CamXform): string {
   return `translate(${t.x}px, ${t.y}px) scale(${t.k})`;
 }
 
-/**
- * The transform the holder should show so DOM-only content lands exactly on the
- * canvas's last-presented frame — or null when live and presented already agree
- * (leave rete's own write untouched; null is also the answer with nothing
- * presented yet). `eps` is in CSS px — sub-1/100-px skew isn't visible.
- */
+/** The holder transform that lands DOM-only content on the canvas's last-presented
+ *  frame — null when they already agree, leaving rete's own write untouched. */
 export function holderSyncTransform(
   live: CamXform,
   presented: CamXform | null,
@@ -41,19 +25,14 @@ export function holderSyncTransform(
   return holderTransform(presented);
 }
 
-/** The 2-D affine components of a DOMMatrix we care about (structural, so the
- *  pure math never touches the DOM type — node-env testable). */
+/** The 2-D affine parts of a DOMMatrix, structurally typed so this stays node-env
+ *  testable. */
 export interface Affine2D { a: number; b: number; c: number; d: number; e: number; f: number }
 
-/**
- * Recover the camera from the CSS sync matrix the WICG API hands back for a drawn
- * element (drawElementImage's return / getElementTransform). For an element whose
- * capture box was drawn at world (anchorX, anchorY) with dw==natural w (our case:
- * REF=1, dest size == padded box), the matrix is translate(k·anchor + t) scale(k),
- * so k = a and t = (e,f) − k·anchor. Returns null for anything the camera model
- * can't represent (rotation/skew/non-uniform scale) or a degenerate scale —
- * caller falls back to its own bookkeeping.
- */
+/** Recover the camera from the WICG draw matrix: for a capture box drawn at world
+ *  (anchorX, anchorY) at natural size the matrix is translate(k·anchor + t) scale(k),
+ *  so k = a and t = (e,f) − k·anchor. Null for anything the camera model can't
+ *  represent, on which the caller keeps its own bookkeeping. */
 export function camFromDrawMatrix(
   m: Affine2D,
   anchorX: number,
@@ -67,13 +46,9 @@ export function camFromDrawMatrix(
   return { k: m.a, x: m.e - m.a * anchorX, y: m.f - m.a * anchorY };
 }
 
-/**
- * Is a native-derived camera close enough to our bookkeeping to trust? The WICG
- * surface is experimental — a build could hand back a matrix in backing-store px
- * or with an unexpected origin. Within `relTol` of the bookkeeping scale and
- * `pxTol` CSS px of its translation = the same frame, browser rounding included;
- * anything further = misparse, keep the bookkeeping.
- */
+/** The WICG surface is experimental — a build could return backing-store px or an
+ *  unexpected origin, so a native camera further than the tolerances is treated as a
+ *  misparse and the bookkeeping wins. */
 export function plausibleNativeCam(
   native: CamXform,
   book: CamXform,

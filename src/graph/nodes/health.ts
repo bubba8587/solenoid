@@ -1,6 +1,5 @@
-// Heart-Rate Zones — the Health & Fitness pack's training-zone table. With a
-// resting HR the bands use the Karvonen (heart-rate reserve) method; without one,
-// plain %-of-max.
+// Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR,
+// plain %-of-max without one.
 
 import { ClassicPreset } from "rete";
 import { numIn, frameOut, readInput } from "./shared";
@@ -15,17 +14,14 @@ const ZONES: Array<{ name: string; lo: number; hi: number }> = [
   { name: "Z5 Maximum", lo: 0.9, hi: 1 },
 ];
 
-/** The one domain rule for the zone table (shared by the node and the pack's
- *  HEARTRATEZONES formula): a positive max, and any resting HR strictly
- *  between 0 and it. */
+/** The one domain rule, shared by the node and HEARTRATEZONES: a positive max,
+ *  and any resting HR strictly between 0 and it. */
 export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolean {
   return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
 }
 
-/** The zone bands as five [low, high] rows (Z1…Z5) — the formula surface's
- *  matrix form of the node's frame (frames stay out of formulas by design;
- *  rank 2 is spellable since D23). Same rounding and Karvonen switch as the
- *  frame. */
+/** The formula surface's matrix form of the frame — five [low, high] rows, since
+ *  frames stay out of formulas. */
 export function hrZonesMatrix(maxHr: number, restingHr: number | null): number[][] | SolError {
   if (!hrZonesDomainOk(maxHr, restingHr)) {
     return solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");

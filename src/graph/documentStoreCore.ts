@@ -1,10 +1,6 @@
-// Pure core for the documents library — no localStorage, no rete, no DOM, no
-// id/clock generation (callers pass ids and timestamps in, so every function is
-// deterministic and unit-testable). Mirrors persistenceCore.ts / groupPushCore.ts.
-//
-// The library is a list of named documents plus a pointer to the current one.
-// documentStore.ts wraps these with localStorage persistence and the editor
-// load/serialize wiring; this module only transforms the library value.
+// Pure library transforms: callers pass ids and timestamps in, so keep this free of
+// storage, rete, DOM and id/clock generation. Every transform must stay IMMUTABLE —
+// documentStore's persist() diffs by object identity.
 
 import type { SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";
@@ -16,10 +12,7 @@ export interface SolDoc {
   name: string;
   graph: SavedGraph;
   updatedAt: number; // epoch ms of the last change
-  // Absolute path on disk this document is bound to (desktop only). Set when the
-  // doc was opened from, or last saved to, a file; undefined for a never-saved
-  // doc or in the browser build. Save writes straight to this path; Save As (or a
-  // first save) sets it from the native dialog.
+  // Absolute disk path (desktop only); undefined for a never-saved doc. Save writes here.
   filePath?: string;
 }
 
@@ -66,8 +59,7 @@ export function setCurrent(lib: DocLibrary, id: string): DocLibrary {
   return { ...lib, currentId: id };
 }
 
-/** Bind a document to a disk path (and optionally rename it to the file's name).
- *  Used after a Save As / Open writes or reads a real file. */
+/** Bind a document to a disk path, optionally renaming it to the file's name. */
 export function setDocPath(lib: DocLibrary, id: string, filePath: string, name?: string): DocLibrary {
   return {
     ...lib,
@@ -77,8 +69,7 @@ export function setDocPath(lib: DocLibrary, id: string, filePath: string, name?:
   };
 }
 
-/** Write a freshly-serialized graph into the current document, bumping its
- *  updatedAt and floating it to the top of the list (most-recent first). */
+/** Write a graph into the current document, bumping updatedAt and floating it to the top. */
 export function updateCurrentGraph(lib: DocLibrary, graph: SavedGraph, now: number): DocLibrary {
   const cur = getCurrent(lib);
   if (!cur) return lib;
@@ -95,9 +86,8 @@ export function removeDocument(lib: DocLibrary, id: string): DocLibrary {
   return { ...lib, documents, currentId };
 }
 
-/** Copy a document under a new id + name, made current. The copy is a NEW unsaved
- *  document — it does NOT inherit the source's disk path (Save would otherwise
- *  overwrite the original file). */
+/** Copy a document under a new id + name; the copy must NOT inherit the source's disk
+ *  path, or Save would overwrite the original file. */
 export function duplicateDocument(lib: DocLibrary, id: string, newId: string, newName: string): DocLibrary {
   const src = lib.documents.find((d) => d.id === id);
   if (!src) return lib;
@@ -105,10 +95,8 @@ export function duplicateDocument(lib: DocLibrary, id: string, newId: string, ne
   return addDocument(lib, copy);
 }
 
-/** Structural validation of ONE parsed document blob — string id/name and a
- *  structurally-valid graph. The per-doc half of validateLibrary, standalone
- *  because the per-doc autosave keys store each document under its own
- *  localStorage key (documentStore.ts) and validate them one at a time. */
+/** Structural validation of ONE parsed document blob — the per-doc autosave slots are
+ *  validated one at a time, so this is standalone from validateLibrary. */
 export function validateDoc(data: unknown): SolDoc | null {
   if (typeof data !== "object" || data === null) return null;
   const dd = data as Record<string, unknown>;
@@ -123,10 +111,7 @@ export function validateDoc(data: unknown): SolDoc | null {
   };
 }
 
-/** Structural validation of a parsed library blob — every document must have a
- *  string id/name and a structurally-valid graph; currentId must reference an
- *  existing document or be null. Returns the cleaned library, or null if the
- *  shape is unusable. */
+/** Structural validation of a parsed library blob; the cleaned library, or null. */
 export function validateLibrary(data: unknown): DocLibrary | null {
   if (typeof data !== "object" || data === null) return null;
   const lib = data as Record<string, unknown>;

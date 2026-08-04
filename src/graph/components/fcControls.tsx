@@ -1,14 +1,5 @@
-// ─── Reusable Format-Controller controls ─────────────────────────────────────
-// The FC node's number-format and unit dropdowns, factored out so OTHER surfaces
-// (the table popup's per-column format row) render the exact same menus over the
-// exact same option data — one source of truth for "what formats/units exist",
-// including the ones active packs contribute. The FC node component consumes the
-// same `useFcFormatOptions()` hook, so the two can't drift.
-//
-// These are plain controlled <select>s (LazySelect) — no docking / forwarding /
-// propagation, none of the FC node's value-mutating behavior. A caller drives
-// them from its own state and decides what a change means (the FC mutates the
-// value; the popup re-renders display-only).
+// The FC's format/unit dropdowns, shared with other surfaces so the option data can't drift.
+// Plain controlled selects — none of the FC node's value-mutating behavior lives here.
 
 import { useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
@@ -19,11 +10,7 @@ import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
 
-// ─── Flow arrows + lock (the FC's three-state visual language) ────────────────
-// The Format Controller flanks each control with a ← / → arrow so you can see how
-// the property flows. Shared here so the value-popup dropdowns speak the same
-// language (an authored unit flows forward; an inherited one is locked). The three
-// states (same as FormatControllerNode's):
+// The FC's three flow states, shared so the popup dropdowns speak the same language:
 //   ← →  authored HERE — applies to this box, travels ahead with the value
 //   → →  inherited     — the value's unit arrived from upstream (read-only / locked)
 //   ← ←  dictated from ahead (Convert primacy) — FC-only, not used in the popup
@@ -36,8 +23,7 @@ export const FLOW_AUTHORED: FcFlowState = { left: "back", right: "fwd" };
 /** Inherited from upstream: the value already carries it (→ →) — pairs with a lock. */
 export const FLOW_INHERITED: FcFlowState = { left: "fwd", right: "fwd" };
 
-/** A small rounded direction arrow (matches the FC's). Color inherits (currentColor)
- *  so it reads muted in any container; no external CSS dependency. */
+/** Color inherits (currentColor) so the arrow reads muted in any container. */
 export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
   return (
     <span
@@ -56,8 +42,8 @@ export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string })
   );
 }
 
-/** Flank a control with the flow arrows (a spacer where a side has none, so a stack
- *  of these stays column-aligned). `title`s explain each direction on hover. */
+/** Flank a control with the flow arrows, a spacer where a side has none so a stack of
+ *  these stays column-aligned. */
 export function FcFlow({ flow, backTitle, fwdTitle, children }: {
   flow?: FcFlowState;
   backTitle?: string;
@@ -67,8 +53,7 @@ export function FcFlow({ flow, backTitle, fwdTitle, children }: {
   const arrow = (dir: FcDir, side: "left" | "right") =>
     dir ? <FcArrow key={side} dir={dir} title={dir === "back" ? backTitle : fwdTitle} />
         : <span aria-hidden="true" key={side} style={{ flex: "0 0 auto", width: 9 }} />;
-  // Layout (display/gap) is in the consumer's CSS (`.sol-fcflow`) so it can differ by
-  // context — inline in a side-by-side bar, filling in a stacked cell.
+  // Layout lives in the consumer's `.sol-fcflow` CSS so it can differ by context.
   return (
     <span className="sol-fcflow">
       {arrow(flow?.left ?? null, "left")}
@@ -78,8 +63,7 @@ export function FcFlow({ flow, backTitle, fwdTitle, children }: {
   );
 }
 
-// Base unit-group display order — active packs' groups are appended (before
-// "custom") at render time. Kept in sync with FormatControllerNode's copy.
+// Base unit-group order; pack groups append before "custom". Mirrors FormatControllerNode.
 const BASE_UNIT_GROUP_ORDER: string[] = [
   "none", "angle", "length", "mass", "temperature",
   "time", "area", "volume", "speed", "data", "currency",
@@ -93,12 +77,8 @@ export interface FcFormatOptions {
   packFormatGroups: Map<string, FcOption[]>;
 }
 
-/**
- * The option data for the FC format + unit dropdowns — built-in styles/units
- * merged with the ones active packs contribute. Re-derives when packs toggle.
- * Shared by FormatControllerComponent and the table popup so their menus stay
- * identical.
- */
+/** Built-in styles/units merged with active packs', re-derived when packs toggle; shared so
+ *  the FC node and the table popup can't show different menus. */
 export function useFcFormatOptions(): FcFormatOptions {
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   return useMemo(() => {
@@ -126,9 +106,8 @@ export function useFcFormatOptions(): FcFormatOptions {
   }, [packsVersion]);
 }
 
-/** The <option>/<optgroup> tree for the NUMBER-format dropdown (General / Number /
- *  Percent / Custom + active-pack format groups). Rendered inside a caller's
- *  <select> so both the FC and the popup share the exact list. */
+/** The <option>/<optgroup> tree for the NUMBER-format dropdown, rendered inside a caller's
+ *  <select> so the FC and the popup share the exact list. */
 export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]>) {
   return (
     <>
@@ -247,8 +226,7 @@ export function LogicalStyleSelect({ value, onChange, className, title }: {
   );
 }
 
-/** A letter-case <select> matching the FC's text socket (Aa as-is · UPPER · lower ·
- *  Proper) — display-only, non-destructive. The popup's text-column format cell. */
+/** A letter-case <select> matching the FC's text socket — display-only, non-destructive. */
 export function TextCaseSelect({ value, onChange, className, title }: {
   value: TextCase | undefined;
   onChange: (v: TextCase) => void;
@@ -270,8 +248,8 @@ export function TextCaseSelect({ value, onChange, className, title }: {
   );
 }
 
-/** A unit <select> matching the FC's, driven by external state. `disabled` renders
- *  the LOCKED state (an inherited unit the value already carries — read-only). */
+/** A unit <select> matching the FC's; `disabled` is the LOCKED state (an inherited unit
+ *  the value already carries). */
 export function UnitSelect({ value, onChange, className, title, disabled }: {
   value: string;
   onChange: (v: string) => void;

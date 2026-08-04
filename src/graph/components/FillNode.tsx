@@ -12,8 +12,7 @@ export function FillComponent({ data, emit }: NodeProps<FillNodeType>) {
   const connected = useConnectedInputs(data.id);
   const elseKeys = Object.keys(data.inputs).filter((k) => /^e\d+$/.test(k));
 
-  // Coalesce is N-ary: a typed number in an unwired Else row is a broadcast
-  // last-resort constant.
+  // Coalesce is N-ary: a typed number in an unwired Else row is a constant.
   if (op === "coalesce") {
     const leading = ["list", ...(connected.has("value") ? ["value"] : [])];
     return (
@@ -25,9 +24,8 @@ export function FillComponent({ data, emit }: NodeProps<FillNodeType>) {
     );
   }
 
-  // A WIRED socket must never disappear (its cable endpoint would dangle —
-  // the Expect-node rule), so a connected value/Else row stays visible in
-  // modes that don't use it.
+  // A WIRED socket must never disappear (its endpoint would dangle), so a
+  // connected row stays visible in modes that don't use it.
   const keys = ["list"];
   if (op === "constant" || connected.has("value")) keys.push("value");
   for (const k of elseKeys) if (connected.has(k)) keys.push(k);

@@ -9,20 +9,8 @@ import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
 import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
 
-// The formula grammar is real Excel syntax (^, UPPERCASE functions, & …),
-// parsed and compiled by the shared excelFormula engine. Bare names become the
-// node's input sockets. See excelFormula.ts. The formula is value-polymorphic:
-// a result-type selector (Number / Text / Date / Auto) declares the output's
-// element type and swaps the output socket; the inputs are `any` so arrays of
-// any type connect (text / dates / numbers). See nodes/shared.ts (ResultType).
-
-/**
- * Coerce one formula result for output. A finite number (a date serial is one)
- * passes through; a string passes through (text formulas); a BOOLEAN passes
- * through (display renders TRUE/FALSE, and the logical↔number bridge covers
- * numeric consumers). Everything else — a non-finite number, undefined — collapses to the empty
- * sentinel (`null` for a scalar, `NaN` inside a list).
- */
+/** Numbers, strings and booleans pass through; anything else — non-finite, undefined —
+ *  collapses to the empty sentinel (`null` for a scalar, `NaN` inside a list). */
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v;
@@ -55,8 +43,7 @@ function tagResult(v: unknown): unknown {
 function stripUnits(v: unknown): unknown {
   if (isUnitCell(v)) return v.value;
   if (Array.isArray(v)) {
-    // Rank 2 (D23): strip per row. A matrix carries ONE homogeneous unit (D20),
-    // but the cells are tagged individually like a list's.
+    // A matrix carries ONE homogeneous unit (D20) but tags cells individually (D23).
     return v.map((c) =>
       Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
       : isUnitCell(c) ? (c as UnitCell).value : c);
@@ -64,10 +51,8 @@ function stripUnits(v: unknown): unknown {
   return v;
 }
 
-/** The currency CODE a pure-currency formula input carries: the shared display id
- *  of its tagged cell(s), or undefined when uncoded / mixed (lenient — a computed
- *  currency has no code) / not currency at all. The code is the currency's real
- *  unit identity (VAL-19), so it rides the dim pass beside the dim. */
+/** The shared display id of a pure-currency input's cells — the currency's real unit
+ *  identity (VAL-19) — or undefined when uncoded, mixed, or not currency. */
 function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
   const cells = Array.isArray(v) ? v.flat() : [v];
@@ -80,9 +65,8 @@ function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   return code;
 }
 
-/** The dimension a formula input carries: a scalar UnitCell's dim, or the shared dim
- *  of a container's tagged cells (dimensionless if none / mixed). Rank 2 flattens —
- *  a matrix carries ONE homogeneous unit (D20), so the shared-dim walk is the same. */
+/** A scalar's dim, or a container's shared cell dim (dimensionless if none/mixed);
+ *  rank 2 flattens, since a matrix carries ONE homogeneous unit (D20). */
 function envDim(v: unknown): Dim {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) {
@@ -97,16 +81,13 @@ function envDim(v: unknown): Dim {
   return DIMENSIONLESS;
 }
 
-// ─── Expression node ──────────────────────────────────────────────────────────
-
 export class ExpressionNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
   expr: string;
-  // A pack-supplied preset locks its formula: the formula box is read-only so the
-  // node keeps computing what the pack promises. The header title stays editable
-  // (it's just a label). Plain Expression nodes the user adds are never locked.
+  // Set only by a pack preset — the formula box goes read-only so the node keeps
+  // computing what the pack promises; the header title stays editable.
   locked: boolean;
   /** Declared element type of the result — swaps the output socket (combo level:
    *  numlist / strcombo / datecombo / any). `number` keeps the classic behavior. */
@@ -175,16 +156,11 @@ export class ExpressionNode extends ClassicPreset.Node {
     return { added, removed };
   }
 
-  /** The result socket's RANK, reconciled to the computed VALUE (SOCK-9): the
-   *  resultAs combo covers rank ≤ 1; a matrix result swaps to the same family's
-   *  matrix rung, through the standard in-place-retype machinery (SOCK-7 — cables
-   *  the new type can't feed drop, downstream FCs re-resolve). Value-driven, so it
-   *  runs OUTSIDE data() via a microtask; headless runs (no editor) skip the swap
-   *  and just flow the value. An error result leaves the socket alone. */
+  /** Reconciles the result socket's RANK to the computed VALUE (SOCK-9). Value-driven,
+   *  so it must run OUTSIDE data() via a microtask; headless runs skip the swap. */
   private lastResultRank: 1 | 2 = 1;
   private reconcileResultRank(result: unknown): void {
-    // An error RESULT (it flows through the normal return, as a value) says nothing
-    // about the formula's shape — leave the socket where the last real value put it.
+    // An error result says nothing about shape — leave the socket where the last value put it.
     if (isSolError(result)) return;
     const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
     if (want === this.lastResultRank) return;
@@ -203,9 +179,8 @@ export class ExpressionNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>): { result: unknown } {
-    // Failures emit a tagged #VALUE! so DOWNSTREAM nodes show the error chain
-    // (errorValue.ts); cachedError keeps the richer in-node message. An empty
-    // formula is a blank, not an error.
+    // Failures emit a tagged error for the downstream chain; cachedError keeps the richer
+    // in-node message. An empty formula is a blank, not an error.
     if (!this.evaluator) {
       const hint = this.expr.trim() ? formulaSyntaxHint(this.expr) : null;
       this.cachedError = this.expr.trim() ? (hint ?? "Syntax error") : null;
@@ -218,39 +193,28 @@ export class ExpressionNode extends ClassicPreset.Node {
       return { result: err };
     }
     try {
-      // Raw env keeps any UnitCell (for the dimensional interpretation); the numeric
-      // evaluator runs on magnitudes (rawEnv stripped), so a dimensioned input never
-      // reaches the arithmetic as an object.
+      // The evaluator runs on stripped magnitudes; rawEnv keeps UnitCells for the dim pass.
       const rawEnv: Record<string, unknown> = {};
-      // A wired blank VARIABLE stays blank through the formula (`=x+1` with x blank
-      // is blank, not 1) — the evaluator already carries the missing contract.
+      // A wired blank stays blank through the formula (`=x+1` with x blank is blank, not 1).
       for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
       const env: Record<string, unknown> = {};
       for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
 
-      // The evaluator decides broadcast-vs-aggregate per call site. Both a SCALAR
-      // and each LIST element run through the SAME tagging (tagResult): an
-      // in-formula error → tagged SolError (#DIV/0! / #DOMAIN! / mapped Formula.js
-      // error) that PROPAGATES per-cell; overflow/NaN is already classified at the
-      // producing op (guardFinite), so tagResult just passes a definable ∞ and nets
-      // a stray NaN.
+      // Scalars and every list element run through the SAME tagging, so an in-formula
+      // error propagates per-cell.
       const raw = this.evaluator(env);
       let result: unknown = Array.isArray(raw)
         ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
         : tagResult(raw);
 
-      // Dimensional interpretation: only when an input actually carries a unit and
-      // the result is numeric. dimEval returns the
-      // result dim, a #UNIT! conflict (surface it), or null (indeterminate — drop
-      // the unit). Tag the numeric result cells with a determined dimension.
+      // Only interpret dimensions when an input actually carries a unit; dimEval's null
+      // means indeterminate — drop the unit rather than guess.
       if (this.ast && this.varNames.some((v) => envDim(rawEnv[v]) !== DIMENSIONLESS && !isDimensionless(envDim(rawEnv[v])))) {
         const dimEnv: DimEnv = {};
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
           dimEnv[v] = envDim(rawEnv[v]);
-          // A pure-CURRENCY input also carries its display code — the currency's
-          // real identity (VAL-19) — so the dim pass can refuse `$a + €b` the way
-          // the node-side arithmeticCell does. Other dims never set a code.
+          // The currency code rides along so the dim pass can refuse `$a + €b` (VAL-19).
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }

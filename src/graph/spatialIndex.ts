@@ -1,13 +1,5 @@
-// Uniform spatial grid — the scalability half of canvas hit-testing (Phase 3).
-// NOT WIRED IN (nothing imports it yet; no behavior change).
-//
-// `hitTestCables` (cableHitTest.ts) is O(cables) per query — fine for a handful,
-// but the canvas renderer exists for BIG graphs (the ~5k-element dense case), where
-// scanning every cable per pointer-move is the kind of cost we're trying to remove.
-// This buckets items by the grid cells their bounding box covers, so a point query
-// returns only the items in the touched cell(s) — typically a tiny candidate set the
-// caller then tests precisely. Coordinate-space-agnostic (world or screen — the
-// caller picks one space and a matching cellSize). Pure data structure, fully tested.
+// Uniform spatial grid, NOT WIRED IN yet. Coordinate-space-agnostic: the caller picks
+// one space and a matching cellSize.
 
 export interface BBox { minX: number; minY: number; maxX: number; maxY: number }
 export interface Pt { x: number; y: number }
@@ -69,9 +61,8 @@ export class SpatialGrid<T = string> {
     this.keysOf.delete(id);
   }
 
-  /** Candidate ids near `p` (within `radius`): the union of items in every cell the
-   *  query box [p±radius] overlaps. A SUPERSET — the caller does the precise test.
-   *  Order is unspecified; de-duplicated. */
+  /** Candidate ids within `radius` — a de-duplicated SUPERSET in unspecified order;
+   *  the caller does the precise test. */
   queryPoint(p: Pt, radius = 0): T[] {
     const x0 = this.cellCoord(p.x - radius), x1 = this.cellCoord(p.x + radius);
     const y0 = this.cellCoord(p.y - radius), y1 = this.cellCoord(p.y + radius);

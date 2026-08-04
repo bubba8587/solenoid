@@ -8,16 +8,8 @@ import { formatNumberPattern } from "./text";
 import { getEditor } from "../process";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// Cast — one node that coerces any scalar or list value to a chosen target type:
-// number, text, date (Excel serial), or complex. Element-wise over lists.
-//
-// The optional `format` applies when casting TO text: a number pattern
-// ("0.00", "0.00%") for numeric sources, a date pattern (YYYY-MM-DD …) for
-// date sources.
-//
-// The output socket follows the selected target (numlist / strcombo /
-// datecombo / complex) — swapped in place by applyCastTarget like the frame
-// nodes' read-as toggle, so downstream type checking stays honest.
+// Cast — coerces a scalar or list to the chosen target type, element-wise. The output
+// socket is swapped in place by applyCastTarget so downstream type checking stays honest.
 
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
 
@@ -56,8 +48,7 @@ export function parseCx(s: string): Cx {
 
 type CastScalar = number | string | Cx | boolean | null;
 
-// Cast one scalar. A complex is self-identifying (tagged), so no caller flag —
-// which also means a cell of a complex LIST casts correctly. `dateish` makes
+// A complex is self-identifying (tagged), so no caller flag is needed; `dateish` makes
 // "to text" use the date formatter for numeric serials.
 function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean): CastScalar {
   if (x == null) return null;
@@ -65,8 +56,7 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
     case "number": {
       if (isCx(x)) return x.re; // real part
       if (typeof x === "number") return x;
-      // logical↔number is the one cross-family bridge (TRUE→1, FALSE→0, Excel
-      // N(TRUE)=1) — Cast already does number→logical, so honour the reverse too.
+      // logical↔number is the one cross-family bridge (TRUE→1, FALSE→0).
       if (typeof x === "boolean") return x ? 1 : 0;
       if (typeof x === "string") { const n = Number(x.trim()); return Number.isNaN(n) ? NaN : n; }
       return NaN;
@@ -91,19 +81,16 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
       return cx(NaN, NaN);
     }
     case "logical": {
-      // x is non-null here (the top guard returned null for a blank). A SUCCESS is a
-      // real boolean; an unparseable value → NaN, the failure sentinel castFailed
-      // already recognises (a boolean is not a number, so success never reads as a
-      // failure). Shares coerceLogical with Get Column's read-as so both parse alike.
+      // Unparseable → NaN, the sentinel castFailed recognises; a boolean is never a
+      // number, so a success can't read as a failure.
       const b = coerceLogical(x);
       return b === null ? NaN : b;
     }
   }
 }
 
-// Did a SCALAR cast fail to produce a usable value? `castOne` signals failure
-// with NaN (number/date targets) or [NaN, NaN] (complex). A `null` result means
-// the input itself was blank — that's not a failure, it stays a blank.
+// Failure is NaN (number/date) or [NaN, NaN] (complex); a `null` result means the input
+// was blank, which is NOT a failure.
 function castFailed(v: CastScalar, target: CastTarget): boolean {
   if (v === null) return false;
   if (target === "complex") {
@@ -112,13 +99,9 @@ function castFailed(v: CastScalar, target: CastTarget): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-// Shape the cast result for ValueDisplay so it renders like every other node: a
-// LIST becomes a chip, never a pre-joined "[a, b, c]" string. Number AND date
-// targets stay numeric serials — ValueDisplay formats
-// the date ones for us, since the output socket is a date type (datecombo); the
-// complex target renders formatted "a+bi" strings (ValueDisplay can't format a
-// complex tuple). A blank/failed cell is "" in a string list / NaN in a numeric
-// one, keeping the array homogeneous for ValueDisplay's number-vs-text detection.
+// Shape for ValueDisplay: a LIST must stay an array (it becomes a chip), never a
+// pre-joined string; date targets stay numeric serials for the datecombo socket, and
+// complex is pre-formatted because ValueDisplay can't render a complex tuple.
 function displayScalar(v: CastScalar, target: CastTarget): number | string | boolean | null {
   if (v === null) return null;
   switch (target) {
@@ -132,13 +115,12 @@ function displayScalar(v: CastScalar, target: CastTarget): number | string | boo
 
 function displayList(out: (CastScalar | SolError)[], target: CastTarget): (number | null | SolError)[] | (string | null)[] | (boolean | null | SolError)[] {
   if (target === "number" || target === "date") {
-    // Numeric/date list: keep `null` (blank) and per-cell `SolError`; ValueDisplay's
-    // formatListCell renders both (null → "null", error → its code).
+    // Keep `null` (blank) and per-cell `SolError` — formatListCell renders both.
     return out.map((v) => (v === null || isSolError(v) ? v : (v as number))) as (number | null | SolError)[];
   }
   if (target === "logical") {
-    // Logical list: keep `null` (blank) + per-cell `SolError`; ValueDisplay renders a
-    // boolean cell as TRUE/FALSE (formatListCell), so no stringifying here.
+    // Keep `null` + per-cell `SolError`; formatListCell renders booleans, so no
+    // stringifying here.
     return out.map((v) => (v === null || isSolError(v) ? v : (v as boolean))) as (boolean | null | SolError)[];
   }
   // Text / complex render as strings: a per-cell error shows its code, a blank → null.
@@ -150,8 +132,7 @@ function displayList(out: (CastScalar | SolError)[], target: CastTarget): (numbe
 export class CastNode extends ClassicPreset.Node {
   label: string;
   target: CastTarget;
-  // ValueDisplay-compatible: a number/string scalar, a number[]/string[] list
-  // (→ chip), an error, or null. NOT a pre-joined string (see displayList).
+  // ValueDisplay-compatible; a list stays an array, NOT a pre-joined string.
   cachedResult: number | (number | null | SolError)[] | string | (string | null)[] | boolean | (boolean | null | SolError)[] | SolError | null = null;
   width = 252; height = 190; // 252 fits the 5-segment type SegToggle (see .solenoid-node--cast)
 
@@ -163,8 +144,8 @@ export class CastNode extends ClassicPreset.Node {
     this.addOutput("result", castOutput(this.target));
   }
 
-  // dataType of the socket feeding `value` — distinguishes a date serial from a
-  // plain number (the one genuinely untagged ambiguity left).
+  // The source socket's dataType — the only witness distinguishing a date serial from
+  // a plain number.
   private sourceKind(): SocketDataType | null {
     const editor = getEditor();
     if (!editor) return null;
@@ -180,14 +161,11 @@ export class CastNode extends ClassicPreset.Node {
     const raw = inputs.value?.[0];
     // Text casts use the default representation (no custom format code).
     const format = "";
-    // The socket is consulted only for `dateish` — a serial and a plain number
-    // really are the same value, so the source type is the only witness.
     const kind = this.sourceKind();
     const dateish = kind != null && isDateType(kind);
 
     if (Array.isArray(raw)) {
-      // List path (relaxed invariant): a per-element parse FAILURE → per-cell
-      // #VALUE! error (propagates); a blank input element → null (missing).
+      // Per-element FAILURE → per-cell #VALUE!; a blank element → null (missing).
       const raw2 = raw.map((el) => castOne(el, this.target, format, dateish));
       const out: (CastScalar | SolError)[] = raw2.map((v) =>
         v === null ? null
@@ -199,9 +177,7 @@ export class CastNode extends ClassicPreset.Node {
     }
 
     const scalar = castOne(raw, this.target, format, dateish);
-    // A genuine scalar parse failure (text that isn't a number/date, an
-    // unparseable complex literal) is a #VALUE! error — not a blank. `null`
-    // (the input was itself blank/unwired) stays null.
+    // A genuine parse failure is #VALUE!, not a blank; a `null` input stays null.
     if (castFailed(scalar, this.target)) {
       const err = solError("#VALUE!", `Could not convert the value to ${this.target}`);
       this.cachedResult = err;

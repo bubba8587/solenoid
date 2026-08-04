@@ -9,25 +9,13 @@ import {
   cxSech, cxCsch, quadraticRoots,
 } from "../cxValue";
 
-// ─── Internal complex type ────────────────────────────────────────────────────
-// The tagged Cx (VAL-15) AND the math kernels live in ../cxValue — RETE-FREE so
-// the formula path (the IM* registrations run the identical functions, FX-1) and
-// the display layer can use them without loading the editor. Re-exported here
-// because this is the family's home module and every existing importer reads it
-// from here.
+// The tagged Cx (VAL-15) and its kernels live in ../cxValue, RETE-FREE so the
+// formula path and the display layer need not load the editor; re-exported here.
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
-// ─── Complex broadcasting (the family's own, and why it keeps one) ────────────
-// Every element-wise complex node takes `complexcombo` (scalar-or-list) and
-// broadcasts, like the number / date / text families. It doesn't reuse shared.ts's
-// `broadcastCells`, whose element type is constrained to string | number | boolean;
-// the per-operand tags below also carry each operand's element type, so `fn`'s
-// parameters infer per position with no casts.
-//
-// No `guardFinite` here, unlike the numeric broadcasters: the complex ops already
-// have their own non-finite conventions (IMDIV by zero yields cx(NaN, NaN), which
-// formats as "NaN"), and classifying those into tagged errors would change
-// established scalar behavior rather than just widen it.
+// The family keeps its own broadcaster: shared.ts's `broadcastCells` constrains the
+// element type to string | number | boolean. No `guardFinite` either — the complex
+// ops have their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
 /** One tagged operand: `list` is null when the value is a scalar. */
 type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
@@ -45,10 +33,8 @@ function numOp(v: number | (number | SolError | null)[] | SolError | null): Oper
   return Array.isArray(v) ? { scalar: null, list: v } : { scalar: v, list: null };
 }
 
-/** Apply `fn` per element when any operand is a list (broadcasting the scalars
- *  against it), else apply once — the same ragged-zip and per-cell error/missing
- *  contract as `broadcast` / `broadcastCells`. Overloaded by arity so each call
- *  site keeps precise per-operand types. */
+/** Per element when any operand is a list, else once — the same ragged-zip and
+ *  per-cell error/missing contract as `broadcast`. Overloaded by arity. */
 function broadcastComplex<A, R>(
   fn: (a: A) => R | SolError | null,
   a: Operand<A>,
@@ -85,8 +71,6 @@ function broadcastComplex(
   return out;
 }
 
-// ─── COMPLEX ──────────────────────────────────────────────────────────────────
-
 export class ComplexFromNode extends ClassicPreset.Node {
   label: string;
   cachedResult: CellResult<Cx> = null;
@@ -111,9 +95,6 @@ export class ComplexFromNode extends ClassicPreset.Node {
     return { z };
   }
 }
-
-// ─── IM Unpack ────────────────────────────────────────────────────────────────
-// IMREAL, IMAGINARY, IMABS, IMARGUMENT — all four scalar extractions in one node.
 
 export class ComplexUnpackNode extends ClassicPreset.Node {
   label: string;
@@ -143,8 +124,6 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
     return { re: this.cachedRe, im: this.cachedIm, abs: this.cachedAbs, arg: this.cachedArg };
   }
 }
-
-// ─── Complex unary ops (complex → complex) ────────────────────────────────────
 
 export type ComplexUnaryOp =
   | "conj" | "exp" | "ln" | "log10" | "log2" | "sqrt"
@@ -210,8 +189,6 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Complex binary ops (complex × complex → complex) ─────────────────────────
-
 export type ComplexBinaryOp = "sum" | "sub" | "product" | "div";
 
 export const COMPLEX_BINARY_OP_META: Record<ComplexBinaryOp, { label: string; description: string }> = {
@@ -254,8 +231,6 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
     return { result };
   }
 }
-
-// ─── IMPOWER (complex ^ real) ─────────────────────────────────────────────────
 
 export class ComplexPowerNode extends ClassicPreset.Node {
   label: string;

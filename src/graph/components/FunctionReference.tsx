@@ -19,13 +19,11 @@ export function FunctionReference() {
   const tab = useSyncExternalStore(frStore.subscribe, frStore.tab);
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState<string | "All">("All");
-  // "To-do only" and "Out of scope" are opposite slices of the unimplemented
-  // rows, so they're one exclusive mode rather than two booleans.
+  // Opposite slices of the unimplemented rows, so one exclusive mode, not two booleans.
   const [filterMode, setFilterMode] = useState<"all" | "todo" | "oos">("all");
   const [showExcel, setShowExcel] = useState(true);
 
-  // Generated from catalog/node metadata. Independent of pack activation
-  // (buildCatalog(false) includes every pack), so it's stable for the session.
+  // Independent of pack activation (every pack is included), so stable for the session.
   const rows = useMemo(() => buildFunctionReference(), []);
   const groups = useMemo(() => fnRefGroups(rows), [rows]);
   const packName = useMemo(() => {
@@ -51,7 +49,7 @@ export function FunctionReference() {
       || (r.note ?? "").toLowerCase().includes(q);
   });
 
-  // Summary counts over Excel functions only (skip Solenoid-only rows).
+  // Counts cover Excel functions only — Solenoid-only rows are skipped.
   const excelRows = rows.filter((r) => r.excel !== null);
   const implemented = excelRows.filter((r) => r.implemented);
   const parityCount = implemented.filter((r) => r.parity).length;
@@ -111,8 +109,7 @@ export function FunctionReference() {
               placeholder="Search functions, syntax, nodes…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              // Touch: don't pop the on-screen keyboard over the freshly
-              // opened panel — the user taps the field when they want it.
+              // Touch must not pop the on-screen keyboard over the fresh panel.
               autoFocus={!IS_COARSE}
             />
             <div className="fr-filters">

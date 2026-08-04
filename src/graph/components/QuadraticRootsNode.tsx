@@ -2,9 +2,7 @@ import type { QuadraticRootsNode as QuadraticRootsNodeType } from "../rete-nodes
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 
-// The roots ride RAW: OutputRowValue carries a Cx (scalar, error, or the
-// broadcast LIST case — `numlist` coefficients solve a list of quadratics), and
-// formatRowCell spells it.
+// Roots ride RAW — formatRowCell spells the Cx (scalar, error, or the broadcast list case).
 const rootValue = (v: QuadraticRootsNodeType["cachedX1"]): OutputRowValue => v;
 
 export function QuadraticRootsComponent({ data, emit }: NodeProps<QuadraticRootsNodeType>) {

@@ -8,9 +8,8 @@ import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
 
-// ── Option lists (the popup owns the pivot-specific selectors) ──────────────────
-// The per-value function list derives from AGG_OP_META (SSOT-1) — the pivot is
-// the one surface that also offers the pivotOnly ops (percentof).
+// The per-value function list derives from AGG_OP_META; the pivot is the one surface
+// that also offers the pivotOnly ops.
 const FUNC_OPTIONS: { value: AggOp; label: string }[] =
   (Object.keys(AGG_OP_META) as AggOp[]).map((value) => ({ value, label: AGG_OP_META[value].label }));
 const TOTAL_DEPTH_OPTIONS = [
@@ -54,8 +53,7 @@ function writeToNode(node: PivotNode, c: Cfg) {
   node.filterExclude = c.exclude;
 }
 
-/** Signed sort options: no-sort, then ↑/↓ per field, then per value. Index is a
- *  1-based offset into [fields…, values…]; negative ⇒ descending (Excel order). */
+/** Index is a 1-based offset into [fields…, values…]; negative ⇒ descending. */
 function sortOptions(fields: string[], values: string[]): { value: string; label: string }[] {
   const cand = [...fields, ...values.map((v) => `${v} (value)`)];
   const out = [{ value: "0", label: "No sort" }];
@@ -75,7 +73,6 @@ export function PivotEditorPopup() {
   const [dropZone, setDropZone] = useState<Zone | "filters" | null>(null);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
 
-  // (Re)seed local state when a different popup opens.
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
     if (initedFor.current === state) return;
@@ -88,7 +85,6 @@ export function PivotEditorPopup() {
   const fields = node.sourceColumns ?? [];
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
 
-  // Commit a new config to the node and recompute.
   function commit(next: Cfg) {
     writeToNode(node, next);
     void processGraph(node.id);
@@ -115,7 +111,6 @@ export function PivotEditorPopup() {
   function setFunc(field: string, op: AggOp) {
     commit({ ...cfg, funcs: { ...cfg.funcs, [field]: op } });
   }
-  // ── Field-value filter ──
   function addFilter(field: string) {
     if (!field || field in cfg.exclude) return;
     commit({ ...cfg, exclude: { ...cfg.exclude, [field]: [] } });
@@ -127,7 +122,6 @@ export function PivotEditorPopup() {
     if (openFilter === field) setOpenFilter(null);
     commit({ ...cfg, exclude: ex });
   }
-  // Toggle one value key's visibility (in the exclude set = hidden).
   function toggleValue(field: string, key: string) {
     const cur = new Set(cfg.exclude[field] ?? []);
     if (cur.has(key)) cur.delete(key); else cur.add(key);
@@ -137,13 +131,11 @@ export function PivotEditorPopup() {
     const keys = fields.find((f) => f.name === field)?.distinct ?? [];
     commit({ ...cfg, exclude: { ...cfg.exclude, [field]: hide ? [...keys] : [] } });
   }
-  // A value key's display label — formats dates, names blanks.
   function valueLabel(field: string, key: string): string {
     if (key === "") return "(blank)";
     if (typeOf(field) === "date") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
     return key;
   }
-  // Move a dragged field into `toZone` at `insertIdx` (append when undefined).
   function applyDrop(toZone: Zone, insertIdx?: number) {
     const payload = drag.current;
     drag.current = null;
@@ -169,9 +161,8 @@ export function PivotEditorPopup() {
   const usedSet = new Set([...cfg.rows, ...cfg.cols, ...cfg.vals]);
   const anyPercent = cfg.vals.some((v) => (cfg.funcs[v] ?? node.op) === "percentof");
 
-  // Render helpers (plain functions returning JSX, NOT inline components — an inline
-  // component type is re-created every render and remounts its subtree, which would
-  // drop the native <select> dropdowns mid-pick. See CLAUDE.md "Native form popups").
+  // Plain functions returning JSX, NOT inline components: an inline component type is
+  // re-created every render and remounts its subtree, dropping a <select> mid-pick.
   const fieldChip = (field: string, zone: Zone) => (
     <span
       key={field}
@@ -238,8 +229,7 @@ export function PivotEditorPopup() {
     </select>
   );
 
-  // The Filters quadrant: drop a field (or + add) to filter by its values; click the
-  // chip to reveal a value checklist (unchecked = hidden). Compiles to the engine mask.
+  // Unchecked values compile to the engine's exclude mask.
   const filterFields = Object.keys(cfg.exclude);
   const filterAvail = fields.filter((f) => !(f.name in cfg.exclude));
   const renderFilters = () => (
@@ -300,7 +290,6 @@ export function PivotEditorPopup() {
       cardStyle={popupCardVars(state)}
     >
       <div className="pivot-editor__body">
-        {/* Field list — the upstream columns, drag into a zone (or use a zone's + add). */}
         <div className="pivot-fields">
           <div className="pivot-fields__head">Fields {fields.length === 0 && <span className="pivot-fields__hint">· connect a frame</span>}</div>
           <div className="pivot-fields__list">
@@ -314,7 +303,6 @@ export function PivotEditorPopup() {
           </div>
         </div>
 
-        {/* The Excel 2×2: Filters · Columns / Rows · Values. */}
         <div className="pivot-grid">
           {renderFilters()}
 

@@ -1,14 +1,12 @@
-// Every recharts-using renderer, in ONE module — so recharts lands in a single
-// lazily-loaded chunk. Nothing here is imported statically by the app; chartView.tsx
-// wraps these in React.lazy + Suspense. recharts-free helpers live in chartCore.ts.
+// Every recharts-using renderer in ONE module so recharts stays a single lazy
+// chunk — nothing here may be imported statically by the app.
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 
-// A hover readout that shows the value at a sensible precision (formatScalar),
-// not recharts' raw full-float. Point index is 1-based.
+// formatScalar precision, not recharts' raw full-float. Point index is 1-based.
 function ChartTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: { value?: number }[];
@@ -26,10 +24,8 @@ function ChartTooltip({ active, payload, label }: {
   );
 }
 
-// Coerce a recharts payload value to a renderable string. A number formats via
-// formatScalar; anything non-primitive (a SolError object that slipped past the
-// series sanitizer) is stringified so React never sees a raw object as a child
-// (which throws "Objects are not valid as a React child" and takes down the node).
+// A non-primitive (a SolError past the series sanitizer) must be stringified —
+// React throws "Objects are not valid as a React child" and takes down the node.
 function tipValue(v: unknown): string {
   if (typeof v === "number") return formatScalar(v);
   if (v == null) return "";
@@ -39,8 +35,7 @@ function tipValue(v: unknown): string {
 
 const TIP = <Tooltip isAnimationActive={false} cursor={{ stroke: "rgba(128,128,128,0.5)", fill: "rgba(128,128,128,0.12)" }} content={<ChartTooltip />} />;
 
-// A slice/segment readout for the polar + categorical charts (pie / radial / funnel),
-// where an x-axis index is meaningless — show only the formatted value.
+// For polar/categorical charts, where an x-axis index is meaningless.
 function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value?: number }[] }) {
   if (!active || !payload || !payload.length) return null;
   const v = payload[0]?.value;
@@ -52,9 +47,8 @@ function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value
 }
 const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} />;
 
-// The scatter readout: real x (when the dot carries one) → its value, else the
-// 1-based ordinal → its value. Reads the datum off payload[0].payload so it works
-// whether the x axis is a real coordinate (dataKey "x") or the row index ("i").
+// Reads the datum off payload[0].payload so it works whether the x axis is a real
+// coordinate (dataKey "x") or the row index ("i").
 function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { payload?: { x?: number; i?: number; v?: number } }[] }) {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0]?.payload;
@@ -70,13 +64,8 @@ function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { pay
 }
 const SCATTER_TIP = <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<ScatterTooltip />} />;
 
-/**
- * One recharts renderer for both the inline node charts and the expand popup.
- * `axes` adds gridlines + numbered axes (the big "Chart" look); without it you
- * get a clean Sparkline. `opts` carries the matplotlib-style overrides from a
- * Chart's Options socket (Sparkline passes none). Hover shows a small readout
- * formatted via formatScalar (not recharts' raw full-float).
- */
+/** One renderer for both the inline node charts and the expand popup; without
+ *  `axes` it is a clean Sparkline. */
 export function ChartView({
   op, series, width, height, axes, opts, signColors, labels, fontScale,
 }: {
@@ -86,13 +75,11 @@ export function ChartView({
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Color each bar/column by the sign of its value (win/loss): positive → pos,
-   *  negative → neg, zero → the grid color. Ignored by the non-bar ops. */
+  /** Win/loss coloring: positive → pos, negative → neg, zero → grid. Bar ops only. */
   signColors?: { pos: string; neg: string };
-  /** X-axis category labels (Frame col 0) — the axis shows these instead of 1,2,3… */
+  /** X-axis category labels (Frame col 0), shown instead of 1,2,3… */
   labels?: (string | number)[];
-  /** Display-layer text multiplier (an FC on the chart socket) — multiplies the
-   *  options' own fontsize (matplotlib points, 10 = the built-in sizes). */
+  /** Display-layer multiplier ON TOP of the options' own fontsize. */
   fontScale?: number;
 }) {
   const { grid, axis, viz } = useChartColors();
@@ -100,11 +87,8 @@ export function ChartView({
   const paint = (i: number) => seriesColors[i % seriesColors.length];
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
-  // With Frame labels, the axis/category tick shows the label for that index; else
-  // the 1-based ordinal (the historical behavior). A recharts `type="number"`
-  // index axis (scatter) can hand us INTERPOLATED fractional ticks (0.5, 1.5…) —
-  // round to the nearest datum and drop anything off the ends / non-numeric so the
-  // axis never renders a bogus "1.5" or an "[object Object]" from a stray value.
+  // A recharts `type="number"` index axis hands back INTERPOLATED fractional ticks
+  // (0.5, 1.5…), so round to the nearest datum and drop anything off the ends.
   const tickFmt = (i: number | string) => {
     const n = Number(i);
     if (!Number.isFinite(n)) return "";
@@ -112,21 +96,18 @@ export function ChartView({
     if (labels) {
       const lab = labels[idx];
       if (lab == null || typeof lab === "object") return "";
-      // A numeric label (a wired Frame's numeric first column) is snapped free of
-      // float/precision noise so a value that is "really" 3 doesn't read as
-      // "3.0000000004"; a string label (category / formatted date) renders as-is.
+      // Snap a numeric label free of float noise so a "really 3" isn't "3.0000000004".
       return typeof lab === "number" ? axisTick(lab) : String(lab);
     }
     return idx >= 0 ? String(idx + 1) : "";
   };
 
-  // Resolved style from the options (fall back to the defaults that shipped).
   const color = opts?.color || viz;
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? axes; // lines dot by default when axed
   const fillAlpha = opts?.alpha ?? 0.25;
-  // YAxis domain when ylim is given; recharts uses "auto" for an open bound.
+  // recharts wants "auto" for an open bound.
   const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
     ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
     : undefined;
@@ -136,7 +117,6 @@ export function ChartView({
   const yLabel = axes && opts?.ylabel
     ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
-  // Make room for axis labels / a title when present.
   const title = opts?.title;
   const titleH = title ? Math.ceil(16 * fs) : 0;
   const chartH = height - titleH;
@@ -166,7 +146,6 @@ export function ChartView({
       </AreaChart>
     );
   } else if (op === "bar") {
-    // Horizontal bars (category down the Y axis).
     chart = (
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
@@ -177,7 +156,6 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
-    // Each value is a slice, colored from the categorical set.
     const r = Math.max(20, Math.min(width, chartH) / 2 - 6);
     chart = (
       <PieChart width={width} height={chartH}>
@@ -188,7 +166,6 @@ export function ChartView({
       </PieChart>
     );
   } else if (op === "radar") {
-    // A polygon over the values on a shared radial scale.
     chart = (
       <RadarChart width={width} height={chartH} data={series} cx="50%" cy="50%" outerRadius="72%">
         <PolarGrid stroke={grid} />
@@ -199,7 +176,6 @@ export function ChartView({
       </RadarChart>
     );
   } else if (op === "radialbar") {
-    // Concentric bars, one per value, colored categorically.
     chart = (
       <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={series} startAngle={90} endAngle={-270}>
         <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false}>
@@ -209,7 +185,6 @@ export function ChartView({
       </RadialBarChart>
     );
   } else if (op === "funnel") {
-    // Descending stages — top value widest.
     chart = (
       <FunnelChart width={width} height={chartH}>
         {SLICE_TIP}
@@ -220,17 +195,14 @@ export function ChartView({
       </FunnelChart>
     );
   } else if (op === "scatter") {
-    // A dot plot for a single series. An all-numeric first column places each dot
-    // at its REAL x, so the plot honours x spacing and order rather than the row
-    // index. Category labels, or a plain values list, keep the index x.
+    // An all-numeric first column places each dot at its REAL x, so the plot honours
+    // x spacing and order; category labels or a plain list keep the index x.
     const numericX = !!labels && series.length > 0 && series.every((d) => typeof labels![d.i] === "number");
     const scatterData = numericX ? series.map((d) => ({ i: d.i, x: Number(labels![d.i]), v: d.v })) : series;
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {/* Index axis: allowDecimals=false stops recharts inventing fractional
-            "nice" ticks (0.5, 1.5…). A real-x axis keeps decimals and formats the
-            tick value directly (snapped free of float noise). */}
+        {/* allowDecimals=false stops recharts inventing fractional "nice" ticks. */}
         {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
@@ -238,7 +210,6 @@ export function ChartView({
       </ScatterChart>
     );
   } else {
-    // "column" — vertical bars.
     chart = (
       <BarChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
@@ -246,7 +217,6 @@ export function ChartView({
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false}>
-          {/* Win/loss: color each column by sign (up = green, down = error red). */}
           {signColors && series.map((d, i) => (
             <Cell key={i} fill={d.v > 0 ? signColors.pos : d.v < 0 ? signColors.neg : grid} />
           ))}
@@ -266,7 +236,6 @@ export function ChartView({
   );
 }
 
-// A flat labeled treemap. recharts hands the cell renderer geometry + index.
 type TreemapCellProps = {
   x?: number; y?: number; width?: number; height?: number;
   index?: number; name?: string; colors?: string[]; fscale?: number;
@@ -292,18 +261,16 @@ export function TreemapView({ names, values, width, height, fscale = 1 }: {
     .filter((d) => d.size > 0);
   if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return (
-    // recharts 3.x: `content` must be a FUNCTION to receive each node's geometry
-    // (x/y/width/height/index). A static element is rendered once with no geometry —
-    // every rect collapses to 0×0 and the treemap reads as a blank box.
+    // recharts 3.x: `content` must be a FUNCTION to receive each node's geometry —
+    // a static element renders once with no geometry and every rect collapses to 0×0.
     <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={(props) => <TreemapCell {...props} colors={colors} fscale={fscale} />}>
       {SLICE_TIP}
     </Treemap>
   );
 }
 
-// Flow edges: source[i] → target[i] carries value[i]. Nodes are the unique names.
-// recharts needs numeric source/target indices into the nodes array; cycles/self-
-// loops are dropped (recharts' layout assumes a DAG).
+// recharts needs numeric source/target indices into the nodes array, and its layout
+// assumes a DAG — cycles and self-loops are dropped.
 type SankeyNodeProps = {
   x?: number; y?: number; width?: number; height?: number;
   index?: number; payload?: { name?: string }; colors?: string[]; containerWidth?: number; fscale?: number;
@@ -356,15 +323,11 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
       nodePadding={16}
       nodeWidth={10}
       link={{ stroke: grid, strokeOpacity: 0.5 }}
-      // Function form (not a static element) so each node receives its geometry —
-      // same recharts 3.x requirement as Treemap's content (else nodes are 0-size).
-      // recharts' node props DON'T carry containerWidth, so pass the figure width
-      // through — SankeyNodeShape uses it to flip labels to the outer side (else
-      // every node reads as "right half" and the left column's labels fly off-canvas).
+      // Function form so each node receives its geometry (as with Treemap's content),
+      // and containerWidth passed through because recharts' node props omit it —
+      // without it every node reads as "right half" and left labels fly off-canvas.
       node={(props) => <SankeyNodeShape {...props} colors={colors} containerWidth={width} fscale={fscale} />}
-      // Labels sit INWARD (left column → right, right column → left; see
-      // SankeyNodeShape), so no wide outer gutter is needed — small even margins
-      // let the flow diagram fill the figure width.
+      // Labels sit INWARD, so no wide outer gutter is needed.
       margin={{ top: 6, right: 10, bottom: 6, left: 10 }}
     >
       {SLICE_TIP}
@@ -372,8 +335,7 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
   );
 }
 
-// Each COLUMN of the matrix is a series over the row index: column 0 draws as bars,
-// the rest as lines (the classic "bars + trend line" combo), colored categorically.
+// Each COLUMN is a series over the row index: column 0 bars, the rest lines.
 export function ComposedView({ matrix, width, height, fscale = 1 }: {
   matrix: (number | null)[][]; width: number; height: number; fscale?: number;
 }) {
@@ -428,8 +390,7 @@ export function BubbleView({ matrix, width, height, fscale = 1 }: {
   );
 }
 
-// The semicircular arc for GaugeComponent. `pct` is 0–100, `size` the square the
-// polar chart draws into (cropped to the top half by the caller's wrapper).
+// `pct` is 0–100; `size` is the square drawn into, cropped to its top half by the caller.
 export function GaugeArc({ pct, track, size }: { pct: number; track: string; size: number }) {
   const { viz } = useChartColors();
   return (
@@ -454,22 +415,19 @@ export function GaugeArc({ pct, track, size }: { pct: number; track: string; siz
 
 const RISING = "#e0524d";
 const FALLING = "#4c8bf5";
-// A diverged leaf (its extreme sent the output non-finite) has no finite swing —
-// drawn as a full-width MUTED bar so it reads as "off the chart", not as a real
-// magnitude to compare against the colored swings.
+// A diverged leaf has no finite swing — muted full width, so it reads as "off the
+// chart" rather than as a magnitude comparable to the colored swings.
 const DIVERGED = "var(--text-dim)";
 
 export type TornadoBar = {
   label: string; offset: number; range: number; rising: boolean;
   diverged?: boolean;
-  // Carried for the readout so the RAW swing can be read against the width of the
-  // perturbation that produced it (the basis marker), not silently normalized.
+  // Carried so the readout can show the RAW swing against the perturbation width.
   outLow?: number; outHigh?: number; inLow?: number; inHigh?: number; basis?: "slider" | "number";
 };
 
-// The hover readout: output swing, the INPUT swing that drove it, and the basis
-// (slider full-range vs number ±10%) — so a wide slider bar isn't mistaken for a
-// like-for-like comparison against a narrow number nudge.
+// Shows the basis (slider full-range vs number ±10%) so a wide bar isn't mistaken
+// for a like-for-like comparison against a narrow number nudge.
 function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { payload?: TornadoBar }[] }) {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0]?.payload;
@@ -494,8 +452,7 @@ function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { pay
   );
 }
 
-// Fits the wide card minus body padding (matches ChartNode's W). Exported so
-// the Suspense fallback box reserves the same width.
+// Matches ChartNode's W; exported so the Suspense fallback reserves the same width.
 export const TORNADO_W = 218;
 
 export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: string; axis: string }) {

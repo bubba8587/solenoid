@@ -34,8 +34,7 @@ const CHANNELS: Record<"rgb" | "hsv", { key: ChKey; label: string; max: number }
   ],
 };
 
-// The color gradient to paint under a channel's slider: the color as THAT
-// channel sweeps its range with the others held — the standard picker cue.
+// The slider track gradient: the color as THAT channel sweeps, others held.
 function channelGradient(mode: "rgb" | "hsv", key: ChKey, ch: Ch): string {
   if (mode === "rgb") {
     const { c0: r, c1: g, c2: b } = ch;
@@ -58,7 +57,6 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
   const [ch, setCh] = useState<Ch>({ c0: data.literals.c0, c1: data.literals.c1, c2: data.literals.c2 });
   const [hexDraft, setHexDraft] = useState(data.stringLiterals.hex ?? "#56b4e9");
 
-  // Live color from the current model — drives the swatch + output string.
   const raw = mode === "hex"
     ? colord(hexDraft || "#000000")
     : mode === "rgb"
@@ -77,7 +75,6 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
 
   function changeMode(next: ColorMode) {
     if (next === mode) return;
-    // Carry the color across the model switch.
     if (next === "hex") {
       const hx = c.toHex();
       setHexDraft(hx);
@@ -154,8 +151,8 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
         <OpSelect arg value={format} onChange={changeFormat} options={FORMAT_OPTS} />
       </div>
 
-      {/* Swatch + output string, with the color output socket measured onto this
-          row so it sits right next to what it emits — below the format dropdown. */}
+      {/* The color output socket is measured onto the swatch row so it sits next
+          to what it emits. */}
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>

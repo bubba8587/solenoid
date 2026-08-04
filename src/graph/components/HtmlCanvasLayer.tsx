@@ -18,17 +18,10 @@ import { lassoActiveStore } from "../lasso";
 import { holderSyncTransform, holderTransform } from "../domSync";
 import "./htmlCanvasLayer.css";
 
-// The canvas only earns its keep on a BIG graph — below this much DOM the native DOM
-// pans/zooms fine, and the capture/swap cost (and any momentary stale-clone flash) isn't
-// worth it. So even with render mode "html" ON, stay fully inert until the graph crosses
-// this. The gate is a KIND-WEIGHTED node count (nodeDomWeight), not a raw one: a chart /
-// mermaid / inlined-SVG / frame-grid card is far more DOM than a scalar, so it counts for
-// more (~10 charts ≈ this threshold). A plain scalar graph still needs ~100 nodes to trip,
-// so the number's feel is unchanged for the common case. Tunable live via
-// `window.__hcMinNodes` (a weighted-unit threshold) for testing.
+// Below this the native DOM pans fine and the capture/swap cost isn't worth it, so the layer
+// stays inert. The unit is KIND-WEIGHTED DOM (nodeDomWeight), not a raw node count.
 const RENDERER_MIN_NODES = 100;
 
-// Sum every node's DOM weight — the value the engage gate compares against the threshold.
 const graphDomWeight = (): number => {
   const ed = getEditor();
   if (!ed) return 0;
@@ -37,41 +30,20 @@ const graphDomWeight = (): number => {
   return w;
 };
 
-/**
- * HTML-in-Canvas renderer, mounted when render mode is "html".
- *
- * Architecture — the canvas is the fast PAN/ZOOM layer, not a replacement for the DOM:
- *  • IDLE: the canvas draws nothing (transparent) and the real rete DOM shows through, so
- *    EVERY interaction is native — node + group drag, collapse, context menus, field
- *    editing, lasso, resize handles, sockets. Nothing is reimplemented.
- *  • PAN/ZOOM (a gesture — the area transform changes): the DOM holder is hidden with
- *    `visibility:hidden` (one element, so no per-node ResizeObserver storm; the compositor
- *    skips painting it → cheap transform) and the canvas draws the captured graph, mirroring
- *    the transform. On settle (~140ms) the DOM comes back and the canvas clears.
- *
- * The canvas is kept current with the live model so the swap is seamless: a debounced
- * re-capture on value/topology change, and a position/cable/selection sync at each gesture
- * start (catching DOM drags/edits since the last gesture). `visibility:hidden` keeps layout,
- * so the DOM stays measurable for those reads; the snapshot's own visibility check means we
- * must un-hide synchronously around it (no paint mid-tick → no flash).
- */
+/** The fast PAN/ZOOM layer, not a DOM replacement: idle draws nothing so every interaction
+ *  stays native; a gesture hides the holder with `visibility:hidden` (which keeps layout, so
+ *  the DOM stays measurable) and the canvas draws the captured graph. */
 export function HtmlCanvasLayer() {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
-  // Live kind-weighted DOM total, recounted below so `active` re-evaluates as the graph grows/
-  // shrinks across the threshold. Seeded synchronously so toggling render mode on over an
-  // ALREADY-loaded big graph engages on the next render (not only after a recount or an add/remove).
+  // Seeded synchronously so toggling render mode on over an already-loaded big graph engages
+  // on the next render, not only after the first add/remove.
   const [domWeight, setDomWeight] = useState(graphDomWeight);
   const minNodes = (window as unknown as { __hcMinNodes?: number }).__hcMinNodes ?? RENDERER_MIN_NODES;
   const active = mode === "html" && domWeight >= minNodes;
 
-  // Readiness gate. This layer is a CHILD of Canvas, so on a fresh page load its effects
-  // run BEFORE Canvas's async rete init populates the process.ts singletons — getEditor()/
-  // getArea() are still null. The setup effect bails when they're missing, and with deps
-  // [active] it never re-runs, so the canvas stays inert even though render mode persisted
-  // as "html" (the Setting reads ON but nothing draws until you toggle it off→on, which
-  // re-runs the effect after init). Poll until both exist, flip `ready`, and the setup
-  // effect (which depends on it) runs once the editor is live.
+  // This layer is a CHILD of Canvas, so on a fresh load its effects run before rete init fills
+  // the process.ts singletons; poll for them or the setup effect bails and never re-runs.
   const [ready, setReady] = useState(() => !!getEditor() && !!getArea());
   useEffect(() => {
     if (!active || ready) return;
@@ -82,16 +54,8 @@ export function HtmlCanvasLayer() {
     return () => clearInterval(t);
   }, [active, ready]);
 
-  // Maintain the weighted DOM total off node add/remove EVENTS — it only changes then (and on
-  // load), so a timer would burn cycles re-reading a value that rarely moves. recount sums
-  // nodeDomWeight over every node on BIND and on each nodecreated/noderemoved, so an already-
-  // loaded graph gates the instant we bind and a streaming load (addNode per node) keeps it
-  // current. (A node's WEIGHT can also change without an add/remove — e.g. a Cast retypes a
-  // socket from scalar to frame — but that's rare and self-corrects on the next add/remove or
-  // reload; not worth a per-render resum.) The editor/area are created once and reused across
-  // document switches (load clears+refills the SAME editor), so the pipe stays valid. Runs
-  // whenever mode is "html" (NOT gated on `active`): below the threshold `active` is false yet
-  // we still need to notice it being crossed.
+  // Recount on BIND and on node add/remove, and run whenever mode is "html" (NOT gated on
+  // `active`) — below the threshold `active` is false yet the crossing must still be noticed.
   useEffect(() => {
     if (mode !== "html") return;
     let live = true;
@@ -126,38 +90,24 @@ export function HtmlCanvasLayer() {
     const holder = area.area.content.holder as HTMLElement;
 
     const engine = new HtmlCanvasRenderer(host);
-    // Paint-event frames re-read the live camera at PAINT time (a paint can land a
-    // frame after the rAF that scheduled it — drawing the rAF's transform is the
-    // canvas-vs-DOM frame skew at its source).
+    // Read at PAINT time, since a paint can land a frame after the rAF that scheduled it.
     engine.setTransformSource(() => area.area.transform);
     let built = false;
     // id → the inner element's offset within its node-view wrapper. Cached at build so the
     // gesture-start position sync reads only `view.position` (no layout-forcing offsetLeft).
     const offsets = new Map<string, { dx: number; dy: number }>();
 
-    // "DOM-only" nodes are NOT drawn on the canvas — they (and their cables) stay rendered by
-    // the real DOM, kept visible through the canvas during a gesture (see showDomOnly). This is
-    // the escape hatch for elements the snapshot can't faithfully reproduce: a Conduit floats +
-    // rotates its body and bundles its cables into ribbons, none of which the flat node/cable
-    // capture handles — so conduits render as DOM. Extend the predicate to opt more in.
+    // "DOM-only" nodes stay rendered by the real DOM through a gesture — the escape hatch for
+    // elements the flat node/cable capture can't reproduce (a Conduit rotates and bundles).
     const isDomOnly = (inner: HTMLElement) => inner.classList.contains("solenoid-conduit");
     const domOnlyIds = new Set<string>();
     let domOnlyEls: HTMLElement[] = [];
-    // Show/hide are OVERRIDE-AWARE, not blind writes. Group collapse hides member elements by
-    // stamping inline `visibility:hidden` on the SAME elements (groupCollapse.ts
-    // syncGroupCollapse), and domOnlyEls is only recollected on the debounced rebuild — so a
-    // blind `visibility = "visible"` here resurrects a conduit that was just collapsed into a
-    // group, and a blind `""` on exit clears collapse's hidden. Rules: never override an
-    // element something else hid; only ever clear a "visible" WE stamped.
+    // Override-aware, because group collapse stamps inline visibility on the SAME elements:
+    // never override an element something else hid, and only clear a "visible" WE stamped.
     const showDomOnly = () => { for (const el of domOnlyEls) if (el.style.visibility !== "hidden") el.style.visibility = "visible"; };
     const hideDomOnly = (els: HTMLElement[] = domOnlyEls) => { for (const el of els) if (el.style.visibility === "visible") el.style.visibility = ""; };
-    // Per-ELEMENT compositor promotion for DOM-only content on coarse pointers. The
-    // holder-wide promotion is disabled there (a layer the holder's size fails mobile
-    // tile allocation under zoom — see the IS_COARSE gate in enterGesture), which left
-    // the conduit repainting per frame and visibly trailing the canvas during a pan.
-    // The DOM-only subset is card-sized, so promoting just those elements is bounded.
-    // Size-capped: a graph-spanning element (the standoff svg, a long cable) must
-    // never get a giant layer — same corruption class the holder gate exists for.
+    // Per-ELEMENT promotion on coarse pointers, where the holder-wide promotion is disabled.
+    // Size-capped: a graph-spanning element must never get a giant layer.
     const PROMOTE_MAX = 1024; // CSS px — under mobile texture limits even at dpr 3
     let promoted: HTMLElement[] = [];
     const demoteDomOnly = () => { for (const el of promoted) el.style.willChange = ""; promoted = []; };
@@ -172,9 +122,8 @@ export function HtmlCanvasLayer() {
         }
       }
     };
-    // id → its last-built spec, so a selection change can re-capture JUST the toggled nodes
-    // (engine.updateNodes) instead of rebuilding the whole graph — cheap enough to stay live
-    // even mid-lasso. el is the live inner element, so re-cloning it picks up its current class.
+    // id → last-built spec, so a selection change re-captures JUST the toggled nodes; `el` is
+    // the live inner element, so re-cloning picks up its current class.
     const specById = new Map<string, EngineNodeSpec>();
 
     const collectSpecs = (): EngineNodeSpec[] => {
@@ -200,12 +149,8 @@ export function HtmlCanvasLayer() {
       return specs;
     };
 
-    // Collect the DOM elements kept visible during a gesture: each DOM-only node-view, EVERY
-    // cable the canvas isn't drawing, and the standoff layer. `canvasCableIds` is the set the
-    // engine renders; any other connection (a conduit cable filtered out as DOM-only, or one the
-    // snapshot couldn't resolve — e.g. a cable into a COLLAPSED GROUP, whose hidden member socket
-    // isn't in the lookup, so it'd otherwise just vanish) keeps its real DOM element. The standoff
-    // bars are a single SVG the canvas doesn't reproduce, kept as DOM too.
+    // Everything the canvas isn't drawing keeps its real DOM element — DOM-only node views, any
+    // cable outside `canvasCableIds` (conduit or snapshot-unresolvable), and the standoff svg.
     const collectDomOnlyEls = (canvasCableIds: Set<string>): HTMLElement[] => {
       const els: HTMLElement[] = [];
       for (const id of domOnlyIds) { const el = area.nodeViews.get(id)?.element; if (el) els.push(el); }
@@ -219,22 +164,18 @@ export function HtmlCanvasLayer() {
       return els;
     };
 
-    // Re-clone + re-capture the whole graph from the DOM. The holder may be visibility:hidden
-    // (a gesture in flight) — un-hide synchronously to read it, re-hide before yielding (no
-    // paint mid-tick, so no flash). visibility:hidden would also make the snapshot skip every
-    // node (it treats hidden as absent), which is the other reason to un-hide here.
+    // The holder may be visibility:hidden mid-gesture, which the snapshot reads as absent, so
+    // un-hide synchronously and re-hide before yielding — no paint mid-tick, no flash.
     const doBuild = (): boolean => {
       const hidden = holder.style.visibility === "hidden";
       if (hidden) holder.style.visibility = "";
       const specs = collectSpecs();
       const snap = snapshotGraph();
-      // Cables the canvas will draw: resolvable by the snapshot AND not touching a DOM-only
-      // node. Everything else (conduit cables, plus cables the snapshot couldn't resolve — e.g.
-      // into a collapsed group) stays DOM. Compute the id set so collectDomOnlyEls keeps those.
+      // Drawable = snapshot-resolvable AND not touching a DOM-only node; the id set lets
+      // collectDomOnlyEls keep the rest.
       const canvasCables = snap ? snap.cables.filter((c) => !domOnlyIds.has(c.source) && !domOnlyIds.has(c.target)) : [];
       const canvasCableIds = new Set(canvasCables.map((c) => c.id));
-      // Replacing the set mid-gesture: clear the overrides stamped on the OLD set first, or an
-      // element dropped from it (e.g. a conduit whose group just collapsed) keeps its inline
+      // Clear the OLD set's overrides first, or an element dropped from it keeps its inline
       // "visible" forever.
       const prevEls = domOnlyEls;
       domOnlyEls = collectDomOnlyEls(canvasCableIds);
@@ -253,17 +194,9 @@ export function HtmlCanvasLayer() {
     // True while WE last wrote the holder's transform (steering DOM-only content onto
     // the canvas's presented frame) — so exit/cleanup knows to hand back rete's own.
     let holderSynced = false;
-    // Whether THIS gesture changed the camera scale. A pan exit is cheap (the DOM
-    // re-shows translated — compositor tiles are reusable), but a ZOOM exit repaints
-    // the entire visible DOM at the NEW raster scale (measured ~100–300ms frames on a
-    // big doc). Wheel zoom is notchy — ticks often arrive slower than the pan-tuned
-    // 140ms settle — so a short timer exits+re-enters PER NOTCH, paying that full
-    // re-raster over and over mid-zoom ("zooming is worse than panning"). A pan can't
-    // hit this: `pointerDown` holds its gesture. Zoom has no held-pointer signal, so
-    // hold it by TIME instead: once a gesture has zoomed, exit only after a longer
-    // quiet period, and pay the scale-change repaint once at the true settle. That
-    // longer window is `zoomSettleMs()` — shared with Canvas.tsx's DOM-renderer holder
-    // promotion, which thrashes identically and must hold for the same duration.
+    // Once a gesture has zoomed it exits on the longer `zoomSettleMs()` instead of the pan
+    // settle, since zoom has no held-pointer signal and re-entering per wheel notch repaints
+    // the visible DOM at the new raster scale each time.
     let gestureZoomed = false;
     const PAN_SETTLE_MS = 140;
     const readSelection = () => {
@@ -277,16 +210,8 @@ export function HtmlCanvasLayer() {
         readSelection();
         holder.style.visibility = "hidden"; // keeps layout + the in-flight drag alive (unlike display:none)
         holder.classList.add("solenoid-html-frozen"); // freeze DOM-only cable flow to match the static canvas
-        // Promote the holder to its own compositor layer for the gesture: the DOM-only
-        // subset (conduits + their cables) is the only painted content, and WITHOUT a
-        // cached layer some transform updates repaint it per frame — the conduit then
-        // visibly trails the canvas-drawn graph during a pan. Composited, the per-frame
-        // transform is GPU-only. Gesture-scoped so the idle DOM pays no layer memory.
-        // NOT on touch devices: the holder outsizes a mobile-class GPU's max texture
-        // (phones AND tablets running the desktop UI), and a promoted layer that big
-        // fails tile allocation under zoom (green squares) — same gate as the DOM
-        // mode's zoom promotion in Canvas.tsx onZoomActivity. The conduit may trail
-        // a frame mid-gesture there; corruption is worse.
+        // Gesture-scoped compositor layer so DOM-only content doesn't repaint per frame — but
+        // NEVER on coarse pointers, where a layer this size fails mobile tile allocation.
         if (!IS_COARSE) holder.style.willChange = "transform";
         showDomOnly(); // but keep DOM-only nodes (conduits) + their cables visible through the canvas
         promoteDomOnly(); // coarse-only per-element layers, so those elements pan composited
@@ -303,14 +228,12 @@ export function HtmlCanvasLayer() {
       holder.style.willChange = "";
       hideDomOnly(); // drop the per-element override; the holder is fully visible again
       demoteDomOnly();
-      // Hand the holder's transform back to rete (byte-identical serialization) if the
-      // frame sync steered it during the gesture.
+      // Hand back rete's own byte-identical serialization if the frame sync steered it.
       if (holderSynced) { holder.style.transform = holderTransform(area.area.transform); holderSynced = false; }
       engine.setActive(false);
     };
 
-    // Initial build — start in the gesture state (DOM hidden, canvas drawing) so there's no
-    // DOM+canvas double-image while capturing; drop to idle (DOM shown) once built.
+    // Start in the gesture state so there's no DOM+canvas double-image while capturing.
     holder.style.visibility = "hidden";
     engine.setActive(true);
     gesturing = true;
@@ -321,38 +244,17 @@ export function HtmlCanvasLayer() {
     tryBuild();
     const retry = window.setInterval(() => { tryBuild(); if (built) clearInterval(retry); }, 120);
 
-    // Keep the canvas content fresh (so a gesture never shows a stale capture): debounced
-    // re-capture. The capture is a CLONE taken at build time, so anything that changes a node's
-    // DOM after build — not just values/topology — leaves the snapshot stale until a rebuild.
-    //
-    // PRINCIPLE — a node card / group / note re-renders in rete's SEPARATE React root, so the
-    // canvas can't observe it. Every such re-render reaches us by one of two channels, and BOTH
-    // must end at scheduleRebuild:
-    //   1. area.update("node", id)  → the area "render"/node pipe below. Use this from a node's
-    //      OWN local-state change (color pick, inline edit) that has no module store — see
-    //      NoteNode.pick / GroupNode.pickColor. Value-box re-renders, dropdown changes, group
-    //      resize and SELECTION-class flips already flow through here.
-    //   2. a module store the card subscribes to via useSyncExternalStore → subscribe it here.
-    //      The full set the captured roots (NodeCard / GroupNode / NoteNode / nodeKit value box /
-    //      DisplayNode) react to:
-    //        • connectionVersionStore — topology (rewire). (Values arrive per-id
-    //          through the render pipe — see the scheduleRebuild note below.)
-    //        • collapseStore — chevron collapse/expand re-renders the body.
-    //        • nodeSizeStore — single-node manual resize.
-    //        • groupMembershipStore — group recolor + member "inside a group" dots (and the dot
-    //          refreshing when a node moves in/out of a group). The group BOX is also covered by
-    //          its picker's area.update; this catches the MEMBERS that go stale otherwise.
-    //        • appThemeStore — light/dark + accent + the active PALETTE (palette edits funnel
-    //          through appThemeStore, see appTheme.ts), which retints every card/group/note.
-    //        • formatAnnotationStore — unit + number-format annotations change the DISPLAYED
-    //          value text on value boxes / Displays / Notes without any value recompute.
-    //        • cableShapeStore — not a node change; re-routes the captured cables on shape swap.
-    //      Deliberately NOT subscribed: socketHighlightStore (per-hover churn; a transient ring
-    //      not worth a full re-capture) and the FC-only formatMismatchStore / packsStore (rare,
-    //      sub-glyph). If a NEW store starts driving a card's painted appearance, add it here.
-    // Re-derive ONE node's spec from the live DOM (geometry may have changed since
-    // the last build). Returns null when the node is unknown/new — the caller
-    // falls back to a full build.
+    // A card re-renders in rete's SEPARATE React root, so every re-render must reach
+    // scheduleRebuild by one of two channels: area.update("node", id) via the render pipe below
+    // (a card's own local state — see NoteNode.pick), or a module store subscribed here. The
+    // subscribed set, one per painted-appearance driver:
+    //   • connectionVersionStore — topology; • collapseStore — chevron collapse;
+    //   • nodeSizeStore — manual resize; • groupMembershipStore — group recolor + member dots;
+    //   • appThemeStore — theme/accent/palette retint; • formatAnnotationStore — displayed
+    //     value text without recompute; • cableShapeStore — re-route on shape swap.
+    // Deliberately NOT subscribed: socketHighlightStore (per-hover churn), formatMismatchStore
+    // and packsStore (rare, sub-glyph). A new painted-appearance store belongs here.
+    // Returns null when the node is unknown/new — the caller falls back to a full build.
     const refreshSpec = (id: string): EngineNodeSpec | null => {
       if (!specById.has(id)) return null;
       const view = area.nodeViews.get(id);
@@ -369,12 +271,8 @@ export function HtmlCanvasLayer() {
     };
 
     let rebuildTimer = 0;
-    // Accumulated ids whose card re-rendered since the last (re)build; null =
-    // something of unknown scope changed → full rebuild. A full setNodes releases
-    // every ImageBitmap, re-clones every DOM card and rebuilds every mip pyramid.
-    // The area render pipe carries the changed node's id, so value edits take the
-    // targeted engine.updateNodes path; topology/theme/collapse (below) stay full
-    // rebuilds.
+    // Ids whose card re-rendered since the last build; null = unknown scope → full rebuild,
+    // which re-clones every card and rebuilds every mip pyramid.
     let dirtyIds: Set<string> | null = new Set();
     const scheduleRebuild = (id?: string) => {
       // Mid-lasso the only thing changing is selection; re-capturing on every node it touches
@@ -407,43 +305,30 @@ export function HtmlCanvasLayer() {
         doBuild();
       }, 150);
     };
-    // Rebuild-trigger telemetry: `window.__hcTriggers` counts every full-rebuild cause and
-    // targeted update since the layer mounted. A full rebuild re-clones + re-captures EVERY
-    // card, so a store that fires rapidly (per recompute pass, per frame) is a renderer hang —
-    // this makes the culprit readable from the console instead of guessed.
+    // `window.__hcTriggers` counts rebuild causes, so a store firing per pass (a renderer hang)
+    // is readable from the console instead of guessed.
     const triggers: Record<string, number> = {};
     (window as unknown as { __hcTriggers?: Record<string, number> }).__hcTriggers = triggers;
-    // Live renderer stats (console): fps, drawMs, visible/total, built (mip pyramids),
-    // `slow` = visible nodes re-rasterized per frame (the pan-jank suspect), `failed` =
-    // permanently unbuildable pyramids, domOnly = elements kept as live DOM through a
-    // gesture (conduits + their cables + unresolvable cables + the standoff svg).
+    // Console stats: `slow` = visible nodes re-rasterized per frame, `failed` = permanently
+    // unbuildable pyramids, `domOnly` = elements kept as live DOM through a gesture.
     (window as unknown as { __hcStats?: () => unknown }).__hcStats =
       () => ({ ...engine.getStats(), domOnly: domOnlyEls.length });
-    // One-shot verbose pipeline probe (real error text per stage) — see probe().
     (window as unknown as { __hcProbe?: () => void }).__hcProbe = () => engine.probe();
     const count = (cause: string) => { triggers[cause] = (triggers[cause] ?? 0) + 1; };
     const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
-    // NOT subscribed: cableValueStore — every value change that repaints a card
-    // already arrives through the render pipe WITH its node id (processGraph
-    // calls area.update per affected node); the store bump carries no ids and
-    // would force the full-rebuild path every pass.
+    // NOT cableValueStore: value changes already arrive per-id through the render pipe, and
+    // the store bump carries no ids, so it would force a full rebuild every pass.
     const unsubConn = connectionVersionStore.subscribe(fullRebuild("connection"));
     const unsubCollapse = collapseStore.subscribe(fullRebuild("collapse"));
-    // GROUP collapse/expand hides/shows members via inline visibility on their
-    // node views — a state only collectSpecs' visibility check sees, and the
-    // collapse fires area.update for the GROUP id alone, so the targeted path
-    // never drops the members. Without this, collapsed-group members keep their
-    // cached bitmaps and are drawn on every pan.
+    // Group collapse fires area.update for the GROUP id alone, so without this its members
+    // keep their cached bitmaps and stay drawn.
     const unsubGroupCollapse = groupCollapseStore.subscribe(fullRebuild("groupCollapse"));
     const unsubSize = nodeSizeStore.subscribe(fullRebuild("nodeSize"));
     const unsubMembership = groupMembershipStore.subscribe(fullRebuild("membership")); // recolor member dots on group color/membership change
     const unsubTheme = appThemeStore.subscribe(fullRebuild("theme")); // retint on theme / accent / palette change
     const unsubFmt = formatAnnotationStore.subscribe(fullRebuild("formatAnnotation")); // re-capture reformatted value text
     const unsubShape = cableShapeStore.subscribe(fullRebuild("cableShape")); // re-route on cable-shape change
-    // Semantic zoom flips a root CSS class the captured bitmaps don't know
-    // about — without a re-capture, zooming out past the threshold on a big
-    // graph (exactly where this renderer is active) kept drawing the stale
-    // full-detail cards for the whole gesture instead of the simplified view.
+    // Semantic zoom flips a root CSS class the captured bitmaps don't know about.
     const unsubSemantic = semanticZoomStore.subscribe(fullRebuild("semanticZoom"));
     // area.addPipe has no unsubscribe, so guard with a flag the cleanup flips instead.
     let pipeLive = true;
@@ -455,21 +340,16 @@ export function HtmlCanvasLayer() {
       return ctx;
     });
 
-    // Each frame, mirror the area transform AND sync node positions. ANY motion — a pan/zoom
-    // (transform changes) OR a node/group drag (positions change, e.g. rete's area.translate)
-    // — is a gesture: swap to the canvas, which carries the motion smoothly, then hand back to
-    // the DOM on settle. Cables follow the moved sockets live. Discrete interactions (click,
-    // edit, collapse, context menu) don't move anything, so they stay on the DOM.
+    // ANY motion — transform change or node drag — is a gesture; discrete interactions move
+    // nothing and so stay on the DOM.
     let lastK = NaN, lastX = NaN, lastY = NaN;
     let lastSel = new Set<string>();
     let lastQuality = NaN;
     let raf = requestAnimationFrame(function sync() {
       const t = area.area.transform;
       engine.setTransform(t.k, t.x, t.y);
-      // Console quality knobs (no UI). `__hcLive = true` → faithful per-frame re-raster (crisp at
-      // any zoom, costs a re-raster per visible node). `__hcQuality = n` → LOD bias for the cached
-      // path: target texture px ÷ on-screen px; 1 = 1:1, >1 picks sharper mip levels (capped by
-      // the 1× capture), <1 = cheaper/softer. `__hcOverlay = true` → half-opacity over the DOM.
+      // Console knobs: `__hcLive` = per-frame re-raster, `__hcQuality` = LOD bias (texture px ÷
+      // on-screen px), `__hcOverlay` = half-opacity over the DOM.
       const w = window as unknown as { __hcOverlay?: boolean; __hcLive?: boolean; __hcQuality?: number };
       const overlay = !!w.__hcOverlay;
       engine.setDebug(overlay);
@@ -480,14 +360,12 @@ export function HtmlCanvasLayer() {
       }
       if (built) {
         let moved = t.k !== lastK || t.x !== lastX || t.y !== lastY;
-        // Scale changed → this gesture is a zoom; hold it through notchy wheel pauses
-        // (see gestureZoomed above). NaN-guarded so the first frame doesn't count.
+        // NaN-guarded so the first frame doesn't count as a zoom.
         if (Number.isFinite(lastK) && t.k !== lastK) gestureZoomed = true;
         lastK = t.k; lastX = t.x; lastY = t.y;
         const movedIds = new Set<string>();
-        // Read selection from the LIVE DOM class (not node.selected), so the re-capture below
-        // fires the frame the `--selected` ring actually lands — keying off the model would race
-        // React's class write and clone the node a frame too early (no ring).
+        // Read from the LIVE DOM class, not node.selected: keying off the model races React's
+        // class write and clones the node a frame before the ring lands.
         const curSel = new Set<string>();
         for (const node of editor.getNodes()) {
           const off = offsets.get(node.id);
@@ -497,9 +375,7 @@ export function HtmlCanvasLayer() {
           if (spec && spec.el.className.includes("--selected")) curSel.add(node.id);
         }
         if (movedIds.size) { engine.relayoutCables(movedIds); moved = true; }
-        // Selection delta → re-capture ONLY the toggled nodes (engine.updateNodes), so the real
-        // accent ring updates live — cheap enough to stay smooth even as a lasso sweeps over many
-        // nodes (a full rebuild per change would defeat the point of activating the canvas).
+        // Re-capture ONLY the toggled nodes, so a lasso sweep stays cheap.
         let selChanged = curSel.size !== lastSel.size;
         if (!selChanged) for (const id of curSel) if (!lastSel.has(id)) { selChanged = true; break; }
         if (selChanged) {
@@ -509,13 +385,9 @@ export function HtmlCanvasLayer() {
           if (changed.length) engine.updateNodes(changed);
           lastSel = curSel;
         }
-        // DOM↔canvas frame sync: while gesturing, steer the holder onto the camera the
-        // canvas actually PRESENTED this frame (engine.getPresented() — derived from the
-        // WICG sync matrix when the build exposes one, else draw bookkeeping), so
-        // DOM-only content (conduits, their cables) rides the SAME frame as the drawn
-        // graph instead of trailing/leading it by the rAF→paint skew. The moment the two
-        // agree — or the gesture ends — rete's own byte-identical serialization is
-        // restored, so rete's next write is a no-op diff, not a fight.
+        // Steer the holder onto the camera the canvas actually PRESENTED so DOM-only content
+        // rides the same frame; restore rete's own serialization the moment they agree, so
+        // rete's next write is a no-op diff rather than a fight.
         if (gesturing && !overlay) {
           const sync = holderSyncTransform(t, engine.getPresented());
           if (sync !== null) { holder.style.transform = sync; holderSynced = true; }
@@ -525,22 +397,15 @@ export function HtmlCanvasLayer() {
           holderSynced = false;
         }
         if (overlay) { engine.setActive(true); holder.style.visibility = ""; } // both shown, overlaid
-        // Keep the canvas up for the WHOLE interaction, not just while pixels move: enter on
-        // motion and — once gesturing — hold it while the pointer stays down. That last clause
-        // stops a SLOW pan (speed momentarily 0 between frames) from settling back to the DOM
-        // and flickering until the real pointerUp.
-        // A LASSO deliberately does NOT enter gesture mode: it moves no transform, so
-        // swapping the live DOM for the cached bitmap buys nothing and shows a stale,
-        // mip-scaled snapshot over the canvas. Selection feedback runs on the independent
-        // selection-delta path above; the mid-lasso rebuild suppression (scheduleRebuild's
-        // lassoActiveStore gate) stays.
+        // Hold the gesture while the pointer stays down, or a slow pan (speed momentarily 0)
+        // settles back to the DOM and flickers. A LASSO deliberately never enters: it moves no
+        // transform, so the swap only shows a stale mip-scaled snapshot.
         else if (moved || (gesturing && pointerDown)) enterGesture();
       }
       raf = requestAnimationFrame(sync);
     });
 
-    // Track pointer-held state so a stalled-but-ongoing gesture (slow pan, paused drag) doesn't
-    // settle early. Capture phase so we see it regardless of where the press lands.
+    // Capture phase, so a stalled-but-ongoing gesture is seen wherever the press lands.
     let pointerDown = false;
     const onPointerDown = () => { pointerDown = true; };
     const onPointerUp = () => { pointerDown = false; };

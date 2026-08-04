@@ -1,35 +1,23 @@
-// Thin wrapper over Tauri's `invoke` — the web layer's door to the native Rust
-// engine. Guarded like `fileBridge.ts`: the browser/dev build has no Tauri
-// runtime, so `engineAvailable()` is false there and callers fall back to the
-// in-process JS path (the `FrameBackend` seam). The Rust side is in
-// `src-tauri/src/ipc.rs`.
-//
-// Error convention: a Rust command returns its failure SolError-shaped
-// (`{ __solError, code, message }`), so a rejected `invoke` is mapped straight
-// back to a tagged `SolError` the rest of the app already handles — see
-// `toSolError` below and `errorValue.ts`.
+// The web layer's door to the native Rust engine (`src-tauri/src/ipc.rs`); callers
+// must gate on `engineAvailable()`. Rust returns failures SolError-shaped.
 import { isDesktop } from "./fileBridge";
 import { solError, isSolError, ERROR_EXPLANATIONS, type SolError, type SolErrorCode } from "./errorValue";
 import { perfEnabled, recordIpc } from "./perfProbe";
 
-// Cheap payload-size estimate for the perf probe: the number of cells being shipped,
-// for the two commands that carry a whole frame (`source` uploads columns, `append`
-// several). Avoids JSON.stringify — walks column value counts only. Anything else is
-// a handle/opts scalar, so 0. Called only when the probe is on.
+// Cell count for the perf probe — deliberately not JSON.stringify; anything without
+// a frame payload is a handle/opts scalar, so 0.
 function estimateCells(args?: Record<string, unknown>): number {
   const cols = (args?.frame as { columns?: { values?: unknown[] }[] } | undefined)?.columns;
   if (Array.isArray(cols)) return cols.reduce((n, c) => n + (c.values?.length ?? 0), 0);
   return 0;
 }
 
-/** The native Rust engine only exists inside the desktop shell. Callers use this
- *  to choose the native path vs the in-process JS fallback. */
+/** The native Rust engine only exists inside the desktop shell. */
 export function engineAvailable(): boolean {
   return isDesktop();
 }
 
-// The real canonical code set (keys of ERROR_EXPLANATIONS — one source of truth
-// in errorValue.ts), not a "starts with #" heuristic. A foreign or malformed code
+// The real code set, not a "starts with #" heuristic — a foreign or malformed code
 // from the boundary is coerced to #ERROR! rather than trusted.
 const CANONICAL_CODES: ReadonlySet<string> = new Set(Object.keys(ERROR_EXPLANATIONS));
 
@@ -37,11 +25,8 @@ function isCanonicalCode(c: unknown): c is SolErrorCode {
   return typeof c === "string" && CANONICAL_CODES.has(c);
 }
 
-/** Coerce anything thrown across the IPC boundary into a tagged `SolError` with a
- *  CANONICAL code. A Rust `IpcError` already arrives SolError-shaped, but its code
- *  is validated all the same — Rust always sets `__solError: true`, so without this
- *  a bad code (`IpcError::new("weird", …)`) would leak through untouched. A bare
- *  string / Error / unknown collapses to `#ERROR!` so a failure is never swallowed. */
+/** Coerce anything thrown across the IPC boundary to a tagged `SolError` with a
+ *  CANONICAL code — Rust sets `__solError` itself, so its code must be re-validated. */
 export function toSolError(thrown: unknown): SolError {
   if (isSolError(thrown)) {
     return isCanonicalCode(thrown.code) ? thrown : solError("#ERROR!", thrown.message);
@@ -56,10 +41,8 @@ export function toSolError(thrown: unknown): SolError {
   return solError("#ERROR!", "IPC call failed");
 }
 
-/** Call a Rust command, resolving its result or throwing a tagged `SolError` on
- *  any failure. Desktop-only — calling without the engine throws `#ERROR!`, so
- *  guard with `engineAvailable()` first. `invoke` is imported lazily so this
- *  module stays Tauri-free at load (node tests, the web bundle). */
+/** Call a Rust command; throws `#ERROR!` without the desktop engine, so guard with
+ *  `engineAvailable()`. `invoke` is lazy so this module stays Tauri-free at load. */
 export async function ipcInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (!engineAvailable()) {
     throw solError("#ERROR!", `IPC '${command}' called without the desktop engine`);
@@ -84,8 +67,7 @@ export interface EngineInfo {
   backend: string;
 }
 
-/** Round-trip the Rust engine. Returns its info on desktop, or null in the
- *  browser (no native side). A quick health check for the IPC boundary. */
+/** Round-trips the IPC boundary as a health check; null in the browser. */
 export async function enginePing(): Promise<EngineInfo | null> {
   if (!engineAvailable()) return null;
   return ipcInvoke<EngineInfo>("engine_ping");

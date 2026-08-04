@@ -73,13 +73,11 @@ import {
   DateDiffNode, DateAddNode, WorkdayNode, NetworkdaysNode,
 } from "./date";
 
-// Central instanceof map. Runs at call-time (after module init), so
-// forward-referencing every class above is safe. Minification-proof — never
-// relies on constructor.name.
+// Runs at call-time, so forward-referencing every class above is safe; never
+// relies on constructor.name (minification-proof).
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
-  // Composite boundary markers read green ("special"); the Composite node
-  // itself stays neutral gray (util, below).
+  // The Composite node itself stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "display";
@@ -90,8 +88,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComplexUnaryNode || node instanceof ComplexBinaryNode ||
     node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode
   ) return "complex";
-  // Nodes that EMIT the logical type read as logic, so their header color
-  // matches what they output.
+  // Nodes that EMIT the logical type read as logic, matching their output color.
   if (
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode ||
@@ -228,34 +225,26 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   return "math";
 }
 
-// How much a node contributes to the DOM cost the HTML-in-Canvas renderer
-// exists to relieve — a RAW node count undercounts a chart-heavy graph.
-// Weights are deliberately COARSE and summed off the same nodecreated /
-// noderemoved recount HtmlCanvasLayer already runs — never a live DOM element
-// count. Baseline is 1 == one scalar card; the heavy tiers are calibrated so
-// ~10 full charts ≈ the 100-unit default threshold.
+// COARSE weights summed off HtmlCanvasLayer's existing nodecreated/noderemoved
+// recount — never a live DOM element count. Baseline 1 == one scalar card, tiers
+// calibrated so ~10 full charts ≈ the 100-unit default threshold.
 export function nodeDomWeight(node: ClassicPreset.Node): number {
-  // SVG Picker's IDLE state is a single <img>; the heavy inline SVG mounts only
-  // while the pointer is over the well, which never coincides with a pan/zoom
-  // gesture (the only time this gate matters).
+  // SVG Picker is a single <img> when idle; the heavy inline SVG mounts only on
+  // hover, which never coincides with the pan/zoom gesture this gate serves.
   if (node instanceof SvgPickerNode) return 2;
-  // Full chart / diagram figures: a big recharts SVG subtree or a rendered mermaid
-  // diagram. Ten of these ≈ the default threshold.
+  // Full figures (a recharts subtree, a mermaid diagram): ten ≈ the default threshold.
   if (
     node instanceof ChartNode || node instanceof HistogramNode ||
     node instanceof TreemapNode || node instanceof SankeyNode ||
     node instanceof MermaidNode
   ) return 10;
-  // Grid-of-cells / inline bar figures — heavy, but a step below a full chart.
   if (node instanceof HeatmapCellNode || node instanceof TornadoNode) return 6;
-  // Small inline figures (a sparkline strip, a gauge arc) and the option-field
-  // heavy Chart Builder card.
   if (
     node instanceof SparklineNode || node instanceof GaugeNode ||
     node instanceof ChartBuilderNode
   ) return 3;
-  // A grid PREVIEW is detected from the OUTPUT sockets (where the grid actually
-  // renders), so any new grid-emitting node counts without a class list.
+  // Detected from the OUTPUT sockets, so a new grid-emitting node counts with no
+  // class list.
   const grid = Object.values(node.outputs ?? {}).some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube");
@@ -264,22 +253,17 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
   return 1;
 }
 
-// Which nodes expose a manual resize handle (width+height) — the one source of
-// truth for the resizable set.
+// The one source of truth for the resizable set.
 export function nodeResizable(node: ClassicPreset.Node): boolean {
-  // Resize is a DISPLAY-only affordance: the body-level grip grows the Display's
-  // box. Other nodes wrap/truncate at their content-driven size.
+  // Resize is a DISPLAY-only affordance; every other node wraps/truncates at its
+  // content-driven size.
   return node instanceof DisplayNode;
 }
 
-// A node carrying 2D data (table/frame socket on either side) or a LAMBDA
-// socket gets a wider default card. Detected from sockets, so any new
-// table/frame/lambda node is wide automatically — no per-class list. A manual
-// resize still overrides this (inline width wins over the class).
+// Detected from SOCKETS, so any new table/frame/lambda node is wide automatically;
+// a manual resize still wins (inline width over the class).
 export function nodeWide(node: ClassicPreset.Node): boolean {
-  // The inline charts and the drawing controls' pads need the wide card to fit
-  // their fixed-width plot (a class `width` field is only the layout mirror,
-  // not a style).
+  // Inline charts and drawing pads need the wide card to fit their fixed-width plot.
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof TreemapNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;

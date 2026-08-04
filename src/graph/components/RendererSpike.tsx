@@ -11,12 +11,8 @@ import { getArea, getEditor, processGraph } from "../process";
 import { APP_LOCALE } from "../locale";
 import "./rendererSpike.css";
 
-/**
- * Renderer spike (Pixi) — a proof-of-architecture for the GPU node renderer (see
- * docs/archive/renderer-decision.md). Synthetic and Live (the real rete graph)
- * modes. All interaction is hand-rolled on the canvas. Nothing of the real editor
- * is mutated except node positions on a live drag. pixi.js is dynamic-imported.
- */
+/** Renderer spike (Pixi). Interaction is hand-rolled on the canvas, and nothing of
+ *  the real editor is mutated except node positions on a live drag. */
 
 const COUNTS = [500, 2000, 5000, 10000] as const;
 type Mode = "synthetic" | "live";
@@ -44,10 +40,8 @@ export function RendererSpike() {
   const [stats, setStats] = useState<{ nodes: number; cables: number; note?: string }>({ nodes: 0, cables: 0 });
   const [bench, setBench] = useState<{ avg: number; min: number } | null>(null);
   const [benching, setBenching] = useState(false);
-  // Floating DOM editor (the hidden-input pattern) — rename a live card.
   const [editing, setEditing] = useState<{ id: string; left: number; top: number; width: number; value: string } | null>(null);
 
-  // Refs the Fit button + handlers reach into (set inside the build effect).
   const camRef = useRef<Camera | null>(null);
   const sceneRef = useRef<SpikeScene | null>(null);
   const applyRef = useRef<() => void>(() => {});
@@ -73,8 +67,8 @@ export function RendererSpike() {
       const PIXI = await import("pixi.js");
       if (canceled) return;
 
-      // Theme-faithful colors (sampled from a real node behind the overlay) so the
-      // cards + canvas match the live theme instead of a hardcoded dark.
+      // Colors sampled from a real node behind the overlay, so the spike tracks the
+      // live theme instead of a hardcoded dark.
       const theme = readThemeColors();
       const canvasBg = isLight(theme.body) ? 0xeef0f3 : 0x0e1014;
 
@@ -89,9 +83,8 @@ export function RendererSpike() {
       setBackend(app.renderer.type === PIXI.RendererType.WEBGPU ? "WebGPU" : "WebGL2");
       app.stage.eventMode = "none"; // all interaction is hand-rolled below
 
-      // Load the MSDF atlases (Atkinson Hyperlegible Next + Mono) → crisp text at
-      // any zoom. On any failure, keep FALLBACK_FONTS (Pixi's dynamic bitmap font),
-      // so text never disappears if an atlas is missing/broken.
+      // MSDF atlases give crisp text at any zoom; FALLBACK_FONTS on failure so text
+      // never disappears when an atlas is missing.
       let fonts: Fonts = FALLBACK_FONTS;
       try {
         await PIXI.Assets.load([
@@ -126,8 +119,7 @@ export function RendererSpike() {
       }
       app.stage.addChild(scene.world);
 
-      // Dot-grid background (matches the canvas) — one GPU-tiled sprite, panned/
-      // zoomed via tilePosition/tileScale (cheap, no per-dot redraw).
+      // One GPU-tiled sprite panned via tilePosition/tileScale — no per-dot redraw.
       const GRID = 24;
       const gridColor = isLight(theme.body) ? 0x000000 : 0xffffff;
       const dotG = new PIXI.Graphics();
@@ -159,9 +151,8 @@ export function RendererSpike() {
         minimapG.rect(ox + (tl.wx - minX) * sc, oy + (tl.wy - minY) * sc, (br.wx - tl.wx) * sc, (br.wy - tl.wy) * sc).stroke({ width: 1.5, color: 0x4d8dff, alpha: 0.9 });
       };
 
-      // Hybrid: charts stay real DOM (crisp recharts SVG, no blurry texture) in an
-      // overlay above the canvas. One inner "world" div carries the camera transform,
-      // so every chart rides the pan/zoom exactly like the Pixi world container.
+      // Charts stay real DOM in an overlay; one inner "world" div carries the camera
+      // transform so they ride the pan/zoom like the Pixi world container.
       let chartOverlay: HTMLDivElement | null = null;
       let chartWorld: HTMLDivElement | null = null;
       if (chartImages.length > 0) {
@@ -248,8 +239,7 @@ export function RendererSpike() {
         for (let i = 1; i < pts.length; i++) tempG.lineTo(pts[i].x, pts[i].y);
         tempG.stroke({ width: 2, color: 0x4d8dff, alpha: 0.9 });
       };
-      // Create the connection in the REAL editor (output→input), then mirror it
-      // into the scene. Catches incompatible-type rejections.
+      // Create in the REAL editor first, then mirror into the scene.
       const tryConnect = (a: { nodeId: string; sock: SnapSocket }, b: { nodeId: string; sock: SnapSocket }) => {
         const out = a.sock.side === "output" ? a : b;
         const inp = a.sock.side === "output" ? b : a;
@@ -467,8 +457,7 @@ export function RendererSpike() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, mode, editing]);
 
-  // Commit/cancel the floating rename — writes node.label back to the real editor
-  // and updates the Pixi title in place.
+  // Writes node.label back to the real editor and updates the Pixi title in place.
   const commitEdit = (save: boolean) => {
     setEditing((cur) => {
       if (cur && save) {
@@ -492,9 +481,8 @@ export function RendererSpike() {
     applyRef.current();
   };
 
-  // A fixed-zoom PAN sweep across the scene bounds for ~3s, sampling real
-  // rAF-to-rAF frame intervals, then reporting avg + worst-frame fps. Holding
-  // zoom fixed isolates the pan cost.
+  // A fixed-zoom PAN sweep sampling rAF-to-rAF intervals — holding zoom fixed
+  // isolates the pan cost.
   const runBench = () => {
     const cam = camRef.current, host = hostRef.current, scene = sceneRef.current;
     if (!cam || !host || !scene || benching) return;

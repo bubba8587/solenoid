@@ -1,8 +1,5 @@
-// Thermodynamics & Air — ideal gas, heat transfer, and humid-air (psychrometric)
-// formulas, plus two formulation custom nodes: the 1976 standard atmosphere and
-// Antoine vapor pressure. Replaces the HVAC/psychrometric calculator-site genre.
-// SI throughout (kelvin where the physics needs absolute temperature, °C where
-// the correlation is °C-native — each description says which).
+// Thermodynamics & Air pack. SI throughout: kelvin where the physics needs an
+// absolute temperature, °C only where the correlation is °C-native.
 
 import { IsaAtmosphereNode, AntoineNode, standardAtmosphere, antoinePressure, ANTOINE, type AntoineOp } from "../rete-nodes";
 import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";

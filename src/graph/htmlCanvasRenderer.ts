@@ -1,21 +1,6 @@
-// HTML-in-Canvas renderer engine — framework-free core. Clones each node-view into a
-// <canvas layoutsubtree>, captures it ONCE at a reference resolution, builds a mip
-// pyramid of ImageBitmaps, and every frame drawImage's the level matching the zoom.
-// Cables draw as one batched Path2D; pan/zoom is a camera transform — no DOM compositing.
-//
-// Requires the WICG HTML-in-Canvas API (ctx.drawElementImage / canvas.captureElementImage),
-// Chromium-only: behind chrome://flags/#canvas-draw-element, origin trial Chrome 148–150
-// (Android DevTrial since 138). Gate construction on supportsHtmlInCanvas() — the engine
-// assumes the API is present. Spec-drift notes the engine is built around (2026-07):
-//   • `ElementImage` is only `{width, height, close()}` — NOT an ImageBitmapSource, by
-//     spec, permanently. The pyramid builds via in-paint raster + region snapshot.
-//   • The paint model: a snapshot of the canvas children is recorded just prior to the
-//     `paint` event; a drawElementImage OUTSIDE the paint handler draws the PREVIOUS
-//     snapshot. So every frame that must call drawElementImage routes through
-//     requestPaint, and the paint handler re-reads the freshest camera.
-//   • drawElementImage returns (and getElementTransform computes) the CSS matrix that
-//     places the element exactly where it was drawn — used to report the PRESENTED
-//     camera for the DOM-only sync (domSync.ts).
+// Requires the WICG HTML-in-Canvas API — gate construction on supportsHtmlInCanvas().
+// A drawElementImage OUTSIDE the paint event draws the PREVIOUS snapshot, so every frame
+// that calls it routes through requestPaint.
 
 import { Camera } from "./pixi/pixiCamera";
 import { cablePolyline } from "./pixi/pixiCableGeom";
@@ -25,19 +10,14 @@ import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
 import { camFromDrawMatrix, plausibleNativeCam, type CamXform } from "./domSync";
 import { IS_COARSE } from "./coarse";
 
-// HMR: the engine is created imperatively (not a React component), so Vite would otherwise
-// keep a STALE instance running after an edit to this file — code changes silently never
-// apply until a manual full reload. Force a full reload on change so dev edits always take
-// effect.
+// The engine is imperative, not a React component, so HMR would keep a STALE instance alive.
 if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate());
 
 // ── WICG HTML-in-Canvas typing (not in lib.dom yet) ──────────────────────────────
 interface ElementImageLike { width: number; height: number; close?: () => void }
 type Ctx2D = CanvasRenderingContext2D & {
   drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw?: number, dh?: number) => DOMMatrix | undefined;
-  // Sync helper (spec home is the 2D context; some builds have hung it off the canvas —
-  // nativeGetElementTransform() probes both). Returns the CSS transform that would put
-  // `el` exactly where a draw with `drawTransform` lands it.
+  // Spec home is the 2D context, but some builds hang it off the canvas instead.
   getElementTransform?: (el: Element | ElementImageLike, drawTransform: DOMMatrix) => DOMMatrix;
   reset?: () => void;
 };
@@ -49,33 +29,22 @@ type LayoutCanvas = HTMLCanvasElement & {
   getElementTransform?: (el: Element, drawTransform: DOMMatrix) => DOMMatrix;
 };
 
-// Reference capture resolution (CSS `zoom` on the clone). Kept at 1 so the clone lays out at
-// true 1× — REF>1 supersamples for zoom-in crispness BUT rounds text line-boxes differently than
-// the live DOM (a constant ~0.9px text drift). At 1 the cached texture is 1×, so zooming IN
-// past 100% softens (upscaled capture); that's the accepted trade for faithful text/alignment.
-// The crisp escape hatch is `live` mode.
+// Reference capture resolution (CSS `zoom` on the clone); kept at 1 so the clone lays out at
+// true 1× — REF>1 supersamples but rounds text line-boxes differently than the live DOM.
 const REF: number = 1;
 // Mip pyramid halves from REF down to ~MIP_MIN_PX. `scale` = texture px ÷ natural px.
 const MIP_MIN_PX = 6;
-// Default quality: target texture size ÷ on-screen size. 1 ≈ 1:1 (crisp). Tunable via
-// setQuality; <1 = cheaper/softer.
+// Target texture size ÷ on-screen size; 1 ≈ 1:1 (crisp), <1 cheaper/softer (setQuality).
 const DEFAULT_QUALITY = 1.0;
 
-/**
- * The mip-pyramid level `drawFrame` would pick for a given camera scale — the one
- * canonical "how far zoomed out are we, in discrete steps" computation. Exported
- * so anything gauging zoom "distance" (semantic zoom) keys off the SAME formula
- * the renderer already uses, rather than inventing a second raw-scale threshold
- * that would drift out of sync with it. Level i has scale REF/2^i; higher i = more
- * zoomed out. Pure — no renderer instance required.
- */
+/** The mip level `drawFrame` picks for a camera scale: level i has scale REF/2^i, higher
+ *  i = more zoomed out. Pure — no renderer instance required. */
 export function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
   const target = quality * scale * dpr;
   return Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
 }
-// Capture padding (CSS px). Sockets straddle the card edge (left/right:-5) and other chrome
-// (focus rings, badges) overflow the body box, so we capture a PAD-inflated box and draw it
-// back inflated. The node's x/y/w/h stay the CARD's (hit-test, cables, selection ring).
+// Capture padding (CSS px): chrome overflows the card box (sockets straddle the edge), so the
+// capture and the draw are both PAD-inflated while x/y/w/h stay the CARD's.
 const PAD = 10;
 
 /** A node to render. `el` is the live node-view inner element — the engine clones it. */
@@ -101,9 +70,8 @@ interface EngineNode {
   isGroup: boolean;
 }
 interface CableGeom { pts: { x: number; y: number }[]; minX: number; minY: number; maxX: number; maxY: number }
-// A cable stored as offsets from its endpoint NODES, so it follows them live when they
-// move — a socket's offset within its card is fixed, so endpoint = node.pos + offset. The
-// absolute snapshot positions are kept as a fallback if an endpoint node isn't present.
+// Offsets from the endpoint NODES so a cable follows them live; the absolute snapshot
+// positions are the fallback when an endpoint node isn't present.
 interface CableSpec {
   sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null;
   targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null;
@@ -113,7 +81,7 @@ interface CableSpec {
 export interface RendererStats {
   fps: number; drawMs: number; visible: number; total: number; built: number; mip: number;
   /** Visible nodes drawn WITHOUT a mip pyramid last frame — each pays a full
-   *  drawElementImage re-raster per frame, the #1 pan-jank suspect. */
+   *  drawElementImage re-raster per frame. */
   slow: number;
   /** Nodes whose pyramid build permanently failed (stuck on the slow path). */
   failed: number;
@@ -134,8 +102,7 @@ export class HtmlCanvasRenderer {
   private cableShape: CableShape = "diagonal";
   private quality = DEFAULT_QUALITY;
   private dpr = 1;
-  // Exact backing-store ÷ CSS-px ratio per axis (≈ dpr, but accounts for the integer rounding of
-  // the backing store). The render CTM uses these, NOT dpr, so the canvas scale matches the DOM's.
+  // Exact backing-store ÷ CSS-px ratio per axis; the render CTM uses these, NOT dpr.
   private bsx = 1;
   private bsy = 1;
 
@@ -157,12 +124,10 @@ export class HtmlCanvasRenderer {
 
   private selected = new Set<string>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null; // screen px
-  // The renderer is the fast PAN/ZOOM layer. Active = draw the graph (during a gesture).
-  // Inactive = clear to transparent so the real interactive DOM shows through (idle). The
-  // canvas stays visible either way, so capture/paint keeps working in the background.
+  // Active = draw the graph (gesture); inactive = clear to transparent so the interactive DOM
+  // shows through. The canvas stays visible either way so capture keeps working.
   private active = false;
-  // Live mode: re-rasterize elements at the exact CTM each frame (pixel-identical to the DOM)
-  // instead of blitting cached mip bitmaps. Faithful but costs a re-raster per visible node.
+  // Live mode: re-rasterize at the exact CTM each frame instead of blitting cached mips.
   private live = false;
 
   constructor(host: HTMLElement) {
@@ -188,17 +153,14 @@ export class HtmlCanvasRenderer {
     if (this.canvas.requestPaint) this.canvas.requestPaint();
   }
 
-  /** Live camera source (the layer passes rete's area transform). Re-read at PAINT
-   *  time so a paint-event frame draws the freshest transform instead of the one the
-   *  scheduling rAF saw — the paint can land a frame later. */
+  /** Live camera source, re-read at PAINT time — the paint can land a frame after the rAF
+   *  that scheduled it. */
   setTransformSource(fn: () => { k: number; x: number; y: number }): void {
     this.transformSource = fn;
   }
 
-  /** The camera the canvas last actually PRESENTED while active (null when idle).
-   *  Derived from the WICG sync matrix when the build exposes one, else from our
-   *  own draw bookkeeping — the layer uses it to steer DOM-only content onto the
-   *  same frame as the drawn graph (domSync.ts). */
+  /** The camera the canvas last actually PRESENTED while active (null when idle) — steers
+   *  DOM-only content onto the same frame as the drawn graph. */
   getPresented(): CamXform | null {
     return this.presented;
   }
@@ -212,17 +174,15 @@ export class HtmlCanvasRenderer {
 
   setQuality(q: number): void { this.quality = q; this.dirty = true; }
 
-  /** Draw the graph (true, during a pan/zoom gesture) or clear to transparent so the real
-   *  interactive DOM shows through (false, idle). The canvas element stays visible so capture
-   *  keeps working; only the contents toggle. */
+  /** Draw the graph (gesture) or clear to transparent (idle); the element stays visible either
+   *  way so capture keeps working. */
   setActive(v: boolean): void {
     if (this.active === v) return;
     this.active = v;
     this.dirty = true;
   }
 
-  /** Debug overlay: half-opacity canvas so it can be eyeballed ON TOP of the live DOM to
-   *  measure any capture/position delta. */
+  /** Debug overlay: half-opacity, to eyeball capture/position delta against the live DOM. */
   setDebug(on: boolean): void {
     this.canvas.style.opacity = on ? "0.5" : "";
   }
@@ -291,18 +251,8 @@ export class HtmlCanvasRenderer {
     if (this.canvas.requestPaint) this.canvas.requestPaint();
   }
 
-  // A PAD-inflated wrapper holding the cloned card, so overflowing chrome (sockets, focus
-  // rings) is captured. The wrapper insets the card via PADDING (its content box is w×h, so
-  // the card sits PAD in) rather than positioning the card, which keeps the card FAITHFUL:
-  //  • No explicit width/height/box-sizing on the card — it keeps its own CSS + cloned inline
-  //    styles, so fixed-width tiers, content height, and resize-pinned widths all ride along.
-  //  • The card's `position` is NOT forced — the clone's own CSS class governs it, exactly like
-  //    the live node. `.solenoid-node` is static, so its absolutely-positioned chrome (collapse
-  //    chevron, group corner) anchors to rete's node-view div — the card's BORDER box; we
-  //    reproduce that with the inner `rel` box (padding box == card border box). `.solenoid-note`
-  //    is `position: relative`, so its resize handle anchors to the note card itself — and the
-  //    `rel` box is simply bypassed. Forcing a single position value breaks whichever root
-  //    doesn't match it.
+  // The wrapper insets the card via PADDING rather than sizing or positioning it, so the card
+  // keeps its own CSS + cloned inline styles.
   private cloneFor(el: HTMLElement, w: number, h: number): HTMLElement {
     const wrap = document.createElement("div");
     wrap.style.position = "absolute"; // all wrappers stack at origin (paint-contained)
@@ -313,9 +263,8 @@ export class HtmlCanvasRenderer {
     wrap.style.overflow = "visible";
     wrap.style.pointerEvents = "none";
     if (REF !== 1) wrap.style.setProperty("zoom", String(REF));
-    // rete's node-view div stand-in: the positioning context for the card's absolutely-
-    // positioned chrome. Zero padding/border/margin + width = card width, so its padding box
-    // == the card's border box (where that chrome anchors live).
+    // Stand-in for rete's node-view div: zero padding/border/margin so its padding box equals
+    // the card's border box, where the card's absolutely-positioned chrome anchors.
     const rel = document.createElement("div");
     rel.style.position = "relative";
     rel.style.margin = "0"; rel.style.padding = "0"; rel.style.border = "0";
@@ -336,11 +285,8 @@ export class HtmlCanvasRenderer {
     return wrap;
   }
 
-  // cloneNode(true) copies an element's ATTRIBUTES but not the live form-control PROPERTIES
-  // (input.value, select.selectedIndex/value, checkbox.checked, textarea.value). The app drives
-  // these via the .value property (React controlled inputs), so a naive clone of a <select> shows
-  // its FIRST <option> and an <input> its default. Walk the original + clone in lockstep
-  // (querySelectorAll yields the same order for a deep clone) and copy the live state across.
+  // cloneNode(true) copies ATTRIBUTES but not live form-control PROPERTIES, so walk original
+  // and clone in lockstep and copy value/selectedIndex/checked across.
   private static syncFormState(orig: HTMLElement, clone: HTMLElement): void {
     const sel = "input, select, textarea";
     const src = orig.querySelectorAll<HTMLElement>(sel);
@@ -349,8 +295,8 @@ export class HtmlCanvasRenderer {
     for (let i = 0; i < src.length; i++) {
       const s = src[i], d = dst[i];
       if (s instanceof HTMLSelectElement && d instanceof HTMLSelectElement) {
-        // Mirror selectedIndex (so the chosen <option> paints) and also set selected attrs so
-        // the captured render is unambiguous even before the clone is in the document.
+        // Mirror selectedIndex AND the selected attrs — the clone may be captured before it
+        // is in the document.
         d.selectedIndex = s.selectedIndex;
         for (let o = 0; o < d.options.length; o++) d.options[o].selected = o === s.selectedIndex;
       } else if (s instanceof HTMLTextAreaElement && d instanceof HTMLTextAreaElement) {
@@ -366,10 +312,8 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  // cloneNode(true) copies a <canvas> ELEMENT but not its drawing buffer, so every
-  // canvas-drawn figure (Surface, Contour, Waterfall, 7-Segment, the whole
-  // chartCanvasViews family, Point Plotter/Curve/Grid Painter pads) captured blank.
-  // Blit each original canvas's pixels onto its clone in lockstep order.
+  // cloneNode(true) copies a <canvas> ELEMENT but not its drawing buffer, so blit each
+  // original's pixels onto its clone or every canvas-drawn figure captures blank.
   private static syncCanvasState(orig: HTMLElement, clone: HTMLElement): void {
     const src = orig.querySelectorAll<HTMLCanvasElement>("canvas");
     const dst = clone.querySelectorAll<HTMLCanvasElement>("canvas");
@@ -382,11 +326,8 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  // Cloning a node copies its inline SVG <defs> verbatim, so any id (a combo socket's bicolor
-  // split square is clipped by `<clipPath id=...>` referenced via url(#id)) now exists TWICE —
-  // original + clone. A duplicate id makes url(#id) resolve to nothing, clipping the square away
-  // to blank. Rewrite every id in the clone to a unique value
-  // and fix its references so each clone is self-contained.
+  // A clone duplicates every inline-SVG id, and a duplicate id makes url(#id) resolve to
+  // nothing, so rewrite ids and their references to keep each clone self-contained.
   private static idSeq = 0;
   private static uniquifyIds(card: HTMLElement): void {
     const ided = card.querySelectorAll("[id]");
@@ -419,8 +360,8 @@ export class HtmlCanvasRenderer {
     });
   }
 
-  /** Move one node (cheap — no re-capture; geometry only). Returns true if it moved.
-   *  Cables touching it follow via relayoutCables(); the caller batches that per frame. */
+  /** Move one node (geometry only — no re-capture). Cables follow via relayoutCables(),
+   *  which the caller batches per frame. */
   setNodePosition(id: string, x: number, y: number): boolean {
     const n = this.nodeById.get(id);
     if (n && (n.x !== x || n.y !== y)) { n.x = x; n.y = y; this.dirty = true; return true; }
@@ -488,12 +429,8 @@ export class HtmlCanvasRenderer {
     const cw = this.host.clientWidth || 1, ch = this.host.clientHeight || 1;
     this.canvas.width = Math.round(cw * this.dpr);
     this.canvas.height = Math.round(ch * this.dpr);
-    // ACTUAL backing-store ÷ CSS ratio, per axis. The backing store is rounded to whole px, so
-    // this is NOT exactly `dpr` (with a fractional dpr the gap is ~1e-4). The DOM is transformed
-    // in CSS px at the true `k`; if the canvas CTM used the rounded-away `dpr` instead of this
-    // ratio, its on-screen scale would differ from the DOM's by (ratio−dpr) — an error that
-    // scales with WORLD COORDINATE × zoom, so distant nodes in a big graph drift, worse zoomed
-    // in. Building the CTM from the exact ratio makes canvas == DOM.
+    // The exact ratio, NOT `dpr`: the backing store is rounded to whole px, and a CTM built from
+    // dpr drifts from the DOM's scale proportionally to world coordinate × zoom.
     this.bsx = this.canvas.width / cw;
     this.bsy = this.canvas.height / ch;
     this.dirty = true;
@@ -509,12 +446,8 @@ export class HtmlCanvasRenderer {
     };
   }
 
-  /** Verbose one-shot probe of the capture→bitmap pipeline on the first node.
-   *  Console: `__hcProbe()` — logs which stage of the WICG pipeline the current
-   *  browser build breaks, with the real error text (the production catches stay
-   *  quiet). Also checks whether drawElementImage rasterizes EAGERLY (a region
-   *  snapshot with ink) or defers to paint (blank — no snapshot-based fallback
-   *  can work). */
+  /** Console `__hcProbe()`: one-shot probe of the capture→bitmap pipeline, logging which WICG
+   *  stage the current build breaks and whether drawElementImage rasters eagerly or defers. */
   probe(): void {
     // eslint-disable-next-line no-console
     const log = (...a: unknown[]) => console.info("[hc-probe]", ...a);
@@ -524,9 +457,7 @@ export class HtmlCanvasRenderer {
         "| drawElementImage(main):", typeof this.ctx.drawElementImage,
         "| drawElementImage(scratch):", typeof this.sctx?.drawElementImage,
         "| node:", n.id, `${n.w}×${n.h}`, "refImg:", !!n.refImg);
-    // getElementTransform — where the build hangs it (spec home: the 2D context) and
-    // what an identity-draw maps to, so matrix-space drift (CSS vs backing px) is
-    // readable from the console.
+    // Where the build hangs getElementTransform, and what an identity draw maps to.
     const get = this.nativeGetElementTransform();
     log("getElementTransform:", get ? (typeof this.ctx.getElementTransform === "function" ? "on ctx" : "on canvas") : "unavailable");
     if (get && typeof DOMMatrix === "function") {
@@ -596,8 +527,7 @@ export class HtmlCanvasRenderer {
     this.nodeById.clear();
   }
 
-  // One-time path diagnostics — which capture/raster route is live, so a console
-  // paste identifies API drift (the WICG surface changes across Chrome versions).
+  // One-time path diagnostics — which capture/raster route is live, for API-drift triage.
   private static loggedPaths = new Set<string>();
   private static logPathOnce(msg: string): void {
     if (HtmlCanvasRenderer.loggedPaths.has(msg)) return;
@@ -609,10 +539,8 @@ export class HtmlCanvasRenderer {
   private captureRefs = (): void => {
     if (this.captured) return;
     if (typeof this.canvas.captureElementImage !== "function") {
-      // The CAPTURE half of the WICG API is unavailable (browser drift). Mark captured
-      // so the tick loop settles instead of spinning requestPaint + live-drawing every
-      // node; buildMips rasterizes the live clones through the scratch canvas instead
-      // (refImg stays null).
+      // Mark captured anyway or the tick loop spins requestPaint + live-draws every node;
+      // buildMips rasters the live clones through the scratch canvas instead.
       this.captured = true;
       if (this.nodes.length) HtmlCanvasRenderer.logPathOnce("captureElementImage unavailable — building mips from live clones via the scratch canvas");
       return;
@@ -621,8 +549,7 @@ export class HtmlCanvasRenderer {
     for (const n of this.nodes) {
       if (n.refImg) continue; // already captured — a targeted updateNodes leaves others intact
       try { n.refImg = this.canvas.captureElementImage!(n.refEl); } catch { n.refImg = null; }
-      // Capture diagnostic (`window.__hcDiag = true`): real vs expected dims, so the px-level
-      // mismatch can be reasoned from numbers, not eyeballing.
+      // Capture diagnostic (`window.__hcDiag = true`): real vs expected dims.
       if (n.refImg && !diagLogged && (window as unknown as { __hcDiag?: boolean }).__hcDiag) {
         diagLogged = true;
         const clone = (n.refEl.firstElementChild?.firstElementChild ?? n.refEl.firstElementChild) as HTMLElement | null; // wrap → rel → card
@@ -632,10 +559,8 @@ export class HtmlCanvasRenderer {
           imgW: n.refImg.width, imgH: n.refImg.height, // capture px (= box·dpr; rounding is cosmetic, unused)
           cloneOffsetW: clone?.offsetWidth, cloneOffsetH: clone?.offsetHeight, // should == w / h
         });
-        // Clone-vs-original SCREEN-position check. Measures getBoundingClientRect
-        // (true rendered box) relative to each CARD's rect, correcting the two different scales:
-        // the ORIGINAL lives inside rete's area transform (camera scale k), the CLONE only has
-        // zoom:REF. Divide each out → both land in card-local CSS px, directly comparable.
+        // Clone-vs-original screen-position check; the original is inside rete's area transform
+        // (scale k) and the clone only has zoom:REF, so divide each out to compare.
         const origCard = n.srcEl;
         const oEls = origCard.querySelectorAll<HTMLElement>("*");
         const cEls = clone ? clone.querySelectorAll<HTMLElement>("*") : null;
@@ -676,9 +601,7 @@ export class HtmlCanvasRenderer {
     }
     const anyCaptured = this.nodes.length === 0 || this.nodes.some((n) => n.refImg);
     if (!anyCaptured && this.nodes.length) {
-      // Every capture THREW — the same browser-drift class as a missing API.
-      // Settle (else the tick loop spins requestPaint + live-draws every frame)
-      // and let buildMips raster the clones through the scratch path instead.
+      // Every capture threw; settle anyway or the tick loop spins requestPaint every frame.
       HtmlCanvasRenderer.logPathOnce("captureElementImage threw for every node — falling back to scratch-canvas rasterization");
       this.captured = true;
       return;
@@ -686,15 +609,12 @@ export class HtmlCanvasRenderer {
     this.captured = anyCaptured;
   };
 
-  // Build the mip pyramid for every node from its reference snapshot. createImageBitmap
-  // GPU-downscales the captured pixels (widgets keep proportions — no fractional-zoom
-  // bloat). Primary path uses the snapshot as a source directly; scratch-canvas rasterize
-  // is the fallback; if both fail the per-frame refImg draw still covers the node.
+  // Mip pyramid per node: snapshot as a bitmap source, else a scratch-canvas raster; if both
+  // fail the per-frame refImg draw still covers the node.
   private buildMips = async (): Promise<void> => {
     if (this.building) return; this.building = true;
-    // Loop until no unbuilt node remains: work can ARRIVE mid-build (an updateNodes /
-    // setNodes while this async loop awaits re-captures nodes and calls buildMips, which
-    // early-returns on the `building` guard).
+    // Loop until no unbuilt node remains — an updateNodes arriving mid-await early-returns
+    // on the `building` guard, so its work would otherwise be dropped.
     do {
     for (const n of this.nodes) {
       if (this.disposed) break;
@@ -706,9 +626,7 @@ export class HtmlCanvasRenderer {
         catch (e) { top = null; HtmlCanvasRenderer.logPathOnce(`createImageBitmap(refImg) rejected (${String(e)}) — trying the scratch-canvas raster`); }
       }
       if (!top && this.sctx && typeof this.sctx.drawElementImage === "function") {
-        // Scratch raster: draws the captured image when we have one, else the LIVE
-        // clone element directly (the no-captureElementImage fallback), and snapshots
-        // the scratch canvas into a bitmap.
+        // Scratch raster: the captured image if we have one, else the live clone element.
         try {
           const refW = Math.max(1, Math.round(pw * REF)), refH = Math.max(1, Math.round(ph * REF));
           this.scratch.width = refW; this.scratch.height = refH;
@@ -718,11 +636,8 @@ export class HtmlCanvasRenderer {
         } catch (e) { top = null; HtmlCanvasRenderer.logPathOnce(`scratch raster rejected (${String(e)})`); }
       }
       if (!top) {
-        // Neither bitmap path works (current Chrome origin-trial builds: ElementImage
-        // is NOT an ImageBitmapSource — it's only {width,height,close}, drawable via
-        // drawElementImage). Fall through to the spec-clean route: raster the clone
-        // into THIS canvas during the paint event (draws land in the current frame,
-        // and the rendering is read-back-allowed) and snapshot the region.
+        // `ElementImage` is NOT an ImageBitmapSource by spec, so on most builds neither bitmap
+        // path works — fall through to the in-paint raster + region snapshot.
         n.needsPaintRaster = true;
         HtmlCanvasRenderer.logPathOnce("bitmap paths unavailable — building mips via paint-event raster + region snapshot");
         continue;
@@ -736,8 +651,8 @@ export class HtmlCanvasRenderer {
     if (!this.disposed && this.nodes.some((n) => n.needsPaintRaster) && this.canvas.requestPaint) this.canvas.requestPaint();
   };
 
-  /** The half-resolution pyramid below a top-level bitmap (shared by the capture
-   *  path and the paint-raster path). `topScale` = top texture px ÷ natural px. */
+  /** The half-resolution pyramid below a top-level bitmap; `topScale` = top texture px ÷
+   *  natural px. */
   private async downscaleChain(top: ImageBitmap, pw: number, ph: number, topScale: number): Promise<PyramidLevel[]> {
     const levels: PyramidLevel[] = [{ scale: topScale, bmp: top }];
     let cur = top, curScale = topScale;
@@ -754,21 +669,12 @@ export class HtmlCanvasRenderer {
   }
 
   // ── Paint-event raster (the spec-clean bitmap source) ────────────────────────
-  // Runs INSIDE the paint event, before drawFrame: shelf-pack a batch of pending
-  // clones into ONE atlas region on this canvas (rasterAtlas.ts), drawElementImage
-  // each at its placement, snapshot the whole region with a single
-  // createImageBitmap(canvas, …) — ONE canvas read-back per paint (per-node
-  // read-backs are the expensive pattern on mobile GPUs). Per-node textures are
-  // then bitmap→bitmap crops of the atlas (no further
-  // read-back). drawFrame clears within the same paint task, so the atlas pixels
-  // never present. Retried a few paints per node (a just-appended clone isn't in
-  // "the most recent rendering update" until the next one).
+  // Must run INSIDE the paint event and before drawFrame, which clears the atlas pixels in the
+  // same paint task so they never present.
   private static readonly RASTER_BATCH = IS_COARSE ? 24 : 48; // per-paint cap keeps the raster inside a frame budget
   private static readonly RASTER_MAX_ATTEMPTS = 5;
-  // One-shot validation that region read-back actually returns ink — if the first
-  // snapshot comes back fully transparent (a build where the raster is deferred
-  // past read-back), the whole route is declared broken instead of caching blank
-  // textures for every card.
+  // One-shot ink check: a build that defers the raster past read-back would otherwise cache
+  // a blank texture for every card.
   private rasterValidated: boolean | null = null;
   private rasterPendingInPaint(): void {
     if (typeof this.ctx.drawElementImage !== "function" || this.rasterValidated === false) return;
@@ -780,8 +686,7 @@ export class HtmlCanvasRenderer {
       pending.push(n);
     }
     if (pending.length) {
-      // Pack at REF resolution; packAtlas scales down anything that outsizes the
-      // canvas alone (the scale rides into the pyramid).
+      // Pack at REF; packAtlas scales down anything that outsizes the canvas alone.
       const items = pending.map((n) => ({
         id: n.id,
         w: Math.max(1, Math.round((n.w + 2 * PAD) * REF)),
@@ -806,8 +711,7 @@ export class HtmlCanvasRenderer {
         }
       }
       if (drawnJobs.length) {
-        // The one read-back — createImageBitmap(canvas) copies at invocation, so the
-        // clear in this paint's drawFrame can't race it.
+        // createImageBitmap(canvas) copies at invocation, so this paint's clear can't race it.
         void this.finishAtlasRaster(createImageBitmap(canvas, 0, 0, Math.max(1, layout.usedW), Math.max(1, layout.usedH)), drawnJobs);
       }
     }
@@ -873,9 +777,8 @@ export class HtmlCanvasRenderer {
     ctx.setTransform(bsx, 0, 0, bsy, 0, 0); // CSS-screen → backing (exact ratio, matches the DOM)
     ctx.lineWidth = 1.8; // matches the DOM cable's default visible stroke
     ctx.lineJoin = "round";
-    // Each cable's hue follows its source socket's data type (like the DOM). Bucket the
-    // visible cables by color into one Path2D each, so the layer is a handful of strokes
-    // (one per type color present) rather than a stroke per cable.
+    // Bucket visible cables by type color into one Path2D each — a handful of strokes rather
+    // than one per cable.
     const byColor = new Map<string, Path2D>();
     for (let i = 0; i < this.cableGeoms.length; i++) {
       const g = this.cableGeoms[i];
@@ -890,18 +793,14 @@ export class HtmlCanvasRenderer {
         path.lineTo(s.sx, s.sy);
       }
     }
-    // Match the DOM cable's idle look: ConnectionComponent strokes at opacity 0.72
-    // (cableOpacity's non-hover default — keep in sync with it). A fully opaque
-    // stroke here made the gesture swap visibly "pop" heavier cables.
+    // Must match cableOpacity's non-hover default, or the gesture swap visibly pops.
     ctx.globalAlpha = 0.72;
     for (const [color, path] of byColor) { ctx.strokeStyle = color; ctx.stroke(path); }
     ctx.globalAlpha = 1;
   }
 
-  // The live box-select (lasso) rect, in SCREEN space so the stroke is a constant 1px. The
-  // PER-NODE selection ring is NOT drawn here: the real accent ring is the `.solenoid-node--
-  // selected::after` pseudo-element, which rides along in the captured clone (the layer
-  // re-captures on selection change), so the canvas shows the SAME ring as the DOM.
+  // Box-select rect only, in SCREEN space for a constant 1px stroke; the per-node selection
+  // ring is a pseudo-element that rides along in the captured clone.
   private drawSelection(): void {
     if (!this.selectBox) return;
     const { ctx, bsx, bsy } = this;
@@ -918,8 +817,7 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  // Draw one frame. useCached=true draws the pyramid bitmaps (the fast path); on the
-  // initial paint (useCached=false) we draw live elements crisp while the pyramid builds.
+  // useCached=true draws the pyramid bitmaps; false draws live elements while it builds.
   private drawFrame(useCached: boolean): void {
     const { ctx, cam, dpr, canvas, host } = this;
     if (!ctx.drawElementImage) return;
@@ -941,23 +839,20 @@ export class HtmlCanvasRenderer {
     const vp = { minX: tl.wx, minY: tl.wy, maxX: br.wx, maxY: br.wy };
     const inView = (n: EngineNode): boolean => n.x + n.w >= vp.minX && n.x <= vp.maxX && n.y + n.h >= vp.minY && n.y <= vp.maxY;
 
-    // The first WICG sync matrix this frame hands back (drawElementImage's return) +
-    // the world anchor it was drawn at — the browser's own statement of where the
-    // element landed, used below to derive the PRESENTED camera for the DOM-only sync.
+    // The browser's own statement of where the element landed, used below for the presented
+    // camera.
     let syncM: DOMMatrix | undefined;
     let syncAnchor: { x: number; y: number } | null = null;
 
     const drawOne = (n: EngineNode): boolean => {
-      // Draw at the EXACT padded box. Card sits PAD in from the capture top-left, so anchor at
-      // (x-PAD, y-PAD) and the card edge lands at x,y. (Width and height are both exact: the
-      // clone lays out at 1× == the live node, so w/h are faithful — no aspect derivation.)
+      // The card sits PAD in from the capture top-left, so anchoring at (x-PAD, y-PAD) lands
+      // the card edge at x,y.
       const dx = n.x - PAD, dy = n.y - PAD, dw = n.w + 2 * PAD, dh = n.h + 2 * PAD;
       const keepSync = (m: DOMMatrix | undefined) => { if (m && !syncM) { syncM = m; syncAnchor = { x: dx, y: dy }; } };
       if (useCached) {
         if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
         if (n.refImg) { try { keepSync(ctx.drawElementImage!(n.refImg, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; } }
-        // No capture at all (API-drift fallback, or a mip still building) — draw the
-        // live clone so the node never blinks out; counted slow like the refImg path.
+        // No capture at all — draw the live clone so the node never blinks out.
         try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; }
       }
       try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); return true; } catch { return false; }
@@ -973,11 +868,8 @@ export class HtmlCanvasRenderer {
     this.drawSelection();
 
     // ── Presented camera (for the DOM-only sync — domSync.ts) ────────────────────
-    // What THIS frame actually shows. An all-cached frame returned no sync matrix;
-    // ask getElementTransform (when the build has it) what a draw at our CTM lands
-    // as. Whatever the native surface said is plausibility-gated against the
-    // bookkeeping camera — an experimental build could answer in backing-store px
-    // or an unexpected origin, and a misparse must never steer the DOM.
+    // The native answer is plausibility-gated against the bookkeeping camera: an experimental
+    // build could answer in backing-store px, and a misparse must never steer the DOM.
     const book: CamXform = { k: cam.scale, x: cam.tx, y: cam.ty };
     if (!syncM && drawn > 0 && typeof DOMMatrix === "function") {
       const get = this.nativeGetElementTransform();
@@ -1008,8 +900,7 @@ export class HtmlCanvasRenderer {
     this.lastFrameMs = t1 - t0;
   }
 
-  /** The build's getElementTransform, wherever it lives (spec home: the 2D context;
-   *  probed on the canvas too for drift), bound and ready — or null. */
+  /** The build's getElementTransform, bound — or null. */
   private nativeGetElementTransform(): ((el: Element, m: DOMMatrix) => DOMMatrix | undefined) | null {
     const c = this.ctx.getElementTransform;
     if (typeof c === "function") return c.bind(this.ctx);
@@ -1018,9 +909,8 @@ export class HtmlCanvasRenderer {
     return null;
   }
 
-  /** Any in-viewport node still lacking a mip pyramid? Such a node forces a
-   *  drawElementImage per frame — which must happen INSIDE a paint event to draw
-   *  the current snapshot (outside, the spec serves the previous one). */
+  /** Any in-viewport node still lacking a mip pyramid forces a per-frame drawElementImage,
+   *  which must happen inside a paint event. */
   private hasUnbuiltVisible(): boolean {
     const { cam, host } = this;
     const m = 40;
@@ -1035,38 +925,30 @@ export class HtmlCanvasRenderer {
 
   private onPaint = (): void => {
     if (!this.captured) { this.captureRefs(); if (this.captured) void this.buildMips(); }
-    // Paint-event raster fallback runs FIRST — its scratch pixels are cleared by the
-    // drawFrame below within the same paint task, so they never present.
+    // Runs FIRST — the drawFrame below clears its scratch pixels in the same paint task.
     this.rasterPendingInPaint();
-    // Freshest camera at paint time: the paint lands after (sometimes a frame after)
-    // the rAF that scheduled it — drawing the transform that rAF saw is exactly the
-    // "canvas a frame behind the DOM" skew. Re-read the live source instead.
+    // The paint can land a frame after the rAF that scheduled it, so re-read the live source
+    // rather than drawing the transform that rAF saw.
     const t = this.transformSource?.();
     if (t) this.setTransform(t.k, t.x, t.y);
     this.dirty = false; // this paint IS the frame — don't re-draw it from the next tick
-    // Cached draw whenever the pyramid state allows it. Unbuilt nodes still
-    // live-draw inside drawOne's fallback (in-paint, so the snapshot is current);
-    // live mode and the initial pre-capture frame keep the full live draw.
+    // Unbuilt nodes still live-draw inside drawOne's fallback, in-paint so the snapshot is
+    // current.
     this.drawFrame(this.captured && !this.live);
   };
 
   private tick = (): void => {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.tick);
-    // Drive capture to completion even when idle/inactive (so the background snapshot is
-    // ready for the next gesture) — a paint event runs captureRefs + buildMips.
+    // Drive capture to completion even when idle, so the snapshot is ready for the next gesture.
     if (!this.captured) {
       if (this.canvas.requestPaint) this.canvas.requestPaint(); else this.drawFrame(false);
       return;
     }
     if (!this.dirty) return;
     this.dirty = false;
-    // Route through a paint event whenever this frame must call drawElementImage:
-    // live mode (exact-CTM re-raster) or any visible node without a pyramid (its
-    // drawOne fallback). Outside the paint handler those draws sample the PREVIOUS
-    // rendering snapshot (spec) — in-paint they're current, and the paint-raster
-    // fallback advances the pyramid build in the same task. Pure-cached frames
-    // (bitmaps only) draw synchronously — no paint round-trip, no snapshot involved.
+    // Any frame that must call drawElementImage routes through a paint event, or those draws
+    // sample the PREVIOUS rendering snapshot; pure-cached frames draw synchronously.
     const needsElementDraw = this.active && (this.live || this.hasUnbuiltVisible());
     if (needsElementDraw && this.canvas.requestPaint) this.canvas.requestPaint();
     else this.drawFrame(true);

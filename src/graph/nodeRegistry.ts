@@ -1,5 +1,4 @@
-// Maps every node class to its React component. Add one row when adding a node.
-// Imported by Canvas.tsx; kept separate so agents edit this file, not the full canvas.
+// Maps every node class to its React component — one row per node.
 
 import { ClassicPreset } from "rete";
 import type { JSXElementConstructor } from "react";
@@ -301,8 +300,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [FisherNode,      comp(FisherComponent)],
   [BitwiseNode,     comp(BitwiseComponent)],
   [DepreciationNode, comp(DepreciationComponent)],
-  // TvmNode extends EquationNode; the lookup is an instanceof SCAN, so this
-  // entry must stay ABOVE the EquationNode one or TVM loses its timing dropdown.
+  // Must stay ABOVE EquationNode — the subclass fallback is an instanceof SCAN.
   [TvmNode,          comp(TvmComponent)],
   [IpmtPpmtNode,     comp(IpmtPpmtComponent)],
   [NpvNode,          comp(NpvComponent)],
@@ -464,8 +462,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CubeRollupNode,        comp(CubeRollupComponent)],
   [GroupNode,             comp(GroupComponent)],
   [CompositeNode,         comp(CompositeComponent)],
-  // Boundary markers — rendered only inside the Composite drill-in editor's
-  // own rete root (they never live on the main canvas).
+  // Boundary markers — rendered only inside the drill-in editor's own rete root.
   [CompositeInputNode,    comp(CompositeInputMarkerComponent)],
   [CompositeOutputNode,   comp(CompositeOutputMarkerComponent)],
   [ComplexFromNode,       comp(ComplexFromComponent)],
@@ -479,8 +476,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [EquationNode,          comp(EquationComponent)],
   [RegexNode,             comp(RegexComponent)],
   [GroupByNode,           comp(GroupByComponent)],
-  // Packs (example built-in pack node — registered always so saved graphs that
-  // use it still render even when the pack is deactivated).
+  // Packs: registered ALWAYS, so a saved graph renders with the pack deactivated.
   [HypotenuseNode,        comp(HypotenuseComponent)],
   [ParallelCombineNode,   comp(ParallelCombineComponent)],
   [ESeriesNode,           comp(ESeriesComponent)],
@@ -510,11 +506,8 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TornadoNode,           comp(TornadoComponent)],
 ];
 
-// Component lookup: exact constructor first (a Map hit), then the ordered
-// `instanceof` scan for subclasses that deliberately reuse a base component
-// (e.g. TvmNode → EquationComponent). The exact pass means a REGISTERED subclass
-// (ImportObsidianNode extends NoteNode) resolves to its own component no matter
-// where it sits in the list — entry order is not load-bearing.
+// Exact constructor first, then the ordered `instanceof` scan for subclasses that
+// reuse a base component — so entry order matters only for UNregistered subclasses.
 const componentByCtor = new Map<NodeCtor, AnyNodeComponent>(NODE_COMPONENTS);
 
 export function componentForNode(payload: object): AnyNodeComponent | null {

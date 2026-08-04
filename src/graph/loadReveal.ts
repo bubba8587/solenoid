@@ -1,11 +1,6 @@
-// Cinematic load reveal — the staged "build then draw in" animation a graph plays
-// when it's loaded on startup or via File → Open. Document switches reuse ONLY the
-// building phase as a plain progress curtain (rebuildGraph's `curtain` path) —
-// they snap to idle from loadGraph's finally, never entering "revealing".
-// A module-level store holds the phase + per-connection reveal flags; the
-// orchestration lives in persistence.ts's rebuildGraph. Nodes fade in via their
-// area-view element's opacity (transform would clobber rete's position translate);
-// cables read this store and both fade + draw on in input→output order.
+// The staged load animation's phase + per-connection flags; persistence.ts's
+// rebuildGraph orchestrates it. Nodes fade via their area-view element's OPACITY —
+// a transform would clobber rete's position translate.
 //
 //   idle      → nothing animating; components render normally.
 //   building  → graph being constructed behind the progress overlay; cables hide.
@@ -52,8 +47,8 @@ export const loadRevealStore = {
     _revealedConns.add(id);
     notify();
   },
-  /** Back to idle (everything shown). Always runs in a finally so a failed load
-   *  can never leave the canvas stuck hidden. */
+  /** Back to idle; always call from a finally so a failed load can't leave the
+   *  canvas stuck hidden. */
   finish(): void {
     if (_phase === "idle" && _revealedConns.size === 0) return;
     _phase = "idle";
@@ -62,13 +57,8 @@ export const loadRevealStore = {
   },
 };
 
-/**
- * Rough input→output layering for the reveal order (Kahn longest-path): a node
- * sits one level deeper than its deepest source, so sources reveal first and the
- * graph fills toward its sinks. Self-loops are ignored for layering; nodes that
- * never resolve a depth (a genuine cycle) are flushed into a final wave so
- * nothing is dropped. Pure + unit-tested.
- */
+/** Input→output layering for the reveal order (Kahn longest-path); self-loops are
+ *  ignored, and nodes in a genuine cycle flush into a final wave so none is lost. */
 export function revealWaves(
   nodeIds: string[],
   edges: ReadonlyArray<{ source: string; target: string }>,

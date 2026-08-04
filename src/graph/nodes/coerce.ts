@@ -4,10 +4,8 @@ import type { SolError } from "../errorValue";
 
 export type Mat = number[][];
 
-/** Raised when a value's dimensions can't be reduced to the shape a node needs.
- *  Propagates out of the node's `data()` to the error-value guard (errorValue.ts),
- *  which tags it as a #SHAPE! error — surfaced as the red badge and propagated
- *  downstream like every other error. */
+/** Raised when a value's dimensions can't be reduced to the shape a node needs; the
+ *  error-value guard turns it into a #SHAPE! error, so it may propagate out of data(). */
 export class ShapeError extends Error {
   constructor(message: string) {
     super(message);
@@ -34,11 +32,8 @@ export function toMatrix(v: Numeric | null | undefined): Mat | null {
   return is2D(v) ? v : [v as number[]];
 }
 
-/**
- * Reduce anything numeric to a 1-D list. A scalar becomes a single-element list;
- * a 1×N or N×1 array flattens; a genuine M×N table (both dims > 1) is a size
- * error — there's no unambiguous list in it.
- */
+/** Reduce anything numeric to a 1-D list: a scalar wraps, a 1×N or N×1 flattens, a
+ *  genuine M×N table is a ShapeError (no unambiguous list in it). */
 export function toList(v: Numeric | null | undefined): number[] | null {
   if (v == null) return null;
   if (typeof v === "number") return [v];
@@ -50,10 +45,7 @@ export function toList(v: Numeric | null | undefined): number[] | null {
   throw new ShapeError(`Expected a list, got a ${m.length}×${m[0]?.length ?? 0} table`);
 }
 
-/**
- * Reduce anything numeric to a single value. More than one element is a size
- * error (the node wanted one value, like a threshold or a count).
- */
+/** Reduce anything numeric to a single value; more than one element is a ShapeError. */
 export function toScalar(v: Numeric | null | undefined): number | null {
   if (v == null) return null;
   if (typeof v === "number") return v;
@@ -64,11 +56,8 @@ export function toScalar(v: Numeric | null | undefined): number | null {
 
 export type Cell = number | string | boolean | SolError | null;
 
-/**
- * Promote any value to a matrix, generic over element type (unlike `toMatrix`,
- * which is numeric): scalar → 1×1, list → single row (CSV orientation), matrix →
- * unchanged. Used by the polymorphic reshapers + the LAMBDA family.
- */
+/** `toMatrix` over any element type: scalar → 1×1, list → single row (CSV
+ *  orientation), matrix unchanged. */
 export function toAnyMatrix(v: unknown): Cell[][] | null {
   if (v == null) return null;
   if (Array.isArray(v)) {

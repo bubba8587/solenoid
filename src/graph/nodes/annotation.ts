@@ -16,14 +16,9 @@ import {
   type FrontmatterValue,
 } from "../noteFrontmatter";
 
-// A free-floating canvas annotation whose body's optional `---`-fenced YAML
-// frontmatter turns each key into a typed OUTPUT socket.
-//
-// A Note is a pure SOURCE: it emits and never consumes. It deliberately does NOT
-// parse `` `=name` `` inline refs or mint input sockets — that is the Report
-// node's job, and the two are intentionally opposites (not convertible).
+// A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
+// sockets, and it deliberately mints no inputs — that is the Report node's job.
 
-// A field type → its socket singleton. Names align with FrontmatterFieldType.
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   number: numberSocket,
   string: stringSocket,
@@ -35,16 +30,13 @@ const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   datelist: dateListSocket,
 };
 
-// The scalar element family backing each field type (lists carry that element).
 const FIELD_BASE: Record<FrontmatterFieldType, "number" | "string" | "logical" | "date"> = {
   number: "number", string: "string", logical: "logical", date: "date",
   list: "number", strlist: "string", logicallist: "logical", datelist: "date",
 };
 const LIST_TYPES = new Set<FrontmatterFieldType>(["list", "strlist", "logicallist", "datelist"]);
 
-// Coerce one scalar to a field's element family — used when a per-key TYPE override
-// disagrees with the guessed value (e.g. user retypes the "42" string to a number).
-// A no-op when the value already matches (the common, no-override path).
+// Only bites when a per-key TYPE override disagrees with the guessed value.
 function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical" | "date"): FrontmatterScalar {
   if (v === null) return null;
   switch (base) {
@@ -79,9 +71,8 @@ export class NoteNode extends ClassicPreset.Node {
   width: number;
   height: number;
   collapsed: boolean;  // when true, only the header bar shows
-  // Per-key TYPE override, persisted. A field's type is GUESSED on first sight,
-  // then a user pick (the field type icon) pins it here so changing a value later
-  // doesn't silently re-type the socket. Stale keys are pruned on each sync.
+  // A field's type is GUESSED on first sight; a user pick pins it here so editing
+  // the value later can't silently re-type the socket. Persisted.
   fieldTypes: Record<string, FrontmatterFieldType>;
 
   // Derived from `body` on every sync (NOT persisted — the body is the source).
@@ -89,8 +80,6 @@ export class NoteNode extends ClassicPreset.Node {
   private _fieldKeys: string[] = [];                     // output keys in source order
   private _fieldValues = new Map<string, FrontmatterValue>();
 
-  // `label` (from ClassicPreset.Node) is the editable header name, mirroring how
-  // every other node titles its header.
   constructor(init?: {
     label?: string; body?: string; color?: string; width?: number; height?: number;
     collapsed?: boolean; fieldTypes?: Record<string, FrontmatterFieldType>;
@@ -102,11 +91,10 @@ export class NoteNode extends ClassicPreset.Node {
     this.height = init?.height ?? 150;
     this.collapsed = init?.collapsed ?? false;
     this.fieldTypes = { ...(init?.fieldTypes ?? {}) };
-    // The FIXED `document` output — syncFields skips it when reconciling the
-    // dynamic per-frontmatter-key outputs.
+    // The FIXED output — syncFields skips it when reconciling the per-key ones.
     this.addOutput("document", documentOut("Document"));
-    // At construction `outputs` is empty, so this only ADDS — connections
-    // (restored after node creation on load) then find their outputs present.
+    // At construction `outputs` is empty, so this only ADDS — connections restored
+    // after node creation then find their outputs present.
     this.syncFields();
   }
 
@@ -172,17 +160,12 @@ export class NoteNode extends ClassicPreset.Node {
     return { removed, retyped };
   }
 
-  // A Note has no inputs (output-only source), so data() takes none.
   data(): Record<string, FrontmatterValue | DocumentValue> {
     return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
   }
 
-  /**
-   * The current field values as a plain object. Use this from the UI — `data()` is
-   * wrapped by installErrorGuards into `(inputs) => …`, which calls
-   * `firstInputError(inputs)` OUTSIDE its try/catch, so invoking the wrapped data()
-   * with no args throws. This accessor bypasses that wrapper.
-   */
+/** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`
+ *  OUTSIDE its try/catch, so calling `data()` with no args throws. */
   fieldValues(): Record<string, FrontmatterValue> {
     const out: Record<string, FrontmatterValue> = {};
     for (const [k, v] of this._fieldValues) out[k] = v;
@@ -190,13 +173,9 @@ export class NoteNode extends ClassicPreset.Node {
   }
 }
 
-// A free-floating image annotation, from a web URL or a local file.
-//
-// Persistence: a web `url` round-trips through the JSON save. A LOCAL file's
-// bytes are never written into the save JSON — `dataUrl` stays off copyPaste's
-// extractInit whitelist. On DESKTOP, saving bundles the attachment beside the
-// doc (imageAssets.ts) and persists the relative `assetPath`; on web a local
-// attach stays session-only.
+// A LOCAL file's bytes never enter the save JSON (`dataUrl` is off copyPaste's
+// extractInit whitelist); desktop bundles the file beside the doc and persists
+// `assetPath`, web keeps a local attach session-only.
 
 export class ImageNode extends ClassicPreset.Node {
   url: string;        // web URL — persisted
@@ -216,8 +195,7 @@ export class ImageNode extends ClassicPreset.Node {
     this.height = init?.height ?? 160;
     this.width = init?.width ?? 240;
     this.collapsed = init?.collapsed ?? false;
-    // A chart-family figure value, so it wires into a Report (or any
-    // `chart`/`any` consumer).
+    // A chart-family figure value, so it wires into a Report or any `chart` consumer.
     this.addOutput("image", chartOut("Image"));
   }
 
@@ -233,13 +211,9 @@ export class ImageNode extends ClassicPreset.Node {
   }
 }
 
-// An interactive picture that doubles as a visual slicer: clicking a shape or
-// layer outputs that layer's NAME on the `Layer` socket, and the picture flows
-// out the `chart` socket carrying the current selection.
-//
-// Persistence: an SVG is just text, so the markup persists in
-// `stringLiterals.source`; `hoverColor` + `selectedLayer` round-trip as plain
-// fields (both on copyPaste's INIT_FIELD_ORDER whitelist).
+// A visual slicer: clicking a shape emits that layer's NAME on `Layer`, and the
+// picture flows out `chart` carrying the selection. The markup is just text, so it
+// persists in `stringLiterals.source`.
 
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
@@ -257,15 +231,13 @@ export class SvgPickerNode extends ClassicPreset.Node {
   }) {
     super(init?.label ?? "SVG");
     this.url = init?.url ?? "";
-    // `source` is a construction convenience (seeds / tests); on load, persistence
-    // restores stringLiterals separately (extractInit doesn't capture it).
+    // On load, persistence restores stringLiterals separately (extractInit skips it).
     this.stringLiterals.source = init?.source ?? "";
     this.hoverColor = init?.hoverColor ?? DEFAULT_SVG_HOVER;
     this.selectedLayer = init?.selectedLayer ?? "";
     this.height = init?.height ?? 200;
     this.width = init?.width ?? 260;
     this.addOutput("chart", chartOut("SVG"));
-    // The picked layer name — `null` (missing) until something is clicked.
     this.addOutput("layer", strOut("Layer"));
   }
 

@@ -60,14 +60,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     () => formatMismatchStore.has(node.id),
   );
 
-  // Built-in units/formats merged with the ones active packs contribute, so the
-  // dropdowns grow when a pack is switched on. Shared with the table popup's
-  // per-column format row (fcControls) — one source of truth for the menus.
+  // Shared with the table popup's per-column format row so the menus can't drift.
   const { unitGroups, unitGroupOrder, packFormatGroups } = useFcFormatOptions();
 
-  // Re-home onto a different-typed socket (drag-to-dock) can change node.format
-  // and socketDataType externally; resync local state so the controlled selects
-  // reflect it instead of showing a stale value.
+  // Drag-to-dock changes node.format and socketDataType externally, so the controlled
+  // selects must resync or they show a stale value.
   useEffect(() => {
     setFormatLocal(node.format);
     setUnitLocal(node.unit);
@@ -84,16 +81,14 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setTextAlignLocal(node.textAlign);
     setTextMdLocal(node.textMarkdown);
     setTextMonoLocal(node.textMono);
-    // Resync when the wiring changes these externally — e.g. a forwarding FC's
-    // unit being mirrored/locked from its upstream — so the dropdowns reflect it.
+    // Resync when the wiring changes these externally, e.g. a forwarding FC's locked unit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
 
   function syncNode() {
     const editor = getOwningEditor(node.id); // refresh FCs in this node's own graph (drill-in too)
     if (editor) {
-      // Refresh every FC, not just this one: a unit change here must propagate
-      // to any downstream forwarding FC (whose unit is locked to its upstream).
+      // Every FC, not just this one — a downstream forwarding FC's unit is locked to this.
       for (const n of editor.getNodes()) {
         if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
       }
@@ -105,8 +100,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     node.format = f;
     setFormatLocal(f);
     syncNode();
-    // Decimal/Percent add a middle row, changing the chip height; a docked FC
-    // must re-center on its host socket once the new height has laid out.
+    // The row count changes the chip height, so a docked FC must re-center after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -146,8 +140,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     node.lambdaView = v;
     setLambdaLocal(v);
     syncNode();
-    // KaTeX/highlighted views change the host box height; a docked FC must
-    // re-center on its host socket once the new height has laid out.
+    // These views change the host box height, so a docked FC must re-center after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -177,9 +170,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // Expanding/collapsing the advanced tier changes the chip height; a docked
-  // FC must re-center on its host socket once the new height has laid out
-  // (same double-RAF as a format change).
+  // The advanced tier changes the chip height, so a docked FC must re-center after layout.
   function toggleAdvanced() {
     node.advancedOpen = !node.advancedOpen;
     setAdvancedLocal(node.advancedOpen);
@@ -234,8 +225,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // While typing: reflect exactly what's in the box (including empty), and
-  // commit only when it parses — so backspacing the last digit isn't blocked.
+  // Commit only when it parses, so backspacing the last digit isn't blocked.
   function onDigitsInput(raw: string) {
     setDigitsText(raw);
     if (raw === "") return; // transient empty — wait for more input or blur
@@ -248,8 +238,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // On blur, an empty/invalid box falls back to 1 (0 sig figs is meaningless,
-  // and an empty value shouldn't stick).
+  // An empty or invalid box falls back to 1 — 0 sig figs is meaningless.
   function onDigitsBlur() {
     const d = parseInt(digitsText, 10);
     commitDigits(digitsText === "" || !Number.isFinite(d) ? 1 : d);
@@ -270,14 +259,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const socketAccent = SOCKET_COLORS[node.socketDataType];
   const accent = mismatch ? "#e06c2e" : socketAccent;
 
-  // The FC adapts its controls to the host socket's type via the format model
-  // (formatModel.ts) — a control outside the family is hidden, not disabled.
+  // A control outside the host socket's family is hidden, not disabled.
   const family = familyOf(node.socketDataType);
   const c = controlsFor(family, format);
 
-  // Flow arrows flanking the controls (the three states are in fcControls). The
-  // format/style row is always "authored here" — format never inherits — so it
-  // gets the fixed ← → pair.
+  // Format never inherits, so the format/style row always gets the fixed ← → pair.
   const hasUnit = unit !== "none";
   let unitLeft: "back" | "fwd" | null = null;
   let unitRight: "back" | "fwd" | null = null;

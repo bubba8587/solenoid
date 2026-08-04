@@ -20,12 +20,9 @@ import {
 } from "./LandingScenes";
 import "./LandingPage.css";
 
-// The landing page: a standalone route App.tsx swaps the whole app for when the
-// URL carries ?landing. The hero demo is the ONE live rete stage
-// (LandingGraph.tsx); every other illustration is a static vignette
-// (LandingScenes.tsx). Motion is gated on a `--anim` root class set on mount, so
-// content never depends on a transition firing, and prefers-reduced-motion gets
-// the page with no entrance motion.
+// A standalone route App.tsx swaps the whole app for under ?landing. The hero is the
+// ONE live rete stage; motion is gated on a `--anim` class set after mount, so content
+// never depends on a transition firing.
 
 const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
@@ -40,13 +37,11 @@ function ThemeToggle() {
       aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
     >
       {dark ? (
-        // Sun: the light theme this click switches to.
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
           <circle cx="8" cy="8" r="3.25" />
           <path d="M8 1.2v1.8 M8 13v1.8 M1.2 8h1.8 M13 8h1.8 M3.2 3.2l1.3 1.3 M11.5 11.5l1.3 1.3 M12.8 3.2l-1.3 1.3 M4.5 11.5l-1.3 1.3" />
         </svg>
       ) : (
-        // Moon: the dark theme this click switches to.
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.8 5.8 0 1 0 7 7Z" />
         </svg>
@@ -55,7 +50,6 @@ function ThemeToggle() {
   );
 }
 
-/** A deep-feature section: copy on one side, a scene on the other, alternating. */
 function Feature({
   title,
   flip,
@@ -81,8 +75,8 @@ function Feature({
 }
 
 export default function LandingPage() {
-  // The animation gate: entrance/loop motion exists only under this class, set
-  // after mount and only when the OS doesn't ask for reduced motion.
+  // Entrance/loop motion exists only under this class, and only when the OS isn't
+  // asking for reduced motion.
   const [anim, setAnim] = useState(false);
   useEffect(() => {
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
@@ -312,7 +306,6 @@ export default function LandingPage() {
           <span>Built with Rete, Polars and Tauri.</span>
         </footer>
       </div>
-      {/* The value popup a chip on the demo graph can open. */}
       <TablePopup />
     </div>
   );

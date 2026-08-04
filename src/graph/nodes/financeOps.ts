@@ -1,22 +1,8 @@
-// ─── Pure bond / security math — the ONE implementation behind both surfaces ──
-// Every function here is called by BOTH the visual node (`finance.ts`) and the
-// formula registration (`excelFunctions.ts`) — see docs/formula-node-parity.md, D19.
-//
-// Separate module rather than living in `finance.ts` because that file imports
-// `excelFunctions` — importing back would cycle, and would drag rete into the
-// headless formula path. Nothing here imports rete or touches a socket.
-//
-// DATE CONVENTION: every entry point takes Solenoid DATE SERIALS (plain numbers),
-// not Date objects, because that is what both a node input and a formula argument
-// carry. Conversion to UTC Dates happens inside.
-//
-// INVALID INPUT is `null`, never a thrown error or a fabricated number: each
-// surface tags its own failure from that (the node shows a blank, the formula
-// returns a SolError).
-
+// The ONE implementation behind both the visual node and the formula registration;
+// it must not import rete or `finance.ts` (that would cycle).
+// Entry points take Solenoid DATE SERIALS; INVALID INPUT is `null`, never a throw
+// or a fabricated number — each surface tags its own failure from that.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
-
-// ─── Coupon / accrual date helpers ────────────────────────────────────────────
 
 export function coupAddMonths(d: Date, months: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, d.getUTCDate()));
@@ -57,8 +43,6 @@ const dayCount = (basis: number, a: Date, b: Date) => (use30(basis) ? days30_360
 
 const VALID_FREQ = [1, 2, 4];
 
-// ─── Yield solving ────────────────────────────────────────────────────────────
-
 /** Newton solve for the yield that prices a bond at `target`. Damped to a sane
  *  yield range so a bad price can't diverge. */
 export function solveYield(priceAt: (y: number) => number, target: number, couponRate: number): number {
@@ -74,8 +58,6 @@ export function solveYield(priceAt: (y: number) => number, target: number, coupo
   }
   return yld;
 }
-
-// ─── Coupon-bond price / yield ────────────────────────────────────────────────
 
 export function bondCouponCount(next: Date, maturity: Date, freq: number): number {
   const step = 12 / freq;
@@ -104,8 +86,6 @@ export function bondYield(
 ): number {
   return solveYield((y) => bondPrice(settle, maturity, couponRate, y, redemption, freq), pr, couponRate);
 }
-
-// ─── Odd first / last coupon periods ──────────────────────────────────────────
 
 export function oddfPrice(
   settle: Date, maturity: Date, issue: Date, firstCoupon: Date,
@@ -160,8 +140,6 @@ export function oddlPrice(
   return price;
 }
 
-// ─── Depreciation ─────────────────────────────────────────────────────────────
-
 export function vdbBookValue(cost: number, salvage: number, life: number, periodEnd: number, factor: number): number {
   let book = cost;
   const n = Math.min(Math.floor(periodEnd), life);
@@ -196,8 +174,6 @@ export function vdb(
   const result = Math.max(0, vdbBookValue(cost, salvage, life, start, factor) - vdbBookValue(cost, salvage, life, end, factor));
   return Number.isFinite(result) ? result : null;
 }
-
-// ─── Op-level entry points (serial in, number|null out) ───────────────────────
 
 export type CouponOp = "coupdaybs" | "coupdays" | "coupdaysnc" | "coupncd" | "couppcd" | "coupnum";
 

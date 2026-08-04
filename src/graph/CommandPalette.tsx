@@ -15,8 +15,7 @@ import { alignSelection, distributeSelection, collapseSelection } from "./select
 import { buildMenus, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
 
-// Runs graph-domain shortcuts through Canvas's keydown handler (as menuModel does)
-// rather than duplicating its logic.
+// Graph-domain shortcuts route through Canvas's keydown handler, never duplicated here.
 function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -25,9 +24,7 @@ function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } =
   );
 }
 
-// Lucide "sparkle" (ISC). NOT the three-star cluster or a filled gradient mark
-// (the AI-startup look DESIGN.md rejects). 16px in a 24px box — both even, per the
-// even-icon rule.
+// Lucide "sparkle" (ISC), NOT the three-star cluster or a gradient mark (DESIGN.md).
 function SparkleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -45,8 +42,7 @@ type PaletteItem = {
   run: () => void;
 };
 
-// The AI turn's lifecycle. One turn at a time: a prompt replaces the previous
-// result, Escape steps back to idle, Apply/Cancel resolve an edit.
+// One turn at a time: a prompt replaces the previous result.
 type AiState =
   | { phase: "idle" }
   | { phase: "busy" }
@@ -61,10 +57,8 @@ function currentTextForm(): string {
 }
 
 function buildCommands(): PaletteItem[] {
-  // EVERY menubar action (single-sourced in menuModel) is a command — so the palette
-  // stays in sync with the menu bar. The individual node types are deliberately NOT
-  // here: "Add node…" opens the Add menu (auto-focused search, the `A` hotkey), which
-  // is the one place to browse the catalog.
+  // EVERY menubar action is a command, so the two surfaces can't drift; individual
+  // node types stay OUT — the Add menu is the one place to browse the catalog.
   const fromMenus = buildMenus()
     .flatMap((m) => m.items)
     .filter((it): it is Extract<MenuItem, { label: string }> => !("sep" in it) && !it.disabled && !!it.onClick)
@@ -77,8 +71,7 @@ function buildCommands(): PaletteItem[] {
     { label: "Align right", run: () => void alignSelection("right") },
     { label: "Align top", run: () => void alignSelection("top") },
     { label: "Align bottom", run: () => void alignSelection("bottom") },
-    // Labels name the END EFFECT, not the axis being centered: center-h aligns the
-    // horizontal centers, which stacks the nodes VERTICALLY (and vice versa).
+    // Labels name the END EFFECT, not the axis: center-h stacks nodes VERTICALLY.
     { label: "Align center (vertical)", run: () => void alignSelection("center-h") },
     { label: "Align center (horizontal)", run: () => void alignSelection("center-v") },
     { label: "Distribute horizontally", run: () => void distributeSelection("h") },
@@ -94,9 +87,8 @@ function buildSettingToggles(): PaletteItem[] {
   for (const section of SETTINGS_SCHEMA) {
     for (const f of section.fields) {
       if (f.type === "folder" || f.type === "segment") continue;
-      // A setting Settings grays out on this device must not be reachable as a
-      // command either — otherwise the palette is a back door to flipping a value
-      // whose feature isn't there, and the two surfaces disagree.
+      // A setting Settings grays out on this device must not be reachable here
+      // either, or the palette is a back door to flipping it.
       if (IS_MOBILE && f.disabledOnMobile) continue;
       out.push({
         id: `setting:${f.key}`,
@@ -112,25 +104,19 @@ function buildSettingToggles(): PaletteItem[] {
 
 export function CommandPalette({ onClose, persistent = false }: { onClose: () => void; persistent?: boolean }) {
   const [query, setQuery] = useState("");
-  // AI mode: the palette stops being a command launcher and becomes a prompt box.
-  // Local state, not a store — the mode is a property of THIS palette session, so a
-  // modal that's dismissed and reopened comes back in command mode (the default a
-  // blind Enter should land in).
+  // Local state, not a store: the mode belongs to THIS palette session, so a reopened
+  // modal comes back in command mode.
   const [aiMode, setAiMode] = useState(false);
-  // The sparkle appears only once an AI account is connected (a key stored in
-  // Settings ▸ AI). Subscribed so storing or clearing the key shows/hides it live.
+  // Subscribed so storing or clearing the key shows/hides the sparkle live.
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   const aiAvailable = aiConnected();
-  // Clearing the key while the palette sits in AI mode must not strand it in a mode
-  // whose only exit control just disappeared.
+  // Clearing the key must not strand the palette in a mode whose exit control just went.
   useEffect(() => { if (!aiAvailable) setAiMode(false); }, [aiAvailable]);
   const [aiState, setAiState] = useState<AiState>({ phase: "idle" });
-  // A reply landing after the palette unmounted (modal dismissed mid-request)
-  // must not set state on a dead component; the flag outlives the closure.
+  // A reply landing after unmount must not set state on a dead component; the flag
+  // outlives the closure.
   const aliveRef = useRef(true);
   useEffect(() => () => { aliveRef.current = false; }, []);
-  // Leaving AI mode drops the turn — coming back starts fresh, matching the
-  // mode itself being palette-session-local.
   useEffect(() => { if (!aiMode) setAiState({ phase: "idle" }); }, [aiMode]);
 
   async function submitAiPrompt() {
@@ -155,8 +141,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   async function applyAiEdit() {
     if (aiState.phase !== "edit") return;
-    // The same governed path a file open takes: parse the validated text form,
-    // rebuild the editor from it. The validator already passed this text.
+    // The same governed path a file open takes — the validator already passed this text.
     const before = new Set(readTextForm(currentTextForm()).nodes.map((n) => n.name ?? n.id));
     const graph = readTextForm(aiState.newText);
     const ok = await loadGraph(graph);
@@ -171,42 +156,30 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     setAiState({ phase: "idle" });
     if (!persistent) onClose();
   }
-  // -1 = nothing selected. The palette opens with NO active row — a blind
-  // Enter must never fire an action the user didn't pick (the browse list is
-  // a menu, not a ranked answer). Typing a query DOES auto-select the top
-  // result (that ranking is the answer to the query, so type→Enter works);
-  // arrows and real mouse movement select explicitly.
+  // -1 = nothing selected: a blind Enter must never fire an action the user didn't
+  // pick, though typing a query DOES auto-select the top result.
   const [activeIndex, setActiveIndex] = useState(-1);
-  // Docked mode is a bare bar until focused; focusing it surfaces the same no-query
-  // suggestion list the modal shows on open.
   const [focused, setFocused] = useState(false);
   const recentsVersion = useSyncExternalStore(commandRecents.subscribe, commandRecents.version);
   const inputRef = useRef<HTMLInputElement>(null);
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
 
-  // Persistent (docked) mode must NOT steal focus from the canvas on mount; the
-  // modal opens for immediate typing, so it focuses.
+  // Docked mode must NOT steal focus from the canvas on mount; the modal opens for
+  // immediate typing.
   useEffect(() => { if (!persistent) inputRef.current?.focus(); }, [persistent]);
-  // Docked mode is always rendered off the always-on setting, so paletteStore's
-  // open toggle can't mount/unmount it — instead it's the "enter the palette"
-  // signal: the bare Enter hotkey calls paletteStore.open(), and here we FOCUS
-  // the docked bar in response (revealing the suggestion list, ready to type).
-  // Blur resets the store (onBlur below) so a later Enter re-arms. The modal
-  // instance ignores this — it focuses on mount via the effect above.
+  // Docked mode is always mounted, so paletteStore's open flag can't mount it —
+  // it means "focus the bar" instead, and blur resets it so Enter re-arms.
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
   useEffect(() => { if (persistent && paletteOpen) inputRef.current?.focus(); }, [persistent, paletteOpen]);
   useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
 
   const results = useMemo<PaletteItem[]>(() => {
-    // AI mode has no result list: what you type is a prompt, not a query over
-    // commands, so ranking commands under it would offer an Enter that does
-    // something other than what the field says it will.
+    // AI mode has no result list — what you type is a prompt, so ranking commands
+    // under it would offer an Enter that does something else.
     if (aiMode) return [];
     const q = query.trim();
-    // No query → 8 command previews, LED by the 3 most-recently-run commands (from
-    // the palette or the menu bar), then the default order filling the rest. The
-    // docked bar shows this only while focused (a bare bar otherwise); the modal always.
+    // No query → 8 previews, LED by the 3 most-recently-run commands.
     if (!q) {
       if (persistent && !focused) return [];
       const byLabel = new Map(commands.map((c) => [c.label, c]));
@@ -230,19 +203,16 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   }, [query, commands, toggles, persistent, focused, recentsVersion, aiMode]);
 
   function run(item: PaletteItem) {
-    // Record repeatable actions (not a one-off jump to a specific node) so they can
-    // lead the suggestions next time. A recent-preview item carries a `recent:` id
-    // prefix, so strip that to record the real label.
+    // Only repeatable actions are recorded, and by LABEL — a recent-preview item's
+    // id carries a `recent:` prefix.
     if (item.kind === "command" || item.kind === "setting") commandRecents.record(item.label);
     item.run();
-    // Docked: stay open, ready for the next command; modal: dismiss.
     if (persistent) { setQuery(""); setActiveIndex(-1); inputRef.current?.focus(); }
     else onClose();
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    // AI mode: Enter submits the prompt; Escape steps back — first out of a
-    // shown result, then out of the palette (the shared handler below).
+    // In AI mode Escape steps back out of a shown result FIRST, then the palette.
     if (aiMode) {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -258,10 +228,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-    // activeIndex -1 (nothing selected) makes Enter a no-op — see its comment.
     else if (e.key === "Enter") { e.preventDefault(); if (activeIndex >= 0 && results[activeIndex]) run(results[activeIndex]); }
-    // Docked: Escape clears the query + hands focus back to the canvas but keeps
-    // the bar; modal: Escape dismisses.
     else if (e.key === "Escape") { e.preventDefault(); if (persistent) { setQuery(""); inputRef.current?.blur(); } else onClose(); }
   }
 
@@ -278,10 +245,8 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
         onMouseDown={(e) => e.stopPropagation()}
       >
         {aiMode && aiState.phase !== "idle" && (
-          // The turn's output. A NEUTRAL overlay surface even in AI mode — the
-          // accent marks the input's rerouted Enter; the output is content.
-          // preventDefault on mousedown for the same focus-keeping reason as the
-          // results list.
+          // A NEUTRAL surface even in AI mode — the accent marks the input's
+          // rerouted Enter, not the output.
           <div className="solenoid-cmdpalette__airesult" onMouseDown={(e) => e.preventDefault()}>
             {aiState.phase === "busy" && (
               <div className="solenoid-cmdpalette__aibusy">Working…</div>
@@ -321,17 +286,15 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
           </div>
         )}
         {results.length > 0 && (
-          // preventDefault on mousedown so clicking a row doesn't blur the input —
-          // in docked mode a blur would hide the suggestion list before the click fires.
+          // preventDefault so clicking a row doesn't blur the input — in docked mode
+          // that would hide the list before the click fires.
           <div className="solenoid-cmdpalette__results" onMouseDown={(e) => e.preventDefault()}>
             {results.map((r, i) => (
               <div
                 key={r.id}
                 className={`solenoid-cmdpalette__item${i === activeIndex ? " solenoid-cmdpalette__item--active" : ""}`}
-                // onMouseMove, NOT onMouseEnter: the palette mounts under wherever
-                // the pointer sits and the browser fires a synthetic mouseenter on
-                // the row beneath it, stealing the highlight from the keyboard's
-                // row 0. mousemove only fires on real movement.
+                // onMouseMove, NOT onMouseEnter: the palette mounts under the pointer
+                // and a synthetic mouseenter would steal the highlight from row 0.
                 onMouseMove={() => setActiveIndex(i)}
                 onClick={() => run(r)}
               >
@@ -347,12 +310,8 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
             ref={inputRef}
             className="solenoid-cmdpalette__input"
             value={query}
-            // A SEMANTIC search field — the reliable lever to stop Android Chrome's
-            // autofill bar (password / card / address). `autocomplete="off"` alone
-            // doesn't (Chrome ignores it), and a `name`d `type="text"` reads as a
-            // fillable form field; `type="search"` tells the OS it's a search box, so
-            // it drops the credential/payment/address prompts. No `name` (our other
-            // fields have none and don't trigger it). Native clear (×) hidden in CSS.
+            // `type="search"` with no `name` is what stops Android Chrome's autofill
+            // bar; `autocomplete="off"` alone is ignored.
             type="search"
             inputMode="search"
             enterKeyHint="go"
@@ -366,10 +325,8 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             onFocus={() => setFocused(true)}
-            // Persistent: dropping focus also clears paletteStore (onClose ===
-            // paletteStore.close), so the next bare Enter flips it true again and
-            // the focus effect above re-fires. Without this reset the store stays
-            // true after the first Enter and the hotkey never re-focuses the bar.
+            // Blur must clear paletteStore, else it stays true after the first Enter
+            // and the hotkey never re-focuses the bar.
             onBlur={() => { setFocused(false); if (persistent) onClose(); }}
           />
           {aiAvailable && (
@@ -379,9 +336,8 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
               aria-pressed={aiMode}
               aria-label={aiMode ? "Back to commands" : "Ask the AI"}
               title={aiMode ? "Back to commands" : "Ask the AI"}
-              // preventDefault so the press doesn't blur the input: in docked mode a
-              // blur calls onClose (clearing paletteStore) and hides the list, so the
-              // mode would flip and the bar would drop focus in the same click.
+              // preventDefault so the press doesn't blur the input — in docked mode
+              // the bar would flip mode and drop focus in the same click.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setAiMode((m) => !m); inputRef.current?.focus(); }}
             >

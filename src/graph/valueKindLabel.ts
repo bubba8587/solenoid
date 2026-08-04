@@ -8,17 +8,14 @@ import { isLambdaValue, formatLambda } from "./nodes/lambda";
 import { isUncertain, type UncertainNumber } from "./valueKinds";
 import { formatScalar } from "./components/format";
 
-/** "12.3 ± 1.5" — an uncertain number's compact readout (value ± 1σ), each part
- *  through the app's standard scalar formatter. Shared by every value surface via
- *  describeValueKind so the wrapper object never stringifies to "[object Object]". */
+/** "12.3 ± 1.5" (value ± 1σ), each part through the standard scalar formatter, so the
+ *  wrapper object never stringifies to "[object Object]". */
 export function formatUncertain(v: UncertainNumber): string {
   return `${formatScalar(v.value)} ± ${formatScalar(v.error)}`;
 }
 
-/** A short human label for an OBJECT-valued kind (chart, diagram, image, lambda,
- *  frame, cube, document). Returns null for plain values (scalars, lists, null,
- *  errors) — the caller formats those itself. The safety net behind every
- *  value-rendering surface; keep the kinds in sync with the Display node's branches. */
+/** A short label for an OBJECT-valued kind; null for plain values, which the caller
+ *  formats itself. Keep the kinds in sync with the Display node's branches. */
 export function describeValueKind(v: unknown): string | null {
   if (isChartValue(v)) return "Chart";
   if (isMermaidValue(v)) return "Diagram";

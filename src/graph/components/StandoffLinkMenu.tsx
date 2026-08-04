@@ -1,9 +1,7 @@
 import { useEffect, useRef } from "react";
 import "./SocketContextMenu.css";
 
-// Right-click menu shown when exactly two linkable items are selected and one
-// of them is right-clicked: create a Standoff (arrangement constraint) between
-// them.
+// Shown only when exactly two linkable items are selected and one is right-clicked.
 
 export type StandoffLinkTarget = {
   aId: string;

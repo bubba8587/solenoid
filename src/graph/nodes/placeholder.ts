@@ -2,12 +2,9 @@ import { ClassicPreset } from "rete";
 import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { solError } from "../errorValue";
 
-// A stand-in for a saved node whose `type` isn't registered in this build. Keeps the
-// original type name + serialized init/literals and synthesizes `any` sockets
-// matching the saved connections, so wiring survives; on save it re-emits as the
-// ORIGINAL type (serializeGraph), making the round trip lossless. It can't compute,
-// so every output carries a #REF!. NOT in the Add-menu catalog — only the loader
-// ever constructs one.
+// A stand-in for a saved node whose `type` isn't registered in this build: wiring survives
+// on synthesized `any` sockets and it re-saves as the ORIGINAL type, so the round trip is
+// lossless. NOT in the Add-menu catalog — only the loader constructs one.
 export class PlaceholderNode extends ClassicPreset.Node {
   label: string;
   /** The unregistered class name this stands in for. */

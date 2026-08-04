@@ -1,17 +1,5 @@
-// Problems log: every tagged SolError the graph has produced, plus model-fuzzing
-// findings — the data feeding the Problems HUD panel (components/
-// ProblemsPanel.tsx). Companion to alertStore/pinStore: a module-level store so
-// both React roots (main app + rete node root) can read it.
-//
-// Live entries are fed by errorValue.ts's error-sink hook, which fires whenever a
-// node's OWN output becomes an error (a throw, an input-propagation short-circuit,
-// or a producer just returning a SolError with no throw at all — e.g. Divide's
-// #DIV/0!) — including every downstream node the error merely passes through.
-// reportLive collapses that down to ONE row per failure, at the error's tagged
-// ORIGIN node (errorValue.ts's provenance), not every relay site. Edge-detected
-// per node (same-code repeats across recomputes are not re-logged) so a
-// continuously-failing node doesn't spam the log — a NEW failure (or the same
-// node failing a DIFFERENT way) gets its own row.
+// Log of tagged SolErrors + fuzz findings. Module-level so both React roots read it;
+// the error sink fires per relay node, so entries are origin-filtered and edge-detected.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -27,10 +15,8 @@ export interface ProblemEntry {
   message: string;
   origin: ProblemOrigin;
   time: number;
-  /** A mechanical-fix affordance (model fuzzing only): insert a Clamp node ahead
-   *  of this input to keep the offending value in range. `min`/`max` are the
-   *  observed-safe bounds captured during the sweep, used to SEED the Clamp
-   *  (absent when the sweep saw no usable safe range). */
+  /** Fuzz only — seeds a Clamp on this input; `min`/`max` are the sweep's observed-safe
+   *  bounds, absent when it found no usable range. */
   suggestion?: { socketKey: string; label: string; min?: number; max?: number };
 }
 
@@ -43,18 +29,11 @@ const { notify, subscribe, version } = createNotifier();
 export const problemsStore = {
   list: (): readonly ProblemEntry[] => _entries,
 
-  /** A live compute-pass hit (see errorValue.ts's error sink). Logs only at the
-   *  error's TRUE ORIGIN — the sink fires for every node an error's output
-   *  passes through, so without this a single failure wired to N downstream
-   *  nodes would produce N rows for the same underlying cause. Falls back to
-   *  logging here if origin is somehow unset (defensive; installErrorGuards
-   *  should always tag it). */
+  /** Logs only at the error's TRUE ORIGIN — the sink fires for every relay node, so
+   *  one failure wired to N downstream nodes would otherwise log N rows. */
   reportLive(nodeId: string, err: SolError): void {
-    // Don't log during a bulk/synthetic rebuild — a model-fuzz or Tornado sweep
-    // (and a document load) drives many transient passes on values that aren't the
-    // real graph state; logging them leaves stale "compute" rows after the run.
-    // Mirrors the fireAlert edge-detect gate. The post-load settle runs OUTSIDE the
-    // rebuild scope, so genuine errors on a freshly-loaded doc still surface.
+    // A bulk/synthetic rebuild (fuzz, Tornado, load) computes on values that aren't real
+    // graph state; logging it would leave stale rows. The post-load settle runs outside it.
     if (isGraphRebuilding()) return;
     if (err.origin && err.origin.nodeId !== nodeId) return;
     if (_lastLiveCode.get(nodeId) === err.code) return; // same failure, already logged
@@ -64,16 +43,12 @@ export const problemsStore = {
     notify();
   },
 
-  /** The node computed CLEAN this pass — reset its edge-detect so a RELAPSE of
-   *  the same code later logs as the genuinely new occurrence it is (the
-   *  last-code map otherwise suppressed it forever once the error cleared).
-   *  Logged entries stay — this clears detection state, not history. */
+  /** Clears edge-detect state, not history, so a later RELAPSE of the same code logs. */
   clearLive(nodeId: string): void {
     _lastLiveCode.delete(nodeId);
   },
 
-  /** Replace the fuzz-origin findings wholesale — a fresh fuzz run supersedes
-   *  the last one rather than accumulating across runs. */
+  /** Wholesale replace: a fresh run supersedes the last rather than accumulating. */
   setFuzzFindings(findings: ReadonlyArray<Omit<ProblemEntry, "id" | "time" | "origin">>): void {
     const fresh: ProblemEntry[] = findings.map((f) => ({ ...f, id: ++_seq, time: Date.now(), origin: "fuzz" as const }));
     _entries = [...fresh, ..._entries.filter((e) => e.origin !== "fuzz")].slice(0, MAX_ENTRIES);
@@ -112,8 +87,8 @@ registerErrorSink((nodeId, err) => {
 registerNodeForget((nodeId) => problemsStore.removeForNode(nodeId));
 registerNodeForgetAll(() => problemsStore.clear());
 
-// ─── Panel open/collapse — lifted out of the component (unlike Pin/Alert's local
-// useState) so the StatusBar badge can force the panel open without prop-drilling.
+// Panel open state lives here, not in the component, so the StatusBar badge can force
+// the panel open without prop-drilling.
 let _panelOpen = false;
 const panelNotifier = createNotifier();
 export const problemsPanelUi = {

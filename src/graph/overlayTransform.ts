@@ -1,18 +1,8 @@
 import { createNotifier } from "./storeKit";
 
-// Coordinate math + a tiny store for the canvas render overlay.
-//
-// rete's AreaPlugin positions its node holder with `translate(x, y) scale(k)` in
-// CSS pixels relative to the canvas container's top-left. A WORLD point (wx, wy)
-// — the units node positions live in — maps to a CSS pixel inside the container
-// as `(wx*k + x, wy*k + y)`. To draw that on a backing-store <canvas> we then
-// scale by devicePixelRatio so 1 CSS px = `dpr` device px.
-//
-// The overlay <canvas> is itself UNtransformed and pinned over the container; we
-// bake the area transform into the geometry we draw, so the canvas layer tracks
-// pan/zoom EXACTLY without a CSS transform of its own (which would blur at scale
-// and lag a frame behind rete's holder). The math is pure here and unit-tested;
-// the React overlay just applies it.
+// A WORLD point maps to a container CSS pixel as `(wx*k + x, wy*k + y)`, then scales by dpr.
+// The overlay canvas stays UNtransformed with the area transform baked into the geometry —
+// a CSS transform of its own would blur at scale and lag a frame behind rete's holder.
 
 export interface AreaTransform {
   /** CSS-px pan offset of the holder (area.area.transform.x). */
@@ -42,9 +32,7 @@ export function worldToCss(
   return { x: wx * t.k + t.x, y: wy * t.k + t.y };
 }
 
-/** Device-pixel point on the canvas → world point. Inverse of worldToDevice;
- *  used later by canvas hit-testing. Guards k=0 (degenerate, never produced by
- *  rete) to avoid NaN. */
+/** Inverse of worldToDevice; guards k=0 to avoid NaN. */
 export function deviceToWorld(
   t: AreaTransform,
   dpr: number,
@@ -73,9 +61,8 @@ export function clipScaleOffset(
   };
 }
 
-/** The single combined device-space transform to feed `ctx.setTransform(...)`:
- *  draw in WORLD units and the canvas places them correctly. Returns the 6 args
- *  in setTransform order [a, b, c, d, e, f] = [k·dpr, 0, 0, k·dpr, x·dpr, y·dpr]. */
+/** The combined device-space transform for `ctx.setTransform(...)`, in its arg order
+ *  [a, b, c, d, e, f] = [k·dpr, 0, 0, k·dpr, x·dpr, y·dpr] — draw in WORLD units. */
 export function deviceMatrix(
   t: AreaTransform,
   dpr: number,
@@ -84,10 +71,8 @@ export function deviceMatrix(
   return [s, 0, 0, s, t.x * dpr, t.y * dpr];
 }
 
-// ─── Overlay bus ───────────────────────────────────────────────────────────────
-// A module singleton the Canvas feeds (transform on every pan/zoom; viewport on
-// resize) and the RenderOverlay React root reads. Lives outside React context
-// because Canvas updates it from rete's area pipe, not from a render.
+// A module singleton, outside React context because Canvas feeds it from rete's area pipe
+// rather than from a render.
 
 export interface OverlayState {
   transform: AreaTransform;

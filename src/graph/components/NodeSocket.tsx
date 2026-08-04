@@ -22,10 +22,8 @@ type Props = {
   className?: string;
 };
 
-/** Measures an element's vertical center relative to its offsetParent — the
- *  `.solenoid-node__content` wrapper, which sits BELOW the header — so the returned
- *  `top` is header-INDEPENDENT and needs no re-measure when the header grows. Runs in
- *  a layout effect (before paint) and re-renders only when the value actually moves. */
+/** Measures against the `.solenoid-node__content` offsetParent, which sits BELOW the
+ *  header, so the returned `top` needs no re-measure when the header grows. */
 function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -38,9 +36,8 @@ function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | und
   return top;
 }
 
-/** An `.solenoid-node__io-row` whose socket dot is auto-centered on the row by
- *  measurement. The dot stays anchored to the card edge — the row must NOT become a
- *  positioning context. The absolutely-positioned socket is order-independent. */
+/** The dot stays anchored to the card edge — the row must NOT become a positioning
+ *  context. */
 export function MeasuredSocketRow({
   side, socketKey, nodeId, emit, payload, children, hero = false,
 }: {
@@ -50,16 +47,14 @@ export function MeasuredSocketRow({
   emit: RenderEmit<ClassicScheme>;
   payload: ClassicPreset.Socket;
   children: ReactNode;
-  /** A tall hero box (a FrameDisplay, a markdown summary) rather than a compact
-   *  label|value row — drops the fixed 22px row height so it doesn't overflow and
-   *  overlap its neighbors; the socket dot still measures onto the box center. */
+  /** A tall box rather than a compact label|value row: drops the fixed 22px row height
+   *  so it can't overlap its neighbors. */
   hero?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
   return (
-    // Output rows get a modifier so they SURVIVE collapse — a multi-output node
-    // collapses to its output values, not a blank box.
+    // Output rows get a modifier so they SURVIVE collapse into the output values.
     <div ref={ref} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
       {top !== undefined && (
         <NodeSocket
@@ -77,16 +72,12 @@ export function MeasuredSocketRow({
 }
 
 export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, className }: Props) {
-  // Dot is 12px. Default -5 straddles the card edge for sockets anchored to the
-  // card/group. Standard nodes anchor to .solenoid-node__content, which sits 1px
-  // inside the card's border, so that wrapper sets --node-socket-x: -6px to pull
-  // the dot back out to the exact same spot. Groups (no content wrapper) get -5.
+  // The 12px dot straddles the card edge: -5 for card/group-anchored sockets, while
+  // .solenoid-node__content sits 1px inside the border and sets --node-socket-x: -6px.
   const x = "var(--node-socket-x, -5px)";
   const horizontal = side === "input" ? { left: x } : { right: x };
-  // No explicit `top` → center on the value box via --out-socket-top, else fall
-  // back to 50% of the CONTENT wrapper (the body) — not the card, so a node with
-  // no value box (e.g. Boolean) centers its socket on its body row, not high up
-  // over the header. Explicit `top` (from MeasuredSocketRow) is content-relative.
+  // No explicit `top` → center on the value box via --out-socket-top, else 50% of the
+  // CONTENT wrapper — not the card, or a node with no value box centers over the header.
   const vertical =
     top === undefined
       ? { top: "var(--out-socket-top, 50%)", marginTop: -6 }
@@ -122,8 +113,7 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
       {lit && (
         <svg
           aria-hidden="true"
-          // Class lets pill contexts hide this dot-shaped flash and draw a
-          // pill-shaped one instead (see .solenoid-node__pill-socket rule).
+          // Class lets pill contexts hide this dot-shaped flash and draw a pill instead.
           className="solenoid-socket-lit"
           style={{
             position: "absolute",
@@ -138,9 +128,8 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
         >
           {isCube
             ? (
-              // Fill + a round-joined white stroke rounds the hexagon corners and
-              // fattens past the fill to cover the ring; group opacity (never
-              // per-element) so the fill/stroke overlap can't double into a dark rim.
+              // Group opacity (never per-element), or the fill/stroke overlap doubles
+              // into a dark rim.
               <g transform={cubeTransform(1)} opacity="0.35" style={{ mixBlendMode: "overlay" }}>
                 <path d={CUBE_FILL_PATH} fill="white" stroke="white" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" />
               </g>

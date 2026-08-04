@@ -6,13 +6,8 @@ import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 
-// ─── Expect — the data-quality gate ────────────────────────────────────────────
-// "Data Validation, generalized": four checks (not-null / unique / range / regex)
-// against whatever flows through it. Strictly opt-in (every check defaults off
-// except Not null) and always PASS-THROUGH — a failed expectation never blocks
-// the value, it just badges the node (red, ErrorChip styling — see
-// components/ExpectNode.tsx) and fires an alert on the rising edge of a NEW
-// failure signature (so a continuously-failing node doesn't spam the HUD).
+// Expect is always PASS-THROUGH: a failed expectation badges the node and fires an
+// alert on the rising edge of a NEW failure signature, but never blocks the value.
 
 function safeRegex(pattern: string): RegExp | null {
   try { return new RegExp(pattern); } catch { return null; }
@@ -28,20 +23,18 @@ export class ExpectNode extends ClassicPreset.Node {
   checkRegex: boolean;
   checkAllowed: boolean;
   cachedValue: unknown = null;
-  // Expect checks the value and forwards it unchanged → a PURE passthrough on `in`
-  // (min/max/pattern/allowed are check parameters, NOT value branches), so it
-  // carries the value's type + unit like Display.
+  // PURE passthrough on `in` — min/max/pattern/allowed are check parameters, not
+  // value branches — so the value's type + unit carry through.
   passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
   /** Which checks currently fail (empty = passing) — the component's red badge. */
   violations: ExpectCheck[] = [];
   literals: Record<string, number> = { min: 0, max: 100 };
-  // `pattern` = regex source; `allowed` = comma-separated allowlist (used when the
-  // `allowed` list socket is unwired — like Excel data-validation's typed list).
+  // `pattern` = regex source; `allowed` = comma-separated allowlist, used when the
+  // `allowed` socket is unwired.
   stringLiterals: Record<string, string> = { pattern: "", allowed: "" };
   width = 220;
   height = 258;
-  // Edge-detect on the SET of failing checks (like Alert's statusKey) so a value
-  // that keeps failing the same way doesn't refire every recompute.
+  // Edge-detect on the SET of failing checks, so the same failure doesn't refire.
   private lastStatusKey = "";
 
   constructor(init?: {
@@ -63,9 +56,8 @@ export class ExpectNode extends ClassicPreset.Node {
     this.addInput("min", numIn("Min"));
     this.addInput("max", numIn("Max"));
     this.addInput("pattern", strIn("Pattern"));
-    // anyListIn, not listIn: the allowlist is element-agnostic (the common case is
-    // TEXT — "Apple, Banana"), and `list` is the number-only socket, which the
-    // lattice would block a strlist/datelist cable from reaching.
+    // anyListIn, not listIn: the allowlist is element-agnostic, and the number-only
+    // `list` socket would block a strlist/datelist cable.
     this.addInput("allowed", anyListIn("Allowed"));
     this.addOutput("out", trueAnyOut("Out"));
   }
@@ -74,23 +66,20 @@ export class ExpectNode extends ClassicPreset.Node {
     const raw = inputs.in?.[0] ?? null;
     this.cachedValue = raw;
 
-    // An error already flowing through is its own signal — Expect checks DATA
-    // quality, not error propagation, so it doesn't pile a second badge on top.
+    // Expect checks DATA quality, not error propagation — no second badge on an error.
     if (isSolError(raw)) {
       this.violations = [];
       this.lastStatusKey = "";
       return { out: raw };
     }
 
-    // A wired blank bound/pattern leaves the CHECK undefined, so it propagates
-    // rather than quietly reverting to the value typed on the card.
+    // A wired blank bound/pattern leaves the CHECK undefined rather than reverting to
+    // the value typed on the card.
     const min = readInput(inputs.min, this.literals.min ?? 0);
     const max = readInput(inputs.max, this.literals.max ?? 100);
     const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
-    // A Frame checks its CELLS (a lazy FrameRef was already materialized by
-    // coerceInputs — Expect isn't a lazy verb node, so `raw` is a FrameValue
-    // here). Without this branch a frame falls into the `[raw]` arm and every
-    // check silently no-ops.
+    // A Frame checks its CELLS; without this branch it falls into the `[raw]` arm and
+    // every check silently no-ops.
     const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
     const values: unknown[] = frame
       ? frame.columns.flatMap((c) => c.values as unknown[])
@@ -98,15 +87,13 @@ export class ExpectNode extends ClassicPreset.Node {
 
     const violations: ExpectCheck[] = [];
 
-    // Not-null also catches a per-cell error: a #DIV/0!/#N/A cell isn't a valid
-    // present value, and the range/regex checks skip it (wrong type), so without
-    // this a table with errored cells would pass the quality gate as "clean".
+    // Not-null also catches a per-cell error, or a table of errored cells would pass
+    // the gate as clean (range/regex skip them as wrong-typed).
     if (this.checkNotNull && values.some((v) => v === null || v === undefined || isSolError(v))) {
       violations.push("notNull");
     }
     if (this.checkUnique && frame) {
-      // Unique for a table means unique ROWS (the Distinct notion) — per-cell
-      // uniqueness across columns of different types is meaningless.
+      // Unique for a table means unique ROWS — per-cell uniqueness is meaningless.
       const seen = new Set<string>();
       for (let i = 0; i < frameRowCount(frame); i++) {
         const k = JSON.stringify(frame.columns.map((c) => c.values[i] ?? null));
@@ -122,10 +109,7 @@ export class ExpectNode extends ClassicPreset.Node {
         seen.add(k);
       }
     }
-    // A missing bound means that HALF of the check cannot be EVALUATED, which is
-    // not the same as failing it — Expect is a passthrough validator, so it skips
-    // the undeterminable bound and keeps the data flowing rather than reporting a
-    // violation it can't justify (or nulling the value out). Each bound is skipped
+    // A missing bound is unevaluatable, not failing, and each bound is skipped
     // independently: a blank floor doesn't disable the ceiling.
     if (this.checkRange && (min !== null || max !== null)) {
       const bad = values.some((v) => typeof v === "number" && Number.isFinite(v) &&
@@ -140,9 +124,8 @@ export class ExpectNode extends ClassicPreset.Node {
       }
     }
     if (this.checkAllowed) {
-      // Membership against an allowlist. A wired `allowed` list wins; otherwise
-      // parse the typed comma-separated literal. Compare by string form so a
-      // number, date-serial, or text value all match by their rendered token.
+      // Compare by string form, so number, date-serial and text all match by their
+      // rendered token.
       const wired = inputs.allowed?.[0];
       const allowVals: unknown[] = Array.isArray(wired)
         ? wired.flat(1)

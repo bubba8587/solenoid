@@ -6,22 +6,14 @@ import { useRenderMode, renderModeStore } from "../renderMode";
 import { appThemeStore } from "../appTheme";
 import { GpuCableRenderer, makeColorResolver } from "../gpuCableRenderer";
 
-// The WebGPU cable layer (desktop Tauri/WebView2). Cable geometry is tessellated +
-// uploaded to a GPU buffer once per scene change; pan/zoom only rewrites a uniform
-// and submits one draw, so the per-frame pan cost is ~zero. Active only in render-
-// mode "canvas" (console __solenoidCanvasCables()); DOM is the default and untouched.
-//
-// The <canvas> is portaled INTO `.solenoid-canvas` at z-index:-1 (the CableFlourish
-// trick) so cables draw behind nodes, above the dot grid. The invisible per-cable hit
-// <svg> stays in the DOM, so hover/click/lasso are unchanged. WebGPU init is async;
-// if it fails (no adapter / flag off) we fall back to DOM. All cables draw behind,
-// solid.
+// The WebGPU cable layer, active only in render-mode "canvas"; geometry uploads once
+// per scene change, so pan/zoom only rewrites a uniform. The per-cable hit <svg> stays
+// in the DOM, and any WebGPU failure falls back to DOM permanently.
 
 export function CableCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<GpuCableRenderer | null>(null);
-  // Lazy-init the resolver once (a bare useRef(makeColorResolver()) would allocate
-  // one every render and discard all but the first).
+  // Lazy-init: `useRef(makeColorResolver())` would allocate one per render.
   const resolverRef = useRef<ReturnType<typeof makeColorResolver> | null>(null);
   if (!resolverRef.current) resolverRef.current = makeColorResolver();
   const failedRef = useRef(false);
@@ -43,14 +35,11 @@ export function CableCanvas() {
     return () => ro.disconnect();
   }, [host]);
 
-  // Create the WebGPU renderer when canvas mode turns on (async); dispose on off /
-  // unmount. WebGPU unavailable → fall back to DOM permanently.
   useEffect(() => {
     if (mode !== "canvas") return;
     const canvas = canvasRef.current;
     if (!canvas || rendererRef.current || failedRef.current) return;
     let canceled = false;
-    // On device loss, drop the renderer and fall back to DOM so cables reappear.
     const onLost = () => {
       failedRef.current = true;
       rendererRef.current = null;

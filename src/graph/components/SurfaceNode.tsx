@@ -12,9 +12,7 @@ import { stopDragStart } from "../coarse";
 const W = 218;
 const H = 190;
 
-// A tiny D-pad in the figure's corner: yaw (←/→, 45° around Z) and pitch (↑/↓, 45°
-// elevation, clamped to 0–90° so it never flips). Buttons stop pointer/mouse-down so
-// the click doesn't start a node drag or selection.
+// D-pad buttons stop pointer/mouse-down so a click can't start a node drag or selection.
 const ROT_BTN: CSSProperties = {
   width: 16, height: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
   fontSize: 11, lineHeight: 1, cursor: "pointer", borderRadius: 3,

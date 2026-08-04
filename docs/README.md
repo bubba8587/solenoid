@@ -94,6 +94,12 @@ relapse.
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
 | `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
+| `domSync.ts` | `renderer-performance.md` § DOM↔canvas transform sync |
+| `pointerGesture.ts`, `areaPresets.ts` | `subsystem-invariants.md` § Pointer gestures |
+| `connectionStore.ts`, `httpBridge.ts`, live-source fetch | `subsystem-invariants.md` § Live connections |
+| `guardedSocketPosition.ts` | `subsystem-invariants.md` § Socket position bookkeeping |
+| `flyToNode.ts`, any camera `zoomAt` caller | `subsystem-invariants.md` § Group collapse (camera targets) |
+| `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
 | `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `renderer-performance.md` § HTML-in-Canvas capture pipeline |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
 | `excelFunctions.ts` overrides / dispatch walk | `formula-node-parity.md` § Formula.js divergence catalogue |

@@ -15,9 +15,8 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 
-// The 1-D Filter card (D16): the frame Filter's condition rows minus the
-// column picker — a list has no lanes, so each row is just op + value (+ Match
-// case on the text ops). Kept rides the hero box; Dropped is the complement.
+// The frame Filter's condition rows minus the column picker — a list has no lanes, so a
+// row is just op + value. Kept rides the hero box; Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   const connected = useConnectedInputs(data.id);
   const [combine, setCombine] = useNodeField(data, "combine");

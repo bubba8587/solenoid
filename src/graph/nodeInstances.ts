@@ -1,11 +1,7 @@
 import type { RGBA } from "./cssColor";
 
-// Pure per-instance data packing for the WebGPU node-card renderer. NOT WIRED by
-// itself. A node card is drawn as ONE instanced unit quad; the fragment shader does
-// the rounded-rect SDF + header/body split, so all nodes draw in a single instanced
-// call. This module packs the per-instance attributes into the interleaved
-// Float32Array the GPU buffer wants — kept pure + tested so the (untestable) WebGPU
-// plumbing stays thin.
+// Per-instance packing for the WebGPU node-card renderer — NOT WIRED by itself.
+// One instanced unit quad per card; the fragment shader does the rounded-rect SDF.
 //
 // Per-instance layout — FLOATS_PER_INSTANCE floats:
 //   [ x, y, w, h,                      // world rect (top-left + size)

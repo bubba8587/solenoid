@@ -1,6 +1,5 @@
-// Convert's unit table + scalar conversion — rete-free by design (FX-2), so the
-// formula surface (excelFunctions CONVERT) can convert without pulling rete, the
-// socket lattice and the display stores into the headless evaluator.
+// Rete-free by design (FX-2), so the formula surface can convert without pulling rete,
+// the socket lattice and the display stores into the headless evaluator.
 
 import { convert as dimConvert, type Dim, type Unit } from "../dimension";
 
@@ -14,16 +13,12 @@ export interface ConvertUnitDef {
   category: ConvertCategory;
   toBase: (x: number) => number;
   fromBase: (x: number) => number;
-  /** Dimensional-algebra unit (dimension.ts): the SI-scaled source of truth the
-   *  Convert math actually runs through. */
+  /** The SI-scaled source of truth the Convert math actually runs through. */
   dim: Unit;
 }
 
-// Each category's dimension + the SI scale of its LOCAL base unit (the one every
-// factor here is relative to): angle base rad, length base m, mass base gram
-// (0.001 kg), time base s, area base m², volume base litre (0.001 m³), speed
-// base m/s, energy base J, pressure base Pa. So a unit's SI scale = its factor ×
-// the category base's SI scale.
+// Each category's dimension + the SI scale of its LOCAL base unit (every factor here is
+// relative to that base), so a unit's SI scale = its factor × the base's SI scale.
 const CATEGORY_DIM: Record<Exclude<ConvertCategory, "temperature">, { dim: Dim; baseScale: number }> = {
   angle:    { dim: { angle: 1 }, baseScale: 1 },
   length:   { dim: { length: 1 }, baseScale: 1 },
@@ -84,9 +79,8 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   stone: mkUnit("Stone",        "stone", "mass",   6350.29318),
   tonne: mkUnit("Metric ton",   "t",     "mass",   1e6),
 
-  // Temperature (affine — a factor alone can't express it). toBase/fromBase are
-  // to CELSIUS (the legacy local base); the `dim` units are to KELVIN (SI), which
-  // dimConvert uses. Both encode the same physics.
+  // Temperature is affine: toBase/fromBase are to CELSIUS, the `dim` units to KELVIN
+  // (what dimConvert uses). Both encode the same physics.
   C: { label: "Celsius",    excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
   F: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
   K: { label: "Kelvin",     excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
@@ -146,15 +140,10 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   mmHg: mkUnit("mmHg",          "mmHg", "pressure", 133.322387415),
 };
 
-// Register every Convert unit id with the display bridge, so a `UnitCell.display`
-// authored here (yd, psi, km_h, …) resolves at render time even when the id has no
-// FC-registry twin — otherwise the downstream box renders the base-SI derived symbol
-// and Convert loses primacy over the value's unit.
 export function convertValue(x: number, fromKey: string, toKey: string): number | null {
   const from = CONVERT_UNIT_DEFS[fromKey];
   const to   = CONVERT_UNIT_DEFS[toKey];
   if (!from || !to) return null;
-  // Commensurability (m² vs m) and the affine temperature case live in the
-  // dimensional-algebra core — one source of truth.
+  // Commensurability and the affine temperature case live in the dimensional-algebra core.
   return dimConvert(x, from.dim, to.dim);
 }

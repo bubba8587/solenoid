@@ -16,12 +16,8 @@ import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
-/**
- * A node with a variable number of input PAIRS the user can add/remove — e.g.
- * IFS (condition + value) and SWITCH (when + then). Each pair is two sockets
- * sharing one remove button. Optional fixed leading / trailing inputs (SWITCH's
- * `expr` / `default`) render as plain rows around the pairs.
- */
+/** A node with a variable number of input PAIRS: two sockets sharing one remove
+ *  button, with optional fixed leading/trailing rows around them. */
 export interface PairedExtensibleNode {
   id: string;
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
@@ -33,16 +29,12 @@ export interface PairedExtensibleNode {
   removeValuePair: (aKey: string) => void;
   /** Row labels for the two halves of a pair, e.g. ["If", "Then"]. */
   pairLabels: [string, string];
-  /** Inline TEXT literals, for pairs whose first half is a string socket
-   *  (Frame from Lists' column names). Numeric slots keep using `literals`. */
+  /** Inline TEXT literals for a string-socket half; numeric slots use `literals`. */
   stringLiterals?: Record<string, string>;
 }
 
-/**
- * `leadingKeys` / `trailingKeys` are fixed inputs (no remove) before/after the
- * pairs. Each socket dot centers on its own row (see .solenoid-node__io-row), so
- * the rows can sit anywhere in the body — no fixed header-offset assumption.
- */
+/** `leadingKeys`/`trailingKeys` are fixed inputs before/after the pairs; each
+ *  socket dot centers on its OWN row, so rows can sit anywhere in the body. */
 export function PairedExtensibleInputs({
   node, emit, leadingKeys, trailingKeys,
 }: {
@@ -75,8 +67,7 @@ export function PairedExtensibleInputs({
   async function addPair() {
     const before = new Set(Object.keys(node.inputs));
     node.addValuePair();
-    // addValuePair returns void — diff the key set to find the fresh pair, so
-    // the whole pair is ONE undo entry (undo removes both halves via aKey).
+    // Diff the key set so the whole pair is ONE undo entry.
     const added = Object.keys(node.inputs).filter((k) => !before.has(k));
     const aKey = added[0];
     if (aKey) pushRowAddUndo(node, added, () => node.removeValuePair(aKey));
@@ -142,8 +133,7 @@ export function PairedExtensibleInputs({
     <>
       {leading.length > 0 && <InlineInputs node={node} emit={emit} keys={leading} />}
       {pairs.map(([a, b], i) => (
-        // The remove button rides the first row of the pair; only shown when
-        // more than one pair exists (keep the Excel minimum of one).
+        // The remove button rides the pair's first row, and only above one pair.
         <div key={a} className="solenoid-node__pair-group">
           {field(a, `${node.pairLabels[0]} ${i + 1}`, pairs.length > 1 ? () => removePair(a, b) : undefined)}
           {field(b, `${node.pairLabels[1]} ${i + 1}`)}
@@ -156,10 +146,8 @@ export function PairedExtensibleInputs({
       >
         + Add pair
       </button>
-      {/* The fallback (IFS Otherwise / SWITCH Default) shows a muted "N/A"
-          placeholder while empty — a state cue, not a typed value: no match with an
-          unset fallback yields #N/A (see IfsNode/SwitchNode data()). A typed value
-          overrides; clearing it returns to #N/A. */}
+      {/* The fallback's "N/A" is a state cue, not a typed value: no match with an
+          unset fallback yields #N/A. */}
       {trailing.map((key) => field(key, node.inputs[key]?.label ?? key, undefined, "N/A"))}
     </>
   );

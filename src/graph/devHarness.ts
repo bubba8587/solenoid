@@ -10,11 +10,9 @@ if (import.meta.env.DEV) {
     open: () => rendererSpikeStore.open(),
     close: () => rendererSpikeStore.close(),
     seed: (id: string) => documentStore.newFromTemplate(id),
-    // "idle" once the cinematic reveal has fully played — every node is mounted
-    // and opaque. The screenshot harness waits on this before capturing.
+    // "idle" once the reveal has played; the screenshot harness waits on it.
     revealPhase: () => loadRevealStore.phase(),
-    // Frame one node (by label substring) at zoom k, landing its top-left at
-    // screen (sx,sy).
+    // Frame one node (by label substring) at zoom k, top-left at screen (sx, sy).
     zoomNode: async (label: string, k = 1.7, sx = 260, sy = 200) => {
       const ed = getEditor(), ar = getArea();
       if (!ed || !ar) return false;

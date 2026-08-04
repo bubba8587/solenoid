@@ -8,16 +8,15 @@ import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, type S
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
-// What to render for the current drill level, normalized across the three view
-// kinds so the table markup below is written once.
+// The current drill level, normalized across the three view kinds so the table
+// markup below is written once.
 function describe(view: DrillView): {
   headers: string[] | null; // null → numeric column labels (grid view)
   rows: number;
   cols: number;
   depth: number | null;     // cube only
   cell: (r: number, c: number) => ReactNode;
-  /** The RAW cell reduced for sorting — never the rendered node. A nested frame/cube
-   *  has no scalar reading and sorts as blank (last). */
+  /** The RAW cell reduced for sorting — never the rendered node. */
   sortKey: (r: number, c: number) => SortKey;
 } {
   if (view.kind === "cube") {
@@ -53,31 +52,25 @@ function describe(view: DrillView): {
   };
 }
 
-/**
- * Read-only viewer for nested data — the one popup for every nesting kind. The grid
- * shows the current drill level (a Cube, a nested Frame, or a list/matrix); any
- * nested-container cell drills DEEPER IN PLACE via the breadcrumb (no second
- * window ever opens). A cube view also shows its cached DEPTH in the header so
- * nesting is never hidden. Mounted once in App, like TablePopup.
- */
+/** The one read-only viewer for every nesting kind: a nested-container cell drills
+ *  DEEPER IN PLACE via the breadcrumb, so a second window never opens. */
 export function CubePopup() {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  // Keyed on the DRILL LEVEL: drilling in or out is a different table, so the sort
-  // drops rather than carrying a column index across to unrelated columns.
+  // Keyed on the DRILL LEVEL, so the sort drops instead of carrying a column
+  // index across to an unrelated table.
   const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
 
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell, sortKey } = describe(view);
-  // Cap rendered rows: a cube cell holding a large nested frame would otherwise put
-  // the whole table in the DOM and kill the renderer (same hazard as TablePopup).
+  // Cap rendered rows — a large nested frame would otherwise put the whole table
+  // in the DOM and kill the renderer.
   const MAX_VISIBLE_ROWS = 1000;
   const rowsTruncated = rows > MAX_VISIBLE_ROWS;
   const shownRows = rowsTruncated ? MAX_VISIBLE_ROWS : rows;
-  // Visual-only sort over the rendered rows — the drill stack and the cube itself are
-  // untouched, so drilling into a cell still lands on the right nested value (the map
-  // hands `cell()` the SOURCE row index, and the row number stays the real position).
+  // Visual-only sort: `cell()` is handed the SOURCE row index, so drilling still
+  // lands on the right nested value.
   const sortOrder = sortedOrder(shownRows, sort, sortKey);
 
   const grouped = !!state.groupColor;
@@ -135,8 +128,6 @@ export function CubePopup() {
               {Array.from({ length: cols }, (_, c) => (
                 <th
                   key={c}
-                  // The whole header cell cycles the sort; this grid is read-only, so
-                  // nothing inside it needs to opt out.
                   title={headers?.[c]}
                   onClick={() => cycleSort(c)}
                   className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}

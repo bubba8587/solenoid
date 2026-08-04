@@ -29,22 +29,15 @@ const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
   logical: logicalListSocket,
 };
 
-/** Parse one row's comma-separated text into a typed list. Delegates to the ONE
- *  typed-list literal parser (`parseListLiteral`) so a row parses identically however
- *  the SegToggle is set: RFC-4180 quoting everywhere (`"First, Last", qty` is two
- *  fields in EVERY mode), and an unparseable part is first-class `null` in every mode. */
+/** Delegates to the ONE typed-list literal parser, so a row parses identically in
+ *  every SegToggle mode (RFC-4180 quoting; an unparseable part is `null`). */
 function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
   return s ? (parseListLiteral(s, LIST_ELEM_SOCKET[dt].dataType) as AnyCell[]) : [];
 }
 
-/** Convert ONE wired element to the row's element type, or `null` when it genuinely
- *  can't be. List Input is a typed literal SOURCE — its whole job is "emit a list of
- *  type T" — so a wired element is CONVERTED, exactly like the typed text on the same
- *  row — never filtered, since a WILDCARD source (`any`/`anylist`/`trueany`) is accepted
- *  by every row socket but carries whatever value flowed in.
- *
- *  `null` (MISSING) and per-cell `SolError`s never reach here — they ride through any
- *  typed list unchanged and are handled by the caller. */
+/** A wired element is CONVERTED to the row's type, never filtered — a wildcard source
+ *  is accepted by every row socket but carries whatever flowed in. Null and per-cell
+ *  SolErrors never reach here; the caller rides them through unchanged. */
 function coerceElem(dt: ListElemType, v: unknown): AnyCell {
   switch (dt) {
     case "number": {
@@ -54,15 +47,13 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
       return null;
     }
     case "date": {
-      // Dates ARE serials, so a number passes straight through; a date STRING parses
-      // with the same parser the typed row uses.
+      // Dates ARE serials, so a number passes through; a string takes the row's parser.
       if (typeof v === "number") return Number.isFinite(v) ? v : null;
       if (typeof v === "string") { const n = parseDateToSerial(v); return Number.isFinite(n) ? n : null; }
       return null;
     }
     case "string":
-      // A text list stringifies whatever arrives — that IS the conversion, and it's
-      // what makes a wildcard carrying numbers produce ["1","2"] instead of [].
+      // Stringifying IS the conversion — a wildcard of numbers yields ["1","2"], not [].
       if (typeof v === "string") return v;
       return typeof v === "number" || typeof v === "boolean" ? String(v) : null;
     case "logical":
@@ -72,20 +63,12 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
 
 export class ListInputNode extends ClassicPreset.Node {
   label: string;
-  // Homogeneous list of the selected element type: numbers, strings, date serials, or
-  // booleans. Cast to DisplayValue at the value box.
   cachedList: AnyCell[] = [];
-  // The element type, switched by the card's SegToggle (re-types the row + output
-  // sockets in place — see setDataType).
   dataType: ListElemType;
-  // Each row holds a comma-separated LIST typed in place ("1, 2, 3" · "a, b, c" ·
-  // "01-Jan-2026, 02-Jan-2026" · "true, false"); a wired list on the row overrides its
-  // text. All rows concatenate into the output — so the node both builds a list from
-  // typed values AND joins several wired lists. Sparse: only rows with text (or a
-  // cable) contribute.
+  // Each row is a comma-separated LIST; a wired list overrides its text and all rows
+  // concatenate. Sparse: only rows with text or a cable contribute.
   stringLiterals: Record<string, string> = {};
-  // Extensible inputs: rows are added/removed by the user (see ExtensibleInputs).
-  // `nextInputId` keeps keys unique across removals.
+  // `nextInputId` keeps extensible-row keys unique across removals.
   nextInputId = 0;
   width = 180;
   height = 200;
@@ -97,8 +80,7 @@ export class ListInputNode extends ClassicPreset.Node {
     super("ListInput");
     this.label = init?.label ?? "List Input";
     this.dataType = init?.dataType ?? "number";
-    // Rebuild the exact input keys on load/paste (so saved literals + cables still line
-    // up); otherwise start with a single blank row.
+    // Load/paste must rebuild the EXACT keys or saved literals + cables misalign.
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
     } else {
@@ -124,10 +106,8 @@ export class ListInputNode extends ClassicPreset.Node {
     delete this.stringLiterals[key];
   }
 
-  /** Switch the element type IN PLACE: re-type every row input socket + the output
-   *  socket. The component follows with retypeOutputCables + a recompute (an in-place
-   *  socket retype fires no connection event — see the type-propagation invariant).
-   *  Returns false (no-op) when the type is unchanged. */
+  /** Re-types every row input + the output IN PLACE, which fires no connection event —
+   *  the caller owes retypeOutputCables. False = unchanged, no-op. */
   setDataType(dt: ListElemType): boolean {
     if (this.dataType === dt) return false;
     this.dataType = dt;
@@ -144,17 +124,14 @@ export class ListInputNode extends ClassicPreset.Node {
   data(inputs: Record<string, unknown[] | undefined>) {
     const list: AnyCell[] = [];
     for (const key of Object.keys(this.inputs)) {
-      // `readInput` semantics: a CONNECTED cable wins even when its value is `null` —
-      // only an UNWIRED row (undefined) falls back to the typed text. A `wired != null`
-      // test would resurrect the row's text for a wired MISSING.
+      // A CONNECTED cable wins even carrying `null`; a `wired != null` test would
+      // resurrect the row's text for a wired MISSING.
       const slot = inputs[key];
       const wired = slot === undefined || slot.length === 0 ? undefined : (slot[0] ?? null);
       if (wired !== undefined) {
         const arr = Array.isArray(wired) ? wired : [wired];
-        // `null` (MISSING) and a per-cell SolError ride through UNCHANGED — dropping
-        // them would compact the list (positions shifting out of step with any parallel
-        // list) and swallow an upstream #DIV/0!. Everything else is CONVERTED to the
-        // row's type rather than filtered (see coerceElem).
+        // Null and per-cell SolErrors ride through UNCHANGED — dropping them would
+        // compact the list out of step with any parallel one.
         for (const v of arr) {
           list.push(v === null || isSolError(v) ? (v as AnyCell) : coerceElem(this.dataType, v));
         }
@@ -172,8 +149,7 @@ export class ListInputNode extends ClassicPreset.Node {
 export class RangeNode extends ClassicPreset.Node {
   label: string;
   cachedList: number[] | SolError | null = [];
-  // No default for `stop` — an unset stop keeps the range empty until
-  // the user provides one (cable or literal).
+  // No default for `stop`: unset keeps the range empty until the user provides one.
   literals: Record<string, number> = { start: 0, step: 1 };
   width = 180;
   height = 220;
@@ -189,14 +165,13 @@ export class RangeNode extends ClassicPreset.Node {
 
   data(inputs: { start?: number[]; stop?: number[]; step?: number[] }) {
     const start = readInput(inputs.start, this.literals.start ?? 0);
-    // `stop` is legitimately UNSET (an empty card = no series yet). readInput keeps the
-    // two apart: undefined is unset, null is a cable carrying blank.
+    // `stop` is legitimately UNSET: undefined is unset, null is a cable carrying blank.
     const stop  = readInput(inputs.stop, this.literals.stop as number | undefined);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     const step  = readInput(inputs.step, this.literals.step ?? 1);
     if (start === null || stop === null || step === null) { this.cachedList = null; return { list: null }; }
-    // The shared generator convention (RANDARRAY/SEQUENCE): a range that never
-    // terminates or exceeds the app ceiling is a LOUD error, not a silent truncation.
+    // Generator convention: a non-terminating or over-ceiling range is a LOUD error,
+    // never a silent truncation.
     const n = rangeCount(start, stop, step);
     if (!Number.isFinite(n)) {
       const err = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
@@ -223,13 +198,11 @@ export class ListLengthNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("ListLength");
     this.label = init?.label ?? "LENGTH";
-    // Element-blind (it only counts) — anylist like the other position ops.
     this.addInput("list", anyListIn("List"));
     this.addOutput("result", numOut("Count"));
   }
 
-  // `unknown[][]`, not `number[][]`: the input socket is element-BLIND (anylist) and
-  // this only reads `.length`.
+  // `unknown[][]`, not `number[][]`: the socket is element-BLIND and this reads `.length`.
   data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? null;
     this.cachedResult = arr ? arr.length : null;
@@ -237,10 +210,8 @@ export class ListLengthNode extends ClassicPreset.Node {
   }
 }
 
-// INDEX is cube/frame-aware: its input + output are `any` so it reads a cell out
-// of ANY container — the nth of a list, the (row, col) of a matrix, OR the cell of
-// a Frame / Cube. Whole-axis form + per-container slice shapes:
-// docs/node-coverage.md; cube behavior: docs/cube-node-scope.md.
+// INDEX reads a cell out of ANY container (list / matrix / frame / cube), so its
+// input and output are `any`.
 export class ListIndexNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
@@ -259,20 +230,9 @@ export class ListIndexNode extends ClassicPreset.Node {
     this.addOutput("result", trueAnyOut("Value"));
   }
 
-  /** INDEX FORWARDS a value out of its container, so it declares a passthrough on
-   *  `list` — that one declaration is what type adoption, unit flow, the type-default
-   *  display walk and the Conduit trace all read.
-   *
-   *  `project` maps the container type to the extraction's own rank: what varies with
-   *  Row/Column is the RANK, not the family (one cell, or a whole axis), and the COMBO
-   *  rung means exactly that — so the result feeds a scalar input AND a list input.
-   *  A cube has no element family, so `comboOfType` returns null there and the
-   *  placeholder stands. That is the honest reading of D18's own "adopt only where
-   *  honest" rule, applied per container instead of to the node as a whole.
-   *
-   *  A FRAME resolves through `frameProjection` instead: a frame's element family is
-   *  a property of the COLUMN, not of the `frame` socket, so the family is knowable
-   *  exactly when the column is. */
+  /** The passthrough declaration on `list` is what type adoption, unit flow, the
+   *  display walk and the Conduit trace all read. `project` varies the RANK, not the
+   *  family, so the result lands on the COMBO rung; a frame resolves per COLUMN. */
   passthrough(): PassthroughSpec[] {
     return [{
       output: "result",
@@ -285,43 +245,28 @@ export class ListIndexNode extends ClassicPreset.Node {
     }];
   }
 
-  /** The output type for a CUBE container. A cube has no element family, but its
-   *  SLICES are always cubes — `data()` keeps nested cells whole (whole row = a
-   *  one-row cube, whole column = a one-column cube, both blank = the cube
-   *  itself) — so any BLANK axis makes the result a cube. Only a single CELL
-   *  (Row and Column both given) is genuinely unknowable: the placeholder
-   *  stands there, honestly. A WIRED axis could carry a real index (→ maybe a
-   *  cell), so it doesn't count as blank — but one blank UNWIRED axis already
-   *  guarantees a cube whatever the other axis says. */
+  /** A cube's SLICES are always cubes, so any blank UNWIRED axis guarantees a cube;
+   *  only a single CELL (both axes given) is unknowable and keeps the placeholder. */
   private cubeProjection(ctx: ProjectContext): SocketDataType {
     const blank = (key: "index" | "column") =>
       !ctx.wired(key) && (this.literals[key] == null || Math.round(this.literals[key]) === 0);
     return blank("index") || blank("column") ? "cube" : "trueany";
   }
 
-  /** The output type for a FRAME container. `comboOfType("frame")` is null — a frame
-   *  is heterogeneous, so the socket carries no family — but the frame's COLUMNS each
-   *  do, and which one this node reads is the Column field. Resolved off the same
-   *  static shape walk the Cable Inspector's shape row uses, so a date column pulled
-   *  through INDEX reads as a date downstream (`isDateType` reads the SOCKET) instead
-   *  of a raw serial, and the output dot colors like the column it came from.
-   *
-   *  Every arm mirrors `data()` below:
-   *   • blank/0 Column  → the whole ROW: a one-row FRAME (or the container itself when
-   *                       Row is blank too) — still a frame either way.
+  /** A frame carries no family on its socket, but its COLUMNS do, so the Column field
+   *  resolves one off the static shape walk. Every arm mirrors `data()` below:
+   *   • blank/0 Column  → the whole ROW: a one-row FRAME (or the container itself).
    *   • Column = c      → that column's family at the COMBO rung: the whole column for
    *                       a blank Row, one cell otherwise. */
   private frameProjection(ctx: ProjectContext): SocketDataType {
-    // A WIRED Column is a runtime value — `data()` takes the cable over the literal,
-    // and this walk can't know it. Same "treat a wired config as unconfigured" rule
-    // the static shape walk applies to a wired-in column name.
+    // A WIRED Column is a runtime value this static walk can't know, so it counts as
+    // unconfigured.
     if (ctx.wired("column")) return "trueany";
     const col = this.literals.column;
     if (col == null || Math.round(col) === 0) return "frame";
     const shape = ctx.shapeOf("list");
-    // A DYNAMIC shape (a pivot's data-driven columns, Split Column's part count) grows
-    // columns at compute time and shifts the ones after them, so a POSITIONAL index
-    // into it isn't trustworthy — the honest answer is "unknown".
+    // A DYNAMIC shape grows columns at compute time and shifts the ones after them, so
+    // a POSITIONAL index into it isn't trustworthy.
     if (!shape || shape.dynamic) return "trueany";
     const c = shape.columns[Math.round(col) - 1]; // 1-based, Excel INDEX
     if (!c) return "trueany"; // out of range — a #REF! at runtime, no family to adopt
@@ -330,9 +275,8 @@ export class ListIndexNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
     const v = inputs.list?.[0] ?? null;
-    // Excel INDEX reads an OMITTED axis as "the whole axis" — that is the UNWIRED
-    // slot with an empty card, not a cable carrying blank (value-semantics.md,
-    // "Reading an input" -> "absent is not unknown").
+    // Excel INDEX reads an OMITTED axis as the WHOLE axis — the unwired empty slot,
+    // not a cable carrying blank.
     const rowIn = readInput(inputs.index, this.literals.index as number | undefined);
     const colIn = readInput(inputs.column, this.literals.column as number | undefined);
     const done = (result: number | SolError | null | CubeCell | FrameValue | CubeValue) => {
@@ -364,8 +308,8 @@ export class ListIndexNode extends ClassicPreset.Node {
       const rows = frameRowCount(v);
       if (!rowAll && (r < 0 || r >= rows)) return done(refErr(r + 1, rows, "Row"));
       if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
-      // Whole column = the values list (Get Column's shape). A unit-locked column
-      // tags each cell so the unit rides out of the frame (same as Get Column).
+      // Whole column = the values list; a unit-locked column tags each cell so the
+      // unit rides out of the frame.
       if (rowAll) {
         const col = v.columns[c];
         return done((col.unit ? col.values.map((x) => tagFrameCellUnit(x, col.unit!)) : [...col.values]) as CubeCell);
@@ -391,10 +335,8 @@ export class ListIndexNode extends ClassicPreset.Node {
     if (Array.isArray((v as unknown[])[0])) {
       // A genuine 2-D matrix.
       const grid = v as unknown[][];
-      // A homogeneous matrix unit (D20) rides out into an extracted cell/row/column
-      // exactly like a frame column's unit — tag each extracted number so the unit
-      // isn't lost (mirrors the frame branch above; the whole-grid case keeps its tag
-      // since it returns the same array). `tag` is identity when the matrix is plain.
+      // A homogeneous matrix unit (D20) must ride out into the extraction, so each
+      // extracted number is tagged; `tag` is identity for a plain matrix.
       const mUnit = matrixUnitOf(v);
       const tag = (x: unknown): unknown => (mUnit ? tagFrameCellUnit(x, mUnit) : x);
       if (rowAll && colAll) return done(grid as CubeCell);
@@ -411,8 +353,7 @@ export class ListIndexNode extends ClassicPreset.Node {
       return done(tag(rowArr[c] ?? null) as CubeCell);
     }
 
-    // A flat 1-D list — the existing is2D convention treats it as an n×1 column,
-    // so Column (when given) must be 1.
+    // is2D treats a flat list as an n×1 column, so Column (when given) must be 1.
     const arr = v as (number | SolError | null)[];
     if (!colAll && c !== 0) return done(refErr(c + 1, 1, "Column"));
     if (rowAll) return done([...arr] as CubeCell); // whole column = the list itself
@@ -446,14 +387,10 @@ export class SortNode extends ClassicPreset.Node {
   }
 }
 
-// Position-based (element-blind) 1-D utilities — Reverse, Slice, Take, Drop,
-// Shuffle, NthElement, Interleave, Pad — ride the element-agnostic `anylist`
-// sockets: they only move positions, so text/date/logical lists work too
-// (the D15 coherence sweep). Order/arithmetic ops (Sort, Cumulative) stay
-// typed — they need comparison/arithmetic semantics.
+// Position-only utilities ride element-agnostic `anylist` sockets (D15); ops needing
+// comparison or arithmetic semantics (Sort, Cumulative) stay typed.
 export class ReverseNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
@@ -476,8 +413,7 @@ export class ReverseNode extends ClassicPreset.Node {
 }
 
 export class SliceNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] | null = [];
@@ -509,15 +445,8 @@ export class SliceNode extends ClassicPreset.Node {
 }
 
 // ─── Filter ────────────────────────────────────────────────────────────────────
-// The 1-D filter, redesigned 2026-07-09 (decisions.md D16): a list tested
-// against ITS OWN values with the frame Filter's condition engine — extensible
-// condition rows (op + value, per-row Match case) combined with AND/OR, any
-// element family (anylist). What it deliberately no longer does: accept a
-// table (filtering a table's rows is the frame Filter's job — a matrix widens
-// into it as Col1..N), or take a "Keep if" mask (filtering one list by a
-// PARALLEL list is SUMIFS below for aggregation, or Frame from Lists → Filter
-// Rows for the filtered list itself). Kept ∪ Dropped stays the exhaustive
-// complement: a null/error cell fails its condition and lands in Dropped.
+// A list tested against ITS OWN values (D16) — deliberately no table input and no
+// "Keep if" mask. Kept ∪ Dropped stays the exhaustive complement.
 
 /** Re-export so the barrel keeps one FilterCombine (the frame Filter's). */
 export type { FilterCombine } from "../frameVerbs";
@@ -535,13 +464,9 @@ function listElemColType(arr: readonly unknown[]): FrameColType {
   return "number";
 }
 
-/** Read a Filter/SUMIFS Value slot: the wired value wins over the literal even
- *  when it's `null` (the readInput rule). Returns **null for a WIRED blank** —
- *  the condition's comparison value is UNKNOWN, which is not the same as the
- *  empty literal's "not written yet" (value-semantics.md, "Reading an input").
- *  A wired scalar STRINGIFIES, so both engines see exactly what a typed literal
- *  would say ("5", "true", a date serial); a wired SolError becomes its code
- *  text, which matches no rows (the unparseable-value rule). */
+/** Null for a WIRED blank (the comparison value is UNKNOWN, unlike the empty
+ *  literal's "not written yet"); a wired scalar stringifies so both engines see
+ *  what a typed literal would say. */
 export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {
   const raw: unknown = wired === undefined || wired.length === 0 ? (literal ?? "") : (wired[0] ?? null);
   if (raw === null) return null;
@@ -586,18 +511,16 @@ export class FilterNode extends ClassicPreset.Node {
     this.addOutput("dropped", adoptiveListOut("Dropped"));
   }
 
-  /** Element-preserving: filtering keeps the element type (and unit / number
-   *  format), so BOTH outputs adopt the wired input's concrete type — a numeric
-   *  list in reads as a numeric list out (not an opaque `anylist`), and the cable
-   *  connects to a typed consumer. See passthrough.ts + the data() note on units. */
+  /** Element-preserving: both outputs adopt the wired input's concrete type, so a
+   *  typed consumer still connects. */
   passthrough = (): PassthroughSpec[] => [
     { output: "result", inputs: ["list"], combine: "single" },
     { output: "dropped", inputs: ["list"], combine: "single" },
   ];
 
   private addCondWithId(id: number): void {
-    // `any` (scalar): a wired Slider/Number/Date/Boolean threshold connects;
-    // unwired, the typed text field is the literal (parsed per the list's type).
+    // `any` scalar: any wired threshold connects; unwired, the typed field is the
+    // literal, parsed per the list's type.
     this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
     if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
     this.nextCondId = Math.max(this.nextCondId, id + 1);
@@ -627,11 +550,8 @@ export class FilterNode extends ClassicPreset.Node {
       this.cachedDropped = null;
       return { result: null, dropped: null };
     }
-    // The node is a passthrough (see passthrough()), so a dimensioned input arrives
-    // with its `UnitCell` tags intact. Unwrap each cell to its DISPLAY magnitude for
-    // the predicate + type detection (passesFilter does numeric compares — a raw cell
-    // Number()s to NaN), but keep the ORIGINAL cells for the outputs so the kept /
-    // dropped lists stay dimensioned. A plain list has no cells to strip — no-op.
+    // Tags arrive intact (passthrough), so predicate + type detection run on unwrapped
+    // magnitudes while the OUTPUTS keep the original cells and stay dimensioned.
     const mags = arr.map(stripUnitCells);
     const type = listElemColType(mags);
     const conds: { op: FilterOp; value: string; matchCase: boolean }[] = [];
@@ -643,10 +563,8 @@ export class FilterNode extends ClassicPreset.Node {
       // The blank / error predicates take no value — an empty field doesn't mean
       // "not written yet" for them, it's the whole point.
       const valueless = VALUELESS_FILTER_OPS.has(op);
-      // A WIRED blank comparison value makes this condition unevaluable, so which
-      // elements survive is unknown — the result is blank, not the unfiltered list
-      // (value-semantics.md, "Reading an input"). The EMPTY literal still means
-      // "not written yet" and skips the condition.
+      // A WIRED blank comparison value is unevaluable → blank result, not the
+      // unfiltered list; the EMPTY literal still just skips the condition.
       if (!valueless && val === null) {
         this.cachedResult = null; this.cachedDropped = null;
         return { result: null, dropped: null };
@@ -676,12 +594,8 @@ export class FilterNode extends ClassicPreset.Node {
 }
 
 // ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
-// Conditional aggregation over ONE FRAME (D16, amended): aggregate the Values
-// COLUMN over the rows where every criteria row (column + op + value) passes —
-// AND-only like Excel's *IFS. The 2026-07-06 standing rule applies: position-
-// aligned columns arrive as a frame, never as parallel list sockets the user
-// lines up by hand (parallel lists route through Frame from Lists first).
-// A blank/error criteria cell fails that criterion.
+// Conditional aggregation over ONE FRAME, AND-only like Excel's *IFS: position-
+// aligned columns arrive as a frame, never as parallel list sockets (D16).
 
 export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
 
@@ -768,9 +682,7 @@ export class SumIfsNode extends ClassicPreset.Node {
       const op: FilterOp = cfg?.op ?? "eq";
       const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
       const valueless = op === "isblank" || op === "notblank"; // no value to write
-      // A WIRED blank column or comparison value makes this criterion unevaluable —
-      // the aggregate is unknown, not "row not written yet" (value-semantics.md,
-      // "Reading an input").
+      // A WIRED blank column or value is unevaluable, so the aggregate is unknown.
       if (nameRaw === null || (!valueless && val === null)) return finish(null);
       const name = String(nameRaw).trim();
       if (name === "" || (!valueless && val!.trim() === "")) continue; // row not written yet
@@ -782,8 +694,7 @@ export class SumIfsNode extends ClassicPreset.Node {
     const n = frameRowCount(f);
     const passes = (i: number) => crits.every((c) =>
       passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase));
-    // COUNTIFS runs on the criteria alone (Excel takes no values range); the
-    // others aggregate the Values column and need it named.
+    // COUNTIFS takes no values range (Excel); the others need the column named.
     if (this.op === "countifs") {
       let count = 0;
       for (let i = 0; i < n; i++) if (passes(i)) count++;
@@ -801,9 +712,7 @@ export class SumIfsNode extends ClassicPreset.Node {
     const prep = forAggregate(kept);
     if (prep.error) return finish(prep.error);
     const nums = prep.nums;
-    // A values column LOCKED to a dimensional unit (Bundle 05) re-tags the result —
-    // sum/avg/min/max all preserve the column's dimension. A no-op for an unlocked
-    // column (tagDim collapses a dimensionless tag to a bare number).
+    // sum/avg/min/max all preserve a locked column's dimension, so the result re-tags.
     const dim: Dim = vcol.unit ? vcol.unit.dim : DIMENSIONLESS;
     const tag = (n: number): number | UnitCell => (isDimensionless(dim) ? n : tagDim(n, dim));
     switch (this.op) {
@@ -832,8 +741,7 @@ export class UniqueNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][] }) {
     const arr = (inputs.list?.[0] ?? []) as unknown[];
-    // Kernel: first-seen dedupe by VALUE (setKey — VAL-8), with every error cell
-    // surviving deterministically ("10 values + 3 errors = 3 fixes").
+    // First-seen dedupe by VALUE (setKey), every error cell surviving deterministically.
     this.cachedList = uniqueList(arr) as number[];
     return { result: this.cachedList };
   }
@@ -841,18 +749,11 @@ export class UniqueNode extends ClassicPreset.Node {
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
-// A complex number is a tagged OBJECT (VAL-15), and a JS Set/Map keys objects by
-// REFERENCE — so two equal complexes from different sources would never match.
-// Key membership by VALUE instead: a complex canonicalizes
-// to a string via setKey (listOps.ts), every primitive (number incl. a date serial,
-// string, boolean) stays itself. Used by every Set/membership/tally node below.
+// Membership must key by VALUE: a complex is a tagged OBJECT, and a JS Set keys
+// objects by REFERENCE, so two equal complexes would never match.
 
-// label = the plain-English dropdown text (no notation — the KaTeX line under the
-// selector carries the symbols); tex = the set notation rendered on the card; plain =
-// the Unicode fallback shown until the KaTeX chunk loads.
-// `fx` = the formula name. D19 2(a) says "the node label despaced", which works only
-// while a label is a NAME; these are sentences, so each op declares its formula name
-// beside its label rather than in a parallel map somewhere else.
+// label / tex / plain = dropdown text, KaTeX notation, Unicode fallback. `fx` is
+// declared per op because D19's "label despaced" rule only works on NAMES.
 export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string; plain: string }> = {
   union:      { label: "Union: in A or B",             fx: "SETUNION",      tex: "A \\cup B",                plain: "A ∪ B" },
   intersect:  { label: "Intersection: in both",        fx: "SETINTERSECT",  tex: "A \\cap B",                plain: "A ∩ B" },
@@ -860,13 +761,9 @@ export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string
   symdiff:    { label: "Symmetric difference: in one only", fx: "SETSYMDIFF", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
-// Set operations over two lists — the gap Excel never filled (it ships only UNIQUE, no
-// intersect/except/union). "Which customers are in this list but not that one" is one
-// dropdown away here. Compares by VALUE, preserving first-seen order and deduping the
-// result the way UNIQUE does. Blank (null) cells aren't members and are ignored. An error
-// cell is never equal to anything, so it can't match across sides — it passes through
-// where it belongs (kept in union, and on the A-side of difference / symmetric difference;
-// dropped from intersection) rather than silently vanishing, same stance as UNIQUE.
+// Set operations over two lists, compared by VALUE with first-seen order and UNIQUE's
+// dedupe. Blanks aren't members; an error equals nothing, so it passes through where
+// it sits (union, the A-side of difference) rather than vanishing.
 export class SetOpNode extends ClassicPreset.Node {
   /** Element-preserving: the result is a subset of A ∪ B, so the output adopts
    *  the agreed element type (a strlist ∖ strlist stays a strlist). */
@@ -880,7 +777,6 @@ export class SetOpNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SetOp }) {
     super("Set");
     this.label = init?.label ?? "Set";
-    // Default to the most-asked op (the "in X but not Y" subreddit staple).
     this.op = init?.op ?? "difference";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
@@ -888,8 +784,7 @@ export class SetOpNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
-    // The passthrough declaration keeps UnitCells on a/b; membership keys by
-    // display magnitude (the pre-units behavior) — strip before matching.
+    // Tags survive the passthrough, but membership keys by display magnitude.
     const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
     const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
 
@@ -899,12 +794,8 @@ export class SetOpNode extends ClassicPreset.Node {
 }
 
 // ─── Is In (membership mask) — Set & Relational pack ─────────────────────────
-// Elementwise Contains: for each item of A, TRUE/FALSE whether it appears in B —
-// a logical list ALIGNED to A (the Excel `ISNUMBER(MATCH(...))` idiom). Pairs
-// with Filter to keep original rows; the scalar Contains node only answers for
-// one needle. Membership stance matches the Set node: blank and error cells of
-// B aren't members; an A-side blank stays blank (missing propagates), an A-side
-// error propagates per cell.
+// A logical list ALIGNED to A. Membership stance matches the Set node: B's blanks and
+// errors aren't members; an A-side blank or error propagates per cell.
 export class IsInNode extends ClassicPreset.Node {
   label: string;
   cachedList: unknown[] = [];
@@ -926,10 +817,8 @@ export class IsInNode extends ClassicPreset.Node {
   }
 }
 
-/** Membership mask of `a` against the set `b` — the node's core, shared with
- *  the Set & Relational pack's ISIN formula. Blank/error cells of `b` aren't
- *  members; an `a`-side blank stays blank, an `a`-side error propagates per
- *  cell. */
+/** Membership mask of `a` against set `b`, shared with the pack's ISIN formula:
+ *  b's blanks/errors aren't members, and an a-side blank or error propagates. */
 export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean | null | SolError)[] {
   const members = new Set<unknown>();
   for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
@@ -941,10 +830,8 @@ export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean
 }
 
 // ─── Tally (value counts) — Set & Relational pack ─────────────────────────────
-// Distinct value → occurrence count, as a two-column Frame — the bare-list
-// shortcut for what Group By already does over a frame (Excel: a one-column
-// pivot table, or GROUPBY in 365). First-seen order; blank and error cells
-// aren't counted (the count is about the real values, same stance as Set).
+// Distinct value → count as a two-column Frame, first-seen order; blanks and errors
+// aren't counted (same stance as Set).
 export class TallyNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
@@ -973,9 +860,8 @@ export class TallyNode extends ClassicPreset.Node {
   }
 }
 
-/** Distinct values (first-seen order, keyed by value so equal complexes tally
- *  together, blank/error cells skipped) with their occurrence counts — the
- *  node's core, shared with the Set & Relational pack's TALLY formula. */
+/** Distinct values with counts, keyed by VALUE so equal complexes tally together;
+ *  blank/error cells are skipped. Shared with the pack's TALLY formula. */
 export function tallyPairs(list: readonly unknown[]): { values: unknown[]; counts: number[] } {
   const counts = new Map<unknown, { value: unknown; count: number }>();
   for (const v of list) {
@@ -990,8 +876,6 @@ export function tallyPairs(list: readonly unknown[]): { values: unknown[]; count
 
 export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
 
-// label = plain-English dropdown text; tex = the KaTeX relation on the card; plain =
-// the Unicode fallback shown until the KaTeX chunk loads.
 export const SET_RELATION_META: Record<SetRelation, { label: string; fx: string; tex: string; plain: string }> = {
   equal:    { label: "Equal: same set",         fx: "SETEQUAL",    tex: "A = B",                    plain: "A = B" },
   subset:   { label: "Subset: A within B",      fx: "SETSUBSET",   tex: "A \\subseteq B",           plain: "A ⊆ B" },
@@ -999,14 +883,9 @@ export const SET_RELATION_META: Record<SetRelation, { label: string; fx: string;
   disjoint: { label: "Disjoint: no overlap",    fx: "SETDISJOINT", tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
 };
 
-// Set RELATION tests — predicates that answer TRUE/FALSE about two lists as sets. The
-// companion to the Set node (which PRODUCES a set): here you ask "are these the same
-// set?", "is every A also in B?", "do they share nothing?" — questions Excel makes you
-// assemble out of COUNTIF / SUMPRODUCT. Compares by VALUE over each side's distinct
-// members; blank (null) and error cells aren't members (same stance as the Set node), so
-// the answer is about the real values. Both inputs unwired → null (indeterminate). The
-// empty-set edge cases follow set theory: ∅ ⊆ anything, ∅ is disjoint with anything,
-// ∅ = ∅.
+// Set RELATION predicates over each side's distinct members, compared by VALUE;
+// blanks and errors aren't members, both sides unwired → null, and the empty-set
+// cases follow set theory (∅ ⊆ anything, ∅ disjoint with anything, ∅ = ∅).
 export class SetRelationNode extends ClassicPreset.Node {
   label: string;
   op: SetRelation;
@@ -1038,8 +917,7 @@ export class SetRelationNode extends ClassicPreset.Node {
 export type TakeDir = "first" | "last";
 
 export class TakeNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   op: TakeDir;
@@ -1072,8 +950,7 @@ export class TakeNode extends ClassicPreset.Node {
 export type DropDir = "first" | "last";
 
 export class DropNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   op: DropDir;
@@ -1104,15 +981,10 @@ export class DropNode extends ClassicPreset.Node {
   }
 }
 
-// Joins lists end-to-end and stays 1-D (VSTACK in matrix.ts is the table
-// stacker — appending and stacking are different operations). The 1-D rung of the APPEND
-// LADDER (decisions.md D15): N extensible element-agnostic rows (anylist — a
-// scalar widens to a 1-element list, so "push one value" needs no wrapper),
-// concatenated in row order. Rows are wire-only: a typed literal list belongs
-// to List Input, not here.
+// The 1-D rung of the append ladder (D15): stays 1-D, VSTACK is the table stacker.
+// Rows are wire-only — a typed literal list belongs to List Input.
 export class ConcatListsNode extends ClassicPreset.Node {
-  /** Element-preserving: the output is exactly the rows' cells in order, so it
-   *  adopts the agreed row type (all strlist rows → a strlist out). */
+  /** Element-preserving: the output adopts the agreed row type. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: this.valueInputKeys(), combine: "agree" }];
   label: string;
   cachedList: unknown[] = [];
@@ -1159,8 +1031,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
 
 export type CumulativeOp = "cumsum" | "cummax" | "cummin" | "cumprod";
 
-// Named the way the sibling Rolling family is ("Rolling SUM"), so the two read as one
-// pair of ideas: Rolling is a sliding window, Running is every element so far.
+// Rolling is a sliding window, Running is every element so far.
 export const CUMULATIVE_OP_META = {
   cumsum:  { label: "Running SUM",     description: "Running total: each element is the sum of every element up to it." },
   cumprod: { label: "Running PRODUCT", description: "Running product of every element up to each position." },
@@ -1251,9 +1122,8 @@ export class ContainsNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Contains");
     this.label = init?.label ?? "CONTAINS";
-    // Membership is type-generic (the kernel keys by setKey — VAL-8 was written
-    // for it), so the sockets match the Set/Is In/Tally siblings: any-element
-    // list, adoptive needle, LOGICAL answer.
+    // Membership is type-generic (setKey), so the sockets match the Set/Is In/Tally
+    // siblings: any-element list, adoptive needle, LOGICAL answer.
     this.addInput("list",  anyListIn("List"));
     this.addInput("value", anyIn("Value"));
     this.addOutput("result", logicalOut("Found"));
@@ -1263,8 +1133,7 @@ export class ContainsNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? null;
     const v = readInput(inputs.value, this.literals.value as unknown);
     let result: boolean | null = null;
-    // A blank needle can't be looked for — unknown, not "not asked yet"
-    // (value-semantics.md, "Reading an input").
+    // A blank needle can't be looked for — unknown, not "not asked yet".
     if (arr !== null && v !== null && v !== undefined) result = containsValue(arr, v);
     this.cachedResult = result;
     return { result };
@@ -1345,15 +1214,13 @@ export class RepeatNode extends ClassicPreset.Node {
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 150;
-  // Volatile: the random order is fixed until a recalc (or the input length
-  // changes), so editing an unrelated node doesn't reshuffle. We keep per-slot
-  // sort keys rather than a fixed permutation so live input values flow through.
+  // Volatile: per-slot sort keys, not a fixed permutation, so live values flow
+  // through while the order holds until a recalc.
   private keys: number[] = [];
   private lastGen = -1;
 
@@ -1379,8 +1246,7 @@ export class ShuffleNode extends ClassicPreset.Node {
 
 // ─── NthElement ───────────────────────────────────────────────────────────────
 export class NthElementNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] | null = [];
@@ -1439,8 +1305,7 @@ export const PAD_OP_META = {
 } satisfies Record<PadDir, { label: string; description: string }>;
 
 export class PadNode extends ClassicPreset.Node {
-  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
-   *  date list stays a date list) — see passthrough.ts. */
+  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   op: PadDir;
@@ -1625,12 +1490,8 @@ export const REDUCE_OP_META = {
   kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
 } satisfies Record<ReduceOp, { label: string; description: string }>;
 
-// NB: the user-facing identity is "Aggregate" (header title, hover type hint via
-// constructor.name, status bar). It is NOT the table-taking REDUCE lambda
-// (`ReduceLambdaNode`) — it's a fixed-op 1-D list aggregator (SUM/AVERAGE/MEDIAN/
-// STDEV/…), so its input is a `list`, not a `table`. The internal op tokens
-// (`ReduceOp`, `REDUCE_OP_META`, the `reduce-${op}` catalog ids) keep the
-// `reduce` prefix — never user-visible.
+// The user-facing identity is "Aggregate", a fixed-op 1-D list aggregator — NOT the
+// table-taking REDUCE lambda. The `reduce` op tokens are never user-visible.
 // How an aggregate transforms the shared dimension of its inputs:
 //   preserve (sum/avg/min/max/median/geomean/harmean/stdev/spread) → same dim ·
 //   square (var/devsq/sumsq) → dim² · product → dimⁿ · everything else (count,
@@ -1668,12 +1529,9 @@ export class AggregateNode extends ClassicPreset.Node {
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
-    // Aggregator policy: a SolError in the list PROPAGATES; `null` (missing) is
-    // SKIPPED; a DIMENSIONLESS cell (a bare number) ADOPTS the list's real unit
-    // (SUM($5, $2, 3) = $10), and only two genuinely different real dimensions are a
-    // #UNIT!. Base-SI storage means commensurable-but-differently-authored cells
-    // (km + m) are already unified — no conversion step. No-op for all-number lists
-    // (dim = dimensionless → the result re-tags to a bare number, unchanged).
+    // Aggregator policy: a SolError PROPAGATES, `null` is SKIPPED, a dimensionless
+    // cell ADOPTS the list's real unit (SUM($5, $2, 3) = $10), and only two genuinely
+    // different dimensions are #UNIT! (base-SI storage already unifies km + m).
     const prep = forAggregateUnits(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
@@ -1771,16 +1629,13 @@ export class AggregateNode extends ClassicPreset.Node {
         }
       }
     } else if (this.op === "count" || this.op === "sum") {
-      // Empty/all-null input: SUM is 0 and PRODUCT is 1 (the additive/multiplicative
-      // identities — matching the formula path and aggregateGroup).
+      // Empty/all-null: SUM is 0, PRODUCT is 1 — the identities, matching the formula path.
       result = 0;
     } else if (this.op === "product") {
       result = 1;
     }
-    // Re-tag the reduced magnitude with the op's result dimension (a no-op for
-    // dimensionless data — tagDim collapses it back to a bare number). Keep the
-    // display unit only when the op PRESERVES the dimension (SUM/AVG/MIN/MAX of $ →
-    // $), not when it changes it (PRODUCT/SUMSQ/VAR derive a new dim).
+    // Keep the display unit only where the op PRESERVES the dimension; PRODUCT/SUMSQ/
+    // VAR derive a new one.
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
     const tagged: number | UnitCell | null =
       result !== null && !isDimensionless(dim)
@@ -1793,18 +1648,16 @@ export class AggregateNode extends ClassicPreset.Node {
 
 // ─── RANDARRAY ────────────────────────────────────────────────────────────────
 
-// Upper bound on a generated list's length. A generator asked for an absurd count
-// (a typo, or a wired value) would otherwise allocate an enormous array that
-// freezes the UI; cap it and return #OVERFLOW! (count out of range) instead.
-// The ceiling lives in listOps.ts so the formula registrations share this exact number.
+// An absurd count would allocate an array that freezes the UI, so it caps to
+// #OVERFLOW!; the ceiling lives in listOps.ts so the formulas share this number.
 
 export class RandArrayNode extends ClassicPreset.Node {
   label: string;
   cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 }; // min/max ship unset → muted 0/1 placeholders
   width = 180; height = 225;
-  // Volatile: raw [0,1) rolls are fixed until a recalc (or the count changes);
-  // min/max are applied live so wiring new bounds rescales the same draws.
+  // Volatile: the raw [0,1) rolls hold until a recalc, but min/max apply live so new
+  // bounds rescale the SAME draws.
   private rolls: number[] = [];
   private lastGen = -1;
 
@@ -1882,9 +1735,8 @@ export class SequenceNode extends ClassicPreset.Node {
 // ─── SORTBY ───────────────────────────────────────────────────────────────────
 
 export class SortByNode extends ClassicPreset.Node {
-  /** Element-preserving reorder: the output adopts the sorted array's type (the
-   *  by_array keys are a side input — not in the spec, so they stay unit-blind
-   *  numbers for the comparison). */
+  /** The output adopts the sorted array's type; by_array keys are a side input and
+   *  stay unit-blind. */
   passthrough = (): PassthroughSpec[] => [{ output: "list", inputs: ["array"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
@@ -1893,10 +1745,8 @@ export class SortByNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("SortBy");
     this.label = init?.label ?? "SORTBY";
-    // The array being reordered is POSITION-ONLY (element-agnostic, `anylist` per
-    // the D15 sweep) — so a text/date/logical list sorts by a parallel key too
-    // ("names by scores"). Only the by_array keys drive comparison, so they stay
-    // numeric (widening those to text keys is the deferred string-ordering call).
+    // The reordered array is POSITION-ONLY (anylist), so any element family sorts by
+    // a parallel key; only the by_array keys drive comparison, so they stay numeric.
     this.addInput("array",    anyListIn("Array to sort"));
     this.addInput("by_array", listIn("Sort by (parallel list)"));
     this.addOutput("list", adoptiveListOut("Sorted list"));
@@ -1905,10 +1755,8 @@ export class SortByNode extends ClassicPreset.Node {
   data(inputs: { array?: unknown[][]; by_array?: (number | null | SolError)[][] }): { list: unknown[] } {
     const arr = inputs.array?.[0] ?? [];
     const by  = inputs.by_array?.[0] ?? [];
-    // Ragged inputs pad to the LONGEST with null (never silently drop a value);
-    // a null/error KEY sends its row to the tail, stably, matching the frame
-    // sort's blanks-last policy — so a value whose key is missing still comes
-    // through, just last.
+    // Ragged inputs pad to the LONGEST with null (never drop a value); a null/error
+    // KEY sorts stably to the tail, matching the frame sort's blanks-last policy.
     const list = sortByKeys(arr, by);
     this.cachedList = list;
     return { list };
@@ -1964,7 +1812,6 @@ export class XMatchNode extends ClassicPreset.Node {
       }
       result = bestIdx === -1 ? null : bestIdx + 1;
     }
-    // A wired array with no match is Excel #N/A; an unwired array stays blank.
     if (wired !== null && result === null) {
       result = solError("#N/A", "No match found in the array");
     }
@@ -1997,8 +1844,7 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
 }
 
 export class GroupByNode extends ClassicPreset.Node {
-  /** The unique-keys output is a SUBSET of the keys input (first occurrences),
-   *  so it adopts the keys' element type; the aggregated values stay numeric. */
+  /** The unique keys adopt the keys input's element type; the values stay numeric. */
   passthrough = (): PassthroughSpec[] => [{ output: "keys", inputs: ["keys"], combine: "single" }];
   label: string;
   op: GroupByOp;
@@ -2020,9 +1866,8 @@ export class GroupByNode extends ClassicPreset.Node {
     keys?:   unknown[][];
     values?: number[][];
   }): { keys: (string | number)[]; values: number[] } {
-    // The passthrough declaration keeps UnitCells on `keys`; grouping keys by
-    // String(cell) — strip to display magnitudes first (the pre-units behavior)
-    // so a tagged key list still buckets by value, not object identity.
+    // Grouping keys by String(cell), so tags must be stripped first or a tagged key
+    // list buckets by object identity.
     const rawKeys = stripUnitCells(inputs.keys?.[0]) as unknown[] | undefined;
     const rawVals = inputs.values?.[0] ?? [];
 
@@ -2055,21 +1900,16 @@ export class GroupByNode extends ClassicPreset.Node {
 }
 
 // ─── Coalesce / Fill ────────────────────────────────────────────────────────────
-// The explicit opt-in to "treat `null` as something" — the inverse of the skip-null
-// aggregators. One bundled node (op dropdown, like Aggregate) for missing-value
-// handling. A per-cell SolError is NOT missing, so every mode passes errors through
-// untouched (it FILLS gaps, it doesn't repair errors); statistics impute from the
-// PRESENT finite numbers only (skip null AND error).
+// The explicit opt-in to treating `null` as something. A per-cell SolError is NOT
+// missing: every mode passes errors through, and imputation uses present finites only.
 
 export type FillOp =
   | "constant" | "ffill" | "bfill"
   | "mean" | "median" | "mode"
   | "interpolate" | "drop" | "coalesce";
 
-// `fx` = the formula name, declared rather than despaced. Despacing these labels
-// would give FILLWITHVALUE next to FORWARDFILL — one family reading as two — and
-// `interpolate` would COLLIDE with the INTERPOLATE node in stats.ts. One FILL* family,
-// plus SQL's COALESCE, which is the name the card already uses for that op.
+// `fx` is declared, not despaced: despacing would split the FILL* family and collide
+// with the INTERPOLATE node in stats.ts.
 export const FILL_OP_META = {
   constant:    { label: "Fill with value",  fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
   ffill:       { label: "Forward fill",     fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
@@ -2084,14 +1924,11 @@ export const FILL_OP_META = {
 
 type Cell = number | null | SolError;
 
-/** Present finite numbers only — gaps (null) and per-cell errors are excluded, so
- *  an imputation statistic is computed from real data (per P3 skip-null). */
+/** Present finite numbers only, so an imputation statistic uses real data. */
 
 
-/** Linear interpolation of interior gaps: each null between two present finite
- *  numbers is filled along the straight line by index. Leading/trailing gaps (no
- *  bracket on one side) stay null — no extrapolation. A non-finite/error cell is a
- *  hard boundary (not a value to interpolate from), so gaps beside it stay null. */
+/** Interior gaps only: unbracketed leading/trailing gaps stay null (no extrapolation),
+ *  and a non-finite/error cell is a hard boundary, not a value to interpolate from. */
 
 export class FillNode extends ClassicPreset.Node {
   label: string;
@@ -2107,10 +1944,8 @@ export class FillNode extends ClassicPreset.Node {
     this.op = init?.op ?? "constant";
     this.addInput("list",  listIn("List"));
     this.addInput("value", numIn("Fill with")); // shown for the constant mode
-    // Coalesce fallbacks: extensible "Else" rows (e0, e1, …) — full N-ary
-    // COALESCE, shown for the coalesce mode. extractInit's valueKeys snapshot
-    // includes the fixed inputs; filter to the keys this node owns (the CHOOSE
-    // convention).
+    // extractInit's valueKeys snapshot includes the fixed inputs, so filter to the
+    // "Else" row keys this node owns (the CHOOSE convention).
     const elseInit = init?.valueKeys?.filter((k) => /^e\d+$/.test(k)) ?? [];
     if (elseInit.length) for (const k of elseInit) this.addElseInput(k);
     else this.addValueInput();
@@ -2138,10 +1973,8 @@ export class FillNode extends ClassicPreset.Node {
     return Object.keys(this.inputs).filter((k) => /^e\d+$/.test(k));
   }
 
-  // The missing-value sibling of IFERROR (the 2×2: detect × recover), so it passes
-  // units the same way: coalesce agrees across the list + its Else fallbacks; every
-  // other fill mode fills FROM the list's own values (or a dimensionless constant),
-  // so the list's unit rides through. Not `pure` — cells do change.
+  // Passes units like IFERROR: coalesce agrees across the list and its Else rows, and
+  // every other mode fills from the list's own values, so its unit rides through.
   passthrough(): PassthroughSpec[] {
     return this.op === "coalesce"
       ? [{ output: "result", inputs: ["list", ...this.elseKeys()], combine: "agree" }]
@@ -2151,15 +1984,11 @@ export class FillNode extends ClassicPreset.Node {
   data(inputs: { list?: Cell[][]; value?: number[] } & Record<string, Cell[][] | number[] | undefined>) {
     const arr = inputs.list?.[0] ?? null;
     if (!arr) { this.cachedList = []; return { result: [] }; }
-    // A wired blank fill value fills a missing WITH a missing — the honest per-cell
-    // propagation, so those cells stay blank rather than taking the number typed on
-    // the card (value-semantics.md, "Reading an input").
+    // A wired blank fill value fills a missing WITH a missing — those cells stay
+    // blank rather than taking the number typed on the card.
     const constant = readInput(inputs.value, this.literals.value ?? 0);
-    // Coalesce is N-ary: List first, then each Else row in order. A wired row
-    // contributes its list (a longer one EXTENDS the output, matching the old
-    // 2-source behavior); an unwired row with a typed literal is a broadcast constant
-    // (the last-resort-default idiom, doesn't extend); an untouched row contributes
-    // nothing.
+    // N-ary in row order: a wired row contributes its list and may EXTEND the output;
+    // an unwired typed literal broadcasts without extending; an untouched row is nothing.
     const fallbacks: (Cell[] | number | null)[] = this.elseKeys().map((k) => {
       const wired = (inputs[k] as Cell[][] | undefined)?.[0];
       if (Array.isArray(wired)) return wired;

@@ -12,8 +12,7 @@ import { settingsStore } from "./settingsStore";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { measuredBox } from "./nodeSize";
 
-// Expand-time neighbor displacement. Push records are in-memory only: a reload
-// keeps everything where it is.
+// Push records are in-memory only: a reload keeps everything where it is.
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
@@ -45,9 +44,7 @@ function position(area: Area, id: string) {
   return area.nodeViews.get(id)?.position;
 }
 
-// Move a pushed (or restored) entity by (dx, dy): a group carries its members,
-// a loose node carries any FC docked to it. Also used by the standoff settle
-// pass in Canvas (exported as translateEntityBy).
+// A group carries its members; a loose node carries any FC docked to it.
 export function translateEntityBy(editor: Editor, area: Area, id: string, dx: number, dy: number): void {
   translatePushed(editor, area, id, dx, dy);
 }
@@ -69,10 +66,8 @@ function translatePushed(editor: Editor, area: Area, id: string, dx: number, dy:
 }
 
 // ─── World snapshot ────────────────────────────────────────────────────────────
-// The movable boxes: every group + every loose node (not a member of any group
-// — those ride their group — and not docked — those follow their host). Groups
-// in `expandedIds` use their stored expanded size (the element may still be
-// mid-render); everything else its rendered element size.
+// Movable boxes = every group + every loose (ungrouped, undocked) node. Groups in
+// `expandedIds` use their STORED size — their element may still be mid-render.
 
 interface World {
   boxes: Map<string, PushBox>;
@@ -98,16 +93,12 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
     } else {
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
-      // measuredBox: the shared size chokepoint (live size → stored mirror →
-      // collapse-aware fallback) so the push math agrees with align/autofit.
+      // The shared size chokepoint, so the push math agrees with align/autofit.
       const mb = measuredBox(area, n.id, editor);
       const w = mb?.w ?? 100;
       const h = mb?.h ?? 50;
-      // Reserve room for an output-docked FC's footprint (mirrors Canvas.tsx's
-      // Tidy-path hostFootprint reservation): the FC has no box of its own here
-      // (it rides along via translatePushed's dockedNodeStore.getDockedTo loop),
-      // so without this the push/overlap math is blind to the space it visually
-      // occupies and can shove another box flush against — or under — it.
+      // A docked FC has no box of its own, so without reserving its width the
+      // overlap math shoves another box under it.
       let fcW = 0;
       for (const d of dockedNodeStore.getDockedTo(n.id)) {
         if (d.side !== "output") continue;
@@ -122,10 +113,8 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
   return { boxes, looseIds, origin };
 }
 
-// Loose nodes wired to this group's members, classified by dataflow direction.
-// alignCy is the mean center-y of the members it connects to — in WORLD coords,
-// i.e. corrected by however far this group has already been shifted within the
-// current batch (members only physically move when the batch applies).
+// alignCy is in WORLD coords — corrected by however far this group has already
+// shifted within the batch, since members only physically move when it applies.
 function satellitesFor(editor: Editor, area: Area, g: GroupNode, world: World): Map<string, Satellite> {
   const members = new Set(g.members);
   const gBox = world.boxes.get(g.id);
@@ -164,13 +153,9 @@ function satellitesFor(editor: Editor, area: Area, g: GroupNode, world: World): 
   return out;
 }
 
-// Connection anchors: for every movable entity, the points its cables to
-// OTHER entities land on (the other end's box center, resolved to its push
-// entity — a member counts as its group, a docked FC as its host). A displaced
-// box clears toward its anchors so connections stay short: expanding group C
-// over a node wired to group A hops it out on A's side, not blindly
-// right/down. Satellites of the expanding group are excluded — the rails
-// already handle their pull.
+// A displaced box clears TOWARD its anchors so cables stay short; each anchor
+// resolves to its push entity (a member counts as its group, a docked FC as its
+// host). Satellites of the expanding group are excluded — the rails pull them.
 function buildAnchors(
   editor: Editor,
   world: World,
@@ -204,16 +189,13 @@ function buildAnchors(
     add(t, s);
   }
   for (const id of satellites.keys()) out.delete(id);
-  // Groups clear GEOMETRICALLY (away from the expander), never toward their
-  // cables: a whole group chasing its connections piles interconnected groups
-  // onto each other — in a multi-expand they collapse to nearly one spot. Only
-  // loose nodes get the cable-aware hop. (See groupPushCore clearShift.)
+  // Groups must clear GEOMETRICALLY, never toward their cables — a group chasing
+  // its connections piles interconnected groups onto one spot in a multi-expand.
   for (const id of groupIds) out.delete(id);
   return out;
 }
 
-// The collapsed card's rendered size — measured BEFORE the expand flips the
-// element, with the layout formula as fallback.
+// Must be measured BEFORE the expand flips the element; layout formula as fallback.
 function collapsedCardSize(area: Area, g: GroupNode): { w: number; h: number } {
   const el = area.nodeViews.get(g.id)?.element;
   if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
@@ -228,10 +210,8 @@ function collapsedCardSize(area: Area, g: GroupNode): { w: number; h: number } {
 }
 
 // ─── Expand: run the core per group over one shared box world ─────────────────
-// Groups expanded together are processed top-left → bottom-right over the SAME
-// in-memory boxes (translates are async; reading the DOM between passes would
-// see stale positions). Total displacements apply once at the end, each
-// attributed to every group whose pass contributed.
+// Passes run over the SAME in-memory boxes — translates are async, so reading the
+// DOM between them would see stale positions; totals apply once at the end.
 
 function runExpandPushes(
   editor: Editor,
@@ -275,9 +255,8 @@ function runExpandPushes(
     }
   }
 
-  // Standoff cohesion: a standoff-connected cluster moves as ONE rigid block —
-  // every member of a touched cluster takes the cluster's LARGEST push, keeping
-  // relative offsets intact, BEFORE the constraint solve below confirms.
+  // A standoff cluster moves as ONE rigid block: every member takes the cluster's
+  // LARGEST push, keeping relative offsets intact.
   if (!standoffStore.isEmpty()) {
     for (const cluster of standoffClusters(standoffStore.all())) {
       let lead: Disp = { dx: 0, dy: 0 };
@@ -289,8 +268,8 @@ function runExpandPushes(
         if (mag > leadMag) { leadMag = mag; lead = t; }
       }
       if (leadMag === 0) continue; // this push didn't touch the cluster
-      // The block's attribution is the union of its members' — so a later
-      // collapse restores the whole cluster together.
+      // Attribution is the union of the members', so a later collapse restores the
+      // whole cluster together.
       const groups = new Set<string>();
       for (const id of cluster) for (const g of attribution.get(id) ?? []) groups.add(g);
       for (const id of cluster) {
@@ -306,9 +285,8 @@ function runExpandPushes(
     }
   }
 
-  // Standoffs outrank the heuristics: settle the constraint network over the
-  // post-push virtual boxes (expanded groups pinned) and fold the corrections
-  // into the same totals/records, so collapse snaps everything back together.
+  // Standoffs outrank the heuristics; the corrections fold into the same
+  // totals/records so collapse snaps everything back together.
   if (!standoffStore.isEmpty()) {
     const plain = new Map<string, StandoffBox>(
       [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
@@ -329,12 +307,9 @@ function runExpandPushes(
     }
   }
 
-  // Hard backstop, the FINAL word: separate EVERY remaining overlap. A standoff
-  // CLUSTER is ONE RIGID unit (its combined bbox) so the de-overlap never tears
-  // it; the forceLock settle above already keeps a cluster internally
-  // non-overlapping. Monotonic (+x/+y) ⇒ always terminates overlap-free.
+  // Hard backstop: separate EVERY remaining overlap, treating a standoff cluster as
+  // one rigid unit so it can't tear. Monotonic (+x/+y) ⇒ terminates overlap-free.
   {
-    // Each world box belongs to a rigid unit: a standoff cluster, or itself.
     const unitOf = new Map<string, string>();        // boxId → unit id
     const unitMembers = new Map<string, string[]>(); // unit id → boxIds
     if (!standoffStore.isEmpty()) {
@@ -347,7 +322,6 @@ function runExpandPushes(
         unitMembers.set(uid, ids);
       }
     }
-    // Unit boxes: a cluster's combined bbox, or a standalone box.
     const units: PushBox[] = [];
     for (const [uid, ids] of unitMembers) {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -361,7 +335,6 @@ function runExpandPushes(
     for (const b of world.boxes.values()) {
       if (!unitOf.has(b.id)) units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
     }
-    // Separate units; apply each unit's delta to ALL its members (rigid move).
     for (const [uid, d] of separateOverlaps(units)) {
       for (const id of unitMembers.get(uid) ?? [uid]) {
         const b = world.boxes.get(id);
@@ -383,19 +356,16 @@ function runExpandPushes(
     if (t.dx === 0 && t.dy === 0) continue;
     const p = position(area, id);
     if (!p) continue;
-    // `record` off (tidy-grow push): the displacement is PERMANENT — translate
-    // only, no restore record.
+    // `record` off ⇒ the displacement is PERMANENT, no restore record.
     if (record) {
       const existing = _records.get(id);
-      // Merge only into a record whose node is STILL where our last push left it:
-      // Tidy/Cleanup/align reposition via bare area.translate, which fires no drag
-      // invalidation, so a merge would re-arm an obsolete preX/preY restore target.
-      // A stale record is replaced by a fresh one at the node's CURRENT position.
+      // Merge only into a record whose node is STILL where our last push left it —
+      // Tidy/align translate without firing drag invalidation, so merging into a
+      // stale record would re-arm an obsolete restore target.
       const stale = existing &&
         (Math.abs(p.x - existing.expX) > EPS || Math.abs(p.y - existing.expY) > EPS);
       if (existing && !stale) {
-        // Already displaced by a still-expanded group: keep the original
-        // restore target, extend the contributors, refresh the expected spot.
+        // Keep the original restore target; only extend the contributors.
         for (const gid of attribution.get(id)!) existing.dueTo.add(gid);
         existing.expX = p.x + t.dx;
         existing.expY = p.y + t.dy;
@@ -414,12 +384,8 @@ function runExpandPushes(
   }
 }
 
-/**
- * Run neighbor-push for groups whose already-EXPANDED box just GREW. The
- * displacement is PERMANENT (no restore record). `preSizes` is each group's box
- * size BEFORE it grew; pass only groups whose box actually grew. The grown size
- * is read from `n.width/height`.
- */
+/** The displacement is PERMANENT (no restore record); `preSizes` is each group's
+ *  size BEFORE it grew, and only actually-grown groups may be passed. */
 export function pushForGrownGroups(
   editor: Editor,
   area: Area,
@@ -432,13 +398,8 @@ export function pushForGrownGroups(
 
 // ─── Restore ───────────────────────────────────────────────────────────────────
 
-/**
- * Slide back every pushed entity whose contributing groups are ALL collapsed
- * (or deleted) — unless it has been moved since (stale → record dropped, the
- * node stays where the user put it). Absolute-position records make the
- * restores order-independent. Also called when a group node is removed, so
- * deleting an expanded group releases its neighbourhood.
- */
+/** Slides back every pushed entity whose contributing groups are ALL collapsed or
+ *  deleted, unless it moved since; absolute records keep restores order-independent. */
 export function restoreSettledPushes(editor: Editor, area: Area): void {
   let moved = false;
   for (const [id, r] of [..._records]) {
@@ -461,13 +422,8 @@ export function restoreSettledPushes(editor: Editor, area: Area): void {
 
 // ─── The one toggle entry point ────────────────────────────────────────────────
 
-/**
- * Collapse or expand a set of groups (singletons included — GroupNode's chevron
- * and the outline panel route through here too), applying neighbor push on
- * expand and the settled-record restore on collapse. Centralising the sequence
- * keeps the flip → sync → re-render → settle → push/restore order identical
- * everywhere.
- */
+/** THE toggle entry point (chevron and outline panel route through here) so the
+ *  flip → sync → re-render → settle → push/restore order is identical everywhere. */
 export async function setGroupsCollapsed(
   editor: Editor,
   area: Area,
@@ -477,8 +433,7 @@ export async function setGroupsCollapsed(
   const changed = targets.filter((g) => g.collapsed !== collapse);
   if (changed.length === 0) return;
 
-  // The collapsed card sizes are the seam origins for the expansion — measure
-  // them BEFORE the flip re-renders the elements at full size.
+  // The seam origins for the expansion — measure BEFORE the flip re-renders full size.
   const preSizes = new Map<string, { w: number; h: number }>();
   if (!collapse) for (const g of changed) preSizes.set(g.id, collapsedCardSize(area, g));
 
@@ -490,10 +445,8 @@ export async function setGroupsCollapsed(
 
   if (collapse) {
     restoreSettledPushes(editor, area);
-    // Collapsing moves the standoff anchors (the box shrank) — re-satisfy any
-    // band the shrink violated, with the just-toggled groups pinned. Records
-    // already restored above take priority; this pass is a no-op when they
-    // landed everything back in band.
+    // Collapsing moves the standoff anchors, so re-satisfy any band the shrink
+    // violated; a no-op when the restores above already landed everything in band.
     settleStandoffsOverWorld(editor, area, new Set(changed.map((g) => g.id)));
   } else if (settingsStore.get("groupPush")) {
     runExpandPushes(editor, area, changed, preSizes);

@@ -8,11 +8,8 @@ import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 
-// recharts sizes a polar chart's radius off min(width, height)/2, so to get a
-// wide arc (not a small one floating in deadspace) the chart must be SQUARE —
-// then the radius is width-limited. We draw the full square and crop to the top
-// half (the semicircle) with an overflow-hidden wrapper of height SHOW. SIZE fits
-// the base 180px card's inner width.
+// recharts sizes a polar radius off min(width, height)/2, so the chart must be
+// SQUARE and cropped to its top half for the arc to come out wide.
 const SIZE = 160;
 const SHOW = 88;
 // Minified (square-collapse) dial — a tiny axis-less arc filling the square.
@@ -26,14 +23,11 @@ function formatPct(v: number): string {
 
 export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
   const { track } = useChartColors();
-  // Exactly one of the two dials (live / minified) is visible at a time (CSS,
-  // .solenoid-node__collapsed-only) — mount only that one, since each GaugeArc is a
-  // full recharts tree. Animations are off globally, so the remount is instant.
+  // Only the VISIBLE dial is mounted — each GaugeArc is a full recharts tree.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const value = data.cachedResult;
-  // An upstream error makes the guard set cachedResult to a SolError (Gauge isn't
-  // in SEES_ERRORS). Render the red #CODE! badge instead of letting it become a NaN
-  // arc + "[object Object]" label.
+  // Gauge isn't in SEES_ERRORS, so an upstream error lands in cachedResult — badge
+  // it rather than letting it render as a NaN arc.
   if (isSolError(value)) {
     return (
       <NodeShell node={data} emit={emit} collapsible={false}>
@@ -48,11 +42,9 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       </NodeShell>
     );
   }
-  // A non-finite value (dirty data) reads as "no value": the dial empties and the
-  // label shows the em-dash, not "NaN%" over an undefined arc.
+  // A non-finite value reads as "no value" — an empty dial and an em-dash label.
   const v = typeof value === "number" && Number.isFinite(value) ? value : null;
-  // The dial always spans 0→100%; the arc fills the value's fraction (clamped, so
-  // 150% overfills to a full arc) while the label shows the true percentage.
+  // The dial always spans 0→100%: the arc clamps, the label keeps the true value.
   const frac = v === null ? 0 : Math.min(1, Math.max(0, v));
   const pct = frac * 100;
 

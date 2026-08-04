@@ -1,11 +1,8 @@
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 
-// Curated Excel-style parameter hints for the formula editor. Display-only —
-// nothing here affects evaluation (arity is NOT enforced; Formula.js/our impls do
-// their own checking), so an imperfect entry can't break a formula, only mislabel
-// a hint. Optional args in [brackets], variadic tails as `…`. Names are
-// UPPERCASE; dotted stat names included.
+// Display-only parameter hints — arity is NOT enforced here, so a wrong entry only
+// mislabels. UPPERCASE names, optional args in [brackets], variadic tails as `…`.
 export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── logical / branching ──
   IF: "condition, then, [else]",

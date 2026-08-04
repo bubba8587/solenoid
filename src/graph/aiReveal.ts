@@ -1,8 +1,5 @@
-// Entrance animation for nodes an AI apply ADDED (kept nodes stay put — only
-// what's new settles in, staggered left to right in apply order). The class
-// goes on rete's node HOLDER; the keyframes run on the holder's CHILD (the card
-// root), so rete's translate positioning is untouched and socket measurement —
-// which reads offset boxes and ignores transforms — is unaffected.
+// Entrance animation for nodes an AI apply ADDED. The class goes on rete's HOLDER
+// and the keyframes run on its CHILD, leaving rete's translate positioning intact.
 
 import { getArea } from "./process";
 import { getLastLoadIdMap } from "./persistence";
@@ -29,8 +26,7 @@ export function revealAddedNodes(savedIds: string[]): void {
     el.style.setProperty("--ainew-delay", `${i * STAGGER_MS}ms`);
     el.classList.add(CLASS);
   });
-  // Drop the class once the last node has settled so the DOM carries no residue
-  // (and a second apply can replay it).
+  // Drop the class once settled, so a second apply can replay it.
   window.setTimeout(() => {
     for (const el of els) {
       el.classList.remove(CLASS);

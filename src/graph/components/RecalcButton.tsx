@@ -2,11 +2,8 @@ import { requestRecalc } from "../process";
 import "./nodeCard.css";
 import { stopDragStart } from "../coarse";
 
-/**
- * Reusable "recalculate" control: `requestRecalc()` bumps the volatile-node
- * generation and re-evaluates the graph, so every volatile node rolls a fresh
- * value.
- */
+/** `requestRecalc()` bumps the volatile-node generation, so every volatile node
+ *  rolls a fresh value. */
 export function RecalcButton({ title = "Recalculate" }: { title?: string }) {
   return (
     <button

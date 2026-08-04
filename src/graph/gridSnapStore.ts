@@ -1,21 +1,15 @@
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
-// Snap-to-grid: when on, a node dropped after a drag rounds its position to the
-// nearest grid point. The grid is aligned to the canvas background dots (24px in
-// world coords — see Canvas syncBackground); the snap step IS the dot spacing, so
-// snap points land exactly on the visible dots (no half sub-grid).
-//
-// Module-level singleton (like cableFlowStore) so the canvas layer can read it
-// without the main React tree; persisted to localStorage so it survives reload.
+// The snap step IS the background dot spacing, so snap points land exactly on visible dots.
+// A module singleton so the canvas layer can read it without the main React tree.
 
 /** Background dot spacing in world units (mirrors the 24 in Canvas syncBackground). */
 export const DOT_SPACING = 24;
-/** Snap granularity: the visible dot grid (24px). */
+/** Snap granularity: the visible dot grid. */
 export const GRID_SNAP_STEP = DOT_SPACING;
-/** The dots are the CENTER of each background tile (the radial-gradient default),
- * so they sit half a cell off the tile grid — at world `DOT_PHASE + 24·n`. Snap
- * must carry the same phase or it lands on the tile corners (between dots). */
+/** Dots sit at the CENTER of each background tile, so snap must carry the same half-cell
+ *  phase or it lands on the tile corners, between dots. */
 const DOT_PHASE = DOT_SPACING / 2;
 
 /** Round a world coordinate to the nearest visible dot. */

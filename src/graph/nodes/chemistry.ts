@@ -1,9 +1,5 @@
-// Custom-logic nodes for the Chemistry Basics pack: the periodic-table element
-// lookup (an embedded public-domain dataset — IUPAC standard atomic weights,
-// abridged/conventional values; a bracketed mass number for elements with no
-// stable isotope) and the molar-mass calculator (a chemical-formula parser —
-// parentheses, nested groups, and hydrate dots — which no pre-set Expression
-// can be).
+// Chemistry Basics pack custom logic. The masses are IUPAC abridged/conventional
+// values, bracketed for elements with no stable isotope.
 
 import { ClassicPreset } from "rete";
 import { numOut, strIn, readInput } from "./shared";
@@ -86,11 +82,8 @@ export const ELEMENTS: ElementMeta[] = [
 export const ELEMENT_BY_SYMBOL: Map<string, ElementMeta> =
   new Map(ELEMENTS.map((e) => [e.symbol, e]));
 
-// ─── Periodic-table geometry + search (the Element picker) ────────────────────
-
-/** Standard 18-column periodic-table cell for an atomic number: rows 1–7 are the
- *  main body, rows 9–10 the detached f-block (lanthanides/actinides, cols 4–18);
- *  row 8 is left empty as the visual gap. Pure — drives the picker's CSS grid. */
+/** 18-column table cell for an atomic number: rows 1–7 the main body, 9–10 the
+ *  detached f-block, row 8 the empty visual gap. Drives the picker's CSS grid. */
 export function elementCell(n: number): { row: number; col: number } {
   if (n === 1) return { row: 1, col: 1 };
   if (n === 2) return { row: 1, col: 18 };
@@ -108,9 +101,8 @@ export function elementCell(n: number): { row: number; col: number } {
   return { row: 7, col: n - 100 };                    // Rf … Og
 }
 
-/** Rank elements against a typed query: symbol exact > symbol prefix > name
- *  prefix > name substring > atomic-number match. Case-insensitive; empty query
- *  matches everything in table order. Pure — the picker's search field. */
+/** Rank order: symbol exact > symbol prefix > name prefix > name substring >
+ *  atomic number. Case-insensitive; an empty query matches all, in table order. */
 export function searchElements(query: string): ElementMeta[] {
   const q = query.trim().toLowerCase();
   if (!q) return ELEMENTS;
@@ -129,7 +121,6 @@ export function searchElements(query: string): ElementMeta[] {
   return scored.sort((x, y) => x[0] - y[0] || x[1].n - y[1].n).map(([, e]) => e);
 }
 
-// ─── Molar-mass parser ────────────────────────────────────────────────────────
 // Grammar: formula = segment (('·'|'.'|'*') segment)*   (hydrate notation)
 //          segment = count? unit+
 //          unit    = (element | '(' unit+ ')' | '[' unit+ ']') count?
@@ -175,9 +166,8 @@ function parseGroup(s: string, i: number, close: string): [number, number] | Sol
     let sym = em[1];
     let el = ELEMENT_BY_SYMBOL.get(sym);
     if (!el && sym.length === 2) {
-      // "CO" is carbon+oxygen, not a "Co" typo — but the tokenizer grabbed a
-      // valid-looking two-letter symbol only if it EXISTS, so this branch is a
-      // genuinely unknown pair: retry as one letter (handles e.g. "NO", "HF").
+      // An unknown two-letter pair retries as one letter, so "NO"/"HF" read as two
+      // elements rather than a bad symbol.
       sym = sym[0];
       el = ELEMENT_BY_SYMBOL.get(sym);
       if (el) {
@@ -194,8 +184,6 @@ function parseGroup(s: string, i: number, close: string): [number, number] | Sol
   if (close) return solError("#VALUE!", "Unbalanced brackets in formula");
   return [mass, i];
 }
-
-// ─── Nodes ────────────────────────────────────────────────────────────────────
 
 export class ElementNode extends ClassicPreset.Node {
   label: string;

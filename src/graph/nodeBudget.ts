@@ -1,8 +1,5 @@
-// Soft node-count budget for the in-browser demo (the Vercel deploy) — NOT the
-// desktop app. A *soft* cap: adding nodes is NEVER blocked; the budget only
-// drives a meter and a one-shot warning on the crossing. The warning is
-// edge-detected and suppressed during the load reveal, so a graph that LOADS
-// already over-budget never pops it — only crossing the line by editing does.
+// A SOFT web-demo cap: adding nodes is never blocked. The warning is edge-detected and
+// suppressed during the load reveal, so loading over-budget never pops it.
 
 import { getEditor } from "./process";
 

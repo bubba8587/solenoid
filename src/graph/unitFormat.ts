@@ -1,7 +1,5 @@
-// Standalone unit-suffix rendering, intentionally kept out of the node-graph
-// unit wiring (units proper are owned by the Format Controller / Convert). The
-// Display node renders whatever suffix is set on it; it offers no dropdown to
-// pick one.
+// Standalone unit-suffix rendering, deliberately outside the node-graph unit
+// wiring — units proper are owned by the Format Controller / Convert.
 
 export type UnitSuffix = "none" | "deg" | "rad" | "percent";
 

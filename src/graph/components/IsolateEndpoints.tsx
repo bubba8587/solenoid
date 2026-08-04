@@ -9,9 +9,8 @@ import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
 
-// Auto-generated boundary endpoints for the Isolate overlay: the chain's crossings
-// become an "Inputs" terminal on the LEFT and an "Outputs" terminal on the RIGHT.
-// Rendered in the area's transformed plane (canvas coords), so it pans/zooms.
+// Boundary terminals for the Isolate overlay, rendered in the area's transformed plane
+// (canvas coords) so they pan/zoom with the graph.
 
 type Pt = { x: number; y: number };
 
@@ -20,8 +19,7 @@ const TERM_W = 152;
 const HEAD_H = 26;    // fixed header height so the lane/dot/cable maths line up
 const LANE_H = 22;    // matches .solenoid-node__io-row
 
-// A focused socket's position in canvas coords (transform-invariant), measured
-// from its DOM dot relative to the area's transformed holder.
+// Canvas coords (transform-invariant), measured from the DOM dot relative to the holder.
 function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side: "input" | "output"): Pt | null {
   const el = holder.querySelector<HTMLElement>(
     `[data-node-id="${CSS.escape(nodeId)}"][data-socket-key="${CSS.escape(key)}"][data-socket-side="${side}"]`,
@@ -51,8 +49,7 @@ export function IsolateEndpoints() {
   const editor = getEditor();
   const area = getArea();
 
-  // Drag offsets are ephemeral (reset when the isolated set changes) and in canvas
-  // coords, applied on top of the auto-centered position.
+  // Drag offsets are ephemeral and in canvas coords, applied over the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });
   const dragRef = useRef<{ which: "entry" | "exit"; sx: number; sy: number; base: Pt } | null>(null);
   const focusKey = focus ? [...focus].sort().join(",") : "";
@@ -66,8 +63,7 @@ export function IsolateEndpoints() {
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
-    // Join the one selection system — selecting a terminal clears node / cable /
-    // standoff selection (the canvas pointerdown handler clears the terminal back).
+    // One selection system: selecting a terminal clears node / cable / standoff selection.
     isoEndpointSelect.set(which);
     unselectAllNodes();
     cableSelectionStore.set(null);
@@ -131,8 +127,7 @@ export function IsolateEndpoints() {
     paths.push(getCablePath(shape, { sourceX: l.pos.x, sourceY: l.pos.y, sourcePosition: Position.Right, targetX: b.x, targetY: b.y, targetPosition: Position.Left }));
   });
 
-  // Reuse the node card chrome so terminals match real nodes AND so sockets straddle
-  // the edge without being clipped (no overflow:hidden).
+  // Reuse the node card chrome so sockets straddle the edge without being clipped.
   const terminal = (side: "entry" | "exit", x: number, y: number, lanes: { cr: { externalNodeId: string } }[]) => (
     <div
       className={`solenoid-node solenoid-node--no-chevron solenoid-iso-ep solenoid-iso-ep--${side}${selected === side ? " solenoid-node--selected" : ""}`}

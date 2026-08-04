@@ -35,10 +35,8 @@ import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
 
-// A verb that may throw a tagged SolError (a #REF! for a bad column) must NOT let
-// it escape data(): installErrorGuards' fromThrown flattens a thrown SolError to a
-// generic #ERROR!. Catch it and return it as a VALUE so the display shows the real
-// code (subsystem-invariants §4.3 / the materialize() bridge).
+// A thrown SolError must be returned as a VALUE — letting it escape data() flattens
+// it to a generic #ERROR! in installErrorGuards' fromThrown.
 function runVerb<T>(fn: () => T): T | SolError {
   try {
     return fn();
@@ -48,28 +46,19 @@ function runVerb<T>(fn: () => T): T | SolError {
 }
 
 // ─── Lazy verb-node output ──────────────────────────────────────────────────────
-// A verb node's data() emits a LAZY FrameRef on its cable (so a chain of verbs never
-// round-trips the frame — see frameBackend), but its card still needs a real frame.
-// emitFrame collects the ref into `cachedResult` for the card, drops the node's
-// PREVIOUS owned ref (the backend's frames are independent, so this is safe), and
-// returns the ref as the cable value. A passthrough (no-op verb) must pass a VALUE,
-// not the upstream ref it doesn't own — callers do `readFrame(f)` for that case.
+// A passthrough (no-op verb) must emit a VALUE, not the upstream ref it doesn't own —
+// callers do `readFrame(f)` for that case.
 interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
 
-/** Stamp a new compute pass on the node — the guard against OUT-OF-ORDER passes
- *  (audit finding 19): a superseded pass's data() isn't aborted, only its result
- *  discarded, so a stale pass resolving late would otherwise drop the LIVE ref
- *  the fresh pass just published and install its own stale ref + preview.
- *  MUST be evaluated before the verb's await — the `emitFrame(this,
- *  beginPass(this), await …)` argument order guarantees exactly that. */
+/** Stamp a new compute pass — the out-of-order-pass guard; MUST be evaluated BEFORE
+ *  the verb's await, which the `emitFrame(this, beginPass(this), await …)` order gives. */
 function beginPass(node: FrameVerbNode): number {
   node._gen = (node._gen ?? 0) + 1;
   return node._gen;
 }
 
 async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
-  // Stale pass: leave the node's live ref/preview alone; free the orphan result
-  // handle (nothing else owns it — rete discards the stale data() result).
+  // Stale pass: leave the node's live ref/preview alone, free the orphan handle.
   const stale = () => {
     if (isFrameRef(out) && out !== node._ref) dropFrameRef(out);
     return { frame: null };
@@ -89,16 +78,11 @@ export class FrameInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
-  /** The addable λ input keys (fn1, fn2, …) — the column-source model's wired
-   *  definitions (v2.0/19-computed-column-surface.md slice 1): a source column
-   *  with `lambda: "fn1"` computes its cells per row from the λ wired there. */
+  /** The addable λ input keys (fn1, fn2, …); a source column with `lambda: "fn1"`
+   *  computes its cells per row from the λ wired there. */
   lambdaKeys: string[] = [];
-  // Signature of the text `cachedResult` was built from. Rebuilding a fresh
-  // FrameValue every data() call defeats the backend's identity source-cache (each
-  // recompute re-uploads the same frame to Rust); return the SAME object while the
-  // text is unchanged so the handle is reused. A real edit changes frameText → rebuild.
-  // Computed columns use `_computedFrom` instead (text PLUS the λ input
-  // identities — a λ edit changes cells with no frameText edit to key on).
+  // Return the SAME FrameValue object while the text is unchanged — a fresh one per
+  // data() defeats the backend's identity source-cache (re-uploads the frame to Rust).
   private _builtFrom: string | undefined;
   width = 240; height = 220;
 
@@ -130,15 +114,12 @@ export class FrameInputNode extends ClassicPreset.Node {
     }
   }
 
-  /** Compiled Formula-source columns, keyed by expr text (rebuilt each data()
-   *  from the exprs present, so edits drop stale entries; a null value = the
-   *  text does not parse). */
+  /** Compiled Formula-source columns, keyed by expr text; a null value = the text
+   *  does not parse. */
   private _exprCache = new Map<string, { evaluator: ExprEvaluator; vars: string[] } | null>();
 
-  /** What the last computed frame was built from: the text plus each λ input's
-   *  value identity, so an unchanged pass returns the SAME frame object and
-   *  the backend's identity-keyed upload cache holds (a λ edit mints a new
-   *  LambdaValue upstream, which is exactly the miss condition). */
+  /** What the last computed frame was built from — text plus each λ input's value
+   *  identity, so an unchanged pass returns the SAME frame object. */
   private _computedFrom: { text: string; lams: unknown[] } | null = null;
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
@@ -160,12 +141,8 @@ export class FrameInputNode extends ClassicPreset.Node {
       return { frame: this.cachedResult };
     }
 
-    // ── Computed (λ / Formula) columns — topo order, cycle-refusing ────────
-    // The working frame starts as the literal derivation with computed columns
-    // EMPTIED (their stale text must not feed row counts or earlier deps);
-    // each computed column then fills in dependency order, so a computed
-    // column can reference another. The rules per row are the shared core's
-    // (computedColumnCore.ts) — identical to the Computed Column verb.
+    // Computed (λ / Formula) columns fill in topo order; they start EMPTIED so their
+    // stale text can't feed row counts or earlier deps.
     const base = deriveFrame(source);
     const frame: FrameValue = {
       __frame: true,
@@ -203,9 +180,8 @@ export class FrameInputNode extends ClassicPreset.Node {
         const c = source[i];
         const lam = c.lambda ? lamAt(i) : null;
         const ex = !c.lambda && c.expr ? exprAt(i) : null;
-        // Column dependencies: the definition's variables AND its row-context
-        // reads (`@name`, `[Name]` — rowRefNames), so a zero-param λ or a
-        // pure-@ formula reading @revenue still orders after that column.
+        // Deps are the definition's variables AND its row-context reads (`@name`,
+        // `[Name]`), so a zero-param λ still orders after the column it reads.
         const deps = lam
           ? [...lam.params, ...(lam.expr ? rowRefNames(lam.expr) : [])]
           : ex
@@ -224,12 +200,8 @@ export class FrameInputNode extends ClassicPreset.Node {
           frame,
           lam ? { kind: "lambda", lam } : { kind: "expr", evaluator: ex!.evaluator, vars: ex!.vars },
           {
-            // A variable naming no column: λ side values ride the λ's OWN
-            // captures (the Lambda node's sockets); a Formula column has no
-            // side inputs at all. Either way it is a miss, per row. An @name
-            // miss gets the plain message — captures don't reach @ (row-
-            // aligned lists ride the CC node's side ports; Frame Input's
-            // per-column sources have none by design).
+            // A variable naming no column is always a miss here — this node has no
+            // side ports; a λ's side values ride its OWN captures.
             sideValue: (p, kind) => solError("#REF!", lam && kind === "var"
               ? `No column "${p}" — a table λ's side values ride its captures`
               : `No column "${p}"`),
@@ -238,12 +210,8 @@ export class FrameInputNode extends ClassicPreset.Node {
         if (isSolError(r)) {
           fill(i, r);
         } else {
-          // Type from inference, values verbatim (inferColumn CONSTRUCTS a
-          // column — stringified raw, coerced cells — which would mangle
-          // per-row SolErrors; the CC verb reads .type the same way). The
-          // source column's UNIT tag rides onto the derived column exactly
-          // like deriveFrame's literal rule — the popup's unit dropdown works
-          // on a computed column the same as on a Data one.
+          // Take inferColumn's .type but keep the values verbatim — its constructed
+          // column coerces cells and would mangle per-row SolErrors.
           const type = inferColumn(c.name, r.cells).type;
           frame.columns[i] = {
             name: c.name, type, values: r.cells,
@@ -319,14 +287,12 @@ export class HeadNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[]; to?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
     const n = readInput(inputs.rows, this.literals.rows ?? 10);
-    // `to` is read by the "range" op ALONE — the guard is scoped to the active op
-    // (value-semantics.md), so a wired blank To must not blank a First-N slice.
+    // `to` is read by the "range" op ALONE, so a wired blank To must not blank a First-N slice.
     const to = this.op === "range" ? readInput(inputs.to, this.literals.to ?? n) : 0;
     const gen = beginPass(this);
     // A wired blank row count leaves the slice unknown (value-semantics.md, "Reading an input").
     if (f == null || n === null || to === null) return emitFrame(this, gen, null);
-    // First-N stays a LAZY verb (the head-of-a-huge-chain case); the other row
-    // slices are eager like Split Column — Power Query's Keep/Remove Rows family.
+    // First-N stays a LAZY verb (the head-of-a-huge-chain case); the other slices are eager.
     if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
     const fv = await readFrame(f);
     return emitFrame(this, gen, fv == null || isSolError(fv) ? fv ?? null : runVerb(() => sliceRows(fv, this.op, n, to)));
@@ -356,8 +322,7 @@ export class SortFrameNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const col = readInput(inputs.column, this.stringLiterals.column ?? "");
-    // A wired blank column names no column — unknown, not "not chosen yet"
-    // (value-semantics.md, "Reading an input").
+    // A wired blank column names no column — unknown, not "not chosen yet".
     if (f == null || col === null) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), col.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
   }
@@ -376,8 +341,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
   readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = {};
-  // emitFrame's pass-guard fields (stamped structurally on every verb node) —
-  // declared here because the Dropped ref lifecycle below reads them directly.
+  // emitFrame's pass-guard fields, declared because the Dropped ref lifecycle reads them.
   _gen?: number;
   _ref?: FrameRef | null;
   /** The Dropped output's owned ref — same lifecycle as _ref, no preview. */
@@ -394,8 +358,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
     if (ids.length) {
-      // Restore saved rows; copy only LIVE ids' config (prunes entries orphaned
-      // by a removed row — removal keeps them for undo, reload drops them).
+      // Copy only LIVE ids' config — removal keeps orphaned entries for undo, reload prunes them.
       for (const id of ids) this.addPairWithId(id);
       for (const id of ids) {
         const cfg = init?.condConfig?.[String(id)];
@@ -405,9 +368,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
       this.addValuePair();
     }
     this.addOutput("frame", frameOut("Kept"));
-    // The complement, permanently — same fixed-socket rule as the list Filter's
-    // Dropped (never a mode). A lazy ref: costs nothing until a consumer
-    // collects it, so the always-on second output is free.
+    // The complement is a permanent socket, never a mode (same rule as the list Filter).
     this.addOutput("dropped", frameOut("Dropped"));
   }
 
@@ -437,13 +398,11 @@ export class FilterFrameNode extends ClassicPreset.Node {
     this.removeInput(`value${id}`);
     delete this.stringLiterals[`column${id}`];
     delete this.stringLiterals[`value${id}`];
-    // condConfig[id] is kept: row-removal undo re-adds the same input keys, and
-    // the surviving entry restores its op/matchCase; reload prunes orphans.
+    // condConfig[id] is kept so row-removal undo restores its op/matchCase; reload prunes orphans.
   }
 
-  /** emitFrame's stale-pass + previous-ref lifecycle for the secondary output,
-   *  minus the preview — the card never materializes Dropped; it stays a lazy
-   *  ref until a consumer collects it. */
+  /** emitFrame's stale-pass + previous-ref lifecycle for the secondary output, minus
+   *  the preview — Dropped stays a lazy ref until a consumer collects it. */
   private publishDropped(gen: number, out: FrameRef | FrameValue | SolError | null): FrameRef | FrameValue | SolError | null {
     if (gen !== this._gen) {
       if (isFrameRef(out) && out !== this._refDropped) dropFrameRef(out);
@@ -466,10 +425,8 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const op = cfg?.op ?? "gt";
       const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
       const valueless = VALUELESS_FILTER_OPS.has(op); // no value to write (blank / error predicates)
-      // A WIRED blank column or comparison value makes this condition unevaluable, so
-      // which rows survive is unknown — the whole frame is blank, not the unfiltered
-      // input (value-semantics.md, "Reading an input"). An EMPTY literal still means
-      // "not written yet" and skips the condition.
+      // A WIRED blank column/value makes the condition unevaluable → the whole frame is
+      // blank, not the unfiltered input; an EMPTY literal instead skips the condition.
       if (colRaw === null || (!valueless && val === null)) {
         return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
       }
@@ -481,11 +438,8 @@ export class FilterFrameNode extends ClassicPreset.Node {
       // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
       return { ...(await emitFrame(this, gen, await readFrame(f))), dropped: this.publishDropped(gen, null) };
     }
-    // An error predicate (iserror/noterror) must run in the JS ORACLE: the native
-    // Polars engine degrades a per-cell error to null on upload, so it couldn't tell
-    // an error from a blank. Materialize the input (errors intact for a source frame)
-    // and split it here — the oracle is the same reference impl the plan matches, so
-    // any comparison rows in the same filter behave identically.
+    // An error predicate must run in the JS ORACLE — the native Polars engine degrades
+    // a per-cell error to null on upload and couldn't tell an error from a blank.
     if (conditions.some((c) => ERROR_FILTER_OPS.has(c.op))) {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) {
@@ -495,8 +449,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const droppedF = filterRowsMulti(mat, this.combine, conditions, true);
       return { ...(await emitFrame(this, gen, keptF)), dropped: this.publishDropped(gen, droppedF) };
     }
-    // Two independent lazy refs off the same input: the kept filter and its ROW
-    // complement (null-predicate rows land in Dropped, not lost — see D15).
+    // Null-predicate rows land in Dropped, not lost (D15).
     const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
     const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
     return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
@@ -535,15 +488,11 @@ export class JoinNode extends ClassicPreset.Node {
     const right = inputs.right?.[0] ?? null;
     const lkRaw = readInput(inputs.leftKey, this.stringLiterals.leftKey ?? "");
     const rkRaw = readInput(inputs.rightKey, this.stringLiterals.rightKey ?? "");
-    // `tolerance` is the one input whose UNWIRED reading is genuinely "omitted" — no
-    // literal typed, exact match. readInput separates the two cleanly: `undefined` is
-    // that omission, `null` is a blank that arrived down a cable. It is read ONLY by
-    // the as-of join, so the guard is scoped to that op (value-semantics.md): a wired
-    // blank Tolerance must not blank an inner/left/right/outer join that ignores it.
+    // `tolerance` is read ONLY by the as-of join, so a wired blank must not blank an
+    // inner/left/right/outer join that ignores it (`undefined` = omitted, `null` = wired blank).
     const tolerance = this.how === "asof" ? readInput(inputs.tolerance, this.literals.tolerance) : undefined;
-    // A WIRED blank on any of the three is unknown, not omitted: an UNWIRED rightKey
-    // means "same name as the left" and an UNWIRED tolerance means exact match, but a
-    // blank arriving down a cable means neither (value-semantics.md, "Reading an input").
+    // A WIRED blank is unknown, not omitted — unlike an UNWIRED rightKey ("same name as
+    // the left") or an UNWIRED tolerance (exact match).
     if (lkRaw === null || rkRaw === null || tolerance === null) {
       return emitFrame(this, beginPass(this), null);
     }
@@ -559,12 +508,8 @@ export class JoinNode extends ClassicPreset.Node {
 
 // ─── SELECT / DROP COLUMNS ───────────────────────────────────────────────────
 
-// Read a wired/typeable column-name LIST slot. The empty literal already means
-// something on these nodes ("no columns chosen → pass the frame through"), which is
-// exactly where a swallowed wired blank hides (value-semantics.md, "Reading an
-// input"): a cable delivering blank must read as UNKNOWN (null → blank output),
-// never as "not chosen". Per-cell missing entries inside a wired list carry no
-// column name and are dropped, not stringified to "null".
+// Read a column-name LIST slot: a cable delivering blank reads as UNKNOWN (null), never
+// as the empty literal's "no columns chosen"; missing entries inside a wired list drop.
 function readColumnList(wired: string[][] | undefined): string[] | null {
   const v = readInput(wired, [] as string[]);
   return v === null ? null : v.filter((c): c is string => typeof c === "string");
@@ -615,12 +560,8 @@ export class DropColumnsNode extends ClassicPreset.Node {
 
 // ─── GROUP BY (FRAME) ──────────────────────────────────────────────────────────
 
-// The ONE AggOp table (SSOT-1): the Group By / Cube Rollup cards, the Pivot
-// editor's per-value selector, and the Add-menu search rows all derive from it,
-// so the surfaces cannot disagree. `pivotOnly` marks the op only the pivot
-// assembly can run (percentof needs the relative total set — aggregateGroup
-// returns null for it), so the card dropdowns and the Group By / Rollup search
-// rows exclude it.
+// The ONE AggOp table (SSOT-1) every agg surface derives from; `pivotOnly` marks the op
+// only the pivot assembly can run, excluded from the card dropdowns and search rows.
 export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> = {
   sum: { label: "SUM" },
   avg: { label: "AVERAGE" },
@@ -660,13 +601,11 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     const keys = readColumnList(inputs.keys);
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    // A wired blank names no column/keys — unknown (value-semantics.md, "Reading an input").
+    // A wired blank names no column/keys — unknown, not "not chosen yet".
     if (f == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
     const col = colRaw.trim();
     if (!(keys.length && col)) return emitFrame(this, beginPass(this), await readFrame(f));
-    // Totals need the source (not the grouped output) to re-aggregate, so this
-    // path is EAGER — materialize here and pivot, instead of extending the lazy
-    // plan. Acceptable: total rows are a presentation boundary anyway.
+    // Totals re-aggregate the SOURCE, not the grouped output, so this path is EAGER.
     if (this.totalDepth !== 0) {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
@@ -682,16 +621,14 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
 // ─── PIVOT / UNPIVOT ───────────────────────────────────────────────────────────
 
-// A cell's stable string key for the field-value filter — the SAME stringification
-// the editor's distinct list uses, so an excluded key matches the row's cell.
+// The ONE stringification for field-value filter keys, so an excluded key matches the cell.
 function pivotCellKey(v: FrameCell): string {
   if (v == null) return "";
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   return String(v);
 }
-// First-seen distinct keys of a column (capped — a filter checklist over thousands of
-// values isn't useful, and stashing them all would bloat the node).
+// First-seen distinct keys of a column, capped so the stash doesn't bloat the node.
 function distinctKeys(values: readonly FrameCell[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -702,12 +639,8 @@ function distinctKeys(values: readonly FrameCell[]): string[] {
   return out;
 }
 
-// PIVOTBY — full Excel cross-tab. Rows/Columns/Values are comma-separated column
-// lists (multi-field = multi-level headers). `op` is the default aggregation; a
-// per-value override lives in `funcs` (value name → op, rendered as one selector
-// per value column). Totals (row/col depth), sort, relativeTo, a field-value filter
-// (`filterExclude`: per field, the value keys to hide) and the optional wired `filter`
-// mask all flow into `pivotFrame`, which RE-AGGREGATES the source (see PivotSpec).
+// PIVOTBY — full Excel cross-tab; every config field flows into `pivotFrame`, which
+// RE-AGGREGATES the source rather than reshaping a grouped frame (see PivotSpec).
 export class PivotNode extends ClassicPreset.Node {
   label: string;
   op: AggOp;
@@ -717,14 +650,10 @@ export class PivotNode extends ClassicPreset.Node {
   rowSort = 0;
   colSort = 0;
   relativeTo = 0;
-  // Field-value filter: per field name, the set of value KEYS (pivotCellKey) to HIDE.
-  // A field present with a non-empty list excludes those rows; combined (AND) with the
-  // wired `filter` mask. Edited in the popup's Filters zone.
+  // Per field name, the value KEYS (pivotCellKey) to HIDE; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   cachedResult: FrameValue | SolError | null = null;
-  // The upstream frame's schema + per-column distinct value keys, stashed on each
-  // compute so the editor popup can show a field list + filter checklists without
-  // re-fetching. Empty when unconnected.
+  // Stashed each compute so the editor popup renders its field list without re-fetching.
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
   width = 220; height = 300;
@@ -760,11 +689,8 @@ export class PivotNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
     this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
-    // Flush fields the current frame no longer has (e.g. after repointing the Pivot at a
-    // different source — the old "Amount" isn't a column of the new CSV). Prune the
-    // resolved lists used to build the spec, and self-heal the persisted config (inline
-    // literals + per-value funcs + filters) so a stale name doesn't aggregate a missing
-    // column or linger in the editor after the source changes.
+    // Flush fields the current frame no longer has, so repointing at a new source can't
+    // leave a stale name aggregating a missing column or lingering in the editor.
     const valid = new Set(f.columns.map((c) => c.name));
     this.pruneFieldsTo(valid);
     const rowRaw = readColumnList(inputs.rowFields);
@@ -783,18 +709,14 @@ export class PivotNode extends ClassicPreset.Node {
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
     };
-    // Stays EAGER (not routed through the backend): the full PIVOTBY spec — multi-field
-    // rows/cols/values, per-value funcs, totals, sort, relativeTo — exceeds the engine's
-    // simple pivot op, so routing it would regress desktop to the basic cross-tab. Revisit
-    // if the Polars pivot grows totals/multi-field.
+    // Stays EAGER: the full PIVOTBY spec exceeds the engine's simple pivot op, so routing
+    // it through the backend would regress desktop to a basic cross-tab.
     this.cachedResult = runVerb(() => pivotFrame(f, spec));
     return { frame: this.cachedResult };
   }
 
-  /** Drop every field reference to a column the frame no longer has. Rewrites the
-   *  inline literal lists (Rows/Columns/Values) only when a stale name is present (so a
-   *  wired field, whose literal is unused, isn't needlessly churned), and deletes stale
-   *  per-value `funcs` + `filterExclude` keys. Idempotent once the config is clean. */
+  /** Drop every field reference to a column the frame no longer has; idempotent, and
+   *  rewrites a literal list only when a stale name is present. */
   private pruneFieldsTo(valid: Set<string>): void {
     for (const key of ["rowFields", "colFields", "values"] as const) {
       const cur = this.stringLiterals[key] ?? "";
@@ -969,8 +891,7 @@ export class RenameNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; from?: string[][]; to?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
-    // Raw reads (no per-cell filtering): `from`/`to` pair BY INDEX, so dropping a
-    // cell would shift the pairing; the loop below already skips blank cells.
+    // Raw reads: `from`/`to` pair BY INDEX, so dropping a cell would shift the pairing.
     const from = readInput(inputs.from, [] as string[]);
     const to = readInput(inputs.to, [] as string[]);
     if (f == null || from === null || to === null) return emitFrame(this, beginPass(this), null);
@@ -1101,8 +1022,7 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
     const find = readInput(inputs.find, this.stringLiterals.find ?? "");
     const replace = readInput(inputs.replace, this.stringLiterals.replace ?? "");
-    // A wired blank is unknown, NOT the empty literal's "all columns" / "match nothing"
-    // (value-semantics.md, "Reading an input").
+    // A wired blank is unknown, NOT the empty literal's "all columns" / "match nothing".
     if (column === null || find === null || replace === null) { this.cachedResult = null; return { frame: null }; }
     this.cachedResult = runVerb(() => replaceValues(f, column, find, replace, this.mode));
     return { frame: this.cachedResult };
@@ -1206,17 +1126,12 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
-  // Inline, name-keyed weights: criterion name → weight. This is the primary,
-  // labeled, default-1 weight UI (one editable box per criterion, rendered by the
-  // component from `criteria`). A wired `weights` list overrides it positionally
-  // (for computed weights). Persisted as an object via extractInit.
+  // Inline weights (criterion name → weight, default 1); a wired `weights` list overrides
+  // this positionally.
   weightMap: Record<string, number>;
-  // Per-criterion normalize OVERRIDE (criterion name → mode). Absent = inherit the
-  // node default `normalize`. This is the DMBV per-column "Rank Raws": rank just the
-  // $-scale columns, leave the /10 ones raw. Persisted as an object via extractInit.
+  // Per-criterion normalize OVERRIDE; absent = inherit the node default `normalize`.
   normMap: Record<string, DecisionNormalize>;
-  // The detected criteria names, refreshed each compute so the component can render
-  // a labeled weight box per criterion in the order the weights align to.
+  // Refreshed each compute, in the order the weights align to.
   criteria: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   width = 248; height = 235;
@@ -1276,8 +1191,7 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
-// Not a lazy verb — a materialization boundary like Decision Matrix, so its data()
-// takes plain FrameValue inputs (coerceInputs collects any upstream FrameRef).
+// A materialization boundary, not a lazy verb — data() takes plain FrameValue inputs.
 
 export class ReconcileNode extends ClassicPreset.Node {
   label: string;
@@ -1307,8 +1221,7 @@ export class ReconcileNode extends ClassicPreset.Node {
     const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
     const priceRaw = readInput(inputs.priceColumn, this.stringLiterals.priceColumn ?? "");
     const qtyRaw = readInput(inputs.qtyColumn, this.stringLiterals.qtyColumn ?? "");
-    // A wired blank is unknown, NOT the empty literal's "don't compare this column"
-    // (value-semantics.md, "Reading an input").
+    // A wired blank is unknown, NOT the empty literal's "don't compare this column".
     if (keyRaw === null || priceRaw === null || qtyRaw === null) {
       this.cachedResult = null; this.cachedSummary = "";
       return { frame: null, summary: "" };
@@ -1331,19 +1244,15 @@ export class ReconcileNode extends ClassicPreset.Node {
   }
 }
 
-// The Reconcile summary is emitted as MARKDOWN — it reads fine as plain text on the
-// node's own hero box AND renders formatted when piped into a Display with a markdown
-// Format Controller (bold counts, a delta paragraph). Kept terse (no headings) so it
-// stays compact in a value box.
+// MARKDOWN, kept heading-free so it reads as plain text in a hero box and still renders
+// formatted through a markdown Format Controller.
 function summarizeReconcile(s: ReconcileSummary): string {
   const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(APP_LOCALE) : n.toLocaleString(APP_LOCALE, { maximumFractionDigits: 2 }));
   const parts = [`**${s.added}** added`, `**${s.removed}** removed`, `**${s.changed}** changed`, `**${s.unchanged}** unchanged`];
-  // Blank/invalid-key rows couldn't be matched — surface the count so a shrunk output
-  // isn't mistaken for a clean reconciliation.
+  // Surface unmatchable rows so a shrunk output isn't mistaken for a clean reconciliation.
   if (s.skipped > 0) parts.push(`**${s.skipped}** skipped`);
   let out = parts.join(" · ");
-  // A one-sided (added/removed/renamed) column is a schema change the row counts can't
-  // show — surface it so an all-"unchanged" result isn't mistaken for identical frames.
+  // Surface one-sided columns so an all-"unchanged" result isn't read as identical frames.
   if (s.addedColumns.length || s.removedColumns.length) {
     const bits = [...s.addedColumns.map((n) => `+${n}`), ...s.removedColumns.map((n) => `−${n}`)];
     out += `\n\n_Columns: ${bits.join(" · ")}._`;
@@ -1352,8 +1261,7 @@ function summarizeReconcile(s: ReconcileSummary): string {
     const p = s.pvm;
     const sign = (n: number) => (n >= 0 ? "+" : "");
     out += `\n\n**Δ ${sign(p.delta)}${fmt(p.delta)}**: price ${sign(p.price)}${fmt(p.price)} · volume ${sign(p.volume)}${fmt(p.volume)} · mix ${sign(p.mix)}${fmt(p.mix)}`;
-    // The decomposition covers only rows with clean price+qty on both present sides;
-    // say so when some were dropped, so Δ isn't read as the whole-population change.
+    // Say when rows were dropped, so Δ isn't read as the whole-population change.
     if (p.excluded > 0) out += `\n\n_PVM excludes ${p.excluded} row${p.excluded === 1 ? "" : "s"} with blank or errored price or qty._`;
   }
   return out;
@@ -1370,17 +1278,13 @@ export class BuildFrameNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("BuildFrame");
     this.label = init?.label ?? "Build Frame";
-    // Adoptive matrix input: accepts a matrix of ANY element family and adopts its
-    // concrete type, so a datetable → date columns (values alone can't recover a
-    // date — a serial looks numeric). "Slap headers on a table → Frame"; adding
-    // columns is other nodes' job (Add Column / Frame from Lists).
+    // Adoptive so a datetable yields date columns — values alone can't recover a date.
     this.addInput("matrix", adoptiveTableIn("Matrix"));
     this.addInput("headers", strListIn("Headers"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  // Identity-stable memoization (same pattern as FrameInputNode): a fresh
-  // FrameValue every data() call defeats the backend's identity source-cache.
+  // Identity-stable memo: a fresh FrameValue per data() defeats the backend's source-cache.
   private _builtFromMatrix: unknown;
   private _builtFromHeaders: unknown;
   private _builtFromType: unknown;
@@ -1388,9 +1292,8 @@ export class BuildFrameNode extends ClassicPreset.Node {
   data(inputs: { matrix?: unknown[]; headers?: string[][] }) {
     const rawMatrix = inputs.matrix?.[0];
     const headers = inputs.headers?.[0];
-    // The matrix's element family, adopted onto the input socket from the wired
-    // cable (settleWildcardTypes) — the only place `date` survives. Part of the
-    // memo key: an adoption change (a cable retyped date↔number) must rebuild.
+    // The adopted element family — the only place `date` survives; part of the memo key,
+    // since a cable retyped date↔number must rebuild.
     const dt = this.inputs.matrix?.socket instanceof SolenoidSocket ? this.inputs.matrix.socket.dataType : undefined;
     if (this.cachedResult && rawMatrix === this._builtFromMatrix && headers === this._builtFromHeaders && dt === this._builtFromType) {
       return { frame: this.cachedResult };
@@ -1398,9 +1301,8 @@ export class BuildFrameNode extends ClassicPreset.Node {
     const m = toAnyMatrix(rawMatrix);
     if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
     const known = colTypeForSocket(dt);
-    // Numeric matrices keep the original builder byte-for-byte (unit headers, an
-    // all-null column typed number, every existing seed/test); date/string/logical
-    // and genuinely-untyped (anytable, not yet adopted) go through the typed path.
+    // Numeric matrices must keep the original builder byte-for-byte (unit headers, an
+    // all-null column typed number); other families take the typed path.
     const allNumeric = known === null && m.every((row) => row.every((c) => c === null || isSolError(c) || typeof c === "number"));
     this.cachedResult = known === "number" || allNumeric
       ? buildFrame(m as number[][], headers)
@@ -1423,8 +1325,7 @@ export class FrameFromListsNode extends ClassicPreset.Node {
   readonly pairLabels: [string, string] = ["Name", "Values"];
   width = 220; height = 240;
 
-  // Identity-stable memoization (same rationale as BuildFrame, audit finding 42):
-  // a fresh FrameValue per pass defeats the backend's identity source-cache.
+  // Identity-stable memo: a fresh FrameValue per pass defeats the backend's source-cache.
   private _sig: unknown[] = [];
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
@@ -1471,12 +1372,10 @@ export class FrameFromListsNode extends ClassicPreset.Node {
       if (wired === undefined || wired === null) continue; // an unwired row contributes nothing
       const cells = Array.isArray(wired) ? wired : [wired]; // a scalar makes a 1-cell column
       const nameRaw = readInput(inputs[nameK] as string[] | undefined, this.stringLiterals[nameK] ?? "");
-      // A wired blank column NAME is unknown — the whole frame is blank rather than
-      // one column silently auto-named (value-semantics.md, "Reading an input").
+      // A wired blank NAME blanks the whole frame rather than auto-naming one column.
       if (nameRaw === null) { this.cachedResult = null; this._sig = []; return { frame: null }; }
       const name = String(nameRaw).trim();
-      // The column type adopted onto this list input from its wired cable (date
-      // survives here; null = an untyped anylist source → infer from values).
+      // The adopted column type (date survives here); null = untyped → infer from values.
       const sock = this.inputs[valsK]?.socket;
       const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
       cols.push({ name, cells, known });
@@ -1499,16 +1398,12 @@ export class FrameFromListsNode extends ClassicPreset.Node {
 
 // ─── SPLIT FRAME ───────────────────────────────────────────────────────────────
 
-// The Split Frame column-type filter: keep all columns, or only those of one type.
-// Filtering to a numeric-representable type (number/date/logical) lets Split pull a
-// clean Matrix out of a MIXED frame — which plain "all" can't (any text column makes
-// the matrix null). Text → headers only (text has no numeric matrix).
+// Filtering to one numeric-representable type is how Split pulls a clean Matrix out of a
+// MIXED frame — under "all", any text column makes the matrix null.
 export type SplitColType = "all" | FrameColType;
 
-// The Matrix output socket type tracks the chosen column type, so downstream type-
-// gated inputs (a date-matrix op, a logical-matrix op, a string-matrix op) accept it.
-// all/number → number table; date → date-serial table; logical → 1/0 table; text →
-// string table (the one case whose matrix is strings, not numbers).
+// The Matrix output socket type tracks the chosen column type so downstream type-gated
+// inputs accept it; `string` is the one case whose matrix is strings, not numbers.
 export function splitMatrixOutput(colType: SplitColType) {
   return colType === "string" ? strTableOut("Matrix")
     : colType === "date" ? dateTableOut("Matrix")
@@ -1521,8 +1416,7 @@ export class SplitFrameNode extends ClassicPreset.Node {
   colType: SplitColType;
   cachedMatrix: (number | string)[][] | null = null;
   cachedHeaders: string[] | null = null;
-  // True when the kept columns include text, so the Matrix output is null by design —
-  // lets the component explain the empty Matrix instead of a bare "—".
+  // True when the kept columns include text, so the Matrix output is null BY DESIGN.
   cachedMixed = false;
   width = 230; height = 200;
 
@@ -1538,14 +1432,12 @@ export class SplitFrameNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedMatrix = null; this.cachedHeaders = null; this.cachedMixed = false; return { matrix: null, headers: null }; }
-    // Keep only the columns of the chosen type (or all), then build the matrix from
-    // that subset — so Matrix + Headers are both filtered consistently.
+    // Matrix + Headers must both come off the same filtered subset.
     const cols = this.colType === "all" ? f.columns : f.columns.filter((c) => c.type === this.colType);
     const headers = cols.map((c) => c.name);
 
     if (this.colType === "string") {
-      // Text has no numeric matrix — build a STRING matrix of the text columns so the
-      // strtable output is real, not null.
+      // Text has no numeric matrix — build a STRING matrix so strtable is real, not null.
       const rows = frameRowCount({ __frame: true, columns: cols });
       const matrix: (number | string)[][] | null = cols.length
         ? Array.from({ length: rows }, (_, i) =>
@@ -1609,10 +1501,8 @@ export class GetColumnNode extends ClassicPreset.Node {
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
     // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
     if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
-    // A LAZY upstream (verb chain): fetch the ONE column through the backend's
-    // column primitive instead of forcing a full-frame collect. The engine
-    // awaits a promise-returning data(); the cast keeps the sync signature the
-    // FrameValue path uses.
+    // A LAZY upstream fetches the ONE column instead of forcing a full-frame collect; the
+    // engine awaits a promise-returning data(), and the cast keeps the sync signature.
     if (isFrameRef(f)) {
       return (async () => {
         const col = await materialize((async () => frameBackend().column(await flushRef(f), name))());
@@ -1629,8 +1519,7 @@ export class GetColumnNode extends ClassicPreset.Node {
   /** Apply the read-as coercion to a fetched column; stashes cachedResult. */
   private readColumn(col: FrameColumn): GetColumnValues {
     if (this.readAs === "text") {
-      // Stringify each cell; a DATE column formats its serials as date strings
-      // (not raw "46025"), a numeric column becomes its digits.
+      // Format, don't String() — a DATE column must read as date text, not raw serials.
       const out = col.values.map((v) => {
         const c = formatFrameCell(col.type, v);
         return c == null ? "" : String(c);
@@ -1639,28 +1528,16 @@ export class GetColumnNode extends ClassicPreset.Node {
       return out;
     }
     if (this.readAs === "logical") {
-      // The way to get a logical column OUT as a real logical list (TRUE/FALSE),
-      // and to coerce a 0/1 mask or "true"/"false" text column to one. Shares
-      // coerceLogical with Cast → Boolean so both parse identically: a boolean
-      // passes through, a number is nonzero=TRUE, "TRUE"/"FALSE" parse. A blank
-      // stays null (missing); an unparseable cell → null too (lenient, like the
-      // numeric read-as's NaN — there's no boolean NaN, and a missing reads cleaner
-      // than a fabricated FALSE); a per-cell error propagates.
+      // Shares coerceLogical with Cast → Boolean so both parse identically; an
+      // unparseable cell stays null (there is no boolean NaN).
       const out = col.values.map((v) =>
         v === null ? null : isSolError(v) ? v : coerceLogical(v),
       );
       this.cachedResult = out;
       return out;
     }
-    // Number / Date are COERCIONS, not filters: a number passes through; a TEXT
-    // cell is parsed (so a CSV-imported date column stored as text — "2026-01-03"
-    // — reads as Date into serials, and a numeric-text column reads as Number).
-    // Anything unparseable → NaN (→ N/A), the same as genuinely bad data. This is
-    // element-wise Cast(date) / Cast(number) baked into the read-as choice.
-    // A number column LOCKED to a dimensional unit (Bundle 05: FC A4) tags each
-    // numeric cell as a base-SI UnitCell, so the unit rides OUT of the frame into
-    // the list — Aggregate/arithmetic downstream carry it. Date reads never tag
-    // (a serial isn't a physical quantity).
+    // Number / Date are COERCIONS, not filters — a text cell is parsed, unparseable → NaN.
+    // Only a number read tags cells with the column unit; a date serial is not a quantity.
     const colUnit = this.readAs === "number" && col.unit ? col.unit : undefined;
     const out = col.values.map((v) => {
       if (v === null) return null; // a blank cell is MISSING — flows as null (aggregators skip it), not NaN
@@ -1714,8 +1591,7 @@ export class AddColumnNode extends ClassicPreset.Node {
     // A wired blank name is unknown (value-semantics.md, "Reading an input").
     if (!f || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Col";
-    // Pad the new column to the frame's row count so columns stay aligned. A null/
-    // text/error cell in the incoming list is carried verbatim (array-semantics policy).
+    // Pad the new column to the frame's row count so columns stay aligned.
     const rows = Math.max(frameRowCount(f), values.length);
     const padded: FrameCell[] = Array.from({ length: rows }, (_, i) =>
       i < values.length ? values[i] : null,
@@ -1740,18 +1616,13 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = { name: "computed", after: "" };
   /** Inline defaults for the side-input sockets (Expression convention: 0). */
   literals: Record<string, number> = {};
-  /** The side-input sockets currently grown (variables that named no column).
-   *  PERSISTED and regrown in the constructor (the Expression pattern) — a
-   *  saved cable into a side socket must find its socket at load, before the
-   *  first data() would have re-derived it; the reconcile then owns it. */
+  /** The side-input sockets currently grown (variables that named no column); PERSISTED
+   *  and regrown in the constructor, so a saved cable finds its socket at load. */
   sideVars: string[] = [];
-  /** Explicit variable → column bindings (the binding pickers). Absent = auto
-   *  (by name, else a side input); present = ALWAYS a read of that column
-   *  (stale target → #REF! naming it, per the core's alias contract). */
+  /** Explicit variable → column bindings; absent = auto (by name, else a side input),
+   *  present = ALWAYS a read of that column (stale target → #REF!). */
   bindings: Record<string, string> = {};
-  /** The input frame's column names + the definition's variables, stashed per
-   *  compute so the card can render the binding pickers without re-deriving
-   *  (Pivot's `sourceColumns` pattern). Empty when unconnected. */
+  /** Stashed each compute so the card renders the binding pickers without re-deriving. */
   sourceColumns: string[] = [];
   defVars: string[] = [];
   width = 235; height = 290;
@@ -1773,19 +1644,14 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     }
     this.addInput("frame", frameIn("Frame"));
     this.addInput("name", strIn("Name"));
-    // Placement: blank = append at the end; a column name = insert right
-    // after it. Replacing an existing column keeps its position regardless.
+    // Blank = append; a column name = insert after it. A replaced column keeps its position.
     this.addInput("after", strIn("After"));
     this.addInput("fn", lambdaIn("λ"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  /** Grow/shrink the side-input sockets to match `needed` — like Expression's
-   *  variable sockets, but driven by the FRAME SCHEMA (a variable stops being a
-   *  side input the moment a column of that name appears), so it reconciles
-   *  from data() via a microtask like the Expression result-rank swap. Cables
-   *  on a removed socket drop; headless runs still keep the socket maps in
-   *  sync so literals render and persistence sees the rows. */
+  /** Grow/shrink the side-input sockets to match `needed`; driven by the FRAME SCHEMA, so
+   *  it must reconcile from data() via a microtask, and cables on a removed socket drop. */
   private _reconcileSideSockets(needed: string[]): void {
     const current = this.sideVars;
     const added = needed.filter((v) => !current.includes(v));
@@ -1794,8 +1660,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     this.sideVars = needed;
     queueMicrotask(() => {
       void (async () => {
-        // anydata (rank ≤ 2, the Expression variable socket): a side value can
-        // be a whole list — SUM(list), or a row-aligned list read by @name.
+        // anydata (rank ≤ 2) so a side value can be a whole list, not just a scalar.
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed); // SSOT-9: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
@@ -1815,8 +1680,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const name = nameRaw.trim() || "computed";
     const after = (afterRaw ?? "").trim();
 
-    // The definition: the λ when wired (it wins — the deliberate, reusable
-    // definition), else the inline formula (compiled once per expr).
+    // A wired λ WINS over the inline formula.
     const wired = isLambdaValue(lam) ? lam : null;
     if (!wired) {
       if (this._compiledFor !== this.expr) {
@@ -1829,10 +1693,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
     }
 
-    // IDENTITY-STABLE output: same frame, same λ, same definition/config,
-    // same side values → return the SAME result object, so the backend's
-    // identity-keyed upload cache holds across full recomputes (a real change
-    // upstream mints new input identities, which is exactly the miss).
+    // IDENTITY-STABLE output: an unchanged pass returns the SAME object, so the backend's
+    // identity-keyed upload cache holds across full recomputes.
     const sideVals = this.sideVars.map((p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0));
     const bindJson = JSON.stringify(this.bindings);
     const k = this._lastKey;
@@ -1849,11 +1711,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       return out(frame);
     };
 
-    // The rules — binding precedence, builtins, bracket refs, the per-row contract —
-    // live in the SHARED core (computedColumnCore.ts), so this surface and the
-    // Frame Input's per-column sources can never disagree. This node only
-    // supplies its ports: reserved keys, side-value reads, and the pickers'
-    // explicit bindings.
+    // The per-row rules live in the SHARED core (computedColumnCore.ts); this node only
+    // supplies its ports, so it can never disagree with Frame Input's column sources.
     this.defVars = wired ? wired.params : this._vars;
     const computed = computeColumnCells(
       f,
@@ -1862,10 +1721,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         reserved: ["frame", "name", "fn", "after"],
         sideValue: (p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0),
         alias: this.bindings,
-        // @names that match no column grow side ports here — EXCEPT a wired
-        // λ's captured names, which ride the Lambda card's own sockets (the
-        // definition owns its names; only this node's inline expr falls to
-        // its side ports).
+        // @names matching no column grow side ports — EXCEPT a wired λ's captured names,
+        // which ride the Lambda card's own sockets.
         rowRefs: wired
           ? (wired.expr ? rowRefNames(wired.expr).filter((p) => !(wired.captured ?? []).includes(p)) : [])
           : this._rowRefs,
@@ -1878,10 +1735,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       ? inferColumn(name, values).type
       : this.addAs === "text" ? "string" : this.addAs;
 
-    // Placement: a replaced column keeps its position (addColumn semantics);
-    // a NEW column appends, then moves after the named anchor when one is set.
-    // Replacement is detected by the column count — exact, and free of a
-    // second copy of addColumn's `Name (unit)` header parsing.
+    // Replacement is detected by the column COUNT — exact, and avoids a second copy of
+    // addColumn's `Name (unit)` header parsing.
     const result = addColumn(f, name, values, colType);
     const replacing = result.columns.length === f.columns.length;
     if (after && !replacing) {
@@ -1942,10 +1797,8 @@ export class XLookupNode extends ClassicPreset.Node {
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
-  // The `cube` source is a POLYMORPHIC input: XLOOKUP branches on the runtime frame-
-  // vs-cube shape, so it must arrive UNCOERCED (a plain cube socket would toCube a
-  // wired Frame and strip its typed date/logical columns). See the per-input coercion
-  // policy in coerceInputs.ts.
+  // The source is POLYMORPHIC and must arrive UNCOERCED — coercion would toCube a wired
+  // Frame and strip its typed date/logical columns.
   rawInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 200; height = 350;
 
@@ -1954,10 +1807,8 @@ export class XLookupNode extends ClassicPreset.Node {
     this.label = init?.label ?? "XLOOKUP";
     this.matchMode = init?.matchMode ?? "exact";
     this.searchMode = init?.searchMode ?? "first";
-    // `cube` source socket — the lattice supremum, so it accepts a Frame OR a Cube
-    // (and rejects lambdas/charts that a bare `any` would let through). Its coercion
-    // is bypassed via `rawInputs` (above). A cube looks the key up in its TOP-LEVEL
-    // column and returns the matched cell WHOLE; Return = * returns the whole row.
+    // `cube` is the lattice supremum: accepts a Frame OR a Cube, rejects the lambdas and
+    // charts a bare `any` would let through.
     this.addInput("frame", cubeIn("Table / Cube"));
     this.addInput("lookup", strIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
@@ -1975,8 +1826,7 @@ export class XLookupNode extends ClassicPreset.Node {
     const inColRaw = readInput(inputs.inColumn, this.stringLiterals.inColumn ?? "");
     const retColRaw = readInput(inputs.returnColumn, this.stringLiterals.returnColumn ?? "");
     const fallbackRaw = readInput(inputs.ifNotFound, this.stringLiterals.ifNotFound ?? "");
-    // A wired blank is unknown — including ifNotFound, whose EMPTY literal means
-    // "no fallback typed" (value-semantics.md, "Reading an input").
+    // A wired blank is unknown — including ifNotFound, whose EMPTY literal means "no fallback".
     if (lookupRaw === null || inColRaw === null || retColRaw === null || fallbackRaw === null) {
       this.cachedResult = null; return { value: null };
     }
@@ -1984,12 +1834,8 @@ export class XLookupNode extends ClassicPreset.Node {
     const inCol = inColRaw.trim();
     const retCol = retColRaw.trim();
     if (raw == null || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
-    // The source socket is `any` (the only socket type that passes a Frame OR a Cube
-    // through UNCOERCED — a `cube` socket would re-brand a frame, an `anytable` rejects
-    // both). So guard the shape at runtime: XLOOKUP needs a 2-D table — a Frame, a Cube,
-    // or a 2-D matrix (widens to a frame). A scalar or a bare 1-D list is not a lookup
-    // table; reject it with a clear code instead of silently widening it to a useless
-    // 1-row frame (two aligned lists → Build Frame them together first).
+    // The uncoerced source needs a runtime shape guard: a scalar or bare 1-D list must be
+    // rejected, not silently widened to a useless 1-row frame.
     const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
     if (!tabular) {
       this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or cube. Build Frame two aligned lists first.");

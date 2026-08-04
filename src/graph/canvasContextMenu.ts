@@ -1,8 +1,5 @@
-// Right-click routing for the canvas: socket → socket menu, cable → cable menu,
-// node body → node menu, blank → Add menu.
-// Rete's synthetic React handler on the wrapper doesn't reliably resolve
-// `e.target` into the node DOM, so this is a NATIVE contextmenu listener on
-// the canvas element, which sees the true DOM target.
+// A NATIVE contextmenu listener, not rete's synthetic React handler — that one doesn't
+// reliably resolve `e.target` into the node DOM.
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
@@ -31,18 +28,12 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
   const handler = (e: MouseEvent) => {
     const target = e.target as HTMLElement | null;
     if (!target) return;
-    // Right-click / long-press inside an actively-edited text field (e.g. a Note's
-    // body while editing) should get the BROWSER's native copy/paste menu, not
-    // Solenoid's node menu. Bail before preventDefault so the native menu shows.
+    // Bail BEFORE preventDefault so an actively-edited field keeps the browser's own menu.
     const editable = target.closest("textarea, input, [contenteditable='true']");
     if (editable && editable === document.activeElement) return;
     e.preventDefault();
-    // Socket → socket context menu (attach Format Controller, etc.).
-    // The socket dot is only ~12px, and a click can land on the SVG child,
-    // rete's wrapper, or the node body just off the dot. So: try an exact
-    // hit first, then fall back to the nearest socket within a small radius
-    // of the cursor. This makes the whole visible dot (and a little around
-    // it) open the socket menu instead of falling through to Add.
+    // The socket dot is only ~12px and a click can land on a child element, so fall back to
+    // the nearest socket within a small radius rather than dropping through to Add.
     let socketEl = target.closest("[data-socket-key][data-socket-side][data-node-id]") as HTMLElement | null;
     if (!socketEl) {
       const SOCKET_HIT_PX = 11;
@@ -62,10 +53,8 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
       });
       return;
     }
-    // Cable hit path → cable context menu (insert Conduit, delete). The menu
-    // acts on the whole multi-selection when the clicked cable is part of it,
-    // otherwise on just the clicked cable (which gets selected for feedback).
-    // Ribbons expand to their member lanes either way.
+    // Acts on the whole multi-selection when the clicked cable is part of it, else on just
+    // that cable; ribbons expand to their member lanes either way.
     const cablePath = target.closest("path.solenoid-cable-hit") as SVGPathElement | null;
     const clickedConnId = cablePath?.dataset.connId;
     if (clickedConnId) {
@@ -95,12 +84,8 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
       setCableCtx({ connIds, screenX: e.clientX, screenY: e.clientY });
       return;
     }
-    // On an item body (any node — regular, Note, or Group, but not a socket):
-    // open the node menu (Isolate / Isolate chain, plus the Standoff link when
-    // exactly two linkable items are selected and one of them was clicked).
-    // Detect via the authoritative nodeViews map rather than a CSS class — node
-    // roots vary (.solenoid-node, .solenoid-note, .solenoid-group) and rete adds
-    // no shared wrapper class, so any class-based gate misses some node type.
+    // Detect via the authoritative nodeViews map, NEVER a CSS class — node roots vary and
+    // rete adds no shared wrapper, so any class-based gate misses some node type.
     {
       const editor = editorRef.current;
       const area = areaRef.current;
@@ -112,15 +97,13 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
       }
       if (editor && area && clickedId) {
 
-      // Isolate acts on the selection if the clicked node is part of it,
-      // otherwise on just the clicked node (no selection surgery on right-click).
+      // No selection surgery on right-click: act on the selection only if it contains the node.
       const selectedIds = editor.getNodes()
         .filter((n) => (n as { selected?: boolean }).selected)
         .map((n) => n.id);
       const seedIds = selectedIds.includes(clickedId) ? selectedIds : [clickedId];
 
-      // Pinnable: a group (shows its readouts), or a real value node (has an
-      // output), but not a bundler / FC.
+      // Pinnable = a group or a real value node, but never a bundler / FC.
       const clickedNode = editor.getNode(clickedId);
       const canPin = !!clickedNode && (
         clickedNode instanceof GroupNode || (
@@ -130,7 +113,6 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
         )
       );
 
-      // Standoff link offer: exactly two linkable items selected, one clicked.
       const grouped = new Set<string>();
       for (const n of editor.getNodes()) {
         if (n instanceof GroupNode) for (const m of n.members) grouped.add(m);
@@ -157,7 +139,7 @@ export function installCanvasContextMenu(deps: ContextMenuDeps): () => void {
       return;
       }
     }
-    // Blank canvas → Add-node menu (suppressed while isolating — no new nodes).
+    // Suppressed while isolating — no new nodes there.
     if (isolateStore.isActive()) return;
     openAddMenu(e.clientX, e.clientY);
   };

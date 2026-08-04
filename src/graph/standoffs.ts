@@ -1,5 +1,4 @@
-// The standoff model + its module-level store (no React context). Direction is
-// encoded by `a.anchor`: the axis points from a toward b, so
+// Direction is encoded by `a.anchor`: the axis points from a toward b, so
 // `min ≤ dot(Pb − Pa, axis) ≤ max` with positive min/max.
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -16,14 +15,12 @@ export interface Standoff {
   b: StandoffEnd;
   min: number;
   max: number;
-  /** When true the solver also pulls the perpendicular offset to 0, so the two
-   *  ends align exactly along the (45°-quantized) axis — a rigid 45° lock.
-   *  Default/absent keeps the classic axis-band-only behavior (the bar slants). */
+  /** The solver also pulls the perpendicular offset to 0 — a rigid 45° lock;
+   *  absent keeps the axis-band-only behaviour (the bar slants). */
   locked?: boolean;
 }
 
-/** Hard floor for a standoff's min distance — nodes never sit closer than this
- *  along the axis, so a standoff always leaves a readable gap. */
+/** Hard floor: nodes never sit closer than this along the axis. */
 export const STANDOFF_MIN = 30;
 
 const D = Math.SQRT1_2; // diagonal unit component
@@ -73,10 +70,8 @@ export function anchorFromVector(dx: number, dy: number): StandoffAnchor {
   }
 }
 
-/** Connected components of the standoff graph: each returned array is a set of
- *  node ids joined (directly or transitively) by standoffs — a "cluster" that
- *  layout ops can treat as one rigid block. Singletons (nodes with no standoff)
- *  are omitted; only clusters of 2+ are returned. Computed from current state. */
+/** Each array is a set of node ids joined transitively by standoffs — a cluster
+ *  layout ops treat as one rigid block. Singletons are omitted. */
 export function standoffClusters(standoffs: readonly Standoff[] = _standoffs): string[][] {
   const adj = new Map<string, Set<string>>();
   const link = (a: string, b: string) => {
@@ -121,9 +116,8 @@ export const standoffStore = {
   version: () => _version,
   selected: () => _selectedId,
   isEmpty: () => _standoffs.length === 0,
-  /** Every node id that appears as a standoff end, cached by store version.
-   *  Ties are SPARSE (each Note to its group), so drag-time work gates on this:
-   *  a node outside the set can't tow anything and its move draws no bar. */
+  /** Ties are SPARSE, so drag-time work gates on this: a node outside the set
+   *  can't tow anything and its move draws no bar. */
   participants(): ReadonlySet<string> {
     if (_participants === null || _participantsVersion !== _version) {
       _participants = new Set<string>();
@@ -175,9 +169,8 @@ export const standoffStore = {
     s.locked = locked;
     notify();
   },
-  /** Rotate the standoff's axis to one of the 8 (45°) directions: `anchor` is the
-   *  side/corner of a the bar leaves from; b takes the opposite so the bar spans
-   *  the pair. Driven by the toolbar angle dial. */
+  /** `anchor` is the side/corner the bar leaves a from; b takes the opposite so
+   *  the bar spans the pair. */
   setAxis(id: string, anchor: StandoffAnchor) {
     const s = _standoffs.find((x) => x.id === id);
     if (!s || s.a.anchor === anchor) return;
@@ -202,8 +195,7 @@ export const standoffStore = {
   },
 };
 
-// Bumped by Canvas whenever node positions/sizes may have changed, so the
-// standoff layer re-measures and redraws.
+// Bumped by Canvas whenever positions/sizes may have changed, so the layer re-measures.
 
 let _tick = 0;
 const _tickListeners = new Set<Listener>();
@@ -220,8 +212,7 @@ export const standoffLayoutTick = {
   },
 };
 
-// Canvas owns the editor/area and registers the actual settle routine (solve +
-// apply translates); other modules request a settle through this indirection.
+// Canvas owns the editor/area and registers the real settle routine here.
 
 export type SettleOpts = { forceLock?: boolean };
 let _settle: (pinned?: Set<string>, opts?: SettleOpts) => void = () => {};
@@ -232,7 +223,6 @@ export function settleStandoffs(pinned?: Set<string>, opts?: SettleOpts) {
   _settle(pinned, opts);
 }
 
-// Registered like every node-keyed store (nodeStoreRegistry): a deleted node's
-// standoffs go with it, and a wholesale rebuild clears in one pass.
+// A deleted node's standoffs go with it; a wholesale rebuild clears in one pass.
 registerNodeForget((nodeId) => standoffStore.removeForNode(nodeId));
 registerNodeForgetAll(() => standoffStore.clear());

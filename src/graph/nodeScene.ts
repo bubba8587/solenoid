@@ -5,11 +5,8 @@ import { NODE_KIND_ACCENTS } from "./nodes/shared";
 import { parseColor, type RGBA } from "./cssColor";
 import type { NodeCard } from "./nodeInstances";
 
-// Node scene — reads the LIVE node rectangles + kind colors from rete's area, for
-// the WebGPU node-card renderer (the LOD stand-in for the DOM node bodies).
-// nodeGeomBus is bumped by Canvas when nodes move/resize/add/remove, so the card
-// layer rebuilds only then (pan/zoom just re-draws — node world rects don't change
-// on pan).
+// Live node rectangles + kind colors for the WebGPU node-card renderer. Canvas bumps
+// `nodeGeomBus` only on move/resize/add/remove — pan/zoom just re-draws.
 
 export const nodeGeomBus = createNotifier();
 
@@ -17,8 +14,7 @@ const DEFAULT_RADIUS = 8;
 const DEFAULT_HEADER_H = 26;
 const FALLBACK_BODY: RGBA = { r: 30, g: 33, b: 40, a: 1 };
 
-// The card body fill, read from a real node element's computed background so we
-// don't hard-code a theme var name.
+// Read from a real element's computed background so no theme var name is hard-coded.
 function readBodyColor(sampleEl: HTMLElement | null): RGBA {
   if (!sampleEl) return FALLBACK_BODY;
   try {
@@ -27,11 +23,8 @@ function readBodyColor(sampleEl: HTMLElement | null): RGBA {
   } catch { return FALLBACK_BODY; }
 }
 
-/** Collect the current node cards (regular `.solenoid-node` roots only — groups /
- *  notes / conduits have distinct visuals and are skipped for now). World rect from
- *  the area node view's position + the element's unscaled offset box; header color
- *  from the node kind; header HEIGHT measured per node (titles wrap to 1–2 lines, so
- *  a fixed height under-covers a 2-line header). Returns [] if editor/area aren't ready. */
+/** Regular `.solenoid-node` roots only; [] if editor/area aren't ready. Header height
+ *  is measured per node — titles wrap, so a fixed height under-covers a 2-line header. */
 export function collectNodeCards(radius = DEFAULT_RADIUS): NodeCard[] {
   const area = getArea();
   const editor = getEditor();

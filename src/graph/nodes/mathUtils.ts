@@ -7,12 +7,8 @@ export function clamp(v: number, lo: number, hi: number): number {
 }
 
 // ─── Min / max over an iterable ───────────────────────────────────────────────
-// Use these instead of `Math.min(...arr)` / `Math.max(...arr)` on user data:
-// the spread form passes every element as a function argument and throws
-// RangeError("too many arguments") past ~125k elements, so a large list (e.g. a
-// big SEQUENCE) into Aggregate(min) would black out the app during render. These
-// loop instead, accept any iterable (incl. a Map's .values()), and return
-// ±Infinity for an empty input — exactly matching `Math.min()` / `Math.max()`.
+// Use these on user data, never `Math.min(...arr)`: the spread form throws
+// RangeError past ~125k elements. Empty input gives ±Infinity, matching Math.min().
 export function iterMin(it: Iterable<number>): number {
   let m = Infinity;
   for (const v of it) if (v < m) m = v;
@@ -70,9 +66,8 @@ export function regularizedGamma(a: number, x: number): number {
   }
 }
 
-// Regularized incomplete beta I_x(a, b) via Lentz continued fraction.
-// Uses symmetry relation I_x(a,b) = 1 - I_{1-x}(b,a) to stay in the
-// convergent region (x < (a+1)/(a+b+2)).
+// Regularized incomplete beta I_x(a, b) via Lentz continued fraction, using
+// I_x(a,b) = 1 - I_{1-x}(b,a) to stay in the convergent region.
 export function regularizedBeta(x: number, a: number, b: number): number {
   if (a <= 0 || b <= 0 || x < 0 || x > 1) return NaN;
   if (x === 0) return 0;
@@ -100,9 +95,8 @@ export function regularizedBeta(x: number, a: number, b: number): number {
 
 // ─── Normal distribution ──────────────────────────────────────────────────────
 
-// Standard normal CDF Φ(z) via erf (A&S 7.1.26 approximation, max err ≈1.5e-7).
-// Φ(z) = ½(1 + erf(z/√2)); the erf approximation takes the scaled argument
-// |z|/√2, so the √2 must be applied to z before tabulating.
+// Standard normal CDF Φ(z) via erf (A&S 7.1.26, max err ≈1.5e-7); the erf
+// approximation takes |z|/√2, so the √2 applies to z before tabulating.
 function stdNormCDF(z: number): number {
   const x = Math.abs(z) / Math.SQRT2;
   const t = 1 / (1 + 0.3275911 * x);
@@ -169,12 +163,9 @@ export function lnCombin(n: number, k: number): number {
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);
 }
 
-/** Least-squares line through paired data — the shared core of FORECAST.LINEAR
- *  (and the same fit SLOPE/INTERCEPT/RSQ describe). Null when there are fewer
- *  than two points or the Xs have zero variance (the fit divides by SSxx and is
- *  undefined); each surface tags its own error from that, so this stays pure —
- *  the node returns #DIV/0!, the formula returns the same via its registration.
- *  Ragged inputs use the min-length zip, matching the paired-range policy. */
+/** Least-squares line through paired data — null when there are fewer than two
+ *  points or the Xs have zero variance, so each surface tags its own error;
+ *  ragged inputs use the min-length zip. */
 export function linearFit(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { slope: number; intercept: number } | null {
@@ -194,9 +185,7 @@ export function linearFit(
   return { slope, intercept: yMean - slope * xMean };
 }
 
-/** `linearFit` plus R² — the LINEST node's three outputs in one pass. Same null
- *  conditions (fewer than two points, zero X variance); R² is 0 when Y has zero
- *  variance (a flat line explains nothing, but the fit itself exists). */
+/** `linearFit` plus R² in one pass; R² is 0 when Y has zero variance. */
 export function linearFitR2(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { slope: number; intercept: number; r2: number } | null {
@@ -216,10 +205,8 @@ export function linearFitR2(
   return { slope, intercept: yMean - slope * xMean, r2 };
 }
 
-/** Exponential fit y = b·mˣ by least squares in log space — LOGEST/GROWTH's
- *  core. Null when the linear fit of ln(y) is undefined OR any y ≤ 0 (the log
- *  doesn't exist); callers decide how to surface that (the node's convention is
- *  a quiet empty result). */
+/** Exponential fit y = b·mˣ by least squares in log space; null when the ln(y)
+ *  fit is undefined or any y ≤ 0. */
 export function expFit(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { m: number; b: number } | null {
@@ -232,8 +219,7 @@ export function expFit(
 }
 
 // ─── Piecewise-linear interpolation ───────────────────────────────────────────
-// Lives here, not in stats.ts, for the same reason textOps/listOps do: the formula
-// registration (INTERPOLATE) needs it and must not drag rete + the socket lattice in.
+// Lives here so the INTERPOLATE registration doesn't drag rete in.
 
 function bracket(axis: number[], x: number): [number, number, number] {
   const last = axis.length - 1;
@@ -248,9 +234,8 @@ function bracket(axis: number[], x: number): [number, number, number] {
   return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
 }
 
-// 1-D piecewise-linear interpolation over a known (x, y) dataset. Points are sorted
-// by x (known data may arrive unordered); a duplicated x resolves to its first-seen y
-// (via bracket's t=0). A NaN query stays NaN. Clamped at the ends.
+// Points are sorted by x, a duplicated x resolves to its first-seen y, a NaN query
+// stays NaN, and the ends clamp.
 export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
   const n = Math.min(xs.length, ys.length);
   if (n === 0) return queryXs.map(() => NaN);
@@ -267,10 +252,8 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 }
 
 // ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
-// The T.TEST / F.TEST / PROB nodes and the formula registrations both call these
-// (FX-1): Formula.js's own T.TEST ignores `tails`/`type` entirely and its F.TEST
-// returns the variance RATIO instead of the p-value, so dispatching to it shipped
-// a different answer than the node under the same name.
+// Node and formula both call these (FX-1): Formula.js's T.TEST ignores
+// `tails`/`type` and its F.TEST returns the variance RATIO, not the p-value.
 import { isSolError, type SolError as StatSolError } from "../errorValue";
 
 type StatCell = number | null | StatSolError;
@@ -377,30 +360,12 @@ export function probBetween(
 
 
 // ─── Bilinear lookup-table fill (INTERPOLATE grid mode) ──────────────────────
-// Lives here, not in nodes/stats.ts, because the formula surface shares it and
-// the formula path must stay rete-free (FX-2) — stats.ts imports rete AND
-// excelFunctions, so a kernel both surfaces call cannot live there.
+// Lives here, not nodes/stats.ts, because the formula path must stay rete-free (FX-2).
 import { fitSurface, type FitPoint } from "./surfaceFit";
 
-// Fill the blank interior cells of a coordinate-BORDERED grid by true BILINEAR
-// interpolation — the standard lookup-table method (MATLAB `interp2`, SciPy
-// `RegularGridInterpolator` with method="linear"). The first row holds the X coordinate
-// of each column, the first column the Y coordinate of each row; the top-left corner is
-// ignored and comes back blank. The KNOWN cells define a coarse grid — its rows/columns
-// are the lines that carry data. A blank cell (an inserted intermediate coordinate, or a
-// hole) is the bilinear blend of the four surrounding known corners: its X is bracketed
-// among the data columns and its Y among the data rows, then interpolated in both. The
-// bracket WIDENS past any line whose corner is blank, so a hole interpolates across it
-// from the neighboring data lines — the closest four-corner box with all corners known
-// is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
-// no four known corners ENCLOSE (the query outside every known-corner box) is left for
-// the forecast pass.
-//
-// `forecast` (default true): after the bilinear pass, every still-blank cell is filled
-// by a smooth surface fitted through ALL the known points — a thin-plate spline, or a
-// plane for degenerate data (`surfaceFit.ts`). That fills the scattered gaps and
-// extrapolates past the data (a linear trend at the edges). With forecast OFF, only the
-// bilinear-enclosed cells fill; the rest stay blank.
+// Fill a coordinate-BORDERED grid's blank interior by bilinear interpolation over
+// the closest all-known-corner box, then (unless `forecast` is off) fill whatever
+// is left from a surface fitted through ALL known points.
 export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
   const R = table.length;
   const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
@@ -426,9 +391,8 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
   const coarseRows: number[] = [];
   for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
 
-  // Data lines bracketing a query on an axis: those at-or-below (nearest first) and
-  // at-or-above (nearest first). Returns null when the query sits past the data on that
-  // axis (one side empty) — the cell can't be ENCLOSED, so it's left for the forecast.
+  // Bracketing data lines, nearest first; null when the query sits past the data on
+  // that axis, so the cell can't be ENCLOSED.
   const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] | null => {
     const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
     const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
@@ -453,28 +417,20 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
     const rs = sides(coarseRows, (k) => rowYs[k], qy);
     const cs = sides(coarseCols, (k) => colXs[k], qx);
     if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
-    // Cap the widening DEPTH per side. Un-capped, scattered data (a diagonal)
-    // rejects every box and the four nested loops exhaust O(lines⁴) combinations
-    // per cell — seconds on a modest grid. A cap of 4 still crosses runs of
-    // several consecutive holes on a line (each hole costs one widening step);
-    // anything needing a wider reach is scattered, and the spline handles it.
+    // The widening depth MUST stay capped: un-capped, scattered data rejects every
+    // box and the four nested loops exhaust O(lines⁴) combinations per cell.
     const WIDEN = 4;
     const [rLoC, rHiC] = [rs[0].slice(0, WIDEN), rs[1].slice(0, WIDEN)];
     const [cLoC, cHiC] = [cs[0].slice(0, WIDEN), cs[1].slice(0, WIDEN)];
-    // Nearest-first search for the closest box whose four corners are all known; widening
-    // past blank corners (a hole) is what lets it interpolate across missing samples. The
-    // query is always inside the box (lo ≤ q ≤ hi), so this is pure interpolation.
+    // Widening past blank corners is what lets a hole interpolate across missing
+    // samples; the query stays inside the box, so this is pure interpolation.
     search:
     for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
       const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
       if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
       const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
-      // A box is only an HONEST bilinear cell when no OTHER known data lies within
-      // it (coordinate-space, borders included): bilinear over the corners would
-      // ignore that nearer data. A DEGENERATE (1-D) span is likewise contested by
-      // data strictly between its two samples in the cross direction, ANY distance
-      // off-axis. A contested cell falls through to the surface fit, which uses
-      // ALL the points.
+      // A CONTESTED box — one with other known data inside it — falls through to the
+      // surface fit rather than ignoring that nearer data.
       const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
       const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
       const degenRow = rLo === rHi, degenCol = cLo === cHi;
@@ -497,8 +453,7 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
     }
   }
 
-  // ── Pass 2 — Forecast: fill every cell pass 1 left blank with a smooth surface fitted
-  // through ALL the known points (thin-plate spline, or a plane for degenerate data). ──
+  // ── Pass 2 — Forecast: fill what pass 1 left blank from a fitted surface. ──
   if (forecast) {
     const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
     if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {

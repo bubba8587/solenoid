@@ -11,11 +11,8 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 
-// ─── The canvas-figure cards ──────────────────────────────────────────────────
-// Every one of these nodes is the same card: input rows, a divider, the figure
-// (via ChartFigure, so the node and a Report embed render identically), and the
-// [Chart] chip when collapsed. The per-node knobs are the figure height and a
-// payload emptiness check.
+// One shared card for every figure node; the figure comes from ChartFigure, so a
+// node and a Report embed render identically.
 
 type FigureNode = ClassicPreset.Node & {
   id: string;

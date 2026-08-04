@@ -7,18 +7,12 @@ import { isSolError, type SolError } from "../errorValue";
 import { isDesktop } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
 import { getEditor } from "../process";
-// NOTE: obsidianWrite (and its DOM/filesystem deps — imageAssets, canvasCapture,
-// documentStore) is dynamically imported inside run(), NOT at module top. Pulling
-// that subtree eagerly through the rete-nodes barrel creates an init cycle
-// (…→ documentStore → persistence → nodeCatalog → rete-nodes) that leaves
-// catalog metadata undefined at eval time. run() only fires on a desktop click, so
-// the lazy import costs nothing and keeps this node module light.
+// obsidianWrite is imported lazily INSIDE run(): pulling its subtree eagerly through
+// the rete-nodes barrel creates an init cycle (…→ documentStore → persistence →
+// nodeCatalog → rete-nodes) that leaves catalog metadata undefined at eval time.
 
-// A document sink with the same arm/disarm safety shape as the CSV/JSON sinks:
-// data() only CACHES the DocumentValue for the card preview; the `.md` write
-// fires ONLY from the Run button, and `enabled` is deliberately kept OUT of
-// copyPaste's persistence whitelist so every load/paste/restore starts
-// disarmed. Desktop only.
+// The `.md` write fires ONLY from the Run button, and `enabled` is kept OUT of
+// copyPaste's persistence whitelist so every load/paste/restore starts disarmed.
 
 export type ObsidianWriteStatus = "idle" | "writing" | "ok" | "error";
 
@@ -49,11 +43,8 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     return {};
   }
 
-  /** ref name → source node id, for the document-producing node wired to this
-   *  sink. Walks the editor: this node's `in` → the producer (Report/Note), then
-   *  the producer's ref inputs → their sources. Used only to rasterize a chart ref
-   *  (it needs the source node's live SVG). Empty with no editor (tests) or nothing
-   *  wired. */
+  /** ref name → source node id, walked from this sink's `in` through the producer's
+   *  ref inputs. Used only to rasterize a chart ref, which needs its live SVG. */
   private refSources(): Map<string, string> {
     const out = new Map<string, string>();
     const ed = getEditor();
@@ -67,8 +58,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     return out;
   }
 
-  /** Explicit write — call ONLY from the node's Run button. Re-entrancy-guarded
-   *  (a second Run mid-write is a no-op). Desktop only. */
+  /** Call ONLY from the node's Run button; re-entrancy-guarded, desktop only. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled; arm it first"; return; }
@@ -101,11 +91,9 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   }
 }
 
-// The read side: a `.md` picked from the vault becomes a Note. It IS a Note
-// (extends NoteNode), so it reuses the frontmatter-socket + document machinery
-// and reads as a note everywhere; it only adds the source file path and a
-// read-only, file-sourced body. The body persists in the save, so a loaded doc
-// shows the imported content on web too.
+// It IS a Note (extends NoteNode), reusing the frontmatter-socket machinery and
+// adding only a source path + read-only body, which persists so a loaded doc shows
+// the imported content on web too.
 
 export class ImportObsidianNode extends NoteNode {
   /** Vault-relative path of the source `.md` file ("" until one is picked). */

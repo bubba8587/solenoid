@@ -1,22 +1,5 @@
-// The STRICT validating reader over the text form / saved graph — the gate an
-// AI (or any programmatic author) runs BEFORE a generated graph touches a
-// document (backlog "AI command palette", D27). The permissive load path is
-// deliberately forgiving — an unknown type becomes a Placeholder, a refused
-// cable is silently dropped in rebuildGraph, an unknown init key is ignored —
-// which is right for a human reopening their own save and fatal for a
-// generate→apply loop, where garbage would apply "successfully" and the author
-// never learns it erred. This module reports every such would-be-silent repair
-// as an issue with a message precise enough to fix the text from ("no input
-// `vals` on AggregateNode — nearest `values`"), and flags exactly what the live
-// editor would refuse (`canConnect`, the same directional check the connection
-// guard runs).
-//
-// Pure + headless (no rete editor, no DOM) in the persistenceCore/textForm
-// mold: node classes are instantiated once each via the SAME registry
-// persistence rebuilds from (`ctorRegistry`), and their declared sockets are
-// introspected off the instance. A node whose sockets only materialize later
-// (e.g. a Composite hydrating its saved ports) reports an EMPTY socket record —
-// key checks are skipped for that side rather than false-positived.
+// STRICT counterpart to the forgiving load path: every condition the loader would
+// silently repair is an issue. Pure + headless; an empty socket record skips key checks.
 
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
@@ -37,10 +20,8 @@ export interface GraphIssue {
   /** The node the issue anchors to (its name), when there is one. */
   node: string | null;
   message: string;
-  /** "warning" for states that are LEGAL to load and run (a dependency cycle
-   *  computes as #CIRC! — the null-and-logical seed ships one on purpose) but
-   *  almost certainly unintended in a generated graph. Errors (the default)
-   *  are conditions the loader would silently repair or the editor refuse. */
+  /** "warning" = legal to load and run but almost certainly unintended; errors (the
+   *  default) are conditions the loader would repair or the editor refuse. */
   severity?: "warning";
 }
 
@@ -117,11 +98,8 @@ function refusalReason(outT: SocketDataType, inT: SocketDataType): string {
 
 const INIT_KEY_SET = new Set<string>([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER]);
 
-/**
- * Validate a SavedGraph the way the STRICT reader needs it validated: every
- * silently-repaired-on-load condition is an issue. `lineOf` maps a node's
- * name to its 1-based text-form line for anchored messages (absent for JSON).
- */
+/** Validate a SavedGraph strictly; `lineOf` maps a node name to its 1-based
+ *  text-form line for anchored messages (absent for JSON). */
 export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number | null): GraphIssue[] {
   const issues: GraphIssue[] = [];
   const registry = ctorRegistry();
@@ -132,8 +110,8 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     issues.push({ line: null, node: null, message: `save version ${g.v} is newer than this build's ${CURRENT_SAVE_VERSION} — the loader will refuse the file.` });
   }
 
-  // One headless instance per node (each node's init can change its socket set,
-  // so a per-class cache would lie for op-selected and row-driven sockets).
+  // One headless instance per node — init can change the socket set, so a per-class
+  // cache would lie for op-selected and row-driven sockets.
   const instances = new Map<string, { inputs: PortMap; outputs: PortMap; hasLiterals: boolean; hasStringLiterals: boolean } | null>();
   const byId = new Map<string, SavedNode>();
 
@@ -162,11 +140,8 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
     const anyInst = inst as unknown as Record<string, unknown>;
 
-    // Init keys: every key extractInit can emit comes FROM the instance — the
-    // global whitelist, a spread of the class's `literals`/`stringLiterals`
-    // defaults (Slider min/max/step), an extensible node's row keys
-    // (`valueKeys` → per-row inputs), or a composite capability (`internal`).
-    // So judge against the constructed instance, not the static list alone.
+    // Every key extractInit can emit comes FROM the instance, so judge init keys
+    // against the constructed instance, not the static whitelist alone.
     const litKeys = Object.keys((anyInst.literals as object) ?? {});
     const strKeys = Object.keys((anyInst.stringLiterals as object) ?? {});
     const inputKeys = Object.keys((anyInst.inputs as object) ?? {});
@@ -181,10 +156,8 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       }
     }
 
-    // An op OUTSIDE the class's vocabulary constructs without complaint and
-    // then miscomputes — the constructor stores whatever it's handed. Enforce
-    // only against a vocabulary of 2+ known ops: a single-entry vocabulary
-    // (one leaf, no declared family) is too weak an assertion of completeness.
+    // An unknown op constructs without complaint and then miscomputes; enforce only
+    // against a 2+ op vocabulary, a single entry asserts too little.
     const opValue = sn.init?.op;
     if (typeof opValue === "string") {
       const vocab = opVocabByCtor().get(sn.type);
@@ -193,9 +166,8 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       }
     }
 
-    // A Composite carries its ENTIRE internal subgraph in init.internal —
-    // recurse so a generated composite is held to the same standard. Internal
-    // ids are live rete ids, not user names, so they skip the name check.
+    // Internal composite ids are live rete ids, not user names, so the recursion
+    // skips the name check.
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;
     if (internal && Array.isArray(internal.nodes) && Array.isArray(internal.connections)) {
       const sub: SavedGraph = {
@@ -215,8 +187,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     const info = {
       inputs: portsOf(anyInst.inputs as Record<string, unknown> | undefined),
       outputs: portsOf(anyInst.outputs as Record<string, unknown> | undefined),
-      // The same declaration gate persistence.ts restores through: a class
-      // takes inline literals iff it declares the map.
+      // The persistence.ts gate: a class takes inline literals iff it declares the map.
       hasLiterals: typeof anyInst.literals === "object" && anyInst.literals !== null,
       hasStringLiterals: typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null,
     };
@@ -238,8 +209,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
   }
 
-  // Connections. rebuildGraph would DROP every refused one without a word —
-  // each is an issue here.
+  // rebuildGraph would DROP every refused connection without a word.
   const wiredCount = new Map<string, number>(); // "targetId\u0000input" → cables in
   for (const c of g.connections) {
     const tgt = byId.get(c.target);
@@ -287,8 +257,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
   }
 
-  // Dependency cycles compute as #CIRC! at runtime — a generated graph almost
-  // certainly didn't mean to close one, so surface it.
+  // Dependency cycles compute as #CIRC! at runtime rather than failing to load.
   const cycleNames = findCycle(g);
   if (cycleNames) {
     issues.push({ line: null, node: null, severity: "warning", message: `dependency cycle: ${cycleNames.join(" → ")} — these nodes will compute as #CIRC!.` });
@@ -327,17 +296,13 @@ function findCycle(g: SavedGraph): string[] | null {
 
 export interface TextValidation {
   issues: GraphIssue[];
-  /** The parsed graph — from the real reader when the grammar is clean, from
-   *  the per-line salvage when it isn't (so semantic issues still report). Null
-   *  only when nothing parsed at all. */
+  /** The parsed graph — real reader when the grammar is clean, per-line salvage when
+   *  it isn't; null only when nothing parsed at all. */
   graph: SavedGraph | null;
 }
 
-/**
- * Validate a text-form document end to end: per-line grammar (reporting EVERY
- * malformed line, not just the first), the sidecar JSON, then the full
- * semantic pass with line-anchored messages.
- */
+/** Validate a text-form document end to end, reporting EVERY malformed line rather
+ *  than stopping at the first. */
 export function validateText(text: string): TextValidation {
   const issues: GraphIssue[] = [];
   const allLines = text.split("\n");
@@ -384,9 +349,7 @@ export function validateText(text: string): TextValidation {
     }
   }
 
-  // Assemble the graph: the real reader when it can't disagree with us, a
-  // salvage of the cleanly-parsed lines otherwise (duplicate names keep the
-  // first — matching a map's insert-once).
+  // Salvage keeps the FIRST of duplicate names, matching a map's insert-once.
   let graph: SavedGraph | null = null;
   if (grammarClean) {
     graph = readTextForm(text);
@@ -410,8 +373,7 @@ export function validateText(text: string): TextValidation {
   if (graph) {
     issues.push(...validateGraph(graph, (name) => lineByName.get(name) ?? null));
 
-    // Sidecar references are name-addressed — a typo here silently loses the
-    // position/standoff/pin/comment on load.
+    // Sidecar refs are name-addressed: a typo silently loses the entry on load.
     const names = new Set(graph.nodes.map((n) => n.name ?? n.id));
     const refIssue = (section: string, name: unknown) => {
       if (typeof name === "string" && !names.has(name)) {

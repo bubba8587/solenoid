@@ -6,7 +6,7 @@ import type { FormatAnnotation } from "../formatAnnotationStore";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, type ArithmeticOp } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
 
-// ─── Bessel helper functions ──────────────────────────────────────────────────
+// ─── Bessel helpers ───────────────────────────────────────────────────────────
 
 const EULER_GAMMA = 0.5772156649015329;
 
@@ -47,9 +47,7 @@ function _besselY0(x: number): number {
 function _besselY(x: number, n: number): number {
   if (x <= 0) return NaN;
   if (n === 0) return _besselY0(x);
-  // Upward recurrence from Y_0, Y_1
   const y0 = _besselY0(x);
-  // Y_1 via direct series — uses known formula
   const j1 = _besselJ(x, 1);
   let sum1 = 0; let H = 1;
   for (let m = 1; m < 60; m++) {
@@ -94,9 +92,8 @@ function _besselK(x: number, n: number): number {
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
 
-// The op union + the per-cell dimensional algebra live in ../unitValue (rete-free,
-// beside the rest of the unit layer) — re-exported here because this is the
-// family's home module and existing importers read them from here.
+// The op union + per-cell dimensional algebra live in ../unitValue (rete-free);
+// re-exported here as the family's home module.
 export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 export const ARITHMETIC_OP_META = {
@@ -115,7 +112,6 @@ export class ArithmeticNode extends ClassicPreset.Node {
   label: string;
   op: ArithmeticOp;
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-  // Inline literals — used for any input without an incoming cable.
   literals: Record<string, number> = { a: 0, b: 0 };
   width = 180;
   height = 200;
@@ -133,17 +129,13 @@ export class ArithmeticNode extends ClassicPreset.Node {
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
     const b = readInput(inputs.b, this.literals.b);
-    // ÷ 0 is a real error, not a blank — Excel #DIV/0! — at EVERY dimensionality:
-    // a scalar result is a tagged SolError, and an element divided by zero inside
-    // a list carries a per-cell #DIV/0! (array-semantics: lists hold per-cell
-    // errors, like the Expression / Map path). `broadcastErr` routes both. Same
-    // for MOD / QUOTIENT, which also divide.
+    // ÷ 0 is #DIV/0! at EVERY dimensionality: a tagged SolError for a scalar, a
+    // per-cell error inside a list. Same for MOD / QUOTIENT.
     const divZero = () => solError("#DIV/0!", "Division by zero");
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {
-      // Unit-aware path only when a dimension is actually present (base-SI algebra:
-      // × adds exponents, ÷ subtracts, +/− demand commensurability → #UNIT!). Plain
-      // number data takes the original broadcastErr fast path unchanged.
+      // The unit-aware path runs only when a dimension is present; plain numbers keep
+      // the broadcastErr fast path.
       if (anyDimensioned(a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[])) {
         result = broadcastUnit((x, y) => arithmeticCell(this.op, x, y),
           a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[]);
@@ -154,8 +146,8 @@ export class ArithmeticNode extends ClassicPreset.Node {
             case "sub": return x - y;
             case "mul": return x * y;
             case "div": return y === 0 ? divZero() : x / y;
-            // Excel MOD's sign follows the divisor: MOD(-3,2)=1. JS % follows the
-            // dividend (-3 % 2 = -1), so use the floored definition instead.
+            // Excel MOD's sign follows the DIVISOR (MOD(-3,2)=1); JS % follows the
+            // dividend, so use the floored definition.
             case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
             case "pow":      return Math.pow(x, y);
             case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
@@ -231,26 +223,21 @@ function erf(x: number): number {
   return (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
 }
 
-// Trig ops split by which side is the ANGLE: forward ops take an angle in,
-// inverse ops emit an angle out. Only these show the deg/rad/auto toggle;
-// hyperbolic ops take/return plain reals, not angles, so they're excluded.
+// Split by which side is the ANGLE; only these show the deg/rad/auto toggle, since
+// hyperbolic ops take and return plain reals.
 export const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
 export const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
 export function isTrigOp(op: MathFnOp): boolean {
   return FORWARD_TRIG_OPS.has(op) || INVERSE_TRIG_OPS.has(op);
 }
 
-// deg/rad/auto: `rad` is Excel parity (SIN takes radians); `deg` converts;
-// `auto` (default) reads the incoming unit — a `deg`-tagged value computes in
-// degrees, anything else in radians. Auto's effective mode is resolved at
-// recompute time (trigMode.ts) into `_resolvedAngleMode`.
+// `rad` is Excel parity, `deg` converts, `auto` reads the incoming unit — auto's
+// effective mode is resolved at recompute time into `_resolvedAngleMode`.
 export type AngleMode = "auto" | "rad" | "deg";
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
-// Ops that PRESERVE their argument's dimension (abs |x|, the rounding family — a
-// rounded length is still a length). Everything else either halves it (SQRT),
-// yields a plain number (SIGN), or demands a dimensionless argument.
+// Ops that PRESERVE their argument's dimension — a rounded length is still a length.
 const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
 const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;   // accept angle/dimensionless → number
 const MATHFN_INVERSE_TRIG = INVERSE_TRIG_OPS;   // dimensionless → angle
@@ -280,9 +267,8 @@ export class MathFnNode extends ClassicPreset.Node {
   op: MathFnOp;
   /** Angle interpretation for trig ops (ignored by every other op). */
   angleMode: AngleMode;
-  /** Auto mode's resolved effective mode, stamped by the recompute-time unit
-   *  read (trigMode.ts `resolveTrigModes`); default rad until a pass runs, so a
-   *  node computed before any reconcile still matches Excel. Not persisted. */
+  /** Stamped by the recompute-time unit read; defaults to rad so a node computed
+   *  before any reconcile still matches Excel. Not persisted. */
   _resolvedAngleMode: "rad" | "deg" = "rad";
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { in: 0 };
@@ -305,9 +291,8 @@ export class MathFnNode extends ClassicPreset.Node {
     return this.angleMode === "auto" ? this._resolvedAngleMode : this.angleMode;
   }
 
-  /** An INVERSE trig op in degree mode emits an angle in degrees — carry the
-   *  real `deg` unit on the output (per-output, unitFlow `annotationFor`), so it
-   *  reads as 30° and chains into another trig node's Auto mode. */
+  /** An inverse trig op in degree mode carries a real `deg` unit out, so it reads as
+   *  30° and chains into another trig node's Auto mode. */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "result" && INVERSE_TRIG_OPS.has(this.op) && this.effectiveAngleMode() === "deg"
       ? { format: "auto", unit: "deg" }
@@ -317,17 +302,11 @@ export class MathFnNode extends ClassicPreset.Node {
   data(inputs: { in?: (number | number[])[] }) {
     const input = readInput(inputs.in, this.literals.in);
     const mode = this.effectiveAngleMode();
-    // A forward trig op takes an angle: in deg mode, convert the input to radians
-    // before the math. An inverse trig op emits an angle: convert the radian
-    // result to degrees after.
+    // Deg mode converts a forward op's INPUT and an inverse op's RESULT.
     const fwdDeg = mode === "deg" && FORWARD_TRIG_OPS.has(this.op);
     const invDeg = mode === "deg" && INVERSE_TRIG_OPS.has(this.op);
-    // A valid input element with no defined result (√ of a negative, log of 0, an
-    // arc-fn outside [−1,1], …) is OUT OF DOMAIN — #DOMAIN!, the specific half of
-    // Excel's #NUM!. It tags identically at every dimensionality: a scalar → a
-    // #DOMAIN! scalar, a per-element domain miss in a LIST → a per-cell #DOMAIN!
-    // (array-semantics: lists carry per-cell errors, like the scalar / Map paths).
-    // `compute` returns null for the domain miss; broadcastErr maps it via `??`.
+    // A valid input with no defined result is #DOMAIN! (the specific half of Excel's
+    // #NUM!) at every dimensionality; `compute` returns null and broadcastErr maps it.
     const domainErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
     const computeRaw = (x: number): number | null => {
         switch (this.op) {
@@ -384,9 +363,8 @@ export class MathFnNode extends ClassicPreset.Node {
         }
         return null;
     };
-    // Degree conversion wraps the raw radian math at the boundary: a forward trig
-    // op's input deg→rad, an inverse trig op's result rad→deg. Every other op is
-    // untouched (fwdDeg/invDeg are false unless the op is trig AND mode is deg).
+    // Degree conversion wraps the raw radian math at the boundary only; every other
+    // op is untouched.
     const compute = (x: number): number | null => {
       const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
       return r !== null && invDeg ? r * RAD2DEG : r;
@@ -394,10 +372,8 @@ export class MathFnNode extends ClassicPreset.Node {
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (input !== null) {
       if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
-        // Unit-aware path: the op's dimensional signature (mathFnResultDim) gates a
-        // dimensioned argument (SQRT halves, ABS/ROUND preserve, SIN needs an angle,
-        // LOG/EXP need a plain number → #UNIT!). A UnitCell angle is already in base
-        // radians, so trig computes on the magnitude directly — no deg conversion.
+        // mathFnResultDim gates a dimensioned argument. A UnitCell angle is already in
+        // base radians, so trig computes on the magnitude with no deg conversion.
         result = broadcastUnit((cell) => {
           const rd = mathFnResultDim(this.op, dimOf(cell));
           if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
@@ -415,9 +391,7 @@ export class MathFnNode extends ClassicPreset.Node {
 }
 
 // ─── Base Convert ─────────────────────────────────────────────────────────────
-// Covers BIN2DEC, DEC2BIN, OCT2DEC, DEC2OCT, BIN2OCT, OCT2BIN, BASE, DECIMAL,
-// and the hex variants (HEX2DEC, DEC2HEX etc.) where digits don't exceed 9.
-// Bases > 10 whose output requires digits A-F return null (no string type).
+// Bases > 10 whose output would need digits A-F return null (there is no string type).
 
 export const BASE_CONVERT_META = {
   label: "Base Convert",
@@ -509,10 +483,8 @@ export class ClampNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
     const value = readInput(inputs.value, this.literals.value);
-    // "Absent" is not "unknown": an UNWIRED bound means no floor/ceiling (the null
-    // branch below), but a WIRED blank means the bound itself is unknown, so the
-    // clamped value is unknown too. Routing the wired null into the no-bound path
-    // would silently stop clamping.
+    // "Absent" is not "unknown": an UNWIRED bound means no floor/ceiling, but a WIRED
+    // blank makes the result unknown — routing it to no-bound would stop clamping.
     const minWired = inputs.min !== undefined, maxWired = inputs.max !== undefined;
     const min = minWired ? (inputs.min?.[0] ?? null) : (this.literals.min ?? null);
     const max = maxWired ? (inputs.max?.[0] ?? null) : (this.literals.max ?? null);
@@ -528,12 +500,8 @@ export class ClampNode extends ClassicPreset.Node {
 
 // ─── MROUND ───────────────────────────────────────────────────────────────────
 
-// Round-to-a-multiple. Direction is an OP (nearest / up / down); the SHAPE is the
-// node — the RoundN precedent (round/roundup/rounddown over (value, digits); these
-// are over (value, multiple)). CEILING / FLOOR are this node pre-set to up / down
-// with `multiple` defaulting to 1, so they behave unary out of the box — Excel's
-// own shape (CEILING.MATH's significance is optional, default 1). Rounding is toward
-// ±∞ (like the .MATH variants).
+// Round-to-a-multiple; direction is an OP, so CEILING / FLOOR are this node pre-set
+// with `multiple` defaulting to 1. Rounding is toward ±∞ (the .MATH variants).
 export type MRoundOp = "nearest" | "up" | "down";
 
 export const MROUND_OP_META = {
@@ -567,9 +535,8 @@ export class MRoundNode extends ClassicPreset.Node {
     if (value !== null && multiple !== null) {
       result = broadcastErr((v, m) => {
         if (m === 0) return 0;
-        // MROUND requires the value and multiple to share a sign — opposite signs
-        // are #NUM! in Excel (#DOMAIN! here). CEILING/FLOOR (up/down) impose no such
-        // restriction, so the guard is scoped to nearest.
+        // MROUND needs value and multiple to share a sign (#DOMAIN!); CEILING/FLOOR
+        // impose no such restriction, so the guard is scoped to nearest.
         if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
           return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
         }
@@ -610,14 +577,14 @@ export class RoundNNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = readInput(inputs.value, this.literals.value);
-    // UNWIRED → 0 places; a WIRED blank is an unknown precision, so it propagates.
+    // UNWIRED → 0 places; a WIRED blank is an unknown precision and propagates.
     const digits = readInput(inputs.digits, this.literals.digits ?? 0);
     let result: BroadcastResult = null;
     if (value !== null) {
       result = broadcast((v, d) => {
         const factor = Math.pow(10, Math.round(d));
         switch (this.op) {
-          // Halves away from zero (Excel), not toward +inf (JS Math.round).
+          // Halves away from zero (Excel), not toward +∞ (JS Math.round).
           case "round":     return Math.sign(v) * Math.round(Math.abs(v) * factor) / factor;
           case "roundup":   return (v >= 0 ? Math.ceil(v * factor) : Math.floor(v * factor)) / factor;
           case "rounddown": return (v >= 0 ? Math.floor(v * factor) : Math.ceil(v * factor)) / factor;
@@ -639,9 +606,7 @@ export const GCD_OP_META = {
   lcm: { label: "LCM", description: "Least common multiple of two integers. Excel: LCM." },
 } satisfies Record<GcdOp, { label: string; description: string }>;
 
-// Greatest common divisor / least common multiple of two integers.
-// Inputs are rounded to integers; gcd(0,0)=0. List-aware via broadcast.
-// Excel: =GCD(a,b) / =LCM(a,b).
+// Inputs are rounded to integers; gcd(0,0)=0.
 export class GcdNode extends ClassicPreset.Node {
   label: string;
   op: GcdOp;
@@ -717,10 +682,8 @@ export class CombinatoricsNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    // Excel TRUNCATES a non-integer argument (FACT(2.9) = FACT(2) = 2), and the
-    // formula path (Formula.js) floors — rounding here made the node disagree with
-    // `=FACT(2.9)`. Floor matches both for the non-negative domain these ops live in
-    // (negatives are caught by the per-op domain guards below).
+    // Excel TRUNCATES a non-integer argument and Formula.js floors, so floor keeps the
+    // node agreeing with `=FACT(2.9)` across the non-negative domain.
     const nRaw = readInput(inputs.n, this.literals.n ?? 0);
     const kRaw = readInput(inputs.k, this.literals.k ?? 0);
     if (nRaw === null || kRaw === null) { this.cachedResult = null; return { result: null }; }
@@ -759,7 +722,7 @@ export class CombinatoricsNode extends ClassicPreset.Node {
       }
     }
     // Negative / out-of-order arguments are a domain error; a finite formula that
-    // overflowed to ±∞ (FACT(171), a huge COMBIN) is too large to represent.
+    // overflowed to ±∞ is too large to represent.
     if (!domainOk) {
       const err = solError("#DOMAIN!", "Combinatorics needs non-negative whole numbers with k ≤ n");
       this.cachedResult = err;
@@ -807,9 +770,7 @@ export class TwoInputMathNode extends ClassicPreset.Node {
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
     const b = readInput(inputs.b, this.literals.b);
-    // LOG(x, base) is out of domain for x ≤ 0 or a degenerate base — #DOMAIN!,
-    // tagged per-cell in a list exactly as the scalar tags (matches LN/LOG10 in
-    // the Math node).
+    // x ≤ 0 or a degenerate base is #DOMAIN!, tagged per-cell in a list.
     const domainErr = () => solError("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {
@@ -881,7 +842,6 @@ export class SumProductNode extends ClassicPreset.Node {
 // ─── SERIESSUM ────────────────────────────────────────────────────────────────
 
 // SERIESSUM(x, n, m, coef) = Σᵢ coef[i] × x^(n + i×m)
-// Excel: =SERIESSUM(x, n, m, coefficients)
 export class SeriesSumNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | null = null;
@@ -918,7 +878,6 @@ export class SeriesSumNode extends ClassicPreset.Node {
 // ─── MULTINOMIAL ──────────────────────────────────────────────────────────────
 
 // MULTINOMIAL(n1, n2, …, nk) = (n1+n2+…+nk)! / (n1! × n2! × … × nk!)
-// Excel: =MULTINOMIAL(n1, n2, ...)
 export class MultinomialNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | null = null;
@@ -991,9 +950,8 @@ export class BesselNode extends ClassicPreset.Node {
 }
 
 // ─── HYPOTENUSE (example pack node) ─────────────────────────────────────────────
-// Leg lengths → hypotenuse √(x²+y²). Shipped in the "Geometry" built-in pack
-// (see packs.ts) to exercise the pack activate/deactivate flow end-to-end; it's
-// element-wise like the other math nodes, so it lives here.
+// Leg lengths → hypotenuse. Lives here, not in the pack file, because it is
+// element-wise like the other math nodes.
 export class HypotenuseNode extends ClassicPreset.Node {
   label: string;
   cachedResult: BroadcastResult = null;

@@ -14,9 +14,7 @@ const MODES: { value: AlertMode; label: string }[] = [
   { value: "text",    label: "Text contains" },
 ];
 
-// Neutral status wording for the value box — an Alert just reports whether its
-// watched condition currently holds; it's not a pass/fail. Calm reads gray, met
-// reads amber. No ✓/⚠ (those imply good vs bad).
+// Neutral wording only — an Alert is a watch/notify, not a pass/fail, so no ✓/⚠.
 const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = {
   range:   { calm: "in range", met: (v) => (v === 1 ? "below" : "above") },
   equals:  { calm: "no match", met: () => "equal" },
@@ -36,8 +34,6 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
     // Inputs that leave the active set are about to be hidden — prune first.
     const keep = new Set(ALERT_MODE_KEYS[next]);
     await dropInputCables(data.id, (k) => !keep.has(k));
-    // The node re-evaluates the new condition fresh, so switching into an
-    // already-met condition fires once.
     setOp(next);
   }
 

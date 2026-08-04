@@ -1,7 +1,5 @@
-// Module-level lock state: when true, the canvas-level pointerdown
-// listener in Canvas swallows native pointerdowns inside the canvas
-// area, preventing node drag, area pan, and any cable/socket
-// interaction. The nav menu's lock button toggles it.
+// When true, Canvas's pointerdown listener swallows every native pointerdown in the
+// canvas area — no node drag, area pan, or cable/socket interaction.
 import { createToggleStore } from "./storeKit";
 
 export const canvasLockStore = createToggleStore();

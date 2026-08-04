@@ -9,8 +9,8 @@ const OPS = (Object.entries(PHYS_CONSTANTS) as [PhysConstOp, (typeof PHYS_CONSTA
   ([value, meta]) => ({ value, label: `${meta.symbol}  ${meta.label}`, group: meta.group }),
 );
 
-// Constants span 61 orders of magnitude; exponent notation for anything the
-// plain form would mangle, full digits where they fit (c = 299792458).
+// Constants span 61 orders of magnitude: exponent notation for anything the plain form
+// would mangle, full digits where they fit.
 function formatConst(n: number): string {
   const abs = Math.abs(n);
   if (abs >= 1e-3 && abs < 1e9) {

@@ -5,15 +5,9 @@ import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
-// Contextual align/distribute cluster — the visible surface for the ops in
-// selectionOps.ts, so they aren't reachable solely via the Command Palette. It
-// sits at the TOP-center so it never collides with the palette docked at the
-// bottom.
-//
-// Selection has no push-based store, so a light interval reads how many selected
-// nodes have a rendered view — the same "measurable" set align/distribute act
-// on. Fixed position (not anchored to the selection bbox) so it never fights the
-// area transform or lags a drag.
+// TOP-center so it never collides with the bottom-docked palette, and FIXED (not
+// anchored to the selection bbox) so it never fights the area transform. Selection
+// has no push store, so a light interval counts the selected nodes with a view.
 
 const POLL_MS = 150;
 
@@ -30,7 +24,6 @@ function selectedVisibleCount(): number {
 }
 
 // 16×16 (even) glyphs so they center on a whole pixel in the 26px button box.
-// Bars are filled rects; the guide edge is a thin rect in the same ink.
 const AlignLeftIcon = () => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style={{ display: "block" }}>
     <rect x="2" y="2" width="1.4" height="12" rx="0.5" />
@@ -89,8 +82,7 @@ const DistributeVIcon = () => (
 );
 
 type AlignBtn = { kind: AlignKind; title: string; Icon: () => ReactElement };
-// Labels name the END EFFECT (matching the Command Palette): center-h aligns the
-// horizontal centers, stacking the nodes vertically, and vice versa.
+// Labels name the END EFFECT, matching the Command Palette.
 const ALIGN_BTNS: AlignBtn[] = [
   { kind: "left", title: "Align left", Icon: AlignLeftIcon },
   { kind: "center-h", title: "Align center (vertical)", Icon: AlignCenterHIcon },
@@ -103,9 +95,8 @@ const ALIGN_BTNS: AlignBtn[] = [
 export function SelectionActionsBar() {
   const [count, setCount] = useState(0);
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // Folded while a composite drill-in is open: the bar (and the selectionOps it
-  // fronts) reads the MAIN graph's selection, so showing it over the drill-in
-  // would align invisible main-canvas nodes behind the subgraph.
+  // The ops read the MAIN graph's selection, so showing this over a drill-in would
+  // align invisible main-canvas nodes behind the subgraph.
   const drilled = useSyncExternalStore(subscribeActiveGraph, isSubgraphActive);
 
   useEffect(() => {
@@ -119,16 +110,14 @@ export function SelectionActionsBar() {
     return () => window.clearInterval(id);
   }, []);
 
-  // A locked canvas can't move nodes, so the ops are inert — hide entirely.
   if (drilled || locked || count < 2) return null;
   const canDistribute = count >= 3;
 
   return (
     <div
       className="solenoid-selbar"
-      // A pointerdown on the overlay must not bubble to the canvas selection
-      // handling (same guard the mobile bar uses), so clicking a button keeps
-      // the selection the op is about to act on.
+      // A pointerdown must not bubble to the canvas selection handling, or the
+      // click clears the selection the op is about to act on.
       onPointerDown={(e) => e.stopPropagation()}
     >
       {ALIGN_BTNS.map(({ kind, title, Icon }) => (

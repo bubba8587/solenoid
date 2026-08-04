@@ -1,18 +1,8 @@
-// ─── SVG layer resolution ─────────────────────────────────────────────────────
-// The pure "which layer did you click?" logic behind the SVG Picker node. Clicking
-// a shape resolves to a NAME: the element's own name attribute if it has one, else
-// the nearest named ancestor (walking up, stopping at the root <svg>). That name is
-// what the node outputs — wire it into a Filter to slice a dataset by the region.
-//
-// SVGs name things a few ways depending on the authoring tool: Inkscape writes an
-// `inkscape:label` on layers, hand-authored / Illustrator SVGs use `id`, and some
-// use `data-name` / `aria-label`. We check them in a human-name-first order so a
-// readable label (matching a data key) wins over a machine id when both exist.
-//
-// Kept DOM-agnostic (operates on a tiny `SvgLike` surface) so it unit-tests in the
-// node vitest env with no jsdom — real DOM `Element`s satisfy the interface too.
+// "Which layer did you click?" for the SVG Picker node. Kept DOM-agnostic (the tiny
+// `SvgLike` surface) so it unit-tests with no jsdom.
 
-// Name-bearing attributes, in priority order (human label first, id last).
+// Name-bearing attributes in priority order, so a readable human label beats a
+// machine id when an authoring tool wrote both.
 const NAME_ATTRS = ["inkscape:label", "data-name", "aria-label", "id"] as const;
 
 /** The minimal element surface the resolver walks — satisfied by DOM `Element`. */
@@ -30,13 +20,8 @@ export function elementName(el: SvgLike): string | null {
   return null;
 }
 
-/**
- * Resolve the clicked element to its named layer: itself if named, else the
- * nearest named ancestor, stopping at (and EXCLUDING) `root` (the <svg>). Returns
- * the matched element AND its name, or null if nothing up the chain is named.
- * Generic over the element type so the component gets a real `Element` back to
- * highlight, while tests can pass plain mock objects.
- */
+/** Itself if named, else the nearest named ancestor, stopping at and EXCLUDING
+ *  `root`; null when nothing up the chain is named. */
 export function resolveLayer<T extends SvgLike>(target: T, root: T): { el: T; name: string } | null {
   let el: T | null = target;
   while (el && el !== root) {

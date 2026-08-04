@@ -3,18 +3,8 @@ import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
 
-// ─── Pure list ops — ONE implementation per op, two surfaces ──────────────────
-// The node's `data()` and the formula registration (D19 Tier 3) both call these, so
-// `REVERSE(list)` in a formula and a REVERSE node cannot disagree. Same reason
-// `textOps.ts` and `financeOps.ts` exist; `formulaTier3.test.ts` pins the equality.
-//
-// A separate module rather than list.ts because list.ts pulls in rete, the socket
-// lattice and the frame model — none of which the headless formula path should load.
-//
-// VALUE MODEL: these are the list rung of the same contract the rest of the app runs
-// (docs/value-semantics.md). A per-cell `null` is a real missing value and a per-cell
-// SolError is a real error, so every op here says explicitly what it does with them
-// rather than assuming a clean `number[]`.
+// ONE implementation per list op, called by both the node's `data()` and the formula
+// registration, so the two surfaces cannot disagree. Kept out of list.ts, which pulls in rete.
 
 export type Cell = number | null | SolError;
 
@@ -26,8 +16,7 @@ export function firstError(arr: readonly unknown[]): SolError | null {
 }
 
 // ─── Shape: list in, list out ─────────────────────────────────────────────────
-// Every one of these is POSITION-preserving, so a null stays a null in its slot
-// (reversing [1,null,3] is [3,null,1], never [3,1]) and a cell error rides along.
+// All POSITION-preserving: a null stays a null in its slot and a cell error rides along.
 
 export function reverseList<T>(arr: readonly T[]): T[] {
   return [...arr].reverse();
@@ -63,9 +52,8 @@ export function padList<T>(arr: readonly T[], n: number, fill: T, dir: PadDir): 
   return dir === "left" ? [...pad, ...arr] : [...arr, ...pad];
 }
 
-/** Successive differences — one shorter than the input. Element-wise over
-*  consecutive PAIRS: a missing neighbour makes that difference missing, and a
-*  cell error propagates into each difference it touches. */
+/** Successive differences, one shorter than the input; a missing neighbour makes that
+*  difference missing and a cell error propagates into each difference it touches. */
 export function diffList(arr: readonly Cell[]): Cell[] {
   return arr.slice(1).map((v, i) => {
     const prev = arr[i];
@@ -76,9 +64,8 @@ export function diffList(arr: readonly Cell[]): Cell[] {
   });
 }
 
-/** Rescale to 0–1 by the list's own min/max. A flat list is all zeros (the range is
- *  zero, so every element sits at the same place in it). The SCALE is a reduction —
- *  an error anywhere poisons it, a null is skipped for it and stays null in place. */
+/** Rescale to 0–1 by the list's own min/max (a flat list is all zeros). The SCALE is a
+ *  reduction: an error anywhere poisons it, a null is skipped and stays null in place. */
 export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
   const err = firstError(arr);
   if (err) return err;
@@ -91,10 +78,8 @@ export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
 
 export type CumulativeOp = "cumsum" | "cumprod" | "cummax" | "cummin";
 
-/** Running aggregate with the reducer policy applied per PREFIX: a null cell
-*  contributes nothing (its output is the running value so far — null while
-*  nothing has been seen), and a cell error poisons its own position and every
-*  later one, since each later prefix contains it. */
+/** Reducer policy applied per PREFIX: a null contributes nothing, and a cell error poisons
+*  its own position and every later one, since each later prefix contains it. */
 export function cumulative(op: CumulativeOp, arr: readonly Cell[]): Cell[] {
   const out: Cell[] = [];
   let err: SolError | null = null;
@@ -119,10 +104,9 @@ export function cumulative(op: CumulativeOp, arr: readonly Cell[]): Cell[] {
 
 export type RollingOp = "sum" | "avg" | "min" | "max" | "stdev" | "median";
 
-/** Sliding window ending at each position (so the first cells run on a short window).
- *  Each window goes through `forAggregate` like every other reducer: a cell error
- *  propagates into THAT output cell, a null is SKIPPED rather than counted as zero.
- *  An all-null window is 0 for sum and null for everything else. */
+/** Sliding window ending at each position, so the first cells run short. Per window: an
+ *  error propagates to that cell, a null is SKIPPED, and an all-null window is 0 for sum
+ *  and null otherwise. */
 export function rolling(op: RollingOp, arr: readonly Cell[], window: number): Cell[] {
   const w = Math.max(1, Math.round(window));
   return arr.map((_, i) => {
@@ -153,8 +137,8 @@ export function rolling(op: RollingOp, arr: readonly Cell[], window: number): Ce
 
 export type ArgMinMaxOp = "argmax" | "argmin";
 
-/** 1-based position of the extreme value; null for an empty (or all-missing)
-*  list. Reducer policy: a cell error propagates, a null is skipped. */
+/** 1-based position of the extreme value; null for an empty or all-missing list, with the
+*  usual reducer policy (error propagates, null skipped). */
 export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolError | null {
   const err = firstError(arr);
   if (err) return err;
@@ -167,10 +151,8 @@ export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolEr
   return idx === -1 ? null : idx + 1;
 }
 
-/** 1 / 0 rather than a logical, matching the node's numeric output socket.
-*  Membership keys by VALUE via setKey (VAL-8); blank and error cells are not
-*  members, exactly as the Set family treats them. Answers a LOGICAL — membership
-*  is a predicate (the Is In mask's scalar sibling), not a 0/1 number. */
+/** 1 / 0 rather than a logical, matching the node's numeric output socket. Membership keys
+*  by VALUE (setKey, VAL-8); blank and error cells are not members. */
 export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
   return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
@@ -180,9 +162,8 @@ export function containsValue(arr: readonly unknown[], v: unknown): boolean {
 
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
-/** Values paired to weights BY POSITION; a pair is skipped when either side is
-*  missing. Variance is the Bessel-corrected reliability-weight form
-*  `Σw·(x−μ)² / (Σw − Σw²/Σw)`. */
+/** Values paired to weights BY POSITION, skipping a pair when either side is missing.
+*  Variance is the Bessel-corrected reliability-weight form `Σw·(x−μ)² / (Σw − Σw²/Σw)`. */
 export function weighted(op: WeightedOp, values: readonly Cell[], weights: readonly Cell[]): number | SolError | null {
   const err = firstError(values) ?? firstError(weights);
   if (err) return err;
@@ -209,11 +190,8 @@ export function weighted(op: WeightedOp, values: readonly Cell[], weights: reado
 }
 
 // ─── Build: scalars in, list out ──────────────────────────────────────────────
-// The generators themselves are UNCAPPED — a node's Count field is a spinner the
-// user watches, and RANDARRAY/SEQUENCE already own the app's overflow convention
-// (`#OVERFLOW!` past MAX_GENERATED). A formula field is the surface where a typo can
-// ask for ten million elements with no visible control, so the registrations apply
-// that same convention at the boundary rather than these silently truncating.
+// UNCAPPED here — each surface applies the `#OVERFLOW!` / MAX_GENERATED convention at its
+// own boundary rather than these silently truncating.
 
 /** Shared with RANDARRAY / SEQUENCE — the app's one generated-length ceiling. */
 export const MAX_GENERATED = 1_000_000;
@@ -237,8 +215,7 @@ export function geometric(start: number, ratio: number, count: number): number[]
   return out;
 }
 
-/** SEQUENCE's arithmetic core (Excel: SEQUENCE). Uncapped — both surfaces apply
- *  the MAX_GENERATED overflow convention at their own boundary. */
+/** SEQUENCE's arithmetic core; uncapped — each surface applies MAX_GENERATED itself. */
 export function sequenceList(count: number, start: number, step: number): number[] {
   const n = Math.max(0, Math.floor(count));
   return Array.from({ length: n }, (_, i) => start + i * step);
@@ -256,15 +233,14 @@ export function fibonacci(count: number): number[] {
 }
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// Membership is by VALUE, not identity (VAL-8). JS Sets key OBJECTS by reference, so
-// a tagged complex (VAL-15) canonicalizes to a string; every primitive (number incl.
-// a date serial, string, boolean) stays itself. ONLY a complex takes the detour.
+// Membership is by VALUE (VAL-8), but JS Sets key OBJECTS by reference, so only a tagged
+// complex (VAL-15) canonicalizes to a string; primitives stay themselves.
 export function setKey(v: unknown): unknown {
   return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }
 
-/** A side's distinct members. Blank (null) and error cells are NOT members — they
- *  can't be equal to anything, so they take no part in the comparison. */
+/** A side's distinct members; blank and error cells can't be equal to anything, so they
+ *  are NOT members. */
 function memberSet(arr: readonly unknown[]): Set<unknown> {
   const s = new Set<unknown>();
   for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
@@ -273,10 +249,8 @@ function memberSet(arr: readonly unknown[]): Set<unknown> {
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
-/** First-seen order, deduped the way UNIQUE does. An error cell is never equal to
- *  anything, so it can't match across sides: it passes through where it belongs
- *  (kept in union, and on the A side of difference / symmetric difference; dropped
- *  from intersection) rather than silently vanishing. */
+/** First-seen order, deduped the way UNIQUE does. An error cell matches nothing, so it
+ *  passes through where it belongs rather than silently vanishing. */
 export function setOperation(op: SetOp, a: readonly unknown[], b: readonly unknown[]): unknown[] {
   const aSet = memberSet(a), bSet = memberSet(b);
   const out: unknown[] = [];
@@ -328,8 +302,7 @@ export type FillOp =
   | "constant" | "ffill" | "bfill" | "mean" | "median" | "mode"
   | "interpolate" | "drop" | "coalesce";
 
-/** Present finite numbers only — gaps and per-cell errors excluded, so an imputed
- *  statistic is computed from the values that are actually there. */
+/** Present finite numbers only, so an imputed statistic uses the values actually there. */
 export function presentNumbers(arr: readonly Cell[]): number[] {
   return arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
 }
@@ -354,8 +327,8 @@ export function imputeStat(arr: readonly Cell[], op: "mean" | "median" | "mode")
   return best;
 }
 
-/** Linear interpolation of INTERIOR gaps only. An open-ended run (leading/trailing)
- *  or one bounded by an error has nothing to interpolate between, so its nulls stay. */
+/** INTERIOR gaps only — an open-ended run, or one bounded by an error, has nothing to
+ *  interpolate between, so its nulls stay. */
 export function interpolateList(arr: readonly Cell[]): Cell[] {
   const out: Cell[] = arr.slice();
   let i = 0;
@@ -374,9 +347,8 @@ export function interpolateList(arr: readonly Cell[]): Cell[] {
   return out;
 }
 
-/** `constant` supplies the fill for the constant op; `fallbacks` are coalesce's
- *  ordered sources — a LIST extends the output to its length, a bare number is a
- *  broadcast constant that doesn't extend, and null contributes nothing. */
+/** `fallbacks` are coalesce's ordered sources: a LIST extends the output to its length, a
+ *  bare number broadcasts without extending, and null contributes nothing. */
 export function fillList(
   op: FillOp,
   arr: readonly Cell[],
@@ -432,13 +404,9 @@ export function fillList(
 
 // ─── Range ────────────────────────────────────────────────────────────────────
 
-/** Half-open `[start, stop)` walking by `step`, like Python's range. An UNSET stop
- *  (undefined) means no series yet — that is the node's empty card, not a blank
- *  cable (value-semantics.md, "absent is not unknown").
- *
- *  The IMPLIED length, for the shared overflow convention: unlike the other
- *  generators there is no Count field, so callers cap on this rather than on an
- *  argument. Infinity when the walk never terminates (step 0 or wrong-signed). */
+/** Half-open `[start, stop)`; an UNSET stop means no series yet, not a blank cable. The
+ *  returned length is what callers cap on (there is no Count field), and is Infinity when
+ *  the walk never terminates. */
 export function rangeCount(start: number, stop: number | undefined, step: number): number {
   if (stop === undefined) return 0;
   if (step === 0) return start === stop ? 0 : Infinity;
@@ -464,11 +432,8 @@ export function concatLists(...lists: (readonly unknown[] | null | undefined)[])
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 
-/** Permute by SORT KEYS supplied by the caller — the pure part, with the volatility
- *  left outside it. That split is the whole point: the node holds one key per slot
- *  until the next recalc, so an unrelated edit doesn't reshuffle the card you are
- *  looking at, while a formula generates fresh keys per evaluation the way RAND and
- *  RANDBETWEEN already do. Same permutation code, two volatility policies. */
+/** Permute by caller-supplied SORT KEYS, leaving volatility outside: the node holds keys
+ *  until the next recalc, a formula generates fresh ones per evaluation. */
 export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] {
   return arr
     .map((v, i) => ({ v, k: keys[i] }))
@@ -478,9 +443,8 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
 
 // ─── D23 tranche 2: the array-returning core ──────────────────────────────────
 
-/** UNIQUE: first-seen dedupe by VALUE (setKey, VAL-8); every ERROR cell survives
- *  deterministically — identity-dedup is a lottery for errors ("10 values + 3
- *  errors = 3 fixes to make"). */
+/** UNIQUE: first-seen dedupe by VALUE (setKey, VAL-8); every ERROR cell survives, so the
+ *  count of errors to fix is deterministic. */
 export function uniqueList(arr: readonly unknown[]): unknown[] {
   const seen = new Set<unknown>();
   const out: unknown[] = [];
@@ -494,9 +458,8 @@ export function uniqueList(arr: readonly unknown[]): unknown[] {
   return out;
 }
 
-/** SORT: numeric, stable; nulls and per-cell errors sort LAST in both directions
- *  (the frame sort's blanks-last policy) — a bare compare would coerce null to 0
- *  and scatter both mid-list. */
+/** SORT: numeric, stable; nulls and per-cell errors sort LAST in both directions — a bare
+ *  compare would coerce null to 0 and scatter them mid-list. */
 export function sortNumericList(arr: readonly Cell[], desc = false): Cell[] {
   const isTail = (v: unknown) => isMissing(v) || isSolError(v);
   const idx = arr.map((_, i) => i);
@@ -525,9 +488,8 @@ export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[]): (T | null
   return idx.map((i) => (i < arr.length ? arr[i] : null));
 }
 
-/** TAKE/DROP's signed count slice (Excel's sign convention: positive from the
- *  start, negative from the end; 0 = identity for take-all / drop-none). ONE
- *  kernel for the 1-D nodes, the 2-D node (applied per axis) and the formula. */
+/** TAKE/DROP's signed count slice (positive from the start, negative from the end, 0 =
+ *  identity). ONE kernel for the 1-D nodes, the 2-D node per axis, and the formula. */
 export function takeSlice<T>(arr: readonly T[], n: number): T[] {
   if (n === 0) return [...arr];
   return n > 0 ? arr.slice(0, n) : arr.slice(Math.max(0, arr.length + n));
@@ -548,8 +510,7 @@ export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[
   });
 }
 
-/** MODE.MULT: every most-frequent value (count ≥ 2 per Excel), first-seen order,
- *  keyed by VALUE; nulls skipped, an error propagates (aggregator policy). */
+/** MODE.MULT: every most-frequent value (count ≥ 2), first-seen order, keyed by VALUE. */
 export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   const err = firstError(arr);
   if (err) return err;
@@ -566,10 +527,8 @@ export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   return [...counts.values()].filter((e) => e.n === best).map((e) => e.v);
 }
 
-/** FREQUENCY(data, bins): counts per interval (≤ bin, ascending), one OVERFLOW
- *  bucket last — Excel's contract, including unsorted bins (counts follow the
- *  bins' sorted order but report in the GIVEN order). Nulls skipped, errors
- *  propagate. */
+/** FREQUENCY(data, bins): counts per interval (≤ bin, ascending) plus one OVERFLOW bucket;
+ *  with unsorted bins the counts follow sorted order but report in the GIVEN order. */
 export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): number[] | SolError {
   const err = firstError(data) ?? firstError(bins);
   if (err) return err;

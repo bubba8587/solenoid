@@ -1,4 +1,3 @@
-// Resolve which sockets and cables should highlight when hovering a socket.
 // The traversal is deliberately asymmetric and depth-limited:
 //   hover origin      → all its cables + their destinations.
 //   hover destination → that cable + the origin only.
@@ -9,8 +8,7 @@ import { dragSocketKey } from "./cableState";
 
 type Side = "input" | "output";
 
-// Pair an `in_N` lane socket with its `out_N` sibling (and vice-versa) on a
-// multi-lane bundler — the Conduit.
+// Pair an `in_N` lane socket with its `out_N` sibling on a Conduit.
 function pairedLaneKey(
   inputs: Record<string, unknown>,
   outputs: Record<string, unknown>,

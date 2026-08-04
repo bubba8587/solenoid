@@ -1,6 +1,4 @@
-// Physical constants source node — the Electromagnetism pack's constants library.
-// CODATA 2018 values (several exact by the 2019 SI redefinition); SI units in every
-// label so the value is never ambiguous.
+// CODATA 2018 values (several exact by the 2019 SI redefinition); SI units in every label.
 
 import { ClassicPreset } from "rete";
 import { numOut } from "./shared";
@@ -66,9 +64,8 @@ export class PhysicsConstantNode extends ClassicPreset.Node {
     return { value: PHYS_CONSTANTS[this.op].value };
   }
 
-  /** A constant CARRIES its unit the way an FC lock does — the annotation resolver
-   *  (unitFlow.ts) is duck-typed on this method. Emitted as a CUSTOM unit suffix:
-   *  physical-constant units like J·s aren't FC-pickable ids. */
+  /** A constant CARRIES its unit the way an FC lock does — unitFlow.ts is duck-typed on
+   *  this method. A CUSTOM unit suffix, since units like J·s aren't FC-pickable ids. */
   annotation(): FormatAnnotation {
     return { format: "auto", unit: "custom", customUnit: ` ${PHYS_CONSTANTS[this.op].unit}` };
   }

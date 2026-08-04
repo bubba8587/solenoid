@@ -5,13 +5,8 @@ import { ReportNode } from "../nodes/report";
 import type { DocumentValue } from "../documentValue";
 import { stopDragStart } from "../coarse";
 
-/**
- * The compact "[Document]" chip — a DocumentValue's stand-in in a value box
- * (the document analogue of ChartChip). Click opens the value's SOURCE: a
- * Report's full overlay, or a fly-to for a Note (which has no overlay — the
- * card IS the document). A document with no live source (a stale value mid-
- * rebuild) renders as a plain, non-clickable chip.
- */
+/** A DocumentValue's chip: click opens its SOURCE — a Report's overlay, or a
+ *  fly-to for a Note, whose card IS the document and has no overlay. */
 export function DocumentChip({ value, size = "md" }: { value: DocumentValue; size?: "sm" | "md" }) {
   const src = value.sourceId ? getOwningEditor(value.sourceId)?.getNode(value.sourceId) : undefined;
   const isReport = src instanceof ReportNode;

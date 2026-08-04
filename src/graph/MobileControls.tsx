@@ -10,22 +10,14 @@ import {
 } from "./touchActions";
 import "./MobileControls.css";
 
-/**
- * Touch-only bottom action bar (hidden ≥640px via CSS): one row of buttons
- * around the raised accent Add FAB. Delete is disabled (dimmed) when nothing's
- * selected, so the bar never reflows and the buttons keep fixed positions.
- *
- * Selection state is polled the same cheap way the StatusBar does it (there is
- * no dedicated selection store).
- */
+/** Touch-only bottom action bar; buttons dim rather than disappear, so the bar never
+ *  reflows and positions stay fixed. */
 export function MobileControls() {
-  // The bar only renders under html.is-mobile (== IS_MOBILE), so on desktop the
-  // poll would scan every node 5×/sec for an invisible control — skip it there.
+  // On desktop the poll would scan every node 5×/sec for an invisible control.
   const hasSelection = useHasSelection(IS_MOBILE);
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
-  // Open the Add-node menu near the top so the on-screen keyboard (for its
-  // search field) doesn't cover it.
+  // Near the top, so the on-screen keyboard doesn't cover the menu's search field.
   const openAddMenu = () => addMenuRequest.open(window.innerWidth / 2, 96);
 
   return (
@@ -70,10 +62,8 @@ export function MobileControls() {
       >
         <DeleteGlyph size={20} />
       </button>
-      {/* Group the current selection (G) — the highest-value keyboard-less edit op.
-          Fires the same shortcut Canvas listens for. Dimmed when nothing's selected
-          (it needs a selection), but still tappable so a fresh select isn't blocked
-          by the poll. */}
+      {/* Dimmed without a selection but still tappable, so a fresh select isn't
+          blocked by the poll. */}
       <button
         className={
           "solenoid-mobile-bar__btn" + (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")

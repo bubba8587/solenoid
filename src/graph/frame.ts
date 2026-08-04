@@ -1,5 +1,3 @@
-// ─── Frame: a named-column data table ─────────────────────────────────────────
-// Distinct from the numeric `table` (matrix, used for linear algebra).
 import { parseCsvRows } from "./csv";
 import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, type SolError } from "./errorValue";
@@ -10,8 +8,8 @@ import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrix
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 
-// A date column stores Excel serials (numbers) — the `type: "date"` tag is the
-// only signal those numbers are dates. A logical column stores real booleans.
+// A date column stores Excel serials — the `type: "date"` tag is the only signal
+// those numbers are dates.
 export type FrameColType = "number" | "string" | "date" | "logical";
 
 export type FrameCell = number | string | boolean | null | SolError;
@@ -21,39 +19,27 @@ export interface FrameColumn {
   type: FrameColType;
   /** Cell values, aligned by row index. `null` is an empty cell. */
   values: FrameCell[];
-  /** A numeric column may be LOCKED to a dimensional unit (Bundle 05: FC A4). The
-   *  cells stay bare AS-TYPED magnitudes (the display unit's, NOT base-SI — crossing
-   *  into a scalar/list converts via `tagFrameCellUnit`); the column carries the
-   *  dimension + the display unit id it was locked to (from a `Name (unit)` header
-   *  or the popup's unit picker; a computed column rides it the same way). */
+  /** A numeric column LOCKED to a dimensional unit: cells stay bare AS-TYPED
+   *  magnitudes (the display unit's, NOT base-SI — `tagFrameCellUnit` converts). */
   unit?: ColumnUnit;
-  /** The INPUTTED source text per cell — exactly what the user typed (Frame Input)
-   *  or what the file/URL contained (CSV File, Web Source, Import …), BEFORE type
-   *  inference rewrote it (a date → a serial, "1"/"true" → a boolean). Present only
-   *  on SOURCE frames; a computed/transformed column drops it. The editor's Source
-   *  view shows this when present (else the underlying value's raw form). */
+  /** The INPUTTED source text per cell, BEFORE type inference rewrote it. Present
+   *  only on SOURCE frames; a computed/transformed column drops it. */
   raw?: string[];
 }
 
 export interface FrameValue {
-  /** Brand: lets display / readout / Display robustly detect a frame value
-   *  flowing through an `any` cable, rather than structurally sniffing it. */
+  /** Brand: detects a frame flowing through an `any` cable without structural sniffing. */
   readonly __frame: true;
   columns: FrameColumn[];
-  /** Set ONLY on a head-N display preview of a larger frame (a verb node's card,
-   *  collected from the backend): the TRUE total row count, so the chip shows
+  /** Set ONLY on a head-N preview: the TRUE total row count, so the chip can show
    *  "12,400×N" while only N rows are materialized. Absent on a full frame. */
   __totalRows?: number;
-  /** Set alongside __totalRows: the lazy handle this preview was collected from,
-   *  so the grid popup can fetch the FULL frame on demand — Copy CSV must never
-   *  silently export the head-N preview as if it were the table.
-   *  Structurally typed (not FrameRef) to avoid a frame ↔ frameBackend cycle. */
+  /** The lazy handle a preview was collected from, so Copy CSV never silently
+   *  exports the head-N preview as the table. Structurally typed (not FrameRef)
+   *  to avoid a frame ↔ frameBackend cycle. */
   __ref?: { readonly __frameRef: string };
-  /** Set ONLY on an aggregate computed over a sketch-mode SAMPLE rather than the
-   *  full data (#24, frameBackend.ts `applySketchScaling`): sum/count columns
-   *  were scaled by `factor` (trueRows/sampleRows) to extrapolate the true total —
-   *  never presented as if it were an exact count. The chip (FrameChip.tsx) shows
-   *  a "≈" prefix when this is set. Absent on an exact frame. */
+  /** Set ONLY on an aggregate over a sketch-mode SAMPLE: sum/count columns were
+   *  scaled by `factor`, so the value must never be presented as an exact count. */
   __approx?: { readonly factor: number };
 }
 
@@ -89,15 +75,11 @@ export function makeHeaders(names: ReadonlyArray<string> | undefined, ncols: num
 
 // ─── Build / Split (the Matrix ⇄ Frame adapter) ───────────────────────────────
 
-/** Build a numeric Frame from a row-major matrix and a header String List.
- *  Columns are the matrix's columns; names follow makeHeaders. A header of the form
- *  `Name (unit)` LOCKS that column to the unit (Bundle 05: FC A4, step 5) — the
- *  parenthetical is stripped from the name and the column carries a `ColumnUnit`
- *  (`[id, Item, Revenue ($0.00)]` + rows → a Revenue column locked to $). */
+/** Numeric Frame from a row-major matrix + header list; a `Name (unit)` header
+ *  strips the parenthetical and LOCKS that column to the unit. */
 export function buildFrame(matrix: number[][], names?: ReadonlyArray<string>): FrameValue {
   const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  // Parse the header units BEFORE dedup so the clean name (sans the `(unit)`) is
-  // what makeHeaders sees and de-duplicates.
+  // Parse header units BEFORE dedup so makeHeaders de-duplicates the clean name.
   const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
   const cleanNames = (names ?? []).map((_, i) => parsed[i]?.clean ?? names![i]);
   const headers = makeHeaders(cleanNames, ncols);
@@ -110,12 +92,9 @@ export function buildFrame(matrix: number[][], names?: ReadonlyArray<string>): F
   return { __frame: true, columns };
 }
 
-/** One frame column from raw cells. `knownType` (from an adopted socket) wins —
- *  it's the ONLY way to recover `date` (serials are indistinguishable from numbers
- *  at the value level); without it the type is inferred from the runtime cell types
- *  (type-PRESERVING: "1" the string stays a string, unlike CSV's inferColumn which
- *  re-parses). Blanks → null, per-cell SolErrors pass through, and cells are coerced
- *  to the column type's representation (a non-string in a string column → String). */
+/** One frame column from raw cells. `knownType` (from an adopted socket) wins — the
+ *  ONLY way to recover `date`; without it the type is inferred type-PRESERVINGLY from
+ *  runtime cell types ("1" the string stays a string, unlike CSV's inferColumn). */
 export function typedColumn(
   name: string,
   cells: ReadonlyArray<unknown>,
@@ -139,10 +118,8 @@ export function typedColumn(
   return { name, type, values };
 }
 
-/** Build a Frame from a matrix of ANY element type, typing every column. `colType`
- *  (the matrix's homogeneous element family, from its socket) applies to all columns;
- *  when null the type is inferred per column from values. Header `(unit)` suffixes lock
- *  a numeric column's unit, as in buildFrame. Build Frame's non-numeric path. */
+/** `colType` (the matrix's homogeneous element family) applies to all columns; null
+ *  ⇒ inferred per column. Header `(unit)` suffixes lock a numeric column's unit. */
 export function buildFrameTyped(
   matrix: ReadonlyArray<ReadonlyArray<unknown>>,
   names?: ReadonlyArray<string>,
@@ -160,10 +137,8 @@ export function buildFrameTyped(
   return { __frame: true, columns };
 }
 
-/** Map a socket's dataType to the frame column type it carries (its element family),
- *  or null when the element family is unknowable for a frame — a wildcard rung
- *  (any/anylist/anytable/trueany, i.e. a not-yet-adopted adoptive port) or `complex`
- *  (frames hold no complex column). Callers fall back to value inference on null. */
+/** Socket dataType → frame column type; null when unknowable (a wildcard rung or
+ *  `complex`), on which callers fall back to value inference. */
 export function colTypeForSocket(dataType: string | undefined): FrameColType | null {
   switch (elementFamilyOf(dataType as SocketDataType)) {
     case "number": return "number";
@@ -174,10 +149,8 @@ export function colTypeForSocket(dataType: string | undefined): FrameColType | n
   }
 }
 
-/** Split a Frame into its numeric Matrix (row-major) and the full header list.
- *  The Matrix is all-or-nothing: a Frame with any text column has no clean numeric
- *  matrix, so `matrix` is null then (pull individual columns with Get Column). The
- *  header list is always the complete set of column names, mixed or not. */
+/** The Matrix is all-or-nothing — null when any column is text; the header list is
+ *  always the complete set of column names, mixed or not. */
 export function splitFrame(f: FrameValue): { matrix: number[][] | null; headers: string[] } {
   const headers = f.columns.map((c) => c.name);
   if (frameHasTextColumns(f)) return { matrix: null, headers };
@@ -193,17 +166,15 @@ export function splitFrame(f: FrameValue): { matrix: number[][] | null; headers:
   return { matrix, headers };
 }
 
-/** Does the frame have any TEXT column (so Split would drop data)? Date columns
- *  hold serials (numbers), so they DON'T block the numeric matrix — only genuine
- *  string columns do. */
+/** Date columns hold serials, so they DON'T block the numeric matrix — only
+ *  genuine string columns do. */
 export function frameHasTextColumns(f: FrameValue): boolean {
   return f.columns.some((c) => c.type === "string");
 }
 
-/** Format one cell for DISPLAY by its column type — a date column's serials show
- *  as date strings, a logical cell as TRUE/FALSE, a per-cell error as its #CODE!,
- *  everything else passes through as its raw value. (The popup editor uses the raw
- *  `values`, not this, so editing stays literal.) */
+/** Format one cell for DISPLAY by column type (serials → date strings, booleans →
+ *  TRUE/FALSE, errors → #CODE!); the popup editor uses raw `values` so editing stays
+ *  literal. */
 export function formatFrameCell(type: FrameColType, v: FrameCell): number | string | null {
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
@@ -228,8 +199,7 @@ export function getColumn(f: FrameValue, name: string): FrameColumn | null {
   return null;
 }
 
-/** Append (or replace, when the name already exists) a column. Returns a new
- *  frame; de-dupes the name against the others when appending. */
+/** Append, or replace when the name already exists; de-dupes the name on append. */
 export function addColumn(
   f: FrameValue,
   name: string,
@@ -251,42 +221,28 @@ export function addColumn(
 }
 
 // ─── Frame Input (editable in-node LITERAL source) ──────────────────────────────
-// The Frame Input is a LITERAL source: it stores exactly the text the user typed,
-// per cell, plus each column's chosen type — it NEVER rewrites your input. The
-// typed FrameValue that flows downstream is DERIVED from that raw text at compute
-// time (deriveFrame); only the value LEAVING the node is coerced.
+// The stored text is never rewritten; the typed FrameValue flowing downstream is
+// DERIVED from it at compute time (deriveFrame).
 
-/** One column of the editable source: a name, the user's chosen type, and the RAW
- *  text typed per cell (never coerced). */
+/** A column of the editable source; `cells` is the RAW text typed, never coerced. */
 export interface FrameSourceColumn {
   name: string;
   type: FrameColType;
   cells: string[];
-  /** An explicit dimensional unit (an FC unit id — "km", "usd") tagged on the
-   *  column at the source (the value popup's per-column unit dropdown). Persisted
-   *  in `frameText` and applied by `deriveFrame` → `FrameColumn.unit`, so the unit
-   *  rides the value downstream. Absent ⇒ no unit. */
+  /** An FC unit id tagged on the column at the source; `deriveFrame` applies it to
+   *  `FrameColumn.unit` so the unit rides the value downstream. */
   unit?: string;
-  /** COMPUTED column: the key of the node's λ input that defines it (the
-   *  column-source model, v2.0/19-computed-column-surface.md). Present ⇒ the
-   *  cells are derived per row by that λ (computedColumnCore rules) and the
-   *  raw `cells` are ignored; absent ⇒ a Typed literal column, the raw-text
-   *  guarantee untouched. */
+  /** COMPUTED column: the key of the λ input defining it — present ⇒ cells derive
+   *  per row and the raw `cells` are ignored. */
   lambda?: string;
-  /** COMPUTED column, Formula source: an inline row-wise formula (slice 2 of
-   *  the column-source model). Same rules as the CC node's expr, verbatim —
-   *  a bare column name is the WHOLE column, `@name`/`@[Name]` read this row
-   *  (D24), `row`/`rows` are builtins. Present ⇒ cells derive per row and the raw `cells` are
-   *  ignored. A `lambda` binding wins when both are set (the wired, reusable
-   *  definition — mirrors the CC node's λ-over-expr precedence). */
+  /** COMPUTED column, inline row-wise formula — the CC node's expr rules verbatim
+   *  (D24); a `lambda` binding wins when both are set. */
   expr?: string;
 }
 export type FrameSource = FrameSourceColumn[];
 
-/** Coerce ONE raw cell to its typed value — the value boundary. Blank → null
- *  (missing); a string keeps its text verbatim; number/date parse numerically
- *  (date falls back to the ISO text parser); logical uses the shared coerceLogical
- *  (so "1"/"0"/"true"/"false" all read, matching Cast → Boolean). */
+/** Coerce ONE raw cell to its typed value — the value boundary. Blank → null; a
+ *  string keeps its text verbatim; logical goes through the shared coerceLogical. */
 export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   if (type === "string") return raw === "" ? null : raw;
   const s = raw.trim();
@@ -298,9 +254,8 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   return NaN;
 }
 
-/** Derive the typed FrameValue (what flows downstream) from the raw source. The
- *  raw cells ride along as `raw` so a Frame Input's value shows its literal source
- *  even when viewed read-only (a Display node, a Build Frame). */
+/** Derive the typed FrameValue from the raw source; the raw cells ride along as
+ *  `raw` so a read-only viewer still shows the literal source. */
 export function deriveFrame(source: FrameSource): FrameValue {
   return {
     __frame: true,
@@ -324,9 +279,8 @@ export function frameSourceToText(source: FrameSource): string {
   })));
 }
 
-/** Infer just a column's TYPE from raw cells (same rules as inferColumn, cells kept
- *  raw): all-numeric → number; else all-TRUE/FALSE → logical; else all-ISO → date;
- *  else text. Used to type a hand-typed CSV / freshly-imported source. */
+/** Type only (cells kept raw): all-numeric → number; else all-TRUE/FALSE → logical;
+ *  else all-ISO → date; else text. */
 function inferColType(cells: ReadonlyArray<string>): FrameColType {
   const nonBlank = cells.filter((c) => !isBlank(c));
   if (nonBlank.length === 0) return "string";
@@ -336,11 +290,9 @@ function inferColType(cells: ReadonlyArray<string>): FrameColType {
   return "string";
 }
 
-/** Parse stored `frameText` → the raw editable source. The JSON `cells` form is
- *  read directly; an OLDER typed-`values` JSON is stringified back to raw cells
- *  (a boolean → "TRUE"/"FALSE", a serial → its digits) so old saves still load;
- *  anything else is the hand-typed / legacy CSV (header row + raw rows), with each
- *  column's type inferred and the cells kept as the exact text typed. */
+/** Parse stored `frameText` → the raw editable source. JSON `cells` reads directly;
+ *  a typed-`values` JSON is stringified back to raw cells; anything else is the
+ *  hand-typed / legacy CSV, typed by inference with the text kept exact. */
 export function parseFrameSource(text: string): FrameSource {
   const trimmed = text.trim();
   if (trimmed.startsWith("[")) {
@@ -376,23 +328,19 @@ export function parseFrameSource(text: string): FrameSource {
   });
 }
 
-/** Serialize typed columns to the stored form (JSON), for callers that hold a
- *  typed Frame rather than the raw source. */
+/** Serialize typed columns to the stored form, for callers holding a typed Frame. */
 export function frameColumnsToInputText(columns: ReadonlyArray<FrameColumn>): string {
   return JSON.stringify(columns.map((c) => ({ name: c.name, type: c.type, values: c.values })));
 }
 
-/** The typed FrameValue from stored text — derive ∘ parse. Used by the node's
- *  data() and anywhere a Frame Input's value is needed directly. */
+/** The typed FrameValue from stored text — derive ∘ parse. */
 export function frameFromInputText(text: string): FrameValue {
   return deriveFrame(parseFrameSource(text));
 }
 
 
-/** Build an all-numeric Frame from a header list + numeric body, honoring the
- *  headers even when the body has fewer columns or no rows (an empty grid still
- *  yields named, empty columns). buildFrame derives column count from the matrix
- *  alone, which would drop named-but-empty columns — this keeps them. */
+/** Honors the headers even when the body has fewer columns or no rows — buildFrame
+ *  takes ncols from the matrix alone and would drop named-but-empty columns. */
 export function frameFromInput(headers: ReadonlyArray<string>, matrix: number[][]): FrameValue {
   const bodyCols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
   const ncols = Math.max(headers.length, bodyCols);
@@ -409,16 +357,15 @@ export function frameFromInput(headers: ReadonlyArray<string>, matrix: number[][
 
 function cellToNumber(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  // A cube can hold a dimensioned `UnitCell` (per-cell, like a list) — read its
-  // DISPLAY magnitude (the number the user sees, matching the unit-blind boundary).
+  // A cube cell may be a dimensioned `UnitCell` — read its DISPLAY magnitude, per
+  // the unit-blind boundary.
   if (isUnitCell(v)) { const m = displayMagnitudeOf(v); return Number.isFinite(m) ? m : null; }
   if (typeof v === "boolean") return v ? 1 : 0;
   if (typeof v === "string") {
     const t = v.trim();
     if (t === "") return null;
-    // Strip commas ONLY in genuine thousands-group positions ("1,234,567.8"): a
-    // blanket strip reads the European decimal comma "3,5" as 35. An ambiguous
-    // comma string stays text (null here).
+    // Strip commas ONLY in genuine thousands positions: a blanket strip reads the
+    // European decimal comma "3,5" as 35.
     const grouped = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t);
     const n = Number(grouped ? t.replace(/,/g, "") : t);
     return Number.isFinite(n) ? n : null;
@@ -430,17 +377,14 @@ function isBlank(v: unknown): boolean {
   return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
 }
 
-// Conservative date detection: ONLY unambiguous ISO-ish forms (YYYY-MM-DD, with
-// an optional time), so years / bare numbers / locale-ambiguous "1/2/26" never
-// get mistaken for dates. Anything we don't auto-detect can still be converted
-// explicitly via Get Column read-as Date.
+// ONLY unambiguous ISO-ish forms, so bare years and locale-ambiguous "1/2/26" are
+// never mistaken for dates (Get Column read-as Date converts the rest explicitly).
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
 function isDateCell(v: unknown): boolean {
   return typeof v === "string" && ISO_DATE.test(v.trim()) && Number.isFinite(parseDateToSerial(v));
 }
 
-// Restricted to the TRUE/FALSE literals (or a real boolean) so a numeric 0/1
-// column stays numeric — the spreadsheet "multiply by a mask" trick.
+// TRUE/FALSE literals only, so a numeric 0/1 mask column stays numeric.
 function isLogicalCell(v: unknown): boolean {
   if (typeof v === "boolean") return true;
   if (typeof v !== "string") return false;
@@ -452,23 +396,19 @@ function cellToBool(v: unknown): boolean {
   return String(v).trim().toLowerCase() === "true";
 }
 
-/** Infer one column's type from raw cells and build it. Numeric → number; else
- *  all-TRUE/FALSE → logical; else unambiguous ISO dates → date (stored as serials);
- *  else free text. (Numeric runs first so a 0/1 mask stays numeric.) */
+/** Numeric → number; else all-TRUE/FALSE → logical; else unambiguous ISO → date
+ *  (serials); else text. Numeric runs first so a 0/1 mask stays numeric. */
 export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameColumn {
-  // Cube extraction hands us dimensioned `UnitCell`s (a cube stores units per cell,
-  // like a list — D20). Recover the column's uniform unit and unwrap the cells to
-  // plain magnitudes before inference — the frame re-carries the unit as its
-  // `ColumnUnit`, so a frame→cube→frame round trip keeps units. Mixed units strip.
+  // Cube cells carry units per-cell (D20): recover the uniform unit and unwrap to
+  // magnitudes before inference, so a frame→cube→frame round trip keeps units.
   let recovered: ColumnUnit | undefined;
   if (cells.some(isUnitCell)) {
     const { mags, unit } = matrixCellsFromList(cells);
     cells = mags;
     recovered = unit;
   }
-  // The inputted source text per cell, kept so the editor's Source view can show
-  // exactly what came in (a date before it became a serial, "1" before it became a
-  // boolean). A blank → "" (an empty source cell), aligned with the null value.
+  // Source text per cell, kept so the editor's Source view shows what came in;
+  // a blank → "", aligned with the null value.
   const raw = cells.map((c) => (isBlank(c) ? "" : String(c).trim()));
   const nonBlank = cells.filter((c) => !isBlank(c));
   const numeric = nonBlank.length > 0 && nonBlank.every((c) => cellToNumber(c) !== null);
@@ -513,37 +453,25 @@ export function frameFromRows(rows: ReadonlyArray<ReadonlyArray<unknown>>, heade
 
 // ─── Cube: the recursive container (lattice supremum) ─────────────────────────
 
-/** A cube cell: any data value. Recursive — a cell may itself be a Frame or Cube,
- *  a list, or a matrix (an array of cells). A cube is heterogeneous PER CELL (like a
- *  list, not a homogeneous-column frame — D20), so a dimensioned cell carries its
- *  unit AS A VALUE: a base-SI `UnitCell`, exactly like a list cell. */
+/** Any data value, recursively. A cube is heterogeneous PER CELL (D20), so a
+ *  dimensioned cell carries its unit AS A VALUE — a base-SI `UnitCell`. */
 export type CubeCell = FrameCell | FrameValue | CubeValue | UnitCell | CubeCell[];
 
 export interface CubeColumn {
   name: string;
   /** Cell values, aligned by row index. `null` is an empty cell. */
   cells: CubeCell[];
-  /** OPTIONAL element type, carried from a source frame column so a flat cube renders
-   *  its cells correctly — a `date` serial as a date, a `logical` as TRUE/FALSE (a
-   *  serial is indistinguishable from a plain number at the value level, so without
-   *  this a frame→cube silently loses date/logical rendering). Absent on a genuinely
-   *  heterogeneous column (a hand-built cube, a nested-table column) — each cell then
-   *  stands on its own kind. A hint for DISPLAY, not a homogeneity guarantee. */
+  /** OPTIONAL element type carried from a source frame column, so a flat cube still
+   *  renders dates/logicals. A DISPLAY hint, not a homogeneity guarantee. */
   type?: FrameColType;
 }
 
 export interface CubeValue {
-  /** Brand: lets display / readout robustly detect a cube flowing through an
-   *  `any` cable, rather than structurally sniffing it (mirrors FrameValue). */
+  /** Brand: detects a cube flowing through an `any` cable without structural sniffing. */
   readonly __cube: true;
   columns: CubeColumn[];
-  /** Cached cube-nesting depth: a flat cube (no cube-valued cell) is 1; a cube
-   *  holding a cube is 2; and so on. Counts CUBE nesting ONLY — a nested Frame is
-   *  a leaf container (its own cells are flat, it can't nest further), so it adds
-   *  no depth; only a cube-in-a-cube creates the unbounded drill-in the popup
-   *  warns about. Computed once at construction — values
-   *  are immutable here — reading each child cube's own cached depth, so it's a
-   *  bottom-up O(cells) stamp, never a full re-walk per level. */
+  /** Cached CUBE-nesting depth (a nested Frame is a leaf and adds none), stamped at
+   *  construction from each child's cached depth — bottom-up O(cells), never a re-walk. */
   readonly depth: number;
 }
 
@@ -551,8 +479,7 @@ export function isCubeValue(v: unknown): v is CubeValue {
   return typeof v === "object" && v !== null && (v as Partial<CubeValue>).__cube === true;
 }
 
-/** Cube-nesting contributed by a single cell: a cube cell adds its own cached
- *  depth; a list / matrix cell is fanned through (it may itself hold a cube);
+/** A cube cell adds its cached depth; a list / matrix cell is fanned through;
  *  everything else (scalar, null, error, leaf Frame) contributes nothing. */
 function cellCubeDepth(cell: CubeCell): number {
   if (isCubeValue(cell)) return cell.depth;
@@ -567,15 +494,13 @@ function computeCubeDepth(columns: ReadonlyArray<CubeColumn>): number {
   return 1 + inner;
 }
 
-/** The single place a CubeValue is born — stamps the brand + the cached depth, so
- *  the depth invariant can't drift. (TS makes `depth` required, so any inline
- *  `{ __cube: true, … }` is a compile error: everything must come through here.) */
+/** The single place a CubeValue is born — `depth` is required, so any inline
+ *  `{ __cube: true, … }` is a compile error. */
 function makeCube(columns: CubeColumn[]): CubeValue {
   return { __cube: true, columns, depth: computeCubeDepth(columns) };
 }
 
-/** A cube's drill-in depth (cached at construction). Flat cube = 1, cube-in-cube
- *  = 2, and so on — what the table popup surfaces so nesting is never hidden. */
+/** A cube's drill-in depth: flat = 1, cube-in-cube = 2, and so on. */
 export function cubeDepth(c: CubeValue): number {
   return c.depth;
 }
@@ -585,25 +510,21 @@ export function cubeRowCount(c: CubeValue): number {
   return c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
 }
 
-/** A frame COLUMN → cube CELLS: a unit-locked column's cells become per-cell base-SI
- *  `UnitCell`s (a cube is heterogeneous per cell, so it carries units like a list, not
- *  as a column annotation — D20). A plain column's cells copy straight through. This is
- *  the single frame→cube unit bridge — every flattening path routes through it. */
+/** The single frame→cube unit bridge — every flattening path routes through it: a
+ *  unit-locked column's cells become per-cell base-SI `UnitCell`s (D20). */
 export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
   return col.unit
     ? col.values.map((v) => tagFrameCellUnit(v, col.unit!) as CubeCell)
     : [...col.values];
 }
 
-/** A Frame is a Cube of flat cells — re-brand each column, carrying its element TYPE
- *  (so dates/logicals still render right) and tagging a unit-locked column's cells so
- *  the unit rides into the cube per-cell. Depth is always 1 (cells are scalars). */
+/** A Frame is a Cube of flat cells — element TYPE carried, unit-locked cells tagged;
+ *  depth is always 1. */
 export function frameToCube(f: FrameValue): CubeValue {
   return makeCube(f.columns.map((col) => ({ name: col.name, type: col.type, cells: cubeCellsFromColumn(col) })));
 }
 
-/** Build a Cube from a row-major grid of arbitrary cells + optional headers.
- *  Ragged rows pad short with `null`, like the frame builders. */
+/** Cube from a row-major grid + optional headers; ragged rows pad short with `null`. */
 export function cubeFromRows(
   rows: ReadonlyArray<ReadonlyArray<CubeCell>>,
   headers?: ReadonlyArray<string>,
@@ -619,10 +540,8 @@ export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: Cube
   return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}) })));
 }
 
-/** Widen any incoming value into a Cube — the runtime side of "everything flows up
- *  into the supremum" (mirrors the frame widening in coerceInputs). A cube passes
- *  through; a frame re-brands its flat cells; a 2-D matrix → a grid of cells; a 1-D
- *  list → a single ROW; a scalar → 1×1. */
+/** Widen any value into a Cube (mirrors the frame widening in coerceInputs): a 2-D
+ *  matrix → a grid, a 1-D list → a single ROW, a scalar → 1×1. */
 export function toCube(v: unknown): CubeValue {
   if (isCubeValue(v)) return v;
   if (isFrameValue(v)) return frameToCube(v);
@@ -636,19 +555,15 @@ export function toCube(v: unknown): CubeValue {
 
 // ─── Relate: nest two frames into a cube (the relational producer) ─────────────
 
-/** Equality id for a DIMENSIONED key. Keyed on the dimension symbol plus
- *  the BASE-SI magnitude, so `5 km` == `5000 m` (the same quantity) while `5 km`
- *  ≠ `5 kg` ≠ bare `5`. Currency is the one axis where the display CODE is the
- *  unit identity (no FX) — it joins the key so $5 ≠ 5€. */
+/** Dimension symbol + BASE-SI magnitude, so `5 km` == `5000 m` but ≠ `5 kg` ≠ bare
+ *  `5`; currency's identity is its display CODE (no FX), so $5 ≠ 5€. */
 function dimKeyId(base: number, dim: Dim, display: string | undefined): string {
   const cur = dimEqual(dim, { currency: 1 }) ? (display ?? "") : "";
   return `~u:${formatDim(dim)}${cur ? `:${cur}` : ""}:${String(base)}`;
 }
 
-/** Stable equality id for a key cell, so number/text/logical keys match by value
- *  (a logical aligns to 1/0, the same coercion splitFrame uses). A per-cell
- *  `UnitCell` keys by dimension (see dimKeyId); a pure ratio is known-dimensionless
- *  and keys as its bare magnitude. */
+/** Stable equality id for a key cell (a logical aligns to 1/0, as splitFrame
+ *  coerces); a pure ratio is dimensionless and keys as its bare magnitude. */
 function keyId(v: FrameCell | UnitCell): string {
   if (v === null || v === undefined) return "~null";
   if (typeof v === "boolean") return v ? "1" : "0";
@@ -657,17 +572,15 @@ function keyId(v: FrameCell | UnitCell): string {
   return String(v);
 }
 
-/** `keyId` for a cell of a COLUMN-united frame column: the cells are bare base-SI
- *  numbers with the dimension carried on the column, so a united column's numeric
- *  cells key dimensioned (matching a per-cell `UnitCell` of the same quantity). */
+/** `keyId` for a COLUMN-united column: bare base-SI cells key dimensioned, matching
+ *  a per-cell `UnitCell` of the same quantity. */
 function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
   if (unit && typeof v === "number" && Number.isFinite(v)) return dimKeyId(v, unit.dim, unit.display);
   return keyId(v);
 }
 
-/** Key id for a CUBE cell (a cube child's key column): scalars/null/error use the
- *  same `keyId` as a frame key, so a cube child joins on the same value equality; a
- *  nested frame/cube/list cell can't be a join key (→ null, unmatched). */
+/** Key id for a CUBE cell; a nested frame/cube/list cell can't be a join key
+ *  (→ null, unmatched). */
 function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
   if (cell === null) return keyId(null);
   if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell as FrameCell, unit);
@@ -690,9 +603,8 @@ function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
   };
 }
 
-/** A cube of just the given row indices (every column's cells, aligned) — the
- *  cube-child analogue of `subFrame`, so nesting a pre-built cube keeps its own
- *  nesting intact in each parent cell. */
+/** Row subset of a cube — the `subFrame` analogue, so a pre-built cube keeps its
+ *  own nesting when nested. */
 function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
   return makeCube(child.columns.map((c) => ({
     name: c.name,
@@ -701,10 +613,8 @@ function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
   })));
 }
 
-/** Relate a parent + child frame on a shared key column into a Cube: the parent's
- *  columns flow through as flat cells, plus one NESTED column whose every cell is
- *  the sub-frame of child rows matching that parent row's key. `null` if either
- *  frame is missing the key column. */
+/** Relate parent + child on a shared key into a Cube: one NESTED column whose cells
+ *  are the sub-frames of matching child rows. `null` if either lacks the key. */
 export function relateFramesToCube(
   parent: FrameValue,
   child: FrameValue | CubeValue,
@@ -747,14 +657,9 @@ export function relateFramesToCube(
   return makeCube(columns);
 }
 
-/** Cube-aware nest join: descend into a cube parent's nested sub-table column and
- *  nest-join `child` (a Frame OR a pre-built Cube) into each leaf FRAME (a leaf frame →
- *  a cube), recursing through already-nested cubes so a chain (Customer → Order →
- *  LineItem) deepens by ONE level per call. The nested column is auto-detected as the
- *  FIRST column whose cells hold a frame/cube (a nest-join cube has exactly one; a
- *  hand-built Build-Cube could have several — we deepen the first deterministically
- *  rather than silently the last). A leaf frame missing the key stays a frame; a parent
- *  with no nested column is returned unchanged. */
+/** Cube-aware nest join: recurses through nested cubes so a chain deepens by ONE
+ *  level per call. The nested column is the FIRST column holding a frame/cube —
+ *  deterministic when a hand-built cube has several. */
 export function relateCubeToFrame(parent: CubeValue, child: FrameValue | CubeValue, key: string, nestedName: string): CubeValue {
   let nestedIdx = -1;
   for (let j = 0; j < parent.columns.length; j++) {
@@ -793,9 +698,8 @@ export function frameFromColumnar(obj: Record<string, unknown>): FrameValue {
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
-/** Row-major grid of cell values for the popup / preview. null → ""; a logical
- *  cell → "TRUE"/"FALSE" string; a per-cell error passes through (the popup renders
- *  its code). Numbers/text pass through unchanged. */
+/** Row-major grid for the popup / preview: null → "", a logical → "TRUE"/"FALSE",
+ *  a per-cell error passes through. */
 export function frameToGrid(f: FrameValue): (number | string | SolError)[][] {
   const rows = frameRowCount(f);
   return Array.from({ length: rows }, (_, i) =>

@@ -1,17 +1,11 @@
-// Isolate (Blender-style local view): a focus set of node ids; everything else
-// recedes (dimmed + non-interactive, NOT removed — positions, groups, and push
-// records survive untouched). A pure VIEW state — not persisted, not in undo.
-//
-// Module-level store (storeKit) so both React roots (main app + rete node root)
-// can read it. `null` = not isolating (everything visible).
+// A focus set of node ids; non-members recede but are NOT removed. Pure VIEW state —
+// not persisted, not in undo. `null` = not isolating.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 let _focus: Set<string> | null = null;
-// Which gesture produced the focus set — the IsolatePill labels the mode so a
-// directional variant (Where used = downstream-only) reads differently from
-// plain Isolate / Isolate chain instead of looking like a duplicate of them.
+// Which gesture produced the focus set; the IsolatePill labels the mode.
 let _mode: string | null = null;
 const { notify, subscribe, version } = createNotifier();
 
@@ -23,8 +17,7 @@ export const isolateStore = {
   /** The pill's mode label ("Where used"), or null for plain isolate. */
   mode: (): string | null => _mode,
 
-  /** Is this node visible? True when not isolating, or when it's in the focus
-   *  set. (Non-members are the ones that dim.) */
+  /** True when not isolating, or when the node is in the focus set. */
   isVisible: (id: string): boolean => _focus === null || _focus.has(id),
 
   /** Enter isolation with a focus set (empty/none clears it). */
@@ -43,11 +36,8 @@ export const isolateStore = {
   version,
 };
 
-// Registered like every node-keyed store (nodeStoreRegistry / STORE-1): a document
-// load must exit isolate (the focus set holds the OLD graph's ids, so every
-// regenerated id would be a non-member and the whole new graph would dim). A
-// deleted node also leaves the focus set, which exits when it empties — an empty
-// focus would dim everything.
+// A load must EXIT isolate: the focus set holds the OLD graph's ids, so every
+// regenerated id would be a non-member and the whole new graph would dim.
 registerNodeForget((id) => {
   if (_focus?.has(id)) {
     _focus.delete(id);
@@ -57,10 +47,8 @@ registerNodeForget((id) => {
 });
 registerNodeForgetAll(() => isolateStore.exit());
 
-// Which isolate endpoint terminal is selected ("entry" | "exit" | null). Routed
-// through a store (not component state) so the terminals join the one selection
-// system: the canvas's background/node/cable pointerdown handler clears it, and
-// selecting a terminal clears node/cable/standoff — mutually exclusive, like a node.
+// A store, not component state, so the terminals join the ONE selection system and
+// stay mutually exclusive with node/cable/standoff selection.
 let _selectedEndpoint: string | null = null;
 const epNotifier = createNotifier();
 export const isoEndpointSelect = {
@@ -74,9 +62,7 @@ export const isoEndpointSelect = {
   subscribe: epNotifier.subscribe,
 };
 
-// ─── Chain closure (pure, testable) ───────────────────────────────────────────
-// Transitive closure over a connection list in BOTH directions from a seed set —
-// "everything up- and downstream of this". One BFS; trivially cheap at our sizes.
+// Transitive closure over the edges in BOTH directions from the seed set.
 export function chainClosure(
   edges: ReadonlyArray<{ source: string; target: string }>,
   seed: Iterable<string>,

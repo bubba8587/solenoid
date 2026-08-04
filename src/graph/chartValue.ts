@@ -1,12 +1,10 @@
 import type { ChartOp } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
 
-// What the `chart` socket carries: a self-describing figure a consumer can redraw
-// without knowing about the Chart node. Must stay flat + JSON-safe (primitives or
-// plain objects only) so it rides a cable and serializes like any other value.
+// What the `chart` socket carries: a self-describing figure. Must stay flat +
+// JSON-safe so it rides a cable and serializes like any other value.
 
-// Figure types that don't fit a plain numeric series carry their structured data in
-// `payload` instead of `values`. JSON-safe (flat numbers).
+// Figures that don't fit a numeric series carry structured data in `payload`.
 export interface KpiPayload {
   kind: "kpi";
   value: number | null;
@@ -37,10 +35,8 @@ export interface SankeyPayload {
   targets: string[];
   values: number[];
 }
-// A shaded 3-D surface over a coordinate grid: `z[iy][ix]` is the height at
-// (ys[iy], xs[ix]); a null cell is a hole (no quad drawn). The axes carry the real
-// coordinates so the surface honours non-uniform spacing. Parsed from the same
-// bordered table the Grid Interpolate node reads (row 1 = Xs, column 1 = Ys).
+// `z[iy][ix]` is the height at (ys[iy], xs[ix]) and a null cell is a hole; the axes
+// carry real coordinates, so non-uniform spacing is honoured.
 export interface SurfacePayload {
   kind: "surface";
   xs: number[];
@@ -51,9 +47,8 @@ export interface SurfacePayload {
   yaw: number;
   pitch: number;
 }
-// The flat twin of Surface: same bordered grid (xs/ys axes + z heights), drawn
-// as filled height bands with iso-lines instead of a 3-D mesh. `levels` is the
-// iso-line count between the data's own min and max.
+// The flat twin of Surface, drawn as filled height bands; `levels` is the iso-line
+// count between the data's own min and max.
 export interface ContourPayload {
   kind: "contour";
   xs: number[];
@@ -78,21 +73,20 @@ export interface CandlePayload {
   low: number[];
   close: number[];
 }
-// One box per series: Tukey five-number summary + the outliers beyond the
-// 1.5·IQR whiskers. Stats are computed in the node, so the view stays dumb.
+// Tukey five-number summary + outliers beyond the 1.5·IQR whiskers, computed in
+// the node so the view stays dumb.
 export interface BoxplotPayload {
   kind: "boxplot";
   boxes: Array<{ name: string; lo: number; q1: number; med: number; q3: number; hi: number; outliers: number[] }>;
 }
-// A calendar heatmap: parallel (date serial, value) pairs; the view lays out
-// weeks × weekdays over the data's own date span (capped at a year).
+// Parallel (date serial, value) pairs; the view lays out weeks × weekdays over the
+// data's own date span, capped at a year.
 export interface CalHeatPayload {
   kind: "calheat";
   days: number[];
   values: number[];
 }
-// A waffle: category shares as a 10×10 grid. A single value in [0,1] renders as
-// a fraction of the grid instead of a share of the (trivial) total.
+// Category shares as a 10×10 grid; a single value in [0,1] renders as a fraction.
 export interface WafflePayload {
   kind: "waffle";
   names: string[];
@@ -116,9 +110,7 @@ export type ChartPayload =
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload;
 
-/** Every op the `chart` socket can carry: the ChartView series shapes, the
- *  structured-payload figures rendered outside recharts (kpi/bullet), and the
- *  structured recharts figures (treemap/sankey). */
+/** Every op the `chart` socket can carry. */
 export type ChartValueOp =
   | ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface"
   | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg";
@@ -126,15 +118,13 @@ export type ChartValueOp =
 export interface ChartValue {
   __chart: true;
   op: ChartValueOp;
-  /** The raw values the figure plots — a consumer runs them through toSeries.
-   *  Unused by payload figures (kpi/bullet), which read `payload`. */
+  /** The raw values the figure plots; unused by the payload figures. */
   values: number | number[] | null;
   /** Multi-series / point data for the 2-D chart ops (composed = each COLUMN a
    *  series; bubble = each ROW an [x, y, size] point). Undefined for 1-D ops. */
   matrix?: (number | null)[][] | null;
-  /** X-axis category labels — the FIRST column of a wired Frame (formatted per its
-   *  type, so dates read as dates). One per data point; the axis/tooltip show these
-   *  instead of the 1,2,3… index. Undefined when a plain `values` list drives it. */
+  /** X-axis category labels, one per data point, shown instead of the 1,2,3…
+   *  index; undefined when a plain `values` list drives the figure. */
   labels?: (string | number)[];
   /** Structured data for the non-series figures (kpi/bullet). */
   payload?: ChartPayload;

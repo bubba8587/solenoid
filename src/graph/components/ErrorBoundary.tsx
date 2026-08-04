@@ -1,16 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-/**
- * Two scopes:
- *   • `scope="app"` wraps the main React root — the full blackout case.
- *   • `scope="node"` wraps EACH rete-rendered node component. Rete gives every
- *     node its own React root, so one card that throws would otherwise blank the
- *     whole canvas; boundaried, the broken card shows as a small red box and every
- *     other node keeps working.
- *
- * The component stack matters more than the error stack here (minified builds
- * make the latter nearly useless), so it is shown first and copied too.
- */
+/** `scope="app"` wraps the main React root; `scope="node"` wraps EACH rete node,
+ *  whose own React root would otherwise blank the whole canvas when one throws. */
 type Props = { children: ReactNode; scope: "app" | "node"; label?: string };
 type State = { error: Error | null; info: string };
 
@@ -23,8 +14,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     this.setState({ info: info.componentStack ?? "" });
-    // Keep the console record too — a device with devtools attached gets the
-    // live object, which is richer than the serialized text below.
+    // The console keeps the LIVE object, richer than the serialized text below.
     console.error(`[${this.props.scope} boundary]`, this.props.label ?? "", error, info.componentStack);
   }
 
@@ -77,13 +67,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-/** Wrap a rete node component in a `scope="node"` boundary.
- *
- *  MEMOISED BY COMPONENT TYPE (the WeakMap): the render preset calls this on
- *  every node render, and returning a fresh component *type* each time would
- *  give React a different element type on every pass — it would unmount and
- *  remount the card, losing focus mid-edit and re-running every effect. Same
- *  input component ⇒ same wrapper identity. */
+/** Wrap a rete node component in a `scope="node"` boundary, MEMOISED BY COMPONENT
+ *  TYPE: a fresh wrapper type per render would remount the card, losing focus
+ *  mid-edit and re-running every effect. */
 const wrapped = new WeakMap<object, unknown>();
 
 export function withNodeBoundary<T>(Comp: T | null): T | null {

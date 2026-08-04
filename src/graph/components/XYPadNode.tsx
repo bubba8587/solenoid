@@ -9,13 +9,12 @@ export function XYPadComponent({ data, emit }: NodeProps<XYPadNodeType>) {
   const [fx, setFx] = useState(data.literals.fx ?? 0.5);
   const [fy, setFy] = useState(data.literals.fy ?? 0.5);
   const padRef = useRef<HTMLDivElement>(null);
-  // Latest fractions during a drag — the handle follows them live, but the graph
-  // only recomputes on release (processGraph per move was laggy).
+  // The handle follows these live, but the graph only recomputes on release —
+  // processGraph per move is laggy.
   const live = useRef({ fx, fy });
 
-  // Map a screen point to [0,1] fractions and move the handle. getBoundingClientRect
-  // already folds in the canvas zoom, so the fraction is correct at any scale.
-  // Y is flipped so up = 1 (the intuitive direction). Visual only — no recompute.
+  // getBoundingClientRect already folds in the canvas zoom, so the fraction holds at
+  // any scale; Y is flipped so up = 1. Visual only — no recompute.
   const track = useCallback((clientX: number, clientY: number) => {
     const el = padRef.current;
     if (!el) return;
@@ -28,7 +27,6 @@ export function XYPadComponent({ data, emit }: NodeProps<XYPadNodeType>) {
     setFy(upY);
   }, []);
 
-  // Commit to the node + recompute the graph once, on release.
   const commit = useCallback(() => {
     data.literals.fx = live.current.fx;
     data.literals.fy = live.current.fy;

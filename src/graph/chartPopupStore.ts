@@ -1,6 +1,5 @@
-// The currently-open chart popup (a big read-only view of a Sparkline/Chart),
-// or null. Module store like tablePopup / formulaPopup: opened from inside a
-// node (separate React root), mounted once in App.
+// The currently-open chart popup. Must stay a module store: it is opened from
+// inside a node (rete's separate React root) but mounted once in App.
 import { createValueStore } from "./storeKit";
 import type { ChartShape } from "./components/chartView";
 import type { ChartOptions } from "./nodes/chartOptions";
@@ -8,9 +7,8 @@ import type { ChartValue } from "./chartValue";
 
 export interface ChartPopupState {
   title: string;
-  /** A full chart VALUE — the general path (renders via ChartFigure, so it covers
-   *  every op incl. treemap / sankey / composed / bubble). When set, the series
-   *  fields below are ignored. Used by the collapsed [Chart] chip. */
+  /** A full chart VALUE (the general path, every op) — when set, the series
+   *  fields below are ignored. */
   value?: ChartValue;
   /** The series path (Sparkline / Chart expand button): op + points. */
   op?: ChartShape;

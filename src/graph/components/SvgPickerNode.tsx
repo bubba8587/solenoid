@@ -15,10 +15,8 @@ const MAX_H = 800;
 const hoverGlow = (color: string) => `drop-shadow(0 0 2px ${color}) drop-shadow(0 0 1px ${color})`;
 const selectedGlow = (color: string) => `drop-shadow(0 0 3px ${color}) drop-shadow(0 0 2px ${color})`;
 
-// Build the DISPLAY svg string shown in the idle <img>: the source with the
-// selected layer's steady glow baked in, so the selection still reads when the
-// live (hover-only) SVG isn't mounted. No selection → the source unchanged (no
-// parse — cheap for a huge map). Falls back to the raw source on any parse failure.
+// The DISPLAY svg for the idle <img>: the source with the selected layer's glow
+// baked in, so the selection still reads while the live SVG isn't mounted.
 function bakeSelectionGlow(source: string, sel: string, color: string): string {
   if (!source || !sel) return source;
   try {
@@ -35,15 +33,9 @@ function bakeSelectionGlow(source: string, sel: string, color: string): string {
   }
 }
 
-/**
- * The SVG Picker — an interactive picture that outputs the name of whatever layer
- * you click. Clicking the current pick again clears it.
- *
- * Highlighting is IMPERATIVE (a pointermove that set React state per move would
- * thrash): the hovered + selected elements are painted with filters directly and
- * restored on change. The header bar is the drag handle; the well stops pointerdown
- * so a click-to-pick never starts a node drag.
- */
+/** The SVG Picker — outputs the name of whatever layer you click. Highlighting is
+ *  IMPERATIVE (React state per pointermove would thrash): hovered and selected
+ *  elements are painted with filters directly and restored on change. */
 export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [url, setUrl] = useState(data.url);
@@ -54,10 +46,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   const [loadError, setLoadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Display is a rasterized <img> of the SVG (one DOM element); the heavy inline
-  // markup — a source map can be tens of thousands of paths — is mounted ONLY while
-  // the pointer is over the well, for hit-testing + hover highlight, then dropped on
-  // leave. `hovering` gates that swap; `rasterUrl` is the idle image's blob URL.
+  // The heavy inline markup (tens of thousands of paths) is mounted ONLY while the
+  // pointer is over the well, for hit-testing; the idle view is a rasterized <img>.
   const [hovering, setHovering] = useState(false);
   const [rasterUrl, setRasterUrl] = useState<string | null>(null);
   const rasterUrlRef = useRef<string | null>(null);
@@ -103,8 +93,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     }
     return null;
   }
-  // Repaint everything from scratch: the selected layer (steady glow) + the hovered
-  // element (lighter glow), never double-painting the same element.
+  // Repaint from scratch, never double-painting the same element.
   function paint(sel: string, hoverEl: Element | null, color: string) {
     clearPainted();
     const selEl = sel ? findNamed(sel) : null;
@@ -112,9 +101,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     if (hoverEl && hoverEl !== selEl) { apply(hoverEl, hoverGlow(color)); paintedRef.current.push(hoverEl); }
   }
 
-  // Mount the live SVG markup into the well ONLY while hovering (the well is empty
-  // otherwise — see the idle <img>). Rescale it + apply the selection highlight
-  // against the fresh DOM. On leave the well div unmounts, so we just null the root.
+  // Mount the live SVG markup ONLY while hovering, then highlight against the
+  // fresh DOM; on leave the well div unmounts, so just null the root.
   useLayoutEffect(() => {
     const well = wellRef.current;
     if (!hovering || !well) { svgRootRef.current = null; return; }
@@ -134,10 +122,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, hovering]);
 
-  // Keep the idle image current: rasterize the source (with the selection glow
-  // baked in) to a blob URL. Debounced so a color drag — many ticks — doesn't
-  // re-parse a big SVG each tick; the lag is hidden behind the live SVG shown while
-  // hovering. Revokes the PREVIOUS url only once the new one exists (no blank gap).
+  // Rasterize the source to a blob URL, debounced so a color drag doesn't re-parse
+  // a big SVG per tick; the previous url is revoked only once the new one exists.
   useEffect(() => {
     if (!source) {
       if (rasterUrlRef.current) { URL.revokeObjectURL(rasterUrlRef.current); rasterUrlRef.current = null; }
@@ -162,18 +148,15 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayer, hoverColor]);
 
-  // Resolve a pointer target to a layer, but ONLY if it's actually inside the SVG
-  // — clicking the well's padding lands on the container div, and without this
-  // guard resolveLayer would walk UP out of the svg into the node card DOM (whose
-  // rete elements have ids) and mis-pick. Outside the svg → no hit.
+  // Resolve a target ONLY if it is actually inside the SVG — otherwise resolveLayer
+  // walks UP out of the svg into the node-card DOM and mis-picks.
   function hitLayer(target: EventTarget | null): { el: Element; name: string } | null {
     const root = svgRootRef.current;
     if (!root || !(target instanceof Element) || !root.contains(target)) return null;
     return resolveLayer(target, root);
   }
 
-  // Entering the well mounts the live SVG (see the injection effect) so the next
-  // move can hit-test + highlight; leaving unmounts it back to the idle image.
+  // Entering mounts the live SVG so the next move can hit-test; leaving unmounts it.
   function onPointerEnterWell() { setHovering(true); }
   function onPointerMove(e: React.PointerEvent) {
     if (!svgRootRef.current) return;
@@ -188,8 +171,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     setHovering(false); // unmount the live SVG; the idle <img> takes over
   }
 
-  // A pick is a discrete action → commit immediately (like a dropdown). Clicking
-  // the current selection (or empty space) clears it.
+  // A pick is a discrete action → commit immediately; re-clicking it clears it.
   function onClickWell(e: React.MouseEvent) {
     if (!svgRootRef.current) return;
     const name = hitLayer(e.target)?.name ?? "";
@@ -203,9 +185,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function commitValue() { void processGraph(data.id); }
 
-  // Typing a URL and committing (Enter/blur) fetches the SVG text and inlines it.
-  // Cross-origin hosts may block the fetch (CORS) — the local-file path always
-  // works and is the primary route; a failed fetch just leaves a small hint.
+  // Committing a URL fetches the SVG text and inlines it; cross-origin hosts may
+  // block the fetch (CORS), so the local-file path is the primary route.
   async function loadFromUrl(u: string) {
     if (!u) { setLoadError(null); return; }
     try {
@@ -224,9 +205,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   function onUrl(v: string) { setUrl(v); data.url = v; scheduleAutosave(); }
   function onUrlCommit() { void loadFromUrl(url); }
 
-  // Attaching a local .svg reads it to TEXT (not a data URL — the picker needs the
-  // live markup) and takes over as the source, dropping any URL. SVG is text, so it
-  // persists directly in stringLiterals (no bundling, unlike the Image node).
+  // A local .svg is read to TEXT, not a data URL — the picker needs live markup;
+  // SVG is text, so it persists directly in stringLiterals, unlike the Image node.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -289,7 +269,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
           </svg>
         </button>
         <input ref={fileRef} type="file" accept=".svg,image/svg+xml" hidden onChange={onFile} />
-        {/* Chart-family output — wire the picture into a Report. */}
         {data.outputs.chart && (
           <NodeSocket side="output" socketKey="chart" nodeId={data.id} emit={emit} payload={data.outputs.chart.socket} />
         )}
@@ -362,7 +341,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
 
         {loadError && <div className="solenoid-svgpick__hint">{loadError}</div>}
 
-        {/* Hero: the picked layer name + the string output socket. */}
         <div className="solenoid-svgpick__hero">
           <span className="solenoid-svgpick__hero-label">Layer</span>
           <span className="solenoid-svgpick__hero-value" title={selectedLayer || undefined}>

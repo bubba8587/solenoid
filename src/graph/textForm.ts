@@ -1,7 +1,3 @@
-// The text projection: a pure SavedGraph <-> text conversion — no rete, no DOM,
-// no live editor — used by persistence.ts (serializeGraph derives the JSON from
-// it) and by any surface that reads or writes the text form directly.
-
 import type { SavedGraph, SavedNode, SavedConnection, SavedStandoff } from "./persistence";
 import type { Pin } from "./pinStore";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
@@ -9,9 +5,7 @@ import { NAME_RE, typePrefix, nextAvailableName } from "./nodeNaming";
 
 const SEPARATOR = "---";
 
-// Every node needs a final, unique, identifier-safe name before anything else
-// can be written (topo order tie-breaks on it too). Same algorithm the live
-// nodeNameStore uses, against a local taken-set instead of the module singleton.
+// The same algorithm the live nodeNameStore uses, against a local taken-set.
 function assignNames(nodes: SavedNode[]): Map<string, string> {
   const idToName = new Map<string, string>();
   const taken = new Set<string>();
@@ -32,9 +26,8 @@ function assignNames(nodes: SavedNode[]): Map<string, string> {
   return idToName;
 }
 
-// Kahn's algorithm, picking the alphabetically-smallest-by-name ready node at
-// each step. A leftover (a dependency cycle) is appended alphabetically by name,
-// so this never throws or hangs on a pathological graph.
+// Kahn's, picking the alphabetically-smallest ready node; a leftover cycle is
+// appended alphabetically, so this never throws or hangs.
 function topoOrder(nodeIds: string[], connections: SavedConnection[], nameOf: (id: string) => string): string[] {
   const indeg = new Map<string, number>();
   for (const id of nodeIds) indeg.set(id, 0);
@@ -117,12 +110,9 @@ function splitField(token: string): { key: string; op: "=" | "<-"; rest: string 
   return { key: m[1], op: m[2] as "=" | "<-", rest: token.slice(m[0].length) };
 }
 
-// A connection's source-output key is USER-CONTROLLED text when it comes from a
-// Note's frontmatter, which allows spaces/dots/hyphens. A bare key with a space
-// shears the token in two at the tokenizer, so emit bare only when the tokenizer
-// carries it intact (a DOT is fine — the reader splits at the FIRST dot and node
-// names are NAME_RE-safe); otherwise JSON-quote it. targetInput keys are
-// class-defined identifiers, so only the output side needs this.
+// A Note's frontmatter makes the source-output key USER text, so emit it bare only
+// when the tokenizer carries it intact (a dot is fine — the reader splits at the
+// FIRST one), else JSON-quote it. Only the output side needs this.
 const BARE_OUTPUT_RE = /^[^"\\ ]+$/;
 function outputToken(key: string): string {
   return BARE_OUTPUT_RE.test(key) ? key : JSON.stringify(key);
@@ -151,9 +141,8 @@ export function writeTextForm(g: SavedGraph): string {
     const init: Record<string, unknown> = { ...sn.init };
     if (typeof init.hostNodeId === "string") init.hostNodeId = nameOf(init.hostNodeId);
     if (Array.isArray(init.members)) init.members = (init.members as unknown[]).map((m) => (typeof m === "string" ? nameOf(m) : m));
-    // Presentation steps each reference a node-id SET (the camera target) — live
-    // ids on the instance, so translate them to names or they point at dead ids
-    // after a reload.
+    // Presentation steps reference live node ids, so translate them to names or
+    // they point at dead ids after a reload.
     if (Array.isArray(init.steps)) {
       init.steps = (init.steps as Array<{ nodeIds?: unknown }>).map((s) => ({
         ...s,
@@ -203,12 +192,11 @@ export function writeTextForm(g: SavedGraph): string {
     sidecar.pins = g.pins.map((p) => ({ nodeId: nameOf(p.nodeId), outputKey: p.outputKey }));
   }
   if (g.comments && g.comments.length > 0) {
-    // Node-anchored, so name-address the nodeId like pins/standoffs (names ARE ids
-    // on read). The comment's own `id` is not a node reference — kept as-is.
+    // Name-address the nodeId like pins/standoffs; the comment's own `id` is not a
+    // node reference.
     sidecar.comments = g.comments.map((c) => ({ ...c, nodeId: nameOf(c.nodeId) }));
   }
   if (g.frameFormats && g.frameFormats.length > 0) {
-    // Per-column frame formats — name-address the nodeId like comments/pins.
     sidecar.frameFormats = g.frameFormats.map((f) => ({ ...f, nodeId: nameOf(f.nodeId) }));
   }
   if (g.seedId !== undefined) sidecar.seedId = g.seedId;
@@ -245,9 +233,8 @@ export function readTextForm(text: string): SavedGraph {
     names.add(p.name);
   }
 
-  // Names ARE the ids in the reconstructed SavedGraph (rebuildGraph remaps every
-  // saved id to a fresh live id on load anyway), so `hostNodeId`/`members` inside
-  // `init` — already names from the writer — need no further translation.
+  // Names ARE the ids in the reconstructed SavedGraph, so `hostNodeId`/`members`
+  // inside `init` need no further translation.
   const nodes: SavedNode[] = parsed.map((p) => {
     const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean };
     const sn: SavedNode = {

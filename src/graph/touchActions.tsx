@@ -1,40 +1,28 @@
-// ─── The touch action set, shared by the mobile bottom bar and the tablet top bar ──
-// One definition of each keyboard-less edit action: its glyph, its handler, and
-// (for the two that need a selection) its enabled test. The two bars differ ONLY
-// in WHERE they sit and how they're sized — a phone gets a thumb-reachable bottom
-// bar, a tablet gets them in the top bar because it runs the DESKTOP chrome and
-// has no bottom bar at all (IS_MOBILE is false on a tablet: iPadOS ships a desktop
-// UA on purpose — see coarse.ts).
+// One definition of each keyboard-less edit action, shared by the mobile bottom bar
+// and the tablet top bar; the bars differ only in placement and sizing.
 
 import { useEffect, useState } from "react";
 import { getEditor } from "./process";
 import { cableSelectionStore } from "./cableState";
 import { IS_COARSE } from "./coarse";
 
-// Dispatch the synthetic Ctrl+Z / Ctrl+Shift+Z that Canvas's window key handler
-// already listens for, keeping undo/redo single-sourced.
+// Synthetic Ctrl+Z through Canvas's key handler, keeping undo single-sourced.
 export function fireUndo(redo: boolean) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", { code: "KeyZ", ctrlKey: true, shiftKey: redo, bubbles: true, cancelable: true }),
   );
 }
 
-// Group the selection via the same "G" shortcut Canvas already handles (single-
-// sourced, like undo/redo) — no separate editor/area plumbing for either bar.
+// Via the same "G" shortcut Canvas handles — no separate plumbing per bar.
 export function fireGroup() {
   window.dispatchEvent(
     new KeyboardEvent("keydown", { code: "KeyG", key: "g", bubbles: true, cancelable: true }),
   );
 }
 
-/** Is anything (node or cable) selected? Polled the cheap way the StatusBar does
- *  it — there is no dedicated selection store. Delete and Group read this to dim
- *  themselves; they stay TAPPABLE while dim so a fresh selection isn't blocked by
- *  the poll interval.
- *
- *  `enabled` skips the interval entirely where the bar isn't rendered: on a
- *  desktop the top bar's tablet controls are CSS-hidden, and scanning every node
- *  5×/sec for an invisible control is pure waste on the largest graphs. */
+/** Is anything selected? Polled — there is no selection store — so the buttons that
+ *  dim on it stay TAPPABLE while dim, or the poll interval would swallow a tap.
+ *  `enabled` skips the interval where the bar isn't rendered. */
 export function useHasSelection(enabled = IS_COARSE): boolean {
   const [hasSelection, setHasSelection] = useState(false);
   useEffect(() => {
@@ -51,9 +39,8 @@ export function useHasSelection(enabled = IS_COARSE): boolean {
   return hasSelection;
 }
 
-// ── Glyphs ───────────────────────────────────────────────────────────────────
-// Sized by the caller (the bottom bar's touch targets are larger than the top
-// bar's 28px buttons), so each takes `size` rather than hard-coding one.
+// Each glyph takes `size`: the bottom bar's touch targets are larger than the top
+// bar's 28px buttons.
 
 type IconProps = { size?: number };
 const stroke = {

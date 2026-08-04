@@ -1,7 +1,4 @@
-// Fluid Mechanics — pipe flow, pumps, and the aero/particle classics: Reynolds
-// number, friction factors (explicit Swamee–Jain + the implicit Colebrook as a
-// custom root-finding node), Darcy–Weisbach, Bernoulli, orifice and pump
-// equations, Stokes settling, drag, and compressible-flow basics.
+// Fluid mechanics: pipe flow, pumps, and the aero/particle classics.
 // SI units throughout; g = 9.80665 m/s² baked where gravity appears.
 
 import { ColebrookNode, PipeRoughnessNode, colebrookFriction, PIPE_ROUGHNESS } from "../rete-nodes";

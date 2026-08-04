@@ -1,12 +1,6 @@
 // ─── Relational verbs — the pure engine ───────────────────────────────────────
-// One implementation of each relational verb, FrameValue → FrameValue (binary for
-// join/append): the JS backend's `apply` body AND the reference oracle the Polars
-// backend is parity-tested against. Verb nodes delegate here too.
-//
-// Pure + total: a verb returns a new FrameValue and never mutates its input (it
-// may share unchanged columns' value arrays by reference — callers treat frames
-// as immutable). A structural failure (a missing column) is a tagged SolError
-// thrown, surfaced by the caller's error guard as #REF!.
+// Also the reference oracle the Polars backend is parity-tested against. Verbs never
+// mutate their input; a structural failure THROWS a tagged SolError (#REF!).
 import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
@@ -69,10 +63,8 @@ export type FrameOp =
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
   | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
 
-/** The unary-verb inventory as a runtime value — the parity corpus's derived
- *  verb list (v2.0/18-parity-corpus.md). Pinned to the TYPE at compile time
- *  below, so adding a `FrameOp` kind without listing it here fails `tsc`, and
- *  the corpus completeness guard then demands its fixture file. */
+/** Pinned to the TYPE below, so a `FrameOp` kind missing here fails `tsc` and the
+ *  parity corpus then demands its fixture file. */
 export const FRAME_OP_KINDS = [
   "select", "drop", "rename", "sort", "distinct", "head",
   "filter", "filterMulti", "groupBy", "unpivot", "pivot",
@@ -171,12 +163,8 @@ export function headRows(f: FrameValue, n: number): FrameValue {
   return reorderRows(f, Array.from({ length: take }, (_, i) => i));
 }
 
-/** Deterministic SAMPLE for sketch mode (#24): up to `n` evenly-strided rows —
- *  NEVER random, so the same input always yields the same sample within a pass.
- *  A frame at or under `n` rows is returned unchanged (nothing to sample). Row
- *  order is preserved (the stride walks forward). Mirrors `headRows`'s
- *  index-list shape, but spread across the whole frame instead of a prefix, so
- *  a sample is representative rather than just "the first N rows". */
+/** Evenly-strided rows, NEVER random, so the same input always yields the same sample;
+ *  order is preserved and a frame at or under `n` rows comes back unchanged. */
 export function sampleFrame(f: FrameValue, n: number): FrameValue {
   const total = frameRowCount(f);
   if (total <= n || n <= 0) return f;
@@ -214,19 +202,16 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
 }
 
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
-  // The error + blank predicates run BEFORE the null/error guard below (which
-  // excludes every error and null cell) — they exist to SELECT on those states.
-  // `noterror` keeps a null (a null isn't an error); pair it with `notblank` to
-  // drop both.
+  // These run BEFORE the null/error guard below, since they exist to SELECT on those
+  // states; `noterror` keeps a null — pair it with `notblank` to drop both.
   if (op === "iserror")  return isSolError(cell);
   if (op === "noterror") return !isSolError(cell);
   // An error cell is present, not blank: isblank false, notblank true.
   if (op === "isblank")  return cell === null;
   if (op === "notblank") return cell !== null;
   if (cell === null || isSolError(cell)) return false;
-  // A null comparison VALUE matches no rows (the text path would otherwise
-  // stringify it to the literal "null"). Blank predicates sit above because they
-  // ignore the value by design.
+  // A null comparison VALUE matches no rows — the text path would otherwise stringify
+  // it to the literal "null".
   if (value === null) return false;
   // Simple lowercase fold, NOT locale-aware — the one spec both engines
   // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).
@@ -262,10 +247,8 @@ export function filterRows(f: FrameValue, column: string, op: FilterOp, value: F
  *  that condition — under OR the others still can). No conditions = identity
  *  on BOTH engines (not OR's vacuous-false), so a blank node passes data through. */
 export function filterRowsMulti(f: FrameValue, combine: FilterCombine, conditions: readonly FilterCond[], complement = false): FrameValue {
-  // `complement` keeps the rows the plain filter would discard — the ROW
-  // complement, not predicate negation: a null/error cell fails its condition,
-  // so under complement that row is KEPT (Kept ∪ Dropped = every row; the same
-  // exhaustive-split rule as the list Filter's Dropped output).
+  // `complement` is the ROW complement, not predicate negation: Kept ∪ Dropped = every
+  // row, so a null/error cell that fails its condition is KEPT here.
   if (conditions.length === 0) return complement ? reorderRows(f, []) : f;
   const cols = conditions.map((c) => requireColumn(f, c.column));
   const keep: number[] = [];
@@ -312,17 +295,14 @@ export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   // Logical cells aggregate as 1/0 (SUM over a logical column = count of TRUEs).
   const prep = forAggregate(values.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v)));
   if (prep.error) return prep.error;
-  // ±Inf/NaN are REAL inputs, not filtered. Results are classified by guardFinite
-  // below; a NaN input poisons deterministically up front (reduce-order NaN
-  // comparisons aren't).
+  // ±Inf/NaN are REAL inputs; a NaN poisons up front because reduce-order NaN
+  // comparisons are not deterministic.
   const nums = prep.nums;
   if (nums.length === 0) return op === "sum" ? 0 : op === "product" ? 1 : null;
   if (nums.some((n) => Number.isNaN(n))) return guardFinite(NaN, ...nums);
   const r = rawAggregate(nums, op);
-  // The TS union is exhaustive, but the WIRE path carries op as a free string
-  // (WireAgg / a save's aggs). A bad op NAME is a request error, not a data
-  // error, so it refuses the whole verb (thrown, like a missing column's #REF!)
-  // rather than seeding per-cell errors.
+  // The WIRE path carries op as a free string, and a bad op NAME is a request error —
+  // refuse the whole verb rather than seed per-cell errors.
   if (r === undefined) throw solError("#NAME?", `Unknown aggregation "${op}"`);
   return guardAgg(r, nums);
 }
@@ -382,9 +362,8 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     // The non-finite guard lives INSIDE aggregateGroup so pivot's re-aggregating
     // totals get it too — not just this verb.
     let values = keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op));
-    // A preserved LOGICAL column converts the 1/0 the aggregator computed back
-    // to booleans — aggregateGroup coerces logicals to numbers on the way in,
-    // and a logical-typed column must not carry number cells.
+    // aggregateGroup coerces logicals to numbers on the way in, and a logical-typed
+    // column must not carry number cells.
     if (preserves && col.type === "logical") {
       values = values.map((v) => (typeof v === "number" ? v !== 0 : v));
     }
@@ -474,18 +453,14 @@ export interface JoinOpts {
 
 const encKey = (v: FrameCell): string => JSON.stringify(encodeCell(v));
 
-/** Index a column's row positions by its key encoding. A `null` or error key is
- *  NOT indexed, so it never matches — SQL semantics and Polars' default
- *  `join_nulls=False` (null != null in a join). Keeps JS↔Polars row counts equal
- *  on data with blank keys; an unmatched null-key row still flows through
- *  left/right/outer as an unmatched row. */
+/** A `null` or error key is NOT indexed, so it never matches (Polars' join_nulls=False);
+ *  an unmatched null-key row still flows through left/right/outer. */
 function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   const idx = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
     const cell = cellAt(col, i);
-    // null / error / NON-FINITE keys never join: encKey buckets every non-finite
-    // as ["#",null], which would match NaN to −∞ — fine for dedupe, garbage as an
-    // equality MATCH. Skipping them here also blanks the probe side.
+    // NON-FINITE keys never join: encKey buckets every non-finite alike, which would
+    // match NaN to −∞ — fine for dedupe, garbage as an equality MATCH.
     if (cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell))) continue;
     const k = encKey(cell);
     const bucket = idx.get(k);
@@ -494,10 +469,8 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   return idx;
 }
 
-/** Build the oracle's join OUTPUT layout from resolved `pairs` — LEFT columns
- *  (key coalesced from whichever side is present) + RIGHT non-key columns,
- *  colliding names de-duped. Shared by every `how` (asof included): each `how`
- *  only differs in HOW `pairs` is resolved. */
+/** Shared by every `how` (asof included) — they differ only in how `pairs` is
+ *  resolved. Layout: LEFT columns (key coalesced) + RIGHT non-key, names de-duped. */
 function assembleJoinOutput(
   left: FrameValue, right: FrameValue, leftKey: string, rightKey: string,
   pairs: readonly [number | null, number | null][],
@@ -565,11 +538,9 @@ function asofNearest(
   return sortedRight[pick].idx;
 }
 
-/** As-of join: match each LEFT row (kept in ORIGINAL order — asof is always a
- *  left-driving match, never fans out) to the nearest RIGHT row by key, per
- *  `opts.asofDirection`/`asofTolerance`. Requires an orderable (number/date) key
- *  on both sides; a `null`/error key row never matches — same rule as an
- *  equality join. Mirrors Polars' `join_asof` (backward is its default). */
+/** Left-driving and never fans out: each LEFT row keeps its original position and takes
+ *  the nearest RIGHT row. Needs an orderable (number/date) key; null/error keys never
+ *  match, as in an equality join. */
 function asofPairs(
   left: FrameValue, lk: FrameColumn, right: FrameValue, rk: FrameColumn, opts: JoinOpts,
 ): [number | null, number | null][] {
@@ -690,11 +661,8 @@ export interface ReconcileSummary {
   /** Rows with a blank (null) or errored KEY — they can't be matched, so they're
    *  emitted as their own "skipped" rows rather than silently dropped. */
   skipped: number;
-  /** Non-key columns present on only ONE side (a schema diff). A renamed column shows
-   *  up as a removed + added pair. These do NOT drive row status — a one-sided column
-   *  applies to every matched row equally — so they're surfaced here (and as labeled
-   *  output columns) rather than making every row read "changed" or, worse, hiding the
-   *  schema change behind an all-"unchanged" result. */
+  /** Non-key columns present on only ONE side. They do NOT drive row status — a
+   *  one-sided column applies to every matched row equally — so they surface here. */
   addedColumns: string[];
   removedColumns: string[];
   pvm?: PvmBreakdown;
@@ -747,8 +715,7 @@ export function reconcileFrames(
   const removedColVals: FrameCell[][] = removedCols.map(() => []);
   const addedColVals: FrameCell[][] = addedCols.map(() => []);
 
-  // Shared by the matched/added/removed rows AND the "skipped" keyless rows
-  // appended below. PVM is NOT computed here — it's handled inline in the match loop.
+  // PVM is NOT computed here — the match loop handles it inline.
   const pushRow = (keyCell: FrameCell, status: ReconcileStatus, li: number | null, ri: number | null) => {
     keyValues.push(keyCell);
     statuses.push(status);
@@ -812,10 +779,8 @@ export function reconcileFrames(
     }
   }
 
-  // A row whose KEY is blank (null) or an error can't be matched — keyIndex drops it,
-  // so it never entered `allKeys`. It is appended as its own "skipped" row (a left row
-  // shows its before-values, a right row its after-values) and tallied, so the row
-  // total stays honest.
+  // A blank/errored KEY never entered `allKeys`, so it is appended as its own "skipped"
+  // row and tallied — the row total must stay exact.
   for (let i = 0; i < ln; i++) {
     const kc = cellAt(lk, i);
     if (kc === null || isSolError(kc)) { pushRow(kc, "skipped", i, null); skipped++; }
@@ -862,9 +827,8 @@ export function unpivotFrame(
 ): FrameValue {
   const idCols = idColumns.map((n) => requireColumn(f, n));
   const valCols = valueColumns.map((n) => requireColumn(f, n));
-  // The melted `value` column is ONE typed column — value columns of mixed types
-  // cannot land in it (cells of the wrong type silently null on the engine side).
-  // Reject-on-mismatch, same as append's union rule; Cast to one type first.
+  // The melted `value` column is ONE typed column, and mixed types silently null on the
+  // engine side — reject on mismatch, as append's union rule does.
   const mixed = valCols.find((c) => c.type !== valCols[0].type);
   if (mixed) {
     throw solError("#TYPE!", `Unpivot value columns must share a type ("${valCols[0].name}" is ${valCols[0].type}, "${mixed.name}" is ${mixed.type})`);
@@ -1043,9 +1007,8 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
     valCols.forEach((vc, v) => cells[v][r][c].push(cellAt(vc, i)));
   }
 
-  // Value-based sort: reorder whole row/col groups by a value column's grand total
-  // (the displayed measure), the way Excel sorts a pivot by Sales. Stable; NaN/error
-  // totals sort last. Intended for a single-level axis — it reorders leaves flatly.
+  // Reorders whole groups by a value column's grand total (Excel's "sort by Sales");
+  // stable, NaN/error last, and it reorders leaves flatly, so single-level axes only.
   const aggNum = (cellsList: FrameCell[], op: AggOp): number => {
     const a = aggregateGroup(cellsList, op === "percentof" ? "sum" : op);
     return typeof a === "number" ? a : NaN;
@@ -1312,13 +1275,10 @@ function requireCubeColumn(c: CubeValue, name: string): CubeColumn {
   return col;
 }
 
-/** The FALLBACK key type when a cube column has no carried `type` (a hand-built cube;
- *  a frame-derived one now carries it — typed CubeColumn). Inferred from the flat
- *  SCALAR cells: all-number → number, all-boolean → logical, otherwise string. Never
- *  "date" by inference — a date and a plain number are indistinguishable as serials,
- *  so an UNTYPED cube date column matches numerically (look it up by serial, or carry
- *  the type via frame→cube). null / error / nested-container cells are ignored (a
- *  container can't be a lookup key). */
+/** FALLBACK for a hand-built cube column with no carried `type`: all-number → number,
+ *  all-boolean → logical, else string. NEVER "date" by inference — a date and a plain
+ *  number are indistinguishable as serials, so an untyped date column matches
+ *  numerically. Containers/null/error cells are ignored. */
 function inferCubeKeyType(col: CubeColumn): FrameColType {
   let sawNumber = false, sawBool = false, sawOther = false;
   for (const cell of col.cells) {
@@ -1333,16 +1293,9 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
   return "string"; // empty / all-null column
 }
 
-/** XLOOKUP over a Cube — the cube half of Frame Lookup (see docs/cube-node-scope.md).
- *  Matches `lookup` against one TOP-LEVEL column and returns the matched row's cell
- *  from another top-level column, WHOLE: a nested frame/cube cell comes out intact,
- *  so you look a key up in a cube and keep working on the sub-table (drilling into
- *  it is INDEX / the CubePopup's job, not the lookup's). Operates on the cube's own
- *  flat columns only — it never descends into nested cells (the "a verb works on the
- *  level it's handed" rule). `undefined` when no row matches (the node turns that
- *  into If-not-found / #N/A); a missing column is #REF!. A null / error / nested-
- *  container key cell never matches — same first-match-wins + join-key rules as
- *  `lookupFrameCell`. `matchMode` approximate fallback needs a numeric key column. */
+/** Matches TOP-LEVEL columns only — never descends into nested cells — and returns the
+ *  matched cell WHOLE, so a nested frame/cube comes out intact. `undefined` on no match,
+ *  #REF! on a missing column; null/error/container key cells never match. */
 export function lookupCubeCell(
   c: CubeValue, lookupColumn: string, returnColumn: string, lookup: string,
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
@@ -1363,9 +1316,8 @@ export function lookupCubeRowIndex(
 ): number {
   const key = requireCubeColumn(c, lookupColumn);
   const n = cubeRowCount(c);
-  // Prefer the column's CARRIED type — frame→cube now preserves it (typed CubeColumn),
-  // so a date-keyed cube column matches an ISO-date lookup like the frame path does.
-  // Fall back to inferring from the flat cells for a hand-built (untyped) cube.
+  // Prefer the column's CARRIED type so a date-keyed cube column matches an ISO-date
+  // lookup; fall back to inference only for a hand-built (untyped) cube.
   const keyType = key.type ?? inferCubeKeyType(key);
   // A key cell usable for matching: a flat scalar only (a nested frame/cube/list is
   // never a key). Returns undefined for a non-key cell (null/error/container).
@@ -1423,11 +1375,8 @@ export function cubeRowAt(c: CubeValue, i: number): CubeValue {
   );
 }
 
-// The source is an `any` socket so XLOOKUP takes a Frame OR a Cube (a cube can't
-// narrow into a frame socket — sockets.ts): a cube flows to the cube path, a frame
-// to the frame path. A bare list/matrix/scalar widens into a frame exactly as a
-// `frame` socket would (a list-of-rows reads as a table; a flat list as one row),
-// so two aligned lists reach XLOOKUP by way of Build Frame. null → no source.
+// The source socket is `any` because a cube can't narrow into a frame socket; a bare
+// list/matrix/scalar widens into a frame exactly as a `frame` socket would.
 export function asLookupSource(v: unknown): FrameValue | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v)) return v;
@@ -1542,9 +1491,7 @@ export function decisionMatrix(
   if (criteriaCols.length === 0) {
     throw solError("#VALUE!", "Decision Matrix needs at least one numeric criterion column");
   }
-  // A per-cell error in a criterion poisons the score — propagate it (error-in →
-  // error-out, the same as groupBy/pivot) rather than silently scoring it as 0. A
-  // `null` cell stays a deliberate blank (0); only a tagged SolError propagates.
+  // A per-cell error propagates rather than scoring 0; a `null` stays a deliberate blank.
   for (const c of criteriaCols) {
     for (const v of c.values) if (isSolError(v)) throw v;
   }
@@ -1583,10 +1530,8 @@ export function decisionMatrix(
   }
 
   const idx = order.map((o) => o.i);
-  // Option · …criteria? · Score · Rank, best first. With `breakdown` on, the
-  // per-criterion EFFECTIVE (post-normalize) value sits between the label and the
-  // Score. Names run through makeHeaders so a criterion literally named
-  // "Score"/"Rank" can't collide with the result columns.
+  // Option · …criteria? · Score · Rank, best first; names run through makeHeaders so a
+  // criterion named "Score"/"Rank" can't collide with the result columns.
   const out: FrameColumn[] = [
     { name: labelCol?.name ?? "Option", type: "string", values: idx.map((i) => labels[i]) },
   ];

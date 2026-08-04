@@ -1,8 +1,3 @@
-// ─── Group expand push — pure geometry/topology core ──────────────────────────
-// A collapsed group expands right/down from a fixed top-left (the collapsed
-// card's corner); this computes how the neighbourhood moves, on plain boxes —
-// no rete, no DOM — so the rules stay unit-testable.
-
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {
@@ -59,10 +54,8 @@ export function computeExpandPush(
   spec: ExpandSpec,
   obstacles: PushBox[],
   satellites: Map<string, Satellite>,
-  // Connection anchors per obstacle: where its cables to OTHER entities land.
-  // A displaced box with anchors clears toward them (shortest connections win)
-  // instead of blindly right/down. Satellites of the expanding group take
-  // precedence (rails).
+  // Where each obstacle's cables to OTHER entities land — a box with anchors clears
+  // toward them instead of blindly right/down; rails still take precedence.
   anchors: Map<string, Pt[]> = new Map(),
 ): Map<string, Disp> {
   const A: Rect = { x: spec.x, y: spec.y, w: spec.postW, h: spec.postH }; // expanded
@@ -80,8 +73,7 @@ export function computeExpandPush(
     return d ? { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h } : b;
   };
 
-  // User-made overlaps: exempt boxes sitting on the card; baseline pairs the
-  // cascade must not try to separate.
+  // Pre-existing user overlaps: baseline pairs the cascade must not try to separate.
   const exempt = new Set(obstacles.filter((b) => rectsOverlap(b, C)).map((b) => b.id));
   const baseline = new Set<string>();
   for (let i = 0; i < obstacles.length; i++) {
@@ -128,7 +120,7 @@ export function computeExpandPush(
     return { dx: 0, dy: 0 }; // body-crosser with its center before both seams → residual
   };
 
-  // ── 1. Rails ──────────────────────────────────────────────────────────────
+  // 1. Rails
   const railed = new Set<string>();
   for (const b of obstacles) {
     const sat = satellites.get(b.id);
@@ -136,8 +128,7 @@ export function computeExpandPush(
     const s = clearShift(b);
     const collides = rectsOverlap(b, A);
     if (!s.dx && !s.dy && !collides) continue; // expansion doesn't touch it → leave it
-    // A consumer already on its correct side (right of the group) keeps its
-    // clearance shift — it just needs to get out of the way, not re-placed.
+    // Already on its correct side: it needs to get out of the way, not be re-placed.
     if (sat.side === "downstream" && s.dx > 0) continue;
     const tx = sat.side === "upstream" ? A.x - PUSH_GAP - b.w : A.x + A.w + PUSH_GAP;
     const ty = clamp(sat.alignCy - b.h / 2, A.y, Math.max(A.y, A.y + A.h - b.h));
@@ -161,14 +152,14 @@ export function computeExpandPush(
     }
   }
 
-  // ── 2. Clear ──────────────────────────────────────────────────────────────
+  // 2. Clear
   for (const b of obstacles) {
     if (railed.has(b.id) || exempt.has(b.id)) continue;
     const s = clearShift(b);
     if (s.dx || s.dy) disp.set(b.id, s);
   }
 
-  // ── 3. Residual ───────────────────────────────────────────────────────────
+  // 3. Residual
   for (const b of obstacles) {
     if (exempt.has(b.id)) continue;
     const m = moved(b);
@@ -181,7 +172,7 @@ export function computeExpandPush(
     disp.set(b.id, d);
   }
 
-  // ── 4. Cascade ────────────────────────────────────────────────────────────
+  // 4. Cascade
   const axisPos = (b: PushBox, horizontal: boolean) =>
     horizontal ? b.x + b.w / 2 : b.y + b.h / 2;
   const queue = [...disp.keys()].sort((a, b2) => {
@@ -224,12 +215,8 @@ export function computeExpandPush(
   return disp;
 }
 
-// ─── Guaranteed de-overlap (safety net) ───────────────────────────────────────
-// The hard backstop under the heuristic expand pushes: separate every overlapping
-// pair by moving the more down-right box just clear along its cheaper axis. Moves
-// are ALWAYS +x or +y (the expand growth direction) — monotonic, so it always
-// terminates (the guard is belt-and-braces). `baseline` pairKeys (pre-existing
-// user overlaps) are left alone. Returns extra displacements to add.
+// Backstop under the heuristic pushes. Moves are ALWAYS +x or +y, hence monotonic and
+// terminating; `baseline` pairs are left alone. Returns extra displacements to add.
 export function separateOverlaps(
   boxes: PushBox[],
   baseline: Set<string> = new Set(),
@@ -264,8 +251,7 @@ export function separateOverlaps(
       }
     }
     if (!worst) break;
-    // Move the more down-right box (larger x+y of its CURRENT rect); the
-    // top-left one stays put, preserving the anchor corner.
+    // The top-left box stays put, preserving the anchor corner.
     const ra = at(worst.a);
     const rb = at(worst.b);
     const [mover, other] =

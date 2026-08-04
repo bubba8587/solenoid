@@ -1,9 +1,5 @@
-/**
- * Module-level bridge so chrome rendered in the main React root (NavMenu) can
- * fire the decorative cable flourish, whose trigger lives inside the
- * CableFlourish component. CableFlourish registers its trigger on mount;
- * callers invoke `fire()`.
- */
+/** Bridges the main React root to the CableFlourish component, which registers its
+ *  trigger on mount. */
 let trigger: (() => void) | null = null;
 
 export const cableFlourishBridge = {

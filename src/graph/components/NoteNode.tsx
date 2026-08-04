@@ -27,9 +27,8 @@ import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
 
-// Field types grouped by dimensionality — the type-override picker offers the four
-// element families at the field's current dimension (scalar ↔ list). The glyph
-// reuses the Socket Legend vocabulary: circle = scalar, square = list, family color.
+// Grouped by dimensionality — the override picker offers the four element families at
+// the field's CURRENT dimension; glyphs reuse the Socket Legend vocabulary.
 const SCALAR_FIELD_TYPES: FrontmatterFieldType[] = ["number", "string", "date", "logical"];
 const LIST_FIELD_TYPES: FrontmatterFieldType[] = ["list", "strlist", "datelist", "logicallist"];
 const FIELD_TYPE_LABEL: Record<FrontmatterFieldType, string> = {
@@ -57,14 +56,9 @@ function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string 
   return one(value);
 }
 
-// A body EDIT that removes a wired frontmatter key strands its cable: `syncFields`
-// drops the output socket (history doesn't track a body-derived change) while the
-// caller's `removeConnection` IS tracked, so a plain Ctrl+Z would re-add the cable onto
-// a socket that no longer exists. Record the body edit as its OWN undo entry, pushed
-// AFTER the cable removals, so undo restores the body + re-derives the socket FIRST and
-// the cable re-add lands on a live socket. `refresh` re-renders the note + re-routes
-// cables + recomputes. (A per-key type override pruned on removal isn't restored — the
-// re-derived socket takes the guessed type.)
+// The body edit gets its OWN undo entry, pushed AFTER the cable removals: syncFields
+// drops the output socket untracked while removeConnection IS tracked, so undo must
+// restore the body and re-derive the socket before the cable re-add lands on it.
 type NoteSyncHost = { body: string; syncFields: () => unknown };
 export function pushNoteFieldRemovalUndo(
   node: NoteSyncHost, prevBody: string, newBody: string, refresh: () => void,
@@ -75,34 +69,19 @@ export function pushNoteFieldRemovalUndo(
   );
 }
 
-// Resize floor — width keeps the header (chevron + name + swatch) legible; height
-// keeps the bar plus a sliver of body. No ceiling (like Groups): notes grow freely.
-// The height floor GROWS by the frontmatter fields strip: each output-socket row is
-// ~22px (.solenoid-note__field-row min-height 18 + 2+2 padding) and the strip adds
-// 6px (3+3) of its own padding, so a note can never shrink below its sockets.
+// Resize floors, no ceiling. The height floor GROWS by the fields strip (22px per
+// socket row + 6px strip padding) so a note can never shrink below its sockets.
 const NOTE_MIN_W = 160;
 const NOTE_MIN_H = 80;
 const FIELD_ROW_H = 22;
 const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 
-// Unconditional stop — used by the palette popup, the click-to-edit title, AND the
-// body textarea while editing (so a touch press positions the cursor / long-presses
-// to copy instead of bubbling to rete's drag). The READ body still uses the coarse-
-// aware stopDragStart so a touch press there can bubble to rete to drag the note.
+// Unconditional stop, for surfaces where a touch press must place the cursor rather
+// than start a drag; the READ body keeps coarse-aware stopDragStart so it can drag.
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/**
- * A canvas Note — a free-floating sticky annotation. The header bar is the drag
- * handle; the title is a click-to-edit label (matches other nodes) and the body
- * stops pointerdown so editing doesn't start a drag. Tinted by `color`; the body
- * fills the note's manual height and scrolls. Edits persist via scheduleAutosave.
- *
- * If the body opens with an Obsidian-style `---`-fenced YAML block, each key
- * becomes a typed OUTPUT socket (see noteFrontmatter.ts) shown in a fields strip
- * below the header; the markdown renders below that. Sockets reconcile on BLUR
- * (commit-on-clickaway), never per keystroke — so editing the YAML doesn't churn
- * cables mid-type.
- */
+/** A `---`-fenced YAML block at the top of the body turns each key into a typed OUTPUT
+ *  socket; those reconcile on BLUR, never per keystroke, so typing can't churn cables. */
 export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [label, setLabel] = useState(data.label);
@@ -124,22 +103,16 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
-  // The body text last reconciled to sockets. Lets a blur with no edit (e.g. a
-  // mobile long-press to copy/paste) skip the heavy area.update + processGraph — that
-  // re-render mid-gesture was closing/reopening the keyboard.
+  // The body text last reconciled to sockets — lets a no-edit blur skip the heavy
+  // area.update + processGraph, whose mid-gesture re-render closed the mobile keyboard.
   const lastSyncRef = useRef(data.body);
-  // Timestamp of the last editor blur. On mobile a tap that dismisses the keyboard
-  // blurs the textarea, then the SAME gesture's click falls through onto the read
-  // view that replaced it → re-enter → keyboard reopens (a flicker on every tap).
-  // Suppress an enter-edit click that lands within a beat of a blur.
+  // Suppress an enter-edit click landing within a beat of a blur: on mobile the same
+  // tap that dismisses the keyboard falls through onto the read view and reopens it.
   const lastBlurRef = useRef(0);
   const startEdit = () => { if (Date.now() - lastBlurRef.current > 300) setEditing(true); };
 
-  // Commit the body's frontmatter to sockets: re-sync, drop cables that lost their
-  // output (a removed or retyped key), then re-render + recompute downstream. Run on
-  // blur of the editor and after a type override — NOT per keystroke. `force` runs
-  // even when the body string is unchanged (a type override mutates fieldTypes, not
-  // the body); otherwise an unchanged body is a no-op so a no-edit blur stays cheap.
+  // Runs on editor blur and after a type override, NEVER per keystroke. `force` is for
+  // the override path, which mutates fieldTypes rather than the body.
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
     const prevBody = lastSyncRef.current; // body BEFORE this commit (still has the removed key)
@@ -164,10 +137,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     }
     setFieldsVersion((v) => v + 1);
     await area?.update("node", data.id);
-    // A retyped output changed the type flowing downstream — re-adapt every Format
-    // Controller so it reformats by the NEW type (a date→number retype must stop
-    // formatting as a date down the whole chain). No connection event fires on a
-    // pure retype, so the Canvas pipe wouldn't otherwise run.
+    // A pure retype fires no connection event, so re-adapt downstream FCs by hand or
+    // they keep formatting by the OLD type.
     if (editor && area && retyped.length) reconcileFcTypes(editor, area);
     bumpConnectionVersion(); // re-route cables whose source row shifted
     await processGraph();
@@ -183,15 +154,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // NOT data.data() — that's the installErrorGuards-wrapped version, which throws
   // when called with no inputs (firstInputError runs outside its try/catch).
   const fieldValues = data.fieldValues();
-  // Height floor grows with the output-fields strip so resizing (and the rendered
-  // height) can never clip a socket row. Plain note (no frontmatter) → the original 80.
+  // Height floor grows with the fields strip so a resize can never clip a socket row.
   const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length);
 
-  // The `document` output dot is centered on the BODY (which sits below the
-  // frontmatter-fields strip, so it shifts DOWN as fields are added). The body
-  // wrapper clips (overflow:hidden), so the dot can't live inside it — it's at the
-  // card root with a measured `top` = the body's center (dot top-left = center − 6).
-  // Collapsed → no body → undefined → the socket's default centering.
+  // The body wrapper clips, so the `document` dot lives at the card root with a
+  // MEASURED top at the body's center (−6 for its own half-height).
   const noteRootRef = useRef<HTMLDivElement>(null);
   const noteBodyRef = useRef<HTMLDivElement>(null);
   const [docDotTop, setDocDotTop] = useState<number | undefined>(undefined);
@@ -204,10 +171,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed, fieldKeys.length, data.height, data.width, body]);
 
-  // Manual width + height (drag the corner grip — same model as a Group). The note
-  // is a fixed box; the body fills it and scrolls. area.update re-renders on each
-  // move (width/height read straight off `data` in the style). No history entry,
-  // just an autosave on release.
+  // Manual width + height, like a Group: a fixed box the body fills and scrolls in.
+  // No history entry — just an autosave on release.
   function onResizeDown(e: React.PointerEvent) {
     e.stopPropagation();
     e.preventDefault();
@@ -218,8 +183,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
     const move = (ev: PointerEvent) => {
-      // Integer dims: a fractional width/height puts the right/bottom edge on a
-      // half-pixel, so the inset:-2px selection ring renders 0.5px off there.
+      // Integer dims — a fractional size renders the inset:-2px selection ring 0.5px off.
       data.width = Math.round(Math.max(NOTE_MIN_W, startW + (ev.clientX - startX) / k));
       data.height = Math.round(Math.max(minNoteH, startH + (ev.clientY - startY) / k));
       void area?.update("node", data.id);
@@ -239,9 +203,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       }
       void area?.update("node", data.id);
       scheduleAutosave();
-      // Re-resolve standoffs against the new bbox once we let go. The solver
-      // MEASURES offsetWidth/Height, so defer one frame to let the resize paint.
-      // Pin this note so its standoff partner re-aligns to it, not the reverse.
+      // The standoff solver MEASURES offsetWidth/Height, so defer a frame for the paint;
+      // pinning this note makes its partner re-align, not the reverse.
       if (!standoffStore.isEmpty()) {
         requestAnimationFrame(() => settleStandoffs(new Set([data.id])));
       }
@@ -250,14 +213,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     window.addEventListener("pointerup", up);
   }
 
-  // Derived LIVE from the current `body` state, NOT from `data.renderBody`, which
-  // only refreshes on the blur commit and goes stale if a keystroke/blur races. The
-  // RENDER is deliberately decoupled from the socket-commit cycle; the socket
-  // lifecycle still commits on blur.
+  // Derived LIVE from `body`, not `data.renderBody` — the RENDER is deliberately
+  // decoupled from the blur-driven socket-commit cycle, which would go stale.
   const renderBody = useMemo(() => parseNoteFrontmatter(body).body, [body]);
-  // NOT trusted content: a Note body arrives in shared .solenoid files and marked does
-  // no sanitization, so sanitize every render (the CSP is the second, independent
-  // layer). `breaks: true` so a lone newline becomes a line break.
+  // NOT trusted content — a body arrives in shared .solenoid files and marked does no
+  // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
     [renderBody],
@@ -284,9 +244,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
   // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
-  // area.update fires the area "render"/node pipe the HTML-canvas renderer rebuilds on,
-  // so a recolor re-captures the note's clone; a bare setColor only re-renders rete's
-  // root and the canvas keeps showing the OLD color.
+  // area.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
+  // re-renders only rete's root, leaving the canvas showing the OLD color.
   function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
@@ -333,9 +292,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             onMouseDown={stop}
           />
         ) : (
-          // Click-to-edit, fit-content title — mirrors a regular node's header
-          // label so the textless part of the bar stays draggable (the title only
-          // intercepts clicks on the text itself, like every other node).
+          // Fit-content so the textless part of the bar stays draggable.
           <div
             className={`solenoid-note__name-display${label.trim() ? "" : " solenoid-note__name-display--empty"}`}
             title={label || "Note"}
@@ -366,12 +323,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         )}
       </div>
       {fieldKeys.length > 0 && (
-        // Frontmatter → typed output sockets. A full-width strip OUTSIDE the
-        // overflow-clipped content so the dots can straddle the right edge. Each
-        // row is a positioning context, so a plain NodeSocket (no explicit top)
-        // centers on the row via its 50% fallback. Rendered even when COLLAPSED so
-        // the output sockets — and any cables wired to them — survive (a data note
-        // collapses to its fields, hiding only the prose body).
+        // OUTSIDE the overflow-clipped content so the dots straddle the right edge, and
+        // rendered even when COLLAPSED so the output sockets and their cables survive.
         <div className="solenoid-note__fields">
           {fieldKeys.map((key) => {
             const t = data.fieldType(key);
@@ -412,10 +365,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               autoFocus
               onChange={(e) => onBody(e.target.value)}
               onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitFields(); }}
-              // Unconditional stop — NOT the coarse-aware stopDragStart the read body
-              // uses. While editing, a tap must position the cursor / long-press to
-              // copy, not bubble to rete's drag (which on touch steals focus and
-              // closes the keyboard).
+              // Unconditional stop, NOT the read body's stopDragStart — while editing a
+              // tap must place the cursor, and rete's drag would close the keyboard.
               onPointerDown={stop}
               onMouseDown={stop}
             />
@@ -457,10 +408,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 }
 
 /**
- * One frontmatter field row: a type-glyph button (click → override picker, reusing
- * the Socket Legend glyphs), the key, a value preview, and the output socket dot
- * straddling the note's right edge. The row is the socket's positioning context.
- * Exported so the Import-from-Obsidian card reuses the exact same field row.
+ * One frontmatter field row — the row is the socket dot's positioning context.
+ * Exported so the Import-from-Obsidian card reuses the exact same row.
  */
 export function FieldRow({
   nodeId, emit, fieldKey, type, value, socket, onPickType,
@@ -481,9 +430,8 @@ export function FieldRow({
   // value already fixed scalar vs list; the override only swaps the element type.
   const options = isListFieldType(type) ? LIST_FIELD_TYPES : SCALAR_FIELD_TYPES;
 
-  // An FC fed by this field formats the box BEHIND it — i.e. this row. Render that
-  // locked format/unit (the upstream half of FC unit-locking); fall back to the raw
-  // preview. Re-render when any annotation changes.
+  // An FC fed by this field formats the box BEHIND it — this row — so render its locked
+  // format/unit (the upstream half of FC unit-locking), else the raw preview.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const ann = formatAnnotationStore.get(nodeId, fieldKey);
   const preview =

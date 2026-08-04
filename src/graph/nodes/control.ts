@@ -10,8 +10,7 @@ import { compareStrings } from "../stringOrder";
 export type SlicerCell = number | string;
 
 // Cable Switch — a control multiplexer, not the logical SWITCH. Reuses the
-// ExtensibleInputs add/remove machinery (addValueInput / nextInputId) so the input
-// set round-trips through copy/paste + persistence (valueKeys).
+// ExtensibleInputs machinery so the input set round-trips through persistence (valueKeys).
 
 export class CableSwitchNode extends ClassicPreset.Node {
   label: string;
@@ -26,9 +25,8 @@ export class CableSwitchNode extends ClassicPreset.Node {
   selectedKeys: string[];
   cachedValue: unknown = null;
   nextInputId = 0;
-  /** Output socket type flips with the mode: `cube` in Many (the collected values),
-   *  `trueany` in One (the routed value passes through). Own MutableSocket instance
-   *  so a retype never touches a shared singleton. */
+  /** Type flips with the mode: `cube` in Many, `trueany` in One. Its own MutableSocket
+   *  instance, so a retype never touches a shared singleton. */
   readonly outSocket = new MutableSocket("trueany");
   width = 200; height = 220;
 
@@ -73,16 +71,14 @@ export class CableSwitchNode extends ClassicPreset.Node {
     return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
-  /** One mode routes the ACTIVE input to `out` unchanged, so its type + unit ride
-   *  through. Many mode collects a Cube and is NOT a passthrough (syncOutputType owns
-   *  that output). ONE declaration for type adoption + unit flow (passthrough.ts). */
+  /** One mode routes the ACTIVE input unchanged, so its type + unit ride through; Many
+   *  collects a Cube and is NOT a passthrough (syncOutputType owns that output). */
   passthrough(): PassthroughSpec[] {
     if (this.multiSelect) return [];
     return [{ output: "out", inputs: Object.keys(this.inputs), combine: "active", activeIndex: () => this.activeIndex }];
   }
 
-  /** Keep the output socket type in sync with the mode (`cube` in Many, else `trueany`).
-   *  Returns true if it changed, so the caller retypes any now-invalid downstream cables. */
+  /** Returns true if the type changed, so the caller retypes now-invalid downstream cables. */
   syncOutputType(): boolean {
     const want: SocketDataType = this.multiSelect ? "cube" : "trueany";
     if (this.outSocket.dataType === want) return false;
@@ -131,8 +127,7 @@ export class AngleDialNode extends ClassicPreset.Node {
   }
 }
 
-// `value` is an Excel date serial (whitelisted in extractInit, so it persists and
-// copy/pastes). 0 / blank → no date selected yet (outputs null).
+// `value` is an Excel date serial (whitelisted in extractInit); 0 = no date selected yet.
 
 export class DatePickerNode extends ClassicPreset.Node {
   label: string;
@@ -152,9 +147,8 @@ export class DatePickerNode extends ClassicPreset.Node {
   }
 }
 
-// Emits both dates as raw Excel serials; duration is composed downstream. The two
-// serials live in `literals` so they round-trip via the generic literals spread (no
-// INIT_FIELD_ORDER edit).
+// Both dates are raw Excel serials living in `literals`, so they round-trip via the
+// generic literals spread (no INIT_FIELD_ORDER edit).
 
 export class DateRangeNode extends ClassicPreset.Node {
   label: string;
@@ -178,8 +172,8 @@ export class DateRangeNode extends ClassicPreset.Node {
   }
 }
 
-// Outputs X and Y each in [0, 1] (fractions of the pad) — scaled downstream.
-// `fx`/`fy` live in `literals` so they round-trip through extractInit's spread.
+// X and Y are each in [0, 1] (fractions of the pad); `fx`/`fy` live in `literals` so
+// they round-trip through extractInit's spread.
 
 export class XYPadNode extends ClassicPreset.Node {
   label: string;
@@ -201,8 +195,7 @@ export class XYPadNode extends ClassicPreset.Node {
   }
 }
 
-// `selectedValues` empty = every row passes through. The active column + selection
-// persist (extractInit); the cached* fields are component-read only and don't.
+// `selectedValues` empty = every row passes through.
 
 export class SlicerNode extends ClassicPreset.Node {
   label: string;
@@ -265,9 +258,8 @@ export class SlicerNode extends ClassicPreset.Node {
   }
 }
 
-// Point Plotter and Curve persist their points as TEXT ("x, y" per line, the
-// pointsText init field): the string is the stored truth, arrays derive. Trimmed to
-// 4 decimals so a drag doesn't bake float dust into the save.
+// Points persist as TEXT ("x, y" per line): the string is the stored truth, arrays
+// derive. Trimmed to 4 decimals so a drag doesn't bake float dust into the save.
 
 export function parsePoints(text: string | undefined): Array<[number, number]> {
   const out: Array<[number, number]> = [];
@@ -357,10 +349,8 @@ export function curvePoints(text: string | undefined): Array<[number, number]> {
   return out;
 }
 
-/** Sample the monotone spline through a curve's points across [xmin, xmax].
- *  Pure — shared by CurveNode.data() and the component's output rows (the
- *  component must NOT call node.data() directly: the coerceInputs wrapper
- *  expects an inputs record and throws on undefined). */
+/** Pure, so the component can render output rows without calling node.data() — the
+ *  coerceInputs wrapper expects an inputs record and throws on undefined. */
 export function sampleCurve(pointsText: string | undefined, xmin: number, xmax: number, samples: number): { values: number[]; xs: number[] } {
   const pts = curvePoints(pointsText);
   if (pts.length === 0) return { values: [], xs: [] };

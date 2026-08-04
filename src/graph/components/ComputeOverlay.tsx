@@ -4,9 +4,8 @@ import { computeOverlayStore } from "../computeOverlayStore";
 import { loadRevealStore } from "../loadReveal";
 import "./ComputeOverlay.css";
 
-/** The "busy" curtain for a heavy recompute (computeOverlayStore owns the deferred +
- *  min-visible timing). It SWALLOWS pointer / wheel events so pan, zoom, node drag and
- *  cable drag are inert while the pass runs. Suppressed while the load overlay is up. */
+/** SWALLOWS pointer / wheel events so pan, zoom and drags are inert while the pass runs;
+ *  suppressed while the load overlay is up. */
 export function ComputeOverlay() {
   const visible = useSyncExternalStore(computeOverlayStore.subscribe, computeOverlayStore.visible);
   const loadPhase = useSyncExternalStore(loadRevealStore.subscribe, loadRevealStore.phase);

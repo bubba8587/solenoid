@@ -1,11 +1,10 @@
-// Electromagnetism — builds on the Electricity & Circuits pack (dependsOn pulls it in
-// on activation). Constants are baked into each formula at CODATA 2018 precision.
-// SI units throughout; angles in radians (core Trigonometry convention).
+// Constants are baked into each formula at CODATA 2018 precision. SI units throughout;
+// angles in radians (core Trigonometry convention).
 
 import { PhysicsConstantNode, EmSpectrumNode, emSpectrum, PHYS_CONSTANTS, type PhysConstOp } from "../rete-nodes";
 import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
-// CODATA 2018, written as decimal·10^n so the formula grammar stays simple.
+// Written as decimal·10^n so the formula grammar stays simple.
 const KE   = "8.9875517923*10^9";    // Coulomb constant (N·m²/C²)
 const EPS0 = "8.8541878128*10^-12";  // vacuum permittivity (F/m)
 const MU0  = "1.25663706212*10^-6";  // vacuum permeability (H/m)
@@ -80,7 +79,6 @@ export const EM_FORMULAS: FormulaPackEntry[] = [
   ...EM_ELECTROSTATICS, ...EM_MAGNETISM, ...EM_WAVES, ...EM_INDUCTION,
 ];
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4).
 const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
   {
     name: "EMSPECTRUMBAND",

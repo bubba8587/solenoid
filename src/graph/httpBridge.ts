@@ -1,15 +1,9 @@
-// HTTP fetch that bypasses the browser CORS wall on desktop. The Tauri http
-// plugin's fetch runs in Rust (no same-origin policy), so Web Source / IMPORTHTML
-// can pull arbitrary URLs in the desktop app. The browser build falls back to the
-// normal window.fetch (still CORS-limited — the error path explains that).
+// HTTP fetch that bypasses the CORS wall on desktop via the Tauri http plugin
+// (Rust, no same-origin policy); the browser build stays CORS-limited.
 import { isDesktop } from "./fileBridge";
 
-/** The User-Agent for desktop data fetches. It has to be a RECOGNIZED tool UA: some
- *  endpoints sit behind a WAF that allowlists known clients (FRED's fredgraph.csv
- *  serves the CSV to `curl`/`python-requests`/`wget` but DROPS the connection for a
- *  browser string OR an unknown custom UA). The
- *  reqwest default UA is also on the reject side, so we send a plain curl identifier —
- *  the standard, widely-accepted choice for a headless data connector. */
+/** Must stay a RECOGNIZED tool UA: FRED's fredgraph.csv sits behind a WAF that drops
+ *  the connection for a browser string, an unknown custom UA, or reqwest's default. */
 const DATA_FETCH_UA = "curl/8.4.0";
 
 export interface FetchedText {
@@ -27,12 +21,8 @@ export class CorsLikelyError extends Error {
 }
 
 export async function fetchText(url: string): Promise<FetchedText> {
-  // Route only ABSOLUTE (cross-origin) URLs through the Tauri http plugin on desktop —
-  // that's the CORS-bypass path. A RELATIVE url (a bundled asset like a seed's
-  // /data/foo.csv) must NOT go there: the plugin's Rust client can't resolve a relative
-  // path (no base origin), so it fails. A normal fetch resolves it against the webview
-  // origin, which Tauri serves from the bundled frontend — so same-origin assets work on
-  // desktop exactly as they do in the browser (the Personal Finance seed's CSVs).
+  // Only ABSOLUTE urls may take the Tauri path: its Rust client has no base origin, so
+  // a relative one (a bundled seed asset) fails there but resolves under plain fetch.
   const absolute = /^https?:\/\//i.test(url.trim());
   if (isDesktop() && absolute) {
     // Dynamic import so the browser bundle never pulls the Tauri plugin.
@@ -45,9 +35,8 @@ export async function fetchText(url: string): Promise<FetchedText> {
   try {
     res = await fetch(url);
   } catch (e) {
-    // On the web build a cross-origin block surfaces as a TypeError ("Failed to fetch")
-    // with no status — distinct from a real HTTP error, which gives a Response. (On
-    // desktop this path is only same-origin assets, so a TypeError isn't a CORS wall.)
+    // On the web build a cross-origin block is a bare TypeError with no Response;
+    // on desktop this path is same-origin only, so a TypeError there is not CORS.
     if (e instanceof TypeError && !isDesktop()) throw new CorsLikelyError();
     throw e;
   }

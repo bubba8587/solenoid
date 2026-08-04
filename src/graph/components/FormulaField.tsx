@@ -11,15 +11,13 @@ interface FormulaFieldProps {
   /** Called on every edit (may be async). */
   onChange: (next: string) => void;
   placeholder?: string;
-  /** Wired/overridden (e.g. a Text Input feeds the formula socket): the box
-   *  renders the local text dimmed and is not editable. */
+  /** Wired/overridden: the local text renders dimmed and is not editable. */
   disabled?: boolean;
   disabledTitle?: string;
-  /** Pack preset: the formula is fixed, so the box is read-only — but rendered at
-   *  full strength (it's the intended content, not an override) with a lock mark. */
+  /** Pack preset: read-only, but at full strength with a lock mark — it IS the
+   *  intended content, not an override. */
   locked?: boolean;
-  /** When set, the box never edits in place — clicking it calls onOpen. Hosts that
-   *  omit it get the inline-textarea path instead. */
+  /** When set, the box never edits in place — clicking it calls onOpen. */
   onOpen?: () => void;
   /** Optional element seated in the field's corner (e.g. a resize grip). */
   grip?: ReactNode;
@@ -74,8 +72,7 @@ export function FormulaField({
       title={disabled ? disabledTitle : undefined}
     >
       {!noPrefix && <span className="solenoid-expr__prefix">=</span>}
-      {/* The field wrapper is the positioned box the grip sits in, so the grip
-          lands in the field's corner (not the outer row's padding). */}
+      {/* The positioned box the grip sits in, so it lands in the FIELD's corner. */}
       <div className="solenoid-expr__field">
         {editing && editable ? (
           <textarea

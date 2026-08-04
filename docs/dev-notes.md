@@ -141,6 +141,23 @@ blank diverge from value-semantics' propagate rule). One stale deferral (UNIQUE/
 range functions) verified already-executed and dropped. Agents' uncertain keeps are
 flagged in the workflow outputs; nothing was deleted that lives nowhere else.
 
+**Round 2 — the compression pass + the spec split (same session).** An author audit
+found the sweep under-cut four classes (rationale essays, scope headers on routed
+files, narration one-liners, banners); the policy gained the **blast-radius test**
+(comment vs spec) and **compression rules** (one-sentence keepers; 2-line header
+cap; zero scope prose on routed files; banners only ~400+ lines). A second 12-agent
+pass removed ~8,400 more lines → **9.5k line comments** (22.1k at start, −57%).
+`docs/renderer-performance.md` extracted as the first NEW domain spec (the four
+renderer sections subsystem-invariants briefly held, + domSync, WICG spec-drift,
+REF=1, the engage gate, the quality-drop negative result). Compression promotions
+landed in: subsystem-invariants (Live connections cache+refresh + the FRED WAF UA,
+Socket position bookkeeping, Graph load/teardown perf, drill-in breadcrumb stack +
+activeGraph seam, camera targets across collapsed groups, ribbon bead-phase,
+fillBorderedGrid algorithm + WIDEN=4, equation-solver root-closest-to-zero — fixing
+an inaccuracy in the round-1 wording), node-coverage (multi-op expose/kind
+taxonomy), layout-chrome (tablet-bar omissions, LABEL_MAX_HEIGHT derivation), and
+the backlog (By-Row cap warning, lazy-handle collect(), WebGPU cable follow-ups).
+
 ### D27 + the AI prerequisite layer: strict reader, grounding spec, headless loop (2026-08-01f)
 
 Author reversed the #7/#19 NL/AI ruled-OUT (recorded as **D27**: the AI layer is IN,

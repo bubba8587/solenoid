@@ -7,11 +7,8 @@ import { useDismissOnOutside } from "./components/useDismissOnOutside";
 import { resolveColor } from "./palette";
 import "./AppToolbar.css";
 
-/**
- * Floating top-right control cluster: the app-wide accent color picker (the
- * same swatch palette Groups use) and a light/dark theme toggle. Both drive
- * `appThemeStore`, which writes CSS variables on <html>.
- */
+/** The accent picker and theme toggle; both drive `appThemeStore`, which writes the CSS
+ *  variables on <html>. */
 export function AppToolbar() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const accent = appThemeStore.getAccent();

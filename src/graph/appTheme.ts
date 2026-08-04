@@ -2,12 +2,8 @@ import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPa
 import { createNotifier } from "./storeKit";
 import { syncNativeAccent } from "./nativeAccent";
 
-// App-wide theme: an accent color (drives chrome highlights) and a light/dark
-// mode. The accent is stored as a palette SLOT id (like every other color in the
-// app), resolved to a hex only when written to the CSS custom properties on
-// <html> so any stylesheet can read it. Persisted to localStorage. Module-level
-// singleton (like cableShapeStore) so it's readable from Rete's separate React
-// root too.
+// App-wide accent + light/dark mode. The accent is a palette SLOT id, resolved to
+// hex only when written to <html>'s custom properties.
 
 export type ThemeMode = "dark" | "light";
 
@@ -46,15 +42,13 @@ function apply() {
     const base = themeAccent(resolveColor(slot), _mode);
     const val = kind === "array" ? socketArrayShade(base) : kind === "matrix" ? socketMatrixShade(base) : base;
     root.style.setProperty(varName, val);
-    // Per-fill ring/border: a fixed-step darker shade of THIS fill, so every glyph's
-    // border reads at the same contrast. Each glyph points `--socket-ring` at the ring
-    // matching its own fill.
+    // Per-fill ring: a fixed-step darker shade of THIS fill, so every glyph's border
+    // reads at the same contrast.
     root.style.setProperty(`${varName}-ring`, socketRingShade(val));
   }
 
-  // The semantic ERROR/Problems red derives from the palette's `vermilion` slot, so
-  // there's ONE red and a custom palette retints errors too. errorChip.css keeps a
-  // static fallback for before this first runs; this inline root var wins over it.
+  // The semantic ERROR red derives from the `vermilion` slot, so a custom palette
+  // retints errors too; errorChip.css's static fallback covers the first paint.
   root.style.setProperty("--sol-error", themeAccent(resolveColor("vermilion"), _mode));
 }
 
@@ -73,10 +67,8 @@ export const appThemeStore = {
   subscribe,
 };
 
-// A palette change must re-resolve the accent CSS vars AND re-render every
-// appThemeStore subscriber, so re-applying + notifying here reuses those existing
-// subscriptions instead of wiring a palette subscription into every visual
-// component. (Distinct notifiers, so no loop.)
+// Re-applying + notifying here reuses appThemeStore's subscriptions instead of
+// wiring a palette subscription into every visual component (distinct notifiers).
 paletteStore.subscribe(() => { apply(); notify(); });
 
 /** Read the persisted theme (if any) and apply it. Call once at startup. */

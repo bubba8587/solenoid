@@ -1,19 +1,10 @@
-// Set & Relational. The
-// core Set / Set Relation nodes stay core; this pack adds the two list-level
-// companions (Is In membership mask, Tally value counts) and claims the new
-// COUNT DISTINCT aggregate op. Its table-level siblings — the semi/anti join
-// modes — ship as core Join `how` options (an op of a core node can't be
-// pack-gated), landed alongside this pack.
-
 import { IsInNode, TallyNode, isInMask, tallyPairs } from "../rete-nodes";
 import type { Pack, PackFormula } from "./packShared";
 
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4). TALLY
-// returns the COUNTS (first-seen distinct order, blanks/errors skipped) — the
-// node's frame can't cross the formula surface, and the values half is what
-// UNIQUE already answers.
+// The pack's nodes as formula functions (D19 decision 4); TALLY returns only the
+// COUNTS, since the node's frame can't cross the formula surface.
 const SETS_PACK_FORMULAS: PackFormula[] = [
   {
     name: "ISIN",
@@ -58,6 +49,5 @@ export const SETS_PACK: Pack = {
       },
     },
   ],
-  // The new core aggregate op is claimed by this pack (hidden with it).
   tags: ["reduce-countdistinct"],
 };

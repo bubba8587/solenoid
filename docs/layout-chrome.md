@@ -241,3 +241,10 @@ need it above the HUD but below modals, you're in the 110–199 gap.
    siblings.
 6. **Grep the magic number** you're about to change (e.g. `rg '82px'`, `rg 'report-dock-top'`) —
    the same height is written in several files and they must move together.
+
+## Node header label metrics
+
+`LABEL_MAX_HEIGHT = 60` (`nodeKit.tsx`): the label textarea's max height is 4 lines
+(4 × 13px line-height) + 6px symmetric padding = 58, plus a 2px buffer. It must stay
+in step with the 4-line clamp on `.solenoid-node__label-display`, or an editing
+title and the static title disagree in height.

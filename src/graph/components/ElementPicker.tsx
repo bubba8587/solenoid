@@ -5,13 +5,7 @@ import { ELEMENTS, elementCell, searchElements, type ElementMeta } from "../rete
 import { PopupShell } from "./PopupShell";
 import "./ElementPicker.css";
 
-/**
- * The Element node's picker: a search field over symbol / name / atomic number
- * plus the periodic table itself, symbols only, laid out on the standard
- * 18-column grid (f-block detached below). Typing narrows the table — matches
- * stay live, the rest dim — and Enter takes the best match. Mirrors
- * TablePopup / ChartPopup: module store, mounted once in App.
- */
+/** The Element node's periodic-table picker; module store, mounted once in App. */
 export function ElementPicker() {
   const state = useSyncExternalStore(elementPicker.subscribe, elementPicker.get);
   const [query, setQuery] = useState("");

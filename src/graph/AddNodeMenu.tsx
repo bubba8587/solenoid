@@ -9,45 +9,32 @@ export type NodeCatalogEntry = {
   label: string;
   description?: string;
   create: () => unknown;
-  // Optional accent (a node-kind color) — highlights user-input nodes
-  // (Scalar, Constant, List, Range). Rendered as a filled rounded-rect.
+  // Node-kind accent, drawn as a filled rounded-rect; highlights user-input nodes.
   accent?: string;
-  // parity: true (default) = fully equivalent to Excel counterpart(s).
-  // parity: false = implemented but with known limitations (see the node's `note`
-  // in nodeExcel.ts). An ExcelEquiv may override this per Excel function.
+  // true (default) = fully equivalent to the Excel counterpart(s); false = known
+  // limitations (see `note`). An ExcelEquiv may override this per Excel function.
   parity?: boolean;
-  // Deprecated node: stays registered (FLAT_CATALOG) so saved graphs that use
-  // it still load and render, but is hidden from the Add menu and the
+  // Stays registered so saved graphs still load, but is hidden from the Add menu and the
   // Function Reference so new ones can't be created.
   hidden?: boolean;
-  // Pack id(s) that contribute this node. Undefined/empty = built-in (core or
-  // Excel matcher). Set by the catalog builder; drives the subtle pack indicator.
+  // Pack id(s) contributing this node; undefined/empty = built-in. Set by the catalog builder.
   packs?: string[];
-  // Ops this node hosts that have no Add-menu leaf of their own. DERIVED by the
-  // catalog builder from `nodeOps.ts` — never hand-set. Non-empty is what draws the
-  // `{ }` marker, so the mark can't claim something the menu contradicts.
+  // Ops with no Add-menu leaf of their own, DERIVED from `nodeOps.ts` — never hand-set, so
+  // the `{ }` marker can't claim something the menu contradicts.
   hiddenOps?: Array<{ op: string; label: string }>;
-  // Set when the declaration opts out of the glyph (a label that already enumerates
-  // its ops). The ops stay in `hiddenOps`, and stay searchable.
+  // Opts out of the `{ }` glyph; the ops stay in `hiddenOps` and stay searchable.
   hideOpsMark?: boolean;
-  // Excel function(s) this node is equivalent to — the node's OWN reference
-  // metadata, so the Function Reference can be generated from the catalog instead
-  // of a parallel hand-list. For op-families this is forwarded from the op-meta;
-  // standalone nodes set it inline. Empty = a Solenoid-native node (no Excel fn).
+  // The node's OWN reference metadata, so the Function Reference generates from the catalog
+  // rather than a parallel hand-list; empty = a Solenoid-native node.
   excel?: ExcelEquiv[];
-  // Extra search synonyms the label/description/category don't carry (e.g. the
-  // class-derived hover hint when it differs from the label, or common aliases).
-  // Space-separated; matched by the Add-menu search only, never displayed.
+  // Space-separated search synonyms, matched by the Add-menu search only, never displayed.
   keywords?: string;
-  // The Solenoid-native formula name(s) this leaf answers to when the D19 2(a)
-  // despaced label CAN'T be the name (punctuation in the label, or one node
-  // splitting into several functions — "Sunrise / Sunset" → SUNRISE + SUNSET).
-  // Same idea as an op's `fx`, one level up; read by the parity measurement.
+  // The formula name(s) this leaf answers to when the despaced label can't be the name
+  // (punctuation, or one node splitting into several functions).
   fx?: string[];
 };
 
-// One Excel function a node stands in for. `parity`/`note` override the entry's
-// defaults for this specific Excel function (one node can cover several).
+// `parity`/`note` override the entry's defaults for this one Excel function.
 export type ExcelEquiv = {
   excel: string;
   syntax: string;
@@ -55,17 +42,13 @@ export type ExcelEquiv = {
   note?: string;
 };
 
-// Marks a card that hosts operations with no Add-menu entry of their own — the
-// dropdown on the card holds more than this one leaf implies. Braces read as "a set
-// of variants in here"; the menu's own `▶` is reserved for a category that actually
-// expands, and parentheses would collide with formula syntax now that node names are
-// becoming callable. Rendered, not baked into the label, so search and the node
-// header keep the clean name.
+// `▶` is reserved for an expanding category and parentheses would collide with formula
+// syntax, so hidden-op cards take braces. Rendered, not baked into the label, so search and
+// the node header keep the clean name.
 function OpsMark() {
   return <span className="solenoid-add-menu__ops-mark" aria-hidden="true">{"{ }"}</span>;
 }
 
-// A tiny dim dot marking a node that came from an add-on pack (vs. built-in).
 function PackDot({ packs }: { packs: string[] }) {
   return (
     <span
@@ -100,9 +83,8 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 }
 
 // ─── Render/nav items ───────────────────────────────────────────────────
-// One navigable slot. Pairs are flattened into two half-leaves so the
-// keyboard moves through every node and the grid lays the halves into its
-// two columns.
+// Pairs flatten into two half-leaves so the keyboard moves through every node and the grid
+// lays the halves into its two columns.
 type RenderItem =
   | { kind: "leaf"; entry: NodeCatalogEntry; half: boolean }
   | { kind: "category"; entry: CatalogCategory };
@@ -122,8 +104,6 @@ function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
   return out;
 }
 
-// Render items at the level the path currently points into (all path
-// indices except the last name opened categories).
 function levelItemsAt(entries: CatalogEntry[], path: number[]): RenderItem[] {
   let items = toRenderItems(entries);
   for (let d = 0; d < path.length - 1; d++) {
@@ -134,9 +114,7 @@ function levelItemsAt(entries: CatalogEntry[], path: number[]): RenderItem[] {
   return items;
 }
 
-// Group render items into visual rows (a pair = one row of two flat
-// indices; everything else = a one-item row), matching the grid layout —
-// so the keyboard can move up/down by row and left/right within a pair.
+// Rows match the grid layout, so the keyboard moves up/down by row and left/right in a pair.
 function rowsOf(items: RenderItem[]): number[][] {
   const rows: number[][] = [];
   for (let i = 0; i < items.length; ) {
@@ -148,9 +126,8 @@ function rowsOf(items: RenderItem[]): number[][] {
 }
 
 // ─── Fuzzy search ───────────────────────────────────────────────────────
-// Scoring lives in catalogSearch.ts (pure + unit-tested). It matches the wide
-// searchable text — label + description + Excel names + ancestor CATEGORY path +
-// kebab type id + keywords — so "arithmetic" and "table input" rank their nodes.
+// Scoring lives in catalogSearch.ts, over label + description + Excel names + ancestor
+// category path + kebab type id + keywords.
 
 const VIEWPORT_MARGIN = 8;
 
@@ -193,15 +170,13 @@ type TreeMenuProps = {
   entries: CatalogEntry[];
   depth: number;
   path: number[];
-  // Hover moves the active path (the parent gates it so a PINNED submenu — one
-  // opened by a click — isn't collapsed by mousing elsewhere).
+  // The parent gates this so a click-PINNED submenu isn't collapsed by mousing elsewhere.
   onHover: (p: number[]) => void;
   // Click on a category: pin its submenu open.
   onOpenCategory: (p: number[]) => void;
   onSelect: (entry: NodeCatalogEntry) => void;
   onSubmenuSide: (s: "left" | "right") => void;
-  // Quick-wire: leaves that can't wire to the dragged socket render grayed +
-  // non-selectable. Always false in the normal Add menu.
+  // Quick-wire only: a leaf that can't wire to the dragged socket is grayed + inert.
   isDim: (leaf: NodeCatalogEntry) => boolean;
 };
 
@@ -224,9 +199,8 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
               title={it.entry.description}
               onMouseEnter={() => onHover([...prefix, i, 0])}
-              // Submenus render as DOM children of this category div, so a click
-              // on a nested category/leaf bubbles up here too. Stop it, or the
-              // outermost ancestor's handler wins and re-pins/collapses to the top.
+              // Submenus are DOM children of this div, so without stopping the bubble the
+              // outermost ancestor's handler wins and re-pins to the top.
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
             >
               <span>{it.entry.label}</span>
@@ -270,9 +244,7 @@ type AddNodeMenuProps = {
   entries: CatalogEntry[];
   onSelect: (entry: NodeCatalogEntry) => void;
   onClose: () => void;
-  // Quick-wire: the set of leaf `type`s that can wire to the dragged socket.
-  // When present, the menu shows the WHOLE catalog but grays out (and makes
-  // non-selectable) every leaf not in the set. Undefined = normal Add menu.
+  // When present the menu shows the WHOLE catalog but grays out every leaf not in the set.
   compatibleTypes?: Set<string>;
 };
 
@@ -282,9 +254,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0); // search results
   const [treePath, setTreePath] = useState<number[]>([0]); // tree nav
-  // A clicked category pins its submenu open: while `pinned` is set, hover can
-  // still navigate WITHIN that subtree but can't collapse it by straying
-  // elsewhere. Clicking another category re-pins; typing a search clears it.
+  // While `pinned` is set, hover navigates WITHIN that subtree but can't collapse it.
   const [pinned, setPinned] = useState<number[] | null>(null);
   const [submenuSide, setSubmenuSide] = useState<"left" | "right">("right");
   const [rootOpensLeft, setRootOpensLeft] = useState(false);
@@ -299,14 +269,12 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   );
   const searching = !!query.trim();
 
-  // Quick-wire: a leaf that can't wire to the dragged socket is grayed + inert.
-  // `select` is the one gate every pick path goes through, so a dimmed leaf can't
-  // be chosen by click OR keyboard.
+  // `select` is the one gate every pick path goes through, so a dimmed leaf can't be chosen
+  // by click OR keyboard.
   const isDim = (leaf: NodeCatalogEntry) => compatibleTypes != null && !compatibleTypes.has(leaf.type);
   const select = (leaf: NodeCatalogEntry) => { if (!isDim(leaf)) onSelect(leaf); };
 
-  // Hover gated by the pin: ignore moves that would leave the pinned subtree, so
-  // a click-pinned submenu stays on screen no matter where the cursor wanders.
+  // Ignore hover that would leave the pinned subtree.
   const startsWith = (p: number[], base: number[]) => base.every((v, i) => p[i] === v);
   const handleHover = (p: number[]) => {
     if (pinned && !startsWith(p, pinned)) return;
@@ -317,19 +285,15 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     setTreePath([...p, 0]);
   };
 
-  // Focus the search on open — desktop only. On touch it would pop the
-  // on-screen keyboard over the category list before the user can browse;
-  // tapping the field still summons it on demand.
+  // Desktop only: on touch this pops the on-screen keyboard over the category list.
   useEffect(() => { if (pos.visible && !IS_COARSE) inputRef.current?.focus(); }, [pos.visible]);
 
   // Keep the highlighted search result in view as the list scrolls.
   const activeRef = useRef<HTMLDivElement>(null);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [activeIndex]);
 
-  // Clamp into the viewport using the ACTUAL rendered size, but only ever
-  // move the menu UP/LEFT (never back down/right) — so as search results
-  // come and go it's pushed up once and then stays put (no jumping). The
-  // panel is height-capped, so the reserved space can't be exceeded.
+  // Only ever move UP/LEFT, never back down/right, so the menu doesn't jump as search
+  // results come and go.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -369,8 +333,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       else if (e.key === "Escape") { e.stopPropagation(); setQuery(""); }
       return;
     }
-    // Tree navigation (2D — rows for ↑/↓, pair columns for ←/→). Keyboard nav
-    // releases any click-pin so arrowing out of a pinned branch can't strand it.
+    // Keyboard nav releases any click-pin, so arrowing out of a pinned branch can't strand it.
     if (pinned) setPinned(null);
     const items = levelItemsAt(entries, treePath);
     const rows = rowsOf(items);
@@ -397,8 +360,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       // Spatial move within a pair takes priority (toward the partner).
       if (rows[r].length === 2 && goRight && c === 0) { setActive(rows[r][1]); return; }
       if (rows[r].length === 2 && !goRight && c === 1) { setActive(rows[r][0]); return; }
-      // Otherwise descend/ascend — flipped when submenus open leftward, so
-      // the arrow toward the submenu enters and the one away exits.
+      // Flipped when submenus open leftward, so the arrow toward the submenu enters.
       const openLeft = treePath.length > 1 ? submenuSide === "left" : rootOpensLeft;
       const isDescend = openLeft ? !goRight : goRight;
       if (isDescend) { if (active?.kind === "category") setTreePath([...treePath, 0]); }

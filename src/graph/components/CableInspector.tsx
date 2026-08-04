@@ -23,7 +23,7 @@ import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { conduitPath, type ConduitPathEnd } from "../conduitTrace";
 import "./cableInspector.css";
 
-// Render a value on the wire compactly. Mirrors PinLayer.renderValue.
+// Mirrors PinLayer.renderValue.
 function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
   if (isSolError(v)) {
     return <span className="solenoid-cable-inspector__value solenoid-cable-inspector__value--error" title={errorTip(v)}>{v.code}</span>;
@@ -59,14 +59,9 @@ const sameSet = (a: readonly string[], b: readonly string[]) => {
   return bs.size === new Set(a).size && a.every((x) => bs.has(x));
 };
 
-/**
- * Lower-left panel shown when exactly ONE cable — or one whole Conduit run
- * (double-click) — is selected.
- *
- * Conduits are WIRING, not computation, so the panel reports the ends of the RUN,
- * not of the segment (see conduitPath); the value + shape rows follow the resolved
- * origin too. Reads cableValueStore; no new computation.
- */
+/** The panel for exactly ONE selected cable, or one whole Conduit run. Conduits
+ *  are WIRING, not computation, so it reports the ends of the RUN, not of the
+ *  segment, and reads cableValueStore rather than computing anything. */
 export function CableInspector() {
   useSyncExternalStore(cableSelectionStore.subscribe, cableSelectionStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
@@ -74,9 +69,7 @@ export function CableInspector() {
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   // Live restyle when a source node's Format Controller changes.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
-  // X folds the panel to a small cable chip (the selection stays — deselect is
-  // a canvas click, not the panel's job). Sticky across cable picks until
-  // expanded again; the component never unmounts, so plain state suffices.
+  // X folds the panel to a chip; the SELECTION stays (deselect is a canvas click).
   const [collapsed, setCollapsed] = useState(false);
   const { shape } = useCableShape();
 
@@ -96,12 +89,8 @@ export function CableInspector() {
   // double-clicking a cable selects. Any other multi-selection is ambiguous.
   if (selectedIds.length > 1 && !sameSet(selectedIds, path.connIds)) return null;
 
-  // A ribbon bundles several Conduit lanes under one representative id, so a
-  // single From → To → Value would misrepresent the bundle (one Conduit end,
-  // many lanes). Skip the inspector for a lone ribbon cable; a separated single
-  // lane (where ribbonForConnection returns null) still inspects normally. A
-  // selected RUN is exempt: its ends are resolved, so the bundling in the middle
-  // no longer makes them ambiguous.
+  // A ribbon bundles several lanes under one id, so a single From → To → Value
+  // would misrepresent it; a selected RUN is exempt, its ends being resolved.
   if (selectedIds.length === 1 && ribbonForConnection(editor, conn)) return null;
 
   const titleOf = (nodeId: string) => {
@@ -119,15 +108,12 @@ export function CableInspector() {
   const srcTitle = titleOf(origin.nodeId);
   const srcPort = outPortOf(origin);
 
-  // The wire carries the origin's output to every input it reaches; each target
-  // receives that same value (no per-input transform is stored), so one row
-  // speaks for the whole run.
+  // Every target receives the origin's output unchanged, so one row speaks for
+  // the whole run.
   const value = cableValueStore.get(origin.nodeId, origin.key);
 
-  // Static shape (columns + types), computed ahead of running anything — only for
-  // a table cable (a `frame`-typed output). null on a cube/matrix/scalar cable,
-  // or when the walk can't resolve it (an unconfigured verb, a runtime-loaded
-  // source) — the row just doesn't render then.
+  // Static shape (columns + types) ahead of running anything, for a `frame` cable
+  // only; null when the walk can't resolve it, and the row then doesn't render.
   const srcSocket = editor.getNode(origin.nodeId)?.outputs[origin.key]?.socket;
   const isFrameCable = srcSocket instanceof SolenoidSocket && srcSocket.dataType === "frame";
   const frameShape = isFrameCable ? makeFrameShapeResolver(editor).outShape(origin.nodeId, origin.key) : null;
@@ -180,8 +166,6 @@ export function CableInspector() {
 
       <div className="solenoid-cable-inspector__arrow" aria-hidden="true">↓</div>
 
-      {/* The Conduits the run threads through — quiet, because they're wiring:
-          the run's real ends are the two rows above and below. */}
       {path.conduits.length > 0 && (
         <>
           <div className="solenoid-cable-inspector__end solenoid-cable-inspector__end--via">
@@ -204,8 +188,7 @@ export function CableInspector() {
         </>
       )}
 
-      {/* One row per input the run actually reaches — a Conduit lane can fan out
-          to several, and every one of them receives this same value. */}
+      {/* One row per input the run reaches — a Conduit lane can fan out. */}
       {terminals.map((t, i) => (
         <div className="solenoid-cable-inspector__end" key={`${t.nodeId}::${t.key}`}>
           <span className="solenoid-cable-inspector__role">{i === 0 ? "To" : ""}</span>
@@ -221,14 +204,11 @@ export function CableInspector() {
         </div>
       ))}
 
-      {/* The value carried on the wire — what leaves the origin output, which is
-          exactly what each target input receives. */}
       <div className="solenoid-cable-inspector__wire">
         <span className="solenoid-cable-inspector__role">Value</span>
         {renderWireValue(value, origin.nodeId, origin.key)}
       </div>
 
-      {/* The statically-computed column shape — visible before anything runs. */}
       {frameShape && (
         <div className="solenoid-cable-inspector__shape">
           <span className="solenoid-cable-inspector__role">Shape</span>

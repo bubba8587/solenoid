@@ -11,17 +11,15 @@ import { useHostNodeId } from "./nodeContext";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatNumberWithAnnotation, applyLogicalStyle, applyTextCase, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
-// A NaN cell is dirty DATA (an undefined value from an import), not the #N/A
-// error — render the literal "NaN", tinted at the cell (see the td below).
+// A NaN cell is dirty DATA from an import, not the #N/A error, so it renders as a
+// literal "NaN".
 function isNanCell(v: FrameCell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
 function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
-  // A persisted per-column format (frameFormatStore) applies by column KIND — a
-  // logical show-as, or a number/date format. A stale cross-type format left by a
-  // type switch (number↔date) is ignored (guards against a number rendering as a
-  // date), falling through to the type's default below.
+  // A persisted format applies by column KIND, so a stale cross-type one left by a
+  // number↔date switch falls through to the type default rather than misrendering.
   if (ann) {
     if (type === "logical" && typeof v === "boolean") return applyLogicalStyle(v, ann.logicalStyle);
     if (typeof v === "number" && Number.isFinite(v) && (type === "date") === isDateStyle(ann.format)) {
@@ -39,10 +37,8 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
 export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions }: {
   frame: FrameValue | SolError | null;
   label?: string;
-  /** Override the node whose persisted per-column formats to read (frameFormatStore).
-   *  Defaults to the host node from context. A Report embed passes the SOURCE frame
-   *  node's id so an embedded frame shows the format set on that frame, not the
-   *  Report's. */
+  /** Whose persisted per-column formats to read; defaults to the host node. A Report
+   *  embed passes the SOURCE frame node so it shows that frame's formats. */
   formatNodeId?: string;
   /** When set, the chip opens the grid editable (Frame Input) and Save writes
    *  back through this with the edited typed columns. */
@@ -53,24 +49,18 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
   /** LIVE write-through for the column-source model — see tablePopupStore. */
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
-  /** Render the whole frame (no 3×4 cap, no chip) — for the Display node, whose
-   *  box scrolls when resized. Default is the compact preview. */
+  /** Render the whole frame (no 3×4 cap, no chip). Default is the compact preview. */
   full?: boolean;
-  /** Override the compact row cap (default 3). The Report shows many more rows —
-   *  a document isn't a cramped node hero box — in a scrollable box (see `scroll`). */
+  /** Override the compact row cap (default 3). */
   previewRows?: number;
   /** Override the compact column cap (default 3). */
   previewCols?: number;
-  /** Cap the table height and scroll past it, so a tall preview doesn't run the
-   *  whole document. Keeps the chip (opens the full popup). */
+  /** Cap the table height and scroll past it; keeps the chip. */
   scroll?: boolean;
-  /** The host's λ input keys (Frame Input) — forwarded to the chip so the
-   *  popup can offer the per-column source select (column-source model). */
+  /** The host's λ input keys — forwarded so the popup can offer the source select. */
   lambdaOptions?: string[];
 }) {
-  // Per-column persisted formats live on the host node (frameFormatStore). Subscribe
-  // so a format change in the popup re-renders this preview. A Report embed overrides
-  // the node id with the referenced frame's source node.
+  // Subscribe so a format change in the popup re-renders this preview.
   const ctxNodeId = useHostNodeId();
   const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
@@ -94,9 +84,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = frameRowCount(frame);
-  // Cap rendered rows even when "full": a Display node is an inline card, not a data
-  // browser, so keep it small — 100 rows. The "…" row marks the cut; the chip opens
-  // the popup (capped higher) for more, and both carry the true count.
+  // Even "full" caps at 100 rows — a Display node is a card, not a data browser.
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, previewRows ?? 3);
   const maxC = full ? frame.columns.length : Math.min(frame.columns.length, previewCols ?? 3);
   const extraCols = !full && frame.columns.length > maxC;

@@ -35,12 +35,8 @@ import "./nodeCard.css";
 /** Shared building blocks for standard node components: socket mapping, the
  *  label header, op selects, and the value display box. */
 
-/**
- * Render a string value with leading/trailing whitespace shown as middots and
- * an empty string as a dim placeholder. Display-only: the underlying value (and
- * what gets copied) keeps its real whitespace. No quotes — they belong to the
- * authoring context (input fields), not the result cell.
- */
+/** Render a string with leading/trailing whitespace as middots and "" as a dim
+ *  placeholder — display only; the value and what's copied keep real whitespace. */
 function renderTextValue(s: string): ReactNode {
   if (s === "") return <span className="solenoid-node__text-empty">(empty)</span>;
   const lead = /^\s+/.exec(s)?.[0] ?? "";
@@ -55,11 +51,8 @@ function renderTextValue(s: string): ReactNode {
   );
 }
 
-/**
- * Sanitized markdown → HTML for a text FC's "Markdown" advanced option. FULL
- * (block) parse so headers / lists / blockquotes render. The string is untrusted
- * (arrives in shared .solenoid files), so sanitize before injecting.
- */
+/** Sanitized markdown → HTML for a text FC's "Markdown" option — the string is
+ *  untrusted (it arrives in shared .solenoid files), so sanitize before injecting. */
 export function renderTextMarkdownHtml(s: string): string {
   return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
 }
@@ -85,13 +78,8 @@ export type NodeProps<N> = {
 
 export type Emit = RenderEmit<ClassicScheme>;
 
-/**
- * Controlled local state mirrored onto `node[key]`, recomputing the graph
- * on every change. The local `useState` is the source of truth React
- * tracks for controlled inputs/selects (see CLAUDE.md — driving a
- * controlled `<select>` off a forceUpdate doesn't reliably re-apply the
- * value prop); `node[key]` is mirrored so the engine reads the latest.
- */
+/** Controlled local state mirrored onto `node[key]`, recomputing the graph on
+ *  change — the `useState` is what React tracks for controlled inputs/selects. */
 export function useNodeField<N extends object, K extends keyof N>(
   node: N,
   key: K,
@@ -101,10 +89,8 @@ export function useNodeField<N extends object, K extends keyof N>(
     (next: N[K]) => {
       node[key] = next;
       setVal(next);
-      // A config pick is a value change, but some config feeds a DERIVED socket type
-      // (a Group By / Pivot aggregate decides the column type an INDEX downstream
-      // reads out of the resulting frame), and no connection event fires here. The
-      // settle early-outs when nothing moved, so the common case costs one pass.
+      // Some config feeds a DERIVED socket type (a Group By aggregate decides a
+      // resulting column's type), and no connection event fires here.
       const id = (node as { id?: string }).id;
       const ed = id ? getOwningEditor(id) : null;
       const ar = id ? getOwningArea(id) : null;
@@ -138,11 +124,6 @@ export function PortSockets({
   );
 }
 
-/**
- * NodeShell's `leading` renders before the output sockets — for pass-through
- * nodes (e.g. Display) that draw bare input sockets at the top instead of
- * routing them through InlineInputs.
- */
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
 // A Cx rides RAW rather than pre-formatted: the display layer owns formatting,
@@ -228,9 +209,8 @@ export function InlineOutputRows({
   );
 }
 
-// Max height for the label textarea: 4 lines (4 × 13px line) + 6px symmetric
-// padding = 58, with a couple px buffer. Must match the display div's 4-line
-// clamp (.solenoid-node__label-display) so editing and static title agree.
+// Must match the display div's 4-line clamp (.solenoid-node__label-display) so
+// the editing textarea and the static title agree.
 const LABEL_MAX_HEIGHT = 60;
 
 function typeHint(node: ShellNode): string {
@@ -284,8 +264,7 @@ export function NodeShell({
   emit: Emit;
   children: ReactNode;
   leading?: ReactNode;
-  /** A small mark pinned to the card's top-right corner (e.g. a lock on a
-   *  pack-preset node). Sits over the body, clear of the header label. */
+  /** A small mark pinned to the card's top-right corner, clear of the header. */
   cornerBadge?: ReactNode;
   labelPlaceholder?: string;
   hideOutputSockets?: boolean;
@@ -295,14 +274,11 @@ export function NodeShell({
   squareCollapse?: boolean;
   /** Extra class on the card (e.g. a node-specific width override). */
   className?: string;
-  /** Forwarded to NodeCard — a header accent replacing the kind color (List /
-   *  Table Input tint their header by the SegToggle's element family, like the
-   *  FC tinting by its socket type). */
+  /** Forwarded to NodeCard — a header accent replacing the kind color. */
   accentOverride?: string;
 }) {
-  // Title edits commit on Enter/clickaway (Escape reverts), NOT per keystroke —
-  // a committed rename propagates (processGraph re-renders consumers' wired
-  // markers), and that ripple must not run mid-typing.
+  // Title edits commit on Enter/clickaway, never per keystroke — a committed
+  // rename ripples through processGraph, and that must not run mid-typing.
   const labelField = useDraftCommit<string>(
     node.label ?? "",
     (v) => v,
@@ -316,9 +292,8 @@ export function NodeShell({
   // drag (→ move the node) in the click handler below.
   const labelDownPos = useRef<{ x: number; y: number } | null>(null);
 
-  // Every node gets a header placeholder: an explicit prop wins, else the node's
-  // catalog name — so a cleared title still reads as the node's name AND the
-  // header never collapses to a zero-height sliver.
+  // An explicit placeholder wins, else the catalog name — so a cleared title
+  // never collapses the header to a zero-height sliver.
   const effectivePlaceholder = labelPlaceholder ?? nodeName(node) ?? undefined;
 
   // The SETTING, not the zoom state — changes only on a Settings click, so the
@@ -326,8 +301,7 @@ export function NodeShell({
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
 
   // useLayoutEffect (not useEffect): the height must settle BEFORE paint, in the
-  // same frame NodeCard measures the output socket (--out-socket-top tracks the
-  // result box, which the header height pushes down).
+  // same frame NodeCard measures --out-socket-top.
   useLayoutEffect(() => {
     if (!editing) return;
     const el = taRef.current;
@@ -336,9 +310,8 @@ export function NodeShell({
     el.style.height = `${Math.min(el.scrollHeight, LABEL_MAX_HEIGHT)}px`;
   }, [labelField.draft, editing]);
 
-  // The badge can't anchor to the body (it can't be a positioning context — see
-  // NodeSocket), so publish the measured header height as a CSS var on the card
-  // and let the badge offset by it.
+  // The badge can't anchor to the body (it can't be a positioning context), so
+  // publish the header height as a CSS var and let the badge offset by it.
   useLayoutEffect(() => {
     const header = headerRef.current;
     if (!cornerBadge || !header) return;
@@ -354,9 +327,8 @@ export function NodeShell({
   return (
     <NodeFormatContext.Provider value={node.id}>
       <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
-        {/* Header hover = the node's catalog one-liner (incl. Excel equivalent)
-            — the self-documentation rule. The label display's own title (the
-            untruncated label) wins inside its bounds. */}
+        {/* The label display's own title (the untruncated label) wins inside its
+            own bounds. */}
         <div className="solenoid-node__header" ref={headerRef} title={describeNode(node) ?? undefined}>
           {editing ? (
             // A textarea can't ellipsize, so it's only mounted while editing;
@@ -379,10 +351,8 @@ export function NodeShell({
             <div
               className="solenoid-node__label-display"
               title={node.label}
-              // Don't stop propagation: let the pointerdown reach rete's node
-              // drag so the whole header is a drag handle. Enter edit mode only
-              // on a stationary tap (pointer moved < HEADER_TAP_SLOP); a drag
-              // just moves the node and never opens the editor.
+              // Don't stop propagation — the whole header is rete's drag handle;
+              // edit mode opens only on a stationary tap (< HEADER_TAP_SLOP).
               onPointerDown={(e) => { labelDownPos.current = { x: e.clientX, y: e.clientY }; }}
               onClick={(e) => {
                 const d = labelDownPos.current;
@@ -401,31 +371,19 @@ export function NodeShell({
           <div className="solenoid-node__corner-badge">{cornerBadge}</div>
         )}
         <CommentIndicator nodeId={node.id} />
-        {/* Everything BELOW the header lives in this wrapper, which is the socket
-            positioning context (position: relative). Sockets + the value box it
-            aligns them to are both inside it, so every socket `top` is measured
-            relative to the body — independent of the header's height. When the
-            header grows (e.g. a 2-line title), the wrapper slides down and the
-            browser carries the sockets with it; nothing re-measures, and rete adds
-            the wrapper's offset back for cable endpoints. See the socket invariant
-            in CLAUDE.md / subsystem-invariants. */}
+        {/* The socket positioning context: sockets and the box they align to are
+            both inside, so every socket `top` is header-independent. */}
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
           <div className="solenoid-node__body">{children}</div>
-          {/* One universal resizer per resizable node, at the body's bottom-right —
-              not per value-box type. Drags the card width + the body height
-              (--box-h); the body's content fills/scrolls. Hidden when collapsed. */}
+          {/* One universal resizer per resizable node — drags the card width and
+              the body height (--box-h); the body's content fills/scrolls. */}
           {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}
         </div>
-        {/* Semantic-zoom simplified view: at far-overview zoom the body detail is
-            hidden (nodeCard.css) and this draws the node's NAME large + centered so a
-            card still reads as an identifiable block, not a blank rectangle. Only
-            visible under html.solenoid-semantic-zoom; transparent so the socket dots
-            still show; aria-hidden + pointer-events:none so it's purely decorative.
-            Mounted only while the Settings toggle is on (2 elements × every node is
-            dead weight otherwise, and the toggle defaults off); the per-zoom-crossing
-            swap stays pure CSS via the root class — nodes never subscribe to zoom. */}
+        {/* Semantic-zoom simplified view, mounted only while the Settings toggle is
+            on; the per-zoom-crossing swap stays pure CSS via the root class, so
+            nodes never subscribe to zoom. */}
         {semanticZoomSetting && (
           <div className="solenoid-node__semantic" aria-hidden="true">
             <span>{node.label || effectivePlaceholder || ""}</span>
@@ -436,7 +394,6 @@ export function NodeShell({
   );
 }
 
-/** A `<select>` that stops drag-starting pointer events (see CLAUDE.md). */
 export type OpOption<T extends string> = { value: T; label: string; group?: string };
 
 function opGrouped<T extends string>(options: ReadonlyArray<OpOption<T>>) {
@@ -464,14 +421,9 @@ export function OpSelect<T extends string>({
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
-  /** A selector that is NOT the family's op selector — a criterion comparator,
-   *  a payment-timing toggle, a config/data pick. Two consumers read it:
-   *  the operation accent edge (nodeCard.css, data-op-kind) skips arg selects —
-   *  without this, SUMIFS' per-criterion "≥" dropdown wore the same edge as the
-   *  family op select, asserting something false about itself — and the VAL-12
-   *  source scan (sourceInvariants.test.ts) requires every NON-arg OpSelect to
-   *  bind a field named `op`, so a new family cannot hide its op selector under
-   *  `mode`/`dir` and fall out of the declaration machinery unnoticed. */
+  /** A selector that is NOT the family's op selector. Two consumers read it: the
+   *  operation accent edge (data-op-kind) skips arg selects, and the VAL-12 source
+   *  scan requires every NON-arg OpSelect to bind a field named `op`. */
   arg?: boolean;
 }) {
   const hasGroups = options.some((o) => o.group != null);
@@ -501,13 +453,9 @@ export function ClipboardIcon() {
 }
 
 /**
- * The result/display box. Handles the three universal states — null
- * (empty), a list (preview + smaller font), or a scalar (formatScalar) —
- * so components don't re-derive the className/style/format dance.
- *
- * `empty` overrides the placeholder (Match/XLookup show "not found").
- * `render` overrides scalar formatting (Comparison → true/false, Display → value + unit suffix).
- * `toClipboard` overrides what gets written to the clipboard (defaults to formatScalar / list join).
+ * The result/display box — null (empty), a list (preview), or a scalar.
+ * `empty` overrides the placeholder; `render` overrides scalar formatting;
+ * `toClipboard` overrides what gets copied.
  */
 export function ValueDisplay({
   value: rawValue,
@@ -524,32 +472,22 @@ export function ValueDisplay({
   /** Show a list in full (all values, joined) instead of a chip — the Display
    *  node, whose box scrolls/wraps when resized. */
   full?: boolean;
-  /** The OUTPUT socket this box displays — set on multi-box cards (the acausal
-   *  hero rows) so a Format Controller docked/wired to ONE output formats ONLY
-   *  that box, and a per-output producer lock (Triangle degrees) shows on its
-   *  own row. Single-box cards omit it and keep the any-socket read. */
+  /** The OUTPUT socket this box displays — set on multi-box cards so an FC wired
+   *  to ONE output formats only that box; single-box cards omit it. */
   socketKey?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // These two hooks must run UNCONDITIONALLY, BEFORE the object-kind early return
-  // below — the value can flip between a scalar (falls through) and an object kind
-  // like a frame (returns early), and a hook AFTER the early return changes the
-  // per-render hook count → React error #300 ("rendered fewer hooks than expected"),
-  // which crashes and unmounts the node (e.g. an Expect fed a frame: null on the
-  // first render, then the frame). Used only in the non-object path, but declared here.
+  // These hooks must run UNCONDITIONALLY, BEFORE the object-kind early return
+  // below: the value can flip between scalar and object across renders, and a
+  // hook after the return changes the hook count → React #300 unmounts the node.
   const ctxNodeId = useContext(NodeFormatContext);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
-  // Safety net: an object-valued kind (chart/frame/cube/diagram/image/lambda/
-  // document) can slip in through an `any`/casted value. It must NOT reach the
-  // number/string path below (→ "[object Object]" or a .toFixed crash). Surfaces
-  // that want the RICH form (Display, Input Switch) branch on the kind before
-  // calling this; here a kind with a chip (valueChipFor — the ONE registry) gets
-  // its clickable chip, and the rest a compact text label, so nothing ever reads
-  // as "[object Object]".
+  // Safety net: an object-valued kind can slip in through an `any`/cast, and must
+  // NOT reach the number/string path below (→ "[object Object]" or a .toFixed crash).
   const kindChip = valueChipFor(rawValue, { size: "sm" });
   if (kindChip != null) {
     return (
@@ -563,23 +501,17 @@ export function ValueDisplay({
     return <div className="solenoid-node__display-value">{kindLabel}</div>;
   }
 
-  // A multi-box card names its socket: read THAT socket's annotation only, so an
-  // FC on one hero row can't smear over its siblings. Single-box cards keep the
-  // any-socket read (a node carries at most one FC there).
+  // A multi-box card names its socket so an FC on one hero row can't smear over
+  // its siblings; single-box cards keep the any-socket read.
   let ann = ctxNodeId
     ? (socketKey ? formatAnnotationStore.get(ctxNodeId, socketKey) : formatAnnotationStore.getForNode(ctxNodeId))
     : undefined;
-  // With no DIRECT annotation, a node that merely PASSES the value along (Display)
-  // or SELECTS it (IF/CHOOSE/SWITCH/IFS) carries the locked format/unit on its
-  // output — so its own value box shows it, exactly like a downstream Display.
-  // Guarded to those nodes so sources/transforms (which carry nothing) stay raw and
-  // never pay the graph walk; the resolver returns undefined for them anyway.
-  // A socketKey'd box also consults the resolver for ITS output — that is where a
-  // per-output producer lock (Triangle degrees, Element g/mol) surfaces on the
-  // node's own row; compute() is O(1) for a non-passthrough producer.
+  // With no DIRECT annotation, a node that PASSES or SELECTS the value carries the
+  // locked format on its output; guarded to those nodes (plus a socketKey'd box's
+  // own output) so sources/transforms never pay the graph walk.
   if (!ann && ctxNodeId) {
-    // Owning editor, not main: a node rendered inside a Composite drill-in lives in
-    // the internal editor, so resolve its docked/carried FC there (see getOwningEditor).
+    // Owning editor, not main: a node inside a Composite drill-in lives in the
+    // internal editor, so its docked/carried FC must resolve there.
     const editor = getOwningEditor(ctxNodeId);
     const node = editor?.getNode(ctxNodeId) as
       (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
@@ -595,17 +527,12 @@ export function ValueDisplay({
     }
   }
 
-  // The declared element family of this box's output socket — the chip's tint and
-  // the popup's cell type both come from HERE, not from scanning cells. A cell scan
-  // can't see a date (a serial looks numeric) and can't see anything at all when
-  // every cell is `null` (a Bool List Input whose entries were all unparseable), so
-  // it would silently fall back to "numeric". `undefined` = a wildcard output, where
-  // the chip's own cell scan is the honest fallback.
+  // The DECLARED element family, never a cell scan — a scan can't see a date (a
+  // serial looks numeric) or an all-null list, so it would fall back to "numeric".
   const elemFam = nodeOutputElemFamily(ctxNodeId);
   const isDate = elemFam === "date";
-  // A complex is the one scalar the display layer formats itself. It must resolve
-  // to a string HERE — after `ann`, before everything else — so every downstream
-  // branch (box, chip, clipboard) keeps working while honouring the FC.
+  // A complex must resolve to a string HERE — after `ann`, before everything else
+  // — so box, chip and clipboard alike keep working and honour the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCx(c));
   // Typed off rawValue, not OutputRowValue: the raw box value also carries
   // UnitCells (unwrapped on the next line), and a Cx never survives past here.
@@ -616,10 +543,8 @@ export function ValueDisplay({
       : rawValue as Exclude<typeof rawValue, Cx>;
   const value = dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
 
-  // An empty array (a 0-element list/matrix — e.g. a filter that matched nothing, or
-  // Split Frame with no columns of the chosen type) is "nothing to show", same as no
-  // input: render the faded "—" placeholder at standard height instead of an empty
-  // string, which has no line box and collapses the card below its min height.
+  // An empty array is "nothing to show": render the faded placeholder, not an
+  // empty string — which has no line box and collapses the card below min height.
   const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
   const isString = typeof value === "string";
   const isLogical = typeof value === "boolean"; // renders TRUE/FALSE (Excel form)
@@ -641,21 +566,15 @@ export function ValueDisplay({
     fontWeight: ann.bold ? 700 : undefined,
     fontStyle: ann.italic ? "italic" : "normal",
     fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
-    // Monospace opt-in overrides the span's default sans face (advanced tier).
-    // Only emit the key when ON — a `fontFamily: undefined` in the spread would
-    // clobber the span's base `var(--font-sans)` and fall back to the container's
-    // mono, forcing mono on every FC-annotated text value.
+    // Only emit the key when mono is ON — a `fontFamily: undefined` in the spread
+    // would clobber the span's base sans and force mono on every annotated value.
     ...(ann.textMono ? { fontFamily: "var(--font-mono)" } : {}),
   } : undefined;
   const cased = (s: string): string => (ann ? applyTextCase(s, ann.textCase) : s);
 
-  // Error values render as a red Excel-style code badge with the structural
-  // explanation in the tooltip. Errors propagate, so the chain of red boxes
-  // leads back to the source — the Excel trace model. (After the hooks above:
-  // the value can flip between error and not across renders.)
+  // Errors render as a red #CODE! badge and propagate, so the chain of red boxes
+  // leads back to the source — the Excel trace model.
   if (isSolError(value)) {
-    // Shared error treatment: red #CODE! badge, hover surfaces the producer
-    // message + the general explanation/fix (errorTip) — same everywhere.
     return (
       <div
         className={`solenoid-node__display-value solenoid-node__display-value--error${value.origin ? " sol-error-chip--clickable" : ""}`}
@@ -720,9 +639,8 @@ export function ValueDisplay({
       {isEmpty ? empty
         : isString ? (
             ann?.textMarkdown ? (
-              // Block markdown renders as its own styled container (a <div> can't
-              // live inside the text <span>); font attrs still apply, headers/lists
-              // set their own sizes relative to it.
+              // Block markdown needs its own container — a <div> can't live inside
+              // the text <span>.
               <div
                 className="solenoid-node__md"
                 style={{
@@ -742,20 +660,18 @@ export function ValueDisplay({
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
         : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ")
-            // `elem` matters MOST here: dateFormatDisplay above turned a date list's
-            // serials into STRINGS, so it lands on this branch and the chip would
-            // otherwise sniff "text" and tint green. The socket family is the truth.
+            // `elem` matters MOST here: dateFormatDisplay turned a date list's
+            // serials into STRINGS, so the chip would otherwise sniff "text".
             : <ArrayChip value={value as string[]} elem={elemFam} />)
         : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
         : typeof value === "number" && Number.isNaN(value) ? (
-            // A residual NaN is dirty DATA, not an error (an error is a tagged
-            // SolError, rendered red above). Quiet muted affordance + a structural
-            // tooltip — not error-red, not plain-number, not an ArrayChip.
+            // A residual NaN is dirty DATA, not an error — a quiet muted
+            // affordance, never error-red.
             <span className="solenoid-node__nan" title="Not a number: an undefined value in the data">NaN</span>
           )
         : annotationRendersNegativeRed(ann, value) ? (
             // The FC's red negative style — the string already carries the
-            // minus/parens; the color rides on top (format-model advanced tier).
+            // minus/parens; only the color rides on top.
             <span style={{ color: "var(--sol-error)" }}>{fmtScalar(value as number)}</span>
           )
         : render && !ann ? render(value as number)

@@ -1,17 +1,12 @@
-// Custom-logic nodes for the Thermodynamics & Air pack: the ISA standard
-// atmosphere (piecewise 7-layer formulation, multi-output) and Antoine vapor
-// pressure (an embedded per-substance coefficient table behind a selector) —
-// both declared pack exceptions (docs/archive/reference-packs.md: "implement
-// the formulation, not the printed grid").
+// Declared pack exceptions: implement the formulation, not the printed grid.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// ─── ISA / US Standard Atmosphere 1976, 0–86 km ───────────────────────────────
-// Seven geopotential layers; base pressures are DERIVED from the layer table at
-// module init (no transcribed pressure constants to typo). ISA's own constants:
-// g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
+// US Standard Atmosphere 1976, 0–86 km. Base pressures are DERIVED from the layer
+// table at init, so no transcribed pressure constant can be typo'd. ISA's own
+// constants: g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
 
 const ISA_R_SPEC = 287.0531; // R*/M, J/(kg·K)
 const GM_OVER_R = 0.034163195; // g₀·M/R*, K/m
@@ -24,7 +19,6 @@ const ISA_LAYERS: Array<[number, number]> = [
 ];
 const ISA_TOP = 84852; // m geopotential (86 km geometric)
 
-// Chain the base temperature/pressure of each layer from sea level.
 const ISA_BASES: Array<{ h: number; L: number; T: number; p: number }> = (() => {
   const out = [{ h: 0, L: ISA_LAYERS[0][1], T: 288.15, p: 101325 }];
   for (let i = 1; i < ISA_LAYERS.length; i++) {
@@ -61,9 +55,8 @@ export function isaAtGeometric(z: number): IsaPoint {
   return isaAtGeopotential((EARTH_R * z) / (EARTH_R + z));
 }
 
-/** The guarded geometric-altitude read the node and the pack's
- *  STANDARDATMOSPHERE formula share: #DOMAIN! outside the 1976 standard's
- *  −2…86 km (checked on the GEOPOTENTIAL altitude, like the tables). */
+/** Shared by the node and the pack's STANDARDATMOSPHERE formula; the −2…86 km
+ *  domain is checked on the GEOPOTENTIAL altitude, like the tables. */
 export function standardAtmosphere(z: number): IsaPoint | SolError {
   const h = (EARTH_R * z) / (EARTH_R + z);
   if (h < -2000 || h > ISA_TOP) {
@@ -112,10 +105,8 @@ export class IsaAtmosphereNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Antoine vapor pressure ───────────────────────────────────────────────────
-// log₁₀(p/mmHg) = A − B/(C + T°C), classic Lange's-handbook coefficient form.
-// Each substance's triple is validated in tests by reproducing its NORMAL
-// BOILING POINT (p = 760 mmHg) — a typo'd coefficient can't ship silently.
+// log₁₀(p/mmHg) = A − B/(C + T°C), Lange's-handbook coefficient form. Each triple is
+// validated in tests by reproducing its normal boiling point, so a typo can't ship.
 
 export type AntoineOp =
   | "water" | "ethanol" | "methanol" | "isopropanol"

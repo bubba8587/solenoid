@@ -13,24 +13,11 @@ type Storage = {
 };
 
 /**
- * rete's DOM socket-position watcher stores one record per DOM element keyed by
- * that element, and `add` only de-dupes records *within the same element*. It
- * relies on an `unmount` event to drop an element's records. But a socket can be
- * re-rendered into a NEW DOM node without an `unmount` reaching the watcher for
- * the OLD node (React reusing the component instance while swapping the span,
- * which our measured/cull-wrapped rows provoke). Both elements then carry a
- * record for the same (node, key, side), and `getPosition` — called for every
- * connection endpoint on each reposition — finds two and logs "Found more than
- * one element for socket with same key and side." It's a bookkeeping leak: the
- * orphan records are never collected and are rescanned on every cable update.
- *
- * Fix: wrap the storage's `add` so that adding an element for a socket first
- * evicts every OTHER element previously recorded for that same (node, key,
- * side). The most recently rendered element wins, so the store holds exactly one
- * element per socket and the warning can never fire. (Done by patching the
- * instance's storage rather than overriding calculatePosition, because the
- * orphan element is sometimes still attached to the DOM — so an isConnected
- * check wouldn't catch it.)
+ * rete's socket-position watcher de-dupes records only WITHIN an element and
+ * relies on an `unmount` that never arrives when React swaps a socket's span, so
+ * two elements end up recorded for one (node, key, side). `add` is wrapped to
+ * evict the older element — patching the storage rather than calculatePosition,
+ * because the orphan is sometimes still DOM-connected.
  */
 class GuardedSocketPosition<Schemes extends BaseSchemes, K> extends DOMSocketPosition<Schemes, K> {
   constructor(props?: { offset?: Offset }) {
@@ -49,10 +36,8 @@ class GuardedSocketPosition<Schemes extends BaseSchemes, K> extends DOMSocketPos
   }
 }
 
-/**
- * Drop-in replacement for `getDOMSocketPosition` that keeps exactly one element
- * per socket — see GuardedSocketPosition. Same `offset` prop.
- */
+/** Drop-in replacement for `getDOMSocketPosition` that keeps exactly one element
+ *  per socket; same `offset` prop. */
 export function getGuardedSocketPosition<Schemes extends BaseSchemes, K>(
   props?: { offset?: Offset },
 ): DOMSocketPosition<Schemes, K> {

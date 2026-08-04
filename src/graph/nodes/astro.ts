@@ -1,8 +1,5 @@
-// Custom-logic nodes for the Earth & Sky pack: solar position and sunrise/
-// sunset (the NOAA Solar Calculator formulation — a published standard, per the
-// reference-pack licensing rule) and an approximate moon phase. Dates flow as
-// Solenoid/Excel serials (serial 25569 = 1970-01-01 UTC); all angles are
-// degrees at the sockets.
+// Earth & Sky pack: the NOAA Solar Calculator formulation (a published standard,
+// per the reference-pack licensing rule); serial dates, degrees at the sockets.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, dateIn, dateOut, readInput } from "./shared";
@@ -15,11 +12,6 @@ const DEG = 180 / Math.PI;
 export function serialToJulianDay(serial: number): number {
   return serial + 2415018.5;
 }
-
-// ─── NOAA solar geometry ──────────────────────────────────────────────────────
-// The intermediate chain from the NOAA solar-calculation spreadsheet (Julian
-// century → apparent solar longitude → declination + equation of time). All
-// published-standard formulation; no data tables.
 
 export interface SolarBasis {
   /** Solar declination, degrees. */
@@ -109,10 +101,8 @@ export function sunTimes(serial: number, lat: number, lon: number): SunTimes {
   return { sunrise, sunset, dayLength: (haSunrise * 8) / 60 };
 }
 
-// ─── Moon phase (approximate) ─────────────────────────────────────────────────
-// Age from a reference new moon (2000-01-06 18:14 UTC) modulo the mean synodic
-// month — good to roughly ±half a day (the real moon runs up to ~14 h off the
-// mean). Honest for calendars and tides-at-a-glance, not for eclipse work.
+// Moon age from a reference new moon modulo the MEAN synodic month — good to
+// roughly ±half a day, so it is honest for calendars but not for eclipse work.
 
 const SYNODIC_MONTH = 29.530588853;
 const NEW_MOON_EPOCH_SERIAL = 36531.7597; // 2000-01-06 18:14 UTC as an Excel serial
@@ -135,8 +125,6 @@ export function moonPhase(serial: number): MoonPhase {
     illumination: (1 - Math.cos(2 * Math.PI * phase)) / 2,
   };
 }
-
-// ─── Nodes ────────────────────────────────────────────────────────────────────
 
 export function latLonError(lat: number, lon: number): SolError | null {
   if (lat < -90 || lat > 90) return solError("#DOMAIN!", "Latitude runs −90 to 90");

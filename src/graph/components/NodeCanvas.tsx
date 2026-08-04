@@ -8,8 +8,8 @@ import { nodeGeomBus, collectNodeCards } from "../nodeScene";
 import { createToggleStore } from "../storeKit";
 import type { NodeCard } from "../nodeInstances";
 
-// Alignment-overlay alpha: semi-transparent so the real DOM node shows THROUGH the
-// GPU card — that's how you check they coincide.
+// Semi-transparent so the real DOM node shows THROUGH the GPU card — that is how
+// the alignment check works.
 const DEBUG_ALPHA = 0.55;
 function dim(cards: NodeCard[]): NodeCard[] {
   return cards.map((c) => ({
@@ -19,11 +19,8 @@ function dim(cards: NodeCard[]): NodeCard[] {
   }));
 }
 
-// WebGPU node-card layer. An ALIGNMENT-CHECK overlay: it draws each node as a GPU
-// card ON TOP of the real DOM nodes (z above), so the cards can be confirmed to match
-// node size/position/color. Off by default; toggle from the console:
-// `__solenoidNodeCards()` (requires canvas render-mode on too). Reuses the same
-// transform-uniform draw model as the cables.
+// WebGPU node-card ALIGNMENT-CHECK overlay, not a render path: off by default,
+// toggled from the console via `__solenoidNodeCards()` with canvas render-mode on.
 
 export const nodeCardsDebugStore = createToggleStore(false);
 if (typeof window !== "undefined") {
@@ -46,7 +43,6 @@ export function NodeCanvas() {
 
   useEffect(() => { setHost(document.querySelector<HTMLElement>(".solenoid-canvas")); }, []);
 
-  // Create the renderer when the card layer turns on; dispose when off / unmount.
   useEffect(() => {
     if (!on) return;
     const canvas = canvasRef.current;
@@ -73,7 +69,6 @@ export function NodeCanvas() {
     };
   }, [on]);
 
-  // Node geometry OR theme change → rebuild the cards + redraw.
   useEffect(() => {
     if (!on) return;
     const r = rendererRef.current;
@@ -83,7 +78,6 @@ export function NodeCanvas() {
     r.draw(transform, viewport.width, viewport.height);
   }, [geomV, themeV, on]);
 
-  // Transform / viewport change → resize + redraw only.
   useEffect(() => {
     if (!on) return;
     const r = rendererRef.current;
@@ -98,7 +92,6 @@ export function NodeCanvas() {
     <canvas
       ref={canvasRef}
       className="solenoid-node-canvas"
-      // Above the nodes for the alignment check (z-index:50). pointer-events:none.
       style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 50 }}
     />,
     host,

@@ -1,14 +1,12 @@
-// Seeded, deterministic Monte Carlo sampling for the composite "montecarlo" run
-// mode. Pure — no React/Rete deps — so draws are reproducible (same seed → identical
-// sequence). SCOPED to the composite subsystem: this is the app's only sampler.
+// Seeded, deterministic Monte Carlo sampling, SCOPED to the composite subsystem — the
+// app's only sampler.
 
 import { uncertain, type UncertainNumber } from "./valueKinds";
 
 export type DistributionKind = "normal" | "uniform";
 
-/** How a composite input marker's `± spread` is drawn each iteration. `spread`
- *  is the marker's `uncertainty` field: a 1σ for normal, a ± half-width for
- *  uniform — so both read identically on the card ("± spread"). */
+/** `spread` is the marker's `uncertainty`: a 1σ for normal, a ± half-width for uniform,
+ *  so both read identically on the card. */
 export interface UncertaintySpec {
   kind: DistributionKind;
   spread: number;
@@ -17,8 +15,8 @@ export interface UncertaintySpec {
 export const DEFAULT_MC_SAMPLES = 500;
 export const DEFAULT_MC_SEED = 1;
 
-/** mulberry32 — a 32-bit seeded PRNG. The same seed yields the identical [0,1)
- *  sequence on every platform, which is what makes a run reproducible. */
+/** The same seed yields the identical [0,1) sequence on every platform, which is what
+ *  makes a run reproducible. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function () {
@@ -46,10 +44,8 @@ export function sampleUncertain(mean: number, spec: UncertaintySpec, rng: () => 
   return mean + sampleStandardNormal(rng) * spec.spread;
 }
 
-/** Summarize numeric draws into an UncertainNumber (sample mean ± sample standard
- *  deviation), carrying the raw draws for a histogram. Unbiased (N−1) variance for
- *  N ≥ 2; a single draw has zero spread. Non-finite draws are dropped first so a
- *  per-iteration failure can't poison the summary. */
+/** Mean ± sample sd, carrying the raw draws. Unbiased (N−1) variance for N ≥ 2; non-finite
+ *  draws are dropped first so a per-iteration failure can't poison the summary. */
 export function summarizeSamples(draws: readonly number[]): UncertainNumber {
   const nums = draws.filter((d) => Number.isFinite(d));
   const n = nums.length;
@@ -60,9 +56,8 @@ export function summarizeSamples(draws: readonly number[]): UncertainNumber {
   return uncertain(mean, Math.sqrt(variance), nums);
 }
 
-/** Bin a sample set into `bins` equal-width buckets over [min, max] — the shape a
- *  histogram renderer draws. Returns per-bin counts plus the bounds; an empty or
- *  zero-range set yields a single full bucket so the caller never divides by zero. */
+/** An empty or zero-range set yields a single full bucket, so the caller never divides
+ *  by zero. */
 export function histogram(samples: readonly number[], bins = 12): { counts: number[]; min: number; max: number } {
   const nums = samples.filter((d) => Number.isFinite(d));
   if (nums.length === 0) return { counts: [0], min: 0, max: 0 };

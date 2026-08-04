@@ -3,18 +3,15 @@ import { appThemeStore } from "../appTheme";
 import { heightRampColor } from "../palette";
 import type { SurfacePayload } from "../chartValue";
 
-// A shaded 3-D surface plot drawn to a <canvas>: the grid is projected
-// axonometrically; each cell is a flat-shaded quad painted back-to-front. A null
-// Z cell is a hole (its quads are skipped). No WebGL / z-buffer.
+// Shaded 3-D surface on a 2-D <canvas> — no WebGL / z-buffer, so depth is the
+// painter's algorithm; a null Z cell is a hole and its quads are skipped.
 
 type V3 = [number, number, number];
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 function unit(v: V3): V3 { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / m, v[1] / m, v[2] / m]; }
 
-// Height colormap — the PALETTE-derived sequential ramp, so the field figures
-// retint with the active palette. Re-exported for the other field figures
-// (Contour, Vector Field) so height/magnitude reads identically across the family.
+// The palette-derived ramp, re-exported so Contour / Vector Field read identically.
 export function heightColor(t: number): [number, number, number] {
   return heightRampColor(t);
 }
@@ -26,8 +23,7 @@ const SURFACE_ALPHA = 0.86;      // slight translucency so the frame shows throu
 function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H: number) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  // Supersample: render the backing store above device resolution and let the browser
-  // downscale it to the CSS size — crisper edges than a 1:1 canvas.
+  // Supersample above device resolution — crisper edges than a 1:1 canvas.
   const scale = Math.min(4, (window.devicePixelRatio || 1) * 2);
   canvas.width = Math.round(W * scale);
   canvas.height = Math.round(H * scale);
@@ -50,9 +46,8 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const gy = (iy: number) => nrm(ys[iy], ymin, ymax);
   const gz = (ix: number, iy: number) => { const v = z[iy]?.[ix]; return fin(v) ? nrm(v, zmin, zmax) : null; };
 
-  // Camera: yaw around the vertical (Z) axis, then pitch (elevation) around the
-  // screen-horizontal — orthographic. Points are centered on the base so the box
-  // spins about its middle.
+  // Orthographic camera: yaw about Z, then pitch about the screen-horizontal; points
+  // are centered on the base so the box spins about its middle.
   const yaw = (p.yaw ?? 45) * Math.PI / 180, pitch = (p.pitch ?? 45) * Math.PI / 180;
   const cyaw = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
   const viewPt = (a: number, b: number, c: number): V3 => {
@@ -75,8 +70,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const proj = (a: number, b: number, c: number): [number, number] => { const [x, y] = model(a, b, c); return [ox + s * x, oy + s * y]; };
   const screen = (ix: number, iy: number, c: number) => proj(gx(ix), gy(iy), c);
 
-  // Reference frame: a light gridded floor + two BACK walls, drawn BEHIND the
-  // surface so the surface sits inside the box and occludes the near parts.
+  // Reference frame drawn BEHIND the surface, so the surface occludes the near parts.
   const frameCol = getComputedStyle(canvas).getPropertyValue("--text").trim() || "#888";
   const gridPlane = (o: V3, u: V3, v: V3, div = 4) => {
     const at = (sd: number, td: number) => proj(o[0] + u[0] * sd + v[0] * td, o[1] + u[1] * sd + v[1] * td, o[2] + u[2] * sd + v[2] * td);
@@ -89,8 +83,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
     ctx.globalAlpha = 1;
   };
   gridPlane([0, 0, 0], [1, 0, 0], [0, 1, 0]); // floor (z = min), always behind
-  // The two vertical walls FARTHEST from the viewer (smallest depth) — recomputed each
-  // draw so the box stays correct as it rotates; the near two stay open.
+  // The two FARTHEST walls, recomputed each draw so the box stays correct as it rotates.
   const WALLS: Array<{ o: V3; u: V3; v: V3; c: V3 }> = [
     { o: [0, 0, 0], u: [0, 1, 0], v: [0, 0, 1], c: [0, 0.5, 0.5] }, // x = min
     { o: [1, 0, 0], u: [0, 1, 0], v: [0, 0, 1], c: [1, 0.5, 0.5] }, // x = max

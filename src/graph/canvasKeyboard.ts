@@ -1,5 +1,4 @@
-// Canvas keyboard shortcuts. Skipped when focus is in an editable form element
-// so typing in a label / number field doesn't fire them.
+// Canvas keyboard shortcuts, skipped while focus is in an editable form element.
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
@@ -51,8 +50,7 @@ export interface CanvasKeyboardDeps {
 export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
   const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, deleteSelected } = deps;
 
-  // Expand/collapse + autofit resolve the same target set: selected groups +
-  // the group of any selected member, or all groups when nothing is selected.
+  // Selected groups + the group of any selected member; all groups when none.
   function resolveGroupTargets(): GroupNode[] {
     const editor = editorRef.current;
     if (!editor) return [];
@@ -74,7 +72,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     const targets = resolveGroupTargets();
     if (targets.length === 0) return;
     const collapse = targets.some((g) => !g.collapsed);
-    // Persist the collapse state (saved via each Group's init.collapsed).
     void setGroupsCollapsed(editor, area, targets, collapse).then(() => scheduleAutosave());
   }
   function autofitGroups() {
@@ -84,15 +81,11 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     const targets = resolveGroupTargets();
     void (async () => { for (const g of targets) await autofitGroupWithHistory(editor, area, g); })();
   }
-  // `[` / `]` rotate whatever rotatable thing is selected by one step in
-  // direction `dir` (-1 = CCW, +1 = CW). Covers a selected Standoff (its own
-  // exclusive selection — rotates the axis 45°), and selected Conduits (45°
-  // quantum) / Angle Dial nodes (each node's own `step`). Returns the count
-  // rotated so the caller only swallows the key when something happened.
+  // Rotate the selected Standoff / Conduits / Angle Dials one step (-1 = CCW).
+  // Returns the count rotated so the caller only swallows the key on a hit.
   function rotateSelection(dir: number): number {
-    // Standoff selection is standoff-local and mutually exclusive with nodes,
-    // so handle it first and on its own. Mirror the inspector dial's onAngle:
-    // current axis angle ± 45° → vector → nearest compass anchor.
+    // Standoff selection is mutually exclusive with node selection, so it goes
+    // first and on its own.
     const standoffSel = standoffStore.selected();
     if (standoffSel) {
       const s = standoffStore.get(standoffSel);
@@ -118,22 +111,17 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
     }
     if (conduits) bumpConduitAngle();   // re-renders conduits across React roots
-    if (dials) { void processGraph(); scheduleAutosave(); } // recompute + re-render dials, propagate downstream
+    if (dials) { void processGraph(); scheduleAutosave(); }
     return conduits + dials;
   }
-  // Move the selected node(s) by (dx, dy) — the arrow-key nudge. Each affected
-  // node moves exactly once: the selection plus the members of any selected
-  // group (so a group carries its contents like a drag). area.translate is
-  // auto-recorded by the history plugin, so the nudge is undoable; merged with
-  // a drag's own translate actions. Docked FCs follow their host; standoffs
-  // re-settle. Caller checks the selection synchronously to decide preventDefault.
+  // The arrow-key nudge: each affected node moves exactly ONCE. The caller must
+  // check the selection synchronously to decide preventDefault (this is async).
   async function nudgeSelection(dx: number, dy: number) {
     const editor = editorRef.current;
     const area = areaRef.current;
     if (!editor || !area) return;
-    // A selected GROUP carries its members, and touching any node in a STANDOFF
-    // cluster carries the whole cluster, so a standoffed pair moves rigidly —
-    // moving only one end and re-settling pulls it half-way back.
+    // A standoff cluster moves as a whole — nudging one end and re-settling would
+    // pull it half-way back.
     const selectedIds = editor.getNodes()
       .filter((n) => (n as { selected?: boolean }).selected === true)
       .map((n) => n.id);
@@ -144,8 +132,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       await area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
       repositionDockedNodes(id); // a docked FC rides along with its host
     }
-    // Whole clusters moved uniformly, so this is a no-op for them; it just
-    // tidies any incidental band state.
     if (!standoffStore.isEmpty()) settleStandoffs();
     scheduleAutosave();
   }
@@ -155,41 +141,25 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     const tag = target?.tagName;
     const editable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable;
 
-    // A heavy recompute is running: the compute overlay blocks pointer input, so
-    // block the canvas keyboard shortcuts too (add/group/tidy/undo…) — a queued key
-    // must not mutate the graph mid-pass. This listener only drives canvas
-    // shortcuts; a focused field's own handlers are untouched.
+    // The compute overlay blocks pointer input; block the keyboard too, so a queued
+    // key can't mutate the graph mid-pass.
     if (computeOverlayStore.visible()) return;
 
-    // The Composite drill-in editor is open: the overlay owns the keyboard
-    // (its own Delete/Escape handling); canvas shortcuts must not reach the
-    // OUTER graph underneath it.
+    // The drill-in overlay owns the keyboard — shortcuts must not reach the OUTER
+    // graph underneath it.
     if (compositeEditorStore.isOpen() && e.key !== "F9") return;
 
-    // Presenter mode: the overlay owns the keyboard (advance/back/Esc on its
-    // own window listener). Without this gate the arrow keys ALSO nudge the
-    // still-selected Presentation node 24px per slide on the hidden canvas,
-    // and every bare-letter/Ctrl shortcut mutates the graph mid-show.
+    // Presenter mode owns the keyboard; without this gate the arrow keys also nudge
+    // the still-selected node on the hidden canvas.
     if (presentationStore.isActive() && e.key !== "F9") return;
 
-    // F9 — Calculate now (Excel). Recomputes + rerolls volatiles in ANY mode; in
-    // manual mode it's the only thing that recomputes. Global, even while typing —
-    // and even while PRESENTING or DRILLED INTO a composite (the gates above
-    // exempt it): both overlays hide/cover the StatusBar chip + MenuBar item, so
-    // in manual/sketch mode F9 is the ONLY remaining recompute path there. Only
-    // the compute-overlay gate outranks it (never queue a recompute mid-pass).
+    // F9 stays live while typing, presenting and drilled in — under those overlays
+    // it is the only remaining recompute path. Only the compute gate outranks it.
     if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }
 
-    // Single-key canvas shortcuts (no modifier; ignored while typing). Esc
-    // exits isolate. The bare letters drive the graph-domain actions so the
-    // Ctrl+Shift chords aren't needed; modifier combos fall through below.
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      // Command palette: bare Enter, guarded by the exact same `editable`
-      // check every other single-key shortcut uses, so committing a text
-      // field with Enter never opens it. Also stays out from under any
-      // other modal already open (each of those either focuses an input,
-      // which `editable` already covers, or — like Settings' switches — is
-      // a non-input control that `editable` wouldn't catch on its own).
+      // Bare Enter opens the palette — gated on `editable` so committing a field
+      // never opens it, and on every other modal that `editable` wouldn't catch.
       if (
         e.key === "Enter" && !paletteStore.get() && !isAddMenuOpen() &&
         !frStore.get() && !settingsPanel.get() && !shortcutsStore.get()
@@ -199,9 +169,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.key === "Escape" && isolateStore.isActive()) {
         isolateStore.exit(); e.preventDefault(); return;
       }
-      // Arrow keys nudge the selected node(s): one grid cell (24px), Shift =
-      // four cells (96px). Handled before the !shiftKey split so Shift just
-      // scales the step. Decide preventDefault synchronously (the move is async).
+      // Handled before the !shiftKey split so Shift just scales the nudge step.
       if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
         const editor = editorRef.current;
         const hasSel = !!editor && editor.getNodes().some((n) => (n as { selected?: boolean }).selected === true);
@@ -217,29 +185,18 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (!e.shiftKey) {
         const editor = editorRef.current;
         const area = areaRef.current;
-        // Rotate the selected rotatable thing (Conduit / Angle Dial node /
-        // Standoff). Match the produced CHARACTER, not e.code: `[` / `]` sit on
-        // different physical keys across keyboard layouts, and the reference
-        // shows the character. `[` = CCW, `]` = CW.
-        // Tab toggles all collapsible chrome (navigator + pin / alert HUDs) as
-        // one group — collapse all if any is open, else expand all. BUT Tab is
-        // also the browser's focus-traversal key, so only hijack it when focus
-        // is on the canvas BACKGROUND (body) — never when it sits on a control
-        // (a node's button / chevron / field, a panel item), where Tab must
-        // move between that element's own focusable siblings. `editable` above
-        // already let inputs through; this also covers focusable NON-inputs
-        // inside a node, which otherwise randomly tabbed out and toggled chrome
-        // mid-edit.
+        // Tab is also the browser's focus-traversal key, so only hijack it on the
+        // canvas BACKGROUND — on a control, native traversal must win.
         if (e.key === "Tab") {
           const onBackground =
             target == null || target === document.body || target === document.documentElement;
           if (onBackground && toggleAllChrome() > 0) { e.preventDefault(); return; }
-          return; // on a control → let native focus traversal happen
+          return;
         }
+        // Match the produced CHARACTER: `[` / `]` sit on different physical keys
+        // across layouts, and the reference shows the character.
         if (e.key === "[" || e.key === "]") {
           if (rotateSelection(e.key === "]" ? 1 : -1) > 0) { e.preventDefault(); return; }
-          // nothing rotatable selected → leave the key alone (falls through;
-          // the e.code switch below has no bracket case, so it's a no-op).
         }
         switch (e.code) {
           case "KeyI":
@@ -268,31 +225,23 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
               e.preventDefault(); return;
             }
-            break; // nothing rotatable selected → leave the key alone
+            break;
         }
       }
     }
 
     if (e.ctrlKey || e.metaKey) {
-      // Ctrl+/ opens function reference, Ctrl+, opens settings (both allowed
-      // even when an input is focused). e.key (not e.code) for the slash: it's
-      // a punctuation mark that moves around on non-US layouts, unlike the
-      // letter-mnemonic shortcuts below which are meant to stay at the same
-      // physical position regardless of layout.
+      // e.key for the slash — punctuation moves around on non-US layouts, unlike the
+      // letter mnemonics below, which are meant to stay at a fixed physical key.
       if (e.key === "/") { frStore.toggle(); e.preventDefault(); return; }
       if (e.code === "Comma") { settingsPanel.toggle(); e.preventDefault(); return; }
-      // Save / Save As / Open work even while a node field is focused (and must
-      // preventDefault to block the browser's own save/open dialogs).
+      // Live even while a node field is focused; preventDefault blocks the browser's
+      // own save/open dialogs.
       if (e.code === "KeyS") { void saveToDisk({ forceDialog: e.shiftKey }); e.preventDefault(); return; }
       if (e.code === "KeyO") { void openFromDisk(); e.preventDefault(); return; }
-      // Ctrl+Shift+L: genuine reload of the current document (replays the
-      // cinematic). A deliberate combo so it can't fire by accident; avoids the
-      // browser's own reload keys (Ctrl+R / Ctrl+Shift+R / F5).
+      // A deliberate combo that avoids the browser's own reload keys.
       if (e.code === "KeyL" && e.shiftKey) { void documentStore.reloadCurrent(); e.preventDefault(); return; }
       if (editable) return;
-      // Ctrl+Shift+G: collapse the selected nodes into a Composite — the
-      // computing-subgraph counterpart to bare-G's Group (which just frames
-      // a selection). Mirrors createGroupFromSelection's own hotkey guard.
       if (e.code === "KeyG" && e.shiftKey) {
         const editor = editorRef.current;
         const area = areaRef.current;
@@ -301,19 +250,13 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         }
         e.preventDefault(); return;
       }
-      // Select all: capture Ctrl/Cmd+A so the browser doesn't select page
-      // text — select every node instead (deleting/moving them takes their
-      // cables along).
       if (e.code === "KeyA") {
         const editor = editorRef.current;
         if (editor) {
           unselectAllNodesFromProcess();
           cableSelectionStore.set(null);
-          // "All" = everything the user can SEE and act on: skip members hidden
-          // inside a collapsed group (visibility:hidden but still laid out) and
-          // isolate's receded non-focus nodes (opacity .08, pointer-events none) —
-          // same rule as the lasso. Deleting a collapsed group never deletes its
-          // members (they just unhide), so nothing becomes unreachable.
+          // "All" = only what the user can SEE and act on (the lasso's rule):
+          // collapsed-group members and isolate's receded nodes are skipped.
           const selectable = editor.getNodes().filter(
             (n) => !groupCollapseStore.isNodeHidden(n.id) && isolateStore.isVisible(n.id),
           );
@@ -339,10 +282,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
       const history = historyRef.current;
       if (!history) return;
-      // Gate undo/redo: a single action can restore/remove MANY cables (undoing a
-      // bulk delete or a paste), and each would otherwise fire the per-cable settle
-      // → O(cables × nodes). withGraphRebuild suppresses that and settles once, but
-      // only if topology actually changed (undoing a node move pays nothing).
+      // One undo can restore MANY cables, each otherwise firing the per-cable settle
+      // → O(cables × nodes); withGraphRebuild settles once instead.
       if (e.code === "KeyZ" && !e.shiftKey) { void withGraphRebuild(() => history.undo()); e.preventDefault(); return; }
       if (e.code === "KeyZ" &&  e.shiftKey) { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
       if (e.code === "KeyY")                { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }

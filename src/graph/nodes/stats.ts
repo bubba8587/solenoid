@@ -8,11 +8,6 @@ import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
 
-// Pair two parallel sample lists for a bivariate stat (CORREL/COVARIANCE/regression):
-// propagate the first SolError in either list (error-in → error-out), and drop any
-// index where either side is null/missing so a blank isn't silently scored as 0.
-// NaN is kept (matches the univariate forAggregate). Clean number lists pass through
-// unchanged, so this only changes behavior when a null/error is actually present.
 // The pairwise cell policy, shared with the formula surface (mathUtils.pairPresent):
 // first cell error propagates, a pair with a missing side drops, ragged tails truncate.
 const forPair = pairPresent;
@@ -157,9 +152,8 @@ export class QuartileNode extends ClassicPreset.Node {
         const lo = Math.floor(i), hi = Math.ceil(i);
         result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       } else {
-        // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): p must lie in [1/(n+1), n/(n+1)]
-        // or Excel returns #NUM!. The q=0/4 guard catches the endpoints; this
-        // catches an interior q at small n.
+        // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4), so p outside [1/(n+1), n/(n+1)] is #NUM!;
+        // the q=0/4 guard catches the endpoints, this catches an interior q at small n.
         if (p < 1 / (n + 1) || p > n / (n + 1)) {
           const err = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
           this.cachedResult = err; return { result: err };
@@ -201,8 +195,7 @@ export class PercentrankNode extends ClassicPreset.Node {
     if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
     const sig = Math.round(sigRaw);
     if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-    // Shared with the formula path (excelFunctions `excelPercentRank`) — interpolates
-    // between data points + truncates to `sig` digits, matching Excel. One impl both call.
+    // ONE implementation with the formula surface (excelFunctions `excelPercentRank`).
     const result = excelPercentRank(arr, v, sig, this.op === "exc");
     this.cachedResult = result;
     return { result };
@@ -314,9 +307,8 @@ export class StandardizeNode extends ClassicPreset.Node {
     const v = readInput(inputs.value, this.literals.value ?? null);
     const m = readInput(inputs.mean, this.literals.mean ?? null);
     const s = readInput(inputs.stdev, this.literals.stdev ?? null);
-    // A zero std dev divides by zero — #DIV/0! — tagged the same at every
-    // dimensionality: a scalar → a #DIV/0! scalar, a per-element zero sigma in a
-    // LIST → a per-cell #DIV/0! (array-semantics: lists carry per-cell errors).
+    // #DIV/0! is tagged at every dimensionality — a per-element zero sigma in a LIST
+    // becomes a per-cell error, not a whole-list one.
     const divZero = () => solError("#DIV/0!", "Standard deviation is zero");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (v !== null && m !== null && s !== null) {
@@ -391,9 +383,7 @@ export class FisherNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
     const v = readInput(inputs.value, this.literals.value ?? null);
-    // FISHER is only defined on the open interval (−1, 1). A value outside it is a
-    // domain error — #DOMAIN! — tagged the same at every dimensionality (a scalar
-    // → a #DOMAIN! scalar, a per-element miss in a LIST → a per-cell #DOMAIN!).
+    // Defined only on (−1, 1); #DOMAIN! is tagged per-cell in a LIST, not whole-list.
     const domainErr = () => solError("#DOMAIN!", "FISHER requires −1 < x < 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (v !== null) {
@@ -464,8 +454,7 @@ export class RegressionNode extends ClassicPreset.Node {
       } else if (this.op === "intercept") {
         result = intercept;
       } else {
-        // steyx — needs at least 3 points for the (n−2) denominator; fewer is
-        // "not enough data yet", a blank (null), not an error.
+        // The (n−2) denominator needs 3+ points; fewer is a blank, not an error.
         result = n >= 3 ? Math.sqrt((SSyy - slope * SSxy) / (n - 2)) : null;
       }
     }
@@ -526,9 +515,8 @@ export class ModeNode extends ClassicPreset.Node {
     super("Mode");
     this.label = init?.label ?? "MODE";
     this.addInput("list", listIn("List"));
-    // Number combo output (scalar OR list): ONE most-frequent value comes out as a
-    // scalar; when several tie, ALL of them come out as a list — so there's no
-    // arbitrary tie-break to pick (supersedes Excel's MODE.SNGL/MODE.MULT split).
+    // Combo output: one mode → scalar, a tie → the full list, so no arbitrary tie-break
+    // is needed (this supersedes Excel's MODE.SNGL/MODE.MULT split).
     this.addOutput("result", numListOut("Result"));
   }
 
@@ -857,16 +845,10 @@ export class TrendNode extends ClassicPreset.Node {
 }
 
 // ─── Interpolate (List = 1-D, Grid = fill a bordered 2-D table) ──────────────────
-// A true lookup-table interpolation, which Excel has no direct function for:
-// LOOKUP/XLOOKUP do a STEP match (nearest key, no blending), and FORECAST/TREND fit a
-// regression LINE through the cloud rather than honouring each point. One node, two
-// modes (a dropdown swaps the socket set):
-//  • LIST — 1-D: interpolate y for a query x between known (x, y) points.
-//  • GRID — fill the blanks in a coordinate-BORDERED table. The first row holds the X
-//    coordinate of each column, the first column the Y coordinate of each row (the
-//    top-left corner is ignored on input and blanked on output); each blank interior
-//    cell is filled by interpolating from the known cells. ONE self-describing table in
-//    and out — coordinates sit next to their data, no parallel-list alignment to eyeball.
+// Two modes; the dropdown swaps the whole socket set:
+//  • LIST — interpolate y for a query x between known (x, y) points.
+//  • GRID — fill the blanks of a coordinate-BORDERED table (row 1 = X coords,
+//    column 1 = Y coords, top-left ignored on input and blanked on output).
 // Both CLAMP at the ends (no extrapolation past the known range).
 
 export type InterpolateMode = "list" | "grid";
@@ -900,17 +882,12 @@ export class InterpolateNode extends ClassicPreset.Node {
     this._rebuildSockets();
   }
 
-  // Rebuild the I/O set for the current mode. The two modes are different operations
-  // with different sockets (LIST: two data lists + a combo query; GRID: a numeric
-  // table + four axis lists), so the dropdown swaps the whole set — see
-  // applyInterpolateMode, which drops this node's cables first (removeInput is unsafe
-  // while a cable references the socket).
+  // Callers must drop this node's cables first (applyInterpolateMode) — removeInput is
+  // unsafe while a cable still references the socket.
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
     if (this.mode === "grid") {
-      // ONE self-describing table: row 1 = X coords, column 1 = Y coords, interior = Z
-      // with blanks to fill. Output = the same bordered grid, blanks filled.
       this.addInput("grid", tableIn("Bordered grid"));
       this.addOutput("result", tableOut("Filled grid"));
       this.height = 215;
@@ -918,8 +895,7 @@ export class InterpolateNode extends ClassicPreset.Node {
     }
     this.addInput("ys",     listIn("Known Ys"));
     this.addInput("xs",     listIn("Known Xs"));
-    // Query is a numlist COMBO (scalar-or-list): a single X in → a single y out,
-    // a list of Xs in → a list out (result mirrors the query's shape).
+    // Combo query: the result mirrors the query's shape, scalar in → scalar out.
     this.addInput("new_xs", numListIn("X"));
     this.addOutput("result", numListOut("Interpolated Y"));
     this.height = 215;
@@ -935,8 +911,6 @@ export class InterpolateNode extends ClassicPreset.Node {
     // Known data: propagate the first error, drop pairs missing on either side.
     const { error, xs, ys } = forPair(xsIn?.[0] ?? null, ysIn?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    // The combo query arrives as a scalar (a single X wired/typed) or an array (a
-    // list wired) — readInput unwraps it and falls back to the literal when unwired.
     const q = readInput(inputs.new_xs as (number | (number | null | SolError)[] | null | SolError)[] | undefined, this.literals.x);
     if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
     const noData = xs.length === 0;
@@ -1029,8 +1003,8 @@ export class LogestNode extends ClassicPreset.Node {
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }) {
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedList = error; return { result: error }; }
-    // Shared exponential-fit kernel (mathUtils) — LOGEST/GROWTH registrations run
-    // the same one. y ≤ 0 or a degenerate fit stays the quiet empty list.
+    // ONE implementation with the LOGEST/GROWTH registrations; a degenerate fit stays
+    // the quiet empty list.
     const fit = expFit(xs, ys);
     const result: number[] = fit ? [fit.m, fit.b] : [];
     this.cachedList = result;

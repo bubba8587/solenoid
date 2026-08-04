@@ -27,22 +27,20 @@ async function zoomBy(delta: number) {
   await area.area.zoom(next, (cx - x) * ratio, (cy - y) * ratio);
 }
 
-// The chrome panels overlay the canvas, so a plain zoom-to-fit centers content
-// under the header / behind the side panels. Measure the live chrome rects and
-// fit into the free rectangle between them instead.
+// The chrome panels overlay the canvas, so a plain zoom-to-fit centers content under the
+// header / behind the side panels; fit into the free rectangle between the live rects.
 function visibleInsets(c: DOMRect) {
   const q = (s: string) => document.querySelector(s) as HTMLElement | null;
-  // A hidden panel (display:none) still answers getBoundingClientRect with an
-  // all-zero rect at (0,0), which reads as a real edge and collapses the fit region.
-  // Null out zero-area rects so a folded panel reserves nothing.
+  // A display:none panel still answers getBoundingClientRect with an all-zero rect at
+  // (0,0), which reads as a real edge — null those out so a folded panel reserves nothing.
   const rect = (el: HTMLElement | null) => {
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return r.width === 0 && r.height === 0 ? null : r;
   };
   const M = 14; // breathing margin off each panel
-  // Mobile chrome is two full-width edges only. The side controls are small floating
-  // buttons, NOT full-height panels — reserving them would shrink the width wrongly.
+  // Mobile chrome is two full-width edges only: the side controls are small floating
+  // buttons, so reserving them would shrink the width wrongly.
   if (IS_MOBILE) {
     const topbar = rect(q(".solenoid-topbar"));
     const bar = rect(q(".solenoid-mobile-bar"));
@@ -69,15 +67,14 @@ function visibleInsets(c: DOMRect) {
   };
 }
 
-// Chrome-aware zoom-to-fit. Exported so Cleanup frames the view identically to the
-// navmenu Fit button instead of a raw, chrome-unaware zoomAt.
+// Chrome-aware zoom-to-fit; Cleanup calls it so it frames the view like the Fit button.
 export async function fitAll() {
   const area = getActiveArea(); // fit the graph you're looking at (drill-in too)
   const editor = getActiveEditor();
   if (!area || !editor) return;
 
-  // Same geometry the minimap uses: hidden members of a collapsed group are dropped,
-  // and a collapsed group is sized to its compact rendered box.
+  // Same geometry the minimap uses: hidden members dropped, a collapsed group sized to
+  // its compact rendered box.
   const rects = collapsedAwareNodesRect();
   if (rects.length === 0) return;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -107,14 +104,12 @@ export async function fitAll() {
   await area.area.translate(ax - cx * k, ay - cy * k);
 }
 
-/** Floating canvas-tool cluster (upper-right): zoom, fit-to-view, the canvas lock,
- *  the cable flourish. These act on the viewport, not the document, so they stay on
- *  the canvas rather than moving into the TopBar. */
+/** These act on the viewport, not the document, so they stay on the canvas rather than
+ *  moving into the TopBar. */
 export function NavMenu() {
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // Fullscreen shows on any TOUCH-primary device (IS_COARSE, not IS_MOBILE): a phone,
-  // but also a tablet running the desktop UI — neither has an F11 key. Hidden where
-  // the browser can't do it (iOS Safari), so it's never a dead button.
+  // Fullscreen shows on any TOUCH-primary device (IS_COARSE, not IS_MOBILE) — no F11 key
+  // there — and is hidden where the browser can't do it, so it's never a dead button.
   const showFullscreen = IS_COARSE && fullscreenSupported();
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {

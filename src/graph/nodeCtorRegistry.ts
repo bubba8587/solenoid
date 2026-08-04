@@ -1,13 +1,8 @@
 import { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "./catalogUtils";
 
-// ─── Class-name → constructor registry, derived from the Add-menu catalog ───────
-// Every catalog leaf is a factory for one of our node classes; calling each once
-// and recording its constructor gives a complete name→Ctor map without hand-
-// listing ~150 classes. Built lazily and cached. Shared by persistence.ts (the
-// top-level graph loader) and composite.ts (a Composite node's own internal
-// subgraph, which is serialized independently of the outer graph — see
-// CompositeNode.hydrate).
+// Name→Ctor map DERIVED by calling every catalog factory once, so no ~150-class list has to
+// be hand-maintained; built lazily and cached.
 
 export type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
 
@@ -22,8 +17,7 @@ export function ctorRegistry(): Map<string, NodeCtor> {
       const ctor = inst.constructor as NodeCtor;
       if (!m.has(ctor.name)) m.set(ctor.name, ctor);
     } catch {
-      // A factory that can't construct standalone is skipped — it just won't
-      // round-trip (none currently do this).
+      // A factory that can't construct standalone is skipped; it just won't round-trip.
     }
   }
   _ctorByName = m;

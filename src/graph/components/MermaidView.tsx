@@ -2,11 +2,9 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, themeAccent } from "../palette";
 
-// Renders a mermaid.js diagram from source → SVG. mermaid is a heavy dep (d3/dagre),
-// so it MUST stay dynamically imported — off the main bundle and cold-start path.
-// Themed with the app's live palette via the "base" theme + themeVariables.
+// mermaid is a heavy dep (d3/dagre), so it MUST stay dynamically imported — off the main
+// bundle and cold-start path.
 
-// The 12-way categorical set for pie slices / series, in hue-distinct order.
 // Resolved through the ACTIVE palette + mode, so a palette switch re-colors series.
 const SERIES_SLOTS = [
   "blue", "gold", "teal", "pink", "green", "purple",
@@ -73,19 +71,15 @@ function buildThemeVariables(mode: "dark" | "light"): Record<string, string | bo
   };
 }
 
-// One mermaid module per session, re-initialized with the current config before
-// every render (theme can change between renders). `securityLevel: "loose"` is safe
-// here: the diagram source is authored by the app's single user. initialize is
-// synchronous, so returning after it in the .then keeps render() ordered after the
-// (re)configure.
+// One mermaid module per session, re-initialized before every render since the theme can
+// change. `securityLevel: "loose"` is safe here: the source is authored by the app's user.
 let _mermaidMod: Promise<typeof import("mermaid").default> | null = null;
 function loadMermaid(config: Record<string, unknown>): Promise<typeof import("mermaid").default> {
   if (!_mermaidMod) _mermaidMod = import("mermaid").then((m) => m.default);
   return _mermaidMod.then((mm) => { mm.initialize(config); return mm; });
 }
 
-// mermaid.render needs a unique DOM id per call and can't use Math.random in some
-// sandboxes.
+// mermaid.render needs a unique DOM id per call; Math.random is unavailable in some sandboxes.
 let _renderSeq = 0;
 
 export function MermaidView({ source, className }: { source: string; className?: string }) {

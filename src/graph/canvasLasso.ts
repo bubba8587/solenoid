@@ -1,7 +1,5 @@
-// Shift-drag lasso selection. AutoCAD-style:
-// CW winding (positive signed area in screen coords) = touch / crossing —
-// any overlap with a node selects it. CCW winding = window / enclose — only
-// nodes fully inside the lasso are selected.
+// AutoCAD winding rule: CW (positive signed area in screen coords) = touch/crossing,
+// CCW = window/enclose.
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
@@ -28,19 +26,15 @@ export interface LassoDeps {
   setLasso: (l: LassoState) => void;
 }
 
-// Installs the capture-phase pointerdown starter on the container; returns the remover.
 export function installLassoSelection(deps: LassoDeps): () => void {
   const { container, editorRef, areaRef, setLasso } = deps;
   const points: Pt[] = [];
   let active = false;
 
-  // Node screen-corners, cached once at lasso start. A lasso owns the pointer,
-  // so the canvas can't pan/zoom and nodes can't move during it — their rects
-  // are stable. Reading them once kills the O(N) getBoundingClientRect (a
-  // forced reflow) that otherwise ran every coalesced frame.
+  // Cached once at lasso start: the lasso owns the pointer, so rects are stable and
+  // reading them per frame would force an O(N) reflow.
   let nodeCorners: Array<{ id: string; corners: Pt[] }> = [];
-  // Signature of the last applied node match, so an unchanged set (lasso grew
-  // but crossed no new node) skips the unselect-all + reselect churn.
+  // Signature of the last applied match, so an unchanged set skips the reselect churn.
   let lastNodeSig = "";
   function cacheNodeRects() {
     const area = areaRef.current;
@@ -48,16 +42,10 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!area) return;
     const cr = container.getBoundingClientRect();
     for (const [id, view] of area.nodeViews) {
-      // Skip members hidden inside a collapsed group. They're `visibility:hidden`
-      // but still LAID OUT at their pre-collapse positions (deliberately, to keep
-      // socket/size measurement valid), so getBoundingClientRect returns a real
-      // box the lasso would otherwise "reach over" and select invisibly — pulling
-      // them into a new group when the user then hits G. The group node itself
-      // stays visible (never in this set), so a collapsed group is still lassoable.
+      // Members of a collapsed group stay LAID OUT at their pre-collapse positions,
+      // so their rects are real and the lasso would select them invisibly.
       if (groupCollapseStore.isNodeHidden(id)) continue;
-      // Isolate's non-focus nodes are receded to opacity .08 + pointer-events:none —
-      // effectively invisible, so the lasso must not reach them either (same rule
-      // as Ctrl+A: you select what you can see).
+      // Same rule as Ctrl+A: the lasso reaches only what you can see.
       if (!isolateStore.isVisible(id)) continue;
       const br = view.element.getBoundingClientRect();
       nodeCorners.push({ id, corners: [
@@ -69,13 +57,8 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     }
   }
 
-  // applyLasso is heavy — it bbox-tests every node AND (on release) samples
-  // every cable's SVG path (getTotalLength/getPointAtLength). `pointermove`
-  // fires at the mouse's poll rate (well above the refresh rate on a gaming
-  // mouse), so running it per move saturates the main thread. Coalesce to at
-  // most one apply per animation frame; the visual lasso outline still updates
-  // per move. Live frames select nodes only — the precise cable hit-test is
-  // deferred to release (drop), off the hot path.
+  // `pointermove` fires at the mouse's poll rate, far above the refresh rate, so
+  // applyLasso is coalesced to one call per frame; the outline still updates per move.
   let lassoRaf = 0;
   let latestMode: "touch" | "enclose" = "touch";
   const scheduleApply = (mode: "touch" | "enclose") => {
@@ -96,36 +79,26 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   }
 
   function onDown(e: PointerEvent) {
-    // Shift-drag (desktop) or touch select mode (mobile) starts a lasso; a
-    // plain primary-button drag otherwise falls through to the area pan.
+    // A plain primary-button drag must fall through to the area pan.
     const selectMode = touchSelectStore.get();
     if ((!e.shiftKey && !selectMode) || e.button !== 0) return;
-    // Multi-touch is a pinch / two-finger pan, NEVER a lasso. If a second finger
-    // lands (this pointer OR a lasso already in flight), abort the lasso and let
-    // this pointer reach the area WITHOUT stopPropagation, so rete can pan/zoom.
-    // (The census already counts this pointer: it listens on WINDOW capture, which
-    // runs before this container-capture handler.) Checked before the node-target
-    // test so a second finger landing on a node still releases the lasso.
+    // Multi-touch is a pinch, NEVER a lasso: abort and let the pointer reach the area
+    // WITHOUT stopPropagation. Must precede the node-target test so a second finger
+    // landing on a node still releases the lasso.
     if (active || isPinching()) {
       cancelLasso();
       return;
     }
-    // Don't start a lasso when the click landed on a node or a socket inside
-    // one (so click-drag-on-socket cable creation isn't stolen, and tapping a
-    // note/group in touch-select mode selects it rather than lassoing). Test
-    // area.nodeViews containment — the authoritative node-root check; a CSS class
-    // list silently misses whichever roots it forgot.
+    // A press inside a node starts no lasso (socket cable-drags must survive). Test
+    // area.nodeViews containment — a CSS class list silently misses roots.
     const target = e.target as Element | null;
     const area = areaRef.current;
     if (target && area) {
       for (const [, v] of area.nodeViews) if (v.element.contains(target)) return;
     }
     e.preventDefault();
-    // Desktop shift-lasso: stop the press reaching rete's area drag, or it pans
-    // while you lasso. Mobile select mode does NOT stopPropagation — rete's Drag
-    // (pan) handler is disabled for the duration instead (see the select-mode
-    // effect), and the ZOOM handler must still SEE this pointer so a second finger
-    // makes a 2-finger pinch/pan (stopPropagation here would hide finger 1 from it).
+    // Desktop stops the press reaching rete's area drag, or it pans while you lasso.
+    // Mobile select mode must NOT — the zoom handler has to see finger 1 for a pinch.
     if (!selectMode) e.stopPropagation();
     active = true;
     points.length = 0;
@@ -139,8 +112,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   }
   function onMove(e: PointerEvent) {
     if (!active) return;
-    // A finger joined mid-drag (pinch/pan) — bail even if this pointer's own
-    // moves keep firing (the resting first finger's wouldn't).
+    // A finger joined mid-drag — bail even though this pointer's moves keep firing.
     if (isPinching()) { cancelLasso(); return; }
     const p = relPoint(e);
     const last = points[points.length - 1];
@@ -148,8 +120,6 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     points.push(p);
     const mode: "touch" | "enclose" = modeOf(points);
     setLasso({ points: [...points], mode });
-    // Live selection — coalesced to one apply per frame (see scheduleApply) so
-    // nodes light up / dim as the lasso grows without per-move thrash.
     if (points.length >= 3) scheduleApply(mode);
   }
   function onUp() {
@@ -158,15 +128,12 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     lassoActiveStore.set(false); // hand back to the DOM (after the canvas settle)
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
-    // Flush a final apply so the release selection is exact (a coalesced frame
-    // may still be pending, or the last move may not have applied yet).
+    // Flush a final apply — a coalesced frame may still be pending.
     if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }
     if (points.length >= 3) applyLasso(points, latestMode, true);
     setLasso(null);
   }
-  // Abort an in-flight lasso WITHOUT applying it — used when a gesture turns out
-  // to be a pinch / two-finger pan. Leaves the current selection untouched (a
-  // clean 2-finger gesture lands both fingers before the first builds a polygon).
+  // Aborts WITHOUT applying, leaving the current selection untouched.
   function cancelLasso() {
     if (!active) return;
     active = false;
@@ -193,28 +160,21 @@ export function installLassoSelection(deps: LassoDeps): () => void {
       }
       if (hit) matched.push(id);
     }
-    // Skip the re-apply when the match set is unchanged from the last frame —
-    // unselect-all + reselect re-renders every selected node, so this avoids
-    // per-frame churn while the lasso grows over empty space.
+    // unselect-all + reselect re-renders every selected node, so skip an unchanged set.
     const sig = mode + "|" + matched.join(",");
     if (sig !== lastNodeSig) {
       lastNodeSig = sig;
       unselectAllNodesFromProcess();
       for (let i = 0; i < matched.length; i++) {
-        // First node replaces; rest accumulate.
         selectNodeFromProcess(matched[i], i > 0);
       }
     }
 
-    // Precise cable hit-testing is deferred to release (drop) — it samples
-    // every cable's SVG path, far too heavy for the per-frame hot path.
+    // Cable hit-testing samples every cable's SVG path, far too heavy for the
+    // per-frame path, so it runs only on release.
     if (!includeCables) return;
 
-    // Cables: sample each cable's rendered hit paths (canvas coords → screen
-    // via the area transform) and test the samples against the polygon.
-    // Touch mode: any sample inside selects; enclose: every sample must be
-    // inside. A Ribbon is one entity — its members are judged as a unit and
-    // selected together.
+    // A Ribbon is ONE entity — its members are judged as a unit and selected together.
     const { x: tx, y: ty, k } = area.area.transform;
     const unitHit = (unit: string[]): boolean => {
       let any = false;

@@ -1,38 +1,21 @@
-// ─── Runtime perf probe ─────────────────────────────────────────────────────────
-// A lightweight, zero-cost-when-off instrument for the compute pipeline: which NODE
-// is slow, and how much time each processGraph spends crossing IPC to Rust.
-//
-// Turn it on from the devtools console with `window.__solenoidPerf = true` (the same
-// flag process.ts's compute/render log and Canvas's pan/zoom fps probe already read).
-// Then:
-//   • every node's data() is timed (via installErrorGuards) — sync and async both,
-//   • every engine IPC call is timed + counted + sized (via ipcBridge),
-//   • processGraph logs a per-pass summary: full vs targeted, IPC calls/ms this pass,
-//     and the slowest nodes,
-//   • `window.__solenoidStats()` dumps the cumulative node + IPC tables (console.table),
-//     `window.__solenoidStatsReset()` clears them.
-//
-// Everything here is a plain boolean read + Map writes; when the flag is off the hot
-// paths short-circuit before touching any of it.
+// Compute-pipeline perf probe, inert unless `window.__solenoidPerf = true`: times
+// every node data() + engine IPC call; `window.__solenoidStats()` dumps the tables.
 
 export function perfEnabled(): boolean {
   return Boolean((globalThis as { __solenoidPerf?: boolean }).__solenoidPerf);
 }
 
-// ─── Cumulative accumulators (for the console dump) ─────────────────────────────
 interface NodeStat { type: string; calls: number; totalMs: number; maxMs: number }
 interface IpcStat { calls: number; totalMs: number; maxMs: number; bytes: number }
 
 const nodeStats = new Map<string, NodeStat>(); // keyed by node id
 const ipcStats = new Map<string, IpcStat>();   // keyed by IPC command
 
-// Running IPC totals so a caller (processGraph) can snapshot a DELTA across one pass
-// without walking the whole map.
+// Running totals, so a caller can snapshot a per-pass DELTA without walking the map.
 let ipcCalls = 0;
 let ipcMs = 0;
 
-// Per-pass node buffer: installErrorGuards pushes each timed data() here; processGraph
-// clears it at the top of a pass (beginPass) and reads the slowest at the end.
+// Per-pass buffer: installErrorGuards pushes here, processGraph clears at beginPass.
 let passBuffer: Array<{ id: string; type: string; ms: number }> = [];
 
 /** Record one node's data() duration. Called from installErrorGuards only when the
@@ -91,8 +74,7 @@ function resetStats(): void {
   passBuffer = [];
 }
 
-// Expose the dump/reset on window so they're reachable from the devtools console
-// without importing anything. Guarded for the node test env (no window).
+// Reachable from the devtools console without an import; guarded for the node env.
 if (typeof globalThis !== "undefined") {
   (globalThis as Record<string, unknown>).__solenoidStats = dumpStats;
   (globalThis as Record<string, unknown>).__solenoidStatsReset = resetStats;

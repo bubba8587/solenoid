@@ -1,12 +1,7 @@
-// Two pieces of shared state about cables that live OUTSIDE rete's
-// editor: the currently "selected" connections (highlight + delete via
-// keyboard), and the set of connection IDs currently rendered as
-// "ghosts" (a dashed cable left behind after splicing a 1-in/1-out
-// node out of a chain — click to materialise as a real cable).
+// Cable state that lives OUTSIDE rete's editor: cable selection, socket highlight, and
+// ghost cables (the dashed stub left after splicing a node out of a chain).
 
 type Listener = () => void;
-
-// selection
 
 let _selectedConnIds = new Set<string>();
 let _selVersion = 0;
@@ -30,7 +25,6 @@ export const cableSelectionStore = {
   count: () => _selectedConnIds.size,
   // Version snapshot for useSyncExternalStore (stable primitive getter).
   version: () => _selVersion,
-  // Replace the selection with one cable (or clear with null).
   set: (id: string | null) => {
     cableSelectionStore.replaceAll(id ? [id] : []);
   },
@@ -58,15 +52,9 @@ export const cableSelectionStore = {
   },
 };
 
-// socket highlight
-// Three independent slots so the three sources of highlight — cable
-// drag, cable hover, and socket hover — never overwrite each other.
-// A socket is lit if it appears in any slot.
-//
-// Keeping them separate is critical: when the mouse slides off an
-// output socket onto its cable, the socket's mouseleave fires before
-// the cable's mouseenter. If they share a slot, the cable's mouseenter
-// would see its work cleared by the socket's mouseleave.
+// Three independent highlight slots (drag, cable hover, socket hover); a socket is lit
+// if any slot holds it. Sharing one slot lets the socket's mouseleave clear the cable's
+// mouseenter as the pointer slides off a socket onto its cable.
 
 export function dragSocketKey(nodeId: string, key: string) {
   return `${nodeId}::${key}`;
@@ -85,10 +73,8 @@ function notifyHighlights() {
   for (const l of _hlListeners) l();
 }
 
-// Skip the notify when the incoming keys equal the slot's current set — the drag
-// handler calls setDrag on EVERY pointermove, and each notify re-renders every
-// mounted NodeSocket, CollapsedInputPill and GroupNode summary (hidden collapsed
-// members included), which janks cable drags on a big graph.
+// Skip the notify on unchanged keys: setDrag fires on EVERY pointermove and each notify
+// re-renders every mounted socket/pill/group summary, janking drags on a big graph.
 function sameKeys(cur: Set<string>, keys: string[]): boolean {
   if (cur.size !== keys.length) return false;
   for (const k of keys) if (!cur.has(k)) return false;
@@ -120,9 +106,7 @@ export const socketHighlightStore = {
   },
 };
 
-// socket-hover cable propagation
-// Cable IDs highlighted because a SOCKET is being hovered.
-// Only NodeSocket writes/clears this.
+// Cable IDs highlighted because a SOCKET is hovered — only NodeSocket writes/clears it.
 
 const _shPropIds = new Set<string>();
 let _shPropVersion = 0;
@@ -148,10 +132,8 @@ export const socketHoverCableStore = {
   },
 };
 
-// ghost cables
-
-// A side set keyed by id, not a `.ghost` property on the connection
-// object — rete copies / serialises that object opaquely.
+// A side set keyed by id, not a `.ghost` property on the connection object — rete
+// copies / serialises that object opaquely.
 
 const _ghostIds = new Set<string>();
 const _ghostListeners = new Set<Listener>();

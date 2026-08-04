@@ -8,19 +8,16 @@ import {
 import { getRecalcGen } from "../process";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
-// The pure ops these nodes compute with, shared verbatim with the formula surface
-// (see textOps.ts). Re-exported so the node barrel keeps its shape.
+// The pure ops, shared verbatim with the formula surface; re-exported so the node
+// barrel keeps its shape.
 import { splitText, textAfterBefore, urlEncode, regexApply, safeRegex, reverseText, filterTextList } from "./textOps";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp } from "./textOps";
 export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
 // ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
-// Every text OPERAND is a `strcombo` and every element-wise text node broadcasts,
-// so UPPER/LEFT/SUBSTITUTE/… take one string or a whole list of them — Excel's
-// array-formula behavior (`=UPPER(A1:A10)` spills), matching what the number and
-// date families already did. `broadcastCells` does the zip; a scalar in still
-// yields a scalar out.
+// Every text OPERAND is a `strcombo` and broadcasts, matching Excel's array-formula
+// spill; a scalar in still yields a scalar out.
 //
 // Deliberately NOT broadcast, because they aren't element-wise operands:
 //  - CONCAT / TEXTJOIN REDUCE a set of strings to one — Excel's CONCAT flattens an
@@ -36,31 +33,22 @@ export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 //    a scalar `any` would draw a SCALAR circle on a port that REGEXEXTRACT-all and
 //    the list path can both spill a list from.
 
-// Reads a text operand from either a wired input or the node's stringLiterals
-// fallback. A `strcombo` input may deliver a LIST, so this yields `string |
-// string[]` and the broadcaster zips whichever shape arrives.
+// A `strcombo` input may deliver a LIST, so this yields `string | string[]` and the
+// broadcaster zips whichever shape arrives.
 function strVal(
   input: (string | string[])[] | undefined,
   node: { stringLiterals?: Record<string, string> },
   key: string,
   def = "",
 ): string | string[] | null {
-  // `readInput`, NOT `?? literal`: a WIRED blank must propagate (null in → null out,
-  // the settled P6 model) instead of being swallowed into whatever text sits in the
-  // box. Only an UNWIRED slot falls back to the literal.
+  // `readInput`, NOT `?? literal`: a WIRED blank must propagate instead of being
+  // swallowed by whatever text sits in the box.
   return readInput(input, node.stringLiterals?.[key] ?? def);
 }
 
-/** The same read for an input that stayed a scalar `string` socket (a delimiter,
- *  a separator, a filter pattern) — the socket lattice can't deliver a list there,
- *  so the caller gets a plain string it can `.split()` / `.join()` with.
- *
- *  DELIBERATELY still `?? literal`, unlike `strVal` above. These select a MODE
- *  rather than carrying an operand, and a wired blank there is genuinely ambiguous:
- *  it could mean "the mode is unknown, so the answer is unknown" (propagate) or
- *  "nothing supplied, use the default" (Excel's reading of an omitted optional
- *  argument). An operand blank has no such ambiguity. The same holds for `basis` /
- *  `return_type` / `weekend_code` in date.ts. */
+/** The read for a scalar `string` socket (a delimiter, separator, pattern), which
+ *  the lattice can never deliver a list to. DELIBERATELY still `?? literal`, unlike
+ *  `strVal`: these select a MODE, where a wired blank is genuinely ambiguous. */
 function strScalar(
   input: string[] | undefined,
   node: { stringLiterals?: Record<string, string> },
@@ -92,9 +80,7 @@ export class TextInputNode extends ClassicPreset.Node {
 }
 
 // ─── Promo (easter egg) ────────────────────────────────────────────────────────
-// A no-input source that emits a random Solenoid tagline. Lives in the "Other"
-// add-menu category (and exists mostly to populate it). Volatile: re-rolls on
-// recalc (F9 / requestRecalc), like the RAND family.
+// A no-input tagline source. Volatile: re-rolls on recalc, like the RAND family.
 const PROMO_LINES = [
   "Solenoid: wire it, don't write it. ⚡",
   "Spreadsheets, but the formulas have shapes now.",
@@ -141,11 +127,8 @@ export const TEXT_TRANSFORM_OP_META = {
   clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: CLEAN." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
-// UPPER/LOWER/TRIM are verified byte-identical to Formula.js, so those three route
-// through the shared seam. PROPER stays hand-rolled: FX's PROPER only capitalizes
-// after certain separators, not Excel's "after any non-letter" rule (verified
-// divergence, e.g. "a-b_c.d" → ours "A-B_c.D", FX "A-b_c.d"). CLEAN has no Formula.js
-// equivalent.
+// PROPER stays hand-rolled: FX capitalizes only after certain separators, not Excel's
+// "after any non-letter" rule ("a-b_c.d" → ours "A-B_c.D", FX "A-b_c.d").
 function applyTextTransform(op: TextTransformOp, text: string): string {
   switch (op) {
     case "upper": return resolveExcelFunction("UPPER")!(text) as string;
@@ -213,8 +196,7 @@ export class ConcatNode extends ClassicPreset.Node {
   cachedText: string | null = null;
   // Sparse — each row's literal is only set if the user typed into it.
   stringLiterals: Record<string, string> = {};
-  // Extensible inputs: rows added/removed by the user (see ExtensibleInputs),
-  // exactly like List Input but string-typed. `nextInputId` keeps keys unique.
+  // `nextInputId` keeps extensible-row keys unique across removals.
   nextInputId = 0;
   readonly valueSocket = stringSocket;
   width = 180; height = 225;
@@ -222,8 +204,7 @@ export class ConcatNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("Concat");
     this.label = init?.label ?? "CONCAT";
-    // Rebuild the exact input keys on load/paste (so saved literals + cables
-    // still line up); otherwise start with four blank rows.
+    // Load/paste must rebuild the EXACT keys or saved literals + cables misalign.
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
     } else {
@@ -250,10 +231,8 @@ export class ConcatNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, string[] | undefined>): { result: string } {
-    // A REDUCER, so the aggregator half of the value model applies: a missing is
-    // SKIPPED (contributes nothing to the join), not propagated the way an
-    // element-wise operand is. `readInput` first so a WIRED blank is skipped rather
-    // than resurrecting whatever text is typed in that row's box.
+    // A REDUCER, so a missing is SKIPPED, not propagated; `readInput` first, or a
+    // WIRED blank would resurrect the text typed in that row's box.
     const values = Object.keys(this.inputs).map((key) => readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "");
     const result = resolveExcelFunction("CONCAT")!(...values) as string;
     this.cachedText = result;
@@ -297,13 +276,12 @@ export class TextSliceNode extends ClassicPreset.Node {
     len?: (number | number[])[];
   }): { result: CellResult<string> } {
     const text = strVal(inputs.text, this, "text");
-    // Only the operands the CHOSEN op reads take part in the zip — otherwise a list
-    // left in the unused MID boxes would spill a LEFT result into a list.
+    // Only the CHOSEN op's operands join the zip, or a list left in an unused MID box
+    // would spill a LEFT result.
     const result = this.op === "mid"
       ? broadcastCells((t: string, s: number, l: number) => {
           const len = Math.max(0, Math.floor(l));
-          // Formula.js MID errors on num_chars = 0 (a real Excel input that returns "") —
-          // guard that one edge, delegate the rest (verified byte-identical otherwise).
+          // Formula.js MID errors on num_chars = 0, which Excel returns "" for.
           return len === 0 ? "" : resolveExcelFunction("MID")!(t, Math.max(1, Math.floor(s)), len) as string;
         },
         text,
@@ -355,10 +333,8 @@ export class TextFindNode extends ClassicPreset.Node {
     const result = broadcastCells((needle: string, haystack: string, s: number) => {
       const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(
         needle, haystack, Math.max(1, Math.floor(s)));
-      // Excel FIND/SEARCH return #VALUE! when the substring is absent — Formula.js
-      // signals the same case as an Error, so map it to our tagged SolError (and the
-      // formula path's FIND via Formula.js → #VALUE! too), keeping node == formula == Excel.
-      // Per CELL, so one unmatched string in a list doesn't fail the whole result.
+      // Excel returns #VALUE! for an absent substring, which Formula.js signals as an
+      // Error — map it per CELL so one unmatched string doesn't fail the whole result.
       return raw instanceof Error
         ? solError("#VALUE!", "Find text not found within the text")
         : raw as number;
@@ -520,8 +496,7 @@ export class CharCodeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { code?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
-    // An out-of-range code point (or an empty string) is a per-cell blank, so one
-    // bad element in a list doesn't blank the rest.
+    // An out-of-range code point is a per-cell blank, not a whole-list one.
     const result: CellResult<string | number> = this.op === "char"
       ? broadcastCells((c: number) => {
           try { return String.fromCodePoint(Math.floor(c)); } catch { return null; }
@@ -622,7 +597,7 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
     text?: (string | string[])[];
     delimiter?: (string | string[])[];
   }): { result: CellResult<string> } {
-    // A blank delimiter, or one an element doesn't contain, is a per-cell blank.
+    // A blank or absent delimiter is a per-cell blank.
     const result = broadcastCells((text: string, delimiter: string) => textAfterBefore(this.op, text, delimiter),
       strVal(inputs.text,      this, "text"),
       strVal(inputs.delimiter, this, "delimiter"));
@@ -644,9 +619,8 @@ export class ExactNode extends ClassicPreset.Node {
     this.label = init?.label ?? "EXACT";
     this.addInput("a", strComboIn("Text 1"));
     this.addInput("b", strComboIn("Text 2"));
-    // A first-class logical (TRUE/FALSE) like Excel EXACT — not 1/0. Coerces to 1/0
-    // anywhere a number is wanted (the logical↔number socket bridge, which mirrors
-    // combo→scalar, so this combo still reaches a plain `number` input).
+    // A first-class logical like Excel EXACT, not 1/0; the logical↔number bridge
+    // still lets it reach a plain `number` input.
     this.addOutput("result", logicalComboOut("Result"));
   }
 
@@ -663,8 +637,7 @@ export class ExactNode extends ClassicPreset.Node {
 
 // ─── TEXTFILTER ──────────────────────────────────────────────────────────────
 
-// The op type + kernel live in textOps.ts (rete-free) — the TEXTFILTER
-// registration runs the identical filter (FX-1). Re-exported from the family home.
+// The op type + kernel live in textOps.ts, so node and formula run the same filter.
 export type { TextFilterOp } from "./textOps";
 
 export const TEXT_FILTER_OP_META = {
@@ -705,8 +678,8 @@ export class TextFilterNode extends ClassicPreset.Node {
 export class NumberValueNode extends ClassicPreset.Node {
   label: string;
   cachedResult: BroadcastResult = null;
-  // The separators ship EMPTY so the field shows a muted "."/"," placeholder (the
-  // default); data() treats empty/unset as the default via `||`.
+  // The separators ship EMPTY so the field shows its default as a placeholder;
+  // data() reads empty/unset as the default.
   stringLiterals: Record<string, string> = { text: "" };
   width = 180; height = 195;
 
@@ -714,8 +687,7 @@ export class NumberValueNode extends ClassicPreset.Node {
     super("NumberValue");
     this.label = init?.label ?? "NUMBERVALUE";
     this.addInput("text",        strComboIn("Text"));
-    // The separators pick a parsing CONVENTION, not a per-element operand, so they
-    // stay scalar (like the date family's basis / weekend_code).
+    // The separators pick a parsing CONVENTION, not an operand, so they stay scalar.
     this.addInput("decimal_sep", strIn("Decimal sep (default \".\")"));
     this.addInput("group_sep",   strIn("Group sep (default \",\")"));
     this.addOutput("result", numListOut("Number"));
@@ -726,9 +698,8 @@ export class NumberValueNode extends ClassicPreset.Node {
     decimal_sep?: string[];
     group_sep?: string[];
   }): { result: BroadcastResult } {
-    // An empty separator (unset field, placeholder showing — or a wired "") means
-    // "use the default"; a WIRED blank (null) is a mode selector the graph failed
-    // to supply, and propagates (value-semantics.md, "Reading an input").
+    // An empty separator means "use the default"; a WIRED blank is a mode the graph
+    // failed to supply, and propagates.
     const decRaw = readInput(inputs.decimal_sep, this.stringLiterals.decimal_sep ?? "");
     const grpRaw = readInput(inputs.group_sep, this.stringLiterals.group_sep ?? "");
     if (decRaw === null || grpRaw === null) { this.cachedResult = null; return { result: null }; }
@@ -736,14 +707,11 @@ export class NumberValueNode extends ClassicPreset.Node {
     const grpSep = grpRaw || ",";
     const result = broadcastCells((raw: string) => {
       const text = raw.trim();
-      // Empty input is blank (null); a non-empty string that won't parse is a
-      // genuine #VALUE! error — per cell, so one bad string in a list errors alone.
+      // Empty is blank; an unparseable non-empty string is #VALUE!, per cell.
       if (!text) return null;
-      // NUMBERVALUE semantics: strip group separators, normalize the decimal
-      // separator, ignore ALL whitespace (incl. embedded — "1 234" → 1234), then
-      // peel trailing `%` signs (each divides by 100 — "12%%" → 0.0012). The final
-      // parse is STRICT full-string via Number(), not parseFloat's greedy prefix, so
-      // "12x" is #VALUE! rather than 12.
+      // NUMBERVALUE order: strip groups, normalize the decimal, drop ALL whitespace,
+      // then peel trailing `%` (each ÷100). The parse is STRICT full-string Number(),
+      // never parseFloat's greedy prefix, so "12x" is #VALUE!.
       let s = text
         .split(grpSep).join("")
         .split(decSep).join(".")
@@ -825,8 +793,7 @@ export class RomanArabicNode extends ClassicPreset.Node {
         }, readInput(inputs.number, this.literals.number ?? 1))
       : broadcastCells((raw: string) => {
           const text = raw.toUpperCase().trim();
-          // Empty input is blank (null). A non-empty string with a non-Roman
-          // character is an invalid numeral (#VALUE!) — per cell.
+          // Empty is blank; a non-Roman character is an invalid numeral (#VALUE!).
           if (!text) return null;
           const map: Record<string, number> = { M:1000, D:500, C:100, L:50, X:10, V:5, I:1 };
           let out = 0; let prev = 0;
@@ -1007,13 +974,9 @@ export class ReverseTextNode extends ClassicPreset.Node {
 }
 
 // ─── Spell Number (Timesavers pack) ───────────────────────────────────────────
-// Number → English words — the perennial #1 "no Excel function" request
-// (Microsoft's own answer is a VBA SpellNumber macro). Cardinal words up to
-// the trillions; decimals read digit-by-digit ("three point one four");
-// negatives prefixed. A custom-logic pack node (no Formula.js equivalent).
-
-// spellNumber + its tables live in textOps.ts (FX-2 — the SPELLNUMBER registration
-// must not load rete); re-exported here for existing importers.
+// Number → English words: cardinals to the trillions, decimals digit-by-digit,
+// negatives prefixed. The kernel lives in textOps.ts so the SPELLNUMBER registration
+// never loads rete.
 export { spellNumber } from "./textOps";
 import { spellNumber } from "./textOps";
 
@@ -1032,9 +995,7 @@ export class SpellNumberNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[] | null)[] }): { result: CellResult<string> } {
-    // `readInput` semantics: a CONNECTED cable wins even when its value is null
-    // (which the broadcaster short-circuits per the missing contract); only an
-    // unwired slot falls back to the literal.
+    // A CONNECTED cable wins even carrying null; only an unwired slot falls back.
     const value = inputs.value === undefined || inputs.value.length === 0
       ? this.literals.value
       : inputs.value[0] ?? null;

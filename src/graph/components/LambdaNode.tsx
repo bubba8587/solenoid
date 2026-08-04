@@ -9,16 +9,13 @@ import { formulaPopup } from "../formulaPopupStore";
 import "./ExpressionNode.css";
 import { stopDragStart } from "../coarse";
 
-// LAMBDA authoring node. The λ(…) row declares the parameters (the call
-// signature — bound positionally by MAP / REDUCE / …); the formula below is the
-// body. Any formula variable that is NOT a parameter becomes a captured input
-// row, same dynamic-socket mechanics as the Expression node.
+// The λ(…) row declares the parameters, bound POSITIONALLY by MAP/REDUCE/…; any
+// formula variable that is not a parameter becomes a captured input row.
 
 export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>) {
   const [expr, setExpr] = useState(node.expr);
   const [params, setParams] = useState(node.params);
 
-  // Sync from the node when it changes elsewhere (undo/redo, formula popup).
   useEffect(() => {
     if (node.expr !== expr) setExpr(node.expr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -33,7 +30,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
     await applyLambdaChange(node, { expr: next });
   }
 
-  // Params commit on blur/Enter — every keystroke would churn sockets.
+  // Commit on blur/Enter — every keystroke would churn sockets.
   async function commitParams() {
     if (params === node.params) return;
     await applyLambdaChange(node, { params });
@@ -71,10 +68,8 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
         emit={emit}
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
-      {/* The authoring node's own box stays the compact signature at a FIXED
-          size — the FC's view-as applies downstream (Display / Report), never
-          to the source card. A plain div, not ValueDisplay: its string path
-          applies a docked FC's textScale. */}
+      {/* An FC's view-as applies DOWNSTREAM, never to this source card; a plain div
+          rather than ValueDisplay, whose string path applies a docked FC's textScale. */}
       {node.cachedValue
         ? <div className="solenoid-node__display-value">{formatLambda(node.cachedValue)}</div>
         : <ValueDisplay value={null} />}

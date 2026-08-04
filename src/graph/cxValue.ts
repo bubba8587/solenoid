@@ -1,12 +1,5 @@
-// ─── Tagged complex values — the Cx scalar ────────────────────────────────────
-// A complex number is a TAGGED OBJECT, like every other special scalar (SolError,
-// UnitCell) — rules.md VAL-15. So `Array.isArray` means exactly one thing
-// everywhere: "this is a 1-D list".
-//
-// This module is RETE-FREE (FX-2): the formula path (listOps → excelFunctions) and
-// the display layer both need the type and its formatter without loading the editor.
-// The MATH kernels live here too — the IM* formula registrations and the complex
-// nodes run the identical functions (FX-1).
+// A complex is a TAGGED OBJECT (VAL-15), so `Array.isArray` means exactly one
+// thing everywhere. RETE-FREE (FX-2), kernels shared with the IM* formulas (FX-1).
 
 import { solError, type SolError } from "./errorValue";
 
@@ -22,15 +15,9 @@ export function isCx(v: unknown): v is Cx {
   return typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true;
 }
 
-/** Assemble a complex from a component formatter, applying the WRITTEN FORM:
- *  "a + bi", "a - bi", "bi", "-bi", "i", "a", "0". The sign lives in the
- *  structure (never on the imaginary component), the unit coefficient is elided,
- *  and a zero component drops its whole term.
- *
- *  The ONE place that knows how a complex is spelled — `formatCx` and
- *  `formatCxWithAnnotation` share it so they cannot drift. `hasBothParts` tells a
- *  caller whether it produced the two-term form: the unit wrapper needs it, since
- *  "3 + 2i V" would read as the unit attaching to the imaginary term alone. */
+/** The ONE place that knows how a complex is spelled — "a + bi", "a - bi", "bi",
+ *  "-bi", "i", "a", "0" — so the formatters can't drift. `hasBothParts` reports
+ *  the two-term form, which the unit wrapper must parenthesize. */
 export function assembleCx(z: Cx, fmtNum: (n: number) => string): { text: string; hasBothParts: boolean } {
   const { re, im } = z;
   if (Number.isNaN(re) || Number.isNaN(im)) return { text: "NaN", hasBothParts: false };
@@ -42,16 +29,13 @@ export function assembleCx(z: Cx, fmtNum: (n: number) => string): { text: string
   return { text: im < 0 ? `${rStr} - ${iStr}` : `${rStr} + ${iStr}`, hasBothParts: true };
 }
 
-// Format a Cx as "a+bi", "a-bi", "bi", "a", "0"
 export function formatCx(z: Cx, digits = 4): string {
   return assembleCx(z, (n) =>
     Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "")).text;
 }
 
-/** Parse a complex out of text: Excel's forms ("3+4i", "-2.5j", "i", "4", "3+i",
- *  scientific mantissas) plus formatCx's spaced output ("3 - 4i"), so the two
- *  round-trip. Suffix `i` or `j`, per Excel. Null when the text isn't a complex —
- *  the caller decides the error (Excel answers #NUM! there). */
+/** Parse a complex out of text: Excel's forms plus formatCx's spaced output, so
+ *  the two round-trip; null when it isn't a complex (the caller picks the error). */
 export function parseCx(text: string): Cx | null {
   const s = text.trim();
   if (s === "") return null;
@@ -65,9 +49,8 @@ export function parseCx(text: string): Cx | null {
   return null;
 }
 
-// ─── Math kernels ─────────────────────────────────────────────────────────────
-// No error-classification here: the ops carry their own non-finite forms (IMDIV by
-// zero is cx(NaN, NaN)) rather than minting tagged errors.
+// No error-classification in the kernels: the ops carry their own non-finite
+// forms (IMDIV by zero is cx(NaN, NaN)) rather than minting tagged errors.
 
 export function cxAdd(a: Cx, b: Cx): Cx { return cx(a.re+b.re, a.im+b.im); }
 export function cxSub(a: Cx, b: Cx): Cx { return cx(a.re-b.re, a.im-b.im); }
@@ -120,9 +103,8 @@ export function cxCot(z: Cx): Cx { return cxDiv(cxCos(z), cxSin(z)); }
 export function cxSech(z: Cx): Cx { return cxDiv(cx(1,0), cxCosh(z)); }
 export function cxCsch(z: Cx): Cx { return cxDiv(cx(1,0), cxSinh(z)); }
 
-/** Both roots of a·x² + b·x + c = 0 as the conjugate-ordered pair [x₁, x₂] — the
- *  Quadratic Roots node's math and the QUADRATICROOTS registration, one kernel.
- *  a = 0 is a #DOMAIN! (a line, not a quadratic). */
+/** Both roots of a·x² + b·x + c = 0 as the conjugate-ordered pair [x₁, x₂]; a = 0
+ *  is a #DOMAIN! (a line, not a quadratic). */
 export function quadraticRoots(a: number, b: number, c: number): [Cx, Cx] | SolError {
   if (a === 0) return solError("#DOMAIN!", "a = 0 is a line, not a quadratic — solve b·x + c = 0 directly");
   const disc = b * b - 4 * a * c;

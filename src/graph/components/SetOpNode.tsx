@@ -15,8 +15,7 @@ export function SetOpComponent({ data, emit }: NodeProps<SetOpNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const meta = SET_OP_META[op];
 
-  // Render the set notation as real math. Until the KaTeX chunk arrives the hook
-  // returns null and we show the Unicode form, snapping to typeset math a beat later.
+  // The hook returns null until the KaTeX chunk lands, so the Unicode form shows first.
   const render = useKatexRender();
   const html = useMemo(() => {
     if (!render) return null;

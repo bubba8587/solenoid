@@ -1,4 +1,3 @@
-// All matrix math + shape node components in one file.
 import type {
   MatDetNode as MatDetNodeType, MatDetOp,
   TableMultNode as TableMultNodeType,

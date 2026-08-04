@@ -97,9 +97,8 @@ import type { NodeCatalogEntry } from "./AddNodeMenu";
 
 import "./canvas.css";
 
-// Quick-wire: a menu opened from a cable dropped on empty canvas carries the
-// origin socket + a pre-filtered entry list (compatible nodes only), so picking
-// one both creates it AND wires the dragged cable into it.
+// A quick-wire menu carries its origin socket, so a pick both creates the node AND
+// wires the dragged cable into it.
 type QuickWireOrigin = { nodeId: string; key: string; side: "input" | "output" };
 type MenuState =
   | { screenX: number; screenY: number; quickWire?: QuickWireOrigin; compatibleTypes?: Set<string> }
@@ -113,57 +112,36 @@ export function Canvas() {
   const historyRef = useRef<HistoryPlugin<Schemes> | null>(null);
   const dblClickCleanupRef = useRef<(() => void) | null>(null);
   const screenMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  // Active pointer ids for this component's TAP bookkeeping — gesture start/end
-  // bracketing, nothing more. Whether a gesture is a pinch is NOT this set's call:
-  // that's `isPinching()` (pointerGesture.ts), which counts FINGERS, so a mouse or
-  // a stylus in contact is never mistaken for one half of a zoom.
+  // TAP bookkeeping only — whether a gesture is a PINCH is `isPinching()`'s call,
+  // which counts fingers, so a mouse or stylus is never half a zoom.
   const activePointersRef = useRef<Set<number>>(new Set());
-  // Touch gesture bookkeeping: the node the first finger landed on (for
-  // tap-to-select), whether the gesture moved, and whether it became multi-touch.
   const tapNodeIdRef = useRef<string | null>(null);
-  // Set when a touch lands on a form control (checkbox/input/…) INSIDE a node, so
-  // toggling e.g. a Boolean checkbox doesn't get treated as a background tap that
+  // A touch on a form control INSIDE a node must not read as a background tap that
   // clears the node's selection.
   const tapControlNodeIdRef = useRef<string | null>(null);
   const tapMovedRef = useRef(false);
   const gestureMultiRef = useRef(false);
-  // Is the gesture in flight driven by a FINGER? This is what gates the tap-to-select
-  // model below, and it's deliberately the pointer TYPE rather than IS_MOBILE: the
-  // model exists because a touch press can turn out to be a pinch, which is true of
-  // any touchscreen — a tablet, a touchscreen laptop — not just a phone. A mouse or a
-  // pen is precise and can't pinch, so both keep select-and-drag in one motion.
+  // Pointer TYPE, not IS_MOBILE: tap-to-select exists because a touch press can turn
+  // out to be a pinch, true of any touchscreen; a mouse or pen can't.
   const tapTouchRef = useRef(false);
-  // Whether the current gesture's first finger landed inside the canvas container
-  // (a node or the empty background) vs OFF-canvas (a mobile-bar button, a panel).
-  // rete's selectableNodes clears the selection on a window-level pointerup when its
-  // twitch counter is still armed from an earlier canvas press — so an off-canvas
-  // tap (e.g. the Delete button) would wrongly wipe the selection. We swallow the
-  // area pipe's pointerup for off-canvas gestures to stop that.
+  // An OFF-canvas tap would otherwise wipe the selection: selectableNodes clears on a
+  // window pointerup while its twitch counter is still armed from an earlier press.
   const tapOnCanvasRef = useRef(false);
   const dragOriginKeyRef = useRef<string | null>(null);
-  // Live modifier state for axis-constrained dragging (Shift) and edge-align
-  // (Ctrl/Cmd). Tracked globally so a key pressed mid-drag takes effect without a
-  // fresh DOM event.
+  // Tracked globally so a modifier pressed MID-drag takes effect with no fresh event.
   const shiftDragRef = useRef(false);
   const ctrlDragRef = useRef(false);
-  // Pick history: the last two DISTINCT node ids picked. The OLDER one is the
-  // "previously selected object" a Ctrl-drag aligns to (it's deselected, so it
-  // stays put while the grabbed node moves).
+  // The OLDER of the last two picks is what a Ctrl-drag aligns to — it's deselected,
+  // so it stays put while the grabbed node moves.
   const lastPickedRef = useRef<string | null>(null);
   const prevPickedRef = useRef<string | null>(null);
   const [menu, setMenu] = useState<MenuState>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  // Live mirror for the keyboard handler's bare-Enter guard (the handler is
-  // installed once, so reading the state directly would freeze it at mount).
+  // The keyboard handler is installed once, so reading the state would freeze it.
   const menuRef = useRef<MenuState>(menu);
   menuRef.current = menu;
-  // The Add/quick-wire menu must not survive a document switch — node ids
-  // regenerate on load, so a pick from a stale menu would add an orphan,
-  // unwired node into the NEW document at stale coordinates (Ctrl+O fires even
-  // while the menu's search field is focused). Close ONLY when the current doc
-  // ID changes: documentStore also notifies on every debounced AUTOSAVE
-  // (captureCurrent, 700ms after any edit), which must not yank a menu the
-  // user just opened.
+  // Close the menu on a document SWITCH (a stale pick would add an orphan node), but
+  // only on an id change — documentStore also notifies on every debounced autosave.
   useEffect(() => {
     let last = documentStore.currentId();
     return documentStore.subscribe(() => {
@@ -174,30 +152,19 @@ export function Canvas() {
       }
     });
   }, []);
-  // Module store, not useState: the mobile bottom bar opens the palette from
-  // outside Canvas's tree, and the keydown handler reads it closure-free.
+  // Module store, not useState: the mobile bar opens the palette from outside this tree.
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
-  // Always-on (docked) command palette: rendered persistently regardless of the
-  // open toggle, and non-modal (see CommandPalette `persistent`). DESKTOP ONLY —
-  // docking assumes a bottom strip the mobile chrome doesn't have (the palette is
-  // top-anchored there, since the on-screen keyboard owns the bottom half), and the
-  // mobile bottom bar already opens it on demand. Ignoring the stored value here is
-  // the behavioural half of the setting's `disabledOnMobile`; Settings grays the row
-  // so the two can't disagree. A value carried over from a desktop session (same
-  // localStorage, "Request desktop site" toggled off) is ignored rather than obeyed.
+  // Docking is DESKTOP ONLY — ignoring the stored value here is the behavioural half
+  // of the setting's `disabledOnMobile`, which Settings grays to match.
   const paletteAlwaysOnSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("commandPaletteAlwaysOn"));
   const paletteAlwaysOn = paletteAlwaysOnSetting && !IS_MOBILE;
 
-  // Remove the selected cables and/or nodes — mechanics in canvasActions.ts
-  // (deleteSelection). Shared by the Delete/Backspace key path and the mobile
-  // delete control.
   const deleteSelected = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) return;
     await deleteSelection(editor, areaRef.current);
   }, []);
 
-  // Expose it to the mobile controls (no keyboard there).
   useEffect(() => setDeleteSelected(deleteSelected), [deleteSelected]);
   const [socketCtx, setSocketCtx] = useState<SocketContextTarget | null>(null);
   const closeSocketCtx = useCallback(() => setSocketCtx(null), []);
@@ -207,22 +174,17 @@ export function Canvas() {
   const closeNodeCtx = useCallback(() => setNodeCtx(null), []);
   const standoffRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
   const isoEndpointsRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
-  // Lasso-selection state. `mode` is "touch" (CW winding → AutoCAD
-  // crossing selection: any overlap counts) or "enclose" (CCW winding
-  // → AutoCAD window selection: must be fully inside).
+  // AutoCAD winding semantics: CW "touch" selects any overlap, CCW "enclose" requires
+  // the node fully inside.
   const [lasso, setLasso] = useState<{ points: Pt[]; mode: "touch" | "enclose" } | null>(null);
 
-  // Canvas keyboard shortcuts — the full map + handlers live in canvasKeyboard.ts.
   useEffect(() => installCanvasKeyboard({
     editorRef, areaRef, historyRef, containerRef, screenMouseRef,
     isAddMenuOpen: () => menuRef.current !== null,
     deleteSelected,
   }), [deleteSelected]);
 
-  // Semantic zoom: re-derive the far-zoom flag whenever the setting itself
-  // toggles (a pan/zoom event re-derives it from the live scale — see
-  // syncSemanticZoomFor at the "zoomed" pipe branch and init() above; this
-  // covers the OTHER trigger, flipping the setting without moving the camera).
+  // The other far-zoom trigger: flipping the SETTING without moving the camera.
   useEffect(() => {
     return settingsStore.subscribe(() => {
       const area = areaRef.current;
@@ -230,15 +192,12 @@ export function Canvas() {
     });
   }, []);
 
-  // Track the Shift key for axis-constrained dragging (read live in the
-  // nodetranslate pipe). Capture phase so it sees the key even over a focused
-  // input; reset on blur so a key released while unfocused doesn't stick.
+  // Capture phase so a modifier is seen over a focused input; blur clears it so a key
+  // released while unfocused can't stick.
   useEffect(() => {
     const set = (e: KeyboardEvent) => {
-      // Only TRUSTED (real) key events drive the drag-modifier state. The mobile
-      // undo/redo buttons dispatch a SYNTHETIC Ctrl(+Shift)+Z keydown (MobileControls
-      // `fireUndo`) with no matching keyup — reading its modifiers here left the
-      // axis-lock (Shift) / edge-align (Ctrl) refs stuck ON permanently after a Redo.
+      // TRUSTED events only: the mobile undo/redo buttons dispatch a synthetic
+      // Ctrl(+Shift)+Z with no keyup, which would stick these refs ON forever.
       if (!e.isTrusted) return;
       shiftDragRef.current = e.shiftKey;
       ctrlDragRef.current = e.ctrlKey || e.metaKey;
@@ -254,14 +213,9 @@ export function Canvas() {
     };
   }, []);
 
-  // Track screen mouse position for paste + quick-wire placement. We listen to
-  // pointermove as well as mousemove because during a drag (a cable drag, a pan)
-  // rete-area-plugin's Drag.move calls e.preventDefault() on pointermove, which
-  // SUPPRESSES the compatibility mousemove events — so a mousemove-only tracker
-  // freezes at the drag's start point, and quick-wire dropped the new node near the
-  // ORIGIN socket instead of where the cable was released. pointermove keeps firing
-  // through the drag (preventDefault stops default actions, not other listeners), so
-  // the ref stays live and the node lands at the real drop location.
+  // pointermove as WELL as mousemove: rete's Drag.move preventDefaults pointermove,
+  // which suppresses the compatibility mousemove — a mousemove-only tracker freezes
+  // at the drag's start point.
   useEffect(() => {
     const track = (e: MouseEvent | PointerEvent) => {
       screenMouseRef.current = { x: e.clientX, y: e.clientY };
@@ -274,20 +228,16 @@ export function Canvas() {
     };
   }, []);
 
-  // Let the menu bar's Insert command open the Add-node menu.
   useEffect(() => addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY })), []);
 
-  // Highlight sockets and their cables when the pointer rests on any socket
-  // (not during a drag — that case is handled separately below).
-  // Uses elementsFromPoint so it works regardless of how Rete captures pointer
-  // events on output sockets.
+  // elementsFromPoint, so hover works regardless of how Rete captures pointer events
+  // on output sockets.
   useEffect(() => {
     let lastKey = ""; // "nodeId::socketKey" or "" when off-socket
     function onMove(e: PointerEvent) {
       if (cableDragStore.get()) return; // drag in progress — handled below
-      // Any held button means an active gesture (pan, node-drag, lasso). Hover
-      // highlight is a rest-state affordance, so skip the per-move
-      // elementsFromPoint hit-test (a synchronous layout read) during gestures.
+      // Skip the elementsFromPoint layout read during a gesture — hover is a rest-state
+      // affordance.
       if (e.buttons) return;
       let foundNodeId = "";
       let foundSocketKey = "";
@@ -333,17 +283,13 @@ export function Canvas() {
     return () => window.removeEventListener("pointermove", onMove);
   }, []);
 
-  // Track the touch gesture so the area pipe can implement: pinch/pan freely,
-  // a clean tap selects, drag moves only selected. Records active pointers (≥2
-  // = pinch), whether the gesture moved, and which node the first finger landed
-  // on (for tap-to-select, since unselected nodes are made drag-transparent).
+  // Gesture record the area pipe reads: pinch/pan freely, a clean tap selects, a drag
+  // moves only what's selected.
   useEffect(() => {
     const set = activePointersRef.current;
     let startX = 0, startY = 0;
-    // The node whose view contains the target, or null. `formControl` flags
-    // taps on an editable widget — those edit the control, they don't select the
-    // node, but we still want the owning node so a control tap on an already-
-    // selected node can preserve (not clear) the selection.
+    // `formControl` taps edit the control, not the selection — but the owning node is
+    // still returned so such a tap can PRESERVE an existing selection.
     const nodeAndControl = (t: EventTarget | null): { id: string | null; formControl: boolean } => {
       if (!(t instanceof Element)) return { id: null, formControl: false };
       const formControl = !!t.closest("input, select, textarea, button, [contenteditable]");
@@ -364,7 +310,6 @@ export function Canvas() {
           : { id: null, formControl: false };
         tapNodeIdRef.current = formControl ? null : id;
         tapControlNodeIdRef.current = formControl ? id : null;
-        // Did this gesture start on the canvas at all? (container = the rete area).
         const cont = containerRef.current;
         tapOnCanvasRef.current = !!(cont && e.target instanceof Node && cont.contains(e.target));
       } else if (set.size >= 2) {
@@ -378,17 +323,13 @@ export function Canvas() {
     const drop = (e: PointerEvent) => {
       set.delete(e.pointerId);
       if (set.size === 0) {
-        // rete's pointer listener tears down its window pointerup on the FIRST
-        // finger's release, stranding any later pinch pointers in the zoom
-        // handler's array — which breaks the next pinch until a clean one
-        // resets it. Clear them once every finger is up.
+        // rete drops its window pointerup on the FIRST release, stranding later pinch
+        // pointers in the zoom handler and breaking the next pinch.
         const zh = (areaRef.current?.area as unknown as
           { zoomHandler?: { pointers?: unknown[]; previous?: unknown } } | undefined)?.zoomHandler;
         if (zh && Array.isArray(zh.pointers)) { zh.pointers.length = 0; zh.previous = null; }
-        // Same backstop for the shared census: this local set going empty is the
-        // authoritative "every contact is up", so anything the census still holds
-        // was stranded (a long-press contextmenu, a pointer that left the window)
-        // and would make the next gesture read as multi-touch.
+        // This set going empty is the authoritative "every contact is up", so anything
+        // the census still holds was stranded and would read as multi-touch.
         resetPointerCensus();
       }
     };
@@ -405,15 +346,8 @@ export function Canvas() {
     };
   }, []);
 
-  // SELECT mode disables rete's area Drag (1-finger pan) so a single finger draws
-  // the lasso instead of panning — while the Zoom handler stays live, so TWO
-  // fingers still pinch/pan (the lasso no longer stopPropagations finger 1, so the
-  // zoom handler sees both). Restore the Drag handler when select mode turns off.
-  //
-  // Gated on IS_COARSE, not IS_MOBILE: the gate is "a touch device where select
-  // mode is reachable", and a TABLET reaches it from the top bar (TabletActions)
-  // while IS_MOBILE is false there. Desktop is still excluded on purpose: shift-lasso blocks
-  // the pan per-gesture (stopPropagation) and drag-to-pan must keep working.
+  // SELECT mode drops rete's Drag so one finger lassoes, keeping the Zoom handler so
+  // two still pinch. IS_COARSE, not IS_MOBILE — a TABLET reaches select mode too.
   useEffect(() => {
     if (!IS_COARSE) return;
     const applyDragMode = () => {
@@ -427,8 +361,6 @@ export function Canvas() {
     return unsub; // the area itself is torn down on unmount, so no drag restore needed
   }, []);
 
-  // Shift-drag lasso selection — mechanics in canvasLasso.ts; the matched
-  // outline renders via the <svg> at the bottom of this component's JSX.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -440,8 +372,7 @@ export function Canvas() {
     const container = containerRef.current;
     if (!container) return;
 
-    // StrictMode double-invokes this effect in dev; clear any DOM left
-    // behind by the previous run's AreaPlugin before mounting a new one.
+    // StrictMode double-invokes this effect in dev — clear the previous run's DOM.
     container.innerHTML = "";
 
     let destroyed = false;
@@ -450,12 +381,9 @@ export function Canvas() {
 
     async function init() {
       const editor = new NodeEditor<Schemes>();
-      // Normalize every node's inputs to its declared socket shapes (table is the
-      // numeric supertype). Installed before any node is created so all are wrapped.
+      // Installed before any node is created, so every node is wrapped.
       installInputCoercion(editor);
       const area = new AreaPlugin<Schemes, AreaExtra>(container!);
-      // Replace the stock zoom with our proportional + clamped one (caps zoom
-      // speed across mouse wheel, trackpad pinch, and two-finger scroll alike).
       area.area.setZoomHandler(new CappedZoom(0.1));
       localArea = area;
       const connection = new ConnectionPlugin<Schemes, AreaExtra>();
@@ -463,31 +391,18 @@ export function Canvas() {
       const engine = new DataflowEngine<Schemes>();
       const history = new HistoryPlugin<Schemes>();
       history.addPreset(HistoryPresets.classic.setup());
-      // Cap the stack (the plugin ctor doesn't expose the inner History limit) —
-      // a backstop against unbounded growth; the real hygiene is clearHistory()
-      // on every document load (persistence.loadGraph, audit P0-5).
+      // Backstop against unbounded growth; the real hygiene is clearHistory() on load.
       (history as unknown as { history: { limit?: number } }).history.limit = 200;
-      // Expose the plugin instance for the Session History node (see process.ts).
       setHistoryPlugin(history);
-      // Let non-graph changes (e.g. a group resize, an extensible-row add, a label
-      // edit) push their own undo entries — onto the ACTIVE graph's history, so an
-      // edit made INSIDE a composite drill-in is undone by the drill-in's own
-      // undo (Ctrl+Z / the mobile bar), not stranded on the main stack. Resolves to
-      // the main history when not drilled in (getActiveHistory falls back to it).
+      // Non-graph edits push onto the ACTIVE graph's history, so an edit made inside a
+      // drill-in isn't stranded on the main stack.
       setPushHistory((action) => { void getActiveHistory()?.add(action); });
       setClearHistory(() => history.clear());
-      // Visual minimap size is set in the React preset below; the
-      // plugin itself only takes ratio + boundViewport + minDistance.
       const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });
-      // Make the minimap collapse-aware: hide members folded into a collapsed
-      // group and size the group to its compact rendered box (see Minimap.tsx).
+      // Collapse-aware: hide folded members, size a group to its compact box.
       (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
-      // rAF-coalesce the plugin's render. It fires render() SYNCHRONOUSLY on every
-      // translated/zoomed/nodetranslated event, which during a continuous drag
-      // arrive in bursts not aligned to paint frames — each one re-reads layout
-      // (getNodesRect touches offsetWidth/Height for collapsed groups) and re-
-      // normalizes every node against a bounding box that shifts as the dragged
-      // node moves. At most one render per frame keeps the cadence frame-aligned.
+      // rAF-coalesce the plugin's render: it fires synchronously per translate event,
+      // each one re-reading layout, at a rate far above the frame cadence.
       {
         const mm = minimap as unknown as { render: () => void };
         const rawRender = mm.render.bind(minimap);
@@ -501,21 +416,17 @@ export function Canvas() {
           });
         };
       }
-      // Lazy ELK loader (heavy chunk, only Tidy needs it) — see tidyArrange.ts.
       const ensureArrange = makeEnsureArrange(area, () => destroyed);
 
       const nodeSelector = AreaExtensions.selector();
       const ctrlAccum = AreaExtensions.accumulateOnCtrl(); // tracks Ctrl/Meta held
 
-      // Selection semantics we want (the stock selectableNodes can't express):
-      //  • Plain press on an already-selected node keeps the whole selection, so
-      //    you can drag the group with NO modifier (stock collapses to the one
-      //    node on press, forcing you to hold Ctrl to drag a multi-selection).
-      //  • A plain *click* (no drag) on a selected node collapses to just it.
-      //  • Ctrl-click toggles a node IN or OUT of the selection.
-      // The picked-node id + its pre-press selected state drive all three. The
-      // capture pipe below runs before selectableNodes' pipe so `active()` sees
-      // them when the stock handler decides whether to clear the rest.
+      // Selection semantics the stock selectableNodes can't express:
+      //  • Plain PRESS on a selected node keeps the whole selection (drag the lot).
+      //  • Plain CLICK (no drag) on a selected node collapses to just it.
+      //  • Ctrl-click toggles a node in or out.
+      // The capture pipe below must run BEFORE selectableNodes' pipe, so `active()`
+      // sees these when the stock handler decides whether to clear the rest.
       let pickedId: string | null = null;
       let pendingCollapseId: string | null = null;
       let pendingDeselectId: string | null = null;
@@ -523,13 +434,10 @@ export function Canvas() {
       const isSelected = (id: string | null) =>
         !!(id && (editor.getNode(id) as { selected?: boolean } | undefined)?.selected);
 
-      // Accumulate when Ctrl/Meta is held (desktop) OR touch select mode is on
-      // (mobile, where there is no Ctrl). Tapping a node then adds/removes it.
       const accumulateActive = () => ctrlAccum.active() || touchSelectStore.get();
 
       const accumulating = {
-        // Don't clear the rest of the selection when accumulating OR the pressed
-        // node was already selected (preserve it so a plain drag moves the lot).
+        // Keep the rest of the selection when accumulating or the node was selected.
         active: () => accumulateActive() || isSelected(pickedId),
       };
 
@@ -537,12 +445,9 @@ export function Canvas() {
       area.addPipe((ctx) => {
         if (!ctx || typeof ctx !== "object" || !("type" in ctx)) return ctx;
         const c = ctx as { type: string; data?: { id?: string; event?: PointerEvent } };
-        // Right-button presses never reach selectableNodes. A node's drag
-        // handler only swallows LEFT-button pointerdowns, so a right-click on
-        // a node bubbles to the area; selectableNodes counts the no-move
-        // down→up pair as a background click and clears the WHOLE selection —
-        // right before the contextmenu handler (Link with Standoff, cable
-        // menus) needs to read it. This pipe runs before selectableNodes'.
+        // A right-click on a node bubbles to the area, where selectableNodes reads the
+        // no-move down→up as a background click and clears the selection the context
+        // menu is about to need.
         if ((c.type === "pointerdown" || c.type === "pointerup") && c.data?.event?.button === 2) {
           return;
         }
@@ -554,45 +459,29 @@ export function Canvas() {
           pendingCollapseId = null;
           pendingDeselectId = null;
           if (id && accumulateActive() && wasSelected) {
-            // Ctrl-click / tap-in-select-mode an already-selected node toggles it
-            // OUT — but only if this turns out to be a CLICK (handled on pointerup
-            // below). We must NOT swallow on pointerdown: doing so skips the
-            // selector's pick and our draggingGroupId bookkeeping, yet the node's
-            // own DOM drag handler still fires — so a Ctrl-DRAG would move the body
-            // with neither member-follow engaged, detaching a group from its
-            // members (and glitching their cables). Falling through makes a
-            // Ctrl-drag behave exactly like a plain drag; the click still toggles.
+            // Deferred to pointerup: swallowing on pointerdown would skip the pick and
+            // the draggingGroupId bookkeeping while the DOM drag handler still ran, so
+            // a Ctrl-DRAG detached a group from its members.
             pendingDeselectId = id;
           }
           if (id && !accumulateActive() && wasSelected) {
-            // Keep the selection now (active() === true); collapse to this node
-            // on pointerup IF it turns out to be a click, not a drag.
+            // Collapse to this node on pointerup IF it turns out to be a click.
             pendingCollapseId = id;
           }
         } else if (c.type === "nodetranslate") {
-          // Never move a node while pinching — the gesture is a zoom, even if a
-          // finger is resting on a (selected) node. `isPinching()` rather than a raw
-          // pointer count, so a stylus resting alongside one finger can't freeze a
-          // legitimate drag.
+          // Never move a node while pinching; `isPinching()` counts FINGERS, so a
+          // stylus resting alongside one can't freeze a legitimate drag.
           if (isPinching()) return;
         } else if (c.type === "pointermove") {
           moveCount++;
         } else if (c.type === "pointerup") {
-          // OFF-CANVAS tap → swallow. rete's selectableNodes clears the whole
-          // selection on a window-level pointerup while its `twitch` counter is
-          // still < 4 (a "tap"), but that counter is only re-armed by a CONTAINER
-          // pointerdown. So an off-canvas tap (a mobile-bar button, a panel) fires a
-          // window pointerup with twitch still armed from an earlier canvas press
-          // and wipes the selection.
-          // The gesture that started off-canvas has no business touching the canvas
-          // selection, so swallow its pointerup before selectableNodes sees it.
+          // Swallow an OFF-CANVAS tap's pointerup: selectableNodes' twitch counter is
+          // re-armed only by a CONTAINER pointerdown, so it would wipe the selection.
           if ((IS_MOBILE || tapTouchRef.current) && !tapOnCanvasRef.current) {
             return;
           }
-          // Tapping a form control (e.g. a Boolean checkbox) of an already-
-          // SELECTED node must not clear its selection — otherwise every toggle
-          // deselects and you have to re-tap the node to toggle again. Swallow the
-          // up so selectableNodes' background-tap clear can't run.
+          // A form-control tap on a SELECTED node must not deselect it, or every toggle
+          // costs a re-tap.
           if (
             tapTouchRef.current &&
             tapControlNodeIdRef.current &&
@@ -604,16 +493,9 @@ export function Canvas() {
             return;
           }
           tapControlNodeIdRef.current = null;
-          // Touch tap-to-select: an unselected node was tapped. It's made
-          // drag-transparent (guard below) so rete didn't pick it, and
-          // selectableNodes is about to treat this as a background tap and clear
-          // the selection — select the node instead and swallow the event so
-          // that clear doesn't run.
-          //
-          // This is also where a PINCH is stopped from selecting: deferring the
-          // decision to pointerup is what makes the gesture classifiable at all, and
-          // `!gestureMultiRef` then rejects anything that ever had a second finger.
-          // A pinch therefore never selects, rather than selecting and being undone.
+          // Tap-to-select for a drag-transparent unselected node, deferred to pointerup
+          // so the gesture is classifiable — `!gestureMultiRef` is what stops a PINCH
+          // from ever selecting.
           if (
             tapTouchRef.current &&
             !canvasLockStore.get() &&
@@ -635,7 +517,6 @@ export function Canvas() {
               }
             }
           }
-          // Deferred Ctrl/tap toggle-out: only when this was a click, not a drag.
           if (pendingDeselectId && moveCount < 4) {
             void nodeSelector.remove({ label: "node", id: pendingDeselectId });
           }
@@ -648,10 +529,7 @@ export function Canvas() {
       const selectable = AreaExtensions.selectableNodes(area, nodeSelector, { accumulating });
       AreaExtensions.simpleNodesOrder(area);
 
-      // ── Standoff layer + solver ────────────────────────────────────────────
-      // The bars render in their own React root inside the area's transformed
-      // plane, BELOW everything (z -3 — under expanded groups at -2, conduits at
-      // -1, and all nodes).
+      // ── Standoff layer + solver: own React root at z -3, under every node ──
       {
         const holder = document.createElement("div");
         holder.style.position = "absolute";
@@ -664,9 +542,7 @@ export function Canvas() {
         standoffRootRef.current = root;
       }
 
-      // ── Isolate auto-endpoints ───────────────────────────────────────────────
-      // Boundary terminals for the Isolate overlay, in the transformed plane and
-      // ABOVE the nodes (z 3) so the terminals + their cables read on top.
+      // ── Isolate auto-endpoints: transformed plane at z 3, above every node ──
       {
         const holder = document.createElement("div");
         holder.style.position = "absolute";
@@ -679,14 +555,13 @@ export function Canvas() {
         isoEndpointsRootRef.current = root;
       }
 
-      // Live boxes for every entity a standoff references.
       const standoffBoxes = (): Map<string, StandoffBox> => {
         const m = new Map<string, StandoffBox>();
         for (const s of standoffStore.all()) {
           for (const end of [s.a, s.b]) {
             if (m.has(end.nodeId)) continue;
-            // measuredBox: shared size chokepoint (live → mirror → collapse-aware
-            // fallback), so the solver sees the same boxes align/tidy/push do.
+            // measuredBox is the shared size chokepoint, so the solver sees the same
+            // boxes align/tidy/push do.
             const b = measuredBox(area, end.nodeId, editor);
             if (!b) continue;
             m.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
@@ -694,9 +569,7 @@ export function Canvas() {
         }
         return m;
       };
-      // Solve the network and apply corrections (groups carry members, hosts
-      // carry docked FCs). `standoffSolving` keeps the apply from re-entering
-      // itself through the nodetranslated pipe.
+      // `standoffSolving` keeps the apply from re-entering through nodetranslated.
       let standoffSolving = false;
       const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: { forceLock?: boolean }) => {
         if (standoffSolving || standoffStore.isEmpty()) return;
@@ -711,15 +584,11 @@ export function Canvas() {
       };
       setStandoffSettle(settleStandoffNetwork);
 
-      // Node drag-handler guard. Two jobs:
-      //  • Lock canvas → never drag (view-only; the press falls through to pan).
-      //  • Touch → only a SELECTED node grabs a drag, so an unselected node is
-      //    pan/pinch-transparent (a press pans, a finger over it can't break a
-      //    pinch); desktop keeps rete's default (left-button) drag.
-      // rete's node-drag does stopPropagation only AFTER this guard, so a false
-      // guard lets the press bubble to the area = pan.
-      // Screen-px band along a group's outer border that still grabs the group;
-      // the interior between header and this band is pan-through.
+      // Node drag-handler guard: locked canvas never drags, and on TOUCH only a
+      // SELECTED node grabs one. rete stopPropagations only AFTER this guard, so a
+      // false guard lets the press bubble to the area = pan.
+      // The band along a group's outer border that still grabs it; the interior
+      // between header and band is pan-through.
       const GROUP_EDGE_BAND = 16;
       const patchDragGuard = (id: string) => {
         const view = area.nodeViews.get(id) as unknown as
@@ -772,31 +641,23 @@ export function Canvas() {
         if (ctx && typeof ctx === "object" && "type" in ctx &&
             (ctx as { type: string }).type === "nodecreated") {
           const id = (ctx as { data?: { id?: string } }).data?.id;
-          // Error-value guards wrap the node's data() exactly once: error
-          // inputs propagate to outputs without running the node, and a
-          // throwing data() degrades to a local #ERROR! instead of killing
-          // the recompute pass. Installed here because every creation path
-          // (add menu, paste, load, seed) funnels through addNode.
+          // Installed here because every creation path funnels through addNode.
           if (id) {
             const node = editor.getNode(id);
             if (node) installErrorGuards(node);
           }
-          // Next frame: the area has created & rendered the view by then, well
-          // before any user pointerdown that would read the guard.
+          // Next frame: the area has rendered the view by then.
           if (id) requestAnimationFrame(() => patchDragGuard(id));
         }
         return ctx;
       });
 
-      // Expose unselect-all-nodes so cable selection can clear node
-      // selection (kept mutually exclusive).
+      // Cable selection and node selection are kept mutually exclusive.
       setUnselectAllNodes(() => { void nodeSelector.unselectAll(); });
-      // Expose selectNode so the lasso can apply its matched ids.
       setSelectNode((id, accumulate) => { void selectable.select(id, accumulate); });
 
-      // Tidy + Cleanup live in tidyArrange.ts; wired to the nav-menu / T & C
-      // shortcuts via process.ts. repositionDockedTo is hoisted (function
-      // declaration below) — the arrange only calls it in a deferred rAF.
+      // repositionDockedTo is hoisted (declared below); the arrange only calls it in a
+      // deferred rAF.
       const arrangeFn = makeArrangeFn({
         editor, area, container: container!, ensureArrange,
         repositionDockedTo: (hostId) => repositionDockedTo(hostId),
@@ -807,31 +668,21 @@ export function Canvas() {
 
       // size 105 × ratio 1.4 → 147px wide, matching the socket legend.
       reactPlugin.addPreset(solenoidMinimapPreset(105));
-      // Render components + connection veto are shared with every canvas-
-      // substituting surface (the composite drill-in, future ones) via
-      // areaPresets.ts, so they can't drift. The veto rejects a drop BEFORE
-      // makeConnection runs (dropping on a single-connection input removes the
-      // existing cable first, so rejecting only afterwards would delete a valid
-      // cable), plus self-loops and all wiring while the canvas is locked.
+      // The veto must reject a drop BEFORE makeConnection runs: dropping on a
+      // single-connection input removes the existing cable first, so a later rejection
+      // would have deleted a valid cable.
       reactPlugin.addPreset(solenoidClassicRenderSetup());
       connection.addPreset(() => makeSolenoidConnectionFlow(editor));
 
-      // connectionpick / connectiondrop fire on the connection plugin's
-      // own scope — Scope.use forwards events DOWN, so an area pipe
-      // never sees them. Toggle the cable-drag flag here and track the
-      // origin socket for highlight purposes.
+      // connectionpick / connectiondrop fire on the connection plugin's OWN scope —
+      // Scope.use forwards down, so an area pipe never sees them.
       connection.addPipe((ctx) => {
         if (ctx.type === "connectionpick") {
-          // Commit any in-progress text edit before the cable is made: a socket's
-          // pointerdown starts the drag and preventDefaults the focus change, so a
-          // focused field (e.g. the multi-line Text node — which commits on blur,
-          // since Enter now inserts a newline) never fired its blur. Wiring it while
-          // uncommitted delivered the STALE value (an empty Mermaid source → a blank
-          // diagram, no error). Blur first so the graph reads the value you see.
+          // A socket's pointerdown preventDefaults the focus change, so a focused field
+          // never fires its blur — blur first, or the cable carries the STALE value.
           (document.activeElement as HTMLElement | null)?.blur?.();
           setCableDragging(true);
-          // Touch: a cable drag is underway, so every socket becomes a live drop
-          // target (see socket.css) regardless of node selection.
+          // Touch: every socket becomes a live drop target regardless of selection.
           container!.classList.add("solenoid-canvas--cabling");
           const s = (ctx as { data?: { socket?: { nodeId: string; key: string } } }).data?.socket;
           if (s) {
@@ -841,9 +692,7 @@ export function Canvas() {
           }
         }
         if (ctx.type === "connectiondrop") {
-          // Quick-wire: a drop that lands on empty canvas (no target socket, no
-          // connection made) opens the Add menu filtered to nodes compatible with
-          // the dragged origin — picking one both creates it and splices the cable.
+          // A drop on empty canvas opens the Add menu, and the pick splices the cable.
           if (settingsStore.get("quickWire")) {
             const d = (
               ctx as {
@@ -860,10 +709,8 @@ export function Canvas() {
               const originSocket =
                 side === "output" ? originNode?.outputs[key]?.socket : originNode?.inputs[key]?.socket;
               if (originSocket instanceof SolenoidSocket) {
-                // Quick-wire opens the FULL Add menu (same tree/categories as a
-                // normal add) but grays out leaves that can't wire to the dragged
-                // socket. Compute just the compatible-type SET here; the menu dims
-                // the rest. Only open if at least one node can actually receive it.
+                // The FULL tree opens with incompatible leaves dimmed, so compute only
+                // the compatible SET; don't open if it's empty.
                 const leaves = flattenLeaves(buildCatalog(true));
                 const compatible = filterByCompatibleSocket(leaves, originSocket, side);
                 if (compatible.length) {
@@ -890,31 +737,19 @@ export function Canvas() {
       area.use(connection);
       area.use(history);
       area.use(minimap);
-      // ELK's AutoArrangePlugin is registered lazily on first Tidy (see ensureArrange).
       editor.use(engine);
 
-      // Disable double-click-to-zoom. rete-area-plugin's Zoom class
-      // attaches its dblclick handler to this same container in bubble
-      // phase; a capture-phase swallow here stops the bubble before
-      // Zoom sees it.
-      // TS narrowing on `container` (from the outer useEffect's
-      // `if (!container) return`) doesn't survive the async function
-      // boundary, so we re-hoist a non-null reference here.
+      // Disable double-click-to-zoom: Zoom's dblclick handler is on this container in
+      // bubble phase, so a capture-phase swallow beats it. (`container` narrowing
+      // doesn't survive the async boundary — re-hoisted here.)
       const c = container!;
       const swallowDblClick = (e: Event) => { e.stopImmediatePropagation(); };
       c.addEventListener("dblclick", swallowDblClick, true);
 
-      // Any pointerdown that ISN'T on a cable should clear the cable
-      // selection — backgrounds and nodes both. Cables stop their own
-      // pointerdown from propagating on desktop, but on touch it bubbles
-      // (stopDragStart is desktop-only), so also ignore presses landing on a
-      // cable's hit path — a tap in select mode must accumulate, not clear.
-      // A background press defers the cable-selection clear to RELEASE, and only
-      // clears if the press was a click (didn't move far) — clearing on
-      // pointerdown made it impossible to pan while keeping a cable selected
-      // (the press immediately dropped the selection). Mirrors how node
-      // selection survives a pan (it only clears on a click / lasso). Standoff
-      // and isolate-endpoint selections still clear on pointerdown (unchanged).
+      // Any pointerdown off a cable clears the cable selection, but only on RELEASE and
+      // only if the press didn't move — clearing on pointerdown made it impossible to
+      // pan with a cable selected. Touch bubbles a cable's own pointerdown, so presses
+      // on a hit path are ignored here too.
       let cablePressStart: { x: number; y: number } | null = null;
       const PRESS_MOVE_TOL = 6; // px — beyond this the press is a pan, not a click
       const clearCableSelection = (e: PointerEvent) => {
@@ -953,9 +788,8 @@ export function Canvas() {
         unsubLock();
       };
 
-      // We wire history keyboard shortcuts ourselves (see the keydown
-      // useEffect above) so Ctrl+Shift+Z maps to Redo instead of Undo;
-      // `HistoryExtensions.keyboard` matches KeyZ regardless of Shift.
+      // History shortcuts are wired by hand: `HistoryExtensions.keyboard` matches KeyZ
+      // regardless of Shift, so Ctrl+Shift+Z would undo instead of redo.
       setEditorRefs(editor, engine, area);
       setCtorRegistryProvider(ctorRegistry);
       editorRef.current = editor;
@@ -963,20 +797,14 @@ export function Canvas() {
       historyRef.current = history;
 
       editor.addPipe((ctx) => {
-        // Reject a cable that exactly duplicates an existing one — same
-        // source socket AND same target socket. Only then do both
-        // endpoints coincide, drawing the two cables on top of each
-        // other so the second is untraceable. Different target sockets
-        // (A vs B, v0 vs v1) have distinct endpoints and stay traceable
-        // by location, so those are allowed.
+        // Only an EXACT duplicate (same source AND target socket) is rejected: its two
+        // cables coincide, so the second is untraceable. Distinct sockets are fine.
         if (ctx.type === "connectioncreate") {
           const c = ctx.data as unknown as {
             source: string; sourceOutput: string; target: string; targetInput: string;
           };
-          // View-only when locked: never create a connection.
           if (canvasLockStore.get()) return; // cancel
-          // Reject self-loops universally — a node's output may never feed its
-          // own input (catches any path the drag-time veto doesn't).
+          // Self-loops, on any path the drag-time veto doesn't cover.
           if (c.source === c.target) return; // cancel
           const dup = editor.getConnections().some(
             (e) =>
@@ -985,11 +813,8 @@ export function Canvas() {
           );
           if (dup) return; // cancel the connection
 
-          // Enforce socket-type compatibility (directional). The classic
-          // connection preset allows ANY socket pairing, so without this a list
-          // output could land in a number slot — the array then flows into a
-          // node expecting a scalar and breaks it. canConnectTo also blocks
-          // narrowing a 2-D table/frame output into a 1-D/0-D input.
+          // The classic connection preset allows ANY socket pairing, so type
+          // compatibility must be enforced here.
           const srcSocket = editor.getNode(c.source)?.outputs[c.sourceOutput]?.socket;
           const tgtSocket = editor.getNode(c.target)?.inputs[c.targetInput]?.socket;
           if (
@@ -1000,9 +825,8 @@ export function Canvas() {
             return; // cancel — incompatible socket types
           }
 
-          // FC → FC: reject only when BOTH carry units and they conflict — the
-          // downstream can't be re-united. (A unitless upstream imposes nothing;
-          // a unitless downstream inherits + locks to the upstream's unit.)
+          // FC → FC: only a BOTH-united conflict is rejected — a unitless downstream
+          // inherits and locks to its upstream instead.
           const csrc = editor.getNode(c.source);
           const ctgt = editor.getNode(c.target);
           if (
@@ -1013,12 +837,8 @@ export function Canvas() {
             return; // cancel — conflicting units
           }
 
-          // Collapsed extensible node (e.g. List shown as a pill): the
-          // dropped cable hit one of the stacked sockets, which may hold a
-          // typed value the user can't see while collapsed. Don't clobber
-          // it — reroute the cable to a free input (no literal, no cable),
-          // adding a new input if none are free. Uncollapsed, overwriting
-          // is fine (the user can see which input they're targeting).
+          // On a COLLAPSED extensible node the stacked sockets hide their values, so
+          // reroute to a free input rather than clobber one the user can't see.
           const tgt = editor.getNode(c.target) as unknown as {
             literals?: Record<string, number>;
             inputs: Record<string, unknown>;
@@ -1042,11 +862,9 @@ export function Canvas() {
           if (n instanceof FormatControllerNode && !isGraphRebuilding()) n.dockSelf(editor);
           if (n instanceof GroupNode) { sendGroupToBack(area, (n as GroupNode).id); rebuildGroupMembership(editor); }
           else if (!isGraphRebuilding()) {
-            // A node created (LIVE) fully inside a group's box joins it — Add menu,
-            // paste, docked FCs. Suppressed during a load/seed rebuild, where every
-            // node fires `nodecreated` and membership comes from the saved list;
-            // otherwise a reload would swallow any node merely overlapping a group.
-            // Deferred so the new node's final position + size are measured first.
+            // A LIVE node created inside a group's box joins it; suppressed during a
+            // rebuild, where membership comes from the saved list. Deferred so the
+            // node's final position + size are measured first.
             const newId = (n as { id: string }).id;
             requestAnimationFrame(() => requestAnimationFrame(() => {
               if (absorbIntoContainingGroup(editor, area, newId)) {
@@ -1059,111 +877,66 @@ export function Canvas() {
         }
         if (ctx.type === "noderemoved") {
           const n = ctx.data as object;
-          // A verb node holds a backend frame ref; free it so the handle store
-          // doesn't keep the deleted node's frame (independent frames → safe).
-          // Filter also owns a second ref for its Dropped output.
+          // Free the node's backend frame refs (Filter owns a second, for Dropped).
           dropFrameRef((n as { _ref?: unknown })._ref);
           dropFrameRef((n as { _refDropped?: unknown })._refDropped);
-          // Deleting the node behind an open report/presentation must tear the
-          // overlay state down with it — a DOCKED report otherwise leaves
-          // `html.sol-report-docked` (the canvas squeeze) on the root forever,
-          // with the only undock button inside the now-unrenderable panel. Also
-          // runs per-node during a wholesale rebuild, so a document switch
-          // clears both stores too.
+          // A docked report whose node is deleted otherwise leaves the canvas squeeze on
+          // the root forever, with its only undock button unrenderable.
           const removedId = (n as { id: string }).id;
           if (reportStore.openNodeId() === removedId) reportStore.close();
           if (presentationStore.activeId() === removedId) presentationStore.stop();
           if (n instanceof FormatControllerNode) n.undock();
-          // Release any FCs docked to the removed node: their host is gone, so
-          // leave them as free WIRED FCs. Otherwise they keep a stale hostNodeId
-          // and adaptTypeFromConnections resolves type from the missing host
-          // (→ "any") instead of the cable that survives a splice (e.g. delete a
-          // Display between TODAY and its docked FC — the FC must re-adopt date
-          // from the restored TODAY→FC cable, not stay stuck on the default).
+          // Release FCs docked to it: a stale hostNodeId makes adaptTypeFromConnections
+          // resolve "any" from the missing host instead of the surviving cable.
           for (const rel of dockedNodeStore.getDockedTo((n as { id: string }).id)) {
             const docked = editor.getNode(rel.id);
             if (docked instanceof FormatControllerNode) docked.undock();
           }
-          // Drop a deleted node from any group that contained it. (Standoffs
-          // are registry-forgotten below, like every node-keyed store.)
           dropFromGroups(editor, (n as { id: string }).id);
-          // Forget the node's id-keyed UI state (collapse, size, cable values,
-          // exit angles) so it doesn't linger until the next reload. Every
-          // node-keyed store self-registers — see nodeStoreRegistry. Skipped
-          // during a wholesale rebuild: it scans some stores per node (O(nodes ×
-          // entries) over a big clear); rebuildGraph calls forgetAllNodes() once.
+          // Skipped while rebuilding — that scans stores per node (O(nodes × entries));
+          // rebuildGraph calls forgetAllNodes() once instead.
           if (!isGraphRebuilding()) forgetNode((n as { id: string }).id);
-          // The group-membership rebuild + collapse re-sync + push restore are
-          // O(nodes) each; during a wholesale rebuild (load / seed / switching
-          // documents) `rebuildGraph` removes every node one at a time and then
-          // does all three ONCE at the end, so running them per-removal is the
-          // dominant cost of clearing a big graph (e.g. deleting the open
-          // Personal Finance doc). Skip them while rebuilding.
+          // O(nodes) each, and a rebuild runs the equivalents ONCE at the end — running
+          // them per-removal dominates the cost of clearing a big graph.
           if (!isGraphRebuilding()) {
             rebuildGroupMembership(editor);
             syncGroupCollapse(editor, area);
-            // Deleting an expanded group releases its neighbourhood: any push it
-            // contributed to is now "settled" and slides back (unless moved since).
+            // Deleting an expanded group settles the pushes it caused; they slide back.
             if (n instanceof GroupNode) restoreSettledPushes(editor, area);
           }
         }
         if (ctx.type === "connectioncreated" || ctx.type === "connectionremoved") {
-          // ALL of this per-connection settling — Convert arrow sync, the FC
-          // adapt/refresh sweep, the version bump, mismatch rescan, processGraph
-          // and collapse re-sync — is O(connections × nodes) when run once per
-          // cable. During a wholesale rebuild (load / seed / switching or
-          // deleting a document) `rebuildGraph` adds/removes every cable one at a
-          // time and then does the equivalents ONCE at the end (syncUnitArrows,
-          // dockSelf + refreshAnnotation, rebuildGroupMembership, processGraph
-          // whose cableValueStore.bump re-renders cables, syncGroupCollapse), so
-          // doing it per-cable here is the dominant cost of loading/clearing a
-          // big graph. Skip the whole sweep while rebuilding.
+          // This whole settle is O(connections × nodes) per cable and a rebuild runs the
+          // equivalents ONCE at the end, so it must be skipped while rebuilding.
           if (!isGraphRebuilding()) {
-            // Re-adapt every FC's socket type to its (possibly changed) upstream and
-            // re-project annotations (also refreshes Convert unit arrows). Shared
-            // with the Note-retype path so type propagation is identical everywhere.
+            // Shared with the Note-retype path, so type propagation is identical.
             reconcileFcTypes(editor, area);
             bumpConnectionVersion();
             rescanMismatches();
-            // TARGETED recompute: one cable only invalidates its TARGET's
-            // downstream closure. The `topology` flag refreshes the loop cache,
-            // the one global a cable change touches. A vanished target (cables
-            // removed as part of a node delete) falls back to the full pass.
+            // A cable only invalidates its TARGET's downstream closure; `topology`
+            // refreshes the loop cache, the one global it touches.
             const cable = ctx.data as { source?: string; target?: string };
             if (cable.target && editor.getNode(cable.target)) {
               void processGraph(cable.target, undefined, { topology: true });
-              // The source keeps its value, but its socket/annotation chrome can
-              // change with the cable — re-render just that card.
+              // The source keeps its value but its socket chrome can change.
               if (cable.source && editor.getNode(cable.source)) void area.update("node", cable.source);
             } else {
               void processGraph(undefined, undefined, { topology: true });
             }
-            // Topology changed → recompute which members/cables a collapsed group hides.
             syncGroupCollapse(editor, area);
           } else {
-            // A gated bulk op (paste, undo/redo of a multi-cable action) changed
-            // topology — flag it so withGraphRebuild runs ONE settle at the end
-            // instead of this per-cable sweep firing N times (O(cables × nodes)).
+            // Flag it so withGraphRebuild runs ONE settle instead of N per-cable sweeps.
             markBulkTopoDirty();
           }
         }
-        // (FC→FC unit sync/lock is handled in refreshAnnotation, which the
-        // connectioncreated/removed branch above runs for every FC — a
-        // forwarding FC mirrors and locks its upstream's unit there.)
         if (ctx.type === "connectionremoved") {
           socketHighlightStore.setCableHover([]);
           const removedId = (ctx.data as { id: string }).id;
-          // Side-store cleanup so we don't leak ghost / selection
-          // entries for connections that no longer exist.
           cableGhostStore.commit(removedId);
           cableSelectionStore.remove(removedId);
-          // Cutting the cable that GLUES a docked FC to its host dissolves the dock
-          // (undock: stop following, clear the annotation, forget the host) — it
-          // otherwise kept trailing the host and re-docked on every load. Skipped
-          // while rebuilding: a bulk load/undo replays cable removals wholesale and
-          // must not strip dock state the rebuild is about to restore. (The rehome
-          // flow's removeFcInline also lands here — harmless: dockSelf re-docks it
-          // one await later.)
+          // Cutting the cable that GLUES a docked FC to its host dissolves the dock;
+          // skipped while rebuilding, which replays removals and must not strip dock
+          // state it is about to restore.
           if (!isGraphRebuilding()) {
             const cc = ctx.data as { source: string; target: string };
             for (const end of [cc.source, cc.target]) {
@@ -1179,36 +952,10 @@ export function Canvas() {
         return ctx;
       });
 
-      // NOTE: we deliberately do NOT promote the holder to a GPU layer for PAN.
-      // The holder surface is larger than the mobile GPU max texture, so the
-      // layer tiles and re-rasterizes as a translate reveals new tiles. Pan
-      // relies on culling instead. Zoom is the exception:
-      // it gets a transient layer for the pinch only (see onZoomActivity below),
-      // because a bounded scale stays within already-rastered tiles.
-
-      // Zoom is choppier than pan: scaling re-rasterizes vector content every
-      // frame. On DESKTOP we give the holder a `will-change: transform` GPU layer
-      // for the duration of the pinch, so the scale runs as a cheap GPU scale of
-      // the cached bitmap (smooth, slightly soft) instead of a per-frame vector
-      // re-raster, then drop it on settle to re-rasterize crisp.
-      //
-      // NOT on touch devices (IS_COARSE, not IS_MOBILE: a tablet runs the DESKTOP
-      // UI on the same mobile-class GPU): the holder (whole graph) is larger than
-      // the mobile GPU max texture, so promoting it tiles and re-rasterizes
-      // erratically during the pinch, and on tablets fails raster-tile
-      // allocation outright. Touch zoom stays un-layered: a touch
-      // choppier, but stable. Pan never promotes either (a translate
-      // continuously reveals un-rastered tiles).
       const holderEl = area.area.content.holder as HTMLElement;
 
-      // Frame-rate probe for pan/zoom (the render-only path — no processGraph
-      // runs, so the in-app `__solenoidPerf` compute/render log says nothing about
-      // it). Off by default; turn on from devtools with `window.__solenoidPerf =
-      // true`, then pan or zoom — on gesture end it logs frames, mean frame time /
-      // fps, the worst frame, and the dropped-frame count (>16.7ms = below 60fps).
-      // A single rAF sampler shared by pan + zoom; concurrent triggers coalesce.
-      // Each frame is tagged with the camera scale `k` it was drawn at, and the log
-      // reports the k RANGE the gesture covered plus the k of the WORST frame.
+      // Frame-rate probe for the render-only pan/zoom path: set `window.__solenoidPerf
+      // = true` in devtools, then pan or zoom to get a per-gesture log.
       const fpsProbe = (() => {
         let raf = 0, last = 0, label = "", active = false;
         let samples: { dt: number; k: number }[] = [];
@@ -1247,21 +994,9 @@ export function Canvas() {
 
       let zoomSettleTimer = 0;
       let zooming = false;
-      // Settle window before the zoom layer drops. Wheel zoom is NOTCHY — deliberate
-      // notch-by-notch ticks often arrive slower than a pan-tuned ~160ms timer, and
-      // every promote↔demote flip re-creates the compositor layer + re-rasters the
-      // whole holder at the new scale. Hold the layer through notch pauses and pay
-      // ONE demote/re-raster at the true settle. The window itself lives in
-      // `zoomSettle.ts` — HtmlCanvasLayer's gesture timer must hold for the same
-      // duration.
+      // HtmlCanvasLayer's gesture timer must hold for the same window as zoomSettleMs().
       function onZoomActivity() {
-        if (IS_COARSE) return; // mobile-class GPU — see the layer note above
-        // Promote the holder for the pinch so the scale is a cheap GPU bitmap-scale.
-        // Note: do NOT also drop raster quality here — desktop zoom is PROMOTED, so
-        // the content is rasterized once and scaled, not re-rastered per frame; the
-        // quality drops save nothing and toggling them forces extra re-rasters + a
-        // box-shadow transition that made desktop zoom WORSE. Quality drops live on
-        // the un-promoted paths only (--panning: pan + mobile pinch).
+        if (IS_COARSE) return; // mobile-class GPU
         if (!zooming) {
           zooming = true;
           holderEl.style.willChange = "transform";
@@ -1276,67 +1011,50 @@ export function Canvas() {
         }, zoomSettleMs());
       }
 
-      // Keep the dot-grid background in sync with area zoom/pan.
       function syncBackground() {
         const { x, y, k } = area.area.transform;
         const size = DOT_SPACING * k;
         container!.style.backgroundSize = `${size}px ${size}px`;
         container!.style.backgroundPosition = `${x}px ${y}px`;
-        // Feed the parked WGSL render overlay only when it's actually mounted (canvas
-        // mode) — DOM + html modes don't use overlayBus, so this stays a no-op there.
         if (renderModeStore.get() === "canvas") overlayBus.setTransform(x, y, k);
-        // Fade the dots out as the grid shrinks (zoomed out) so it doesn't read
-        // as a dense, distracting texture: full from k≈0.55 up, gone by k≈0.18.
+        // Fade the dots out as the grid shrinks: full from k≈0.55, gone by k≈0.18.
         const fade = Math.max(0, Math.min(1, (k - 0.18) / (0.55 - 0.18)));
         container!.style.setProperty("--dot-pct", `${Math.round(fade * 100)}%`);
       }
 
-      // Reposition every node docked to `hostId` against its current socket
-      // position. Called when the host moves (nodetranslated) and when it
-      // resizes (NodeCard ResizeObserver → repositionDockedNodes), so a docked
-      // FC follows a socket that shifts because a list display box grew a row.
+      // Called on host MOVE and host RESIZE, so a docked FC follows a socket that
+      // shifted because a display box grew a row.
       function repositionDockedTo(hostId: string) {
         for (const rel of dockedNodeStore.getDockedTo(hostId)) {
           const dockedNode = editor.getNode(rel.id);
           if (!dockedNode) continue;
-          // A SELECTED docked FC is moved by the selection drag itself. Repositioning
-          // it here too creates a translate feedback loop with the multi-drag
-          // follow (host moves FC → FC translate → selector moves host → …) that
-          // hangs the app. Leave it to the drag; it re-snaps to its host on drop.
+          // A SELECTED docked FC is moved by the drag itself; repositioning it here too
+          // creates a translate feedback loop that hangs the app.
           if ((dockedNode as { selected?: boolean }).selected) continue;
           const { w, h } = dockedRenderedDims(area, rel.id, dockedNode.width, dockedNode.height);
           const pos = computeDockedCanvasPos(
             area, c, rel.hostNodeId, rel.socketKey, rel.side, w, h,
           );
-          // Use area.translate (not a raw DOM transform): it updates Rete's
-          // tracked node position, which the connection renderer reads — so an
-          // inline FC's cables follow it instead of anchoring at the origin.
-          // Trade-off: a one-frame lag behind a fast host drag (acceptable).
+          // area.translate, not a raw DOM transform: it updates the position the
+          // connection renderer reads, so the FC's cables follow it.
           if (pos) void area.translate(rel.id, pos);
         }
       }
       setRepositionDocked(repositionDockedTo);
 
-      // Which group (if any) the user is actively dragging. Move-together must
-      // only react to a real header drag — not the programmatic translates from
-      // group creation, load, or docking (those would shove members far away).
+      // Move-together must react only to a REAL header drag — a programmatic translate
+      // (creation, load, docking) would shove members far away.
       let draggingGroupId: string | null = null;
 
-      // Carrying a group's members along is O(members) — each is an async
-      // area.translate that re-routes its cables. `nodetranslated` fires once per
-      // `pointermove`, and a high-polling mouse emits those far faster than the
-      // display refreshes, so the member loop would run hundreds of times/sec and
-      // make a big group drag choppy (a single node, with no followers, stays
-      // smooth). Coalesce the deltas and apply them to members at most once per
-      // animation frame, decoupling the cost from pointer-event rate.
+      // Member follow is O(members) of async translates and `nodetranslated` fires per
+      // pointermove, far above the refresh rate — coalesce to one apply per frame.
       let pendingGroup: GroupNode | null = null;
       let pendingDX = 0, pendingDY = 0, memberMoveRaf = 0;
       const flushMemberMove = () => {
         if (memberMoveRaf) { cancelAnimationFrame(memberMoveRaf); memberMoveRaf = 0; }
         const g = pendingGroup, dx = pendingDX, dy = pendingDY;
         pendingGroup = null; pendingDX = 0; pendingDY = 0;
-        // skipSelected: a member that's also in the selection is already moved by
-        // rete's selector during the drag — moving it again here would double it.
+        // skipSelected: a selected member is already moved by rete's selector.
         if (g && (dx !== 0 || dy !== 0)) moveGroupMembers(editor, area, g, dx, dy, true);
       };
       const scheduleMemberMove = (group: GroupNode, dx: number, dy: number) => {
@@ -1344,13 +1062,8 @@ export function Canvas() {
         if (!memberMoveRaf) memberMoveRaf = requestAnimationFrame(() => { memberMoveRaf = 0; flushMemberMove(); });
       };
 
-      // Live standoff settle, rAF-throttled. The solver is a full solve from
-      // current positions and worst-case O(network²), and `nodetranslated` fires
-      // per pointermove, faster than the refresh rate. Since
-      // each run reads the latest boxes, collapsing many pointer events into one
-      // solve per frame converges to the same towed positions — you can't see
-      // faster than a frame anyway — and the exact final settle still runs on
-      // drop (`nodedragged`). Only active when standoffs exist.
+      // rAF-throttled: each solve reads the latest boxes, so one per frame converges to
+      // the same towed positions, and the exact settle still runs on drop.
       let standoffSettleRaf = 0;
       let pendingStandoffPinned: Set<string> | null = null;
       const scheduleStandoffSettle = (pinned: Set<string>) => {
@@ -1362,10 +1075,7 @@ export function Canvas() {
           if (p) settleStandoffNetwork(p);
         });
       };
-      // The bar/endpoint repaint tick, rAF-coalesced for the same reason: each
-      // bump makes StandoffLayer re-measure every tied node (2 forced reflows
-      // per bar) and IsolateEndpoints re-query its terminals. Per-pointermove
-      // bumps run faster than the refresh rate for zero visual gain.
+      // Each bump force-reflows every tied node, so coalesce these to one per frame.
       let standoffTickRaf = 0;
       const scheduleStandoffTickBump = () => {
         if (standoffTickRaf) return;
@@ -1374,22 +1084,16 @@ export function Canvas() {
           standoffLayoutTick.bump();
         });
       };
-      // Position at pick time, to tell a real drag from a plain click on
-      // `nodedragged` (rete emits it on every pointerup after a pick, moved
-      // or not).
+      // Pick position, to tell a real drag from a click: rete emits `nodedragged` on
+      // every pointerup after a pick, moved or not.
       let pickedPos: { x: number; y: number } | null = null;
 
-      // The pointer-driven node of the current drag (cleared on drop). Live
-      // standoff chain-pull keys off it so programmatic translates — push,
-      // restore, ELK, the settle itself — never trigger a re-solve.
+      // Chain-pull keys off this, so programmatic translates (push, ELK, the settle
+      // itself) never trigger a re-solve.
       let dragPickId: string | null = null;
 
-      // Node elements given a transient GPU layer for the duration of a drag, so
-      // moving a heavy node (chart / big table) is a cheap compositor translate
-      // instead of a per-frame repaint. Bounded to the moving set (picked +
-      // selected), NOT the whole holder — so it sidesteps the holder-size /
-      // GPU-max-texture wall that forbids holder promotion (see the pan note
-      // above). Promoted on `nodepicked`, cleared on `nodedragged`.
+      // Transient per-node GPU layers for a drag, bounded to the moving set — the
+      // holder itself is too large to promote.
       let dragPromotedEls: HTMLElement[] = [];
       const promoteDragLayers = (pickedId: string) => {
         clearDragLayers();
@@ -1397,7 +1101,6 @@ export function Canvas() {
         for (const n of editor.getNodes()) {
           if ((n as { selected?: boolean }).selected) ids.add(n.id);
         }
-        // A runaway selection isn't worth N layers — fall back to repaint.
         if (ids.size > 32) return;
         for (const id of ids) {
           const el = area.nodeViews.get(id)?.element;
@@ -1409,8 +1112,7 @@ export function Canvas() {
         dragPromotedEls = [];
       }
 
-      // Pan telemetry only. DOM mode stays full-quality while panning; the
-      // HTML-in-canvas renderer is the performance path.
+      // Telemetry only — DOM mode stays full-quality while panning.
       const onPanStart = () => { fpsProbe.start("pan"); };
       const onPanEnd = () => { fpsProbe.stop(); };
       container!.addEventListener("pointerdown", onPanStart, true);
@@ -1421,23 +1123,14 @@ export function Canvas() {
         if (ctx.type === "translated" || ctx.type === "zoomed") {
           syncBackground();
           if (ctx.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
-          // A pinch gets a transient GPU layer on the holder for the gesture
-          // (see onZoomActivity); a plain pan needs nothing. Only REAL zoomed
-          // events refresh the settle timer — with the longer zoom settle window, a
-          // translated-refresh would keep the holder promoted through a follow-on
-          // pan indefinitely (the tile-reveal flicker the promotion NOTE above
-          // exists to avoid); a pinch's interleaved translates are covered because
-          // its zoomed events keep arriving within the window.
+          // Only REAL zoomed events refresh the settle timer, or a follow-on pan would
+          // hold the holder promoted indefinitely.
           if (ctx.type === "zoomed") onZoomActivity();
         }
-        // Node re-renders can change box sizes (collapse toggles, growing list
-        // displays) — keep the standoff bars measured against fresh boxes.
+        // A re-render can change box sizes, so re-measure the standoff bars.
         if (ctx.type === "rendered") { standoffLayoutTick.bump(); }
-        // Node geometry changed → tell the WebGPU node-card layer to re-read rects.
-        // Deliberately NOT on "rendered": the card layer reads offsetWidth (a forced
-        // layout), and reacting to "rendered" makes that reflow re-trigger rete's
-        // ResizeObserver → another "rendered" → an infinite loop. Move/add/remove are
-        // discrete gestures with no such feedback; pan/zoom isn't a geometry change.
+        // Deliberately NOT on "rendered": the card layer's offsetWidth read re-triggers
+        // rete's ResizeObserver → another "rendered" → an infinite loop.
         if (ctx.type === "nodetranslated" || ctx.type === "nodecreated" || ctx.type === "noderemoved") {
           nodeGeomBus.notify();
         }
@@ -1446,7 +1139,6 @@ export function Canvas() {
           standoffStore.select(null);
           dragPickId = ctx.data.id;
           promoteDragLayers(ctx.data.id);
-          // Pick history for Ctrl-align: remember the node grabbed before this one.
           if (lastPickedRef.current !== ctx.data.id) {
             prevPickedRef.current = lastPickedRef.current;
             lastPickedRef.current = ctx.data.id;
@@ -1455,10 +1147,8 @@ export function Canvas() {
           draggingGroupId = picked instanceof GroupNode ? ctx.data.id : null;
           const pp = area.nodeViews.get(ctx.data.id)?.position;
           pickedPos = pp ? { x: pp.x, y: pp.y } : null;
-          // If the picked node is docked, sync Rete's internal position
-          // from the current DOM transform before undocking so the drag
-          // starts from the correct canvas position (not the stale position
-          // Rete stored before we started doing direct DOM mutations).
+          // A docked node's Rete position is stale (docking mutates the DOM directly),
+          // so sync it from the transform before the drag starts.
           const rel = dockedNodeStore.get(ctx.data.id);
           if (rel) {
             const view = area.nodeViews.get(ctx.data.id);
@@ -1470,20 +1160,15 @@ export function Canvas() {
             }
             dockedNodeStore.undock(ctx.data.id);
           }
-          // Keep a docked FC painting above its host. simpleNodesOrder (runs in
-          // an earlier pipe) just moved the picked node to the DOM end, so if the
-          // host was picked it now covers its FC. Re-append the FC(s) after it.
-          // (Picking the FC itself already lands it on top.)
+          // simpleNodesOrder just moved the picked node to the DOM end, so a picked host
+          // now covers its docked FC — re-append the FC after it.
           for (const d of dockedNodeStore.getDockedTo(ctx.data.id)) {
             const v = area.nodeViews.get(d.id);
             if (v) void area.area.content.reorder(v.element, null);
           }
         }
-        // Shift = constrain the drag to an axis. The pre-event lets us rewrite
-        // the intended position before it's applied (node-view reads data.position
-        // after this pipe). We project the offset-from-origin onto the nearest of
-        // horizontal / vertical (and the two diagonals, but only past a medium
-        // distance so an initial wobble doesn't snap to 45°).
+        // Shift-axis lock: the PRE-event lets the intended position be rewritten before
+        // it's applied; diagonals only past a distance, so a wobble can't snap to 45°.
         if (ctx.type === "nodetranslate" && ctx.data.id === dragPickId && pickedPos && shiftDragRef.current) {
           const o = pickedPos;
           const p = ctx.data.position;
@@ -1501,9 +1186,8 @@ export function Canvas() {
           const proj = dx * bx + dy * by;
           ctx.data.position = { x: o.x + proj * bx, y: o.y + proj * by };
         }
-        // Ctrl/Cmd = align the dragged node's edges to the previously grabbed
-        // object (which is deselected, so it stays put). Snap each axis
-        // independently to the nearest matching edge within a small threshold.
+        // Ctrl/Cmd = align to the PREVIOUSLY grabbed object, which stays put because it
+        // is deselected; each axis snaps independently.
         if (
           ctx.type === "nodetranslate" && ctx.data.id === dragPickId &&
           ctrlDragRef.current && !shiftDragRef.current && prevPickedRef.current
@@ -1531,25 +1215,18 @@ export function Canvas() {
             };
           }
         }
-        // Synchronously reposition any nodes docked to the translated node.
-        // Direct DOM mutation in the same pipe call as the host's translation
-        // keeps both nodes in the same paint frame with no async lag.
+        // Synchronous, in the same pipe call as the host's translation, so both land in
+        // one paint frame.
         if (ctx.type === "nodetranslated") {
           repositionDockedTo(ctx.data.id);
-          // Dragging a group's header carries its members along by the same
-          // delta — but only during an actual user drag (see draggingGroupId).
           const moved = editor.getNode(ctx.data.id);
           if (moved instanceof GroupNode && ctx.data.id === draggingGroupId) {
             const { position, previous } = ctx.data as { position: { x: number; y: number }; previous: { x: number; y: number } };
             scheduleMemberMove(moved, position.x - previous.x, position.y - previous.y);
           }
-          // Live standoff chain-pull: dragging a linked item tows its partners
-          // once a band goes taut (and shoves them at the minimum). Pin the
-          // whole dragged selection so the solver only moves the others.
-          // Gated on the dragged selection actually TOUCHING a tie: ties are
-          // sparse (each Note to its group), and running the settle — which
-          // force-reflows every tied node's box — on every pointermove made
-          // plain node drags jank once the PF seed grew to 11 ties.
+          // Chain-pull tows partners once a band goes taut; the whole dragged selection
+          // is pinned, and it's gated on actually TOUCHING a tie because the settle
+          // force-reflows every tied node's box.
           if (ctx.data.id === dragPickId && !standoffSolving && !standoffStore.isEmpty()) {
             const parts = standoffStore.participants();
             const pinned = new Set<string>([ctx.data.id]);
@@ -1562,40 +1239,28 @@ export function Canvas() {
             }
             if (touchesTie) scheduleStandoffSettle(pinned);
           }
-          // Repaint the bar/endpoint layer only when something it draws moved:
-          // a standoff end, or any node while isolate shows its terminals.
+          // Repaint that layer only when something it draws actually moved.
           if (standoffStore.participants().has(ctx.data.id) || isolateStore.isActive()) {
             scheduleStandoffTickBump();
           }
         }
-        // Dragging an FC (nodepicked already dropped it from the follow set):
+        // Dropping a dragged FC:
         //  • onto a DIFFERENT socket → re-home (re-splice into that host),
-        //  • essentially back onto its own socket → re-glue (resume following),
-        //  • out into empty space → stay undocked where dropped, keeping its
-        //    cables and annotation. Drag-away undocks but never breaks wiring.
+        //  • back onto its own socket → re-glue (resume following),
+        //  • into empty space → stay undocked, keeping cables and annotation.
         if (ctx.type === "nodedragged") {
-          // Drop the transient drag layers (re-rasterizes each node crisp in place).
           clearDragLayers();
-          // Apply any rAF-coalesced member follow immediately so the drop's exact
-          // positions are settled before membership reconcile / autosave below.
+          // Settle the coalesced member follow before the reconcile/autosave below.
           flushMemberMove();
-          // Snap-to-grid (on release): round the dragged node to the nearest grid
-          // point (dots + half sub-grid). The lead node is still selected, so
-          // area.translate group-moves the rest of the selection by the same
-          // delta — relative layout is preserved. Skip groups (their members
-          // wouldn't follow) and docked FCs (they reposition to their socket).
+          // The lead node is still selected, so area.translate carries the rest of the
+          // selection by the same delta; groups and docked FCs are skipped.
           if (gridSnapStore.get() && ctx.data.id === dragPickId) {
             const dn = editor.getNode(ctx.data.id);
             const dv = area.nodeViews.get(ctx.data.id);
             if (dv && dn && !(dn instanceof FormatControllerNode)) {
-              // If the dropped node is in a STANDOFF CLUSTER, snap the whole
-              // cluster as a rigid block to a DETERMINISTIC anchor (its top-left
-              // member), not the dropped node. A locked standoff fixes the
-              // members' relative geometry, so snapping one node to grid fights the
-              // angle — and snapping whichever node was clicked oscillates the
-              // cluster on every click (the bug). A uniform translation preserves
-              // the angle (the post-drop settle becomes a no-op) AND is idempotent:
-              // the anchor lands on grid once, then every re-click is a no-op.
+              // A STANDOFF CLUSTER snaps as a rigid block to a DETERMINISTIC anchor: a
+              // locked standoff fixes relative geometry, so snapping the clicked node
+              // fights the angle and oscillates the cluster on every click.
               const cluster = standoffStore.isEmpty()
                 ? undefined
                 : standoffClusters(standoffStore.all()).find((c) => c.includes(ctx.data.id));
@@ -1608,7 +1273,6 @@ export function Canvas() {
                 const ap = posOf(anchorId);
                 const ddx = snapCoord(ap.x) - ap.x, ddy = snapCoord(ap.y) - ap.y;
                 if (ddx !== 0 || ddy !== 0) {
-                  // Move every cluster member, plus the members of any group in it.
                   const toMove = new Set(cluster);
                   for (const id of cluster) {
                     const n = editor.getNode(id);
@@ -1625,18 +1289,15 @@ export function Canvas() {
                 const ddx = sx - dv.position.x, ddy = sy - dv.position.y;
                 if (ddx !== 0 || ddy !== 0) {
                   void area.translate(ctx.data.id, { x: sx, y: sy });
-                  // A group carries its members by the same delta. The snap's
-                  // area.translate on the still-picked lead already moved any SELECTED
-                  // members via the selector, so skip them (avoid the double-move).
+                  // Skip SELECTED members — the selector already moved them.
                   if (dn instanceof GroupNode) moveGroupMembers(editor, area, dn, ddx, ddy, true);
                 }
               }
             }
           }
           scheduleAutosave(); // persist the new position (drag end, once)
-          // Final standoff settle for the drop (throttled mid-drag solves can
-          // leave a residual violation). Cancel any pending rAF settle first so
-          // it can't fire after the drop with a stale pinned set.
+          // Cancel the pending rAF settle first, or it fires after the drop with a
+          // stale pinned set.
           if (standoffSettleRaf) { cancelAnimationFrame(standoffSettleRaf); standoffSettleRaf = 0; pendingStandoffPinned = null; }
           if (ctx.data.id === dragPickId) {
             const pinned = new Set<string>([ctx.data.id]);
@@ -1646,20 +1307,13 @@ export function Canvas() {
             settleStandoffNetwork(pinned);
           }
           dragPickId = null;
-          // Hybrid group membership: a node dragged into/out of a group's box
-          // joins/leaves it. (No-op for groups themselves.)
           draggingGroupId = null;
           reconcileGroupMembership(editor, area, ctx.data.id);
           rebuildGroupMembership(editor);
           syncGroupCollapse(editor, area);
           const dragged = editor.getNode(ctx.data.id);
-          // A manual move of a group OR a loose node breaks the spatial
-          // assumptions behind any expand-time push it caused or received — stop
-          // auto-restoring it. (Loose nodes are now push targets too.) Only a
-          // drag that actually MOVED the node counts: rete fires `nodedragged`
-          // on every pointerup after a pick, so a plain click (select a group
-          // before collapsing it, select a Conduit to inspect its lanes) must
-          // NOT wipe the push records (the restore-on-collapse needs them).
+          // A manual MOVE invalidates any expand-time push record; a plain click must
+          // not, since restore-on-collapse still needs them.
           const endPos = area.nodeViews.get(ctx.data.id)?.position;
           const draggedFar = !pickedPos || !endPos ||
             Math.abs(endPos.x - pickedPos.x) > 1 || Math.abs(endPos.y - pickedPos.y) > 1;
@@ -1689,7 +1343,6 @@ export function Canvas() {
                 await processGraph();
               })();
             } else if (target) {
-              // Dropped (near) its own socket → re-glue and snap flush.
               dragged.dockSelf(editor);
               const dims = dockedRenderedDims(area, dragged.id, dragged.width, dragged.height);
               const pos = computeDockedCanvasPos(
@@ -1698,22 +1351,17 @@ export function Canvas() {
               );
               if (pos) void area.translate(dragged.id, pos);
             }
-            // else (no nearby socket): leave it undocked where dropped — it keeps
-            // its inline cables and its annotation; it just no longer follows.
-            // MUST also forget the dock identity: dragstart only cleared the STORE
-            // entry, and a stale hostNodeId persists into the save, where the
-            // load-time dockSelf() would re-dock it to the old host.
+            // No nearby socket: stay undocked, but the dock IDENTITY must also be
+            // forgotten — a stale hostNodeId persists into the save and re-docks on load.
             else dragged.releaseDock();
           }
         }
         return ctx;
       });
 
-      // Mismatch rescan helper — called on cable events AND annotation changes.
       function rescanMismatches() {
         for (const n of editor.getNodes()) {
           if (!(n instanceof FormatControllerNode)) continue;
-          // The FC annotates its upstream socket (the node feeding FC.in).
           const mine = n.annotatedSocket();
           if (!mine) { formatMismatchStore.setMismatch(n.id, false); continue; }
           const myAnn = formatAnnotationStore.get(mine.nodeId, mine.socketKey);
@@ -1725,8 +1373,7 @@ export function Canvas() {
             const myKey  = `${mine.nodeId}::${mine.socketKey}`;
             const other  = srcKey === myKey ? tgtKey : tgtKey === myKey ? srcKey : null;
             if (!other) continue;
-            // Use lastIndexOf to correctly split nodeId::socketKey
-            // even if nodeId itself contains "::".
+            // lastIndexOf: a nodeId may itself contain "::".
             const sep         = other.lastIndexOf("::");
             const otherNodeId = other.slice(0, sep);
             const otherSockKey = other.slice(sep + 2);
@@ -1736,14 +1383,10 @@ export function Canvas() {
           formatMismatchStore.setMismatch(n.id, hasMismatch);
         }
       }
-      // Also rescan whenever a Format Controller changes its annotation.
       unsubFmt = formatAnnotationStore.subscribe(rescanMismatches);
 
-      // Single settle for a BULK topology change (paste, etc.). The caller gates
-      // its add loop with begin/endGraphRebuild so the per-cable `connectioncreated`
-      // sweep above is skipped; this runs the equivalent ONCE. Same steps the
-      // per-cable branch runs — registered so copyPaste can reuse it without
-      // duplicating the FC/mismatch/collapse closures. (See process.ts bulkSettle.)
+      // The ONE settle for a bulk topology change, replacing the per-cable sweep the
+      // caller gated off with begin/endGraphRebuild.
       setBulkSettle(async (renderOnly?: Set<string>) => {
         reconcileFcTypes(editor, area);
         bumpConnectionVersion();
@@ -1752,9 +1395,6 @@ export function Canvas() {
         syncGroupCollapse(editor, area);
       });
 
-      // Persist the live graph into the current document after edits, and restore
-      // the documents library on startup so work survives a reload. New / Open /
-      // templates all go through documentStore directly (see DocumentTitle).
       setGraphChanged(() => { scheduleAutosave(); });
       if (await documentStore.restore()) {
         syncBackground();
@@ -1762,7 +1402,6 @@ export function Canvas() {
         return;
       }
 
-      // Fresh user: no library and nothing to migrate — seed the first document.
       await ensureFirstDocument();
       syncBackground();
       syncSemanticZoomFor(area.area.transform.k);
@@ -1787,11 +1426,8 @@ export function Canvas() {
     };
   }, []);
 
-  // Right-click handling. Attached natively (not via React's onContextMenu)
-  // because nodes render in a SEPARATE React root (see CLAUDE.md) — a synthetic
-  // handler on the wrapper doesn't reliably resolve `e.target` into the node
-  // DOM, so socket/node hits fell through and the Add menu opened everywhere.
-  // Routing (socket / cable / node / blank) lives in canvasContextMenu.ts.
+  // Native, not React's onContextMenu: nodes render in a SEPARATE React root, where a
+  // synthetic handler can't resolve `e.target` into the node DOM.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -1801,11 +1437,8 @@ export function Canvas() {
     });
   }, []);
 
-  // Isolate overlay: non-focus nodes recede (dim + non-interactive); the focus
-  // set is re-centered on enter; node positions are SNAPSHOT on enter and
-  // RESTORED on exit, so repositioning inside isolate isn't carried through
-  // (value / connection / delete edits are real and DO persist). New nodes are
-  // blocked while isolating (see handleMenuSelect / paste). View-only otherwise.
+  // Isolate is VIEW-ONLY: positions are snapshot on enter and restored on exit, so
+  // repositioning inside it isn't carried through — value/wiring edits are real.
   useEffect(() => {
     let wasActive = false;
     const snapshot = new Map<string, { x: number; y: number }>();
@@ -1818,7 +1451,6 @@ export function Canvas() {
         view.element.classList.toggle("solenoid-isolate-dim", active && !isolateStore.isVisible(id));
       }
       if (active && !wasActive) {
-        // Enter: snapshot focus positions and fly to the focus set.
         snapshot.clear();
         const focusNodes = [];
         for (const [id, view] of area.nodeViews) {
@@ -1829,8 +1461,7 @@ export function Canvas() {
         }
         if (focusNodes.length) void AreaExtensions.zoomAt(area, focusNodes);
       } else if (!active && wasActive) {
-        // Exit: undo any repositioning done inside isolate, then persist the
-        // restored layout (translate is async; the debounced save catches it).
+        // translate is async; the debounced save catches the restored layout.
         for (const [id, pos] of snapshot) {
           if (area.nodeViews.has(id)) void area.translate(id, pos);
         }
@@ -1851,9 +1482,8 @@ export function Canvas() {
       if (isolateStore.isActive()) return; // no new nodes while isolating
 
       const node = entry.create() as SolenoidNode;
-      // A pre-seeded composite (the Query preset) carries a pending internal
-      // snapshot — build its live subgraph before the first recompute, the same
-      // hydrate persistence.ts runs on load. No-op for the empty Composite.
+      // A pre-seeded composite carries a pending internal snapshot — build its live
+      // subgraph before the first recompute.
       if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
       await editor.addNode(node);
 
@@ -1862,14 +1492,10 @@ export function Canvas() {
       const rect = container.getBoundingClientRect();
       const dropX = (menu.screenX - rect.left - tx) / k;
       const dropY = (menu.screenY - rect.top - ty) / k;
-      // Where the cable was dropped is the point that should meet the new node's
-      // wired socket. Dragging from an OUTPUT creates a DOWNSTREAM node whose INPUT
-      // (left edge) meets the drop → top-left at the drop. Dragging from an INPUT
-      // creates an UPSTREAM node whose OUTPUT (right edge) meets the drop → shift it
-      // left by its width. Width isn't known until the card renders; measure the
-      // element if it's already laid out (no jump), else place naive and nudge on
-      // the next frame. (offsetWidth is natural CSS px — the canvas scale is on the
-      // holder, not the card — so it's already in the canvas units dropX uses.)
+      // The drop point must meet the new node's WIRED socket, so a node created from an
+      // INPUT drag shifts left by its width — unknown until the card renders, hence the
+      // measure-else-nudge. (offsetWidth is already in canvas units: the scale is on
+      // the holder, not the card.)
       const fromInput = menu.quickWire?.side === "input";
       const measuredW = fromInput ? area.nodeViews.get(node.id)?.element.offsetWidth ?? 0 : 0;
       await area.translate(node.id, { x: fromInput ? dropX - measuredW : dropX, y: dropY });
@@ -1880,8 +1506,6 @@ export function Canvas() {
         });
       }
 
-      // Quick-wire: splice the dragged cable into the first compatible socket on
-      // the new node (the menu was already filtered to guarantee one exists).
       if (menu.quickWire) {
         const { nodeId: originId, key: originKey, side } = menu.quickWire;
         const originNode = editor.getNode(originId);
@@ -1902,16 +1526,14 @@ export function Canvas() {
         }
       }
 
-      // A freshly-added node has no connections, so it can't affect any existing
-      // node. Use the ADDITIVE path (no engine reset → existing caches survive →
-      // nothing re-sources/re-materializes) and render only the new node.
+      // A fresh node has no connections, so the ADDITIVE path keeps every existing
+      // cache alive instead of re-sourcing the graph.
       await processGraph(undefined, new Set([node.id]));
       setMenu(null);
     },
     [menu],
   );
 
-  // Splice Conduit(s) into the selected cables — see canvasActions.ts.
   const handleInsertConduit = useCallback(async (target: CableContextTarget) => {
     const editor = editorRef.current;
     const area = areaRef.current;
@@ -1919,8 +1541,6 @@ export function Canvas() {
     if (!editor || !area || !container) return;
     await insertConduitForCables(editor, area, container, target);
   }, []);
-  // Shared with the value popups' Pin button (resolves the node's primary output,
-  // or the empty key for a group whose chip shows its readouts). See pinStore.
   const handlePin = useCallback((nodeId: string) => pinNodeValue(nodeId), []);
 
   const handleLinkStandoff = useCallback((t: { aId: string; bId: string }) => {
@@ -1944,7 +1564,6 @@ export function Canvas() {
     await attachFormatController(editor, area, container, target);
   }, []);
 
-  // Add-menu catalog = core tree with any active packs' nodes inserted in place.
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(
     () => buildCatalog(true),
@@ -1954,8 +1573,8 @@ export function Canvas() {
   return (
     <div className="solenoid-canvas-wrapper">
       <div ref={containerRef} className="solenoid-canvas" />
-      {/* Parked WGSL canvas layers — mount ONLY in the (shelved) "canvas" mode, so DOM
-          and html modes carry zero canvas overhead. */}
+      {/* Parked WGSL layers — mount ONLY in "canvas" mode, so the other modes carry
+          zero canvas overhead. */}
       {renderMode === "canvas" && (
         <>
           <CableCanvas />
@@ -2052,6 +1671,5 @@ export function Canvas() {
   );
 }
 
-// Local alias for use in the Connection constructor cast.
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 

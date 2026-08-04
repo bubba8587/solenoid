@@ -31,10 +31,8 @@ import { IS_MOBILE } from "../coarse";
 import "./compositeEditor.css";
 import "./SocketContextMenu.css";
 
-// Mounts a composite's PRIVATE internal graph (nodes/composite.ts `internalEditor`)
-// into a real rete area, layered full-bleed over the main canvas. Edits at any depth
-// retarget the MAIN-editor ancestor (stack[0]) to recompute, and a level reconciles
-// its ports against its PARENT graph (the crumb above) on leave.
+// Edits at any depth retarget the MAIN-editor ancestor (stack[0]) to recompute, and a level
+// reconciles its ports against its PARENT graph (the crumb above) on leave.
 
 type DrillMount = {
   container: HTMLDivElement;
@@ -42,8 +40,7 @@ type DrillMount = {
   selector: ReturnType<typeof AreaExtensions.selector>;
   selectable: ReturnType<typeof AreaExtensions.selectableNodes>;
   history: HistoryPlugin<Schemes>;
-  // Lazily created on the first Tidy (T) — the ELK plugin is heavy, dynamically
-  // imported, and cached on the mount so it's built once per composite.
+  // The ELK plugin is heavy, so it is dynamically imported on first Tidy and cached here.
   arrange: AutoArrangePlugin<Schemes> | null;
 };
 
@@ -69,17 +66,12 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   const selectable = AreaExtensions.selectableNodes(area, selector, { accumulating });
   AreaExtensions.simpleNodesOrder(area);
 
-  // Shared with the main canvas (areaPresets.ts) so the drill-in can't drift from
-  // it — the render components + the compatibility/self-loop/lock connection veto.
+  // Shared with the main canvas (areaPresets.ts) so the drill-in can't drift from it.
   reactPlugin.addPreset(solenoidClassicRenderSetup());
   connection.addPreset(() => makeSolenoidConnectionFlow(editor));
 
-  // connectionpick / connectiondrop fire on THIS plugin's own scope (Scope.use
-  // forwards events down, so no area pipe sees them) — mirror Canvas's cable-drag
-  // pipe or the flag never flips inside a drill-in: the Conduit's expand-on-drag-
-  // near / phantom-lane grow reads cableDragStore, the touch drop-target CSS keys
-  // off `--cabling`, and an uncommitted text edit must blur before it's wired.
-  // (Quick-wire stays main-only — its Add-menu spawn path is part of D2.)
+  // connectionpick / connectiondrop fire on THIS plugin's own scope (Scope.use forwards events
+  // down only), so cableDragStore never flips inside a drill-in without mirroring Canvas's pipe.
   connection.addPipe((ctx) => {
     if (ctx.type === "connectionpick") {
       (document.activeElement as HTMLElement | null)?.blur?.();
@@ -96,10 +88,8 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
     return ctx;
   });
 
-  // A minimap for the subgraph — the same custom colored preset + collapse-aware
-  // geometry as the main canvas. collapsedAwareNodesRect reads the ACTIVE graph
-  // (this drill-in while it's open), so the map reflects the subgraph. CSS shows
-  // this one and hides the main one while drilled in (both are .solenoid-minimap).
+  // collapsedAwareNodesRect reads the ACTIVE graph, so this map reflects the subgraph; CSS
+  // hides the main one while drilled in (both are .solenoid-minimap).
   const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });
   (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
   reactPlugin.addPreset(solenoidMinimapPreset(105));
@@ -109,15 +99,11 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   area.use(connection);
   area.use(history);
   area.use(minimap);
-  // Match the main canvas's pointer feel: capped proportional wheel zoom +
-  // double-click-to-zoom suppression. The container is cached with the mount, so
-  // the listener lives as long as it — no cleanup needed.
+  // The container is cached with the mount, so the listener lives as long as it.
   installSurfacePointer(area, container);
 
-  // Structural edits made in the drill-in recompute the OWNING card and
-  // autosave — the same settle a Canvas cable edit gets, minus the outer-only
-  // concerns (FC reconcile etc. don't apply inside the `any` boundary).
-  // Suppressed during bulk rebuilds (hydrate/unpack drive their own settle).
+  // Outer-only concerns (FC reconcile) don't apply inside the `any` boundary; suppressed
+  // during bulk rebuilds, which drive their own settle.
   editor.addPipe((ctx) => {
     if (ctx && typeof ctx === "object" && "type" in ctx) {
       const t = (ctx as { type: string }).type;
@@ -129,8 +115,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
         !isGraphRebuilding() &&
         (t === "connectioncreated" || t === "connectionremoved" || t === "noderemoved")
       ) {
-        // Retarget the MAIN-editor ancestor (breadcrumb root) so a nested edit
-        // still ripples out to the canvas; falls back to this composite's own id.
+        // Retarget the breadcrumb root so a nested edit still ripples out to the canvas.
         void processGraph(compositeEditorStore.stack()[0]?.id ?? composite.id);
         scheduleAutosave();
       }
@@ -159,31 +144,25 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
   >(null);
   const [ready, setReady] = useState(false);
-  // The run-controls panel is collapsible — and starts COLLAPSED on mobile, where a
-  // 240px-wide open panel would blanket the small canvas (the author's mobile-pass ask).
+  // Starts COLLAPSED on mobile, where an open 240px panel would blanket the small canvas.
   const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
-  // Canvas lock is a global toggle (the NavMenu pill). The main canvas applies it
-  // via a class + drag-pipe guards; the drill-in area has neither, so mirror the
-  // class onto the host — the `.solenoid-canvas--locked` descendant rules make the
-  // subgraph nodes view-only (pointer-events:none), background pan/zoom still live.
+  // The drill-in area has no drag-pipe guards, so mirror the lock class onto the host and let
+  // the `.solenoid-canvas--locked` descendant rules make the nodes view-only.
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // Re-render the overlay (incl. the run-mode / goal-seek controls panel) on every
-  // pass, so renaming an internal marker updates the port-label-driven dropdowns
-  // immediately on blur (data() syncs the labels; this reflects them).
+  // Re-render on every pass, so renaming an internal marker updates the port-label-driven
+  // dropdowns on blur.
   useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
 
   const compositeId = composite.id;
   const isComposite = true;
-  // The PARENT graph this level lives in: the main editor at level 0, else the
-  // composite one breadcrumb up (a nested composite lives in its parent's
-  // internal editor, not the main one). Used for port reconcile on leave.
+  // The main editor at level 0, else the composite one breadcrumb up — a nested composite
+  // lives in its parent's internal editor, not the main one.
   const parentEditor = (() => {
     const st = compositeEditorStore.stack();
     const i = st.indexOf(composite);
     return i > 0 ? st[i - 1].internalEditor : getEditor();
   })();
-  // Recompute always retargets the MAIN-editor ancestor (breadcrumb root), so an
-  // edit any levels deep still ripples out to the canvas.
+  // Always the breadcrumb root, so an edit any levels deep still ripples out to the canvas.
   const recomputeTarget = () => compositeEditorStore.stack()[0]?.id ?? compositeId;
 
   useEffect(() => {
@@ -196,12 +175,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if (canceled) return;
       mountRef.current = mount;
       hostRef.current?.appendChild(mount.container);
-      // Suppress history recording of the backfill: the open re-adds views and lays
-      // every node out via area.translate, which the HistoryPlugin would record — an
-      // undo with NO user action would then revert those. Gate the inner history's
-      // `active` flag (its own undo/redo-reentrancy guard: `add()` is a no-op while
-      // active) around the backfill; a blanket clear() would wipe a PRIOR session's
-      // undo stack, since the plugin is cached per-composite across close/reopen.
+      // Gate the inner history's `active` flag around the backfill or its area.translate calls
+      // record as undoable; a blanket clear() would wipe a prior session's stack, since the
+      // plugin is cached per-composite across close/reopen.
       const innerHistory = (mount.history as unknown as { history: { active: boolean } }).history;
       innerHistory.active = true;
       try {
@@ -223,24 +199,21 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       } finally {
         innerHistory.active = false;
       }
-      // Make THIS level the active graph so the app chrome (keyboard, copy/paste,
-      // context menus, palette, tidy) acts on the subgraph — first-class editing.
-      // getEditor()/getArea() stay main-only (autosave safety); see activeGraph.ts.
+      // Make THIS level the active graph so the app chrome acts on the subgraph;
+      // getEditor()/getArea() stay main-only for autosave safety.
       setActiveGraph({ editor: comp.internalEditor, area: mount.area, history: mount.history });
       setReady(true);
     })();
     return () => {
       canceled = true;
-      // Isolate is a transient VIEW state keyed on THIS level's node ids — drop it
-      // on leave so the main canvas (or a deeper level) isn't left dimmed against
-      // a focus set of ids it doesn't own.
+      // Isolate is keyed on THIS level's node ids, so drop it or another level is left dimmed
+      // against ids it doesn't own.
       isolateStore.exit();
       setActiveGraph(null); // back to the main graph (a deeper level re-registers)
       const mount = mountRef.current;
       if (mount) {
-        // Remove every internal view — unmounting each view's React ROOT so
-        // component effect cleanups actually run. Merely detaching the container
-        // keeps the fibers (and their intervals) alive.
+        // Removing the views unmounts each React ROOT; merely detaching the container keeps
+        // the fibers (and their intervals) alive.
         for (const n of comp.internalEditor.getNodes()) mount.area.removeNodeView(n.id);
         for (const c of comp.internalEditor.getConnections()) mount.area.removeConnectionView(c.id);
         if (hostRef.current?.contains(mount.container)) {
@@ -251,8 +224,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositeId]);
 
-  // Every completed graph pass refreshed the internal nodes' cached values —
-  // re-render their views (each is its own React root; concurrent updates).
+  // Each internal view is its own React root, so a completed pass must re-render them.
   useEffect(() => {
     if (!isComposite) return;
     const comp = composite as CompositeNode;
@@ -264,12 +236,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositeId]);
 
-  // Window-level (focus lands on <body> after canvas clicks — a div listener
-  // would go deaf). Canvas's own window keydown stands down while the overlay
-  // is open (see its compositeEditorStore guard), so there's no double-handling.
-  // Declared BEFORE the isComposite bail so hook order is stable; the handlers
-  // it calls are hoisted function declarations and never run for a non-composite
-  // (that render tears the overlay down via the mount effect's close()).
+  // Window-level, since focus lands on <body> after canvas clicks; declared BEFORE the
+  // isComposite bail so hook order stays stable.
   useEffect(() => {
     if (!isComposite) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -312,9 +280,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         e.preventDefault();
         void tidyDrill();
       }
-      // I — isolate the subgraph selection / exit if already isolating. Isolate
-      // resolves through the ACTIVE editor (this level) and the dim view reads the
-      // global isolateStore that the drill-in node cards already observe.
+      // Isolate resolves through the ACTIVE editor, and the dim view reads the global
+      // isolateStore the drill-in cards already observe.
       if (e.code === "KeyI") {
         e.preventDefault();
         if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
@@ -324,9 +291,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         void nudgeSelection(e.key, e.shiftKey);
       }
       if (e.key === "Escape") {
-        // Esc: close an open Add menu → exit an active isolate → else pop ONE
-        // breadcrumb level (drill up; at the root it closes). Same precedence the
-        // main canvas gives isolate over its own Esc actions.
+        // Esc precedence: close the Add menu → exit isolate → pop ONE breadcrumb level.
         if (menu) setMenu(null);
         else if (isolateStore.isActive()) isolateStore.exit();
         else void drillTo(compositeEditorStore.stack().length - 2);
@@ -343,10 +308,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
 
   const comp = composite;
 
-  /** Save positions + reconcile this level's ports against its PARENT graph (a
-   *  deleted marker drops its port and the parent cables into it). Shared by
-   *  full close and breadcrumb drill-up — leaving a level at any depth reconciles
-   *  it. Does NOT touch the breadcrumb; the caller decides where to go next. */
+  /** Save positions + reconcile this level's ports against its PARENT graph; leaving a level
+   *  at any depth runs this. Does NOT touch the breadcrumb — the caller decides where to go. */
   async function leaveLevel() {
     const mount = mountRef.current;
     if (mount) {
@@ -357,11 +320,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       comp.internalPositions = positions;
     }
     if (parentEditor) {
-      // A boundary marker deleted inside the subgraph drops its exposed port — and
-      // any OUTER cables that were wired into that port go with it. Keeping the drop
-      // is by design (the port no longer exists), but severing outer wiring on close
-      // is exactly the kind of thing the user must not silently miss, so tally it and
-      // surface a notice below.
+      // Dropping the port takes any OUTER cables with it — by design, but severed outer wiring
+      // must never be silent, so tally it for the notice below.
       let droppedCables = 0;
       let droppedPorts = 0;
       for (const p of [...comp.inputPorts]) {
@@ -386,14 +346,12 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         );
       }
     }
-    // Renaming a boundary marker inside the subgraph renames its exposed port on the
-    // outer card — pull each surviving port's label from its marker's current label.
+    // Renaming a boundary marker renames its exposed port on the outer card.
     comp.syncPortLabels();
   }
 
-  /** Refresh the card + recompute + save, after a leave. Only the MAIN-canvas
-   *  card can be area-updated here (a nested composite's card lives in a parent
-   *  mount that re-renders on remount); recompute always retargets the root. */
+  /** Refresh the card + recompute + save after a leave. Only the MAIN-canvas card can be
+   *  area-updated here; a nested composite's card re-renders on remount. */
   async function settleAfterLeave() {
     if (parentEditor === getEditor()) {
       const outerArea = getArea();
@@ -403,8 +361,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  /** Breadcrumb click: reconcile the current level, then jump to level `i`
-   *  (drill up). At i < 0 this closes. */
+  /** Breadcrumb click: reconcile the current level, then jump to level `i`; i < 0 closes. */
   async function drillTo(i: number) {
     await leaveLevel();
     compositeEditorStore.backTo(i);
@@ -418,8 +375,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     const n = kind === "input" ? comp.inputPorts.length + 1 : comp.outputPorts.length + 1;
     const label = kind === "input" ? `Input ${n}` : `Output ${n}`;
     const marker = kind === "input" ? new CompositeInputNode({ label }) : new CompositeOutputNode({ label });
-    // AFTER addNode — guard outside coercion (see CompositeNode.hydrate); the
-    // overlay's nodecreated pipe usually beat this call anyway (idempotent).
+    // Must run AFTER addNode — the guard sits outside coercion (see CompositeNode.hydrate).
     await comp.internalEditor.addNode(marker as SolenoidNode);
     installErrorGuards(marker);
     const rect = mount.container.getBoundingClientRect();
@@ -442,9 +398,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  /** Delete the current drill-in selection (cables first, then non-marker
-   *  nodes with their cables). Markers are deleted via their port — keeping
-   *  a wired boundary from vanishing out from under the outer card mid-edit. */
+  /** Delete the drill-in selection, cables first. Markers are excluded — they go via their
+   *  port, so a wired boundary can't vanish from under the outer card mid-edit. */
   async function deleteSelection() {
     const mount = mountRef.current;
     if (!mount) return;
@@ -465,10 +420,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     }
   }
 
-  /** Undo/redo the drill-in's history. withGraphRebuild gates the editor
-   *  pipe's per-event recompute while the plugin replays (one action can
-   *  restore many cables — same reasoning as Canvas's Ctrl+Z), then ONE
-   *  retargeted pass settles the owning card. */
+  /** Undo/redo the drill-in's history; withGraphRebuild gates the per-event recompute while
+   *  the plugin replays, then ONE retargeted pass settles the owning card. */
   async function historyStep(redo: boolean) {
     const history = mountRef.current?.history;
     if (!history) return;
@@ -479,8 +432,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  /** Nudge the selected internal nodes (positions persist via internalPositions on
-   *  leave). Reads node.selected — the drill-in selector sets it on click. */
+  /** Nudge the selected internal nodes; positions persist via internalPositions on leave. */
   async function nudgeSelection(key: string, big: boolean) {
     const mount = mountRef.current;
     if (!mount) return;
@@ -494,10 +446,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     }
   }
 
-  /** Duplicate one internal node (right-click → Duplicate). Reuses the tested
-   *  copy/paste path — which routes through getActive* (the drill-in) — by
-   *  transiently isolating the target on the `.selected` flag copySelected reads,
-   *  then restoring the real selection so the user's ring is untouched. */
+  /** Duplicate one internal node by transiently isolating it on the `.selected` flag
+   *  copySelected reads, then restoring the real selection so the user's ring is untouched. */
   async function duplicateNode(nodeId: string) {
     const mount = mountRef.current;
     if (!mount) return;
@@ -514,8 +464,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  /** Delete one internal node (right-click → Delete). Boundary markers keep to the
-   *  add/remove-port gesture, so they're excluded from this menu. */
+  /** Delete one internal node; boundary markers keep to the add/remove-port gesture. */
   async function deleteNode(nodeId: string) {
     const editor = comp.internalEditor;
     const node = editor.getNode(nodeId);
@@ -528,11 +477,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  /** Tidy (T) — auto-arrange the subgraph with the same symmetric ELK port preset
-   *  the main canvas uses (node centers / top edges align per the tidyAlign
-   *  setting). A BASIC layout: composites are small and rarely hold groups or
-   *  standoffs, so the main canvas's cluster / size-pin machinery isn't needed. The
-   *  ELK plugin is heavy — dynamically imported + cached on the mount on first use. */
+  /** Tidy (T) with the main canvas's symmetric ELK port preset, but a BASIC layout:
+   *  composites rarely hold groups or standoffs, so the cluster/size-pin machinery is skipped. */
   async function tidyDrill() {
     const mount = mountRef.current;
     if (!mount) return;
@@ -562,8 +508,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     const mount = mountRef.current;
     if (!mount || !menu) return;
     const node = entry.create() as SolenoidNode;
-    // A pre-seeded composite (the Query preset) added INSIDE a drill-in still
-    // needs its own internal snapshot built. No-op for everything else.
+    // A pre-seeded composite added INSIDE a drill-in still needs its own internal snapshot.
     if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
     await comp.internalEditor.addNode(node); // the pipe installs error guards
     const pos = toAreaCoords(mount.area, mount.container, menu.screenX, menu.screenY);
@@ -581,8 +526,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            // On a node body → node menu (Duplicate / Delete); blank → Add menu.
-            // Detect via nodeViews containment (rete adds no shared wrapper class).
+            // Detect via nodeViews containment — rete adds no shared wrapper class.
             const mount = mountRef.current;
             const target = e.target as Node;
             let hitId: string | null = null;
@@ -706,9 +650,8 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   );
 }
 
-// Right-click menu for a node inside the drill-in. The main canvas's node menu is
-// isolate/pin/standoff (main-graph concepts that don't apply in a subgraph), so the
-// drill-in gets its own focused set: Edit contents (composites) / Duplicate / Delete.
+// The main canvas's node menu is isolate/pin/standoff — main-graph concepts that don't apply
+// in a subgraph — so the drill-in gets its own set.
 function DrillNodeMenu({
   menu, onEdit, onDuplicate, onDelete, onClose,
 }: {
@@ -757,9 +700,8 @@ function DrillNodeMenu({
 export function CompositeEditorOverlay() {
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
   const current = compositeEditorStore.current();
-  // Flag the root while ANY composite is open (drilling deeper remounts the inner,
-  // so this lives on the always-mounted outer). The app chrome reads it to fold
-  // itself around the drill-in — same convention as html.solenoid-presenting.
+  // Lives on the always-mounted outer, since drilling deeper remounts the inner; the app
+  // chrome reads it to fold itself around the drill-in.
   const open = !!current;
   useEffect(() => {
     const root = document.documentElement;
@@ -767,7 +709,6 @@ export function CompositeEditorOverlay() {
     return () => root.classList.remove("sol-drilled-in");
   }, [open]);
   if (!current) return null;
-  // Keyed by the current level's id: drilling in / up changes `current`, so the
-  // inner remounts onto the new composite's own editor + area mount.
+  // Keyed by level id, so drilling remounts the inner onto that composite's own editor.
   return <CompositeEditorInner key={current.id} composite={current} />;
 }

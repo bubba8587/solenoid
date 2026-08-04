@@ -11,15 +11,11 @@ import { readCsvFrame, dropFrameRef, collectPreview, type FrameRef, type FrameHa
 import { solError, isSolError, type SolError } from "../errorValue";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
-// A connection node references outside data (a URL, or a file inside the Settings
-// target folder) and fetches a Frame on refresh — it never bakes the data into the
-// project file.
+// A connection node holds only a reference and fetches a Frame on refresh — the data
+// is never baked into the project file.
 
-// ─── Remote text → numeric Frame ────────────────────────────────────────────────
-
-/** Parse CSV (first row = headers) into a Frame, inferring each column's type so
- *  text columns (names, categories) are kept as strings, not turned into NaN.
- *  Quote-aware + delimiter-detecting (see csv.ts). */
+/** First row = headers; per-column type inference keeps text columns as strings
+ *  rather than NaN. */
 export function csvToFrame(text: string): FrameValue {
   const rows = parseCsvRows(text, { detectDelimiter: true });
   if (rows.length === 0) return { __frame: true, columns: [] };
@@ -61,14 +57,12 @@ export function remoteTextToFrame(text: string, contentType: string, url: string
 export class WebSourceNode extends ClassicPreset.Node {
   label: string;
   url: string;
-  /** Auto-refresh interval in minutes (0 = off) — the component runs a timer
-   *  that calls refreshConnection(id) on this cadence (Tier 2 live-data). */
+  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   cachedResult: FrameValue | null = null;
   width = 260; height = 200;
 
-  // Transient (never persisted): the last fetched cache key + the key whose
-  // background fetch is currently in flight (a guard against starting it twice).
+  // Transient (never persisted); inflightKey guards against starting a fetch twice.
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
@@ -80,13 +74,8 @@ export class WebSourceNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  // SYNCHRONOUS by design: a source whose data() returns a Promise sits on the
-  // engine's async critical path forever — every processGraph (e.g. each tick of
-  // a slider drag) awaits it, the first one blocks on the network, and
-  // engine.reset() cancels the in-flight fetch on every overlapping recompute.
-  // Instead, serve the cached frame immediately (like an in-node table); the
-  // first time a new key appears, fire ONE background fetch and recompute when it
-  // lands. After that the data never changes, so this is a plain cache read.
+  // SYNCHRONOUS by design: an async data() would sit on the engine's critical path, so
+  // every processGraph awaits the network and engine.reset() cancels the in-flight fetch.
   data(): { frame: FrameValue | null } {
     const ref = this.url.trim();
     const key = connectionStore.key(this.id, ref);
@@ -108,8 +97,7 @@ export class WebSourceNode extends ClassicPreset.Node {
     }
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      // Native HTTP on desktop (no CORS); window.fetch in the browser, which
-      // surfaces a CORS hint via fetchText when a cross-site request is blocked.
+      // Native HTTP on desktop (no CORS); the browser path surfaces a CORS hint.
       const { text: body, contentType } = await fetchText(ref);
       const frame = remoteTextToFrame(body, contentType, ref);
       this.cachedResult = frame;
@@ -132,8 +120,7 @@ export class WebSourceNode extends ClassicPreset.Node {
 }
 
 // ─── Shared fetch + status (IMPORT nodes) ───────────────────────────────────────
-// Fetch a URL and parse it, pushing loading/ok/error to the connectionStore. The
-// caller owns caching (lastKey / in-flight dedupe), like WebSource above.
+// The CALLER owns caching (lastKey / in-flight dedupe), as WebSource does.
 async function fetchParsed<T>(
   nodeId: string,
   url: string,
@@ -154,8 +141,7 @@ async function fetchParsed<T>(
   }
 }
 
-/** Parse the Nth `<table>` on an HTML page into a Frame (type-inferred columns).
- *  The first row is treated as headers when it's a `<thead>` / all-`<th>` row. */
+/** The first row becomes headers only when it's a `<thead>` / all-`<th>` row. */
 export function htmlTableToFrame(html: string, index1: number): FrameValue {
   if (typeof DOMParser === "undefined") throw new Error("HTML parsing needs a browser environment.");
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -171,8 +157,7 @@ export function htmlTableToFrame(html: string, index1: number): FrameValue {
   return frameFromCells(headers, body);
 }
 
-/** Run an XPath query against a fetched page; returns each matched node's trimmed
- *  text (Sheets IMPORTXML-style, but a flat list for v1). */
+/** Each matched node's trimmed text, as a flat list. */
 export function xpathToList(html: string, query: string): string[] {
   if (typeof DOMParser === "undefined") throw new Error("XML parsing needs a browser environment.");
   const q = query.trim();
@@ -271,10 +256,8 @@ export class ImportXmlNode extends ClassicPreset.Node {
 }
 
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// References a `.csv` by name inside the Settings target folder and reads it on
-// refresh. Desktop only (the browser build has no filesystem). Shares the same
-// cache / refresh layer as Web Source; the cache key folds in the folder + file
-// name, so changing either (or pointing Settings at a new folder) re-reads.
+// Desktop only (no filesystem in the browser). The cache key folds in folder + file
+// name, so re-pointing either re-reads.
 
 export class CsvConnectionNode extends ClassicPreset.Node {
   label: string;
@@ -321,9 +304,7 @@ export class CsvConnectionNode extends ClassicPreset.Node {
     if (name === "") return fail("Pick a file", "idle");
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      // Desktop: read + parse natively in Rust (Polars' own CSV reader) — the file
-      // text never crosses IPC and JS never re-parses/re-infers it. Web has no
-      // native engine, so it keeps the JS Papa Parse + inference path.
+      // Desktop parses in Rust so the file text never crosses IPC; web keeps the JS path.
       const frame = engineAvailable()
         ? await (async () => {
             const r = await readCsvFrame(folder, name);
@@ -347,13 +328,8 @@ export class CsvConnectionNode extends ClassicPreset.Node {
 }
 
 // ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
-// Like CSV Connection, but the file goes straight from disk into the Rust engine
-// (`engine_read_parquet`) — never parsed or type-inferred in JS. Desktop +
-// native-engine only: unlike CSV/JSON there's no JS Parquet reader to fall back
-// to. Emits a LAZY FrameRef off the
-// fresh handle, so a verb chain built on a Parquet source never re-uploads
-// through `engine_source` — the frame is already living in the backend the
-// moment the file is read.
+// Native-engine only — there is no JS Parquet reader to fall back to. Emits a LAZY
+// FrameRef off the fresh handle, so a verb chain never re-uploads through engine_source.
 
 export class ParquetConnectionNode extends ClassicPreset.Node {
   label: string;

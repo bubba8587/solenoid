@@ -3,19 +3,16 @@ import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 import { getArea } from "./process";
 
-// Geometry constants shared with ConduitComponent so trunk endpoints can be
-// computed without measuring DOM. The squares ARE the sockets; lane pitch is
-// SQ + ROW_GAP (scaled).
+// Shared with ConduitComponent so trunk endpoints need no DOM measurement; the
+// squares ARE the sockets, lane pitch is SQ + ROW_GAP (scaled).
 export const CONDUIT_BODY_SIZE = 92;
 export const CONDUIT_PIVOT = CONDUIT_BODY_SIZE / 2;
 export const CONDUIT_SQ = 10;
 export const CONDUIT_COL_GAP = 1.5;
 export const CONDUIT_ROW_GAP = 1.5;
 
-// ConduitComponent publishes its live angle + scale (the connector shrinks when
-// deselected, expands when selected / a drag is near). Connection components
-// read it to place the trunk's face-center endpoints, and subscribe so the
-// trunk tracks expansion.
+// ConduitComponent publishes its live angle + scale here; connections subscribe so
+// the trunk tracks expansion.
 
 type ConduitLayout = { angle: number; scale: number; selected: boolean };
 
@@ -40,9 +37,8 @@ export const conduitLayoutStore = {
   subscribe(l: () => void) { _layoutListeners.add(l); return () => { _layoutListeners.delete(l); }; },
 };
 
-// Center of a Conduit's input/output socket column, in canvas coords, plus the
-// block angle. This is where the ribbon trunk attaches. Null until the Conduit
-// has mounted and published its layout.
+// Where the ribbon trunk attaches, in canvas coords. Null until the Conduit has
+// mounted and published its layout.
 export function conduitFacePoint(
   nodeId: string,
   side: "in" | "out",
@@ -60,9 +56,8 @@ export function conduitFacePoint(
   };
 }
 
-// The hovered ribbon key. The trunk and every fan branch are drawn by different
-// ConnectionComponents; sharing hover through a store is what makes the whole
-// ribbon light up together.
+// Trunk and fan branches are separate ConnectionComponents, so hover must be shared
+// through a store for the whole ribbon to light up.
 
 let _hoveredRibbon: string | null = null;
 const _hoverListeners = new Set<() => void>();
@@ -108,9 +103,8 @@ export type RibbonCable = {
 
 const laneIdx = (key: string) => Number(key.slice(key.indexOf("_") + 1));
 
-// The entity a connection lands on, for bundling purposes: a collapsed group's
-// pill (checked first — a hidden target Conduit belongs to its group), else a
-// visible Conduit's lane input.
+// The bundling target: a collapsed group's pill FIRST — a hidden target Conduit
+// belongs to its group — else a visible Conduit's lane input.
 function ribbonTargetOf(editor: EditorLike, c: Conn): { kind: "conduit" | "group"; id: string } | null {
   const pill = groupCollapseStore.inPillFor(c.target, c.targetInput);
   if (pill) return { kind: "group", id: pill.groupId };
@@ -144,14 +138,8 @@ function isSeparated(conduitId: string): boolean {
   return pins.size > 0;
 }
 
-/**
- * The ribbon this connection belongs to, or null when it renders as a normal
- * cable. A ribbon = 2+ non-ghost cables from one visible Conduit's outputs to
- * the same entity. Computed fresh from the editor each call (cheap), so there
- * is no membership state to keep in sync. `ignoreSeparation` asks for the
- * would-be ribbon regardless of separation (used to decide whether a clicked
- * cable should pin).
- */
+/** The ribbon this connection belongs to (2+ non-ghost cables from one visible
+ *  Conduit to the same entity), derived fresh each call — never stored membership. */
 export function ribbonForConnection(
   editor: EditorLike,
   conn: Conn,

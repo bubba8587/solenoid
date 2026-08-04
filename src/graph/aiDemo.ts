@@ -1,7 +1,5 @@
-// The AI palette's DEMO transport: type `demo` in Settings ▸ AI instead of a key and
-// the palette runs against a canned local "model" — offline, no account. The fake
-// sits at the TRANSPORT seam (a fetch answering like the Messages API), so every
-// production layer above it runs for real; only the model's reply is canned.
+// The AI palette's DEMO transport. The fake sits at the TRANSPORT seam (a fetch answering
+// like the Messages API), so every production layer above it runs for real.
 
 import { readTextForm, writeTextForm } from "./textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
@@ -100,8 +98,7 @@ export function demoReply(prompt: string, currentText: string): string {
     );
   }
 
-  // New nodes land to the RIGHT of everything already on the canvas, laid out
-  // on a small grid so each stage reads left to right.
+  // New nodes land to the RIGHT of everything already on the canvas.
   const baseX = current.nodes.length > 0 ? Math.max(...current.nodes.map((n) => n.x)) + PITCH_X : 40;
   const baseY = current.nodes.length > 0 ? Math.min(...current.nodes.map((n) => n.y)) : 40;
 
@@ -149,8 +146,8 @@ function describeDocument(g: SavedGraph): string {
 const DOC_RE = /```solenoid\n([\s\S]*?)```/;
 const PROMPT_RE = /Request: ([\s\S]*)$/;
 
-/** A fetch that answers like `POST /v1/messages`, from `demoReply`. The delay
- *  keeps the palette's busy state visible so the demo reads as a round trip. */
+/** Answers like `POST /v1/messages`; the delay keeps the palette's busy state visible
+ *  so the demo reads as a round trip. */
 export function makeDemoFetch(delayMs = 600): typeof globalThis.fetch {
   return async (_input, init) => {
     const body = typeof init?.body === "string" ? init.body : "";
