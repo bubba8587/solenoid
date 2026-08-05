@@ -1416,11 +1416,12 @@ body.solenoid-scrubbing * {
    An edge says the same thing at the volume the distinction deserves.
 
    THE CONFLICT THIS HAS TO DODGE: a full-strength accent border already means
-   FOCUS on this very control (see :focus below). So the resting edge wears the
-   HEADER BAND's exact tint (same color-mix as .solenoid-node__header — author
-   2026-08-05; an 85%-accent edge sat too close to the focus color) and focus
-   keeps the pure accent — type and state stay legible together, separated by
-   intensity rather than by two competing hues.
+   FOCUS on this very control (see :focus below). So the resting edge takes the
+   60%-toward-border accent step (the existing quiet-emphasis shade —
+   .solenoid-pres__step--active uses the same mix) and focus keeps the pure
+   accent. Author-walked 2026-08-05: 85% read too close to the focus color,
+   the header-band tint (22% dark) too subtle; 60% is the in-between step
+   already in the system.
 
    The 2px edge is paid for out of the PADDING, not the box: the neutral field's
    1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an
@@ -1449,7 +1450,7 @@ body.solenoid-scrubbing * {
 }
 .solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]) {
   border-width: 2px;
-  border-color: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
+  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 60%, var(--border));
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
   padding: 3px 23px 3px 7px;
 }
