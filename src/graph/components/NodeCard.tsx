@@ -15,21 +15,26 @@ import { opKindForNode } from "../nodeOps";
 export const HEADER_TAP_SLOP = 4;
 
 /** The card's entire painted frame — body border, header accent cap, and the
- *  header/body divider — as ONE SVG, so all three strokes rasterize in a single
- *  paint pass. Painted as CSS borders on two separate elements (the old way),
- *  each stroke got its own subpixel rounding under the canvas zoom transform
- *  and the shared edges cracked apart. Geometry and colors live entirely in
- *  nodeCard.css via SVG geometry properties; the nested <svg> is sized to
- *  --header-h and clips the cap + divider to the header region. */
+ *  header/body divider — drawn as SVG strokes instead of CSS borders. Borders
+ *  are width-snapped per element under the canvas zoom transform, so the three
+ *  strokes cracked apart at their shared edges; SVG shapes rasterize at exact
+ *  fractional geometry, so coincident edges stay coincident. Two sibling
+ *  viewports (not one nested svg: absolutely-positioned svg keeps its intrinsic
+ *  300×150 unless explicitly sized, and geometry properties on a nested svg
+ *  proved unreliable): the full-card one strokes the body border; the second is
+ *  CSS-sized to --header-h and clips the cap + divider to the header region.
+ *  Geometry and colors live entirely in nodeCard.css. */
 export function CardFrame() {
   return (
-    <svg className="solenoid-node__frame" aria-hidden="true">
-      <rect className="solenoid-node__frame-body" />
-      <svg className="solenoid-node__frame-head">
+    <>
+      <svg className="solenoid-node__frame" aria-hidden="true">
+        <rect className="solenoid-node__frame-body" />
+      </svg>
+      <svg className="solenoid-node__frame solenoid-node__frame-head" aria-hidden="true">
         <rect className="solenoid-node__frame-cap" />
         <rect className="solenoid-node__frame-divider" />
       </svg>
-    </svg>
+    </>
   );
 }
 

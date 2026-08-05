@@ -62,9 +62,9 @@
    (and the socket below anchors to the content wrapper). */
 .sol-pal-sample .solenoid-node { position: relative; }
 .sol-pal-sample .solenoid-node__content { position: relative; }
-/* With the card as its own positioning context, pull the frame back over the
+/* With the card as its own positioning context, the frame reaches back over the
    transparent 2px border (the sample node is --grouped) to the full border box. */
-.sol-pal-sample .solenoid-node__frame { inset: -2px; }
+.sol-pal-sample .solenoid-node { --frame-outset: 2px; }
 .sol-pal-sample__socket {
   position: absolute;
   right: -6px;

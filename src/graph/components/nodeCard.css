@@ -39,9 +39,23 @@
    never sets --header-h — no header — gets no cap and no divider). */
 .solenoid-node__frame {
   position: absolute;
-  inset: 0; /* anchors to rete's holder = the card's border box, like the ring */
+  /* Anchors to rete's holder = the card's border box, like the ring. An svg is
+     a REPLACED element: absolute + inset alone leaves it at its intrinsic
+     300×150, so the size must be explicit. --frame-outset covers cards that
+     are their OWN positioning context (iso endpoints, palette sample), where
+     100% is the padding box and the frame must reach back over the border. */
+  top: calc(-1 * var(--frame-outset, 0px));
+  left: calc(-1 * var(--frame-outset, 0px));
+  width: calc(100% + 2 * var(--frame-outset, 0px));
+  height: calc(100% + 2 * var(--frame-outset, 0px));
+  overflow: hidden;
   z-index: 1; /* over the header's tinted bg; under chevron 2 / ring 6 / badges 7 */
   pointer-events: none;
+}
+/* The header viewport: same origin, cut to the header's height — its overflow
+   clip is what ends the accent rails and divider at the header/body seam. */
+.solenoid-node__frame-head {
+  height: var(--header-h, 0px);
 }
 /* Body border: stroke centered half a width inside the card edge, so the
    stroke's OUTER edge is the card's outer edge — same as the old real border. */
@@ -55,12 +69,6 @@
   stroke: var(--border);
   stroke-width: 1px;
   transition: stroke 80ms ease;
-}
-.solenoid-node__frame-head {
-  x: 0;
-  y: 0;
-  width: 100%;
-  height: var(--header-h, 0px);
 }
 /* Accent cap: 2px stroke sharing the card's outer edge; the rect runs taller
    than the header viewport so its bottom stroke and arcs never show. */
