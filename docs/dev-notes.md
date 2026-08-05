@@ -117,9 +117,10 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   misalign. SvgPicker/SessionHistory/Image keep their `::after` rings (different anatomy:
   2px ring over a 1px border, never showed the bug) — port the recolor treatment if the
   overhang ever appears there.
-- **Op-selector resting edge now wears the header band's exact tint** (author call: the
-  85%-accent edge was too loud / too close to the focus color) — same
-  `--header-tint` color-mix as `.solenoid-node__header`; focus keeps the pure accent.
+- **Op-selector resting edge stepped down to the 60%-toward-border accent mix** (the
+  existing quiet-emphasis shade, same as `.solenoid-pres__step--active`). Author-walked:
+  85% too close to the focus color, the header-band tint too subtle; 60% is the
+  in-between step already in the system. Focus keeps the pure accent.
 - **Op selectors now render at the TOP of the card body** (author order), above the input
   rows: one flex-order rule in `nodeCard.css` (`.solenoid-node__body >
   .solenoid-node__op-select:not([data-op-arg]) { order: -1 }`) hoists every current and
