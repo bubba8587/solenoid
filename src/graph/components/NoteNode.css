@@ -398,24 +398,16 @@
    second chip inside the already-tinted <pre>. */
 .solenoid-note__rendered.sol-md pre code { padding: 0; background: none; box-shadow: none; }
 
-/* Selection ring — copied from the Group node's (its own ring at the 8px
-   radius so it hugs the frame; raised above the border via z-index). */
+/* Selection ring = the note's OWN border, recolored. The old ::after ring at
+   inset:-2px was a second box with the identical geometry (2px at radius 8
+   over the border box), but its edges rounded independently of the card's
+   under a content-driven fractional height and overhung ~0.5px on the
+   right/bottom. Recoloring the border itself makes the ring and the card edge
+   the same painted stroke — nothing to misalign. */
 .solenoid-note--selected {
+  border-color: color-mix(in srgb, var(--node-accent) 70%, #fff);
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
 }
-.solenoid-note--selected::after {
-  content: "";
-  position: absolute;
-  /* The note carries its own 2px border, so an inset:0 absolute child positions
-     against the padding box (inside that border) and the ring reads several px
-     in from the edge. Pull out to -2px so the ring sits over the outer border. */
-  inset: -2px;
-  box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 6;
-}
-:root[data-theme="light"] .solenoid-note--selected::after {
+:root[data-theme="light"] .solenoid-note--selected {
   border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
 }
