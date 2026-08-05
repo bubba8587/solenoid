@@ -30,10 +30,10 @@
   box-sizing: border-box;
 }
 /* This card is its own positioning context (canvas cards anchor absolutes to
-   rete's exactly-card-sized holder instead), so pull the frame back over the
-   card's transparent 1px border to cover the full border box. */
-.solenoid-iso-ep .solenoid-node__frame {
-  inset: -1px;
+   rete's exactly-card-sized holder instead), so the frame must reach back over
+   the card's transparent 1px border to cover the full border box. */
+.solenoid-iso-ep {
+  --frame-outset: 1px;
 }
 
 /* Fixed-height header, text vertically centered (the card header is content-
