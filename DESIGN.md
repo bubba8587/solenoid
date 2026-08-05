@@ -145,6 +145,15 @@ A small reserved set for failure and state feedback, kept apart from the typed s
 
 **The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
 
+**The Accent-Mix Ladder.** Every accent-derived shade is a `color-mix` of the surface's accent at a NAMED rung — never an ad-hoc percentage. The rungs live as CSS vars in `App.css`; the mix target is chosen by role at the use site:
+- `--mix-hairline` (30%) toward a border color — tinted hairlines (markdown table edges, strip separators).
+- `--mix-edge` (45%) toward `--border` — a structural edge on a field or bar.
+- `--mix-emphasis` (60%) toward `--border` — the quiet-emphasis edge: an operation selector at rest, an active step.
+- `--mix-ink` (55%) toward `--text` — accent-tinted glyphs and labels (header titles, chevrons, swatches).
+- `--mix-glow` (28%) toward `transparent` — the selection glow alpha.
+- `--mix-ring` toward `--ring-into` — the selection ring: 70% toward `#fff` in dark, 80% toward `#000` in light (the light nerf; a ~70% mix toward black reads as a harsh near-black frame over a pale card).
+Tint FILLS stay separate: the header band uses `--header-tint` (22% dark / 52% light) toward `--surface`; translucent washes (active rows, count pills, chips) run loose at 12–22% toward `transparent` and are not yet rungs. A new accent shade picks the rung whose role matches; needing a new percentage means proposing a new rung here, not inlining a number.
+
 ## 3. Typography
 
 **Display Font:** Atkinson Hyperlegible Next (with system-ui, sans-serif)

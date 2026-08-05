@@ -160,19 +160,13 @@
   position: absolute;
   inset: 0;
   box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent, var(--accent)) 70%, #fff);
+  border: 2px solid color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ring), var(--ring-into));
   border-radius: 6px;
   pointer-events: none;
   z-index: 6;
 }
-/* Light mode nerfs the ring hard (author 2026-07-05): 32% toward black read as
-   a harsh near-black frame over a pale card. 80% keeps a visible darker-than-
-   hover step (rest −0.07V · hover 12% black · selected 20% black + glow). */
-:root[data-theme="light"] .solenoid-node--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 80%, #000);
-}
 .solenoid-node--selected {
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--node-accent, var(--accent)) 28%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-glow), transparent);
 }
 
 /* Light mode: frame the card in a darker shade of its own accent instead of a
@@ -205,7 +199,7 @@
   background: transparent;
   /* Accent-tinted but pulled toward the body text so it keeps contrast on the
      tinted header — dark mode → toward light text, light mode → toward dark. */
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   cursor: pointer;
 }
 .solenoid-node__chevron:hover {
@@ -478,7 +472,7 @@
   box-sizing: border-box;
   /* Tint the label toward the accent, lightened for legibility. Falls
      back to the original muted gray when no accent is set. */
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   font-family: inherit;
   font-size: 10px;
   line-height: 1.3;
@@ -502,7 +496,7 @@
      the node), so this is layout only, not a draggability carve-out. */
   width: fit-content;
   max-width: calc(100% - 44px);
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   font-family: inherit;
   font-size: 10px;
   line-height: 1.3;
@@ -1417,11 +1411,10 @@ body.solenoid-scrubbing * {
 
    THE CONFLICT THIS HAS TO DODGE: a full-strength accent border already means
    FOCUS on this very control (see :focus below). So the resting edge takes the
-   60%-toward-border accent step (the existing quiet-emphasis shade —
-   .solenoid-pres__step--active uses the same mix) and focus keeps the pure
-   accent. Author-walked 2026-08-05: 85% read too close to the focus color,
-   the header-band tint (22% dark) too subtle; 60% is the in-between step
-   already in the system.
+   --mix-emphasis rung (DESIGN.md, The Accent-Mix Ladder) and focus keeps the
+   pure accent. Author-walked 2026-08-05: 85% read too close to the focus
+   color, the header-band tint too subtle; the quiet-emphasis rung is the
+   in-between step.
 
    The 2px edge is paid for out of the PADDING, not the box: the neutral field's
    1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an
@@ -1450,7 +1443,7 @@ body.solenoid-scrubbing * {
 }
 .solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]) {
   border-width: 2px;
-  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 60%, var(--border));
+  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
   padding: 3px 23px 3px 7px;
 }

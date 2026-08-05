@@ -42,7 +42,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -63,7 +63,7 @@
   padding: 0;
   background: transparent;
   border: none;
-  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
   cursor: pointer;
   opacity: 0.85;
 }
@@ -220,18 +220,15 @@
 /* Selection ring — matches the Image / Note card ring (pulled to -1px over the
    1px border). */
 .solenoid-svgpick--selected {
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }
 .solenoid-svgpick--selected::after {
   content: "";
   position: absolute;
   inset: -1px;
   box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border: 2px solid color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   border-radius: 6px;
   pointer-events: none;
   z-index: 6;
-}
-:root[data-theme="light"] .solenoid-svgpick--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
 }

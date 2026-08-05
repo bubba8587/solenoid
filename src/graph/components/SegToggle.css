@@ -26,7 +26,7 @@
 .solenoid-segbtn:first-child { border-radius: 3px 0 0 3px; }
 .solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; border-left: none; }
 .solenoid-segbtn--on {
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
   border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }

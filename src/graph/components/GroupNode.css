@@ -192,7 +192,7 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
 
 /* Selection ring matches normal nodes (same blue), wrapping the whole frame. */
 .solenoid-group--selected {
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
   border-radius: 8px;
 }
 /* Raised overlay ring (see nodeCard.css) so it sits above the group's own
@@ -202,13 +202,10 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
   position: absolute;
   inset: 0;
   box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border: 2px solid color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   border-radius: 8px;
   pointer-events: none;
   z-index: 6;
-}
-:root[data-theme="light"] .solenoid-group--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
 }
 
 /* Collapsed-group edge pills (socket wrappers + the stadium pill) paint ABOVE

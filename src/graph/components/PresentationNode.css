@@ -32,7 +32,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--pres-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--pres-color) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -55,7 +55,7 @@
   padding: 0;
   background: transparent;
   border: none;
-  color: color-mix(in srgb, var(--pres-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--pres-color) var(--mix-ink), var(--text));
   cursor: pointer;
   opacity: 0.85;
 }
@@ -93,7 +93,7 @@
   border: 1px solid var(--border);
 }
 .solenoid-pres__step--active {
-  border-color: color-mix(in srgb, var(--pres-color) 60%, var(--border));
+  border-color: color-mix(in srgb, var(--pres-color) var(--mix-emphasis), var(--border));
   background: color-mix(in srgb, var(--pres-color) 12%, var(--surface-sunken));
 }
 
@@ -206,15 +206,12 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--pres-color, var(--text-bright));
-  border-color: color-mix(in srgb, var(--pres-color, var(--border-strong)) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--pres-color, var(--border-strong)) var(--mix-edge), var(--border));
 }
 
 /* Selection ring = the card's OWN border, recolored (see NoteNode.css — a
    separate ::after box rounded apart from the card edge under zoom). */
 .solenoid-pres--selected {
-  border-color: color-mix(in srgb, var(--node-accent) 70%, #fff);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
-}
-:root[data-theme="light"] .solenoid-pres--selected {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+  border-color: color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }
