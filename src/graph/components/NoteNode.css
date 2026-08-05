@@ -63,7 +63,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   opacity: 0.8;
   cursor: pointer;
 }
@@ -82,7 +82,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -103,7 +103,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -125,7 +125,7 @@
   background: transparent;
   border: none;
   /* Share the header title's color (the icon strokes with currentColor). */
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   cursor: pointer;
   opacity: 0.85;
 }
@@ -362,13 +362,13 @@
 .solenoid-note__rendered.sol-md pre,
 .solenoid-note__rendered.sol-md th,
 .solenoid-note__rendered.sol-md td {
-  border-color: color-mix(in srgb, var(--note-color, var(--accent)) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border));
 }
 .solenoid-note__rendered.sol-md h2 {
   border-bottom-color: color-mix(in srgb, var(--note-color, var(--accent)) 40%, var(--border));
 }
 .solenoid-note__rendered.sol-md hr {
-  border-top-color: color-mix(in srgb, var(--note-color, var(--accent)) 45%, var(--border));
+  border-top-color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-edge), var(--border));
 }
 
 /* An INLINE chip has to fit the line box, and the shared .sol-md sizes these for
@@ -386,10 +386,10 @@
 .solenoid-note__rendered.sol-md kbd {
   padding: 0 4px;
   border: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) 30%, var(--border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border));
 }
 .solenoid-note__rendered.sol-md kbd {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) 30%, var(--border-strong));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border-strong));
 }
 /* A fenced block is a BLOCK — it owns its margins, so it keeps the real border
    and padding above; only the inline chips fought the line box. Its inner <code>
@@ -405,9 +405,6 @@
    right/bottom. Recoloring the border itself makes the ring and the card edge
    the same painted stroke — nothing to misalign. */
 .solenoid-note--selected {
-  border-color: color-mix(in srgb, var(--node-accent) 70%, #fff);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
-}
-:root[data-theme="light"] .solenoid-note--selected {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+  border-color: color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }

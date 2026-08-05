@@ -162,7 +162,7 @@
      background — which hid it in the root menu. */
   z-index: 0;
   /* Same accent-tinted text the node header label uses. */
-  color: color-mix(in srgb, var(--item-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--item-accent) var(--mix-ink), var(--text));
 }
 .solenoid-add-menu__item--accent::before {
   content: "";

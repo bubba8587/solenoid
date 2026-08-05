@@ -50,7 +50,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
   opacity: 0.8;
   cursor: pointer;
 }
@@ -67,7 +67,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -88,7 +88,7 @@
   padding: 0;
   background: transparent;
   border: none;
-  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
   cursor: pointer;
   opacity: 0.85;
 }
@@ -180,18 +180,15 @@
 /* Selection ring — mirrors the Note's (its own ring at the card radius, raised
    above the border). The card has a 1px border, so pull the ring out to -1px. */
 .solenoid-image--selected {
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }
 .solenoid-image--selected::after {
   content: "";
   position: absolute;
   inset: -1px;
   box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border: 2px solid color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   border-radius: 6px;
   pointer-events: none;
   z-index: 6;
-}
-:root[data-theme="light"] .solenoid-image--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
 }

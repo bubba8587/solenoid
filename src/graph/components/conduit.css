@@ -171,7 +171,7 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--conduit-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--conduit-accent) var(--mix-ink), var(--text));
 }
 .solenoid-conduit-toolbar__seq {
   width: 44px;
@@ -180,7 +180,7 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--conduit-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--conduit-accent) var(--mix-ink), var(--text));
   background: transparent;
   border: none;
   outline: none;

@@ -121,6 +121,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   existing quiet-emphasis shade, same as `.solenoid-pres__step--active`). Author-walked:
   85% too close to the focus color, the header-band tint too subtle; 60% is the
   in-between step already in the system. Focus keeps the pure accent.
+- **Accent-mix ladder formalized** (author-invited): named rungs as App.css vars —
+  `--mix-hairline` 30 / `--mix-edge` 45 / `--mix-emphasis` 60 (toward border),
+  `--mix-ink` 55 (toward text), `--mix-glow` 28 (toward transparent), `--mix-ring` +
+  `--ring-into` (70%/#fff dark, 80%/#000 light, themed) — rule written into DESIGN.md §2
+  ("The Accent-Mix Ladder"); all exact-recipe sites migrated. TWO reclassifications with
+  visible deltas (eyeball): note-family/group/svgpick/history/image glows 22%→28% (the
+  DESIGN-documented glow), and their LIGHT-theme rings 68%→80% (the nodeCard nerf, now
+  uniform — 7 per-family light overrides deleted). Washes (12–22% transparent fills) left
+  loose, documented as such.
 - **Op selectors now render at the TOP of the card body** (author order), above the input
   rows: one flex-order rule in `nodeCard.css` (`.solenoid-node__body >
   .solenoid-node__op-select:not([data-op-arg]) { order: -1 }`) hoists every current and
