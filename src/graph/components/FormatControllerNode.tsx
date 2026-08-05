@@ -279,6 +279,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       node={node}
       className="solenoid-fc"
       accentOverride={accent}
+      // The FC paints its own single-stroke accent ring — no multi-stroke seam,
+      // so it skips the frame SVG and keeps its real CSS border.
+      frameless
     >
       {/* Input socket (left) */}
       {inputPort && (

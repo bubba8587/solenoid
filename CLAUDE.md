@@ -350,8 +350,10 @@ Read the relevant section there before touching one of these. The one-line "don'
   frames/cubes stay OUT of formulas by design — the verb engine is their surface. Containment:
   Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md FX-9).
 - Units are authored ONLY by the FC / Convert — the Number node is a plain literal source.
-- The header/body border seam under zoom is UNSOLVED and parked — dev-notes "UNSOLVED" lists the
-  two eliminated approaches; don't retread them.
+- Node card frames (body border + header accent cap + divider) paint as ONE SVG overlay
+  (`CardFrame`, `NodeCard.tsx`) so the strokes can't subpixel-crack under zoom. Never
+  reintroduce painted CSS borders on the card/header (transparent borders there are
+  layout-only); a new card-like surface reuses `CardFrame`.
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names.
 - Default date format is `DD-MMM-YYYY` (`DEFAULT_DATE_FORMAT` in `nodes/date.ts`); ISO stays a
   selectable FC style.

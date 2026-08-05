@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties, type RefObject } from "react";
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../process";
 import { getOwningArea } from "../activeGraph";
@@ -14,6 +14,45 @@ import { opKindForNode } from "../nodeOps";
 // px counts as a TAP, not a drag. Shared with nodeKit's title label.
 export const HEADER_TAP_SLOP = 4;
 
+/** The card's entire painted frame — body border, header accent cap, and the
+ *  header/body divider — as ONE SVG, so all three strokes rasterize in a single
+ *  paint pass. Painted as CSS borders on two separate elements (the old way),
+ *  each stroke got its own subpixel rounding under the canvas zoom transform
+ *  and the shared edges cracked apart. Geometry and colors live entirely in
+ *  nodeCard.css via SVG geometry properties; the nested <svg> is sized to
+ *  --header-h and clips the cap + divider to the header region. */
+export function CardFrame() {
+  return (
+    <svg className="solenoid-node__frame" aria-hidden="true">
+      <rect className="solenoid-node__frame-body" />
+      <svg className="solenoid-node__frame-head">
+        <rect className="solenoid-node__frame-cap" />
+        <rect className="solenoid-node__frame-divider" />
+      </svg>
+    </svg>
+  );
+}
+
+/** Publish the header's border-box height on the card as `--header-h`.
+ *  Fractional when the layout height is — the frame divider must sit exactly on
+ *  the seam, and offsetHeight's rounding would put it up to half a px off.
+ *  Consumers: the frame SVG's header viewport, the corner badge's `top`. */
+export function useHeaderHeightVar(headerRef: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const card = header?.parentElement;
+    if (!header || !card) return;
+    const apply = (h: number) => card.style.setProperty("--header-h", `${h}px`);
+    apply(header.offsetHeight);
+    const ro = new ResizeObserver((entries) => {
+      const box = entries[0]?.borderBoxSize?.[0];
+      apply(box ? box.blockSize : header.offsetHeight);
+    });
+    ro.observe(header);
+    return () => ro.disconnect();
+  }, [headerRef]);
+}
+
 type Props = {
   selected?: boolean;
   // The live node instance: the card reports its measured DOM size back here so
@@ -26,6 +65,9 @@ type Props = {
   collapsible?: boolean;
   /** Collapse to a headerless SQUARE (Sparkline), expandable by double-click. */
   squareCollapse?: boolean;
+  /** Skip the CardFrame overlay — for cards that paint their own single-stroke
+   *  frame (the FC's accent ring) and so have no multi-stroke seam to unify. */
+  frameless?: boolean;
   children: ReactNode;
 };
 
@@ -33,7 +75,7 @@ type Props = {
  *  handler that stops propagation for form-field targets — otherwise rete's
  *  per-node drag listener hijacks text-selection drag inside the input, and its
  *  native bubble listener fires before React's synthetic ones. */
-export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, children }: Props) {
+export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, frameless = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   // Pointer-down position on the chevron, to tell a tap (→ toggle) from a drag.
   const chevronDownPos = useRef<{ x: number; y: number } | null>(null);
@@ -191,6 +233,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       // Square-collapsed nodes hide the chevron, so double-click expands them.
       onDoubleClick={squareCollapse && collapsed ? toggleCollapse : undefined}
     >
+      {!frameless && <CardFrame />}
       {node && collapsible && (
         <button
           type="button"

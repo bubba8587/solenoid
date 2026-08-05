@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { CardFrame, useHeaderHeightVar } from "./NodeCard";
 import { useFocusTrap } from "./useFocusTrap";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";
@@ -120,6 +121,9 @@ export function PaletteEditorModal() {
 }
 
 function PaletteSample({ draft }: { draft: Draft }) {
+  // The sample card's frame SVG needs --header-h like a real card.
+  const headerRef = useRef<HTMLDivElement>(null);
+  useHeaderHeightVar(headerRef);
   const mode = appThemeStore.getMode();
   const gc = themeAccent(draft.gold, mode);
   const gcDark = darkenAccent(draft.gold);
@@ -143,7 +147,8 @@ function PaletteSample({ draft }: { draft: Draft }) {
               className="solenoid-node solenoid-node--grouped"
               style={{ "--node-accent": nodeAccent, "--node-accent-dark": nodeAccentDark, "--group-color": gc, "--group-color-dark": gcDark } as React.CSSProperties}
             >
-              <div className="solenoid-node__header">
+              <CardFrame />
+              <div className="solenoid-node__header" ref={headerRef}>
                 <div className="solenoid-node__label-display">Math</div>
                 <span className="solenoid-node__type-hint" aria-hidden="true">Arithmetic</span>
               </div>
