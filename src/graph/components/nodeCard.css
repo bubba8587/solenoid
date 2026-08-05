@@ -350,19 +350,29 @@
 
 .solenoid-node__header {
   position: relative;
-  padding: 6px 10px 6px 22px; /* extra left room for the collapse chevron */
+  /* Bottom padding is 5px + a 1px transparent border (not 6px + none): with
+     background-clip: padding-box below, that tucks the tint's bottom edge 1px
+     up, fully under the frame's divider. Same total height, so layout holds. */
+  padding: 6px 10px 5px 22px; /* extra left room for the collapse chevron */
   /* The accent cap and divider are PAINTED by the __frame SVG (one-pass
-     rasterization); the transparent border + negative margins here only
-     reproduce the original layout, pulling the header over the card's own
-     border so the tinted background reaches the card's outer edge. */
+     rasterization); the transparent borders + negative margins here only
+     reproduce the original layout, keeping the header's box on the card's
+     outer edge. */
   margin: -1px -1px 0;
   border: 2px solid transparent;
-  border-bottom: none;
+  border-bottom: 1px solid transparent;
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
   /* Opaque accent-tinted header. Tint strength is themed (--header-tint) so the
      pale-over-white light theme can push it harder. No accent → plain surface. */
   background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
+  /* padding-box: the div's background edge and the SVG strokes rasterize
+     independently under zoom, so a border-box tint pokes a subpixel PAST the
+     strokes (a tinted halo outside the card). Clipped to the padding box the
+     tint ends at the strokes' INNER edges, with the strokes overlapping it by
+     their full width — rounding slack lands inside the card as a tint/surface
+     boundary instead of outside it. */
+  background-clip: padding-box;
 }
 /* No chevron → reclaim the reserved left room so the title sits flush left. */
 .solenoid-node--no-chevron .solenoid-node__header {
