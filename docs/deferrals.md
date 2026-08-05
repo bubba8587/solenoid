@@ -54,9 +54,6 @@ duplicate them, just names them for the review).
   socket-level unit); Cube popup FC controls (frames/matrices/lists have the
   per-column format+unit row in `TablePopup` via `fcControls.tsx`; cubes wait on
   nothing now that `CubeColumn` is typed).
-- **Optically center the last asymmetric icons** — canvas-lock toggle (reads low) +
-  the cable-flourish sparkle; author's eye needed. Ink-centroid method: archived
-  dev-notes (2026-06-20).
 - **Hoist the chrome envelope into `--chrome-top`/`--chrome-bottom` vars**
   (`layout-chrome.md`) — kills the hand-keyed offset sync map; cross-cutting, do it
   author-present, not as a drive-by.

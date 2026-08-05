@@ -137,11 +137,28 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   selectors stay in their rows. Requires the op select to be a DIRECT body child — a
   source scan found ONE wrapped case (ColorBlend's padding div, unwrapped). Socket rows
   measure offsetTop after layout, so cable endpoints follow the visual order.
+- **Small-things batch (author-picked from the 1.3 design sweep):** (1) Infinity renders
+  as the `∞` glyph (`format.ts`, scalar + list previews; value-semantics row → shipped).
+  (2) The last two asymmetric icons optically centered by the archived 2026-06-20
+  centroid measurements (lock viewBox +0.7y, sparkle +0.7x/−1y) — deferrals item
+  cleared, author eyeball on preview. (3) Cube popup gained the TablePopup overflow
+  trio (Copy CSV / Copy as Markdown / Export CSV…) — serializes the CURRENT drill
+  level, all rows, source order, nested containers as their chip tokens. (4) **SOCK-14**:
+  frame-input labels follow the column-role grammar (`Role + Role`, plain noun when no
+  expectation, no shape parentheticals; λ-table exception) — enforced in
+  `sourceInvariants.test.ts`; "Series (2-D)" → "Series", "Date + O H L C" → "Date + OHLC"
+  (73 rules). (5) **`--chrome-bottom` hoisted** to mirror `--chrome-top`:
+  `chromeBottom.ts` takes the max of the registered status bar + mobile action bar
+  heights (safe-area rides inside the measurement); 13 bottom-anchored offsets across 10
+  files now derive; mobile overrides keep winning the cascade with measured bases —
+  `layout-chrome.md` reconciled.
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
   selected notes/reports/presentations at fractional sizes; op-selector-on-top across a
-  few families (math, frame verbs, dates, packs).
+  few families (math, frame verbs, dates, packs); lock + sparkle icon centering; bottom
+  chrome positions (minimap/legend/palette/toasts, desktop AND a phone — the mobile
+  lifts now derive from the measured bar).
 
 ### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
 

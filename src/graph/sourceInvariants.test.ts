@@ -708,3 +708,44 @@ describe("SOCK-8 — the socket box's greppable half", () => {
     expect(hits, "INPUT_ROW_TOP-style constants came back").toEqual([]);
   });
 });
+
+describe("SOCK-14 — frame-input labels follow the column-role grammar", () => {
+  // A frame input's label is the ONE place the expected columns can be read
+  // before wiring (aligned columns arrive as one frame input by design). Roles
+  // join with " + " in Title case; a no-expectation input is a plain noun; shape
+  // parentheticals are banned (the socket glyph + Legend already say the shape).
+  const ROLE = /^[A-Z][A-Za-z0-9]*$/;                       // "Value", "OHLC"
+  const NOUN = /^[A-Z][A-Za-z0-9]*( [A-Z][A-Za-z0-9]*)*$/;  // "Frame", "Data"
+  // nodes/tableLambda.ts: the λ-table inputs carry the λ ARGUMENT name and
+  // optionality — an argument-binding hint, not a shape (the rule's exception).
+  const LAMBDA_FORM = /^([A-Z][A-Za-z0-9]* \([a-z][a-z0-9]*\)|[a-z][a-z0-9]* \(optional\))$/;
+
+  function labelOk(label: string): boolean {
+    if (label.includes(" + ")) {
+      const roles = label.split(" + ");
+      // Every role a Title-case token; spaced-out single letters ("O H L C")
+      // can't happen — a space inside a role fails ROLE.
+      return roles.length >= 2 && roles.every((r) => ROLE.test(r));
+    }
+    if (/[()]/.test(label)) return false; // shape parentheticals
+    if (!NOUN.test(label)) return false;
+    // A multi-word noun of single letters is an initialism spaced out — banned.
+    const words = label.split(" ");
+    return !(words.length > 1 && words.every((w) => w.length === 1));
+  }
+
+  it("every frameIn/anyTableIn label parses (roles ' + '-joined, or a plain noun)", () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC)) {
+      const isLambdaFile = /nodes[/\\]tableLambda\.ts$/.test(file);
+      for (const [i, line] of codeLines(file).entries()) {
+        for (const m of line.matchAll(/(?:frameIn|anyTableIn)\("([^"]*)"/g)) {
+          const label = m[1];
+          const ok = labelOk(label) || (isLambdaFile && LAMBDA_FORM.test(label));
+          if (!ok) offenders.push(`${rel(file)}:${i + 1} "${label}"`);
+        }
+      }
+    }
+    expect(offenders, "labels violating the SOCK-14 grammar (rules.md)").toEqual([]);
+  });
+});

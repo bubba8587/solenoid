@@ -104,7 +104,7 @@ export class ChartNode extends ClassicPreset.Node {
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
     // into a single ROW instead of leaving it a list.
     this.addInput("values", frameIn("Data"));
-    this.addInput("series", anyTableIn("Series (2-D)"));
+    this.addInput("series", anyTableIn("Series"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -649,7 +649,7 @@ export class CandlestickNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Candlestick");
     this.label = init?.label ?? "Candlestick";
-    this.addInput("frame", frameIn("Date + O H L C"));
+    this.addInput("frame", frameIn("Date + OHLC"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }

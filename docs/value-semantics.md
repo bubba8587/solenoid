@@ -315,8 +315,8 @@ guarded once, up top.
 - **NaN** → literal `NaN` with a QUIET affordance: muted background tint (not error
   red, not ArrayChip-like) + fixed-text structural tooltip [shipped].
   Never "N/A".
-- **Infinity** → spot-check `formatScalar` (∞ glyph is a candidate — author eyeball)
-  [decided, open detail].
+- **Infinity** → the `∞` glyph (`-∞` negative), in `formatScalar` and list previews
+  (`format.ts`) [shipped 2026-08-05].
 
 ## Pointers
 

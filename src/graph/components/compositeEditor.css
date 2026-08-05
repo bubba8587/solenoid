@@ -262,7 +262,7 @@ html.is-mobile .solenoid-composite-editor__btn {
    present"). Sit it just above that pill; collapsed by default it's a small bar. */
 html.is-mobile .solenoid-composite-editor__controls {
   top: auto;
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
   left: 8px;
   width: min(280px, calc(100vw - 16px));
 }

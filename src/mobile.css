@@ -256,9 +256,10 @@ html.is-mobile {
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
     top: calc(88px + env(safe-area-inset-top));
-    /* Clear the bottom action bar AND its raised + FAB (which sticks ~8px proud of
-       the ~57px bar and casts a shadow). 84px keeps the list well above both. */
-    bottom: calc(84px + env(safe-area-inset-bottom));
+    /* Clear the bottom action bar AND its raised + FAB (which sticks ~8px proud
+       of the bar and casts a shadow). The measured envelope is the bar itself
+       (safe-area included); +27 keeps the list well above the FAB too. */
+    bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);
     width: min(248px, 84vw);
   }
   .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
@@ -283,7 +284,7 @@ html.is-mobile {
         corner — lift it clear of the bottom action bar (~74px tall). ── */
   .solenoid-conduit-toolbar--docked {
     left: 12px;
-    bottom: calc(96px + env(safe-area-inset-bottom));
+    bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
   }
   .solenoid-conduit-toolbar__extend { padding: 8px 14px; font-size: 12px; }
 

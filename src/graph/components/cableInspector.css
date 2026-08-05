@@ -4,9 +4,9 @@
 .solenoid-cable-inspector {
   position: fixed;
   left: 16px;
-  /* Clear the 19px status bar (StatusBar.css) + its safe-area inset, so the
+  /* Clear the status bar (the measured envelope) + the safe-area inset, so the
      panel never overlays the footer counts/zoom strip. */
-  bottom: calc(19px + 12px + env(safe-area-inset-bottom));
+  bottom: calc(var(--chrome-bottom, 19px) + 12px + env(safe-area-inset-bottom));
   z-index: 110;
   width: 220px;
   display: flex;
@@ -35,10 +35,11 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Mobile: the bottom action bar replaces the status bar as the thing to clear
-   (same 96px lift the docked conduit toolbar uses). */
+/* Mobile: the bottom action bar replaces the status bar as the thing to clear —
+   the measured envelope IS the bar (safe-area included); +39 clears the raised
+   FAB + gap (same lift as the docked conduit toolbar). */
 html.is-mobile .solenoid-cable-inspector {
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
 }
 
 /* Collapsed: the panel folds to one square chip in the same corner, showing

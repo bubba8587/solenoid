@@ -116,7 +116,7 @@
 .solenoid-conduit-toolbar--docked {
   position: fixed;
   left: 14px;
-  bottom: 34px;
+  bottom: calc(var(--chrome-bottom, 19px) + 15px);
   transform: none;
   z-index: 60;
   transition: left 120ms ease;

@@ -148,7 +148,10 @@ export function NavMenu() {
         title={locked ? "Unlock canvas" : "Lock canvas"}
         onClick={() => canvasLockStore.toggle()}
       >
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
+        {/* viewBox y-shifted +0.7: the body-heavy glyph's ink centroid measured
+            +0.73 below the box center, so it read low (the pushpin precedent —
+            archived dev-notes 2026-06-20). */}
+        <svg viewBox="0 0.7 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
           <rect x="3.5" y="7.5" width="9" height="6.5" rx="1.2" />
           {locked
             ? <path d="M5 7.5 V5.2 a3 3 0 0 1 6 0 V7.5" />

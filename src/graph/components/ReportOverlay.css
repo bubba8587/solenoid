@@ -304,7 +304,7 @@ html.is-mobile .report-dock-btn { display: none; }
 html.sol-report-docked {
   --report-dock-w: 440px;
   --report-dock-top: var(--chrome-top, 66px); /* measured header; 22 + 44 fallback */
-  --report-dock-bottom: 19px; /* StatusBar footer */
+  --report-dock-bottom: var(--chrome-bottom, 19px); /* measured StatusBar footer */
 }
 
 .report-panel--docked {
