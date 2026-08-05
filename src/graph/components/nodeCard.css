@@ -1433,6 +1433,18 @@ body.solenoid-scrubbing * {
    CumPmt's payment timing) is an ARGUMENT and opts out via `data-op-arg`
    (OpSelect's `arg` prop) — the descendant match alone would edge every select
    in the card. */
+/* An OPERATION selector renders at the TOP of the card body, above the input
+   rows (author, 2026-08-05): the op names what the card does, so it reads
+   before the inputs it shapes. Enforced HERE as flex order rather than in a
+   hundred components — the body is a flex column, so one rule hoists every
+   current and future node's op selector; component JSX keeps its natural
+   order. Requires the selector to be a DIRECT body child (the norm; a wrapper
+   div would pin it in place). Argument selectors stay in their rows. Socket
+   rows measure offsetTop after layout, so cable endpoints follow the visual
+   order automatically. */
+.solenoid-node__body > .solenoid-node__op-select:not([data-op-arg]) {
+  order: -1;
+}
 .solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]) {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 85%, var(--border));

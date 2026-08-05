@@ -18,9 +18,9 @@ export function ColorBlendComponent({ data, emit }: NodeProps<ColorBlendNodeType
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Blend" hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <div style={{ padding: "6px 0 2px" }}>
-        <OpSelect value={op} onChange={setOp} options={MODE_OPTS} />
-      </div>
+      {/* Direct body child — the top-of-card op-selector hoist (nodeCard.css
+          flex order) only reaches unwrapped selects. */}
+      <OpSelect value={op} onChange={setOp} options={MODE_OPTS} />
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           {isSolError(out) ? (
