@@ -271,7 +271,7 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Deferral review (author-present)** — walk `deferrals.md` top to bottom and
   decide, per item: into 1.3, stays parked, or dies to `out-of-scope.md`. Covers the
   author-decision gates (widget nodes, Parity Tier 4, cable pulse…), the author-present
-  polish tails, the parked bugs (header seam, note-ring), the only-if-triggered set,
+  polish tails, the only-if-triggered set,
   and the 2.0 flagship ordering (`2.0-plan.md`). Same sitting: ratify or amend
   `out-of-scope.md` (still marked DRAFT).
 

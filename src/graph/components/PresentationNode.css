@@ -209,19 +209,12 @@
   border-color: color-mix(in srgb, var(--pres-color, var(--border-strong)) 45%, var(--border));
 }
 
+/* Selection ring = the card's OWN border, recolored (see NoteNode.css — a
+   separate ::after box rounded apart from the card edge under zoom). */
 .solenoid-pres--selected {
+  border-color: color-mix(in srgb, var(--node-accent) 70%, #fff);
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
 }
-.solenoid-pres--selected::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 6;
-}
-:root[data-theme="light"] .solenoid-pres--selected::after {
+:root[data-theme="light"] .solenoid-pres--selected {
   border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
 }

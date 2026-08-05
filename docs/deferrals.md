@@ -63,11 +63,9 @@ duplicate them, just names them for the review).
 
 ## Parked bugs (explicitly parked by the author — records in `dev-notes.md`)
 
-- **Note-family selection ring ~0.5px off on right/bottom** — integer-rounding of
-  stored dims already ruled out; prime suspect is content-driven sub-pixel card
-  size. Record in dev-notes "OPEN PROBLEM". Parked by author.
-  (The header/body border seam, formerly parked here too, was SOLVED 2026-08-05
-  by the one-paint SVG `CardFrame` — see the dev-notes digest.)
+- None currently. (The header/body border seam and the note-family selection-ring
+  overhang, formerly parked here, were both SOLVED 2026-08-05 — one-paint SVG
+  `CardFrame` and border-recolor rings; see the dev-notes digest.)
 
 ## Only if the trigger returns
 

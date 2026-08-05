@@ -86,20 +86,7 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### OPEN PROBLEM (2026-07-16 — note-family selection ring ~0.5px off on right/bottom)
-A note-family card's selection ring (`::after`, `inset:-2px`, e.g. `.solenoid-note--selected`,
-`.solenoid-pres--selected`) can render ~0.5px too wide on the RIGHT and/or BOTTOM edge (left/top stay
-flush) — the ring overhangs the card on that side. Reproduces on default Notes (varies with how you
-resize) and Import-from-Obsidian; base nodes (ring `inset:0`, so ring & card share the same edge) don't
-show it because there's no offset to mismatch. **Tried & did NOT fix (57831f8e):** rounding stored
-resize dims to integers (Note/Group/Import/`ResizeHandle`, live + snap branches) — so the cause is not a
-fractional STORED width/height. Prime remaining suspect: the card's CONTENT-driven layout size landing
-on a sub-pixel (Presentation has no stored height at all), so the card edge and the `inset:-2px` ring
-edge round independently. Possible directions not yet tried: draw the ring so it shares the card's edge
-(e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
-or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
-
-### SESSION DIGEST (2026-08-05 — header/body border seam SOLVED: one-paint SVG frame)
+### SESSION DIGEST (2026-08-05 — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
@@ -111,16 +98,29 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   strokes can't be made to coincide, so width/margin tweaks were dead ends by principle.
 - Mechanics: the card + header keep transparent borders at the ORIGINAL widths (layout,
   offsets, socket math untouched — only the paint moved). `--header-h` is now published
-  unconditionally (shared `useHeaderHeightVar`, fractional via `borderBoxSize`); a nested
-  `<svg>` sized to it clips the accent cap + divider to the header region. All
-  hover/light-theme/grouped border-COLOR rules now set the frame's `stroke`. The FC opts
-  out (`frameless` — its single-stroke accent ring has no seam and stays a real border).
-  The isolate endpoints and the palette-editor sample card carry `CardFrame` too, with an
-  `inset` compensation since they are their own positioning contexts.
+  unconditionally (shared `useHeaderHeightVar`, fractional via `borderBoxSize`); the frame
+  is TWO sibling svg viewports — an abs-pos svg is a replaced element that keeps its
+  intrinsic 300×150 unless explicitly sized (first deploy shipped exactly that bug), and
+  the second viewport is CSS-sized to `--header-h` so its overflow clip ends the cap +
+  divider at the seam. All hover/light-theme/grouped border-COLOR rules now set the
+  frame's `stroke`. The FC opts out (`frameless` — its single-stroke accent ring has no
+  seam and stays a real border). The isolate endpoints and the palette-editor sample card
+  carry `CardFrame` too (`--frame-outset`, being their own positioning contexts).
+- Follow-up (author-eyeballed halo): the header's TINT painted to its border box and the
+  div-rasterized bg edge poked a subpixel past the SVG strokes → `background-clip:
+  padding-box` + 1px of bottom padding traded for a transparent bottom border tucks the
+  tint fully under cap + divider (same header height, verified in headless Chromium).
+- **Note-family selection-ring overhang (OPEN PROBLEM 2026-07-16) also SOLVED**: the
+  `inset:-2px` `::after` ring duplicated the card's own 2px/radius-8 border geometry on a
+  second box that rounded independently. The ring is now the card's OWN border, recolored
+  on `--selected` (Note / Presentation / Report) — same painted stroke, nothing to
+  misalign. SvgPicker/SessionHistory/Image keep their `::after` rings (different anatomy:
+  2px ring over a 1px border, never showed the bug) — port the recolor treatment if the
+  overhang ever appears there.
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
-  cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample.
-- Part 2 (note-family selection-ring ~0.5px overhang) still OPEN — see the entry above.
+  cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
+  selected notes/reports/presentations at fractional sizes.
 
 ### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
 
