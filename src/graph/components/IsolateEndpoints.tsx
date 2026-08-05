@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
+import { CardFrame } from "./NodeCard";
 import { isolateStore, isoEndpointSelect } from "../isolateStore";
 import { boundaryCrossings, type BoundaryCrossing } from "../isolateBoundary";
 import { getEditor, getArea, connectionVersionStore, unselectAllNodes } from "../process";
@@ -131,11 +132,12 @@ export function IsolateEndpoints() {
   const terminal = (side: "entry" | "exit", x: number, y: number, lanes: { cr: { externalNodeId: string } }[]) => (
     <div
       className={`solenoid-node solenoid-node--no-chevron solenoid-iso-ep solenoid-iso-ep--${side}${selected === side ? " solenoid-node--selected" : ""}`}
-      style={{ left: x, top: y, width: TERM_W, ["--node-accent" as string]: "var(--sock-any)", cursor: "grab" }}
+      style={{ left: x, top: y, width: TERM_W, ["--node-accent" as string]: "var(--sock-any)", ["--header-h" as string]: `${HEAD_H}px`, cursor: "grab" }}
       onPointerDown={startDrag(side)}
       onPointerMove={onDragMove}
       onPointerUp={endDrag}
     >
+      <CardFrame />
       <div className="solenoid-node__header solenoid-iso-ep__head" style={{ height: HEAD_H }}>
         {side === "entry" ? (lanes.length > 1 ? "Inputs" : "Input") : (lanes.length > 1 ? "Outputs" : "Output")}
       </div>

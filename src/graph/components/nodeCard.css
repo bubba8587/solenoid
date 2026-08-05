@@ -3,7 +3,9 @@
 
 .solenoid-node {
   background: var(--surface);
-  border: 1px solid var(--border);
+  /* Transparent: keeps the original layout (content box, offsetWidth) while the
+     PAINT lives in the __frame SVG — see the frame block below. */
+  border: 1px solid transparent;
   border-radius: 6px;
   /* Fixed width so every node is uniform. Without this, nodes shrink-to-
      fit their max-content width and a type=number field (~180px+) stretches
@@ -24,6 +26,68 @@
   user-select: none;
 }
 .solenoid-node:active { cursor: grabbing; }
+
+/* The card's painted frame — body border, header accent cap, header/body
+   divider — drawn by ONE SVG overlay so all three strokes rasterize in a
+   single pass. As CSS borders on the card + header (the old way), each stroke
+   was rounded to device pixels independently under the canvas zoom transform,
+   cracking the shared edges apart (the parked "header/body border seam" bug).
+   The card and header keep transparent borders at the ORIGINAL widths, so only
+   the paint moved; layout, offsets, and socket math are untouched. Geometry is
+   pure CSS via SVG-2 geometry properties; the nested __frame-head svg is sized
+   to --header-h and clips the cap + divider to the header region (a card that
+   never sets --header-h — no header — gets no cap and no divider). */
+.solenoid-node__frame {
+  position: absolute;
+  inset: 0; /* anchors to rete's holder = the card's border box, like the ring */
+  z-index: 1; /* over the header's tinted bg; under chevron 2 / ring 6 / badges 7 */
+  pointer-events: none;
+}
+/* Body border: stroke centered half a width inside the card edge, so the
+   stroke's OUTER edge is the card's outer edge — same as the old real border. */
+.solenoid-node__frame-body {
+  x: 0.5px;
+  y: 0.5px;
+  width: calc(100% - 1px);
+  height: calc(100% - 1px);
+  rx: 5.5px;
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1px;
+  transition: stroke 80ms ease;
+}
+.solenoid-node__frame-head {
+  x: 0;
+  y: 0;
+  width: 100%;
+  height: var(--header-h, 0px);
+}
+/* Accent cap: 2px stroke sharing the card's outer edge; the rect runs taller
+   than the header viewport so its bottom stroke and arcs never show. */
+.solenoid-node__frame-cap {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% + 24px);
+  rx: 5px;
+  fill: none;
+  stroke: var(--node-accent, transparent);
+  stroke-width: 2px;
+}
+/* Header/body divider (was an inset shadow on the header): a 1px strip in the
+   header's last pixel, spanning between the cap's inner rails. */
+.solenoid-node__frame-divider {
+  x: 2px;
+  y: calc(100% - 1px);
+  width: calc(100% - 4px);
+  height: 1px;
+  fill: var(--border);
+}
+/* Light mode frames the card in its accent-dark; a gray divider read as an
+   artifact against those accent edges, so it matches the frame color. */
+:root[data-theme="light"] .solenoid-node__frame-divider {
+  fill: var(--node-accent-dark, var(--border));
+}
 
 /* Wide tier — nodes carrying 2D data (table/matrix or frame sockets) so grid and
    named-column previews have room. Applied via nodeWide() (see kind.ts); a manual
@@ -74,8 +138,8 @@
   text-overflow: ellipsis;
 }
 
-.solenoid-node:not(.solenoid-node--selected):hover {
-  border-color: var(--border-strong);
+.solenoid-node:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
+  stroke: var(--border-strong);
 }
 
 /* Selection ring is a pseudo-element overlay so it can sit ABOVE everything via
@@ -106,14 +170,14 @@
 /* Light mode: frame the card in a darker shade of its own accent instead of a
    neutral gray border (a gray ring around a colored header read as off). The
    :not()s yield to the selection ring and the grouped-node treatment. */
-:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped) {
-  border-color: var(--node-accent-dark, var(--border-strong));
+:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped) .solenoid-node__frame-body {
+  stroke: var(--node-accent-dark, var(--border-strong));
 }
 /* Hover must be a REAL step: --node-accent in light is raw−0.06V while the
    resting accent-dark border is raw−0.07V — visually identical. Mix toward
    black instead so rest → hover → selected ramps (0 → 12% → 20% black). */
-:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped):hover {
-  border-color: color-mix(in srgb, var(--node-accent, var(--border-strong)) 88%, #000);
+:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped):hover .solenoid-node__frame-body {
+  stroke: color-mix(in srgb, var(--node-accent, var(--border-strong)) 88%, #000);
 }
 
 /* Collapse chevron — top-left of the card, over the header. */
@@ -164,16 +228,28 @@
 .solenoid-node--grouped .solenoid-node__header {
   margin: -2px -2px 0;
 }
+/* The frame's body stroke follows the 2px layout border. */
+.solenoid-node--grouped .solenoid-node__frame-body {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  rx: 5px;
+  stroke-width: 2px;
+}
 .solenoid-node--grouped:not(.solenoid-node--selected),
 .solenoid-node--grouped:not(.solenoid-node--selected):hover {
   box-shadow: none;
-  border-color: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
+}
+.solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
+.solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
+  stroke: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
 }
 /* Light mode: frame in-group members in a darker shade of the group color, to
    match the group's own darker-accent border. */
-:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected),
-:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected):hover {
-  border-color: var(--group-color-dark, var(--border-strong));
+:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
+:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
+  stroke: var(--group-color-dark, var(--border-strong));
 }
 /* Membership corner: a small solid triangle of the same group color tucked into
    the lower-right, so a node reads as "in a group" at a glance even when the
@@ -267,15 +343,13 @@
 .solenoid-node__header {
   position: relative;
   padding: 6px 10px 6px 22px; /* extra left room for the collapse chevron */
-  /* Category accent wraps the top + both sides of the header. Negative
-     margins pull it over the card's own 1px border so the accent is the
-     outermost edge. */
+  /* The accent cap and divider are PAINTED by the __frame SVG (one-pass
+     rasterization); the transparent border + negative margins here only
+     reproduce the original layout, pulling the header over the card's own
+     border so the tinted background reaches the card's outer edge. */
   margin: -1px -1px 0;
-  border: 2px solid var(--node-accent, transparent);
-  /* No bottom border — a 2px accent side meeting a 1px dark bottom border
-     mitres into a diagonal wedge. The divider is an inset shadow instead. */
+  border: 2px solid transparent;
   border-bottom: none;
-  box-shadow: inset 0 -1px 0 var(--border);
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
   /* Opaque accent-tinted header. Tint strength is themed (--header-tint) so the
@@ -287,12 +361,6 @@
   padding-left: 10px;
 }
 
-/* Light mode frames the card in its accent-dark — the gray header/body divider
-   (the inset shadow above) read as an artifact against those accent edges.
-   Match it to the frame color. */
-:root[data-theme="light"] .solenoid-node__header {
-  box-shadow: inset 0 -1px 0 var(--node-accent-dark, var(--border));
-}
 
 /* A small badge pinned to the card body's top-right corner — currently the lock
    indicator on pack presets (the expand button moved into the formula field).

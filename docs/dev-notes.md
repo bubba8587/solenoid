@@ -99,24 +99,28 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
-### UNSOLVED: header/body border seam under zoom (2026-07-05 — parked for a human/later pass)
-The node header's 2px accent frame abuts the card's 1px border on the same outer edge;
-under the canvas zoom transform the two strokes rasterize with different width-phases →
-a subpixel crack at the vertical junction and, at some zooms, a whole-pixel jog in the
-bottom edge. **Tried and ELIMINATED — don't retread:**
-1. Unify both at 1px (`d713900`, reverted `3be29b2`) — fixes the seam but thins the
-   accent band; author rejected the look change.
-2. Split the 2px accent into a 1px real border + 1px inset box-shadow ring (`ff3a896`,
-   reverted `25ff69a`) — WORSE: Blink rasterizes borders (width-snapped) and inset
-   shadows (not snapped) differently, so the two accent layers themselves drift apart
-   under zoom.
-Constraints: keep the exact current look (2px accent header, 1px body border). Leads
-NOT yet tried: one SVG overlay child spanning the full card that draws BOTH strokes in
-a single paint (one rasterization pass; needs --header-h published unconditionally —
-today it's only measured when a corner badge exists, nodeKit.tsx:314); `border-image`
-on the card; drawing frames in the HTML-in-canvas renderer only; quantizing the
-area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
-app-wide, but touches feel of zoom).
+### SESSION DIGEST (2026-08-05 — header/body border seam SOLVED: one-paint SVG frame)
+- **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
+  lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
+  header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
+  geometry lives entirely in `nodeCard.css` via SVG-2 geometry properties), so all three
+  strokes rasterize in a single pass and cannot round apart under the canvas zoom
+  transform. Pixel-measuring the author's zoomed phone screenshots confirmed the failure
+  was NOT device-pixel snapping: the 1px and 2px borders painted with a ~0.29 CSS-px
+  outer-edge offset and different width rounding (0.86px vs 2.0px) — separately-painted
+  strokes can't be made to coincide, so width/margin tweaks were dead ends by principle.
+- Mechanics: the card + header keep transparent borders at the ORIGINAL widths (layout,
+  offsets, socket math untouched — only the paint moved). `--header-h` is now published
+  unconditionally (shared `useHeaderHeightVar`, fractional via `borderBoxSize`); a nested
+  `<svg>` sized to it clips the accent cap + divider to the header region. All
+  hover/light-theme/grouped border-COLOR rules now set the frame's `stroke`. The FC opts
+  out (`frameless` — its single-stroke accent ring has no seam and stays a real border).
+  The isolate endpoints and the palette-editor sample card carry `CardFrame` too, with an
+  `inset` compensation since they are their own positioning contexts.
+- Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
+  borders were — slight softness on fractional card positions is expected, matching the
+  cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample.
+- Part 2 (note-family selection-ring ~0.5px overhang) still OPEN — see the entry above.
 
 ### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
 

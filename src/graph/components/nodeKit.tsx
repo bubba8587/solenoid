@@ -12,7 +12,7 @@ import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatCx, isCx, type Cx } from "../cxValue";
-import { NodeCard, HEADER_TAP_SLOP } from "./NodeCard";
+import { NodeCard, HEADER_TAP_SLOP, useHeaderHeightVar } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
@@ -310,19 +310,9 @@ export function NodeShell({
     el.style.height = `${Math.min(el.scrollHeight, LABEL_MAX_HEIGHT)}px`;
   }, [labelField.draft, editing]);
 
-  // The badge can't anchor to the body (it can't be a positioning context), so
-  // publish the header height as a CSS var and let the badge offset by it.
-  useLayoutEffect(() => {
-    const header = headerRef.current;
-    if (!cornerBadge || !header) return;
-    const card = header.parentElement;
-    if (!card) return;
-    const apply = () => card.style.setProperty("--header-h", `${header.offsetHeight}px`);
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(header);
-    return () => ro.disconnect();
-  }, [cornerBadge, labelField.draft, editing]);
+  // Publish the header height as --header-h on every card (the frame SVG clips
+  // its accent cap + divider to it; the corner badge offsets by it).
+  useHeaderHeightVar(headerRef);
 
   return (
     <NodeFormatContext.Provider value={node.id}>
