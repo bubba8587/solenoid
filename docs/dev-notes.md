@@ -117,10 +117,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   misalign. SvgPicker/SessionHistory/Image keep their `::after` rings (different anatomy:
   2px ring over a 1px border, never showed the bug) — port the recolor treatment if the
   overhang ever appears there.
+- **Op selectors now render at the TOP of the card body** (author order), above the input
+  rows: one flex-order rule in `nodeCard.css` (`.solenoid-node__body >
+  .solenoid-node__op-select:not([data-op-arg]) { order: -1 }`) hoists every current and
+  future node's operation selector; component JSX keeps its natural order, argument
+  selectors stay in their rows. Requires the op select to be a DIRECT body child — a
+  source scan found ONE wrapped case (ColorBlend's padding div, unwrapped). Socket rows
+  measure offsetTop after layout, so cable endpoints follow the visual order.
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
-  selected notes/reports/presentations at fractional sizes.
+  selected notes/reports/presentations at fractional sizes; op-selector-on-top across a
+  few families (math, frame verbs, dates, packs).
 
 ### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
 
