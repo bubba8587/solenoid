@@ -87,6 +87,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | SOCK-11 | A `trueany` output implies a `passthrough()` declaration |
 | SOCK-12 | Relay nodes are transparent to every static derivation |
 | SOCK-13 | A derived-type consumer runs only after the wildcard settle |
+| SOCK-14 | Frame-input labels follow the column-role grammar |
 | FX-1 | One implementation, two surfaces |
 | FX-2 | A shared implementation is rete-free |
 | FX-3 | A registration declares its full contract |
@@ -522,6 +523,31 @@ self-retires if `adaptTypeFromConnections` ever learns to project through an
 unresolved wildcard.
 *Origin:* the 2026-07-31 "false Frame type on reload" report — a computed column's
 unit → INDEX → docked FC chain read `frame` after every reload until re-docked.
+
+### SOCK-14 — Frame-input labels follow the column-role grammar **[DEFAULT]**
+**MUST:** a frame/2-D input socket's label states WHAT COLUMNS the input expects,
+in one grammar:
+- **Expects specific columns** → the column roles in expected order, joined by
+  `" + "`, each role a Title-case word: `From + To + Value`, `Label + Value`,
+  `Date + Value`. A standard column GROUP may compact to its standard initialism
+  (`Date + OHLC`) — never spaced-out single letters.
+- **No specific columns** (any frame / homogeneous columns) → one plain Title-case
+  noun (`Frame`, `Data`, `Series`, `Scores`).
+- **Never a shape parenthetical** (`(2-D)`, `(list)`): the socket glyph and the
+  Socket Legend already state the shape — restating it in the label violates the
+  zero-restating mandate (DESIGN.md §7).
+Exception: the λ-table inputs in `nodes/tableLambda.ts` carry the λ ARGUMENT name
+and optionality (`Values (value)`, `value2 (optional)`) — an argument-binding hint,
+not a shape, scoped to that file.
+
+*Why:* aligned parallel columns arrive as ONE frame input by design (the
+aligned-columns rule), so the label is the only place the expected columns can be
+read before wiring; two ad-hoc dialects (`From + To + Value` vs `Series (2-D)`)
+made the one load-bearing hint unlearnable.
+*Enforced by:* `sourceInvariants.test.ts` → "SOCK-14 — frame-input labels follow
+the column-role grammar" (scans every `frameIn`/`anyTableIn` literal).
+*Origin:* backlog item "rigorous multi-column input-socket label syntax"; rule
+design delegated by the author 2026-08-05.
 
 ---
 
@@ -1320,11 +1346,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-72 rules.
+73 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 70 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12,13 · FX-1,2,3,4,5,6,7,8,9,10,11,12,13 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
+| Enforced | 71 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12,13,14 · FX-1,2,3,4,5,6,7,8,9,10,11,12,13 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
 | Partially enforced | 1 | SOCK-8 |
 | Unenforced | 1 | SOCK-6 |
 

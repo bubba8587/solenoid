@@ -6,6 +6,7 @@ import { isWebDemo } from "../env";
 import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
 import { problemsStore, problemsPanelUi } from "./problemsStore";
+import { useBottomChrome } from "./chromeBottom";
 
 /** Bottom status strip, polled a few times a second rather than wired to stores.
  *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
@@ -69,9 +70,12 @@ export function StatusBar() {
 
   const problemCount = useSyncExternalStore(problemsStore.subscribe, () => problemsStore.list().length);
 
+  // Joins the measured `--chrome-bottom` envelope (chromeBottom.ts).
+  const bottomRef = useBottomChrome<HTMLDivElement>();
+
   return (
     <>
-      <div className="solenoid-statusbar" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="solenoid-statusbar" ref={bottomRef} onPointerDown={(e) => e.stopPropagation()}>
         <span
           className={`solenoid-statusbar__counts${isWebDemo ? ` solenoid-statusbar__counts--${level}` : ""}`}
           title={isWebDemo

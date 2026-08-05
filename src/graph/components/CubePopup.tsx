@@ -1,10 +1,13 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
 import { appThemeStore } from "../appTheme";
-import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
-import { CubeCellChip, frameCellNode } from "./cubeCell";
+import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
+import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, type SortKey } from "./columnSort";
+import { copyText } from "../clipboard";
+import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -50,6 +53,46 @@ function describe(view: DrillView): {
     cell: (r, c) => <CubeCellChip cell={g[r]?.[c] ?? null} crumb="item" size="sm" />,
     sortKey: (r, c) => sortKeyOf(g[r]?.[c] ?? null),
   };
+}
+
+/** The current level's cell as export text — same reducer as the compact
+ *  preview, so a nested container serializes as its chip token
+ *  ("Cube 3x2x1", "Frame 5x2"), never expanded. */
+function tokenAt(view: DrillView, r: number, c: number): string {
+  if (view.kind === "cube") {
+    const col = view.cube.columns[c];
+    return cubeCellToken((col.cells[r] ?? null) as CubeCell, col.type);
+  }
+  if (view.kind === "frame") {
+    const col = view.frame.columns[c];
+    return cubeCellToken((col.values[r] ?? null) as CubeCell, col.type);
+  }
+  return cubeCellToken(view.cells[r]?.[c] ?? null);
+}
+
+// RFC 4180 quoting; the viewer is read-only, so formula-trigger text is
+// apostrophe-neutralized on export (the TablePopup read-only posture).
+function csvEsc(s: string): string {
+  let out = s;
+  if (/^[=+\-@\t\r]/.test(out) && Number.isNaN(Number(out))) out = `'${out}`;
+  return /[",\n]/.test(out) ? `"${out.replace(/"/g, '""')}"` : out;
+}
+function mdEsc(s: string): string {
+  return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+/** Full source-order serialization of the CURRENT drill level — every row, not
+ *  just the rendered window (text is cheap; only the DOM needed the cap). */
+function levelText(view: DrillView, headers: string[] | null, rows: number, cols: number, kind: "csv" | "md"): string {
+  const head = headers ?? Array.from({ length: cols }, (_, c) => `Col ${c + 1}`);
+  const row = (r: number) => Array.from({ length: cols }, (_, c) => tokenAt(view, r, c));
+  if (kind === "csv") {
+    const lines = [head.map(csvEsc).join(",")];
+    for (let r = 0; r < rows; r++) lines.push(row(r).map(csvEsc).join(","));
+    return lines.join("\n");
+  }
+  const md = [head.map(mdEsc), head.map(() => "---")];
+  for (let r = 0; r < rows; r++) md.push(row(r).map(mdEsc));
+  return md.map((cells) => `| ${cells.join(" | ")} |`).join("\n");
 }
 
 /** The one read-only viewer for every nesting kind: a nested-container cell drills
@@ -104,6 +147,21 @@ export function CubePopup() {
         </>
       }
       pinNodeId={state.stack.length === 1 ? state.pinNodeId : undefined}
+      headerActions={
+        <PopupOverflowMenu
+          items={[
+            { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, rows, cols, "csv")) },
+            { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, rows, cols, "md")) },
+            {
+              label: "Export CSV…",
+              onClick: () => {
+                const base = (view.label || "cube").replace(/[^\w.-]+/g, "_") || "cube";
+                void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, rows, cols, "csv"));
+              },
+            },
+          ]}
+        />
+      }
     >
       {state.stack.length > 1 && (
         <div className="cube-popup__crumbs">

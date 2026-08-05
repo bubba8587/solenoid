@@ -1,7 +1,7 @@
 .solenoid-notices {
   position: fixed;
-  /* Clear the 19px status bar (StatusBar.css), like the cable inspector. */
-  bottom: calc(19px + 12px + env(safe-area-inset-bottom));
+  /* Clear the status bar (the measured envelope), like the cable inspector. */
+  bottom: calc(var(--chrome-bottom, 19px) + 12px + env(safe-area-inset-bottom));
   right: 16px;
   z-index: 1100; /* above the confirm overlay's content, below nothing critical */
   display: flex;
@@ -56,8 +56,9 @@
   opacity: 1;
 }
 
-/* Mobile: clear the bottom action bar instead (same lift as the cable
-   inspector / docked conduit toolbar). */
+/* Mobile: clear the bottom action bar instead — the measured envelope is the
+   bar (safe-area included); +39 clears the raised FAB + gap (same lift as the
+   cable inspector / docked conduit toolbar). */
 html.is-mobile .solenoid-notices {
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
 }

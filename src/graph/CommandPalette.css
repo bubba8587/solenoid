@@ -14,7 +14,7 @@
 .solenoid-cmdpalette {
   position: fixed;
   left: 50%;
-  bottom: 40px;
+  bottom: calc(var(--chrome-bottom, 19px) + 21px);
   transform: translateX(-50%);
   width: min(480px, calc(100vw - 32px));
   font-family: inherit;

@@ -7,20 +7,20 @@ offset has to move in lockstep or something ends up covering something. This fil
 what sits where, what each offset is measured from, and what to check before you add or move a
 piece.
 
-**The TOP envelope is now a var — `--chrome-top`, MEASURED by `Header.tsx` (2026-08-01).**
-The "real fix" this file used to defer is done for the top edge: the six overlays that
-hard-coded an offset off the 66px header now derive from the measured value (details under
-the desktop stack below). It stopped being deferrable when the tablet wrap made the header
-height conditional — you cannot hand-key a number that depends on the viewport.
+**BOTH envelopes are now vars.** `--chrome-top` is MEASURED by `Header.tsx` (2026-08-01);
+`--chrome-bottom` by `chromeBottom.ts` (2026-08-05) — the status bar and the mobile action
+bar each register with it and the var is the max of the visible bars' heights (a
+display:none bar measures 0, so whichever bar owns the bottom edge wins; the mobile bar's
+height INCLUDES its safe-area padding, so the var carries the inset). Every bottom-anchored
+overlay now derives: desktop offsets are `calc(var(--chrome-bottom, 19px) + gap)`, and the
+mobile overrides are `calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom)))
++ lift)` where the lift (27/39px) clears the raised FAB. Mobile overrides still win the
+cascade as before — only their base number is measured now.
 
-**Everything else is still hand-keyed literals.** The BOTTOM edge has no var
-(`--chrome-bottom` does not exist): the status bar's `19`, the minimap's `bottom:30`, the
-legend's `bottom:148`, and the mobile bar's `~57 + safe-area` are all literals, as are the
-row heights themselves (`22`/`44`/`52`) and the `12`/`16` gutters. **Mobile's top overrides
-are also still literals** — they carry `safe-area` insets and win later in the cascade.
-So: treat the tables below as the source of truth for "what number means what," and grep for
-the number before changing a bar height. Hoisting the bottom edge the same way is the
-obvious follow-on.
+**Still hand-keyed:** the row heights themselves (`22`/`44`/`52`, the bars' own CSS), the
+`12`/`16` gutters and per-overlay gaps, and **mobile's TOP overrides** (safe-area + `82px`
+literals). Treat the tables below as the source of truth for "what number means what," and
+grep for a number before changing a bar height.
 
 ---
 
@@ -35,16 +35,16 @@ bottom; everything else floats over the canvas.
 | — Menu bar (row 1) | `.solenoid-menubar` | height **22px** | 2 | `MenuBar.css:5,8` |
 | — App/top toolbar (row 2) | `.solenoid-topbar` / `.solenoid-apptools` | height **44px** | 1 / 6 | `TopBar.css:9`, `AppToolbar.css:43` |
 | — ↳ tablet touch actions (in row 2) | `.solenoid-topbar__group--tablet` | **inside** the 44px row — adds no height | — | `TopBar.css` (gated `html.is-tablet`) |
-| Status bar (footer) | `.solenoid-statusbar` | `bottom:0`, height **19px**, full width | 6 | `StatusBar.css:3,6,10` |
+| Status bar (footer) | `.solenoid-statusbar` | `bottom:0`, height **19px**, full width; publishes `--chrome-bottom` | 6 | `StatusBar.css:3,6,10` |
 | Nav/zoom pill | `.solenoid-nav` | `top:80px; right:12px` (upper-right) | 5 | `NavMenu.css:3,20` |
 | Navigator (outline) | `.solenoid-outline` | `left:12px` (upper-left); open-pill also `top:80px` | 5 | `OutlinePanel.css:5` |
 | Align/distribute pill | `.solenoid-selbar` | `top:76px; left:50%` (top-center), shown only when ≥2 nodes selected | 7 | `selectionActions.css:9` |
-| Socket legend | `.solenoid-legend` | `bottom:148px; right:16px` (stacks above minimap) | 100 | `SocketLegend.css:5,6` |
-| Minimap | `.solenoid-minimap` | `bottom:30px; right:16px`, ~105px tall | 100 | `Minimap.css:5,8` |
+| Socket legend | `.solenoid-legend` | `bottom: chrome-bottom + 129px; right:16px` (stacks above minimap; drops to `+ 11px` when the minimap moves/hides) | 100 | `SocketLegend.css:5,6` |
+| Minimap | `.solenoid-minimap` | `bottom: chrome-bottom + 11px; right:16px`, ~105px tall | 100 | `Minimap.css:5,8` |
 | HUD stack (alerts/pins/problems/comments) | `.solenoid-hud-stack` | `top:124px; right:12px` | 110 | `hudStack.css` |
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css:10` |
-| Command palette | `.solenoid-cmdk` | bottom-docked (`left:50%; bottom:40px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css:4,12` |
-| Docked report panel | `.report-panel--docked` | `top:66px; right:0; bottom:19px; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css:321` |
+| Command palette | `.solenoid-cmdk` | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css:4,12` |
+| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css:321` |
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
@@ -143,9 +143,11 @@ places — keep them in sync:
 | Command palette (top-anchored on mobile) | `92px + safe-area` — level with the nav pill | `CommandPalette.css:96` |
 | Web-demo notice | `48px + safe-area` | `mobile.css:217` |
 
-The minimap is **`display:none` on mobile** (`mobile.css:35`) — the corner is given to the
-socket legend. Bottom-anchored floating chrome (docked conduit toolbar, cable inspector) is
-lifted ~84–96px + `safe-area-bottom` to clear the bottom action bar and its raised FAB.
+The minimap and legend are **`display:none` on mobile** (`mobile.css`). Bottom-anchored
+floating chrome (docked conduit toolbar, cable inspector, drill-in controls, toasts,
+navigator) lifts off the MEASURED bar: `calc(var(--chrome-bottom, calc(57px +
+env(safe-area-inset-bottom))) + 27px|39px)` — the lift clears the raised FAB and its
+shadow; the safe-area rides inside the measured height.
 
 > **The bug this file was started for:** the align pill's mobile override was `56px`, sized for
 > a single-row top bar. The real two-row chrome ends at `82px`, so `56` landed *inside* Row B
@@ -177,9 +179,9 @@ Answers to the questions that keep biting:
   - shrinks `.solenoid-canvas-wrapper` width by `--report-dock-w` (carrying minimap/legend/
     add-menu, which live inside it);
   - shifts `.solenoid-nav` and `.solenoid-hud-stack` `right` by `12px + --report-dock-w`.
-  The header, status bar, and left navigator are full-width/left-anchored and untouched. This is
-  the **one** place with named vars — the `66`/`19` in them are the same header/footer heights as
-  above, so if those bars change, update the vars too.
+  The header, status bar, and left navigator are full-width/left-anchored and untouched. Its
+  `--report-dock-top`/`--report-dock-bottom` now derive from the measured
+  `--chrome-top`/`--chrome-bottom`, so a bar change flows through on its own.
 
 - **Presenting** → `html.solenoid-presenting` (`PresentationOverlay.tsx:40`) hides basically all
   chrome: header, nav pill, status bar, navigator + open-pill, legend, minimap, mobile bar, HUD
@@ -226,9 +228,10 @@ need it above the HUD but below modals, you're in the 110–199 gap.
 
 ## Before you add or move any chrome — checklist
 
-1. **Which envelope does it clear?** Top-anchored: desktop `66px` header / mobile `safe-area + 82px`.
-   Bottom-anchored: desktop `19px` status bar / mobile `~84px + safe-area-bottom` action bar.
-   Reuse the sibling overlay's number, don't invent one.
+1. **Which envelope does it clear?** Top-anchored: `var(--chrome-top, 66px)` (mobile still
+   literal `safe-area + 82px`). Bottom-anchored: `var(--chrome-bottom, 19px)` on desktop,
+   `var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom)))` + a 27/39px FAB lift on
+   mobile. Reuse the sibling overlay's expression, don't invent one.
 2. **Does it need a mobile override?** `mobile.css` is gated on `html.is-mobile` and imported last
    so it wins the cascade. The top envelope roughly doubles (66 → 82+) and there's a bottom action
    bar that isn't there on desktop. Almost every floating element needs a mobile `top`/`bottom`.

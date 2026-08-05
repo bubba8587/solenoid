@@ -151,15 +151,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   step: hide the DOM nodes when zoomed out and show opaque GPU cards, shrinking the
   DOM compositing layer tree (where a node-heavy graph's zoom cost is).
 
-- [ ] **Hoist the BOTTOM chrome edge to a var**, the way `--chrome-top` was hoisted
-  2026-08-01 (`Header.tsx` measures the header; six top overlays derive from it —
-  `layout-chrome.md`). The bottom edge is still hand-keyed literals: status bar 19,
-  minimap `bottom:30`, socket legend `bottom:148`, mobile bar `~57 + safe-area`, and
-  the bottom-anchored floats lifted `84–96px` to clear it. Same recurring-bug class,
-  same fix shape (measure + `var(--chrome-bottom, …)` with a static fallback).
-  Mobile's `safe-area` overrides are the wrinkle — they must keep winning.
-
-
 - [ ] **AI command palette — the tail.** The full authoring loop is WIRED (2026-08-01;
   author calls: Anthropic only, full authoring first, D27/D28 as designed).
   `aiService.ts` sends the prompt + the document's text form to `claude-opus-5`
@@ -210,10 +201,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
     on computed columns); the Computed Column node's own card still has no
     format/unit control for its output column.
   - λ view-as on the card (lambdaView annotation) once an FC docks to the λ input.
-- [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
-  what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts
-  "series (2-D)"). Every frame-consuming node reuses it, per the aligned-columns rule
-  (one frame input, not parallel sockets — charts + SUMIFS + the frame verbs).
 - [ ] **Aliasing / hidden-port promotion UI** (composites) — the data model has
   `hidden`/`advanced` per port; no UI to flip exposure or edit a hidden port's baked
   default. Includes the pack-shell "many internal ports → one shell parameter" aliasing.
@@ -226,9 +213,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - Copy / CSV / Export emit SOURCE order while a sort is showing. Consistent with
     visual-only (the value didn't change), but someone who sorts then copies probably
     wants what they see. Author call, not a bug; one `sortOrder` map either way.
-  - The CUBE popup has no overflow menu at all — no Copy, Copy as Markdown or Export
-    CSV, all of which TablePopup has. Drill into a cube and there's no way out with
-    the data. Predates the sort work.
   - `− Row` / `− Col` remove the last row/column of the DATA, which under a sort isn't
     the bottom one on screen. Tooltips are accurate ("Remove last row"), so it's a
     read mismatch rather than a wrong action.

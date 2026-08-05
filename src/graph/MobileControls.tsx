@@ -4,6 +4,7 @@ import { addMenuRequest } from "./addMenuStore";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_MOBILE } from "./coarse";
 import { paletteStore } from "./paletteStore";
+import { useBottomChrome } from "./chromeBottom";
 import {
   fireUndo, fireGroup, useHasSelection,
   CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
@@ -20,8 +21,12 @@ export function MobileControls() {
   // Near the top, so the on-screen keyboard doesn't cover the menu's search field.
   const openAddMenu = () => addMenuRequest.open(window.innerWidth / 2, 96);
 
+  // Joins the measured `--chrome-bottom` envelope (chromeBottom.ts); the bar's
+  // height includes its safe-area padding, so the var carries the inset too.
+  const bottomRef = useBottomChrome<HTMLDivElement>();
+
   return (
-    <div className="solenoid-mobile-bar" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="solenoid-mobile-bar" ref={bottomRef} onPointerDown={(e) => e.stopPropagation()}>
       <button className="solenoid-mobile-bar__btn" aria-label="Command palette" onClick={() => paletteStore.open()}>
         <CommandGlyph size={20} />
       </button>

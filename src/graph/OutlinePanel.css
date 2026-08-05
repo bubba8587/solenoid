@@ -45,7 +45,7 @@
   position: absolute;
   top: calc(var(--chrome-top, 66px) + 14px);
   left: 12px;
-  bottom: 30px;
+  bottom: calc(var(--chrome-bottom, 19px) + 11px);
   z-index: 5;
   width: 248px;
   box-sizing: border-box;
