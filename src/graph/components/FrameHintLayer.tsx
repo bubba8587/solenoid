@@ -46,19 +46,17 @@ export function FrameHintLayer() {
   const rows = cols.reduce((m, c) => Math.max(m, c.cells.length), 0);
   return (
     <div className="solenoid-frame-hint" ref={ref} aria-hidden="true">
-      {/* The TablePopup grid in miniature — corner + row numbers + sunken
-          column heads — so the hint reads as "the frame popup, tiny". */}
+      {/* The TablePopup grid in miniature — sunken column heads + gridlines —
+          so the hint reads as "the frame popup, tiny". */}
       <table>
         <thead>
           <tr>
-            <th className="solenoid-frame-hint__corner" />
             {cols.map((c, i) => <th key={i} className="solenoid-frame-hint__name">{c.name}</th>)}
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: rows }, (_, r) => (
             <tr key={r}>
-              <th className="solenoid-frame-hint__rowhead">{r + 1}</th>
               {cols.map((c, i) => {
                 const cell = c.cells[r];
                 const shown = cell === undefined ? "" : formatFrameCell(c.type, cell);
@@ -72,6 +70,8 @@ export function FrameHintLayer() {
           ))}
         </tbody>
       </table>
+      {/* One muted word carries "this is an example, not your data". */}
+      <div className="solenoid-frame-hint__tag">example</div>
     </div>
   );
 }

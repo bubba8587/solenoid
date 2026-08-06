@@ -33,20 +33,6 @@
 .solenoid-frame-hint td:last-child {
   border-right: none;
 }
-.solenoid-frame-hint tbody tr:last-child th,
-.solenoid-frame-hint tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.solenoid-frame-hint__corner,
-.solenoid-frame-hint__rowhead {
-  background: var(--surface-sunken);
-  color: var(--text-dim);
-  font-weight: 500;
-  text-align: center;
-  min-width: 10px;
-  padding: 0 2px;
-}
 /* Column names — the popup's .table-popup__colhead--name recipe, with the FRAME
    socket hue standing in for the node accent (the input has no node yet). */
 .solenoid-frame-hint__name {
@@ -64,4 +50,15 @@
 }
 .solenoid-frame-hint td[data-num] {
   text-align: right;
+}
+
+/* Footer strip below the sample rows — one muted word carries "this is an
+   example, not your data" (the grid's last-row border is the seam above it). */
+.solenoid-frame-hint__tag {
+  padding: 1px 4px 2px;
+  text-align: right;
+  font-size: 7px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
