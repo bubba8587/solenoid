@@ -69,6 +69,23 @@ export class CappedZoom extends Zoom {
   };
 }
 
+/** `area.pointer` — where the connection plugin renders a picked pseudo-cable's free
+ *  end — updates from the container's BUBBLE pointerdown, which a socket press
+ *  stops (it must, or picking a socket would drag the node). Desktop hover
+ *  mousemoves hide that; on touch there is no hover, so the ghost cable rendered
+ *  from the origin socket to the PREVIOUS gesture's last position until the finger
+ *  moved. Same disease as the pinch count, same cure: position bookkeeping is
+ *  re-seated in CAPTURE, where stopPropagation can't starve it. */
+export function seatAreaPointerInCapture(
+  area: AreaPlugin<Schemes, AreaExtra>,
+  container: HTMLElement,
+): () => void {
+  const seat = (e: PointerEvent) =>
+    (area.area as unknown as { setPointerFrom(ev: PointerEvent): void }).setPointerFrom(e);
+  container.addEventListener("pointerdown", seat, true);
+  return () => container.removeEventListener("pointerdown", seat, true);
+}
+
 /** Install the pointer/zoom behavior every editing surface needs; the double-click-to-zoom
  *  suppression works by swallowing in capture, since rete binds its dblclick in bubble. */
 export function installSurfacePointer(
@@ -78,7 +95,11 @@ export function installSurfacePointer(
   area.area.setZoomHandler(new CappedZoom(0.1));
   const swallowDblClick = (e: Event) => { e.stopImmediatePropagation(); };
   container.addEventListener("dblclick", swallowDblClick, true);
-  return () => container.removeEventListener("dblclick", swallowDblClick, true);
+  const unseat = seatAreaPointerInCapture(area, container);
+  return () => {
+    container.removeEventListener("dblclick", swallowDblClick, true);
+    unseat();
+  };
 }
 
 /** The classic React preset with an IDENTITY socket-position offset — our sockets sit
