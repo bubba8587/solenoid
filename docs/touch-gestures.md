@@ -75,7 +75,7 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 | drag on card | mouse; touch only when SELECTED | move node (whole selection if member) | rete node drag (bubble) |
 | stationary tap on header label (≤4px `HEADER_TAP_SLOP`) | all | edit title | `nodeKit.tsx` |
 | tap chevron (≤slop; drag passes through to node drag) | all | collapse/expand | `NodeCard.tsx` |
-| ~~double-click on square-collapsed card~~ | — | **DEAD PATH** — `NodeCard`'s `onDoubleClick` can never fire inside the canvas (dblclick swallow); the hover chevron is the real re-expand affordance. Known issue: on touch there is currently NO way to re-expand a square-collapsed Sparkline. | `NodeCard.tsx` |
+| re-expand a square-collapsed Sparkline | all | the chevron, revealed on hover OR SELECTION (touch: tap selects → chevron appears → tap it). `NodeCard`'s `onDoubleClick` fallback is a DEAD PATH (dblclick swallow) — the chevron is the only control. | `nodeCard.css` square-collapse rules |
 | drag resize grip | all (live even unselected on mobile) | resize | `ResizeHandle` |
 
 ### Sockets & cables
@@ -84,7 +84,7 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 |---|---|---|---|
 | drag from socket | all (mobile: selected node, or any during `--cabling`) | pick/drop cable | rete connection plugin |
 | hover dot (300ms intent) | mouse | frame-input EXAMPLE hint | `NodeSocket.tsx` + `frameHint.ts` |
-| tap dot or ITS WHOLE ROW | touch | frame-input EXAMPLE hint (the dot scales with the canvas transform — a few px at overview zoom — so the row is the touch target); next tap or 4s dismisses | `MeasuredSocketRow` / `FrameHintLayer` |
+| tap the input ROW | touch | frame-input EXAMPLE hint — the INTENTIONAL touch trigger; next tap or 4s dismisses. The dot itself deliberately has none: a touch press on the dot begins the cable pick, which captures the pointer (the tap's up never reaches the dot), and the dot scales with the canvas transform anyway (a few px at overview zoom). | `MeasuredSocketRow` / `FrameHintLayer` |
 | long-press socket | touch | socket context menu | `canvasContextMenu.ts` |
 | touch hit areas | coarse | dot targets inflate to ~28px (Conduit sockets deliberately small so its body stays grabbable); every socket +6px while cabling | `socket.css` |
 | click cable / tap | all | select cable (ribbons select the run) | `ConnectionComponent.tsx` |

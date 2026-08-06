@@ -117,10 +117,12 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
   const isCube = payload instanceof SolenoidSocket && payload.dataType === "cube";
   const typeLabel = payload instanceof SolenoidSocket ? SOCKET_TYPE_LABELS[payload.dataType] : undefined;
 
-  // Frame-input example hint (frameHint.ts). Mouse: hover-intent shows it beside
-  // the socket; leaving, pressing (a cable pick), or unmount hides it. Touch: no
-  // hover exists, so a completed TAP on the socket (up ON the dot — a cable drag
-  // releases elsewhere) shows it; the layer dismisses on the next tap / timeout.
+  // Frame-input example hint (frameHint.ts) — the MOUSE half: hover-intent on
+  // the dot shows it; leaving, pressing (a cable pick), or unmount hides it.
+  // The dot deliberately has NO touch trigger: a touch press on the dot begins
+  // the cable pick, which captures the pointer, so the tap's pointerup never
+  // reaches this wrapper — the TOUCH trigger is the whole row
+  // (MeasuredSocketRow, the intentional mobile path; touch-gestures.md).
   const hint = hintFor(side, nodeId, socketKey);
   const hintTimer = useRef<number | null>(null);
   const cancelHint = () => {
@@ -128,11 +130,6 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
     frameHintStore.close();
   };
   useEffect(() => cancelHint, []);
-  const showHint = (el: HTMLElement) => {
-    if (!hint) return;
-    const r = el.getBoundingClientRect();
-    frameHintStore.open({ hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
-  };
   const hintEnter = hint
     ? (e: React.PointerEvent) => {
         if (e.pointerType !== "mouse") return;
@@ -140,14 +137,9 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
         if (hintTimer.current !== null) clearTimeout(hintTimer.current);
         hintTimer.current = window.setTimeout(() => {
           hintTimer.current = null;
-          showHint(el);
+          const r = el.getBoundingClientRect();
+          frameHintStore.open({ hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
         }, HINT_DELAY_MS);
-      }
-    : undefined;
-  const hintTap = hint
-    ? (e: React.PointerEvent) => {
-        if (e.pointerType === "mouse") return;
-        showHint(e.currentTarget as HTMLElement);
       }
     : undefined;
 
@@ -160,7 +152,6 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
       onPointerEnter={hintEnter}
       onPointerLeave={hint ? cancelHint : undefined}
       onPointerDown={hint ? cancelHint : undefined}
-      onPointerUp={hintTap}
       data-socket-key={socketKey}
       data-socket-side={side}
       data-node-id={nodeId}

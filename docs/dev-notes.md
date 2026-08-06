@@ -180,8 +180,10 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   selection gating, the container-wide dblclick swallow). Two findings recorded in it:
   NOTHING can double-click/double-tap inside the canvas (the swallow is
   `stopImmediatePropagation` in capture — `NodeCard`'s square-collapse `onDoubleClick`
-  is a DEAD PATH, so touch currently has no way to re-expand a Sparkline), and the
-  marquee/lasso trigger is deliberately left unrecorded pending verification.
+  is a DEAD PATH; the chevron is the only re-expand control, and its reveal now
+  includes `--selected` explicitly so touch doesn't lean on tap-hover emulation —
+  author caught the earlier "no touch re-expand" overclaim), and the marquee/lasso
+  trigger is deliberately left unrecorded pending verification.
   layout-chrome's add-path note corrected to name long-press; CLAUDE.md points at the
   inventory. Mobile frame-hint tap fixed en route: the DOT scales with the canvas
   transform (2px at overview zoom — untappable), so on touch the whole socket ROW
@@ -193,7 +195,11 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   few families (math, frame verbs, dates, packs); lock + sparkle icon centering; bottom
   chrome positions (minimap/legend/palette/toasts, desktop AND a phone — the mobile
   lifts now derive from the measured bar); the frame-input example hints on a real
-  mouse (hover feel, delay, sizing).
+  mouse (hover feel, delay, sizing) AND phone (row tap). Hint v3 (author-walked): the
+  TablePopup grid in MINIATURE (corner + row numbers + sunken heads + gridlines,
+  solid panel) — the chip-tint card looked nothing like the frame popup; the ROW tap
+  is the INTENTIONAL touch trigger (the dot's own tap can't work: cable pick captures
+  the pointer), the dot's dead touch handler removed.
 
 ### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
 

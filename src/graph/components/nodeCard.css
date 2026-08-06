@@ -315,13 +315,18 @@
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__header {
   display: none;
 }
-/* The chevron is hidden until hover (so the square stays clean) — it reappears
-   top-left on hover as the visible re-expand affordance; double-click works too. */
+/* The chevron is hidden until hover OR selection (so the square stays clean) —
+   it reappears top-left as the re-expand affordance. Selection is the explicit
+   touch path: tap selects, the chevron appears, tap it (previously this leaned
+   on tap-hover emulation). Note dblclick can NEVER fire inside the canvas
+   (capture-phase swallow — touch-gestures.md), so the chevron is the only
+   re-expand control. */
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
   opacity: 0;
   transition: opacity 0.12s;
 }
-.solenoid-node--square-collapse.solenoid-node--collapsed:hover .solenoid-node__chevron {
+.solenoid-node--square-collapse.solenoid-node--collapsed:hover .solenoid-node__chevron,
+.solenoid-node--square-collapse.solenoid-node--collapsed.solenoid-node--selected .solenoid-node__chevron {
   opacity: 1;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed {
