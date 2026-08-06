@@ -152,13 +152,29 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   heights (safe-area rides inside the measurement); 13 bottom-anchored offsets across 10
   files now derive; mobile overrides keep winning the cascade with measured bases —
   `layout-chrome.md` reconciled.
+- **Frame-input EXAMPLE hints** (author-directed, design delegated): hovering a
+  column-expecting frame input's socket pops a compact mini-table of example data
+  (3–5 rows) beside the socket — the worked example to SOCK-14's terse role label.
+  Mechanics: a node class declares `static frameHints` keyed by input key (the
+  literals-style declare-on-the-class shape; survives minification), `NodeSocket`
+  resolves it per render (hover-intent 300ms, `hover: hover` media only, native type
+  tooltip suppressed on hinted sockets), `frameHintStore` + `FrameHintLayer` (app root,
+  z 120, fixed screen-space, flips right at the viewport edge, hides on leave / press /
+  wheel). Styled on overlay chrome framed in the FRAME socket hue via the ladder rungs;
+  dates format through `formatFrameCell` (app default format). Ten hints authored:
+  Chart, Treemap, Sankey, Waterfall, Waffle, Candlestick, Calendar, Boxplot, Decision
+  Matrix, Sensitivity. `frameHint.test.ts` sweeps the catalog: every hint names a real
+  input, 3–5 rectangular typed rows. Playwright-verified against the live dev server
+  (position, flip, date formatting, hide-on-leave, both themes; author-walked smaller +
+  frame-tinted same session).
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
   selected notes/reports/presentations at fractional sizes; op-selector-on-top across a
   few families (math, frame verbs, dates, packs); lock + sparkle icon centering; bottom
   chrome positions (minimap/legend/palette/toasts, desktop AND a phone — the mobile
-  lifts now derive from the measured bar).
+  lifts now derive from the measured bar); the frame-input example hints on a real
+  mouse (hover feel, delay, sizing).
 
 ### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
 
