@@ -39,12 +39,12 @@ export function TopBar() {
         aria-label="Menu"
         onClick={() => mobileMenuStore.toggle()}
       >
-        {/* Standard overflow dots (the PopupOverflowMenu trigger glyph) — the
-            brand mark moved to the mobile menu bar's wordmark. */}
+        {/* Standard overflow dots (the PopupOverflowMenu glyph, turned vertical) —
+            the brand mark moved to the mobile menu bar's wordmark. */}
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <circle cx="3" cy="8" r="1.4" />
+          <circle cx="8" cy="3" r="1.4" />
           <circle cx="8" cy="8" r="1.4" />
-          <circle cx="13" cy="8" r="1.4" />
+          <circle cx="8" cy="13" r="1.4" />
         </svg>
       </button>
 
