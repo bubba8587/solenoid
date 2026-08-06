@@ -127,8 +127,9 @@ Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term 
   renders as `.solenoid-node__display-value`.
 - **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
   pills on a collapsed group (`.solenoid-node__output-pill` etc.).
-- **App menu** (mobile) — the square icon opening the File sheet. `.solenoid-topbar__icon` →
-  `.solenoid-menubar__sheet`.
+- **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.
+  `.solenoid-topbar__icon` → `.solenoid-menubar__sheet`. (The brand lives in Row A's
+  wordmark, `.solenoid-menubar__wordmark`.)
 - **FC** — the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
   model `formatModel.ts`, flow `unitFlow.ts`.
 - **Reference** — the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.

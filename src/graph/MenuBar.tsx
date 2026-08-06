@@ -4,6 +4,7 @@ import { canvasLockStore } from "./canvasLock";
 import { calcModeStore } from "./calcModeStore";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { DocumentTitle } from "./components/DocumentTitle";
+import wordmark from "../logo/solenoidwordmark.svg";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { useGridSnap } from "./gridSnapStore";
@@ -86,6 +87,14 @@ export function MenuBar() {
         </div>
       ))}
 
+      {/* Mobile Row A brand — CSS-hidden on desktop (the top bar carries the
+          wordmark there). Masked + currentColor, so it wears the bar's ink. */}
+      <span
+        className="solenoid-menubar__wordmark"
+        role="img"
+        aria-label="Solenoid"
+        style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }}
+      />
       <div className="solenoid-menubar__center">
         <DocumentTitle />
       </div>
