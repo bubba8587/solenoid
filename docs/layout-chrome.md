@@ -54,11 +54,14 @@ bottom; everything else floats over the canvas.
 > nothing is forced onto a chosen row.
 >
 > Two things are deliberately NOT carried over from the mobile bottom bar — do not
-> "complete" the parity: **Add node** (the bar already has its own Add affordance and
-> the canvas double-tap; a second ➕ up top would be the third), and the **raised FAB
-> treatment** (a thumb-reach accommodation for a phone's bottom edge; up here it's
-> just a loud button, and the Quiet Accent Rule says accent conveys type/state, not
-> emphasis).
+> "complete" the parity: **Add node** (Insert ▸ Add node… in the menu bar covers it;
+> a ➕ up top would be the second), and the **raised FAB treatment** (a thumb-reach
+> accommodation for a phone's bottom edge; up here it's just a loud button, and the
+> Quiet Accent Rule says accent conveys type/state, not emphasis).
+> Corrected 2026-08-06: this note used to claim a "canvas double-tap add" — no such
+> gesture exists on any device (the canvas SWALLOWS dblclick in capture to disable
+> rete's double-click zoom, Canvas.tsx). The add paths are: mobile bar ➕, the `A`
+> shortcut, and Insert ▸ Add node….
 >
 > The exception is the **pinned trio** — theme · Reference · Settings
 > (`.solenoid-apptools`) — which must hold the top-right corner. An in-flow flex item
