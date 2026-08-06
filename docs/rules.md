@@ -88,6 +88,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | SOCK-12 | Relay nodes are transparent to every static derivation |
 | SOCK-13 | A derived-type consumer runs only after the wildcard settle |
 | SOCK-14 | Frame-input labels follow the column-role grammar |
+| SOCK-15 | A column-role-labeled frame input carries a matching example hint |
 | FX-1 | One implementation, two surfaces |
 | FX-2 | A shared implementation is rete-free |
 | FX-3 | A registration declares its full contract |
@@ -548,6 +549,24 @@ made the one load-bearing hint unlearnable.
 the column-role grammar" (scans every `frameIn`/`anyTableIn` literal).
 *Origin:* backlog item "rigorous multi-column input-socket label syntax"; rule
 design delegated by the author 2026-08-05.
+
+### SOCK-15 — A column-role-labeled frame input carries a matching example hint **[DEFAULT]**
+**MUST:** every frame/2-D input whose label is a SOCK-14 ROLE CHAIN (`Role +
+Role …`) declares an example hint for that input key (`static frameHints` on
+the node class — `frameHint.ts`), and the hint's column NAMES equal the label's
+roles in order, expanding standard initialisms (`OHLC` → Open, High, Low,
+Close). The hint's shape rules (3–5 rectangular rows, cells matching the
+declared column types) bind every hint, role-labeled or not.
+
+*Why:* the hint is the label's WORKED EXAMPLE — the pair is one contract. A
+role-labeled input with no hint silently loses the mechanism new nodes are
+expected to carry; a hint whose columns drift from the label shows a
+confidently wrong example, which is worse than none.
+*Enforced by:* `frameHint.test.ts` → "every role-chain-labeled frame input
+declares a hint whose columns match the label" (sweeps the catalog), plus its
+shape checks over all hints.
+*Origin:* author order 2026-08-05 ("this should be an enforced thing — spec
+driven"), upgrading the hint mechanism from convention to contract.
 
 ---
 
@@ -1346,11 +1365,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-73 rules.
+74 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 71 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12,13,14 · FX-1,2,3,4,5,6,7,8,9,10,11,12,13 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
+| Enforced | 72 | PROV-1 · SSOT-1,2,3,4,5,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12,13,14,15 · FX-1,2,3,4,5,6,7,8,9,10,11,12,13 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9,10 · ENGINE-1,2,3 · EFFECT-1,2 · STORE-1 |
 | Partially enforced | 1 | SOCK-8 |
 | Unenforced | 1 | SOCK-6 |
 

@@ -163,10 +163,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   wheel). Styled on overlay chrome framed in the FRAME socket hue via the ladder rungs;
   dates format through `formatFrameCell` (app default format). Ten hints authored:
   Chart, Treemap, Sankey, Waterfall, Waffle, Candlestick, Calendar, Boxplot, Decision
-  Matrix, Sensitivity. `frameHint.test.ts` sweeps the catalog: every hint names a real
-  input, 3–5 rectangular typed rows. Playwright-verified against the live dev server
-  (position, flip, date formatting, hide-on-leave, both themes; author-walked smaller +
-  frame-tinted same session).
+  Matrix, Sensitivity. Playwright-verified against the live dev server (position, flip,
+  date formatting, hide-on-leave, both themes). Author-walked twice same session: v2 is
+  EXTREMELY mini (8px mono micro-grid) in the FRAME CHIP's language (translucent
+  `--sock-frame` card, TablePopup's tinted column-name recipe), no example tag; TOUCH
+  gets tap-to-show (pointerup on the dot; next tap / 4s dismisses — desktop-stack
+  hover unchanged). **SOCK-15 (74 rules)**: the label↔hint pair is an enforced
+  contract — every role-chain-labeled frame input MUST declare a hint whose column
+  names match the label's roles (OHLC expands), `frameHint.test.ts` sweeps the catalog
+  (existence + name match + 3–5 rectangular typed rows).
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;

@@ -1,49 +1,41 @@
-/* Frame-input example hint — a hover mini-table floating beside the socket.
-   Overlay chrome (bg/border/shadow vars shared with the legend/minimap); sits in
-   the 110–199 band: above the HUD, below modals (layout-chrome.md ladder). */
+/* Frame-input example hint — a micro frame preview beside the socket, in the
+   FRAME CHIP's visual language (ArrayChip.css `--frame`: translucent frame-hue
+   card) wrapping a miniature of the TablePopup grid (mono, tinted column
+   names). Deliberately EXTREMELY small: a glance cue for "wire a frame shaped
+   like this", not a surface to read. Sits in the 110–199 band: above the HUD,
+   below modals (layout-chrome.md ladder). */
 .solenoid-frame-hint {
   position: fixed;
   z-index: 120;
   pointer-events: none; /* a tooltip — never a hover target itself */
-  background: var(--overlay-bg);
-  /* Framed in the FRAME socket hue (the hint documents a frame input — color
-     conveys type), at the ladder's edge rung. */
-  border: 1px solid color-mix(in srgb, var(--sock-frame, var(--overlay-border)) var(--mix-edge), var(--border));
+  background: color-mix(in srgb, var(--sock-frame, var(--accent)) 12%, var(--overlay-bg));
+  border: 1px solid color-mix(in srgb, var(--sock-frame, var(--accent)) 40%, transparent);
   border-radius: 5px;
   box-shadow: var(--overlay-shadow);
-  padding: 4px 6px 3px;
+  padding: 2px 3px;
 }
 
 .solenoid-frame-hint table {
   border-collapse: collapse;
-  font-size: 9.5px;
-  line-height: 1.4;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  line-height: 1.3;
 }
 .solenoid-frame-hint th {
-  padding: 0 5px 1px;
+  padding: 0 4px;
   text-align: left;
   font-weight: 600;
-  color: color-mix(in srgb, var(--sock-frame, var(--text)) var(--mix-ink), var(--text));
+  /* The TablePopup column-name recipe (.table-popup__colhead--name), in the
+     frame hue — matching the mirrored component beats a ladder rung here. */
+  color: color-mix(in srgb, var(--sock-frame, var(--text)) 70%, var(--text));
+  border-bottom: 1px solid color-mix(in srgb, var(--sock-frame, var(--border)) 40%, transparent);
   white-space: nowrap;
-  /* The header/body seam, in the frame hue's hairline rung. */
-  border-bottom: 1px solid color-mix(in srgb, var(--sock-frame, var(--border)) var(--mix-hairline), var(--border));
 }
 .solenoid-frame-hint td {
-  padding: 0 5px;
+  padding: 0 4px;
   color: var(--text-dim);
   white-space: nowrap;
 }
 .solenoid-frame-hint td[data-num] {
   text-align: right;
-  font-family: var(--font-mono, ui-monospace, monospace);
-}
-
-/* One muted word carries "this is an example, not your data". */
-.solenoid-frame-hint__tag {
-  margin-top: 2px;
-  text-align: right;
-  font-size: 8px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
