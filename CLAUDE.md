@@ -214,6 +214,9 @@ Read the relevant section there before touching one of these. The one-line "don'
   `isPinching()` (≥2 FINGERS); pan/drag = bubble. A finger never selects on pointerdown —
   unselected nodes are drag-transparent to touch, selection lands on pointerup. NO palm
   rejection by author call (precise editor, nobody rests a palm on a node graph).
+  **`docs/touch-gestures.md` is the full gesture INVENTORY — read it before adding or
+  citing any gesture** (two phantom-gesture incidents made it mandatory; note: touch
+  long-press = native `contextmenu`, and NOTHING double-taps inside the canvas).
 - **Cable routing** (`cablePaths.ts`): diagonal+straight share one walk-enumeration router;
   route selection = globally-shortest solvable walk, LENGTH stays the primary sort key. Spline is
   a single tangent-exact cubic. Ribbons bundle 2+ Conduit cables, membership derived per render.

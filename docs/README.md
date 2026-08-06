@@ -24,6 +24,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   autosave, drill-in lifecycle).
 - **`layout-chrome.md`** — the on-screen chrome map (bars, overlays, offsets,
   z-index ladder). Read before adding or moving any bar/overlay.
+- **`touch-gestures.md`** — the pointer/touch gesture INVENTORY (what every
+  gesture means, per device config, incl. the long-press → contextmenu paths).
+  Read before adding/changing any gesture; update it in the same change.
 - **`format-model.md`** — the FC function model: the render pipeline, the
   per-family control truth table (mirrored in `formatModel.ts`), the precision
   rule. Read before touching FC controls/resolution.

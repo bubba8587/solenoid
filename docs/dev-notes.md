@@ -172,6 +172,20 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   contract — every role-chain-labeled frame input MUST declare a hint whose column
   names match the label's roles (OHLC expands), `frameHint.test.ts` sweeps the catalog
   (existence + name match + 3–5 rectangular typed rows).
+- **Touch-gesture spec formalized** (`docs/touch-gestures.md`, author-ordered after TWO
+  phantom-gesture incidents in one session: layout-chrome's fictional "canvas double-tap
+  add", then the real long-press-add going unfound because it rides the browser's native
+  long-press → `contextmenu` with no greppable name). The doc is the normative gesture
+  inventory per device config + the standing invariants (pinch capture / pan bubble,
+  selection gating, the container-wide dblclick swallow). Two findings recorded in it:
+  NOTHING can double-click/double-tap inside the canvas (the swallow is
+  `stopImmediatePropagation` in capture — `NodeCard`'s square-collapse `onDoubleClick`
+  is a DEAD PATH, so touch currently has no way to re-expand a Sparkline), and the
+  marquee/lasso trigger is deliberately left unrecorded pending verification.
+  layout-chrome's add-path note corrected to name long-press; CLAUDE.md points at the
+  inventory. Mobile frame-hint tap fixed en route: the DOT scales with the canvas
+  transform (2px at overview zoom — untappable), so on touch the whole socket ROW
+  triggers the hint (verified on emulated Pixel 7, `html.is-mobile` gating active).
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
