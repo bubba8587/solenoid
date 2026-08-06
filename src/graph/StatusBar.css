@@ -27,6 +27,9 @@
   align-items: center;
   gap: 7px;
   color: var(--text-dim);
+  /* Live counts — tabular so the row doesn't jitter as digits change (the
+     sans defaults to proportional figures; tnum is an opt-in). */
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Web-demo node budget (inline meter behind the node count) ───────────── */
