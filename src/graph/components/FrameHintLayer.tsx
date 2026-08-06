@@ -28,8 +28,17 @@ export function FrameHintLayer() {
   useLayoutEffect(() => {
     if (!state) return;
     const hide = () => frameHintStore.close();
+    // Wheel: a zoom would move the anchor out from under it. Pointerdown:
+    // the touch dismissal (tap anywhere) — mouse hides on leave anyway.
     window.addEventListener("wheel", hide, { passive: true });
-    return () => window.removeEventListener("wheel", hide);
+    document.addEventListener("pointerdown", hide, true);
+    // Touch has no leave event, so a shown hint also times itself out.
+    const t = window.setTimeout(hide, 4000);
+    return () => {
+      window.removeEventListener("wheel", hide);
+      document.removeEventListener("pointerdown", hide, true);
+      clearTimeout(t);
+    };
   }, [state]);
 
   if (!state) return null;
@@ -57,7 +66,6 @@ export function FrameHintLayer() {
           ))}
         </tbody>
       </table>
-      <div className="solenoid-frame-hint__tag">example</div>
     </div>
   );
 }

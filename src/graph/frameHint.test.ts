@@ -2,30 +2,65 @@ import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "./catalogUtils";
 import type { FrameHint } from "./frameHint";
 
-// Every class-declared frame-input example (frameHint.ts) must stay coherent:
-// the hinted key is a REAL input on the node, columns carry 3–5 sample cells of
-// the declared type, and rows stay rectangular — a drifted hint would render a
-// confidently wrong example, which is worse than none.
+// SOCK-15 (rules.md): a role-chain-labeled frame input and its example hint are
+// ONE contract — the hint must exist, its column names must match the label's
+// roles, and every hint (role-labeled or not) must stay well-formed: real input
+// key, 3–5 rectangular rows, cells matching the declared types. A drifted hint
+// renders a confidently wrong example, which is worse than none.
+
+// Standard column-group initialisms a role may compact to (SOCK-14).
+const INITIALISMS: Record<string, string[]> = {
+  OHLC: ["Open", "High", "Low", "Close"],
+};
 
 type Hinted = { ctor: string; key: string; hint: FrameHint; inputs: Set<string> };
+type RoleLabeled = { ctor: string; key: string; label: string; hint: FrameHint | undefined };
 
-function collect(): Hinted[] {
-  const seen = new Map<string, Hinted>();
+function inputLabels(inst: unknown): Map<string, string> {
+  const out = new Map<string, string>();
+  const inputs = (inst as { inputs?: Record<string, { label?: string }> }).inputs ?? {};
+  for (const [key, port] of Object.entries(inputs)) {
+    if (typeof port?.label === "string") out.set(key, port.label);
+  }
+  return out;
+}
+
+function collect(): { hinted: Hinted[]; roleLabeled: RoleLabeled[] } {
+  const hinted = new Map<string, Hinted>();
+  const roleLabeled = new Map<string, RoleLabeled>();
   for (const entry of FLAT_CATALOG.values()) {
     let inst: unknown;
     try { inst = entry.create(); } catch { continue; }
     const ctor = (inst as object).constructor as { name: string; frameHints?: Record<string, FrameHint> };
+    const labels = inputLabels(inst);
+    for (const [key, label] of labels) {
+      if (label.includes(" + ")) {
+        roleLabeled.set(`${ctor.name}.${key}`, { ctor: ctor.name, key, label, hint: ctor.frameHints?.[key] });
+      }
+    }
     if (!ctor.frameHints) continue;
-    const inputs = new Set(Object.keys((inst as { inputs?: Record<string, unknown> }).inputs ?? {}));
+    const inputs = new Set(labels.keys());
     for (const [key, hint] of Object.entries(ctor.frameHints)) {
-      seen.set(`${ctor.name}.${key}`, { ctor: ctor.name, key, hint, inputs });
+      hinted.set(`${ctor.name}.${key}`, { ctor: ctor.name, key, hint, inputs });
     }
   }
-  return [...seen.values()];
+  return { hinted: [...hinted.values()], roleLabeled: [...roleLabeled.values()] };
 }
 
 describe("frame-input example hints", () => {
-  const hinted = collect();
+  const { hinted, roleLabeled } = collect();
+
+  it("every role-chain-labeled frame input declares a hint whose columns match the label (SOCK-15)", () => {
+    expect(roleLabeled.length, "role-chain-labeled inputs in the catalog").toBeGreaterThanOrEqual(6);
+    for (const { ctor, key, label, hint } of roleLabeled) {
+      expect(hint, `${ctor}.${key} ("${label}"): role-labeled input with no frameHints entry`).toBeDefined();
+      const roles = label.split(" + ").flatMap((r) => INITIALISMS[r] ?? [r]);
+      expect(
+        hint!.columns.map((c) => c.name),
+        `${ctor}.${key}: hint columns must match the label's roles in order`,
+      ).toEqual(roles);
+    }
+  });
 
   it("at least the authored set is present", () => {
     // A refactor that silently drops the static fields would pass everything
