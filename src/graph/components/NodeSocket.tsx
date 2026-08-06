@@ -1,10 +1,26 @@
-import { useSyncExternalStore, useRef, useState, useLayoutEffect, type ReactNode } from "react";
+import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
 import { Presets } from "rete-react-plugin";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import type { ClassicPreset } from "rete";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
+import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
+import { getActiveEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
+
+// Hover-intent delay before the example hint pops (tooltip-like; a cable drag
+// crossing sockets must not flash tables).
+const HINT_DELAY_MS = 300;
+// Touch has no hover — the pointerenter a tap synthesizes must not pop a table
+// under the finger.
+const CAN_HOVER = typeof matchMedia !== "undefined" && matchMedia("(hover: hover)").matches;
+
+/** The declared example hint for this input, if its node's class carries one. */
+function hintFor(side: Side, nodeId: string, socketKey: string): FrameHint | undefined {
+  if (side !== "input" || !CAN_HOVER) return undefined;
+  const node = getActiveEditor()?.getNode(nodeId);
+  return node ? frameHintFor(node, socketKey) : undefined;
+}
 
 const SQUARE_TYPES = new Set(["list", "strlist", "datelist", "numlist", "table", "frame", "chart", "document"]);
 
@@ -92,11 +108,36 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
   const isCube = payload instanceof SolenoidSocket && payload.dataType === "cube";
   const typeLabel = payload instanceof SolenoidSocket ? SOCKET_TYPE_LABELS[payload.dataType] : undefined;
 
+  // Frame-input example hint (frameHint.ts): hover-intent → show the mini-table
+  // beside the socket; leaving, pressing (a cable pick), or unmount hides it.
+  const hint = hintFor(side, nodeId, socketKey);
+  const hintTimer = useRef<number | null>(null);
+  const cancelHint = () => {
+    if (hintTimer.current !== null) { clearTimeout(hintTimer.current); hintTimer.current = null; }
+    frameHintStore.close();
+  };
+  useEffect(() => cancelHint, []);
+  const hintEnter = hint
+    ? (e: React.PointerEvent) => {
+        const el = e.currentTarget as HTMLElement;
+        if (hintTimer.current !== null) clearTimeout(hintTimer.current);
+        hintTimer.current = window.setTimeout(() => {
+          hintTimer.current = null;
+          const r = el.getBoundingClientRect();
+          frameHintStore.open({ hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
+        }, HINT_DELAY_MS);
+      }
+    : undefined;
+
   return (
     <div
       className={(className ?? "") + (lit ? " solenoid-socket--lit" : "")}
       style={{ position: "absolute", ...horizontal, ...vertical }}
-      title={typeLabel}
+      // The hint replaces the native type tooltip (both at once would overlap).
+      title={hint ? undefined : typeLabel}
+      onPointerEnter={hintEnter}
+      onPointerLeave={hint ? cancelHint : undefined}
+      onPointerDown={hint ? cancelHint : undefined}
       data-socket-key={socketKey}
       data-socket-side={side}
       data-node-id={nodeId}

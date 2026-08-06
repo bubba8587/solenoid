@@ -1,0 +1,49 @@
+/* Frame-input example hint — a hover mini-table floating beside the socket.
+   Overlay chrome (bg/border/shadow vars shared with the legend/minimap); sits in
+   the 110–199 band: above the HUD, below modals (layout-chrome.md ladder). */
+.solenoid-frame-hint {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none; /* a tooltip — never a hover target itself */
+  background: var(--overlay-bg);
+  /* Framed in the FRAME socket hue (the hint documents a frame input — color
+     conveys type), at the ladder's edge rung. */
+  border: 1px solid color-mix(in srgb, var(--sock-frame, var(--overlay-border)) var(--mix-edge), var(--border));
+  border-radius: 5px;
+  box-shadow: var(--overlay-shadow);
+  padding: 4px 6px 3px;
+}
+
+.solenoid-frame-hint table {
+  border-collapse: collapse;
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+.solenoid-frame-hint th {
+  padding: 0 5px 1px;
+  text-align: left;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--sock-frame, var(--text)) var(--mix-ink), var(--text));
+  white-space: nowrap;
+  /* The header/body seam, in the frame hue's hairline rung. */
+  border-bottom: 1px solid color-mix(in srgb, var(--sock-frame, var(--border)) var(--mix-hairline), var(--border));
+}
+.solenoid-frame-hint td {
+  padding: 0 5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.solenoid-frame-hint td[data-num] {
+  text-align: right;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/* One muted word carries "this is an example, not your data". */
+.solenoid-frame-hint__tag {
+  margin-top: 2px;
+  text-align: right;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

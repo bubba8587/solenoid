@@ -6,6 +6,7 @@ import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
 import { getActiveArea } from "../activeGraph";
 import { readFilterValue } from "./list";
+import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
@@ -1136,6 +1137,15 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   cachedResult: FrameValue | SolError | null = null;
   width = 248; height = 235;
 
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Option", type: "string", cells: ["Vendor A", "Vendor B", "Vendor C"] },
+      { name: "Cost", type: "number", cells: [7, 5, 8] },
+      { name: "Speed", type: "number", cells: [9, 6, 4] },
+      { name: "Risk", type: "number", cells: [4, 8, 6] },
+    ] },
+  };
+
   constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail; weightMap?: Record<string, number>; normMap?: Record<string, DecisionNormalize> }) {
     super("DecisionMatrix");
     this.label = init?.label ?? "Decision Matrix";
@@ -1171,6 +1181,10 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
   normalize: DecisionNormalize;
   cachedResult: CubeValue | SolError | null = null;
   width = 220; height = 240;
+
+  static frameHints: Record<string, FrameHint> = {
+    scores: DecisionMatrixNode.frameHints.frame,
+  };
 
   constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
     super("DecisionSensitivity");

@@ -8,6 +8,7 @@ import type {
 } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
+import type { FrameHint } from "../frameHint";
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 
 // Terminal figures: each node emits a chart VALUE and is never a pass-through.
@@ -96,6 +97,13 @@ export class ChartNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   width = 240;
   height = 240;
+
+  static frameHints: Record<string, FrameHint> = {
+    values: { columns: [
+      { name: "Label", type: "string", cells: ["Jan", "Feb", "Mar"] },
+      { name: "Value", type: "number", cells: [120, 145, 98] },
+    ] },
+  };
 
   constructor(init?: { label?: string; op?: ChartOp }) {
     super("Chart");
@@ -427,6 +435,13 @@ export class TreemapNode extends ClassicPreset.Node {
   width = 240;
   height = 220;
 
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Label", type: "string", cells: ["North", "Europe", "Asia"] },
+      { name: "Value", type: "number", cells: [4200, 3100, 5600] },
+    ] },
+  };
+
   constructor(init?: { label?: string }) {
     super("Treemap");
     this.label = init?.label ?? "Treemap";
@@ -457,6 +472,14 @@ export class SankeyNode extends ClassicPreset.Node {
   cachedPayload: SankeyPayload | null = null;
   width = 260;
   height = 220;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "From", type: "string", cells: ["Solar", "Wind", "Grid"] },
+      { name: "To", type: "string", cells: ["Grid", "Grid", "Homes"] },
+      { name: "Value", type: "number", cells: [40, 35, 60] },
+    ] },
+  };
 
   constructor(init?: { label?: string }) {
     super("Sankey");
@@ -613,6 +636,13 @@ export class WaterfallNode extends ClassicPreset.Node {
   width = 240;
   height = 220;
 
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Label", type: "string", cells: ["Revenue", "COGS", "Opex", "Tax"] },
+      { name: "Delta", type: "number", cells: [4200, -1700, -900, -300] },
+    ] },
+  };
+
   constructor(init?: { label?: string }) {
     super("Waterfall");
     this.label = init?.label ?? "Waterfall";
@@ -645,6 +675,16 @@ export class CandlestickNode extends ClassicPreset.Node {
   cachedChart: ChartValue | null = null;
   width = 260;
   height = 220;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Date", type: "date", cells: [46023, 46024, 46025] },
+      { name: "Open", type: "number", cells: [102.1, 104.8, 103.6] },
+      { name: "High", type: "number", cells: [105.4, 106.0, 105.1] },
+      { name: "Low", type: "number", cells: [101.2, 103.0, 102.2] },
+      { name: "Close", type: "number", cells: [104.8, 103.6, 104.9] },
+    ] },
+  };
 
   constructor(init?: { label?: string }) {
     super("Candlestick");
@@ -706,6 +746,13 @@ export class BoxplotNode extends ClassicPreset.Node {
   width = 240;
   height = 220;
 
+  static frameHints: Record<string, FrameHint> = {
+    values: { columns: [
+      { name: "Line A", type: "number", cells: [12, 15, 11, 14] },
+      { name: "Line B", type: "number", cells: [18, 13, 16, 17] },
+    ] },
+  };
+
   constructor(init?: { label?: string }) {
     super("Boxplot");
     this.label = init?.label ?? "Boxplot";
@@ -748,6 +795,13 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
   width = 300;
   height = 170;
 
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Date", type: "date", cells: [46023, 46024, 46025] },
+      { name: "Value", type: "number", cells: [3, 7, 5] },
+    ] },
+  };
+
   constructor(init?: { label?: string }) {
     super("CalendarHeatmap");
     this.label = init?.label ?? "Calendar";
@@ -788,6 +842,13 @@ export class WaffleNode extends ClassicPreset.Node {
   cachedChart: ChartValue | null = null;
   width = 220;
   height = 220;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Label", type: "string", cells: ["Wind", "Solar", "Hydro"] },
+      { name: "Value", type: "number", cells: [38, 27, 35] },
+    ] },
+  };
 
   constructor(init?: { label?: string }) {
     super("Waffle");
