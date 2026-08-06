@@ -3,7 +3,7 @@ import { NodeEditor, ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions, Drag } from "rete-area-plugin";
 import { ConnectionPlugin } from "rete-connection-plugin";
 import { ReactPlugin } from "rete-react-plugin";
-import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow, CappedZoom } from "./areaPresets";
+import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow, CappedZoom, seatAreaPointerInCapture } from "./areaPresets";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
@@ -745,6 +745,10 @@ export function Canvas() {
       const c = container!;
       const swallowDblClick = (e: Event) => { e.stopImmediatePropagation(); };
       c.addEventListener("dblclick", swallowDblClick, true);
+      // Keep area.pointer fresh through socket presses (which stop bubble
+      // propagation) — on touch the picked ghost cable otherwise renders to the
+      // PREVIOUS gesture's last position. See seatAreaPointerInCapture.
+      const unseatPointer = seatAreaPointerInCapture(area, c);
 
       // Any pointerdown off a cable clears the cable selection, but only on RELEASE and
       // only if the press didn't move — clearing on pointerdown made it impossible to
@@ -780,6 +784,7 @@ export function Canvas() {
 
       dblClickCleanupRef.current = () => {
         c.removeEventListener("dblclick", swallowDblClick, true);
+        unseatPointer();
         c.removeEventListener("pointerdown", clearCableSelection);
         window.removeEventListener("pointerup", maybeClearCableSelection);
         container!.removeEventListener("pointerdown", onPanStart, true);
