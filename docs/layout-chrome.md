@@ -60,8 +60,10 @@ bottom; everything else floats over the canvas.
 > Quiet Accent Rule says accent conveys type/state, not emphasis).
 > Corrected 2026-08-06: this note used to claim a "canvas double-tap add" — no such
 > gesture exists on any device (the canvas SWALLOWS dblclick in capture to disable
-> rete's double-click zoom, Canvas.tsx). The add paths are: mobile bar ➕, the `A`
-> shortcut, and Insert ▸ Add node….
+> rete's double-click zoom). The touch add gesture is LONG-PRESS on empty canvas
+> (the browser's native long-press → `contextmenu`, routed by `canvasContextMenu.ts`).
+> Full add paths: long-press/right-click canvas, mobile bar ➕, the `A` shortcut,
+> Insert ▸ Add node…. The gesture inventory lives in `touch-gestures.md`.
 >
 > The exception is the **pinned trio** — theme · Reference · Settings
 > (`.solenoid-apptools`) — which must hold the top-right corner. An in-flow flex item
