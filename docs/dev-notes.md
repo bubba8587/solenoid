@@ -188,6 +188,12 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   inventory. Mobile frame-hint tap fixed en route: the DOT scales with the canvas
   transform (2px at overview zoom — untappable), so on touch the whole socket ROW
   triggers the hint (verified on emulated Pixel 7, `html.is-mobile` gating active).
+- **Mobile cable-draw jump FIXED (author-confirmed)** — `seatAreaPointerInCapture`
+  (`areaPresets.ts`): `area.pointer` (the picked ghost cable's free end) updated only from
+  BUBBLE pointerdown, which a socket press stops; desktop hover masked it, touch has no
+  hover. Position bookkeeping now re-seats in CAPTURE like the pinch count (main canvas +
+  drill-in). Emulated-Pixel probes of the other suspect stores (`CappedZoom.pointers`,
+  the pointer census) came back strand-free across pick/drop/pinch/long-press flows.
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
