@@ -393,3 +393,23 @@ html.is-mobile {
 @media (max-width: 540px) {
   html.is-mobile .solenoid-shortcuts__grid { grid-template-columns: 1fr; }
 }
+
+/* ── Settings on a phone: a row carrying a WIDE control (a text input, the
+   palette stack) squeezes its description into a word-per-line tower beside
+   the control — stack those rows, control full-width below the text. Toggle
+   and segment rows keep the inline layout (they fit). ── */
+html.is-mobile .solenoid-settings__row--palette,
+html.is-mobile .solenoid-settings__row:has(.solenoid-settings__key-input) {
+  flex-direction: column;
+  align-items: stretch;
+}
+html.is-mobile .solenoid-settings__key-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+}
+/* Stacked, the palette stack's right-alignment would leave the swatch grid
+   hanging beside an empty label column — left-align it under the label. */
+html.is-mobile .solenoid-settings__row--palette .solenoid-settings__palette-control {
+  align-items: flex-start;
+}
