@@ -1,39 +1,65 @@
-/* Frame-input example hint — a micro frame preview beside the socket, in the
-   FRAME CHIP's visual language (ArrayChip.css `--frame`: translucent frame-hue
-   card) wrapping a miniature of the TablePopup grid (mono, tinted column
-   names). Deliberately EXTREMELY small: a glance cue for "wire a frame shaped
-   like this", not a surface to read. Sits in the 110–199 band: above the HUD,
-   below modals (layout-chrome.md ladder). */
+/* Frame-input example hint — the TablePopup grid in MINIATURE (the surface a
+   frame chip opens), floating beside the socket: solid panel, sticky-style
+   corner + row-number column, sunken column heads with the popup's tinted-name
+   recipe, per-cell gridlines, mono cells. Extremely small on purpose: a glance
+   cue for "wire a frame shaped like this", not a surface to read. Sits in the
+   110–199 band: above the HUD, below modals (layout-chrome.md ladder). */
 .solenoid-frame-hint {
   position: fixed;
   z-index: 120;
   pointer-events: none; /* a tooltip — never a hover target itself */
-  background: color-mix(in srgb, var(--sock-frame, var(--accent)) 12%, var(--overlay-bg));
-  border: 1px solid color-mix(in srgb, var(--sock-frame, var(--accent)) 40%, transparent);
-  border-radius: 5px;
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-border);
+  border-radius: 4px;
   box-shadow: var(--overlay-shadow);
-  padding: 2px 3px;
+  overflow: hidden; /* clips the grid's corners to the panel radius */
 }
 
 .solenoid-frame-hint table {
-  border-collapse: collapse;
+  /* `separate` like the popup grid: each cell draws its own right+bottom
+     gridline; the panel border supplies the outer frame. */
+  border-collapse: separate;
+  border-spacing: 0;
   font-family: var(--font-mono);
   font-size: 8px;
-  line-height: 1.3;
+  line-height: 1.5;
 }
-.solenoid-frame-hint th {
+.solenoid-frame-hint th,
+.solenoid-frame-hint td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.solenoid-frame-hint th:last-child,
+.solenoid-frame-hint td:last-child {
+  border-right: none;
+}
+.solenoid-frame-hint tbody tr:last-child th,
+.solenoid-frame-hint tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.solenoid-frame-hint__corner,
+.solenoid-frame-hint__rowhead {
+  background: var(--surface-sunken);
+  color: var(--text-dim);
+  font-weight: 500;
+  text-align: center;
+  min-width: 10px;
+  padding: 0 2px;
+}
+/* Column names — the popup's .table-popup__colhead--name recipe, with the FRAME
+   socket hue standing in for the node accent (the input has no node yet). */
+.solenoid-frame-hint__name {
+  background: var(--surface-sunken);
   padding: 0 4px;
   text-align: left;
   font-weight: 600;
-  /* The TablePopup column-name recipe (.table-popup__colhead--name), in the
-     frame hue — matching the mirrored component beats a ladder rung here. */
   color: color-mix(in srgb, var(--sock-frame, var(--text)) 70%, var(--text));
-  border-bottom: 1px solid color-mix(in srgb, var(--sock-frame, var(--border)) 40%, transparent);
   white-space: nowrap;
 }
 .solenoid-frame-hint td {
   padding: 0 4px;
-  color: var(--text-dim);
+  color: var(--text);
   white-space: nowrap;
 }
 .solenoid-frame-hint td[data-num] {
