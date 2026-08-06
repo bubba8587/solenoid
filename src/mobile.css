@@ -136,9 +136,9 @@ html.is-mobile {
     display: block;
     flex: 0 0 auto;
     align-self: center;
-    height: 15px;
+    height: 19px;
     aspect-ratio: 573 / 119; /* the wordmark SVG's viewBox */
-    margin-right: 10px;
+    margin-right: 6px;
     background-color: currentColor;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
