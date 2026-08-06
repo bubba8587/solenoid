@@ -66,9 +66,21 @@ export function MeasuredSocketRow({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
+  // Touch trigger for the frame-input example hint: the DOT scales with the
+  // canvas transform (a few px at overview zooms — no fingertip lands on it),
+  // so on touch the WHOLE ROW is the tap target. Form controls in the row keep
+  // their own tap meaning.
+  const rowHintTap = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse") return;
+    if ((e.target as HTMLElement).closest("input, select, textarea, button, [contenteditable='true']")) return;
+    const hint = hintFor(side, nodeId, socketKey);
+    if (!hint) return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    frameHintStore.open({ hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
+  };
   return (
     // Output rows get a modifier so they SURVIVE collapse into the output values.
-    <div ref={ref} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
+    <div ref={ref} onPointerUp={rowHintTap} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
       {top !== undefined && (
         <NodeSocket
           side={side}
