@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from "react";
 import wordmark from "../logo/solenoidwordmark.svg";
-import icon from "../logo/solenoidicon.svg";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
@@ -40,10 +39,13 @@ export function TopBar() {
         aria-label="Menu"
         onClick={() => mobileMenuStore.toggle()}
       >
-        <span
-          className="solenoid-topbar__icon-glyph"
-          style={{ WebkitMaskImage: `url("${icon}")`, maskImage: `url("${icon}")` }}
-        />
+        {/* Standard overflow dots (the PopupOverflowMenu trigger glyph) — the
+            brand mark moved to the mobile menu bar's wordmark. */}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="3" cy="8" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="13" cy="8" r="1.4" />
+        </svg>
       </button>
 
       {/* Mobile-only: on desktop the outline has its own pill, so this is CSS-hidden. */}

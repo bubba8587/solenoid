@@ -67,10 +67,9 @@ html.is-mobile {
   .solenoid-topbar__group--layout { display: flex; gap: 2px; }
   .solenoid-topbar .solenoid-nav__btn { width: 34px; height: 34px; }
   .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
-  /* The square icon doubles as the app-menu button on a phone — a finger-sized tap
-     target at the left edge. Neutral chrome now (Row B isn't accent). */
+  /* The app-menu (overflow ⋯) button on a phone — a finger-sized tap target at
+     the left edge. Neutral chrome (Row B isn't accent). */
   .solenoid-topbar__icon { display: flex; }
-  .solenoid-topbar__icon-glyph { background-color: var(--wordmark-color); }
   /* Navigator (outline) toggle — mobile only; sits next to the menu icon. Matches
      the icon button's round-chrome look. */
   .solenoid-topbar__nav {
@@ -131,6 +130,23 @@ html.is-mobile {
     z-index: 8;
   }
   .solenoid-menubar__item { display: none; }
+  /* Row A brand: masked wordmark in the bar's own ink (currentColor follows
+     --accent-ink through theme/palette swaps), doc name to its right. */
+  .solenoid-menubar__wordmark {
+    display: block;
+    flex: 0 0 auto;
+    align-self: center;
+    height: 15px;
+    aspect-ratio: 573 / 119; /* the wordmark SVG's viewBox */
+    margin-right: 10px;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
   .solenoid-menubar__center {
     /* Desktop centers it ABSOLUTELY (out of flow); on mobile it must be IN flow so
        it gives the thin accent row its height (else the menu bar collapses to 0).

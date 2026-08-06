@@ -17,6 +17,10 @@
   font-size: 12px;
 }
 
+/* Mobile Row A brand (MenuBar.tsx) — the desktop top bar carries the wordmark,
+   so it's hidden here; mobile.css reveals it beside the doc name. */
+.solenoid-menubar__wordmark { display: none; }
+
 .solenoid-menubar__item {
   position: relative;
   display: flex;
