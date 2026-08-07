@@ -395,7 +395,7 @@ export class MathFnNode extends ClassicPreset.Node {
 
 export const BASE_CONVERT_META = {
   label: "Base Convert",
-  description: "Convert an integer from one base to another (2–36). Input and output digits are limited to 0–9; bases needing A–F return null. Excel: DEC2BIN / BIN2DEC / BASE / DECIMAL.",
+  description: "Convert an integer from one base to another (2–36), digits 0–9 only: a digit outside the source base, or a result needing letter digits, is null. Excel: DEC2BIN / BIN2DEC / BASE / DECIMAL.",
 };
 
 export class BaseConvertNode extends ClassicPreset.Node {

@@ -147,7 +147,23 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   group/distinct identity-sensitive, Replace Values (case-sensitive whole-cell,
   numeric match, substring strings-only, blanks/errors untouched). Replace Values'
   description claims all verified true against `replaceValues`. Sort nulls/errors-
-  last already double-pinned. Remaining clusters recorded in the backlog item. — subpixel purge: border seam + note-ring overhang SOLVED)
+  last already double-pinned. Remaining clusters recorded in the backlog item.
+- **Fine-print sweep, rounds 2–4 (all clusters closed, agent-verified claim-by-claim
+  with file:line evidence):** one FALSE description — **IFERROR claimed it catches
+  null** while the code and a passing test (`errorValue.test.ts`) pin the opposite
+  (null is first-class missing and passes through) — plus four imprecise ones fixed:
+  Base Convert (the null rule is PER-DIGIT, not per-base — base-16 works when every
+  digit is 0–9; `BASE_CONVERT_META` had the same overstatement), INDEX ("a blank Row"
+  conflated omitted-or-0 with a WIRED blank, which blanks the result), DATEDIF ("day
+  remainders" mislabeled the month-remainder op), Frame Filter ("blanks/errors fail"
+  is inverted by design for the four valueless ops). **`finePrintContract.test.ts`**
+  pins the previously-untested set: XMATCH's whole match-mode family + first-of-
+  duplicates (largest untested surface found), Get Row (zero tests existed), Base
+  Convert (zero tests existed), TEXTJOIN ignore-empty, DROP-last, Slice's 1-based
+  inclusive end, Merge Columns' blank→"", Drop Blank Rows' error-is-a-value. Sort
+  STABILITY turned out corpus-pinned (sort.json "stable" case, both engines).
+  Residue (TEXTJOIN cross-surface default mismatch — an author smell — and two
+  minor items) recorded in the backlog. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
