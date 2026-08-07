@@ -39,11 +39,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-- [ ] **Multi-row cards resolve no FC annotation** — `InlineOutputRows` formats via
-  `formatRowValue` with no annotation lookup (any type, not just complex), so an FC
-  docked to a multi-output card (Quadratic Roots, Equation, Regression…) never
-  reaches those rows. `ValueDisplay` shows the per-socket lookup pattern; the rows
-  carry their socket key already.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` wheel;
   verify on hardware.
 - [ ] **Settle the OS-dropdown rule** (needs a device/emulated CDP) — the "native

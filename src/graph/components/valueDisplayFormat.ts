@@ -11,7 +11,28 @@ import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual } from "../dimension";
 import { formatScalar } from "./format";
-import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
+
+/** One inline-output-row cell, honouring a resolved FC annotation: numbers via the
+ *  annotation formatter, Cx likewise, text case and logical style applied; errors
+ *  and null untouched. Multi-row cards resolve the annotation per SOCKET. */
+export type RowCell = number | boolean | string | Cx | SolError | null;
+export function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
+  if (v === null) return "—";
+  if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
+  if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
+  if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCx(v);
+  if (isSolError(v)) return v.code;
+  return ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
+}
+
+export function formatRowValue(v: RowCell | RowCell[], ann?: FormatAnnotation): string {
+  if (Array.isArray(v)) {
+    const head = v.slice(0, 3).map((c) => formatRowCell(c, ann)).join(", ");
+    return v.length > 3 ? `${head}, …` : head || "—";
+  }
+  return formatRowCell(v, ann);
+}
 
 export type DisplayValue =
   | number

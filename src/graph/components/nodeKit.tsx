@@ -25,7 +25,7 @@ import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
-import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, type DisplayValue } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -136,23 +136,6 @@ export type OutputRowDef = {
   value: OutputRowValue;
 };
 
-function formatRowCell(v: number | boolean | string | Cx | SolError | null): string {
-  if (v === null) return "—";
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  if (typeof v === "string") return v;
-  if (isCx(v)) return formatCx(v); // unannotated fallback; the box annotates first
-  if (isSolError(v)) return v.code;
-  return formatScalar(v);
-}
-
-function formatRowValue(v: Exclude<OutputRowValue, SolError>): string {
-  if (Array.isArray(v)) {
-    const head = v.slice(0, 3).map(formatRowCell).join(", ");
-    return v.length > 3 ? `${head}, …` : head || "—";
-  }
-  return formatRowCell(v);
-}
-
 function MeasuredOutputRow({
   rowKey, label, value, node, emit,
 }: {
@@ -162,8 +145,19 @@ function MeasuredOutputRow({
   node: ShellNode;
   emit: Emit;
 }) {
+  // Re-render when an FC docks/undocks or edits its format (same subscription
+  // ValueDisplay holds); must run before the early return below.
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const port = node.outputs[rowKey];
   if (!port) return null;
+  // Per-SOCKET annotation, exactly like a socketKey'd ValueDisplay: a docked FC's
+  // direct write first, else the node's own per-output declaration (Triangle
+  // Solver's deg, Element's g/mol) through the shared resolver.
+  let ann = formatAnnotationStore.get(node.id, rowKey);
+  if (!ann && typeof (node as unknown as { annotationFor?: unknown }).annotationFor === "function") {
+    const editor = getOwningEditor(node.id);
+    if (editor) ann = sharedAnnotationResolver(editor).outAnnotation(node.id, rowKey);
+  }
   return (
     <MeasuredSocketRow side="output" socketKey={rowKey} nodeId={node.id} emit={emit} payload={port.socket}>
       <span className="solenoid-node__io-label">{label}</span>
@@ -177,7 +171,7 @@ function MeasuredOutputRow({
         >{value.code}</span>
       ) : (
         <span className="solenoid-node__output-value">
-          {formatRowValue(value)}
+          {formatRowValue(value, ann)}
         </span>
       )}
     </MeasuredSocketRow>

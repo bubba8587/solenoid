@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily } from "./valueDisplayFormat";
+import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily, formatRowValue } from "./valueDisplayFormat";
 import { ListInputNode, type ListElemType } from "../nodes/list";
 import { IfNode, NaNode, IFErrorNode } from "../nodes/logic";
 import { ExpectNode } from "../nodes/quality";
@@ -282,5 +282,34 @@ describe("NA() is type-neutral, so it doesn't out-vote a typed branch", () => {
     for (const t of ["number", "string", "date", "strlist", "frame", "cube"] as const) {
       expect(canConnect(out, t)).toBe(true);
     }
+  });
+});
+
+// InlineOutputRows resolves an FC annotation per SOCKET and formats through
+// these helpers — the backlog bug was multi-row cards (Equation, Quadratic
+// Roots, Regression) ignoring a docked FC entirely.
+describe("formatRowValue — annotated inline-output rows", () => {
+  const ann2dp = { format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "places" } as never;
+
+  it("unannotated cells keep the plain forms", () => {
+    expect(formatRowValue(1.5)).toBe("1.5000");
+    expect(formatRowValue(null)).toBe("—");
+    expect(formatRowValue(true)).toBe("TRUE");
+    expect(formatRowValue("abc")).toBe("abc");
+  });
+
+  it("a numeric annotation reaches every cell, including list heads", () => {
+    expect(formatRowValue(1.5, ann2dp)).toBe("1.50");
+    expect(formatRowValue([1, 2.25, 3, 4], ann2dp)).toBe("1.00, 2.25, 3.00, …");
+  });
+
+  it("errors and null stay untouched under an annotation", () => {
+    expect(formatRowValue(solError("#DIV/0!", "x"), ann2dp)).toBe("#DIV/0!");
+    expect(formatRowValue(null, ann2dp)).toBe("—");
+  });
+
+  it("logical style and text case apply", () => {
+    expect(formatRowValue(true, { logicalStyle: "yesno" } as never)).toBe("Yes");
+    expect(formatRowValue("abc", { textCase: "upper" } as never)).toBe("ABC");
   });
 });

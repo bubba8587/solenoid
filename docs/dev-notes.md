@@ -188,7 +188,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   `.solenoid-cmdpalette`, the pre-envelope 80/76/124px table values, the legend
   reflow literals). Sections verified fully clean: standoffs, tidy, autosave,
   literal maps, drill-in, socket-position guard, load/teardown, live connections,
-  equation solver, cable pruning, conduit faces. — subpixel purge: border seam + note-ring overhang SOLVED)
+  equation solver, cable pruning, conduit faces.
+- **Multi-row FC annotation bug FIXED** (backlog item, found 2026-08-01): inline
+  output rows (Equation, Quadratic Roots, Regression, Triangle Solver…) now resolve
+  the format annotation PER SOCKET exactly like a socketKey'd ValueDisplay — docked
+  FC's direct write first, else the node's own `annotationFor` declaration through
+  the shared resolver — so a docked FC formats those rows, and Triangle Solver's
+  angles show their declared deg on-card. The row formatters moved to
+  `valueDisplayFormat.ts` as pure annotated helpers (`formatRowCell`/`formatRowValue`
+  — numbers, Cx, text case, logical style; errors/null untouched), pinned in
+  `valueDisplayFormat.test.ts`. Author eyeball: dock an FC on a Quadratic Roots /
+  Equation card; check Triangle Solver rows read e.g. "45 deg". — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
