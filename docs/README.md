@@ -40,14 +40,10 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   writing a new node. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
   `nodeCatalog.ts` is the real source of truth.
-- **`cube-node-scope.md`** — the Cube model + node set + drill-in.
 - **`pack-architecture.md`** — the lean-core + packs design (framework BUILT;
   this is the authoring guide + rationale).
-- **`excel-toolbar-supplementals.md`** — the non-function half of Excel parity
-  (ribbon-by-ribbon verdicts). Function-gap research: `archive/excel-pain-points.md`.
-- **`formula-node-parity.md`** — the D19 parity program record (audit, tiers,
-  the open Tier 4).
-- **`pack-composite-plans.md`** — queued composite-shaped pack nodes.
+- **`pack-composite-plans.md`** — queued composite-shaped pack nodes (parked —
+  the pack program is 1.4/2.0, see `deferrals.md`).
 - **`release-notes-features.md`** — the curated selling list / What's-New source.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
@@ -62,8 +58,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 ## Work queue (forward-looking — verify against code; these rot)
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
-  Landed items get DELETED (git + digests are the record). Oriented around 1.3
-  (v1.2.0 shipped 2026-07-22); the release tail lives here too.
+  Landed items get DELETED (git + digests are the record). Since the 2026-08-07
+  pivot: 1.3 ships as-is — the queue is bugs, patches, and polish sweeps; feature
+  work lives in `deferrals.md` "Pushed to 1.4/2.0". The release tail lives here.
 - **`deferrals.md`** — everything the author has deferred/parked/author-gated,
   in one reviewable list; the backlog carries a single Deferral-review item
   pointing at it. Nothing there is scheduled until that review promotes it.
@@ -105,7 +102,7 @@ relapse.
 | `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
 | `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `renderer-performance.md` § HTML-in-Canvas capture pipeline |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
-| `excelFunctions.ts` overrides / dispatch walk | `formula-node-parity.md` § Formula.js divergence catalogue |
+| `excelFunctions.ts` overrides / dispatch walk | `archive/formula-node-parity.md` § Formula.js divergence catalogue |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
 | `stringOrder.ts` | D32 (byte order, not locale) |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | D31 (raw text is the stored truth) |
@@ -124,7 +121,7 @@ relapse.
 | `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
 | `CompositeEditorOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; D17 |
-| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formula-node-parity.md`; `rules.md` FX rules; D24 |
+| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `archive/formula-node-parity.md` (divergence catalogue); `rules.md` FX rules; D24 |
 | `computedColumnCore.ts` | D24, D25; `rules.md` FX-13 |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); D1, D5; cargo parity tests |
 | `nodeOps.ts` (op declarations) | D29 (aggregators are arguments); `node-coverage.md` |

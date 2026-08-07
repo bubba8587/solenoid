@@ -324,11 +324,11 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `deferrals.md` | living | the deferred/parked/author-gated set behind the backlog's Deferral-review item |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `cube-node-scope.md` | rationale | the Cube (recursive nested-table) model + its node set |
-| `excel-toolbar-supplementals.md` | research | the non-function toolbar parity verdicts |
+| `archive/cube-node-scope.md` | rationale (archived 2026-08-07) | the Cube (recursive nested-table) model + its node set |
+| `archive/excel-toolbar-supplementals.md` | research (archived 2026-08-07) | the non-function toolbar parity verdicts |
 | `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels |
 | `pack-composite-plans.md` | plans | queued composite-shaped pack nodes |
-| `formula-node-parity.md` | decision record | the D19 parity program — audit, tiers, Tier 4 |
+| `archive/formula-node-parity.md` | decision record (archived 2026-08-07) | the D19 parity program — audit, tiers, Tier 4 |
 | `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
 | `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |

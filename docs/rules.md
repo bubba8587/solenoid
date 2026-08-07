@@ -574,7 +574,7 @@ driven"), upgrading the hint mechanism from convention to contract.
 
 Two surfaces exist for the same functions — the node catalog and the formula language —
 and nothing structurally connects them. These rules are what keeps them from drifting.
-Program record: `docs/formula-node-parity.md`.
+Program record: `docs/archive/formula-node-parity.md`.
 
 ### FX-1 — One implementation, two surfaces **[INFERRED]**
 **MUST:** a function callable from BOTH a node and a formula has exactly one

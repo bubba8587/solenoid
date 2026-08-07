@@ -1,7 +1,7 @@
 // Run with: npx tsx scripts/formula-node-parity.ts
 // Measures the NODE ↔ FORMULA parity gap in both directions (author direction
 // 2026-07-14: the node set and the expression/equation formula language should
-// converge — see docs/formula-node-parity.md). Companion to scripts/parity.ts
+// converge — see docs/archive/formula-node-parity.md). Companion to scripts/parity.ts
 // (which measures the EXCEL → Solenoid gap); this one measures Solenoid
 // against itself:
 //   A. catalog leaves whose Excel name is NOT dispatchable in a formula
