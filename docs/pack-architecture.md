@@ -240,50 +240,19 @@ something sensible instead of crashing or silently throwing your work away. So:
 This is the part that makes a pack system real work rather than just a folder convention. It
 is worth designing before there are saved files out in the world, not after.
 
-### Current code vs this plan (2026-06-21 audit — none of the above is built yet)
+### Current state (reconciled 2026-08-07)
 
-A read of `persistence.ts` + `persistenceCore.ts` shows the dormant-pack handling above is
-**still entirely aspirational**, and the gap is sharper for some pack node shapes than others:
-
-- **Saves do NOT record which packs (or versions) they need.** There is only a save-format
-  ceiling `v` (`persistenceCore.ts` `CURRENT_SAVE_VERSION`, forward-safety — refuse a
-  newer-than-current file), no per-graph pack-provenance list. So bullets 1 and 4 above don't
-  exist.
-- **A missing node type loads as a PLACEHOLDER (shipped in 1.0.0).** On load, an
-  unregistered `type` becomes a `PlaceholderNode` (`nodes/placeholder.ts` +
-  `persistence.ts`): inert, keeps its wiring AND its captured init data, and
-  re-serializes as the ORIGINAL type — lossless round-trip. `SavedGraph.packs`
-  carries the provenance breadcrumb. The "harmless placeholders that keep your
-  numbers and your wiring intact" promise (bullet 3) is met.
-- **Registration is eager** (`nodeRegistry.ts` is a static map of all ctors), and pack
-  activation is a presentation filter only (`packs.ts` — "Activation is a PRESENTATION filter
-  only"). So level-1 "code not loaded when off" isn't built; this is known/expected, not a bug.
-
-**The shape-dependent nuance that matters for the node proposals:** a **formula-data** pack
-node serializes as a core `ExpressionNode` (always registered), so a dormant *formula* pack
-survives load fine — it reloads as a locked Expression and still computes. The drop-not-
-placeholder gap therefore only bites **custom-logic / code packs** — i.e. the visual & input
-**code packs** in `archive/io-visual-control-node-proposal.md` (the first real code packs) and the
-`[C]` nodes in `archive/timesavers-pack-proposal.md`. Net: the formula-pack thesis degrades gracefully
-*today*; the code-pack story needs the placeholder + pack-provenance work before the first code
-pack ships, or deactivating a pack silently severs wiring in saved graphs.
-
-## The current code already does half of this
-
-A recent change moved each node's description and Excel mapping onto the node itself, and
-made the Add menu and the Function Reference build themselves from that information. That is
-exactly the seam a pack system extends. Right now every node registers itself the moment the
-app starts. The pack change is to make that happen only when a pack is switched on. Because
-the menus already build themselves from node information, they mostly need a filter for
-"only show packs that are on," not a rewrite.
-
-## Rough order of work, if this ever gets picked up
-
-1. Decide exactly what is in the shared toolkit (the core-vs-pack line above).
-2. Change node registration from "everything loads at startup" to "load when switched on."
-3. Solve the saved-file-needs-a-dormant-pack case.
-4. Carve the existing node families into packs, and ship most of them switched off.
-
-The reference packs and the big brainstorm all come after this. See
-[archive/compute-architecture.md](archive/compute-architecture.md) for how this ties into the (since-shipped) split
-between the browser version and the desktop version.
+- **Placeholder handling SHIPPED (1.0.0):** an unregistered `type` loads as a
+  `PlaceholderNode` — inert, wiring + init data kept, re-serializes as the original
+  type. Lossless; "nothing crashes, nothing is lost" is met. `SavedGraph.packs`
+  rides the sidecar as an activation breadcrumb.
+- **NOT built:** a required-packs/versions record with an offer-to-enable flow on
+  open. Parked with the pack-distribution system (`deferrals.md` "Pushed to
+  1.4/2.0"), which owns it — it must land before the first third-party or code
+  pack ships.
+- **Registration stays eager**; pack activation is a presentation filter only
+  (`packs.ts`). Level-1 "code not loaded when off" is deliberate, not a gap.
+- **Shape nuance:** a formula-data pack node serializes as a core `ExpressionNode`
+  (always registered), so a dormant formula pack reloads as a locked Expression and
+  still computes — the thesis degrades gracefully. The provenance work only truly
+  gates custom-logic / code packs.

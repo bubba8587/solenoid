@@ -310,25 +310,25 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `README.md` | living | the docs index — start here |
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
-| `decisions.md` | living | the decision log — what/why/what-would-reverse-it |
+| `decisions.md` | living | the decision log — what stands / where / what would reopen it |
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
+| `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
+| `renderer-performance.md` | living | settled renderer-perf policies (zoom settle, GPU promotion, semantic-zoom gate, HIC capture) |
+| `code-comments.md` | living | the D30 comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
-| `backlog.md` | living | OPEN items only — the task queue (landed items are deleted) |
+| `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
+| `deferrals.md` | living | the deferred/parked/author-gated set, incl. Pushed-to-1.4/2.0 |
 | `2.0-plan.md` | living | the author-present flagships — release view over `v2.0/` |
 | `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
 | `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
 | `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context |
-| `rules.md` | living | the NORMATIVE architecture spec — 72 numbered MUST-rules with their enforcing tests |
-| `socket-reference.md` | living | all 31 socket variants in plain English (connection lists machine-checked by `socketReference.test.ts`) |
-| `deferrals.md` | living | the deferred/parked/author-gated set behind the backlog's Deferral-review item |
+| `rules.md` | living | the NORMATIVE architecture spec — numbered MUST-rules with their enforcing tests |
+| `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `archive/cube-node-scope.md` | rationale (archived 2026-08-07) | the Cube (recursive nested-table) model + its node set |
-| `archive/excel-toolbar-supplementals.md` | research (archived 2026-08-07) | the non-function toolbar parity verdicts |
 | `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels |
-| `pack-composite-plans.md` | plans | queued composite-shaped pack nodes |
-| `archive/formula-node-parity.md` | decision record (archived 2026-08-07) | the D19 parity program — audit, tiers, Tier 4 |
+| `pack-composite-plans.md` | plans (parked) | queued composite-shaped pack nodes |
 | `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
 | `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |

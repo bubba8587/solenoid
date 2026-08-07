@@ -101,8 +101,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   repointed. CLAUDE.md: stale claims fixed (rule count dropped, layout-chrome now names
   the measured envelopes, decisions format), capability map halved. Two stale deferrals
   reconciled out (∞ glyph, chrome-envelope hoist — both shipped 2026-08-05).
-
-### SESSION DIGEST (2026-08-05 — subpixel purge: border seam + note-ring overhang SOLVED)
+- **Cutdown pass 2:** CLAUDE.md's subsystem deep-dive index compressed back to actual
+  one-liners (the detail lives in subsystem-invariants; entries had regrown to
+  paragraphs). subsystem-invariants § Pointer gestures de-duplicated (census + palm
+  rejection were each explained twice). architecture.md docs table reconciled (archive
+  rows out, three missing docs in, stale counts dropped). pack-architecture's
+  proposal-era tail ("none of this is built yet" / "if this ever gets picked up")
+  replaced with the current state: Placeholder shipped, provenance record parked with
+  pack distribution, eager registration deliberate. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
