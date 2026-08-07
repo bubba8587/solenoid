@@ -201,6 +201,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   descriptions but never RENDERED them (no column) — a row with one now tap/click
   expands a full-width 10px description line beneath it (dense table stays dense;
   the add-node button stops propagation so it doesn't toggle).
+- **Context menus clamp to the viewport** (`menuClamp.ts`, shared by all four:
+  node/socket/cable/standoff-link): a layout-effect measures the menu and pins it
+  inside 8px side margins and above `--chrome-bottom`, so a long-press near a screen
+  edge (the blurb made the node menu taller) never runs offscreen or under a bar.
+- **Description-length outlier trim** (author-directed distribution pass): scanned all
+  catalog/pack `description:` strings — n=648, mean 100, σ76, max 556 — and rewrote the
+  35 outliers beyond mean+2σ (~250 chars) tighter, keeping the load-bearing semantics
+  and every Excel / Power Query equivalence. Max is now 447 (Expression, irreducibly
+  the formula-surface explainer), p99 389→297.
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
