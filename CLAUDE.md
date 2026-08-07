@@ -174,8 +174,10 @@ a place a spec can be contradicted. Concretely:
   act correctly right now?" — if not, cut it.
 
 ### Architecture notes (the traps)
-- **The pixi renderer (`src/graph/pixi/`) is DEPRECATED — do not maintain it.** Live renderers:
-  the DOM default and the html-canvas mode (`drawElementImage`), which reuses the real DOM.
+- **The pixi RENDERER PATH (`RendererSpike` / `pixiScenes` / `pixiPicker`) is DEPRECATED —
+  but `src/graph/pixi/` also holds LIVE library modules** (`pixiCamera`, `pixiCableGeom`,
+  `pixiGraphSnapshot`) that the SHIPPED html-canvas mode imports — don't rot those. Live
+  renderers: the DOM default and the html-canvas mode (`drawElementImage`), reusing the real DOM.
 - Rete renders node components in a **separate React root** — no app React context. Use
   module-level singleton stores (`storeKit.ts`), read via `useSyncExternalStore`.
 - `process.ts` — module singletons `_editor/_engine/_area`; `processGraph()` recomputes. The
