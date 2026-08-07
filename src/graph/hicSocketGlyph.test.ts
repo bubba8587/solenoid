@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { socketGlyphKind, COMBO_PAIRS } from "./pixiSocketGlyph";
+import { socketGlyphKind, COMBO_PAIRS } from "./hicSocketGlyph";
 
 describe("socketGlyphKind", () => {
   it("scalars → circle", () => {

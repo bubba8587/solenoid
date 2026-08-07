@@ -5,7 +5,7 @@ import { IS_COARSE } from "../coarse";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
 import { nodeDomWeight } from "../nodes/kind";
-import { snapshotGraph } from "../pixi/pixiGraphSnapshot";
+import { snapshotGraph } from "../hicGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
 import { semanticZoomStore } from "../semanticZoomStore";
 import { collapseStore } from "../collapseStore";

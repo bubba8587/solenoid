@@ -2,9 +2,9 @@
 // A drawElementImage OUTSIDE the paint event draws the PREVIOUS snapshot, so every frame
 // that calls it routes through requestPaint.
 
-import { Camera } from "./pixi/pixiCamera";
-import { cablePolyline } from "./pixi/pixiCableGeom";
-import type { SnapCable } from "./pixi/pixiGraphSnapshot";
+import { Camera } from "./hicCamera";
+import { cablePolyline } from "./hicCableGeom";
+import type { SnapCable } from "./hicGraphSnapshot";
 import type { CableShape } from "./cableShape";
 import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
 import { camFromDrawMatrix, plausibleNativeCam, type CamXform } from "./domSync";

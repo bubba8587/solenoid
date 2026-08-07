@@ -6,7 +6,7 @@
 // SAME space the caller feeds in (canvas-local CSS px in the spike). Matches the
 // area-plugin transform shape ({ k, x, y }) so a camera can be seeded from rete.
 
-import { clamp } from "../nodes/mathUtils";
+import { clamp } from "./nodes/mathUtils";
 
 export { clamp };
 

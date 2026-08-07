@@ -542,7 +542,6 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     "components/InterpolateNode.tsx": "the List↔Grid variant switch swaps the ENTIRE socket set — prunes both directions (inputs AND outputs)",
     "components/ListInputNode.tsx": "type-compatibility prune: keeps cables the new element type still accepts (canConnect), drops the rest — a filter, not a key set",
     "components/ReportOverlay.tsx": "targets the MAIN editor explicitly (getEditor) — a Report edits main-graph refs even while a drill-in is active",
-    "components/RendererSpike.tsx": "the dev-only renderer spike harness",
     "components/expressionEdit.ts": "the Equation prune covers both directions (a variable owns an OUTPUT socket too); Expression/LAMBDA already use the helper",
   };
 
@@ -614,7 +613,6 @@ describe("STORE-1 — every node-keyed store registers with nodeStoreRegistry", 
     "noticeStore.ts": "toast queue (self-expiring)",
     "computeOverlayStore.ts": "compute-progress overlay (transient)",
     "presentationStore.ts": "presenter-mode UI state",
-    "rendererSpikeStore.ts": "dev-only renderer spike",
     "frStore.ts": "Function Reference overlay (transient open state)",
     "gridSnapStore.ts": "canvas snap pref",
     "semanticZoomStore.ts": "canvas zoom band (derived per frame)",

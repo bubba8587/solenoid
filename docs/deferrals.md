@@ -27,9 +27,6 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 - **Top-bar decorative art slot** — `TopBar.tsx` holds the empty middle-gap div;
   needs author art.
 - **Moveable / resizable / hideable toolbar chrome** — customisation slice.
-- **WebGPU follow-ups** — cable layer (selected-above z-jump, ghost dashes) and
-  the node-card LOD swap (`NodeCanvas.tsx` is an alignment-check overlay today;
-  the perf win is hiding DOM nodes zoomed-out for opaque GPU cards).
 - **Lazy-handle-on-cable** (`frameBackend.ts`) — retire the `collect()` bridge so
   handles flow and materialization happens only at `preview`/`column`.
 - **Computed Column UX tail** — shared column-picker component (Sort/Get Column/
@@ -146,10 +143,6 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   don't build per-panel resize.
 - **Cable collision avoidance** — spec: `archive/cable-routing.md` §2.
 - **Grid system** — spec: `grid-system.md`.
-- **WebGPU/wgpu renderer + LOD swap** — superseded by HTML-in-Canvas as the
-  zoom-at-scale lever; reopen only if `drawElementImage` never reaches stable or
-  a native-GPU need appears. Records: `archive/renderer-plan.md`,
-  `archive/performance-hardening.md`.
 - **`content-visibility: auto` on node roots — ruled out** while socket positions
   are measured from live DOM geometry (off-screen subtrees don't compute
   descendant layout → cable endpoints jump at the viewport edge). With

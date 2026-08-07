@@ -84,13 +84,7 @@ import { setGraphChanged } from "./process";
 import { installInputCoercion } from "./coerceInputs";
 import { scheduleAutosave } from "./persistence";
 import { gridSnapStore, snapCoord, DOT_SPACING } from "./gridSnapStore";
-import { overlayBus } from "./overlayTransform";
-import { nodeGeomBus } from "./nodeScene";
-import { RenderOverlay } from "./components/RenderOverlay";
-import { CableCanvas } from "./components/CableCanvas";
-import { NodeCanvas } from "./components/NodeCanvas";
 import { HtmlCanvasLayer } from "./components/HtmlCanvasLayer";
-import { useRenderMode, renderModeStore } from "./renderMode";
 import { zoomSettleMs } from "./zoomSettle";
 import { documentStore, ensureFirstDocument } from "./documentStore";
 import type { NodeCatalogEntry } from "./AddNodeMenu";
@@ -105,7 +99,6 @@ type MenuState =
   | null;
 
 export function Canvas() {
-  const renderMode = useRenderMode();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<NodeEditor<Schemes> | null>(null);
   const areaRef = useRef<AreaPlugin<Schemes, AreaExtra> | null>(null);
@@ -1021,7 +1014,6 @@ export function Canvas() {
         const size = DOT_SPACING * k;
         container!.style.backgroundSize = `${size}px ${size}px`;
         container!.style.backgroundPosition = `${x}px ${y}px`;
-        if (renderModeStore.get() === "canvas") overlayBus.setTransform(x, y, k);
         // Fade the dots out as the grid shrinks: full from k≈0.55, gone by k≈0.18.
         const fade = Math.max(0, Math.min(1, (k - 0.18) / (0.55 - 0.18)));
         container!.style.setProperty("--dot-pct", `${Math.round(fade * 100)}%`);
@@ -1134,11 +1126,6 @@ export function Canvas() {
         }
         // A re-render can change box sizes, so re-measure the standoff bars.
         if (ctx.type === "rendered") { standoffLayoutTick.bump(); }
-        // Deliberately NOT on "rendered": the card layer's offsetWidth read re-triggers
-        // rete's ResizeObserver → another "rendered" → an infinite loop.
-        if (ctx.type === "nodetranslated" || ctx.type === "nodecreated" || ctx.type === "noderemoved") {
-          nodeGeomBus.notify();
-        }
         if (ctx.type === "nodepicked") {
           cableSelectionStore.set(null);
           standoffStore.select(null);
@@ -1578,15 +1565,6 @@ export function Canvas() {
   return (
     <div className="solenoid-canvas-wrapper">
       <div ref={containerRef} className="solenoid-canvas" />
-      {/* Parked WGSL layers — mount ONLY in "canvas" mode, so the other modes carry
-          zero canvas overhead. */}
-      {renderMode === "canvas" && (
-        <>
-          <CableCanvas />
-          <NodeCanvas />
-          <RenderOverlay />
-        </>
-      )}
       <HtmlCanvasLayer />
       {menu && (
         <AddNodeMenu

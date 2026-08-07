@@ -25,7 +25,6 @@ import { PaletteEditorModal } from "./graph/components/PaletteEditor";
 import { HudStack } from "./graph/components/HudStack";
 import { FrameHintLayer } from "./graph/components/FrameHintLayer";
 import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
-import { RendererSpike } from "./graph/components/RendererSpike";
 import { WebDemoBanner } from "./graph/WebDemoBanner";
 import "./App.css";
 import "./graph/StatusBar.css";
@@ -91,7 +90,6 @@ function MainApp() {
       <HudStack />
       <FrameHintLayer />
       <SelectionActionsBar />
-      <RendererSpike />
       <WebDemoBanner />
       <MobileControls />
     </div>

@@ -3,9 +3,9 @@
 // then flattens the SVG path to a polyline (`parsePathPoints`) for Pixi to draw.
 // Pure (no Pixi/DOM) → unit-testable.
 
-import { getCablePath, Position } from "../cablePaths";
-import type { CableShape } from "../cableShape";
-import { parsePathPoints } from "../cableHitTest";
+import { getCablePath, Position } from "./cablePaths";
+import type { CableShape } from "./cableShape";
+import { parsePathPoints } from "./pathPoints";
 
 export interface CableEnds {
   sx: number; sy: number;
