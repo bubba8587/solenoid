@@ -356,8 +356,10 @@ export class CompositeNode extends ClassicPreset.Node {
       if (!Ctor) continue; // unknown internal type (pack off / renamed) — dropped, not placeholdered
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
-      if (sn.literals) anyNode.literals = { ...sn.literals };
-      if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
+      // VAL-14: restore ONLY onto declaring classes — same gate as the main load
+      // path, so a composite's internal graph can't plant an invisible literal.
+      if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
+      if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
       built.set(sn.id, node);
       // Guard AFTER addNode: it must wrap OUTSIDE the coercion pipe so a ShapeError
       // thrown while narrowing lands in the guard as #SHAPE!.
