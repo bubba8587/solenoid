@@ -208,87 +208,52 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
   commits before it's wired — rely on this, don't re-implement it.
 
 ### Subsystem deep-dives → `docs/subsystem-invariants.md`
-Read the relevant section there before touching one of these. The one-line "don't break this":
-- **Pointer gestures** (`pointerGesture.ts`, `areaPresets.ts`): pinch = capture phase +
-  `isPinching()` (≥2 FINGERS); pan/drag = bubble. A finger never selects on pointerdown —
-  unselected nodes are drag-transparent to touch, selection lands on pointerup. NO palm
-  rejection by author call (precise editor, nobody rests a palm on a node graph).
-  **`docs/touch-gestures.md` is the full gesture INVENTORY — read it before adding or
-  citing any gesture** (two phantom-gesture incidents made it mandatory; note: touch
-  long-press = native `contextmenu`, and NOTHING double-taps inside the canvas).
-- **Cable routing** (`cablePaths.ts`): diagonal+straight share one walk-enumeration router;
-  route selection = globally-shortest solvable walk, LENGTH stays the primary sort key. Spline is
-  a single tangent-exact cubic. Ribbons bundle 2+ Conduit cables, membership derived per render.
-  `cablePaths.test.ts` machine-checks continuity — keep it green.
-- **Group expand push** (`groupPushCore.ts`, pure + tested): rails → clear → cascade; restore
-  only if the node wasn't manually moved. Membership changes ONLY on an explicit gesture —
-  autofit must NOT reconcile.
-- **Standoffs** (`standoffSolver.ts`): axis-band constraints; LOCKED (default) = rigid 45°. The
-  pure solver runs LAST after every layout pass; layout ops pass `{forceLock}` so a standoff
-  cluster moves as one rigid block. Area-plane z-order: standoffs −3 < expanded groups −2 <
-  conduits −1 < nodes 0.
-- **Auto-arrange / Tidy** (ELK): custom SYMMETRIC port preset; post-layout anchor keeps LEFT +
-  vertical CENTER; `arrangeFn` drops its temporary height pins after the size-restores (groups
-  keep theirs — React clears them on collapse).
-- **Resizable-content nodes** (Conduit pattern): constant body, content overflows, toolbar floats
-  at a body-relative offset. Don't size body to content (jiggle) or re-pin via async translate.
-- **Error values** (`errorValue.ts`): failures flow as tagged `SolError` (`#CODE!`);
-  `installErrorGuards` wraps every `data()` (error in → error out). Lists/matrices/frames carry
-  first-class `null` (missing — skipped by aggregators, dropped by Filter, propagated by
-  element-wise math) and per-cell `SolError`s; first-class purple **logical** type with Kleene
-  3-valued logic (`valueKinds.ts`); `logical↔number` is the ONE cross-family socket bridge.
-  Coalesce/Fill is the opt-in to treat null as something. ONE notion of error (`ISERROR` ⟺
-  `IFERROR`); `#N/A` test centralized as `isNaError`. Figure SINKS render an error input as an
-  empty figure and never emit a SolError out a `chart` socket (`SEES_ERRORS`).
-- **Type propagation on in-place retype** (`fcReconcile.ts`): any node that mutates a socket
-  `dataType` in place (Cast target, LAMBDA result, Get Column read-as, Note frontmatter) fires no
-  connection event, so it MUST call `reconcileFcTypes`/`retypeOutputCables` or downstream FCs
-  keep stale formats.
-- **Unit flow** (`unitFlow.ts` + `unitBridge.ts`): the UNIT is a property of the VALUE — a
-  base-SI `UnitCell` AUTHORED by the FC (`applyFcUnit`) or Convert, never the Number node; it
-  rides through passthroughs/selectors and BREAKS at any transform; there is NO graph unit-walk.
-  A unit is FIRST-CLASS like the magnitude (D26): an FC downstream of a united value LOCKS
-  (mirrors, never re-authors) — only Convert changes a unit, because a unit change IS a
-  magnitude change, comparatively.
-  The number FORMAT stays a display annotation (`makeAnnotationResolver` walks the graph, both
-  directions, through pure passthroughs and Conduit lanes). **The unit-blind boundary (do NOT
-  remove; PER-INPUT):** raw `UnitCell`s must never reach a node that doesn't run the algebra —
-  `coerceInputs` centrally unwraps to display magnitude; `unitAware = true` keeps tags on every
-  input; a `passthrough()` node keeps them only on its spec-named inputs (side inputs unwrap).
-  A new algebra node = add `unitAware = true`. Units attach at the granularity of homogeneity
-  (D20): per-element list `UnitCell`, per-column frame `ColumnUnit`, one homogeneous matrix unit.
-- **Alert node + HUD** (`alertStore.ts`): edge-detect on STATUS (`statusKey`), not a boolean, so
-  range LOW↔HIGH re-fires; boolean mode = `=== 1`.
-- **Addressable model** (`nodeNameStore.ts`, `textForm.ts`): every node has a stable,
-  user-editable, unique `name` separate from rete's regenerated-on-load `id`; `textForm.ts` is a
-  pure `SavedGraph ↔ text` round-trip and `serializeGraph`'s JSON derives from it.
-- **Per-doc autosave** (`documentStore.ts`): two-slot localStorage pair per doc; `persist()`
-  diffs by OBJECT IDENTITY — `documentStoreCore.ts` transforms MUST stay immutable (an in-place
-  `SolDoc` mutation silently never persists). Slot seq is a monotonic counter.
-- **Inline literal maps** (`persistence.ts` load gate): a class declares
-  `literals`/`stringLiterals` iff its card edits them inline; load restores the maps ONLY onto
-  declaring classes, so a save/seed can't hardcode a value the user can't see. A typeable-list
-  input implies a `stringLiterals` declaration (machine-checked in `coerceInputs.test.ts`).
-- **Sink nodes** (Write CSV/JSON/Obsidian): disk writes fire ONLY from the node's Run button;
-  the `enabled` arm/disarm flag is deliberately excluded from the persistence whitelist so every
-  load (save reopen, paste, placeholder restore) starts disarmed.
-- **Composite drill-in mount lifecycle** (`CompositeEditorOverlay.tsx`): the rete stack is
-  cached ONCE per composite (no `unuse` exists); views are per-OPEN — close removes internal
-  views (unmounting React roots so timers stop), open backfills idempotently.
-- **Socket lattice** (`sockets.ts`): enforce TYPE separation (element families never auto-cross;
-  Cast required; sole exception logical↔number), allow DIMENSIONAL flow (scalar → list →
-  matrix → frame; a list widens into a 2-D input as a ROW). The wildcard ladder (D17): `any` =
-  untyped scalar, `anycombo` = 0-or-1-D, `anylist`/`anytable` = 1-D/2-D, `anydata` = rank ≤ 2 (Expression
-  variables — SOCK-9/D23: matrices in, frames/cubes never), `trueany` = the
-  adopt-anything supremum (hollow ring). Adoption (`trueAnyAdopt.ts`) never drops cables and never persists;
-  rank-bearing wildcards keep their rank and adopt only the element family; every
-  "resolve past untyped passthroughs" check routes through `isWildcardType()` (the two
-  RANKLESS rungs) — except FAMILY resolution (the FC), which uses `isWildcardRung()`: all
-  six carry no family, so none may be adopted as one. Cross-type
-  dimensional edges are explicit in `accepts()`, machine-checked by the full sweep in
-  `socketConnect.test.ts` — adding a socket type is a small, derived edit.
-- **Conduit lane faces**: NO flip rule — inputs on the local −x face, outputs on +x, both
-  rotating with the block angle; a face-sign predicate anywhere is dead Manifold code.
+Read the relevant section there IN FULL before touching one of these. The one-line index:
+- **Pointer gestures**: pinch = capture + `isPinching()` (≥2 FINGERS); pan/drag = bubble;
+  selection on pointerup, never pointerdown; no palm rejection (author call).
+  **`docs/touch-gestures.md` is the gesture INVENTORY — read before adding/citing any
+  gesture** (long-press = native `contextmenu`; NOTHING double-taps inside the canvas).
+- **Cable routing** (`cablePaths.ts`): one walk-enumeration router; globally-shortest
+  solvable walk, LENGTH stays the primary sort key; `cablePaths.test.ts` stays green.
+- **Group expand push** (`groupPushCore.ts`): rails → clear → cascade; restore only if not
+  manually moved. Membership changes ONLY on an explicit gesture — autofit must NOT reconcile.
+- **Standoffs** (`standoffSolver.ts`): axis-band constraints; the pure solver runs LAST after
+  every layout pass; `{forceLock}` moves a cluster as one rigid block. Area-plane z-order:
+  standoffs −3 < expanded groups −2 < conduits −1 < nodes 0.
+- **Auto-arrange / Tidy** (ELK): custom SYMMETRIC port preset; anchor keeps LEFT + vertical
+  CENTER; `arrangeFn` drops its temporary height pins (groups keep theirs).
+- **Resizable-content nodes** (Conduit pattern): constant body, content overflows; don't size
+  body to content or re-pin via async translate.
+- **Error values** (`errorValue.ts`, `valueKinds.ts`): tagged `SolError` flows (guards wrap
+  every `data()`); first-class null (skipped by aggregators) + per-cell errors + Kleene
+  logical; ONE notion of error (`ISERROR` ⟺ `IFERROR`, `#N/A` via `isNaError`); figure sinks
+  see errors and render empty (`SEES_ERRORS`).
+- **In-place retype** (`fcReconcile.ts`): mutating a socket `dataType` in place fires no
+  connection event — MUST call `reconcileFcTypes`/`retypeOutputCables` or FCs go stale.
+- **Unit flow** (`unitFlow.ts`, `unitBridge.ts`): the unit is a property of the VALUE,
+  authored ONLY by FC/Convert, breaks at transforms; an FC downstream of a united value LOCKS
+  (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
+  unwraps unless `unitAware = true` (every new algebra node sets it) or a `passthrough()` spec
+  names the input. Granularity per D20: list per-cell, frame per-column, matrix one unit.
+- **Alerts** (`alertStore.ts`): edge-detect on STATUS, not a boolean (range LOW↔HIGH re-fires).
+- **Addressable model** (`textForm.ts`): stable user-editable `name` ≠ rete `id`; text form is
+  a pure round-trip and the JSON save derives from it.
+- **Per-doc autosave** (`documentStore.ts`): `persist()` diffs by OBJECT IDENTITY —
+  `documentStoreCore` transforms must stay immutable or changes silently never persist.
+- **Inline literal maps** (`persistence.ts`): load restores `literals`/`stringLiterals` ONLY
+  onto declaring classes (a save can't hardcode a value the user can't see).
+- **Sink nodes**: disk writes fire ONLY from the Run button; the arm flag is excluded from
+  persistence so every load starts disarmed.
+- **Composite drill-in** (`CompositeEditorOverlay.tsx`): rete stack cached ONCE per composite;
+  views are per-OPEN (close unmounts, open backfills idempotently).
+- **Socket lattice** (`sockets.ts`): TYPE separation (families never auto-cross; Cast required;
+  sole bridge logical↔number), DIMENSIONAL flow up (a list widens into 2-D as a ROW). Wildcard
+  ladder (D17): `any` → `anycombo` → `anylist`/`anytable` → `anydata` (rank ≤ 2) → `trueany`
+  (adoptive supremum; adoption never drops cables, never persists). "Resolve past untyped
+  passthroughs" routes through `isWildcardType()`; FAMILY resolution (the FC) uses
+  `isWildcardRung()`. The full sweep in `socketConnect.test.ts` machine-checks `accepts()`.
+- **Conduit lane faces**: NO flip rule — inputs local −x, outputs +x, rotating with the block;
+  a face-sign predicate anywhere is dead Manifold code.
 
 ### UX principles
 - **Edits commit on Enter/clickaway, never per keystroke** (like Excel cells). Drafts stay local
