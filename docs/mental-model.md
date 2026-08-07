@@ -81,8 +81,9 @@ definition per verb (`frameVerbs.ts`) — node code never re-implements one.
 Display is a separate, read-side pipeline: the raw result → type-default
 formatting (dates render `DD-MMM-YYYY` anywhere, no FC needed) → the FC layer.
 An FC's UNIT is not display — it MUTATES the value (`applyFcUnit`, base-SI
-`UnitCell`); only FC/Convert ever author units, and an FC downstream of a united
-value locks to mirror it (D26). An FC's number FORMAT is a display annotation,
+`UnitCell`); units are authored only at value origins (FC, Convert, Table Input,
+the column-unit surfaces), and an FC downstream of a united value locks to
+mirror it (D26). An FC's number FORMAT is a display annotation,
 resolved by walking passthroughs both directions (`makeAnnotationResolver`).
 Errors render as the red `#CODE!` badge; null renders muted `null`; NaN is
 quiet residue, never "N/A".

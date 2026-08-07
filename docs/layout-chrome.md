@@ -5,7 +5,8 @@ bar** — the offsets are hand-keyed magic numbers scattered across many CSS fil
 all trace back to the same few bar heights. When you move or resize a bar, every dependent
 offset has to move in lockstep or something ends up covering something. This file is the map:
 what sits where, what each offset is measured from, and what to check before you add or move a
-piece.
+piece. Citations are FILE + SELECTOR only — never line numbers, which rot on every edit;
+grep the selector.
 
 **BOTH envelopes are now vars.** `--chrome-top` is MEASURED by `Header.tsx` (2026-08-01);
 `--chrome-bottom` by `chromeBottom.ts` (2026-08-05) — the status bar and the mobile action
@@ -31,20 +32,20 @@ bottom; everything else floats over the canvas.
 
 | Element | Class | Anchor | z-index | File |
 | --- | --- | --- | --- | --- |
-| Header wrapper | `.solenoid-header` | `top:0`, full width, flex column | 6 | `Header.css:1` |
-| — Menu bar (row 1) | `.solenoid-menubar` | height **22px** | 2 | `MenuBar.css:5,8` |
-| — App/top toolbar (row 2) | `.solenoid-topbar` / `.solenoid-apptools` | height **44px** | 1 / 6 | `TopBar.css:9`, `AppToolbar.css:43` |
+| Header wrapper | `.solenoid-header` | `top:0`, full width, flex column | 6 | `Header.css` |
+| — Menu bar (row 1) | `.solenoid-menubar` | height **22px** | 2 | `MenuBar.css` |
+| — App/top toolbar (row 2) | `.solenoid-topbar` / `.solenoid-apptools` | height **44px** | 1 / 6 | `TopBar.css`, `AppToolbar.css` |
 | — ↳ tablet touch actions (in row 2) | `.solenoid-topbar__group--tablet` | **inside** the 44px row — adds no height | — | `TopBar.css` (gated `html.is-tablet`) |
-| Status bar (footer) | `.solenoid-statusbar` | `bottom:0`, height **19px**, full width; publishes `--chrome-bottom` | 6 | `StatusBar.css:3,6,10` |
-| Nav/zoom pill | `.solenoid-nav` | `top:80px; right:12px` (upper-right) | 5 | `NavMenu.css:3,20` |
-| Navigator (outline) | `.solenoid-outline` | `left:12px` (upper-left); open-pill also `top:80px` | 5 | `OutlinePanel.css:5` |
-| Align/distribute pill | `.solenoid-selbar` | `top:76px; left:50%` (top-center), shown only when ≥2 nodes selected | 7 | `selectionActions.css:9` |
-| Socket legend | `.solenoid-legend` | `bottom: chrome-bottom + 129px; right:16px` (stacks above minimap; drops to `+ 11px` when the minimap moves/hides) | 100 | `SocketLegend.css:5,6` |
-| Minimap | `.solenoid-minimap` | `bottom: chrome-bottom + 11px; right:16px`, ~105px tall | 100 | `Minimap.css:5,8` |
-| HUD stack (alerts/pins/problems/comments) | `.solenoid-hud-stack` | `top:124px; right:12px` | 110 | `hudStack.css` |
-| Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css:10` |
-| Command palette | `.solenoid-cmdk` | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css:4,12` |
-| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css:321` |
+| Status bar (footer) | `.solenoid-statusbar` | `bottom:0`, height **19px**, full width; publishes `--chrome-bottom` | 6 | `StatusBar.css` |
+| Nav/zoom pill | `.solenoid-nav` | `top: chrome-top + 14px; right:12px` (upper-right) | 5 | `NavMenu.css` |
+| Navigator (outline) | `.solenoid-outline` | `left:12px` (upper-left); open-pill also `top: chrome-top + 14px` | 5 | `OutlinePanel.css` |
+| Align/distribute pill | `.solenoid-selbar` | `top: chrome-top + 10px; left:50%` (top-center), shown only when ≥2 nodes selected | 7 | `selectionActions.css` |
+| Socket legend | `.solenoid-legend` | `bottom: chrome-bottom + 129px; right:16px` (stacks above minimap; drops to `+ 11px` when the minimap moves/hides) | 100 | `SocketLegend.css` |
+| Minimap | `.solenoid-minimap` | `bottom: chrome-bottom + 11px; right:16px`, ~105px tall | 100 | `Minimap.css` |
+| HUD stack (alerts/pins/problems/comments) | `.solenoid-hud-stack` | `top: chrome-top + 58px; right:12px` | 110 | `hudStack.css` |
+| Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css` |
+| Command palette | `.solenoid-cmdpalette` (+`-scrim`, `--persistent`) | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css` |
+| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css` |
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
@@ -131,9 +132,9 @@ Top chrome becomes **two rows**, both defined in `mobile.css`:
 
 | Element | Class | Height / anchor | Notes |
 | --- | --- | --- | --- |
-| Row A — accent menu bar | `.solenoid-menubar` | `padding-top: safe-area`, ~30px content, z-index **8** | Doc name + caret only; carries the notch inset (`mobile.css:126`) |
-| Row B — neutral tools bar | `.solenoid-topbar` | **52px** | menu · navigator · layout tools … accent · reference · settings (`mobile.css:41`) |
-| Bottom action bar | `.solenoid-mobile-bar` | `bottom:0`, full width, ~57px + `safe-area-inset-bottom`, z-index 100 | Undo · Redo · ➕FAB · Select · Delete; `display:flex` only on mobile (`MobileControls.css`, shown at `mobile.css:23`) |
+| Row A — accent menu bar | `.solenoid-menubar` | `padding-top: safe-area`, ~30px content, z-index **8** | Doc name + caret only; carries the notch inset (`mobile.css`) |
+| Row B — neutral tools bar | `.solenoid-topbar` | **52px** | menu · navigator · layout tools … accent · reference · settings (`mobile.css`) |
+| Bottom action bar | `.solenoid-mobile-bar` | `bottom:0`, full width, ~57px + `safe-area-inset-bottom`, z-index 100 | Undo · Redo · ➕FAB · Select · Delete; `display:flex` only on mobile (`MobileControls.css`, shown at `mobile.css`) |
 
 **Mobile top-chrome bottom edge = `safe-area-inset-top + 82px`** (30 Row A + 52 Row B). This
 is THE number every top-anchored mobile overlay clears. It's written literally in several
@@ -141,12 +142,12 @@ places — keep them in sync:
 
 | Overlay | Mobile `top` | File |
 | --- | --- | --- |
-| Menu hamburger sheet | `82px + safe-area` (right at the edge) | `mobile.css:157` |
-| Nav pill | `92px + safe-area` (edge + 10 gap) | `mobile.css:229` |
-| Navigator panel | `88px + safe-area` (and `bottom: 84px + safe-area-bottom`) | `mobile.css:261,264` |
-| **Align pill** (`.solenoid-selbar`) | `92px + safe-area` — level with the nav pill | `selectionActions.css:66` |
-| Command palette (top-anchored on mobile) | `92px + safe-area` — level with the nav pill | `CommandPalette.css:96` |
-| Web-demo notice | `48px + safe-area` | `mobile.css:217` |
+| Menu hamburger sheet | `82px + safe-area` (right at the edge) | `mobile.css` |
+| Nav pill | `92px + safe-area` (edge + 10 gap) | `mobile.css` |
+| Navigator panel | `88px + safe-area` (bottom derives: `chrome-bottom + 27px`) | `mobile.css` |
+| **Align pill** (`.solenoid-selbar`) | `92px + safe-area` — level with the nav pill | `selectionActions.css` |
+| Command palette (top-anchored on mobile) | `92px + safe-area` — level with the nav pill | `CommandPalette.css` |
+| Web-demo notice | `48px + safe-area` | `mobile.css` |
 
 The minimap and legend are **`display:none` on mobile** (`mobile.css`). Bottom-anchored
 floating chrome (docked conduit toolbar, cable inspector, drill-in controls, toasts,
@@ -165,22 +166,23 @@ shadow; the safe-area rides inside the measured height.
 
 Answers to the questions that keep biting:
 
-- **Navigator open** → `body.solenoid-nav-open` (toggled in `OutlinePanel.tsx:281`). The
+- **Navigator open** → `body.solenoid-nav-open` (toggled in `OutlinePanel.tsx`). The
   navigator **overlays** the canvas; it does **not** push the canvas or the right-side chrome.
   Its only job is to shove the two *left-anchored* floating toolbars right so they clear the
-  panel (12px + 248px): the docked conduit toolbar (`conduit.css:129`) and the cable inspector
-  (`cableInspector.css:29`). Desktop only (`html:not(.is-mobile)`). Nav pill, HUD, legend,
+  panel (12px + 248px): the docked conduit toolbar (`conduit.css`) and the cable inspector
+  (`cableInspector.css`). Desktop only (`html:not(.is-mobile)`). Nav pill, HUD, legend,
   minimap (all right/bottom-anchored) do not move.
 
 - **Minimap hidden or moved to top** → the `minimapPosition` setting (`"bottom"|"top"|"hide"`,
   `settingsStore.ts`) stamps `html.minimap-top` / `html.minimap-hidden`. The **only** thing that
-  reflows is the socket legend: it drops from `bottom:148px` (stacked above the minimap) to
-  `bottom:30px` (into the freed corner) — `SocketLegend.css:21`. Nothing else keys off the
+  reflows is the socket legend: it drops from `bottom: chrome-bottom + 129px` (stacked above
+  the minimap) to `bottom: chrome-bottom + 11px` (into the freed corner) — `SocketLegend.css`.
+  Nothing else keys off the
   minimap. On mobile the minimap is always hidden, so the legend already sits low.
 
-- **Report docked** (desktop) → `html.sol-report-docked` (`reportStore.ts:22`). This is a real
+- **Report docked** (desktop) → `html.sol-report-docked` (`reportStore.ts`). This is a real
   **push**: it defines `--report-dock-w:440px`, `--report-dock-top:66px`, `--report-dock-bottom:19px`
-  and then (`ReportOverlay.css:361`):
+  and then (`ReportOverlay.css`):
   - shrinks `.solenoid-canvas-wrapper` width by `--report-dock-w` (carrying minimap/legend/
     add-menu, which live inside it);
   - shifts `.solenoid-nav` and `.solenoid-hud-stack` `right` by `12px + --report-dock-w`.
@@ -188,13 +190,13 @@ Answers to the questions that keep biting:
   `--report-dock-top`/`--report-dock-bottom` now derive from the measured
   `--chrome-top`/`--chrome-bottom`, so a bar change flows through on its own.
 
-- **Presenting** → `html.solenoid-presenting` (`PresentationOverlay.tsx:40`) hides basically all
+- **Presenting** → `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides basically all
   chrome: header, nav pill, status bar, navigator + open-pill, legend, minimap, mobile bar, HUD
-  (`PresentationOverlay.css:4`). The canvas is the slide.
+  (`PresentationOverlay.css`). The canvas is the slide.
 
-- **Drilled into a composite** → `html.sol-drilled-in` (`CompositeEditorOverlay.tsx:762`). The app
+- **Drilled into a composite** → `html.sol-drilled-in` (`CompositeEditorOverlay.tsx`). The app
   frame stays; it hides the *main* minimap (the drill-in host renders its own) and hides the
-  navigator + open-pill (`compositeEditor.css:205,210`). The drill-in adds a top-left breadcrumb
+  navigator + open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb
   strip (`.solenoid-composite-editor__strip`, desktop `top:74px`, mobile `88px + safe-area`) with
   a run-controls panel tucked under it (`top:120px`). Its backdrop is z-index 4 (above canvas,
   below chrome), so the app frame is what you keep.

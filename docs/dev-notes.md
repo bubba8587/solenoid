@@ -163,7 +163,32 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   inclusive end, Merge Columns' blank→"", Drop Blank Rows' error-is-a-value. Sort
   STABILITY turned out corpus-pinned (sort.json "stable" case, both engines).
   Residue (TEXTJOIN cross-surface default mismatch — an author smell — and two
-  minor items) recorded in the backlog. — subpixel purge: border seam + note-ring overhang SOLVED)
+  minor items) recorded in the backlog.
+- **subsystem-invariants + layout-chrome claims-vs-code audit (2026-08-08, four
+  agents, ~230 claims spot-verified):** 21 stale/false claims fixed in
+  subsystem-invariants. The dangerous ones: the Alert section named the WRONG init
+  key (`mode`; it's `op` per VAL-12 — and `mode` is a real different shared key);
+  `applyFcUnit` grew a third `customUnit` arg the doc omitted (a 2-arg caller drops
+  custom units); the LAMBDA capture sockets are `anylist`, not `anydata`; and the
+  "unit BREAKS at any transform" doctrine predates VAL-19 — `tagDim` now carries an
+  operand's display when the result's dimension matches ($5+2=$7), fixed here AND in
+  its echoes (CLAUDE.md, glossary, mental-model, the unitFlowSeed test header).
+  Other corrections: groupSource ribbons (one shared destination, beads DO render),
+  Conduit toolbar is a viewport-fixed portal (not body-relative), the finger census
+  is not-mouse-and-not-pen (CappedZoom alone is strict `touch`; Zoom never reads the
+  census), tablets ARE drag-transparent to touch (pointer-type keyed), group
+  collapse Pass 2b (leaf members get readouts), bordered-grid pass 1 leaves
+  out-of-range blank (no clamp) and the contested test is edge-inclusive, Convert
+  broadcasts via `broadcastUnit`, `broadcast` no longer NaN-collapses, the readInput
+  sweep is complete (zero-floor ratchet), `label` is per-instance, textForm's real
+  field order, camera targets exclude the minimap, `arithmeticCell` replaced
+  addUnits/subUnits (currency guard covers every op). **layout-chrome:** all
+  ~34 `file:line` citations stripped to file+selector (line numbers rot on every
+  edit — now a stated rule), 7 stale values fixed (`.solenoid-cmdk` →
+  `.solenoid-cmdpalette`, the pre-envelope 80/76/124px table values, the legend
+  reflow literals). Sections verified fully clean: standoffs, tidy, autosave,
+  literal maps, drill-in, socket-position guard, load/teardown, live connections,
+  equation solver, cable pruning, conduit faces. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;

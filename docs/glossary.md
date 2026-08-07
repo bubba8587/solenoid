@@ -65,7 +65,9 @@ area. When you coin a new load-bearing term, add it here.
 
 - **Format Controller (FC)** — a node that LOCKS a value's number format, and authors a
   unit ONLY onto a unit-less value; both ride the value through passthroughs and
-  selectors, breaking at a transform. (`nodes/formatController.ts`, `fcReconcile.ts`)
+  selectors. A transform drops the FORMAT; the unit's dimension re-derives through the
+  algebra and keeps its display when the dimension survives (VAL-19).
+  (`nodes/formatController.ts`, `fcReconcile.ts`)
 - **FC lock states** — who owns the FC's unit dropdown: *authored* (the FC set it),
   **forwarding** (an inherited upstream unit — the FC MIRRORS it, locked, because a
   unit is first-class like the magnitude; D26), **lockedByConvert** (a downstream
