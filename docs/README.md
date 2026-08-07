@@ -38,7 +38,7 @@ no longer exists.
 - **`format-model.md`** — the FC function model: the render pipeline, the
   per-family control truth table (mirrored in `formatModel.ts`), the precision
   rule. Read before touching FC controls/resolution.
-- **`socket-reference.md`** — all 30 socket variants in plain English: what each
+- **`socket-reference.md`** — every socket variant in plain English: what each
   carries, its glyph/color, what connects in, what is blocked, what it reaches,
   and what the coercion boundary does on arrival. Generated lists — regenerate
   with `scripts/socket-inventory.ts`.
