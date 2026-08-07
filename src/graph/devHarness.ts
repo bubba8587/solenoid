@@ -1,14 +1,11 @@
 // DEV-ONLY harness hooks for the renderer screenshot comparison workflow.
 // Tree-shaken out of production builds (import.meta.env.DEV guard).
-import { rendererSpikeStore } from "./rendererSpikeStore";
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getArea } from "./process";
 
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
-    open: () => rendererSpikeStore.open(),
-    close: () => rendererSpikeStore.close(),
     seed: (id: string) => documentStore.newFromTemplate(id),
     // "idle" once the reveal has played; the screenshot harness waits on it.
     revealPhase: () => loadRevealStore.phase(),

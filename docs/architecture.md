@@ -151,28 +151,30 @@ src/
 | `cableState.ts`, `cableValueStore.ts` | Hover/selection state; live per-connection values |
 | `cableFlowStore.ts`, `cableFlourishStore.ts` | Flow-bead animation toggle; decorative flourish |
 | `ribbonCable.ts` | Ribbon (bundled trunk + fans) membership/geometry — derived fresh per render |
-| `components/ConnectionComponent.tsx` | The cable renderer (owns its SVG wrapper, hit strokes, ribbon/pill rerouting, flow overlay). In `canvas` render-mode it publishes the visible stroke to `cableScene` and emits only the hit path |
+| `components/ConnectionComponent.tsx` | The cable renderer (owns its SVG wrapper, hit strokes, ribbon/pill rerouting, flow overlay) |
 
-### GPU render layer (feature-gated — DOM is the permanent default/fallback)
+### Renderers — exactly TWO (author 2026-08-09)
+
+The DOM renderer (default, universal) and the experimental **HTML-in-Canvas**
+mode (a shipped Setting, gated on `supportsHtmlInCanvas()`). Every other
+renderer direction — the pixi spike, the WGSL/`canvas` cable+node layers, the
+hit-index groundwork — was DELETED 2026-08-09 (git has it). Do not rebuild a
+third path.
+
 | File | Responsibility |
 |---|---|
-| `renderMode.ts` | Render-mode store `dom`\|`canvas`\|`html` (default `dom`; only `html` persists) + `gpuCapabilityStore` (set by the startup probe); `useRenderMode` hook |
-| `htmlCanvasRenderer.ts` | **The shipped html-in-canvas renderer** (Settings-gated, DOM stays default): captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
-| `components/HtmlCanvasLayer.tsx` | Mounts the HTML-canvas renderer when mode is `html` ≥100 nodes: gesture swap (DOM hidden ↔ canvas), targeted re-capture per changed node id, DOM-only escape hatch (conduits) |
-| `gpuProbe.ts` (+`.test.ts`) | Capability probe: WebGPU non-fallback adapter → else non-software WebGL2 → else DOM. Pure `classifyCapability`/`isSoftwareRenderer` |
-| `overlayTransform.ts` (+`.test.ts`) | Pure world↔device/css transform math + `deviceMatrix` (setTransform baking) + the `overlayBus` singleton (Canvas feeds transform/viewport) |
-| `cableScene.ts` (+`.test.ts`) | Module store of published cable strokes (the canvas scene); `ConnectionComponent` is the sole producer |
-| `components/CableCanvas.tsx` | Paints the cable scene onto two portaled canvases (below/above nodes) in world units; the Phase-1 cable layer |
-| `components/RenderOverlay.tsx` | Transparent transform-mirror overlay (Phase-0 harness); console `__solenoidOverlayDebug()` draws a verification grid |
-| `cableHitTest.ts` (+`.test.ts`) | Pure cable hit geometry: flatten an SVG `d` (M/L/C/Q) to a polyline, point→segment / point→polyline distance, `hitTestCables`. `parsePathPoints` is LIVE (imported via `pixi/pixiCableGeom` into the shipped HIC renderer); the hit-test half stays groundwork |
-| `spatialIndex.ts` (+`.test.ts`) | Uniform `SpatialGrid` (bucket-by-bbox, point/radius query); consumed by the deprecated spike's `pixiPicker` — production hit-testing still doesn't use it |
-| `cableHitIndex.ts` (+`.test.ts`) | **Phase-3 groundwork, UNWIRED.** Composes the two: `update(cables)` syncs a self-maintaining index, `hitTest(point, tol)` → nearest cable. Replaces the per-cable hit `<svg>` when Phase 3 ships |
-| `nodeHitIndex.ts` (+`.test.ts`) | **Phase-2/3 groundwork, UNWIRED.** Point→node hit-testing (point-in-rect over the SpatialGrid, topmost by z) for when node bodies draw on canvas and DOM nodes no longer catch clicks |
-| `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB `mixSrgb`/`flowTint` — a canvas can't evaluate `color-mix`/`var()`, so flow tints + header tints compute in JS. LIVE via `nodeScene`/`nodeInstances`/`gpuCableRenderer` and the HIC snapshot |
-| `gpuCableRenderer.ts`, `gpuNodeRenderer.ts`, `rasterAtlas.ts`, `nodeScene.ts`, `nodeInstances.ts`, `cableTessellate.ts` | GPU-path primitives behind the same gate (cable/node draw + texture atlas + scene model) |
-| `components/NodeCanvas.tsx` | The GPU node-card layer — today an ALIGNMENT-CHECK overlay (semi-transparent, above the DOM cards); the LOD swap is parked (deferrals) |
-| `htmlCanvasSupport.ts` | Gates the `html` render-mode option on `supportsHtmlInCanvas()` |
-| `pixi/` + `components/RendererSpike.tsx` (+`rendererSpikeStore.ts`) | SPLIT status: `pixiCamera`/`pixiCableGeom`/`pixiGraphSnapshot` are LIVE library modules the shipped HIC mode imports — maintain them; the pixi RENDERER path (`pixiScenes`/`pixiPicker`/RendererSpike) is DEPRECATED, parked per D6.|
+| `renderMode.ts` | Render-mode store `dom`\|`html` (default `dom`; only `html` persists) + `useRenderMode` hook |
+| `htmlCanvasSupport.ts` | Gates the `html` option on `supportsHtmlInCanvas()` |
+| `htmlCanvasRenderer.ts` | The HTML-in-Canvas renderer: captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
+| `components/HtmlCanvasLayer.tsx` | Mounts it when mode is `html` ≥100 nodes: gesture swap (DOM hidden ↔ canvas), targeted re-capture per changed node id, DOM-only escape hatch (conduits) |
+| `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (pan, anchored zoom, pinch, fit-to-bounds) |
+| `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
+| `hicGraphSnapshot.ts` | snapshots the live rete graph (node rects, kind colors, socket world-positions, connections) for capture |
+| `hicColors.ts`, `hicSocketGlyph.ts` (+tests) | color helpers + socket-glyph classification the snapshot uses |
+| `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
+| `rasterAtlas.ts` | the capture atlas (`packAtlas`) |
+| `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
+| `domSync.ts` | DOM↔canvas transform sync (`camFromDrawMatrix`, holder transforms) |
 
 ### Groups / layout / standoffs
 

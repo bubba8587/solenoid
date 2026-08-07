@@ -198,7 +198,24 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   `valueDisplayFormat.ts` as pure annotated helpers (`formatRowCell`/`formatRowValue`
   — numbers, Cx, text case, logical style; errors/null untouched), pinned in
   `valueDisplayFormat.test.ts`. Author eyeball: dock an FC on a Quadratic Roots /
-  Equation card; check Triangle Solver rows read e.g. "45 deg". — subpixel purge: border seam + note-ring overhang SOLVED)
+  Equation card; check Triangle Solver rows read e.g. "45 deg".
+- **RENDERER PURGE (author order 2026-08-09): exactly two renderers survive** — the
+  DOM default and the experimental HTML-in-Canvas Setting. Deleted outright (git has
+  it all): the pixi spike (`pixiScenes`/`pixiPicker`/`pixiCardLayout`/`RendererSpike`
+  + its store + the Edit hook), the WGSL/`canvas` render mode and its whole layer
+  (`cableScene`, `CableCanvas`, `NodeCanvas`, `RenderOverlay`, `overlayTransform`,
+  `gpuCableRenderer`, `gpuNodeRenderer`, `nodeScene`, `nodeInstances`,
+  `cableTessellate`, `gpuProbe` + `gpuCapabilityStore`), and the hit-index groundwork
+  (`spatialIndex`, `cableHitIndex`, `nodeHitIndex`, `hitTestCables`). The four
+  modules HIC genuinely imports moved OUT of `pixi/` and renamed
+  (`hicCamera`/`hicCableGeom`/`hicGraphSnapshot`/`hicColors` + `hicSocketGlyph`;
+  `cableHitTest` slimmed to `pathPoints.ts` = just the M/L/C/Q flattener).
+  `renderMode` is now `dom | html`; ConnectionComponent lost its canvas-publish
+  branch; main.tsx lost the GPU probe. ~90 groundwork tests went with their modules
+  (suite 4095 → 4005, green). Docs reconciled: CLAUDE.md trap, architecture's
+  renderer section, D6's reversal line, deferrals' two WebGPU items deleted.
+  En route the same audit fixed a real touch bug: the cabling hit-area rule SHRANK
+  coarse targets (-8px → -6px absolute); coarse cabling now grows to -14px. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;

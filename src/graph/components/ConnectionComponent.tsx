@@ -20,8 +20,6 @@ import { ConduitNode } from "../rete-nodes";
 import { resolveTypedSource, conduitPath } from "../conduitTrace";
 import { standoffStore } from "../standoffs";
 import { settingsStore } from "../settingsStore";
-import { useRenderMode } from "../renderMode";
-import { cableScene, type CableStroke } from "../cableScene";
 
 const { useConnection } = Presets.classic;
 
@@ -159,11 +157,6 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // Narrowed to kill the all-cables fan-out: a standalone cable watches only its OWN
   // hover flag; ribbon members share appearance, so they stay on the global version.
   const ribbonRef = useRef(false);
-  // In "canvas" mode the visible stroke goes to cableScene and only the hit path is DOM.
-  const renderMode = useRenderMode();
-  // Written in the render body, applied in the layout effect; defaults to "remove", so
-  // any early return drops the stroke.
-  const publishRef = useRef<{ action: "set" | "remove"; draw?: CableStroke }>({ action: "remove" });
   useSyncExternalStore(
     socketHoverCableStore.subscribe,
     () => (ribbonRef.current ? socketHoverCableStore.version() : socketHoverCableStore.isHovered(data.id)),
@@ -209,15 +202,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   }, [selected, data.id, ribbonSelected, data.source, data.target]);
 
   // Evict on unmount so _pathCache can't grow unbounded across create/delete churn.
-  useLayoutEffect(() => () => { _pathCache.delete(data.id); cableScene.remove(data.id); }, [data.id]);
-
-  useLayoutEffect(() => {
-    const p = publishRef.current;
-    if (p.action === "set" && p.draw) cableScene.set(data.id, p.draw);
-    else cableScene.remove(data.id);
-  });
-
-  publishRef.current = { action: "remove" };
+  useLayoutEffect(() => () => { _pathCache.delete(data.id); }, [data.id]);
 
   if (groupCollapseStore.isConnHidden(data.id)) return null;
 
@@ -670,28 +655,9 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // drawCables globalAlpha) — change them together or the swap pops.
   const cableOpacity = ghost ? 0.65 : activeHover || selected || isPseudo ? 0.9 : 0.72;
 
-  // Canvas mode keeps the hit path in the DOM and paints the stroke on CableCanvas.
-  // Excluded: reveal, pseudo and flow-on cables, whose animations are DOM-owned.
-  const canvasEligible = renderMode === "canvas" && !revealActive && !isPseudo && !flow;
-  if (canvasEligible) {
-    publishRef.current = {
-      action: "set",
-      draw: {
-        d: pathD,
-        color: stroke,
-        width: baseWidth,
-        // The canvas stroke doesn't inherit the DOM wrapper's isoDim opacity — fold it in.
-        opacity: cableOpacity * (isoDim ? 0.1 : 1),
-        dash: ghost ? [6, 5] : undefined,
-        // A selected cable paints above nodes, mirroring the DOM z-index:100 jump.
-        above: selected,
-      },
-    };
-  }
-
   return (
     <svg {...boundedSvgProps([cs, ce], isoDim, revealStyle)}>
-      {!canvasEligible && <path
+      {<path
         d={pathD}
         fill="none"
         stroke={stroke}

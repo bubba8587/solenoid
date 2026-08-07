@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cablePolyline } from "./pixiCableGeom";
+import { cablePolyline } from "./hicCableGeom";
 
 describe("cablePolyline", () => {
   it("returns a polyline whose ends match the sockets", () => {

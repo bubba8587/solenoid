@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { channels, perceivedLuminance, isLight, pickTextColor, insetShade, mix } from "./pixiColors";
+import { channels, perceivedLuminance, isLight, pickTextColor, insetShade, mix } from "./hicColors";
 
-describe("pixiColors", () => {
+describe("hicColors", () => {
   it("splits channels", () => {
     expect(channels(0x112233)).toEqual({ r: 0x11, g: 0x22, b: 0x33 });
   });

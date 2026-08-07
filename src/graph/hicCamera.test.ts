@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Camera, clamp, pinchStep, panSweep } from "./pixiCamera";
+import { Camera, clamp, pinchStep, panSweep } from "./hicCamera";
 
 describe("Camera", () => {
   it("round-trips world↔screen", () => {

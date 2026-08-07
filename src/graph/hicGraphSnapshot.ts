@@ -5,15 +5,15 @@
 // every read is guarded so a half-built graph yields a partial snapshot, never a
 // throw (the Pixi overlay must never crash the app beneath it).
 
-import { getArea, getEditor } from "../process";
-import { nodeKindOf } from "../nodes/kind";
-import { NODE_KIND_ACCENTS } from "../nodes/shared";
-import { parseColor, mixSrgb, type RGBA } from "../cssColor";
-import { cableAngleStore } from "../cableAngleStore";
-import { pickTextColor } from "./pixiColors";
-import { SOCKET_COLORS } from "../sockets";
-import { socketGlyphKind, COMBO_PAIRS, type GlyphKind } from "./pixiSocketGlyph";
-import { standoffStore, anchorPoint, type Box } from "../standoffs";
+import { getArea, getEditor } from "./process";
+import { nodeKindOf } from "./nodes/kind";
+import { NODE_KIND_ACCENTS } from "./nodes/shared";
+import { parseColor, mixSrgb, type RGBA } from "./cssColor";
+import { cableAngleStore } from "./cableAngleStore";
+import { pickTextColor } from "./hicColors";
+import { SOCKET_COLORS } from "./sockets";
+import { socketGlyphKind, COMBO_PAIRS, type GlyphKind } from "./hicSocketGlyph";
+import { standoffStore, anchorPoint, type Box } from "./standoffs";
 
 export interface SnapSocket {
   key: string; side: "input" | "output"; x: number; y: number;

@@ -46,7 +46,8 @@ per-cell `SolError` (propagated), plus a first-class logical type with Kleene
 Cards capture into a mip pyramid of bitmaps; the DOM renderer is the permanent
 default/fallback. Depends on the `CanvasDrawElement` Blink flag (external
 dependency — risk R2). **Reopen if:** the flag stalls → DOM stays default, no
-crisis; the parked Pixi/WGSL groundwork exists if a full swap is ever forced.
+crisis. The Pixi/WGSL groundwork was DELETED 2026-08-09 (author order — exactly
+two renderers exist: DOM default + the experimental HIC Setting; git has the code).
 
 ### D7 — Socket lattice: type separation, dimensional flow
 Element families never auto-cross (Cast required; sole bridge `logical↔number`);

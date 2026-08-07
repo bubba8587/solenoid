@@ -4,8 +4,7 @@ import { initAppTheme } from "./graph/appTheme";
 import { initCableFlow } from "./graph/cableFlowStore";
 import { initGridSnap } from "./graph/gridSnapStore";
 import { initCableShape } from "./graph/cableShape";
-import { initRenderMode, renderModeStore, gpuCapabilityStore } from "./graph/renderMode";
-import { probeGpu } from "./graph/gpuProbe";
+import { initRenderMode } from "./graph/renderMode";
 import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
@@ -82,18 +81,6 @@ initCableShape();
 initRenderMode();
 initSettings();
 
-// Safety rule: the canvas renderer is only an option on a real hardware GPU — a
-// software rasterizer is slower than DOM, so the probe forces the mode back.
-void probeGpu().then((cap) => {
-  gpuCapabilityStore.set(cap);
-  if (!cap.canUseCanvas && renderModeStore.get() === "canvas") {
-    renderModeStore.set("dom");
-  }
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.info(`[solenoid] GPU probe: tier=${cap.tier} software=${cap.software} renderer=${cap.renderer ?? "?"}`);
-  }
-});
 initPacks();
 initPackFcExtensions();
 initPackFormulas();

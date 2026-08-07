@@ -9,29 +9,18 @@ describe("renderModeStore", () => {
 
   it("defaults to dom and set switches mode", () => {
     expect(renderModeStore.get()).toBe("dom");
-    renderModeStore.set("canvas");
-    expect(renderModeStore.get()).toBe("canvas");
+    renderModeStore.set("html");
+    expect(renderModeStore.get()).toBe("html");
   });
 
   it("set to the same value does not notify", () => {
-    renderModeStore.set("canvas");
+    renderModeStore.set("html");
     let n = 0;
     const unsub = renderModeStore.subscribe(() => { n++; });
-    renderModeStore.set("canvas"); // unchanged
+    renderModeStore.set("html"); // unchanged
     expect(n).toBe(0);
     renderModeStore.set("dom"); // changed
     expect(n).toBe(1);
-    unsub();
-  });
-
-  it("toggle flips dom <-> canvas and notifies", () => {
-    let n = 0;
-    const unsub = renderModeStore.subscribe(() => { n++; });
-    renderModeStore.toggle();
-    expect(renderModeStore.get()).toBe("canvas");
-    renderModeStore.toggle();
-    expect(renderModeStore.get()).toBe("dom");
-    expect(n).toBe(2);
     unsub();
   });
 });
