@@ -1,803 +1,269 @@
-# Decision log — the WHYs, and what would reverse them
+# Decision log — what stands, and what would reopen it
 
-The project's hard, deliberate, feels-irreversible calls: each entry is the reasoning
-and, crucially, **what would justify revisiting**. Rules derived from these live in
-`CLAUDE.md` and `rules.md`; the build history behind them lives in the dev-notes archive.
+Relapse guards for the project's settled calls. Each entry is: **what stands** (the
+final state, not the build history), **where** it lives/is enforced, and **reopen if**
+— the honest interface for revisiting. IDs are stable and cited from code and docs;
+never renumber. A reversed decision keeps its entry with a dated REVERSED line. The
+old ADR-style histories (when/why/cost narratives, amendment chains) live in git and
+`archive/dev-notes-history.md` — this file records outcomes only.
 
-**Provenance (PROV-1, rules.md):** nothing in this log is author-ruled — including
-entries that quote the author verbatim. A quote is EVIDENCE for a decision's reasoning
-and carries the weight of that reasoning, not the force of a standing order; ARR exists
-only in `rules.md`, conferred only by the author marking a rule there in-session. Read
-"author:" attributions here as *what was said and when*, never as *what may not be
-questioned*. The reversal conditions below are the honest interface for reopening any
-of these.
-
-CLAUDE.md's own standing rule warns against **re-litigating settled decisions**. But a
-decision with no recorded rationale gets re-litigated anyway (nobody remembers why), and
-a decision with no recorded *reversal condition* becomes dogma that outlives its reason.
-This doc fixes both: each entry is **what / why / the cost accepted / what would reverse
-it.** The reversal field is the important, novel part — it lets a future agent tell
-"settled, leave it" from "the ground has shifted, re-open it" without guessing.
-
-Format is deliberately lightweight (not formal ADRs). Add an entry when a genuinely
-load-bearing, hard-to-reverse choice is made. Don't delete entries — if one reverses,
-append a dated "REVERSED" note; the history is the value.
+**Provenance (PROV-1, rules.md):** nothing here is author-ruled — a quoted author line
+is evidence for the reasoning, not a standing order. ARR exists only in `rules.md`.
 
 ---
 
 ### D1 — Relational engine is Polars (native Rust), not DuckDB
-**When:** 2026-06-22. **Where:** `archive/compute-architecture.md` + the dev-notes archive.
-**Why:** fastest engine; `LazyFrame` verbs map 1:1 onto the verb nodes.
-**Cost accepted:** Polars has no production browser build → the **web build does not run
-the real engine** (web = "look and try", desktop = full product).
-**What would reverse it:** (a) a production-grade Polars WASM path appearing, OR (b) the
-web build becoming a real target for revenue/adoption reasons — at which point DuckDB
-(desktop crate + DuckDB-WASM = one engine, two targets) is the standing alternative,
-already scoped. The `FrameBackend` seam exists precisely so this swap is one module, not
-a rewrite. **Do not** casually add a second engine "for web" without re-opening THIS
-decision explicitly (see future-directions Bet 5 for the honest trade-off).
+Desktop runs native Polars; web runs the JS oracle only (web = "look and try",
+desktop = full product). **Where:** the `FrameBackend` seam; cargo parity tests.
+**Reopen if:** a production Polars-WASM path appears, or web becomes a real target —
+DuckDB (one engine, two targets) is the scoped alternative; the seam makes the swap
+one module. Never add a second engine "for web" without reopening this explicitly.
 
-### D2 — Expression / formula scope is capped, permanently
-**When:** 2026-06-23. **SUPERSEDED IN PART by D23 (2026-07-28):** matrices and complex
-are IN (the old `#SHAPE!` matrix guard in `nodes/expression.ts` is gone — the node now
-swaps its result socket to the matrix rung); the frames/cubes exclusion STANDS,
-permanently. **Where (today):** `CLAUDE.md`, D23, `broadcastRules.test.ts`.
-**Why:** the formula language stays the type-agnostic subset (scalars + 1-D lists,
-broadcast element-wise). Matrices/frames/complex/type-directed semantics are explicitly
-NOT coming — that's the job of the future subgraph/composite node.
-**Cost accepted:** some Excel-parity gaps can't be closed in a formula; they route to a
-node or the subgraph escape hatch instead.
-**What would reverse it:** essentially nothing at the formula level — this is a
-philosophical cap, not a TODO. The pressure it creates should be spent building the
-**composite/subgraph node** (the sanctioned power-user path), never on widening
-Expression. If you're tempted to widen Expression, the answer is "build subgraphs."
-**REOPENED (2026-07-14, author):** in the formula↔node parity direction the author
-explicitly walked back the "permanent" framing — *"I'm not necessarily committed to
-assumptions/restrictions that we already wrote down… let's keep an open mind."* The cap
-STANDS as the working default until the parity design decides Tier 4 (keep 1-D vs lift
-to 2-D) — see `docs/formula-node-parity.md`, whose outcome should be recorded here as
-D2's successor. **That successor exists: D23 (2026-07-28) lifted the cap to matrices.** Do not treat D2 as immovable in that design; do not silently widen
-Expression before it's decided either.
-Tier-4 preconditions, decision criteria (correctness + coherence only — the
-auditability objection is retired), and the candidate endpoints are recorded in full in
-`formula-node-parity.md` "Tier 4 in full"; the open technical crux is shape-branding in
-the type-agnostic evaluator (`[re,im]` vs a 2-list, `[[1,2]]` vs list-of-lists).
+### D2 — Formula scope is capped: frames/cubes never enter formulas
+The verb engine is the frame/cube surface; formulas stop at rank ≤ 2 (matrices and
+complex ARE in — see D23, which superseded the old 1-D cap). Pressure to widen
+Expression routes to composites/subgraphs instead. **Where:** CLAUDE.md,
+`broadcastRules.test.ts`. The composite-toolbar-reroute half of "D2" stays
+author-present (`deferrals.md`). **Reopen if:** nothing at the formula level.
 
-### D3 — No backward compatibility / no migration shims (pre-alpha)
-**When:** ongoing policy; swept clean 2026-06-19. **Where:** `CLAUDE.md` pre-alpha section.
-**Why:** one user (the author), who has explicitly authorized breaking old saves/code/
-names. Shims and migration maps are pure cost with no beneficiary.
-**Cost accepted:** old autosaves/exports can fail to load across a rename; that's fine.
-**What would reverse it:** the **first real external user.** The day someone else's data
-lives in a `.sol` file, this flips hard — and the save-format `v` field + forward-refusal
-guard (kept deliberately) are the seam where migrations would attach. Until then, keep
-deleting rather than preserving.
+### D3 — No backward compatibility / migration shims (pre-alpha)
+Break saves/code/names freely; delete rather than preserve. The save-format `v`
+field + forward-refusal guard stay (the seam migrations would attach to).
+**Reopen if:** the first real external user — this flips hard that day.
 
 ### D4 — `main` = production, `develop` = all development
-**When:** 2026-07-01 (post-1.0). **Where:** `CLAUDE.md` branch model.
-**Why:** `main` is release-only (Vercel serves it; tags live there). Day-to-day work is
-noise on a production branch.
-**Cost accepted:** an extra merge step at release; agents must ignore per-session
-`claude/*` branch directives and use `develop`.
-**What would reverse it:** a real branching need (multiple contributors, release trains).
-Note the trap this already caused: a session forked from `main` inherits `main`'s
-CLAUDE.md, which said `working` before this doc existed — verify the branch model against
-`develop`'s CLAUDE.md, not whatever branch you started on.
+`main` is release-only (Vercel + tags); all work lands on `develop`, overriding
+per-session `claude/*` directives. **Reopen if:** multiple contributors / release
+trains.
 
-### D5 — Array-semantics value model (first-class null + per-cell errors + logical type)
-**When:** 2026-06-22 (Inc 1–8). **Where:** `subsystem-invariants.md` "Error values",
-`valueKinds.ts`, `errorValue.ts`.
-**Why:** real data has holes and errors; the old "lists never contain errors" invariant
-couldn't express missing-vs-error, so aggregators lied. Now a list/frame carries `null`
-(missing, skipped by aggregators) AND per-cell `SolError` (propagated) as distinct kinds,
-plus a first-class logical type with Kleene 3-valued logic.
-**Cost accepted:** every aggregator/broadcaster must handle three cases (value/null/error)
-via `forAggregate`/`valueKinds`; more surface, more tests. (The v1.0 audit found several
-paths that still don't — that's a bug against this decision, not a reason to reverse it.)
-**What would reverse it:** nothing foreseeable — this is foundational. The audit's
-compute findings are the *completion* of this decision, not a challenge to it.
+### D5 — Array-semantics value model
+Lists/frames carry first-class `null` (missing — skipped by aggregators) AND
+per-cell `SolError` (propagated), plus a first-class logical type with Kleene
+3-valued logic. **Where:** `valueKinds.ts`, `errorValue.ts`,
+`subsystem-invariants.md` § Error values. **Reopen if:** nothing — foundational.
 
-### D6 — Renderer is HTML-in-Canvas, not hand-rolled WebGPU or a Pixi re-implementation
-**When:** 2026-06-27 (supersedes the WGSL and Pixi directions). **Where:**
-`htmlCanvasRenderer.ts`, `archive/performance-hardening.md`.
-**Why:** capture the *real* DOM cards into a mip-pyramid of bitmaps → crisp at any zoom,
-no component re-authoring. Perf-validated (280 nodes, 165fps). The DOM renderer stays the
-permanent default/fallback.
-**Cost accepted:** depends on the `CanvasDrawElement` Blink feature (desktop enables the
-flag; web: origin trial Chrome 148–150 + Android DevTrial since 138, not yet stable —
-status 2026-07). This is a genuine **external dependency** — see the risk register in
-this doc. Spec drift absorbed 2026-07: `ElementImage` is final as a minimal non-
-ImageBitmapSource interface (the pyramid builds via in-paint atlas raster), and the
-no-opt-out privacy pass makes canvas text grayscale-AA — a permanent fidelity floor.
-**What would reverse it:** the flag stalling permanently (unlikely) → the DOM renderer
-just remains default, no crisis. Or a dramatically better native path. The Pixi/WGSL
-groundwork is parked, not deleted, if a full swap is ever forced.
+### D6 — Renderer is HTML-in-Canvas over the real DOM
+Cards capture into a mip pyramid of bitmaps; the DOM renderer is the permanent
+default/fallback. Depends on the `CanvasDrawElement` Blink flag (external
+dependency — risk R2). **Reopen if:** the flag stalls → DOM stays default, no
+crisis; the parked Pixi/WGSL groundwork exists if a full swap is ever forced.
 
-### D7 — Socket lattice: enforce TYPE separation, allow DIMENSIONAL flow
-**When:** ongoing; formalized with the array-semantics work. **Where:** `CLAUDE.md`
-socket-lattice rule, `socketConnect.test.ts`.
-**Why:** element families (number/string/date/complex/logical) never auto-cross (Cast
-required); values flow freely UP in dimensionality (scalar→list→matrix→frame). One
-exception: `logical↔number` (0/1 ↔ TRUE/FALSE).
-**Cost accepted:** the cross-type dimensional edges can't be derived purely and are
-enumerated explicitly in `accepts()`, machine-checked by a full-sweep test.
-**What would reverse it:** a new element family or a compelling second cross-family
-bridge — either requires re-deriving the lattice and updating the sweep test, not an
-ad-hoc `accepts()` edit.
+### D7 — Socket lattice: type separation, dimensional flow
+Element families never auto-cross (Cast required; sole bridge `logical↔number`);
+values flow freely up in rank (scalar→list→matrix→frame). **Where:** `accepts()`,
+machine-checked by the `socketConnect.test.ts` full sweep. **Reopen if:** a new
+family or a second bridge — re-derive the lattice + sweep, never ad-hoc edit.
 
-### D8 — Calculation mode: manual/automatic, targeted recompute
-**When:** 2026-07-01. **Where:** `CLAUDE.md`, `calcModeStore.ts`, `process.ts`.
-**Why:** heavy tables made every edit a full recompute; manual mode (F9) + targeted
-recompute for value edits keep big graphs usable.
-**Cost accepted:** a mode to reason about.
-**What would reverse it:** nothing — this is the perf floor. The follow-through LANDED
-(audit finding 40, `35fe709`): a single cable connect/disconnect recomputes only the
-target's downstream closure (`processGraph(target, …, { topology: true })`, which also
-refreshes the loop cache — the one global a cable change touches); bulk topology ops
-settle once via `withGraphRebuild`. `processTargeted.test.ts` guards the
-closure≡reset equivalence.
+### D8 — Manual/automatic calc modes, targeted recompute
+Manual mode (F9) + targeted recompute (a topology change recomputes only the
+target's downstream closure) are the perf floor. **Where:** `calcModeStore.ts`,
+`processTargeted.test.ts` (closure ≡ reset). **Reopen if:** nothing.
 
-### D9 — Default date format is `DD-MMM-YYYY`, dates are real serials (not the Excel 1900 model)
-**When:** ongoing. **Where:** `nodes/date.ts` `DEFAULT_DATE_FORMAT` / serial epoch.
-**Why:** unambiguous display; real serials sidestep Excel's 1900 leap-year bug for
-post-Feb-1900 dates.
-**Cost accepted:** none material — `parseDateToSerial` is UTC-based (a timezone-dependence
-bug against this decision was found and fixed).
-**What would reverse it:** nothing; ISO stays a selectable style. This entry exists mainly
-so a future agent doesn't "helpfully" reintroduce Excel-1900 compatibility.
+### D9 — Dates are real serials; default display `DD-MMM-YYYY`
+No Excel-1900 model (sidesteps the leap-year bug); ISO stays a selectable style.
+**Where:** `nodes/date.ts`. Guard: don't "helpfully" reintroduce 1900 compat.
 
-### D10 — Excel parity means CURRENT Excel; superseded functions are eliminated on EVERY surface
-**When:** 2026-07-02 (the VLOOKUP relapse). **Where:** `node-coverage.md`, the
-`ELIMINATED_FUNCTIONS` redirect stubs in `excelFunctions.ts`, this entry.
-**Why:** parity targets what Excel is today. Anything Excel itself deprecated or superseded
-(legacy CEILING sign rules, VLOOKUP/HLOOKUP/LOOKUP → XLOOKUP, MATCH → XMATCH) is disregarded
-entirely — we neither match it nor document divergence from it. Crucially, an elimination
-covers ALL surfaces: no node AND no formula implementation. A typed formula naming an
-eliminated function gets a terse `#NAME?` redirect (**"Use XLOOKUP"** — no longer, per the
-no-Captain-Obvious rule). INDEX stays (current Excel, never superseded).
-**Cost accepted:** a pasted-from-Excel formula containing VLOOKUP errors (with the fix in
-the message) instead of silently working.
-**What would reverse it:** a real `.xlsx` IMPORT feature — at that point auto-rewriting
-classic lookups to their modern forms beats erroring. Nothing else.
-**The relapse that prompted this:** the 2026-07-02 audit fix pass, hunting parity gaps,
-re-implemented VLOOKUP/HLOOKUP/LOOKUP/MATCH in the formula layer because the elimination
-was recorded only as a node-coverage parenthetical. Cross-surface rulings live HERE now.
+### D10 — Parity means CURRENT Excel; superseded functions eliminated on EVERY surface
+VLOOKUP/HLOOKUP/LOOKUP/MATCH, legacy CEILING sign rules, the pre-2010 stats family:
+no node AND no formula — a typed use gets a terse `#NAME?` redirect. INDEX stays
+(never superseded). **Where:** `ELIMINATED_FUNCTIONS` stubs in `excelFunctions.ts`;
+`node-coverage.md`. **Reopen if:** a real `.xlsx` import ships — auto-rewriting
+classic lookups then beats erroring. (Relapse on record: a 2026-07-02 audit pass
+re-implemented VLOOKUP because the ruling lived only in a parenthetical — cross-
+surface rulings live HERE.)
 
-### D11 — Surface harmony: one computation, one answer — with ONE sanctioned divergence line
-**When:** 2026-07-02 (formalizing 2026-06-22's model). **Where:** the shared broadcasters
-(`shared.ts`, `excelFormula.ts`, `logic.ts`), backlog "Post-audit tails".
-**Why:** the same computation must answer the same whether built from nodes or typed as a
-formula — semantics live in SHARED helpers (broadcasters, `forAggregate`, the one
-filter-coercion spec), never re-derived per surface. The ONLY sanctioned formula-vs-node
-divergence is the **reduction vs element-wise null line**: reduction contexts skip nulls
-(formula AND/OR, the Aggregate family — Excel range semantics, SQL BOOL_AND); element-wise/
-expression contexts are Kleene/null-propagating (BooleanOp, Comparison, IF, operators — SQL
-WHERE). Both sides match their reference model; unifying either way breaks one.
-**Cost accepted:** `AND(list-with-null)` answers TRUE in a formula and null through
-element-wise nodes — principled, documented (BooleanOp catalog note), and not drift.
-**What would reverse it:** nothing at the line itself; any OTHER node-vs-formula
-disagreement is a bug against this decision.
+### D11 — One computation, one answer; ONE sanctioned divergence line
+Semantics live in shared helpers (broadcasters, `forAggregate`), never re-derived
+per surface. The only sanctioned formula-vs-node divergence: reduction contexts
+skip nulls (formula AND/OR, the Aggregate family — Excel range semantics);
+element-wise contexts are Kleene/null-propagating (BooleanOp, IF, operators — SQL
+WHERE). Any OTHER node-vs-formula disagreement is a bug against this decision.
 
-### D12 — Case sensitivity: comparisons match like Excel's `=`; keys are identity
-**When:** 2026-07-02 (the filter revisit). **Where:** P6 operator table, `frameVerbs.ts`,
-`engine.rs`, backlog "Post-audit tails".
-**Why:** every COMPARISON (the `=` operator, Comparison node, XLOOKUP/Frame Lookup match,
-frame Filter eq/neq/contains/startsWith/endsWith) is case-INsensitive — Excel's semantics,
-and the app's one text-equality rule (EXACT / a "Match case" toggle = the escape hatch).
-Every IDENTITY op (Join keys, Group By keys, Distinct) is case-SENSITIVE — keys are
-identity (databases/Polars/PQ); Excel PivotTable's silent case-merging destroys
-distinctions irrecoverably and is the thing we refuse.
-**Cost accepted:** "us"/"US" group separately until the user normalizes case explicitly;
-parity:false notes on the identity verbs.
-**What would reverse it:** nothing foreseeable; a per-verb case-fold OPTION on Group By/
-Join would be an addition inside this rule, not a reversal.
-**Second instance of the same line (2026-07-02, UNIQUE ruling):** list ops answer to the
-spreadsheet model, relational verbs to the relational model — list UNIQUE never dedupes
-error cells (each is an independent problem, the sanity-check reading), while frame
-Distinct dedupes them by code (errors as values, SQL/Polars identity semantics).
+### D12 — Comparisons match like Excel's `=`; keys are identity
+Every comparison (`=`, Comparison node, lookup match, Filter text ops) is
+case-INsensitive (EXACT / "Match case" is the escape hatch). Every identity op
+(Join/Group By/Distinct keys) is case-SENSITIVE — silent case-merging destroys
+distinctions. Corollary (same line): list UNIQUE never dedupes error cells; frame
+Distinct dedupes them by code. **Where:** `frameVerbs.ts`, `engine.rs`, the P6
+operator table. **Reopen if:** nothing; a per-verb case-fold OPTION would be an
+addition inside the rule.
 
 ### D13 — Cross-engine consistency outranks Excel-quirk parity
-**When:** 2026-07-02 (the `0^0` ruling). **Where:** this entry; pow item in backlog.
-**Why:** half the app's arithmetic runs in JS, half in Polars. When importing an Excel
-quirk would make the two engines disagree (Excel says `0^0` = #NUM!; JS/Python/R/Polars
-all say 1), the quirk loses — a JS-vs-Rust split manufactured for parity's sake is a worse
-bug than a documented deviation.
-**Cost accepted:** occasional parity:false notes where Excel is the odd one out.
-**What would reverse it:** nothing; this is an ordering of loyalties, not a feature.
+When an Excel quirk would split JS from Polars (`0^0`: Excel #NUM!, everyone else
+1), the quirk loses — a manufactured engine split is worse than a documented
+deviation (`parity:false`). An ordering of loyalties, not a feature.
 
-### D14 — The Equation node is a SIBLING of Expression, acausal, with a FIXED socket set
-**When:** 2026-07-09 (author: "just build it now"). **Where:** `nodes/equation.ts`,
-`equationSolve.ts`; the design discussion is in the session digest.
-**Why:** three sub-decisions. (1) A new node, NOT a widened Expression — D2 caps
-Expression permanently, ~135 locked pack presets and the LAMBDA hosts lean on its
-directional contract, and the card shape differs anyway. (2) Every variable gets an input
-AND an output plus one always-present logical `Check` — rather than the single output
-that morphs numlist→logical — because in-place retype is a known minefield
-(fcReconcile/retypeOutputCables) and a morphing output changes MEANING when inputs are
-rewired, silently breaking downstream cables. (3) Solving is our own AST isolation
-(unparse → recompile, so broadcasting is free) + a numeric bracket/bisection fallback —
-no CAS dependency (nerdamer/algebrite are heavy, stale, and speak a different grammar).
-**Cost accepted:** principal branches on NON-polynomial inversion (√/ASIN — the returned
-value satisfies the equation but may not be the branch you meant); the numeric fallback is
-scalar-only and reports the root nearest an ascending log-grid scan; tall cards (2n+1 value
-rows).
-**Amendments (both 2026-07-09):** a probe-detected QUADRATIC residual solves via the
-quadratic formula and returns EVERY real root ascending (x² = 36 → [−6, 6]; double root
-stays scalar; negative discriminant → #SOLVE!) — intercepted before symbolic isolation so
-the negative root never falls to the principal branch. The finance families collapsed
-onto the framework: **TVM** (one `TvmNode extends EquationNode`, locked annuity relation,
-any-4-of-5 solves; payment timing is a CONFIG dropdown that swaps the locked relation —
-a config is anything that changes the RELATION rather than a quantity in it, the template
-for future subclasses; rate = 0 uses the exact zero-rate limit), **Compound Growth**
-(PDURATION/RRI) and **Effective Rate** (EFFECT/NOMINAL) as locked catalog presets.
-`solveNumeric` bisects every sign-change bracket and returns the SMALLEST-MAGNITUDE root.
-**Surveyed and deliberately NOT converted** (relapse guard): Depreciation, the
-IPMT/PPMT/CUMIPMT/ISPMT family (derived quantities, not relations), DOLLARDE/FR,
-bonds/T-bills (date sockets), distribution DIST/INV pairs (no closed-form CDFs).
-**What would reverse it:** demand for cubic/higher roots (Cardano or a vendored CAS);
-per-output socket annotations would unlock richer per-variable typing.
+### D14 — Equation node: acausal sibling of Expression, fixed sockets, no CAS
+Every variable is an input AND an output plus a logical `Check`; solving is own
+AST isolation + bracket/bisection fallback (no CAS dependency). Quadratic
+residuals return every real root ascending. TVM / Compound Growth / Effective
+Rate ride the framework (a CONFIG is anything that changes the RELATION).
+**Deliberately NOT converted (relapse guard):** Depreciation, IPMT/PPMT/CUMIPMT/
+ISPMT (derived quantities, not relations), DOLLARDE/FR, bonds/T-bills, DIST/INV
+pairs (no closed-form CDFs). **Where:** `nodes/equation.ts`, `equationSolve.ts`.
+**Reopen if:** demand for cubic+ roots (Cardano or a vendored CAS).
 
----
+### D15 — The append ladder: ONE N-ary element-agnostic append per rank
+Concat Lists (1-D) · VSTACK/HSTACK (2-D — ragged pads `#N/A` cells like Excel) ·
+Append (frame — union by NAME, missing fills blank). All share wire-only
+extensible rows. **Deliberately NOT unified (relapse guard):** Interleave, Pad,
+Repeat, Add Column, Build Frame vs Frame from Lists; "add one row" = Get Row →
+Append (a bare positional list into a by-name append is a refused footgun).
+**Reopen if:** a variadic multi-connection socket primitive — it would collapse
+the extensible-row pattern.
 
-### D15 — The append ladder: ONE N-ary, element-agnostic append node per container rank
-**When:** 2026-07-09 (author: "heavy thinking pass over the entire set of nodes which
-involve appending data … continuing from the VSTACK/HSTACK changes").
-**What:** appending is the same idea at every rank, so each rank gets exactly one node,
-and they all share the same shape — extensible wire-only rows (add/remove, order =
-stack order), element-agnostic accepts, lattice widening on the way in:
-- **1-D — Concat Lists**: `anylist` rows (a scalar widens to a 1-element list, so "push
-  one value" needs no wrapper) → `anylist` out. Concatenation has no ragged case.
-- **2-D — VSTACK / HSTACK**: `anytable` rows (scalar → 1×1, list → ONE ROW) → `anytable`.
-  Ragged inputs PAD WITH #N/A CELLS exactly like Excel — VSTACK pads narrower inputs
-  right, HSTACK pads shorter inputs down. The old whole-result #SHAPE! made the common
-  "stack a 3-list on a 5-list" case unusable; a per-cell #N/A is visible, honest, and
-  recoverable (IFNA/Fill), and SUM over it goes #N/A like Excel.
-- **Frame — Append**: `frame` rows (union by column NAME via the verb engine, which was
-  always N-ary — the node just exposes it; missing column fills blank, type clash #TYPE!).
-  Ragged-by-name ≠ ragged-by-position, so no #N/A padding here — blanks are the frame
-  semantics.
-- WRAPROWS/WRAPCOLS joined the same padding rule (#N/A, Excel's default pad_with) —
-  they previously disagreed with each other (ragged short row vs NaN fill).
-**Deliberately NOT unified:** Interleave (positional A/B alternation — two DISTINCT
-roles, stays 2-ary), Pad (fill-to-length) and Repeat (self-append) are 1-D utilities,
-not appends; Add Column is the frame's single-named-column horizontal add (bulk = Frame
-from Lists, keyed = Join); Build Frame (matrix+headers) vs Frame from Lists (named typed
-columns) are different constructors, both kept; "add one row to a frame" is Get Row →
-Append (a 1-row frame keeps column names — a bare positional list into a by-name append
-is a footgun we refuse).
-**How (mechanics):** the extensible-row plumbing is the BooleanOp pattern (`valueKeys`
-persistence, `addValueInput`/`removeValueInput`, row undo via pushRow*Undo);
-`ExtensibleInputs` gained a WIRE-ONLY row branch (container-typed rows render position
-number / "↩ source", never a literal field — a typed literal has no meaning for a
-list/table/frame operand and typed lists belong to List Input).
-**Cost accepted:** container rows can't be typed in place; #N/A padding can hide a
-genuine width mistake until an aggregate goes #N/A (Excel makes the same trade).
-**What would reverse it:** a variadic "multi-connection socket" primitive (one pill that
-accepts N cables) would collapse the extensible-row pattern across all four nodes.
+### D16 — Filter family: one honest job per node
+List Filter tests a list against its OWN values only (the parallel-list mask is
+DELETED); table filtering routes through the frame Filter; SUMIFS
+(SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS) is the task-shaped conditional
+aggregate — one frame input + criteria rows per the aligned-columns rule.
+**Reopen if:** evidence that non-aggregating parallel-list filtering is common
+enough to out-vote the mask's opacity. Per-cell 2-D filtering stays out
+regardless (TOCOL → Filter is the spelling).
 
----
+### D17 — The wildcard ladder; `trueany` is the adoptive supremum
+Final state: `any` (untyped scalar) → `anycombo` (0-or-1-D) → `anylist` →
+`anytable` → `trueany` (hollow ring; adopts the wired type, never drops cables,
+never persists — re-derived after load). INDEX projects the element family from
+its container (a frame column when statically knowable via `frameShapeResolver`);
+a CUBE cell stays `trueany` — the one container heterogeneous within a column.
+**Where:** `sockets.ts`, `trueAnyAdopt.ts`, CLAUDE.md lattice note,
+`socket-reference.md`. **Reopen if:** none foreseen.
 
-### D16 — The Filter family: one honest job per node (mask removed, SUMIFS born)
-**When:** 2026-07-09 (author-led redesign; the old Filter was four tools wearing one card).
-**The ruling:** the **list Filter** tests a 1-D list against ITS OWN values only
-(shared `passesFilter` condition engine, Kept + Dropped outs) — the parallel-list mask
-and the table acceptance are DELETED, not bridged with chrome. **Table filtering routes
-through the frame Filter** (a matrix widens in as `Col1..N`; a list can't — it widens as
-ONE ROW, so lists keep their own node). **SUMIFS** (`SumIfsNode`,
-SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS) is the task-shaped conditional aggregate that
-replaces the mask's bread-and-butter job, built as ONE frame input + a Values-column
-field + criteria rows — per the standing **aligned-columns rule** (position-aligned
-columns arrive as a 2-D input, never parallel list sockets; a shorter parallel list
-silently failing rows past its end is the exact hazard). Parallel-list filtering without
-aggregation = Frame from Lists → Frame Filter.
-**Cost accepted:** `FILTER(sales, region="North")` as a bare list has no 2-node spelling
-anymore (mask + Comparison used to do it); the sanctioned spellings are SUMIFS (when
-aggregating — the overwhelmingly common case) or the frames route.
-**What would reverse it:** the mask's return would need evidence that non-aggregating
-parallel-list filtering is common enough to out-vote the mask's opacity; per-cell 2-D
-filtering stays out regardless (Excel's FILTER refuses 2-D includes; ragged output
-doesn't exist in its model — TOCOL → Filter is the explicit spelling).
+### D18 — A wired LAMBDA binds to the consumer's variables BY NAME
+All lambda-family consumers (MAP, BYROW/BYCOL, REDUCE, SCAN, MAKEARRAY) bind
+declared params by name, order-free; an unknown param is `#VALUE!`; a body var
+that is a node variable but undeclared is flagged on the card (capture advisory);
+captured constants stay explicit wireable sockets. Deliberate break from Excel's
+positional model (`parity:false`). **Rejected (relapse guard):** reserved-name
+auto-bind overriding wires — dead sockets + silently ignored wiring.
 
----
+### D19 — Formula naming: aliases blocked, names unified with the hover hint, packs register
+Legacy aliases never dispatch (`#NAME?` redirect — D10 on the formula surface).
+Solenoid-native formula names are BARE, identical to the node's header hover hint
+(no `SOL.` namespace). Packs register their own formula functions,
+pack-enable-sensitively. **Reopen if:** a real user corpus leaning on legacy
+names (soften to documented aliases), or an Excel release colliding with a bare
+name (case-by-case rename).
 
-### D17 — The wildcard ladder: `any` is a scalar; `trueany` is the supremum
-**When:** 2026-07-09 (author challenge: "(any accepts everything) — um, it shouldn't?
-that's why we have any, any list, and any matrix").
-**The problem:** `any` was doing two jobs — the rank-0 rung of the untyped ladder AND the
-accept-everything supremum. The code made it the supremum (`accepts()` returned true for
-`any` on either side); the DESIGN — a plain gray circle among circles-are-scalars — had
-always said "one value of any type." With `anylist`/`anytable` as explicit 1-D/2-D untyped
-rungs, an `any` input silently swallowing frames, cubes, and lambdas was a lattice hole:
-Expand's Fill ("any scalar fill value") happily accepted a whole frame.
-**The decision:** split them. `any` = element-agnostic SCALAR — accepts any family's
-scalar (and combos, which can be scalars); its output widens anywhere data flows, never
-into the object family. `trueany` = the true supremum — accepts and flows to everything —
-with a NEW glyph: a HOLLOW gray circle (border only, no fill), distinguishable from every
-filled shape even zoomed out. So the untyped ladder reads any → anylist → anytable, with
-trueany above the whole lattice.
-Call sites sort by what they MEAN: genuine anything-ports → `trueany`;
-scalar-or-1-D under the Expression cap → `anylist` (enforced at CONNECT time, not
-runtime #SHAPE!); true scalars (SWITCH equality, Expand fill, Filter/SUMIFS value rows)
-stay `any`. `isWildcardType()` centralizes "walk past untyped passthroughs" over both
-rungs.
-**Cost accepted:** `any` outputs (Regex result) can still deliver a non-scalar at
-runtime into a scalar input; there is no untyped COMBO socket (Regex result is the known
-combo-shaped hole).
-**AMENDED 2026-07-25 — INDEX ADOPTS; only the heterogeneous containers are unknowable
-(author).** "Value-dependent results like INDEX keep a STATIC trueany" was too broad: it
-held for a CUBE cell (which may hold a nested frame/cube) and a FRAME cell (heterogeneous
-columns, picked by a runtime index), and for nothing else. A list or matrix is
-HOMOGENEOUS — its element family is fixed by the socket whichever cell you pull — so
-declaring the whole node unknowable cost real behavior: a date pulled out of a date list
-lost its date-ness downstream (`isDateType` reads the socket, so it rendered as a raw
-serial), and the output dot stayed a hollow ring while the input dot colored. INDEX now
-declares a `passthrough()` on its `list` input — it FORWARDS a value out of its container,
-which is what that declaration means — with a new `project` hook that drops the RANK and
-keeps the family: what Row/Column vary is one-cell-vs-whole-axis, and the COMBO rung means
-exactly "a scalar or a list of F", so the result feeds a scalar input AND a list input.
-`comboOfType` returns null for frame/cube, where the placeholder correctly stands. This is
-D18's own "adopt only where honest" rule applied per CONTAINER instead of per node.
-**AMENDED same day — trueany is ADOPTIVE (author):** a trueany port is a PLACEHOLDER
-that adopts the wired cable's type and reverts on disconnect. Inputs adopt universally;
-outputs only where honest (passthroughs; selector results when every wired branch
-agrees; value-dependent results like INDEX/XLOOKUP keep a STATIC trueany). Adoption
-never drops cables and is never persisted — re-derived from wiring after load/paste.
-Mechanics: `trueAnyAdopt.ts` + CLAUDE.md's socket-lattice note. The hollow ring on
-screen always means "nothing has flowed here yet".
-**AMENDED 2026-07-25 — the `anycombo` rung was added, closing the combo-shaped hole.**
-The element-agnostic COMBO (gray split square): accepts exactly what `anylist` accepts,
-but a scalar reaches `data()` as a SCALAR rather than widening to a singleton, and its
-OUTPUT may be a scalar so it also reaches a scalar input. The ladder is now
-`any` (0) → `anycombo` (0-or-1) → `anylist` (1) → `anytable` (2) → `trueany` (⊤).
-Two things it retired: Expression's `noWidenInputs` — a node overriding what its own
-socket said about rank, the exact kind of invisible side-channel that made the
-2026-07-25 shape bugs hard to trace — and Regex's `anyOut`, which drew a scalar CIRCLE
-on a port that can emit a list. Cost recorded honestly in `type-resolution-plan.md`: it
-is a TRADE (a socket type for a flag), justified because it moves the fact into the
-type system rather than beside it.
-**AMENDED 2026-07-27 — a FRAME's family lives in the COLUMN, so INDEX reads it there
-(author: "INDEX of a Frame should pass through the column's data type").** The 07-25
-amendment stopped one step short: it said "frame/cube have no element family, so the
-placeholder stands", which is true of the SOCKET and false of the VALUE. A frame's
-columns are each homogeneous and named, and INDEX names WHICH one — so the family is
-knowable exactly when the column is. `project` now takes a `ProjectContext` (the static
-frame `Shape` arriving on the forwarded input + whether an input is wired), supplied by
-the adoption pass from the SAME `frameShapeResolver` walk the Cable Inspector's shape row
-uses. INDEX over a frame resolves: blank/0 Column → the whole row, still a `frame`;
-Column = c → that column's family at the COMBO rung. It falls back to `trueany` only
-where the answer is genuinely unknown — a WIRED Column (a runtime value the literal no
-longer decides), an unresolvable upstream shape (CSV / Web Source), a `dynamic` shape
-(a pivot's data-driven columns shift positions at compute time), or an out-of-range index.
-A CUBE cell stays `trueany` — it is the one container whose cells are heterogeneous
-*within a column* (it may hold a nested frame/cube). Second half of the change: a socket
-type can now be derived from static CONFIG, not just wiring, so the LITERAL commit paths
-(`InlineInputs`, `useNodeField`, the Frame Input source editor) call
-`reconcileTypesAfterEdit` — the settle early-outs unless a type actually moved.
-**What would reverse it:** none foreseen.
+### D20 — Units attach at the granularity of homogeneity
+Scalar → the value; frame → the COLUMN; **matrix → ONE unit for the whole matrix**
+(symbol-keyed tag on the outer array, lossy by design — rebuilders re-tag); list →
+per-cell, deliberately (a list is the one rank with no homogeneity guarantee; a
+frame ROW is legitimately mixed). Every matrix op declares a unit policy —
+`matrixUnitPolicy.test.ts` FAILS THE BUILD on an undeclared op. Cube cells carry
+per-cell UnitCells like lists. **Rejected (relapse guard):** a `MatrixValue`
+wrapper — domain-wide churn through every coercion primitive for a niche payoff;
+the fragility is localized to array-rebuilding sites. **Reopen if:** per-column
+units on anonymous matrices — that's what the frame is for.
 
----
+### D21 — Selection acts on what you can SEE; audit calls default to FIX
+Every selection surface skips collapsed-group members and isolate-receded nodes
+(invisible selection = mystery deletes; deleting a collapsed group never deletes
+members). And when an audit finds defensible-but-worse behavior, fix it — don't
+file it as acceptable. **Reopen if:** a real workflow needs gesture-selection of
+hidden nodes (Navigator / where-used exist for that).
 
-### D18 — A wired LAMBDA binds to the consumer's variables BY NAME, not by position
-**When:** 2026-07-10 (author: "positional params just aren't acceptable at all — that's not
-the way anything else in this project works; every other node explicitly declares its
-sockets so you know exactly what is getting wired in where").
-**The problem:** the lambda-family consumers called a wired LAMBDA positionally (Excel's
-model). The param NAMES were cosmetic, so `LAMBDA(value, acc, "value + 2*acc")` into SCAN
-silently computed `acc + 2*value` — the names lied — and `LAMBDA(value, "acc + value")`
-silently dropped the accumulator (`acc` became a captured 0), a blank/degenerate fold with no
-error. Opaque binding is the opposite of Solenoid's every-socket-is-named principle.
-**The decision:** ALL lambda-family consumers (MAP, BYROW/BYCOL, REDUCE, SCAN, MAKEARRAY —
-`byName` in `resolveFn`) bind a wired lambda's declared params to the node's fixed variables
-**by name**, order-free. A param that ISN'T one of the node's variables is a hard `#VALUE!`
-(the consumer can't supply it). The advisory is CAPTURE-based, not required-based: if a body
-variable is one of the node's OWN variables but wasn't declared as a param, it silently became
-a captured constant (0) instead of the live value — `undeclaredConsumerVars` (from the
-LambdaValue's new `captured` list ∩ the node's `lambdaSig.vars`) names those on the card. So
-`λ(value)="acc + value"` into REDUCE flags `acc`; `λ(row)="value + row"` into MAP flags
-`value`; a genuine constant (`rate`) is never flagged. **Captured constants are untouched:**
-any non-node-variable body var stays an explicit input socket on the LAMBDA node and rides the
-closure through, verified (`rate` wired 3 → `[3,6,9]`). The two authoring paths finally agree —
-a wired lambda behaves like the inline formula, both writing the body in the node's vocabulary.
-**Variable names:** the fixed variables are WORDS, not single letters (REDUCE/SCAN
-`acc`/`value`/`step`; MAP `value`/`value2`/`value3`/`row`/`col`; MAKEARRAY `row`/`col`;
-BYROW/BYCOL `values`). The fuzzy-autocomplete collision with function names (value→VALUE)
-is accepted — clarity beats the stray suggestion.
-**Break from Excel (deliberate):** Excel's LAMBDA is positional; you may name params freely. Here
-the per-iteration variables use the consumer's reserved names and can't be renamed. Everything
-else is preserved or better: full computational parity, and captured constants become explicit
-wireable sockets (vs Excel's invisible outer-cell/LET capture). Catalog entries stay `parity:false`.
-**What would reverse it:** going the other way (Level 2 — reserved names auto-bind even when
-undeclared, overriding a wire on those sockets) was rejected: it leaves dead sockets on the
-lambda card and silently ignores a deliberately-wired value. Declaration stays required so
-every socket means exactly what it shows.
+### D22 — The Power Query analogue is a Composite preset, not a new class
+Query = the same `CompositeNode`, pre-seeded Table→Result, `runMode: "manual"`
+(arm-and-run; Solve relabelled Refresh). The drill-in canvas IS the steps view;
+the frame verbs are the steps. No new persistence shape. **Reopen if:** genuine
+per-step preview/caching needs, or boundary typing adoption can't express.
 
-### D19 — Formula↔node parity, round 1: aliases blocked, names unified with the hover hint, packs register formulas
-**When:** 2026-07-14 (the parity direction session — see `docs/formula-node-parity.md`
-for the audit + tiers this decides). Author answered the doc's four gating questions;
-the mechanical work is greenlit but deliberately deferred to a dedicated session.
-**The decisions:**
-1. **Legacy aliases are BLOCKED on the formula surface.** D10 applies to every surface:
-   an eliminated/superseded name (VLOOKUP, NORMDIST, STDEVP, the pre-2010 family
-   Formula.js drags in) must NOT dispatch — `#NAME?` with a "use X" redirect hint. The
-   classic-lookup set is already blocked (`ELIMINATED_FUNCTIONS` stubs in
-   `excelFunctions.ts`); the pre-2010 stats family still awaits the Tier-1 registry work.
-2. **Formula names for Solenoid-native ops are BARE names, UNIFIED with the node's
-   header hover hint** (`typeHint()` in `nodeKit.tsx` — class name minus `Node`,
-   camelCase split, uppercased). The hint text and the formula name are the same
-   identifier, with spaces removed where the hint has them ("SET RELATION" →
-   `SETRELATION`). One identity per op family, shown on the card and typed in a formula
-   — no `SOL.` namespace. Where a class is a multi-op family (SetOpNode's
-   union/intersection/…), the naming of ops within the function (op-as-argument vs
-   per-op names) is an implementation call for the build session, made under this rule.
-3. **Packs can register their own formula functions** into the internal-impl registry
-   (the `registerInternal` seam), following the same naming rule — so a pack ships node
-   + formula surface together. Registration must respect pack enable/disable
-   (`FORMULA_FUNCTION_NAMES` and autocomplete become pack-sensitive).
-4. **Tier 4 (the reopened D2 dimensionality cap)** — RESOLVED by D23 (2026-07-28):
-   the cap lifts to matrices; frames/cubes stay out.
-**Cost accepted:** blocking aliases breaks any formula that used a legacy name (pre-alpha,
-acceptable per D3); bare names risk future Excel-name collisions (accepted over the
-namespace's ugliness — a collision is handled case-by-case when Excel ships one).
-**What would reverse it:** (1) a real user corpus that leans on legacy names could soften
-blocking into documented aliases; (2) an Excel release colliding with a bare Solenoid name
-forces a rename or precedence rule — revisit then, not preemptively.
+### D23 — Formulas accept matrices and complex; frames/cubes stay out (Tier 4 resolved)
+Matrices with Excel dynamic-array semantics; tagged Cx through the owned IM*
+family. Frames/cubes rejected on record: no Excel semantics to copy, competes
+with the verb engine, breaks lazy-FrameRef economics. **Containment:** Formula.js
+never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates — rules.md FX-9); the
+broadcast table is `broadcastRules.test.ts` (SSOT-6); element-wise ragged pads
+null, shape construction pads `#N/A` (D15); a list is a ROW. **Reopen if:** the
+broadcast semantics diverge from Excel in ways users hit — a re-cap would be a
+new decision, not a silent revert.
 
-### D20 — Units attach at the granularity of homogeneity; matrices get ONE unit
-**When:** 2026-07-14 (author, correcting the A4 record: "I thought I said matrices should
-have homogeneous units, not none").
-**The problem:** bundle 05 recorded "Matrix = unit-AGNOSTIC always" with no rationale
-attached, and the matrix node family shipped unit-blind (the coercion boundary strips
-tags at their inputs). That didn't match the author's intent, and it left a hole in the
-lattice: a heatmap of temperatures silently loses its unit on becoming a matrix, while
-the same numbers as a frame column keep theirs.
-**The decision — the governing principle:** *units attach at the granularity where the
-container guarantees element homogeneity.* Scalar → the value. Frame → the COLUMN
-(homogeneous population). **Matrix → the WHOLE MATRIX** (one element family per matrix —
-the Table Input SegToggle / table-socket split — so one unit, a single tag per value, NOT
-per-cell). **List → per-cell, deliberately** (reaffirmed): a list is the one rank with no
-homogeneity guarantee — it serves as both a column fragment and a FRAME ROW (Get Row
-yields legitimately mixed units) — so tagged cells stay, with uniformity enforced where
-mixing matters (`forAggregateUnits` → `#UNIT!` at folds; `elemUnitOf`'s shared-unit check).
-**Representation:** the one matrix tag is a symbol-keyed `ColumnUnit` on the outer
-array (`unitValue.ts`) — invisible to iteration/JSON, LOSSY by design (a rebuilt array
-drops it), so ops that keep the unit re-tag and everything else strips.
-**A `MatrixValue` wrapper was CONSIDERED and REJECTED (relapse guard — still the right
-call):** a wrapper must pass through `toMatrix`/`toScalar`/`toList` — the universal
-coercion primitives every node leans on — plus every math kernel, display, popup, and
-the serializer: domain-wide churn for a niche case, with only partial type-safety
-payoff. The fragility is localized (only array-REBUILDING sites drop the tag), so the
-right fix is a complete, self-guarding discipline, not a new representation.
-**The op-unit POLICY + its guard:** every matrix op declares carry /
-carry-if-uniform / convert / strip / na / author; `matrixUnitPolicy.test.ts` holds the
-per-op behavior table PLUS a completeness sweep that FAILS THE BUILD if a matrix-taking
-node ships without a declared policy — the discipline is structural, not whack-a-mole.
-(MMULT/MDETERM/MINVERSE = documented strip; dimensioned linear algebra is out of scope.)
-**Cube = units PER CELL, like a list:** a cube is heterogeneous per cell (a cell can be
-a scalar, list, matrix, or nested frame) — the LIST's shape, not the frame's — so a
-dimensioned cube cell carries a base-SI `UnitCell` as a value; the frame↔cube round
-trip recovers a uniform column unit.
-**What would reverse it:** a real need for per-column units on anonymous matrices —
-which is what the FRAME is for; use a frame.
+### D24 — Computed-column references use Excel TABLE semantics
+Bare column name = the WHOLE column; `@name` = this row's cell; brackets for
+unspellable names (`[Unit Price]`, `@[Unit Price]`). λ params stay row-bound
+(the λ's explicit per-row interface). Per-row math without `@` fails LOUD
+(`#SHAPE!`), exactly as modern Excel resolved the same tension. **Where:**
+`computedColumnCore.ts`; normative rules.md FX-13. **Reopen if:** nothing —
+this IS the model the surface exists to mirror.
 
-### D21 — Selection surfaces act on what you can SEE (and audit calls default to FIX)
-**When:** 2026-07-16 (author, during the standing audit walk: "the decision is to fix
-things and make them better").
-**The decision, part 1 — the selection rule:** every selection surface (lasso, Ctrl+A,
-future marquee variants) skips nodes the user cannot see or interact with: members
-hidden inside a collapsed group (`groupCollapseStore.isNodeHidden`) AND isolate's
-receded non-focus nodes (`isolateStore.isVisible` — they render at opacity .08 with
-pointer-events:none). Selection is a visual gesture; invisibly selecting a node the
-user can't reason about produces silent mis-groupings and mystery deletes. Deleting a
-collapsed group never deletes its members (they just unhide), so nothing becomes
-unreachable under this rule.
-**Part 2 — the audit default:** when an audit finds behavior that is defensible but
-worse ("technically consistent" but surprising), the standing author instruction is to
-FIX it, not to file it away as acceptable. Deference is for genuine semantic forks
-(e.g. the base-SI vs display-unit adoption call), not for polish.
-**Cost accepted:** "select all" no longer literally means every node in the editor —
-a Ctrl+A + Delete during isolation deletes only the focus set. That asymmetry is the
-point.
-**What would reverse it:** a real workflow that needs gesture-selection of hidden
-nodes (none known — the Navigator and where-used exist for reaching things you can't
-see).
+### D25 — No per-cell formulas, ever
+One definition per column, living on the column header — no surface may accept a
+formula typed into a grid cell. Excel's per-cell freedom is the disease this
+surface cures. Dead, not deferred — same class as D10.
 
-### D22 — The Power Query analogue is a Composite preset, not a new node class
-**When:** 2026-07-22 (author: "re-use the existing Composite node + its drill-in view
-to set up a Power Query-esque data transformation node which … only transforms &
-refreshes manually").
-**The decision:** Solenoid's Get & Transform analogue is (1) a `"manual"` Composite run
-mode — computationally identical to Single run (one `runPass`), but ALWAYS heavy, so
-the existing arm-and-run hold applies: upstream ticks only flag the stale dot; the
-Solve button (relabelled **Refresh** with a refresh glyph in this mode) re-runs the
-chain — and (2) a **Query** Add-menu entry (`type: "query"`, paired with Composite)
-that is the SAME `CompositeNode` class pre-seeded: exposed **Table** input marker wired
-straight to a **Result** output marker, `runMode: "manual"`. No `QueryNode` class, no
-new persistence shape (it saves as a plain `CompositeNode`), no applied-steps list —
-the drill-in canvas IS the steps view, and the frame verbs are the steps.
-**Why:** the hold machinery (solveKey ref-tokens make a recomputed upstream frame
-stale, `internalEditSeq` makes a drill-in edit stale) is exactly Power Query's refresh
-model and already existed; a run mode + preset costs ~no new surface. One deliberate
-semantic: `requestSolve(insideOnly)` ignores `insideOnly` in manual mode — frame ports
-have no numeric seeds, so a drill-in Refresh always re-runs on the real wired inputs.
-Pre-seeded catalog entries ship a pending internal snapshot, so every add path now
-hydrates a CompositeNode right after `create()` (Canvas menu, `addNodeByCatalogType`,
-the drill-in add menu), mirroring the load path.
-**What would reverse it:** the container genuinely needing per-step preview/caching
-(a value box per verb inside the chain already gives most of this) or query-specific
-boundary typing that adoption can't express — either would argue for a real subclass.
+### D26 — A value's unit is FIRST-CLASS: only the algebra changes it
+5 m and 5 km are different values — relabeling a unit IS overwriting the
+magnitude, comparatively. An FC downstream of a united value LOCKS (mirrors,
+never re-authors); only Convert (or a tag-breaking transform) changes a unit.
+Join-key equality for dimensioned values: dimension symbol + base-SI magnitude
+(`5 km` == `5000 m`; currency display code is identity — $5 ≠ 5€). **Where:**
+`formatController.ts`, `unitFlow.ts`, `subsystem-invariants.md` § Unit flow.
+**Reopen if:** nothing — value-model integrity, same class as D5.
 
-### D23 — Formulas accept matrices (Tier 4 resolved: the D2 cap lifts, matrices-only)
-**When:** 2026-07-28 (author, with the `v2.0/17-matrix-formulas.md` packet on the
-table: "Yes — lift the limit").
-**The decision:** Expression / LAMBDA formulas will accept 2-D MATRICES with Excel
-dynamic-array semantics. Frames and cubes stay out of formulas (rung 4 was rejected
-on record — no Excel semantics to copy, competes with the verb engine, breaks
-lazy-FrameRef economics). This supersedes the "permanent" reading of the D2 formula
-cap; D2's OTHER half (the composite toolbar reroute) is untouched.
-
-**AMENDED 2026-07-28 (same day, author challenge): complex is NOT excluded.** The
-original clause read "frames, cubes and complex stay out" — but complex was
-piggybacking on reasons that only apply to frames/cubes (Excel HAS complex
-semantics: the IM* family), and its actual technical blocker (the [re,im]/2-list
-ambiguity) was removed by VAL-15 the same day. Worse, the exclusion was never
-enforced: `anydata` accepts the complex family, so tagged Cx values already flow
-into formulas — where operators concatenate them into "[object Object]1" and the
-Formula.js IM* names work on TEXT complexes ("3+4i") while refusing tagged ones.
-Complex-in-formulas is therefore a build, not an exclusion — LANDED same day: the
-IM* family (25 names + COMPLEX + QUADRATICROOTS) owned over tagged Cx running the
-shared kernels (now in `cxValue.ts`, rete-free), Excel's "a+bi" text and real
-numbers coerce IN (never out — results are tagged Cx), an operator on a Cx answers
-a typed #TYPE! (`=`/`<>` compare structurally, `&` renders via formatCx), and the
-FX-9 containment gate grew a `cxArgs` half (`formulaComplex.test.ts`).
-**The criteria that decided it** (fixed 2026-07-14): correctness + coherence only —
-the identity objection was retired by the author. What made it decidable now:
-registry unification is real through Tier 3 (one shared impl per function,
-node-equality-tested), and the VAL-15 complex rebrand removed the recorded
-shape-branding blocker, so `Array.isArray` at two depths IS the rank test — no
-branded-value wrapper, no type pass.
-**Bound rules (the packet, now normative):**
-- **Containment:** Formula.js never sees a matrix — a rank-2 argument dispatches
-  only to a declared, owned registration; the fallthrough stays 1-D permanently.
-- **Broadcast:** the eleven-row table in `v2.0/17-matrix-formulas.md` Part 2,
-  transcribed into `broadcastRules.test.ts` as one literal (SSOT-6).
-- **PAD:** split by operation kind, per the standing rulings — element-wise ragged
-  ops pad `null` (P3), shape CONSTRUCTION pads `#N/A` (D15). No new rule.
-- **Orientation:** a list is a ROW where orientation matters (SOCK-2's convention);
-  a column is spelled TRANSPOSE(list).
-**What would reverse it:** the broadcast table proving unimplementable without a
-grid (spill/`@` complications leaking in after all), or the transpiler (bundle 08)
-demonstrating the semantics diverge from Excel in ways users hit — either would
-argue for re-capping to 1-D, recorded as a new decision, not a silent revert.
-
-### D24 — Computed-column references use Excel TABLE semantics: bare = whole column, `@` = this row
-**When:** 2026-07-30 (author: "we're going to have to go with the Excel version").
-**Where:** `computedColumnCore.ts`, `excelFormula.ts` (the `colref`/`rowref` tokenizer
-+ `wholecol`/`atcol` AST — COL/AT are deleted, see the amendment below), the CC node +
-Frame Input Formula columns. Normative: rules.md FX-13.
-**The decision:** inside a computed-column formula, a bare column name is the WHOLE
-column as a list (Excel's `[Amount]`); `@name` is this row's cell (`[@Amount]`).
-For names an identifier can't spell, the BRACKET references do both — `[Unit
-Price]` whole, `@[Unit Price]` this row (Excel's own `[@Name]` / `[@[Name]]`
-spellings parse too; amended same day — the first cut shipped `col()`/`at()`
-functions and the author asked for the real Excel syntax; both functions are
-deleted, brackets are THE spelling). λ PARAMS stay row-bound — they are the λ's
-explicit per-row interface (`LAMBDA(revenue, revenue * 0.25)` reads the cell);
-picker bindings follow the same split (expr var → whole target column, λ param →
-row).
-**Why:** the v1 semantics (bare = this row) made the whole column UNSPELLABLE —
-`SUMIFS(amount, category, @category)` and `@revenue / SUM(revenue)` had no
-spelling — and was inconsistent (a bare side value already meant WHOLE). Worse, it
-carried a silent-wrong-answer trap: `revenue / SUM(revenue)` returned 1.0 per row
-(cell / SUM(cell)). Under D24 the failure flips loud: `price * qty` is a per-row
-`#SHAPE!` that points at `@` — exactly how modern Excel resolved the same tension
-when it retired implicit intersection.
-**Cost accepted:** `@` ceremony on the simplest per-row math; a week-one breaking
-change (exprs, seeds, tests rewritten — pre-alpha, no shim). Inside a λ BODY a
-bare free name is still a capture (the definition owns its names, 2026-07-30) —
-whole-column reads there are spelled `[name]` or wired via Get Column. Dynamic
-(computed) column names lost their spelling with `col(expr)` — accepted; that's
-Get Column / INDEX territory at the graph altitude.
-**What would reverse it:** nothing foreseeable — this IS the Excel model the
-surface exists to mirror; a change would be a new decision.
-
-### D25 — No per-cell formulas, ever: a computed column is 100% consistent
-**When:** 2026-07-31 (author: "I DON'T want formula in grid cell — that's too
-Excel. 100% unbreakably consistent columns are a must").
-**Where:** the TablePopup source model (one definition per column, in the header);
-`v2.0/19-computed-column-surface.md`.
-**The decision:** a column's definition lives on the COLUMN — one Formula or one λ
-for every row — and no surface may ever accept a formula typed into an individual
-grid cell. Excel's per-cell freedom is the disease this surface exists to cure:
-mixed-formula columns that LOOK uniform, break silently on sort/fill, and can't be
-audited. The former backlog idea "typing a formula into a grid column directly" is
-dead, not deferred.
-**Cost accepted:** none worth naming — the header formula row already covers entry.
-**What would reverse it:** nothing — this is identity, the same class as D10's
-eliminated-stays-eliminated.
-
-### D26 — A value's unit is FIRST-CLASS: only the algebra may change it
-**When:** 2026-07-31 (author, after the forwarding-lock fix: "it's important that
-a value's unit is treated as first class. you wouldn't just let its magnitude be
-overwritten. a unit change is in reality affecting the magnitude, comparatively").
-**Where:** `formatController.ts` (forwarding mirrors + LOCKS), `unitFlow`/`applyFcUnit`,
-`subsystem-invariants.md` "Unit flow".
-**The decision:** the unit is part of the value's identity, exactly like its
-magnitude — 5 m and 5 km are different values, so relabeling a unit without
-converting IS overwriting the magnitude, comparatively. Consequences: an FC
-downstream of a unit-carrying value LOCKS (mirrors the inherited unit; never
-re-authors); the ONLY thing that changes a value's unit is the algebra — Convert
-(which converts magnitude and unit together) or a transform that legitimately
-breaks the tag. The pre-fix "forwarding is editable for re-display" design let a
-downstream dropdown relabel a value's unit in place — the exact overwrite this
-forbids.
-**Cost accepted:** changing a display unit downstream takes a Convert node, not a
-dropdown flick.
-**Join-key equality for dimensioned values (2026-07-16, same principle):** a tagged
-unit does NOT match across dimensions or against a bare number. The key is the
-dimension symbol plus the BASE-SI magnitude, so `5 km` == `5000 m` (the same
-quantity) while `5 km` ≠ `5 kg` ≠ bare `5`. Currency is the one axis where the
-display CODE is the unit identity (no FX) — it joins the key, so $5 ≠ 5€
-(`frame.ts`).
-**What would reverse it:** nothing — this is the value model's integrity, the same
-class as D5's first-class null/error.
-
-### D27 — The AI layer is IN scope (reverses the #7/#19 ruled-OUT); marketing stays minimal
-**When:** 2026-07-31 (author: "I am reversing the AI layer being fully out. we'll keep
-marketing it to a minimum"). **Where:** `v2.0/README.md` (removed from the ruled-out
-list), backlog "AI command palette" item, `out-of-scope.md` §9.
-**Why:** the original OUT (2026-07-03 walk, #7 co-authoring / #19 the AI cage) predated
-the substrate that makes the feature safe and cheap: the text form is now the real save
-path (deterministic, name-addressed, fuzz-tested `textForm.ts`), D19 stabilized the
-function/node vocabulary, the headless runner covers generate→run→inspect, and the
-key-store + palette AI shell already shipped UI-only. What survives from the old
-ruling: the **positioning** half — the public story stays file-over-app/no-lock-in; AI
-is a capability, not the pitch (marketing minimal, per the author). The **cage framing
-survives as the design rule**: an AI edit proposes through the same governed, typed,
-validated path a human edit takes — never blind blob surgery, and graph-modifying
-actions need an approval step, not a chat log.
-**Provider:** Anthropic (author call, 2026-08-01; `aiService.ts`).
-**Cost accepted:** a provider dependency + a pasted-key UX; prompt-driven edits raise
-the bar on validation (a strict, repair-message-grade reader precedes any modify
-capability).
-**What would reverse it:** if the loop can't be made trustworthy (validated applies +
-approval) or the feature starts distorting the Excel-refugee focus into an AI-first
-pitch — the positioning ruling is the tripwire.
+### D27 — The AI layer is IN scope; marketing stays minimal
+Reverses the old #7/#19 ruled-OUT. The cage framing survives as the design rule:
+an AI edit proposes through the same governed, validated path a human edit takes,
+with an approval step. Positioning stays file-over-app; AI is a capability, not
+the pitch. Provider: Anthropic (`aiService.ts`). **Reopen if:** the loop can't be
+made trustworthy, or the feature distorts the Excel-refugee focus into an
+AI-first pitch.
 
 ### D28 — AI edit granularity: whole-document text-form rewrite, gated and diffed
-**When:** 2026-08-01, decided on prototype evidence (three docs — TVM mortgage, frame
-filter+group-by, Expression broadcast — authored from the generated grounding spec
-against the headless validate→run loop; each converged in ≤2 repair rounds, and every
-stumble was a SPEC gap, not a grammar/granularity problem).
-**Where:** the loop: `graphValidate.ts` + `scripts/ai-grounding.ts` + `run-graph`.
-**The decision:** the model reads the document's current text form and emits a FULL
-replacement; the strict validator gates the apply and the approval step shows the
-old→new text diff (the canonical byte-identical writer makes that diff honest and
-minimal). NO edit-op layer (add/remove/rewire operations) for the in-app AI: a second
-grammar to ground, a second validator, and partial-state semantics — pure cost while
-documents are model-sized (tens of lines, well inside reliable model output), and the
-validator + diff already deliver the safety an op layer would claim.
-**Cost accepted:** token cost scales with document size (the model echoes the whole
-doc per edit); a very large canvas would pay it on every prompt.
-**What would reverse it:** documents that outgrow reliable whole-doc regeneration
-(hundreds of nodes), or the #35 external-agent MCP port shipping — its typed tools ARE
-the op layer, and the in-app path could then reuse them.
+The model emits a full replacement; the strict validator gates the apply; the
+approval shows the old→new diff. NO edit-op layer — a second grammar/validator
+with partial-state semantics, pure cost at model-sized documents. **Reopen if:**
+documents outgrow reliable whole-doc regeneration, or the MCP port ships (its
+typed tools ARE the op layer).
 
 ### D29 — Aggregators are ARGUMENTS of their host verb, not searchable ops
-**When:** 2026-07-30 (author ruling, previously recorded only at the `nodeOps.ts`
-declaration site).
-**Where:** `nodeOps.ts` — the Group By hosts (list + frame) and every aggregator-host
-declaration are `kind: "argument"`.
-**The decision:** an aggregator (`avg`, `median`, …) is an argument of GROUP BY (and of
-the other aggregator hosts), not an operation in its own right. The Add menu / search
-never shows "Group By: MEDIAN"-style rows; the host node appears once and the
-aggregator is picked on the card.
-**Why:** `avg` on its own is meaningless at the Add-menu altitude — nobody searches for
-an aggregator, they search for the verb. Same reasoning as direction toggles
-(ascending/descending) and trigger conditions: parameters of ONE operation.
-**What would reverse it:** evidence that users search for aggregator names and fail to
-find Group By — that would argue for search ALIASES on the host, not per-aggregator
-rows.
+The Add menu shows the verb once; the aggregator is picked on the card. The
+operation-vs-argument framework (weigh, don't let the last signal win): would the
+user PICK it or could it arrive computed; does it have its own NAME (FX-4 can
+overrule — ops sharing a name cannot be operations); would the user SEARCH for
+it; is it meaningless without its host; is it an Excel function (corroborating
+only). Distribution .RT forms stay SEARCH ROWS (kind and menu are separate axes;
+rows must carry the searched token). **Where:** `nodeOps.ts` declarations.
+**Reopen if:** users search aggregator names and fail → search ALIASES on the
+host, not per-aggregator rows.
 
-**The general framework (promoted from the `nodeOps.ts` header):** classifying an op
-declaration as OPERATION vs ARGUMENT is a judgement over partial signals — weigh them,
-don't let the last one written win. (1) Would the user PICK it, or could it arrive
-computed? Hand-picked reads "operation"; computable reads "parameter". (2) Does it have
-its own NAME? This can OVERRULE the others because FX-4 is a rule, not a signal: an
-operation-kind op claims a formula name from its label, so a family whose ops SHARE a
-name cannot be operations. (3) Would the user SEARCH the Add menu for it ("Sankey" yes,
-"avg" no)? (4) Is it meaningless without its host? (5) Is it an Excel function in its
-own right (corroborating, not deciding)? The contested worked examples: an ELEMENT
-symbol is hand-picked AND searchable, yet is data a column could supply and a row per
-element would bury the menu — argument. A RESISTOR band count is never computed, yet
-"4-band decode" isn't a different operation from "5-band" — argument. DISTRIBUTION
-forms (cdf/pdf) are hand-picked and Excel spells the tails (CHISQ.DIST.RT), but the
-forms share one function name per family — argument, WITH search rows (`kind` and the
-menu are separate axes, so declaring the ops still generates a search row per form).
-**Author ruling 2026-08-01: the .RT forms stay SEARCH ROWS, not leaves — so search has
-to actually find them** (the meta labels are dropdown prose and disagree across
-families — T.DIST says "RT" where CHISQ.DIST says "Right-tail" — which cost the
-ranking: querying "CHISQ.DIST.RT" ranked the PDF row above the Right-tail one because
-no row carried the token `rt`).
+### D30 — Comment minimalism: knowledge lives in specs/tests/commits
+Deletion is the default outcome for a comment under review; a survivor states a
+line-granular constraint invisible in code, types, tests, specs, and commits.
+History → commits; rulings → decisions/specs; investigations → dev-notes. Test
+files exempt for now. **Where:** `code-comments.md` (policy), README "Code → spec
+routing". **Reopen if:** repeated regressions a comment would have prevented —
+fix routing first; comment copies are the last resort.
 
-### D30 — Comment minimalism: knowledge lives in specs/tests/commits, comments are last resort
-**When:** 2026-08-04 (author: spec-driven development; "fight the instinct to put
-everything in code comments").
-**Where:** the policy spec is `docs/code-comments.md`; routing lives in `README.md`
-"Code → spec routing".
-**The decision:** the default outcome for a comment under review is deletion; a
-surviving comment must state a line-granular constraint invisible in code, types,
-tests, specs, and commit history. Revision history → commit messages; rulings →
-decisions/specs; investigations → dev-notes with ZERO code-side residue for routed
-files; headers cite specs, never excerpt them; no signature-restating JSDoc; no
-English translations of adjacent code. Test files exempt, for now.
-**Why:** comment copies are how specs stop being authoritative — every copy is a place
-the spec can be contradicted, and pointer residue regrows into thousands of lines.
-**Cost accepted:** a future session may occasionally hit a wall a deleted comment would
-have padded; the padding cost every reader on every visit, and the wall has a spec
-behind it.
-**What would reverse it:** evidence that agents repeatedly miss routed specs and
-introduce regressions a comment would have prevented — that argues for better routing
-(or machine checks), and only as a last resort for reinstating comment copies.
-
-### D31 — Table Input: the raw text is the STORED TRUTH; blank rows are preserved everywhere
-**When:** 2026-07-16 (author: "tables get set up with blank rows for operations").
-**Where:** `nodes/matrix.ts` (`keepBlankLines`), `TablePopup.tsx` (the grid popup
-re-serializes through the same parse).
-**The decision:** the editors never coerce the Source text; only the DERIVED matrix
-coerces (blank → null). A blank line the user typed is a row of missing cells and
-stays wherever it is — leading, interior, AND trailing. The only thing dropped is the
-phantom row from the text's final newline terminator.
-**Why:** dropping blank lines didn't just blank the derived row — a popup save
-re-serialized through the parse and permanently DELETED the row from the text.
-**What would reverse it:** nothing foreseeable — silent data deletion is the failure
-this guards.
+### D31 — Table Input: raw text is the STORED TRUTH; blank rows preserved
+Editors never coerce the Source text; only the derived matrix coerces (blank →
+null). A typed blank line survives everywhere — leading, interior, trailing.
+Guard: a popup save re-serializing through a lossy parse silently DELETED rows.
+**Where:** `nodes/matrix.ts` `keepBlankLines`, `TablePopup.tsx`.
 
 ### D32 — String ordering is BYTE order, not locale
-**When:** 2026-07-12 (previously recorded only in archived plans + the
-`stringOrder.ts` header).
-**Where:** `stringOrder.ts` — the `<`/`>`/`≤`/`≥` comparisons and every string SORT.
-**The decision:** compare by JS `<`/`>` on the raw string (UTF-16 code-unit order),
-NOT `localeCompare`. (1) DETERMINISM — `localeCompare` depends on the host's
-ICU/locale data, so the same graph could sort differently on two machines; byte order
-is a pure function of the strings. (2) BACKEND PARITY — native Polars orders strings
-by UTF-8 byte order; the JS oracle must match for byte-identical Frame Sort/Filter on
-both backends. Ordering is case- and accent-SENSITIVE ("Z" < "a", "e" < "é"). This
-does NOT govern UI list ordering — the Navigator, file lists, and menus keep
-locale/natural sort.
-**Cost accepted:** UTF-16 code-unit order equals UTF-8 codepoint order across the
-whole BMP, so this is Polars-exact for ordinary text; it diverges only for
-astral-plane characters (U+10000+, some emoji), where surrogate pairs sort against
-U+E000–U+FFFF differently — an edge case deliberately not chased.
-**What would reverse it:** a user-facing demand for locale-aware data sorts — which
-would have to come with a per-document locale pin to preserve determinism, recorded
-as a new decision.
+JS `<`/`>` on raw strings (UTF-16 code units) for every comparison and data sort:
+determinism (no host ICU dependence) + Polars byte-order parity. Case- and
+accent-sensitive; diverges from UTF-8 only on astral-plane characters
+(deliberately not chased). UI lists keep locale/natural sort. **Where:**
+`stringOrder.ts`. **Reopen if:** demand for locale-aware data sorts — needs a
+per-document locale pin, recorded as a new decision.
 
 ---
 
-## Structural risks (the threats register — distinct from bugs)
+## Structural risks (standing conditions, not bugs)
 
-Not defects and not opportunities — standing conditions.
-These are standing conditions that could hurt the project; each pairs with its mitigation.
-
-- **R1 — Single-author bus factor.** The entire design context lives with one person +
-  these docs. *Mitigation:* this exact doc series, the machine-checked seeds, the
-  reconcile-the-docs rule. The more the reasoning is written (decisions, glossary,
-  invariants), the lower this risk — which is the strongest argument for this whole pass.
-- **R2 — Renderer's external flag (D6).** `CanvasDrawElement` reaching stable browsers is
-  outside the project's control. *Mitigation:* DOM renderer is the permanent default;
-  HTML-canvas is an enhancement, not a dependency. Low residual risk by design.
-- **R3 — Polars API churn.** Pinned at 0.46; it's a fast-moving pre-1.0-feeling library.
-  Upgrades may break the engine. *Mitigation:* the `FrameBackend` seam + the JS oracle
-  (`frameVerbs.ts`) as a reference implementation + the cargo parity tests. Keep the JS
-  oracle authoritative so a Polars break is detectable, not silent.
-- **R4 — The web/desktop parity tax (consequence of D1).** Two engines that must agree;
-  the audit found real drift. *Mitigation:* schema-inference (future-directions Bet 3)
-  turns drift into a contract violation; more cargo parity tests. This is a permanent
-  maintenance cost, not a one-time fix — budget for it.
-- **R5 — Scope-creep pressure toward the "out-of-scope" categories.** The most-requested
-  features (a code cell, a live grid, collaboration) are exactly the identity-killers.
-  *Mitigation:* the out-of-scope draft, once ratified, plus D2 as the precedent that
-  "we say no to power-user escape hatches on purpose."
-- **R6 — Doc rot.** The project's named, recurring failure mode. *Mitigation:* the
-  reconcile-don't-append rule; the docs index (`docs/README.md`); verifying claims against
-  code.
+- **R1 — Single-author bus factor.** Mitigation: the doc series + machine-checked
+  seeds + the reconcile rule.
+- **R2 — The renderer's external flag (D6).** Mitigation: DOM renderer is the
+  permanent default; HIC is an enhancement.
+- **R3 — Polars API churn** (pinned 0.46). Mitigation: the `FrameBackend` seam +
+  the JS oracle as reference + cargo parity tests.
+- **R4 — Web/desktop parity tax (D1).** Two engines that must agree — a permanent
+  maintenance cost; budget for it.
+- **R5 — Scope creep toward the out-of-scope set.** The most-requested features
+  (code cell, live grid, collaboration) are the identity-killers; `out-of-scope.md`
+  is the shield.
+- **R6 — Doc rot.** The project's named failure mode. Mitigation: reconcile-don't-
+  append; the README index; verify claims against code.

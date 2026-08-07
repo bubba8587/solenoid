@@ -53,41 +53,39 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
   copy governs `src/graph/help/*.md`, every `nodeCatalog` description, tooltips and empty states;
   read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
 - **`docs/rules.md` — the NORMATIVE architecture spec. Read before changing sockets, the
-  formula surface, naming, or value handling.** 72 numbered MUST-rules (`SSOT-n`, `SOCK-n`,
+  formula surface, naming, or value handling.** Numbered MUST-rules (`SSOT-n`, `SOCK-n`,
   `FX-n`, `VAL-n`, `PERSIST-n`, `ENGINE-n`, `EFFECT-n`, `STORE-n`, `PROV-1`), each naming
-  the test that enforces it or marked UNENFORCED. Covers the
-  invariants that CANNOT be caught by looking at the app — a broken socket rule, a wrong
-  formula name or a mishandled null yields a plausible answer, not a visible defect. Cite
-  rule IDs in comments and commits. Exceptions live under their own rule so the count stays
-  visible; a known-violations list at the bottom is the live work queue for it.
+  the test that enforces it or marked UNENFORCED. Covers the invariants that CANNOT be
+  caught by looking at the app — a broken socket rule or a mishandled null yields a
+  plausible answer, not a visible defect. Cite rule IDs in comments and commits.
 - **`docs/subsystem-invariants.md`** — full mechanics + invariants for the tricky subsystems
   (indexed below).
-- **`docs/decisions.md`** — the decision log (what/why/what-would-reverse-it). Check it so a
-  change doesn't RELAPSE on a recorded decision — D10 is the standing example: "Excel parity"
-  means CURRENT Excel only; an eliminated function (VLOOKUP/MATCH…) stays eliminated on every
-  surface. This is a relapse-guard, NOT a caution brake: there is NO rule that a cross-cutting
-  change needs a design pass or author sign-off (that reflex is obliterated by author order).
-  Decide each change on its merits, do it, record it. The ONLY author-gated work is the
-  explicitly-named set: never push `main`/releases; D2 (composite toolbar reroute) and D4
-  (conditional formatting), both deferred author-present.
+- **`docs/decisions.md`** — the decision log (what stands / where / what would reopen it).
+  Check it so a change doesn't RELAPSE on a recorded decision — D10 is the standing example:
+  an eliminated function (VLOOKUP/MATCH…) stays eliminated on every surface. It is a
+  relapse-guard, NOT a caution brake: no cross-cutting change needs a design pass or author
+  sign-off (that reflex is obliterated by author order). Decide on merits, do it, record it.
+  The ONLY author-gated work: never push `main`/releases; D2 (composite toolbar reroute) and
+  D4 (conditional formatting), both deferred author-present.
 - **`docs/layout-chrome.md`** — the on-screen chrome map. READ BEFORE ADDING/MOVING ANY BAR OR
-  FLOATING OVERLAY: offsets are hand-keyed magic numbers with no shared envelope var — this is
-  the sync map (the source of the recurring "overlay overlaps a bar" bugs).
+  FLOATING OVERLAY. Vertical envelopes are measured (`--chrome-top`/`--chrome-bottom` — derive,
+  never hand-key); the rest of the offsets/z-index are the sync map (the source of the
+  recurring "overlay overlaps a bar" bugs).
 - `docs/node-coverage.md` — node inventory; `nodeCatalog.ts` is the real source of truth (Add
   menu + Function Reference generate from it). Adding a node: the `add-node` skill /
   `scripts/new-node.mjs`. `docs/architecture.md` — the file map.
 - `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
   `docs/deferrals.md` — the deferred/parked/author-gated set behind the backlog's single
   Deferral-review item. `docs/dev-notes.md` — open problems + the latest session digests only.
-- Rationale/reference: `docs/socket-reference.md` (all 31 socket variants — what each
+- Rationale/reference: `docs/socket-reference.md` (every socket variant — what each
   accepts, what it's blocked from, what the coercion boundary does; read before typing
   a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
   table, mirrored in `formatModel.ts` — read before touching FC controls),
   `docs/value-semantics.md` (incl. the WIRED-blank vs typed-literal spec — read
-  "Reading an input" before writing a node's `data()`),
-  `docs/cube-node-scope.md`, `docs/pack-architecture.md`, `docs/excel-toolbar-supplementals.md`,
-  `docs/formula-node-parity.md`, `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/`
-  (open plan bundles). Finished/point-in-time docs: `docs/archive/` (see its README).
+  "Reading an input" before writing a node's `data()`), `docs/pack-architecture.md`,
+  `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/` (open plan bundles).
+  Finished/point-in-time docs: `docs/archive/` (see its README — incl. the parity
+  program record, cube scoping, and toolbar-parity verdicts, archived 2026-08-07).
 - **`docs/code-comments.md` (D30) — the comment policy: comments are the LAST-RESORT home;
   default outcome for an existing comment is deletion.** History → commits; rulings →
   decisions/specs; investigations → dev-notes. Before editing a file, grep it in the
@@ -320,33 +318,24 @@ Read the relevant section there before touching one of these. The one-line "don'
   ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs).
 
 ### Capability map (orientation only — verify in code/docs before relying on detail)
-- **Canvas**: cables (3 shapes, ribbons), groups (collapse/push/autofit), standoffs, Conduits,
-  Tidy/Cleanup (ELK), isolate, minimap (canvas-drawn), lasso, snap-to-grid, undo/copy/paste,
-  single-key shortcuts (A/G/I/T/E/F/C/N; F9 calculate), command palette, presenter mode,
-  cinematic load reveal, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  html-in-canvas GPU render mode (DOM stays the permanent default/fallback); AI palette mode
-  (D27/D28: prompt → prose answer or validator-gated whole-doc rewrite with diff approval;
-  Anthropic key in Settings ▸ AI; `aiService.ts`/`graphValidate.ts`/`aiGrounding.ts`).
-- **Value model**: frames (named typed columns), cubes (recursive nesting), matrices/lists/
-  scalars; first-class null/logical/SolError; units by dimensionality with `#UNIT!` algebra;
-  Format Controller (value-mutating unit author + display-format annotations); type-default
-  display (a date reads `20-Mar-2026` anywhere, no FC needed).
-- **Engine**: full relational verb set (Filter/Sort/Join incl. as-of/Group By/Append/Distinct/
-  Pivot/Unpivot/Nest/Unnest/XLOOKUP/Split Column/cleanup verbs…) — lazy `FrameRef` chains fused
-  into one Polars round trip on desktop, identical JS oracle on web (`frameVerbs.ts`, cargo
-  parity tests); manual/automatic/sketch calc modes; headless runner (`npm run run-graph`);
-  Write CSV/JSON/Obsidian sinks; live connections (Web Source, CSV, Data Feed) + auto-refresh.
-- **Nodes**: current-Excel function parity (native families + Formula.js via Expression/LAMBDA —
-  rank ≤ 2 since D23: scalars/lists/matrices + tagged complex; frames/cubes stay out), Equation
-  (acausal solve), composites
-  (drill-in editor; run modes: goal-seek/scenarios/data-table/simulation/Monte Carlo/by-row/
-  manual-refresh — the Query catalog preset = a composite in manual mode, D22), charts
-  (recharts + canvas-drawn figures + draw-your-data controls), Note (frontmatter → typed output
-  sockets — a pure SOURCE) / Report (`` `=name` `` embeds — a pure SINK; the two are deliberate
-  opposites, not convertible) / Mermaid, ~10 domain packs (one file per pack on
-  `packs/packShared.ts`, each with a formula-pinning vitest file), Placeholder for unknown types.
-- **Desktop**: Tauri shell (Windows portable exe), native Polars engine + CSV reader, F12
-  devtools, F11 fullscreen, accent window border, image bundling beside the doc.
+- **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
+  lasso, undo/copy/paste, single-key shortcuts (F9 calculate), command palette, presenter
+  mode, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
+  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (D27/D28:
+  validator-gated whole-doc rewrite with diff approval; Anthropic key in Settings ▸ AI).
+- **Value model**: frames / cubes (recursive) / matrices / lists / scalars; first-class
+  null/logical/SolError; units by dimensionality with `#UNIT!` algebra; the FC (unit author
+  + display-format annotations); type-default display.
+- **Engine**: full relational verb set — lazy `FrameRef` chains fused into one Polars round
+  trip on desktop, identical JS oracle on web (`frameVerbs.ts`, cargo parity tests); calc
+  modes; headless runner (`npm run run-graph`); Write CSV/JSON/Obsidian sinks; live
+  connections (Web Source, CSV, Data Feed).
+- **Nodes**: current-Excel function parity (rank ≤ 2 per D23), Equation (acausal), composites
+  (drill-in; run modes incl. Monte Carlo/by-row; Query = manual-mode preset, D22), charts,
+  Note (pure SOURCE) / Report (pure SINK — deliberate opposites) / Mermaid, ~10 domain packs,
+  Placeholder for unknown types.
+- **Desktop**: Tauri shell (Windows portable exe), native Polars + CSV reader, F12 devtools,
+  accent window border, image bundling beside the doc.
 
 ### Standing constraints (quick list — details in decisions.md / backlog.md)
 - Author-gated: `main`/releases; D2 composite toolbar reroute; D4 conditional formatting.

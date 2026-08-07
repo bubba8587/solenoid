@@ -17,6 +17,9 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`node-arity-audit.md`](node-arity-audit.md) — *condensed.* The labeled-slots-vs-list-socket KEEP verdicts (rule also lives in `node-coverage.md`).
 
 ### Still-consumed reference — kept whole; cited by live code / docs
+- [`formula-node-parity.md`](formula-node-parity.md) — *archived 2026-08-07, program complete (548/548 in-scope leaves callable).* The D19 parity program record; the **Formula.js divergence catalogue** section stays the routed reference for `excelFunctions.ts` overrides.
+- [`cube-node-scope.md`](cube-node-scope.md) — *archived 2026-08-07, shipped.* The Cube model + node set rationale; live summary in `../node-coverage.md`, deferred slices in `../deferrals.md`.
+- [`excel-toolbar-supplementals.md`](excel-toolbar-supplementals.md) — *archived 2026-08-07.* The ribbon-by-ribbon non-function parity verdicts (all open questions answered 2026-07-05).
 - [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point / function-gap research that seeded the parity work.
 - [`formulajs-vs-native-audit.md`](formulajs-vs-native-audit.md) — the per-family formula.js-vs-native verdicts cited by `excelFunctions.ts`.
 - [`reference-packs.md`](reference-packs.md) — the reference-pack licensing decision + candidate pack menu.
@@ -38,7 +41,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
 
 ### Dev-notes history
-- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-07-29p + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
+- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-08-04a + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
 - [`17-matrix-formulas.md`](17-matrix-formulas.md) — the Tier 4 decision packet, decided as D23 (2026-07-28) and built; live truth is D23 + `broadcastRules.test.ts`.
 - [`18-parity-corpus.md`](18-parity-corpus.md) — the backend parity-corpus bundle, shipped 2026-07-29 as FX-12.
 - [`19-computed-column-surface.md`](19-computed-column-surface.md) — the computed-column surface design bundle, fully landed 2026-07-31 (note: the doc's `source` variant and "Typed" label shipped as sibling `expr?`/`lambda?` fields and the "Data" label).
