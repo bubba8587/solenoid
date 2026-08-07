@@ -591,7 +591,8 @@ Program record: `docs/archive/formula-node-parity.md`.
 ### FX-1 — One implementation, two surfaces **[INFERRED]**
 **MUST:** a function callable from BOTH a node and a formula has exactly one
 implementation, in a rete-free module (`nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`,
-`mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`). Both callers delegate to it.
+`mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`, `nodes/matrixOps.ts`, `cxValue.ts`).
+Both callers delegate to it.
 
 *Why:* the two surfaces drifted for exactly as long as they were two implementations.
 *Enforced by:* `formulaTier3.test.ts` → "every Tier 3 name computes what its node
@@ -609,7 +610,8 @@ or the frame model.
 
 *Why:* the headless formula path (`run-graph`, the evaluator) should not load the editor.
 *Enforced by:* `formulaPathIsReteFree.test.ts` → "no module reachable from
-excelFormula/excelFunctions imports rete or sockets" — walks the import graph and
+excelFormula/excelFunctions imports rete or sockets" — walks the import graph (the
+frame-model clause is UNENFORCED by the walk — true today, reading rule) — and
 fails on any reachable `rete` or `sockets` import.
 *Origin:* `interpolateLinear` lived in `stats.ts` and had to move to `mathUtils.ts` before
 `INTERPOLATE` could be registered. The rule was VIOLATED while it was unenforced:
@@ -669,12 +671,17 @@ never-broadcast.
 question that has one; with a list-returning function it builds a 2-D value behind the D2
 cap's back.
 *Enforced by:* `formulaTier3.test.ts` → "the whole-list routing"; `rangeRouting.test.ts`.
+(The list-returning sweep iterates `rank === "list"` registrations only — a
+`rank: "matrix"` entry is outside the pin; none violates today.)
 
 ### FX-6 — Argument prep matches the function's shape, not its category **[INFERRED]**
-**MUST:** a routed function declares which null/error policy applies:
-**raw** (positions preserved, cell errors ride along) for position-preserving ops;
-**pooled** (nulls dropped per array) for aggregators;
-**paired** (index-aligned pairwise drop) for term-by-term functions.
+**MUST:** a routed function declares which null/error policy applies — five exist:
+**RANGE_RAW** (cells untouched — the COUNT family, which classifies rather than
+computes); **RANGE_POSITIONAL** (positions preserved — lookups/index ops);
+**RANGE_ZERO_FILL**; **RANGE_PAIRED** (index-aligned pairwise drop) for term-by-term
+functions; and the unnamed DEFAULT (pooled — nulls dropped per array) for
+aggregators. Position-preserving whole-list natives bypass `prepRangeArgs` entirely
+via `takesWholeArgs`.
 
 *Why:* the aggregator policy is wrong for a position-preserving op —
 `REVERSE([1,null,3])` must be `[3,null,1]`, never `[3,1]` — and the paired policy is wrong
@@ -718,7 +725,8 @@ scalars. The Formula.js fallthrough stays 1-D permanently.
 through a registration declaring `cxArgs` (the IM* family, owned over Cx);
 everywhere else a complex operand answers a typed `#TYPE!` naming that family.
 Exempt: the `NULL_INSPECTING` value-passers (IF hands a complex branch through;
-type predicates must SEE it) and whole-list natives (position-preserving shape
+type predicates must SEE it), the `ERROR_HANDLER_FUNCTIONS` (they return before the
+Cx gate — a catcher sees its raw operand), and whole-list natives (position-preserving shape
 ops on opaque elements — `REVERSE` of a complex list is legitimate; their numeric
 members coerce a Cx like any other non-number, the family-wide list policy).
 
@@ -752,9 +760,11 @@ answers wrong, so a vendored-engine update that silently changes behaviour fails
 suite and forces a re-evaluation instead of a silent regression (in either direction).
 
 *Enforced by:* `formulaDivergence.test.ts` → "FX still has the sign bug (tripwire —
-re-evaluate the override if this fails)" and its siblings — MOD's divisor-sign,
-ATAN2's argument order, RANK, VALUE's strictness (`VALUE("abc")` is `#VALUE!`, not
-FX's silent 0), each divergence paired with its tripwire twin.
+re-evaluate the override if this fails)" and its siblings. Tripwire TWINS exist for
+MOD, ATAN2, TEXT, VALUE (`VALUE("abc")` is `#VALUE!`, not FX's silent 0),
+NUMBERVALUE and DOLLAR; the remaining overrides (QUOTIENT, ROUND, RANK, TRIMMEAN,
+PERCENTRANK) are pinned in the Excel-correct direction only — their describe titles
+record the FX divergence but no twin asserts FX is still wrong.
 *Origin:* author-flagged 2026-06-25; recovered from the audit notes after the original
 sweep script was lost — which is why the pins live in the suite now.
 
@@ -766,7 +776,8 @@ sweep script was lost — which is why the pins live in the suite now.
   (`frameVerbCorpus.test.ts` through the oracle, `corpus_cases` in
   `engine/tests.rs` through Polars).
 - A verb without corpus cases does not ship: the completeness guard requires a
-  fixture file per verb in `FRAME_OP_KINDS` + `BINARY_VERBS`, and a new `FrameOp`
+  fixture file per verb in `FRAME_OP_KINDS` + `BINARY_VERBS` + the `pipeline`
+  fixture (sequential-vs-fused parity), and a new `FrameOp`
   kind fails compile before it fails the guard.
 - Verbs only ONE side runs are declared, not skipped: an `ORACLE_ONLY_VERBS` entry
   (pivot) makes cargo assert the engine still does NOT parse the op, so the
@@ -838,7 +849,8 @@ wired-missing (null)", "a WIRED null propagates — NOT swallowed into the liter
 centralized as `isNaError`. A bare `NaN` is not an error.
 
 *Enforced by:* `errorValue.test.ts` → "ISERROR (Test) and IFERROR agree: only a tagged
-error counts (a bare NaN does not)".
+error counts (a bare NaN does not)". (The centralization clause itself is a reading
+rule — nothing fails if a second local `#N/A` comparison appears.)
 
 ### VAL-3 — Error in, error out, without running the node **[INFERRED]**
 **MUST:** every `data()` is wrapped by `installErrorGuards`; an error input propagates to
@@ -853,9 +865,13 @@ guard as `#SHAPE!` instead of escaping both wrappers into the engine.
 the two pipes in order; the composite paths called `installErrorGuards` BEFORE `addNode`
 (guard inside — inverted) from their creation until 2026-07-28, found by the
 spec-promotion sweep and fixed (guards now install after `addNode` at all four sites).
-*Exceptions:* **error CONSUMERS** (`IFERROR`/`IFNA`/`ISERROR`/`ISNA`/`ERROR.TYPE`) must
-see the raw error, and **figure SINKS** (`SEES_ERRORS`) render an error input as an empty
-figure and never emit a SolError out a `chart` socket. Both are declared, not ad hoc.
+*Exceptions:* ONE node-side declaration, `SEES_ERRORS` (errorValue.ts), holds every
+exempt class: error CONSUMERS (IFError, IsTest), lane RELAYS (Conduit, CableSwitch —
+the any-error → all-outputs rule would poison sibling lanes), raw READERS (Display,
+Note, Report), and the figure SINK (Chart — renders an error input as an empty figure,
+never emits a SolError out a `chart` socket). The formula-side consumer set is
+`ERROR_HANDLER_FUNCTIONS` (`IFERROR`/`IFNA`/`ISERROR`/`ISERR`/`ISNA`/`ERROR.TYPE`).
+All declared, not ad hoc.
 **Removed by:** nothing — a catcher that can't see the error can't catch it.
 
 ### VAL-4 — Errors carry provenance **[INFERRED]**
@@ -937,8 +953,9 @@ unwrap). **A new algebra node MUST set `unitAware = true`.**
 5 km > 3 regression)", "unit-aware nodes and passthroughs keep the tags" cover the
 BEHAVIOUR. Completeness: `sourceInvariants.test.ts` → "every algebra-calling node file
 declares unitAware = true" — a source scan over `nodes/` + `packs/` for the per-cell
-algebra identifiers (isUnitCell / dimOf / magnitudeOf / the *Units combinators /
-broadcastUnit), with a sanctioned-list honesty check. The matrix-unit family
+algebra identifiers (isUnitCell / dimOf / magnitudeOf / arithmeticCell /
+compareUnits / forAggregateUnits / broadcastUnit / anyDimensioned), with a
+sanctioned-list honesty check. The matrix-unit family
 (matrixUnitOf / carryMatrixUnit / …) is deliberately outside the consuming set: a D20
 matrix unit tags the outer array of a bare-number grid and survives the unit-blind
 strip, so a unit-blind reshape carrying it is correct.
@@ -996,7 +1013,10 @@ values inline. Load restores the maps ONLY onto declaring classes, so a save or 
 cannot hardcode a value the user can't see.
 
 *Enforced by:* `coerceInputs.test.ts` → "every catalog node with a typeable list input
-declares stringLiterals" — the IF direction. The ONLY-IF direction:
+declares stringLiterals" — the IF direction, for typeable-list inputs only (the
+general declares-iff-edited IF half is by review). BOTH load paths carry the gate
+(persistence.ts AND the composite hydrate — the latter was unguarded until the
+2026-08-09 audit). The ONLY-IF direction:
 `catalogRegistry.test.ts` → "no class declares a literal map its component never edits" —
 every declaring class's registered component source must contain an editing surface
 (InlineInputs / ExtensibleInputs / a direct `literals` / `stringLiterals` reference), so
@@ -1094,8 +1114,9 @@ combinator"); the sweep's first run found the four live wrong answers above.
 the producer classifies via `guardFinite` (valueKinds.ts): `NaN` → `#DOMAIN!`; `±Inf`
 from all-FINITE inputs → `#OVERFLOW!`; `±Inf` when an input was already infinite PASSES
 (the Constant node's ∞ is first-class). Guarded producers: the element-wise broadcasters
-(shared.ts), the formula operators (`applyOp`/unary/percent), `broadcastCall`, and the
-RANGE dispatch. A kernel with its own recorded non-finite convention (a quiet null, a
+(shared.ts), the formula operators (`applyOp`/unary/percent), `broadcastCall`, the
+RANGE dispatch, the frame aggregation path (`guardAgg`, frameVerbs) and the native
+engine's result normalizer (frameBackend). A kernel with its own recorded non-finite convention (a quiet null, a
 tagged error, IMDIV's `cx(NaN, NaN)`) is the deliberate alternative, not an exemption
 from deciding.
 
