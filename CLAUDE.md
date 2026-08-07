@@ -43,6 +43,14 @@ Visual computation graph tool — a node-based "Excel alternative" for data tabl
 (`node.data()` methods). Relational verbs run on native Polars (Rust) on desktop, an identical JS
 oracle on web, behind the `FrameBackend` seam.
 
+### Current phase — 1.3 polish (author pivot, 2026-08-07; reconcile at the 1.3 cut)
+**1.3 ships basically as-is.** The queue (`docs/backlog.md`) is bugs, small patches, and
+thorough SMALL-SCOPE polish sweeps — one node family, one seam, one subsystem at a time,
+investigated completely, fixed, pinned with a test, one terse digest line. Depth on
+something small beats breadth on anything. Feature-shaped work is parked in
+`docs/deferrals.md` "Pushed to 1.4/2.0" — do NOT start it on your own initiative, even
+when a sweep makes it tempting; note the finding and stay on scope.
+
 ### Docs map
 Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs/README.md` (the
 index), `docs/glossary.md` (the invented vocabulary — read before the deep dives).
@@ -150,6 +158,18 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
 3. Update the relevant subsystem/coverage/architecture doc if a mechanism or the file map
    changed. A doc whose job is DONE moves to `docs/archive/`.
 "Reconcile" = verify each claim against current code, not just record what you touched.
+
+**Write OUTCOMES, not narratives (the 2026-08-07 cutdown's standing rule).** Verbosity in a
+doc architecture is a hazard, not a style choice: stale narrative reads as current truth
+(two phantom-gesture incidents came from exactly that), and every duplicated restatement is
+a place a spec can be contradicted. Concretely:
+- A doc entry states what STANDS, where it's enforced, and what would reopen it. Build
+  history, amendment chains, "closed so far" ledgers → commit messages and git.
+- Never duplicate a spec's content into this file or another doc — point at it. One home
+  per fact; a second copy is future drift.
+- Deletion is the default for anything historical, superseded, or restating what a test
+  already pins. When unsure whether prose earns its lines, ask "does an agent need this to
+  act correctly right now?" — if not, cut it.
 
 ### Architecture notes (the traps)
 - **The pixi renderer (`src/graph/pixi/`) is DEPRECATED — do not maintain it.** Live renderers:

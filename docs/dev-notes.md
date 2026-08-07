@@ -116,7 +116,12 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   violations" compressed to the one live item (the closed-history paragraph → git);
   release-notes-features caught up on the 2026-08 arc — AI palette added as a
   headliner, body lines for the one-paint card frame (the known-issues seam entry
-  retired), frame-input EXAMPLE hints, error boundaries, and the touch-polish batch. — subpixel purge: border seam + note-ring overhang SOLVED)
+  retired), frame-input EXAMPLE hints, error boundaries, and the touch-polish batch.
+- **The posture is now IN CLAUDE.md** (pass 4): a "Current phase — 1.3 polish" section
+  (small-scope sweeps only; parked work stays parked even when a sweep tempts) and the
+  cutdown's standing rule under Doc maintenance ("write OUTCOMES, not narratives" —
+  one home per fact, deletion as the default for history). Both were only in
+  backlog/digest before, which a quick session never loads. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
