@@ -414,3 +414,17 @@
 }
 .fr-sockets .solenoid-legend__row { margin-bottom: 13px; }
 .fr-sockets .solenoid-legend__type { font-size: 14px; }
+
+/* Row-expandable catalog descriptions: a row with one shows it on tap/click in
+   a full-width line beneath — the dense table stays dense, and touch (no
+   hover) reaches the same text the node's header tooltip carries. Tiny and
+   tightly wrapped on purpose. */
+.fr-row--expandable { cursor: pointer; }
+.fr-desc-row td {
+  padding: 2px 10px 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  max-width: 0; /* table-layout escape: wrap to the table's width, don't widen it */
+  white-space: normal;
+}

@@ -19,6 +19,8 @@ export function FunctionReference() {
   const tab = useSyncExternalStore(frStore.subscribe, frStore.tab);
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState<string | "All">("All");
+  // The row whose catalog description is expanded beneath it (tap/click toggles).
+  const [openDesc, setOpenDesc] = useState<string | null>(null);
   // Opposite slices of the unimplemented rows, so one exclusive mode, not two booleans.
   const [filterMode, setFilterMode] = useState<"all" | "todo" | "oos">("all");
   const [showExcel, setShowExcel] = useState(true);
@@ -190,16 +192,24 @@ export function FunctionReference() {
                     <tr key={`gh-${g.key}`} className="fr-group-row">
                       <td colSpan={showExcel ? 7 : 5}>{g.label}</td>
                     </tr>,
-                    ...gr.map((r, i) => {
+                    ...gr.flatMap((r, i) => {
                       const isSolOnly = r.excel === null;
-                      return (
-                        <tr key={`${g.key}-${i}`}>
+                      const rowKey = `${g.key}-${i}`;
+                      const expandable = !!r.description;
+                      const rows = [
+                        <tr
+                          key={rowKey}
+                          // Tap/click toggles the catalog description under the
+                          // row — the table stays dense; touch reaches it too.
+                          className={expandable ? "fr-row--expandable" : undefined}
+                          onClick={expandable ? () => setOpenDesc(openDesc === rowKey ? null : rowKey) : undefined}
+                        >
                           <td className={`fr-td-sol${r.implemented ? "" : " fr-td-sol--missing"}`}>
                             {!r.implemented ? "—" : r.catalogType && r.nodeLabel ? (
                               <button
                                 className="fr-sol-btn"
                                 title="Add this node to the canvas"
-                                onClick={() => { void addNodeByCatalogType(r.catalogType!); frStore.close(); }}
+                                onClick={(e) => { e.stopPropagation(); void addNodeByCatalogType(r.catalogType!); frStore.close(); }}
                               >
                                 {r.nodeLabel}
                                 <span className="fr-sol-btn__add">+</span>
@@ -228,8 +238,16 @@ export function FunctionReference() {
                                     : <span className="fr-parity-warn">⚠</span>}
                           </td>
                           <td className="fr-td-note">{r.note ?? ""}</td>
-                        </tr>
-                      );
+                        </tr>,
+                      ];
+                      if (expandable && openDesc === rowKey) {
+                        rows.push(
+                          <tr key={`${rowKey}-d`} className="fr-desc-row">
+                            <td colSpan={showExcel ? 7 : 5}>{r.description}</td>
+                          </tr>,
+                        );
+                      }
+                      return rows;
                     }),
                   ];
                 })}

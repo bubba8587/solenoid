@@ -194,6 +194,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   hover. Position bookkeeping now re-seats in CAPTURE like the pinch count (main canvas +
   drill-in). Emulated-Pixel probes of the other suspect stores (`CappedZoom.pointers`,
   the pointer census) came back strand-free across pick/drop/pinch/long-press flows.
+- **Node descriptions reach touch** (author-directed A+E): (A) the node context menu —
+  long-press's existing home — is now HEADED by the catalog one-liner (`describeNode`,
+  the header tooltip's text) as a 9px muted width-capped blurb, so mobile and desktop
+  right-click both get it without hover. (E) the Function Reference SEARCHED
+  descriptions but never RENDERED them (no column) — a row with one now tap/click
+  expands a full-width 10px description line beneath it (dense table stays dense;
+  the add-node button stops propagation so it doesn't toggle).
 - Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
   borders were — slight softness on fractional card positions is expected, matching the
   cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;

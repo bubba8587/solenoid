@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from "react";
+import { describeNode } from "../catalogUtils";
+import { getOwningEditor } from "../activeGraph";
 import "./SocketContextMenu.css";
 
 // The single right-click menu for a node / group body — a node's right-click has
@@ -106,12 +108,18 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
     </button>
   );
 
+  // The catalog one-liner (the header tooltip's text) — this menu is its only
+  // touch-reachable home, since hover doesn't exist on mobile.
+  const node = getOwningEditor(target.nodeId)?.getNode(target.nodeId);
+  const blurb = node ? describeNode(node) : null;
+
   return (
     <div
       ref={ref}
       className="solenoid-socket-ctx"
       style={{ left: target.screenX + 6, top: target.screenY - 4 }}
     >
+      {blurb && <div className="solenoid-socket-ctx__blurb">{blurb}</div>}
       {target.isComposite && onEditComposite &&
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
       {target.isComposite && onUnpackComposite &&
