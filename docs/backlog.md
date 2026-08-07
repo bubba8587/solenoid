@@ -15,16 +15,17 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   inputs handled per `value-semantics.md`; collapsed card reads right; description
   matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings
   in the session digest; fix small, file anything big.
-- [ ] **Behavioral fine-print inventory — the remainder.** The scan found 45
-  description-carried claims in 8 clusters. DONE 2026-08-08: the case family
-  (`caseContract.test.ts` pins D12 across formula `=`/EXACT, frame Filter ±
-  matchCase, Text Filter — which was OFF the line, case-sensitive, and was
-  brought under it — join/group/distinct identity, Replace Values incl. numeric
-  match); sort null/error ordering verified already double-pinned. Remaining
-  clusters to verify-or-pin during the node-by-node sweep: the 21 per-node
-  null/blank claims, index/order/ties (xmatch first-match, mode ties, choose),
-  skip/ignore (text-join, DATEDIF, category), inclusive/exclusive (linspace,
-  slice).
+- [ ] **Fine-print residue (small, from the completed inventory).** The 45-claim
+  sweep is DONE (2026-08-08; digest has the full record — every cluster verified
+  agent-assisted, 1 false + 4 imprecise descriptions fixed, `caseContract` +
+  `finePrintContract` pin the risky set). Leftovers, all small: (a) **AUTHOR
+  SMELL — TEXTJOIN defaults disagree across surfaces**: the node defaults
+  include-empties, the formula registration defaults ignore-empties (D11
+  harmony; both explicit, but a bare call answers differently). (b) Expect's
+  "fires once per new failure" edge-detects on the failing CHECK-NAME set, so a
+  different cell failing the same check doesn't re-fire — verify intended,
+  then say so. (c) Unpinned-but-verified minor claims if their nodes come up in
+  the sweep: add-column pad, build-frame ragged rows, MUNIT blanks-out-of-sums.
 
 ## Bugs & verifications
 
