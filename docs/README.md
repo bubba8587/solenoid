@@ -8,14 +8,22 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 ## Start here (new agent, in this order)
 
 1. **`../CLAUDE.md`** — standing rules, architecture notes, the non-obvious traps.
-2. **`glossary.md`** — the invented vocabulary (Conduit, Standoff, FrameRef, unit
+2. **`mental-model.md`** — how the system RUNS, end to end (the two React worlds,
+   the compute path, types, frames, display, save/load). The story the reference
+   docs assume you know.
+3. **`glossary.md`** — the invented vocabulary (Conduit, Standoff, FrameRef, unit
    flow…). Read before the deep-dive docs or their terms won't parse.
-3. **`architecture.md`** — the file map: where things live.
-4. **`rules.md`** — the NORMATIVE spec: what must remain true, and the test that
+4. **`architecture.md`** — the file map: where things live.
+5. **`rules.md`** — the NORMATIVE spec: what must remain true, and the test that
    enforces each rule. Sockets, formula surface + naming, value handling — the
    architecture that can't be checked by looking at the app.
-5. **`decisions.md`** — the big WHYs and what would reverse them; read before
+6. **`decisions.md`** — the big WHYs and what would reverse them; read before
    proposing anything that touches a settled call.
+
+Pointer hygiene is machine-checked: `docsPointers.test.ts` fails CI on a dead
+`.md` citation anywhere in the live docs, a live doc missing from this index, an
+archived doc missing from the archive index, or a routing-table code file that
+no longer exists.
 
 ## Reference (read the relevant section before touching a subsystem)
 
