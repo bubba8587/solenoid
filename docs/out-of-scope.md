@@ -75,7 +75,7 @@ product sells — purity, typing, provenance, auditability, safety of shared fil
 is the sharpest-edged NO on the list because it will be the most requested: it's the
 universal escape hatch, and the whole point of Solenoid is that the escape hatch is
 where trust goes to die. The author already made this call once at smaller scale (the
-Expression cap: type-agnostic scalar/1-D subset, permanently); this is that decision
+Expression cap: rank ≤ 2, frames/cubes permanently out — D2/D23); this is that decision
 at product scale.
 **The line:** extensibility is *more node types* (packs, composites/subgraphs — typed,
 inspectable) — never *arbitrary evaluation*. The report projection is a view of the
@@ -105,10 +105,10 @@ never.
 ### 7. App builders — Retool, PowerApps, Appsmith
 **Stay out because:** layout designers, component libraries, auth/user management, and
 CRUD-app hosting are their whole product and a service business (tests 1 and 3).
-**The line:** publish-as-form (scope #2) stays literally "the graph's typed inputs as
+**The line:** publish-as-form (scope #2) was ruled OUT entirely (2026-07-05,
+`v2.0/README.md`). If it ever returns it stays literally "the graph's typed inputs as
 fields, its outputs as results" — *generated from* the graph, never designed. No
-canvas-of-widgets, no users table, no permissions. The moment a published form needs a
-layout editor, it's out of bounds.
+canvas-of-widgets, no users table, no permissions.
 
 ### 8. Work-tracking databases — Airtable, Notion, Smartsheet, Monday
 **Stay out because:** they're databases-with-views for tracking *things* (tasks,

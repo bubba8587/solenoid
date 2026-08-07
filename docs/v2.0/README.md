@@ -2,9 +2,10 @@
 
 The bundle set authored 2026-07-03 from the completed feature walk (verdicts
 inline in `../archive/scope-features.md` + `../archive/future-directions.md`).
-**Most bundles are BUILT**; their plan docs are deleted (git history has the
-text — the shipped mechanics live in code comments, `subsystem-invariants.md`,
-and CLAUDE.md). Residual open items from built bundles live in `../backlog.md`.
+**Most bundles are BUILT**; their plan docs are deleted or archived (git history
+has the text — the shipped mechanics live in `subsystem-invariants.md` and the
+per-subsystem specs). Residual open items from built bundles live in
+`../backlog.md` / `../deferrals.md`.
 
 ## Live bundles
 
@@ -17,10 +18,10 @@ subsystem-invariants "Unit flow", `decisions.md` D20).
 | [08](08-excel-transpiler.md) | The Excel `.xlsx` → graph transpiler | Not started; deliberately sequenced late |
 | [10](10-decision-model-sensitivity.md) | Decision Matrix sensitivity ("wiggle the weights") | Buildable — the composite Monte Carlo run-mode hook it waited on shipped 2026-07-12; needs re-triage / an author pick, not gated |
 | [12](12-value-model-extensions.md) | Uncertain values (#21) + money mode (#43) | As-Of half SHIPPED; the rest VERY LATE, each needs an author representation call |
-| [16](16-widget-nodes.md) | **Everyday widget nodes** (Weather/Geocode/FX/Holidays/TZ/QR — the throwaway-workbook layer) | Scoped 2026-07-20; Tier 1 autonomous-friendly (could be 1.3); 4 author calls listed in the doc (FX cap reversal, provider policy) |
+| [16](16-widget-nodes.md) | **Everyday widget nodes** (Weather/Geocode/FX/Holidays/TZ/QR — the throwaway-workbook layer) | Scoped 2026-07-20; 1.4+ since the 2026-08-07 pivot; 4 author calls listed in the doc (FX cap reversal, provider policy) |
 | 17 | **Matrix formulas** — the Tier 4 / D2 decision packet (shape branding + broadcast table) | DECIDED 2026-07-28 as D23 and BUILT; archived to `../archive/17-matrix-formulas.md` (live truth: D23, `broadcastRules.test.ts`, `expressionMatrix.test.ts`) |
 | 18 | **Backend parity corpus** — one wire-format fixture set run by both vitest and cargo, replacing the hand-mirrored verb-test pairs | SHIPPED 2026-07-29 as FX-12, archived to `../archive/18-parity-corpus.md` (live truth: `fixtures/frame-verbs/`, `frameVerbCorpus.test.ts`, `corpus_cases` in engine/tests.rs) |
-| 19 | **The computed-column surface** — per-column Data / Formula / λ sources over one shared row-eval core | RATIFIED 2026-07-29, fully landed by 2026-07-31 (C4 closed); archived to `../archive/19-computed-column-surface.md` (live truth: D24/D25, `computedColumnCore.ts`, `nodes/computedColumn.test.ts`; residual UX tail in `../backlog.md`) |
+| 19 | **The computed-column surface** — per-column Data / Formula / λ sources over one shared row-eval core | RATIFIED 2026-07-29, fully landed by 2026-07-31 (C4 closed); archived to `../archive/19-computed-column-surface.md` (live truth: D24/D25, `computedColumnCore.ts`, `nodes/computedColumn.test.ts`; residual UX tail in `../deferrals.md`) |
 
 ## Verdict pending — needs a fresh author call before any bundle doc
 

@@ -146,8 +146,8 @@ area. When you coin a new load-bearing term, add it here.
   (`packs.ts`, `pack-architecture.md`)
 - **Note frontmatter** — a `---`-fenced YAML block at the top of a Note that turns keys
   into typed output sockets (a Note as a typed-record source). (`noteFrontmatter.ts`)
-- **Document / library** — the multi-doc model; the whole library serializes to
-  local storage (two-slot rotation). (`documentStore.ts`, `persistence.ts`)
+- **Document / library** — the multi-doc model; each doc persists to its OWN
+  two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 
 ## Runtime & rendering
 

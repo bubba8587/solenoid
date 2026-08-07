@@ -1391,31 +1391,15 @@ component). SOCK-6 was attempted and recorded as genuinely un-greppable (see the
 
 # Known violations
 
-Recorded here rather than fixed, per the author's instruction that the original pass was
-documents only. Each is actionable in the follow-up. (Closed so far — 2026-07-28: the
-Alert/ColorBlend `mode` renames, SOCK-7 completeness, SOCK-5's persistence pin, the FX-4
-full naming sweep — which caught and fixed the Text Filter CONTAINS claim and the
-duplicate math-fn `round` op on its first run — and the completeness tranche: VAL-10's
-algebra-file scan, VAL-12's OpSelect binding scan, VAL-14's only-if check. The VAL-14
-check's first run listed 13 candidate classes; all 13 verified as real editors once the
-heuristic learned the bespoke surfaces — ExtensibleInputs and the `stringLiterals`
-spelling — so the codebase was already clean and the value is the ratchet. 2026-07-29:
-EFFECT-1's data()-never-writes sweep, exactly as prescribed here; and the semantic-half
-citation work below.)
+The live list of recorded-not-fixed gaps against the rules above. Delete an entry
+when it closes (the closures through 2026-07-29 — renames, completeness tranches,
+the citation conversion — are in git history and the dev-notes archive).
 
-1. **Un-quoted citations are verified by reading, not machine** — narrowed 2026-07-29,
-   twice. The QUOTED citations (the suite-name → "test name" arrow form) are
-   mechanical: `rules.test.ts` asserts each quoted name appears in the cited suite, so
-   a renamed or deleted test fails CI with the rule's citation (first run caught two
-   drifted quotes). All 19 bare-file-cited rules were then read and verified (every
-   cited suite genuinely enforces its rule), and 18 of them were CONVERTED to the
-   quoted form in the same sitting — ~80 machine-checked citations now. The residual
-   (corrected 2026-07-31 — the "exactly ONE" undercount missed two; SSOT-8 converted
-   the same day via the extracted `excelCoverage` quantifier pin) is two
-   `formulaNodeParity.ts` rules: SSOT-6, whose enforcement is a shared IMPORT
-   (`measureParity` from one module into both the report script and the ratchet
-   test), a structural fact no test-name quote can express; and SSOT-7, which cites
-   the implementation MODULE and no test — its claim (the `inFormula` vs
-   `excelCovered` field split) is guarded only by the ratchet's numbers moving. New
-   rules should quote their describe/it names, which buys the machine check for
-   free.
+1. **Two citations stay un-quoted, verified by reading.** Quoted citations (the
+   suite-name → "test name" arrow form) are machine-checked by `rules.test.ts` —
+   ~80 of them. The residual two are `formulaNodeParity.ts` rules: SSOT-6, whose
+   enforcement is a shared IMPORT (`measureParity` into both the report script and
+   the ratchet test) — a structural fact no test-name quote can express; and
+   SSOT-7, which cites the implementation MODULE and no test (guarded only by the
+   ratchet's numbers moving). New rules should quote their describe/it names,
+   which buys the machine check for free.

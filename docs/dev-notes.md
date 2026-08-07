@@ -108,7 +108,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   rows out, three missing docs in, stale counts dropped). pack-architecture's
   proposal-era tail ("none of this is built yet" / "if this ever gets picked up")
   replaced with the current state: Placeholder shipped, provenance record parked with
-  pack distribution, eager registration deliberate. — subpixel purge: border seam + note-ring overhang SOLVED)
+  pack distribution, eager registration deliberate.
+- **Cutdown pass 3 (reconcile sweep over the unread set):** out-of-scope's stale
+  claims fixed (Expression cap now cites D23's rank ≤ 2; publish-as-form noted as
+  ruled OUT); glossary's autosave entry updated to the per-doc two-slot model;
+  v2.0/README + value-semantics pointers repointed post-pivot; rules.md "Known
+  violations" compressed to the one live item (the closed-history paragraph → git);
+  release-notes-features caught up on the 2026-08 arc — AI palette added as a
+  headliner, body lines for the one-paint card frame (the known-issues seam entry
+  retired), frame-input EXAMPLE hints, error boundaries, and the touch-polish batch. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
