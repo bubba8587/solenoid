@@ -77,7 +77,7 @@ non-finite number → `String(n)`. These outrank any annotation.
 | `complex` | `complex`, `complexlist`, `complexcombo`, `complextable` |
 | `lambda` | `lambda` — display-only view-as for a flowing LambdaValue |
 | `chart` | `chart` — display-only text scale for a flowing chart figure |
-| `number` (provisional) | the wildcard rungs — an FC attached to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it. `trueany` is the FC's own default/reset type, and it is what the FC resolves to against ANY family-less rung: resolution routes through `isWildcardRung`, so `anydata` (an Expression variable), `anylist`, `anycombo`, `anytable` and `any` all leave the FC provisional rather than adopting a rank with no family |
+| `number` (provisional) | the wildcard rungs — an FC attached to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it. `trueany` is the FC's own default/reset type, and it is what the FC resolves to against ANY family-less rung: adoption never lands the FC on a family-less rung (the settle routes family resolution through `isWildcardRung`), so every wildcard leaves the FC provisional. NOTE the `familyOf` MAP itself is narrower: it returns `number` only for `any`/`trueany`/`anytable` (pinned in `formatModel.test.ts`) and `none` for `anylist`/`anycombo`/`anydata` — the FC never consults it for those because adoption already refused them |
 | `none` | everything else — `frame`, `cube`, `document`: resolved types that genuinely carry no element family (so no controls), as opposed to the wildcard rungs above, which carry no ANSWER yet |
 
 Lists/matrices format PER CELL with the one annotation (the array-semantics model:
@@ -164,8 +164,10 @@ Notes:
 
 ## The precision × style resolution rule
 
-One rule, one implementation (`resolvePrecision`), consumed by every style that
-supports precision. `decimalDigits` (`d`) + `decimalMode` (`places` | `sigfigs`):
+One rule, one implementation (the private `formatPrecise` in
+`formatAnnotationStore.ts`), consumed by every style that supports precision —
+except `scientific`, which computes its own mantissa digit count inline (same
+semantics, own arithmetic). `decimalDigits` (`d`) + `decimalMode` (`places` | `sigfigs`):
 
 | style | `places` mode | `sigfigs` mode | precision row shown? |
 |---|---|---|---|
@@ -178,8 +180,9 @@ supports precision. `decimalDigits` (`d`) + `decimalMode` (`places` | `sigfigs`)
 | `custom` | — the pattern owns precision | — | no |
 | pack formats | — the pack's `apply` owns everything | — | no |
 
-Clamps (unchanged): `places` → 0–20, `sigfigs` → 1–21; switching to `sigfigs`
-bumps 0 → 1.
+Clamps: the resolver takes `places` 0–20, `sigfigs` 1–21 — but the FC popup caps
+the digits box at 20 in BOTH modes, so 21 significant figures is unreachable from
+the control; switching to `sigfigs` bumps 0 → 1.
 
 **Behavior change vs today** (deliberate, per this model): `scientific` previously
 ignored precision entirely (hardcoded `toExponential(3)`). It now honors the
@@ -190,8 +193,12 @@ compat shim.
 
 - `formatModel.ts` — `familyOf`, `controlsFor(family, style)`,
   `precisionApplies(style)`: the single source for both the popup and resolution.
-- `applyFormatStyle` — style cases delegate precision to the shared resolver;
-  no case carries private digit logic.
+  `formatModel.test.ts` sweeps `familyOf` + `precisionApplies` exhaustively; the
+  advanced-tier predicates (`groupingApplies`/`scaleApplies`/`negativeApplies`)
+  are only spot-checked behaviorally in `formatAnnotationStore.test.ts` — their
+  per-style rows here are UNENFORCED as a table.
+- `applyFormatStyle` — style cases delegate precision to the shared resolver
+  (`scientific` carries its own inline digit clamp — the one exception).
 - `FormatControllerNode.tsx` — renders rows strictly off `controlsFor` (including
   the custom-pattern field, `customPattern`); no inline `isDate`/`isText`/
   `format === "decimal"` gates. The unit dropdown's `disabled` under a lock state

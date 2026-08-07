@@ -62,8 +62,8 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   frame:    "var(--sock-frame)",    // violet        — grid (named-column data table)
   cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
   lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)
-  chart:    "var(--sock-chart)",    // blue           — circle (chart/visual-output value)
-  document: "var(--sock-chart)",    // blue (chart)   — a whole-document value (Note/Report content)
+  chart:    "var(--sock-chart)",    // green          — circle (chart/visual-output value)
+  document: "var(--sock-chart)",    // green (chart)  — a whole-document value (Note/Report content)
   any:      "var(--sock-any)",      // gray          — circle (any single value)
   trueany:  "var(--sock-any)",      // gray          — HOLLOW circle (border only; anything)
 };

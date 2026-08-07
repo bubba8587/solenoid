@@ -39,8 +39,9 @@ choppier, but stable.
 Desktop pinch/wheel zoom is PROMOTED, so content is rasterized once and GPU-scaled,
 not re-rastered per frame: the quality drops save nothing, and toggling them forces
 extra re-rasters plus a box-shadow transition that made desktop zoom measurably
-WORSE. Quality drops belong to the un-promoted paths only (the `--panning` class:
-pan and mobile pinch).
+WORSE. The gesture-time quality-drop system was then removed entirely
+(2026-07-04): the `--panning` class is no longer applied and DOM mode stays
+full-quality while panning — `Canvas.tsx`'s pan tracking is telemetry only.
 
 ## Semantic zoom gate (`semanticZoomStore.ts`) — raw CSS scale, not the mip level
 
