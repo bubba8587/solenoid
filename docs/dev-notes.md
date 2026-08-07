@@ -215,7 +215,21 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   (suite 4095 → 4005, green). Docs reconciled: CLAUDE.md trap, architecture's
   renderer section, D6's reversal line, deferrals' two WebGPU items deleted.
   En route the same audit fixed a real touch bug: the cabling hit-area rule SHRANK
-  coarse targets (-8px → -6px absolute); coarse cabling now grows to -14px. — subpixel purge: border seam + note-ring overhang SOLVED)
+  coarse targets (-8px → -6px absolute); coarse cabling now grows to -14px.
+- **rules.md + mental-model/glossary claims audit (the closing sweep):** all 74 rules
+  agent-verified against code ahead of the ARR pass — 47 verified clean, 27 drift
+  fixes applied across every family (intro scope table, PROV-1's DEFAULT list, an
+  honest recount of citation coverage: 122 machine-checked quotes, 21 bare suite
+  citations across 20 rules; SOCK-3/4/6/7/10/11/12; PERSIST-5/8; ENGINE-1/2/3;
+  FX-1/2/5/6/9/11/12; VAL-2/3/10/14/20). ONE real code bug found and fixed:
+  **VAL-14's composite hydrate path restored literal maps unconditionally** —
+  a composite's internal graph could plant a value invisible on the card; it now
+  carries the same declaring-class gate as the main load path. mental-model +
+  glossary audited too (104 claims clean; 7 fixed: the FC-settle fixpoint claim,
+  coercion's literal-injection scope, scalar-null renders the em-dash — also
+  fixed at its value-semantics source, the VAL-19→VAL-9/D26 citation,
+  compileFormula is retired not dormant, packs are MOSTLY off-by-default —
+  also fixed in pack-architecture, and the engine is PULL-based, not push/pull). — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;

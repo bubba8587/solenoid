@@ -308,7 +308,8 @@ guarded once, up top.
 
 ## Display
 
-- **null** → rendered `null` (muted) [shipped].
+- **null** → a scalar renders as the muted em-dash; a list/frame CELL renders the
+  word `null` (muted) [shipped].
 - **SolError** → the red error badge with its code [shipped]; `#OVERFLOW!` is in the
   inventory (15 codes, `errorValue.ts`) and toured in the error-showcase seed
   [shipped].

@@ -11,7 +11,7 @@
 > reconcile, port aliasing) lives in `backlog.md`.
 
 The principle: a small, lean core app plus a large library of optional add-ons
-(Packs) that are turned off by default. Almost everything in the reference-packs
+(Packs), most of them off by default (Geometry and Timesavers ship on). Almost everything in the reference-packs
 doc and the big node brainstorm is a Pack, not a core feature.
 
 ## The idea in one line
