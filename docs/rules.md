@@ -22,6 +22,8 @@ answer (or an invisible non-event), not a visible defect.
 | Persistence | `PERSIST` | the save path — capture, round-trip, slots, identity |
 | Engine | `ENGINE` | recompute passes — targeted ≡ full, gating, refresh scope |
 | External effects | `EFFECT` | when a node may touch the world (disk, alerts) |
+| Stores | `STORE` | node-keyed module-store lifecycle (the forget seam) |
+| Provenance | `PROV` | what counts as an author ruling (ARR) |
 
 **Out of scope here:** UI, visual and copy rules live in `DESIGN.md` and are enforced by
 `uiCopy.test.ts`. Branch model, doc duty and commit style live in `CLAUDE.md`. This file
@@ -180,7 +182,7 @@ that same author-marked change.
 real evidence, no ARR authority. Every rule heading carries its grade (the
 2026-07-28 audit): INFERRED where a concrete incident occurred and is named,
 DEFAULT where the rule is preventive judgment with no forcing incident. The
-DEFAULT set (SOCK-3, SOCK-6, SOCK-11, FX-10, VAL-13, VAL-14, VAL-17,
+DEFAULT set (SOCK-3, SOCK-6, SOCK-11, SOCK-14, SOCK-15, FX-10, VAL-13, VAL-14, VAL-17,
 PERSIST-3,4,5,6, EFFECT-1) is the thinnest ice: rules held up by the agent's
 reasoning without a forcing incident, and the first candidates for either an
 enforcing incident or deletion. Note the grade tracks PROVENANCE, not value — a
@@ -374,14 +376,16 @@ not. This is what makes a combo a combo. **Removed by:** nothing.
 dimensional edges are explicit in `accepts()` and swept exhaustively by test. A new type
 must not require hand-writing its pairs.
 
-*Why:* the lattice has 30 variants; enumerating pairs by hand is quadratic and wrong.
+*Why:* the lattice has 31 variants; enumerating pairs by hand is quadratic and wrong.
 *Enforced by:* `socketConnect.test.ts` → "lattice invariants — TYPE separation +
 DIMENSIONAL flow (full sweep)"; `socketFamilyCompleteness.test.ts`.
 
 ### SOCK-4 — The wildcard ladder keeps rank **[INFERRED]**
-**MUST:** `any` is an untyped SCALAR, `anylist` / `anytable` are 1-D / 2-D, and `trueany`
-is the adopt-anything supremum. A rank-bearing wildcard keeps its rank and adopts only
-the element family.
+**MUST:** the untyped ladder is `any` (scalar) → `anycombo` (0-or-1-D) → `anylist` (1-D)
+→ `anytable` (2-D) → `anydata` (rank ≤ 2) → `trueany` (the adopt-anything supremum).
+The two STRICT rank-bearing rungs — `anylist`/`anytable` — keep their rank and adopt
+only the element family; the elastic rungs (`any`/`anycombo`/`anydata`) adopt the wired
+type verbatim (`adoptTypeForBase`, `RANK_BASES` in the sweep).
 
 *Enforced by:* `socketConnect.test.ts` → "`any` INPUT: family scalars + combos in;
 lists/matrices/containers refused", "anylist INPUT", "anylist OUTPUT", "anytable OUTPUT
@@ -402,15 +406,19 @@ init, reconstructed node starts hollow).
 No local re-implementation of "is this socket untyped".
 
 *Why:* three subtly different notions of "untyped" is three subtly different bugs.
-*Enforced by:* `UNENFORCED`. A grep check was attempted (2026-07-28 enforcement pass)
-and found every wildcard-literal comparison outside sockets.ts is a RENDERING
-classifier (glyph shape, combo drawing, wire-only rows), not a semantic "is this
-untyped" — a mechanical scan can't separate the two, so this stays a reading rule.
+*Enforced by:* `UNENFORCED`. A grep check was attempted (2026-07-28 enforcement pass):
+most wildcard-literal comparisons outside sockets.ts are RENDERING classifiers (glyph
+shape, combo drawing, wire-only rows), but not all — `passthrough.ts` `agreeTypes`
+carries a semantic `=== "trueany"` veto (deliberately co-located so the socket pass
+and display walk can't diverge). A mechanical scan can't separate the classes, so
+this stays a reading rule.
 
 ### SOCK-7 — In-place retype must reconcile downstream **[INFERRED]**
-**MUST:** a node that mutates a socket's `dataType` in place (Cast target, LAMBDA result,
-Get Column read-as, Note frontmatter) fires no connection event, so it MUST call
-`reconcileFcTypes` / `retypeOutputCables`.
+**MUST:** a node that mutates a socket's `dataType` in place fires no connection event,
+so it MUST call `reconcileFcTypes` / `retypeOutputCables`. (Sites include Cast target,
+λ-table result, Get Column read-as, Note frontmatter, List/Table Input element type,
+Add/Split Column, CableSwitch, Import Obsidian — the completeness scan owns the full
+set; this list is examples.)
 
 *Why:* without it, downstream Format Controllers keep stale formats.
 *Enforced by:* `fcReconcile.test.ts` → "retypeOutputCables (Cast / LAMBDA / Get Column
@@ -464,8 +472,9 @@ Expression declares anydata variables" (the lift + the result-rank reconcile).
 
 ### SOCK-10 — An adopting port owns its socket instance **[INFERRED]**
 **MUST:** every `MutableSocket`/`AdoptiveSocket` port gets a FRESH instance — never a
-module-level shared one (the deliberately never-mutated `staticTrueAny*` singleton is
-the sanctioned exception, and it is immutable by contract). A shared mutable socket
+module-level shared one. (The `staticTrueAny*`/`trueAnySocket` singleton sits OUTSIDE
+this rule's scope: it is a plain immutable `SolenoidSocket`, not a `MutableSocket`,
+so the sweep never sees it — immutability by type, not by contract.) A shared mutable socket
 means wiring a date into one card retypes ANOTHER card's port, which then coerces its
 input under the wrong type and answers a plausible number the user cannot connect to a
 cause.
@@ -477,7 +486,8 @@ class doc ("One instance per port, never shared") was written against.
 
 ### SOCK-11 — A `trueany` output implies a `passthrough()` declaration **[DEFAULT]**
 **MUST:** a class with a `trueany` OUTPUT either declares `passthrough()` — the ONE
-declaration the four derived-type consumers read (trueany adoption, unit flow, the
+declaration the five derived-type consumers read (trueany adoption, unit flow, the
+frame-shape resolver, the
 display-type walk, coerceInputs' keep-tags boundary) — or is sanctioned with the reason
 its type resolves another way (the FC is the resolver; Conduit lanes resolve through
 conduitTrace; composite boundary ports sync in their own pass; XLOOKUP/NA are genuinely
@@ -500,7 +510,9 @@ which segment was clicked.
 (lane tracing through chains, loop termination, lane adopt/revert) and "conduitPath —
 the whole run a cable belongs to" (run identity); `frameShapePassthrough.test.ts` →
 "frame SHAPE survives a passthrough (Bug B)" (through a Display / a Conduit lane / a
-half-wired IF).
+half-wired IF); the unit-annotation half: `unitFlowAnnotation.test.ts` → "the lock
+survives a chain of passthroughs but BREAKS at a transform", "the lock crosses a
+Conduit lane (in_i → out_i), each lane independent".
 *Origin:* Bug B — downstream column pickers went empty and formula column references
 silently failed to resolve through a passthrough, with no error anywhere.
 
@@ -1159,7 +1171,7 @@ identity assertions.
 "successive writes to one pair carry strictly increasing seq".
 
 ### PERSIST-5 — Persistence binds MAIN, never the active surface **[DEFAULT]**
-**MUST:** the composite drill-in substitutes editor/area/engine through the
+**MUST:** the composite drill-in substitutes editor/area/history through the
 `activeGraph.ts` seam for CANVAS operations only; `getEditor()`, serialization, autosave
 and load resolve the MAIN graph unconditionally. A save taken while drilled in must
 serialize the document, not the open subgraph.
@@ -1207,7 +1219,8 @@ captureCurrent; its own gate is the reveal lock).
 *Enforced by:* `sourceInvariants.test.ts` → "every documentStore verb that swaps the
 canvas captures first and guards the rebuild" — a method-body scan over the store
 object, with the sanction honesty check.
-*Origin:* audit 21p (the race) and 20p (the refused-doc fallback) — both dated in the
+*Origin:* audit 21p (the race) and 20p (the refused-doc fallback) — recorded in
+`sourceInvariants.test.ts`; the store itself carries only the
 store's own comments.
 
 ### PERSIST-9 — Every node field is persisted or DELIBERATELY transient **[INFERRED]**
@@ -1256,7 +1269,7 @@ full clean pass would produce. Every rule here is an equivalence, and every fail
 mode is a STALE value standing next to fresh ones with nothing marking it.
 
 ### ENGINE-1 — The targeted pass is observationally equal to the full pass **[INFERRED]**
-**MUST:** `downstreamClosure(nodeId)` equals exactly the set a full pass would
+**MUST:** `downstreamClosure(editor, startId)` equals exactly the set a full pass would
 recompute differently — the start node and every transitive dependent, across branches
 and joins, terminating on cycles. No more (wasted work is the cheap half) and no less —
 a node outside the cone keeps displaying its previous answer with no error. Cycle
@@ -1270,9 +1283,10 @@ loop members — audit finding 40, with the rete-engine 2.1.1 recursion bug in t
 record).
 
 ### ENGINE-2 — The calc-mode gate is the ONLY thing that skips a pass **[INFERRED]**
-**MUST:** manual/auto × dirty is a real transition matrix: manual mode marks dirty
-instead of computing, switching to auto clears the pending flag by RUNNING the pass,
-and an unavailable localStorage degrades to in-memory state — never to a graph that
+**MUST:** mode (manual/auto/sketch) × dirty is a real transition matrix: manual mode
+marks dirty instead of computing; switching to auto or sketch clears the pending flag
+directly and the CALLER owes the catch-up recompute (the store never runs a pass);
+an unavailable localStorage degrades to in-memory state — never to a graph that
 silently stops recomputing.
 
 *Enforced by:* `calcModeStore.test.ts` → "switching to auto clears a pending dirty
@@ -1284,8 +1298,9 @@ must not throw)".
 
 ### ENGINE-3 — A live-data refresh never runs inside a rebuild scope **[INFERRED]**
 **MUST:** `refreshConnection` (the manual button and the interval timer) drives its
-recompute OUTSIDE `beginGraphRebuild`/`endGraphRebuild` — only `loadGraph` may
-suppress. A refresh that lands inside a rebuild scope silently swallows the
+recompute OUTSIDE `beginGraphRebuild`/`endGraphRebuild`. (Bulk TOPOLOGY operations —
+load, paste, undo/redo, composite create/unpack, sweeps — wrap rebuild scopes
+deliberately; the rule binds the REFRESH path, which must never be one of them.) A refresh that lands inside a rebuild scope silently swallows the
 edge-detection downstream: an Alert watching refreshed live data simply stops firing.
 
 *Enforced by:* `connectionStore.test.ts` → "refreshConnection never enters a
@@ -1395,11 +1410,12 @@ The live list of recorded-not-fixed gaps against the rules above. Delete an entr
 when it closes (the closures through 2026-07-29 — renames, completeness tranches,
 the citation conversion — are in git history and the dev-notes archive).
 
-1. **Two citations stay un-quoted, verified by reading.** Quoted citations (the
-   suite-name → "test name" arrow form) are machine-checked by `rules.test.ts` —
-   ~80 of them. The residual two are `formulaNodeParity.ts` rules: SSOT-6, whose
-   enforcement is a shared IMPORT (`measureParity` into both the report script and
-   the ratchet test) — a structural fact no test-name quote can express; and
-   SSOT-7, which cites the implementation MODULE and no test (guarded only by the
-   ratchet's numbers moving). New rules should quote their describe/it names,
-   which buys the machine check for free.
+1. **Citation coverage is mixed (recounted 2026-08-09).** 122 quoted citations
+   (the suite → "test name" arrow form) are machine-checked by `rules.test.ts`.
+   21 BARE test-suite citations across 20 rules remain reading-verified only
+   (the 2026-07-29 read stands; convert opportunistically). Two rules cite an
+   implementation MODULE and no suite: SSOT-6 (enforcement is a shared import —
+   `measureParity` into both the report script and the ratchet test, a
+   structural fact no test-name quote can express) and SSOT-7 (guarded only by
+   the ratchet's numbers moving). New rules should quote their describe/it
+   names, which buys the machine check for free.
