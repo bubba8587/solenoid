@@ -59,7 +59,7 @@ mobile model; never gate on coarseness alone what must flip with it.
 | 2-finger pinch | touch | zoom (capped) | `CappedZoom`, `pointerGesture.ts` (capture) |
 | wheel / ctrl+wheel trackpad pinch | mouse | zoom (step-capped) | `CappedZoom.wheel` |
 | tap / click | all | clear cable/standoff/endpoint selection (release-only, ≤6px move) | `Canvas.tsx` `clearCableSelection` |
-| **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
+| **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu (headed by the node's catalog one-liner — the header tooltip's touch-reachable home) | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
 | double-tap / double-click | all | **nothing, by design** (swallowed — see invariants) | `areaPresets.ts` |
 
 (Marquee/lasso selection exists but its trigger is not recorded here yet — verify in
