@@ -52,12 +52,14 @@ something small beats breadth on anything. Feature-shaped work is parked in
 when a sweep makes it tempting; note the finding and stay on scope.
 
 ### Docs map
-Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs/README.md` (the
-index), `docs/glossary.md` (the invented vocabulary — read before the deep dives).
+Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs/mental-model.md`
+(how the system RUNS, end to end — read before touching code), `docs/README.md` (the index),
+`docs/glossary.md` (the invented vocabulary — read before the deep dives).
 - **`DESIGN.md` (repo root) — the design-system rulebook. READ BEFORE ANY UI/VISUAL CHANGE.**
   Non-obvious hard rules you WILL violate blind: no colored accent stripe by ANY technique — tint
-  the element itself; the Quiet Accent Rule (color conveys type/state, never decoration); no
-  faux-3D/gradient/glassmorphism. **"UI change" includes STRINGS, not just pixels** — §7 Voice &
+  the element itself; the Quiet Accent Rule (chrome color conveys type/state; decoration exists
+  only in its named homes — brand, user-authored, opt-in flourishes — and NEW decoration is an
+  author call, never a default); no faux-3D/gradient/glassmorphism. **"UI change" includes STRINGS, not just pixels** — §7 Voice &
   copy governs `src/graph/help/*.md`, every `nodeCatalog` description, tooltips and empty states;
   read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
 - **`docs/rules.md` — the NORMATIVE architecture spec. Read before changing sockets, the
@@ -152,7 +154,7 @@ stay (forward safety); there is no backward migration.
 Forward-looking docs rot because sessions default to appending. When wrapping up (or asked to
 "update the docs"), in order:
 1. **Digest in `docs/dev-notes.md`** — extend the current session's digest; sweep digested
-   sessions to `archive/dev-notes-history.md`. Per-item detail goes in commit messages.
+   sessions to `docs/archive/dev-notes-history.md`. Per-item detail goes in commit messages.
 2. **Reconcile `docs/backlog.md`** — verify landed items against the CODE and DELETE their lines
    (git + digests are the record). Add new follow-ups. Keep items terse.
 3. Update the relevant subsystem/coverage/architecture doc if a mechanism or the file map

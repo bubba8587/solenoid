@@ -724,7 +724,7 @@ cxArgs" (plus the operator table there).
 ### FX-10 — One broadcast engine, and the table is the test **[DEFAULT]**
 **MUST:** every element-wise surface (operators, unary, percent, function
 broadcasting) routes through `mapCells`. The broadcast semantics live in exactly
-one normative table (`v2.0/17-matrix-formulas.md` Part 2), transcribed row-for-row
+one normative table (`archive/17-matrix-formulas.md` Part 2), transcribed row-for-row
 into `broadcastRules.test.ts` — changing either without the other fails
 (`SSOT-6`'s pattern applied to semantics rather than a metric).
 

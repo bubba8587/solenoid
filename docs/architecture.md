@@ -308,6 +308,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | File | Status | Purpose |
 |---|---|---|
 | `README.md` | living | the docs index — start here |
+| `mental-model.md` | living | how the system runs, end to end — the onboarding story |
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
 | `decisions.md` | living | the decision log — what stands / where / what would reopen it |

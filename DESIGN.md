@@ -89,7 +89,7 @@ components:
 
 **Creative North Star: "The Instrument Panel"**
 
-Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. Nothing is decorative for its own sake; color, weight, and contrast are spent on conveying state and type, not on producing mood.
+Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. In the chrome, color, weight, and contrast are spent on conveying state and type; decoration exists but lives in sanctioned homes (brand marks, user-authored color, opt-in flourishes — see the Quiet Accent Rule).
 
 The system is built around legibility before anything else. The typeface is the Braille Institute's Atkinson Hyperlegible family, chosen because it keeps similar glyphs distinct at small sizes, and the type runs small and dense because a working graph wants information per pixel, not whitespace theatre. The default canvas is dark so colored cables and typed sockets read with maximum separation, and a full light theme mirrors every token for users who prefer it. The accent color is user-swappable at runtime, so the system commits to a role for the accent rather than to a single hue.
 
@@ -98,9 +98,10 @@ This system explicitly rejects three looks. It is not a generic SaaS or AI-start
 **Key Characteristics:**
 - Dark-default workbench with a fully mirrored light theme.
 - Small, dense, hyperlegible type. Information per pixel over whitespace.
-- Color is reserved for type and state; the chrome stays neutral.
+- In the chrome, color is spent on type and state; decoration lives in its named homes.
 - Flat at rest; elevation and glow appear only as a response to state.
-- Fast, short, functional motion. Nothing choreographed.
+- Fast, short, functional motion. The two choreographed moments (load reveal, AI-apply
+  reveal) are deliberate showpieces, not a license.
 
 ## 2. Colors
 
@@ -139,7 +140,16 @@ A small reserved set for failure and state feedback, kept apart from the typed s
 - **Warning Amber** (`#d9a93b`): caution / out-of-range states.
 
 ### Named Rules
-**The Quiet Accent Rule.** The accent and the saturated socket hues carry meaning, never decoration. Color appears on a socket, a cable, a focus ring, or a selection glow. It never fills a panel, a button background, or a section header for visual interest. If a surface is colored, it is colored because something about its state or type is being communicated.
+**The Quiet Accent Rule (rescoped 2026-08-08 — the old "never decoration" absolute was false).**
+In the WORKING CHROME — panels, bars, buttons, menus, dialogs, section headers — color conveys
+type or state: a socket, a cable, a focus ring, a selection glow, a status badge. Don't inject
+accent or socket hues there for visual interest. But the app is not colorless by doctrine;
+decoration is real and deliberate, in named homes: **brand marks** (the wordmark, the desktop
+accent window border, the top-bar art slot), **user-authored color** (note and group tints,
+theme palettes, report palettes, chart colors), and **opt-in flourishes** (cable flow beads,
+the load reveal, the AI-apply reveal). The rule's actual content for an agent: NEW decorative
+color is an author call, never a default you reach for — when unsure whether a color is meaning
+or mood, keep the chrome neutral and ask.
 
 **The Nearest-Accent Rule.** There are two accents in play — the app's (`--accent`, the user's theme pick) and the surface's (`--node-accent`, the type color tinting a node card's or a value popup's header). Inside a surface that carries its own accent, the surface's wins: its focus rings, drop targets, active states and filled actions all resolve `var(--node-accent, var(--accent))`, so the fallback hands app-level chrome — the command palette, Settings, the Navigator, the accentless dialogs — the app accent untouched. An app-accent ring inside an accent-tinted card puts two unrelated hues on one small surface and reads as a mistake. An accent FILL additionally needs its ink from the matching pair (`--node-accent-ink`, derived per surface); `--accent-ink` is computed for the app accent's hue and goes unreadable on any other.
 

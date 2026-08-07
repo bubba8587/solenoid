@@ -121,7 +121,22 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   (small-scope sweeps only; parked work stays parked even when a sweep tempts) and the
   cutdown's standing rule under Doc maintenance ("write OUTCOMES, not narratives" —
   one home per fact, deletion as the default for history). Both were only in
-  backlog/digest before, which a quick session never loads. — subpixel purge: border seam + note-ring overhang SOLVED)
+  backlog/digest before, which a quick session never loads.
+- **Pass 5 (structural):** (1) **The Quiet Accent Rule RESCOPED** (author: "not really
+  that true") — the "never decoration" absolute was contradicted by the app (wordmark,
+  accent window border, note/group tints, palettes, flow beads/`cableFlourishStore`,
+  the two choreographed reveals, the planned art slot). DESIGN.md §1/§2 now say: chrome
+  color conveys type/state; decoration lives in named homes (brand / user-authored /
+  opt-in flourishes); NEW decoration is an author call, never an agent default.
+  CLAUDE.md's citation updated to match. (2) **`docs/mental-model.md`** — the missing
+  onboarding story (two React worlds, the compute path commit→processGraph→wrappers→
+  data()→render, derived types, the FrameBackend seam, display pipeline, save/load);
+  now step 2 of the Start-here order. (3) **`docsPointers.test.ts`** — pointer hygiene
+  is machine-checked (140 assertions): live docs all indexed, no dead `.md` citation
+  anywhere, archive index complete, routing-table code files exist. Its first run
+  caught two live dead pointers (rules.md → the archived 17-matrix-formulas path;
+  CLAUDE.md's root-unresolvable dev-notes-history shorthand) — the drift class the
+  cutdown fixed by hand is now a CI failure. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
