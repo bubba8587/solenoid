@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useMenuClamp } from "./menuClamp";
+import { useEffect } from "react";
 import "./SocketContextMenu.css";
 
 // Shown only when exactly two linkable items are selected and one is right-clicked.
@@ -17,7 +18,7 @@ type Props = {
 };
 
 export function StandoffLinkMenu({ target, onLink, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {

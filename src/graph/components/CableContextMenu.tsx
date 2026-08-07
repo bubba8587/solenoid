@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useMenuClamp } from "./menuClamp";
+import { useEffect } from "react";
 import "./SocketContextMenu.css";
 
 // `connIds` is every cable the actions operate on: the right-clicked one plus the
@@ -18,7 +19,7 @@ type Props = {
 };
 
 export function CableContextMenu({ target, onInsertConduit, onDelete, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {

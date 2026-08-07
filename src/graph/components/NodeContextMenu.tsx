@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
+import { useMenuClamp } from "./menuClamp";
 import { describeNode } from "../catalogUtils";
 import { getOwningEditor } from "../activeGraph";
 import "./SocketContextMenu.css";
@@ -79,7 +80,7 @@ type Props = {
 };
 
 export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
