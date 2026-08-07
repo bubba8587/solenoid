@@ -41,8 +41,10 @@ The compute path, in order:
    register for raw delivery). Coercion normalizes each arriving value to the
    socket's declared type (widening, singleton collapse, logical↔number
    bridge, `#SHAPE!` on failure), strips `UnitCell`s to display magnitudes
-   unless the node is `unitAware` or a declared passthrough, and injects the
-   typed literal for unwired inputs.
+   unless the node is `unitAware` or a declared passthrough, and — for the three
+   CSV-typeable list rungs only — injects the parsed `stringLiterals` text on an
+   unwired input. (The GENERAL unwired-falls-back-to-literal read is `readInput`,
+   inside `data()` — the next step.)
 4. **`data()` computes, pure.** It reads inputs via `readInput` (a WIRED null
    propagates; only an UNWIRED slot falls back to the literal — the single most
    common historical bug is conflating those). Results carry the value model:
@@ -57,10 +59,11 @@ The compute path, in order:
 
 Sockets are DECLARED types; `accepts()` (the lattice) decides what may connect:
 element families never auto-cross (Cast; sole bridge logical↔number),
-dimensionality flows up. On top of that, three DERIVED-type systems re-resolve
-after every wiring/config change, settled to one joint fixpoint by
-`settleWildcardTypes`: trueany adoption (a hollow-ring port adopts the wired
-type), Conduit lane tracing, and FC adaptation. Derived types are never
+dimensionality flows up. On top of that, derived types re-resolve after every
+wiring/config change: `settleWildcardTypes` alternates TWO systems — trueany
+adoption (a hollow-ring port adopts the wired type) and Conduit lane tracing —
+to a joint fixpoint, and FC adaptation then runs ONCE downstream against the
+settled result (SOCK-13: consumers run only after the settle). Derived types are never
 persisted — they re-derive on load. A node that retypes a socket IN PLACE
 (Cast target, read-as, Note frontmatter) must call
 `reconcileFcTypes`/`retypeOutputCables` because no connection event fires.
@@ -85,8 +88,9 @@ An FC's UNIT is not display — it MUTATES the value (`applyFcUnit`, base-SI
 the column-unit surfaces), and an FC downstream of a united value locks to
 mirror it (D26). An FC's number FORMAT is a display annotation,
 resolved by walking passthroughs both directions (`makeAnnotationResolver`).
-Errors render as the red `#CODE!` badge; null renders muted `null`; NaN is
-quiet residue, never "N/A".
+Errors render as the red `#CODE!` badge; a scalar null renders as the muted
+em-dash (the word `null` appears only for list/frame CELLS); NaN is quiet
+residue, never "N/A".
 
 ## Save, load, and the text form
 

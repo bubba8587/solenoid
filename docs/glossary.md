@@ -66,7 +66,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Format Controller (FC)** — a node that LOCKS a value's number format, and authors a
   unit ONLY onto a unit-less value; both ride the value through passthroughs and
   selectors. A transform drops the FORMAT; the unit's dimension re-derives through the
-  algebra and keeps its display when the dimension survives (VAL-19).
+  algebra and keeps its display when the dimension survives (VAL-9 / D26).
   (`nodes/formatController.ts`, `fcReconcile.ts`)
 - **FC lock states** — who owns the FC's unit dropdown: *authored* (the FC set it),
   **forwarding** (an inherited upstream unit — the FC MIRRORS it, locked, because a
@@ -133,8 +133,7 @@ area. When you coin a new load-bearing term, add it here.
   `[Unit Price]` whole column, `@[Unit Price]` / `[@Unit Price]` this row. Replaced the
   deleted `col()`/`at()` functions. (`excelFormula.ts` tokenizer `colref`/`rowref`)
 - **Formula evaluator** — the tree-walking `evalAst` in `excelFormula.ts` is THE
-  evaluation core; the old `compileFormula` codegen path is dormant (see the module's
-  own comments before reviving it).
+  evaluation core (the old `compileFormula` codegen path was retired outright).
 - **RANGE_FUNCTIONS** — formula functions that take a whole list at once (SUM, MEDIAN…)
   vs. element-wise broadcast ones. (`excelFormula.ts`)
 
@@ -144,7 +143,8 @@ area. When you coin a new load-bearing term, add it here.
   CI. The template gallery + demo/marketing substrate. (`seeds.ts`, `seeds.test.ts`)
 - **Placeholder node** — what an unknown/renamed node type loads as: inert, keeps wiring +
   data, re-serializes as the original type (lossless). (`nodes/placeholder.ts`)
-- **Pack** — an optional, off-by-default node-family add-on; the lean-core split.
+- **Pack** — an optional node-family add-on (the lean-core split); most ship off,
+  Geometry and Timesavers ship on (`defaultActive`).
   (`packs.ts`, `pack-architecture.md`)
 - **Note frontmatter** — a `---`-fenced YAML block at the top of a Note that turns keys
   into typed output sockets (a Note as a typed-record source). (`noteFrontmatter.ts`)
@@ -155,8 +155,8 @@ area. When you coin a new load-bearing term, add it here.
 
 - **processGraph** — the recompute-and-rerender entry point; never call it from a text
   field's `onChange` (edits commit on Enter/blur). (`process.ts`)
-- **DataflowEngine** — the push/pull reactive execution engine (rete) that runs `data()`
-  methods and awaits async ones. (`rete-engine`, `process.ts`)
+- **DataflowEngine** — rete's PULL-based execution engine (inputs resolve recursively
+  before `data()` runs; async ones awaited). (`rete-engine`, `process.ts`)
 - **Calc mode** — manual vs. automatic recompute; F9 forces a recompute in manual mode.
   (`calcModeStore.ts`; see decisions.md D8)
 - **Compute overlay** — the deferred "Computing…" curtain that blocks interaction during a

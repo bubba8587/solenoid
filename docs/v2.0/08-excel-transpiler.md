@@ -14,8 +14,6 @@ tokens for the D24 structured references):
   e.g. `{t:"call"; name:string; args:Ast[]}`.
 - `Tok` type + `tokenize(src): Tok[]|null`.
 - `extractVariables(expr): string[]`.
-- `compileFormula(expr, paramNames): CompiledFn|null` (dormant codegen — `evalAst`
-  is the production path; see the module's own comments before reviving it).
 - `formulaToLatex(expr): string|null` (reused by bundle 13).
 - `FormulaStep` type, `evaluateSteps(expr, vars)`.
 
