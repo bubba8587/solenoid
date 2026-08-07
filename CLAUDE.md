@@ -253,8 +253,9 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - **In-place retype** (`fcReconcile.ts`): mutating a socket `dataType` in place fires no
   connection event — MUST call `reconcileFcTypes`/`retypeOutputCables` or FCs go stale.
 - **Unit flow** (`unitFlow.ts`, `unitBridge.ts`): the unit is a property of the VALUE,
-  authored ONLY by FC/Convert, breaks at transforms; an FC downstream of a united value LOCKS
-  (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
+  authored only by FC/Convert/Table Input/column-unit surfaces; a transform re-derives the
+  dimension through the algebra (display carries when the result's dim matches an operand —
+  VAL-19); an FC downstream of a united value LOCKS (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
   unwraps unless `unitAware = true` (every new algebra node sets it) or a `passthrough()` spec
   names the input. Granularity per D20: list per-cell, frame per-column, matrix one unit.
 - **Alerts** (`alertStore.ts`): edge-detect on STATUS, not a boolean (range LOW↔HIGH re-fires).

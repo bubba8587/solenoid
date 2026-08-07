@@ -9,11 +9,10 @@ import { applyFcUnit } from "./unitBridge";
 import { isSolError } from "./errorValue";
 import seed from "./seedGraphs/unit-flow.json";
 
-// The Unit Flow seed is a teaching graph: each lane's caption claims a specific
-// behavior. This test builds the seed with the REAL node classes and asserts those
-// claims hold (downstream carry, upstream multi-hop, transform-break, Convert
-// forward, selector keeps unit), so a future change to unitFlow / the FC can't
-// quietly turn a captioned demo into a lie.
+// The Unit Flow seed is a teaching graph: each lane's caption (A–J) claims a
+// specific behavior. This test builds the seed with the REAL node classes and
+// asserts every captioned claim holds, so a future change to unitFlow / the FC
+// can't quietly turn a captioned demo into a lie.
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 
