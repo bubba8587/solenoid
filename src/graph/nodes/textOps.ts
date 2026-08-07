@@ -141,13 +141,16 @@ export function reverseText(t: string): string {
 export type TextFilterOp = "contains" | "not_contains" | "starts_with" | "ends_with";
 export const TEXT_FILTER_OPS: readonly TextFilterOp[] = ["contains", "not_contains", "starts_with", "ends_with"];
 
-/** Keep the strings matching the condition — case-sensitive, the Text Filter
- *  node's semantics on both surfaces (TEXTFILTER runs this same kernel). */
+/** Keep the strings matching the condition — case-insensitive (D12: comparisons
+ *  match like Excel's `=`), the Text Filter node's semantics on both surfaces
+ *  (TEXTFILTER runs this same kernel). */
 export function filterTextList(strings: readonly string[], pattern: string, op: TextFilterOp): string[] {
+  const p = pattern.toLowerCase();
+  const has = (s: string) => s.toLowerCase().includes(p);
   switch (op) {
-    case "contains":     return strings.filter((s) => s.includes(pattern));
-    case "not_contains": return strings.filter((s) => !s.includes(pattern));
-    case "starts_with":  return strings.filter((s) => s.startsWith(pattern));
-    case "ends_with":    return strings.filter((s) => s.endsWith(pattern));
+    case "contains":     return strings.filter(has);
+    case "not_contains": return strings.filter((s) => !has(s));
+    case "starts_with":  return strings.filter((s) => s.toLowerCase().startsWith(p));
+    case "ends_with":    return strings.filter((s) => s.toLowerCase().endsWith(p));
   }
 }

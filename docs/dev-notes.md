@@ -136,7 +136,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   anywhere, archive index complete, routing-table code files exist. Its first run
   caught two live dead pointers (rules.md → the archived 17-matrix-formulas path;
   CLAUDE.md's root-unresolvable dev-notes-history shorthand) — the drift class the
-  cutdown fixed by hand is now a CI failure. — subpixel purge: border seam + note-ring overhang SOLVED)
+  cutdown fixed by hand is now a CI failure.
+- **Fine-print sweep, round 1 (2026-08-08 — the case family):** scanned all catalog
+  descriptions for behavioral claims (45 leaves, 8 clusters). Finding: **Text Filter
+  was OFF the D12 line** — case-sensitive raw `includes` while its two sibling
+  filters fold case and D12 rules every comparison insensitive; `filterTextList` now
+  folds (both surfaces — the node and TEXTFILTER share the kernel), description
+  updated. **`caseContract.test.ts`** pins the whole D12 line in one place: `=`/`<>`
+  insensitive, EXACT sensitive, frame Filter ops ± matchCase, Text Filter, join/
+  group/distinct identity-sensitive, Replace Values (case-sensitive whole-cell,
+  numeric match, substring strings-only, blanks/errors untouched). Replace Values'
+  description claims all verified true against `replaceValues`. Sort nulls/errors-
+  last already double-pinned. Remaining clusters recorded in the backlog item. — subpixel purge: border seam + note-ring overhang SOLVED)
 - **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
   lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
   header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;

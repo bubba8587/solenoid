@@ -871,7 +871,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [textXformLeaf("upper"), textXformLeaf("lower")] },
           { type: "pair", children: [textXformLeaf("trim"),  textXformLeaf("proper")] },
           textXformLeaf("clean"),
-          { type: "text-filter", label: "Text Filter", description: "Keeps strings from a list that contain, start with, or end with a pattern. Case-sensitive.", create: () => new TextFilterNode(), parity: false },
+          { type: "text-filter", label: "Text Filter", description: "Keeps strings from a list that contain, start with, or end with a pattern. Ignores case, like every comparison here.", create: () => new TextFilterNode(), parity: false },
         ],
       },
       {
