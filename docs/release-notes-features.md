@@ -32,6 +32,11 @@ Covers everything on `develop` since the v1.2.0 tag.
 - **[slide] Query.** A Power Query-style transform node: drop a Query, drill in,
   chain the table verbs, and Refresh on demand — upstream changes only mark it
   stale, never silently recompute (D22: a pre-seeded manual-mode Composite).
+- **[slide] AI palette.** Type a prompt in the command palette: a question gets an
+  answer about *your* document; a build request gets a validated whole-document
+  rewrite shown as a diff you approve or cancel — never a blind edit (D27/D28).
+  Bring your own Anthropic key (Settings ▸ AI), or type `demo` for the offline
+  staged demo. Applied additions animate in.
 
 ## Release-notes body
 
@@ -55,9 +60,19 @@ Covers everything on `develop` since the v1.2.0 tag.
   zoom pill, stable pinch-zoom on mobile-class GPUs.
 - Socket Types reference rewritten from the live socket registry; socket shades
   retuned; a full voice pass over every shipped string.
+- Pixel-perfect cards: the card frame (border, header cap, divider) paints as one
+  SVG, so strokes can't crack apart at any zoom — the long-standing hairline seam
+  and the selection-ring overhang on notes are gone.
+- Hover a frame input's socket (tap the row on touch) and a miniature EXAMPLE
+  table shows exactly the columns it expects, with sample data.
+- A crash can no longer black out the app: the failing card degrades to a small
+  red box with a copyable message and everything else keeps working.
+- Touch polish: node descriptions on long-press, tap-to-expand descriptions in
+  the Function Reference, context menus stay on-screen, the wordmark tops the
+  mobile bar.
 
 ## Known issues (for the GitHub release body — finalize at cut time)
 
 - (carry forward any still true from 1.2: drill-in Navigator/lasso/group tools,
-  header/body hairline seam, browser Data Feed CORS limits, no cable collision
-  avoidance, Android status-bar tint.)
+  browser Data Feed CORS limits, no cable collision avoidance, Android status-bar
+  tint. The header/body hairline seam is FIXED — drop it.)

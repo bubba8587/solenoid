@@ -322,6 +322,7 @@ guarded once, up top.
 
 Decisions: D5 (the value model), D10 (current-Excel-only parity), D11 (surface
 harmony + the reduction/element-wise line), D12 (comparisons vs identity; list vs
-relational), D13 (engine consistency over Excel quirks) in `decisions.md`. Build
-items: `backlog.md` "Post-audit tails". Mechanics: `subsystem-invariants.md` "Error
-values". Related-but-separate: case sensitivity (D12), date year rules (backlog).
+relational), D13 (engine consistency over Excel quirks) in `decisions.md`.
+Mechanics: `subsystem-invariants.md` "Error values". Known open divergence: the
+mode-selector-on-a-wired-blank AUTHOR CALL in `backlog.md` (text.ts/date.ts
+literal fallback vs this doc's propagate row).
