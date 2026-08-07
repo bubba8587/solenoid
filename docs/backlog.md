@@ -15,10 +15,16 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   inputs handled per `value-semantics.md`; collapsed card reads right; description
   matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings
   in the session digest; fix small, file anything big.
-- [ ] **Behavioral fine-print inventory** — behavioral claims (case sensitivity,
-  null handling, type coercion) that exist ONLY in catalog description strings:
-  inventory them, pin the recurring ones as rules/tests or surface them as
-  mechanisms on the card; descriptions stay short pointers.
+- [ ] **Behavioral fine-print inventory — the remainder.** The scan found 45
+  description-carried claims in 8 clusters. DONE 2026-08-08: the case family
+  (`caseContract.test.ts` pins D12 across formula `=`/EXACT, frame Filter ±
+  matchCase, Text Filter — which was OFF the line, case-sensitive, and was
+  brought under it — join/group/distinct identity, Replace Values incl. numeric
+  match); sort null/error ordering verified already double-pinned. Remaining
+  clusters to verify-or-pin during the node-by-node sweep: the 21 per-node
+  null/blank claims, index/order/ties (xmatch first-match, mode ties, choose),
+  skip/ignore (text-join, DATEDIF, category), inclusive/exclusive (linspace,
+  slice).
 
 ## Bugs & verifications
 
