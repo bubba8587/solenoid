@@ -1,10 +1,17 @@
-# `src/graph/pixi/` — the PixiJS renderer (spike → real port)
+# `src/graph/pixi/` — pixi-era library modules + the deprecated renderer spike
 
-Proof-of-architecture for the GPU node renderer. See `docs/archive/renderer-decision.md`
-for the *why* (adopt PixiJS v8, keep Rete headless, DOM only for the active
-editor). This folder is the *how*. Nothing here is on by default — it's reached
-only through the buried **Edit ▸ "Renderer spike (Pixi)"** overlay
-(`../components/RendererSpike.tsx`).
+Two different things share this folder, with opposite maintenance status:
+
+- **LIVE library code the shipped HTML-in-Canvas mode imports** — `pixiCamera`
+  (the camera math), `pixiCableGeom` (`cablePolyline` off the real router), and
+  `pixiGraphSnapshot` (the live-graph snapshot). `htmlCanvasRenderer.ts` and
+  `HtmlCanvasLayer.tsx` depend on these in production; maintain them like any
+  live module.
+- **The DEPRECATED Pixi renderer path** — `pixiScenes`, `pixiPicker`, and the
+  buried **Edit ▸ "Renderer spike (Pixi)"** overlay
+  (`../components/RendererSpike.tsx`). The renderer direction was dropped
+  (author 2026-07-19; `docs/archive/renderer-decision.md` has the why); this
+  part is parked groundwork, not on by default, not maintained.
 
 ## Module map
 
@@ -42,11 +49,10 @@ pointer/pinch/wheel interaction; a floating `<input>` does double-click rename
   (and `…-mono <Mono.ttf>`). The atlas is ASCII-only — widen the charset for
   non-ASCII glyphs when the real port needs them.
 
-## What this is NOT (yet)
+## What this is NOT
 
-The spike proves the path; it does not replace the renderer. The real port
-(`docs/backlog.md` → "Renderer (v1.0)"): MSDF text, port cables off
-`ConnectionComponent`, port node bodies + rehost the React node components off
-rete's render contract, selection/drag/box-select on the spatial index, minimap,
-then delete the rete render/area/connection plugins. Do the cheap Chrome DevTools
-trace first to confirm Composite-Layers dominates.
+The spike proved the path and the direction was then dropped in favor of the
+HTML-in-Canvas renderer (D6) — the full port (MSDF text, ported cables/node
+bodies, deleting the rete render plugins) is NOT planned. The groundwork stays
+parked in case a full swap is ever forced (D6's reversal clause), and the
+library modules above live on inside the HIC mode.

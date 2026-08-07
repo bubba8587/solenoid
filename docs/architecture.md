@@ -161,12 +161,15 @@ src/
 | `cableScene.ts` (+`.test.ts`) | Module store of published cable strokes (the canvas scene); `ConnectionComponent` is the sole producer |
 | `components/CableCanvas.tsx` | Paints the cable scene onto two portaled canvases (below/above nodes) in world units; the Phase-1 cable layer |
 | `components/RenderOverlay.tsx` | Transparent transform-mirror overlay (Phase-0 harness); console `__solenoidOverlayDebug()` draws a verification grid |
-| `cableHitTest.ts` (+`.test.ts`) | **Phase-3 groundwork, UNWIRED.** Pure cable hit geometry: flatten an SVG `d` (M/L/C/Q) to a polyline, point→segment / point→polyline distance, `hitTestCables` |
-| `spatialIndex.ts` (+`.test.ts`) | **Phase-3 groundwork, UNWIRED.** Uniform `SpatialGrid` (bucket-by-bbox, point/radius query) — narrows hit-testing to nearby candidates on big graphs |
+| `cableHitTest.ts` (+`.test.ts`) | Pure cable hit geometry: flatten an SVG `d` (M/L/C/Q) to a polyline, point→segment / point→polyline distance, `hitTestCables`. `parsePathPoints` is LIVE (imported via `pixi/pixiCableGeom` into the shipped HIC renderer); the hit-test half stays groundwork |
+| `spatialIndex.ts` (+`.test.ts`) | Uniform `SpatialGrid` (bucket-by-bbox, point/radius query); consumed by the deprecated spike's `pixiPicker` — production hit-testing still doesn't use it |
 | `cableHitIndex.ts` (+`.test.ts`) | **Phase-3 groundwork, UNWIRED.** Composes the two: `update(cables)` syncs a self-maintaining index, `hitTest(point, tol)` → nearest cable. Replaces the per-cable hit `<svg>` when Phase 3 ships |
 | `nodeHitIndex.ts` (+`.test.ts`) | **Phase-2/3 groundwork, UNWIRED.** Point→node hit-testing (point-in-rect over the SpatialGrid, topmost by z) for when node bodies draw on canvas and DOM nodes no longer catch clicks |
-| `cssColor.ts` (+`.test.ts`) | **Renderer primitive, UNWIRED.** Pure CSS color parse (hex/rgb) + sRGB `mixSrgb`/`flowTint` — a canvas can't evaluate `color-mix`/`var()`, so flow tints + header tints compute in JS |
-| `gpuCableRenderer.ts`, `gpuNodeRenderer.ts`, `rasterAtlas.ts`, `nodeScene.ts` | GPU-path primitives behind the same gate (cable/node draw + texture atlas + scene model). The pixi renderer (`pixi/`) is **DEPRECATED — do not maintain**; the live renderers are the DOM default and the html-canvas mode |
+| `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB `mixSrgb`/`flowTint` — a canvas can't evaluate `color-mix`/`var()`, so flow tints + header tints compute in JS. LIVE via `nodeScene`/`nodeInstances`/`gpuCableRenderer` and the HIC snapshot |
+| `gpuCableRenderer.ts`, `gpuNodeRenderer.ts`, `rasterAtlas.ts`, `nodeScene.ts`, `nodeInstances.ts`, `cableTessellate.ts` | GPU-path primitives behind the same gate (cable/node draw + texture atlas + scene model) |
+| `components/NodeCanvas.tsx` | The GPU node-card layer — today an ALIGNMENT-CHECK overlay (semi-transparent, above the DOM cards); the LOD swap is parked (deferrals) |
+| `htmlCanvasSupport.ts` | Gates the `html` render-mode option on `supportsHtmlInCanvas()` |
+| `pixi/` + `components/RendererSpike.tsx` (+`rendererSpikeStore.ts`) | SPLIT status: `pixiCamera`/`pixiCableGeom`/`pixiGraphSnapshot` are LIVE library modules the shipped HIC mode imports — maintain them; the pixi RENDERER path (`pixiScenes`/`pixiPicker`/RendererSpike) is DEPRECATED, parked per D6. See `pixi/README.md` |
 
 ### Groups / layout / standoffs
 
@@ -205,7 +208,7 @@ src/
 `TopBar`, `MenuBar`, `NavMenu` (seeds, export/import, tidy, fit), `StatusBar`,
 `Header`, `AppToolbar` (accent + light/dark via `appTheme.ts`), `OutlinePanel`,
 `Settings` (+`settingsStore`), `ShortcutsOverlay`, `Minimap`,
-`MobileControls` (+`mobileMenuStore`, `touchSelectStore`), `SeedSelect`,
+`MobileControls` (+`mobileMenuStore`, `touchSelectStore`),
 `WebDemoBanner`, `CommandPalette.tsx` (+ `palette.ts`, the app palette engine
 behind `PaletteEditor`/`paletteStore`), plus dialog/popup stores
 (`confirmStore`, `connectionDialogStore`, `formulaPopupStore`,
@@ -235,7 +238,7 @@ Obsidian vault import/export direction).
 One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `stats`, `dist-*`, `finance`, `financeOps`, `text`, `textOps`, `date`,
 `dateSerial`, `complex`, `matrix`, `matrixOps`, `frame`, `cube`,
-`tableLambda`, `lambda`, `expression`, `lookup`, `convert`, `convertUnits`,
+`tableLambda`, `lambda`, `expression`, `convert`, `convertUnits`,
 `logic`, `input`, `control`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
@@ -247,8 +250,8 @@ CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
 `coerce`, `connection`, `passthrough` (the D15 passthrough declarations),
 `placeholder`, plus `shared.ts` (port factories,
 broadcast), `mathUtils.ts`, and `kind.ts` (`NodeKind` → header accent).
-Composite run modes live beside them: `monteCarlo.ts` + `tornadoRun.ts`
-(simulation / sensitivity sweeps). Vitest covers the math families + the
+Composite run modes live one level up (`src/graph/monteCarlo.ts` + `tornadoRun.ts` —
+simulation / sensitivity sweeps; only the `tornado` node class is in `nodes/`). Vitest covers the math families + the
 newer data-quality/report nodes (`*.test.ts` alongside; the full inventory
 by category is `docs/node-coverage.md`, hand-maintained against
 `nodeCatalog.ts` — nothing generates it).
@@ -283,7 +286,7 @@ overlay tabs.
 src-tauri/
 ├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps)
 ├── tauri.conf.json           # Window, identifier, build hooks
-├── capabilities/default.json # Permissions: dialog:default, fs read scoped to $HOME/**
+├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
 ├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, FX-12): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
@@ -342,8 +345,8 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 - **One node class per family file, one component row in `nodeRegistry.ts`,
   one catalog leaf.** `constructor.name` is the persistence type key
   (`keepNames` in vite.config.ts makes it prod-stable).
-- **`extractInit` allowlist** (persistence.ts): a node's persistent
-  constructor fields must be listed there or they silently don't survive
+- **`extractInit` allowlist** (`copyPaste.ts`; `persistence.ts` imports it): a node's
+  persistent constructor fields must be listed there or they silently don't survive
   save/load/paste.
 - **Module-singleton stores** for anything read across React roots
   (`storeKit.ts`: `createNotifier` / `createToggleStore` / `createValueStore`
