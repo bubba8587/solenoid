@@ -59,7 +59,7 @@ mobile model; never gate on coarseness alone what must flip with it.
 | 2-finger pinch | touch | zoom (capped) | `CappedZoom`, `pointerGesture.ts` (capture) |
 | wheel / ctrl+wheel trackpad pinch | mouse | zoom (step-capped) | `CappedZoom.wheel` |
 | tap / click | all | clear cable/standoff/endpoint selection (release-only, ≤6px move) | `Canvas.tsx` `clearCableSelection` |
-| **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu (headed by the node's catalog one-liner — the header tooltip's touch-reachable home) | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
+| **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu (headed by the node's catalog one-liner — the header tooltip's touch-reachable home). Two regates: suppressed entirely while ISOLATE is active, and the handler bails on the focused editable (the browser's own menu wins there) | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
 | double-tap / double-click | all | **nothing, by design** (swallowed — see invariants) | `areaPresets.ts` |
 
 (Marquee/lasso selection exists but its trigger is not recorded here yet — verify in
@@ -86,7 +86,7 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 | hover dot (300ms intent) | mouse | frame-input EXAMPLE hint | `NodeSocket.tsx` + `frameHint.ts` |
 | tap the input ROW | touch | frame-input EXAMPLE hint — the INTENTIONAL touch trigger; next tap or 4s dismisses. The dot itself deliberately has none: a touch press on the dot begins the cable pick, which captures the pointer (the tap's up never reaches the dot), and the dot scales with the canvas transform anyway (a few px at overview zoom). | `MeasuredSocketRow` / `FrameHintLayer` |
 | long-press socket | touch | socket context menu | `canvasContextMenu.ts` |
-| touch hit areas | coarse | dot targets inflate to ~28px (Conduit sockets deliberately small so its body stays grabbable); every socket +6px while cabling | `socket.css` |
+| touch hit areas | coarse | dot targets inflate to ~28px (Conduit sockets deliberately small so its body stays grabbable); every socket grows further while cabling (coarse −8px → −14px inset; a specificity bug once SHRANK it, fixed 2026-08-09) | `socket.css` |
 | click cable / tap | all | select cable (ribbons select the run) | `ConnectionComponent.tsx` |
 | double-click cable | mouse | (via click `detail` count, NOT onDoubleClick) — see component | `ConnectionComponent.tsx` |
 

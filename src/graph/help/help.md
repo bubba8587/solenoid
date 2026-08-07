@@ -61,6 +61,8 @@ Single keys work when you're not typing in a field.
 | | |
 |---|---|
 | **A** | Add a node at the cursor |
+| **N** | Show or hide the Navigator |
+| **Enter** | Open the command palette |
 | **G** / **I** | Group / isolate the selection |
 | **T** / **C** | Tidy (auto-arrange) / cleanup (tidy, collapse, fit) |
 | **E** / **F** | Expand or collapse groups / fit a group to its members |
@@ -70,6 +72,7 @@ Single keys work when you're not typing in a field.
 | **Esc** | Leave isolate mode |
 | **Ctrl+Z / Ctrl+Shift+Z** | Undo / redo |
 | **Ctrl+C / Ctrl+V** | Copy / paste, wiring intact |
+| **Ctrl+Shift+G** | Make a Composite from the selection |
 | **Ctrl+A / Ctrl+F** | Select all / find a node |
 | **Ctrl+S / Ctrl+Shift+S** | Save / Save As |
 | **Ctrl+O / Ctrl+Shift+L** | Open / reload the document |

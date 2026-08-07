@@ -174,7 +174,7 @@ family.
 |---|---|---|
 | Filled circle | scalar | `number` `string` `date` `complex` `logical` `any` |
 | Filled rounded square | strict list | `list` `strlist` `datelist` `complexlist` `logicallist` `anylist` |
-| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` `anydata` |
+| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo`; `anydata` adds a small rank-2 grid mark in the lower half — the one visual difference from `anycombo` |
 | Square with a 2×2 grid | matrix | `table` `strtable` `datetable` `complextable` `logicaltable` `anytable` |
 | Square with an "F" | frame | `frame` |
 | Flat hexagon (three rhombi) | cube | `cube` |
@@ -184,9 +184,12 @@ family.
 | Hollow ring (outline only) | anything | `trueany` |
 
 Colors by family: number amber, text yellow-green, date pink, complex sky blue,
-logical purple, frame and cube violet, function teal-green, chart and document
-blue, all six wildcards gray. Within a family, the strict list is a darker shade
-of the scalar and the matrix is a more saturated shade. A combo's split square
+logical purple, frame and cube violet, and GREEN shared three ways — function,
+chart and document all draw the same green slot, told apart only by glyph (λ,
+plain circle, two text lines); all six wildcards gray. Within a family, the
+strict list is a darker shade of the scalar and the matrix is hue-shifted −11°
+(plus a saturation gain) — the hue shift is what separates a 2-D socket from
+its scalar. A combo's split square
 takes the scalar color on the upper-left triangle and the list color on the
 lower-right. `anycombo`, whose family has only one color, takes gray on the
 upper-left and gray's own border shade on the lower-right, so the split stays
@@ -209,9 +212,10 @@ These apply first, at every socket:
    passthrough node on the specific inputs it declares as forwarded. Everywhere
    else the cell is unwrapped to its display magnitude before the socket sees it.
    Where a unit cell does arrive, it is shaped by rank without the numeric
-   coercers: a scalar socket takes the cell (or a one-element list of one cell);
-   a strict list wraps a lone cell into a singleton; a combo leaves it alone; a
-   matrix, frame or cube socket widens it element-agnostically and keeps the cell.
+   coercers — but only on the NUMERIC rungs: a scalar socket takes the cell, the
+   numeric `list`/`anylist` wrap a lone cell into a singleton, and `table` widens
+   it; the typed non-numeric list/table rungs pass a unit cell through unshaped
+   (harmless today — unit cells are numeric).
 4. **Three variants are typeable in place** — `strlist`, `datelist` and
    `logicallist`. When such an input has no cable, text typed into its box is
    parsed as CSV and injected as the list. A part that will not parse for the type
@@ -1074,7 +1078,8 @@ Display, IF, CHOOSE, Cast, Cable Switch, Conduit lanes, composite ports and
 Placeholder.
 
 **Base `any`** — adopts a family-typed wire verbatim (its own accepts-list keeps
-the rank low). Used for the comparison-value slots.
+the rank low). Used for the comparison-value slots, EXPAND's Fill, and
+REDUCE/SCAN's Initial.
 
 **Base `anydata`** — adopts a family-typed wire verbatim, at whatever rank ≤ 2
 it arrives. Used for Expression's formula variables and Computed Column's side
@@ -1242,14 +1247,18 @@ interchangeable.
 
 ## 9. Why a cable was refused
 
-A drag that will not drop has exactly three causes, checked in this order:
+A drag that will not drop has exactly five causes, checked in this order:
 
 1. **The canvas is locked.** All wiring is refused while lock is on, whatever the
    types.
 2. **It is a self-loop** — an output wired back into an input on the same node.
-3. **The types do not connect** — `canConnect(output, input)` is false. Look up the
+3. **The cable already exists** — an exact duplicate (same source socket, same
+   target socket) is refused.
+4. **The types do not connect** — `canConnect(output, input)` is false. Look up the
    output's variant in section 5 and read its **Reaches** list; if the input's
    variant is absent, this is the cause.
+5. **Two FCs with conflicting units** — wiring FC → FC is refused when both carry
+   a non-`none` unit that disagrees.
 
 The drag guard vetoes the drop silently. Wiring through the **connection dialog**
 instead names the problem, in the form `Incompatible types: Date → Number.` — that
@@ -1268,11 +1277,11 @@ When the cause is a type mismatch, there are three ways forward:
 - **A container into something narrower** (a `cube` into a `frame`, a `frame` into
   a matrix): UNNEST or Get Column does it explicitly.
 
-Socket types also drive **quick-wire**: dragging a cable into empty canvas opens the
-Add menu filtered to nodes that have a port compatible with the one you dragged
-from — from an output it keeps nodes with an accepting input, from an input it keeps
-nodes with an output that flows in. Picking one wires it to the first compatible
-port automatically, so the menu only ever offers nodes that will actually connect.
+Socket types also drive **quick-wire** (a Setting, OFF by default): with it on,
+dragging a cable into empty canvas opens the full Add menu with incompatible
+leaves DIMMED and unpickable — from an output, compatible means a node with an
+accepting input; from an input, a node with an output that flows in. Picking one
+wires it to the first compatible port automatically.
 
 ---
 
