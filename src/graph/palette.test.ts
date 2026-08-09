@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CANVAS, CANVAS_KEYS, DEFAULT_CANVAS, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
+import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_KEYS, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, chromeCssVars, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
 
 describe("built-in palettes", () => {
   it("every palette defines all 12 slots as hex colors", () => {
@@ -26,70 +26,108 @@ describe("built-in palettes", () => {
   });
 });
 
-// The canvas ground a palette may author (--canvas-bg / --canvas-dot). Parallel to
-// the slot map: never resolved through resolveColor, written straight by appTheme.
-describe("canvas ground", () => {
+// The chrome ramp a palette may author (App.css's neutral tokens). Parallel to the
+// slot map: never resolved through resolveColor, written straight by appTheme.
+describe("chrome ramp", () => {
+  const MODES = ["dark", "light"] as const;
+
   afterEach(() => {
     paletteStore.setActiveBase("Default");
     paletteStore.loadCustomTemplate("Default");
     paletteStore.setDocPalette(null);
   });
 
-  it("every declared ground key is a hex color", () => {
+  it("every declared chrome key is known and a hex color", () => {
     for (const name of PALETTE_NAMES) {
-      for (const [key, hex] of Object.entries(BUILTIN_CANVAS[name])) {
-        expect(CANVAS_KEYS).toContain(key);
-        expect(hex, `${name}/${key}`).toMatch(/^#[0-9a-fA-F]{6}$/);
+      for (const mode of MODES) {
+        for (const [key, hex] of Object.entries(BUILTIN_CHROME[name][mode])) {
+          expect(CHROME_KEYS).toContain(key);
+          expect(hex, `${name}/${mode}/${key}`).toMatch(/^#[0-9a-fA-F]{6}$/);
+        }
       }
     }
   });
 
-  // The author's call: recoloring the graph is what a palette does; recoloring the
-  // WORKBENCH is opt-in, and only Orchard opts in. A new palette adding a ground is a
-  // deliberate change to this line, not a silent one.
-  it("only Orchard authors a ground; every other built-in leaves the neutral one", () => {
+  // The author's call (D35): recoloring the graph is what a palette does; recoloring
+  // the WORKBENCH is opt-in, and only Orchard opts in. A new palette authoring chrome
+  // is a deliberate change to this line, not a silent one.
+  it("only Orchard authors chrome, and authors it COMPLETELY in both modes", () => {
     for (const name of PALETTE_NAMES) {
-      const declared = Object.keys(BUILTIN_CANVAS[name]);
-      if (name === "Orchard") expect(declared.sort()).toEqual([...CANVAS_KEYS].sort());
-      else expect(declared, `${name} authors a ground`).toEqual([]);
+      for (const mode of MODES) {
+        const declared = Object.keys(BUILTIN_CHROME[name][mode]).sort();
+        if (name === "Orchard") expect(declared, `${mode}`).toEqual([...CHROME_KEYS].sort());
+        else expect(declared, `${name}/${mode} authors chrome`).toEqual([]);
+      }
     }
   });
 
-  it("switching the app base swaps the ground, and back to none", () => {
-    expect(paletteStore.canvasColors()).toEqual({});
+  it("switching the app base swaps the ramp, and back to none", () => {
+    expect(paletteStore.chrome().light).toEqual({});
     paletteStore.setActiveBase("Orchard");
-    expect(paletteStore.canvasColors()).toEqual(BUILTIN_CANVAS.Orchard);
+    expect(paletteStore.chrome().light).toEqual(BUILTIN_CHROME.Orchard.light);
     paletteStore.setActiveBase("Muted");
-    expect(paletteStore.canvasColors()).toEqual({}); // cleared, not left on Orchard's cream
+    expect(paletteStore.chrome().light).toEqual({}); // cleared, not left on Orchard's cream
   });
 
-  it("a doc pin picks the ground too, and wins over the app choice", () => {
+  it("a doc pin picks the chrome too, and wins over the app choice", () => {
     paletteStore.setActiveBase("Orchard");
     paletteStore.setDocPalette({ base: "Muted" });
-    expect(paletteStore.canvasColors()).toEqual({});
+    expect(paletteStore.chrome().dark).toEqual({});
     paletteStore.setDocPalette(null);
-    expect(paletteStore.canvasColors()).toEqual(BUILTIN_CANVAS.Orchard);
+    expect(paletteStore.chrome().dark).toEqual(BUILTIN_CHROME.Orchard.dark);
   });
 
-  it("the custom ground starts neutral, is always complete, and edits on Save", () => {
-    expect(paletteStore.customCanvas()).toEqual(DEFAULT_CANVAS);
+  it("the custom ramp starts neutral, is always complete, and edits on Save", () => {
+    expect(paletteStore.customChrome().dark).toEqual(DEFAULT_CHROME.dark);
     paletteStore.setActiveBase("Custom");
-    expect(paletteStore.canvasColors()).toEqual(DEFAULT_CANVAS);
-    paletteStore.setCustomMap(paletteStore.customMap(), { bgDark: "#123456" });
-    expect(paletteStore.canvasColors()).toEqual({ ...DEFAULT_CANVAS, bgDark: "#123456" });
+    expect(paletteStore.chrome().light).toEqual(DEFAULT_CHROME.light);
+    paletteStore.setCustomMap(paletteStore.customMap(), { dark: { canvasBg: "#123456" }, light: {} });
+    expect(paletteStore.chrome().dark).toEqual({ ...DEFAULT_CHROME.dark, canvasBg: "#123456" });
+    expect(paletteStore.chrome().light).toEqual(DEFAULT_CHROME.light); // the other mode is carried, not wiped
   });
 
-  it("setCustomMap ignores an invalid ground hex, keeping the prior value", () => {
+  it("setCustomMap ignores an invalid chrome hex, keeping the prior value", () => {
     paletteStore.setActiveBase("Custom");
-    paletteStore.setCustomMap(paletteStore.customMap(), { bgDark: "nope" } as Record<string, string>);
-    expect(paletteStore.customCanvas().bgDark).toBe(DEFAULT_CANVAS.bgDark);
+    paletteStore.setCustomMap(paletteStore.customMap(), { dark: { canvasBg: "nope" }, light: {} });
+    expect(paletteStore.customChrome().dark.canvasBg).toBe(DEFAULT_CHROME.dark.canvasBg);
   });
 
-  it("loading a groundless template clears a ground the author had set", () => {
+  it("loading a chromeless template clears chrome the author had set", () => {
     paletteStore.loadCustomTemplate("Orchard");
-    expect(paletteStore.customCanvas()).toEqual({ ...DEFAULT_CANVAS, ...BUILTIN_CANVAS.Orchard });
+    expect(paletteStore.customChrome().light).toEqual({ ...DEFAULT_CHROME.light, ...BUILTIN_CHROME.Orchard.light });
     paletteStore.loadCustomTemplate("Muted");
-    expect(paletteStore.customCanvas()).toEqual(DEFAULT_CANVAS);
+    expect(paletteStore.customChrome().light).toEqual(DEFAULT_CHROME.light);
+  });
+});
+
+// chromeCssVars is the whole contract with appTheme: what it omits, appTheme CLEARS.
+describe("chromeCssVars", () => {
+  it("an unauthored ramp produces nothing, so every chrome var falls back to App.css", () => {
+    expect(chromeCssVars({}, "dark")).toEqual({});
+    expect(chromeCssVars({}, "light")).toEqual({});
+  });
+
+  it("a partial ramp writes what it has and derives nothing", () => {
+    const out = chromeCssVars({ canvasBg: "#141309" }, "dark");
+    expect(out).toEqual({ "--canvas-bg": "#141309" });
+  });
+
+  it("a full ramp writes all 13 tokens plus the derived ones", () => {
+    for (const mode of ["dark", "light"] as const) {
+      const out = chromeCssVars(BUILTIN_CHROME.Orchard[mode], mode);
+      for (const { var: name, key } of CHROME_VARS) {
+        expect(out[name], `${mode}/${name}`).toBe(BUILTIN_CHROME.Orchard[mode][key]);
+      }
+      // Dark keeps App.css's black shadows and its accent-tinted wordmark, so those
+      // four stay unwritten and get cleared. Light derives every one.
+      const derived = DERIVED_CHROME_VARS.filter((v) => out[v] !== undefined);
+      expect(derived.length, mode).toBe(mode === "light" ? DERIVED_CHROME_VARS.length : DERIVED_CHROME_VARS.length - 4);
+    }
+  });
+
+  it("derives every chrome var from the DEFAULT ramp too (no key is Orchard-only)", () => {
+    const out = chromeCssVars(DEFAULT_CHROME.light, "light");
+    for (const name of DERIVED_CHROME_VARS) expect(out[name], name).toBeTruthy();
   });
 });
 

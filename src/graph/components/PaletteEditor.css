@@ -30,13 +30,13 @@
 .sol-pal-editor__well::-moz-color-swatch { border: none; border-radius: 3px; }
 .sol-pal-editor__slot-label { font-size: 12px; color: var(--text); }
 
-/* Canvas ground wells — the graph background + dot grid, both modes. Four across on
-   a wide panel, folding to two on a narrow one. */
-.sol-pal-editor__canvas { display: flex; flex-direction: column; gap: 7px; }
+/* Chrome ramp wells — the live theme's neutrals. More of them than the slots and each
+   label is shorter, so they run three across on a wide panel and fold down narrow. */
+.sol-pal-editor__chrome { display: flex; flex-direction: column; gap: 7px; }
 .sol-pal-editor__group-label { font-size: 12px; color: var(--text-dim); }
-.sol-pal-editor__canvas-slots {
+.sol-pal-editor__chrome-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 7px 18px;
 }
 
@@ -57,18 +57,25 @@
 .sol-pal-editor__template-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Live sample — the REAL node/group/note chrome side by side, standing on the drafted
-   canvas ground (same 24px dot grid as .solenoid-canvas, at rest zoom). */
+   canvas ground (same 24px dot grid as .solenoid-canvas, at rest zoom). The drafted
+   ramp is scoped here as inline custom properties, so everything inside resolves
+   against the draft; the border is deliberately the LIVE --border, since it belongs to
+   the modal framing the preview, not to the preview. */
 .sol-pal-sample {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
   align-items: flex-start;
   padding: 12px;
-  border: 1px solid var(--border-subtle);
   border-radius: 6px;
-  background-color: var(--sample-bg);
-  background-image: radial-gradient(circle, var(--sample-dot) 1px, transparent 1px);
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+.sol-pal-editor__preview {
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  padding: 1px;
 }
 /* The node sits inside the group body (like a real member) with a little breathing room. */
 .sol-pal-sample__nodeslot { padding: 10px; }

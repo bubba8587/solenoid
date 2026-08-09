@@ -1,4 +1,4 @@
-import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade } from "./palette";
+import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade, chromeCssVars, CHROME_VARS, DERIVED_CHROME_VARS } from "./palette";
 import { createNotifier } from "./storeKit";
 import { syncNativeAccent } from "./nativeAccent";
 
@@ -51,20 +51,20 @@ function apply() {
   // retints errors too; errorChip.css's static fallback covers the first paint.
   root.style.setProperty("--sol-error", themeAccent(resolveColor("vermilion"), _mode));
 
-  // The canvas ground, when the active palette authors one. A palette that doesn't
-  // must CLEAR the vars, not skip them: an inline property beats App.css's ramps, so
-  // leaving the last palette's ground behind would strand a cream canvas under the
-  // Default palette. The hexes go through unshifted — themeAccent tunes an accent
-  // against the ground, and the ground is what it's tuned against.
-  const canvas = paletteStore.canvasColors();
-  setOrClear(root, "--canvas-bg", _mode === "dark" ? canvas.bgDark : canvas.bgLight);
-  setOrClear(root, "--canvas-dot", _mode === "dark" ? canvas.dotDark : canvas.dotLight);
+  // The neutral chrome, when the active palette authors a ramp. A palette that
+  // doesn't must CLEAR every var, not skip it: an inline property beats App.css's
+  // ramps, so leaving the last palette's behind would strand a cream workbench under
+  // the Default palette. The hexes go through unshifted — themeAccent tunes an accent
+  // AGAINST the chrome, and the chrome is what it's tuned against.
+  const vars = chromeCssVars(paletteStore.chrome()[_mode], _mode);
+  for (const name of ALL_CHROME_VARS) {
+    const v = vars[name];
+    if (v) root.style.setProperty(name, v);
+    else root.style.removeProperty(name);
+  }
 }
 
-function setOrClear(root: HTMLElement, name: string, value: string | undefined) {
-  if (value) root.style.setProperty(name, value);
-  else root.style.removeProperty(name);
-}
+const ALL_CHROME_VARS: string[] = [...CHROME_VARS.map((v) => v.var), ...DERIVED_CHROME_VARS];
 
 function persist() {
   try { localStorage.setItem(LS_KEY, JSON.stringify({ accent: _accent, mode: _mode })); }

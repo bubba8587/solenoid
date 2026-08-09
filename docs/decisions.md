@@ -278,23 +278,29 @@ first-input swap cannot describe. **Where:** `nodes/distribution.ts`
 **Reopen if:** a distribution whose parameters or input shape cannot be
 described by `DIST_SPECS` (a second x input, a non-numeric parameter).
 
-### D35 — A palette may author the canvas ground, and almost none do
-The canvas background and its dot grid are palette-authorable per theme mode
-(`BUILTIN_CANVAS`), PARALLEL to the slot map rather than four more slots: nothing
-stores them on a node, `resolveColor` never returns one, and folding them into the
-slot record would make every slot consumer (chart series, swatch grid, height ramp,
-doc overrides) skip them. Declaring a ground is OPT-IN and stays rare — recoloring
-the graph is what a palette does; recoloring the workbench is a separate claim.
-Orchard is the only built-in that opts in (2026-08-09, author call), and a test pins
-that so a later palette adds a ground deliberately. A palette that declares none
-keeps App.css's neutral ground: `appTheme` CLEARS the inline vars per apply, since an
-inline property beats the stylesheet's ramps and a stale one would strand a cream
-canvas under Default. The custom palette's ground is always COMPLETE (seeded from
-`DEFAULT_CANVAS`), so the editor can show it in a well. **Where:** `palette.ts`
-(`BUILTIN_CANVAS` / `DEFAULT_CANVAS` / `canvasColors`), `appTheme.ts` `apply`,
-`PaletteEditor.tsx`, `palette.test.ts` § canvas ground. **Reopen if:** grounds
-outgrow two colors (a texture, a vignette, a per-doc ground) — that wants its own
-model, not more keys.
+### D35 — A palette may author the whole neutral chrome, and almost none do
+A palette can replace App.css's neutral ramp — canvas, window, three surfaces, three
+borders, four inks, per theme mode (`BUILTIN_CHROME`). It is PARALLEL to the slot map
+rather than more slots: nothing stores a neutral on a node, `resolveColor` never
+returns one, and folding them in would make every slot consumer (chart series, swatch
+grid, height ramp, doc overrides) skip them. The remaining literal-valued neutrals
+(panel/overlay fills, overlay border, button hover, gauge track, selected cable,
+wordmark, light-theme shadows) DERIVE from those 13 by fixed mixes, calibrated by
+running the DEFAULT ramp through them and matching App.css's own hand-tuned literals
+— so an author moves one ramp, and a step that reproduces the tuned values also
+behaves on a ramp nobody has eyeballed. Authoring chrome is OPT-IN and stays rare:
+recoloring the graph is what a palette does; recoloring the workbench is a separate
+claim. Orchard is the only built-in that opts in (2026-08-09, author call — a cream
+canvas under blue-gray cards was the thing that forced the scope), and a test pins
+both that and its completeness. A palette that authors none keeps App.css: `appTheme`
+CLEARS every chrome var per apply, since an inline property beats the stylesheet and a
+stale one would strand cream chrome under Default. A partial ramp writes what it has
+and derives nothing. The custom palette's ramp is always COMPLETE (seeded from
+`DEFAULT_CHROME`, a hand-held mirror of App.css), so the editor can show it in a well.
+**Where:** `palette.ts` (`BUILTIN_CHROME` / `DEFAULT_CHROME` / `chromeCssVars`),
+`appTheme.ts` `apply`, `PaletteEditor.tsx`, `palette.test.ts` §§ chrome ramp,
+chromeCssVars. **Reopen if:** chrome outgrows flat colors (a texture, a vignette, a
+per-doc ramp) — that wants its own model, not more keys.
 
 ### D36 — Node-combining round 1: eight approved merges landed
 The author approved a batch of D33/D34-style merges (2026-08-09) and they all
