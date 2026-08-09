@@ -10,7 +10,7 @@ import {
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
+  UniqueNode, SetOpNode, SetRelationNode, ListTakeDropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -486,8 +486,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-pad",   label: "Pad", description: "Extends a list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
           ]},
           { type: "pair", children: [
-            { type: "list-take",  label: "TAKE",   description: "Keeps the first or last N elements. Excel: TAKE.", create: () => new TakeNode() },
-            { type: "list-drop",  label: "DROP",   description: "Removes the first or last N elements. Excel: DROP.", create: () => new DropNode() },
+            { type: "list-take",  label: "TAKE",   description: "Keeps the first or last N elements. Excel: TAKE.", create: () => new ListTakeDropNode({ op: "take" }) },
+            { type: "list-drop",  label: "DROP",   description: "Removes the first or last N elements. Excel: DROP.", create: () => new ListTakeDropNode({ op: "drop" }) },
           ]},
           { type: "list-unique",  label: "UNIQUE", description: "Removes duplicates, preserving first-occurrence order. Excel: UNIQUE.", create: () => new UniqueNode() },
           { type: "pair", children: [
