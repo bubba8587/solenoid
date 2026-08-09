@@ -67,7 +67,7 @@ import {
 import {
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateValueNode, TimeValueNode, DatePartNode, WeekInfoNode,
-  DateDiffNode, DateAddNode, WorkdayNode, NetworkdaysNode,
+  DateDiffNode, DateAddNode, WorkdaysNode,
 } from "./date";
 
 // Runs at call-time, so forward-referencing every class above is safe; never
@@ -152,8 +152,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof TimeConstructNode || node instanceof DateValueNode ||
     node instanceof TimeValueNode || node instanceof DatePartNode ||
     node instanceof WeekInfoNode || node instanceof DateDiffNode ||
-    node instanceof DateAddNode || node instanceof WorkdayNode ||
-    node instanceof NetworkdaysNode || node instanceof DatePickerNode
+    node instanceof DateAddNode || node instanceof WorkdaysNode ||
+    node instanceof DatePickerNode
   ) return "date";
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||

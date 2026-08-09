@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode, RegexNode } from "./text";
-import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
+import { DateConstructNode, DateAddNode, WorkdaysNode } from "./date";
 import { BooleanOpNode, NotNode, IfsNode, SwitchNode } from "./logic";
 import { SliderInputNode } from "./input";
 import { ExpressionNode } from "./expression";
@@ -88,7 +88,7 @@ describe("mode selectors — the project's model, not Excel's", () => {
   });
 
   it("NETWORKDAYS: a wired blank weekend code yields blank, not the default week", () => {
-    const node = new NetworkdaysNode();
+    const node = new WorkdaysNode({ op: "networkdays" });
     expect(node.data({
       start: [46096], end: [46196], weekend_code: [null as unknown as number],
     }).result).toBeNull();
