@@ -306,6 +306,17 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   (`ExtensibleInputs` / `PairedExtensibleInputs`) when each input plays a distinct role; a
   single list socket only when elements are interchangeable (SUM). Aligned parallel columns →
   ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs).
+- **Node combining (recurring author program — Running D33, Distribution D34 are the models).**
+  "These could be one node" means the MAXIMAL merge: one card, selectors for what varied
+  (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
+  Mechanics that were gotten wrong once, don't repeat: an op's formula name is `fx ??
+  despace(label)` — when the real name is an Excel spelling or the label went bare, DECLARE
+  `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge an FX-4
+  collision by reclassifying the family argument-kind or inventing a parallel presentation
+  flag — `kind: "operation"` whenever the selector names the card, and the accent follows.
+  Selector-driven socket swaps: prune departing keys via `dropInputCables` BEFORE
+  `removeInput` (SSOT-9), spec-table the per-op shape (`DIST_SPECS` pattern), carry state
+  across switches by meaning (PDF↔PMF, inverse variants → Inverse).
 
 ### Capability map (orientation only — verify in code/docs before relying on detail)
 - **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
