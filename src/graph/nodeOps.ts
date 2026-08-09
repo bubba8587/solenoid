@@ -76,6 +76,12 @@ interface NodeOpsBase {
   /** Ops that already have a hand-written leaf of their own; machine-checked
    *  against the catalog by `nodeOps.test.ts`. */
   leafOps?: string[];
+  /** The family selector NAMES the card (accent it like an operation) even
+   *  though its ops are argument-kind for formula NAMING. The kinds usually
+   *  coincide; Distribution is the divergence — picking "Weibull" is the
+   *  card's identity, but the Excel names dispatch on their own, so no op may
+   *  claim a derived formula name (FX-4). */
+  opNamesTheCard?: boolean;
 }
 
 /** A declaration either lists its ops AND can build them, or lists neither — an
@@ -130,7 +136,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // ── Argument-kind: the op is a parameter, not a thing you would search for ──
   // The Distribution node's ops ARE searchable by name (the distributions), but
   // they claim no formula names — the Excel names dispatch on their own.
-  { type: "distribution", ctor: DistributionNode, kind: "argument", ops: DIST_OPS,
+  { type: "distribution", ctor: DistributionNode, kind: "argument", opNamesTheCard: true, ops: DIST_OPS,
     create: (op) => new DistributionNode({ op: op as never }) },
   { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
     create: (op) => new HeadersNode({ op: op as never }) },
@@ -342,8 +348,11 @@ export function opEntry(
 
 /** The op kind of a live node, undefined for an undeclared family — which RENDERS
  *  identically to "argument", so the coverage test is the only guard. */
+/** The PRESENTATION kind for the card's `data-op-kind` (its only consumer):
+ *  the declared kind, except a family whose selector names the card presents
+ *  as an operation. FX-4 and the parity walk read `decl.kind` directly. */
 export function opKindForNode(node: object | undefined): OpKind | undefined {
   if (!node) return undefined;
-  for (const d of NODE_OPS) if (node instanceof d.ctor) return d.kind;
+  for (const d of NODE_OPS) if (node instanceof d.ctor) return d.opNamesTheCard ? "operation" : d.kind;
   return undefined;
 }

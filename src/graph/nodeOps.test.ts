@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from "./nodeOps";
+import { DistributionNode } from "./nodes/distribution";
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { SET_OP_META, SET_RELATION_META } from "./nodes/list";
@@ -266,6 +267,9 @@ describe("the one Distribution node is reachable by search without growing the m
     expect(decl!.kind).toBe("argument");
     expect(decl!.ops!.length).toBeGreaterThan(12);
     expect(decl!.ops!.every((o) => !o.fx), "distribution declares a per-op fx").toBe(true);
+    // ...but the selector still NAMES the card, so it presents as an operation:
+    // the accent edge keys on data-op-kind = opKindForNode, not decl.kind.
+    expect(opKindForNode(new DistributionNode())).toBe("operation");
   });
 
   it("the Add-menu TREE keeps exactly ONE distribution leaf — no leaf per distribution or form", () => {
