@@ -508,87 +508,110 @@ export class DateAddNode extends ClassicPreset.Node {
   }
 }
 
-// ─── WORKDAY ─────────────────────────────────────────────────────────────────
+// ─── Workdays — ONE node (WORKDAY / NETWORKDAYS) ──────────────────────────────
+// The two directions of one working-day relation: WORKDAY solves the date N
+// working days out, NETWORKDAYS counts the working days between two dates.
+// Start, the weekend code and the holiday set are shared; the op swaps the
+// second input (Days ↔ End date) and retypes the output (date ↔ number).
 
-export class WorkdayNode extends ClassicPreset.Node {
+export type WorkdaysOp = "workday" | "networkdays";
+
+export const WORKDAYS_OP_META = {
+  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
+  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
+} satisfies Record<WorkdaysOp, { label: string; description: string }>;
+
+export class WorkdaysNode extends ClassicPreset.Node {
   label: string;
-  literals: Record<string, number> = { days: 5, weekend_code: 1 };
+  op: WorkdaysOp;
+  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
   cachedResult: BroadcastResult = null;
-  width = 180; height = 230;
+  width = 180; height = 258;
 
-  constructor(init?: { label?: string }) {
-    super("Workday");
-    this.label = init?.label ?? "WORKDAY";
-    this.addInput("start",        dateComboIn("Start date"));
-    this.addInput("days",         numListIn("Days"));
+  constructor(init?: { label?: string; op?: WorkdaysOp }) {
+    super("Workdays");
+    this.op = init?.op ?? "workday";
+    this.label = init?.label ?? "Workdays";
+    this.addInput("start", dateComboIn("Start date"));
+    if (this.op === "workday") this.addInput("days", numListIn("Days"));
+    else this.addInput("end", dateComboIn("End date"));
     this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
     // `holidays` is a LIST PARAMETER — the whole set is consulted per result, so it
     // is NOT an element-wise operand and stays a plain datelist.
     this.addInput("holidays",     dateListIn("Holidays (optional)"));
-    this.addOutput("result", dateComboOut("Date"));
+    this.addOutput("result", this.op === "workday" ? dateComboOut("Date") : numListOut("Working days"));
+    this.seedLiterals();
   }
 
-  data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
+  private seedLiterals(): void {
+    this.literals.weekend_code ??= 1;
+    if (this.op === "workday") this.literals.days ??= 5;
+  }
+
+  /** The key a switch to `next` would remove. Callers on a live graph prune its
+   *  cables BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: WorkdaysOp): string[] {
+    if (next === this.op) return [];
+    return next === "workday" ? ["end"] : ["days"];
+  }
+
+  /** Swaps the second input AND retypes the output in place (date ↔ number) —
+   *  the component must call retypeOutputCables afterwards (no connection event
+   *  fires on an in-place socket swap). */
+  setOp(next: WorkdaysOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    const out = this.outputs.result;
+    if (next === "workday") {
+      if (this.inputs.end) this.removeInput("end");
+      if (!this.inputs.days) this.addInput("days", numListIn("Days"));
+      if (out) { out.socket = dateComboOut("Date").socket; out.label = "Date"; }
+    } else {
+      if (this.inputs.days) this.removeInput("days");
+      if (!this.inputs.end) this.addInput("end", dateComboIn("End date"));
+      if (out) { out.socket = numListOut("Working days").socket; out.label = "Working days"; }
+    }
+    // Keep the second input beside Start: re-seat the shared tail keys.
+    const inputs = this.inputs as Record<string, unknown>;
+    for (const k of ["weekend_code", "holidays"]) {
+      const v = inputs[k];
+      delete inputs[k];
+      inputs[k] = v;
+    }
+    this.seedLiterals();
+  }
+
+  data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
     const codeRaw = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1);
     if (codeRaw === null) { this.cachedResult = null; return { result: null }; }
     const code = Math.floor(codeRaw);
     const off  = weekendSet(code);
-    const hol  = holidaySet(inputs.holidays?.[0]); // dates to skip alongside weekends
-    const result = broadcast((s, rawN) => {
-    const n    = Math.floor(rawN);
-    let cur    = serialToJsDate(s);
-    const sign = n >= 0 ? 1 : -1;
-    let rem    = Math.abs(n);
-    while (rem > 0) {
-      cur = new Date(cur.getTime() + sign * 86400000);
-      if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) rem--;
-    }
-    return jsDateToSerial(cur);
-    }, inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5));
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── NETWORKDAYS ──────────────────────────────────────────────────────────────
-
-export class NetworkdaysNode extends ClassicPreset.Node {
-  label: string;
-  literals: Record<string, number> = { weekend_code: 1 };
-  stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
-  cachedResult: BroadcastResult = null;
-  width = 180; height = 230;
-
-  constructor(init?: { label?: string }) {
-    super("Networkdays");
-    this.label = init?.label ?? "NETWORKDAYS";
-    this.addInput("start",        dateComboIn("Start date"));
-    this.addInput("end",          dateComboIn("End date"));
-    this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
-    // A list parameter, not an operand — see WORKDAY above.
-    this.addInput("holidays",     dateListIn("Holidays (optional)"));
-    this.addOutput("result", numListOut("Working days"));
-  }
-
-  data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
-    const codeRaw = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1);
-    if (codeRaw === null) { this.cachedResult = null; return { result: null }; }
-    const code = Math.floor(codeRaw);
-    const off  = weekendSet(code);
-    const hol  = holidaySet(inputs.holidays?.[0]); // dates not counted, alongside weekends
-    const result = broadcast((s, e) => {
-    const sign = e >= s ? 1 : -1;
-    const lo   = serialToJsDate(Math.min(s, e));
-    const hi   = serialToJsDate(Math.max(s, e));
-    let count  = 0;
-    const cur  = new Date(lo);
-    while (cur <= hi) {
-      if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) count++;
-      cur.setUTCDate(cur.getUTCDate() + 1);
-    }
-    return count * sign;
-    }, inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+    const hol  = holidaySet(inputs.holidays?.[0]); // dates to skip / not counted, alongside weekends
+    const result = this.op === "workday"
+      ? broadcast((s, rawN) => {
+          const n    = Math.floor(rawN);
+          let cur    = serialToJsDate(s);
+          const sign = n >= 0 ? 1 : -1;
+          let rem    = Math.abs(n);
+          while (rem > 0) {
+            cur = new Date(cur.getTime() + sign * 86400000);
+            if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) rem--;
+          }
+          return jsDateToSerial(cur);
+        }, inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
+      : broadcast((s, e) => {
+          const sign = e >= s ? 1 : -1;
+          const lo   = serialToJsDate(Math.min(s, e));
+          const hi   = serialToJsDate(Math.max(s, e));
+          let count  = 0;
+          const cur  = new Date(lo);
+          while (cur <= hi) {
+            if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) count++;
+            cur.setUTCDate(cur.getUTCDate() + 1);
+          }
+          return count * sign;
+        }, inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }

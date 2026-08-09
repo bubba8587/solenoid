@@ -8,15 +8,15 @@ import type {
   WeekInfoNode as WeekInfoNodeType,
   DateDiffNode as DateDiffNodeType,
   DateAddNode as DateAddNodeType,
-  WorkdayNode as WorkdayNodeType,
-  NetworkdaysNode as NetworkdaysNodeType,
-  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp,
+  WorkdaysNode as WorkdaysNodeType,
+  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
 } from "../rete-nodes";
 import {
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
-  DATE_DIFF_OP_META, DATE_ADD_OP_META, dateDiffNeedsBasis,
+  DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
-import { getActiveArea } from "../activeGraph";
+import { getActiveArea, getActiveEditor } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
@@ -167,18 +167,30 @@ export function DateAddComponent({ data, emit }: NodeProps<DateAddNodeType>) {
   );
 }
 
-export function WorkdayComponent({ data, emit }: NodeProps<WorkdayNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+const WORKDAYS_OPS = (Object.keys(WORKDAYS_OP_META) as WorkdaysOp[]).map(op => ({
+  value: op, label: WORKDAYS_OP_META[op].label,
+}));
 
-export function NetworkdaysComponent({ data, emit }: NodeProps<NetworkdaysNodeType>) {
+export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
+  const [op, setOpField] = useNodeField(data, "op");
+
+  async function pickOp(next: WorkdaysOp) {
+    if (next === data.op) return;
+    const departing = data.keysDroppedBySwitch(next);
+    if (departing.length > 0) await dropInputCables(data.id, departing);
+    data.setOp(next);
+    // The output retyped in place (date ↔ number): drop cables the new type
+    // can't feed, and let docked FCs re-resolve — no connection event fires.
+    const editor = getActiveEditor();
+    const area = getActiveArea();
+    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
+    if (area) await area.update("node", data.id);
+    setOpField(next);
+  }
+
   return (
     <NodeShell node={data} emit={emit}>
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={WORKDAYS_OPS} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

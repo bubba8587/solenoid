@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateAddNode, TimeValueNode, DateConstructNode, WorkdayNode, NetworkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateDiffOp } from "./date";
+import { DateAddNode, TimeValueNode, DateConstructNode, WorkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateDiffOp } from "./date";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket } from "../sockets";
 
@@ -11,25 +11,25 @@ const FRI = parseDateToSerial("2023-01-06");
 describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] parity)", () => {
   it("NETWORKDAYS skips holidays as well as weekends", () => {
     // Mon–Fri = 5 working days; a holiday on Wed drops it to 4.
-    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI] }).result).toBe(5);
-    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[WED]] }).result).toBe(4);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [FRI] }).result).toBe(5);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [FRI], holidays: [[WED]] }).result).toBe(4);
     // A holiday OUTSIDE the range doesn't change the count.
-    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[FRI + 10]] }).result).toBe(5);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [FRI], holidays: [[FRI + 10]] }).result).toBe(5);
     // A holiday that falls on a weekend isn't double-subtracted (still 5).
-    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[MON - 1]] }).result).toBe(5);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [FRI], holidays: [[MON - 1]] }).result).toBe(5);
   });
 
   it("WORKDAY steps over a holiday", () => {
     // 1 working day after Mon = Tue; with Tue a holiday it lands on Wed.
     // Scalar in → scalar out (broadcast only builds a list when an operand is one).
-    const tue = new WorkdayNode().data({ start: [MON], days: [1] }).result as number;
-    const wed = new WorkdayNode().data({ start: [MON], days: [1], holidays: [[tue]] }).result as number;
+    const tue = new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1] }).result as number;
+    const wed = new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1], holidays: [[tue]] }).result as number;
     expect(wed).toBe(tue + 1);
   });
 
   it("empty / unwired holidays behaves exactly as before", () => {
-    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[]] }).result).toBe(5);
-    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: undefined }).result).toBe(5);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [FRI], holidays: [[]] }).result).toBe(5);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [FRI], holidays: undefined }).result).toBe(5);
   });
 });
 
@@ -306,7 +306,7 @@ describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(new DatePartNode({ op: "day" }).data({ date: [[MON, WED, FRI]] }).result).toEqual([2, 4, 6]);
     expect(new WeekInfoNode({ op: "weekday" }).data({ date: [[MON, FRI]], return_type: [2] }).result).toEqual([1, 5]);
     expect(new DateDiffNode({ op: "days" }).data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([2, 4]);
-    expect(new NetworkdaysNode().data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([3, 5]);
+    expect(new WorkdaysNode({ op: "networkdays" }).data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([3, 5]);
   });
 
   it("both operands broadcast together, zipped by position", () => {
@@ -323,7 +323,7 @@ describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () =>
       return s instanceof SolenoidSocket ? s.dataType : undefined;
     };
     expect(sock(new WeekInfoNode({ op: "weekday" }), "return_type")).toBe("number");
-    const nw = new NetworkdaysNode();
+    const nw = new WorkdaysNode({ op: "networkdays" });
     expect(sock(nw, "weekend_code")).toBe("number");
     expect(sock(nw, "holidays")).toBe("datelist");
     expect(sock(nw, "start")).toBe("datecombo");
@@ -342,5 +342,20 @@ describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () =>
 
   it("TIME broadcasts its three operands", () => {
     expect(new TimeConstructNode().data({ hour: [[0, 12]], minute: [0], second: [0] }).result).toEqual([0, 0.5]);
+  });
+});
+
+describe("Workdays — one node, op-switch mechanics", () => {
+  it("the switch swaps Days ↔ End date, keeps the shared rows, retypes the output", () => {
+    const n = new WorkdaysNode({ op: "workday" });
+    expect(Object.keys(n.inputs)).toEqual(["start", "days", "weekend_code", "holidays"]);
+    expect(n.keysDroppedBySwitch("networkdays")).toEqual(["days"]);
+    n.setOp("networkdays");
+    expect(Object.keys(n.inputs)).toEqual(["start", "end", "weekend_code", "holidays"]);
+    expect(n.outputs.result!.label).toBe("Working days");
+    n.setOp("workday");
+    expect(Object.keys(n.inputs)).toEqual(["start", "days", "weekend_code", "holidays"]);
+    expect(n.outputs.result!.label).toBe("Date");
+    expect(n.literals.days).toBe(5);
   });
 });

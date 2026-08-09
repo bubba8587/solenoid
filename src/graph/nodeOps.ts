@@ -14,7 +14,7 @@ import {
 } from "./nodes/list";
 import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
-import { DATE_DIFF_OP_META } from "./nodes/date";
+import { DATE_DIFF_OP_META, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
 import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
@@ -232,6 +232,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "date-datedif", ctor: DateDiffNode, kind: "operation", ops: fromMeta(DATE_DIFF_OP_META),
     create: (op) => new DateDiffNode({ op: op as never }), leafOps: ["days", "days360", "yearfrac", "years"] },
   { type: "date-part-year", ctor: DatePartNode, kind: "operation" },
+  { type: "date-workday", ctor: WorkdaysNode, kind: "operation" },
   { type: "depr-sln", ctor: DepreciationNode, kind: "operation" },
   { type: "dollar-dollarde", ctor: DollarNode, kind: "operation" },
   { type: "duration-duration", ctor: DurationNode, kind: "operation" },
