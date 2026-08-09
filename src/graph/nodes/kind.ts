@@ -26,8 +26,7 @@ import {
   FillNode,
 } from "./list";
 import {
-  NthValueNode, PercentileNode, QuartileNode,
-  PercentrankNode, RankNode, CorrelNode,
+  RankPercentileNode, CorrelNode,
   StandardizeNode, CovarianceNode, FisherNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
 } from "./stats";
@@ -109,8 +108,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof FillNode
   ) return "list";
   if (
-    node instanceof NthValueNode || node instanceof PercentileNode || node instanceof QuartileNode ||
-    node instanceof PercentrankNode || node instanceof RankNode || node instanceof CorrelNode ||
+    node instanceof RankPercentileNode || node instanceof CorrelNode ||
     node instanceof CombinatoricsNode || node instanceof TwoInputMathNode || node instanceof SumProductNode ||
     node instanceof StandardizeNode || node instanceof CovarianceNode || node instanceof FisherNode ||
     node instanceof BitwiseNode || node instanceof DepreciationNode ||

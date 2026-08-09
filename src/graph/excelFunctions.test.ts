@@ -255,7 +255,7 @@ describe("statistics flat names — registered so a formula can call them at all
     expect(ev("TRIMMEAN(x, 0.2)", X)).toBe(5);             // floor(8*0.2/2)=0 → mean of all = 40/8
   });
 
-  it("PERCENTRANK interpolates + truncates (formula path == PercentrankNode)", () => {
+  it("PERCENTRANK interpolates + truncates (formula path == RankPercentileNode)", () => {
     expect(ev("PERCENTRANK(x, 4)", { x: [1.5, 2.5, 3.5, 10.25] })).toBe(0.691);
     expect(ev("PERCENTRANK(x, 4)", X)).toBe(0.142);        // duplicates → first occurrence, truncated
   });

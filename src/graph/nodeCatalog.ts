@@ -11,8 +11,8 @@ import {
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
   UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
-  ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
-  PercentrankNode, RankNode, CorrelNode, CombinatoricsNode, TwoInputMathNode,
+  ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
+  CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   AlertNode, NormalizeNode, LinSpaceNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
@@ -64,8 +64,8 @@ import {
   TrendNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode,
   NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
-  COMBINATORICS_OP_META, NTH_VALUE_OP_META, ARG_MIN_MAX_OP_META,
-  SUM_PRODUCT_OP_META, RANK_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
+  COMBINATORICS_OP_META, ARG_MIN_MAX_OP_META,
+  SUM_PRODUCT_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
   COVARIANCE_OP_META, FISHER_OP_META, BITWISE_OP_META,
   DEPRECIATION_OP_META,
   IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
@@ -74,8 +74,8 @@ import {
   BESSEL_OP_META, REGRESSION_OP_META,
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META, DATE_DIFF_OP_META, DATE_ADD_OP_META,
   type ArithmeticOp, type MathFnOp, type BooleanOp, type ReduceOp,
-  type CombinatoricsOp, type NthValueOp, type ArgMinMaxOp,
-  type SumProductOp, type RankOp, type CorrelOp, type TwoInputMathOp,
+  type CombinatoricsOp, type ArgMinMaxOp,
+  type SumProductOp, type CorrelOp, type TwoInputMathOp,
   type CovarianceOp, type FisherOp, type BitwiseOp,
   type DepreciationOp,
   type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
@@ -95,10 +95,11 @@ const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): Node
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         create: () => new AggregateNode({ op })     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  create: () => new CombinatoricsNode({ op }) });
-const nthLeaf      = (op: NthValueOp):     NodeCatalogEntry => ({ type: `nth-${op}`,       label: NTH_VALUE_OP_META[op].label,      description: NTH_VALUE_OP_META[op].description,      create: () => new NthValueNode({ op })      });
+// One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
+const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-large", small: "nth-small", "rank-eq": "rank-eq", "rank-avg": "rank-avg", "percentile-inc": "stat-percentile", "quartile-inc": "stat-quartile", "percentrank-inc": "stat-percentrank" };
+const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides });
 const argLeaf      = (op: ArgMinMaxOp):    NodeCatalogEntry => ({ type: `arg-${op}`,       label: ARG_MIN_MAX_OP_META[op].label,    description: ARG_MIN_MAX_OP_META[op].description,    create: () => new ArgMinMaxNode({ op })     });
 const spLeaf       = (op: SumProductOp):   NodeCatalogEntry => ({ type: `sp-${op}`,        label: SUM_PRODUCT_OP_META[op].label,    description: SUM_PRODUCT_OP_META[op].description,    create: () => new SumProductNode({ op })    });
-const rankLeaf     = (op: RankOp):         NodeCatalogEntry => ({ type: `rank-${op}`,      label: RANK_OP_META[op].label,           description: RANK_OP_META[op].description,           create: () => new RankNode({ op })          });
 const correlLeaf   = (op: CorrelOp):       NodeCatalogEntry => ({ type: `correl-${op}`,    label: CORREL_OP_META[op].label,         description: CORREL_OP_META[op].description,         create: () => new CorrelNode({ op })        });
 const twoMathLeaf  = (op: TwoInputMathOp): NodeCatalogEntry => ({ type: `twomath-${op}`,   label: TWO_INPUT_MATH_OP_META[op].label, description: TWO_INPUT_MATH_OP_META[op].description, create: () => new TwoInputMathNode({ op })  });
 const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${op}`,       label: COVARIANCE_OP_META[op].label,     description: COVARIANCE_OP_META[op].description,     create: () => new CovarianceNode({ op })    });
@@ -557,11 +558,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Rank", description: "Rank, percentile, and distribution queries.",
         children: [
-          { type: "pair", children: [nthLeaf("large"), nthLeaf("small")] },
-          { type: "stat-percentile",  label: "PERCENTILE",  description: "Value at percentile p (0–1). Excel: PERCENTILE.INC.", create: () => new PercentileNode() },
-          { type: "stat-quartile",    label: "QUARTILE",    description: "Quartile Q0–Q4. Excel: QUARTILE.INC.", create: () => new QuartileNode() },
-          { type: "stat-percentrank", label: "PERCENTRANK", description: "Percentile rank of a value (0–1). Excel: PERCENTRANK.INC.", create: () => new PercentrankNode() },
-          { type: "pair", children: [rankLeaf("eq"), rankLeaf("avg")] },
+          { type: "pair", children: [rpLeaf("large"), rpLeaf("small")] },
+          rpLeaf("percentile-inc", { label: "PERCENTILE", description: "Value at percentile p (0–1). Excel: PERCENTILE.INC." }),
+          rpLeaf("quartile-inc", { label: "QUARTILE", description: "Quartile Q0–Q4. Excel: QUARTILE.INC." }),
+          rpLeaf("percentrank-inc", { label: "PERCENTRANK", description: "Percentile rank of a value (0–1). Excel: PERCENTRANK.INC." }),
+          { type: "pair", children: [rpLeaf("rank-eq"), rpLeaf("rank-avg")] },
         ],
       },
       {
