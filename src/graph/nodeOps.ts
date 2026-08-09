@@ -10,7 +10,7 @@ import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
   FILL_OP_META, COND_AGG_OP_META, RUNNING_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
-  SortNode, TakeNode, DropNode, SeriesNode,
+  SortNode, ListTakeDropNode, SeriesNode,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
@@ -148,8 +148,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles are parameters of ONE operation.
   { type: "list-sort", ctor: SortNode, kind: "argument" },
-  { type: "list-take", ctor: TakeNode, kind: "argument" },
-  { type: "list-drop", ctor: DropNode, kind: "argument" },
+  // TAKE/DROP share one class; both ops have leaves, the direction is the argument.
+  { type: "list-take", ctor: ListTakeDropNode, kind: "operation" },
   // Which rows count as blank is a parameter of Drop Blank Rows.
   { type: "drop-blank-rows", ctor: DropBlankRowsNode, kind: "argument" },
   // The trigger condition and the blend formula are parameters of their one node.

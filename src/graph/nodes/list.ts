@@ -976,22 +976,31 @@ export class SetRelationNode extends ClassicPreset.Node {
   }
 }
 
+export type ListTakeDropOp = "take" | "drop";
 export type TakeDir = "first" | "last";
 
-export class TakeNode extends ClassicPreset.Node {
-  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
+export const LIST_TAKEDROP_OP_META = {
+  take: { label: "TAKE", description: "Keeps the first or last N elements. Excel: TAKE." },
+  drop: { label: "DROP", description: "Removes the first or last N elements. Excel: DROP." },
+} satisfies Record<ListTakeDropOp, { label: string; description: string }>;
+
+// The 1-D edge cut, both directions of it — the list sibling of TableTakeDropNode.
+export class ListTakeDropNode extends ClassicPreset.Node {
+  /** Element-preserving: the output adopts the input's type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  op: TakeDir;
+  op: ListTakeDropOp;
+  dir: TakeDir;
   cachedList: unknown[] | null = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
-  height = 170;
+  height = 200;
 
-  constructor(init?: { label?: string; op?: TakeDir }) {
-    super("Take");
-    this.label = init?.label ?? "TAKE";
-    this.op = init?.op ?? "first";
+  constructor(init?: { label?: string; op?: ListTakeDropOp; dir?: TakeDir }) {
+    super("ListTakeDrop");
+    this.op = init?.op ?? "take";
+    this.dir = init?.dir ?? "first";
+    this.label = init?.label ?? LIST_TAKEDROP_OP_META[this.op].label;
     this.addInput("list",  adoptiveListIn("List"));
     this.addInput("count", numIn("Count"));
     this.addOutput("result", adoptiveListOut("Result"));
@@ -1003,42 +1012,14 @@ export class TakeNode extends ClassicPreset.Node {
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (nRaw === null) { this.cachedList = null; return { result: null }; }
     const n = Math.round(nRaw);
-    if (n <= 0) { this.cachedList = []; return { result: [] }; }
-    this.cachedList = takeSlice(arr, this.op === "first" ? n : -n);
-    return { result: this.cachedList };
-  }
-}
-
-export type DropDir = "first" | "last";
-
-export class DropNode extends ClassicPreset.Node {
-  /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
-  label: string;
-  op: DropDir;
-  cachedList: unknown[] | null = [];
-  literals: Record<string, number> = { count: 1 };
-  width = 180;
-  height = 170;
-
-  constructor(init?: { label?: string; op?: DropDir }) {
-    super("Drop");
-    this.label = init?.label ?? "DROP";
-    this.op = init?.op ?? "first";
-    this.addInput("list",  adoptiveListIn("List"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", adoptiveListOut("Result"));
-  }
-
-  data(inputs: { list?: unknown[][]; count?: number[] }) {
-    const arr = inputs.list?.[0] ?? [];
-    const nRaw = readInput(inputs.count, this.literals.count ?? 1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.round(nRaw);
-    if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
-    if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
-    this.cachedList = dropSlice(arr, this.op === "first" ? n : -n);
+    if (this.op === "take") {
+      if (n <= 0) { this.cachedList = []; return { result: [] }; }
+      this.cachedList = takeSlice(arr, this.dir === "first" ? n : -n);
+    } else {
+      if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
+      else if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
+      else this.cachedList = dropSlice(arr, this.dir === "first" ? n : -n);
+    }
     return { result: this.cachedList };
   }
 }
