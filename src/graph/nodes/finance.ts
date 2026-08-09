@@ -326,22 +326,73 @@ export const NPV_META = {
   description: "Net present value of cash flows at a given discount rate (first value = period 1). Excel: NPV(rate, values).",
 };
 
+// ─── Cash-flow schedule mode (NPV/IRR × periodic/dated) ───────────────────────
+// The X-functions are the same calculations with an explicit date per flow: a
+// SegToggle reveals the Dates input instead of a second node (Running's window
+// pattern).
+
+export type CashflowMode = "periods" | "dates";
+
+export const CASHFLOW_MODE_OPTIONS: { value: CashflowMode; label: string }[] = [
+  { value: "periods", label: "Periodic" },
+  { value: "dates", label: "Dated" },
+];
+
+/** Shared prep for the dated schedules: error first, null cash → 0 (cashPrep),
+ *  null DATE → unknown (value-semantics.md, "an error outranks an unknown"). */
+function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (number | null | SolError)[]):
+  { error?: SolError; blank?: boolean; values: number[]; dates: number[] } {
+  const { error, nums: values } = cashPrep(valuesRaw);
+  if (error) return { error, values: [], dates: [] };
+  for (const d of datesRaw) if (isSolError(d)) return { error: d, values: [], dates: [] };
+  if (datesRaw.some((d) => d == null)) return { blank: true, values: [], dates: [] };
+  return { values, dates: datesRaw as number[] };
+}
+
 export class NpvNode extends ClassicPreset.Node {
   label: string;
+  mode: CashflowMode;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.1 };
-  width = 180; height = 175;
+  width = 180; height = 203;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: CashflowMode }) {
     super("Npv");
     this.label = init?.label ?? "NPV";
+    this.mode = init?.mode ?? "periods";
     this.addInput("rate", numIn("Rate"));
     this.addInput("list", listIn("Cash flows"));
+    if (this.mode === "dates") this.addInput("dates", listIn("Date serials"));
     this.addOutput("result", numOut("Result"));
+    this.height = this.mode === "dates" ? 231 : 203;
   }
 
-  data(inputs: { rate?: number[]; list?: (number | null | SolError)[][] }) {
+  /** The mode owns the Dates socket. Callers on a live graph prune its cables
+   *  BEFORE switching to Periodic (SSOT-9). */
+  setMode(next: CashflowMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", listIn("Date serials")); }
+    else if (this.inputs.dates) this.removeInput("dates");
+    this.height = next === "dates" ? 231 : 203;
+  }
+
+  data(inputs: { rate?: number[]; list?: (number | null | SolError)[][]; dates?: number[][] }) {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
+    if (this.mode === "dates") {
+      if (rate === null) { this.cachedResult = null; return { result: null }; }
+      const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
+      if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
+      if (prep.blank || prep.values.length === 0 || prep.dates.length === 0) { this.cachedResult = null; return { result: null }; }
+      // Truncate to equal length BEFORE handing off: Formula.js's XNPV takes our date
+      // serials directly, but its ragged-array behavior is untested.
+      const n      = Math.min(prep.values.length, prep.dates.length);
+      const raw    = resolveExcelFunction("XNPV")!(rate, prep.values.slice(0, n), prep.dates.slice(0, n)) as number;
+      // A non-finite result is not a number the graph can carry (no-NaN rule).
+      const result = Number.isFinite(raw) ? raw : null;
+      this.cachedResult = result;
+      return { result };
+    }
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     if (rate === null) { this.cachedResult = null; return { result: null }; }
@@ -356,24 +407,36 @@ export class NpvNode extends ClassicPreset.Node {
 }
 
 // â”€â”€â”€ IRR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export const IRR_META = {
-  label: "IRR",
-  description: "Internal rate of return for irregular cash flows, solved iteratively. Excel: IRR(values, [guess]).",
-};
+
 
 export class IrrNode extends ClassicPreset.Node {
   label: string;
+  mode: CashflowMode;
   cachedResult: number | SolError | null = null;
-  width = 180; height = 135;
+  width = 180; height = 163;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: CashflowMode }) {
     super("Irr");
     this.label = init?.label ?? "IRR";
+    this.mode = init?.mode ?? "periods";
     this.addInput("list", listIn("Cash flows"));
+    if (this.mode === "dates") this.addInput("dates", listIn("Date serials"));
     this.addOutput("result", numOut("Result"));
+    this.height = this.mode === "dates" ? 191 : 163;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }): { result: number | SolError | null } {
+  /** The mode owns the Dates socket. Callers on a live graph prune its cables
+   *  BEFORE switching to Periodic (SSOT-9). */
+  setMode(next: CashflowMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", listIn("Date serials")); }
+    else if (this.inputs.dates) this.removeInput("dates");
+    this.height = next === "dates" ? 191 : 163;
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
+    if (this.mode === "dates") return this.dataDated(inputs);
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     if (cashflows.length <= 1) {
@@ -410,6 +473,44 @@ export class IrrNode extends ClassicPreset.Node {
     }
     this.cachedResult = rate;
     return { result: rate };
+  }
+
+  private dataDated(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
+    // An error outranks an unknown: scan BOTH lists before any arithmetic, or an
+    // upstream #DIV/0! masquerades as a #CONV! Newton stall. A null DATE has no
+    // reading, so the schedule is unknown and the result propagates blank.
+    const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
+    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
+    if (prep.blank) { this.cachedResult = null; return { result: null }; }
+    const { values, dates } = prep;
+    const n = Math.min(values.length, dates.length);
+    if (n < 2) { this.cachedResult = null; return { result: null }; }
+    const d0 = dates[0];
+    let r = 0.1;
+    let converged = false;
+    for (let iter = 0; iter < 100; iter++) {
+      let f = 0, df = 0;
+      for (let i = 0; i < n; i++) {
+        const t = (dates[i] - d0) / 365;
+        const disc = Math.pow(1 + r, t);
+        f  += values[i] / disc;
+        df -= values[i] * t / (disc * (1 + r));
+      }
+      if (Math.abs(df) < 1e-15) break;
+      const delta = f / df;
+      r -= delta;
+      if (Math.abs(delta) < 1e-10) { converged = true; break; }
+      r = Math.max(-0.9999, r);
+    }
+    // Like RATE/IRR, the Newton solve can stall on cash flows with no real
+    // rate of return — Excel returns #NUM!, we split that into #CONV!.
+    if (!converged || !Number.isFinite(r)) {
+      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, e.g. they never change sign.");
+      this.cachedResult = err;
+      return { result: err };
+    }
+    this.cachedResult = r;
+    return { result: r };
   }
 }
 
@@ -1085,61 +1186,6 @@ export class BondPriceNode extends ClassicPreset.Node {
   }
 }
 
-// ─── XIRR ─────────────────────────────────────────────────────────────────────
-
-export class XirrNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | SolError | null = null;
-  width = 180; height = 175;
-
-  constructor(init?: { label?: string }) {
-    super("Xirr");
-    this.label = init?.label ?? "XIRR";
-    this.addInput("values", listIn("Cash flows"));
-    this.addInput("dates",  listIn("Date serials"));
-    this.addOutput("result", numOut("Internal rate of return"));
-  }
-
-  data(inputs: { values?: number[][]; dates?: number[][] }): { result: number | SolError | null } {
-    // An error outranks an unknown: scan BOTH lists before any arithmetic, or an
-    // upstream #DIV/0! masquerades as a #CONV! Newton stall. A null DATE has no
-    // reading, so the schedule is unknown and the result propagates blank.
-    const { error, nums: values } = cashPrep((inputs.values?.[0] ?? null) as (number | null | SolError)[] | null);
-    if (error) { this.cachedResult = error; return { result: error }; }
-    const datesRaw = (inputs.dates?.[0] ?? []) as (number | null | SolError)[];
-    for (const d of datesRaw) if (isSolError(d)) { this.cachedResult = d; return { result: d }; }
-    if (datesRaw.some((d) => d == null)) { this.cachedResult = null; return { result: null }; }
-    const dates = datesRaw as number[];
-    const n = Math.min(values.length, dates.length);
-    if (n < 2) { this.cachedResult = null; return { result: null }; }
-    const d0 = dates[0];
-    let r = 0.1;
-    let converged = false;
-    for (let iter = 0; iter < 100; iter++) {
-      let f = 0, df = 0;
-      for (let i = 0; i < n; i++) {
-        const t = (dates[i] - d0) / 365;
-        const disc = Math.pow(1 + r, t);
-        f  += values[i] / disc;
-        df -= values[i] * t / (disc * (1 + r));
-      }
-      if (Math.abs(df) < 1e-15) break;
-      const delta = f / df;
-      r -= delta;
-      if (Math.abs(delta) < 1e-10) { converged = true; break; }
-      r = Math.max(-0.9999, r);
-    }
-    // Like RATE/IRR, the Newton solve can stall on cash flows with no real
-    // rate of return — Excel returns #NUM!, we split that into #CONV!.
-    if (!converged || !Number.isFinite(r)) {
-      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, e.g. they never change sign.");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = r;
-    return { result: r };
-  }
-}
 
 // ─── ODD COUPON — ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD ───────────────
 
@@ -1203,42 +1249,3 @@ export class OddCouponNode extends ClassicPreset.Node {
   }
 }
 
-// ─── XNPV ────────────────────────────────────────────────────────────────────
-
-export class XnpvNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { rate: 0.1 };
-  width = 180; height = 195;
-
-  constructor(init?: { label?: string }) {
-    super("Xnpv");
-    this.label = init?.label ?? "XNPV";
-    this.addInput("rate",   numIn("Discount rate"));
-    this.addInput("values", listIn("Cash flows"));
-    this.addInput("dates",  listIn("Date serials"));
-    this.addOutput("result", numOut("Net present value"));
-  }
-
-  data(inputs: { rate?: number[]; values?: number[][]; dates?: number[][] }): { result: number | SolError | null } {
-    const rate   = readInput(inputs.rate, this.literals.rate ?? 0.1);
-    if (rate === null) { this.cachedResult = null; return { result: null }; }
-    // Same prep as XIRR: error first, null cash → 0, null date → unknown
-    // (value-semantics.md, "an error outranks an unknown").
-    const { error, nums: values } = cashPrep((inputs.values?.[0] ?? null) as (number | null | SolError)[] | null);
-    if (error) { this.cachedResult = error; return { result: error }; }
-    const datesRaw = (inputs.dates?.[0] ?? []) as (number | null | SolError)[];
-    for (const d of datesRaw) if (isSolError(d)) { this.cachedResult = d; return { result: d }; }
-    if (datesRaw.some((d) => d == null)) { this.cachedResult = null; return { result: null }; }
-    const dates = datesRaw as number[];
-    if (values.length === 0 || dates.length === 0) { this.cachedResult = null; return { result: null }; }
-    // Truncate to equal length BEFORE handing off: Formula.js's XNPV takes our date
-    // serials directly, but its ragged-array behavior is untested.
-    const n      = Math.min(values.length, dates.length);
-    const raw    = resolveExcelFunction("XNPV")!(rate, values.slice(0, n), dates.slice(0, n)) as number;
-    // A non-finite result is not a number the graph can carry (no-NaN rule).
-    const result = Number.isFinite(raw) ? raw : null;
-    this.cachedResult = result;
-    return { result };
-  }
-}

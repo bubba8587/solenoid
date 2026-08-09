@@ -5,7 +5,7 @@ import { BooleanOpNode, NotNode, IfsNode, SwitchNode } from "./logic";
 import { SliderInputNode } from "./input";
 import { ExpressionNode } from "./expression";
 import { ClampNode } from "./scalar";
-import { MirrNode, TBillNode, XirrNode, OddCouponNode } from "./finance";
+import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
 import { ListIndexNode, SliceNode } from "./list";
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
@@ -447,17 +447,17 @@ describe("per-cell contract in hand-rolled broadcasts", () => {
 
   it("XIRR: an error cell in the cash flows surfaces as ITSELF, not #CONV!", () => {
     const err = solError("#DIV/0!", "upstream");
-    const node = new XirrNode();
+    const node = new IrrNode({ mode: "dates" });
     const out = node.data({
-      values: [[-1000, err as unknown as number, 600]],
+      list: [[-1000, err as unknown as number, 600]],
       dates: [[45000, 45180, 45365]],
     }).result;
     expect(out).toBe(err);
   });
 
   it("XIRR: a missing DATE leaves the schedule unknown", () => {
-    const node = new XirrNode();
-    expect(node.data({ values: [[-1000, 600]], dates: [[45000, null as unknown as number]] }).result).toBeNull();
+    const node = new IrrNode({ mode: "dates" });
+    expect(node.data({ list: [[-1000, 600]], dates: [[45000, null as unknown as number]] }).result).toBeNull();
   });
 });
 

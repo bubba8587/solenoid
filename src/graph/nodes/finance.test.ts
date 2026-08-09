@@ -199,3 +199,33 @@ describe("Depreciation — VDB absorbed as an op", () => {
     expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life"]);
   });
 });
+
+describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
+  it("dated NPV discounts by explicit dates", () => {
+    const r = new NpvNode({ mode: "dates" }).data({
+      rate: [0.1],
+      list: [[-1000, 600, 600]],
+      dates: [[45000, 45365, 45730]],
+    }).result as number;
+    expect(r).toBeCloseTo(-1000 + 600 / 1.1 + 600 / 1.1 ** 2, 0);
+  });
+
+  it("dated IRR recovers the rate NPV used", () => {
+    const r = new IrrNode({ mode: "dates" }).data({
+      list: [[-1000, 1100]],
+      dates: [[45000, 45365]],
+    }).result as number;
+    expect(r).toBeCloseTo(0.1, 3);
+  });
+
+  it("the toggle adds/removes only the Dates socket", () => {
+    const n = new NpvNode();
+    expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
+    n.setMode("dates");
+    expect(Object.keys(n.inputs)).toEqual(["rate", "list", "dates"]);
+    n.setMode("periods");
+    expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
+    const i = new IrrNode({ mode: "dates" });
+    expect(Object.keys(i.inputs)).toEqual(["list", "dates"]);
+  });
+});
