@@ -60,7 +60,7 @@ import {
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
   BesselNode,
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
-  ZTestNode, TTestNode, FTestNode, ChisqTestNode,
+  HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
   TrendNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode,
   NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
@@ -71,7 +71,7 @@ import {
   IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
   WEIGHTED_OP_META,
   TEXT_TRANSFORM_OP_META, TEXT_SLICE_OP_META, TEXT_FIND_OP_META, TEXT_AFTER_BEFORE_OP_META,
-  BESSEL_OP_META, REGRESSION_OP_META, T_TEST_OP_META,
+  BESSEL_OP_META, REGRESSION_OP_META,
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META, DATE_DIFF_OP_META, DATE_ADD_OP_META,
   type ArithmeticOp, type MathFnOp, type BooleanOp, type ReduceOp,
   type CombinatoricsOp, type NthValueOp, type ArgMinMaxOp,
@@ -82,7 +82,7 @@ import {
   type CouponOp, type PriceDiscOp, type PriceMatOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
-  type BesselOp, type RegressionOp, type TTestOp,
+  type BesselOp, type RegressionOp,
   type TodayNowOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
   ExpectNode, TornadoNode,
 } from "./rete-nodes";
@@ -108,7 +108,9 @@ const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${
 const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${op}`,      label: IPMT_PPMT_OP_META[op].label,      description: IPMT_PPMT_OP_META[op].description,      create: () => new IpmtPpmtNode({ op })      });
 const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     create: () => new RegressionNode({ op })    });
-const ttestLeaf    = (op: TTestOp):        NodeCatalogEntry => ({ type: `t-test-${op}`,    label: T_TEST_OP_META[op].label,         description: T_TEST_OP_META[op].description,         create: () => new TTestNode({ op }),         parity: false });
+// One Hypothesis Test node; the leaf types keep their historical spellings (nodeExcel keys).
+const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = { z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test" };
+const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: TEST_LEAF_TYPE[op], label: HYPOTHESIS_TEST_OP_META[op].label, description: HYPOTHESIS_TEST_OP_META[op].description, create: () => new HypothesisTestNode({ op }), ...overrides });
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
 const DT = NODE_KIND_ACCENTS.date;
@@ -576,11 +578,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Tests", description: "Hypothesis tests; each returns a p-value.",
         children: [
-          { type: "z-test",    label: "Z.TEST",    description: "One-tailed z-test: P(mean > μ₀) given a population or sample. Excel: Z.TEST.", create: () => new ZTestNode(), parity: false },
-          { type: "pair", children: [ttestLeaf("paired"), ttestLeaf("equal-var")] },
-          { type: "t-test-unequal-var", label: "T.TEST (Welch)", description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: T.TEST type=3.", create: () => new TTestNode({ op: "unequal-var" }) },
-          { type: "f-test",    label: "F.TEST",    description: "Two-tailed F-test for equal variances. Excel: F.TEST.", create: () => new FTestNode() },
-          { type: "chisq-test", label: "CHISQ.TEST", description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: CHISQ.TEST.", create: () => new ChisqTestNode() },
+          testLeaf("z", { parity: false }),
+          { type: "pair", children: [testLeaf("t-paired", { parity: false }), testLeaf("t-equal", { parity: false })] },
+          testLeaf("t-welch"),
+          { type: "pair", children: [testLeaf("f"), testLeaf("chisq")] },
         ],
       },
       {
