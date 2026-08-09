@@ -1,6 +1,290 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-08-07 (through session 2026-08-04a).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-08-09 (through the 2026-08-07 window).
+
+---
+
+## Sweep 2026-08-09 — the 2026-08-07 window (docs cutdown pivot through frame-hint v3)
+
+### SESSION DIGEST (2026-08-07 — the 1.3 pivot: docs cutdown, backlog re-triage)
+- **Author pivot: 1.3 ships basically as-is.** The coming weeks are bugs, patches, and
+  thorough small-scope polish sweeps (node-by-node passes); everything feature-shaped
+  is pushed to 1.4/2.0. Backlog rewritten to that shape (polish sweeps + bugs + small
+  builds + release tail); the moved items live in `deferrals.md` "Pushed to 1.4/2.0".
+- **Docs cutdown** (author: historical logs and verbose pattern-matching trip agents
+  up). `decisions.md` rewritten 803→253 lines to the relapse-guard format — what
+  stands / where / reopen-if per entry, IDs and the genuine relapse-guard lists kept,
+  ADR narrative (when/cost/amendment chains) dropped to git. Dev-notes swept 968→232
+  (sessions 2026-07-30a–08-04a to the archive). Archived whole: `formula-node-parity.md`
+  (program complete, 548/548; the divergence catalogue stays the routed reference from
+  archive), `cube-node-scope.md`, `excel-toolbar-supplementals.md` — all citations
+  repointed. CLAUDE.md: stale claims fixed (rule count dropped, layout-chrome now names
+  the measured envelopes, decisions format), capability map halved. Two stale deferrals
+  reconciled out (∞ glyph, chrome-envelope hoist — both shipped 2026-08-05).
+- **Cutdown pass 2:** CLAUDE.md's subsystem deep-dive index compressed back to actual
+  one-liners (the detail lives in subsystem-invariants; entries had regrown to
+  paragraphs). subsystem-invariants § Pointer gestures de-duplicated (census + palm
+  rejection were each explained twice). architecture.md docs table reconciled (archive
+  rows out, three missing docs in, stale counts dropped). pack-architecture's
+  proposal-era tail ("none of this is built yet" / "if this ever gets picked up")
+  replaced with the current state: Placeholder shipped, provenance record parked with
+  pack distribution, eager registration deliberate.
+- **Cutdown pass 3 (reconcile sweep over the unread set):** out-of-scope's stale
+  claims fixed (Expression cap now cites D23's rank ≤ 2; publish-as-form noted as
+  ruled OUT); glossary's autosave entry updated to the per-doc two-slot model;
+  v2.0/README + value-semantics pointers repointed post-pivot; rules.md "Known
+  violations" compressed to the one live item (the closed-history paragraph → git);
+  release-notes-features caught up on the 2026-08 arc — AI palette added as a
+  headliner, body lines for the one-paint card frame (the known-issues seam entry
+  retired), frame-input EXAMPLE hints, error boundaries, and the touch-polish batch.
+- **The posture is now IN CLAUDE.md** (pass 4): a "Current phase — 1.3 polish" section
+  (small-scope sweeps only; parked work stays parked even when a sweep tempts) and the
+  cutdown's standing rule under Doc maintenance ("write OUTCOMES, not narratives" —
+  one home per fact, deletion as the default for history). Both were only in
+  backlog/digest before, which a quick session never loads.
+- **Pass 5 (structural):** (1) **The Quiet Accent Rule RESCOPED** (author: "not really
+  that true") — the "never decoration" absolute was contradicted by the app (wordmark,
+  accent window border, note/group tints, palettes, flow beads/`cableFlourishStore`,
+  the two choreographed reveals, the planned art slot). DESIGN.md §1/§2 now say: chrome
+  color conveys type/state; decoration lives in named homes (brand / user-authored /
+  opt-in flourishes); NEW decoration is an author call, never an agent default.
+  CLAUDE.md's citation updated to match. (2) **`docs/mental-model.md`** — the missing
+  onboarding story (two React worlds, the compute path commit→processGraph→wrappers→
+  data()→render, derived types, the FrameBackend seam, display pipeline, save/load);
+  now step 2 of the Start-here order. (3) **`docsPointers.test.ts`** — pointer hygiene
+  is machine-checked (140 assertions): live docs all indexed, no dead `.md` citation
+  anywhere, archive index complete, routing-table code files exist. Its first run
+  caught two live dead pointers (rules.md → the archived 17-matrix-formulas path;
+  CLAUDE.md's root-unresolvable dev-notes-history shorthand) — the drift class the
+  cutdown fixed by hand is now a CI failure.
+- **Fine-print sweep, round 1 (2026-08-08 — the case family):** scanned all catalog
+  descriptions for behavioral claims (45 leaves, 8 clusters). Finding: **Text Filter
+  was OFF the D12 line** — case-sensitive raw `includes` while its two sibling
+  filters fold case and D12 rules every comparison insensitive; `filterTextList` now
+  folds (both surfaces — the node and TEXTFILTER share the kernel), description
+  updated. **`caseContract.test.ts`** pins the whole D12 line in one place: `=`/`<>`
+  insensitive, EXACT sensitive, frame Filter ops ± matchCase, Text Filter, join/
+  group/distinct identity-sensitive, Replace Values (case-sensitive whole-cell,
+  numeric match, substring strings-only, blanks/errors untouched). Replace Values'
+  description claims all verified true against `replaceValues`. Sort nulls/errors-
+  last already double-pinned. Remaining clusters recorded in the backlog item.
+- **Fine-print sweep, rounds 2–4 (all clusters closed, agent-verified claim-by-claim
+  with file:line evidence):** one FALSE description — **IFERROR claimed it catches
+  null** while the code and a passing test (`errorValue.test.ts`) pin the opposite
+  (null is first-class missing and passes through) — plus four imprecise ones fixed:
+  Base Convert (the null rule is PER-DIGIT, not per-base — base-16 works when every
+  digit is 0–9; `BASE_CONVERT_META` had the same overstatement), INDEX ("a blank Row"
+  conflated omitted-or-0 with a WIRED blank, which blanks the result), DATEDIF ("day
+  remainders" mislabeled the month-remainder op), Frame Filter ("blanks/errors fail"
+  is inverted by design for the four valueless ops). **`finePrintContract.test.ts`**
+  pins the previously-untested set: XMATCH's whole match-mode family + first-of-
+  duplicates (largest untested surface found), Get Row (zero tests existed), Base
+  Convert (zero tests existed), TEXTJOIN ignore-empty, DROP-last, Slice's 1-based
+  inclusive end, Merge Columns' blank→"", Drop Blank Rows' error-is-a-value. Sort
+  STABILITY turned out corpus-pinned (sort.json "stable" case, both engines).
+  Residue (TEXTJOIN cross-surface default mismatch — an author smell — and two
+  minor items) recorded in the backlog.
+- **subsystem-invariants + layout-chrome claims-vs-code audit (2026-08-08, four
+  agents, ~230 claims spot-verified):** 21 stale/false claims fixed in
+  subsystem-invariants. The dangerous ones: the Alert section named the WRONG init
+  key (`mode`; it's `op` per VAL-12 — and `mode` is a real different shared key);
+  `applyFcUnit` grew a third `customUnit` arg the doc omitted (a 2-arg caller drops
+  custom units); the LAMBDA capture sockets are `anylist`, not `anydata`; and the
+  "unit BREAKS at any transform" doctrine predates VAL-19 — `tagDim` now carries an
+  operand's display when the result's dimension matches ($5+2=$7), fixed here AND in
+  its echoes (CLAUDE.md, glossary, mental-model, the unitFlowSeed test header).
+  Other corrections: groupSource ribbons (one shared destination, beads DO render),
+  Conduit toolbar is a viewport-fixed portal (not body-relative), the finger census
+  is not-mouse-and-not-pen (CappedZoom alone is strict `touch`; Zoom never reads the
+  census), tablets ARE drag-transparent to touch (pointer-type keyed), group
+  collapse Pass 2b (leaf members get readouts), bordered-grid pass 1 leaves
+  out-of-range blank (no clamp) and the contested test is edge-inclusive, Convert
+  broadcasts via `broadcastUnit`, `broadcast` no longer NaN-collapses, the readInput
+  sweep is complete (zero-floor ratchet), `label` is per-instance, textForm's real
+  field order, camera targets exclude the minimap, `arithmeticCell` replaced
+  addUnits/subUnits (currency guard covers every op). **layout-chrome:** all
+  ~34 `file:line` citations stripped to file+selector (line numbers rot on every
+  edit — now a stated rule), 7 stale values fixed (`.solenoid-cmdk` →
+  `.solenoid-cmdpalette`, the pre-envelope 80/76/124px table values, the legend
+  reflow literals). Sections verified fully clean: standoffs, tidy, autosave,
+  literal maps, drill-in, socket-position guard, load/teardown, live connections,
+  equation solver, cable pruning, conduit faces.
+- **Multi-row FC annotation bug FIXED** (backlog item, found 2026-08-01): inline
+  output rows (Equation, Quadratic Roots, Regression, Triangle Solver…) now resolve
+  the format annotation PER SOCKET exactly like a socketKey'd ValueDisplay — docked
+  FC's direct write first, else the node's own `annotationFor` declaration through
+  the shared resolver — so a docked FC formats those rows, and Triangle Solver's
+  angles show their declared deg on-card. The row formatters moved to
+  `valueDisplayFormat.ts` as pure annotated helpers (`formatRowCell`/`formatRowValue`
+  — numbers, Cx, text case, logical style; errors/null untouched), pinned in
+  `valueDisplayFormat.test.ts`. Author eyeball: dock an FC on a Quadratic Roots /
+  Equation card; check Triangle Solver rows read e.g. "45 deg".
+- **RENDERER PURGE (author order 2026-08-09): exactly two renderers survive** — the
+  DOM default and the experimental HTML-in-Canvas Setting. Deleted outright (git has
+  it all): the pixi spike (`pixiScenes`/`pixiPicker`/`pixiCardLayout`/`RendererSpike`
+  + its store + the Edit hook), the WGSL/`canvas` render mode and its whole layer
+  (`cableScene`, `CableCanvas`, `NodeCanvas`, `RenderOverlay`, `overlayTransform`,
+  `gpuCableRenderer`, `gpuNodeRenderer`, `nodeScene`, `nodeInstances`,
+  `cableTessellate`, `gpuProbe` + `gpuCapabilityStore`), and the hit-index groundwork
+  (`spatialIndex`, `cableHitIndex`, `nodeHitIndex`, `hitTestCables`). The four
+  modules HIC genuinely imports moved OUT of `pixi/` and renamed
+  (`hicCamera`/`hicCableGeom`/`hicGraphSnapshot`/`hicColors` + `hicSocketGlyph`;
+  `cableHitTest` slimmed to `pathPoints.ts` = just the M/L/C/Q flattener).
+  `renderMode` is now `dom | html`; ConnectionComponent lost its canvas-publish
+  branch; main.tsx lost the GPU probe. ~90 groundwork tests went with their modules
+  (suite 4095 → 4005, green). Docs reconciled: CLAUDE.md trap, architecture's
+  renderer section, D6's reversal line, deferrals' two WebGPU items deleted.
+  En route the same audit fixed a real touch bug: the cabling hit-area rule SHRANK
+  coarse targets (-8px → -6px absolute); coarse cabling now grows to -14px.
+- **rules.md + mental-model/glossary claims audit (the closing sweep):** all 74 rules
+  agent-verified against code ahead of the ARR pass — 47 verified clean, 27 drift
+  fixes applied across every family (intro scope table, PROV-1's DEFAULT list, an
+  honest recount of citation coverage: 122 machine-checked quotes, 21 bare suite
+  citations across 20 rules; SOCK-3/4/6/7/10/11/12; PERSIST-5/8; ENGINE-1/2/3;
+  FX-1/2/5/6/9/11/12; VAL-2/3/10/14/20). ONE real code bug found and fixed:
+  **VAL-14's composite hydrate path restored literal maps unconditionally** —
+  a composite's internal graph could plant a value invisible on the card; it now
+  carries the same declaring-class gate as the main load path. mental-model +
+  glossary audited too (104 claims clean; 7 fixed: the FC-settle fixpoint claim,
+  coercion's literal-injection scope, scalar-null renders the em-dash — also
+  fixed at its value-semantics source, the VAL-19→VAL-9/D26 citation,
+  compileFormula is retired not dormant, packs are MOSTLY off-by-default —
+  also fixed in pack-architecture, and the engine is PULL-based, not push/pull). — subpixel purge: border seam + note-ring overhang SOLVED)
+- **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
+  lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
+  header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
+  geometry lives entirely in `nodeCard.css` via SVG-2 geometry properties), so all three
+  strokes rasterize in a single pass and cannot round apart under the canvas zoom
+  transform. Pixel-measuring the author's zoomed phone screenshots confirmed the failure
+  was NOT device-pixel snapping: the 1px and 2px borders painted with a ~0.29 CSS-px
+  outer-edge offset and different width rounding (0.86px vs 2.0px) — separately-painted
+  strokes can't be made to coincide, so width/margin tweaks were dead ends by principle.
+- Mechanics: the card + header keep transparent borders at the ORIGINAL widths (layout,
+  offsets, socket math untouched — only the paint moved). `--header-h` is now published
+  unconditionally (shared `useHeaderHeightVar`, fractional via `borderBoxSize`); the frame
+  is TWO sibling svg viewports — an abs-pos svg is a replaced element that keeps its
+  intrinsic 300×150 unless explicitly sized (first deploy shipped exactly that bug), and
+  the second viewport is CSS-sized to `--header-h` so its overflow clip ends the cap +
+  divider at the seam. All hover/light-theme/grouped border-COLOR rules now set the
+  frame's `stroke`. The FC opts out (`frameless` — its single-stroke accent ring has no
+  seam and stays a real border). The isolate endpoints and the palette-editor sample card
+  carry `CardFrame` too (`--frame-outset`, being their own positioning contexts).
+- Follow-up (author-eyeballed halo): the header's TINT painted to its border box and the
+  div-rasterized bg edge poked a subpixel past the SVG strokes → `background-clip:
+  padding-box` + 1px of bottom padding traded for a transparent bottom border tucks the
+  tint fully under cap + divider (same header height, verified in headless Chromium).
+- **Note-family selection-ring overhang (OPEN PROBLEM 2026-07-16) also SOLVED**: the
+  `inset:-2px` `::after` ring duplicated the card's own 2px/radius-8 border geometry on a
+  second box that rounded independently. The ring is now the card's OWN border, recolored
+  on `--selected` (Note / Presentation / Report) — same painted stroke, nothing to
+  misalign. SvgPicker/SessionHistory/Image keep their `::after` rings (different anatomy:
+  2px ring over a 1px border, never showed the bug) — port the recolor treatment if the
+  overhang ever appears there.
+- **Op-selector resting edge stepped down to the 60%-toward-border accent mix** (the
+  existing quiet-emphasis shade, same as `.solenoid-pres__step--active`). Author-walked:
+  85% too close to the focus color, the header-band tint too subtle; 60% is the
+  in-between step already in the system. Focus keeps the pure accent.
+- **Accent-mix ladder formalized** (author-invited): named rungs as App.css vars —
+  `--mix-hairline` 30 / `--mix-edge` 45 / `--mix-emphasis` 60 (toward border),
+  `--mix-ink` 55 (toward text), `--mix-glow` 28 (toward transparent), `--mix-ring` +
+  `--ring-into` (70%/#fff dark, 80%/#000 light, themed) — rule written into DESIGN.md §2
+  ("The Accent-Mix Ladder"); all exact-recipe sites migrated. TWO reclassifications with
+  visible deltas (eyeball): note-family/group/svgpick/history/image glows 22%→28% (the
+  DESIGN-documented glow), and their LIGHT-theme rings 68%→80% (the nodeCard nerf, now
+  uniform — 7 per-family light overrides deleted). Washes (12–22% transparent fills) left
+  loose, documented as such.
+- **Op selectors now render at the TOP of the card body** (author order), above the input
+  rows: one flex-order rule in `nodeCard.css` (`.solenoid-node__body >
+  .solenoid-node__op-select:not([data-op-arg]) { order: -1 }`) hoists every current and
+  future node's operation selector; component JSX keeps its natural order, argument
+  selectors stay in their rows. Requires the op select to be a DIRECT body child — a
+  source scan found ONE wrapped case (ColorBlend's padding div, unwrapped). Socket rows
+  measure offsetTop after layout, so cable endpoints follow the visual order.
+- **Small-things batch (author-picked from the 1.3 design sweep):** (1) Infinity renders
+  as the `∞` glyph (`format.ts`, scalar + list previews; value-semantics row → shipped).
+  (2) The last two asymmetric icons optically centered by the archived 2026-06-20
+  centroid measurements (lock viewBox +0.7y, sparkle +0.7x/−1y) — deferrals item
+  cleared, author eyeball on preview. (3) Cube popup gained the TablePopup overflow
+  trio (Copy CSV / Copy as Markdown / Export CSV…) — serializes the CURRENT drill
+  level, all rows, source order, nested containers as their chip tokens. (4) **SOCK-14**:
+  frame-input labels follow the column-role grammar (`Role + Role`, plain noun when no
+  expectation, no shape parentheticals; λ-table exception) — enforced in
+  `sourceInvariants.test.ts`; "Series (2-D)" → "Series", "Date + O H L C" → "Date + OHLC"
+  (73 rules). (5) **`--chrome-bottom` hoisted** to mirror `--chrome-top`:
+  `chromeBottom.ts` takes the max of the registered status bar + mobile action bar
+  heights (safe-area rides inside the measurement); 13 bottom-anchored offsets across 10
+  files now derive; mobile overrides keep winning the cascade with measured bases —
+  `layout-chrome.md` reconciled.
+- **Frame-input EXAMPLE hints** (author-directed, design delegated): hovering a
+  column-expecting frame input's socket pops a compact mini-table of example data
+  (3–5 rows) beside the socket — the worked example to SOCK-14's terse role label.
+  Mechanics: a node class declares `static frameHints` keyed by input key (the
+  literals-style declare-on-the-class shape; survives minification), `NodeSocket`
+  resolves it per render (hover-intent 300ms, `hover: hover` media only, native type
+  tooltip suppressed on hinted sockets), `frameHintStore` + `FrameHintLayer` (app root,
+  z 120, fixed screen-space, flips right at the viewport edge, hides on leave / press /
+  wheel). Styled on overlay chrome framed in the FRAME socket hue via the ladder rungs;
+  dates format through `formatFrameCell` (app default format). Ten hints authored:
+  Chart, Treemap, Sankey, Waterfall, Waffle, Candlestick, Calendar, Boxplot, Decision
+  Matrix, Sensitivity. Playwright-verified against the live dev server (position, flip,
+  date formatting, hide-on-leave, both themes). Author-walked twice same session: v2 is
+  EXTREMELY mini (8px mono micro-grid) in the FRAME CHIP's language (translucent
+  `--sock-frame` card, TablePopup's tinted column-name recipe), no example tag; TOUCH
+  gets tap-to-show (pointerup on the dot; next tap / 4s dismisses — desktop-stack
+  hover unchanged). **SOCK-15 (74 rules)**: the label↔hint pair is an enforced
+  contract — every role-chain-labeled frame input MUST declare a hint whose column
+  names match the label's roles (OHLC expands), `frameHint.test.ts` sweeps the catalog
+  (existence + name match + 3–5 rectangular typed rows).
+- **Touch-gesture spec formalized** (`docs/touch-gestures.md`, author-ordered after TWO
+  phantom-gesture incidents in one session: layout-chrome's fictional "canvas double-tap
+  add", then the real long-press-add going unfound because it rides the browser's native
+  long-press → `contextmenu` with no greppable name). The doc is the normative gesture
+  inventory per device config + the standing invariants (pinch capture / pan bubble,
+  selection gating, the container-wide dblclick swallow). Two findings recorded in it:
+  NOTHING can double-click/double-tap inside the canvas (the swallow is
+  `stopImmediatePropagation` in capture — `NodeCard`'s square-collapse `onDoubleClick`
+  is a DEAD PATH; the chevron is the only re-expand control, and its reveal now
+  includes `--selected` explicitly so touch doesn't lean on tap-hover emulation —
+  author caught the earlier "no touch re-expand" overclaim), and the marquee/lasso
+  trigger is deliberately left unrecorded pending verification.
+  layout-chrome's add-path note corrected to name long-press; CLAUDE.md points at the
+  inventory. Mobile frame-hint tap fixed en route: the DOT scales with the canvas
+  transform (2px at overview zoom — untappable), so on touch the whole socket ROW
+  triggers the hint (verified on emulated Pixel 7, `html.is-mobile` gating active).
+- **Mobile cable-draw jump FIXED (author-confirmed)** — `seatAreaPointerInCapture`
+  (`areaPresets.ts`): `area.pointer` (the picked ghost cable's free end) updated only from
+  BUBBLE pointerdown, which a socket press stops; desktop hover masked it, touch has no
+  hover. Position bookkeeping now re-seats in CAPTURE like the pinch count (main canvas +
+  drill-in). Emulated-Pixel probes of the other suspect stores (`CappedZoom.pointers`,
+  the pointer census) came back strand-free across pick/drop/pinch/long-press flows.
+- **Node descriptions reach touch** (author-directed A+E): (A) the node context menu —
+  long-press's existing home — is now HEADED by the catalog one-liner (`describeNode`,
+  the header tooltip's text) as a 9px muted width-capped blurb, so mobile and desktop
+  right-click both get it without hover. (E) the Function Reference SEARCHED
+  descriptions but never RENDERED them (no column) — a row with one now tap/click
+  expands a full-width 10px description line beneath it (dense table stays dense;
+  the add-node button stops propagation so it doesn't toggle).
+- **Context menus clamp to the viewport** (`menuClamp.ts`, shared by all four:
+  node/socket/cable/standoff-link): a layout-effect measures the menu and pins it
+  inside 8px side margins and above `--chrome-bottom`, so a long-press near a screen
+  edge (the blurb made the node menu taller) never runs offscreen or under a bar.
+- **Description-length outlier trim** (author-directed distribution pass): scanned all
+  catalog/pack `description:` strings — n=648, mean 100, σ76, max 556 — and rewrote the
+  35 outliers beyond mean+2σ (~250 chars) tighter, keeping the load-bearing semantics
+  and every Excel / Power Query equivalence. Max is now 447 (Expression, irreducibly
+  the formula-surface explainer), p99 389→297.
+- Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
+  borders were — slight softness on fractional card positions is expected, matching the
+  cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
+  selected notes/reports/presentations at fractional sizes; op-selector-on-top across a
+  few families (math, frame verbs, dates, packs); lock + sparkle icon centering; bottom
+  chrome positions (minimap/legend/palette/toasts, desktop AND a phone — the mobile
+  lifts now derive from the measured bar); the frame-input example hints on a real
+  mouse (hover feel, delay, sizing) AND phone (row tap). Hint v3 (author-walked): the
+  TablePopup grid in MINIATURE (corner + row numbers + sunken heads + gridlines,
+  solid panel) — the chip-tint card looked nothing like the frame popup; the ROW tap
+  is the INTENTIONAL touch trigger (the dot's own tap can't work: cable pick captures
+  the pointer), the dot's dead touch handler removed.
 
 ---
 
