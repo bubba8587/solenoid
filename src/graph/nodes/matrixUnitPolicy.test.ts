@@ -50,7 +50,6 @@ const POLICY: Record<string, Policy> = {
   TableUnitNode: "na",            // MUNIT → a freshly generated identity matrix
   ChartNode: "na",                // visuals: a chart value out, no dimensioned matrix output
   SurfaceNode: "na",
-  ContourNode: "na",
   QuiverNode: "na",
   HeatmapCellNode: "na",
   TableInputNode: "author",       // a literal source that tags its own output

@@ -2,7 +2,7 @@ import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
-  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
@@ -267,7 +267,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             children: [
               { type: "heatmap-cell", label: "Heatmap", description: "Color every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
               { type: "surface", label: "Surface", description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) — the same format Grid Interpolate fills.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
-              { type: "contour", label: "Contour", description: "The flat twin of Surface: the same bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) drawn as filled height bands with iso-lines. One grid into both gives two views of one surface.", create: () => new ContourNode(), parity: false, keywords: "contour iso lines level topo topographic height map bands field 2d surface" },
+              { type: "contour", label: "Contour", description: "The flat twin of Surface: the same bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) drawn as filled height bands with iso-lines. One grid into both gives two views of one surface.", create: () => new SurfaceNode({ op: "contour" }), parity: false, keywords: "contour iso lines level topo topographic height map bands field 2d surface" },
               { type: "quiver", label: "Vector Field", description: "One arrow per grid cell from two same-shaped matrices (the X and Y components), colored by magnitude — gradients, flows, wind fields.", create: () => new QuiverNode(), parity: false, keywords: "quiver vector field arrows flow gradient wind direction magnitude" },
             ],
           },
