@@ -53,7 +53,7 @@ Deep behavioral notes and gotchas live in `CLAUDE.md` (agent-facing) and
 src/
 ├── main.tsx                  # Entry — init theme/packs/flow stores, mount <App />
 ├── App.tsx                   # Top-level: canvas + overlays (popups, dialogs, settings)
-├── App.css                   # Theme token layer (dark/light ramps; socket colors are BUILT by palette.ts/appTheme.ts, not defined here)
+├── App.css                   # Theme token layer (dark/light ramps; socket colors are BUILT by palette.ts/appTheme.ts, not defined here. --canvas-bg/--canvas-dot ARE defined here, but a palette may override them — appTheme writes or CLEARS them per apply)
 ├── mobile.css                # @media (pointer: coarse) overrides (desktop layout is truth)
 ├── desktopFrame.css          # Tauri window chrome
 ├── env.ts                    # IS_COARSE / isDesktop-style environment flags

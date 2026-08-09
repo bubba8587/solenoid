@@ -206,7 +206,7 @@ function isPaletteSlot(s: string): s is PaletteSlot {
 }
 
 // ── Built-in palettes (the app switcher picks among these) ────────────────────
-export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox";
+export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard";
 
 // Default hues at ~0.62 of their saturation, lightness nudged toward mid.
 const MUTED: Record<PaletteSlot, string> = {
@@ -275,15 +275,86 @@ const EQUINOX: Record<PaletteSlot, string> = Object.fromEntries(
   COLOR_PALETTE.map((slot) => [slot, EQUINOX_GRAY]),
 ) as Record<PaletteSlot, string>;
 
+// Orchard: lifted from the Pear design system (bubba8587/pear, DESIGN.md front
+// matter) — a warm cream ground under orchard hues. Pear is a deliberately warm-only
+// system (pear green, blossom pink, honey gold, a warm quiet gray, one brick danger)
+// and ships NO cool hue at all, so the four cold slots are blended into its gaps at
+// Pear's own saturation/value band — the same technique Solarized uses for the accents
+// it doesn't ship. Orchard is also the first palette to author a CANVAS ground; see
+// BUILTIN_CANVAS below, which lifts Pear's four ground tokens verbatim.
+const PEAR = {
+  pearFill: "#649117", pearBright: "#b8d532",
+  blossomFill: "#d5537f",
+  honey: "#9c6f0e", honeyBright: "#d99a17",
+  quiet: "#8b8269", danger: "#bb4029",
+} as const;
+const ORCHARD: Record<PaletteSlot, string> = {
+  gold:      PEAR.honeyBright, // number   (honey-bright)
+  amber:     PEAR.honey,       // input    (honey — Pear's own darker half of the money pair)
+  lime:      PEAR.pearBright,  // string   (pear-bright, the fruit skin)
+  green:     PEAR.pearFill,    // lambda   (pear-fill, the brand green)
+  pink:      PEAR.blossomFill, // date     (blossom-fill, the romance pink)
+  vermilion: PEAR.danger,      // error    (danger — the only red Pear allows)
+  gray:      PEAR.quiet,       // any      (quiet, a warm gray)
+  // Blended — Pear has no cool hue to lift. Held at its band (S ~.40–.56, V ~.62–.71)
+  // so they read as the same family rather than imported from a cold system.
+  teal:      "#4f9080",        // convert  (sage, between the pear green and the blues)
+  sky:       "#5f9bb5",        // complex  (dusty sky)
+  blue:      "#4a739f",        // math     (denim)
+  violet:    "#7a6bab",        // frame    (dusty periwinkle)
+  purple:    "#9b5f95",        // logic    (muted orchid — clear of both violet and blossom)
+};
+
 export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> = {
   "Default": { ...PALETTE },
   "Muted": MUTED,
   "Colorblind-safe": COLORBLIND,
   "Solarized": SOLARIZED,
   "Equinox": EQUINOX,
+  "Orchard": ORCHARD,
 };
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
+
+// ── The canvas ground a palette may author ────────────────────────────────────
+// The graph background and its dot grid, per theme mode. These are NOT palette
+// slots: nothing stores them on a node and resolveColor never returns one — they
+// go straight to --canvas-bg / --canvas-dot, which appTheme writes on every apply.
+// That's also why they're a PARALLEL map rather than four more entries in the slot
+// record: the slot record is the accent vocabulary a card can point at, and adding
+// per-mode ground colors to it would make every slot consumer (chart series, the
+// swatch grid, the height ramp, doc overrides) have to skip them.
+//
+// A palette declaring NOTHING here keeps App.css's neutral ground — appTheme removes
+// the inline property for every key it isn't given, so the cascade answers instead of
+// the last palette's value sticking. Only Orchard declares one today, deliberately:
+// every other palette recolors the graph and leaves the workbench alone.
+export type CanvasKey = "bgDark" | "dotDark" | "bgLight" | "dotLight";
+export const CANVAS_KEYS: CanvasKey[] = ["bgDark", "dotDark", "bgLight", "dotLight"];
+export type CanvasColors = Partial<Record<CanvasKey, string>>;
+
+/** The neutral ground, mirroring App.css's --canvas-bg / --canvas-dot in both
+ *  ramps. Not written to the DOM (the stylesheet already carries it) — it's the
+ *  seed the custom-palette editor's canvas wells start from, so an author edits
+ *  away from what they can see rather than from an empty well. */
+export const DEFAULT_CANVAS: Record<CanvasKey, string> = {
+  bgDark: "#0e0e0e", dotDark: "#2a2a2a",
+  bgLight: "#eef1f5", dotLight: "#d3d9e1",
+};
+
+// Orchard's four are Pear tokens verbatim: dark-bg / dark-border and bg / border.
+// Pear's `border` (not `border-strong`) is the light dot — its contrast against the
+// cream ground lands in the same range as the default pair's.
+export const BUILTIN_CANVAS: Record<PaletteName, CanvasColors> = {
+  "Default": {},
+  "Muted": {},
+  "Colorblind-safe": {},
+  "Solarized": {},
+  "Equinox": {},
+  "Orchard": { bgDark: "#141309", dotDark: "#363320", bgLight: "#f4efe3", dotLight: "#e2dac6" },
+};
+
+const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
 
 // ── Active palette state ──────────────────────────────────────────────────────
 // Effective = BUILTIN[docBase ?? appBase] + the open doc's per-slot overrides, so
@@ -293,15 +364,27 @@ export type PaletteChoice = PaletteName | "Custom";
 
 const LS_KEY = "solenoid.palette";
 const LS_CUSTOM_KEY = "solenoid.palette.custom";
+const LS_CUSTOM_CANVAS_KEY = "solenoid.palette.custom.canvas";
 let _appBase: PaletteChoice = "Default";
 let _customMap: Record<PaletteSlot, string> = { ...PALETTE };
+// The custom palette's ground is always COMPLETE (seeded from DEFAULT_CANVAS), unlike
+// a built-in's, which declares only what it means to override. So picking Custom always
+// pins a ground — one that starts pixel-identical to App.css's, and that the editor can
+// show in a well.
+let _customCanvas: Record<CanvasKey, string> = { ...DEFAULT_CANVAS };
 let _docBase: PaletteName | null = null;
 let _docOverrides: Partial<Record<PaletteSlot, string>> = {};
 let _effective: Record<PaletteSlot, string> = { ...PALETTE };
+let _effectiveCanvas: CanvasColors = {};
 
 /** The slot→hex map for a base choice (Custom resolves to the user map). */
 function baseMapFor(choice: PaletteChoice): Record<PaletteSlot, string> {
   return choice === "Custom" ? _customMap : (BUILTIN_PALETTES[choice] ?? BUILTIN_PALETTES.Default);
+}
+
+/** The canvas ground for a base choice — `{}` when that palette declares none. */
+function baseCanvasFor(choice: PaletteChoice): CanvasColors {
+  return choice === "Custom" ? _customCanvas : (BUILTIN_CANVAS[choice] ?? {});
 }
 
 // REPORT/EXPORT-only override — a PARALLEL map, deliberately separate from
@@ -318,6 +401,9 @@ const { notify: notifyReportPalette, subscribe: subscribeReportPalette, version:
 function recompute() {
   const base = _docBase ? (BUILTIN_PALETTES[_docBase] ?? BUILTIN_PALETTES.Default) : baseMapFor(_appBase);
   _effective = { ...base, ..._docOverrides };
+  // A doc pin picks the ground too — the whole point of pinning is that the doc
+  // looks the same wherever it's opened. Doc `overrides` stay slot-only.
+  _effectiveCanvas = _docBase ? (BUILTIN_CANVAS[_docBase] ?? {}) : baseCanvasFor(_appBase);
   bakeInks(_effective);
 }
 
@@ -330,7 +416,10 @@ function persist() {
 }
 
 function persistCustom() {
-  try { localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(_customMap)); } catch { /* private mode / quota */ }
+  try {
+    localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(_customMap));
+    localStorage.setItem(LS_CUSTOM_CANVAS_KEY, JSON.stringify(_customCanvas));
+  } catch { /* private mode / quota */ }
 }
 
 // Recompute + notify both palettes after a custom-map edit, but only when it's
@@ -363,29 +452,44 @@ export const paletteStore = {
     notifyPalette();
     notifyReportPalette();
   },
+  /** The active palette's canvas ground — `{}` when it authors none, in which case
+   *  appTheme clears the vars and App.css's neutral ground answers. */
+  canvasColors: (): CanvasColors => ({ ..._effectiveCanvas }),
   /** The user's editable custom palette (F-1) — a full slot→hex map. */
   customMap: (): Record<PaletteSlot, string> => ({ ..._customMap }),
+  /** The custom palette's canvas ground — always complete (see _customCanvas). */
+  customCanvas: (): Record<CanvasKey, string> => ({ ..._customCanvas }),
   /** Edit one slot of the custom palette; retints live when Custom is the active base. */
   setCustomSlot(slot: PaletteSlot, hex: string) {
-    if (!isPaletteSlot(slot) || !/^#[0-9a-fA-F]{6}$/.test(hex) || _customMap[slot] === hex) return;
+    if (!isPaletteSlot(slot) || !isHex(hex) || _customMap[slot] === hex) return;
     _customMap = { ..._customMap, [slot]: hex };
     afterCustomEdit();
   },
-  /** Seed the custom palette from a built-in template (the editor's "Load template"). */
+  /** Seed the custom palette from a built-in template (the editor's "Load template").
+   *  A template that authors no ground seeds the neutral one, so loading it CLEARS a
+   *  previously-authored custom ground rather than leaving the old one behind. */
   loadCustomTemplate(name: PaletteName) {
     if (!(name in BUILTIN_PALETTES)) return;
     _customMap = { ...BUILTIN_PALETTES[name] };
+    _customCanvas = { ...DEFAULT_CANVAS, ...BUILTIN_CANVAS[name] };
     afterCustomEdit();
   },
   /** Commit a whole custom map at once (the editor's Save — draft edits apply here
    *  in one go, so the app retints once instead of live on every drag tick). */
-  setCustomMap(map: Record<PaletteSlot, string>) {
+  setCustomMap(map: Record<PaletteSlot, string>, canvas?: CanvasColors) {
     const next: Record<PaletteSlot, string> = { ..._customMap };
     for (const slot of COLOR_PALETTE) {
-      const v = map[slot];
-      if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v)) next[slot] = v;
+      if (isHex(map[slot])) next[slot] = map[slot];
     }
     _customMap = next;
+    if (canvas) {
+      const nextCanvas: Record<CanvasKey, string> = { ..._customCanvas };
+      for (const key of CANVAS_KEYS) {
+        const v = canvas[key];
+        if (isHex(v)) nextCanvas[key] = v;
+      }
+      _customCanvas = nextCanvas;
+    }
     afterCustomEdit();
   },
   /** Apply the open document's palette declaration (on graph load). Null clears it. */
@@ -456,12 +560,22 @@ export function initPalette() {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const m: Record<PaletteSlot, string> = { ...PALETTE };
       for (const slot of COLOR_PALETTE) {
-        const v = parsed?.[slot];
-        if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v)) m[slot] = v;
+        if (isHex(parsed?.[slot])) m[slot] = parsed[slot];
       }
       _customMap = m;
     }
   } catch { /* ignore malformed custom map */ }
+  try {
+    const raw = localStorage.getItem(LS_CUSTOM_CANVAS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const c: Record<CanvasKey, string> = { ...DEFAULT_CANVAS };
+      for (const key of CANVAS_KEYS) {
+        if (isHex(parsed?.[key])) c[key] = parsed[key];
+      }
+      _customCanvas = c;
+    }
+  } catch { /* ignore malformed custom ground */ }
   try {
     const v = localStorage.getItem(LS_KEY);
     if (v === "Custom" || (v && v in BUILTIN_PALETTES)) _appBase = v as PaletteChoice;
