@@ -100,15 +100,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   claims all ~30 Excel names on the one "distribution" type; kind "argument" so no
   formula names are claimed. BINOM.INV gained broadcast semantics (was scalar-only).
   Binomial Range stays separate (two-input range shape). Formula surface untouched.
-- **Accent decoupled from naming kind** (author caught the gap): the op-select accent
-  edge keyed on `data-op-kind` = the NODE_OPS decl kind, which conflated "ops claim
-  formula names" (FX-4) with "the selector names the card". Distribution is the first
-  family where they diverge, so a decl-level `opNamesTheCard: true` makes
-  `opKindForNode` (the card's presentation resolver, its only consumer) answer
-  "operation" while FX-4/parity keep reading `decl.kind`. Pinned in nodeOps.test.
-  Author confirmed the accent renders. Also ratcheted: RUNNING_OP_META joined the
-  declared-fx uniqueness guard, and the `fx` doc comment now states both declared-name
-  cases (prose labels, bare labels whose family word lives in the card title).
+- **Distribution is a plain OPERATION family; the accent follows for free** (author
+  caught this in two passes: first that the selector wasn't accented, then that the
+  `opNamesTheCard` flag added to fix it was a bolt-on). The real resolution: each
+  distribution op claims its primary EXCEL spelling as its formula name via the
+  existing `fx` mechanism (normal → NORM.DIST, gamma → GAMMA.DIST, derived from
+  `DIST_SPECS[op].excel`), so the names are real, dispatchable, and dotted — the
+  op-Gamma vs GAMMA(x) despace collision that had pushed the family to
+  argument-kind can't occur. `kind: "operation"` → the accent comes through the
+  normal `data-op-kind` path; the flag and its `opKindForNode` branch are deleted.
+  Also ratcheted earlier in the session: RUNNING_OP_META joined the declared-fx
+  uniqueness guard, and the `fx` doc comment states both declared-name cases.
 - **Running vocabulary pass** (author): toggle option "All so far" renamed
   "Cumulative"; op labels lost the "Running " prefix (bare SUM/AVERAGE/...). The
   formula names keep the family word via per-op `fx` in `RUNNING_OP_META`

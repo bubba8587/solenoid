@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from "./nodeOps";
-import { DistributionNode } from "./nodes/distribution";
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { SET_OP_META, SET_RELATION_META } from "./nodes/list";
@@ -257,19 +256,18 @@ describe("the one Distribution node is reachable by search without growing the m
         : [(e as NodeCatalogEntry).type]);
   })(catalog);
 
-  it("declares one op per DISTRIBUTION, ARGUMENT-kind (the Excel names dispatch on their own)", () => {
+  it("declares one OPERATION per distribution; each op's fx is its primary Excel name", () => {
     const decl = opsFor("distribution");
     expect(decl, "distribution has no NODE_OPS declaration").toBeTruthy();
     // The op axis is the distribution; the curve/inverse pick is the arg-tagged
-    // `form` field. No op claims a formula name: NORM.DIST, T.INV.2T and friends
-    // are real Excel names with their own dispatch, and a label-derived name
-    // ("Normal", "Gamma") would collide with the function leaves.
-    expect(decl!.kind).toBe("argument");
+    // `form` field. Each op claims a REAL formula name via fx (NORM.DIST,
+    // GAMMA.DIST, ...) — dotted spellings, so no despaced label ever collides
+    // with a function leaf (the op-Gamma vs GAMMA(x) trap).
+    expect(decl!.kind).toBe("operation");
     expect(decl!.ops!.length).toBeGreaterThan(12);
-    expect(decl!.ops!.every((o) => !o.fx), "distribution declares a per-op fx").toBe(true);
-    // ...but the selector still NAMES the card, so it presents as an operation:
-    // the accent edge keys on data-op-kind = opKindForNode, not decl.kind.
-    expect(opKindForNode(new DistributionNode())).toBe("operation");
+    for (const o of decl!.ops!) {
+      expect(o.fx, `${o.op} has no fx`).toMatch(/^[A-Z.]+\.[A-Z.]+$/);
+    }
   });
 
   it("the Add-menu TREE keeps exactly ONE distribution leaf — no leaf per distribution or form", () => {
