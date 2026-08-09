@@ -263,15 +263,20 @@ as an "unbounded" sentinel was rejected: a wired blank means unknown
 **Reopen if:** the grow/slide edge policies need to diverge further than the
 per-window reducer policy can express.
 
-### D34 — A distribution's inverse is an OP on its node, never a sibling node
-Every dist/inv pair merged (2026-08-09): the op selector carries the forward
-curves and the inverse (`inv` / `inv2t` / `invrt`), and crossing the
-forward/inverse line swaps the first input between x and Probability. One card
-per distribution, named for the distribution, with the Excel names in
-descriptions and search keywords. **Where:** `syncInverseInput`/`isInverseOp` in
-`nodes/shared.ts`, `distComponent` in `components/DistNodes.tsx`.
-**Reopen if:** a distribution's inverse stops sharing the forward op's
-parameters, so the socket swap no longer describes it.
+### D34 — ONE Distribution node: the distribution is the op, the form is an argument
+Every probability distribution lives on one card (2026-08-09, author call; the
+same session first merged only the dist/inv pairs, then went the rest of the
+way). The `op` selector picks the distribution (14: normal through negative
+binomial), the arg-tagged `form` field picks CDF / PDF / PMF / a tail / the
+inverse; an inverse form swaps the first input to Probability, and a
+distribution switch swaps the parameter inputs (cables on departing sockets
+prune first, SSOT-9). The forms carry across switches by meaning (PDF↔PMF over
+the continuous/discrete line, inverse variants collapse to plain Inverse).
+Binomial Range stays its own node: its range form has a two-input shape the
+first-input swap cannot describe. **Where:** `nodes/distribution.ts`
+(`DIST_SPECS` is the SSOT), `components/DistributionNode.tsx`.
+**Reopen if:** a distribution whose parameters or input shape cannot be
+described by `DIST_SPECS` (a second x input, a non-numeric parameter).
 
 ---
 

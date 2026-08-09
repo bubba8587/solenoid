@@ -2,15 +2,7 @@
 // The `{ }` marker is DERIVED, never declared; `kind` does not affect the menu.
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
-import {
-  CHISQ_DIST_OP_META, NORM_DIST_OP_META, NORM_S_DIST_OP_META, T_DIST_OP_META,
-} from "./nodes/dist-normal";
-import {
-  BINOM_DIST_OP_META, HYPGEOM_DIST_OP_META, NEGBINOM_DIST_OP_META, POISSON_DIST_OP_META,
-} from "./nodes/dist-discrete";
-import {
-  BETA_DIST_OP_META, EXPON_DIST_OP_META, F_DIST_OP_META, GAMMA_DIST_OP_META, LOGNORM_DIST_OP_META, WEIBULL_DIST_OP_META,
-} from "./nodes/dist-continuous";
+import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
@@ -37,24 +29,24 @@ import {
 // only their class (for `instanceof`) and their kind.
 import {
   AggregateNode, AntoineNode, ArgMinMaxNode, ArithmeticNode,
-  BesselNode, BetaDistNode, BinomDistNode, BitwiseNode,
-  BondPriceNode, BooleanOpNode, CharCodeNode, ChisqDistNode,
+  BesselNode, BitwiseNode,
+  BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
   CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
-  ESeriesNode, ElementNode, ExponDistNode, FDistNode,
-  FisherNode, GammaDistNode, GroupByFrameNode,
-  HypgeomDistNode, IpmtPpmtNode, LognormDistNode, MRoundNode,
-  MatDetNode, MathFnNode, NegbinomDistNode, NormDistNode,
-  NormSDistNode, NthValueNode, OddCouponNode, PercentileNode,
+  ESeriesNode, ElementNode, 
+  FisherNode, GroupByFrameNode,
+  IpmtPpmtNode, MRoundNode,
+  MatDetNode, MathFnNode, 
+  NthValueNode, OddCouponNode, PercentileNode,
   PercentrankNode, PhysicsConstantNode, PipeRoughnessNode, PivotNode,
-  PoissonDistNode, PriceDiscNode, PriceMatNode, QuartileNode,
+  PriceDiscNode, PriceMatNode, QuartileNode,
   RankNode, RomanArabicNode, SecurityDiscNode,
-  SumProductNode, TBillNode, TDistNode,
+  SumProductNode, TBillNode, 
   TTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
-  TodayNowNode, UrlEncodeNode, WeekInfoNode, WeibullDistNode,
+  TodayNowNode, UrlEncodeNode, WeekInfoNode, 
   WeightedNode,
   ResistorCodeNode,
   AlertNode, ColorBlendNode,
@@ -106,22 +98,12 @@ function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntry
   return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}) }));
 }
 
-/** SEARCH labels for the distribution FORMS: the meta labels are dropdown prose
- *  that disagrees across families, so these carry the Excel spelling's token. */
-const DIST_FORM_LABEL: Record<string, string> = {
-  cdf:  "CDF",
-  pdf:  "PDF",
-  rt:    "Right-tail (RT)",
-  "2t":  "Two-tail (2T)",
-  inv:   "Inverse",
-  inv2t: "Inverse two-tail (INV.2T)",
-  invrt: "Inverse right-tail (INV.RT)",
-};
-/** `fromMeta` with search-facing form names; no per-op `fx` — the family takes
- *  ONE formula name. */
-function fromDistMeta(meta: Record<string, { label: string; fx?: string }>): OpEntryDecl[] {
-  return fromMeta(meta).map((o) => ({ ...o, label: DIST_FORM_LABEL[o.op] ?? o.label }));
-}
+/** The Distribution node's op axis is the DISTRIBUTION; the curve/inverse pick
+ *  is the arg-tagged `form` field. Search rows carry the Excel names so typing
+ *  "norm.inv" or "weibull" lands on the right pick. */
+const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({
+  op, label: `${DIST_SPECS[op].label} (${DIST_SPECS[op].excel})`,
+}));
 
 /** Menu/search names for ops whose OP_META `label` is dropdown PROSE, which would
  *  compose into a mangled sentence matching every sibling equally. */
@@ -146,6 +128,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new SparklineNode({ op: op as never }) },
 
   // ── Argument-kind: the op is a parameter, not a thing you would search for ──
+  // The Distribution node's ops ARE searchable by name (the distributions), but
+  // they claim no formula names — the Excel names dispatch on their own.
+  { type: "distribution", ctor: DistributionNode, kind: "argument", ops: DIST_OPS,
+    create: (op) => new DistributionNode({ op: op as never }) },
   { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
     create: (op) => new HeadersNode({ op: op as never }) },
   // Aggregators are arguments of Group By, not searchable ops (D29).
@@ -220,8 +206,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "bondprice-price", ctor: BondPriceNode, kind: "operation" },
   { type: "bool-and", ctor: BooleanOpNode, kind: "operation" },
   { type: "char-code-char", ctor: CharCodeNode, kind: "operation" },
-  { type: "chisqdist", ctor: ChisqDistNode, kind: "argument", ops: fromDistMeta(CHISQ_DIST_OP_META),
-    create: (op) => new ChisqDistNode({ op: op as never }) },
   { type: "comb-fact", ctor: CombinatoricsNode, kind: "operation" },
   { type: "cx-binary-sum", ctor: ComplexBinaryNode, kind: "operation" },
   { type: "cx-unary-conj", ctor: ComplexUnaryNode, kind: "operation" },
@@ -280,40 +264,14 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // ARGUMENT — the aggregator a host verb runs, plus the data-driven pickers, each
   // a VALUE the graph could supply from a column.
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
-  { type: "betadist", ctor: BetaDistNode, kind: "argument", ops: fromDistMeta(BETA_DIST_OP_META),
-    create: (op) => new BetaDistNode({ op: op as never }) },
-  { type: "binomdist", ctor: BinomDistNode, kind: "argument", ops: fromDistMeta(BINOM_DIST_OP_META),
-    create: (op) => new BinomDistNode({ op: op as never }) },
   { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
   { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
   { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
   { type: "ch-element", ctor: ElementNode, kind: "argument" },
-  { type: "expodist", ctor: ExponDistNode, kind: "argument", ops: fromDistMeta(EXPON_DIST_OP_META),
-    create: (op) => new ExponDistNode({ op: op as never }) },
-  { type: "fdist", ctor: FDistNode, kind: "argument", ops: fromDistMeta(F_DIST_OP_META),
-    create: (op) => new FDistNode({ op: op as never }) },
-  { type: "gammadist", ctor: GammaDistNode, kind: "argument", ops: fromDistMeta(GAMMA_DIST_OP_META),
-    create: (op) => new GammaDistNode({ op: op as never }) },
   { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
-  { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "argument", ops: fromDistMeta(HYPGEOM_DIST_OP_META),
-    create: (op) => new HypgeomDistNode({ op: op as never }) },
-  { type: "lognormdist", ctor: LognormDistNode, kind: "argument", ops: fromDistMeta(LOGNORM_DIST_OP_META),
-    create: (op) => new LognormDistNode({ op: op as never }) },
-  { type: "negbinomdist", ctor: NegbinomDistNode, kind: "argument", ops: fromDistMeta(NEGBINOM_DIST_OP_META),
-    create: (op) => new NegbinomDistNode({ op: op as never }) },
-  { type: "normdist", ctor: NormDistNode, kind: "argument", ops: fromDistMeta(NORM_DIST_OP_META),
-    create: (op) => new NormDistNode({ op: op as never }) },
-  { type: "normsdist", ctor: NormSDistNode, kind: "argument", ops: fromDistMeta(NORM_S_DIST_OP_META),
-    create: (op) => new NormSDistNode({ op: op as never }) },
   { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
   { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
   { type: "pivot", ctor: PivotNode, kind: "argument" },
-  { type: "poissondist", ctor: PoissonDistNode, kind: "argument", ops: fromDistMeta(POISSON_DIST_OP_META),
-    create: (op) => new PoissonDistNode({ op: op as never }) },
-  { type: "tdist", ctor: TDistNode, kind: "argument", ops: fromDistMeta(T_DIST_OP_META),
-    create: (op) => new TDistNode({ op: op as never }) },
-  { type: "weibulldist", ctor: WeibullDistNode, kind: "argument", ops: fromDistMeta(WEIBULL_DIST_OP_META),
-    create: (op) => new WeibullDistNode({ op: op as never }) },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));

@@ -244,12 +244,7 @@ describe("a generated op row is exactly one op", () => {
 // data pickers. That makes SEARCH the whole discoverability mechanism for them,
 // so these pin both halves: the menu doesn't grow, and search actually finds
 // every form.
-describe("distribution forms are reachable by search without growing the menu", () => {
-  const DIST_TYPES = [
-    "betadist", "binomdist", "expodist", "fdist", "gammadist", "hypgeomdist",
-    "lognormdist", "negbinomdist", "normdist", "normsdist", "poissondist", "tdist",
-    "chisqdist", "weibulldist",
-  ];
+describe("the one Distribution node is reachable by search without growing the menu", () => {
   const catalog = buildCatalog(false);
   const leaves = flattenLeaves(catalog);
   // The catalog TREE (what the Add menu renders) — op rows are generated at search
@@ -261,53 +256,46 @@ describe("distribution forms are reachable by search without growing the menu", 
         : [(e as NodeCatalogEntry).type]);
   })(catalog);
 
-  it("every family declares its ops, as ARGUMENT-kind (one formula name per family)", () => {
-    for (const t of DIST_TYPES) {
-      const decl = opsFor(t);
-      expect(decl, `${t} has no NODE_OPS declaration`).toBeTruthy();
-      expect(decl!.ops?.length ?? 0, `${t} declares no ops`).toBeGreaterThan(1);
-      // ARGUMENT, not operation — and FX-4 is what decides it, not taste. An
-      // operation-kind op claims a formula name derived from its label, and the
-      // forms do not have seventeen families' worth of distinct names: Excel
-      // models cdf/pdf as a `cumulative` ARGUMENT on one function, so "CDF" and
-      // "PDF" would collide across every family at once (and with the leaf's own
-      // name). The family takes one formula name; the form rides in as an
-      // argument, which is exactly what the Excel signature does.
-      expect(decl!.kind, `${t} claims per-op formula names it doesn't have`).toBe("argument");
-      expect(decl!.ops!.every((o) => !o.fx), `${t} declares a per-op fx`).toBe(true);
+  it("declares one op per DISTRIBUTION, ARGUMENT-kind (the Excel names dispatch on their own)", () => {
+    const decl = opsFor("distribution");
+    expect(decl, "distribution has no NODE_OPS declaration").toBeTruthy();
+    // The op axis is the distribution; the curve/inverse pick is the arg-tagged
+    // `form` field. No op claims a formula name: NORM.DIST, T.INV.2T and friends
+    // are real Excel names with their own dispatch, and a label-derived name
+    // ("Normal", "Gamma") would collide with the function leaves.
+    expect(decl!.kind).toBe("argument");
+    expect(decl!.ops!.length).toBeGreaterThan(12);
+    expect(decl!.ops!.every((o) => !o.fx), "distribution declares a per-op fx").toBe(true);
+  });
+
+  it("the Add-menu TREE keeps exactly ONE distribution leaf — no leaf per distribution or form", () => {
+    expect(treeTypes.filter((x) => x === "distribution").length).toBe(1);
+    expect(treeTypes.some((x) => x.startsWith("distribution__op-")), "grew per-op leaves").toBe(false);
+    for (const gone of ["normdist", "norminv", "tdist", "tinv", "chisqdist", "fdist",
+      "betadist", "gammadist", "lognormdist", "weibulldist", "expodist", "binomdist",
+      "poissondist", "hypgeomdist", "negbinomdist"]) {
+      expect(treeTypes.includes(gone), `${gone} still has its own leaf`).toBe(false);
     }
   });
 
-  it("the Add-menu TREE keeps exactly one leaf per family — no leaf per form", () => {
-    for (const t of DIST_TYPES) {
-      expect(treeTypes.filter((x) => x === t).length, `${t} should have exactly one tree leaf`).toBe(1);
-      // …and no generated per-op leaf smuggled into the tree.
-      expect(treeTypes.some((x) => x.startsWith(`${t}__op-`)), `${t} grew per-op leaves`).toBe(false);
+  it("every distribution has a search row carrying its Excel names", () => {
+    const decl = opsFor("distribution")!;
+    const rows = new Set(leaves.filter((l) => l.leaf.type.startsWith("distribution__op-")).map((l) => l.leaf.type));
+    for (const op of decl.ops!) {
+      expect(rows.has(`distribution__op-${op.op}`) || op.op === "normal", `"${op.op}" is unreachable`).toBe(true);
     }
   });
 
-  it("every form of every family has a search row", () => {
-    for (const t of DIST_TYPES) {
-      const decl = opsFor(t)!;
-      const rows = leaves.filter((l) => l.leaf.type.startsWith(`${t}__op-`)).map((l) => l.leaf.type);
-      for (const op of decl.ops!) {
-        // The family's PRIMARY op is the plain leaf itself, so it has no extra row.
-        const generated = rows.includes(`${t}__op-${op.op}`);
-        const isPrimary = !generated;
-        expect(generated || isPrimary, `${t}: form "${op.op}" is unreachable`).toBe(true);
-      }
-      expect(rows.length, `${t} generated no form rows`).toBeGreaterThan(0);
-    }
-  });
-
-  it("the natural query for a form ranks that form's rows first", () => {
-    const top = (q: string, n: number) => searchLeaves(leaves, q).slice(0, n).map((l) => l.label);
-    // Every family spells the right tail the same way in search, so one query
-    // gathers them (the meta labels disagree — "RT" vs "Right-tail" — which is
-    // exactly why the declaration overrides them).
-    // Forward and inverse right-tail forms both answer the query; each spells
-    // its own token consistently across families.
-    for (const label of top("right tail", 4)) expect(label).toMatch(/Right-tail \(RT\)|Inverse right-tail \(INV\.RT\)/);
-    for (const label of top("PDF", 4)) expect(label).toMatch(/: PDF$/);
+  it("the natural queries surface the right distribution near the top", () => {
+    // The Distribution LEAF carries every Excel name (nodeExcel), so it may
+    // outrank its own rows; the guard is that the specific distribution's row
+    // is right there with it, presetting the op.
+    const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.label).join(" | ");
+    expect(top3("weibull")).toMatch(/Weibull \(WEIBULL\.DIST\)/);
+    expect(top3("poisson")).toMatch(/Poisson \(POISSON\.DIST\)/);
+    expect(top3("hypergeometric")).toMatch(/Hypergeometric/);
+    expect(top3("norm.inv")).toMatch(/NORM\.INV/);
+    expect(top3("t.inv.2t")).toMatch(/T\.INV\.2T/);
+    expect(top3("critbinom")).toMatch(/Binomial|Distribution/);
   });
 });

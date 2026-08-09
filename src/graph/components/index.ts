@@ -204,20 +204,11 @@ export { ComplexBinaryComponent } from "./ComplexBinaryNode";
 export { ComplexPowerComponent } from "./ComplexPowerNode";
 
 // ─── Distributions — normal / t / chi-squared ─────────────────────────────────
-export {
-  NormDistComponent, NormSDistComponent, TDistComponent, ChisqDistComponent,
-  FDistComponent, BetaDistComponent, GammaDistComponent, LognormDistComponent,
-  BinomDistComponent,
-} from "./DistNodes";
+export { DistributionComponent } from "./DistributionNode";
 
 // ─── Distributions — continuous ───────────────────────────────────────────────
-export { WeibullDistComponent } from "./WeibullDistNode";
-export { ExponDistComponent } from "./ExponDistNode";
 
 // ─── Distributions — discrete ─────────────────────────────────────────────────
-export { PoissonDistComponent } from "./PoissonDistNode";
-export { HypgeomDistComponent } from "./HypgeomDistNode";
-export { NegbinomDistComponent } from "./NegbinomDistNode";
 
 // ─── Distributions — discrete (extra) ────────────────────────────────────────
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";

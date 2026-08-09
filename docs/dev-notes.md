@@ -86,19 +86,20 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-09b — distributions absorb their inverses; Running vocabulary pass)
-- **Every distribution + its inverse is now ONE node** (author call, D34): the inverse
-  (quantile) rides the op selector as `inv` ops (`inv`/`inv2t`/`invrt`), and crossing
-  the forward/inverse line swaps the FIRST input between x and Probability
-  (`syncInverseInput` in `nodes/shared.ts`; `isInverseOp` = the `inv` prefix). Nine
-  pairs merged: Normal, Standard Normal, t, chi-squared, F, beta, gamma, lognormal,
-  binomial; the 9 *Inv classes, their components, catalog leaves and nodeExcel keys
-  are gone (old saves placeholder them, D3). One `distComponent` factory
-  (`components/DistNodes.tsx`) replaced the 18 per-node dist/inv component files.
-  BINOM.INV upgraded from scalar-only to the same broadcast semantics as the rest.
-  Cards renamed from Excel function names to distribution names (Normal, Weibull,
-  Poisson...; Excel names stay in descriptions + search keywords); tail-op labels
-  harmonized to 2T/RT. Formula surface untouched (Excel names dispatch as before).
+### SESSION DIGEST (2026-08-09b — ONE Distribution node; Running vocabulary pass)
+- **ALL distributions are now ONE node** (author call, D34; an intermediate commit
+  merged only the dist/inv pairs before the author clarified the intent). `nodes/
+  distribution.ts` holds `DIST_SPECS` (14 distributions: label, forms, first-input
+  key, params, compute kernel) and one `DistributionNode`: `op` = the distribution
+  (VAL-12 family selector; palette rows "Distribution: Weibull (WEIBULL.DIST)"),
+  arg-tagged `form` = CDF/PDF/PMF/tails/inverse ("form" added to INIT_FIELD_ORDER).
+  An inverse form swaps the first input to Probability; a distribution switch swaps
+  params; both prune departing cables first (SSOT-9). Forms carry across switches by
+  meaning (PDF↔PMF, inverse variants → Inverse, else the spec default). The 14 dist
+  classes + 23 per-node components are gone (old saves placeholder, D3); nodeExcel
+  claims all ~30 Excel names on the one "distribution" type; kind "argument" so no
+  formula names are claimed. BINOM.INV gained broadcast semantics (was scalar-only).
+  Binomial Range stays separate (two-input range shape). Formula surface untouched.
 - **Running vocabulary pass** (author): toggle option "All so far" renamed
   "Cumulative"; op labels lost the "Running " prefix (bare SUM/AVERAGE/...). The
   formula names keep the family word via per-op `fx` in `RUNNING_OP_META`

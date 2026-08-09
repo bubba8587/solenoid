@@ -233,7 +233,7 @@ describe("the catalog obeys the reference's own rule for choosing a rung", () =>
         }
       }
     }
-    expect(seen.size, "catalog classes scanned").toBeGreaterThan(300);
+    expect(seen.size, "catalog classes scanned").toBeGreaterThan(280);
     expect(offenders).toEqual([]);
   });
 });
