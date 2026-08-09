@@ -14,13 +14,13 @@ import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
 import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode } from "./complex";
 import {
-  ListInputNode, RangeNode, AggregateNode,
+  ListInputNode, SeriesNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
   UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, LinSpaceNode, RepeatNode,
+  NormalizeNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
   FillNode,
@@ -94,7 +94,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof IsInNode
   ) return "logic";
   if (
-    node instanceof ListInputNode || node instanceof RangeNode || node instanceof AggregateNode ||
+    node instanceof ListInputNode || node instanceof SeriesNode || node instanceof AggregateNode ||
     node instanceof ListLengthNode || node instanceof ListIndexNode || node instanceof SortNode ||
     node instanceof FilterNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
@@ -102,7 +102,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SetOpNode || node instanceof TallyNode ||
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
-    node instanceof NormalizeNode || node instanceof LinSpaceNode || node instanceof RepeatNode ||
+    node instanceof NormalizeNode || node instanceof RepeatNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
     node instanceof PadNode || node instanceof GeometricNode || node instanceof FibonacciNode ||
     node instanceof FillNode

@@ -64,11 +64,12 @@
     },
     {
       "id": "range-1",
-      "type": "RangeNode",
+      "type": "SeriesNode",
       "x": -337,
       "y": 190,
       "init": {
-        "label": "1 to 6"
+        "label": "1 to 6",
+        "op": "range"
       },
       "literals": {
         "start": 1,

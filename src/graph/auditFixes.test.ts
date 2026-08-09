@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SequenceNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NpvNode } from "./rete-nodes";
+import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NpvNode } from "./rete-nodes";
 import { isSolError, solError } from "./errorValue";
 import type { FrameValue } from "./frame";
 
@@ -7,7 +7,7 @@ import type { FrameValue } from "./frame";
 
 describe("generator element caps (#5)", () => {
   it("SEQUENCE over the cap returns #OVERFLOW! instead of a giant array", () => {
-    const out = new SequenceNode().data({ count: [5_000_000] });
+    const out = new SeriesNode({ op: "sequence" }).data({ count: [5_000_000] });
     if (!isSolError(out.list)) throw new Error("expected SolError");
     expect(out.list.code).toBe("#OVERFLOW!");
   });
@@ -19,7 +19,7 @@ describe("generator element caps (#5)", () => {
   });
 
   it("a normal SEQUENCE still produces the list", () => {
-    const out = new SequenceNode().data({ count: [4], start: [1], step: [2] });
+    const out = new SeriesNode({ op: "sequence" }).data({ count: [4], start: [1], step: [2] });
     expect(out.list).toEqual([1, 3, 5, 7]);
   });
 });

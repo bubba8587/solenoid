@@ -146,42 +146,104 @@ export class ListInputNode extends ClassicPreset.Node {
 
 // ─── Range ────────────────────────────────────────────────────────────────────
 
-export class RangeNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | SolError | null = [];
-  // No default for `stop`: unset keeps the range empty until the user provides one.
-  literals: Record<string, number> = { start: 0, step: 1 };
-  width = 180;
-  height = 220;
+// ─── Series — ONE arithmetic-progression node (Range / SEQUENCE / LinSpace) ───
+// Three parameterizations of the same progression: stop-bounded (Range),
+// count-first (SEQUENCE), endpoint-count (LinSpace). Start is shared by all
+// three and Step/Count by their pairs, so an op switch keeps those cables.
 
-  constructor(init?: { label?: string }) {
-    super("Range");
-    this.label = init?.label ?? "Range";
-    this.addInput("start", numIn("Start"));
-    this.addInput("stop",  numIn("Stop"));
-    this.addInput("step",  numIn("Step"));
+export type SeriesOp = "range" | "sequence" | "linspace";
+
+export const SERIES_OP_META = {
+  range:    { label: "Range",    description: "Generates a sequence: start, start+step, …, < stop. Excel: SEQUENCE." },
+  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each; like Range but count-first. Excel: SEQUENCE." },
+  linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
+} satisfies Record<SeriesOp, { label: string; description: string }>;
+
+const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
+  range:    [{ key: "start", label: "Start", def: 0 }, { key: "stop", label: "Stop" }, { key: "step", label: "Step", def: 1 }],
+  sequence: [{ key: "count", label: "Count", def: 10 }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
+  linspace: [{ key: "start", label: "Start", def: 0 }, { key: "end", label: "End", def: 1 }, { key: "count", label: "Count", def: 10 }],
+};
+
+export class SeriesNode extends ClassicPreset.Node {
+  label: string;
+  op: SeriesOp;
+  cachedList: number[] | SolError | null = [];
+  literals: Record<string, number> = {};
+  width = 180;
+  height = 248;
+
+  constructor(init?: { label?: string; op?: SeriesOp }) {
+    super("Series");
+    this.label = init?.label ?? "Series";
+    this.op = init?.op ?? "range";
+    for (const i of SERIES_SPECS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("list", listOut("List"));
+    this.seedLiterals();
   }
 
-  data(inputs: { start?: number[]; stop?: number[]; step?: number[] }) {
-    const start = readInput(inputs.start, this.literals.start ?? 0);
-    // `stop` is legitimately UNSET: undefined is unset, null is a cable carrying blank.
-    const stop  = readInput(inputs.stop, this.literals.stop as number | undefined);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    const step  = readInput(inputs.step, this.literals.step ?? 1);
-    if (start === null || stop === null || step === null) { this.cachedList = null; return { list: null }; }
-    // Generator convention: a non-terminating or over-ceiling range is a LOUD error,
-    // never a silent truncation.
-    const n = rangeCount(start, stop, step);
-    if (!Number.isFinite(n)) {
-      const err = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
-      this.cachedList = err; return { list: err };
+  private seedLiterals(): void {
+    // Only declared defaults seed: Range's Stop and SEQUENCE's Start/Step stay
+    // unset, keeping their muted placeholders (and Range's empty-until-given
+    // contract) across an op switch.
+    for (const i of SERIES_SPECS[this.op]) if (i.def !== undefined) this.literals[i.key] ??= i.def;
+  }
+
+  /** The keys a switch to `next` would remove. Callers on a live graph prune
+   *  these BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: SeriesOp): string[] {
+    const keep = new Set(SERIES_SPECS[next].map((i) => i.key));
+    return SERIES_SPECS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
+  }
+
+  setOp(next: SeriesOp): void {
+    if (next === this.op) return;
+    const before = SERIES_SPECS[this.op];
+    this.op = next;
+    const after = SERIES_SPECS[next];
+    for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
+    for (const i of after) {
+      const live = this.inputs[i.key];
+      if (!live) this.addInput(i.key, numIn(i.label));
+      else live.label = i.label; // a kept key keeps its cable; the label follows the op
     }
-    if (n > MAX_GENERATED) {
-      const err = solError("#OVERFLOW!", `Range of ${Math.round(n)} elements exceeds the ${MAX_GENERATED} element limit`);
-      this.cachedList = err; return { list: err };
+    this.seedLiterals();
+  }
+
+  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[] }): { list: number[] | SolError | null } {
+    let list: number[] | SolError | null;
+    if (this.op === "range") {
+      const start = readInput(inputs.start, this.literals.start ?? 0);
+      // `stop` is legitimately UNSET: undefined is unset, null is a cable carrying blank.
+      const stop  = readInput(inputs.stop, this.literals.stop as number | undefined);
+      // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+      const step  = readInput(inputs.step, this.literals.step ?? 1);
+      if (start === null || stop === null || step === null) list = null;
+      else {
+        // Generator convention: a non-terminating or over-ceiling range is a LOUD
+        // error, never a silent truncation.
+        const n = rangeCount(start, stop, step);
+        if (!Number.isFinite(n)) list = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
+        else if (n > MAX_GENERATED) list = solError("#OVERFLOW!", `Range of ${Math.round(n)} elements exceeds the ${MAX_GENERATED} element limit`);
+        else list = rangeList(start, stop, step);
+      }
+    } else if (this.op === "sequence") {
+      const countRaw = readInput(inputs.count, this.literals.count ?? 10);
+      const start = readInput(inputs.start, this.literals.start ?? 1);
+      const step  = readInput(inputs.step, this.literals.step ?? 1);
+      if (countRaw === null || start === null || step === null) list = null;
+      else {
+        const count = Math.max(0, Math.floor(countRaw));
+        list = count > MAX_GENERATED
+          ? solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`)
+          : sequenceList(count, start, step);
+      }
+    } else {
+      const start = readInput(inputs.start, this.literals.start ?? 0);
+      const end   = readInput(inputs.end, this.literals.end ?? 1);
+      const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
+      list = start === null || end === null || nRaw === null ? null : linspace(start, end, nRaw);
     }
-    const list = rangeList(start, stop, step);
     this.cachedList = list;
     return { list };
   }
@@ -1198,32 +1260,6 @@ export class NormalizeNode extends ClassicPreset.Node {
 }
 
 // ─── LinSpace ─────────────────────────────────────────────────────────────────
-export class LinSpaceNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { start: 0, end: 1, count: 10 };
-  width = 180; height = 220;
-
-  constructor(init?: { label?: string }) {
-    super("LinSpace");
-    this.label = init?.label ?? "LinSpace";
-    this.addInput("start", numIn("Start"));
-    this.addInput("end",   numIn("End"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("List"));
-  }
-
-  data(inputs: { start?: number[]; end?: number[]; count?: number[] }) {
-    const start = readInput(inputs.start, this.literals.start ?? 0);
-    const end   = readInput(inputs.end, this.literals.end ?? 1);
-    const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (start === null || end === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    this.cachedList = linspace(start, end, nRaw);
-    return { result: this.cachedList };
-  }
-}
-
 // ─── Repeat ───────────────────────────────────────────────────────────────────
 export class RepeatNode extends ClassicPreset.Node {
   label: string;
@@ -1695,39 +1731,6 @@ export class RandArrayNode extends ClassicPreset.Node {
 }
 
 // ─── SEQUENCE ─────────────────────────────────────────────────────────────────
-
-export class SequenceNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | SolError | null = [];
-  literals: Record<string, number> = { count: 10 }; // start/step ship unset → muted 1/1 placeholders
-  width = 180; height = 195;
-
-  constructor(init?: { label?: string }) {
-    super("Sequence");
-    this.label = init?.label ?? "SEQUENCE";
-    this.addInput("count", numIn("Count"));
-    this.addInput("start", numIn("Start (default 1)"));
-    this.addInput("step",  numIn("Step (default 1)"));
-    this.addOutput("list", listOut("List"));
-  }
-
-  data(inputs: { count?: number[]; start?: number[]; step?: number[] }): { list: number[] | SolError | null } {
-    const countRaw = readInput(inputs.count, this.literals.count ?? 10);
-    const start = readInput(inputs.start, this.literals.start ?? 1);
-    const step  = readInput(inputs.step, this.literals.step ?? 1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (countRaw === null || start === null || step === null) { this.cachedList = null; return { list: null }; }
-    const count = Math.max(0, Math.floor(countRaw));
-    if (count > MAX_GENERATED) {
-      const e = solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`);
-      this.cachedList = e;
-      return { list: e };
-    }
-    const list  = sequenceList(count, start, step);
-    this.cachedList = list;
-    return { list };
-  }
-}
 
 // ─── SORTBY ───────────────────────────────────────────────────────────────────
 

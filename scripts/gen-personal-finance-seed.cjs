@@ -225,7 +225,7 @@ n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { liter
 n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
 n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000, min: 100000, max: 3000000, step: 50000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
 n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
-n("seq-years","SequenceNode",    1960,  440, { label: "Years 1…N" });
+n("seq-years","SeriesNode",      1960,  440, { label: "Years 1…N", op: "sequence" });
 n("expr-traj","ExpressionNode",   2240,  440, { label: "FV after c years", expr: "pv*(1+i)^(12*c) + IF(i=0, pmt*12*c, pmt*((1+i)^(12*c)-1)/i)" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
 // The projection group's exit conduit (the group predates the convention): the

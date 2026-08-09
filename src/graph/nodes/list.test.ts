@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CondAggOp } from "./list";
 import {
-  RangeNode,
-  LinSpaceNode,
+  SeriesNode,
   NormalizeNode,
   DiffNode,
   RunningNode,
@@ -32,32 +31,32 @@ import katex from "katex";
 
 describe("Range", () => {
   it("counts up, stop-exclusive", () => {
-    expect(new RangeNode().data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4]);
-    expect(new RangeNode().data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8]);
   });
   it("counts down with a negative step", () => {
-    expect(new RangeNode().data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1]);
   });
   it("is empty when stop is unreachable; step 0 is a LOUD #DOMAIN!", () => {
-    expect(new RangeNode().data({ start: [0], stop: [5], step: [-1] }).list).toEqual([]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [-1] }).list).toEqual([]);
     // A walk that never terminates is a config mistake, not an empty series —
     // the old silent [] hid it (same reasoning as the generator overflow guard).
-    const r = new RangeNode().data({ start: [0], stop: [5], step: [0] }).list;
+    const r = new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [0] }).list;
     expect(isSolError(r) && r.code).toBe("#DOMAIN!");
   });
   it("overflows loudly past MAX_GENERATED instead of silently truncating", () => {
-    const r = new RangeNode().data({ start: [0], stop: [2_000_000], step: [1] }).list;
+    const r = new SeriesNode({ op: "range" }).data({ start: [0], stop: [2_000_000], step: [1] }).list;
     expect(isSolError(r) && r.code).toBe("#OVERFLOW!");
   });
 });
 
 describe("LinSpace", () => {
   it("includes both endpoints", () => {
-    expect(new LinSpaceNode().data({ start: [0], end: [1], count: [5] }).result).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(new SeriesNode({ op: "linspace" }).data({ start: [0], end: [1], count: [5] }).list).toEqual([0, 0.25, 0.5, 0.75, 1]);
   });
   it("handles count 1 and 0", () => {
-    expect(new LinSpaceNode().data({ start: [3], end: [9], count: [1] }).result).toEqual([3]);
-    expect(new LinSpaceNode().data({ start: [3], end: [9], count: [0] }).result).toEqual([]);
+    expect(new SeriesNode({ op: "linspace" }).data({ start: [3], end: [9], count: [1] }).list).toEqual([3]);
+    expect(new SeriesNode({ op: "linspace" }).data({ start: [3], end: [9], count: [0] }).list).toEqual([]);
   });
 });
 
@@ -817,5 +816,31 @@ describe("broadcast / broadcastErr — ragged lists pad to the longest with null
   it("broadcastErr pads too, alongside genuine per-cell errors", () => {
     const div = (a: number, b: number) => (b === 0 ? solError("#DIV/0!", "test") : a / b);
     expect(broadcastErr(div, [10, 20], [2, 0, 5])).toEqual([5, solError("#DIV/0!", "test"), null]);
+  });
+});
+
+describe("Series — one arithmetic-progression node, op-switch mechanics", () => {
+  it("SEQUENCE matches the count-first parameterization", () => {
+    expect(new SeriesNode({ op: "sequence" }).data({ count: [4], start: [10], step: [5] }).list).toEqual([10, 15, 20, 25]);
+    // Unwired Start/Step fall back to 1 (Excel's SEQUENCE defaults).
+    expect(new SeriesNode({ op: "sequence" }).data({ count: [3] }).list).toEqual([1, 2, 3]);
+  });
+
+  it("Start survives every switch; Stop/End/Count swap per parameterization", () => {
+    const n = new SeriesNode({ op: "range" });
+    expect(n.keysDroppedBySwitch("linspace")).toEqual(["stop", "step"]);
+    expect(n.keysDroppedBySwitch("sequence")).toEqual(["stop"]);
+    n.setOp("linspace");
+    expect(Object.keys(n.inputs).sort()).toEqual(["count", "end", "start"]);
+    n.setOp("sequence");
+    expect(Object.keys(n.inputs).sort()).toEqual(["count", "start", "step"]);
+    expect(n.inputs.start!.label).toBe("Start (default 1)");
+  });
+
+  it("Range's Stop stays unset across switches — empty until the user provides one", () => {
+    const n = new SeriesNode({ op: "linspace" });
+    n.setOp("range");
+    expect(n.literals.stop).toBeUndefined();
+    expect(n.data({}).list).toEqual([]);
   });
 });
