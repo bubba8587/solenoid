@@ -28,10 +28,10 @@ inconsistent, and the seams show exactly where attention lapsed.
 | 1 | **High** | Second browser tab silently clobbers autosaves — no cross-tab coordination | `documentStore.ts` |
 | 2 | **High** | Desktop capability surface: any-URL fetch + read any `$HOME/**/*.{json,csv,md}` | `capabilities/default.json`, `httpBridge.ts` |
 | 3 | ~~High~~ **FIXED** | 6 dependency vulns (3 High) in the build chain — `npm audit fix`, now `0 vulnerabilities`; vite→7.3.6 | `npm audit` |
-| 4 | **Med** | `distinct`/`groupBy` collapse `+Inf`, `-Inf`, `NaN` into one key (JS↔Polars divergence) | `frameVerbs.ts` |
+| 4 | ~~Med~~ **RETRACTED** | Non-finite key collapse is a *deliberate* cross-backend contract (B-1a), not a bug — see below | `frameVerbs.ts` |
 | 5 | ~~Med~~ **FIXED** | 80 MB `pixi.js` production dependency with zero imports — removed | `package.json` |
 | 6 | **Med** | 36 `eslint-disable` directives; no ESLint (or any linter) configured or installed | repo-wide |
-| 7 | **Med** | `fetchText` reads unbounded response bodies into a string (OOM) | `httpBridge.ts:44` |
+| 7 | ~~Med~~ **FIXED** | `fetchText` reads unbounded response bodies into a string (OOM) — now capped at 64 MB with a streaming abort | `httpBridge.ts` |
 | 8 | **Low** | Periodic IRR omits the rate clamp its dated twin has (asymmetric robustness) | `finance.ts:446` |
 | 9 | ~~Low~~ **FIXED** | Mojibake: 13 corrupted lines in a shipped source file — re-encoded to proper `─`/`→` | `nodes/finance.ts` |
 | 10 | **Low** | Full-graph `fetch` loop + adjacency rebuild on every value edit | `process.ts` |
@@ -97,24 +97,29 @@ $ npm audit
 All fixable with `npm audit fix`. Dev-time only, yes — but "we knew and didn't run the
 one-liner" is not a good look for a project this otherwise-tested.
 
-### 4. MEDIUM — Your grouping key thinks infinity equals NaN
+### 4. ~~MEDIUM~~ RETRACTED — "Your grouping key thinks infinity equals NaN"
 
-`frameVerbs.ts` builds distinct/group keys via `encodeCell` (line 117) →
-`JSON.stringify`. `JSON.stringify` serializes every non-finite number as `null`:
+**I was wrong, and the review process is only honest if it says so.** My original claim:
+`encodeCell` → `JSON.stringify` serializes every non-finite number to `null`
+(reproduced: `JSON.stringify(["#", Infinity]) === '["#",null]'`, same for `-Inf`/`NaN`),
+so `distinctRows` and `groupByFrame` collapse `+Inf`/`-Inf`/`NaN` into one key. I framed
+that as a silent JS↔Polars *divergence*.
 
-```js
-JSON.stringify(["#", Infinity])  === '["#",null]'   // reproduced
-JSON.stringify(["#", -Infinity]) === '["#",null]'   // reproduced
-JSON.stringify(["#", NaN])       === '["#",null]'   // reproduced
-```
+It is the opposite. The collapse is a **deliberate, documented, cross-backend
+*contract*** — spec point **B-1a** (2026-07-05) — and it is pinned on *both* engines:
 
-So `distinctRows` (line 149) treats three rows holding `+Inf`, `-Inf`, and `NaN` as
-one row, and `groupByFrame` (line 351) buckets them together. The *join* path dodges
-this because `keyIndex` (line 458) explicitly skips non-finite keys — but distinct and
-groupBy don't, so the JS oracle and the Polars backend can disagree on the same input.
-The whole point of maintaining a parity oracle is that they *never* disagree; here they
-silently do. Edge-case data, real correctness gap, and precisely the kind of thing a
-parity fuzz corpus is supposed to catch.
+- `frameVerbs.test.ts:42` — `describe("distinct — the cross-backend key contract (B-1a…)")`
+- `fixtures/frame-verbs/{distinct,groupBy}.json` — explicit cases named *"all non-finite
+  key values share ONE bucket, apart from null (B-1a)"*, run by **both** the JS oracle
+  and the Polars/Rust engine (`src-tauri/src/engine/tests.rs`) against the same fixtures.
+- `docs/archive/dev-notes-history.md` records *why*: an earlier version genuinely diverged
+  ("the oracle's B-1a bucket matched NaN to −∞; Polars [differed]"), and grouping all
+  non-finite as one bucket with null on its own was the **fix** that made them agree.
+
+So the two engines don't disagree here — they were deliberately made to agree, and
+"fixing" this would *re-introduce* the divergence and break the B-1a contract on both
+sides. Lesson for the reader: a suspicious-looking encoding is not automatically a bug;
+check whether a spec and a cross-engine fixture already bless it. This one does.
 
 ### 5. ~~MEDIUM~~ FIXED — An 80 MB corpse in `dependencies`
 
@@ -147,12 +152,19 @@ cargo cult — they do nothing except imply a quality gate that isn't there. Eit
 up ESLint (and then those suppressions become meaningful and reviewable) or delete the
 theater. Shipping suppressions for a nonexistent linter is worse than having neither.
 
-### 7. MEDIUM — `fetchText` will happily eat all your RAM
+### 7. ~~MEDIUM~~ FIXED — `fetchText` will happily eat all your RAM
 
-`httpBridge.ts:44` does `await res.text()` with no `Content-Length` check and no cap.
+`httpBridge.ts` did `await res.text()` with no `Content-Length` check and no cap.
 A Data-Feed/Web-Source pointed at a multi-GB endpoint (or a hostile server streaming
-forever) buffers the entire body into a single JS string and OOMs the tab. A simple
-byte ceiling with an early abort is a five-line fix.
+forever) buffered the entire body into a single JS string and OOMed the tab.
+
+> **Resolved 2026-08-09:** both transports (Tauri plugin + browser `fetch`) now route
+> through `readCappedText`, which (a) rejects an oversized `Content-Length` before
+> reading a byte, (b) streams via the body reader with a running counter and
+> `reader.cancel()` the instant it crosses `MAX_FETCH_BYTES` (64 MB), and (c) falls
+> back to a post-read size gate when no stream reader is exposed. Two tests added
+> (`httpBridge.test.ts`): header-based rejection (asserts the body is never buffered)
+> and a normal under-cap body still returning.
 
 ### 8. LOW — One IRR was hardened, its identical twin was forgotten
 
@@ -239,13 +251,13 @@ An honest aggressive review has to concede what's good, or the criticism is just
 2. ~~`npm audit fix` (#3)~~ — **done** (0 vulnerabilities).
 3. ~~Delete `pixi.js` from `dependencies` (#5)~~ — **done** (10 packages dropped).
 4. Either install ESLint or delete the 36 fake suppressions (#6). **(still open)**
-5. Fix the non-finite key encoding in `frameVerbs.ts` (#4) — bucket `NaN`/`±Inf`
-   distinctly, or skip them as the join path already does. **(still open)**
+5. ~~Fix the non-finite key encoding in `frameVerbs.ts` (#4)~~ — **retracted**: the
+   collapse is the deliberate B-1a cross-backend contract, not a bug.
 
-The three easy wins (#3, #5, #9) were fixed in the same pass that filed this review;
-`tsc` and all 4,118 tests stay green. What remains open is the genuinely hard/riskier
-set — the ones that touch data loss (#1), the trust model (#2), engine parity (#4),
-and numeric behavior (#8).
+Fixed in the same pass that filed this review: #3, #5, #7, #9 — plus #4 investigated and
+**retracted** as a false positive. `tsc` clean and all tests green after each. What
+remains genuinely open is the harder set: data loss (#1), the trust model (#2), the lint
+theater (#6), numeric asymmetry (#8), and the structural items (#10, #11).
 
 *— Review conducted against `develop`. Methodology: full `tsc` + `vitest` run,
 `npm audit`, and hand-reading of the engine, node, persistence, I/O, Rust, and build
