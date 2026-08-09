@@ -33,9 +33,7 @@ import {
 } from "./stats";
 import { BitwiseNode, DepreciationNode, TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
-import { NormDistNode, NormSDistNode, TDistNode, ChisqDistNode } from "./dist-normal";
-import { FDistNode, BetaDistNode, GammaDistNode, LognormDistNode, WeibullDistNode, ExponDistNode } from "./dist-continuous";
-import { BinomDistNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
+import { DistributionNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode } from "./frame";
@@ -126,15 +124,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof CumPmtNode
   ) return "math";
   if (
-    node instanceof NormDistNode || node instanceof NormSDistNode ||
-    node instanceof TDistNode ||
-    node instanceof ChisqDistNode ||
-    node instanceof FDistNode || node instanceof BetaDistNode ||
-    node instanceof GammaDistNode ||
-    node instanceof LognormDistNode || node instanceof WeibullDistNode ||
-    node instanceof ExponDistNode ||
-    node instanceof BinomDistNode || node instanceof PoissonDistNode ||
-    node instanceof HypgeomDistNode || node instanceof NegbinomDistNode
+    node instanceof DistributionNode
   ) return "math";
   if (
     node instanceof IFErrorNode || node instanceof ConduitNode ||
