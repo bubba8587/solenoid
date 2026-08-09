@@ -86,6 +86,33 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-09d — node-combining round 1: eight merges landed)
+- **The author approved a candidate list and round 1 shipped whole** (D36; the
+  full ranked survey + the parked set live in `docs/backlog.md` "Node-combining
+  parked"). Eight merges, one commit each, suite green throughout: Hypothesis
+  Test (`stats.ts`, Z/T×3/F/chisq — shared a/b keys so two-sample switches keep
+  cables), Rank & Percentile (`stats.ts`, ten ops; the .EXC search rows kept
+  their per-family hosts via three pair declarations sharing one leafOps list),
+  Series (`list.ts`, Range/SEQUENCE/LinSpace; Start shared, Stop/End distinct
+  deliberately — exclusive vs inclusive; unset-literal contracts preserved),
+  ListTakeDrop (`list.ts`, dir argument like the table sibling), Workdays
+  (`date.ts`, the one merge that retypes its OUTPUT in place — component calls
+  `retypeOutputCables`, Split Frame's pattern), Depreciation+VDB (`finance.ts`,
+  per-op spec table replaced the "(SYD/DDB only)" qualifier rows), NPV/IRR
+  absorb XNPV/XIRR (`finance.ts`, Periodic/Dated SegToggle, `mode` field;
+  dated prep deduped into `datedPrep`), Surface+Contour (`visual.ts`, 3-D/Flat
+  SegToggle; payload kinds unchanged so renderers untouched).
+- **Recurring mechanics that worked** (beyond CLAUDE.md's list): keep the OLD
+  leaf types so nodeExcel keys, Reference parity flags and search stay put; keep
+  shared input keys across ops so switches preserve cables and relabel in place;
+  seed literals per-op but only DECLARED defaults (Range's Stop and SEQUENCE's
+  Start/Step stay unset across switches); flat ops beat a second axis at small
+  combo counts (per-op hover via describeNode keys on `${ctor}::${op}`).
+- **Collateral**: seeds re-typed (SeriesNode; + the personal-finance generator),
+  socketReference's class-count floor lowered to 260 (a did-the-sweep-run guard,
+  not a census). SequenceNode had been falling through to the math kind; the
+  merged SeriesNode gives it the list accent.
+
 ### SESSION DIGEST (2026-08-09c — Orchard palette; palettes can author the canvas ground)
 - **Palettes can now recolor the canvas ground** (D35). `BUILTIN_CANVAS` in
   `palette.ts` maps each palette name to a `CanvasColors` — background + dot grid,

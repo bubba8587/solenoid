@@ -296,6 +296,30 @@ canvas under Default. The custom palette's ground is always COMPLETE (seeded fro
 outgrow two colors (a texture, a vignette, a per-doc ground) — that wants its own
 model, not more keys.
 
+### D36 — Node-combining round 1: eight approved merges landed
+The author approved a batch of D33/D34-style merges (2026-08-09) and they all
+shipped in one pass: **Hypothesis Test** (Z/T×3/F/chi-square, six flat ops, the
+two-sample keys shared so switches keep cables), **Rank & Percentile** (LARGE/
+SMALL + RANK.EQ/AVG + PERCENTILE/QUARTILE/PERCENTRANK with the INC/EXC forms as
+ops), **Series** (Range/SEQUENCE/LinSpace — three parameterizations of one
+arithmetic progression; Geometric/Fibonacci/Repeat/RANDARRAY stay separate by
+author call), **NPV/IRR absorb XNPV/XIRR** (a Periodic/Dated SegToggle reveals
+the Dates input), **Workdays** (WORKDAY/NETWORKDAYS as inverse forms; the op
+retypes the output in place, so the switch calls `retypeOutputCables`),
+**Depreciation absorbs VDB** (and the always-visible qualifier rows became a
+per-op spec table), **ListTakeDrop** (matching the table sibling), and
+**Surface absorbs Contour** (a 3-D/Flat view toggle; payload kinds unchanged).
+Every merge keeps its old Add-menu leaf types (nodeExcel/Reference untouched),
+prunes departing sockets' cables first (SSOT-9), and lets old saves load as
+Placeholders (D3). Flat ops were preferred over a second axis wherever the
+combo count is small — per-op hover descriptions keep working and no new
+persisted field is needed. **Where:** the merged classes sit in their family
+files; mechanics per CLAUDE.md "Node combining". **Parked pending author
+review** (backlog "Node-combining parked"): the paired-list aggregate, the
+payment-breakdown 2×2, the absorptions (Text Filter, TREND, PHI/GAUSS), and
+the smaller pairs. **Reopen if:** a merged family needs per-op behavior the
+spec table can't express, or an op needs its own formula-name treatment.
+
 ---
 
 ## Structural risks (standing conditions, not bugs)

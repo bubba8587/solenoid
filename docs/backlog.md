@@ -60,29 +60,7 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   Rust formatter); (c) app-format strings (rejected-by-default). Verdict lands as a
   VAL rule + corpus cases.
 
-## Node-combining round 1 (author-approved 2026-08-09; mechanics: CLAUDE.md "Node combining")
-
-- [ ] **Hypothesis tests → one Test node** — Z.TEST / T.TEST (paired, equal-var,
-  Welch) / F.TEST / CHISQ.TEST; the test selector swaps params (Z: one list + μ₀ +
-  optional σ; T/F: two lists; Chi-square: observed/expected); all emit a p-value.
-- [ ] **Order statistics → one node** — LARGE/SMALL + RANK.EQ/AVG + PERCENTILE +
-  QUARTILE + PERCENTRANK; all (list + one scalar) → scalar, only the scalar's meaning
-  swaps (k / value / p / q); PERCENTILE↔PERCENTRANK are inverse forms (D34 precedent).
-- [ ] **Range + SEQUENCE + LinSpace → one arithmetic-series node** — three
-  parameterizations of one progression (stop-bounded / count-step / endpoint-count).
-  Geometric, Fibonacci, Repeat, RandArray stay separate (author call).
-- [ ] **NPV+XNPV and IRR+XIRR** — an irregular-dates toggle reveals a Dates input
-  (Running's window pattern); two merges.
-- [ ] **WORKDAY + NETWORKDAYS → one node** — inverse forms of one working-day
-  relation (solve the date / count the days); shapes already near-identical.
-- [ ] **Depreciation absorbs VDB** — same task, period-range params per op
-  (`DIST_SPECS` pattern).
-- [ ] **List TAKE + DROP → one class** — match the table sibling
-  (`TableTakeDropNode` is already one op-class).
-- [ ] **Surface + Contour → one figure** — 3D/flat view toggle ("two views of one
-  surface" per Contour's own description).
-
-## Node-combining parked (review with the author AFTER round 1)
+## Node-combining parked (round 1 LANDED 2026-08-09, D36 — review these with the author)
 
 - **Paired-list aggregate** (SUMPRODUCT + SUMX2MY2/SUMX2PY2/SUMXMY2 + CORREL +
   COVARIANCE.P/.S + WAVG/WSTDEV/WVAR — 4 classes, 10 ops, all two parallel
