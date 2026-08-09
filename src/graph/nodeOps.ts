@@ -76,12 +76,6 @@ interface NodeOpsBase {
   /** Ops that already have a hand-written leaf of their own; machine-checked
    *  against the catalog by `nodeOps.test.ts`. */
   leafOps?: string[];
-  /** The family selector NAMES the card (accent it like an operation) even
-   *  though its ops are argument-kind for formula NAMING. The kinds usually
-   *  coincide; Distribution is the divergence — picking "Weibull" is the
-   *  card's identity, but the Excel names dispatch on their own, so no op may
-   *  claim a derived formula name (FX-4). */
-  opNamesTheCard?: boolean;
 }
 
 /** A declaration either lists its ops AND can build them, or lists neither — an
@@ -106,9 +100,13 @@ function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntry
 
 /** The Distribution node's op axis is the DISTRIBUTION; the curve/inverse pick
  *  is the arg-tagged `form` field. Search rows carry the Excel names so typing
- *  "norm.inv" or "weibull" lands on the right pick. */
+ *  "norm.inv" or "weibull" lands on the right pick, and each op's formula name
+ *  (fx) is its primary Excel spelling — dotted, so despacing "Gamma" onto the
+ *  GAMMA function can never happen. */
 const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({
-  op, label: `${DIST_SPECS[op].label} (${DIST_SPECS[op].excel})`,
+  op,
+  label: `${DIST_SPECS[op].label} (${DIST_SPECS[op].excel})`,
+  fx: DIST_SPECS[op].excel.split(" / ")[0],
 }));
 
 /** Menu/search names for ops whose OP_META `label` is dropdown PROSE, which would
@@ -132,12 +130,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, kind: "operation", ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
-
-  // ── Argument-kind: the op is a parameter, not a thing you would search for ──
-  // The Distribution node's ops ARE searchable by name (the distributions), but
-  // they claim no formula names — the Excel names dispatch on their own.
-  { type: "distribution", ctor: DistributionNode, kind: "argument", opNamesTheCard: true, ops: DIST_OPS,
+  // A distribution is likewise a thing you search for by name; its ops' formula
+  // names are the real Excel spellings (fx in DIST_OPS).
+  { type: "distribution", ctor: DistributionNode, kind: "operation", ops: DIST_OPS,
     create: (op) => new DistributionNode({ op: op as never }) },
+
   { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
     create: (op) => new HeadersNode({ op: op as never }) },
   // Aggregators are arguments of Group By, not searchable ops (D29).
@@ -348,11 +345,8 @@ export function opEntry(
 
 /** The op kind of a live node, undefined for an undeclared family — which RENDERS
  *  identically to "argument", so the coverage test is the only guard. */
-/** The PRESENTATION kind for the card's `data-op-kind` (its only consumer):
- *  the declared kind, except a family whose selector names the card presents
- *  as an operation. FX-4 and the parity walk read `decl.kind` directly. */
 export function opKindForNode(node: object | undefined): OpKind | undefined {
   if (!node) return undefined;
-  for (const d of NODE_OPS) if (node instanceof d.ctor) return d.opNamesTheCard ? "operation" : d.kind;
+  for (const d of NODE_OPS) if (node instanceof d.ctor) return d.kind;
   return undefined;
 }
