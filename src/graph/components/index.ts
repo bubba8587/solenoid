@@ -87,11 +87,7 @@ export { ContainsComponent } from "./ContainsNode";
 // ─── Lists — aggregate / stats ────────────────────────────────────────────────
 export { AggregateComponent } from "./AggregateNode";
 export { SumProductComponent } from "./SumProductNode";
-export { NthValueComponent } from "./NthValueNode";
-export { PercentileComponent } from "./PercentileNode";
-export { QuartileComponent } from "./QuartileNode";
-export { PercentrankComponent } from "./PercentrankNode";
-export { RankComponent } from "./RankNode";
+export { RankPercentileComponent } from "./RankPercentileNode";
 export { CorrelComponent } from "./CorrelNode";
 export { CovarianceComponent } from "./CovarianceNode";
 export { FisherComponent } from "./FisherNode";

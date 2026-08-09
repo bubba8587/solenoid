@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SequenceNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, QuartileNode, NpvNode } from "./rete-nodes";
+import { SequenceNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NpvNode } from "./rete-nodes";
 import { isSolError, solError } from "./errorValue";
 import type { FrameValue } from "./frame";
 
@@ -70,7 +70,7 @@ describe("list reducers honor null / error (#3)", () => {
   });
 
   it("QUARTILE skips null before ranking", () => {
-    const out = new QuartileNode({ op: "inc" }).data({ list: [[1, 2, 3, 4, null]], q: [2] });
+    const out = new RankPercentileNode({ op: "quartile-inc" }).data({ list: [[1, 2, 3, 4, null]], q: [2] });
     expect(out.result).toBe(2.5); // median of [1,2,3,4]
   });
 

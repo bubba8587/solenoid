@@ -655,7 +655,7 @@ function excelRound(n: number, digits: number): number {
 
 /** Excel RANK of `value` within `ref` — descending (largest = rank 1); ties share
  *  the lowest rank (`avg=false`, RANK.EQ) or the average rank (RANK.AVG). A value not
- *  present is #N/A (Excel). The single source RankNode ALSO calls. */
+ *  present is #N/A (Excel). The single source RankPercentileNode ALSO calls. */
 export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false): number | SolError {
   if (Number.isNaN(value)) return VALUE("RANK");
   const above = ref.filter((x) => x > value).length;

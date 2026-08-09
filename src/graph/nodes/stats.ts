@@ -14,224 +14,177 @@ const forPair = pairPresent;
 
 // ─── Statistics nodes ─────────────────────────────────────────────────────────
 
-export type NthValueOp = "large" | "small";
+// ─── Order statistics — ONE node (LARGE/SMALL, RANK, PERCENTILE/QUARTILE/
+// PERCENTRANK) ────────────────────────────────────────────────────────────────
+// Every op reads a list plus one position-or-value scalar and answers a single
+// number; only the scalar's meaning varies (k / value / p / q). PERCENTILE and
+// PERCENTRANK are each other's inverse (value at a rank / rank of a value).
 
-export const NTH_VALUE_OP_META = {
-  large: { label: "LARGE", description: "Kth largest value. Excel: LARGE." },
-  small: { label: "SMALL", description: "Kth smallest value. Excel: SMALL." },
-} satisfies Record<NthValueOp, { label: string; description: string }>;
+export type RankPercentileOp =
+  | "large" | "small"
+  | "rank-eq" | "rank-avg"
+  | "percentile-inc" | "percentile-exc"
+  | "quartile-inc" | "quartile-exc"
+  | "percentrank-inc" | "percentrank-exc";
 
-export class NthValueNode extends ClassicPreset.Node {
+export const RANK_PERCENTILE_OP_META = {
+  large:             { label: "LARGE",           description: "Kth largest value. Excel: LARGE." },
+  small:             { label: "SMALL",           description: "Kth smallest value. Excel: SMALL." },
+  "rank-eq":         { label: "RANK.EQ",         description: "Rank; ties share the lowest rank. Excel: RANK.EQ." },
+  "rank-avg":        { label: "RANK.AVG",        description: "Rank; ties share the average rank. Excel: RANK.AVG." },
+  "percentile-inc":  { label: "PERCENTILE.INC",  description: "Value at percentile p (0–1), including the endpoints. Excel: PERCENTILE.INC." },
+  "percentile-exc":  { label: "PERCENTILE.EXC",  description: "Value at percentile p, excluding 0 and 1. Excel: PERCENTILE.EXC." },
+  "quartile-inc":    { label: "QUARTILE.INC",    description: "Quartile Q0–Q4, including the endpoints. Excel: QUARTILE.INC." },
+  "quartile-exc":    { label: "QUARTILE.EXC",    description: "Quartile Q1–Q3, excluding the endpoints. Excel: QUARTILE.EXC." },
+  "percentrank-inc": { label: "PERCENTRANK.INC", description: "Percentile rank of a value (0–1), including the endpoints. Excel: PERCENTRANK.INC." },
+  "percentrank-exc": { label: "PERCENTRANK.EXC", description: "Percentile rank of a value, excluding 0 and 1. Excel: PERCENTRANK.EXC." },
+} satisfies Record<RankPercentileOp, { label: string; description: string }>;
+
+type RankPercentileFamily = "nth" | "rank" | "percentile" | "quartile" | "percentrank";
+
+const RANK_PERCENTILE_FAMILY: Record<RankPercentileOp, RankPercentileFamily> = {
+  large: "nth", small: "nth",
+  "rank-eq": "rank", "rank-avg": "rank",
+  "percentile-inc": "percentile", "percentile-exc": "percentile",
+  "quartile-inc": "quartile", "quartile-exc": "quartile",
+  "percentrank-inc": "percentrank", "percentrank-exc": "percentrank",
+};
+
+const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
+  inputs: ReadonlyArray<{ key: string; label: string; def: number }>;
+  outLabel: string;
+  height: number;
+}> = {
+  nth:         { inputs: [{ key: "k", label: "K", def: 1 }],                                                    outLabel: "Value",      height: 170 },
+  rank:        { inputs: [{ key: "value", label: "Value", def: 0 }],                                            outLabel: "Rank",       height: 185 },
+  percentile:  { inputs: [{ key: "p", label: "Percentile (0–1)", def: 0.5 }],                                   outLabel: "Value",      height: 185 },
+  quartile:    { inputs: [{ key: "q", label: "Quartile (0–4)", def: 2 }],                                       outLabel: "Value",      height: 185 },
+  percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
+};
+
+/** The shared interpolating percentile kernel; `exc` uses Excel's exclusive rank. */
+function percentileOf(sorted: number[], p: number, exc: boolean): number {
+  const n = sorted.length;
+  const i = exc ? p * (n + 1) - 1 : p * (n - 1);
+  const lo = Math.floor(i), hi = exc ? Math.min(n - 1, Math.ceil(i)) : Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+
+export class RankPercentileNode extends ClassicPreset.Node {
   label: string;
-  op: NthValueOp;
+  op: RankPercentileOp;
   cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { k: 1 };
+  literals: Record<string, number> = {};
   width = 180;
-  height = 170;
+  height = 185;
 
-  constructor(init?: { label?: string; op?: NthValueOp }) {
-    super("NthValue");
-    this.label = init?.label ?? "LARGE";
+  constructor(init?: { label?: string; op?: RankPercentileOp }) {
+    super("RankPercentile");
+    this.label = init?.label ?? "Rank & Percentile";
     this.op = init?.op ?? "large";
     this.addInput("list", listIn("List"));
-    this.addInput("k",    numIn("K"));
-    this.addOutput("result", numOut("Value"));
+    for (const i of RANK_PERCENTILE_SPECS[this.family].inputs) this.addInput(i.key, numIn(i.label));
+    this.addOutput("result", numOut(RANK_PERCENTILE_SPECS[this.family].outLabel));
+    this.seedLiterals();
+    this.height = RANK_PERCENTILE_SPECS[this.family].height;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; k?: number[] }) {
+  get family(): RankPercentileFamily { return RANK_PERCENTILE_FAMILY[this.op]; }
+
+  private seedLiterals(): void {
+    for (const i of RANK_PERCENTILE_SPECS[this.family].inputs) this.literals[i.key] ??= i.def;
+  }
+
+  /** The keys a switch to `next` would remove. Callers on a live graph prune
+   *  these BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: RankPercentileOp): string[] {
+    const keep = new Set(RANK_PERCENTILE_SPECS[RANK_PERCENTILE_FAMILY[next]].inputs.map((i) => i.key));
+    return RANK_PERCENTILE_SPECS[this.family].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
+  }
+
+  setOp(next: RankPercentileOp): void {
+    if (next === this.op) return;
+    const before = RANK_PERCENTILE_SPECS[this.family].inputs;
+    this.op = next;
+    const spec = RANK_PERCENTILE_SPECS[this.family];
+    for (const i of before) if (!spec.inputs.some((j) => j.key === i.key)) this.removeInput(i.key);
+    for (const i of spec.inputs) if (!this.inputs[i.key]) this.addInput(i.key, numIn(i.label));
+    const out = this.outputs.result;
+    if (out) out.label = spec.outLabel;
+    this.seedLiterals();
+    this.height = spec.height;
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][]; k?: number[]; value?: number[]; p?: number[]; q?: number[]; significance?: number[] }): { result: number | SolError | null } {
+    const family = this.family;
+    const exc = this.op.endsWith("-exc");
+
+    if (family === "rank" || family === "percentrank") {
+      // The raw list: excelRank / excelPercentRank own their null handling
+      // (shared with the formula surface — one impl both call).
+      const arr = inputs.list?.[0] ?? null;
+      const v = readInput(inputs.value, this.literals.value ?? null);
+      if (family === "percentrank") {
+        const sigRaw = readInput(inputs.significance, this.literals.significance ?? 3);
+        if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
+        if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
+        const result = excelPercentRank(arr as number[], v, Math.round(sigRaw), exc);
+        this.cachedResult = result;
+        return { result };
+      }
+      if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
+      const result = excelRank(v, arr as number[], this.op === "rank-avg");
+      this.cachedResult = result;
+      return { result };
+    }
+
     // SolError propagates; null (missing) is skipped before ranking.
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
-    const kRaw = readInput(inputs.k, this.literals.k ?? 1);
-    if (kRaw === null) { this.cachedResult = null; return { result: null }; }
-    const k = Math.round(kRaw);
-    let result: number | null = null;
-    if (arr.length > 0 && k >= 1 && k <= arr.length) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      result = this.op === "large" ? sorted[arr.length - k] : sorted[k - 1];
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
+    let result: number | SolError | null = null;
 
-export type PercentileMode = "inc" | "exc";
-
-export class PercentileNode extends ClassicPreset.Node {
-  label: string;
-  op: PercentileMode;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { p: 0.5 };
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: PercentileMode }) {
-    super("Percentile");
-    this.label = init?.label ?? "PERCENTILE";
-    this.op = init?.op ?? "inc";
-    this.addInput("list", listIn("List"));
-    this.addInput("p",    numIn("Percentile (0–1)"));
-    this.addOutput("result", numOut("Value"));
-  }
-
-  data(inputs: { list?: (number | null | SolError)[][]; p?: number[] }): { result: number | SolError | null } {
-    // SolError propagates; null (missing) is skipped before ranking.
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    const p = readInput(inputs.p, this.literals.p ?? 0.5);
-    if (p === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | null = null;
-    if (arr.length > 0) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      const n = sorted.length;
-      if (this.op === "inc") {
-        if (p < 0 || p > 1) {
-          const err = solError("#DOMAIN!", "Percentile must be between 0 and 1");
-          this.cachedResult = err; return { result: err };
+    if (family === "nth") {
+      const kRaw = readInput(inputs.k, this.literals.k ?? 1);
+      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
+      const k = Math.round(kRaw);
+      if (arr.length > 0 && k >= 1 && k <= arr.length) {
+        const sorted = [...arr].sort((a, b) => a - b);
+        result = this.op === "large" ? sorted[arr.length - k] : sorted[k - 1];
+      }
+    } else if (family === "percentile") {
+      const p = readInput(inputs.p, this.literals.p ?? 0.5);
+      if (p === null) { this.cachedResult = null; return { result: null }; }
+      if (arr.length > 0) {
+        const n = arr.length;
+        if (!exc && (p < 0 || p > 1)) {
+          result = solError("#DOMAIN!", "Percentile must be between 0 and 1");
+        } else if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
+          // Excel PERCENTILE.EXC: p must lie strictly inside (1/(n+1), n/(n+1)) —
+          // outside it Excel returns #NUM!.
+          result = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
+        } else {
+          result = percentileOf([...arr].sort((a, b) => a - b), p, exc);
         }
-        const i = p * (n - 1);
-        const lo = Math.floor(i), hi = Math.ceil(i);
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-      } else {
-        // Excel PERCENTILE.EXC: p must lie strictly inside (1/(n+1), n/(n+1)) —
-        // outside it Excel returns #NUM!.
-        if (p < 1 / (n + 1) || p > n / (n + 1)) {
-          const err = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
-          this.cachedResult = err; return { result: err };
+      }
+    } else {
+      const qRaw = readInput(inputs.q, this.literals.q ?? 2);
+      if (qRaw === null) { this.cachedResult = null; return { result: null }; }
+      const q = Math.round(qRaw);
+      if (arr.length > 0 && q >= 0 && q <= 4) {
+        const n = arr.length;
+        const p = q / 4;
+        if (exc && (q === 0 || q === 4)) {
+          result = solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");
+        } else if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
+          // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): an interior q can still fall
+          // outside the EXC domain at small n.
+          result = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
+        } else {
+          result = percentileOf([...arr].sort((a, b) => a - b), p, exc);
         }
-        const i = p * (n + 1) - 1;
-        const lo = Math.floor(i), hi = Math.min(n - 1, Math.ceil(i));
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       }
     }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type QuartileMode = "inc" | "exc";
-
-export class QuartileNode extends ClassicPreset.Node {
-  label: string;
-  op: QuartileMode;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { q: 2 };
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: QuartileMode }) {
-    super("Quartile");
-    this.label = init?.label ?? "QUARTILE";
-    this.op = init?.op ?? "inc";
-    this.addInput("list", listIn("List"));
-    this.addInput("q",    numIn("Quartile (0–4)"));
-    this.addOutput("result", numOut("Value"));
-  }
-
-  data(inputs: { list?: (number | null | SolError)[][]; q?: number[] }): { result: number | SolError | null } {
-    // SolError propagates; null (missing) is skipped before ranking (matches Percentile).
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    const qRaw = readInput(inputs.q, this.literals.q ?? 2);
-    if (qRaw === null) { this.cachedResult = null; return { result: null }; }
-    const q = Math.round(qRaw);
-    let result: number | null = null;
-    if (arr.length > 0 && q >= 0 && q <= 4) {
-      if (this.op === "exc" && (q === 0 || q === 4)) {
-        const err = solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");
-        this.cachedResult = err; return { result: err };
-      }
-      const p = q / 4;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const n = sorted.length;
-      if (this.op === "inc") {
-        const i = p * (n - 1);
-        const lo = Math.floor(i), hi = Math.ceil(i);
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-      } else {
-        // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4), so p outside [1/(n+1), n/(n+1)] is #NUM!;
-        // the q=0/4 guard catches the endpoints, this catches an interior q at small n.
-        if (p < 1 / (n + 1) || p > n / (n + 1)) {
-          const err = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
-          this.cachedResult = err; return { result: err };
-        }
-        const i = p * (n + 1) - 1;
-        const lo = Math.floor(i), hi = Math.min(n - 1, Math.ceil(i));
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type PercentrankMode = "inc" | "exc";
-
-export class PercentrankNode extends ClassicPreset.Node {
-  label: string;
-  op: PercentrankMode;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { value: 0, significance: 3 };
-  width = 180;
-  height = 210;
-
-  constructor(init?: { label?: string; op?: PercentrankMode }) {
-    super("Percentrank");
-    this.label = init?.label ?? "PERCENTRANK";
-    this.op = init?.op ?? "inc";
-    this.addInput("list",         listIn("List"));
-    this.addInput("value",        numIn("Value"));
-    this.addInput("significance", numIn("Digits"));
-    this.addOutput("result", numOut("Rank (0–1)"));
-  }
-
-  data(inputs: { list?: number[][]; value?: number[]; significance?: number[] }): { result: number | SolError | null } {
-    const arr = inputs.list?.[0] ?? null;
-    const v = readInput(inputs.value, this.literals.value ?? null);
-    const sigRaw = readInput(inputs.significance, this.literals.significance ?? 3);
-    if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
-    const sig = Math.round(sigRaw);
-    if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-    // ONE implementation with the formula surface (excelFunctions `excelPercentRank`).
-    const result = excelPercentRank(arr, v, sig, this.op === "exc");
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type RankOp = "eq" | "avg";
-
-export const RANK_OP_META = {
-  eq:  { label: "RANK.EQ",  description: "Rank; ties share the lowest rank. Excel: RANK.EQ." },
-  avg: { label: "RANK.AVG", description: "Rank; ties share the average rank. Excel: RANK.AVG." },
-} satisfies Record<RankOp, { label: string; description: string }>;
-
-export class RankNode extends ClassicPreset.Node {
-  label: string;
-  op: RankOp;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { value: 0 };
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: RankOp }) {
-    super("Rank");
-    this.label = init?.label ?? "RANK";
-    this.op = init?.op ?? "eq";
-    this.addInput("list",  listIn("List"));
-    this.addInput("value", numIn("Value"));
-    this.addOutput("result", numOut("Rank"));
-  }
-
-  data(inputs: { list?: number[][]; value?: number[] }): { result: number | SolError | null } {
-    const arr = inputs.list?.[0] ?? null;
-    const v = readInput(inputs.value, this.literals.value ?? null);
-    if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-    // Shared with the formula path (excelFunctions `excelRank`) — one impl both call.
-    const result = excelRank(v, arr, this.op === "avg");
     this.cachedResult = result;
     return { result };
   }

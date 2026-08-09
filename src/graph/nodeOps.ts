@@ -39,10 +39,10 @@ import {
   FisherNode, GroupByFrameNode,
   IpmtPpmtNode, MRoundNode,
   MatDetNode, MathFnNode, 
-  NthValueNode, OddCouponNode, PercentileNode,
-  PercentrankNode, PhysicsConstantNode, PipeRoughnessNode, PivotNode,
-  PriceDiscNode, PriceMatNode, QuartileNode,
-  RankNode, RomanArabicNode, SecurityDiscNode,
+  OddCouponNode,
+  PhysicsConstantNode, PipeRoughnessNode, PivotNode,
+  PriceDiscNode, PriceMatNode,
+  RankPercentileNode, RomanArabicNode, SecurityDiscNode,
   SumProductNode, TBillNode, 
   HypothesisTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
@@ -122,6 +122,13 @@ const SET_RELATION_OPS: OpEntryDecl[] = [
   { op: "subset", label: "Subset", fx: SET_RELATION_META.subset.fx },
   { op: "superset", label: "Superset", fx: SET_RELATION_META.superset.fx },
   { op: "disjoint", label: "Disjoint", fx: SET_RELATION_META.disjoint.fx },
+];
+
+/** The Rank & Percentile ops that have their own Add-menu leaf (the .INC forms
+ *  and the four bare ops); shared by its three pair declarations below, which
+ *  the leafOps test checks against the class as a whole. */
+const RANK_PERCENTILE_LEAF_OPS = [
+  "large", "small", "rank-eq", "rank-avg", "percentile-inc", "quartile-inc", "percentrank-inc",
 ];
 
 export const NODE_OPS: NodeOpsDecl[] = [
@@ -231,22 +238,25 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
   { type: "matdet-mdeterm", ctor: MatDetNode, kind: "operation" },
   { type: "math-abs", ctor: MathFnNode, kind: "operation" },
-  { type: "nth-large", ctor: NthValueNode, kind: "operation" },
   { type: "oddcoupon-oddfprice", ctor: OddCouponNode, kind: "operation" },
-  // The inc/exc forms are Excel functions in their own right, and the card labels
-  // are dropdown prose, so the search names are declared here (SSOT-2).
-  { type: "stat-percentile", ctor: PercentileNode, kind: "operation",
-    ops: [{ op: "inc", label: "PERCENTILE.INC" }, { op: "exc", label: "PERCENTILE.EXC" }],
-    create: (op) => new PercentileNode({ op: op as never }) },
-  { type: "stat-percentrank", ctor: PercentrankNode, kind: "operation",
-    ops: [{ op: "inc", label: "PERCENTRANK.INC" }, { op: "exc", label: "PERCENTRANK.EXC" }],
-    create: (op) => new PercentrankNode({ op: op as never }) },
+  // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
+  // have no leaf of their own, so each family leaf declares its pair and the
+  // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
+  // labels are family words, so the search names are declared here (SSOT-2).
+  { type: "stat-percentile", ctor: RankPercentileNode, kind: "operation",
+    ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
+    leafOps: RANK_PERCENTILE_LEAF_OPS,
+    create: (op) => new RankPercentileNode({ op: op as never }) },
+  { type: "stat-percentrank", ctor: RankPercentileNode, kind: "operation",
+    ops: [{ op: "percentrank-inc", label: "PERCENTRANK.INC" }, { op: "percentrank-exc", label: "PERCENTRANK.EXC" }],
+    leafOps: RANK_PERCENTILE_LEAF_OPS,
+    create: (op) => new RankPercentileNode({ op: op as never }) },
   { type: "pricedisc-pricedisc", ctor: PriceDiscNode, kind: "operation" },
   { type: "pricemat-pricemat", ctor: PriceMatNode, kind: "operation" },
-  { type: "stat-quartile", ctor: QuartileNode, kind: "operation",
-    ops: [{ op: "inc", label: "QUARTILE.INC" }, { op: "exc", label: "QUARTILE.EXC" }],
-    create: (op) => new QuartileNode({ op: op as never }) },
-  { type: "rank-eq", ctor: RankNode, kind: "operation" },
+  { type: "stat-quartile", ctor: RankPercentileNode, kind: "operation",
+    ops: [{ op: "quartile-inc", label: "QUARTILE.INC" }, { op: "quartile-exc", label: "QUARTILE.EXC" }],
+    leafOps: RANK_PERCENTILE_LEAF_OPS,
+    create: (op) => new RankPercentileNode({ op: op as never }) },
   { type: "roman-arabic-roman", ctor: RomanArabicNode, kind: "operation" },
   { type: "secdesc-disc", ctor: SecurityDiscNode, kind: "operation" },
   { type: "sp-sumproduct", ctor: SumProductNode, kind: "operation" },

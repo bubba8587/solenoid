@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  NthValueNode,
-  PercentileNode,
-  QuartileNode,
-  PercentrankNode,
-  RankNode,
+  RankPercentileNode,
   CorrelNode,
   CovarianceNode,
   ModeNode,
@@ -25,85 +21,85 @@ import { extractInit } from "../copyPaste";
 describe("LARGE / SMALL (NthValue)", () => {
   const data = [[3, 1, 4, 1, 5, 9, 2, 6]];
   it("LARGE picks the k-th largest", () => {
-    expect(new NthValueNode({ op: "large" }).data({ list: data, k: [1] }).result).toBe(9);
-    expect(new NthValueNode({ op: "large" }).data({ list: data, k: [2] }).result).toBe(6);
+    expect(new RankPercentileNode({ op: "large" }).data({ list: data, k: [1] }).result).toBe(9);
+    expect(new RankPercentileNode({ op: "large" }).data({ list: data, k: [2] }).result).toBe(6);
   });
   it("SMALL picks the k-th smallest", () => {
-    expect(new NthValueNode({ op: "small" }).data({ list: data, k: [1] }).result).toBe(1);
-    expect(new NthValueNode({ op: "small" }).data({ list: data, k: [3] }).result).toBe(2);
+    expect(new RankPercentileNode({ op: "small" }).data({ list: data, k: [1] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "small" }).data({ list: data, k: [3] }).result).toBe(2);
   });
   it("returns null for out-of-range k", () => {
-    expect(new NthValueNode({ op: "large" }).data({ list: data, k: [99] }).result).toBeNull();
+    expect(new RankPercentileNode({ op: "large" }).data({ list: data, k: [99] }).result).toBeNull();
   });
 });
 
 describe("PERCENTILE", () => {
   const data = [[1, 2, 3, 4]];
   it("INC interpolates like Excel PERCENTILE.INC", () => {
-    expect(new PercentileNode({ op: "inc" }).data({ list: data, p: [0.5] }).result).toBeCloseTo(2.5, 9);
-    expect(new PercentileNode({ op: "inc" }).data({ list: data, p: [0.25] }).result).toBeCloseTo(1.75, 9);
-    expect(new PercentileNode({ op: "inc" }).data({ list: data, p: [0] }).result).toBe(1);
-    expect(new PercentileNode({ op: "inc" }).data({ list: data, p: [1] }).result).toBe(4);
+    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [0.5] }).result).toBeCloseTo(2.5, 9);
+    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [0.25] }).result).toBeCloseTo(1.75, 9);
+    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [0] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [1] }).result).toBe(4);
   });
   it("EXC matches Excel PERCENTILE.EXC", () => {
-    expect(new PercentileNode({ op: "exc" }).data({ list: data, p: [0.25] }).result).toBeCloseTo(1.25, 9);
+    expect(new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.25] }).result).toBeCloseTo(1.25, 9);
     // EXC is undefined at p outside (1/(n+1), n/(n+1)); guards return #DOMAIN! at the bounds
-    const exc0 = new PercentileNode({ op: "exc" }).data({ list: data, p: [0] }).result;
+    const exc0 = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0] }).result;
     expect(isSolError(exc0) && exc0.code).toBe("#DOMAIN!");
-    const exc1 = new PercentileNode({ op: "exc" }).data({ list: data, p: [1] }).result;
+    const exc1 = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [1] }).result;
     expect(isSolError(exc1) && exc1.code).toBe("#DOMAIN!");
     // Inside (0,1) but outside the EXC domain: Excel errors (#NUM!), we #DOMAIN!
     // — never silently clamp to the min/max element. n=4 ⇒ domain (0.2, 0.8).
-    const excLo = new PercentileNode({ op: "exc" }).data({ list: data, p: [0.1] }).result;
+    const excLo = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.1] }).result;
     expect(isSolError(excLo) && excLo.code).toBe("#DOMAIN!");
-    const excHi = new PercentileNode({ op: "exc" }).data({ list: data, p: [0.9] }).result;
+    const excHi = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.9] }).result;
     expect(isSolError(excHi) && excHi.code).toBe("#DOMAIN!");
-    expect(new PercentileNode({ op: "exc" }).data({ list: data, p: [0.2] }).result).toBe(1);
-    expect(new PercentileNode({ op: "exc" }).data({ list: data, p: [0.8] }).result).toBe(4);
+    expect(new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.2] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.8] }).result).toBe(4);
   });
 });
 
 describe("QUARTILE", () => {
   const data = [[1, 2, 3, 4, 5]];
   it("INC returns the expected quartiles", () => {
-    expect(new QuartileNode({ op: "inc" }).data({ list: data, q: [0] }).result).toBe(1);
-    expect(new QuartileNode({ op: "inc" }).data({ list: data, q: [1] }).result).toBe(2);
-    expect(new QuartileNode({ op: "inc" }).data({ list: data, q: [2] }).result).toBe(3);
-    expect(new QuartileNode({ op: "inc" }).data({ list: data, q: [4] }).result).toBe(5);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [0] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [1] }).result).toBe(2);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [2] }).result).toBe(3);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [4] }).result).toBe(5);
   });
   it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
-    expect(new QuartileNode({ op: "exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
-    expect(new QuartileNode({ op: "exc" }).data({ list: data, q: [2] }).result).toBe(3);
-    expect(new QuartileNode({ op: "exc" }).data({ list: data, q: [3] }).result).toBe(4.5);
+    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
+    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [2] }).result).toBe(3);
+    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [3] }).result).toBe(4.5);
   });
   it("EXC errors out of domain with #DOMAIN! instead of clamping to min/max (Excel #NUM!)", () => {
     // q=0/4 are always outside the EXC domain.
-    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: data, q: [0] }).result)).toBe(true);
-    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: data, q: [4] }).result)).toBe(true);
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [0] }).result)).toBe(true);
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [4] }).result)).toBe(true);
     // Small n pushes an interior quartile out of [1/(n+1), n/(n+1)]: n=2 → q1/q3 invalid.
     const two = [[1, 2]];
-    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: two, q: [1] }).result)).toBe(true);
-    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: two, q: [3] }).result)).toBe(true);
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: two, q: [1] }).result)).toBe(true);
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: two, q: [3] }).result)).toBe(true);
   });
 });
 
 describe("PERCENTRANK", () => {
   it("INC ranks a value within its list", () => {
     const data = [[1, 2, 3, 4, 5]];
-    expect(new PercentrankNode({ op: "inc" }).data({ list: data, value: [3], significance: [3] }).result).toBeCloseTo(0.5, 9);
-    expect(new PercentrankNode({ op: "inc" }).data({ list: data, value: [1], significance: [3] }).result).toBe(0);
+    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: data, value: [3], significance: [3] }).result).toBeCloseTo(0.5, 9);
+    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: data, value: [1], significance: [3] }).result).toBe(0);
   });
   it("INTERPOLATES between data points + TRUNCATES to significance (Excel parity)", () => {
     // 4 is between 3.5 (rank 2/3) and 10.25 (rank 1) → ~0.6913…, truncated to 0.691.
     const data = [[1.5, 2.5, 3.5, 10.25]];
-    expect(new PercentrankNode({ op: "inc" }).data({ list: data, value: [4], significance: [3] }).result).toBe(0.691);
+    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: data, value: [4], significance: [3] }).result).toBe(0.691);
     // an exact match with duplicates uses the FIRST occurrence (count below / n−1),
     // truncated: 1/7 = 0.142857… → 0.142 (not 0.143 — Excel truncates, doesn't round).
     const dups = [[2, 4, 4, 4, 5, 5, 7, 9]];
-    expect(new PercentrankNode({ op: "inc" }).data({ list: dups, value: [4], significance: [3] }).result).toBe(0.142);
+    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: dups, value: [4], significance: [3] }).result).toBe(0.142);
   });
   it("returns #N/A for a value outside the data range", () => {
-    const r = new PercentrankNode({ op: "inc" }).data({ list: [[1, 2, 3]], value: [9], significance: [3] }).result;
+    const r = new RankPercentileNode({ op: "percentrank-inc" }).data({ list: [[1, 2, 3]], value: [9], significance: [3] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");
   });
 });
@@ -111,16 +107,16 @@ describe("PERCENTRANK", () => {
 describe("RANK", () => {
   const data = [[10, 20, 20, 40]];
   it("EQ gives tied values the same (lowest) rank, descending", () => {
-    expect(new RankNode({ op: "eq" }).data({ list: data, value: [40] }).result).toBe(1);
-    expect(new RankNode({ op: "eq" }).data({ list: data, value: [20] }).result).toBe(2);
-    expect(new RankNode({ op: "eq" }).data({ list: data, value: [10] }).result).toBe(4);
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [40] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [20] }).result).toBe(2);
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [10] }).result).toBe(4);
   });
   it("AVG averages tied ranks", () => {
     // two 20s occupy ranks 2 and 3 → average 2.5
-    expect(new RankNode({ op: "avg" }).data({ list: data, value: [20] }).result).toBe(2.5);
+    expect(new RankPercentileNode({ op: "rank-avg" }).data({ list: data, value: [20] }).result).toBe(2.5);
   });
   it("returns #N/A when the value is absent", () => {
-    const r = new RankNode({ op: "eq" }).data({ list: data, value: [99] }).result;
+    const r = new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [99] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");
   });
 });
@@ -434,20 +430,20 @@ describe("TRIMMEAN", () => {
 describe("Scalar stats reducers — null skipped, errors propagated", () => {
   it("NthValue (LARGE/SMALL) skips null before ranking", () => {
     // [3,1,4,1,5] with two nulls → ranking ignores the gaps.
-    expect(new NthValueNode({ op: "large" }).data({ list: [[3, null, 1, 4, null, 1, 5]], k: [1] }).result).toBe(5);
-    expect(new NthValueNode({ op: "small" }).data({ list: [[3, null, 1, 4, null, 1, 5]], k: [1] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "large" }).data({ list: [[3, null, 1, 4, null, 1, 5]], k: [1] }).result).toBe(5);
+    expect(new RankPercentileNode({ op: "small" }).data({ list: [[3, null, 1, 4, null, 1, 5]], k: [1] }).result).toBe(1);
   });
 
   it("Percentile skips null before ranking", () => {
     // median of [1,2,3,4] (nulls dropped) = 2.5
-    expect(new PercentileNode({ op: "inc" }).data({ list: [[1, null, 2, 3, null, 4]], p: [0.5] }).result).toBeCloseTo(2.5, 9);
+    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: [[1, null, 2, 3, null, 4]], p: [0.5] }).result).toBeCloseTo(2.5, 9);
   });
 
   it("both propagate a SolError in the list", () => {
     const err = solError("#DIV/0!", "boom");
-    const nth = new NthValueNode({ op: "large" }).data({ list: [[1, err, 3]], k: [1] }).result;
+    const nth = new RankPercentileNode({ op: "large" }).data({ list: [[1, err, 3]], k: [1] }).result;
     expect(isSolError(nth) && nth.code).toBe("#DIV/0!");
-    const pct = new PercentileNode({ op: "inc" }).data({ list: [[1, err, 3]], p: [0.5] }).result;
+    const pct = new RankPercentileNode({ op: "percentile-inc" }).data({ list: [[1, err, 3]], p: [0.5] }).result;
     expect(isSolError(pct) && pct.code).toBe("#DIV/0!");
   });
 });
@@ -510,5 +506,35 @@ describe("Hypothesis Test — one node, six tests", () => {
     const clone = new HypothesisTestNode(init as { op: "t-welch" });
     expect(clone.op).toBe("t-welch");
     expect(Object.keys(clone.inputs).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("Rank & Percentile — one node, op-switch mechanics", () => {
+  it("rank ↔ percentrank keeps the shared Value cable; percentile drops it", () => {
+    const n = new RankPercentileNode({ op: "rank-eq" });
+    expect(n.keysDroppedBySwitch("percentrank-inc")).toEqual([]);
+    expect(n.keysDroppedBySwitch("percentile-inc")).toEqual(["value"]);
+    n.setOp("percentrank-inc");
+    expect(Object.keys(n.inputs).sort()).toEqual(["list", "significance", "value"]);
+    expect(n.outputs.result!.label).toBe("Rank (0–1)");
+    expect(n.literals.significance).toBe(3); // seeded for the arriving Digits row
+  });
+
+  it("a family switch swaps the scalar row and relabels the output", () => {
+    const n = new RankPercentileNode({ op: "large" });
+    expect(Object.keys(n.inputs).sort()).toEqual(["k", "list"]);
+    n.setOp("quartile-exc");
+    expect(Object.keys(n.inputs).sort()).toEqual(["list", "q"]);
+    expect(n.literals.q).toBe(2);
+    n.setOp("large");
+    expect(Object.keys(n.inputs).sort()).toEqual(["k", "list"]);
+  });
+
+  it("op round-trips through extractInit", () => {
+    const n = new RankPercentileNode({ op: "percentrank-exc" });
+    const init = extractInit(n as never);
+    expect(init.op).toBe("percentrank-exc");
+    const clone = new RankPercentileNode(init as { op: "percentrank-exc" });
+    expect(Object.keys(clone.inputs).sort()).toEqual(["list", "significance", "value"]);
   });
 });
