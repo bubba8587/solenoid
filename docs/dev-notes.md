@@ -152,6 +152,27 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   The editor's sample scopes the drafted vars as inline custom properties on its own
   wrapper, so the real node/group/note CSS inside resolves against the DRAFT while the
   modal around it keeps the live theme.
+- **Then every palette got chrome** (author call, same session). `Default` alone stays
+  chromeless — it IS App.css. Muted lifts off near-black onto a soft charcoal (its brief
+  is a calmer canvas); Colorblind-safe goes fully achromatic and a step crisper so the
+  Okabe–Ito hues carry the entire type signal; **Solarized adopts its own base03…base3
+  ladder**, which the palette had been ignoring while using only the accents; Equinox
+  drops the blue cast Default's light ramp carries, which is a hue it has otherwise
+  renounced. All-or-nothing per palette: a partial ramp derives nothing, so half a ramp
+  is worse than none.
+- **"Appropriate" got machine-checked rather than eyeballed** (`palette.test.ts` §
+  chrome ramp structure): canvas darker than card, dot/canvas contrast in 1.1–2.2, field
+  brightest in light and a recess in dark, hover fill toward the ink, border tiers
+  stepping outward, ink tiers stepping down, every ink tier ≥ WCAG AA 4.5:1 on card and
+  field. Every rule is a claim DESIGN.md §2 already makes, and the App.css baseline is
+  held to the same bar — a rule Default fails is a wrong rule, not a failing palette.
+  **This paid immediately**: it caught Orchard's muted ink at 4.11 dark / 3.76 light on
+  its own card (shipped an hour earlier), and it is why Solarized's CARD is base03 rather
+  than base02 — on base02 the whole base ladder falls under 4.5:1 and no arrangement of
+  the eight tones fits four tiers, while on base03 they land 13.9/12.3/5.6/4.8 with
+  nothing invented. Where a source system's own contrast disagrees, accessibility wins
+  and the divergence is commented at the value (three inks total: Orchard ×2, Solarized
+  light muted).
 
 ### SESSION DIGEST (2026-08-09b — ONE Distribution node; Running vocabulary pass)
 - **ALL distributions are now ONE node** (author call, D34; an intermediate commit

@@ -278,7 +278,7 @@ first-input swap cannot describe. **Where:** `nodes/distribution.ts`
 **Reopen if:** a distribution whose parameters or input shape cannot be
 described by `DIST_SPECS` (a second x input, a non-numeric parameter).
 
-### D35 — A palette may author the whole neutral chrome, and almost none do
+### D35 — A palette authors the whole neutral chrome, all of it or none
 A palette can replace App.css's neutral ramp — canvas, window, three surfaces, three
 borders, four inks, per theme mode (`BUILTIN_CHROME`). It is PARALLEL to the slot map
 rather than more slots: nothing stores a neutral on a node, `resolveColor` never
@@ -288,19 +288,31 @@ grid, height ramp, doc overrides) skip them. The remaining literal-valued neutra
 wordmark, light-theme shadows) DERIVE from those 13 by fixed mixes, calibrated by
 running the DEFAULT ramp through them and matching App.css's own hand-tuned literals
 — so an author moves one ramp, and a step that reproduces the tuned values also
-behaves on a ramp nobody has eyeballed. Authoring chrome is OPT-IN and stays rare:
-recoloring the graph is what a palette does; recoloring the workbench is a separate
-claim. Orchard is the only built-in that opts in (2026-08-09, author call — a cream
-canvas under blue-gray cards was the thing that forced the scope), and a test pins
-both that and its completeness. A palette that authors none keeps App.css: `appTheme`
-CLEARS every chrome var per apply, since an inline property beats the stylesheet and a
-stale one would strand cream chrome under Default. A partial ramp writes what it has
-and derives nothing. The custom palette's ramp is always COMPLETE (seeded from
+behaves on a ramp nobody has eyeballed.
+
+**All or nothing per palette.** `Default` alone authors none: it IS App.css, and a copy
+would be two homes for one truth. Every other built-in authors a COMPLETE ramp in both
+modes, because a partial one writes its keys and derives nothing, landing the app in a
+mix of authored neutrals and stylesheet ones. `appTheme` CLEARS every chrome var per
+apply, since an inline property beats the stylesheet and a stale one would strand cream
+chrome under Default. The custom palette's ramp is always complete (seeded from
 `DEFAULT_CHROME`, a hand-held mirror of App.css), so the editor can show it in a well.
+
+**A ramp may recolor the workbench but not renege on its structure.** The rules
+DESIGN.md §2 already states are machine-checked over every ramp INCLUDING the App.css
+baseline (a rule Default fails is a wrong rule, not a failing palette): canvas darker
+than card; dot legible on canvas without shouting; the field brightest in light and a
+recess in dark; hover fill stepping toward the ink; three border tiers stepping outward;
+four ink tiers stepping down in contrast; every ink tier clearing WCAG AA 4.5:1 on the
+card and the field. That bar is what "appropriate chrome" means here, and it has already
+paid: it caught Orchard's muted ink at 4.11/3.76 on its own card, and it is why
+Solarized's card is base03 rather than base02 (on base02 the whole base ladder falls
+under 4.5 and no arrangement of the eight tones fits four tiers). Where a source system
+disagrees with the bar, accessibility wins and the divergence is commented at the value.
 **Where:** `palette.ts` (`BUILTIN_CHROME` / `DEFAULT_CHROME` / `chromeCssVars`),
-`appTheme.ts` `apply`, `PaletteEditor.tsx`, `palette.test.ts` §§ chrome ramp,
-chromeCssVars. **Reopen if:** chrome outgrows flat colors (a texture, a vignette, a
-per-doc ramp) — that wants its own model, not more keys.
+`appTheme.ts` `apply`, `PaletteEditor.tsx`, `palette.test.ts` §§ chrome ramp, chrome
+ramp structure, chromeCssVars. **Reopen if:** chrome outgrows flat colors (a texture, a
+vignette, a per-doc ramp) — that wants its own model, not more keys.
 
 ### D36 — Node-combining round 1: eight approved merges landed
 The author approved a batch of D33/D34-style merges (2026-08-09) and they all

@@ -403,7 +403,7 @@ const ORCHARD_CHROME: PaletteChrome = {
     text: "#f0ead8",          // dark-text
     textBright: "#fdf8ea",    // (a step brighter than text)
     textDim: "#aaa287",       // dark-text-dim
-    textMuted: "#857d63",     // dark-text-muted
+    textMuted: "#968d70",     // (dark-text-muted lightened to clear AA on the card)
   },
   light: {
     appBg: "#ede7d7",         // surface-sunken (a deeper cream behind the canvas)
@@ -418,17 +418,116 @@ const ORCHARD_CHROME: PaletteChrome = {
     text: "#2b2517",          // text
     textBright: "#191308",    // (a step darker than text)
     textDim: "#6d6450",       // text-dim
-    textMuted: "#8b8269",     // text-muted
+    textMuted: "#7a7157",     // (text-muted darkened to clear AA on the card)
+  },
+};
+
+// Muted's brief is a calmer canvas, so its chrome lifts off near-black onto a soft
+// charcoal and pulls the light ramp's contrast in a step. Barely-warm neutrals; the
+// point is lower glare, not a hue.
+const MUTED_CHROME: PaletteChrome = {
+  dark: {
+    appBg: "#1b1c20", canvasBg: "#16171a", canvasDot: "#303338",
+    surface: "#232529", surfaceSunken: "#1a1b1f", surfaceRaised: "#2b2e33",
+    border: "#34373d", borderStrong: "#43474e", borderSubtle: "#2d3035",
+    text: "#dfe1e5", textBright: "#f0f1f3", textDim: "#a2a7ae", textMuted: "#8b9098",
+  },
+  light: {
+    appBg: "#f1f2f5", canvasBg: "#eceef1", canvasDot: "#d6dae0",
+    surface: "#fafbfc", surfaceSunken: "#ffffff", surfaceRaised: "#eceef1",
+    border: "#cdd2d9", borderStrong: "#b3b9c2", borderSubtle: "#dfe2e7",
+    text: "#24272c", textBright: "#14161a", textDim: "#5d626a", textMuted: "#6b7079",
+  },
+};
+
+// Colorblind-safe leans the other way: the Okabe–Ito hues carry the ENTIRE type
+// signal here, so the chrome goes fully achromatic (no blue cast to compete with a
+// blue socket) and a step crisper than Default, widening the gap between chrome and
+// content.
+const CVD_CHROME: PaletteChrome = {
+  dark: {
+    appBg: "#131313", canvasBg: "#0a0a0a", canvasDot: "#2e2e2e",
+    surface: "#1c1c1c", surfaceSunken: "#121212", surfaceRaised: "#292929",
+    border: "#333333", borderStrong: "#4a4a4a", borderSubtle: "#272727",
+    text: "#f2f2f2", textBright: "#ffffff", textDim: "#ababab", textMuted: "#949494",
+  },
+  light: {
+    appBg: "#f0f0f0", canvasBg: "#e8e8e8", canvasDot: "#cfcfcf",
+    surface: "#fcfcfc", surfaceSunken: "#ffffff", surfaceRaised: "#ebebeb",
+    border: "#c2c2c2", borderStrong: "#a0a0a0", borderSubtle: "#dadada",
+    text: "#121212", textBright: "#000000", textDim: "#4d4d4d", textMuted: "#5e5e5e",
+  },
+};
+
+// Solarized ships a base ramp as famous as its accents (base03…base3, a fixed
+// lightness ladder on one blue-green ground), and until now the palette used only
+// half the system. This is that ladder, verbatim where a base tone maps onto a role.
+// Border tiers are blends up the base02→base01 gap, which Solarized leaves open.
+//
+// ONE deliberate divergence: Solarized's own body pairings sit near 3:1, and
+// Solenoid's ink ramp clears WCAG AA 4.5:1 on the card (DESIGN.md §2). So the light
+// ink ladder runs a notch darker than Solarized would — base02/base01/base00 rather
+// than base01/base00/base0 — and the muted tier is a darkened base00. The hues are
+// Solarized's; the contrast is Solenoid's, and accessibility wins that tie.
+const BASE = {
+  b03: "#002b36", b02: "#073642", b01: "#586e75", b00: "#657b83",
+  b0: "#839496", b1: "#93a1a1", b2: "#eee8d5", b3: "#fdf6e3",
+} as const;
+const SOLARIZED_CHROME: PaletteChrome = {
+  dark: {
+    appBg: "#00242e",
+    canvasBg: "#001e26",      // (base03 deepened — the canvas sits below the card and
+                              //  Solarized ships nothing under base03)
+    canvasDot: BASE.b02,
+    surface: BASE.b03,        // the card takes base03; base02 becomes its raised fill
+    surfaceSunken: "#00222b",
+    surfaceRaised: BASE.b02,
+    border: "#14495a", borderStrong: "#24596a", borderSubtle: "#0a3944",
+    // Four base tones verbatim, and the reason the CARD is base03: on base02 the whole
+    // ladder falls under 4.5:1 and no arrangement of the eight tones fits four tiers.
+    // On base03 they land 13.9 / 12.3 / 5.6 / 4.8 with nothing invented.
+    text: BASE.b2, textBright: BASE.b3, textDim: BASE.b1, textMuted: BASE.b0,
+  },
+  light: {
+    appBg: "#e7e2d1", canvasBg: BASE.b2, canvasDot: "#dad4bf",
+    surface: BASE.b3,         // the paper
+    surfaceSunken: "#fffcf0", // (a hair above base3 — the field stays brightest)
+    surfaceRaised: BASE.b2,
+    border: "#d1d1c4", borderStrong: "#c1c5bb", borderSubtle: "#dedbcc",
+    text: BASE.b02, textBright: BASE.b03, textDim: BASE.b01,
+    textMuted: "#5f747c",     // (base00 darkened to clear AA on base3)
+  },
+};
+
+// Equinox tells type apart by socket SHAPE alone, so its chrome drops the last of
+// the color: Default's light ramp carries a blue cast (#eef1f5 / #ccd2da / #1b1e23),
+// which is a hue the palette has otherwise renounced. Same contrast as Default,
+// fully achromatic.
+const EQUINOX_CHROME: PaletteChrome = {
+  dark: {
+    appBg: "#141414", canvasBg: "#0e0e0e", canvasDot: "#2a2a2a",
+    surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
+    border: "#2d2d2d", borderStrong: "#3a3a3a", borderSubtle: "#272727",
+    text: "#e8e8e8", textBright: "#f4f4f4", textDim: "#a0a0a0", textMuted: "#878787",
+  },
+  light: {
+    appBg: "#f4f4f4", canvasBg: "#ededed", canvasDot: "#d5d5d5",
+    surface: "#fbfbfb", surfaceSunken: "#ffffff", surfaceRaised: "#ededed",
+    border: "#d0d0d0", borderStrong: "#b6b6b6", borderSubtle: "#e2e2e2",
+    text: "#1e1e1e", textBright: "#0f0f0f", textDim: "#616161", textMuted: "#6f6f6f",
   },
 };
 
 const NO_CHROME: PaletteChrome = { dark: {}, light: {} };
+// Default authors nothing: it IS App.css's ramp, and duplicating it here would be two
+// copies of one truth. Every other built-in authors a COMPLETE ramp in both modes —
+// a partial one derives nothing (see chromeCssVars), so half a ramp is worse than none.
 export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Default": NO_CHROME,
-  "Muted": NO_CHROME,
-  "Colorblind-safe": NO_CHROME,
-  "Solarized": NO_CHROME,
-  "Equinox": NO_CHROME,
+  "Muted": MUTED_CHROME,
+  "Colorblind-safe": CVD_CHROME,
+  "Solarized": SOLARIZED_CHROME,
+  "Equinox": EQUINOX_CHROME,
   "Orchard": ORCHARD_CHROME,
 };
 
