@@ -254,7 +254,7 @@ per-document locale pin, recorded as a new decision.
 ### D33 — ONE Running node: window mode is a toggle, never two nodes
 Cumulative and Rolling merged (2026-08-09, author call: too similar to stay
 separate). One concept — an aggregate per element over its window — with a mode
-toggle: "All so far" grows the window, "Last N" slides it (Window size input
+toggle: "Cumulative" grows the window, "Last N" slides it (Window size input
 exists only there). One op set across both modes; one formula family RUNNING*
 with the window as an optional arg (ROLLING* eliminated). A blank/0 WIRED window
 as an "unbounded" sentinel was rejected: a wired blank means unknown
@@ -262,6 +262,16 @@ as an "unbounded" sentinel was rejected: a wired blank means unknown
 `RunningNode` in `nodes/list.ts`, `running()` in `nodes/listOps.ts`.
 **Reopen if:** the grow/slide edge policies need to diverge further than the
 per-window reducer policy can express.
+
+### D34 — A distribution's inverse is an OP on its node, never a sibling node
+Every dist/inv pair merged (2026-08-09): the op selector carries the forward
+curves and the inverse (`inv` / `inv2t` / `invrt`), and crossing the
+forward/inverse line swaps the first input between x and Probability. One card
+per distribution, named for the distribution, with the Excel names in
+descriptions and search keywords. **Where:** `syncInverseInput`/`isInverseOp` in
+`nodes/shared.ts`, `distComponent` in `components/DistNodes.tsx`.
+**Reopen if:** a distribution's inverse stops sharing the forward op's
+parameters, so the socket swap no longer describes it.
 
 ---
 

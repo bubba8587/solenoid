@@ -3,13 +3,13 @@
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import {
-  CHISQ_DIST_OP_META, CHISQ_INV_OP_META, NORM_DIST_OP_META, NORM_S_DIST_OP_META, T_DIST_OP_META, T_INV_OP_META,
+  CHISQ_DIST_OP_META, NORM_DIST_OP_META, NORM_S_DIST_OP_META, T_DIST_OP_META,
 } from "./nodes/dist-normal";
 import {
   BINOM_DIST_OP_META, HYPGEOM_DIST_OP_META, NEGBINOM_DIST_OP_META, POISSON_DIST_OP_META,
 } from "./nodes/dist-discrete";
 import {
-  BETA_DIST_OP_META, EXPON_DIST_OP_META, F_DIST_OP_META, F_INV_OP_META, GAMMA_DIST_OP_META, LOGNORM_DIST_OP_META, WEIBULL_DIST_OP_META,
+  BETA_DIST_OP_META, EXPON_DIST_OP_META, F_DIST_OP_META, GAMMA_DIST_OP_META, LOGNORM_DIST_OP_META, WEIBULL_DIST_OP_META,
 } from "./nodes/dist-continuous";
 
 import { ChartNode, SparklineNode } from "./nodes/visual";
@@ -39,19 +39,19 @@ import {
   AggregateNode, AntoineNode, ArgMinMaxNode, ArithmeticNode,
   BesselNode, BetaDistNode, BinomDistNode, BitwiseNode,
   BondPriceNode, BooleanOpNode, CharCodeNode, ChisqDistNode,
-  ChisqInvNode, CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
+  CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
   CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, ElementNode, ExponDistNode, FDistNode,
-  FInvNode, FisherNode, GammaDistNode, GroupByFrameNode,
+  FisherNode, GammaDistNode, GroupByFrameNode,
   HypgeomDistNode, IpmtPpmtNode, LognormDistNode, MRoundNode,
   MatDetNode, MathFnNode, NegbinomDistNode, NormDistNode,
   NormSDistNode, NthValueNode, OddCouponNode, PercentileNode,
   PercentrankNode, PhysicsConstantNode, PipeRoughnessNode, PivotNode,
   PoissonDistNode, PriceDiscNode, PriceMatNode, QuartileNode,
   RankNode, RomanArabicNode, SecurityDiscNode,
-  SumProductNode, TBillNode, TDistNode, TInvNode,
+  SumProductNode, TBillNode, TDistNode,
   TTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
   TodayNowNode, UrlEncodeNode, WeekInfoNode, WeibullDistNode,
@@ -109,9 +109,11 @@ function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntry
 const DIST_FORM_LABEL: Record<string, string> = {
   cdf:  "CDF",
   pdf:  "PDF",
-  rt:   "Right-tail (RT)",
-  "2t": "Two-tail (2T)",
-  left: "Left-tail",
+  rt:    "Right-tail (RT)",
+  "2t":  "Two-tail (2T)",
+  inv:   "Inverse",
+  inv2t: "Inverse two-tail (INV.2T)",
+  invrt: "Inverse right-tail (INV.RT)",
 };
 /** `fromMeta` with search-facing form names; no per-op `fx` — the family takes
  *  ONE formula name. */
@@ -218,8 +220,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "char-code-char", ctor: CharCodeNode, kind: "operation" },
   { type: "chisqdist", ctor: ChisqDistNode, kind: "argument", ops: fromDistMeta(CHISQ_DIST_OP_META),
     create: (op) => new ChisqDistNode({ op: op as never }) },
-  { type: "chisqinv", ctor: ChisqInvNode, kind: "argument", ops: fromDistMeta(CHISQ_INV_OP_META),
-    create: (op) => new ChisqInvNode({ op: op as never }) },
   { type: "comb-fact", ctor: CombinatoricsNode, kind: "operation" },
   { type: "cx-binary-sum", ctor: ComplexBinaryNode, kind: "operation" },
   { type: "cx-unary-conj", ctor: ComplexUnaryNode, kind: "operation" },
@@ -237,8 +237,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "depr-sln", ctor: DepreciationNode, kind: "operation" },
   { type: "dollar-dollarde", ctor: DollarNode, kind: "operation" },
   { type: "duration-duration", ctor: DurationNode, kind: "operation" },
-  { type: "finv", ctor: FInvNode, kind: "argument", ops: fromDistMeta(F_INV_OP_META),
-    create: (op) => new FInvNode({ op: op as never }) },
   { type: "fisher-fisher", ctor: FisherNode, kind: "operation" },
   { type: "ipmt-ipmt", ctor: IpmtPpmtNode, kind: "operation" },
   { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
@@ -264,8 +262,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "secdesc-disc", ctor: SecurityDiscNode, kind: "operation" },
   { type: "sp-sumproduct", ctor: SumProductNode, kind: "operation" },
   { type: "tbill-tbilleq", ctor: TBillNode, kind: "operation" },
-  { type: "tinv", ctor: TInvNode, kind: "argument", ops: fromDistMeta(T_INV_OP_META),
-    create: (op) => new TInvNode({ op: op as never }) },
   { type: "t-test-paired", ctor: TTestNode, kind: "operation" },
   { type: "reshape-wraprows", ctor: TableReshapeNode, kind: "operation" },
   { type: "tblsel-chooserows", ctor: TableSelectNode, kind: "operation" },

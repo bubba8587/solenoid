@@ -1,12 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   NormDistNode,
-  NormInvNode,
   NormSDistNode,
   TDistNode,
-  TInvNode,
   ChisqDistNode,
-  ChisqInvNode,
 } from "./dist-normal";
 import {
   FDistNode,
@@ -45,7 +42,7 @@ describe("normal family", () => {
 
   it("NORM.INV is the inverse of NORM.DIST", () => {
     // NORM.INV(0.975, 0, 1) = 1.959964
-    const r = new NormInvNode().data({ prob: [0.975], mean: [0], stdev: [1] });
+    const r = new NormDistNode({ op: "inv" }).data({ prob: [0.975], mean: [0], stdev: [1] });
     expect(r.result).toBeCloseTo(1.959964, 4);
   });
 });
@@ -62,7 +59,7 @@ describe("t family", () => {
   });
 
   it("T.INV.2T(0.05, 10) ≈ 2.228139", () => {
-    const r = new TInvNode({ op: "2t" }).data({ prob: [0.05], df: [10] });
+    const r = new TDistNode({ op: "inv2t" }).data({ prob: [0.05], df: [10] });
     expect(r.result).toBeCloseTo(2.228139, 3);
   });
 });
@@ -75,7 +72,7 @@ describe("chi-squared family", () => {
   });
 
   it("CHISQ.INV(0.95, 5) ≈ 11.0705", () => {
-    const r = new ChisqInvNode({ op: "left" }).data({ prob: [0.95], df: [5] });
+    const r = new ChisqDistNode({ op: "inv" }).data({ prob: [0.95], df: [5] });
     expect(r.result).toBeCloseTo(11.0705, 2);
   });
 });

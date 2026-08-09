@@ -128,6 +128,30 @@ export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | n
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
 }
 
+// ─── Distribution forward/inverse plumbing ────────────────────────────────────
+
+/** An inverse (quantile) op reads a probability; every other op reads an x. */
+export const isInverseOp = (op: string): boolean => op.startsWith("inv");
+
+/** A merged distribution node's FIRST input tracks the op across the
+ *  forward/inverse line: the x-style key for forward ops, `prob` for inverse
+ *  ops. Callers on a live graph prune the departing key's cables first. */
+export function syncInverseInput(
+  node: ClassicPreset.Node,
+  op: string,
+  xKey: string,
+  xLabel: string,
+  probLabel = "Probability",
+): void {
+  if (isInverseOp(op)) {
+    if (node.inputs[xKey]) node.removeInput(xKey);
+    if (!node.inputs.prob) node.addInput("prob", numListIn(probLabel));
+  } else {
+    if (node.inputs.prob) node.removeInput("prob");
+    if (!node.inputs[xKey]) node.addInput(xKey, numListIn(xLabel));
+  }
+}
+
 // A broadcaster's output: a scalar, a list whose cells may each carry a
 // first-class `null`/`SolError`, or a whole-value short-circuit.
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;

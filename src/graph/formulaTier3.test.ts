@@ -70,13 +70,16 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  it("RUNNING* — one name per Running op, both window modes", () => {
+  it("RUNNING* — the family word + op label, one name per Running op, both window modes", () => {
+    // The op labels are bare (SUM, AVERAGE, …) because the card's title carries the
+    // family word; the formula name re-attaches it: RUNNING + despace(label).
     for (const [op, meta] of Object.entries(RUNNING_OP_META)) {
+      const name = `RUNNING${despace(meta.label)}`;
       const grow = new RunningNode({ op: op as "sum" });
-      expect(ev(`${despace(meta.label)}(x)`, { x: WITH_GAP }), meta.label)
+      expect(ev(`${name}(x)`, { x: WITH_GAP }), name)
         .toEqual(grow.data({ list: [WITH_GAP as (number | null)[]] }).result);
       const slide = new RunningNode({ op: op as "sum", mode: "window" });
-      expect(ev(`${despace(meta.label)}(x, 2)`, { x: WITH_GAP }), meta.label)
+      expect(ev(`${name}(x, 2)`, { x: WITH_GAP }), name)
         .toEqual(slide.data({ list: [WITH_GAP as (number | null)[]], window: [2] }).result);
     }
   });

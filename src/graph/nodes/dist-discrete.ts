@@ -1,12 +1,13 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
+import { numListIn, numListOut, readInput, broadcast, syncInverseInput, type BroadcastResult } from "./shared";
 import { lnCombin, lnGamma, regularizedBeta, regularizedGamma } from "./mathUtils";
 
-export type BinomDistOp = "pmf" | "cdf";
+export type BinomDistOp = "pmf" | "cdf" | "inv";
 
 export const BINOM_DIST_OP_META = {
-  pmf: { label: "PMF", description: "Binomial P(X = k) = C(n,k)·p^k·(1−p)^(n−k). Excel: BINOM.DIST, cumulative=FALSE." },
-  cdf: { label: "CDF", description: "Cumulative binomial P(X ≤ k). Excel: BINOM.DIST, cumulative=TRUE." },
+  pmf: { label: "PMF",     description: "Binomial P(X = k) = C(n,k)\u00b7p^k\u00b7(1\u2212p)^(n\u2212k). Excel: BINOM.DIST, cumulative=FALSE." },
+  cdf: { label: "CDF",     description: "Cumulative binomial P(X \u2264 k). Excel: BINOM.DIST, cumulative=TRUE." },
+  inv: { label: "Inverse", description: "Smallest k whose cumulative probability reaches alpha. Excel: BINOM.INV / CRITBINOM." },
 } satisfies Record<BinomDistOp, { label: string; description: string }>;
 
 function binomPmf(k: number, n: number, p: number): number | null {
@@ -31,78 +32,54 @@ function binomCdf(k: number, n: number, p: number): number | null {
   return Number.isFinite(r) ? Math.min(1, Math.max(0, r)) : null;
 }
 
+function binomInv(alpha: number, n: number, p: number): number | null {
+  n = Math.floor(n);
+  if (n < 0 || p < 0 || p > 1 || alpha < 0 || alpha > 1) return null;
+  let cumP = 0;
+  for (let k = 0; k <= n; k++) {
+    const pmf = binomPmf(k, n, p);
+    if (pmf === null) return null;
+    cumP += pmf;
+    if (cumP >= alpha) return k;
+  }
+  return n; // nothing crosses alpha
+}
+
 export class BinomDistNode extends ClassicPreset.Node {
   label: string;
   op: BinomDistOp;
   cachedResult: BroadcastResult = null;
-  literals: Record<string, number> = { k: 3, n: 10, p: 0.5 };
+  literals: Record<string, number> = { k: 3, prob: 0.95, n: 10, p: 0.5 };
+  readonly xKey = "k";
+  readonly paramKeys = ["n", "p"];
   width = 180; height = 225;
 
   constructor(init?: { label?: string; op?: BinomDistOp }) {
     super("BinomDist");
-    this.label = init?.label ?? "BINOM.DIST";
+    this.label = init?.label ?? "Binomial";
     this.op = init?.op ?? "pmf";
-    this.addInput("k", numListIn("k (successes)"));
+    syncInverseInput(this, this.op, this.xKey, "k (successes)", "alpha");
     this.addInput("n", numListIn("n (trials)"));
     this.addInput("p", numListIn("p (probability)"));
     this.addOutput("result", numListOut("Result"));
   }
 
+  setOp(next: BinomDistOp): void {
+    this.op = next;
+    syncInverseInput(this, next, this.xKey, "k (successes)", "alpha");
+  }
+
   data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
-    const k = readInput(inputs.k, this.literals.k);
     const n = readInput(inputs.n, this.literals.n);
     const p = readInput(inputs.p, this.literals.p);
     const op = this.op;
-    const result = broadcast((kv, nv, pv) =>
-      op === "pmf" ? binomPmf(kv, nv, pv) : binomCdf(kv, nv, pv),
-    k, n, p);
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export const BINOM_INV_META = {
-  label: "BINOM.INV",
-  description: "Smallest k such that BINOM.DIST(k, n, p) ≥ alpha. Excel: BINOM.INV / CRITBINOM.",
-};
-
-export class BinomInvNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { n: 10, p: 0.5, alpha: 0.95 };
-  width = 180; height = 205;
-
-  constructor(init?: { label?: string }) {
-    super("BinomInv");
-    this.label = init?.label ?? "BINOM.INV";
-    this.addInput("n",     numIn("n (trials)"));
-    this.addInput("p",     numIn("p (probability)"));
-    this.addInput("alpha", numIn("alpha"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { n?: number[]; p?: number[]; alpha?: number[] }) {
-    const nRaw     = readInput(inputs.n,     this.literals.n     ?? 10);
-    const p        = readInput(inputs.p,     this.literals.p     ?? 0.5);
-    const alpha    = readInput(inputs.alpha, this.literals.alpha ?? 0.95);
-    if (nRaw === null || p === null || alpha === null) { this.cachedResult = null; return { result: null }; }
-    const n = Math.floor(nRaw);
-    let result: number | null = null;
-
-    if (n >= 0 && p >= 0 && p <= 1 && alpha >= 0 && alpha <= 1) {
-      let cumP = 0;
-      result = n; // default: return n if nothing crosses alpha
-      for (let k = 0; k <= n; k++) {
-        const pmf = binomPmf(k, n, p);
-        if (pmf === null) break;
-        cumP += pmf;
-        if (cumP >= alpha) {
-          result = k;
-          break;
-        }
-      }
-    }
-
+    const first = op === "inv"
+      ? readInput(inputs.prob, this.literals.prob)
+      : readInput(inputs.k, this.literals.k);
+    const result = broadcast((fv, nv, pv) => {
+      if (op === "inv") return binomInv(fv, nv, pv);
+      return op === "pmf" ? binomPmf(fv, nv, pv) : binomCdf(fv, nv, pv);
+    }, first, n, p);
     this.cachedResult = result;
     return { result };
   }
@@ -124,7 +101,7 @@ export class PoissonDistNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: PoissonDistOp }) {
     super("PoissonDist");
-    this.label = init?.label ?? "POISSON.DIST";
+    this.label = init?.label ?? "Poisson";
     this.op = init?.op ?? "pmf";
     this.addInput("k",      numListIn("k"));
     this.addInput("lambda", numListIn("λ (mean)"));
@@ -178,7 +155,7 @@ export class HypgeomDistNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: HypgeomDistOp }) {
     super("HypgeomDist");
-    this.label = init?.label ?? "HYPGEOM.DIST";
+    this.label = init?.label ?? "Hypergeometric";
     this.op = init?.op ?? "pmf";
     this.addInput("k", numListIn("k (sample successes)"));
     this.addInput("n", numListIn("n (sample size)"));
@@ -231,7 +208,7 @@ export class NegbinomDistNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: NegbinomDistOp }) {
     super("NegbinomDist");
-    this.label = init?.label ?? "NEGBINOM.DIST";
+    this.label = init?.label ?? "Negative Binomial";
     this.op = init?.op ?? "pmf";
     this.addInput("k", numListIn("k (failures)"));
     this.addInput("r", numListIn("r (successes)"));
