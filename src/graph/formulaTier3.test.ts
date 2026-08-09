@@ -289,6 +289,7 @@ describe("the formula namespace stays unambiguous", () => {
       ...Object.values(SET_OP_META).map((m) => m.fx),
       ...Object.values(SET_RELATION_META).map((m) => m.fx),
       ...Object.values(FILL_OP_META).map((m) => m.fx),
+      ...Object.values(RUNNING_OP_META).map((m) => m.fx),
     ];
     expect(new Set(declared).size, "duplicate `fx` among the declared names").toBe(declared.length);
     // FILLINTERPOLATE exists precisely because "Interpolate" collided with the node.

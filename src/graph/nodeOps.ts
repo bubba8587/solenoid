@@ -94,8 +94,10 @@ export type NodeOpsDecl = NodeOpsBase & (
   | { ops?: undefined; create?: undefined }
 );
 
-/** One op of a family; `fx` is the FORMULA name (D19 Tier 3), declared only where
- *  the op's label is prose, since despacing a sentence collides. */
+/** One op of a family; `fx` is the FORMULA name (D19 Tier 3), declared where
+ *  despacing the label would not yield it: a prose label (despacing a sentence
+ *  collides — Coalesce/Fill's FILLINTERPOLATE) or a bare label whose family
+ *  word lives in the card title (Running's SUM → RUNNINGSUM). */
 export interface OpEntryDecl { op: string; label: string; fx?: string }
 
 /** Read an OP_META table into an op list — every table carries `label`, and `fx`
