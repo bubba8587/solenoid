@@ -4,7 +4,7 @@ import { EXCEL_IMPL_META } from "./excelFunctions";
 import {
   MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableReshapeNode,
 } from "./nodes/matrix";
-import { SequenceNode } from "./nodes/list";
+import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
 import { isSolError, type SolError } from "./errorValue";
 
@@ -72,8 +72,8 @@ describe("each matrix name computes what its node computes", () => {
   });
 
   it("SEQUENCE — the 1-D form IS the Sequence node; cols wraps the same arithmetic", () => {
-    expect(ev("SEQUENCE(4)")).toEqual(new SequenceNode().data({ count: [4], start: [1], step: [1] }).list);
-    expect(ev("SEQUENCE(4,, 10, 5)")).toEqual(new SequenceNode().data({ count: [4], start: [10], step: [5] }).list);
+    expect(ev("SEQUENCE(4)")).toEqual(new SeriesNode({ op: "sequence" }).data({ count: [4], start: [1], step: [1] }).list);
+    expect(ev("SEQUENCE(4,, 10, 5)")).toEqual(new SeriesNode({ op: "sequence" }).data({ count: [4], start: [10], step: [5] }).list);
     expect(ev("SEQUENCE(2, 3)")).toEqual([[1, 2, 3], [4, 5, 6]]);
     expect(code(ev("SEQUENCE(2000000)"))).toBe("#OVERFLOW!");
   });

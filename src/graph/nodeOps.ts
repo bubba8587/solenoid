@@ -10,7 +10,7 @@ import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
   FILL_OP_META, COND_AGG_OP_META, RUNNING_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
-  SortNode, TakeNode, DropNode,
+  SortNode, TakeNode, DropNode, SeriesNode,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
@@ -157,6 +157,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "color-blend", ctor: ColorBlendNode, kind: "argument" },
 
   // ── Operation-kind: each op stands alone as a name ──
+  // Three parameterizations of one arithmetic progression, each with its own leaf.
+  { type: "list-range", ctor: SeriesNode, kind: "operation" },
   { type: "list-fill", ctor: FillNode, kind: "operation", ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
   { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),

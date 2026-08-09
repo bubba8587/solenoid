@@ -909,11 +909,12 @@
     },
     {
       "id": "seq-years",
-      "type": "SequenceNode",
+      "type": "SeriesNode",
       "x": 2566,
       "y": 890,
       "init": {
-        "label": "Years 1…N"
+        "label": "Years 1…N",
+        "op": "sequence"
       }
     },
     {

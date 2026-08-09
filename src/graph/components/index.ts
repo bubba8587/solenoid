@@ -51,8 +51,7 @@ export { IfsComponent } from "./IfsNode";
 
 // ─── Lists — build ────────────────────────────────────────────────────────────
 export { ListInputComponent } from "./ListInputNode";
-export { RangeComponent } from "./RangeNode";
-export { LinSpaceComponent } from "./LinSpaceNode";
+export { SeriesComponent } from "./SeriesNode";
 export { VStackComponent } from "./VStackNode";
 export { RepeatComponent } from "./RepeatNode";
 export { GeometricComponent } from "./GeometricNode";
@@ -254,7 +253,6 @@ export { WeightedComponent } from "./WeightedNode";
 
 // ─── List extras ──────────────────────────────────────────────────────────────
 export { RandArrayComponent } from "./RandArrayNode";
-export { SequenceComponent } from "./SequenceNode";
 export { SortByComponent } from "./SortByNode";
 export { XMatchComponent } from "./XMatchNode";
 

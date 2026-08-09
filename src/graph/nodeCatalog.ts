@@ -7,14 +7,14 @@ import {
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
-  ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
+  ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
   UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
-  AlertNode, NormalizeNode, LinSpaceNode, RepeatNode,
+  AlertNode, NormalizeNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -30,7 +30,7 @@ import {
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateValueNode, TimeValueNode, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdayNode, NetworkdaysNode,
-  RandArrayNode, SequenceNode,
+  RandArrayNode,
   SortByNode, XMatchNode,
   TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
   AccrintMNode, PriceDiscNode, PriceMatNode, DurationNode, XnpvNode,
@@ -95,6 +95,10 @@ const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): Node
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         create: () => new AggregateNode({ op })     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  create: () => new CombinatoricsNode({ op }) });
+// One Series node; the leaf types keep their historical spellings (nodeExcel keys).
+const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace" };
+const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: SERIES_LEAF_TYPE[op], label: SERIES_OP_META[op].label, description: SERIES_OP_META[op].description, create: () => new SeriesNode({ op }), ...overrides });
+
 // One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
 const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-large", small: "nth-small", "rank-eq": "rank-eq", "rank-avg": "rank-avg", "percentile-inc": "stat-percentile", "quartile-inc": "stat-quartile", "percentrank-inc": "stat-percentrank" };
 const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides });
@@ -456,8 +460,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Build", description: "Create lists.",
         children: [
-          { type: "list-range",    label: "Range",     description: "Generates a sequence: start, start+step, …, < stop. Excel: SEQUENCE.", accent: NODE_KIND_ACCENTS.list, create: () => new RangeNode() },
-          { type: "list-linspace", label: "LinSpace",  description: "Generates Count evenly spaced values from Start to End inclusive.", create: () => new LinSpaceNode() },
+          seriesLeaf("range", { accent: NODE_KIND_ACCENTS.list }),
+          seriesLeaf("linspace"),
           { type: "list-concat",   label: "Concat Lists", description: "Joins lists end-to-end, in row order — add rows for more lists; a lone value counts as a 1-element list. Any element type. To stack lists as rows of a table instead, use VSTACK.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate push" },
           { type: "list-repeat",   label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES.", create: () => new RepeatNode() },
           { type: "pair", children: [
@@ -465,7 +469,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-fibonacci", label: "Fibonacci",  description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …", create: () => new FibonacciNode() },
           ]},
           { type: "list-randarray", label: "RANDARRAY", description: "List of N random numbers between Min and Max. Excel: RANDARRAY.", create: () => new RandArrayNode(), parity: false },
-          { type: "list-sequence",  label: "SEQUENCE",  description: "List of N numbers starting at Start with Step between each; like Range but count-first. Excel: SEQUENCE.", create: () => new SequenceNode(), parity: false },
+          seriesLeaf("sequence", { parity: false }),
         ],
       },
       {
