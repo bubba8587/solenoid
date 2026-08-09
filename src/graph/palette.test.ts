@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_KEYS, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, chromeCssVars, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
+import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_KEYS, type ChromeKey, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, chromeCssVars, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
 
 describe("built-in palettes", () => {
   it("every palette defines all 12 slots as hex colors", () => {
@@ -48,31 +48,36 @@ describe("chrome ramp", () => {
     }
   });
 
-  // The author's call (D35): recoloring the graph is what a palette does; recoloring
-  // the WORKBENCH is opt-in, and only Orchard opts in. A new palette authoring chrome
-  // is a deliberate change to this line, not a silent one.
-  it("only Orchard authors chrome, and authors it COMPLETELY in both modes", () => {
+  // All or nothing: a partial ramp writes its keys but derives NOTHING (chromeCssVars),
+  // so half a ramp lands the app in a mix of authored neutrals and App.css ones. Default
+  // is the only palette that authors none — it IS App.css, and a copy here would be two
+  // homes for one truth.
+  it("a palette authors either no chrome or a COMPLETE ramp in both modes", () => {
     for (const name of PALETTE_NAMES) {
       for (const mode of MODES) {
         const declared = Object.keys(BUILTIN_CHROME[name][mode]).sort();
-        if (name === "Orchard") expect(declared, `${mode}`).toEqual([...CHROME_KEYS].sort());
-        else expect(declared, `${name}/${mode} authors chrome`).toEqual([]);
+        if (name === "Default") expect(declared, "Default authors chrome").toEqual([]);
+        else expect(declared, `${name}/${mode}`).toEqual([...CHROME_KEYS].sort());
       }
     }
   });
 
   it("switching the app base swaps the ramp, and back to none", () => {
-    expect(paletteStore.chrome().light).toEqual({});
+    expect(paletteStore.chrome().light).toEqual({}); // Default rides App.css
     paletteStore.setActiveBase("Orchard");
     expect(paletteStore.chrome().light).toEqual(BUILTIN_CHROME.Orchard.light);
-    paletteStore.setActiveBase("Muted");
-    expect(paletteStore.chrome().light).toEqual({}); // cleared, not left on Orchard's cream
+    paletteStore.setActiveBase("Solarized");
+    expect(paletteStore.chrome().light).toEqual(BUILTIN_CHROME.Solarized.light);
+    paletteStore.setActiveBase("Default");
+    expect(paletteStore.chrome().light).toEqual({}); // cleared, not left on the last ramp
   });
 
   it("a doc pin picks the chrome too, and wins over the app choice", () => {
     paletteStore.setActiveBase("Orchard");
-    paletteStore.setDocPalette({ base: "Muted" });
+    paletteStore.setDocPalette({ base: "Default" });
     expect(paletteStore.chrome().dark).toEqual({});
+    paletteStore.setDocPalette({ base: "Muted" });
+    expect(paletteStore.chrome().dark).toEqual(BUILTIN_CHROME.Muted.dark);
     paletteStore.setDocPalette(null);
     expect(paletteStore.chrome().dark).toEqual(BUILTIN_CHROME.Orchard.dark);
   });
@@ -92,11 +97,81 @@ describe("chrome ramp", () => {
     expect(paletteStore.customChrome().dark.canvasBg).toBe(DEFAULT_CHROME.dark.canvasBg);
   });
 
-  it("loading a chromeless template clears chrome the author had set", () => {
+  it("loading a template reseeds the ramp; a chromeless one restores the neutral", () => {
     paletteStore.loadCustomTemplate("Orchard");
     expect(paletteStore.customChrome().light).toEqual({ ...DEFAULT_CHROME.light, ...BUILTIN_CHROME.Orchard.light });
-    paletteStore.loadCustomTemplate("Muted");
+    paletteStore.loadCustomTemplate("Solarized");
+    expect(paletteStore.customChrome().light).toEqual({ ...DEFAULT_CHROME.light, ...BUILTIN_CHROME.Solarized.light });
+    paletteStore.loadCustomTemplate("Default"); // the one chromeless template
     expect(paletteStore.customChrome().light).toEqual(DEFAULT_CHROME.light);
+  });
+});
+
+// What makes a ramp "appropriate" rather than merely different. Every rule here is a
+// claim DESIGN.md §2 already makes about the neutral ramp; a palette may recolor the
+// workbench but not renege on its structure. The App.css baseline is held to the same
+// bar, so a rule that Default fails is a wrong rule, not a failing palette.
+describe("chrome ramp structure", () => {
+  const chan = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+  const lum = (h: string) => [0.2126, 0.7152, 0.0722].reduce((a, w, i) => {
+    const s = chan(h, i);
+    return a + w * (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4);
+  }, 0);
+  const ratio = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  // Every authored ramp, plus the App.css baseline they all descend from.
+  const RAMPS: [string, "dark" | "light", Record<ChromeKey, string>][] = [
+    ["(App.css)", "dark", DEFAULT_CHROME.dark],
+    ["(App.css)", "light", DEFAULT_CHROME.light],
+    ...PALETTE_NAMES.flatMap((name) =>
+      (["dark", "light"] as const)
+        .filter((m) => Object.keys(BUILTIN_CHROME[name][m]).length > 0)
+        .map((m) => [name, m, BUILTIN_CHROME[name][m] as Record<ChromeKey, string>] as [string, "dark" | "light", Record<ChromeKey, string>]),
+    ),
+  ];
+
+  it.each(RAMPS)("%s/%s: the canvas is darker than the card, and the dots read on it", (_n, _m, r) => {
+    expect(lum(r.canvasBg)).toBeLessThan(lum(r.surface));
+    const dot = ratio(r.canvasDot, r.canvasBg);
+    expect(dot).toBeGreaterThan(1.1); // visible
+    expect(dot).toBeLessThan(2.2);    // a grid, not a starfield
+  });
+
+  it.each(RAMPS)("%s/%s: the field is the brightest layer in light, a recess in dark", (_n, mode, r) => {
+    const fieldBrighter = lum(r.surfaceSunken) > lum(r.surface);
+    expect(fieldBrighter).toBe(mode === "light");
+  });
+
+  it.each(RAMPS)("%s/%s: the hover fill steps toward the ink, never away", (_n, _m, r) => {
+    const toInk = Math.sign(lum(r.text) - lum(r.surface));
+    expect(Math.sign(lum(r.surfaceRaised) - lum(r.surface))).toBe(toInk);
+  });
+
+  it.each(RAMPS)("%s/%s: the three border tiers step outward from the card", (_n, _m, r) => {
+    const d = (k: ChromeKey) => Math.abs(lum(r[k]) - lum(r.surface));
+    expect(d("borderSubtle")).toBeLessThan(d("border"));
+    expect(d("border")).toBeLessThan(d("borderStrong"));
+  });
+
+  it.each(RAMPS)("%s/%s: the four ink tiers step down in contrast", (_n, _m, r) => {
+    const c = (k: ChromeKey) => ratio(r[k], r.surface);
+    expect(c("textBright")).toBeGreaterThan(c("text"));
+    expect(c("text")).toBeGreaterThan(c("textDim"));
+    expect(c("textDim")).toBeGreaterThan(c("textMuted"));
+  });
+
+  // DESIGN.md §2: "the muted tier clears WCAG AA 4.5:1 on the card/sunken surfaces".
+  // The canvas is deliberately excluded for the secondary tiers — nothing sets body
+  // text directly on the canvas, and the App.css light ramp is itself at 4.35 there.
+  it.each(RAMPS)("%s/%s: every ink tier clears WCAG AA on the card and the field", (_n, _m, r) => {
+    for (const k of ["text", "textDim", "textMuted"] as const) {
+      expect(ratio(r[k], r.surface), `${k} on card`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(r[k], r.surfaceSunken), `${k} on field`).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(ratio(r.text, r.canvasBg), "text on canvas").toBeGreaterThanOrEqual(4.5);
   });
 });
 
