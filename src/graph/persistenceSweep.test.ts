@@ -165,6 +165,9 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
     solvedKeys: "per-pass solve marker", lastResultRank: "SOCK-9 runtime rank tracker",
+    // ── class constants (per-class shape declarations, never state) ──
+    xKey: "class constant: a merged distribution's forward-mode first-input key",
+    paramKeys: "class constant: a merged distribution's fixed parameter input keys",
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",

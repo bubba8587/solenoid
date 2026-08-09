@@ -56,12 +56,12 @@ import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp, type TableTakeDropOp,
   IsEvenOddNode, FormatDollarNode,
-  NormDistNode, NormInvNode, NormSDistNode, NormSInvNode,
-  TDistNode, TInvNode, ChisqDistNode, ChisqInvNode,
-  FDistNode, FInvNode, BetaDistNode, BetaInvNode,
-  GammaDistNode, GammaInvNode, LognormDistNode, LognormInvNode,
+  NormDistNode, NormSDistNode,
+  TDistNode, ChisqDistNode,
+  FDistNode, BetaDistNode,
+  GammaDistNode, LognormDistNode,
   WeibullDistNode, ExponDistNode,
-  BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode,
+  BinomDistNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
   BesselNode,
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
@@ -711,18 +711,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
 
   // ── DISTRIBUTIONS ────────────────────────────────────────────────────────────
   {
-    type: "category", label: "Distributions", description: "Probability distributions: CDF, PDF/PMF, and inverse (quantile) functions.",
+    type: "category", label: "Distributions", description: "Probability distributions. Each node covers the forward curves and the inverse (quantile) behind one op selector.",
     children: [
       {
         type: "category", label: "Normal", description: "Normal / Gaussian distribution.",
         children: [
           { type: "pair", children: [
-            { type: "normdist",  label: "NORM.DIST",   description: "Normal CDF or PDF. Excel: NORM.DIST(x, mean, stdev, cumulative).", create: () => new NormDistNode() },
-            { type: "norminv",   label: "NORM.INV",    description: "Inverse normal: the value at percentile p. Excel: NORM.INV.", create: () => new NormInvNode() },
-          ]},
-          { type: "pair", children: [
-            { type: "normsdist", label: "NORM.S.DIST", description: "Standard normal CDF or PDF (mean=0, stdev=1). Excel: NORM.S.DIST.", create: () => new NormSDistNode() },
-            { type: "normsinv",  label: "NORM.S.INV",  description: "Inverse standard normal. Excel: NORM.S.INV.", create: () => new NormSInvNode() },
+            { type: "normdist",  label: "Normal", description: "Normal CDF, PDF, or inverse (the x at percentile p). Excel: NORM.DIST / NORM.INV.", create: () => new NormDistNode(), keywords: "norm.dist norm.inv gaussian bell curve inverse quantile percentile" },
+            { type: "normsdist", label: "Standard Normal", description: "Standard normal (mean 0, stdev 1) CDF, PDF, or inverse. Excel: NORM.S.DIST / NORM.S.INV.", create: () => new NormSDistNode(), keywords: "norm.s.dist norm.s.inv z score gaussian inverse quantile" },
           ]},
           { type: "pair", children: [
             mathLeaf("phi",   { keywords: "probability standard normal density" }),
@@ -731,68 +727,34 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: (value − mean) ÷ std dev. Excel: STANDARDIZE.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
         ],
       },
-      {
-        type: "category", label: "t-distribution", description: "Student's t-distribution for small samples.",
-        children: [{ type: "pair", children: [
-          { type: "tdist", label: "T.DIST", description: "t CDF, PDF, two-tailed, or right-tail. Excel: T.DIST / T.DIST.2T / T.DIST.RT.", create: () => new TDistNode() },
-          { type: "tinv",  label: "T.INV",  description: "Inverse t-distribution, left-tail or two-tailed. Excel: T.INV / T.INV.2T.", create: () => new TInvNode() },
-        ]}],
-      },
-      {
-        type: "category", label: "Chi-Squared", description: "Chi-squared distribution.",
-        children: [{ type: "pair", children: [
-          { type: "chisqdist", label: "CHISQ.DIST", description: "Chi-squared CDF, PDF, or right-tail. Excel: CHISQ.DIST / CHISQ.DIST.RT.", create: () => new ChisqDistNode() },
-          { type: "chisqinv",  label: "CHISQ.INV",  description: "Inverse chi-squared. Excel: CHISQ.INV / CHISQ.INV.RT.", create: () => new ChisqInvNode() },
-        ]}],
-      },
-      {
-        type: "category", label: "F-distribution", description: "F distribution for variance ratios.",
-        children: [{ type: "pair", children: [
-          { type: "fdist", label: "F.DIST", description: "F CDF, PDF, or right-tail. Excel: F.DIST / F.DIST.RT.", create: () => new FDistNode() },
-          { type: "finv",  label: "F.INV",  description: "Inverse F distribution. Excel: F.INV / F.INV.RT.", create: () => new FInvNode() },
-        ]}],
-      },
-      {
-        type: "category", label: "Beta", description: "Beta distribution for probabilities and proportions.",
-        children: [{ type: "pair", children: [
-          { type: "betadist", label: "BETA.DIST", description: "Beta CDF or PDF. Excel: BETA.DIST.", create: () => new BetaDistNode() },
-          { type: "betainv",  label: "BETA.INV",  description: "Inverse beta distribution. Excel: BETA.INV.", create: () => new BetaInvNode() },
-        ]}],
-      },
-      {
-        type: "category", label: "Gamma", description: "Gamma distribution for waiting times.",
-        children: [{ type: "pair", children: [
-          { type: "gammadist", label: "GAMMA.DIST", description: "Gamma CDF or PDF. Excel: GAMMA.DIST.", create: () => new GammaDistNode() },
-          { type: "gammainv",  label: "GAMMA.INV",  description: "Inverse gamma distribution. Excel: GAMMA.INV.", create: () => new GammaInvNode() },
-        ]}],
-      },
-      {
-        type: "category", label: "Lognormal", description: "Lognormal distribution: a variable whose log is normal.",
-        children: [{ type: "pair", children: [
-          { type: "lognormdist", label: "LOGNORM.DIST", description: "Lognormal CDF or PDF. Excel: LOGNORM.DIST.", create: () => new LognormDistNode() },
-          { type: "lognorminv",  label: "LOGNORM.INV",  description: "Inverse lognormal. Excel: LOGNORM.INV.", create: () => new LognormInvNode() },
-        ]}],
-      },
-      {
-        type: "category", label: "Other continuous", description: "Weibull and exponential distributions.",
-        children: [{ type: "pair", children: [
-          { type: "weibulldist", label: "WEIBULL.DIST", description: "Weibull CDF or PDF, for failure / reliability modeling. Excel: WEIBULL.DIST.", create: () => new WeibullDistNode() },
-          { type: "expodist",    label: "EXPON.DIST",   description: "Exponential CDF or PDF, for time between events. Excel: EXPON.DIST.", create: () => new ExponDistNode() },
-        ]}],
-      },
+      { type: "pair", children: [
+        { type: "tdist",     label: "t-distribution", description: "Student's t for small samples: CDF, PDF, two-tailed, right-tail, or inverse. Excel: T.DIST / T.DIST.2T / T.DIST.RT / T.INV / T.INV.2T.", create: () => new TDistNode(), keywords: "t.dist t.inv student critical value inverse quantile" },
+        { type: "chisqdist", label: "Chi-squared", description: "Chi-squared CDF, PDF, right-tail, or inverse. Excel: CHISQ.DIST / CHISQ.DIST.RT / CHISQ.INV / CHISQ.INV.RT.", create: () => new ChisqDistNode(), keywords: "chisq.dist chisq.inv chi square critical value inverse quantile" },
+      ]},
+      { type: "pair", children: [
+        { type: "fdist",    label: "F-distribution", description: "F for variance ratios: CDF, PDF, right-tail, or inverse. Excel: F.DIST / F.DIST.RT / F.INV / F.INV.RT.", create: () => new FDistNode(), keywords: "f.dist f.inv variance ratio anova critical value inverse quantile" },
+        { type: "betadist", label: "Beta", description: "Beta for probabilities and proportions: CDF, PDF, or inverse. Excel: BETA.DIST / BETA.INV.", create: () => new BetaDistNode(), keywords: "beta.dist beta.inv proportion inverse quantile" },
+      ]},
+      { type: "pair", children: [
+        { type: "gammadist",   label: "Gamma distribution", description: "Gamma for waiting times: CDF, PDF, or inverse. Excel: GAMMA.DIST / GAMMA.INV.", create: () => new GammaDistNode(), keywords: "gamma.dist gamma.inv waiting time inverse quantile" },
+        { type: "lognormdist", label: "Lognormal", description: "A variable whose log is normal: CDF, PDF, or inverse. Excel: LOGNORM.DIST / LOGNORM.INV.", create: () => new LognormDistNode(), keywords: "lognorm.dist lognorm.inv log normal inverse quantile" },
+      ]},
+      { type: "pair", children: [
+        { type: "weibulldist", label: "Weibull",     description: "Weibull CDF or PDF, for failure / reliability modeling. Excel: WEIBULL.DIST.", create: () => new WeibullDistNode(), keywords: "weibull.dist reliability failure" },
+        { type: "expodist",    label: "Exponential", description: "Exponential CDF or PDF, for time between events. Excel: EXPON.DIST.", create: () => new ExponDistNode(), keywords: "expon.dist rate time between events" },
+      ]},
       {
         type: "category", label: "Discrete", description: "Discrete distributions: binomial, Poisson, hypergeometric, negative binomial.",
         children: [
           { type: "pair", children: [
-            { type: "binomdist", label: "BINOM.DIST", description: "Binomial PMF or CDF: k successes in n trials. Excel: BINOM.DIST.", create: () => new BinomDistNode() },
-            { type: "binominv",  label: "BINOM.INV",  description: "Smallest k such that BINOM.DIST CDF ≥ alpha. Excel: BINOM.INV / CRITBINOM.", create: () => new BinomInvNode() },
+            { type: "binomdist",   label: "Binomial", description: "k successes in n trials: PMF, CDF, or inverse (the smallest k whose cumulative probability reaches alpha). Excel: BINOM.DIST / BINOM.INV.", create: () => new BinomDistNode(), keywords: "binom.dist binom.inv critbinom trials successes inverse" },
+            { type: "poissondist", label: "Poisson",  description: "Events in a fixed interval: PMF or CDF. Excel: POISSON.DIST.", create: () => new PoissonDistNode(), keywords: "poisson.dist events interval rate" },
           ]},
-          { type: "poissondist", label: "POISSON.DIST", description: "Poisson PMF or CDF: events in a fixed interval. Excel: POISSON.DIST.", create: () => new PoissonDistNode() },
           { type: "pair", children: [
-            { type: "hypgeomdist",  label: "HYPGEOM.DIST",  description: "Hypergeometric PMF or CDF: sampling without replacement. Excel: HYPGEOM.DIST.", create: () => new HypgeomDistNode() },
-            { type: "negbinomdist", label: "NEGBINOM.DIST", description: "Negative binomial PMF or CDF: failures before the r-th success. Excel: NEGBINOM.DIST.", create: () => new NegbinomDistNode() },
+            { type: "hypgeomdist",  label: "Hypergeometric",    description: "Sampling without replacement: PMF or CDF. Excel: HYPGEOM.DIST.", create: () => new HypgeomDistNode(), keywords: "hypgeom.dist sampling without replacement" },
+            { type: "negbinomdist", label: "Negative Binomial", description: "Failures before the r-th success: PMF or CDF. Excel: NEGBINOM.DIST.", create: () => new NegbinomDistNode(), keywords: "negbinom.dist failures successes" },
           ]},
-          { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "P(lo ≤ X ≤ hi): the sum of binomial PMFs over a range. Excel: BINOM.DIST.RANGE.", create: () => new BinomDistRangeNode() },
+          { type: "binomdistrng", label: "Binomial Range", description: "P(lo ≤ X ≤ hi): the sum of binomial PMFs over a range. Excel: BINOM.DIST.RANGE.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
         ],
       },
     ],

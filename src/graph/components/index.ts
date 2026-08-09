@@ -204,30 +204,17 @@ export { ComplexBinaryComponent } from "./ComplexBinaryNode";
 export { ComplexPowerComponent } from "./ComplexPowerNode";
 
 // ─── Distributions — normal / t / chi-squared ─────────────────────────────────
-export { NormDistComponent } from "./NormDistNode";
-export { NormInvComponent } from "./NormInvNode";
-export { NormSDistComponent } from "./NormSDistNode";
-export { NormSInvComponent } from "./NormSInvNode";
-export { TDistComponent } from "./TDistNode";
-export { TInvComponent } from "./TInvNode";
-export { ChisqDistComponent } from "./ChisqDistNode";
-export { ChisqInvComponent } from "./ChisqInvNode";
+export {
+  NormDistComponent, NormSDistComponent, TDistComponent, ChisqDistComponent,
+  FDistComponent, BetaDistComponent, GammaDistComponent, LognormDistComponent,
+  BinomDistComponent,
+} from "./DistNodes";
 
 // ─── Distributions — continuous ───────────────────────────────────────────────
-export { FDistComponent } from "./FDistNode";
-export { FInvComponent } from "./FInvNode";
-export { BetaDistComponent } from "./BetaDistNode";
-export { BetaInvComponent } from "./BetaInvNode";
-export { GammaDistComponent } from "./GammaDistNode";
-export { GammaInvComponent } from "./GammaInvNode";
-export { LognormDistComponent } from "./LognormDistNode";
-export { LognormInvComponent } from "./LognormInvNode";
 export { WeibullDistComponent } from "./WeibullDistNode";
 export { ExponDistComponent } from "./ExponDistNode";
 
 // ─── Distributions — discrete ─────────────────────────────────────────────────
-export { BinomDistComponent } from "./BinomDistNode";
-export { BinomInvComponent } from "./BinomInvNode";
 export { PoissonDistComponent } from "./PoissonDistNode";
 export { HypgeomDistComponent } from "./HypgeomDistNode";
 export { NegbinomDistComponent } from "./NegbinomDistNode";

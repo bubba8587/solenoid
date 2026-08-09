@@ -86,14 +86,33 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-09b — distributions absorb their inverses; Running vocabulary pass)
+- **Every distribution + its inverse is now ONE node** (author call, D34): the inverse
+  (quantile) rides the op selector as `inv` ops (`inv`/`inv2t`/`invrt`), and crossing
+  the forward/inverse line swaps the FIRST input between x and Probability
+  (`syncInverseInput` in `nodes/shared.ts`; `isInverseOp` = the `inv` prefix). Nine
+  pairs merged: Normal, Standard Normal, t, chi-squared, F, beta, gamma, lognormal,
+  binomial; the 9 *Inv classes, their components, catalog leaves and nodeExcel keys
+  are gone (old saves placeholder them, D3). One `distComponent` factory
+  (`components/DistNodes.tsx`) replaced the 18 per-node dist/inv component files.
+  BINOM.INV upgraded from scalar-only to the same broadcast semantics as the rest.
+  Cards renamed from Excel function names to distribution names (Normal, Weibull,
+  Poisson...; Excel names stay in descriptions + search keywords); tail-op labels
+  harmonized to 2T/RT. Formula surface untouched (Excel names dispatch as before).
+- **Running vocabulary pass** (author): toggle option "All so far" renamed
+  "Cumulative"; op labels lost the "Running " prefix (bare SUM/AVERAGE/...). The
+  formula names keep the family word via per-op `fx` in `RUNNING_OP_META`
+  (FX-4-checked), since despaced bare labels would collide with the Aggregate leaves.
+
 ### SESSION DIGEST (2026-08-09 — Cumulative + Rolling merged into one Running node)
 - **Author call: the two nodes were too similar to stay separate.** One `RunningNode`
   (`list-running`, card "Running") replaces both; a `SegToggle` at the top of the card
-  picks the window: **"All so far"** (grows from the start; the old Cumulative) or
+  picks the window: **"Cumulative"** (grows from the start; the old Cumulative node) or
   **"Last N"** (slides; the old Rolling, showing the Window size input only in that
   mode). Vocabulary unified on ONE concept — an aggregate per element over its window —
   so the op set is the union across both modes: sum/avg/min/max/median/product/stdev,
-  labeled "Running SUM" etc.
+  labeled bare (SUM, AVERAGE, ...): the card title carries the family word, and the
+  formula names re-attach it (RUNNING + despaced op label).
 - **Semantics unified on the per-window reducer policy** (null skipped, all-null window
   0 for sum else null, error poisons the windows containing it). Two deliberate edge
   changes from old Cumulative: a leading-null prefix now answers 0 for sum (was null),

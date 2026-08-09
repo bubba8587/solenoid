@@ -1032,18 +1032,21 @@ export class ConcatListsNode extends ClassicPreset.Node {
 export type { RunningOp } from "./listOps";
 export type RunningMode = "all" | "window";
 
+// `fx` re-attaches the family word the bare dropdown label drops: the card's
+// title says Running, so the ops read SUM / AVERAGE / ..., but the formula
+// names stay RUNNING*.
 export const RUNNING_OP_META = {
-  sum:     { label: "Running SUM",     description: "The running total: each element is the sum of its window." },
-  avg:     { label: "Running AVERAGE", description: "The moving average: each element is the mean of its window." },
-  min:     { label: "Running MIN",     description: "Smallest value in each window." },
-  max:     { label: "Running MAX",     description: "Largest value in each window." },
-  median:  { label: "Running MEDIAN",  description: "Middle value of each window." },
-  product: { label: "Running PRODUCT", description: "Product of each window." },
-  stdev:   { label: "Running STDEV",   description: "Sample standard deviation of each window; divides by n−1." },
-} satisfies Record<RunningOp, { label: string; description: string }>;
+  sum:     { label: "SUM",     fx: "RUNNINGSUM",     description: "The running total: each element is the sum of its window." },
+  avg:     { label: "AVERAGE", fx: "RUNNINGAVERAGE", description: "The moving average: each element is the mean of its window." },
+  min:     { label: "MIN",     fx: "RUNNINGMIN",     description: "Smallest value in each window." },
+  max:     { label: "MAX",     fx: "RUNNINGMAX",     description: "Largest value in each window." },
+  median:  { label: "MEDIAN",  fx: "RUNNINGMEDIAN",  description: "Middle value of each window." },
+  product: { label: "PRODUCT", fx: "RUNNINGPRODUCT", description: "Product of each window." },
+  stdev:   { label: "STDEV",   fx: "RUNNINGSTDEV",   description: "Sample standard deviation of each window; divides by n−1." },
+} satisfies Record<RunningOp, { label: string; fx: string; description: string }>;
 
 export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
-  { value: "all",    label: "All so far", title: "The window grows: every element from the start through this one" },
+  { value: "all",    label: "Cumulative", title: "The window grows: every element from the start through this one" },
   { value: "window", label: "Last N",     title: "The window slides: only the last N elements ending at this one" },
 ];
 
@@ -1067,7 +1070,7 @@ export class RunningNode extends ClassicPreset.Node {
     this.height = this.mode === "window" ? 218 : 190;
   }
 
-  /** The mode owns the Window socket: Last N has it, All so far doesn't. Callers with
+  /** The mode owns the Window socket: Last N has it, Cumulative doesn't. Callers with
    *  a live graph prune the socket's cables BEFORE switching away from Last N. */
   setMode(next: RunningMode): void {
     if (next === this.mode) return;

@@ -29,11 +29,15 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "bessel-besselj": [{ excel: "BESSELJ", syntax: "=BESSELJ(x, n)", parity: false, note: "n must be a non-negative integer" }],
   "bessel-besselk": [{ excel: "BESSELK", syntax: "=BESSELK(x, n)", parity: false, note: "x must be > 0; n must be a non-negative integer" }],
   "bessel-bessely": [{ excel: "BESSELY", syntax: "=BESSELY(x, n)", parity: false, note: "x must be > 0; n must be a non-negative integer" }],
-  "betadist": [{ excel: "BETA.DIST", syntax: "=BETA.DIST(x, α, β, cum)", parity: true }],
-  "betainv": [{ excel: "BETA.INV", syntax: "=BETA.INV(p, α, β)", parity: true }],
-  "binomdist": [{ excel: "BINOM.DIST", syntax: "=BINOM.DIST(k, n, p, cum)", parity: true }],
+  "betadist": [
+    { excel: "BETA.DIST", syntax: "=BETA.DIST(x, α, β, cum)", parity: true },
+    { excel: "BETA.INV", syntax: "=BETA.INV(p, α, β)", parity: true },
+  ],
+  "binomdist": [
+    { excel: "BINOM.DIST", syntax: "=BINOM.DIST(k, n, p, cum)", parity: true },
+    { excel: "BINOM.INV", syntax: "=BINOM.INV(n, p, α)" },
+  ],
   "binomdistrng": [{ excel: "BINOM.DIST.RANGE", syntax: "=BINOM.DIST.RANGE(n, p, lo, hi)" }],
-  "binominv": [{ excel: "BINOM.INV", syntax: "=BINOM.INV(n, p, α)" }],
   "bitwise-bitand": [{ excel: "BITAND", syntax: "=BITAND(a, b)", parity: true }],
   "bitwise-bitlshift": [{ excel: "BITLSHIFT", syntax: "=BITLSHIFT(a, n)", parity: true }],
   "bitwise-bitor": [{ excel: "BITOR", syntax: "=BITOR(a, b)", parity: true }],
@@ -57,8 +61,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "chisqdist": [
     { excel: "CHISQ.DIST", syntax: "=CHISQ.DIST(x, df, cum)", parity: true },
     { excel: "CHISQ.DIST.RT", syntax: "=CHISQ.DIST.RT(x, df)", parity: true },
-  ],
-  "chisqinv": [
     { excel: "CHISQ.INV", syntax: "=CHISQ.INV(p, df)", parity: true },
     { excel: "CHISQ.INV.RT", syntax: "=CHISQ.INV.RT(p, df)", parity: true },
   ],
@@ -164,8 +166,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "fdist": [
     { excel: "F.DIST", syntax: "=F.DIST(x, d1, d2, cum)", parity: true },
     { excel: "F.DIST.RT", syntax: "=F.DIST.RT(x, d1, d2)", parity: true },
-  ],
-  "finv": [
     { excel: "F.INV", syntax: "=F.INV(p, d1, d2)", parity: true },
     { excel: "F.INV.RT", syntax: "=F.INV.RT(p, d1, d2)", parity: true },
   ],
@@ -174,8 +174,10 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "forecast": [{ excel: "FORECAST.LINEAR", syntax: "=FORECAST.LINEAR(x, ys, xs)", parity: true }],
   "frequency": [{ excel: "FREQUENCY", syntax: "=FREQUENCY(data, bins)", parity: true }],
   "fvschedule": [{ excel: "FVSCHEDULE", syntax: "=FVSCHEDULE(pv, schedule)" }],
-  "gammadist": [{ excel: "GAMMA.DIST", syntax: "=GAMMA.DIST(x, α, β, cum)", parity: true }],
-  "gammainv": [{ excel: "GAMMA.INV", syntax: "=GAMMA.INV(p, α, β)", parity: true }],
+  "gammadist": [
+    { excel: "GAMMA.DIST", syntax: "=GAMMA.DIST(x, α, β, cum)", parity: true },
+    { excel: "GAMMA.INV", syntax: "=GAMMA.INV(p, α, β)", parity: true },
+  ],
   "gcd-lcm": [
     { excel: "GCD", syntax: "=GCD(a, b)", parity: true },
     { excel: "LCM", syntax: "=LCM(a, b)", parity: true },
@@ -235,8 +237,10 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "not": [{ excel: "NOT", syntax: "=NOT(a)", parity: true }],
   "bool-or": [{ excel: "OR", syntax: "=OR(a, b, ...)", parity: true }],
   "bool-xor": [{ excel: "XOR", syntax: "=XOR(a, b, ...)", parity: true }],
-  "lognormdist": [{ excel: "LOGNORM.DIST", syntax: "=LOGNORM.DIST(x, μ, σ, cum)" }],
-  "lognorminv": [{ excel: "LOGNORM.INV", syntax: "=LOGNORM.INV(p, μ, σ)" }],
+  "lognormdist": [
+    { excel: "LOGNORM.DIST", syntax: "=LOGNORM.DIST(x, μ, σ, cum)" },
+    { excel: "LOGNORM.INV", syntax: "=LOGNORM.INV(p, μ, σ)" },
+  ],
   "lookup-xlookup": [{ excel: "XLOOKUP", syntax: "=XLOOKUP(x, lookup, return)", parity: true }],
   "lookup-xmatch": [{ excel: "XMATCH", syntax: "=XMATCH(x, array, mode)", parity: false, note: "Modes 0 (exact), 1 (next larger), -1 (next smaller) supported; wildcard mode not supported" }],
   "make-array": [{ excel: "MAKEARRAY", syntax: "=MAKEARRAY(rows, cols, LAMBDA(row, col, ...))", parity: false, note: "MAKEARRAY node builds a grid from its own formula of (row, col), or a wired LAMBDA value" }],
@@ -310,10 +314,14 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "multinomial": [{ excel: "MULTINOMIAL", syntax: "=MULTINOMIAL(n1, n2, ...)", parity: true }],
   "na": [{ excel: "NA", syntax: "=NA()", parity: true }],
   "negbinomdist": [{ excel: "NEGBINOM.DIST", syntax: "=NEGBINOM.DIST(k, r, p, cum)" }],
-  "normdist": [{ excel: "NORM.DIST", syntax: "=NORM.DIST(x, μ, σ, cum)", parity: true }],
-  "norminv": [{ excel: "NORM.INV", syntax: "=NORM.INV(p, μ, σ)", parity: true }],
-  "normsdist": [{ excel: "NORM.S.DIST", syntax: "=NORM.S.DIST(z, cum)", parity: true }],
-  "normsinv": [{ excel: "NORM.S.INV", syntax: "=NORM.S.INV(p)", parity: true }],
+  "normdist": [
+    { excel: "NORM.DIST", syntax: "=NORM.DIST(x, μ, σ, cum)", parity: true },
+    { excel: "NORM.INV", syntax: "=NORM.INV(p, μ, σ)", parity: true },
+  ],
+  "normsdist": [
+    { excel: "NORM.S.DIST", syntax: "=NORM.S.DIST(z, cum)", parity: true },
+    { excel: "NORM.S.INV", syntax: "=NORM.S.INV(p)", parity: true },
+  ],
   "npv": [{ excel: "NPV", syntax: "=NPV(rate, v1, v2, ...)", parity: true }],
   "nth-large": [{ excel: "LARGE", syntax: "=LARGE(array, k)", parity: true }],
   "nth-small": [{ excel: "SMALL", syntax: "=SMALL(array, k)", parity: true }],
@@ -441,6 +449,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "T.DIST", syntax: "=T.DIST(x, df, cum)", parity: true },
     { excel: "T.DIST.2T", syntax: "=T.DIST.2T(x, df)", parity: true },
     { excel: "T.DIST.RT", syntax: "=T.DIST.RT(x, df)", parity: true },
+    { excel: "T.INV", syntax: "=T.INV(p, df)", parity: true },
+    { excel: "T.INV.2T", syntax: "=T.INV.2T(p, df)", parity: true },
   ],
   "text-after-before-after": [{ excel: "TEXTAFTER", syntax: "=TEXTAFTER(text, delimiter)", parity: false, note: "First occurrence only; instance_num and match_mode not supported" }],
   "text-after-before-before": [{ excel: "TEXTBEFORE", syntax: "=TEXTBEFORE(text, delimiter)", parity: false, note: "First occurrence only; instance_num and match_mode not supported" }],
@@ -499,10 +509,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-trim": [{ excel: "TRIM", syntax: "=TRIM(text)", parity: false }],
   "text-upper": [{ excel: "UPPER", syntax: "=UPPER(text)", parity: false }],
   "time-value": [{ excel: "TIMEVALUE", syntax: "=TIMEVALUE(time_text)", parity: false, note: "Parses HH:MM:SS format" }],
-  "tinv": [
-    { excel: "T.INV", syntax: "=T.INV(p, df)", parity: true },
-    { excel: "T.INV.2T", syntax: "=T.INV.2T(p, df)", parity: true },
-  ],
   "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, new_xs)", parity: false, note: "Linear only; new_xs required (Excel makes it optional)" }],
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
   "sumifs": [

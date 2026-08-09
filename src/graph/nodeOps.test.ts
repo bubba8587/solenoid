@@ -246,9 +246,9 @@ describe("a generated op row is exactly one op", () => {
 // every form.
 describe("distribution forms are reachable by search without growing the menu", () => {
   const DIST_TYPES = [
-    "betadist", "binomdist", "expodist", "fdist", "finv", "gammadist", "hypgeomdist",
+    "betadist", "binomdist", "expodist", "fdist", "gammadist", "hypgeomdist",
     "lognormdist", "negbinomdist", "normdist", "normsdist", "poissondist", "tdist",
-    "tinv", "chisqdist", "chisqinv", "weibulldist",
+    "chisqdist", "weibulldist",
   ];
   const catalog = buildCatalog(false);
   const leaves = flattenLeaves(catalog);
@@ -305,7 +305,9 @@ describe("distribution forms are reachable by search without growing the menu", 
     // Every family spells the right tail the same way in search, so one query
     // gathers them (the meta labels disagree — "RT" vs "Right-tail" — which is
     // exactly why the declaration overrides them).
-    for (const label of top("right tail", 4)) expect(label).toMatch(/Right-tail \(RT\)/);
+    // Forward and inverse right-tail forms both answer the query; each spells
+    // its own token consistently across families.
+    for (const label of top("right tail", 4)) expect(label).toMatch(/Right-tail \(RT\)|Inverse right-tail \(INV\.RT\)/);
     for (const label of top("PDF", 4)) expect(label).toMatch(/: PDF$/);
   });
 });
