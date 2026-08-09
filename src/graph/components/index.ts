@@ -116,9 +116,7 @@ export { AccrintMComponent } from "./AccrintMNode";
 export { PriceDiscComponent } from "./PriceDiscNode";
 export { PriceMatComponent } from "./PriceMatNode";
 export { DurationComponent } from "./DurationNode";
-export { XnpvComponent } from "./XnpvNode";
 export { BondPriceComponent } from "./BondPriceNode";
-export { XirrComponent } from "./XirrNode";
 export { OddCouponComponent } from "./OddCouponNode";
 
 // ─── Currency formatting ──────────────────────────────────────────────────────
