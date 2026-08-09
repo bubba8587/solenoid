@@ -113,33 +113,45 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   not a census). SequenceNode had been falling through to the math kind; the
   merged SeriesNode gives it the list accent.
 
-### SESSION DIGEST (2026-08-09c — Orchard palette; palettes can author the canvas ground)
-- **Palettes can now recolor the canvas ground** (D35). `BUILTIN_CANVAS` in
-  `palette.ts` maps each palette name to a `CanvasColors` — background + dot grid,
-  per theme mode (`bgDark`/`dotDark`/`bgLight`/`dotLight`). It is PARALLEL to the
-  slot map, not four extra slots: nothing stores a ground on a node and
-  `resolveColor` never returns one, so folding them in would make every slot
-  consumer skip them. `appTheme.apply` writes `--canvas-bg` / `--canvas-dot` from
-  `paletteStore.canvasColors()` and REMOVES them for any key the palette doesn't
-  declare — an inline property beats App.css's ramps, so a skip (rather than a
-  clear) would strand Orchard's cream under Default. A doc pin picks the ground
-  too; doc `overrides` stay slot-only. Report palette unchanged (exports don't
-  draw a canvas).
+### SESSION DIGEST (2026-08-09c — Orchard palette; palettes can author the neutral chrome)
+- **Palettes can now replace the whole neutral ramp** (D35). Started as canvas bg +
+  dots only; the author called it immediately — a cream canvas under blue-gray cards,
+  borders and ink reads as a mistake, so the ground can't move alone. `BUILTIN_CHROME`
+  in `palette.ts` maps each palette to a per-mode `ChromeRamp` of 13 keys (canvas,
+  dots, window, 3 surfaces, 3 borders, 4 inks). PARALLEL to the slot map, not more
+  slots: nothing stores a neutral on a node and `resolveColor` never returns one.
+- **The other ~40 neutral tokens derive** rather than being enumerated. App.css's
+  var() chains carry most (`--btn-bg` → `--surface-sunken`); `chromeCssVars` mixes the
+  literal-valued rest (panel/overlay fills, overlay border, btn hover, gauge track,
+  selected cable, wordmark, light shadows). **The mix steps were calibrated by running
+  the DEFAULT ramp through them and comparing to App.css's hand-tuned literals** —
+  that's how `--overlay-border` and `--gauge-track` got caught overshooting (0.18→0.08
+  and 0.6→0.35). Redo that comparison to retune; don't nudge until one palette looks
+  right. Dark mode deliberately derives no shadows or wordmark (black is right on a
+  dark ground; the wordmark tracks the accent), so those four stay cleared.
+- `appTheme.apply` writes every chrome var from `paletteStore.chrome()[mode]` and
+  REMOVES the ones the palette doesn't produce — an inline property beats App.css's
+  ramps, so a skip (rather than a clear) would strand cream chrome under Default. A
+  partial ramp writes what it has and derives nothing. A doc pin picks the chrome too;
+  doc `overrides` stay slot-only. Report palette unchanged (exports don't draw chrome).
 - **Orchard**, lifted from the Pear design system (`bubba8587/pear` DESIGN.md).
   Seven slots are Pear tokens verbatim (honey-bright/honey, pear-bright/pear-fill,
   blossom-fill, danger, quiet); Pear ships NO cool hue at all, so teal/sky/blue/
   violet/purple are blended into its gaps at its own S/V band — the same technique
-  Solarized already uses for the accents it doesn't ship. All four ground colors
-  are Pear verbatim (dark-bg/dark-border, bg/border). It is the ONLY built-in that
-  authors a ground, pinned by a test so a later palette adds one deliberately.
-- **The custom palette gained the ground too**, surfaced in the editor (the app
-  palette picker still shows colors only). Its ground is always COMPLETE, seeded
-  from `DEFAULT_CANVAS` (a mirror of App.css's two pairs), so a well always has a
-  value to show and picking Custom starts pixel-identical to the neutral ground.
-  Persisted under its own LS key; "Load template" seeds the ground from the
-  template, so loading a groundless one CLEARS an authored ground rather than
-  leaving it behind. The editor's sample now stands on the drafted ground with its
-  dot grid, so the chrome is judged against the canvas it will sit on.
+  Solarized already uses for the accents it doesn't ship. The chrome is Pear's neutral
+  ramps, mapped by ROLE not position: Pear sinks its fields, Solenoid's light theme
+  makes the field the brightest layer (DESIGN.md §2), so Pear white → sunken, surface →
+  surface, surface-sunken → raised. Only built-in that authors chrome; a test pins that
+  AND that it authors all 13 keys in both modes.
+- **The custom palette gained the ramp too**, surfaced in the editor (the app palette
+  picker still shows colors only). Wells edit the LIVE theme's ramp — the two modes
+  can't be judged at once, and the other is carried untouched through Save. Always
+  COMPLETE, seeded from `DEFAULT_CHROME` (a hand-held mirror of App.css, since a test
+  can't read a stylesheet), so picking Custom starts pixel-identical. Own LS key;
+  "Load template" reseeds the ramp, so loading a chromeless one CLEARS authored chrome.
+  The editor's sample scopes the drafted vars as inline custom properties on its own
+  wrapper, so the real node/group/note CSS inside resolves against the DRAFT while the
+  modal around it keeps the live theme.
 
 ### SESSION DIGEST (2026-08-09b — ONE Distribution node; Running vocabulary pass)
 - **ALL distributions are now ONE node** (author call, D34; an intermediate commit

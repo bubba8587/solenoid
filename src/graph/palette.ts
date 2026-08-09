@@ -6,6 +6,8 @@ function parseHex(hex: string): [number, number, number] | null {
   return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
 }
 
+const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
+
 function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -316,45 +318,186 @@ export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> 
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
 
-// ── The canvas ground a palette may author ────────────────────────────────────
-// The graph background and its dot grid, per theme mode. These are NOT palette
-// slots: nothing stores them on a node and resolveColor never returns one — they
-// go straight to --canvas-bg / --canvas-dot, which appTheme writes on every apply.
-// That's also why they're a PARALLEL map rather than four more entries in the slot
-// record: the slot record is the accent vocabulary a card can point at, and adding
-// per-mode ground colors to it would make every slot consumer (chart series, the
-// swatch grid, the height ramp, doc overrides) have to skip them.
+// ── The chrome ramp a palette may author ──────────────────────────────────────
+// The canvas ground plus the neutral workbench around it — surfaces, borders, ink —
+// per theme mode. These are NOT palette slots: nothing stores one on a node and
+// resolveColor never returns one. They go straight to the App.css neutral tokens,
+// which appTheme writes on every apply. That's also why they're a PARALLEL map
+// rather than more entries in the slot record: the slot record is the accent
+// vocabulary a card can point at, and per-mode neutrals in it would make every slot
+// consumer (chart series, the swatch grid, the height ramp, doc overrides) skip them.
 //
-// A palette declaring NOTHING here keeps App.css's neutral ground — appTheme removes
-// the inline property for every key it isn't given, so the cascade answers instead of
-// the last palette's value sticking. Only Orchard declares one today, deliberately:
-// every other palette recolors the graph and leaves the workbench alone.
-export type CanvasKey = "bgDark" | "dotDark" | "bgLight" | "dotLight";
-export const CANVAS_KEYS: CanvasKey[] = ["bgDark", "dotDark", "bgLight", "dotLight"];
-export type CanvasColors = Partial<Record<CanvasKey, string>>;
+// A palette declaring NOTHING here keeps App.css's neutral ramps — appTheme removes
+// the inline property for every var it isn't given, so the cascade answers instead of
+// the last palette's value sticking. Authoring a ramp is opt-in and rare: recoloring
+// the graph is what a palette does, recoloring the workbench is a separate claim, and
+// only Orchard makes it (D35).
+//
+// The 13 keys are the ones a warm palette actually has to move. The rest of the neutral
+// chrome DERIVES from them (see chromeCssVars) — either through App.css's own var()
+// chains (--btn-bg → --surface-sunken, --panel-border → --border) or through the mixes
+// below, so an author tunes one ramp instead of forty tokens.
+export type ChromeKey =
+  | "appBg" | "canvasBg" | "canvasDot"
+  | "surface" | "surfaceSunken" | "surfaceRaised"
+  | "border" | "borderStrong" | "borderSubtle"
+  | "text" | "textBright" | "textDim" | "textMuted";
+export type ChromeRamp = Partial<Record<ChromeKey, string>>;
+export type PaletteChrome = { dark: ChromeRamp; light: ChromeRamp };
 
-/** The neutral ground, mirroring App.css's --canvas-bg / --canvas-dot in both
- *  ramps. Not written to the DOM (the stylesheet already carries it) — it's the
- *  seed the custom-palette editor's canvas wells start from, so an author edits
- *  away from what they can see rather than from an empty well. */
-export const DEFAULT_CANVAS: Record<CanvasKey, string> = {
-  bgDark: "#0e0e0e", dotDark: "#2a2a2a",
-  bgLight: "#eef1f5", dotLight: "#d3d9e1",
+export const CHROME_VARS: { var: string; key: ChromeKey }[] = [
+  { var: "--app-bg",          key: "appBg" },
+  { var: "--canvas-bg",       key: "canvasBg" },
+  { var: "--canvas-dot",      key: "canvasDot" },
+  { var: "--surface",         key: "surface" },
+  { var: "--surface-sunken",  key: "surfaceSunken" },
+  { var: "--surface-raised",  key: "surfaceRaised" },
+  { var: "--border",          key: "border" },
+  { var: "--border-strong",   key: "borderStrong" },
+  { var: "--border-subtle",   key: "borderSubtle" },
+  { var: "--text",            key: "text" },
+  { var: "--text-bright",     key: "textBright" },
+  { var: "--text-dim",        key: "textDim" },
+  { var: "--text-muted",      key: "textMuted" },
+];
+export const CHROME_KEYS: ChromeKey[] = CHROME_VARS.map((v) => v.key);
+
+/** The neutral ramps, mirroring App.css's two `:root` blocks. Not written to the DOM
+ *  (the stylesheet already carries them) — this is the seed the custom-palette
+ *  editor's chrome wells start from, so an author edits away from what they can see
+ *  rather than from an empty well. Keep in sync with App.css; `chrome.test.ts` can't
+ *  read a stylesheet, so this pair is a hand-held mirror. */
+export const DEFAULT_CHROME: { dark: Record<ChromeKey, string>; light: Record<ChromeKey, string> } = {
+  dark: {
+    appBg: "#141414", canvasBg: "#0e0e0e", canvasDot: "#2a2a2a",
+    surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
+    border: "#2d2d2d", borderStrong: "#3a3a3a", borderSubtle: "#2a2a2a",
+    text: "#e8e8e8", textBright: "#f3f4f5", textDim: "#9aa0a6", textMuted: "#80868e",
+  },
+  light: {
+    appBg: "#f4f5f7", canvasBg: "#eef1f5", canvasDot: "#d3d9e1",
+    surface: "#fbfcfd", surfaceSunken: "#ffffff", surfaceRaised: "#eef1f5",
+    border: "#ccd2da", borderStrong: "#b2bac4", borderSubtle: "#dfe3e9",
+    text: "#1b1e23", textBright: "#0d0f12", textDim: "#5b636b", textMuted: "#6a717b",
+  },
 };
 
-// Orchard's four are Pear tokens verbatim: dark-bg / dark-border and bg / border.
-// Pear's `border` (not `border-strong`) is the light dot — its contrast against the
-// cream ground lands in the same range as the default pair's.
-export const BUILTIN_CANVAS: Record<PaletteName, CanvasColors> = {
-  "Default": {},
-  "Muted": {},
-  "Colorblind-safe": {},
-  "Solarized": {},
-  "Equinox": {},
-  "Orchard": { bgDark: "#141309", dotDark: "#363320", bgLight: "#f4efe3", dotLight: "#e2dac6" },
+// Orchard's ramp is Pear's neutrals, mapped onto Solenoid's roles rather than copied
+// position-for-position — the two systems disagree about one thing. Pear sinks its
+// fields (a sunken fill on a card); Solenoid's light theme makes the FIELD the
+// brightest layer so a number box reads as a familiar input (DESIGN.md §2). So in
+// light: Pear white → sunken, Pear surface → surface, Pear surface-sunken → raised.
+// Where Pear ships no token (surfaceRaised/borderSubtle/textBright in dark, borderStrong
+// in light) the value is a step off the nearest Pear one, held in its band.
+const ORCHARD_CHROME: PaletteChrome = {
+  dark: {
+    appBg: "#17160c",         // dark-surface-sunken (the frame, a step off the canvas)
+    canvasBg: "#141309",      // dark-bg
+    canvasDot: "#363320",     // dark-border
+    surface: "#1f1d12",       // dark-surface
+    surfaceSunken: "#17160c", // dark-surface-sunken
+    surfaceRaised: "#2a2718", // (a step up from surface)
+    border: "#363320",        // dark-border
+    borderStrong: "#4c472c",  // dark-border-strong
+    borderSubtle: "#2b2818",  // (between surface and border)
+    text: "#f0ead8",          // dark-text
+    textBright: "#fdf8ea",    // (a step brighter than text)
+    textDim: "#aaa287",       // dark-text-dim
+    textMuted: "#857d63",     // dark-text-muted
+  },
+  light: {
+    appBg: "#ede7d7",         // surface-sunken (a deeper cream behind the canvas)
+    canvasBg: "#f4efe3",      // bg — the warm cream ground
+    canvasDot: "#e2dac6",     // border
+    surface: "#fffdf7",       // surface
+    surfaceSunken: "#ffffff", // white — the field stays the brightest layer
+    surfaceRaised: "#ede7d7", // surface-sunken (hover/selected fill inside chrome)
+    border: "#cdc3a7",        // border-strong
+    borderStrong: "#b8ab87",  // (a step darker — Pear's ramp stops one short)
+    borderSubtle: "#e2dac6",  // border
+    text: "#2b2517",          // text
+    textBright: "#191308",    // (a step darker than text)
+    textDim: "#6d6450",       // text-dim
+    textMuted: "#8b8269",     // text-muted
+  },
 };
 
-const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
+const NO_CHROME: PaletteChrome = { dark: {}, light: {} };
+export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
+  "Default": NO_CHROME,
+  "Muted": NO_CHROME,
+  "Colorblind-safe": NO_CHROME,
+  "Solarized": NO_CHROME,
+  "Equinox": NO_CHROME,
+  "Orchard": ORCHARD_CHROME,
+};
+
+// ── Chrome derivation ─────────────────────────────────────────────────────────
+// The neutral tokens App.css spells as literals rather than var() chains, rebuilt
+// from the authored ramp. Every one is a mix between two ramp colors at a fixed
+// step, so a palette moves 13 values and the whole workbench follows. Listed
+// separately because appTheme must CLEAR them, not just skip them, when a palette
+// authors no ramp.
+//
+// The mix steps are calibrated by running the DEFAULT ramp through them and comparing
+// against App.css's own hand-tuned literals — a step that reproduces those within a
+// shade or two also behaves on a ramp nobody has eyeballed. Retune a step by redoing
+// that comparison, not by nudging until one palette looks right.
+export const DERIVED_CHROME_VARS = [
+  "--panel-bg", "--overlay-bg", "--overlay-border", "--btn-hover",
+  "--gauge-track", "--cable-selected", "--wordmark-color",
+  "--shadow-card", "--shadow-pop", "--overlay-shadow",
+] as const;
+
+/** Linear sRGB-space blend: t=0 is `a`, t=1 is `b`. */
+function mixHex(a: string, b: string, t: number): string {
+  const x = parseHex(a), y = parseHex(b);
+  if (!x || !y) return a;
+  const to = (i: number) => Math.round(x[i] + (y[i] - x[i]) * t).toString(16).padStart(2, "0");
+  return `#${to(0)}${to(1)}${to(2)}`;
+}
+
+/**
+ * The full var→value map an authored ramp produces: the 13 tokens themselves plus
+ * the derived ones. Empty for an unauthored ramp, which is how appTheme knows to
+ * clear every chrome var and let App.css answer.
+ */
+export function chromeCssVars(ramp: ChromeRamp, mode: "dark" | "light"): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const { var: name, key } of CHROME_VARS) {
+    const v = ramp[key];
+    if (isHex(v)) out[name] = v;
+  }
+  const { surface, surfaceSunken, borderStrong, text, textBright, textMuted } = ramp;
+  if (!isHex(surface) || !isHex(text)) return out; // a partial ramp derives nothing
+  // Panels and floating overlays are the surface at near-opacity — the overlay reads
+  // above a busy graph, so it sits a step more opaque than a panel.
+  out["--panel-bg"] = hexToRgba(surface, 0.92);
+  out["--overlay-bg"] = hexToRgba(surface, 0.97);
+  // Overlay chrome is defined by its border rather than floated by a big shadow, so
+  // its edge steps past --border-strong toward the ink.
+  if (isHex(borderStrong)) out["--overlay-border"] = mixHex(borderStrong, text, 0.08);
+  // A button's hover lift is its own sunken fill nudged toward the ink — the same
+  // step in both modes, since "toward the ink" already flips direction with the theme.
+  if (isHex(surfaceSunken)) out["--btn-hover"] = mixHex(surfaceSunken, text, 0.08);
+  // The gauge's unfilled arc must clear the card body: a step stronger than a border,
+  // short of a muted label.
+  if (isHex(borderStrong) && isHex(textMuted)) out["--gauge-track"] = mixHex(borderStrong, textMuted, 0.35);
+  // The selected cable takes the ink's contrast pole so it pops off the graph.
+  out["--cable-selected"] = mode === "dark" ? (isHex(textBright) ? textBright : text) : text;
+  // Dark mode tints the wordmark with the live accent (App.css) — leave that alone;
+  // light mode's dark neutral becomes the ramp's ink.
+  if (mode === "light") {
+    out["--wordmark-color"] = text;
+    // Shadows tint from the ink rather than a fixed blue-black, so a warm ramp casts
+    // a warm shadow. Dark mode keeps App.css's black: on a dark ground the shadow is
+    // absence of light, not a hue.
+    out["--shadow-card"] = `0 1px 2px ${hexToRgba(text, 0.1)}`;
+    out["--shadow-pop"] = `0 4px 14px ${hexToRgba(text, 0.12)}`;
+    out["--overlay-shadow"] = `0 4px 14px ${hexToRgba(text, 0.16)}, 0 1px 4px ${hexToRgba(text, 0.1)}`;
+  }
+  return out;
+}
 
 // ── Active palette state ──────────────────────────────────────────────────────
 // Effective = BUILTIN[docBase ?? appBase] + the open doc's per-slot overrides, so
@@ -364,27 +507,27 @@ export type PaletteChoice = PaletteName | "Custom";
 
 const LS_KEY = "solenoid.palette";
 const LS_CUSTOM_KEY = "solenoid.palette.custom";
-const LS_CUSTOM_CANVAS_KEY = "solenoid.palette.custom.canvas";
+const LS_CUSTOM_CHROME_KEY = "solenoid.palette.custom.chrome";
 let _appBase: PaletteChoice = "Default";
 let _customMap: Record<PaletteSlot, string> = { ...PALETTE };
-// The custom palette's ground is always COMPLETE (seeded from DEFAULT_CANVAS), unlike
+// The custom palette's chrome is always COMPLETE (seeded from DEFAULT_CHROME), unlike
 // a built-in's, which declares only what it means to override. So picking Custom always
-// pins a ground — one that starts pixel-identical to App.css's, and that the editor can
+// pins a ramp — one that starts pixel-identical to App.css's, and that the editor can
 // show in a well.
-let _customCanvas: Record<CanvasKey, string> = { ...DEFAULT_CANVAS };
+let _customChrome: PaletteChrome = { dark: { ...DEFAULT_CHROME.dark }, light: { ...DEFAULT_CHROME.light } };
 let _docBase: PaletteName | null = null;
 let _docOverrides: Partial<Record<PaletteSlot, string>> = {};
 let _effective: Record<PaletteSlot, string> = { ...PALETTE };
-let _effectiveCanvas: CanvasColors = {};
+let _effectiveChrome: PaletteChrome = NO_CHROME;
 
 /** The slot→hex map for a base choice (Custom resolves to the user map). */
 function baseMapFor(choice: PaletteChoice): Record<PaletteSlot, string> {
   return choice === "Custom" ? _customMap : (BUILTIN_PALETTES[choice] ?? BUILTIN_PALETTES.Default);
 }
 
-/** The canvas ground for a base choice — `{}` when that palette declares none. */
-function baseCanvasFor(choice: PaletteChoice): CanvasColors {
-  return choice === "Custom" ? _customCanvas : (BUILTIN_CANVAS[choice] ?? {});
+/** The chrome ramp for a base choice — empty when that palette authors none. */
+function baseChromeFor(choice: PaletteChoice): PaletteChrome {
+  return choice === "Custom" ? _customChrome : (BUILTIN_CHROME[choice] ?? NO_CHROME);
 }
 
 // REPORT/EXPORT-only override — a PARALLEL map, deliberately separate from
@@ -401,9 +544,9 @@ const { notify: notifyReportPalette, subscribe: subscribeReportPalette, version:
 function recompute() {
   const base = _docBase ? (BUILTIN_PALETTES[_docBase] ?? BUILTIN_PALETTES.Default) : baseMapFor(_appBase);
   _effective = { ...base, ..._docOverrides };
-  // A doc pin picks the ground too — the whole point of pinning is that the doc
-  // looks the same wherever it's opened. Doc `overrides` stay slot-only.
-  _effectiveCanvas = _docBase ? (BUILTIN_CANVAS[_docBase] ?? {}) : baseCanvasFor(_appBase);
+  // A doc pin picks the chrome too — the whole point of pinning is that the doc looks
+  // the same wherever it's opened. Doc `overrides` stay slot-only.
+  _effectiveChrome = _docBase ? (BUILTIN_CHROME[_docBase] ?? NO_CHROME) : baseChromeFor(_appBase);
   bakeInks(_effective);
 }
 
@@ -418,8 +561,24 @@ function persist() {
 function persistCustom() {
   try {
     localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(_customMap));
-    localStorage.setItem(LS_CUSTOM_CANVAS_KEY, JSON.stringify(_customCanvas));
+    localStorage.setItem(LS_CUSTOM_CHROME_KEY, JSON.stringify(_customChrome));
   } catch { /* private mode / quota */ }
+}
+
+/** A complete ramp: `base` with every valid hex in `patch` laid over it. */
+function mergeChrome(base: ChromeRamp, patch: ChromeRamp | undefined): ChromeRamp {
+  const out: ChromeRamp = { ...base };
+  for (const key of CHROME_KEYS) {
+    if (isHex(patch?.[key])) out[key] = patch[key];
+  }
+  return out;
+}
+
+/** The custom palette's ramp when seeded from a template — the neutral ramps under
+ *  whatever that template authors, so a groundless template lands back on neutral. */
+function chromeFromTemplate(name: PaletteName): PaletteChrome {
+  const t = BUILTIN_CHROME[name] ?? NO_CHROME;
+  return { dark: mergeChrome(DEFAULT_CHROME.dark, t.dark), light: mergeChrome(DEFAULT_CHROME.light, t.light) };
 }
 
 // Recompute + notify both palettes after a custom-map edit, but only when it's
@@ -452,13 +611,13 @@ export const paletteStore = {
     notifyPalette();
     notifyReportPalette();
   },
-  /** The active palette's canvas ground — `{}` when it authors none, in which case
-   *  appTheme clears the vars and App.css's neutral ground answers. */
-  canvasColors: (): CanvasColors => ({ ..._effectiveCanvas }),
+  /** The active palette's chrome ramp — empty when it authors none, in which case
+   *  appTheme clears the vars and App.css's neutral ramps answer. */
+  chrome: (): PaletteChrome => ({ dark: { ..._effectiveChrome.dark }, light: { ..._effectiveChrome.light } }),
   /** The user's editable custom palette (F-1) — a full slot→hex map. */
   customMap: (): Record<PaletteSlot, string> => ({ ..._customMap }),
-  /** The custom palette's canvas ground — always complete (see _customCanvas). */
-  customCanvas: (): Record<CanvasKey, string> => ({ ..._customCanvas }),
+  /** The custom palette's chrome ramp — always complete (see _customChrome). */
+  customChrome: (): PaletteChrome => ({ dark: { ..._customChrome.dark }, light: { ..._customChrome.light } }),
   /** Edit one slot of the custom palette; retints live when Custom is the active base. */
   setCustomSlot(slot: PaletteSlot, hex: string) {
     if (!isPaletteSlot(slot) || !isHex(hex) || _customMap[slot] === hex) return;
@@ -466,29 +625,27 @@ export const paletteStore = {
     afterCustomEdit();
   },
   /** Seed the custom palette from a built-in template (the editor's "Load template").
-   *  A template that authors no ground seeds the neutral one, so loading it CLEARS a
-   *  previously-authored custom ground rather than leaving the old one behind. */
+   *  A template that authors no chrome seeds the neutral ramps, so loading it CLEARS a
+   *  previously-authored custom chrome rather than leaving the old one behind. */
   loadCustomTemplate(name: PaletteName) {
     if (!(name in BUILTIN_PALETTES)) return;
     _customMap = { ...BUILTIN_PALETTES[name] };
-    _customCanvas = { ...DEFAULT_CANVAS, ...BUILTIN_CANVAS[name] };
+    _customChrome = chromeFromTemplate(name);
     afterCustomEdit();
   },
   /** Commit a whole custom map at once (the editor's Save — draft edits apply here
    *  in one go, so the app retints once instead of live on every drag tick). */
-  setCustomMap(map: Record<PaletteSlot, string>, canvas?: CanvasColors) {
+  setCustomMap(map: Record<PaletteSlot, string>, chrome?: PaletteChrome) {
     const next: Record<PaletteSlot, string> = { ..._customMap };
     for (const slot of COLOR_PALETTE) {
       if (isHex(map[slot])) next[slot] = map[slot];
     }
     _customMap = next;
-    if (canvas) {
-      const nextCanvas: Record<CanvasKey, string> = { ..._customCanvas };
-      for (const key of CANVAS_KEYS) {
-        const v = canvas[key];
-        if (isHex(v)) nextCanvas[key] = v;
-      }
-      _customCanvas = nextCanvas;
+    if (chrome) {
+      _customChrome = {
+        dark: mergeChrome(_customChrome.dark, chrome.dark),
+        light: mergeChrome(_customChrome.light, chrome.light),
+      };
     }
     afterCustomEdit();
   },
@@ -566,16 +723,15 @@ export function initPalette() {
     }
   } catch { /* ignore malformed custom map */ }
   try {
-    const raw = localStorage.getItem(LS_CUSTOM_CANVAS_KEY);
+    const raw = localStorage.getItem(LS_CUSTOM_CHROME_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const c: Record<CanvasKey, string> = { ...DEFAULT_CANVAS };
-      for (const key of CANVAS_KEYS) {
-        if (isHex(parsed?.[key])) c[key] = parsed[key];
-      }
-      _customCanvas = c;
+      const parsed = JSON.parse(raw) as Partial<PaletteChrome>;
+      _customChrome = {
+        dark: mergeChrome(DEFAULT_CHROME.dark, parsed?.dark),
+        light: mergeChrome(DEFAULT_CHROME.light, parsed?.light),
+      };
     }
-  } catch { /* ignore malformed custom ground */ }
+  } catch { /* ignore malformed custom chrome */ }
   try {
     const v = localStorage.getItem(LS_KEY);
     if (v === "Custom" || (v && v in BUILTIN_PALETTES)) _appBase = v as PaletteChoice;
