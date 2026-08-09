@@ -298,21 +298,30 @@ apply, since an inline property beats the stylesheet and a stale one would stran
 chrome under Default. The custom palette's ramp is always complete (seeded from
 `DEFAULT_CHROME`, a hand-held mirror of App.css), so the editor can show it in a well.
 
-**A ramp may recolor the workbench but not renege on its structure.** The rules
-DESIGN.md §2 already states are machine-checked over every ramp INCLUDING the App.css
-baseline (a rule Default fails is a wrong rule, not a failing palette): canvas darker
-than card; dot legible on canvas without shouting; the field brightest in light and a
-recess in dark; hover fill stepping toward the ink; three border tiers stepping outward;
-four ink tiers stepping down in contrast; every ink tier clearing WCAG AA 4.5:1 on the
-card and the field. That bar is what "appropriate chrome" means here, and it has already
-paid: it caught Orchard's muted ink at 4.11/3.76 on its own card, and it is why
-Solarized's card is base03 rather than base02 (on base02 the whole base ladder falls
-under 4.5 and no arrangement of the eight tones fits four tiers). Where a source system
-disagrees with the bar, accessibility wins and the divergence is commented at the value.
+**A ramp may recolor the workbench but not renege on its STRUCTURE.** These hold for
+every ramp, the App.css baseline included (a rule Default fails is a wrong rule, not a
+failing palette): canvas darker than card; dot legible on canvas without shouting; the
+field brightest in light and a recess in dark; hover fill stepping toward the ink; three
+border tiers stepping outward; four ink tiers stepping down in contrast. They are the
+grammar of the ramp, not a taste, and they are what makes a swapped ramp still drive
+`chromeCssVars`'s derivations sensibly.
+
+**CONTRAST is scoped to two palettes: `Default` and `Colorblind-safe`** (2026-08-09;
+this narrows the same decision's original all-palettes rule). Those two carry the AA
+promise — Default because it is the experience nobody chose, Colorblind-safe because
+legibility IS its brief — and their ink tiers must clear WCAG AA 4.5:1 on the card and
+the field. The rest are aesthetic opt-ins whose whole value is fidelity to a look, and a
+palette lifted from a low-contrast source must be allowed to BE low-contrast: Solarized
+sits near 3:1 by design, and forcing AA meant a card on base02→base03 and an invented
+muted tier, i.e. shipping something that was no longer Solarized. Fidelity wins there;
+a reader who needs contrast has two palettes that guarantee it. Structure still applies
+to all — an unordered ink ramp is a mistake in any palette, at any contrast.
 **Where:** `palette.ts` (`BUILTIN_CHROME` / `DEFAULT_CHROME` / `chromeCssVars`),
 `appTheme.ts` `apply`, `PaletteEditor.tsx`, `palette.test.ts` §§ chrome ramp, chrome
-ramp structure, chromeCssVars. **Reopen if:** chrome outgrows flat colors (a texture, a
-vignette, a per-doc ramp) — that wants its own model, not more keys.
+ramp structure, chromeCssVars (`AA_PALETTES` is the scope). **Reopen if:** chrome
+outgrows flat colors (a texture, a vignette, a per-doc ramp) — that wants its own model,
+not more keys. On the contrast scope: if a palette other than these two ever becomes a
+default for anyone, it joins `AA_PALETTES` that day.
 
 ### D36 — Node-combining round 1: eight approved merges landed
 The author approved a batch of D33/D34-style merges (2026-08-09) and they all

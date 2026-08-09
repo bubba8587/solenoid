@@ -208,7 +208,7 @@ function isPaletteSlot(s: string): s is PaletteSlot {
 }
 
 // ── Built-in palettes (the app switcher picks among these) ────────────────────
-export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard";
+export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard" | "Blueprint";
 
 // Default hues at ~0.62 of their saturation, lightness nudged toward mid.
 const MUTED: Record<PaletteSlot, string> = {
@@ -307,6 +307,27 @@ const ORCHARD: Record<PaletteSlot, string> = {
   purple:    "#9b5f95",        // logic    (muted orchid — clear of both violet and blossom)
 };
 
+// Blueprint: a cyanotype drafting table. The reason it fits Solenoid rather than being
+// a skin — the canvas already draws a 24px dot grid, and on a prussian ground that grid
+// stops being decoration and reads as what it has always looked like, drafting paper.
+// The slots are colored pencils on that paper: chalky, mid-value pigments that hold up
+// both on deep blue and on the whiteprint light mode. No blue-on-blue for the cold
+// slots — `blue` and `sky` stay clearly separated from the ground by value.
+const BLUEPRINT: Record<PaletteSlot, string> = {
+  gold:      "#e8b84b", // number
+  amber:     "#e08a4f", // input
+  lime:      "#b9d05a", // string
+  green:     "#5fc08a", // lambda
+  teal:      "#4fbcb4", // convert
+  sky:       "#7fc6e8", // complex  (the blueprint's own hue, pulled pale)
+  blue:      "#4f8fd0", // math
+  violet:    "#8a8fe0", // frame
+  purple:    "#b18ede", // logic
+  pink:      "#e58fa8", // date
+  vermilion: "#e2604f", // error
+  gray:      "#9aa8bd", // any      (a blue-tinted neutral, at home on the ground)
+};
+
 export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> = {
   "Default": { ...PALETTE },
   "Muted": MUTED,
@@ -314,6 +335,7 @@ export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> 
   "Solarized": SOLARIZED,
   "Equinox": EQUINOX,
   "Orchard": ORCHARD,
+  "Blueprint": BLUEPRINT,
 };
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
@@ -403,7 +425,7 @@ const ORCHARD_CHROME: PaletteChrome = {
     text: "#f0ead8",          // dark-text
     textBright: "#fdf8ea",    // (a step brighter than text)
     textDim: "#aaa287",       // dark-text-dim
-    textMuted: "#968d70",     // (dark-text-muted lightened to clear AA on the card)
+    textMuted: "#857d63",     // dark-text-muted
   },
   light: {
     appBg: "#ede7d7",         // surface-sunken (a deeper cream behind the canvas)
@@ -418,7 +440,7 @@ const ORCHARD_CHROME: PaletteChrome = {
     text: "#2b2517",          // text
     textBright: "#191308",    // (a step darker than text)
     textDim: "#6d6450",       // text-dim
-    textMuted: "#7a7157",     // (text-muted darkened to clear AA on the card)
+    textMuted: "#8b8269",     // text-muted
   },
 };
 
@@ -461,41 +483,42 @@ const CVD_CHROME: PaletteChrome = {
 
 // Solarized ships a base ramp as famous as its accents (base03…base3, a fixed
 // lightness ladder on one blue-green ground), and until now the palette used only
-// half the system. This is that ladder, verbatim where a base tone maps onto a role.
-// Border tiers are blends up the base02→base01 gap, which Solarized leaves open.
+// half the system. This is that ladder in its canonical role assignment: background,
+// background highlight, then the content tones in Solarized's own order. Border tiers
+// are blends up the base02→base01 gap, the one place Solarized leaves open.
 //
-// ONE deliberate divergence: Solarized's own body pairings sit near 3:1, and
-// Solenoid's ink ramp clears WCAG AA 4.5:1 on the card (DESIGN.md §2). So the light
-// ink ladder runs a notch darker than Solarized would — base02/base01/base00 rather
-// than base01/base00/base0 — and the muted tier is a darkened base00. The hues are
-// Solarized's; the contrast is Solenoid's, and accessibility wins that tie.
+// Solarized's body pairings sit near 3:1 — that low contrast IS the design, and D35
+// scopes the AA requirement to Default and Colorblind-safe precisely so a lifted
+// system can be itself here. Do not "fix" these tones upward; a Solarized that clears
+// 4.5:1 everywhere is a different palette wearing the name.
 const BASE = {
   b03: "#002b36", b02: "#073642", b01: "#586e75", b00: "#657b83",
   b0: "#839496", b1: "#93a1a1", b2: "#eee8d5", b3: "#fdf6e3",
 } as const;
 const SOLARIZED_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#00242e",
-    canvasBg: "#001e26",      // (base03 deepened — the canvas sits below the card and
-                              //  Solarized ships nothing under base03)
-    canvasDot: BASE.b02,
-    surface: BASE.b03,        // the card takes base03; base02 becomes its raised fill
-    surfaceSunken: "#00222b",
-    surfaceRaised: BASE.b02,
-    border: "#14495a", borderStrong: "#24596a", borderSubtle: "#0a3944",
-    // Four base tones verbatim, and the reason the CARD is base03: on base02 the whole
-    // ladder falls under 4.5:1 and no arrangement of the eight tones fits four tiers.
-    // On base03 they land 13.9 / 12.3 / 5.6 / 4.8 with nothing invented.
-    text: BASE.b2, textBright: BASE.b3, textDim: BASE.b1, textMuted: BASE.b0,
+    appBg: "#03303b",
+    canvasBg: BASE.b03,       // background
+    canvasDot: BASE.b02,      // background highlight — the grid IS Solarized's own step
+    surface: BASE.b02,        // background highlight — a card
+    surfaceSunken: "#03303b",
+    surfaceRaised: "#113d48",
+    border: "#234a54", borderStrong: "#34555e", borderSubtle: "#17414c",
+    text: BASE.b1,            // emphasized content
+    textBright: BASE.b2,
+    textDim: BASE.b0,         // primary content
+    textMuted: BASE.b00,      // secondary content
   },
   light: {
     appBg: "#e7e2d1", canvasBg: BASE.b2, canvasDot: "#dad4bf",
-    surface: BASE.b3,         // the paper
+    surface: BASE.b3,         // background — the paper
     surfaceSunken: "#fffcf0", // (a hair above base3 — the field stays brightest)
-    surfaceRaised: BASE.b2,
+    surfaceRaised: BASE.b2,   // background highlight
     border: "#d1d1c4", borderStrong: "#c1c5bb", borderSubtle: "#dedbcc",
-    text: BASE.b02, textBright: BASE.b03, textDim: BASE.b01,
-    textMuted: "#5f747c",     // (base00 darkened to clear AA on base3)
+    text: BASE.b01,           // emphasized content
+    textBright: BASE.b02,
+    textDim: BASE.b00,        // primary content
+    textMuted: BASE.b0,       // secondary content
   },
 };
 
@@ -518,6 +541,26 @@ const EQUINOX_CHROME: PaletteChrome = {
   },
 };
 
+// Blueprint's two grounds are the two ways the drawing has always been reproduced:
+// dark is the cyanotype itself (white lines bitten into prussian blue), light is the
+// whiteprint that replaced it (blue linework on cool paper). Both stay COOL end to end
+// — that is what keeps Blueprint and Orchard from being the same idea twice.
+const BLUEPRINT_CHROME: PaletteChrome = {
+  dark: {
+    appBg: "#10273f", canvasBg: "#0d2137",
+    canvasDot: "#1e3f60",     // the grid line, a clear step off the ground
+    surface: "#16304b", surfaceSunken: "#102843", surfaceRaised: "#1e3d5c",
+    border: "#274a6d", borderStrong: "#375f85", borderSubtle: "#1f4062",
+    text: "#e3ecf5", textBright: "#ffffff", textDim: "#a7bdd4", textMuted: "#8ba4bf",
+  },
+  light: {
+    appBg: "#eff2f6", canvasBg: "#e8edf3", canvasDot: "#c3d2e2",
+    surface: "#fbfcfe", surfaceSunken: "#ffffff", surfaceRaised: "#e6ecf3",
+    border: "#c2ced8", borderStrong: "#a4b4c6", borderSubtle: "#dae1ea",
+    text: "#16283c", textBright: "#0a1826", textDim: "#4e6379", textMuted: "#5d7288",
+  },
+};
+
 const NO_CHROME: PaletteChrome = { dark: {}, light: {} };
 // Default authors nothing: it IS App.css's ramp, and duplicating it here would be two
 // copies of one truth. Every other built-in authors a COMPLETE ramp in both modes —
@@ -529,6 +572,7 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Solarized": SOLARIZED_CHROME,
   "Equinox": EQUINOX_CHROME,
   "Orchard": ORCHARD_CHROME,
+  "Blueprint": BLUEPRINT_CHROME,
 };
 
 // ── Chrome derivation ─────────────────────────────────────────────────────────
