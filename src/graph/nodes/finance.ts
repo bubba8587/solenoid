@@ -34,7 +34,7 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
 
 // ─── Coupon / accrual date helpers ────────────────────────────────────────────
 
-// â”€â”€â”€ Bitwise â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Bitwise ──────────────────────────────────────────────────────────────────
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
 
 export const BITWISE_OP_META = {
@@ -80,7 +80,7 @@ export class BitwiseNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ Depreciation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Depreciation ─────────────────────────────────────────────────────────────
 export type DepreciationOp = "sln" | "syd" | "ddb" | "db" | "vdb";
 
 export const DEPRECIATION_OP_META = {
@@ -198,7 +198,7 @@ export class DepreciationNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ TVM (Time Value of Money) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TVM (Time Value of Money) ────────────────────────────────────────────────
 // ONE acausal node for the PMT/PV/FV/NPER/RATE family: wire any four, the fifth solves
 // (nper/rate numerically — the smallest-magnitude root avoids the spurious 1+r < 0
 // crossing). Payment timing is a CONFIG dropdown, not a variable.
@@ -253,7 +253,7 @@ export class TvmNode extends EquationNode {
   }
 }
 
-// â”€â”€â”€ IPMT / PPMT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── IPMT / PPMT ──────────────────────────────────────────────────────────────
 export type IpmtPpmtOp = "ipmt" | "ppmt";
 
 export const IPMT_PPMT_OP_META = {
@@ -320,7 +320,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ NPV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── NPV ──────────────────────────────────────────────────────────────────────
 export const NPV_META = {
   label: "NPV",
   description: "Net present value of cash flows at a given discount rate (first value = period 1). Excel: NPV(rate, values).",
@@ -406,7 +406,7 @@ export class NpvNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ IRR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── IRR ──────────────────────────────────────────────────────────────────────
 
 
 export class IrrNode extends ClassicPreset.Node {
@@ -514,7 +514,7 @@ export class IrrNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ MIRR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── MIRR ─────────────────────────────────────────────────────────────────────
 export const MIRR_META = {
   label: "MIRR",
   description: "Modified IRR: accounts for cost of capital and reinvestment rate. Excel: MIRR(values, finance_rate, reinvest_rate).",
@@ -574,7 +574,7 @@ export class MirrNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ FVSCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── FVSCHEDULE ───────────────────────────────────────────────────────────────
 export const FVSCHEDULE_META = {
   label: "FVSCHEDULE",
   description: "Future value of principal after a schedule of compound interest rates. Excel: FVSCHEDULE(principal, schedule).",
@@ -610,7 +610,7 @@ export class FvScheduleNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ ISPMT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ISPMT ────────────────────────────────────────────────────────────────────
 export const ISPMT_META = {
   label: "ISPMT",
   description: "Interest paid in a given period of a straight-line-principal loan. Excel: ISPMT(rate, per, nper, pv).",
@@ -648,12 +648,12 @@ export class IspmtNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ DOLLARDE / DOLLARFR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── DOLLARDE / DOLLARFR ──────────────────────────────────────────────────────
 export type DollarOp = "dollarde" | "dollarfr";
 
 export const DOLLAR_OP_META = {
-  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (e.g. 1.02 in 32nds â†’ 1.0625). Excel: DOLLARDE." },
-  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (e.g. 1.0625 â†’ 1.02 in 32nds). Excel: DOLLARFR." },
+  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (e.g. 1.02 in 32nds → 1.0625). Excel: DOLLARDE." },
+  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (e.g. 1.0625 → 1.02 in 32nds). Excel: DOLLARFR." },
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
 export class DollarNode extends ClassicPreset.Node {
@@ -696,7 +696,7 @@ export class DollarNode extends ClassicPreset.Node {
 
 
 
-// â”€â”€â”€ CUMIPMT / CUMPRINC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── CUMIPMT / CUMPRINC ───────────────────────────────────────────────────────
 export type CumPmtOp = "cumipmt" | "cumprinc";
 
 export const CUM_PMT_OP_META = {
