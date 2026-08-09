@@ -28,7 +28,7 @@ inconsistent, and the seams show exactly where attention lapsed.
 | 1 | **High** | Second browser tab silently clobbers autosaves — no cross-tab coordination | `documentStore.ts` |
 | 2 | **High** | Desktop capability surface: any-URL fetch + read any `$HOME/**/*.{json,csv,md}` | `capabilities/default.json`, `httpBridge.ts` |
 | 3 | ~~High~~ **FIXED** | 6 dependency vulns (3 High) in the build chain — `npm audit fix`, now `0 vulnerabilities`; vite→7.3.6 | `npm audit` |
-| 4 | ~~Med~~ **RETRACTED** | Non-finite key collapse is a *deliberate* cross-backend contract (B-1a), not a bug — see below | `frameVerbs.ts` |
+| 4 | **Med (reframed)** | Non-finite key collapse isn't a JS↔Polars *divergence* (it's the deliberate B-1a contract) — but it IS inconsistent with how sort/aggregation treat these values; backlogged for de-grouping | `frameVerbs.ts` |
 | 5 | ~~Med~~ **FIXED** | 80 MB `pixi.js` production dependency with zero imports — removed | `package.json` |
 | 6 | **Med** | 36 `eslint-disable` directives; no ESLint (or any linter) configured or installed | repo-wide |
 | 7 | ~~Med~~ **FIXED** | `fetchText` reads unbounded response bodies into a string (OOM) — now capped at 64 MB with a streaming abort | `httpBridge.ts` |
@@ -116,10 +116,35 @@ It is the opposite. The collapse is a **deliberate, documented, cross-backend
   ("the oracle's B-1a bucket matched NaN to −∞; Polars [differed]"), and grouping all
   non-finite as one bucket with null on its own was the **fix** that made them agree.
 
-So the two engines don't disagree here — they were deliberately made to agree, and
-"fixing" this would *re-introduce* the divergence and break the B-1a contract on both
-sides. Lesson for the reader: a suspicious-looking encoding is not automatically a bug;
-check whether a spec and a cross-engine fixture already bless it. This one does.
+So the two engines don't disagree here — they were deliberately made to agree. My
+"silent divergence" framing was wrong; a suspicious-looking encoding is not automatically
+a bug when a spec and a cross-engine fixture already bless it.
+
+**But there's a real finding underneath the wrong one.** The collapse is consistent
+*between web and desktop*, yet it is **inconsistent with how the rest of the app treats
+these same values**:
+
+| value | Sort | Aggregate / `guardFinite` | Group / Distinct key |
+|---|---|---|---|
+| +Inf | high end | passes through as a real value | ⎫ |
+| −Inf | low end | passes through as a real value | ⎬ one shared bucket |
+| NaN | tail, with blanks | poisons the group → `#DOMAIN!` | ⎭ |
+| null/blank | tail, with NaN | skipped | its own bucket |
+
+Sort puts +Inf and −Inf at *opposite ends*; grouping calls them the same key. Aggregation
+draws a hard line between NaN (an error) and a real infinity (a value); grouping erases
+it. And the dev-notes (2026-07-05, pt 5) show the desktop engine *originally grouped
+inf/−inf/NaN separately* — the behavior that matches sort — and was bent to match the
+web version's `JSON.stringify` quirk, then blessed as B-1a. So the contract standardized
+on the odd one out.
+
+Rare in practice (most non-finites become `#OVERFLOW!`/`#DOMAIN!` errors before they
+reach a frame cell), so it's edge-case, not urgent — but it's a genuine internal
+inconsistency, not a non-issue. **Backlogged** (`docs/backlog.md`, "De-group non-finite
+keys") to change grouping to match the rest of the app: +Inf, −Inf each their own bucket,
+all NaN together, null its own — which also re-aligns with Polars' native semantics. It's
+a deliberate spec change (re-cuts the B-1a contract + corpus on both engines), left as-is
+for now by author call.
 
 ### 5. ~~MEDIUM~~ FIXED — An 80 MB corpse in `dependencies`
 
