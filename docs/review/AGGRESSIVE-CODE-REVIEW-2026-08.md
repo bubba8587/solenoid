@@ -27,13 +27,13 @@ inconsistent, and the seams show exactly where attention lapsed.
 |---|----------|---------|-------|
 | 1 | **High** | Second browser tab silently clobbers autosaves — no cross-tab coordination | `documentStore.ts` |
 | 2 | **High** | Desktop capability surface: any-URL fetch + read any `$HOME/**/*.{json,csv,md}` | `capabilities/default.json`, `httpBridge.ts` |
-| 3 | **High** | 6 dependency vulns (3 High) in the build chain | `npm audit` |
+| 3 | ~~High~~ **FIXED** | 6 dependency vulns (3 High) in the build chain — `npm audit fix`, now `0 vulnerabilities`; vite→7.3.6 | `npm audit` |
 | 4 | **Med** | `distinct`/`groupBy` collapse `+Inf`, `-Inf`, `NaN` into one key (JS↔Polars divergence) | `frameVerbs.ts` |
-| 5 | **Med** | 80 MB `pixi.js` is a *production* dependency with zero imports | `package.json:40` |
+| 5 | ~~Med~~ **FIXED** | 80 MB `pixi.js` production dependency with zero imports — removed | `package.json` |
 | 6 | **Med** | 36 `eslint-disable` directives; no ESLint (or any linter) configured or installed | repo-wide |
 | 7 | **Med** | `fetchText` reads unbounded response bodies into a string (OOM) | `httpBridge.ts:44` |
 | 8 | **Low** | Periodic IRR omits the rate clamp its dated twin has (asymmetric robustness) | `finance.ts:446` |
-| 9 | **Low** | Mojibake: 13 corrupted lines in a shipped source file | `nodes/finance.ts` |
+| 9 | ~~Low~~ **FIXED** | Mojibake: 13 corrupted lines in a shipped source file — re-encoded to proper `─`/`→` | `nodes/finance.ts` |
 | 10 | **Low** | Full-graph `fetch` loop + adjacency rebuild on every value edit | `process.ts` |
 | 11 | **Low** | God files: five source files over 1,600 lines each | `nodes/list.ts` et al. |
 | 12 | **Low** | `dangerouslyAllowBrowser` + hardcoded model in the AI client | `aiService.ts:87` |
@@ -81,7 +81,11 @@ capability-confused-deputy hole, and it should be named in `docs/` rather than
 discovered later. At minimum: scope the fs globs to a documents directory and stop
 allowing cleartext `http://`.
 
-### 3. HIGH — The build chain ships known vulnerabilities
+### 3. ~~HIGH~~ FIXED — The build chain ships known vulnerabilities
+
+> **Resolved 2026-08-09:** `npm audit fix` applied (vite → 7.3.6); `npm audit` now
+> reports `0 vulnerabilities`.
+
 
 ```
 $ npm audit
@@ -112,7 +116,11 @@ The whole point of maintaining a parity oracle is that they *never* disagree; he
 silently do. Edge-case data, real correctness gap, and precisely the kind of thing a
 parity fuzz corpus is supposed to catch.
 
-### 5. MEDIUM — An 80 MB corpse in `dependencies`
+### 5. ~~MEDIUM~~ FIXED — An 80 MB corpse in `dependencies`
+
+> **Resolved 2026-08-09:** `pixi.js` removed from `package.json` (10 packages dropped
+> from the install); `tsc` and the full test suite stay green.
+
 
 ```
 $ grep -rn "from \"pixi.js\"" src   →  (nothing)
@@ -156,7 +164,12 @@ it's not catastrophic, but the asymmetry is a tell: the two code paths were writ
 patched at different times and never reconciled. Two near-identical solvers begging to
 be one.
 
-### 9. LOW — There is literal garbage in a shipped file
+### 9. ~~LOW~~ FIXED — There is literal garbage in a shipped file
+
+> **Resolved 2026-08-09:** all 13 lines re-encoded to proper `─` dividers and `→`
+> arrows (the two corrupted lines were user-visible `DOLLARDE`/`DOLLARFR`
+> descriptions, not just comments).
+
 
 `src/graph/nodes/finance.ts` contains 13 lines of mojibake — UTF-8 box-drawing
 characters mangled through a bad encoding round-trip — in section dividers and the
@@ -222,12 +235,17 @@ An honest aggressive review has to concede what's good, or the criticism is just
 ## If you fix five things this week
 
 1. Cross-tab autosave guard (#1) — a `storage` listener that reloads or warns. Data
-   loss beats everything.
-2. `npm audit fix` (#3) — it's one command.
-3. Delete `pixi.js` from `dependencies` (#5) — 80 MB for nothing.
-4. Either install ESLint or delete the 36 fake suppressions (#6).
+   loss beats everything. **(still open)**
+2. ~~`npm audit fix` (#3)~~ — **done** (0 vulnerabilities).
+3. ~~Delete `pixi.js` from `dependencies` (#5)~~ — **done** (10 packages dropped).
+4. Either install ESLint or delete the 36 fake suppressions (#6). **(still open)**
 5. Fix the non-finite key encoding in `frameVerbs.ts` (#4) — bucket `NaN`/`±Inf`
-   distinctly, or skip them as the join path already does.
+   distinctly, or skip them as the join path already does. **(still open)**
+
+The three easy wins (#3, #5, #9) were fixed in the same pass that filed this review;
+`tsc` and all 4,118 tests stay green. What remains open is the genuinely hard/riskier
+set — the ones that touch data loss (#1), the trust model (#2), engine parity (#4),
+and numeric behavior (#8).
 
 *— Review conducted against `develop`. Methodology: full `tsc` + `vitest` run,
 `npm audit`, and hand-reading of the engine, node, persistence, I/O, Rust, and build
