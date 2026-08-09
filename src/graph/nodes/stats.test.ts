@@ -14,6 +14,7 @@ import {
   RegressionNode,
   ForecastNode,
   InterpolateNode,
+  HypothesisTestNode,
 } from "./stats";
 import { interpolateLinear, fillBorderedGrid } from "./mathUtils";
 import { isSolError, solError } from "../errorValue";
@@ -448,5 +449,66 @@ describe("Scalar stats reducers — null skipped, errors propagated", () => {
     expect(isSolError(nth) && nth.code).toBe("#DIV/0!");
     const pct = new PercentileNode({ op: "inc" }).data({ list: [[1, err, 3]], p: [0.5] }).result;
     expect(isSolError(pct) && pct.code).toBe("#DIV/0!");
+  });
+});
+
+describe("Hypothesis Test — one node, six tests", () => {
+  const A = [1, 2, 3, 4, 5];
+  const B = [2, 2, 4, 4, 6];
+
+  it("computes each test's p-value", () => {
+    const z = new HypothesisTestNode({ op: "z" });
+    z.literals.x = 2;
+    const zp = z.data({ a: [A] }).result!;
+    expect(zp).toBeGreaterThan(0);
+    expect(zp).toBeLessThan(1);
+
+    const welch = new HypothesisTestNode({ op: "t-welch" });
+    const paired = new HypothesisTestNode({ op: "t-paired" });
+    const pooled = new HypothesisTestNode({ op: "t-equal" });
+    for (const n of [welch, paired, pooled]) {
+      const p = n.data({ a: [A], b: [B] }).result!;
+      expect(p).toBeGreaterThan(0);
+      expect(p).toBeLessThanOrEqual(1);
+    }
+
+    const f = new HypothesisTestNode({ op: "f" });
+    expect(f.data({ a: [A], b: [B] }).result).toBeGreaterThan(0);
+
+    const chisq = new HypothesisTestNode({ op: "chisq" });
+    const cp = chisq.data({ a: [[10, 20, 30]], b: [[12, 18, 30]] }).result!;
+    expect(cp).toBeGreaterThan(0);
+    expect(cp).toBeLessThanOrEqual(1);
+  });
+
+  it("a switch between two-sample tests keeps both cables and relabels the rows", () => {
+    const n = new HypothesisTestNode({ op: "t-equal" });
+    expect(n.keysDroppedBySwitch("f")).toEqual([]);
+    expect(n.keysDroppedBySwitch("chisq")).toEqual([]);
+    n.setOp("chisq");
+    expect(Object.keys(n.inputs).sort()).toEqual(["a", "b"]);
+    expect(n.inputs.a!.label).toBe("Observed");
+    expect(n.outputs.result!.label).toBe("p-value");
+  });
+
+  it("a switch to/from Z swaps the μ₀/σ rows for the second sample", () => {
+    const n = new HypothesisTestNode({ op: "z" });
+    expect(Object.keys(n.inputs).sort()).toEqual(["a", "sigma", "x"]);
+    expect(n.keysDroppedBySwitch("t-welch").sort()).toEqual(["sigma", "x"]);
+    n.setOp("t-welch");
+    expect(Object.keys(n.inputs).sort()).toEqual(["a", "b"]);
+    expect(n.inputs.a!.label).toBe("Array 1");
+    n.setOp("z");
+    expect(Object.keys(n.inputs).sort()).toEqual(["a", "sigma", "x"]);
+    expect(n.literals.x).toBe(0); // re-seeded for the returning μ₀ row
+  });
+
+  it("op round-trips through extractInit", () => {
+    const n = new HypothesisTestNode({ op: "t-welch" });
+    const init = extractInit(n as never);
+    expect(init.op).toBe("t-welch");
+    const clone = new HypothesisTestNode(init as { op: "t-welch" });
+    expect(clone.op).toBe("t-welch");
+    expect(Object.keys(clone.inputs).sort()).toEqual(["a", "b"]);
   });
 });

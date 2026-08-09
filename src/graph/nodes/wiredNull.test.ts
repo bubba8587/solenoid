@@ -12,7 +12,7 @@ import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
 import { CubeRollupNode } from "./cube";
-import { ZTestNode } from "./stats";
+import { HypothesisTestNode } from "./stats";
 import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
@@ -491,11 +491,11 @@ describe("figure controls never clobber the typed literal", () => {
 
 describe("Z.TEST", () => {
   it("a wired blank μ₀ propagates; an unwired σ still uses the sample std", () => {
-    const node = new ZTestNode();
-    expect(node.data({ array: [[1, 2, 3, 4]], x: [null as unknown as number] }).result).toBeNull();
-    expect(node.data({ array: [[1, 2, 3, 4]] }).result).not.toBeNull();
+    const node = new HypothesisTestNode({ op: "z" });
+    expect(node.data({ a: [[1, 2, 3, 4]], x: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ a: [[1, 2, 3, 4]] }).result).not.toBeNull();
     // A wired blank σ is unknown too — not "use the sample std".
-    expect(node.data({ array: [[1, 2, 3, 4]], sigma: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ a: [[1, 2, 3, 4]], sigma: [null as unknown as number] }).result).toBeNull();
   });
 });
 

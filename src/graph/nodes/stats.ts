@@ -675,137 +675,138 @@ function binomPmfLocal(k: number, n: number, p: number): number | null {
   return Number.isFinite(r) ? r : null;
 }
 
-// ─── Z.TEST ───────────────────────────────────────────────────────────────────
+// ─── Hypothesis tests — ONE node (Z / t / F / chi-square) ────────────────────
+// Every test emits a p-value; the op selector swaps the input rows (Z: one
+// sample + μ₀ + optional σ; t/F: two samples; chi-square: observed/expected).
+// The sample keys are shared (`a`/`b`) so a switch between two-sample tests
+// keeps the cables and only the row labels change.
 
-export class ZTestNode extends ClassicPreset.Node {
+export type HypothesisTestOp = "z" | "t-paired" | "t-equal" | "t-welch" | "f" | "chisq";
+
+export const HYPOTHESIS_TEST_OP_META = {
+  z:          { label: "Z.TEST",             description: "One-tailed z-test: P(mean > μ₀) given a population or sample. Excel: Z.TEST." },
+  "t-paired": { label: "T.TEST (paired)",    description: "Paired t-test: the same subjects measured twice, 2-tailed. Excel: T.TEST type 1." },
+  "t-equal":  { label: "T.TEST (equal var)", description: "Two-sample t-test with pooled variance, 2-tailed. Excel: T.TEST type 2." },
+  "t-welch":  { label: "T.TEST (Welch)",     description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: T.TEST type 3." },
+  f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: F.TEST." },
+  chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: CHISQ.TEST." },
+} satisfies Record<HypothesisTestOp, { label: string; description: string }>;
+
+interface HypothesisTestSpec {
+  inputs: ReadonlyArray<{ key: string; label: string; num?: boolean }>;
+  outLabel: string;
+}
+
+const TWO_SAMPLE_SPEC: HypothesisTestSpec = {
+  inputs: [{ key: "a", label: "Array 1" }, { key: "b", label: "Array 2" }],
+  outLabel: "p-value (2-tail)",
+};
+
+export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec> = {
+  z: {
+    inputs: [
+      { key: "a", label: "Array" },
+      { key: "x", label: "μ₀", num: true },
+      { key: "sigma", label: "σ (optional)", num: true },
+    ],
+    outLabel: "p-value (upper)",
+  },
+  "t-paired": TWO_SAMPLE_SPEC,
+  "t-equal": TWO_SAMPLE_SPEC,
+  "t-welch": TWO_SAMPLE_SPEC,
+  f: TWO_SAMPLE_SPEC,
+  chisq: {
+    inputs: [{ key: "a", label: "Observed" }, { key: "b", label: "Expected" }],
+    outLabel: "p-value",
+  },
+};
+
+const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "unequal-var" } as const;
+
+export class HypothesisTestNode extends ClassicPreset.Node {
   label: string;
+  op: HypothesisTestOp;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { x: 0 };
-  width = 180; height = 200;
+  literals: Record<string, number> = {};
+  width = 180;
+  height = 210;
 
-  constructor(init?: { label?: string }) {
-    super("ZTest");
-    this.label = init?.label ?? "Z.TEST";
-    this.addInput("array", listIn("Array"));
-    this.addInput("x",     numIn("μ₀"));
-    this.addInput("sigma", numIn("σ (optional)"));
-    this.addOutput("result", numOut("p-value (upper)"));
-  }
-
-  data(inputs: { array?: number[][]; x?: number[]; sigma?: number[] }) {
-    const arr   = inputs.array?.[0] ?? null;
-    const x     = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
-    // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
-    // unknown and propagates (value-semantics.md, "Reading an input").
-    const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
-    let result: number | null = null;
-    if (arr && arr.length >= 2 && x !== null && sigma !== null) {
-      const n   = arr.length;
-      const m   = arrMean(arr);
-      const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(arr));
-      if (std > 0) {
-        const z = (m - x) / (std / Math.sqrt(n));
-        result  = 1 - stdNormCDF(z);
-      }
+  constructor(init?: { label?: string; op?: HypothesisTestOp }) {
+    super("HypothesisTest");
+    this.label = init?.label ?? "Hypothesis Test";
+    this.op = init?.op ?? "z";
+    for (const i of HYPOTHESIS_TEST_SPECS[this.op].inputs) {
+      this.addInput(i.key, i.num ? numIn(i.label) : listIn(i.label));
     }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── T.TEST ───────────────────────────────────────────────────────────────────
-
-export type TTestOp = "paired" | "equal-var" | "unequal-var";
-
-export const T_TEST_OP_META = {
-  paired:          { label: "Paired",       description: "Paired t-test: the same subjects measured twice. Excel: T.TEST type 1." },
-  "equal-var":     { label: "Equal var",    description: "Two-sample t-test with pooled variance. Excel: T.TEST type 2." },
-  "unequal-var":   { label: "Unequal var",  description: "Welch's t-test: variances may differ. Excel: T.TEST type 3." },
-} satisfies Record<TTestOp, { label: string; description: string }>;
-
-export class TTestNode extends ClassicPreset.Node {
-  label: string;
-  op: TTestOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = {};
-  width = 180; height = 210;
-
-  constructor(init?: { label?: string; op?: TTestOp }) {
-    super("TTest");
-    this.label = init?.label ?? "T.TEST";
-    this.op    = init?.op    ?? "equal-var";
-    this.addInput("a", listIn("Array 1"));
-    this.addInput("b", listIn("Array 2"));
-    this.addOutput("result", numOut("p-value (2-tail)"));
+    this.addOutput("result", numOut(HYPOTHESIS_TEST_SPECS[this.op].outLabel));
+    this.seedLiterals();
+    this.height = this.heightFor();
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
-    // ONE implementation with the formula surface (mathUtils.tTestP — FX-1).
+  private heightFor(): number {
+    return 210 + 28 * (HYPOTHESIS_TEST_SPECS[this.op].inputs.length - 2);
+  }
+
+  private seedLiterals(): void {
+    if (this.op === "z") this.literals.x ??= 0;
+  }
+
+  /** The keys a switch to `next` would remove. Callers on a live graph prune
+   *  these BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: HypothesisTestOp): string[] {
+    const keep = new Set(HYPOTHESIS_TEST_SPECS[next].inputs.map((i) => i.key));
+    return HYPOTHESIS_TEST_SPECS[this.op].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
+  }
+
+  setOp(next: HypothesisTestOp): void {
+    if (next === this.op) return;
+    const before = HYPOTHESIS_TEST_SPECS[this.op].inputs;
+    const after = HYPOTHESIS_TEST_SPECS[next].inputs;
+    this.op = next;
+    for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
+    for (const i of after) {
+      const live = this.inputs[i.key];
+      if (!live) this.addInput(i.key, i.num ? numIn(i.label) : listIn(i.label));
+      else live.label = i.label; // a kept key keeps its cable; the role name follows the op
+    }
+    const out = this.outputs.result;
+    if (out) out.label = HYPOTHESIS_TEST_SPECS[next].outLabel;
+    this.seedLiterals();
+    this.height = this.heightFor();
+  }
+
+  data(inputs: { a?: number[][]; b?: number[][]; x?: number[]; sigma?: number[] }) {
     const a = inputs.a?.[0] ?? null;
-    const b = inputs.b?.[0] ?? null;
-    const result = a && b ? tTestP(this.op, a, b) : null;
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── F.TEST ───────────────────────────────────────────────────────────────────
-
-export class FTestNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = {};
-  width = 180; height = 170;
-
-  constructor(init?: { label?: string }) {
-    super("FTest");
-    this.label = init?.label ?? "F.TEST";
-    this.addInput("a", listIn("Array 1"));
-    this.addInput("b", listIn("Array 2"));
-    this.addOutput("result", numOut("p-value (2-tail)"));
-  }
-
-  data(inputs: { a?: number[][]; b?: number[][] }) {
-    // ONE implementation with the formula surface (mathUtils.fTestP — FX-1).
-    const a = inputs.a?.[0] ?? null;
-    const b = inputs.b?.[0] ?? null;
-    const result = a && b ? fTestP(a, b) : null;
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── CHISQ.TEST ───────────────────────────────────────────────────────────────
-
-export class ChisqTestNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = {};
-  width = 180; height = 185;
-
-  constructor(init?: { label?: string }) {
-    super("ChisqTest");
-    this.label = init?.label ?? "CHISQ.TEST";
-    this.addInput("obs", listIn("Observed"));
-    this.addInput("exp", listIn("Expected"));
-    this.addOutput("result", numOut("p-value"));
-  }
-
-  data(inputs: { obs?: number[][]; exp?: number[][] }) {
-    const obs = inputs.obs?.[0] ?? null;
-    const exp = inputs.exp?.[0] ?? null;
     let result: number | null = null;
-    if (obs && exp && obs.length >= 2 && exp.length >= obs.length) {
-      const n = obs.length;
-      let chi2 = 0;
-      for (let i = 0; i < n; i++) {
-        if (exp[i] <= 0) { chi2 = NaN; break; }
-        chi2 += (obs[i] - exp[i]) ** 2 / exp[i];
+    if (this.op === "z") {
+      const x = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
+      // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
+      // unknown and propagates (value-semantics.md, "Reading an input").
+      const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
+      if (a && a.length >= 2 && x !== null && sigma !== null) {
+        const n = a.length;
+        const m = arrMean(a);
+        const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(a));
+        if (std > 0) result = 1 - stdNormCDF((m - x) / (std / Math.sqrt(n)));
       }
-      if (Number.isFinite(chi2) && chi2 >= 0) {
-        result = 1 - regularizedGamma((n - 1) / 2, chi2 / 2);
-        if (!Number.isFinite(result)) result = null;
+    } else if (this.op === "chisq") {
+      const exp = inputs.b?.[0] ?? null;
+      if (a && exp && a.length >= 2 && exp.length >= a.length) {
+        const n = a.length;
+        let chi2 = 0;
+        for (let i = 0; i < n; i++) {
+          if (exp[i] <= 0) { chi2 = NaN; break; }
+          chi2 += (a[i] - exp[i]) ** 2 / exp[i];
+        }
+        if (Number.isFinite(chi2) && chi2 >= 0) {
+          result = 1 - regularizedGamma((n - 1) / 2, chi2 / 2);
+          if (!Number.isFinite(result)) result = null;
+        }
       }
+    } else {
+      // ONE implementation with the formula surface (mathUtils.tTestP / fTestP — FX-1).
+      const b = inputs.b?.[0] ?? null;
+      if (a && b) result = this.op === "f" ? fTestP(a, b) : tTestP(T_KERNEL_OP[this.op], a, b);
     }
     this.cachedResult = result;
     return { result };

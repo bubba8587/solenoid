@@ -214,10 +214,7 @@ export { DistributionComponent } from "./DistributionNode";
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 
 // ─── Statistical tests ────────────────────────────────────────────────────────
-export { ZTestComponent } from "./ZTestNode";
-export { TTestComponent } from "./TTestNode";
-export { FTestComponent } from "./FTestNode";
-export { ChisqTestComponent } from "./ChisqTestNode";
+export { HypothesisTestComponent } from "./HypothesisTestNode";
 
 // ─── Regression (extended) ────────────────────────────────────────────────────
 export { TrendComponent } from "./TrendNode";
