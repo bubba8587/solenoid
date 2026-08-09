@@ -52,6 +52,17 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   npm run ai-prompt`), palette on the preview (author eyeball), Tidy on an all-at-0,0
   generated graph, one desktop CSP smoke test. (Known + accepted: Apply drops undo
   history — autosave keeps the pre-apply doc.)
+- [ ] **De-group non-finite keys in distinct/groupBy (reopen B-1a)** — grouping/distinct
+  file +Inf, −Inf, and NaN into ONE shared key bucket (null gets its own), which is
+  internally consistent web↔desktop but INCONSISTENT with the rest of the app: sort
+  orders ±Inf at opposite ends and tails NaN with blanks; aggregation/`guardFinite`
+  treat NaN as `#DOMAIN!` yet pass a real ±Inf through. Desktop grouped them separately
+  natively before B-1a (dev-notes 2026-07-05, pt 5) — that's the target: +Inf, −Inf each
+  own bucket, all NaN together, null its own. Edge-case in practice (most non-finites
+  become `#OVERFLOW!`/`#DOMAIN!` before landing in a frame). Touches the B-1a
+  cross-engine contract: re-cut `frameVerbs.ts` `encodeCell`, the Rust group key exprs,
+  the `distinct`/`groupBy` corpus fixtures, and the B-1a pin in `frameVerbs.test.ts`.
+  Full write-up: `docs/review/AGGRESSIVE-CODE-REVIEW-2026-08.md` #4.
 - [ ] **OUTSIDE REVIEW WANTED: number→text semantics of the text predicates** —
   author defers to a reviewer. Today: text predicates on number/date columns compare
   the JS display string (oracle `String(cell)`; engine mirrors via hand-written
