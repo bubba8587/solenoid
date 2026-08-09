@@ -163,15 +163,30 @@ describe("chrome ramp structure", () => {
     expect(c("textDim")).toBeGreaterThan(c("textMuted"));
   });
 
+  // D35: contrast is scoped to the two palettes that PROMISE it — Default, the
+  // experience nobody chose, and Colorblind-safe, whose brief is legibility. The rest
+  // are aesthetic opt-ins where fidelity to a look wins; Solarized sits near 3:1 by
+  // design and forcing AA meant shipping something that was no longer Solarized.
+  // Widening this set back to every palette is a decision, not a tidy-up.
+  const AA_PALETTES = new Set(["(App.css)", "Default", "Colorblind-safe"]);
+  const AA_RAMPS = RAMPS.filter(([name]) => AA_PALETTES.has(name));
+
   // DESIGN.md §2: "the muted tier clears WCAG AA 4.5:1 on the card/sunken surfaces".
   // The canvas is deliberately excluded for the secondary tiers — nothing sets body
   // text directly on the canvas, and the App.css light ramp is itself at 4.35 there.
-  it.each(RAMPS)("%s/%s: every ink tier clears WCAG AA on the card and the field", (_n, _m, r) => {
+  it.each(AA_RAMPS)("%s/%s: every ink tier clears WCAG AA on the card and the field", (_n, _m, r) => {
     for (const k of ["text", "textDim", "textMuted"] as const) {
       expect(ratio(r[k], r.surface), `${k} on card`).toBeGreaterThanOrEqual(4.5);
       expect(ratio(r[k], r.surfaceSunken), `${k} on field`).toBeGreaterThanOrEqual(4.5);
     }
     expect(ratio(r.text, r.canvasBg), "text on canvas").toBeGreaterThanOrEqual(4.5);
+  });
+
+  // The scope above is only honest if the guaranteed palettes actually exist as ramps
+  // to check. Colorblind-safe authoring chrome is what puts it in AA_RAMPS at all.
+  it("the AA-guaranteed palettes are all present in the checked set", () => {
+    expect(AA_RAMPS.map(([n, m]) => `${n}/${m}`).sort())
+      .toEqual(["(App.css)/dark", "(App.css)/light", "Colorblind-safe/dark", "Colorblind-safe/light"]);
   });
 });
 

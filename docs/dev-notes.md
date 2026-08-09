@@ -141,8 +141,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   Solarized already uses for the accents it doesn't ship. The chrome is Pear's neutral
   ramps, mapped by ROLE not position: Pear sinks its fields, Solenoid's light theme
   makes the field the brightest layer (DESIGN.md §2), so Pear white → sunken, surface →
-  surface, surface-sunken → raised. Only built-in that authors chrome; a test pins that
-  AND that it authors all 13 keys in both modes.
+  surface, surface-sunken → raised.
 - **The custom palette gained the ramp too**, surfaced in the editor (the app palette
   picker still shows colors only). Wells edit the LIVE theme's ramp — the two modes
   can't be judged at once, and the other is carried untouched through Save. Always
@@ -163,16 +162,29 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **"Appropriate" got machine-checked rather than eyeballed** (`palette.test.ts` §
   chrome ramp structure): canvas darker than card, dot/canvas contrast in 1.1–2.2, field
   brightest in light and a recess in dark, hover fill toward the ink, border tiers
-  stepping outward, ink tiers stepping down, every ink tier ≥ WCAG AA 4.5:1 on card and
-  field. Every rule is a claim DESIGN.md §2 already makes, and the App.css baseline is
-  held to the same bar — a rule Default fails is a wrong rule, not a failing palette.
-  **This paid immediately**: it caught Orchard's muted ink at 4.11 dark / 3.76 light on
-  its own card (shipped an hour earlier), and it is why Solarized's CARD is base03 rather
-  than base02 — on base02 the whole base ladder falls under 4.5:1 and no arrangement of
-  the eight tones fits four tiers, while on base03 they land 13.9/12.3/5.6/4.8 with
-  nothing invented. Where a source system's own contrast disagrees, accessibility wins
-  and the divergence is commented at the value (three inks total: Orchard ×2, Solarized
-  light muted).
+  stepping outward, ink tiers stepping down. Every rule is a claim DESIGN.md §2 already
+  makes, and the App.css baseline is held to the same bar — a rule Default fails is a
+  wrong rule, not a failing palette. It paid immediately, catching Orchard's muted ink
+  below AA on its own card an hour after that shipped.
+- **CONTRAST then got scoped back to `Default` + `Colorblind-safe`** (D35 amendment,
+  author ruling). The AA sweep had been applied to every palette, and the cost showed
+  up as infidelity: Solarized's card had been moved base02→base03 and its muted tiers
+  invented, because Solarized sits near 3:1 BY DESIGN and no arrangement of its eight
+  base tones fits four AA tiers on base02. Reverted — Solarized is now its canonical
+  role assignment (background / background highlight / emphasized / primary /
+  secondary, both modes), and Orchard's two muted inks are Pear's own again. The
+  STRUCTURE rules still cover every palette; only the 4.5:1 check is scoped, via
+  `AA_PALETTES` in the test, with a guard asserting the guaranteed set is actually
+  present. Lesson worth keeping: a global quality bar applied to opt-in aesthetic
+  artifacts converts them into averages of themselves.
+- **Blueprint** (new, seventh): a cyanotype drafting table. Picked because the canvas
+  already draws a 24px dot grid — on a prussian ground that grid stops being decoration
+  and reads as drafting paper, which no other palette does anything with. Slots are
+  colored pencils on that paper (chalky mid-value pigments that survive both grounds);
+  chrome is the two ways the drawing was historically reproduced — dark is the cyanotype
+  (white on prussian), light is the whiteprint (blue linework on cool paper). Cool end
+  to end on purpose, so it and Orchard aren't the same idea twice. Clears AA in both
+  modes without being required to.
 
 ### SESSION DIGEST (2026-08-09b — ONE Distribution node; Running vocabulary pass)
 - **ALL distributions are now ONE node** (author call, D34; an intermediate commit
