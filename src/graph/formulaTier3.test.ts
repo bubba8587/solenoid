@@ -3,10 +3,10 @@ import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "./excelFunctions";
 import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
-  CumulativeNode, RollingNode, ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode,
+  RunningNode, ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode,
   LinSpaceNode, RepeatNode, GeometricNode, FibonacciNode,
   SetOpNode, SetRelationNode, FillNode, RangeNode, ConcatListsNode,
-  CUMULATIVE_OP_META, ROLLING_OP_META, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
+  RUNNING_OP_META, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
   SET_OP_META, SET_RELATION_META, FILL_OP_META,
 } from "./nodes/list";
 import { buildCatalog } from "./catalogUtils";
@@ -70,19 +70,14 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  it("RUNNING* — one name per Cumulative op", () => {
-    for (const [op, meta] of Object.entries(CUMULATIVE_OP_META)) {
-      const node = new CumulativeNode({ op: op as "cumsum" });
-      expect(ev(`${despace(meta.label)}(x)`, { x: LIST }), meta.label)
-        .toEqual(node.data({ list: [LIST] }).result);
-    }
-  });
-
-  it("ROLLING* — one name per Rolling op, on a list WITH a gap", () => {
-    for (const [op, meta] of Object.entries(ROLLING_OP_META)) {
-      const node = new RollingNode({ op: op as "sum" });
+  it("RUNNING* — one name per Running op, both window modes", () => {
+    for (const [op, meta] of Object.entries(RUNNING_OP_META)) {
+      const grow = new RunningNode({ op: op as "sum" });
+      expect(ev(`${despace(meta.label)}(x)`, { x: WITH_GAP }), meta.label)
+        .toEqual(grow.data({ list: [WITH_GAP as (number | null)[]] }).result);
+      const slide = new RunningNode({ op: op as "sum", mode: "window" });
       expect(ev(`${despace(meta.label)}(x, 2)`, { x: WITH_GAP }), meta.label)
-        .toEqual(node.data({ list: [WITH_GAP as (number | null)[]], window: [2] }).result);
+        .toEqual(slide.data({ list: [WITH_GAP as (number | null)[]], window: [2] }).result);
     }
   });
 
@@ -152,7 +147,7 @@ describe("the whole-list routing, which is the half that isn't the function", ()
 
   it("the results COMPOSE — a list-returning call feeds a range aggregate", () => {
     expect(ev("SUM(REVERSE(x))", { x: [1, 2, 3] })).toBe(6);
-    expect(ev("ROLLINGAVG(NORMALIZE(x), 2)", { x: [0, 5, 10] })).toEqual([0, 0.25, 0.75]);
+    expect(ev("RUNNINGAVERAGE(NORMALIZE(x), 2)", { x: [0, 5, 10] })).toEqual([0, 0.25, 0.75]);
   });
 
   it("a generator is capped at the formula boundary (the node's Count is a spinner)", () => {

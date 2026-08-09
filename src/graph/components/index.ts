@@ -71,13 +71,12 @@ export { FilterComponent } from "./FilterNode";
 export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
-export { CumulativeComponent } from "./CumulativeNode";
+export { RunningComponent } from "./RunningNode";
 export { NormalizeComponent } from "./NormalizeNode";
 export { ShuffleComponent } from "./ShuffleNode";
 export { InterleaveComponent } from "./InterleaveNode";
 export { NthElementComponent } from "./NthElementNode";
 export { PadComponent } from "./PadNode";
-export { RollingComponent } from "./RollingNode";
 
 // ─── Lists — find / lookup ────────────────────────────────────────────────────
 export { ListLengthComponent } from "./ListLengthNode";

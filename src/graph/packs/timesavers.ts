@@ -81,8 +81,6 @@ export const TIMESAVERS_PACK: Pack = {
   // Reclassifies EXISTING core nodes; the pack ships ON, so nothing disappears by default.
   // Fundamental list ops (Range, LinSpace, Reverse, Slice, Length) stay core deliberately.
   tags: [
-    "rolling-sum", "rolling-avg", "rolling-min",
-    "rolling-max", "rolling-stdev", "rolling-median",
     "weighted-wavg", "weighted-wstdev", "weighted-wvar",
     "arg-argmax", "arg-argmin",
     "list-contains", "list-diff", "list-normalize",

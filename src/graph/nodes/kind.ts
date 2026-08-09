@@ -18,12 +18,12 @@ import {
   ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
   UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
-  ConcatListsNode, CumulativeNode, DiffNode,
+  ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, LinSpaceNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
-  RollingNode, FillNode,
+  FillNode,
 } from "./list";
 import {
   NthValueNode, PercentileNode, QuartileNode,
@@ -103,12 +103,12 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode || node instanceof TakeNode || node instanceof DropNode ||
     node instanceof SetOpNode || node instanceof TallyNode ||
-    node instanceof ConcatListsNode || node instanceof CumulativeNode || node instanceof DiffNode ||
+    node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode || node instanceof LinSpaceNode || node instanceof RepeatNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
     node instanceof PadNode || node instanceof GeometricNode || node instanceof FibonacciNode ||
-    node instanceof RollingNode || node instanceof FillNode
+    node instanceof FillNode
   ) return "list";
   if (
     node instanceof NthValueNode || node instanceof PercentileNode || node instanceof QuartileNode ||

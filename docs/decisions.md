@@ -251,6 +251,18 @@ accent-sensitive; diverges from UTF-8 only on astral-plane characters
 `stringOrder.ts`. **Reopen if:** demand for locale-aware data sorts — needs a
 per-document locale pin, recorded as a new decision.
 
+### D33 — ONE Running node: window mode is a toggle, never two nodes
+Cumulative and Rolling merged (2026-08-09, author call: too similar to stay
+separate). One concept — an aggregate per element over its window — with a mode
+toggle: "All so far" grows the window, "Last N" slides it (Window size input
+exists only there). One op set across both modes; one formula family RUNNING*
+with the window as an optional arg (ROLLING* eliminated). A blank/0 WIRED window
+as an "unbounded" sentinel was rejected: a wired blank means unknown
+(value-semantics), so the mode is structural, not in-band. **Where:**
+`RunningNode` in `nodes/list.ts`, `running()` in `nodes/listOps.ts`.
+**Reopen if:** the grow/slide edge policies need to diverge further than the
+per-window reducer policy can express.
+
 ---
 
 ## Structural risks (standing conditions, not bugs)

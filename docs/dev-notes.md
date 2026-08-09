@@ -86,6 +86,28 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-09 — Cumulative + Rolling merged into one Running node)
+- **Author call: the two nodes were too similar to stay separate.** One `RunningNode`
+  (`list-running`, card "Running") replaces both; a `SegToggle` at the top of the card
+  picks the window: **"All so far"** (grows from the start; the old Cumulative) or
+  **"Last N"** (slides; the old Rolling, showing the Window size input only in that
+  mode). Vocabulary unified on ONE concept — an aggregate per element over its window —
+  so the op set is the union across both modes: sum/avg/min/max/median/product/stdev,
+  labeled "Running SUM" etc.
+- **Semantics unified on the per-window reducer policy** (null skipped, all-null window
+  0 for sum else null, error poisons the windows containing it). Two deliberate edge
+  changes from old Cumulative: a leading-null prefix now answers 0 for sum (was null),
+  and non-finite values are skipped (were accumulated). The grow mode streams O(n)
+  (Welford for stdev, binary-insert for median) and is pinned equal to the slide path
+  at window = length (`list.test.ts`).
+- **Formula surface follows** (D19 label-derived names): one RUNNING* family with the
+  window as an OPTIONAL second arg (omitted = grow, blank = blank); ROLLING* names
+  deleted, RUNNINGAVG→RUNNINGAVERAGE, +RUNNINGMEDIAN/RUNNINGSTDEV/window-arg forms.
+- Mode switch prunes the window cable via `dropInputCables` before removing the socket
+  (SSOT-9); `mode` rides the existing init persistence. Old saves with
+  Cumulative/Rolling nodes load as Placeholders (pre-alpha, no shims). Timesavers pack
+  no longer claims the rolling-* leaves; Running is core (as Cumulative was).
+
 ### SESSION DIGEST (2026-08-07 — the 1.3 pivot: docs cutdown, backlog re-triage)
 - **Author pivot: 1.3 ships basically as-is.** The coming weeks are bugs, patches, and
   thorough small-scope polish sweeps (node-by-node passes); everything feature-shaped
