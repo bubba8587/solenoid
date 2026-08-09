@@ -19,7 +19,7 @@ import {
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
   TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode,
-  FvScheduleNode, IspmtNode, DollarNode, VdbNode, ProbNode,
+  FvScheduleNode, IspmtNode, DollarNode, ProbNode,
   WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
@@ -676,7 +676,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "pair", children: [deprLeaf("sln"), deprLeaf("syd")] },
           { type: "pair", children: [deprLeaf("ddb"), deprLeaf("db")] },
-          { type: "vdb", label: "VDB", description: "Variable declining balance depreciation over a period range; uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB.", create: () => new VdbNode() },
+          { type: "vdb", label: "VDB", description: DEPRECIATION_OP_META.vdb.description, create: () => new DepreciationNode({ op: "vdb" }) },
         ],
       },
       {

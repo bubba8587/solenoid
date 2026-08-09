@@ -233,7 +233,9 @@ describe("the catalog obeys the reference's own rule for choosing a rung", () =>
         }
       }
     }
-    expect(seen.size, "catalog classes scanned").toBeGreaterThan(280);
+    // A did-the-sweep-run floor, not a census: node-combining merges shrink the
+    // class count legitimately.
+    expect(seen.size, "catalog classes scanned").toBeGreaterThan(260);
     expect(offenders).toEqual([]);
   });
 });

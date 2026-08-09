@@ -181,3 +181,21 @@ describe("Depreciation", () => {
     expect(p2.result).toBeCloseTo(2400, 9);
   });
 });
+
+describe("Depreciation — VDB absorbed as an op", () => {
+  it("VDB matches the standalone kernel's period-range result", () => {
+    const r = new DepreciationNode({ op: "vdb" }).data({ cost: [10000], salvage: [1000], life: [10], start: [0], end: [1], factor: [2] });
+    expect(r.result).toBeCloseTo(2000, 6); // first-period DDB at factor 2
+  });
+
+  it("the op switch swaps the method's own tail rows, keeping cost/salvage/life", () => {
+    const n = new DepreciationNode({ op: "ddb" });
+    expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life", "per", "factor"]);
+    expect(n.keysDroppedBySwitch("vdb")).toEqual(["per"]);
+    expect(n.keysDroppedBySwitch("sln").sort()).toEqual(["factor", "per"]);
+    n.setOp("vdb");
+    expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life", "start", "end", "factor"]);
+    n.setOp("sln");
+    expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life"]);
+  });
+});

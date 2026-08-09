@@ -81,53 +81,114 @@ export class BitwiseNode extends ClassicPreset.Node {
 }
 
 // â”€â”€â”€ Depreciation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export type DepreciationOp = "sln" | "syd" | "ddb" | "db";
+export type DepreciationOp = "sln" | "syd" | "ddb" | "db" | "vdb";
 
 export const DEPRECIATION_OP_META = {
   sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the SAME amount every period. Excel: SLN(cost, salvage, life)." },
   syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD(cost, salvage, life, per)." },
   ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the REMAINING value each period. Excel: DDB(cost, salvage, life, period, [factor])." },
   db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Excel: DB(cost, salvage, life, period)." },
+  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range; uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
+
+// Per-op input rows: the shared cost/salvage/life trunk, then each method's own
+// period/factor tail (VDB depreciates a period RANGE).
+const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; label: string; def: number }>> = (() => {
+  const cost    = { key: "cost",    label: "Cost",           def: 10000 };
+  const salvage = { key: "salvage", label: "Salvage",        def: 1000 };
+  const life    = { key: "life",    label: "Life (periods)", def: 5 };
+  const per     = { key: "per",     label: "Period",         def: 1 };
+  const factor  = { key: "factor",  label: "Factor",         def: 2 };
+  const start   = { key: "start",   label: "Start period",   def: 0 };
+  const end     = { key: "end",     label: "End period",     def: 1 };
+  return {
+    sln: [cost, salvage, life],
+    syd: [cost, salvage, life, per],
+    ddb: [cost, salvage, life, per, factor],
+    db:  [cost, salvage, life, per],
+    vdb: [cost, salvage, life, start, end, factor],
+  };
+})();
 
 export class DepreciationNode extends ClassicPreset.Node {
   label: string;
   op: DepreciationOp;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { cost: 10000, salvage: 1000, life: 5, per: 1, factor: 2 };
+  literals: Record<string, number> = {};
   width = 180; height = 310;
 
   constructor(init?: { label?: string; op?: DepreciationOp }) {
     super("Depreciation");
-    this.label = init?.label ?? "SLN";
     this.op = init?.op ?? "sln";
-    this.addInput("cost",    numIn("Cost"));
-    this.addInput("salvage", numIn("Salvage"));
-    this.addInput("life",    numIn("Life (periods)"));
-    this.addInput("per",     numIn("Period (SYD/DDB only)"));
-    this.addInput("factor",  numIn("Factor (DDB)"));
+    this.label = init?.label ?? DEPRECIATION_OP_META[this.op].label;
+    for (const i of DEPRECIATION_INPUTS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("result", numOut("Result"));
+    this.seedLiterals();
+    this.height = this.heightFor();
   }
 
-  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[] }) {
+  private heightFor(): number {
+    return 170 + 28 * DEPRECIATION_INPUTS[this.op].length;
+  }
+
+  private seedLiterals(): void {
+    for (const i of DEPRECIATION_INPUTS[this.op]) this.literals[i.key] ??= i.def;
+  }
+
+  /** The keys a switch to `next` would remove. Callers on a live graph prune
+   *  these BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: DepreciationOp): string[] {
+    const keep = new Set(DEPRECIATION_INPUTS[next].map((i) => i.key));
+    return DEPRECIATION_INPUTS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
+  }
+
+  setOp(next: DepreciationOp): void {
+    if (next === this.op) return;
+    const before = DEPRECIATION_INPUTS[this.op];
+    this.op = next;
+    const after = DEPRECIATION_INPUTS[next];
+    for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
+    for (const i of after) if (!this.inputs[i.key]) this.addInput(i.key, numIn(i.label));
+    // Factor moves between tail positions across ops; re-seat it so the row order
+    // matches the spec.
+    const inputs = this.inputs as Record<string, unknown>;
+    for (const i of after) {
+      const v = inputs[i.key];
+      delete inputs[i.key];
+      inputs[i.key] = v;
+    }
+    this.seedLiterals();
+    this.height = this.heightFor();
+  }
+
+  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; start?: number[]; end?: number[] }) {
     const cost    = readInput(inputs.cost, this.literals.cost ?? null);
     const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
     const life    = readInput(inputs.life, this.literals.life ?? null);
-    const per     = readInput(inputs.per, this.literals.per ?? null);
-    const factor  = readInput(inputs.factor, this.literals.factor ?? 2);
-    // The domain GUARDS below stay hand-rolled (they gate which op even runs); only
-    // the depreciation formula itself routes through the seam.
     let result: number | null = null;
-    if (cost !== null && salvage !== null && life !== null && life > 0) {
-      if (this.op === "sln") {
-        result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;
-      } else if (per !== null && per >= 1 && per <= life) {
-        if (this.op === "syd") {
-          result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
-        } else if (this.op === "ddb") {
-          result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
-        } else if (this.op === "db") {
-          result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
+    if (this.op === "vdb") {
+      const start  = readInput(inputs.start, this.literals.start ?? 0);
+      const end    = readInput(inputs.end, this.literals.end ?? 0);
+      const factor = readInput(inputs.factor, this.literals.factor ?? 2);
+      result = (cost === null || salvage === null || life === null || start === null || end === null || factor === null)
+        ? null
+        : vdb(cost, salvage, life, start, end, factor);
+    } else {
+      const per    = readInput(inputs.per, this.literals.per ?? null);
+      const factor = readInput(inputs.factor, this.literals.factor ?? 2);
+      // The domain GUARDS below stay hand-rolled (they gate which op even runs); only
+      // the depreciation formula itself routes through the seam.
+      if (cost !== null && salvage !== null && life !== null && life > 0) {
+        if (this.op === "sln") {
+          result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;
+        } else if (per !== null && per >= 1 && per <= life) {
+          if (this.op === "syd") {
+            result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
+          } else if (this.op === "ddb") {
+            result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
+          } else if (this.op === "db") {
+            result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
+          }
         }
       }
     }
@@ -531,45 +592,8 @@ export class DollarNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ VDB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export const VDB_META = {
-  label: "VDB",
-  description: "Variable declining balance depreciation over a period range; switches to straight-line when SL is higher. Excel: VDB(cost, salvage, life, start, end, [factor]).",
-};
 
-export class VdbNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { cost: 10000, salvage: 1000, life: 10, start: 0, end: 1, factor: 2 };
-  width = 180; height = 330;
 
-  constructor(init?: { label?: string }) {
-    super("Vdb");
-    this.label = init?.label ?? "VDB";
-    this.addInput("cost",    numIn("Cost"));
-    this.addInput("salvage", numIn("Salvage"));
-    this.addInput("life",    numIn("Life"));
-    this.addInput("start",   numIn("Start period"));
-    this.addInput("end",     numIn("End period"));
-    this.addInput("factor",  numIn("Factor"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; start?: number[]; end?: number[]; factor?: number[] }) {
-    const cost    = readInput(inputs.cost, this.literals.cost ?? 0);
-    const salvage = readInput(inputs.salvage, this.literals.salvage ?? 0);
-    const life    = readInput(inputs.life, this.literals.life ?? 0);
-    const start   = readInput(inputs.start, this.literals.start ?? 0);
-    const end     = readInput(inputs.end, this.literals.end ?? 0);
-    const factor  = readInput(inputs.factor, this.literals.factor ?? 2);
-    if (cost === null || salvage === null || life === null || start === null || end === null || factor === null) {
-      this.cachedResult = null; return { result: null };
-    }
-    const result = vdb(cost, salvage, life, start, end, factor);
-    this.cachedResult = result;
-    return { result };
-  }
-}
 
 // â”€â”€â”€ CUMIPMT / CUMPRINC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export type CumPmtOp = "cumipmt" | "cumprinc";
