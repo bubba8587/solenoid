@@ -73,8 +73,8 @@ describe("the statistical tests answer what the NODE answers", () => {
 describe("a wired-blank SCALAR argument propagates through a whole-arg native", () => {
   const x = [1, 2, 3];
 
-  it("ROLLINGSUM(x, blank) is blank, not a window-1 rolling sum", () => {
-    expect(ev("ROLLINGSUM(x, w)", { x, w: null })).toBeNull();
+  it("RUNNINGSUM(x, blank) is blank, not a window-1 sum and not the grow mode", () => {
+    expect(ev("RUNNINGSUM(x, w)", { x, w: null })).toBeNull();
   });
 
   it("CONTAINS(list, blank) is blank — a blank needle can't be looked for", () => {

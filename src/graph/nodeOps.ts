@@ -15,8 +15,8 @@ import {
 import { ChartNode, SparklineNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
-  FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
-  FILL_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
+  FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
+  FILL_OP_META, COND_AGG_OP_META, RUNNING_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
   SortNode, TakeNode, DropNode,
 } from "./nodes/list";
@@ -50,7 +50,7 @@ import {
   NormSDistNode, NthValueNode, OddCouponNode, PercentileNode,
   PercentrankNode, PhysicsConstantNode, PipeRoughnessNode, PivotNode,
   PoissonDistNode, PriceDiscNode, PriceMatNode, QuartileNode,
-  RankNode, RollingNode, RomanArabicNode, SecurityDiscNode,
+  RankNode, RomanArabicNode, SecurityDiscNode,
   SumProductNode, TBillNode, TDistNode, TInvNode,
   TTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
@@ -187,8 +187,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },
 
-  { type: "list-cumulative", ctor: CumulativeNode, kind: "operation", ops: fromMeta(CUMULATIVE_OP_META),
-    create: (op) => new CumulativeNode({ op: op as never }) },
+  { type: "list-running", ctor: RunningNode, kind: "operation", ops: fromMeta(RUNNING_OP_META),
+    create: (op) => new RunningNode({ op: op as never }) },
   // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
   { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),
     create: (op) => new ComparisonNode({ op: op as never }) },
@@ -260,7 +260,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
     ops: [{ op: "inc", label: "QUARTILE.INC" }, { op: "exc", label: "QUARTILE.EXC" }],
     create: (op) => new QuartileNode({ op: op as never }) },
   { type: "rank-eq", ctor: RankNode, kind: "operation" },
-  { type: "rolling-sum", ctor: RollingNode, kind: "operation" },
   { type: "roman-arabic-roman", ctor: RomanArabicNode, kind: "operation" },
   { type: "secdesc-disc", ctor: SecurityDiscNode, kind: "operation" },
   { type: "sp-sumproduct", ctor: SumProductNode, kind: "operation" },

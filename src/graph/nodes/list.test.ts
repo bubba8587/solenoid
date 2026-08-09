@@ -5,8 +5,7 @@ import {
   LinSpaceNode,
   NormalizeNode,
   DiffNode,
-  CumulativeNode,
-  RollingNode,
+  RunningNode,
   WeightedNode,
   ArgMinMaxNode,
   AggregateNode,
@@ -310,31 +309,61 @@ describe("Set relation tests (two lists → TRUE/FALSE)", () => {
   });
 });
 
-describe("Cumulative", () => {
-  it("cumsum", () => {
-    expect(new CumulativeNode({ op: "cumsum" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 3, 6, 10]);
+describe("Running — all so far (window grows)", () => {
+  it("sum / product", () => {
+    expect(new RunningNode({ op: "sum" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 3, 6, 10]);
+    expect(new RunningNode({ op: "product" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 2, 6, 24]);
   });
-  it("cumprod", () => {
-    expect(new CumulativeNode({ op: "cumprod" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 2, 6, 24]);
+  it("max / min", () => {
+    expect(new RunningNode({ op: "max" }).data({ list: [[3, 1, 4, 1, 5]] }).result).toEqual([3, 3, 4, 4, 5]);
+    expect(new RunningNode({ op: "min" }).data({ list: [[5, 3, 4, 1, 2]] }).result).toEqual([5, 3, 3, 1, 1]);
   });
-  it("cummax / cummin", () => {
-    expect(new CumulativeNode({ op: "cummax" }).data({ list: [[3, 1, 4, 1, 5]] }).result).toEqual([3, 3, 4, 4, 5]);
-    expect(new CumulativeNode({ op: "cummin" }).data({ list: [[5, 3, 4, 1, 2]] }).result).toEqual([5, 3, 3, 1, 1]);
+  it("avg / median / stdev accumulate over the whole prefix", () => {
+    expect(new RunningNode({ op: "avg" }).data({ list: [[2, 4, 6]] }).result).toEqual([2, 3, 4]);
+    expect(new RunningNode({ op: "median" }).data({ list: [[5, 1, 3, 9]] }).result).toEqual([5, 3, 3, 4]);
+    const sd = new RunningNode({ op: "stdev" }).data({ list: [[2, 4, 6]] }).result as (number | null)[];
+    expect(sd[0]).toBeNull(); // sample stdev undefined below n = 2
+    expect(sd[1]).toBeCloseTo(Math.SQRT2, 9);
+    expect(sd[2]).toBeCloseTo(2, 9);
+  });
+  it("the grow path answers exactly what the slide path does at window = length", () => {
+    const list = [3, null, 1, 4, 1, 5, 9, 2, 6];
+    for (const op of ["sum", "avg", "min", "max", "median", "product"] as const) {
+      const grow = new RunningNode({ op }).data({ list: [list] }).result;
+      const slide = new RunningNode({ op, mode: "window" }).data({ list: [list], window: [list.length] }).result;
+      expect(grow, op).toEqual(slide);
+    }
+  });
+  it("an error poisons its own position and every later one", () => {
+    const err = solError("#DIV/0!", "boom");
+    const r = new RunningNode({ op: "sum" }).data({ list: [[1, err, 3]] }).result as unknown[];
+    expect(r[0]).toBe(1);
+    expect(isSolError(r[1])).toBe(true);
+    expect(isSolError(r[2])).toBe(true); // the grown window still contains the error
+  });
+  it("nulls are skipped; an all-null prefix is 0 for sum, null otherwise", () => {
+    expect(new RunningNode({ op: "max" }).data({ list: [[null, -5, null, -3]] }).result).toEqual([null, -5, -5, -3]);
+    expect(new RunningNode({ op: "sum" }).data({ list: [[null, null, 5]] }).result).toEqual([0, 0, 5]);
   });
 });
 
-describe("Rolling", () => {
-  it("trailing-window sum grows then slides", () => {
-    expect(new RollingNode({ op: "sum" }).data({ list: [[1, 2, 3, 4, 5]], window: [3] }).result).toEqual([1, 3, 6, 9, 12]);
+describe("Running — last N (window slides)", () => {
+  const windowed = (op: "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev") =>
+    new RunningNode({ op, mode: "window" });
+  it("sum grows then slides", () => {
+    expect(windowed("sum").data({ list: [[1, 2, 3, 4, 5]], window: [3] }).result).toEqual([1, 3, 6, 9, 12]);
   });
-  it("trailing-window average", () => {
-    expect(new RollingNode({ op: "avg" }).data({ list: [[2, 4, 6, 8]], window: [2] }).result).toEqual([2, 3, 5, 7]);
+  it("average", () => {
+    expect(windowed("avg").data({ list: [[2, 4, 6, 8]], window: [2] }).result).toEqual([2, 3, 5, 7]);
+  });
+  it("product", () => {
+    expect(windowed("product").data({ list: [[1, 2, 3, 4]], window: [2] }).result).toEqual([1, 2, 6, 12]);
   });
 
   // v1.0 audit finding 14: each window runs through forAggregate.
   it("a per-cell error lands in exactly the windows that contain it", () => {
     const err = solError("#DIV/0!", "boom");
-    const r = new RollingNode({ op: "sum" }).data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];
+    const r = windowed("sum").data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];
     expect(r[0]).toBe(1);
     expect(isSolError(r[1])).toBe(true); // window [1, err]
     expect(isSolError(r[2])).toBe(true); // window [err, 3]
@@ -342,15 +371,26 @@ describe("Rolling", () => {
   });
 
   it("nulls are skipped, not counted as 0 (average divides by present count)", () => {
-    const r = new RollingNode({ op: "avg" }).data({ list: [[2, null, 4]], window: [2] }).result;
+    const r = windowed("avg").data({ list: [[2, null, 4]], window: [2] }).result;
     expect(r).toEqual([2, 2, 4]); // [2], [2,·], [·,4]
   });
 
   it("an all-null window is 0 for sum, null otherwise", () => {
-    const r1 = new RollingNode({ op: "sum" }).data({ list: [[null, null, 5]], window: [1] }).result;
-    expect(r1).toEqual([0, 0, 5]);
-    const r2 = new RollingNode({ op: "max" }).data({ list: [[null, 5]], window: [1] }).result;
-    expect(r2).toEqual([null, 5]);
+    expect(windowed("sum").data({ list: [[null, null, 5]], window: [1] }).result).toEqual([0, 0, 5]);
+    expect(windowed("max").data({ list: [[null, 5]], window: [1] }).result).toEqual([null, 5]);
+  });
+
+  it("a wired blank window leaves the result unknown", () => {
+    expect(windowed("sum").data({ list: [[1, 2]], window: [null as never] }).result).toBeNull();
+  });
+
+  it("setMode owns the Window socket", () => {
+    const node = new RunningNode();
+    expect(node.inputs.window).toBeUndefined();
+    node.setMode("window");
+    expect(node.inputs.window).toBeDefined();
+    node.setMode("all");
+    expect(node.inputs.window).toBeUndefined();
   });
 });
 

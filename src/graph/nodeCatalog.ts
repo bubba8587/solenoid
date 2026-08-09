@@ -10,7 +10,7 @@ import {
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, CumulativeNode, DiffNode,
+  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
   PercentrankNode, RankNode, CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -64,7 +64,7 @@ import {
   BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
   BesselNode,
-  SeriesSumNode, MultinomialNode, RollingNode, SwitchNode, IfsNode,
+  SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
   ZTestNode, TTestNode, FTestNode, ChisqTestNode,
   TrendNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode,
   NODE_KIND_ACCENTS,
@@ -76,7 +76,7 @@ import {
   IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
   WEIGHTED_OP_META,
   TEXT_TRANSFORM_OP_META, TEXT_SLICE_OP_META, TEXT_FIND_OP_META, TEXT_AFTER_BEFORE_OP_META,
-  BESSEL_OP_META, REGRESSION_OP_META, ROLLING_OP_META, T_TEST_OP_META,
+  BESSEL_OP_META, REGRESSION_OP_META, T_TEST_OP_META,
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META, DATE_DIFF_OP_META, DATE_ADD_OP_META,
   type ArithmeticOp, type MathFnOp, type BooleanOp, type ReduceOp,
   type CombinatoricsOp, type NthValueOp, type ArgMinMaxOp,
@@ -87,7 +87,7 @@ import {
   type CouponOp, type PriceDiscOp, type PriceMatOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
-  type BesselOp, type RegressionOp, type RollingOp, type TTestOp,
+  type BesselOp, type RegressionOp, type TTestOp,
   type TodayNowOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
   ExpectNode, TornadoNode,
 } from "./rete-nodes";
@@ -113,7 +113,6 @@ const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${
 const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${op}`,      label: IPMT_PPMT_OP_META[op].label,      description: IPMT_PPMT_OP_META[op].description,      create: () => new IpmtPpmtNode({ op })      });
 const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     create: () => new RegressionNode({ op })    });
-const rollingLeaf  = (op: RollingOp):      NodeCatalogEntry => ({ type: `rolling-${op}`,   label: ROLLING_OP_META[op].label,        description: ROLLING_OP_META[op].description,        create: () => new RollingNode({ op })       });
 const ttestLeaf    = (op: TTestOp):        NodeCatalogEntry => ({ type: `t-test-${op}`,    label: T_TEST_OP_META[op].label,         description: T_TEST_OP_META[op].description,         create: () => new TTestNode({ op }),         parity: false });
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
@@ -495,7 +494,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
           { type: "pair", children: [
             { type: "list-diff",       label: "DIFF",       description: "Consecutive differences: result[i] = list[i+1] − list[i]", create: () => new DiffNode() },
-            { type: "list-cumulative", label: "Cumulative", description: "Running SUM / MAX / MIN / PRODUCT along the list", create: () => new CumulativeNode() },
+            { type: "list-running", label: "Running", description: "One aggregate per element over a window: SUM / AVERAGE / MIN / MAX / MEDIAN / PRODUCT / STDEV of everything so far (the running total) or of the last N (the moving average).", create: () => new RunningNode(), keywords: "running total cumulative rolling moving average sliding window prefix sum accumulate expanding cumsum" },
           ]},
           { type: "pair", children: [
             { type: "list-normalize",  label: "Normalize",  description: "Scales a list to the 0–1 range: min maps to 0, max maps to 1", create: () => new NormalizeNode() },
@@ -506,14 +505,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-nthelement", label: "Nth Element", description: "Every N-th element; step subsampling.", create: () => new NthElementNode() },
           ]},
           { type: "list-sortby", label: "SORTBY", description: "Sorts one list by the values in a parallel numeric list; elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
-          {
-            type: "category", label: "Rolling", description: "Sliding-window aggregate over a list.",
-            children: [
-              { type: "pair", children: [rollingLeaf("sum"), rollingLeaf("avg")] },
-              { type: "pair", children: [rollingLeaf("min"), rollingLeaf("max")] },
-              { type: "pair", children: [rollingLeaf("stdev"), rollingLeaf("median")] },
-            ],
-          },
         ],
       },
       {

@@ -76,56 +76,75 @@ export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
     typeof v === "number" && Number.isFinite(v) ? (mn === mx ? 0 : (v - mn) / (mx - mn)) : null);
 }
 
-export type CumulativeOp = "cumsum" | "cumprod" | "cummax" | "cummin";
 
-/** Reducer policy applied per PREFIX: a null contributes nothing, and a cell error poisons
-*  its own position and every later one, since each later prefix contains it. */
-export function cumulative(op: CumulativeOp, arr: readonly Cell[]): Cell[] {
-  const out: Cell[] = [];
-  let err: SolError | null = null;
-  let acc: number | null = null;
-  for (const v of arr) {
-    if (err) { out.push(err); continue; }
-    if (isSolError(v)) { err = v; out.push(v); continue; }
-    if (isMissing(v) || typeof v !== "number") { out.push(acc); continue; }
-    if (acc === null) acc = v;
-    else {
+export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
+
+/** One aggregate per element over the window ending there: every element so far
+ *  (window null; the window GROWS) or the last N (the window SLIDES, running short at
+ *  the start). Per window: an error propagates to that cell and every later cell it
+ *  stays in reach of, a null is SKIPPED, and an all-null window is 0 for sum and null
+ *  otherwise. */
+export function running(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
+  if (window !== null) {
+    const w = Math.max(1, Math.round(window));
+    return arr.map((_, i) => {
+      const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));
+      if (prep.error) return prep.error;
+      const nums = prep.nums.filter((n) => Number.isFinite(n));
+      if (nums.length === 0) return op === "sum" ? 0 : null;
       switch (op) {
-        case "cumsum":  acc = acc + v; break;
-        case "cummax":  acc = Math.max(acc, v); break;
-        case "cummin":  acc = Math.min(acc, v); break;
-        case "cumprod": acc = acc * v; break;
+        case "sum": return nums.reduce((a, b) => a + b, 0);
+        case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
+        case "min": return iterMin(nums);
+        case "max": return iterMax(nums);
+        case "product": return nums.reduce((a, b) => a * b, 1);
+        case "stdev": {
+          if (nums.length < 2) return null; // sample stdev undefined (matches var_s)
+          const m = nums.reduce((a, b) => a + b, 0) / nums.length;
+          return Math.sqrt(nums.reduce((s, v) => s + (v - m) ** 2, 0) / (nums.length - 1));
+        }
+        case "median": {
+          const sorted = [...nums].sort((a, b) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+        }
+      }
+    });
+  }
+  // The grow path streams in one pass (a slice recompute would be O(n²)); it must
+  // answer exactly what the slice path would with window = arr.length.
+  let err: SolError | null = null;
+  let count = 0, sum = 0, product = 1, mn = Infinity, mx = -Infinity;
+  let mean = 0, m2 = 0;        // Welford, for stdev
+  const sorted: number[] = []; // for median
+  return arr.map((v) => {
+    if (!err && isSolError(v)) err = v;
+    if (err) return err;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      count++; sum += v; product *= v;
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+      const d = v - mean;
+      mean += d / count;
+      m2 += d * (v - mean);
+      if (op === "median") {
+        let lo = 0, hi = sorted.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (sorted[mid] < v) lo = mid + 1; else hi = mid;
+        }
+        sorted.splice(lo, 0, v);
       }
     }
-    out.push(acc);
-  }
-  return out;
-}
-
-export type RollingOp = "sum" | "avg" | "min" | "max" | "stdev" | "median";
-
-/** Sliding window ending at each position, so the first cells run short. Per window: an
- *  error propagates to that cell, a null is SKIPPED, and an all-null window is 0 for sum
- *  and null otherwise. */
-export function rolling(op: RollingOp, arr: readonly Cell[], window: number): Cell[] {
-  const w = Math.max(1, Math.round(window));
-  return arr.map((_, i) => {
-    const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));
-    if (prep.error) return prep.error;
-    const nums = prep.nums.filter((n) => Number.isFinite(n));
-    if (nums.length === 0) return op === "sum" ? 0 : null;
+    if (count === 0) return op === "sum" ? 0 : null;
     switch (op) {
-      case "sum": return nums.reduce((a, b) => a + b, 0);
-      case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
-      case "min": return iterMin(nums);
-      case "max": return iterMax(nums);
-      case "stdev": {
-        if (nums.length < 2) return null; // sample stdev undefined (matches var_s)
-        const m = nums.reduce((a, b) => a + b, 0) / nums.length;
-        return Math.sqrt(nums.reduce((s, v) => s + (v - m) ** 2, 0) / (nums.length - 1));
-      }
+      case "sum": return sum;
+      case "avg": return sum / count;
+      case "min": return mn;
+      case "max": return mx;
+      case "product": return product;
+      case "stdev": return count < 2 ? null : Math.sqrt(m2 / (count - 1));
       case "median": {
-        const sorted = [...nums].sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
         return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
       }

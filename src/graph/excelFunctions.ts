@@ -9,7 +9,7 @@ import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
-  cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
+  running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
   firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
@@ -481,16 +481,13 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PADLEFT:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   DIFF:            { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   NORMALIZE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  RUNNINGSUM:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  RUNNINGPRODUCT:  { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  RUNNINGMAX:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  RUNNINGMIN:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  ROLLINGSUM:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  ROLLINGAVG:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  ROLLINGMIN:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  ROLLINGMAX:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  ROLLINGSTDEV:    { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  ROLLINGMEDIAN:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  RUNNINGSUM:      { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RUNNINGAVERAGE:  { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RUNNINGMIN:      { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RUNNINGMAX:      { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RUNNINGMEDIAN:   { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RUNNINGPRODUCT:  { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RUNNINGSTDEV:    { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
@@ -1102,16 +1099,18 @@ registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n
 registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
-registerInternal("RUNNINGSUM",     (list) => cumulative("cumsum",  numList(list)));
-registerInternal("RUNNINGPRODUCT", (list) => cumulative("cumprod", numList(list) as number[]));
-registerInternal("RUNNINGMAX",     (list) => cumulative("cummax",  numList(list)));
-registerInternal("RUNNINGMIN",     (list) => cumulative("cummin",  numList(list)));
-registerInternal("ROLLINGSUM",    (list, w) => rolling("sum",    numList(list), Number(w)));
-registerInternal("ROLLINGAVG",    (list, w) => rolling("avg",    numList(list), Number(w)));
-registerInternal("ROLLINGMIN",    (list, w) => rolling("min",    numList(list), Number(w)));
-registerInternal("ROLLINGMAX",    (list, w) => rolling("max",    numList(list), Number(w)));
-registerInternal("ROLLINGSTDEV",  (list, w) => rolling("stdev",  numList(list), Number(w)));
-registerInternal("ROLLINGMEDIAN", (list, w) => rolling("median", numList(list), Number(w)));
+// The window arg is optional: omitted grows the window (every element so far); a
+// BLANK window is unknown and answers blank (value-semantics.md, "Reading an input").
+const RUNNING_FORMULA_OPS: Record<string, RunningOp> = {
+  RUNNINGSUM: "sum", RUNNINGAVERAGE: "avg", RUNNINGMIN: "min", RUNNINGMAX: "max",
+  RUNNINGMEDIAN: "median", RUNNINGPRODUCT: "product", RUNNINGSTDEV: "stdev",
+};
+for (const [name, op] of Object.entries(RUNNING_FORMULA_OPS)) {
+  registerInternal(name, (list, w) =>
+    w === undefined ? running(op, numList(list), null)
+      : w == null ? null
+      : running(op, numList(list), Number(w)));
+}
 
 // LENGTH counts every slot including the missing ones, which is exactly why these
 // need the raw whole-list routing.

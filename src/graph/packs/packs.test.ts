@@ -35,7 +35,6 @@ describe("built-in packs", () => {
   });
 
   it("NODE_PACK_TAGS derives from pack tags", () => {
-    expect(NODE_PACK_TAGS["rolling-sum"]).toEqual(["timesavers"]);
     expect(NODE_PACK_TAGS["logic-nor"]).toEqual(["timesavers"]);
   });
 });

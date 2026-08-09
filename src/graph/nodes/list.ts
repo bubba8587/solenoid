@@ -15,7 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -1029,36 +1029,70 @@ export class ConcatListsNode extends ClassicPreset.Node {
   }
 }
 
-export type CumulativeOp = "cumsum" | "cummax" | "cummin" | "cumprod";
+export type { RunningOp } from "./listOps";
+export type RunningMode = "all" | "window";
 
-// Rolling is a sliding window, Running is every element so far.
-export const CUMULATIVE_OP_META = {
-  cumsum:  { label: "Running SUM",     description: "Running total: each element is the sum of every element up to it." },
-  cumprod: { label: "Running PRODUCT", description: "Running product of every element up to each position." },
-  cummax:  { label: "Running MAX",     description: "Largest element seen up to each position." },
-  cummin:  { label: "Running MIN",     description: "Smallest element seen up to each position." },
-} satisfies Record<CumulativeOp, { label: string; description: string }>;
+export const RUNNING_OP_META = {
+  sum:     { label: "Running SUM",     description: "The running total: each element is the sum of its window." },
+  avg:     { label: "Running AVERAGE", description: "The moving average: each element is the mean of its window." },
+  min:     { label: "Running MIN",     description: "Smallest value in each window." },
+  max:     { label: "Running MAX",     description: "Largest value in each window." },
+  median:  { label: "Running MEDIAN",  description: "Middle value of each window." },
+  product: { label: "Running PRODUCT", description: "Product of each window." },
+  stdev:   { label: "Running STDEV",   description: "Sample standard deviation of each window; divides by n−1." },
+} satisfies Record<RunningOp, { label: string; description: string }>;
 
-export class CumulativeNode extends ClassicPreset.Node {
+export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
+  { value: "all",    label: "All so far", title: "The window grows: every element from the start through this one" },
+  { value: "window", label: "Last N",     title: "The window slides: only the last N elements ending at this one" },
+];
+
+export class RunningNode extends ClassicPreset.Node {
   label: string;
-  op: CumulativeOp;
-  cachedList: ListCell[] = [];
+  op: RunningOp;
+  mode: RunningMode;
+  cachedList: ListCell[] | null = [];
+  literals: Record<string, number> = { window: 3 };
   width = 180;
-  height = 160;
+  height = 190;
 
-  constructor(init?: { label?: string; op?: CumulativeOp }) {
-    super("Cumulative");
-    this.label = init?.label ?? "Cumulative";
-    this.op = init?.op ?? "cumsum";
-    this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut("Running"));
+  constructor(init?: { label?: string; op?: RunningOp; mode?: RunningMode }) {
+    super("Running");
+    this.label = init?.label ?? "Running";
+    this.op = init?.op ?? "sum";
+    this.mode = init?.mode ?? "all";
+    this.addInput("list", listIn("List"));
+    if (this.mode === "window") this.addInput("window", numIn("Window size"));
+    this.addOutput("result", listOut("Result"));
+    this.height = this.mode === "window" ? 218 : 190;
   }
 
-  data(inputs: { list?: ListCell[][] }) {
+  /** The mode owns the Window socket: Last N has it, All so far doesn't. Callers with
+   *  a live graph prune the socket's cables BEFORE switching away from Last N. */
+  setMode(next: RunningMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    if (next === "window") {
+      if (!this.inputs.window) this.addInput("window", numIn("Window size"));
+    } else if (this.inputs.window) {
+      this.removeInput("window");
+    }
+    this.height = next === "window" ? 218 : 190;
+  }
+
+  data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const out = cumulative(this.op, arr);
-    this.cachedList = out;
-    return { result: out };
+    if (this.mode === "window") {
+      const wRaw = readInput(inputs.window, this.literals.window ?? 3);
+      // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+      if (wRaw === null) { this.cachedList = null; return { result: null }; }
+      const result = running(this.op, arr, wRaw);
+      this.cachedList = result;
+      return { result };
+    }
+    const result = running(this.op, arr, null);
+    this.cachedList = result;
+    return { result };
   }
 }
 
@@ -1386,46 +1420,6 @@ export class FibonacciNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Rolling Window ───────────────────────────────────────────────────────────
-
-export type RollingOp = "sum" | "avg" | "min" | "max" | "stdev" | "median";
-
-export const ROLLING_OP_META = {
-  sum:    { label: "Rolling SUM",    description: "Sliding-window sum over the list" },
-  avg:    { label: "Rolling AVG",    description: "Sliding-window average" },
-  min:    { label: "Rolling MIN",    description: "Sliding-window minimum" },
-  max:    { label: "Rolling MAX",    description: "Sliding-window maximum" },
-  stdev:  { label: "Rolling STDEV", description: "Sliding-window sample standard deviation; divides by n−1" },
-  median: { label: "Rolling MEDIAN",description: "Sliding-window median" },
-} satisfies Record<RollingOp, { label: string; description: string }>;
-
-export class RollingNode extends ClassicPreset.Node {
-  label: string;
-  op: RollingOp;
-  cachedList: (number | null | SolError)[] | null = [];
-  literals: Record<string, number> = { window: 3 };
-  width = 180;
-  height = 210;
-
-  constructor(init?: { label?: string; op?: RollingOp }) {
-    super("Rolling");
-    this.label = init?.label ?? "Rolling";
-    this.op = init?.op ?? "sum";
-    this.addInput("list",   listIn("List"));
-    this.addInput("window", numIn("Window size"));
-    this.addOutput("result", listOut("Result"));
-  }
-
-  data(inputs: { list?: (number | null | SolError)[][]; window?: number[] }) {
-    const arr = inputs.list?.[0] ?? [];
-    const wRaw = readInput(inputs.window, this.literals.window ?? 3);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (wRaw === null) { this.cachedList = null; return { result: null }; }
-    const result = rolling(this.op, arr, wRaw);
-    this.cachedList = result;
-    return { result };
-  }
-}
 
 // ─── Weighted Statistics ──────────────────────────────────────────────────────
 
