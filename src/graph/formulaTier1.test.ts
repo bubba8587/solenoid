@@ -3,7 +3,7 @@ import { resolveExcelFunction, LEGACY_ALIASES } from "./excelFunctions";
 import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "./excelFormula";
 import { isSolError } from "./errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "./nodes/text";
-import { CouponNode, BondPriceNode, DurationNode, VdbNode } from "./nodes/finance";
+import { CouponNode, BondPriceNode, DurationNode, DepreciationNode } from "./nodes/finance";
 import { ForecastNode } from "./nodes/stats";
 
 // ─── Tier 1 registrations (D19) ───────────────────────────────────────────────
@@ -133,7 +133,7 @@ describe("finance functions: formula matches node", () => {
   });
 
   it("VDB", () => {
-    const node = new VdbNode();
+    const node = new DepreciationNode({ op: "vdb" });
     expect(ev("VDB(10000, 1000, 10, 0, 1)")).toBe(node.data({
       cost: [10000], salvage: [1000], life: [10], start: [0], end: [1], factor: [2],
     }).result);

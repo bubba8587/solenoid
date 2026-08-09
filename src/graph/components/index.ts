@@ -108,7 +108,6 @@ export { CumPmtComponent } from "./CumPmtNode";
 export { FvScheduleComponent } from "./FvScheduleNode";
 export { IspmtComponent } from "./IspmtNode";
 export { DollarComponent } from "./DollarNode";
-export { VdbComponent } from "./VdbNode";
 export { TBillComponent } from "./TBillNode";
 export { SecurityDiscComponent } from "./SecurityDiscNode";
 export { CouponComponent } from "./CouponNode";
