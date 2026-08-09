@@ -549,62 +549,73 @@ export function parseBorderedGrid(
   return { xs, ys, z };
 }
 
+export type SurfaceViewOp = "surface" | "contour";
+
+export const SURFACE_VIEW_OP_META = {
+  surface: { label: "3-D",  description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights)." },
+  contour: { label: "Flat", description: "The same bordered grid drawn flat: filled height bands with iso-lines." },
+} satisfies Record<SurfaceViewOp, { label: string; description: string }>;
+
+// ONE node, two views of one grid: the 3-D shaded surface and its flat
+// contour twin. The op swaps the view; Contour alone has the Levels input,
+// Surface alone the yaw/pitch literals (the component's D-pad).
 export class SurfaceNode extends ClassicPreset.Node {
   label: string;
+  op: SurfaceViewOp;
   // View angles (degrees) live in `literals` so they persist and the rotate buttons nudge them.
   literals: Record<string, number> = { yaw: 45, pitch: 45 };
   cachedChart: ChartValue | null = null;
   width = 240;
   height = 220;
 
-  constructor(init?: { label?: string; yaw?: number; pitch?: number }) {
+  constructor(init?: { label?: string; op?: SurfaceViewOp; yaw?: number; pitch?: number; levels?: number }) {
     super("Surface");
-    this.label = init?.label ?? "Surface";
+    this.op = init?.op ?? "surface";
+    this.label = init?.label ?? (this.op === "surface" ? "Surface" : "Contour");
     if (init?.yaw != null) this.literals.yaw = init.yaw;
     if (init?.pitch != null) this.literals.pitch = init.pitch;
+    if (typeof init?.levels === "number") this.literals.levels = init.levels;
     this.addInput("grid", tableIn("Bordered grid"));
+    if (this.op === "contour") {
+      this.literals.levels ??= 8;
+      this.addInput("levels", numIn("Levels"));
+    }
     this.addOutput("chart", chartOut("Chart"));
+    this.height = this.op === "contour" ? 240 : 220;
   }
 
-  data(inputs: { grid?: (number | null | unknown)[][][] }): { chart: ChartValue } {
+  /** The op owns the Levels socket. Callers on a live graph prune its cables
+   *  BEFORE switching to the 3-D view (SSOT-9). */
+  setOp(next: SurfaceViewOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    if (next === "contour") {
+      this.literals.levels ??= 8;
+      if (!this.inputs.levels) this.addInput("levels", numIn("Levels"));
+    } else if (this.inputs.levels) {
+      this.removeInput("levels");
+    }
+    this.height = next === "contour" ? 240 : 220;
+  }
+
+  data(inputs: { grid?: (number | null | unknown)[][][]; levels?: number[] }): { chart: ChartValue } {
     const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
+    if (this.op === "contour") {
+      // Levels is a SHAPE, so a wired blank empties the figure rather than reusing the card's count.
+      const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
+      const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
+      // Mirror only when unwired — never clobber the typed literal with a wired value.
+      if (inputs.levels?.[0] === undefined && levelsRaw !== null) this.literals.levels = levels;
+      const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
+      const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
+      this.cachedChart = chart;
+      return { chart };
+    }
     const payload: SurfacePayload = { kind: "surface", xs, ys, z, yaw: this.literals.yaw ?? 45, pitch: this.literals.pitch ?? 45 };
     const chart: ChartValue = {
       __chart: true, op: "surface", values: null, payload,
       options: {}, title: this.label || "Surface",
     };
-    this.cachedChart = chart;
-    return { chart };
-  }
-}
-
-// ─── Contour (flat height-band plot) ─────────────────────────────────────────
-
-export class ContourNode extends ClassicPreset.Node {
-  label: string;
-  literals: Record<string, number> = { levels: 8 };
-  cachedChart: ChartValue | null = null;
-  width = 240;
-  height = 240;
-
-  constructor(init?: { label?: string; levels?: number }) {
-    super("Contour");
-    this.label = init?.label ?? "Contour";
-    if (typeof init?.levels === "number") this.literals.levels = init.levels;
-    this.addInput("grid", tableIn("Bordered grid"));
-    this.addInput("levels", numIn("Levels"));
-    this.addOutput("chart", chartOut("Chart"));
-  }
-
-  data(inputs: { grid?: (number | null | unknown)[][][]; levels?: number[] }): { chart: ChartValue } {
-    const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
-    // Levels is a SHAPE, so a wired blank empties the figure rather than reusing the card's count.
-    const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
-    const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
-    // Mirror only when unwired — never clobber the typed literal with a wired value.
-    if (inputs.levels?.[0] === undefined && levelsRaw !== null) this.literals.levels = levels;
-    const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
-    const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
     this.cachedChart = chart;
     return { chart };
   }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins,
-  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
   SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
 } from "./visual";
 import { CHART_BUILDER_FIELDS } from "./visual";
@@ -260,7 +260,7 @@ describe("quantileSorted / boxplotStats", () => {
 
 describe("chart-wave nodes emit their payloads", () => {
   it("Contour reads the bordered grid and clamps levels", () => {
-    const n = new ContourNode();
+    const n = new SurfaceNode({ op: "contour" });
     const grid = [[null, 0, 1], [0, 5, 6], [1, 7, 8]];
     const p = n.data({ grid: [grid], levels: [99] }).chart.payload as ContourPayload;
     expect(p.kind).toBe("contour");
@@ -373,5 +373,27 @@ describe("SevenSeg", () => {
     expect(sevenSegText(12345678901, 0)).toBe("----------");
     // The decimal point rides its neighbor cell, so 8 digits + dp still fits.
     expect(sevenSegText(1234567.8, 1)).toBe("1234567.8");
+  });
+});
+
+describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
+  it("the toggle swaps the payload kind and owns the Levels socket", () => {
+    const n = new SurfaceNode();
+    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    n.setOp("contour");
+    expect(Object.keys(n.inputs)).toEqual(["grid", "levels"]);
+    expect(n.literals.levels).toBe(8);
+    const grid = [[null, 1, 2], [1, 10, 20], [2, 30, 40]];
+    expect(n.data({ grid: [grid] }).chart).toMatchObject({ op: "contour", payload: { kind: "contour", levels: 8 } });
+    n.setOp("surface");
+    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    expect(n.data({ grid: [grid] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
+  });
+
+  it("op round-trips through extractInit with the view's literals", () => {
+    const n = new SurfaceNode({ op: "contour", levels: 12 });
+    const clone = new SurfaceNode(extractInit(n) as { op: "contour" });
+    expect(clone.op).toBe("contour");
+    expect(clone.literals.levels).toBe(12);
   });
 });

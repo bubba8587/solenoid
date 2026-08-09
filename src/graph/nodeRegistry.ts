@@ -7,7 +7,7 @@ import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
-  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
@@ -83,7 +83,7 @@ import {
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
   SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
-  ContourComponent, WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, WaffleComponent, QuiverComponent, SevenSegComponent,
+  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, WaffleComponent, QuiverComponent, SevenSegComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
   NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
@@ -190,7 +190,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TreemapNode,     comp(TreemapComponent)],
   [SankeyNode,      comp(SankeyComponent)],
   [SurfaceNode,     comp(SurfaceComponent)],
-  [ContourNode,     comp(ContourComponent)],
   [WaterfallNode,   comp(WaterfallComponent)],
   [CandlestickNode, comp(CandlestickComponent)],
   [BoxplotNode,     comp(BoxplotComponent)],

@@ -11,7 +11,7 @@ import { installErrorGuards } from "../errorValue";
 import { nodeNameStore } from "../nodeNameStore";
 import { TableInputNode } from "../nodes/matrix";
 import { InterpolateNode } from "../nodes/stats";
-import { SurfaceNode, ContourNode } from "../nodes/visual";
+import { SurfaceNode } from "../nodes/visual";
 
 // The landing page's live rete stack, pointed at the process.ts singletons. ONE live
 // stage only — a second stack renders its cards unwired the moment the singletons move.
@@ -43,7 +43,7 @@ async function buildDemoGraph(editor: NodeEditor<Schemes>, area: AreaPlugin<Sche
   const survey = new TableInputNode({ label: "Survey grid", tableText: SURVEY_GRID });
   const interp = new InterpolateNode({ label: "Grid Interpolate", mode: "grid" });
   const surface = new SurfaceNode({ label: "Surface" });
-  const contour = new ContourNode({ label: "Contour" });
+  const contour = new SurfaceNode({ op: "contour", label: "Contour" });
 
   const at: [ClassicPreset.Node, number, number][] = [
     [survey, 20, 130],

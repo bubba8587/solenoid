@@ -265,7 +265,7 @@ export { TreemapComponent } from "./TreemapNode";
 export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
-  ContourComponent, WaterfallComponent, CandlestickComponent, BoxplotComponent,
+  WaterfallComponent, CandlestickComponent, BoxplotComponent,
   CalendarHeatmapComponent, WaffleComponent, QuiverComponent,
 } from "./FigureNodes";
 export { SevenSegComponent } from "./SevenSegNode";

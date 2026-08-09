@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type {
-  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode,
+  WaterfallNode, CandlestickNode, BoxplotNode,
   CalendarHeatmapNode, WaffleNode, QuiverNode,
 } from "../rete-nodes";
 import type { ChartValue, ChartPayload } from "../chartValue";
@@ -47,12 +47,6 @@ function makeFigureComponent<N extends FigureNode>(
     );
   };
 }
-
-export const ContourComponent = makeFigureComponent<ContourNode>(
-  190,
-  (p) => p?.kind === "contour" && p.xs.length >= 2 && p.ys.length >= 2
-    && p.z.some((r) => r.some((v) => v != null && Number.isFinite(v))),
-);
 
 export const WaterfallComponent = makeFigureComponent<WaterfallNode>(
   170,
