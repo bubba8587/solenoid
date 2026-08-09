@@ -86,6 +86,34 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-09c — Orchard palette; palettes can author the canvas ground)
+- **Palettes can now recolor the canvas ground** (D35). `BUILTIN_CANVAS` in
+  `palette.ts` maps each palette name to a `CanvasColors` — background + dot grid,
+  per theme mode (`bgDark`/`dotDark`/`bgLight`/`dotLight`). It is PARALLEL to the
+  slot map, not four extra slots: nothing stores a ground on a node and
+  `resolveColor` never returns one, so folding them in would make every slot
+  consumer skip them. `appTheme.apply` writes `--canvas-bg` / `--canvas-dot` from
+  `paletteStore.canvasColors()` and REMOVES them for any key the palette doesn't
+  declare — an inline property beats App.css's ramps, so a skip (rather than a
+  clear) would strand Orchard's cream under Default. A doc pin picks the ground
+  too; doc `overrides` stay slot-only. Report palette unchanged (exports don't
+  draw a canvas).
+- **Orchard**, lifted from the Pear design system (`bubba8587/pear` DESIGN.md).
+  Seven slots are Pear tokens verbatim (honey-bright/honey, pear-bright/pear-fill,
+  blossom-fill, danger, quiet); Pear ships NO cool hue at all, so teal/sky/blue/
+  violet/purple are blended into its gaps at its own S/V band — the same technique
+  Solarized already uses for the accents it doesn't ship. All four ground colors
+  are Pear verbatim (dark-bg/dark-border, bg/border). It is the ONLY built-in that
+  authors a ground, pinned by a test so a later palette adds one deliberately.
+- **The custom palette gained the ground too**, surfaced in the editor (the app
+  palette picker still shows colors only). Its ground is always COMPLETE, seeded
+  from `DEFAULT_CANVAS` (a mirror of App.css's two pairs), so a well always has a
+  value to show and picking Custom starts pixel-identical to the neutral ground.
+  Persisted under its own LS key; "Load template" seeds the ground from the
+  template, so loading a groundless one CLEARS an authored ground rather than
+  leaving it behind. The editor's sample now stands on the drafted ground with its
+  dot grid, so the chrome is judged against the canvas it will sit on.
+
 ### SESSION DIGEST (2026-08-09b — ONE Distribution node; Running vocabulary pass)
 - **ALL distributions are now ONE node** (author call, D34; an intermediate commit
   merged only the dist/inv pairs before the author clarified the intent). `nodes/

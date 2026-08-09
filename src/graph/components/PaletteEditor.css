@@ -30,6 +30,16 @@
 .sol-pal-editor__well::-moz-color-swatch { border: none; border-radius: 3px; }
 .sol-pal-editor__slot-label { font-size: 12px; color: var(--text); }
 
+/* Canvas ground wells — the graph background + dot grid, both modes. Four across on
+   a wide panel, folding to two on a narrow one. */
+.sol-pal-editor__canvas { display: flex; flex-direction: column; gap: 7px; }
+.sol-pal-editor__group-label { font-size: 12px; color: var(--text-dim); }
+.sol-pal-editor__canvas-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+  gap: 7px 18px;
+}
+
 /* Load-template row. */
 .sol-pal-editor__templates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sol-pal-editor__templates-label { font-size: 12px; color: var(--text-dim); }
@@ -46,13 +56,19 @@
 }
 .sol-pal-editor__template-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Live sample — the REAL node/group/note chrome side by side. */
+/* Live sample — the REAL node/group/note chrome side by side, standing on the drafted
+   canvas ground (same 24px dot grid as .solenoid-canvas, at rest zoom). */
 .sol-pal-sample {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
   align-items: flex-start;
-  padding: 4px 0 2px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background-color: var(--sample-bg);
+  background-image: radial-gradient(circle, var(--sample-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 /* The node sits inside the group body (like a real member) with a little breathing room. */
 .sol-pal-sample__nodeslot { padding: 10px; }

@@ -278,6 +278,24 @@ first-input swap cannot describe. **Where:** `nodes/distribution.ts`
 **Reopen if:** a distribution whose parameters or input shape cannot be
 described by `DIST_SPECS` (a second x input, a non-numeric parameter).
 
+### D35 — A palette may author the canvas ground, and almost none do
+The canvas background and its dot grid are palette-authorable per theme mode
+(`BUILTIN_CANVAS`), PARALLEL to the slot map rather than four more slots: nothing
+stores them on a node, `resolveColor` never returns one, and folding them into the
+slot record would make every slot consumer (chart series, swatch grid, height ramp,
+doc overrides) skip them. Declaring a ground is OPT-IN and stays rare — recoloring
+the graph is what a palette does; recoloring the workbench is a separate claim.
+Orchard is the only built-in that opts in (2026-08-09, author call), and a test pins
+that so a later palette adds a ground deliberately. A palette that declares none
+keeps App.css's neutral ground: `appTheme` CLEARS the inline vars per apply, since an
+inline property beats the stylesheet's ramps and a stale one would strand a cream
+canvas under Default. The custom palette's ground is always COMPLETE (seeded from
+`DEFAULT_CANVAS`), so the editor can show it in a well. **Where:** `palette.ts`
+(`BUILTIN_CANVAS` / `DEFAULT_CANVAS` / `canvasColors`), `appTheme.ts` `apply`,
+`PaletteEditor.tsx`, `palette.test.ts` § canvas ground. **Reopen if:** grounds
+outgrow two colors (a texture, a vignette, a per-doc ground) — that wants its own
+model, not more keys.
+
 ---
 
 ## Structural risks (standing conditions, not bugs)

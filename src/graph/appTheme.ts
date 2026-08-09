@@ -50,6 +50,20 @@ function apply() {
   // The semantic ERROR red derives from the `vermilion` slot, so a custom palette
   // retints errors too; errorChip.css's static fallback covers the first paint.
   root.style.setProperty("--sol-error", themeAccent(resolveColor("vermilion"), _mode));
+
+  // The canvas ground, when the active palette authors one. A palette that doesn't
+  // must CLEAR the vars, not skip them: an inline property beats App.css's ramps, so
+  // leaving the last palette's ground behind would strand a cream canvas under the
+  // Default palette. The hexes go through unshifted — themeAccent tunes an accent
+  // against the ground, and the ground is what it's tuned against.
+  const canvas = paletteStore.canvasColors();
+  setOrClear(root, "--canvas-bg", _mode === "dark" ? canvas.bgDark : canvas.bgLight);
+  setOrClear(root, "--canvas-dot", _mode === "dark" ? canvas.dotDark : canvas.dotLight);
+}
+
+function setOrClear(root: HTMLElement, name: string, value: string | undefined) {
+  if (value) root.style.setProperty(name, value);
+  else root.style.removeProperty(name);
 }
 
 function persist() {

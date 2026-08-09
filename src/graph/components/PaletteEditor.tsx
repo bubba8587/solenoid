@@ -4,9 +4,9 @@ import { useFocusTrap } from "./useFocusTrap";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";
 import {
-  paletteStore, paletteEditorPanel, BUILTIN_PALETTES,
+  paletteStore, paletteEditorPanel, BUILTIN_PALETTES, BUILTIN_CANVAS, DEFAULT_CANVAS,
   hexToRgba, contrastInk, themeAccent, darkenAccent,
-  type PaletteSlot, type PaletteName,
+  type PaletteSlot, type PaletteName, type CanvasKey,
 } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { getEditor } from "../process";
@@ -34,7 +34,19 @@ const SLOT_ROLES: { slot: PaletteSlot; label: string }[] = [
   { slot: "gray",      label: "Any" },
 ];
 
+// The canvas ground (App.css's --canvas-bg / --canvas-dot). Only the custom palette
+// and Orchard author one; every other built-in leaves the neutral ground alone. Both
+// modes are editable here rather than only the live one, so a palette stays complete
+// when the author flips theme.
+const CANVAS_ROLES: { key: CanvasKey; label: string }[] = [
+  { key: "bgDark",   label: "Canvas, dark" },
+  { key: "dotDark",  label: "Dots, dark" },
+  { key: "bgLight",  label: "Canvas, light" },
+  { key: "dotLight", label: "Dots, light" },
+];
+
 type Draft = Record<PaletteSlot, string>;
+type CanvasDraft = Record<CanvasKey, string>;
 
 /** Edits live in a local DRAFT that previews only in the sample — the app is retinted once
  *  on Save, never on every color-drag tick. The sample uses the REAL node chrome + CSS. */
@@ -42,17 +54,22 @@ export function PaletteEditorModal() {
   const open = useSyncExternalStore(paletteEditorPanel.subscribe, paletteEditorPanel.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [draft, setDraft] = useState<Draft>(() => paletteStore.customMap());
+  const [canvasDraft, setCanvasDraft] = useState<CanvasDraft>(() => paletteStore.customCanvas());
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(open, panelRef);
 
-  useEffect(() => { if (open) setDraft(paletteStore.customMap()); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    setDraft(paletteStore.customMap());
+    setCanvasDraft(paletteStore.customCanvas());
+  }, [open]);
 
   useEscapeToClose(() => paletteEditorPanel.close(), open);
 
   if (!open) return null;
 
   function save() {
-    paletteStore.setCustomMap(draft);
+    paletteStore.setCustomMap(draft, canvasDraft);
     paletteStore.setActiveBase("Custom");
     const ed = getEditor();
     if (ed) rebuildGroupMembership(ed);
@@ -92,6 +109,25 @@ export function PaletteEditorModal() {
             ))}
           </div>
 
+          <div className="sol-pal-editor__canvas">
+            <span className="sol-pal-editor__group-label">Canvas</span>
+            <div className="sol-pal-editor__canvas-slots">
+              {CANVAS_ROLES.map(({ key, label }) => (
+                <label key={key} className="sol-pal-editor__slot">
+                  <input
+                    type="color"
+                    className="sol-pal-editor__well"
+                    value={canvasDraft[key]}
+                    onChange={(e) => setCanvasDraft((c) => ({ ...c, [key]: e.target.value }))}
+                    onPointerDown={stop}
+                    onMouseDown={stop}
+                  />
+                  <span className="sol-pal-editor__slot-label">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="sol-pal-editor__templates">
             <span className="sol-pal-editor__templates-label">Load template</span>
             <div className="sol-pal-editor__template-btns">
@@ -100,7 +136,12 @@ export function PaletteEditorModal() {
                   key={name}
                   type="button"
                   className="sol-pal-editor__template-btn"
-                  onClick={() => setDraft({ ...BUILTIN_PALETTES[name as PaletteName] })}
+                  onClick={() => {
+                    setDraft({ ...BUILTIN_PALETTES[name as PaletteName] });
+                    // A template with no ground of its own seeds the neutral one, so
+                    // loading it clears a ground the author had set (matches loadCustomTemplate).
+                    setCanvasDraft({ ...DEFAULT_CANVAS, ...BUILTIN_CANVAS[name as PaletteName] });
+                  }}
                 >
                   {name}
                 </button>
@@ -108,7 +149,7 @@ export function PaletteEditorModal() {
             </div>
           </div>
 
-          <PaletteSample draft={draft} />
+          <PaletteSample draft={draft} canvas={canvasDraft} />
         </div>
 
         <div className="sol-pal-panel__footer">
@@ -120,7 +161,7 @@ export function PaletteEditorModal() {
   );
 }
 
-function PaletteSample({ draft }: { draft: Draft }) {
+function PaletteSample({ draft, canvas }: { draft: Draft; canvas: CanvasDraft }) {
   // The sample card's frame SVG needs --header-h like a real card.
   const headerRef = useRef<HTMLDivElement>(null);
   useHeaderHeightVar(headerRef);
@@ -132,8 +173,16 @@ function PaletteSample({ draft }: { draft: Draft }) {
   const nodeAccentDark = darkenAccent(draft.blue);
   const nc = themeAccent(draft.pink, mode);
   const numberColor = themeAccent(draft.gold, mode);
+  // The sample stands ON the drafted ground, dot grid and all, so the chrome is
+  // judged against the canvas it will sit on rather than the modal's surface.
+  const ground = mode === "dark"
+    ? { bg: canvas.bgDark, dot: canvas.dotDark }
+    : { bg: canvas.bgLight, dot: canvas.dotLight };
   return (
-    <div className="sol-pal-sample">
+    <div
+      className="sol-pal-sample"
+      style={{ "--sample-bg": ground.bg, "--sample-dot": ground.dot } as React.CSSProperties}
+    >
       <div
         className="solenoid-group"
         style={{ width: 226, "--group-color": gc, "--group-color-dark": gcDark } as React.CSSProperties}
