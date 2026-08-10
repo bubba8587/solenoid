@@ -219,23 +219,42 @@ documents outgrow reliable whole-doc regeneration, or the MCP port ships (its
 typed tools ARE the op layer).
 
 ### D29 — Aggregators are ARGUMENTS of their host verb, not searchable ops
+**"Having op" is ONE property with three consequences, never three switches** (author,
+2026-08-10). An operation's ops are (1) genuine top-level functions in the formula
+editor, (2) accented and hoisted to the top of the card body, and (3) searchable in the
+Add menu. An ARGUMENT is a parameter inside a top-level function: neutral control, no
+function, no search row of its own — its searched words live as `keywords` on the HOST
+leaf, which is this entry's own reopen clause. `kind` is the one declaration; it already
+gates (1) via `formulaNodeParity` and (2) via `data-op-kind`, and `nodeOps.test.ts` §
+"op-vs-arg is harmonized" now pins (3) for the argument half. The operation half (every
+op callable) stays the parity PROGRAM's business — DATEDIF sits at 3/8 — so asserting it
+would duplicate a tracked backlog as a red test.
+
+**The three move together in BOTH directions.** Classifying a family as an argument
+DELETES its formula names; it does not leave them standing as a top-level surface for a
+parameter. Running is the worked example: its aggregator is an argument, so the seven
+`RUNNING*` functions were removed (2026-08-10) rather than kept on the reasoning that
+"kind and menu are separate axes". A dispatchable name is therefore never EVIDENCE that
+a family is an operation — it is a consequence to add or remove once the classification
+is made, and treating it as evidence is how this got argued backwards for several rounds.
+
 The Add menu shows the verb once; the aggregator is picked on the card. The
 operation-vs-argument framework (weigh, don't let the last signal win): would the
 user PICK it or could it arrive computed; does it have its own NAME (FX-4 can
 overrule — ops sharing a name cannot be operations); would the user SEARCH for
 it; is it meaningless without its host; is it an Excel function (corroborating
-only). Distribution .RT forms stay SEARCH ROWS (kind and menu are separate axes;
-rows must carry the searched token — an `argument` declaration keeps its `ops`/
-`create` and stays fully findable, it only drops the accent edge).
+only). An argument's searched words live as `keywords` on the HOST leaf, never as op
+rows of its own; Distribution's `.RT` forms are search rows because Distribution is an
+OPERATION family, not because arguments may be searchable.
 
-The SUM/AVERAGE/MIN/… picker appears on five cards, and four are `argument` by this
-rule: `list-groupby`, `group-by-frame`, `cube-rollup`, `list-running` (the host verb
-is the windowed scan; the card stays titled "Running" whatever the aggregator says).
-The exception is `reduce-sum` (Aggregate), where the aggregator is not a parameter of
-a host verb — it IS the whole node — so it stays `operation`. Test for a new
-aggregator picker: does the card have a job the aggregator merely parameterizes?
+The SUM/AVERAGE/MIN/… picker appears on five cards. Four are `argument` — `list-groupby`,
+`group-by-frame`, `cube-rollup`, `list-running` — none of which names a function. The one
+`operation` is `reduce-sum` (Aggregate), where the aggregator is not a parameter of a host
+verb but IS the whole node. Test for a new aggregator picker: does the card have a job the
+aggregator merely parameterizes? Then argument, and it gets no formula name and no op row.
 **Where:** `nodeOps.ts` declarations. **Reopen if:** users search aggregator names
-and fail → search ALIASES on the host, not per-aggregator rows.
+and fail → search ALIASES on the host (`keywords` on the catalog leaf), not
+per-aggregator rows.
 
 ### D30 — Comment minimalism: knowledge lives in specs/tests/commits
 Deletion is the default outcome for a comment under review; a survivor states a
@@ -263,8 +282,11 @@ per-document locale pin, recorded as a new decision.
 Cumulative and Rolling merged (2026-08-09, author call: too similar to stay
 separate). One concept — an aggregate per element over its window — with a mode
 toggle: "Cumulative" grows the window, "Last N" slides it (Window size input
-exists only there). One op set across both modes; one formula family RUNNING*
-with the window as an optional arg (ROLLING* eliminated). A blank/0 WIRED window
+exists only there). One op set across both modes. NO formula surface: the
+aggregator is an argument of the card (D29), so the `RUNNING*` family that once
+existed was removed 2026-08-10 and the card is the only way to reach a running
+aggregate. `SCAN(0, x, LAMBDA(a, v, a + v))` is the formula-side spelling of a
+running total. A blank/0 WIRED window
 as an "unbounded" sentinel was rejected: a wired blank means unknown
 (value-semantics), so the mode is structural, not in-band. **Where:**
 `RunningNode` in `nodes/list.ts`, `running()` in `nodes/listOps.ts`.

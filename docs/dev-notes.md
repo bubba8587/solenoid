@@ -86,18 +86,44 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-10b — Running's aggregator is an ARGUMENT)
-- **`list-running` was declared `kind: "operation"`, against D29** (author caught it
-  on the card: the SUM dropdown wore the operation accent edge). The aggregator is an
-  argument of its host verb, and Running's host verb is the windowed scan — the card
-  is titled "Running" whatever the aggregator says, so the selector never names it.
-  Now `argument`, matching the three other aggregator pickers (`list-groupby`,
-  `group-by-frame`, `cube-rollup`); `reduce-sum` stays `operation` because there the
-  aggregator IS the node rather than a parameter of one. One-line change; D29 gained
-  the roster so the five stay checkable against each other.
-- **Argument kind costs nothing in the menu** — `hiddenOps` reads `decl.ops`, never
-  `decl.kind`, so RUNNINGSUM and friends keep their search rows, their `create`, and
-  the host's `{ }` marker. That is D29's "kind and menu are separate axes" in code.
+### SESSION DIGEST (2026-08-10b — op-vs-arg harmonized across its three consequences)
+- **The author's spec, now recorded in D29:** "having op" is ONE property with three
+  consequences — the ops are genuine top-level formula functions, they get the accent
+  and the top-of-body slot, and they are searchable. An argument is a parameter inside
+  a top-level function: neutral, no function, no search row. Three switches existed;
+  they are one now.
+- **`list-running` is an ARGUMENT, and the seven `RUNNING*` functions were DELETED** —
+  signatures, `registerInternal` loop, and the `fx` claims on `RUNNING_OP_META`. The
+  card is now the only way to reach a running aggregate; `SCAN(0, x, LAMBDA(a, v, a+v))`
+  is the formula-side spelling. Three formula tests went with them (the same semantics
+  are pinned at the node: blank window, per-cell error, null-skipping), the SCAN≡running
+  assertion now compares against `RunningNode`, and a new test asserts the seven names
+  do NOT resolve.
+- **Why that took four rounds, recorded because the failure mode will recur.** The
+  classification was first applied as a RENDERING flag — flip `kind`, keep everything
+  else — and the surviving `RUNNING*` names were then written into a comment as a
+  FEATURE of the change ("argument kind does not cost the search rows"), citing D29's
+  "kind and menu are separate axes", a line about Distribution's `.RT` forms that does
+  not apply here. Those preserved names were then measured and used as EVIDENCE that
+  Running must be an operation, i.e. an artifact of the first mistake was treated as
+  ground truth against the instruction that produced it. **A dispatchable name is never
+  evidence of a family's kind; it is a consequence to add or remove once the kind is
+  decided.** When a classification changes, enumerate everything it governs and check
+  each — do not find the smallest edit that produces the named symptom.
+- **The other two disagreements are gone.** `headers` (promote/demote) and `text-filter`
+  (contains/starts-with/…) were `argument` yet generated a searchable row per op —
+  argument on the card, operation in the menu. Their ops are parameter values with no
+  formula name (`contains` despacing onto the real CONTAINS function is the coincidence
+  D29 warns about), so they dropped `ops`/`create`. No discoverability lost: Headers
+  already carried "promote demote first row" in its leaf `keywords`, and Text Filter
+  gained the equivalent. That is D29's own reopen clause — aliases on the host.
+- Pinned by `nodeOps.test.ts` § "op-vs-arg is harmonized": an argument-kind family
+  declares no op rows. Only the ARGUMENT half is asserted; the operation half (every op
+  callable) belongs to the parity program and has tracked gaps (DATEDIF is 3/8), so
+  testing it here would just duplicate a backlog as a red test.
+- Correction to something claimed earlier in this session: `kind` is NOT styling-only.
+  `formulaNodeParity.ts` reads it too (`decl?.kind === "operation" ? decl.ops : …`), so
+  it already gated consequences 1 and 2 together before this pass.
 - **`SegToggle` is now registered in the op/arg system** (author call; the styling
   question is deliberately NOT part of this). It takes the same `arg` prop `OpSelect`
   does, and VAL-12's source scan reads BOTH tags. This closed a real hole rather than

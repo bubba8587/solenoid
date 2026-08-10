@@ -218,12 +218,14 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 ### Op pickers (the accent's one home on a card body)
 A card's OPERATION picker is the single body control that spends the accent: a 2px edge at `--mix-emphasis`, hoisted to the top of the body so the op reads before the inputs it shapes. Everything else in the body stays neutral. Two components can be that picker and they behave identically — `OpSelect` (a dropdown) and `SegToggle` (a segmented toggle) — differing only in shape.
 
-**Op-vs-arg has ONE home: `kind` on the family's `NODE_OPS` declaration.** Nothing else may assert it. The control-level `arg` prop answers a different question — *am I the family's picker at all?* — and a control bound to the node's own `op` may never carry it (machine-checked; the two would otherwise be able to disagree, and did, in Sort and Drop Blank Rows).
+**"Having op" is ONE property with three consequences** (D29), never three switches you can set apart. An OPERATION's ops are genuine top-level functions in the formula editor, they get the accent and the top-of-body slot, and they are searchable in the Add menu. An ARGUMENT is a parameter inside a top-level function: neutral control, no function, no search row of its own — its searched words ride on the host leaf's `keywords`. The three move together in BOTH directions: making a family an argument deletes its formula names, and giving a family a formula name obliges the other two. Running is the worked example — its aggregator is an argument, so the seven `RUNNING*` functions were removed rather than left dangling as a top-level surface for a parameter.
+
+**That property has ONE home: `kind` on the family's `NODE_OPS` declaration.** Nothing else may assert it. The control-level `arg` prop answers a different question — *am I the family's picker at all?* — and a control bound to the node's own `op` may never carry it (machine-checked; the two would otherwise be able to disagree, and did, in Sort and Drop Blank Rows).
 
 So a control's treatment reads as:
 
-1. **Not the family's picker** — a criterion comparator, a digit pick. It carries `arg`, stays neutral, and never hoists.
-2. **The family's picker** — it binds a field named `op` (VAL-12, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Most families that bind `op` are declared `argument` and render neutral, because their ops are parameters of a host (D29): Group By, Cube Rollup, Group By (frame), Running, Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count.
+1. **Not the family's picker** — a criterion comparator, a digit pick. It carries `arg`, stays neutral, never hoists.
+2. **The family's picker** — it binds a field named `op` (VAL-12, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Fourteen families bind `op` and are declared `argument`, rendering neutral: Group By, Cube Rollup, Group By (frame), Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count among them.
 
 The family's picker hoists to the top of the body either way. Reading before the inputs it shapes is about being the picker, not about spending the accent. Adding a third picker component means teaching the scan about it; nothing else will notice.
 

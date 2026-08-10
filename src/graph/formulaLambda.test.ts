@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 import { isLambdaValue } from "./lambdaValue";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "./nodes/tableLambda";
-import { GroupByNode } from "./nodes/list";
+import { GroupByNode, RunningNode } from "./nodes/list";
 import { isSolError, type SolError } from "./errorValue";
 
 // ─── D23 lambda tranche: the language feature, node-equals-formula ────────────
@@ -72,9 +72,11 @@ describe("each host computes what its node computes (FX-1)", () => {
     const scanNode = new ScanLambdaNode({ expr: "acc + value", literals: { initial: 0 } });
     expect(ev("SCAN(0, m, LAMBDA(acc, value, acc + value))", { m: M }))
       .toEqual(scanNode.data({ table: [M] }).result);
-    // SCAN over a list ≡ the Cumulative family — the gap-A alias made literal.
+    // SCAN over a list ≡ the Running card's cumulative SUM. Asserted against the NODE,
+    // not a RUNNINGSUM call: the aggregator is an argument of that card and claims no
+    // formula name, so SCAN is the formula-side spelling of a running total.
     expect(ev("SCAN(0, x, LAMBDA(a, v, a + v))", { x: [1, 2, 3, 4] }))
-      .toEqual(ev("RUNNINGSUM(x)", { x: [1, 2, 3, 4] }));
+      .toEqual(new RunningNode({ op: "sum" }).data({ list: [[1, 2, 3, 4]] }).result);
   });
 
   it("MAKEARRAY — (row, col) 1-based; an n×1 result reads as a LIST", () => {

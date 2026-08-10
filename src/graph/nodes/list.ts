@@ -1075,18 +1075,17 @@ export class ConcatListsNode extends ClassicPreset.Node {
 export type { RunningOp } from "./listOps";
 export type RunningMode = "all" | "window";
 
-// `fx` re-attaches the family word the bare dropdown label drops: the card's
-// title says Running, so the ops read SUM / AVERAGE / ..., but the formula
-// names stay RUNNING*.
+// No `fx`: the aggregator is an ARGUMENT of the windowed scan (D29), so it claims no
+// formula name. The labels are the dropdown's own words.
 export const RUNNING_OP_META = {
-  sum:     { label: "SUM",     fx: "RUNNINGSUM",     description: "The running total: each element is the sum of its window." },
-  avg:     { label: "AVERAGE", fx: "RUNNINGAVERAGE", description: "The moving average: each element is the mean of its window." },
-  min:     { label: "MIN",     fx: "RUNNINGMIN",     description: "Smallest value in each window." },
-  max:     { label: "MAX",     fx: "RUNNINGMAX",     description: "Largest value in each window." },
-  median:  { label: "MEDIAN",  fx: "RUNNINGMEDIAN",  description: "Middle value of each window." },
-  product: { label: "PRODUCT", fx: "RUNNINGPRODUCT", description: "Product of each window." },
-  stdev:   { label: "STDEV",   fx: "RUNNINGSTDEV",   description: "Sample standard deviation of each window; divides by n−1." },
-} satisfies Record<RunningOp, { label: string; fx: string; description: string }>;
+  sum:     { label: "SUM",     description: "The running total: each element is the sum of its window." },
+  avg:     { label: "AVERAGE", description: "The moving average: each element is the mean of its window." },
+  min:     { label: "MIN",     description: "Smallest value in each window." },
+  max:     { label: "MAX",     description: "Largest value in each window." },
+  median:  { label: "MEDIAN",  description: "Middle value of each window." },
+  product: { label: "PRODUCT", description: "Product of each window." },
+  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window; divides by n−1." },
+} satisfies Record<RunningOp, { label: string; description: string }>;
 
 export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
   { value: "all",    label: "Cumulative", title: "The window grows: every element from the start through this one" },

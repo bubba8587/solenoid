@@ -3,10 +3,9 @@ import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "./excelFunctions";
 import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
-  RunningNode, ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode,
+  ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode,
   SeriesNode, RepeatNode, GeometricNode, FibonacciNode,
-  SetOpNode, SetRelationNode, FillNode, ConcatListsNode,
-  RUNNING_OP_META, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
+  SetOpNode, SetRelationNode, FillNode, ConcatListsNode, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
   SET_OP_META, SET_RELATION_META, FILL_OP_META,
 } from "./nodes/list";
 import { buildCatalog } from "./catalogUtils";
@@ -70,17 +69,15 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  it("RUNNING* — the family word + op label, one name per Running op, both window modes", () => {
-    // The op labels are bare (SUM, AVERAGE, …) because the card's title carries the
-    // family word; the formula name re-attaches it: RUNNING + despace(label).
-    for (const [op, meta] of Object.entries(RUNNING_OP_META)) {
-      const name = `RUNNING${despace(meta.label)}`;
-      const grow = new RunningNode({ op: op as "sum" });
-      expect(ev(`${name}(x)`, { x: WITH_GAP }), name)
-        .toEqual(grow.data({ list: [WITH_GAP as (number | null)[]] }).result);
-      const slide = new RunningNode({ op: op as "sum", mode: "window" });
-      expect(ev(`${name}(x, 2)`, { x: WITH_GAP }), name)
-        .toEqual(slide.data({ list: [WITH_GAP as (number | null)[]], window: [2] }).result);
+  // The inverse of every other test in this file, and deliberately so. Tier 3 makes
+  // the list core callable, but Running's SUM/AVERAGE/… picker is an ARGUMENT of the
+  // card (D29), and an argument is a parameter inside a top-level function, never a
+  // top-level function itself. The seven RUNNING* names were registered here and were
+  // REMOVED (2026-08-10): the card is the only way to reach a running aggregate.
+  it("RUNNING* is NOT a formula family — an argument never becomes a top-level function", () => {
+    for (const name of ["RUNNINGSUM", "RUNNINGAVERAGE", "RUNNINGMIN", "RUNNINGMAX",
+      "RUNNINGMEDIAN", "RUNNINGPRODUCT", "RUNNINGSTDEV"]) {
+      expect(resolveExcelFunction(name), `${name} is dispatchable`).toBeNull();
     }
   });
 
@@ -150,7 +147,7 @@ describe("the whole-list routing, which is the half that isn't the function", ()
 
   it("the results COMPOSE — a list-returning call feeds a range aggregate", () => {
     expect(ev("SUM(REVERSE(x))", { x: [1, 2, 3] })).toBe(6);
-    expect(ev("RUNNINGAVERAGE(NORMALIZE(x), 2)", { x: [0, 5, 10] })).toEqual([0, 0.25, 0.75]);
+    expect(ev("REVERSE(NORMALIZE(x))", { x: [0, 5, 10] })).toEqual([1, 0.5, 0]);
   });
 
   it("a generator is capped at the formula boundary (the node's Count is a spinner)", () => {
@@ -289,7 +286,6 @@ describe("the formula namespace stays unambiguous", () => {
       ...Object.values(SET_OP_META).map((m) => m.fx),
       ...Object.values(SET_RELATION_META).map((m) => m.fx),
       ...Object.values(FILL_OP_META).map((m) => m.fx),
-      ...Object.values(RUNNING_OP_META).map((m) => m.fx),
     ];
     expect(new Set(declared).size, "duplicate `fx` among the declared names").toBe(declared.length);
     // FILLINTERPOLATE exists precisely because "Interpolate" collided with the node.
