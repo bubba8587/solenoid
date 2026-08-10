@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
-import { isSolError, solError } from "./errorValue";
+import { isSolError } from "./errorValue";
 import { tTestP, fTestP } from "./nodes/mathUtils";
 
 // ─── Pins from the 2026-07-28 adversarial review of the D19 formula work ─────
@@ -73,9 +73,10 @@ describe("the statistical tests answer what the NODE answers", () => {
 describe("a wired-blank SCALAR argument propagates through a whole-arg native", () => {
   const x = [1, 2, 3];
 
-  it("RUNNINGSUM(x, blank) is blank, not a window-1 sum and not the grow mode", () => {
-    expect(ev("RUNNINGSUM(x, w)", { x, w: null })).toBeNull();
-  });
+  // (RUNNINGSUM's blank-window case lived here until the RUNNING* names were removed
+  // — Running's aggregator is an ARGUMENT, so it has no formula surface. The same
+  // contract is pinned on the node: list.test.ts "a wired blank window leaves the
+  // result unknown".)
 
   it("CONTAINS(list, blank) is blank — a blank needle can't be looked for", () => {
     expect(ev("CONTAINS(x, v)", { x: [1, null, 3], v: null })).toBeNull();
@@ -93,16 +94,10 @@ describe("a wired-blank SCALAR argument propagates through a whole-arg native", 
 });
 
 describe("position-preserving cell contract in the extracted list core", () => {
-  it("RUNNINGMAX skips a missing cell instead of Math.max-ing it as 0", () => {
-    expect(ev("RUNNINGMAX(x)", { x: [-5, null, -3] })).toEqual([-5, -5, -3]);
-  });
-
-  it("RUNNINGSUM carries a cell error forward, never string-concatenates it", () => {
-    const err = solError("#DIV/0!", "upstream");
-    const out = ev("RUNNINGSUM(x)", { x: [err, 1] }) as unknown[];
-    expect(out[0]).toBe(err);
-    expect(out[1]).toBe(err);
-  });
+  // The two RUNNING* cases here moved to the node when the formula names were removed
+  // (list.test.ts: "max ignores a missing cell", "a per-cell error lands in exactly the
+  // windows that contain it"). The list CORE they exercised is shared, so the contract
+  // is still covered — just from its only remaining surface.
 
   it("DIFF with a missing neighbour yields a missing difference", () => {
     expect(ev("DIFF(x)", { x: [1, null, 3] })).toEqual([null, null]);

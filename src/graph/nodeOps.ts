@@ -8,12 +8,12 @@ import { ChartNode, SparklineNode, SurfaceNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
-  FILL_OP_META, COND_AGG_OP_META, RUNNING_OP_META,
+  FILL_OP_META, COND_AGG_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
   SortNode, ListTakeDropNode, SeriesNode,
 } from "./nodes/list";
-import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
-import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
+import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META } from "./nodes/frame";
+import { RegexNode, TextFilterNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
 import {
@@ -144,8 +144,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "distribution", ctor: DistributionNode, kind: "operation", ops: DIST_OPS,
     create: (op) => new DistributionNode({ op: op as never }) },
 
-  { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
-    create: (op) => new HeadersNode({ op: op as never }) },
+  // Promote/demote are argument VALUES, not functions — no formula name, so no op rows.
+  // The host leaf's `keywords` already carry "promote demote first row", which is where
+  // an argument's searched words belong (D29's reopen clause: aliases on the host).
+  { type: "headers", ctor: HeadersNode, kind: "argument" },
   // Aggregators are arguments of Group By, not searchable ops (D29).
   { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles are parameters of ONE operation.
@@ -179,8 +181,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new RegexNode({ op: op as never }) },
   // Text Filter's ops are its CONDITION; as operations they would also claim
   // formula names they can't own ("Contains" despaces onto CONTAINS).
-  { type: "text-filter", ctor: TextFilterNode, kind: "argument", ops: fromMeta(TEXT_FILTER_OP_META),
-    create: (op) => new TextFilterNode({ op: op as never }) },
+  // Contains / starts with / ends with are the predicate ARGUMENT, not four functions.
+  // (`contains` despaced onto the real CONTAINS function by coincidence, which is
+  // exactly the collision D29 warns an argument's op rows cause.) Searched words moved
+  // to the host leaf's keywords.
+  { type: "text-filter", ctor: TextFilterNode, kind: "argument" },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
   { type: "regression-steyx", ctor: RegressionNode, kind: "operation", ops: fromMeta(REGRESSION_OP_META),
@@ -191,14 +196,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },
 
-  // The AGGREGATOR is an argument of its host verb (D29), and Running's host verb is
-  // the windowed scan — the card is titled "Running" whatever the aggregator says, so
-  // the selector never names it. Same treatment as the other three aggregator pickers
-  // (list-groupby, group-by-frame, cube-rollup). Argument kind does NOT cost the search
-  // rows: kind and menu are separate axes, so RUNNINGSUM and friends stay findable and
-  // addable through `ops`/`create` below.
-  { type: "list-running", ctor: RunningNode, kind: "argument", ops: fromMeta(RUNNING_OP_META),
-    create: (op) => new RunningNode({ op: op as never }) },
+  // The aggregator is an ARGUMENT of the windowed scan, like Group By's and Cube
+  // Rollup's. All three consequences follow together (D29): neutral picker, no op rows,
+  // and no RUNNING* functions — those were registered and are now gone. Searched words
+  // ride on the host leaf's keywords.
+  { type: "list-running", ctor: RunningNode, kind: "argument" },
   // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
   { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),
     create: (op) => new ComparisonNode({ op: op as never }) },

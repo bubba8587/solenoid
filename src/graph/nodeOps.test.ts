@@ -117,6 +117,30 @@ describe("the ops list is derived, not transcribed", () => {
   });
 });
 
+// "Having op" is ONE property with three consequences, not three switches: the ops are
+// genuine top-level functions in the formula editor, they get the accent and the
+// top-of-body slot, and they are searchable in the Add menu. An ARGUMENT is a parameter
+// inside a top-level function: neutral control, no function, no search row of its own.
+// This pins the argument half, which is the checkable one — the operation half (every
+// op callable) is the parity PROGRAM's business and has known open gaps (DATEDIF is
+// 3/8), so asserting it here would just duplicate a tracked backlog as a red test.
+describe("op-vs-arg is harmonized across its three consequences", () => {
+  it("an argument-kind family declares no op rows — an arg is not separately searchable", () => {
+    const offenders = NODE_OPS
+      .filter((d) => d.kind === "argument" && d.ops && d.create)
+      .map((d) => `${d.type} (${d.ops!.length} ops)`);
+    expect(
+      offenders,
+      `These families are declared \`argument\` yet generate a searchable row per op, ` +
+      `so they are an argument on the card and an operation in the Add menu. Pick one: ` +
+      `if the ops are genuine top-level functions (dispatchable by name in a formula, ` +
+      `like RUNNINGSUM), the family is \`operation\`; if they are parameter values ` +
+      `(promote/demote, contains/starts-with), drop \`ops\`/\`create\` and put the ` +
+      `searched words in the host leaf's \`keywords\`:\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
+  });
+});
+
 describe("coverage — every op selector is classified", () => {
   // The whole point of `kind` is that a NEUTRAL op selector means "argument". That
   // only holds while every family is declared: an undeclared one also renders

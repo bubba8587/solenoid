@@ -499,7 +499,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
           { type: "pair", children: [
             { type: "list-diff",       label: "DIFF",       description: "Consecutive differences: result[i] = list[i+1] − list[i]", create: () => new DiffNode() },
-            { type: "list-running", label: "Running", description: "One aggregate per element over a window: SUM / AVERAGE / MIN / MAX / MEDIAN / PRODUCT / STDEV of everything so far (the running total) or of the last N (the moving average).", create: () => new RunningNode(), keywords: "running total cumulative rolling moving average sliding window prefix sum accumulate expanding cumsum" },
+            { type: "list-running", label: "Running", description: "One aggregate per element over a window: SUM / AVERAGE / MIN / MAX / MEDIAN / PRODUCT / STDEV of everything so far (the running total) or of the last N (the moving average).", create: () => new RunningNode(), keywords: "running total cumulative rolling moving average sliding window prefix sum accumulate expanding cumsum min max median product stdev" },
           ]},
           { type: "pair", children: [
             { type: "list-normalize",  label: "Normalize",  description: "Scales a list to the 0–1 range: min maps to 0, max maps to 1", create: () => new NormalizeNode() },
@@ -792,7 +792,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [textXformLeaf("upper"), textXformLeaf("lower")] },
           { type: "pair", children: [textXformLeaf("trim"),  textXformLeaf("proper")] },
           textXformLeaf("clean"),
-          { type: "text-filter", label: "Text Filter", description: "Keeps strings from a list that contain, start with, or end with a pattern. Ignores case, like every comparison here.", create: () => new TextFilterNode(), parity: false },
+          { type: "text-filter", label: "Text Filter", description: "Keeps strings from a list that contain, start with, or end with a pattern. Ignores case, like every comparison here.", create: () => new TextFilterNode(), parity: false, keywords: "contains not contains starts with begins ends with pattern substring match keep strings" },
         ],
       },
       {
