@@ -72,9 +72,9 @@ describe("each host computes what its node computes (FX-1)", () => {
     const scanNode = new ScanLambdaNode({ expr: "acc + value", literals: { initial: 0 } });
     expect(ev("SCAN(0, m, LAMBDA(acc, value, acc + value))", { m: M }))
       .toEqual(scanNode.data({ table: [M] }).result);
-    // SCAN over a list ≡ the Running card's cumulative SUM. Asserted against the NODE,
-    // not a RUNNINGSUM call: the aggregator is an argument of that card and claims no
-    // formula name, so SCAN is the formula-side spelling of a running total.
+    // SCAN over a list ≡ the Running card's cumulative SUM — the general fold agreeing
+    // with the task-shaped RUNNING("sum", x). Asserted against the NODE so this pins
+    // the lambda machinery, not the RUNNING wrapper (formulaTier3 covers that).
     expect(ev("SCAN(0, x, LAMBDA(a, v, a + v))", { x: [1, 2, 3, 4] }))
       .toEqual(new RunningNode({ op: "sum" }).data({ list: [[1, 2, 3, 4]] }).result);
   });

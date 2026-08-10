@@ -73,9 +73,9 @@ describe("the statistical tests answer what the NODE answers", () => {
 describe("a wired-blank SCALAR argument propagates through a whole-arg native", () => {
   const x = [1, 2, 3];
 
-  // (RUNNINGSUM's blank-window case lived here until the RUNNING* names were removed
-  // — Running's aggregator is an ARGUMENT, so it has no formula surface. The same
-  // contract is pinned on the node: list.test.ts "a wired blank window leaves the
+  // (RUNNINGSUM's blank-window case lived here until the per-op RUNNING* names were
+  // replaced by RUNNING(op, list, [window]) — the blank-window contract on THAT
+  // spelling is pinned in formulaTier3.test.ts, and on the node: list.test.ts "a wired blank window leaves the
   // result unknown".)
 
   it("CONTAINS(list, blank) is blank — a blank needle can't be looked for", () => {

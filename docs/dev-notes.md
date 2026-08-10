@@ -90,26 +90,28 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **The author's spec, now recorded in D29:** "having op" is ONE property with three
   consequences — the ops are genuine top-level formula functions, they get the accent
   and the top-of-body slot, and they are searchable. An argument is a parameter inside
-  a top-level function: neutral, no function, no search row. Three switches existed;
-  they are one now.
-- **`list-running` is an ARGUMENT, and the seven `RUNNING*` functions were DELETED** —
-  signatures, `registerInternal` loop, and the `fx` claims on `RUNNING_OP_META`. The
-  card is now the only way to reach a running aggregate; `SCAN(0, x, LAMBDA(a, v, a+v))`
-  is the formula-side spelling. Three formula tests went with them (the same semantics
-  are pinned at the node: blank window, per-cell error, null-skipping), the SCAN≡running
-  assertion now compares against `RunningNode`, and a new test asserts the seven names
-  do NOT resolve.
-- **Why that took four rounds, recorded because the failure mode will recur.** The
-  classification was first applied as a RENDERING flag — flip `kind`, keep everything
-  else — and the surviving `RUNNING*` names were then written into a comment as a
-  FEATURE of the change ("argument kind does not cost the search rows"), citing D29's
-  "kind and menu are separate axes", a line about Distribution's `.RT` forms that does
-  not apply here. Those preserved names were then measured and used as EVIDENCE that
-  Running must be an operation, i.e. an artifact of the first mistake was treated as
-  ground truth against the instruction that produced it. **A dispatchable name is never
-  evidence of a family's kind; it is a consequence to add or remove once the kind is
-  decided.** When a classification changes, enumerate everything it governs and check
-  each — do not find the smallest edit that produces the named symptom.
+  a top-level function. Three switches existed; they are one now.
+- **`list-running` is an ARGUMENT; the formula surface is `RUNNING(op, list, [window])`.**
+  The per-op family (RUNNINGSUM…RUNNINGSTDEV, signatures + registerInternal loop + the
+  `fx` claims on `RUNNING_OP_META`) is gone and pinned dead by a resolution test; the
+  aggregator arrives as a validated string argument instead (#VALUE! names the legal
+  set), window omitted = cumulative, window given = Last N, blank window = blank.
+  `SORT(list, index, order)` was the in-repo precedent all along — an argument-kind
+  family (`list-sort`) whose host is ONE function carrying the selector as a parameter.
+  Parity holds with zero special-casing: despace("Running") = RUNNING, so the leaf is
+  covered by the ordinary label rule.
+- **Why that took FIVE rounds, recorded because the failure mode recurred mid-fix.**
+  (1) The classification was applied as a RENDERING flag — flip `kind`, keep the
+  formula names — and the survivors were documented as a feature, citing D29's "kind
+  and menu are separate axes", a Distribution line that does not apply. (2) Those
+  preserved names were then measured and used as EVIDENCE that Running must be an
+  operation — an artifact of mistake 1 argued against the instruction that produced
+  it. (3) Given the spec verbatim, "argument" was over-rotated into "no formula surface
+  at all" and the whole family was DELETED — reading half the definition ("not a
+  top-level function") and dropping the other half ("a parameter INSIDE one"). The
+  standing rule: when a classification changes, enumerate everything it governs and
+  derive each consequence FROM THE DEFINITION — neither the smallest edit that clears
+  the visible symptom, nor the largest that clears the quoted noun.
 - **The other two disagreements are gone.** `headers` (promote/demote) and `text-filter`
   (contains/starts-with/…) were `argument` yet generated a searchable row per op —
   argument on the card, operation in the menu. Their ops are parameter values with no

@@ -230,13 +230,17 @@ gates (1) via `formulaNodeParity` and (2) via `data-op-kind`, and `nodeOps.test.
 op callable) stays the parity PROGRAM's business — DATEDIF sits at 3/8 — so asserting it
 would duplicate a tracked backlog as a red test.
 
-**The three move together in BOTH directions.** Classifying a family as an argument
-DELETES its formula names; it does not leave them standing as a top-level surface for a
-parameter. Running is the worked example: its aggregator is an argument, so the seven
-`RUNNING*` functions were removed (2026-08-10) rather than kept on the reasoning that
-"kind and menu are separate axes". A dispatchable name is therefore never EVIDENCE that
-a family is an operation — it is a consequence to add or remove once the classification
-is made, and treating it as evidence is how this got argued backwards for several rounds.
+**An argument is a parameter INSIDE a top-level function — both halves are load-bearing.**
+Classifying a family as an argument deletes its PER-OP formula names and moves the op
+into the argument list of the family's ONE function; it does not delete the family's
+formula surface. Running is the worked example, including both failure modes tried
+first (2026-08-10): the per-op family `RUNNINGSUM`…`RUNNINGSTDEV` was wrong (seven
+top-level names for a parameter), and deleting everything was equally wrong (the
+parameter lost its function to be inside). The standing form is
+`RUNNING(op, list, [window])` — aggregator as a validated string argument, window
+optional, exactly the shape `SORT(list, index, order)` already had for `list-sort`'s
+direction. A dispatchable per-op name is never EVIDENCE that a family is an operation;
+it is a consequence to add or remove once the classification is made.
 
 The Add menu shows the verb once; the aggregator is picked on the card. The
 operation-vs-argument framework (weigh, don't let the last signal win): would the
@@ -245,7 +249,9 @@ overrule — ops sharing a name cannot be operations); would the user SEARCH for
 it; is it meaningless without its host; is it an Excel function (corroborating
 only). An argument's searched words live as `keywords` on the HOST leaf, never as op
 rows of its own; Distribution's `.RT` forms are search rows because Distribution is an
-OPERATION family, not because arguments may be searchable.
+OPERATION family, not because arguments may be searchable. On the formula surface an
+argument family gets its host's ONE function with the op as a parameter, where the host
+is formula-eligible at all: RUNNING(op, list, [window]), SORT(list, index, order).
 
 The SUM/AVERAGE/MIN/… picker appears on five cards. Four are `argument` — `list-groupby`,
 `group-by-frame`, `cube-rollup`, `list-running` — none of which names a function. The one
@@ -282,11 +288,10 @@ per-document locale pin, recorded as a new decision.
 Cumulative and Rolling merged (2026-08-09, author call: too similar to stay
 separate). One concept — an aggregate per element over its window — with a mode
 toggle: "Cumulative" grows the window, "Last N" slides it (Window size input
-exists only there). One op set across both modes. NO formula surface: the
-aggregator is an argument of the card (D29), so the `RUNNING*` family that once
-existed was removed 2026-08-10 and the card is the only way to reach a running
-aggregate. `SCAN(0, x, LAMBDA(a, v, a + v))` is the formula-side spelling of a
-running total. A blank/0 WIRED window
+exists only there). One op set across both modes. Formula surface: ONE function,
+`RUNNING(op, list, [window])` — the aggregator is a string argument per D29 (the
+per-op `RUNNING*` family was eliminated 2026-08-10; window omitted = cumulative,
+window given = Last N). A blank/0 WIRED window
 as an "unbounded" sentinel was rejected: a wired blank means unknown
 (value-semantics), so the mode is structural, not in-band. **Where:**
 `RunningNode` in `nodes/list.ts`, `running()` in `nodes/listOps.ts`.
