@@ -218,12 +218,14 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 ### Op pickers (the accent's one home on a card body)
 A card's OPERATION picker is the single body control that spends the accent: a 2px edge at `--mix-emphasis`, hoisted to the top of the body so the op reads before the inputs it shapes. Everything else in the body stays neutral. Two components can be that picker and they behave identically — `OpSelect` (a dropdown) and `SegToggle` (a segmented toggle) — differing only in shape.
 
-Both take the same declaration: a picker that is NOT the family's op carries `arg`, and one that is binds a field named `op` (VAL-12, machine-checked by a source scan over both tags). One question decides a control's treatment, asked in order:
+**Op-vs-arg has ONE home: `kind` on the family's `NODE_OPS` declaration.** Nothing else may assert it. The control-level `arg` prop answers a different question — *am I the family's picker at all?* — and a control bound to the node's own `op` may never carry it (machine-checked; the two would otherwise be able to disagree, and did, in Sort and Drop Blank Rows).
 
-1. **Is it the family's op picker at all?** No — a criterion comparator, a digit picker, a display pick — then it carries `arg` and is neutral wherever it sits, never hoisted.
-2. **If it is, is the family declared `kind: "operation"`?** That alone decides the accent. Binding `op` is not a second vote: the field NAME only lets `NODE_OPS` attach, which every family needs, and says nothing about whether its ops are operations. Most argument-kind families look exactly like this — Group By, Cube Rollup, Group By (frame), Running, Text Filter, Headers, Alert, Color Blend, the resistor's band count all bind `op` and render neutral, because their ops are parameters of a host (D29).
+So a control's treatment reads as:
 
-The family's op picker hoists to the top of the body either way. Reading before the inputs it shapes is about being the picker, not about spending the accent. Adding a third picker component means teaching the scan about it; nothing else will notice.
+1. **Not the family's picker** — a criterion comparator, a digit pick. It carries `arg`, stays neutral, and never hoists.
+2. **The family's picker** — it binds a field named `op` (VAL-12, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Most families that bind `op` are declared `argument` and render neutral, because their ops are parameters of a host (D29): Group By, Cube Rollup, Group By (frame), Running, Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count.
+
+The family's picker hoists to the top of the body either way. Reading before the inputs it shapes is about being the picker, not about spending the accent. Adding a third picker component means teaching the scan about it; nothing else will notice.
 
 ### Cards / Containers (the Node Card, signature component)
 - **Corner Style:** 8px radius.

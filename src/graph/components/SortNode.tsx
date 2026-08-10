@@ -12,7 +12,7 @@ export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={op} onChange={setOp} options={DIRS} />
+      <OpSelect value={op} onChange={setOp} options={DIRS} />
       <ValueDisplay value={data.cachedList} />
     </NodeShell>
   );

@@ -405,9 +405,16 @@ export function OpSelect<T extends string>({
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
-  /** A selector that is NOT the family's op selector. Two consumers read it: the
-   *  operation accent edge (data-op-kind) skips arg selects, and the VAL-12 source
-   *  scan requires every NON-arg OpSelect to bind a field named `op`. */
+  /** This control is NOT the family's op selector — a per-criterion comparator, a
+   *  payment timing, a digit pick. That is ALL it says.
+   *
+   *  It is NOT a way to declare "my ops are arguments": op-vs-arg has one home, `kind`
+   *  on the family's NODE_OPS declaration, and most families whose picker binds `op`
+   *  are declared `argument` there (Group By, Running, the resistor) and render
+   *  neutral. Saying it here too would let a card assert it twice and drift, so a
+   *  control bound to the node's own `op` may not carry `arg` (sourceInvariants).
+   *  Two consumers: the accent edge skips arg selects, and VAL-12's source scan
+   *  requires every NON-arg picker to bind a field named `op`. */
   arg?: boolean;
 }) {
   const hasGroups = options.some((o) => o.group != null);
