@@ -56,7 +56,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["list"]} />
       {keys.length > 1 && (
-        <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
+        <SegToggle arg value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
       )}
       {keys.map((key, i) => {
         const id = key.slice(5);

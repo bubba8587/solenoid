@@ -171,7 +171,7 @@ export function SortFrameComponent({ data, emit }: NodeProps<SortFrameNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={dir} options={SORT_DIR_OPTIONS} onChange={setDir} />
+      <SegToggle arg value={dir} options={SORT_DIR_OPTIONS} onChange={setDir} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -263,7 +263,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
         <>
           <InlineInputs node={data} emit={emit} keys={["frame"]} />
           {pairs.length > 1 && (
-            <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
+            <SegToggle arg value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
           )}
           {pairs.map(([colKey, valKey], i) => {
             const id = colKey.slice(6);
@@ -365,8 +365,8 @@ export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
-      {how === "asof" && <SegToggle value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
+      <SegToggle arg value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
+      {how === "asof" && <SegToggle arg value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -550,7 +550,7 @@ export function FillBlanksComponent({ data, emit }: NodeProps<FillBlanksNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={dir} options={FILL_DIR_OPTIONS} onChange={setDir} />
+      <SegToggle arg value={dir} options={FILL_DIR_OPTIONS} onChange={setDir} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -566,7 +566,7 @@ export function ReplaceValuesComponent({ data, emit }: NodeProps<ReplaceValuesNo
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={mode} options={REPLACE_MODE_OPTIONS} onChange={setMode} />
+      <SegToggle arg value={mode} options={REPLACE_MODE_OPTIONS} onChange={setMode} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -661,7 +661,7 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
           column below overrides it ("—" = use this default). Caption + shared wording
           ("Normalize") make that relationship explicit. */}
       <div className="solenoid-node__dm-caption">Default normalize for every criterion; override per row below:</div>
-      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      <SegToggle arg value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <div className="solenoid-node__dm-weights">
         {criteria.length === 0 ? (
           <div className="solenoid-node__dm-hint">Wire a Scores frame; a row appears per criterion.</div>
@@ -684,7 +684,7 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
         )}
       </div>
       <div className="solenoid-node__dm-caption">Output:</div>
-      <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
+      <SegToggle arg value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -699,7 +699,7 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__dm-caption">Normalize (every criterion):</div>
-      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      <SegToggle arg value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <CubeDisplay cube={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -763,7 +763,7 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={colType} options={SPLIT_COLTYPE_OPTIONS} onChange={(next) => { setColType(next); void applySplitColType(data, next); }} />
+      <SegToggle arg value={colType} options={SPLIT_COLTYPE_OPTIONS} onChange={(next) => { setColType(next); void applySplitColType(data, next); }} />
       <MeasuredSocketRow side="output" socketKey="matrix" nodeId={data.id} emit={emit} payload={data.outputs.matrix!.socket}>
         <span className="solenoid-node__io-label">Matrix</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -802,7 +802,7 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle
+      <SegToggle arg
         value={readAs}
         options={GET_COLUMN_READ_OPTIONS}
         onChange={(next) => { setReadAs(next); void applyGetColumnReadAs(data, next); }}
@@ -830,7 +830,7 @@ export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle
+      <SegToggle arg
         value={addAs}
         options={ADD_COLUMN_OPTIONS}
         onChange={(next) => { setAddAs(next); void applyAddColumnAddAs(data, next); }}
@@ -932,8 +932,8 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
-      <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
+      <SegToggle arg value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
+      <SegToggle arg value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
       {/* Return = * gives a whole row; a cube lookup can return a nested frame/cube
           cell — ResultDisplay routes Frame → FrameDisplay, Cube → CubeDisplay, else
           ValueDisplay (scalar). */}

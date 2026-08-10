@@ -355,7 +355,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <>
             <div className="solenoid-fc__row">
               <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <SegToggle
+              <SegToggle arg
                 className="solenoid-seg--inline"
                 value={textAlign}
                 onChange={onTextAlignChange}
@@ -573,7 +573,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
             />
-            <SegToggle
+            <SegToggle arg
               className="solenoid-seg--inline"
               value={decimalMode}
               onChange={onModeSet}
