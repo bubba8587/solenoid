@@ -22,7 +22,7 @@ export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle value={mode} options={CASHFLOW_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <SegToggle arg value={mode} options={CASHFLOW_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

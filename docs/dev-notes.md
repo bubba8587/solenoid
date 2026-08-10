@@ -98,12 +98,26 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **Argument kind costs nothing in the menu** — `hiddenOps` reads `decl.ops`, never
   `decl.kind`, so RUNNINGSUM and friends keep their search rows, their `create`, and
   the host's `{ }` marker. That is D29's "kind and menu are separate axes" in code.
-- False start worth not repeating: the first read of "arg selector tagged as an op
-  selector" was a VISUAL one — `SegToggle`'s selected button paints the node accent at
-  full strength while an operation `OpSelect` rests at `--mix-emphasis`, so the mode
-  toggle out-shouts the op dropdown. That inversion is real and still unfixed (30 of
-  33 SegToggles are arguments and none can opt out, unlike `OpSelect`'s `arg` prop),
-  but it was not what the author meant and is a separate, app-wide call.
+- **`SegToggle` is now registered in the op/arg system** (author call; the styling
+  question is deliberately NOT part of this). It takes the same `arg` prop `OpSelect`
+  does, and VAL-12's source scan reads BOTH tags. This closed a real hole rather than
+  tidying: a card carries its op picker as a dropdown OR a segmented toggle, and while
+  the scan watched only the dropdown, a family could bind its op to `mode` in a toggle
+  and be invisible to both halves of VAL-12 — the coverage check skips a node whose
+  `inst.op` is undefined, so nothing would have demanded a declaration. That is the
+  PadNode.dir defect through the unwatched door. 30 of 33 sites are arguments and now
+  say so; the 3 that bind `op` (Sparkline chart type, Surface view, resistor band
+  count) stay bare. Verified the scan bites by removing one `arg` and watching it fail.
+  A THIRD picker component reopens the hole and no test can notice — `PICKERS` is a
+  hand-maintained roster, noted as such at the constant and in rules.md.
+- `rules.test.ts` caught the doc drift for free: rules.md quotes enforcing test names
+  verbatim, so renaming the test to "every non-arg op picker binds `op`" failed until
+  VAL-12's enforcement paragraph was updated.
+- Still open, deliberately: `SegToggle`'s selected button paints the node accent at
+  full strength while an operation `OpSelect` rests at `--mix-emphasis`, so an argument
+  toggle out-shouts the op dropdown on the same card. Now that every toggle DECLARES
+  which it is, a CSS rule can key on `data-op-arg` without touching call sites — but
+  whether it should is an author call, untaken.
 
 ### SESSION DIGEST (2026-08-10 — DATEVALUE + TIMEVALUE merged; the Parse card's layout)
 - **One `DateTimeValueNode` (`date.ts`) replaces DateValueNode + TimeValueNode**

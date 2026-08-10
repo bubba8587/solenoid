@@ -27,7 +27,7 @@ export function RunningComponent({ data, emit }: NodeProps<RunningNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle value={mode} options={RUNNING_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <SegToggle arg value={mode} options={RUNNING_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
       <ValueDisplay value={data.cachedList} />

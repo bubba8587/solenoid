@@ -40,7 +40,7 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
       labelPlaceholder="Table"
       accentOverride={SOCKET_COLORS[TABLE_ELEM_SOCKET[dt].dataType]}
     >
-      <SegToggle
+      <SegToggle arg
         value={dt}
         options={TYPE_OPTIONS}
         onChange={(next) => { setDt(next); void applyTableType(data, next); }}

@@ -45,7 +45,7 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
 
   return (
     <NodeShell node={data} emit={emit} accentOverride={SOCKET_COLORS[data.valueSocket.dataType]}>
-      <SegToggle
+      <SegToggle arg
         value={dt}
         options={TYPE_OPTIONS}
         onChange={(next) => { setDt(next); void applyListType(data, next); }}

@@ -982,12 +982,18 @@ unsearchable and unmeasurable, silently.
 *Enforced by:* `nodeOps.test.ts` → "coverage — every op selector is classified", "no node
 with an op dropdown is missing a declaration" — which catches a family that HAS a
 declaration. The blindness half (a family that CANNOT declare because its field is
-misnamed) is closed by `sourceInvariants.test.ts` → "every non-arg OpSelect binds `op`":
-a source scan over the component `<OpSelect>` sites, where the misnamed field is still
-visible. The contract: an OpSelect either binds `op` (directly, a per-row `.op` config
-field, or via `useNodeField(…, "op")`) or carries the `arg` prop — the machine-readable
+misnamed) is closed by `sourceInvariants.test.ts` → "every non-arg op picker binds `op`":
+a source scan over the component sites, where the misnamed field is still visible. The
+contract: an op picker either binds `op` (directly, a per-row `.op` config field, or via
+`useNodeField(…, "op")`) or carries the `arg` prop — the machine-readable
 "not the family op selector" declaration (criterion comparators, payment timing,
-config/data picks). The recorded borderline (DATEDIF's `unit` selector — an op dropdown
+config/data picks). BOTH picker components are scanned: `OpSelect` (a dropdown) and
+`SegToggle` (a segmented toggle — Sparkline's chart type, Surface's view, the resistor's
+band count bind `op` there). The toggle was added to the scan on 2026-08-10; until then a
+family could carry its op in a toggle bound to `mode` and be invisible to BOTH halves,
+since the coverage check skips a node whose `inst.op` is undefined. A third picker
+component would reopen that hole — the scan can only look for the names it is given, so
+adding one means adding it to `PICKERS`. The recorded borderline (DATEDIF's `unit` selector — an op dropdown
 by mechanism, Excel's argument by semantics) was DISSOLVED rather than settled: the two
 date-difference families merged (2026-07-28) and the units became first-class `op`s of
 the one DateDiff family.

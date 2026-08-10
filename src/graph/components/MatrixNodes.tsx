@@ -52,7 +52,7 @@ export function TableUnitComponent({ data, emit }: NodeProps<TableUnitNodeType>)
   useEffect(() => { setOffDiag(data.offDiag); }, [data.offDiag]);
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle
+      <SegToggle arg
         value={offDiag}
         options={[
           { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (Excel MUNIT)" },

@@ -150,13 +150,27 @@ describe("VAL-12 — a card's family op selector binds a field named `op`", () =
   // known-violation 1): it finds the dropdowns in the component source, where a
   // misnamed field is still visible.
   //
-  // The contract it enforces: every `<OpSelect>` either binds `op` (directly, a
+  // The contract it enforces: every op-picker either binds `op` (directly, a
   // per-row `.op` config field, or via useNodeField(…, "op")) or carries the
   // `arg` prop — the machine-readable "not the family op selector" declaration
   // (criterion comparators, payment timing, config/data picks; nodeKit.tsx).
   // A new family that stores its op under `mode`/`dir` fails here by name.
+  //
+  // BOTH doors are scanned. A card carries an op picker as a dropdown (`OpSelect`)
+  // or as a segmented toggle (`SegToggle` — Sparkline's chart type, Surface's view,
+  // the resistor's band count), and while the scan watched only the dropdown, a
+  // family could put its op in a toggle bound to `mode` and be invisible: the
+  // coverage test skips a node whose `inst.op` is undefined, so nothing would have
+  // demanded a declaration. That is the PadNode.dir defect exactly, through the
+  // unwatched door. Most SegToggles ARE arguments (mode/dir/how/combine) and now
+  // say so with `arg`.
+  //
+  // A THIRD picker component would reopen the blindness, and no test can notice that
+  // for you — the scan can only look for names it is given. Add it here the day you
+  // add it to the components tree.
+  const PICKERS = ["<OpSelect", "<SegToggle"];
 
-  /** From "<OpSelect", the tag text through its closing "/>" at brace depth 0
+  /** From the tag open, the text through its closing "/>" at brace depth 0
    *  (props contain arrow functions, so a plain [^>]* scan would stop early). */
   function opSelectTag(src: string, start: number): string | null {
     let depth = 0;
@@ -191,34 +205,36 @@ describe("VAL-12 — a card's family op selector binds a field named `op`", () =
     return null;
   }
 
-  it("every non-arg OpSelect binds `op` (directly, per-row `.op`, or via useNodeField)", () => {
+  it("every non-arg op picker binds `op` (directly, per-row `.op`, or via useNodeField)", () => {
     const offenders: string[] = [];
     for (const file of walk(path.join(SRC, "components"))) {
       const src = fs.readFileSync(file, "utf8");
-      let idx = -1;
-      while ((idx = src.indexOf("<OpSelect", idx + 1)) !== -1) {
-        const tag = opSelectTag(src, idx);
-        const line = src.slice(0, idx).split("\n").length;
-        const where = `${rel(file)}:${line}`;
-        if (!tag) { offenders.push(`${where} (unparseable tag)`); continue; }
-        if (/\barg\b/.test(propLevel(tag))) continue; // declared not-the-op-selector
-        const expr = valueExpr(tag);
-        if (!expr) { offenders.push(`${where} (no value= prop)`); continue; }
-        if (expr === "op" || /\.op$/.test(expr)) continue;
-        // A renamed binding: const [x, …] = useNodeField(node, "op")
-        if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
-          const re = new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*useNodeField\\([^,]+,\\s*"op"`);
-          if (re.test(src)) continue;
+      for (const picker of PICKERS) {
+        let idx = -1;
+        while ((idx = src.indexOf(picker, idx + 1)) !== -1) {
+          const tag = opSelectTag(src, idx);
+          const line = src.slice(0, idx).split("\n").length;
+          const where = `${rel(file)}:${line} ${picker.slice(1)}`;
+          if (!tag) { offenders.push(`${where} (unparseable tag)`); continue; }
+          if (/\barg\b/.test(propLevel(tag))) continue; // declared not-the-op-selector
+          const expr = valueExpr(tag);
+          if (!expr) { offenders.push(`${where} (no value= prop)`); continue; }
+          if (expr === "op" || /\.op$/.test(expr)) continue;
+          // A renamed binding: const [x, …] = useNodeField(node, "op")
+          if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
+            const re = new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*useNodeField\\([^,]+,\\s*"op"`);
+            if (re.test(src)) continue;
+          }
+          offenders.push(`${where} (binds \`${expr}\`)`);
         }
-        offenders.push(`${where} (binds \`${expr}\`)`);
       }
     }
     expect(
       offenders,
-      `These <OpSelect> dropdowns neither bind a field named \`op\` nor carry the ` +
-      `\`arg\` prop (VAL-12). If it IS the family's op selector, the node must store ` +
-      `it as \`op\` (not mode/dir/kind) so NODE_OPS declarations can attach; if it is ` +
-      `an argument/config/data pick, mark it \`arg\`:\n  ` + offenders.join("\n  "),
+      `These op pickers neither bind a field named \`op\` nor carry the \`arg\` prop ` +
+      `(VAL-12). If it IS the family's op selector, the node must store it as \`op\` ` +
+      `(not mode/dir/kind) so NODE_OPS declarations can attach; if it is an ` +
+      `argument/config/data pick, mark it \`arg\`:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
 });

@@ -369,7 +369,7 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
                 onChange={(v) => { if (m) m.uncertainty = v && v > 0 ? v : null; recompute(); }}
               />
             </div>
-            <SegToggle<DistributionKind>
+            <SegToggle<DistributionKind> arg
               value={m?.distribution ?? "normal"}
               onChange={(d) => { if (m) m.distribution = d; recompute(); }}
               options={DIST_OPTIONS}
