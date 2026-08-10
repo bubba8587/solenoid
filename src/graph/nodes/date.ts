@@ -152,78 +152,77 @@ export class TimeConstructNode extends ClassicPreset.Node {
   }
 }
 
-// ─── DATEVALUE ────────────────────────────────────────────────────────────────
+// ─── Parse text — ONE node (DATEVALUE / TIMEVALUE) ────────────────────────────
+// The two halves of reading a date/time out of text: the whole day, or the time
+// of day within it. Same single Text input; the op picks which half is returned
+// and retypes the output (date serial ↔ 0–1 fraction).
 
-export class DateValueNode extends ClassicPreset.Node {
+export type DateTimeValueOp = "date" | "time";
+
+export const DATE_TIME_VALUE_OP_META = {
+  date: { label: "DATEVALUE", description: "Parses a date string such as \"2026-06-15\" into a date serial. Excel: DATEVALUE, parity: ISO format." },
+  time: { label: "TIMEVALUE", description: "Parses a time string such as \"14:30:00\" into a fraction of a day, 0 to 1. Excel: TIMEVALUE." },
+} satisfies Record<DateTimeValueOp, { label: string; description: string }>;
+
+function parseDateOnly(text: string): number | SolError {
+  const serial = parseDateToSerial(text);
+  if (Number.isNaN(serial)) return solError("#VALUE!", `Cannot parse "${text}" as a date`);
+  return Math.floor(serial); // DATEVALUE is date-only (Excel)
+}
+
+function parseTimeOfDay(text: string): number | SolError {
+  // Do NOT route this through `new Date("1970-01-01T…")`: that reads zone-less
+  // text as LOCAL time while the getters read UTC, so the fraction varies by machine.
+  const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
+  if (m) {
+    let h = Number(m[1]);
+    const min = Number(m[2]);
+    const sec = m[3] ? Number(m[3]) : 0;
+    const meridiem = m[4]?.toUpperCase();
+    const hourOk = meridiem ? h >= 1 && h <= 12 : h <= 23;
+    if (!hourOk || min > 59 || sec >= 60) return solError("#VALUE!", `Cannot parse "${text}" as a time`);
+    if (meridiem) h = (h % 12) + (meridiem === "P" ? 12 : 0);
+    return (h * 3600 + min * 60 + sec) / 86400;
+  }
+  // Excel TIMEVALUE also accepts a full datetime text and keeps the fraction.
+  const serial = parseDateToSerial(text);
+  return Number.isNaN(serial)
+    ? solError("#VALUE!", `Cannot parse "${text}" as a time`)
+    : serial - Math.floor(serial);
+}
+
+export class DateTimeValueNode extends ClassicPreset.Node {
   label: string;
+  op: DateTimeValueOp;
   cachedResult: number | SolError | null = null;
   stringLiterals: Record<string, string> = { text: "" };
-  width = 180; height = 135;
+  width = 180; height = 170;
 
-  constructor(init?: { label?: string }) {
-    super("DateValue");
-    this.label = init?.label ?? "DATEVALUE";
-    this.addInput("text", strIn("Date text (e.g. \"2026-06-15\")"));
-    this.addOutput("result", dateOut("Date serial"));
+  constructor(init?: { label?: string; op?: DateTimeValueOp }) {
+    super("DateTimeValue");
+    this.op    = init?.op    ?? "date";
+    this.label = init?.label ?? DATE_TIME_VALUE_OP_META[this.op].label;
+    this.addInput("text", strIn("Text"));
+    this.addOutput("result", this.op === "date" ? dateOut("Date") : numOut("Time fraction (0–1)"));
+  }
+
+  /** Retypes the output in place (date ↔ number) — the component must call
+   *  retypeOutputCables afterwards (no connection event fires on an in-place swap). */
+  setOp(next: DateTimeValueOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    const out = this.outputs.result;
+    if (!out) return;
+    const spec = next === "date" ? dateOut("Date") : numOut("Time fraction (0–1)");
+    out.socket = spec.socket;
+    out.label  = spec.label;
   }
 
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
     // Blank in → blank out; unparseable non-empty text is a real #VALUE!.
     if (!text) { this.cachedResult = null; return { result: null }; }
-    const serial = parseDateToSerial(text);
-    if (Number.isNaN(serial)) {
-      const err = solError("#VALUE!", `Cannot parse "${text}" as a date`);
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const result = Math.floor(serial); // DATEVALUE is date-only (Excel)
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── TIMEVALUE ────────────────────────────────────────────────────────────────
-
-export class TimeValueNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | SolError | null = null;
-  stringLiterals: Record<string, string> = { text: "" };
-  width = 180; height = 135;
-
-  constructor(init?: { label?: string }) {
-    super("TimeValue");
-    this.label = init?.label ?? "TIMEVALUE";
-    this.addInput("text", strIn("Time text (e.g. \"14:30:00\")"));
-    this.addOutput("result", numOut("Time fraction (0–1)"));
-  }
-
-  data(inputs: { text?: string[] }): { result: number | SolError | null } {
-    const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
-    if (!text) { this.cachedResult = null; return { result: null }; }
-    // Do NOT route this through `new Date("1970-01-01T…")`: that reads zone-less
-    // text as LOCAL time while the getters read UTC, so the fraction varies by machine.
-    const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
-    let result: number | SolError;
-    if (m) {
-      let h = Number(m[1]);
-      const min = Number(m[2]);
-      const sec = m[3] ? Number(m[3]) : 0;
-      const meridiem = m[4]?.toUpperCase();
-      const hourOk = meridiem ? h >= 1 && h <= 12 : h <= 23;
-      if (!hourOk || min > 59 || sec >= 60) {
-        result = solError("#VALUE!", `Cannot parse "${text}" as a time`);
-      } else {
-        if (meridiem) h = (h % 12) + (meridiem === "P" ? 12 : 0);
-        result = (h * 3600 + min * 60 + sec) / 86400;
-      }
-    } else {
-      // Excel TIMEVALUE also accepts a full datetime text and keeps the fraction.
-      const serial = parseDateToSerial(text);
-      result = Number.isNaN(serial)
-        ? solError("#VALUE!", `Cannot parse "${text}" as a time`)
-        : serial - Math.floor(serial);
-    }
+    const result = this.op === "date" ? parseDateOnly(text) : parseTimeOfDay(text);
     this.cachedResult = result;
     return { result };
   }

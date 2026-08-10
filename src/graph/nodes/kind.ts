@@ -66,7 +66,7 @@ import {
 } from "./text";
 import {
   TodayNowNode, DateConstructNode, TimeConstructNode,
-  DateValueNode, TimeValueNode, DatePartNode, WeekInfoNode,
+  DateTimeValueNode, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdaysNode,
 } from "./date";
 
@@ -149,8 +149,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   ) return "string";
   if (
     node instanceof TodayNowNode || node instanceof DateConstructNode ||
-    node instanceof TimeConstructNode || node instanceof DateValueNode ||
-    node instanceof TimeValueNode || node instanceof DatePartNode ||
+    node instanceof TimeConstructNode || node instanceof DateTimeValueNode ||
+    node instanceof DatePartNode ||
     node instanceof WeekInfoNode || node instanceof DateDiffNode ||
     node instanceof DateAddNode || node instanceof WorkdaysNode ||
     node instanceof DatePickerNode

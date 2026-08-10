@@ -28,7 +28,7 @@ import {
   TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode,
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
-  DateValueNode, TimeValueNode, DatePartNode, WeekInfoNode,
+  DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META,
   RandArrayNode,
   SortByNode, XMatchNode,
@@ -83,7 +83,7 @@ import {
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
   type BesselOp, type RegressionOp,
-  type TodayNowOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
+  type TodayNowOp, type DateTimeValueOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
   ExpectNode, TornadoNode,
 } from "./rete-nodes";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
@@ -119,6 +119,9 @@ const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
 const DT = NODE_KIND_ACCENTS.date;
+// The Parse pair keeps its Excel-name types: `date-value` / `time-value` key the
+// Excel-equivalent table, and the op is not part of either name.
+const dateTimeValueLeaf = (op: DateTimeValueOp): NodeCatalogEntry => ({ type: op === "date" ? "date-value" : "time-value", label: DATE_TIME_VALUE_OP_META[op].label, description: DATE_TIME_VALUE_OP_META[op].description, create: () => new DateTimeValueNode({ op }), parity: false });
 const datePartLeaf  = (op: DatePartOp):  NodeCatalogEntry => ({ type: `date-part-${op}`,  label: DATE_PART_OP_META[op].label,  description: DATE_PART_OP_META[op].description,  create: () => new DatePartNode({ op }),  parity: false });
 const weekInfoLeaf  = (op: WeekInfoOp):  NodeCatalogEntry => ({ type: `date-week-${op}`,  label: WEEK_INFO_OP_META[op].label,  description: WEEK_INFO_OP_META[op].description,  create: () => new WeekInfoNode({ op }),  parity: false });
 const dateDiffLeaf  = (op: DateDiffOp):  NodeCatalogEntry => ({ type: `date-diff-${op}`,  label: DATE_DIFF_OP_META[op].label,  description: DATE_DIFF_OP_META[op].description,  create: () => new DateDiffNode({ op }),  parity: false });
@@ -736,8 +739,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Parse", description: "Convert text strings to date or time values.",
         children: [
-          { type: "date-value",  label: "DATEVALUE", description: "Parses a date string (e.g. \"2026-06-15\") into a date serial. Excel: DATEVALUE, parity: ISO format.", create: () => new DateValueNode(),  parity: false },
-          { type: "time-value",  label: "TIMEVALUE", description: "Parses a time string (e.g. \"14:30:00\") into a fraction 0–1. Excel: TIMEVALUE.", create: () => new TimeValueNode(),  parity: false },
+          { type: "pair", children: [dateTimeValueLeaf("date"), dateTimeValueLeaf("time")] },
         ],
       },
       {

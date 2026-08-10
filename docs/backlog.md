@@ -91,7 +91,7 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   (one card, output socket swaps list↔logical per op — Split Frame precedent);
   discount securities (TBill 3 + SecurityDisc 3 + PriceDisc 2 + PriceMat 2, all
   settlement/maturity/basis-shaped); BondPrice + OddCoupon (odd variants = extra
-  date params per op); ACCRINT + ACCRINTM; DATEVALUE + TIMEVALUE; CSV File +
+  date params per op); ACCRINT + ACCRINTM; CSV File +
   Parquet File (format from extension) and Write CSV + Write JSON.
 
 ## Small builds & calls (still 1.3-sized)
