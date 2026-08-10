@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { FORMULA_SIGNATURES, signatureFor, signatureParams } from "./formulaSignatures";
+import { FORMULA_SIGNATURES, signatureFor, signatureParams, genericSignature } from "./formulaSignatures";
 import { formulaFunctionNames, formulaSyntaxHint } from "./excelFormula";
+import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
 
 describe("formula signatures (display hints)", () => {
   it("every curated signature names a REAL dispatchable function", () => {
@@ -10,18 +11,36 @@ describe("formula signatures (display hints)", () => {
     expect(ghosts).toEqual([]);
   });
 
-  it("signatureFor: curated first, arity fallback for registered impls, null otherwise", () => {
+  it("signatureFor: curated first, synthesized named args for registered impls, null otherwise", () => {
     expect(signatureFor("INDEX")).toBe("array, row, [col]");
     expect(signatureFor("index")).toBe("array, row, [col]"); // case-insensitive
     expect(signatureFor("NOT_A_FUNCTION_XYZ")).toBeNull();
   });
 
-  it("signatureParams splits curated params; bare-count fallbacks return null", () => {
+  it("NO registered impl ever hints a bare argument count — every one names its args", () => {
+    // The rule: a function's autocomplete hint is a named parameter list (optional
+    // args in [brackets], variadic tail as `…`), never "3 args" / "2–255 args".
+    for (const name of Object.keys(EXCEL_IMPL_META)) {
+      if (FRAME_SURFACE_NAMES[name]) continue; // a refused frame verb redirects, no arg list
+      const sig = signatureFor(name);
+      expect(sig, `${name} has no hint`).not.toBeNull();
+      expect(sig, `${name} hints a bare count "${sig}"`).not.toMatch(/^\d+(\+|–\d+)? args?$/);
+    }
+  });
+
+  it("genericSignature (the arity fallback) names args with optional brackets and a variadic tail", () => {
+    expect(genericSignature([2, 3])).toBe("arg1, arg2, [arg3]");
+    expect(genericSignature([3, 3])).toBe("arg1, arg2, arg3");
+    expect(genericSignature([1, 255])).toBe("arg1, …");
+    expect(genericSignature([2, 255])).toBe("arg1, arg2, …");
+    expect(genericSignature([0, 5])).toBe("[arg1], [arg2], [arg3], [arg4], [arg5]");
+    expect(genericSignature([0, 0])).toBe("");
+  });
+
+  it("signatureParams splits curated params; a prose redirect returns null", () => {
     expect(signatureParams("array, row, [col]")).toEqual(["array", "row", "[col]"]);
     expect(signatureParams("")).toEqual([]);
-    expect(signatureParams("2 args")).toBeNull();
-    expect(signatureParams("1–255 args")).toBeNull();
-    expect(signatureParams("3+ args")).toBeNull();
+    expect(signatureParams("frame verb — use the Join node")).toBeNull();
   });
 });
 

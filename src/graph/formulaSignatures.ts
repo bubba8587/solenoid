@@ -203,10 +203,160 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   ODDFYIELD: "settlement, maturity, issue, first_coupon, rate, pr, [redemption], [frequency]",
   ODDLPRICE: "settlement, maturity, last_interest, rate, yld, [redemption], [frequency]",
   ODDLYIELD: "settlement, maturity, last_interest, rate, pr, [redemption], [frequency]",
+
+  // ── math / scalar (registered natives) ──
+  SQRTPI: "x",
+  ACOSH: "x",
+  ATANH: "x",
+  LOG2: "x",
+  HYPOTENUSE: "a, b",
+  CONVERT: "number, from_unit, to_unit",
+  ORDINAL: "number",
+  BETWEEN: "value, low, high",
+  // ── logical ──
+  NAND: "logical1, logical2, …",
+  NOR: "logical1, logical2, …",
+  XNOR: "logical1, logical2, …",
+  // ── text ──
+  LENB: "text",
+  LEFTB: "text, [count]",
+  RIGHTB: "text, [count]",
+  MIDB: "text, start, count",
+  FINDB: "find_text, within, [start]",
+  SEARCHB: "find_text, within, [start]",
+  REPLACEB: "text, start, count, new",
+  VALUETOTEXT: "value, [format]",
+  REVERSETEXT: "text",
+  SPELLNUMBER: "number",
+  DECODEURL: "text",
+  DOLLAR: "number, [decimals]",
+  // ── statistics ──
+  "RANK.EQ": "value, array, [order]",
+  "RANK.AVG": "value, array, [order]",
+  COUNTDISTINCT: "array",
+  WAVG: "values, weights",
+  WVAR: "values, weights",
+  WSTDEV: "values, weights",
+  "T.TEST": "array1, array2, tails, type",
+  "F.TEST": "array1, array2",
+  PROB: "x_range, prob_range, lower, [upper]",
+  "MODE.MULT": "array",
+  FREQUENCY: "data_array, bins_array",
+  INTERPOLATE: "known_ys, [known_xs], [new_xs]",
+  TREND: "known_ys, [known_xs], [new_xs]",
+  GROWTH: "known_ys, [known_xs], [new_xs]",
+  LINEST: "known_ys, [known_xs]",
+  LOGEST: "known_ys, [known_xs]",
+  // ── distributions ──
+  "T.DIST.RT": "x, deg_freedom",
+  "T.DIST.2T": "x, deg_freedom",
+  "T.INV.2T": "probability, deg_freedom",
+  "CHISQ.DIST.RT": "x, deg_freedom",
+  "CHISQ.INV.RT": "probability, deg_freedom",
+  "F.DIST.RT": "x, deg_freedom1, deg_freedom2",
+  "F.INV.RT": "probability, deg_freedom1, deg_freedom2",
+  "GAMMA.DIST": "x, alpha, beta, cumulative",
+  "GAMMA.INV": "probability, alpha, beta",
+  "ERF.PRECISE": "x",
+  "ERFC.PRECISE": "x",
+  // ── complex (IM* family over tagged Cx) ──
+  COMPLEX: "real, imaginary, [suffix]",
+  IMREAL: "inumber", IMAGINARY: "inumber", IMABS: "inumber", IMARGUMENT: "inumber",
+  IMCONJUGATE: "inumber", IMEXP: "inumber", IMLN: "inumber",
+  IMLOG10: "inumber", IMLOG2: "inumber", IMSQRT: "inumber",
+  IMSIN: "inumber", IMCOS: "inumber", IMTAN: "inumber", IMCOT: "inumber",
+  IMSEC: "inumber", IMCSC: "inumber", IMSINH: "inumber", IMCOSH: "inumber",
+  IMSECH: "inumber", IMCSCH: "inumber",
+  IMSUM: "inumber1, inumber2, …",
+  IMPRODUCT: "inumber1, inumber2, …",
+  IMSUB: "inumber1, inumber2",
+  IMDIV: "inumber1, inumber2",
+  IMPOWER: "inumber, power",
+  QUADRATICROOTS: "a, b, c",
+  // ── matrix / dynamic arrays ──
+  TRANSPOSE: "array",
+  MMULT: "array1, array2",
+  MUNIT: "dimension",
+  MDETERM: "array",
+  MINVERSE: "array",
+  WRAPROWS: "vector, wrap_count, [pad_with]",
+  WRAPCOLS: "vector, wrap_count, [pad_with]",
+  TOCOL: "array",
+  TOROW: "array",
+  SEQUENCE: "rows, [columns], [start], [step]",
+  RANDARRAY: "[rows], [columns], [min], [max], [whole_number]",
+  UNIQUE: "array",
+  SORT: "array, [sort_index], [sort_order]",
+  SORTBY: "array, by_array",
+  FILTER: "array, include, [if_empty]",
+  TAKE: "array, rows, [columns]",
+  DROP: "array, rows, [columns]",
+  // ── lambda helpers ──
+  LAMBDA: "parameter1, …, calculation",
+  MAP: "array1, [array2], [array3], lambda",
+  BYROW: "array, lambda",
+  BYCOL: "array, lambda",
+  REDUCE: "initial_value, array, lambda",
+  SCAN: "initial_value, array, lambda",
+  MAKEARRAY: "rows, columns, lambda",
+  GROUPBY: "row_keys, values, lambda",
+  // ── list ops ──
+  REVERSE: "list",
+  SLICE: "list, start, [end]",
+  NTHELEMENT: "list, n",
+  INTERLEAVE: "list1, list2",
+  PADRIGHT: "list, length, [fill]",
+  PADLEFT: "list, length, [fill]",
+  DIFF: "list",
+  NORMALIZE: "list",
+  RUNNING: "operation, list, [window]",
+  LENGTH: "list",
+  ARGMAX: "list",
+  ARGMIN: "list",
+  CONTAINS: "list, value",
+  LINSPACE: "start, stop, count",
+  REPEAT: "value, count",
+  GEOMETRIC: "start, ratio, count",
+  FIBONACCI: "count",
+  SETUNION: "list1, list2",
+  SETINTERSECT: "list1, list2",
+  SETDIFFERENCE: "list1, list2",
+  SETSYMDIFF: "list1, list2",
+  SETEQUAL: "list1, list2",
+  SETSUBSET: "list1, list2",
+  SETSUPERSET: "list1, list2",
+  SETDISJOINT: "list1, list2",
+  FILLVALUE: "list, value",
+  FILLFORWARD: "list",
+  FILLBACKWARD: "list",
+  FILLMEAN: "list",
+  FILLMEDIAN: "list",
+  FILLMODE: "list",
+  FILLINTERPOLATE: "list",
+  FILLDROP: "list",
+  COALESCE: "list, [fallback], …",
+  RANGE: "start, stop, [step]",
+  CONCATLISTS: "list1, list2, …",
+  SHUFFLE: "list",
+  TEXTFILTER: "list, pattern, [condition]",
 };
 
+/** A named placeholder signature synthesized from an impl's [min, max] arity, so a
+ *  registration with no curated entry still hints "arg1, arg2, [arg3]" rather than a
+ *  bare count. Required args are `argN`, optional ones `[argN]`, a variadic tail `…`. */
+export function genericSignature([min, max]: readonly [number, number]): string {
+  if (max === 0) return "";
+  const variadic = max >= 255;
+  const shown = variadic ? Math.max(min, 1) : max;
+  const parts: string[] = [];
+  for (let i = 1; i <= shown; i++) parts.push(i <= min ? `arg${i}` : `[arg${i}]`);
+  if (variadic) parts.push("…");
+  return parts.join(", ");
+}
+
 /** The display hint for a function name (case-insensitive): the curated signature,
- *  else a bare argument count from the registered impl's arity, else null. */
+ *  else a named placeholder signature synthesized from the registered impl's arity,
+ *  else null. A bare argument count ("2 args") is never returned. */
 export function signatureFor(name: string): string | null {
   const up = name.toUpperCase();
   // A frame verb's "signature" is the redirect to its node.
@@ -217,19 +367,15 @@ export function signatureFor(name: string): string | null {
   const packSig = packFormulaSignature(up);
   if (packSig) return packSig;
   const meta = EXCEL_IMPL_META[up];
-  if (meta?.arity) {
-    const [min, max] = meta.arity;
-    if (min === max) return `${min} arg${min === 1 ? "" : "s"}`;
-    if (max >= 255) return `${min}+ args`;
-    return `${min}–${max} args`;
-  }
+  if (meta?.arity) return genericSignature(meta.arity);
   return null;
 }
 
-/** Split a curated signature into its comma-separated params for the param-hint
- *  bar. A bare-count fallback ("2 args") has no named params — returns null. */
+/** Split a curated signature into its comma-separated params for the param-hint bar.
+ *  A prose redirect (the frame-verb "use the X node" form) is not a param list —
+ *  returns null so the bar renders it as prose instead of a fake argument. */
 export function signatureParams(sig: string): string[] | null {
   if (sig === "") return [];
-  if (/^\d+(\+|–\d+)? args?$/.test(sig)) return null;
+  if (sig.includes(" — ")) return null;
   return sig.split(", ");
 }
