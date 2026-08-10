@@ -113,11 +113,24 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - `rules.test.ts` caught the doc drift for free: rules.md quotes enforcing test names
   verbatim, so renaming the test to "every non-arg op picker binds `op`" failed until
   VAL-12's enforcement paragraph was updated.
-- Still open, deliberately: `SegToggle`'s selected button paints the node accent at
-  full strength while an operation `OpSelect` rests at `--mix-emphasis`, so an argument
-  toggle out-shouts the op dropdown on the same card. Now that every toggle DECLARES
-  which it is, a CSS rule can key on `data-op-arg` without touching call sites — but
-  whether it should is an author call, untaken.
+- **Then the look followed the declaration** (author call): a SegToggle is functionally
+  a dropdown in a different shape, so it now takes the SAME two rules on the SAME two
+  conditions as `OpSelect` — `order: -1` to the top of the body when it is the family's
+  op picker, and the accent only when the card is ALSO `kind: "operation"`. Argument
+  toggles went neutral: resting `--surface-sunken`, selected `--surface-raised`, no
+  color injection. The selected step had to move BOTH states — the old resting fill was
+  `--border-subtle`, and a neutral selected fill of `--surface-raised` is invisible
+  against it in dark (#2a2a2a vs #262626). Op toggles keep today's colors byte for byte
+  via an override in `nodeCard.css` beside the OpSelect rules; the base rule in
+  `SegToggle.css` is the neutral one, so specificity settles it in either import order.
+- The two conditions are genuinely independent, and the resistor is the case that proves
+  it: `elec-resistor-code` binds `op` (so NODE_OPS can attach) AND is declared
+  `kind: "argument"` (the band count is a parameter of the decoder), so its toggle hoists
+  to the top like an op picker and renders neutral like an argument. Not a contradiction
+  — the field NAME is what lets declarations attach, the KIND is what spends the accent.
+- Free check from the chrome-ramp work: neutral selection needs `--surface-sunken` and
+  `--surface-raised` to be a visible step apart in every palette, which is exactly the
+  "hover fill steps toward the ink" invariant `palette.test.ts` already pins.
 
 ### SESSION DIGEST (2026-08-10 — DATEVALUE + TIMEVALUE merged; the Parse card's layout)
 - **One `DateTimeValueNode` (`date.ts`) replaces DateValueNode + TimeValueNode**

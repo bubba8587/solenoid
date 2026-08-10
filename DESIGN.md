@@ -215,6 +215,11 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
 - **Focus:** Border shifts to the accent (`--accent`). No glow, no ring; a single colored border edge.
 
+### Op pickers (the accent's one home on a card body)
+A card's OPERATION picker is the single body control that spends the accent: a 2px edge at `--mix-emphasis`, hoisted to the top of the body so the op reads before the inputs it shapes. Everything else in the body stays neutral. Two components can be that picker and they behave identically — `OpSelect` (a dropdown) and `SegToggle` (a segmented toggle) — differing only in shape.
+
+Both take the same declaration: a picker that is NOT the family's op carries `arg`, and one that is binds a field named `op` (VAL-12, machine-checked by a source scan over both tags). Two independent conditions decide the accent, and both must hold: the control must be the op picker (`arg` absent), and the card's family must be declared `kind: "operation"` in `nodeOps.ts`. An aggregator picker on a host verb is an argument (D29), and so is an op picker on an argument-kind card — the resistor's band count binds `op` so declarations can attach, and still renders neutral because its family is a parameter of the decoder. Adding a third picker component means teaching the scan about it; nothing else will notice.
+
 ### Cards / Containers (the Node Card, signature component)
 - **Corner Style:** 8px radius.
 - **Width:** Fixed at 180px (240px wide tier for nodes carrying 2D table/frame data) so every node reads as a uniform unit; heights stay content-driven.
