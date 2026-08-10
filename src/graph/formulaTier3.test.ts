@@ -3,7 +3,7 @@ import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "./excelFunctions";
 import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
-  ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode,
+  ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode, RunningNode, RUNNING_OP_META,
   SeriesNode, RepeatNode, GeometricNode, FibonacciNode,
   SetOpNode, SetRelationNode, FillNode, ConcatListsNode, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
   SET_OP_META, SET_RELATION_META, FILL_OP_META,
@@ -69,12 +69,29 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  // The inverse of every other test in this file, and deliberately so. Tier 3 makes
-  // the list core callable, but Running's SUM/AVERAGE/… picker is an ARGUMENT of the
-  // card (D29), and an argument is a parameter inside a top-level function, never a
-  // top-level function itself. The seven RUNNING* names were registered here and were
-  // REMOVED (2026-08-10): the card is the only way to reach a running aggregate.
-  it("RUNNING* is NOT a formula family — an argument never becomes a top-level function", () => {
+  // The D29 contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
+  // Both halves matter. The family gets exactly ONE name — RUNNING(op, list, [window]),
+  // like SORT carrying its direction — and the per-op names stay dead. The 2026-08-10
+  // relapse to guard: "argument" was first misread as "no formula surface at all" and
+  // the whole family was deleted; the fix is the op moving INTO the argument list,
+  // never the function disappearing.
+  it("RUNNING(op, list, [window]) — the family's ONE name; the aggregator is its argument", () => {
+    for (const [op, meta] of Object.entries(RUNNING_OP_META)) {
+      const node = new RunningNode({ op: op as never });
+      expect(ev(`RUNNING("${meta.label}", x)`, { x: LIST }), meta.label)
+        .toEqual(node.data({ list: [LIST] }).result);
+    }
+    // Windowed (Last N) through the optional third arg; op is case-insensitive.
+    const win = new RunningNode({ op: "avg", mode: "window" });
+    expect(ev('RUNNING("average", x, 2)', { x: LIST }))
+      .toEqual(win.data({ list: [LIST], window: [2] }).result);
+    // A BLANK window is unknown → blank; an unknown aggregator is a #VALUE!.
+    expect(ev('RUNNING("sum", x, w)', { x: LIST, w: null })).toBeNull();
+    const bad = ev('RUNNING("mode", x)', { x: LIST }) as { code?: string };
+    expect(bad?.code).toBe("#VALUE!");
+  });
+
+  it("RUNNING* per-op names are NOT functions — the op is an argument, not seven names", () => {
     for (const name of ["RUNNINGSUM", "RUNNINGAVERAGE", "RUNNINGMIN", "RUNNINGMAX",
       "RUNNINGMEDIAN", "RUNNINGPRODUCT", "RUNNINGSTDEV"]) {
       expect(resolveExcelFunction(name), `${name} is dispatchable`).toBeNull();

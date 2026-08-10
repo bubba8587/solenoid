@@ -9,7 +9,7 @@ import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
-  argMinMax, containsValue, weighted, linspace, repeatValue,
+  running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
   firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
@@ -481,6 +481,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PADLEFT:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   DIFF:            { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   NORMALIZE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
+  // argument (D29), like SORT's direction. The per-op RUNNING* family stays eliminated.
+  RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
@@ -1092,9 +1095,23 @@ registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n
 registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
-// No RUNNING* functions: the Running card's aggregator is an ARGUMENT (D29), and an
-// argument is a parameter inside a top-level function, never a top-level function of
-// its own. Running is reached as a node.
+// ONE Running function, aggregator as a string ARGUMENT (D29): a parameter inside a
+// top-level function, so the family gets one name — never seven (the old per-op
+// RUNNING* family is eliminated and must not come back). Same shape as SORT below
+// carrying its direction. Window omitted = cumulative; a BLANK window is unknown and
+// answers blank (value-semantics.md, "Reading an input").
+const RUNNING_ARG_OPS: Record<string, RunningOp> = {
+  SUM: "sum", AVERAGE: "avg", AVG: "avg", MIN: "min", MAX: "max",
+  MEDIAN: "median", PRODUCT: "product", STDEV: "stdev",
+};
+registerInternal("RUNNING", (op, list, w) => {
+  if (op == null || list == null) return null;
+  const key = RUNNING_ARG_OPS[String(op).trim().toUpperCase()];
+  if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT, STDEV — got "${String(op)}"`);
+  return w === undefined ? running(key, numList(list), null)
+    : w == null ? null
+    : running(key, numList(list), Number(w));
+});
 
 // LENGTH counts every slot including the missing ones, which is exactly why these
 // need the raw whole-list routing.

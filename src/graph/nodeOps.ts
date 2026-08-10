@@ -197,9 +197,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new IsEvenOddNode({ op: op as never }) },
 
   // The aggregator is an ARGUMENT of the windowed scan, like Group By's and Cube
-  // Rollup's. All three consequences follow together (D29): neutral picker, no op rows,
-  // and no RUNNING* functions — those were registered and are now gone. Searched words
-  // ride on the host leaf's keywords.
+  // Rollup's: neutral picker, no op rows (searched words ride the host leaf's
+  // keywords), and on the formula surface it is a PARAMETER of the family's one
+  // function — RUNNING(op, list, [window]); the per-op RUNNING* names are dead (D29).
   { type: "list-running", ctor: RunningNode, kind: "argument" },
   // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
   { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),
