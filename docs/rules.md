@@ -987,7 +987,11 @@ a source scan over the component sites, where the misnamed field is still visibl
 contract: an op picker either binds `op` (directly, a per-row `.op` config field, or via
 `useNodeField(…, "op")`) or carries the `arg` prop — the machine-readable
 "not the family op selector" declaration (criterion comparators, payment timing,
-config/data picks). BOTH picker components are scanned: `OpSelect` (a dropdown) and
+config/data picks). `arg` says ONLY that, never "my ops are arguments": op-vs-arg lives
+once, in `kind` on the NODE_OPS declaration, so a control bound to the node's own `op`
+may not also carry `arg` — a second companion scan ("a control bound to the node's own
+`op` never also carries `arg`") forbids the double assertion, which Sort and Drop Blank
+Rows were both making when it was added. BOTH picker components are scanned: `OpSelect` (a dropdown) and
 `SegToggle` (a segmented toggle — Sparkline's chart type, Surface's view, the resistor's
 band count bind `op` there). The toggle was added to the scan on 2026-08-10; until then a
 family could carry its op in a toggle bound to `mode` and be invisible to BOTH halves,

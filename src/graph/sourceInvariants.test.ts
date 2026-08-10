@@ -237,6 +237,44 @@ describe("VAL-12 — a card's family op selector binds a field named `op`", () =
       `argument/config/data pick, mark it \`arg\`:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
+
+  // op-vs-arg has exactly ONE home: `kind` on the family's NODE_OPS declaration. The
+  // control-level `arg` answers a DIFFERENT question — "am I the family's picker at
+  // all?" — and must never be used as a second way to say "argument", or a card could
+  // assert both at once and the two could drift. So a control bound to the node's own
+  // `op` may not carry `arg`: by binding `op` it IS the family's picker, and whether
+  // that picker spends the accent is `kind`'s call alone (most families that bind `op`
+  // are declared `argument` — Group By, Running, the resistor — and render neutral).
+  // A per-ROW config field (`c.op` on a criterion) is a different object's `op` and
+  // stays legal: those genuinely are not the family's picker.
+  it("a control bound to the node's own `op` never also carries `arg` (one home)", () => {
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      const src = fs.readFileSync(file, "utf8");
+      for (const picker of PICKERS) {
+        let idx = -1;
+        while ((idx = src.indexOf(picker, idx + 1)) !== -1) {
+          const tag = opSelectTag(src, idx);
+          if (!tag || !/\barg\b/.test(propLevel(tag))) continue;
+          const expr = valueExpr(tag);
+          if (!expr) continue;
+          const ownOp = expr === "op" || expr === "data.op" ||
+            (/^[A-Za-z_$][\w$]*$/.test(expr) &&
+             new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*useNodeField\\([^,]+,\\s*"op"`).test(src));
+          if (ownOp) {
+            offenders.push(`${rel(file)}:${src.slice(0, idx).split("\n").length} ${picker.slice(1)} (binds \`${expr}\`)`);
+          }
+        }
+      }
+    }
+    expect(
+      offenders,
+      `These pickers bind the node's own \`op\` AND carry \`arg\`, asserting op-vs-arg ` +
+      `twice. Drop the \`arg\`: binding \`op\` already says this is the family's picker, ` +
+      `and whether it reads as an operation is decided ONCE, by \`kind\` on its ` +
+      `NODE_OPS declaration:\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
+  });
 });
 
 describe("PERSIST-2 — the text form carries every SavedGraph field, both directions", () => {

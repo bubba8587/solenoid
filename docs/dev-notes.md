@@ -123,17 +123,27 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   against it in dark (#2a2a2a vs #262626). Op toggles keep today's colors byte for byte
   via an override in `nodeCard.css` beside the OpSelect rules; the base rule in
   `SegToggle.css` is the neutral one, so specificity settles it in either import order.
-- **Correction, author-flagged (the docs, not the code).** This first shipped described
-  as "two independent conditions" with the resistor as the case proving it. Both halves
-  were wrong. There is ONE decision chain: `arg` says a control is not the family's op
-  picker at all; for the picker itself the family's `kind` alone decides the accent, and
-  binding `op` is not a second vote (the field name only lets NODE_OPS attach, which
-  every family needs). And the resistor is not a curiosity: "binds `op`, declared
-  `argument`" is the standard shape for 13 of the 15 argument-kind families (Group By,
-  Cube Rollup, Group By frame, Running, Text Filter, Headers, Alert, Color Blend, Pipe
-  Roughness, Antoine, Pivot, Drop Blank Rows). Singling it out invented a rule from a
-  case that was never special. The CSS was already right; only DESIGN.md, the nodeCard
-  comment, and this digest needed fixing.
+- **Correction, author-flagged twice.** This first shipped described as "two independent
+  conditions" with the resistor as the case proving it. Both halves were wrong. The
+  resistor is not a curiosity — "binds `op`, declared `argument`" is the standard shape
+  for 13 of the 15 argument-kind families (Group By, Cube Rollup, Group By frame,
+  Running, Text Filter, Headers, Alert, Color Blend, Pipe Roughness, Antoine, Pivot,
+  Drop Blank Rows), so singling it out invented a rule from a case that was never
+  special. And they are not two axes.
+- **op-vs-arg now has ONE home: `kind` on the NODE_OPS declaration.** The control-level
+  `arg` answers a different question — "am I the family's picker at all?" — and saying
+  it there was never a second vote; the field NAME only lets NODE_OPS attach. Enforced
+  by a new companion scan: a control bound to the node's own `op` may not also carry
+  `arg`. **It found two live contradictions on the first run** — `SortNode` and
+  `DropBlankRows` were asserting "argument" at both levels. Dropping the redundant
+  `arg` moves those two pickers to the top of their card bodies like every other family
+  picker; they stay neutral, since their `kind` says argument. A per-row `c.op` on a
+  criterion stays legal: that is a different object's `op`, and those genuinely are not
+  the family's picker.
+- Worth keeping: the ambiguity was IN THE PROP DOC. `arg`'s comment said "a selector
+  that is NOT the family's op selector" and then listed the accent as a consumer, which
+  reads as if it also declares argument-ness. Both prop docs now say what `arg` does
+  not mean, not just what it does.
 - Free check from the chrome-ramp work: neutral selection needs `--surface-sunken` and
   `--surface-raised` to be a visible step apart in every palette, which is exactly the
   "hover fill steps toward the ink" invariant `palette.test.ts` already pins.

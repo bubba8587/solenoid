@@ -603,7 +603,7 @@ export function DropBlankRowsComponent({ data, emit }: NodeProps<DropBlankRowsNo
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={op} onChange={setOp} options={BLANK_ROW_OPTIONS} />
+      <OpSelect value={op} onChange={setOp} options={BLANK_ROW_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
