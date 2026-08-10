@@ -2,17 +2,16 @@ import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
   TimeConstructNode as TimeConstructNodeType,
-  DateValueNode as DateValueNodeType,
-  TimeValueNode as TimeValueNodeType,
+  DateTimeValueNode as DateTimeValueNodeType,
   DatePartNode as DatePartNodeType,
   WeekInfoNode as WeekInfoNodeType,
   DateDiffNode as DateDiffNodeType,
   DateAddNode as DateAddNodeType,
   WorkdaysNode as WorkdaysNodeType,
-  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
+  TodayNowOp, DateTimeValueOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
 } from "../rete-nodes";
 import {
-  TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
+  TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
 import { getActiveArea, getActiveEditor } from "../activeGraph";
@@ -63,19 +62,31 @@ export function TimeConstructComponent({ data, emit }: NodeProps<TimeConstructNo
   );
 }
 
-export function DateValueComponent({ data, emit }: NodeProps<DateValueNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+const DATE_TIME_VALUE_OPS = (Object.keys(DATE_TIME_VALUE_OP_META) as DateTimeValueOp[]).map(op => ({
+  value: op, label: DATE_TIME_VALUE_OP_META[op].label,
+}));
 
-export function TimeValueComponent({ data, emit }: NodeProps<TimeValueNodeType>) {
+export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNodeType>) {
+  const [op, setOpField] = useNodeField(data, "op");
+  const [, setLabel] = useNodeField(data, "label");
+
+  async function pickOp(next: DateTimeValueOp) {
+    if (next === data.op) return;
+    data.setOp(next);
+    // The output retyped in place (date ↔ number): drop cables the new type
+    // can't feed, and let docked FCs re-resolve — no connection event fires.
+    const editor = getActiveEditor();
+    const area = getActiveArea();
+    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
+    if (area) await area.update("node", data.id);
+    setOpField(next);
+    setLabel(DATE_TIME_VALUE_OP_META[next].label);
+  }
+
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={DATE_TIME_VALUE_OPS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateAddNode, TimeValueNode, DateConstructNode, WorkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateDiffOp } from "./date";
+import { DateAddNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateDiffOp } from "./date";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket } from "../sockets";
 
@@ -263,7 +263,7 @@ describe("TIMEVALUE is timezone-independent (v1.0 audit finding 12)", () => {
   });
 
   const tv = (text: string) => {
-    const n = new TimeValueNode();
+    const n = new DateTimeValueNode({ op: "time" });
     n.stringLiterals.text = text;
     return n.data({}).result;
   };
@@ -287,6 +287,49 @@ describe("TIMEVALUE is timezone-independent (v1.0 audit finding 12)", () => {
     const r = tv("25:99");
     if (!isSolError(r)) throw new Error("expected SolError");
     expect(r.code).toBe("#VALUE!");
+  });
+});
+
+describe("DATEVALUE / TIMEVALUE — one node, op-switch mechanics", () => {
+  const parse = (op: "date" | "time", text: string) => {
+    const n = new DateTimeValueNode({ op });
+    n.stringLiterals.text = text;
+    return n.data({}).result;
+  };
+  const outType = (n: DateTimeValueNode) => {
+    const s = n.outputs.result!.socket;
+    return s instanceof SolenoidSocket ? s.dataType : undefined;
+  };
+
+  it("the same text reads as the whole day or the time of day within it", () => {
+    expect(parse("date", "2026-01-03T06:00")).toBe(parseDateToSerial("2026-01-03"));
+    expect(parse("time", "2026-01-03T06:00")).toBeCloseTo(0.25, 12);
+  });
+
+  it("the switch retypes the output date ↔ number", () => {
+    const n = new DateTimeValueNode({ op: "date" });
+    expect(outType(n)).toBe("date");
+    n.setOp("time");
+    expect(outType(n)).toBe("number");
+    expect(n.outputs.result!.label).toBe("Time fraction (0–1)");
+    n.setOp("date");
+    expect(outType(n)).toBe("date");
+    expect(n.outputs.result!.label).toBe("Date");
+  });
+
+  it("the text input is the one row either op reads", () => {
+    expect(Object.keys(new DateTimeValueNode({ op: "date" }).inputs)).toEqual(["text"]);
+    expect(Object.keys(new DateTimeValueNode({ op: "time" }).inputs)).toEqual(["text"]);
+  });
+
+  it("blank in → blank out; unparseable text is #VALUE! under either op", () => {
+    expect(parse("date", "   ")).toBeNull();
+    expect(parse("time", "")).toBeNull();
+    for (const op of ["date", "time"] as const) {
+      const r = parse(op, "not a date");
+      if (!isSolError(r)) throw new Error(`expected SolError for ${op}`);
+      expect(r.code).toBe("#VALUE!");
+    }
   });
 });
 

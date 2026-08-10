@@ -86,6 +86,22 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-10 — DATEVALUE + TIMEVALUE merged; the Parse card's layout)
+- **One `DateTimeValueNode` (`date.ts`) replaces DateValueNode + TimeValueNode**
+  — same single Text input, the op picks whole-day vs time-of-day and retypes
+  the output in place (date ↔ number), Workdays' pattern: the component calls
+  `retypeOutputCables` and `area.update` before mirroring the field. Parsing
+  split into `parseDateOnly` / `parseTimeOfDay` helpers, unchanged behavior.
+  Both Add-menu leaves stay (`date-value` / `time-value`, so the nodeExcel keys
+  and per-op `describeNode` tooltips are untouched) and now sit as a pair inside
+  the Parse category.
+- **The layout bug was the socket label.** `.solenoid-node__io-label` is
+  `flex: 0 0 auto`, so "Date text (e.g. \"2026-06-15\")" claimed the whole
+  180px row and squeezed the inline text field to nothing. Both rows are now
+  plain "Text"; the formats live in the catalog description the header tooltip
+  already shows. Height 135 → 170 for the added selector (DatePart's shape).
+  Worth a sweep: any other single-row card carrying an example inside its label.
+
 ### SESSION DIGEST (2026-08-09d — node-combining round 1: eight merges landed)
 - **The author approved a candidate list and round 1 shipped whole** (D36; the
   full ranked survey + the parked set live in `docs/backlog.md` "Node-combining

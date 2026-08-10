@@ -238,7 +238,7 @@ export { UrlEncodeComponent } from "./UrlEncodeNode";
 // ─── Date & Time ──────────────────────────────────────────────────────────────
 export {
   TodayNowComponent, DateConstructComponent, TimeConstructComponent,
-  DateValueComponent, TimeValueComponent, DatePartComponent,
+  DateTimeValueComponent, DatePartComponent,
   WeekInfoComponent, DateDiffComponent, DateAddComponent,
   WorkdaysComponent,
 } from "./DateNodes";
