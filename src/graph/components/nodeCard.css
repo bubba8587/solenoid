@@ -1461,12 +1461,12 @@ body.solenoid-scrubbing * {
 
 /* A SegToggle is the SAME picker in a different shape (Sparkline's chart type,
    Surface's view, the resistor's band count all bind `op` there), so it takes the same
-   two rules on the same two conditions — hoist to the top of the body when it is the
-   family's op picker, carry the accent when the card is an operation. Everything the
-   pair does not match stays the neutral chrome in SegToggle.css: every `arg` toggle,
-   and an op toggle on an ARGUMENT card (the resistor's band count, whose family is
-   declared `argument` — the field name is what lets NODE_OPS attach, the kind is what
-   spends the accent, and the two are independent). */
+   two rules: the family's op picker hoists, and it carries the accent on an operation
+   card. Those are one decision chain, not two axes — `arg` says the control is not the
+   family picker at all, and for the picker itself the family's `kind` alone decides the
+   accent. Binding `op` is not a second vote: the field name only lets NODE_OPS attach.
+   So the NEUTRAL case is the common one (SegToggle.css defines it) — every `arg`
+   toggle, plus the family picker on any argument-kind card, which is most of them. */
 .solenoid-node__body > .solenoid-seg:not([data-op-arg]) {
   order: -1;
 }

@@ -123,11 +123,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   against it in dark (#2a2a2a vs #262626). Op toggles keep today's colors byte for byte
   via an override in `nodeCard.css` beside the OpSelect rules; the base rule in
   `SegToggle.css` is the neutral one, so specificity settles it in either import order.
-- The two conditions are genuinely independent, and the resistor is the case that proves
-  it: `elec-resistor-code` binds `op` (so NODE_OPS can attach) AND is declared
-  `kind: "argument"` (the band count is a parameter of the decoder), so its toggle hoists
-  to the top like an op picker and renders neutral like an argument. Not a contradiction
-  — the field NAME is what lets declarations attach, the KIND is what spends the accent.
+- **Correction, author-flagged (the docs, not the code).** This first shipped described
+  as "two independent conditions" with the resistor as the case proving it. Both halves
+  were wrong. There is ONE decision chain: `arg` says a control is not the family's op
+  picker at all; for the picker itself the family's `kind` alone decides the accent, and
+  binding `op` is not a second vote (the field name only lets NODE_OPS attach, which
+  every family needs). And the resistor is not a curiosity: "binds `op`, declared
+  `argument`" is the standard shape for 13 of the 15 argument-kind families (Group By,
+  Cube Rollup, Group By frame, Running, Text Filter, Headers, Alert, Color Blend, Pipe
+  Roughness, Antoine, Pivot, Drop Blank Rows). Singling it out invented a rule from a
+  case that was never special. The CSS was already right; only DESIGN.md, the nodeCard
+  comment, and this digest needed fixing.
 - Free check from the chrome-ramp work: neutral selection needs `--surface-sunken` and
   `--surface-raised` to be a visible step apart in every palette, which is exactly the
   "hover fill steps toward the ink" invariant `palette.test.ts` already pins.
