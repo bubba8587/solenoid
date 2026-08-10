@@ -86,6 +86,25 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-10b — Running's aggregator is an ARGUMENT)
+- **`list-running` was declared `kind: "operation"`, against D29** (author caught it
+  on the card: the SUM dropdown wore the operation accent edge). The aggregator is an
+  argument of its host verb, and Running's host verb is the windowed scan — the card
+  is titled "Running" whatever the aggregator says, so the selector never names it.
+  Now `argument`, matching the three other aggregator pickers (`list-groupby`,
+  `group-by-frame`, `cube-rollup`); `reduce-sum` stays `operation` because there the
+  aggregator IS the node rather than a parameter of one. One-line change; D29 gained
+  the roster so the five stay checkable against each other.
+- **Argument kind costs nothing in the menu** — `hiddenOps` reads `decl.ops`, never
+  `decl.kind`, so RUNNINGSUM and friends keep their search rows, their `create`, and
+  the host's `{ }` marker. That is D29's "kind and menu are separate axes" in code.
+- False start worth not repeating: the first read of "arg selector tagged as an op
+  selector" was a VISUAL one — `SegToggle`'s selected button paints the node accent at
+  full strength while an operation `OpSelect` rests at `--mix-emphasis`, so the mode
+  toggle out-shouts the op dropdown. That inversion is real and still unfixed (30 of
+  33 SegToggles are arguments and none can opt out, unlike `OpSelect`'s `arg` prop),
+  but it was not what the author meant and is a separate, app-wide call.
+
 ### SESSION DIGEST (2026-08-10 — DATEVALUE + TIMEVALUE merged; the Parse card's layout)
 - **One `DateTimeValueNode` (`date.ts`) replaces DateValueNode + TimeValueNode**
   — same single Text input, the op picks whole-day vs time-of-day and retypes
