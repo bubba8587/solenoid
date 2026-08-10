@@ -104,6 +104,11 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
 - [ ] **By-Row cap: silent truncation → Problems-panel warning** (`composite.ts`
   `BY_ROW_MAX_ROWS` = 500).
+- [ ] **`COLUMN`/`ROW` in formulas are Formula.js array EXTRACTORS, not Excel's
+  reference functions** — `COLUMN(array, index)` returns that column (both args
+  required, `#N/A` on one arg). Found while filling the autocomplete signatures;
+  hint now says `array, index`. Decide: own them natively with Excel semantics, or
+  eliminate per D10 (Excel's versions need cell references, which don't exist here).
 
 ## Architecture spec (`docs/rules.md`)
 
