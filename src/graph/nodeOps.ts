@@ -191,7 +191,13 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },
 
-  { type: "list-running", ctor: RunningNode, kind: "operation", ops: fromMeta(RUNNING_OP_META),
+  // The AGGREGATOR is an argument of its host verb (D29), and Running's host verb is
+  // the windowed scan — the card is titled "Running" whatever the aggregator says, so
+  // the selector never names it. Same treatment as the other three aggregator pickers
+  // (list-groupby, group-by-frame, cube-rollup). Argument kind does NOT cost the search
+  // rows: kind and menu are separate axes, so RUNNINGSUM and friends stay findable and
+  // addable through `ops`/`create` below.
+  { type: "list-running", ctor: RunningNode, kind: "argument", ops: fromMeta(RUNNING_OP_META),
     create: (op) => new RunningNode({ op: op as never }) },
   // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
   { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),

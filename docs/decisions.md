@@ -225,9 +225,17 @@ user PICK it or could it arrive computed; does it have its own NAME (FX-4 can
 overrule — ops sharing a name cannot be operations); would the user SEARCH for
 it; is it meaningless without its host; is it an Excel function (corroborating
 only). Distribution .RT forms stay SEARCH ROWS (kind and menu are separate axes;
-rows must carry the searched token). **Where:** `nodeOps.ts` declarations.
-**Reopen if:** users search aggregator names and fail → search ALIASES on the
-host, not per-aggregator rows.
+rows must carry the searched token — an `argument` declaration keeps its `ops`/
+`create` and stays fully findable, it only drops the accent edge).
+
+The SUM/AVERAGE/MIN/… picker appears on five cards, and four are `argument` by this
+rule: `list-groupby`, `group-by-frame`, `cube-rollup`, `list-running` (the host verb
+is the windowed scan; the card stays titled "Running" whatever the aggregator says).
+The exception is `reduce-sum` (Aggregate), where the aggregator is not a parameter of
+a host verb — it IS the whole node — so it stays `operation`. Test for a new
+aggregator picker: does the card have a job the aggregator merely parameterizes?
+**Where:** `nodeOps.ts` declarations. **Reopen if:** users search aggregator names
+and fail → search ALIASES on the host, not per-aggregator rows.
 
 ### D30 — Comment minimalism: knowledge lives in specs/tests/commits
 Deletion is the default outcome for a comment under review; a survivor states a
