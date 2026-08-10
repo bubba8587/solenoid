@@ -1458,3 +1458,23 @@ body.solenoid-scrubbing * {
 .solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]):focus {
   border-color: var(--node-accent, var(--accent));
 }
+
+/* A SegToggle is the SAME picker in a different shape (Sparkline's chart type,
+   Surface's view, the resistor's band count all bind `op` there), so it takes the same
+   two rules on the same two conditions — hoist to the top of the body when it is the
+   family's op picker, carry the accent when the card is an operation. Everything the
+   pair does not match stays the neutral chrome in SegToggle.css: every `arg` toggle,
+   and an op toggle on an ARGUMENT card (the resistor's band count, whose family is
+   declared `argument` — the field name is what lets NODE_OPS attach, the kind is what
+   spends the accent, and the two are independent). */
+.solenoid-node__body > .solenoid-seg:not([data-op-arg]) {
+  order: -1;
+}
+.solenoid-node[data-op-kind="operation"] .solenoid-seg:not([data-op-arg]) .solenoid-segbtn {
+  background: var(--border-subtle);
+}
+.solenoid-node[data-op-kind="operation"] .solenoid-seg:not([data-op-arg]) .solenoid-segbtn--on {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text);
+}
