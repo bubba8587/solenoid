@@ -490,10 +490,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   DSUM: "database, field, criteria",
   DVAR: "database, field, criteria",
   DVARP: "database, field, criteria",
-  // lookup / arrays — COLUMN/ROW are Formula.js's array extractors (both args
-  // required), NOT Excel's reference-position functions.
-  COLUMN: "array, index",
-  ROW: "array, index",
+  // lookup / arrays (COLUMN/ROW are blocked — LEGACY_ALIASES → INDEX)
   COLUMNS: "array",
   ROWS: "array",
   CHOOSECOLS: "array, col1, col2, …",
