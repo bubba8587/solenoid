@@ -227,6 +227,10 @@ boolean), `problemsStore` (error-sink relapse tracking), `commentStore`
 (node-anchored comments), `noticeStore` (the toast/warn channel — e.g. the
 drill-in dropped-cable notice). Other cross-cutting toggles:
 `semanticZoomStore`, `gridSnapStore`, `isolateStore`.
+The View ▸ Architecture map overlay (`components/SpecMapView.tsx` + `specMapStore.ts`)
+renders `docs/rules.md` and this file, imported `?raw` and parsed by `specMap.ts`
+(+`.test.ts`) — the map is DERIVED from the docs at build time, nothing hand-kept
+(SSOT-3); prose-only sections here carry no module table and stay off the map.
 
 ### External data
 

@@ -16,6 +16,7 @@ import { documentStore } from "./documentStore";
 import { addMenuRequest } from "./addMenuStore";
 import { connectionDialog } from "./connectionDialogStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
+import { specMapStore } from "./specMapStore";
 import { pickFolderDialog, openInFileManager, isDesktop } from "./fileBridge";
 import { docPropertiesPanel } from "./docMetaStore";
 import { helpDialogStore } from "./helpDialogStore";
@@ -106,6 +107,7 @@ export function buildMenus(): Menu[] {
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
+        { label: "Architecture map", onClick: () => specMapStore.open() },
         { label: "Settings…", shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
       ],
     },

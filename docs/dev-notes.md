@@ -86,6 +86,19 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-11c — Architecture map overlay landed (spec-map steps 2–4))
+- **View ▸ Architecture map ships** (`SpecMapView.tsx` + `SpecMapView.css` +
+  `specMapStore.ts`, mounted in `App.tsx`, launched from `menuModel.ts` so the palette
+  command comes free): a two-column modal in the Reference overlay's band — Rules
+  (domains → rule rows with enforcement dots + expandable MUST text, grade, cited
+  suites) beside Modules (the architecture.md concern groups). Both docs arrive via
+  `?raw` and parse through `specMap.ts`, so the view derives at build time and HMR-updates
+  in dev; nothing hand-kept. Selecting a rule washes the modules matching its cited
+  suites' stems (the DESIGN §2 active-row tint — element tinted, never an edge stripe);
+  enforcement status is the panel's only color (the status set), ARR ink accented via
+  `--mix-ink`. `specMapStore` sanctioned under STORE-1 (transient open flag).
+  Backlog item deleted; `architecture.md` App-chrome section records the cluster.
+
 ### SESSION DIGEST (2026-08-11b — spec-map view, step 1: the derivation layer)
 - **User-requested feature, split into steps (limited-usage session did step 1 only;
   steps 2–4 are in the backlog under "Spec-map view")**: a live visual map of the
