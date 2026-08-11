@@ -66,7 +66,7 @@ const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
       return solError("#VALUE!", `Unknown property "${p}" — mass, number, name, symbol, period`);
     },
     returns: "any", arity: [1, 2],
-    signature: "symbol or atomic number, property (mass)",
+    signature: "symbol or atomic number, [property (mass)]",
   },
   {
     name: "MOLARMASS",

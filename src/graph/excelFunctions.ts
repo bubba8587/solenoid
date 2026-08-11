@@ -431,7 +431,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // The lookups take whole lists but deliberately NOT via `listArgs` — RANGE_POSITIONAL
   // skips the error scan, so an error at an UNREFERENCED position can't poison the pick.
   XLOOKUP:     { returns: "any", arity: [3, 4] },
-  XMATCH:      { returns: "number", arity: [2, 4] },
+  // The formula XMATCH is EXACT-only — the match-mode family lives on the node
+  // (finePrintContract.test.ts); a third argument would be silently ignored.
+  XMATCH:      { returns: "number", arity: [2, 2] },
   IF:          { returns: "any", arity: [2, 3] },
   INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
