@@ -102,6 +102,13 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **Matrix-null round-trip in Table Input** (`TableDisplay.tsx`): blanks should
   round-trip as real null cells instead of collapsing the table.
 - [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
+- [ ] **Finish evicting live material from `docs/archive/`** — the routing table is
+  clean and machine-checked now, but three archived docs are still cited as current
+  by CODE: `formulajs-vs-native-audit.md` (the per-family verdicts `FAMILY_BACKING`
+  encodes), `cube-node-scope.md` (`nodes/cube.ts`, `frameLookup.test.ts`),
+  `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
+  message). Same split as the divergence catalogue: live half out, finished record
+  stays.
 - [ ] **By-Row cap: silent truncation → Problems-panel warning** (`composite.ts`
   `BY_ROW_MAX_ROWS` = 500).
 - [ ] **Every Formula.js-only 2-D function is DEAD on the formula surface** — a

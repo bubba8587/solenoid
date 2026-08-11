@@ -22,8 +22,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 
 Pointer hygiene is machine-checked: `docsPointers.test.ts` fails CI on a dead
 `.md` citation anywhere in the live docs, a live doc missing from this index, an
-archived doc missing from the archive index, or a routing-table code file that
-no longer exists.
+archived doc missing from the archive index, a routing-table code file that
+no longer exists, or a routing-table row pointing into `archive/` — nothing live
+is parked there.
 
 ## Reference (read the relevant section before touching a subsystem)
 
@@ -48,6 +49,10 @@ no longer exists.
   writing a new node. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
   `nodeCatalog.ts` is the real source of truth.
+- **`formulajs-divergences.md`** — why Solenoid owns each `registerInternal`
+  override instead of falling through to Formula.js. Read before deleting an
+  override or widening the fallthrough; the library being wrong is the whole
+  reason the override exists.
 - **`pack-architecture.md`** — the lean-core + packs design (framework BUILT;
   this is the authoring guide + rationale).
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes (parked —
@@ -110,7 +115,7 @@ relapse.
 | `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
 | `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `renderer-performance.md` § HTML-in-Canvas capture pipeline |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
-| `excelFunctions.ts` overrides / dispatch walk | `archive/formula-node-parity.md` § Formula.js divergence catalogue |
+| `excelFunctions.ts` overrides / dispatch walk | `formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
 | `stringOrder.ts` | D32 (byte order, not locale) |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | D31 (raw text is the stored truth) |
@@ -129,7 +134,8 @@ relapse.
 | `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
 | `CompositeEditorOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; D17 |
-| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `archive/formula-node-parity.md` (divergence catalogue); `rules.md` FX rules; D24 |
+| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; `rules.md` FX rules; D24 |
+| `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` FX-1 (one impl, two surfaces), FX-2 (rete-free; what not to extract) |
 | `computedColumnCore.ts` | D24, D25; `rules.md` FX-13 |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); D1, D5; cargo parity tests |
 | `nodeOps.ts` (op declarations) | D29 (aggregators are arguments); `node-coverage.md` |
