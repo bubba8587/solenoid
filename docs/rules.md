@@ -591,8 +591,8 @@ Program record: `docs/archive/formula-node-parity.md`.
 ### FX-1 — One implementation, two surfaces **[INFERRED]**
 **MUST:** a function callable from BOTH a node and a formula has exactly one
 implementation, in a rete-free module (`nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`,
-`mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`, `nodes/matrixOps.ts`, `cxValue.ts`).
-Both callers delegate to it.
+`mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`, `nodes/matrixOps.ts`,
+`nodes/indexAccess.ts`, `cxValue.ts`). Both callers delegate to it.
 
 *Why:* the two surfaces drifted for exactly as long as they were two implementations.
 *Enforced by:* `formulaTier3.test.ts` → "every Tier 3 name computes what its node
@@ -608,6 +608,20 @@ what volatile means. Any future volatile function follows the same split.
 **MUST:** a module imported by the formula path must not pull in rete, the socket lattice
 or the frame model.
 
+**MUST (every sibling, including the next one):** the rule governs EVERY module in the
+FX-1 seam, not just the ones listed there. A new shared module is CREATED under this
+rule — check a sibling's header before writing it, and state the constraint in its own
+header the way `dateSerial.ts` / `convertUnits.ts` / `listOps.ts` do. `frame.ts` and
+`unitColumn.ts` are the two easy traps: both look like value-layer modules and both
+reach rete (`frame.ts` → `sockets.ts`; `unitColumn.ts` → `unitBridge.ts` →
+`formatAnnotationStore.ts` → `nodes/date.ts`).
+
+**MUST (what to extract):** share only what BOTH surfaces can hold. A node kernel that
+also handles frames or cubes does not move whole — a formula holds neither (FX-9), so
+that half stays node-side and calls the shared core (`indexAccess.ts` + the frame/cube
+branch in `nodes/list.ts` is the pattern), and a needed dirty helper arrives as an
+ARGUMENT rather than an import (`tagFrameCellUnit` into `indexInto`).
+
 *Why:* the headless formula path (`run-graph`, the evaluator) should not load the editor.
 *Enforced by:* `formulaPathIsReteFree.test.ts` → "no module reachable from
 excelFormula/excelFunctions imports rete or sockets" — walks the import graph (the
@@ -618,7 +632,9 @@ fails on any reachable `rete` or `sockets` import.
 `excelFunctions` reached rete through `nodes/date.ts` (the serial helpers) and
 `nodes/convert.ts` (the unit table) until both were extracted (`dateSerial.ts`,
 `convertUnits.ts`) — found by the enforcement column's own review, which is the argument
-for the test.
+for the test. Violated a third time 2026-08-11 by a NEW sibling (`indexAccess.ts`
+extracted the INDEX node's `data()` whole, importing `frame.ts`), which is why the rule
+now names the create-a-sibling moment and what not to extract.
 
 ### FX-3 — A registration declares its full contract **[INFERRED]**
 **MUST:** every `registerInternal` name has an `EXCEL_IMPL_META` entry declaring

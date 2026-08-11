@@ -1,5 +1,12 @@
 # docs/archive — finalized & inactive docs
 
+**Nothing LIVE lives here.** If a section is still the reference for current work —
+routed from the code→spec table, or the standing evidence behind code that ships — it
+belongs in the working set, and the finished record stays behind. Split the doc rather
+than parking a live section in a finished one: an agent is told archive is done, so a
+live pointer into it is a pointer that gets skipped (`docsPointers.test.ts` fails the
+routing table on any `archive/` target).
+
 Docs that have **done their job** — point-in-time research, resolved scoping, shipped
 specs, and forward proposals not picked up. Kept out of the top-level `docs/` so the living
 docs (architecture, subsystem-invariants, dev-notes, backlog, the per-subsystem references)
@@ -17,7 +24,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`node-arity-audit.md`](node-arity-audit.md) — *condensed.* The labeled-slots-vs-list-socket KEEP verdicts (rule also lives in `node-coverage.md`).
 
 ### Still-consumed reference — kept whole; cited by live code / docs
-- [`formula-node-parity.md`](formula-node-parity.md) — *archived 2026-08-07, program complete (548/548 in-scope leaves callable).* The D19 parity program record; the **Formula.js divergence catalogue** section stays the routed reference for `excelFunctions.ts` overrides.
+- [`formula-node-parity.md`](formula-node-parity.md) — *archived 2026-08-07, program complete (548/548 in-scope leaves callable).* The D19 parity program record only. Its Formula.js divergence catalogue was LIVE and moved out 2026-08-11 → `../formulajs-divergences.md`.
 - [`cube-node-scope.md`](cube-node-scope.md) — *archived 2026-08-07, shipped.* The Cube model + node set rationale; live summary in `../node-coverage.md`, deferred slices in `../deferrals.md`.
 - [`excel-toolbar-supplementals.md`](excel-toolbar-supplementals.md) — *archived 2026-08-07.* The ribbon-by-ribbon non-function parity verdicts (all open questions answered 2026-07-05).
 - [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point / function-gap research that seeded the parity work.

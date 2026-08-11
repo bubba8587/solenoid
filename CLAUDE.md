@@ -92,10 +92,14 @@ Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs
   a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
   table, mirrored in `formatModel.ts` — read before touching FC controls),
   `docs/value-semantics.md` (incl. the WIRED-blank vs typed-literal spec — read
-  "Reading an input" before writing a node's `data()`), `docs/pack-architecture.md`,
+  "Reading an input" before writing a node's `data()`), `docs/formulajs-divergences.md`
+  (why each `registerInternal` override exists — read before deleting one or widening
+  the Formula.js fallthrough), `docs/pack-architecture.md`,
   `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/` (open plan bundles).
   Finished/point-in-time docs: `docs/archive/` (see its README — incl. the parity
   program record, cube scoping, and toolbar-parity verdicts, archived 2026-08-07).
+  **Nothing live is parked in `archive/`** — if it's routed or still load-bearing it
+  lives in the working set (machine-checked: `docsPointers.test.ts`).
 - **`docs/code-comments.md` (D30) — the comment policy: comments are the LAST-RESORT home;
   default outcome for an existing comment is deletion.** History → commits; rulings →
   decisions/specs; investigations → dev-notes. Before editing a file, grep it in the

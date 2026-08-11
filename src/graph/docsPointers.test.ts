@@ -9,7 +9,8 @@ import * as path from "path";
 //  1. every live doc under docs/ appears in the docs/README.md index;
 //  2. every `*.md` path cited from a live doc resolves to a real file;
 //  3. every archived doc is listed in docs/archive/README.md;
-//  4. every code file the README index cites exists in the repo.
+//  4. every code file the README index cites exists in the repo;
+//  5. the routing table never sends live work into docs/archive.
 
 const ROOT = path.resolve(__dirname, "../..");
 const DOCS = path.join(ROOT, "docs");
@@ -81,6 +82,20 @@ describe("archive completeness (docs/archive/README.md)", () => {
       expect(index.includes(f)).toBe(true);
     },
   );
+});
+
+describe("the routing table sends live work to LIVE docs", () => {
+  // `docs/archive/` is finished, point-in-time material — CLAUDE.md tells an agent
+  // exactly that, so anything routed there reads as skippable and gets skipped.
+  // A doc the routing table names is by definition still load-bearing: it belongs
+  // in the working set. (2026-08-11: the Formula.js divergence catalogue sat in
+  // archive while routing live `excelFunctions.ts` edits at it, and a session
+  // re-derived a documented failure class by hand.)
+  it("routes no file into docs/archive", () => {
+    const table = read(path.join(DOCS, "README.md")).split("## Code → spec routing")[1] ?? "";
+    const rows = table.split("\n").filter((l) => l.startsWith("|") && l.includes("archive/"));
+    expect(rows, rows.join("\n")).toEqual([]);
+  });
 });
 
 describe("README routing-table code citations exist", () => {
