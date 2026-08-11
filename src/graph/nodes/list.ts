@@ -15,7 +15,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -1715,7 +1715,7 @@ export class SortByNode extends ClassicPreset.Node {
 
 // ─── XMATCH ───────────────────────────────────────────────────────────────────
 
-export type XMatchMatchMode = "exact" | "next_larger" | "next_smaller";
+export type { XMatchMatchMode };
 
 export const XMATCH_MATCH_MODE_META: Record<XMatchMatchMode, string> = {
   exact:        "Exact match (0)",
@@ -1744,24 +1744,9 @@ export class XMatchNode extends ClassicPreset.Node {
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (val === null) { this.cachedResult = null; return { result: null }; }
     const wired = inputs.array?.[0] ?? null;
-    const arr = wired ?? [];
-    let result: number | SolError | null = null;
-    if (this.matchMode === "exact") {
-      const idx = arr.findIndex(v => v === val);
-      result = idx === -1 ? null : idx + 1;
-    } else if (this.matchMode === "next_larger") {
-      let best: number | null = null; let bestIdx = -1;
-      for (let i = 0; i < arr.length; i++) {
-        if (arr[i] >= val && (best === null || arr[i] < best)) { best = arr[i]; bestIdx = i; }
-      }
-      result = bestIdx === -1 ? null : bestIdx + 1;
-    } else {
-      let best: number | null = null; let bestIdx = -1;
-      for (let i = 0; i < arr.length; i++) {
-        if (arr[i] <= val && (best === null || arr[i] > best)) { best = arr[i]; bestIdx = i; }
-      }
-      result = bestIdx === -1 ? null : bestIdx + 1;
-    }
+    const found = xmatchIndex(val, wired ?? [], this.matchMode);
+    let result: number | SolError | null =
+      isSolError(found) ? found : found === -1 ? null : found + 1;
     if (wired !== null && result === null) {
       result = solError("#N/A", "No match found in the array");
     }

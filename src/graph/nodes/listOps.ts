@@ -1,4 +1,4 @@
-import { isSolError, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
@@ -168,6 +168,54 @@ export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolEr
     if (idx === -1 || (op === "argmax" ? v > (arr[idx] as number) : v < (arr[idx] as number))) idx = i;
   }
   return idx === -1 ? null : idx + 1;
+}
+
+export type XMatchMatchMode = "exact" | "next_larger" | "next_smaller";
+export type XMatchSearchMode = "first" | "last";
+
+/** Excel's lookup equality: text compares case-insensitively (EXACT is the
+ *  case-sensitive escape hatch), everything else strictly. */
+export function lookupEq(a: unknown, b: unknown): boolean {
+  return typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+/** XMATCH over a 1-D list — the kernel behind the XMATCH node and the
+ *  XLOOKUP/XMATCH formulas, so the surfaces can't drift. Returns the 0-based
+ *  index of the winning cell, or −1 for a miss. Null and error cells never match
+ *  (the join-key rule; a positional caller keeps errors IN PLACE, so an
+ *  unreferenced error must not decide the answer). Approximate modes mirror the
+ *  frame kernel (lookupFrameRowIndex): an exact hit always wins, else the closest
+ *  ≤/≥ NUMERIC key — so they need a numeric lookup value. `searchMode` sets the
+ *  scan direction, i.e. which DUPLICATE wins; ties in an approximate best keep
+ *  the first seen in scan order. */
+export function xmatchIndex(
+  lookup: unknown, keys: readonly unknown[],
+  matchMode: XMatchMatchMode = "exact", searchMode: XMatchSearchMode = "first",
+): number | SolError {
+  const n = keys.length;
+  const at = (s: number) => (searchMode === "last" ? n - 1 - s : s);
+  if (matchMode === "exact") {
+    for (let s = 0; s < n; s++) {
+      const i = at(s);
+      const k = keys[i];
+      if (k === null || isSolError(k)) continue;
+      if (lookupEq(k, lookup)) return i;
+    }
+    return -1;
+  }
+  if (typeof lookup !== "number" || !Number.isFinite(lookup)) {
+    return solError("#VALUE!", "Approximate match compares numbers — use exact match (0) for text");
+  }
+  let bestIdx = -1, bestKey = NaN;
+  for (let s = 0; s < n; s++) {
+    const i = at(s);
+    const k = keys[i];
+    if (typeof k !== "number" || !Number.isFinite(k)) continue;
+    if (k === lookup) return i; // an exact hit always wins, first in scan order
+    if (matchMode === "next_smaller" && k < lookup && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
+    if (matchMode === "next_larger"  && k > lookup && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
+  }
+  return bestIdx;
 }
 
 /** 1 / 0 rather than a logical, matching the node's numeric output socket. Membership keys

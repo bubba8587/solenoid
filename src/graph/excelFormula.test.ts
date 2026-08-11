@@ -646,6 +646,45 @@ describe("classic lookups redirect to their current-Excel replacements (D10)", (
     expect(ev('XLOOKUP("Apple", k, v)', { k: ["apple", "pear"], v: [1, 2] })).toBe(1);
     expect(ev('XMATCH("PEAR", k)', { k: ["apple", "pear"] })).toBe(2);
   });
+
+  it("XMATCH match modes are the node's kernel (finePrintContract cases, formula-side)", async () => {
+    const { XMatchNode } = await import("./nodes/list");
+    const node = (value: number, array: number[], matchMode?: "exact" | "next_larger" | "next_smaller") => {
+      const n = new XMatchNode(matchMode ? { matchMode } : undefined);
+      n.literals.value = value;
+      return n.data({ array: [array] }).result;
+    };
+    expect(ev("XMATCH(7, x)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7]));            // 2 — first duplicate
+    expect(ev("XMATCH(6, x, 1)", { x: [5, 7, 9, 7] })).toEqual(node(6, [5, 7, 9, 7], "next_larger"));   // 2
+    expect(ev("XMATCH(8, x, -1)", { x: [5, 7, 9] })).toEqual(node(8, [5, 7, 9], "next_smaller"));       // 2
+    const miss = ev("XMATCH(10, x, 1)", { x: [5, 7] });
+    expect(isSolError(miss) && miss.code).toBe("#N/A");
+  });
+
+  it("XMATCH search_mode -1 scans from the end — the LAST duplicate wins", () => {
+    expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toBe(3);
+    expect(ev("XMATCH(7, x, 0, 1)", { x: [5, 7, 7] })).toBe(2);
+  });
+
+  it("XLOOKUP carries the mode arguments; a blank mode is the Excel default", () => {
+    const k = [5, 7, 9], v = ["a", "b", "c"];
+    expect(ev("XLOOKUP(6, k, v,, 1)", { k, v })).toBe("b");   // next larger
+    expect(ev("XLOOKUP(6, k, v,, -1)", { k, v })).toBe("a");  // next smaller
+    expect(ev('XLOOKUP(1, k, v, "none", -1)', { k, v })).toBe("none"); // below the range → fallback
+    expect(ev("XLOOKUP(7, k2, v2,, 0, -1)", { k2: [7, 7], v2: ["x", "y"] })).toBe("y"); // last duplicate
+  });
+
+  it("wildcard (2) and binary search (±2) refuse rather than mislead", () => {
+    for (const expr of ["XMATCH(7, x, 2)", "XMATCH(7, x, 0, 2)", "XLOOKUP(7, x, x,, 2)", "XLOOKUP(7, x, x,, 0, -2)"]) {
+      const r = ev(expr, { x: [5, 7] });
+      expect(isSolError(r) && r.code, expr).toBe("#VALUE!");
+    }
+  });
+
+  it("approximate match needs a numeric lookup value", () => {
+    const r = ev('XMATCH("pear", k, 1)', { k: ["apple", "pear"] });
+    expect(isSolError(r) && r.code).toBe("#VALUE!");
+  });
 });
 
 describe("P6 operator parity — the settled table (audit finding 26)", () => {
