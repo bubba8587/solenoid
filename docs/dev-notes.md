@@ -89,15 +89,20 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 ### SESSION DIGEST (2026-08-11c — Architecture map overlay landed (spec-map steps 2–4))
 - **View ▸ Architecture map ships** (`SpecMapView.tsx` + `SpecMapView.css` +
   `specMapStore.ts`, mounted in `App.tsx`, launched from `menuModel.ts` so the palette
-  command comes free): a two-column modal in the Reference overlay's band — Rules
-  (domains → rule rows with enforcement dots + expandable MUST text, grade, cited
-  suites) beside Modules (the architecture.md concern groups). Both docs arrive via
-  `?raw` and parse through `specMap.ts`, so the view derives at build time and HMR-updates
-  in dev; nothing hand-kept. Selecting a rule washes the modules matching its cited
-  suites' stems (the DESIGN §2 active-row tint — element tinted, never an edge stripe);
-  enforcement status is the panel's only color (the status set), ARR ink accented via
-  `--mix-ink`. `specMapStore` sanctioned under STORE-1 (transient open flag).
-  Backlog item deleted; `architecture.md` App-chrome section records the cluster.
+  command comes free): the enforcement web drawn as a three-layer SVG graph in the
+  Reference overlay's band — rule domains (left cards) → every cited test suite
+  (middle rows; an edge IS an `Enforced by:` line) → the architecture.md module group
+  the suite's home module is tabled under (right cards; stem match incl. companion
+  `nameCell`s). A suite with no right edge is honest signal: its module isn't in an
+  architecture TABLE (nodes/, packs/, the prose sections) — do not "fix" that by
+  fuzzy-matching; a bipartite domain→group cut was tried first and connected only
+  35/74 rules, which is why the suite layer exists. Hover previews / click sticks a
+  2-hop neighborhood (accent = state); a detail strip shows the selection's rules,
+  suites, or module files with tooltips (grade, MUST text, roles). Both docs arrive
+  `?raw` and parse through `specMap.ts` — derived at build, HMR in dev, nothing
+  hand-kept. Enforcement status is the panel's only standing color; `specMapStore`
+  sanctioned under STORE-1 (transient open flag). Backlog item deleted;
+  `architecture.md` App-chrome section records the cluster.
 
 ### SESSION DIGEST (2026-08-11b — spec-map view, step 1: the derivation layer)
 - **User-requested feature, split into steps (limited-usage session did step 1 only;
