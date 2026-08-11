@@ -228,9 +228,11 @@ boolean), `problemsStore` (error-sink relapse tracking), `commentStore`
 drill-in dropped-cable notice). Other cross-cutting toggles:
 `semanticZoomStore`, `gridSnapStore`, `isolateStore`.
 The View ▸ Architecture map overlay (`components/SpecMapView.tsx` + `specMapStore.ts`)
-renders `docs/rules.md` and this file, imported `?raw` and parsed by `specMap.ts`
-(+`.test.ts`) — the map is DERIVED from the docs at build time, nothing hand-kept
-(SSOT-3); prose-only sections here carry no module table and stay off the map.
+draws the enforcement web as a three-layer graph — rule domains → cited test suites →
+this file's module groups — from `docs/rules.md` and this file, imported `?raw` and
+parsed by `specMap.ts` (+`.test.ts`): DERIVED at build time, nothing hand-kept
+(SSOT-3). Only TABLED sections here land on the map's right layer; a suite whose home
+module lives in a prose section shows no right-hand edge, deliberately.
 
 ### External data
 

@@ -1,7 +1,7 @@
-/* Architecture map overlay. Same modal band as the Reference overlay
-   (fr-backdrop, z-index 9000). Enforcement state is the ONE thing colored here
-   (the status set from DESIGN.md §2, literals like fr-stats'); everything else
-   stays neutral chrome. */
+/* Architecture map overlay: the spec ↔ code citation graph. Same modal band as
+   the Reference overlay (fr-backdrop, z-index 9000). Color carries state only:
+   enforcement dots use the status set (DESIGN.md §2, literals like fr-stats'),
+   edges/nodes light with the accent on hover/selection and stay neutral at rest. */
 
 .specmap-backdrop {
   position: fixed;
@@ -31,7 +31,7 @@
 .specmap-head {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 14px;
   padding: 10px 44px 9px 16px;
   background: var(--surface-sunken);
   border-bottom: 1px solid var(--border);
@@ -50,6 +50,16 @@
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.specmap-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .specmap-close {
@@ -72,50 +82,83 @@
 }
 .specmap-close:hover { color: var(--text-dim); background: var(--border); }
 
-/* ─── Two independently scrolling columns ──────────────────────────────────── */
+/* ─── Graph canvas ─────────────────────────────────────────────────────────── */
 
-.specmap-body {
+/* Fixed-pixel layout space, centered; scrolls when the panel is smaller. The
+   canvas is a shade darker than the panel so the node cards lift off it, the
+   same tonal step the real graph canvas uses. */
+.specmap-canvas {
   flex: 1;
   min-height: 0;
+  overflow: auto;
   display: grid;
-  grid-template-columns: minmax(430px, 5fr) minmax(330px, 4fr);
+  place-items: center;
+  background: var(--surface-sunken);
+}
+.specmap-svg { display: block; }
+
+.specmap-edge {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  transition: stroke 0.1s, opacity 0.1s;
+}
+.specmap-edge--hot { stroke: var(--accent); stroke-width: 1.5; }
+.specmap-edge--dim { opacity: 0.2; }
+
+.specmap-node { cursor: pointer; transition: opacity 0.1s; }
+.specmap-node--dim { opacity: 0.35; }
+.specmap-node__box {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  transition: stroke 0.1s;
+}
+.specmap-node:hover .specmap-node__box,
+.specmap-node--hot .specmap-node__box { stroke: var(--text-muted); }
+.specmap-node--selected .specmap-node__box { stroke: var(--accent); stroke-width: 2; }
+
+/* Middle layer: one row per cited suite. */
+.specmap-suitenode { cursor: pointer; transition: opacity 0.1s; }
+.specmap-suitenode--dim { opacity: 0.3; }
+.specmap-suitenode__hit { fill: transparent; }
+.specmap-suitenode__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-muted);
+  transition: fill 0.1s;
+}
+.specmap-suitenode:hover .specmap-suitenode__label,
+.specmap-suitenode--hot .specmap-suitenode__label { fill: var(--text); }
+.specmap-suitenode--selected .specmap-suitenode__label {
+  fill: color-mix(in srgb, var(--accent) var(--mix-ink), var(--text));
 }
 
-.specmap-col {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-}
-.specmap-col + .specmap-col { box-shadow: inset 1px 0 0 var(--border); }
-
-.specmap-col__head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 7px 16px;
-  border-bottom: 1px solid var(--surface-raised);
-  font-size: 11px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-.specmap-col__name {
+.specmap-node__id {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
   font-weight: 600;
-  font-size: 11px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  fill: var(--text-bright);
 }
-.specmap-stat { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.specmap-stat--tail { margin-left: auto; }
-
-.specmap-col__scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 16px 32px;
+.specmap-node__title {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text);
+}
+.specmap-node__sub {
+  font-size: 10.5px;
+  fill: var(--text-muted);
+}
+.specmap-node__count {
+  font-size: 10.5px;
+  fill: var(--text-muted);
 }
 
-/* ─── Enforcement dots (the status set — the only color in the panel) ──────── */
+/* Per-domain enforcement presence dots (SVG circles). */
+.specmap-nodedot--enforced   { fill: #2fae7a; }
+.specmap-nodedot--partial    { fill: #d9a93b; }
+.specmap-nodedot--unenforced { fill: #e0473a; }
+
+/* ─── Enforcement dots (HTML, head + chips) ────────────────────────────────── */
 
 .specmap-dot {
   width: 7px;
@@ -128,154 +171,49 @@
 .specmap-dot--partial    { background: #d9a93b; }
 .specmap-dot--unenforced { background: #e0473a; }
 
-/* ─── Rules column ─────────────────────────────────────────────────────────── */
+/* ─── Detail strip (the selected node's contents, on demand) ───────────────── */
 
-.specmap-domain { margin-bottom: 18px; }
-
-.specmap-domain__head {
+.specmap-detail {
+  flex-shrink: 0;
+  max-height: 32%;
+  overflow-y: auto;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border);
+}
+.specmap-detail__head {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
 }
-.specmap-domain__prefix {
+.specmap-detail__name {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-bright);
 }
-.specmap-domain__name {
-  font-size: 12px;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.specmap-domain__count {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.specmap-domain__blurb {
-  margin: 6px 0 4px;
+.specmap-detail__sub { font-size: 11px; color: var(--text-muted); }
+.specmap-detail__blurb {
+  margin: 0 0 8px;
   font-size: 11px;
   line-height: 1.45;
   color: var(--text-muted);
 }
-
-.specmap-rule__row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  padding: 3px 6px;
-  background: none;
-  border: none;
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 12px;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.specmap-rule__row:hover { background: var(--surface-raised); }
-.specmap-rule--open .specmap-rule__row { background: var(--surface-raised); }
-.specmap-rule__row .specmap-dot { align-self: center; }
-.specmap-rule__id {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  flex-shrink: 0;
-  min-width: 68px;
-}
-.specmap-rule__title { min-width: 0; }
-
-.specmap-rule__detail { padding: 4px 6px 8px 29px; }
-.specmap-rule__must {
-  margin: 0 0 6px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--text-dim);
-}
-.specmap-rule__meta {
+.specmap-detail__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+}
+.specmap-chip {
+  display: inline-flex;
   align-items: center;
-}
-.specmap-grade {
-  font-size: 10.5px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.specmap-grade--arr {
-  color: color-mix(in srgb, var(--accent) var(--mix-ink), var(--text));
-}
-.specmap-suite {
+  gap: 5px;
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--text-dim);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: 5px;
-  padding: 1px 6px;
-}
-.specmap-flag {
-  font-size: 10.5px;
-  font-style: italic;
-  color: var(--text-muted);
-}
-
-/* ─── Modules column ───────────────────────────────────────────────────────── */
-
-.specmap-group { margin-bottom: 16px; }
-.specmap-group__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
-}
-
-.specmap-mod {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11.5px;
-}
-/* Cited by the selected rule's suites: a loose accent wash (DESIGN §2 ladder,
-   active-row tier) — the element itself tinted, never an edge stripe. */
-.specmap-mod--hot {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
-.specmap-mod__name {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text);
-  flex-shrink: 0;
-  max-width: 46%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.specmap-mod__role {
-  color: var(--text-muted);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Narrow: stack the columns; each keeps its own scroll. */
-@media (max-width: 900px) {
-  .specmap-body { grid-template-columns: 1fr; grid-template-rows: 3fr 2fr; }
-  .specmap-col + .specmap-col { box-shadow: inset 0 1px 0 var(--border); }
+  padding: 2px 7px;
+  cursor: default;
 }
