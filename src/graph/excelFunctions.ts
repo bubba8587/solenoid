@@ -15,7 +15,7 @@ import {
   shuffleList,
   firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
   takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
-  concatLists, type Cell as ListCell,
+  concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell,
 } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
@@ -430,10 +430,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOW:         { returns: "date", arity: [0, 0], family: "datetime" },
   // The lookups take whole lists but deliberately NOT via `listArgs` — RANGE_POSITIONAL
   // skips the error scan, so an error at an UNREFERENCED position can't poison the pick.
-  XLOOKUP:     { returns: "any", arity: [3, 4] },
-  // The formula XMATCH is EXACT-only — the match-mode family lives on the node
-  // (finePrintContract.test.ts); a third argument would be silently ignored.
-  XMATCH:      { returns: "number", arity: [2, 2] },
+  XLOOKUP:     { returns: "any", arity: [3, 6] },
+  XMATCH:      { returns: "number", arity: [2, 4] },
   IF:          { returns: "any", arity: [2, 3] },
   INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
@@ -853,24 +851,50 @@ registerInternal("CONVERT", (x, from, to) => {
   return r == null ? solError("#N/A", "CONVERT: unknown or incompatible units") : r;
 });
 
-// Lookup family, against OUR 1-D list model. Text matching is case-INSENSITIVE,
-// Excel's default for every lookup function (EXACT is the case-sensitive escape hatch).
-const lookupEq = (a: unknown, b: unknown): boolean =>
-  typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
-const exactIndex = (lookup: unknown, keys: unknown[]): number =>
-  keys.findIndex((k) => lookupEq(k, lookup));
+// Lookup family, against OUR 1-D list model — the same `xmatchIndex` kernel the
+// XMATCH node runs, plus Excel's numeric mode arguments. A blank mode argument
+// (like an omitted one) means the Excel default — the SEQUENCE convention for
+// formula-authored blanks, not the node contract's wired-blank.
 const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
-
-registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound) => {
+const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {
+  if (v === undefined || v === null) return "exact";
+  switch (toNum(v)) {
+    case 0: return "exact";
+    case 1: return "next_larger";
+    case -1: return "next_smaller";
+    case 2: return solError("#VALUE!", "Wildcard match (2) isn't supported");
+    default: return solError("#VALUE!", "match_mode is 0, 1, or -1");
+  }
+};
+const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
+  if (v === undefined || v === null) return "first";
+  switch (toNum(v)) {
+    case 1: return "first";
+    case -1: return "last";
+    case 2: case -2: return solError("#VALUE!", "Binary search (±2) isn't supported — every search scans");
+    default: return solError("#VALUE!", "search_mode is 1 or -1");
+  }
+};
+registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, searchMode) => {
+  const mm = xMatchModeArg(matchMode);
+  if (isSolError(mm)) return mm;
+  const sm = xSearchModeArg(searchMode);
+  if (isSolError(sm)) return sm;
   const ks = Array.isArray(keys) ? keys : [keys];
   const vs = Array.isArray(values) ? values : [values];
-  const idx = exactIndex(lookup, ks);
+  const idx = xmatchIndex(lookup, ks, mm, sm);
+  if (isSolError(idx)) return idx;
   if (idx >= 0 && idx < vs.length) return vs[idx];
   return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
 });
-registerInternal("XMATCH", (lookup, keys) => {
+registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
+  const mm = xMatchModeArg(matchMode);
+  if (isSolError(mm)) return mm;
+  const sm = xSearchModeArg(searchMode);
+  if (isSolError(sm)) return sm;
   const ks = Array.isArray(keys) ? keys : [keys];
-  const idx = exactIndex(lookup, ks);
+  const idx = xmatchIndex(lookup, ks, mm, sm);
+  if (isSolError(idx)) return idx;
   return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
 });
 // A blank branch (`IF(x,,y)`) arrives as null and STAYS null — a deliberate deviation;
