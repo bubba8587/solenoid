@@ -124,6 +124,45 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   per name: declare `matrixArgs` + own it, or eliminate per D10. (`COLUMN`/`ROW`
   are done — eliminated to `INDEX`; `INDEX` itself now owns rank 2.)
 
+### XMATCH / XLOOKUP are narrower than they advertise (2026-08-11 analysis)
+
+Excel's `lookup_array` is 1-D but ORIENTATION-FREE — a single row or a single
+column; a true grid is `#VALUE!`. Ours takes a vertical list only, and the
+advertised surface says otherwise: the hint reads exactly like Excel's signature
+and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
+
+- [ ] **Orientation — a 1×N or N×1 matrix is `#SHAPE!`** on both `XMATCH` and
+  `XLOOKUP`. A header ROW is a matrix in our model, so the common Excel shape is
+  refused, and `INDEX(grid, XMATCH(…), XMATCH(…))` only composes when the headers
+  are already 1-D lists (an `INDEX` whole-axis slice is, a raw grid row isn't).
+  SHALLOW: declare `matrixArgs`, flatten a single row/column to its vector, and
+  answer `#VALUE!` on a real grid — which is Excel's own answer, so this removes a
+  limit rather than inventing one. Kernel unchanged.
+- [ ] **An ARRAY `lookup_value` answers `#N/A` instead of spilling** — Excel
+  returns one position per element; we treat the array as a single needle and
+  report "not found". A plausible wrong answer, not a refusal: the worst failure
+  shape and the only one here that lies quietly. `XLOOKUP` identical. Interim fix
+  is a loud `#VALUE!`. The real fix is DEEP and belongs to the engine, not the
+  lookups: `broadcastCall` is all-or-nothing per FUNCTION (`RANGE_FUNCTIONS.has`),
+  so "spill this argument, take that one whole" is not expressible — a
+  per-ARGUMENT prep declaration is an FX-5/FX-6 design item serving a whole class.
+- [ ] **The XMATCH NODE is number-only** (`numIn` + `listIn`) while the formula
+  matches text case-insensitively — a live surface divergence. SHALLOW and
+  low-risk: `anyListIn` + `anyIn`, output invariant (a position is always a
+  number), so no adoption/passthrough work; `numlist` still connects below
+  `anylist` on the D17 ladder, so no graph breaks. This is D15's own rule
+  (position-only utilities ride element-agnostic sockets) and the `CONTAINS`
+  sibling is the precedent. Two wrinkles: approximate modes stay numeric (runtime
+  `#VALUE!`, mirroring the frame kernel's `isOrderableKey`), and a TYPED literal
+  needle stays impossible until the `stringLiterals` question is settled — shared
+  with CONTAINS, not XMATCH's to solve.
+- **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
+  container to guarantee its TWO columns line up ("Build Frame two aligned lists
+  first"); XMATCH reads one column and returns a position, so it has no alignment
+  problem, and Get Column → XMATCH already is frame-XMATCH with column typing
+  intact. Adding it would duplicate a working composition and force a column-name
+  input onto a node that needs none.
+
 ## Architecture spec (`docs/rules.md`)
 
 - [ ] **The author ARR pass — READY (author-present).** Walk every rule and
