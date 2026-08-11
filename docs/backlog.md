@@ -104,11 +104,25 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
 - [ ] **By-Row cap: silent truncation → Problems-panel warning** (`composite.ts`
   `BY_ROW_MAX_ROWS` = 500).
-- [ ] **`COLUMN`/`ROW` in formulas are Formula.js array EXTRACTORS, not Excel's
-  reference functions** — `COLUMN(array, index)` returns that column (both args
-  required, `#N/A` on one arg). Found while filling the autocomplete signatures;
-  hint now says `array, index`. Decide: own them natively with Excel semantics, or
-  eliminate per D10 (Excel's versions need cell references, which don't exist here).
+- [ ] **Every Formula.js-only 2-D function is DEAD on the formula surface** — a
+  matrix arg only survives dispatch through a declared `matrixArgs`
+  (`excelFormula.ts` D23 containment), which no library-backed name has. So the
+  matrix is broadcast element-wise BEFORE the function sees it and every call
+  returns a same-shape array of `#VALUE!` (`COLUMN` `ROW` `COLUMNS` `ROWS`
+  `CHOOSECOLS` `CHOOSEROWS`) or THROWS out of the evaluator (`HSTACK` `VSTACK`
+  `EXPAND` → "array.reduce is not a function"; the `D*` database family →
+  "Cannot read properties of undefined"). The declared natives (`TRANSPOSE`
+  `MDETERM` `TAKE`) work, which is the contrast that proves the mechanism.
+  A throw escaping as a throw rather than a SolError is the sharp end. Decide
+  per name: declare `matrixArgs` + own it, or eliminate per D10.
+- [ ] **`COLUMN`/`ROW` specifically — eliminate?** `nodeExcel.ts` already declares
+  both `oos: true` ("Returns column number; out of scope"), yet the formula editor
+  advertises them with a hint. Formula.js's are array EXTRACTORS
+  (`COLUMN(array, index)` → that column), not Excel's reference functions, and per
+  the item above they cannot succeed on any input. The node-surface equivalents
+  exist: whole-axis `INDEX` (blank/0 axis) and the Select Columns / `TableSelect`
+  nodes. NOTE: whole-axis `INDEX` is the NODE only — formula `INDEX(list, 0)` is
+  `#VALUE!` and `INDEX(matrix, …)` is `#SHAPE!`.
 
 ## Architecture spec (`docs/rules.md`)
 
