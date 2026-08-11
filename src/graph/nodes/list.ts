@@ -15,7 +15,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -1715,7 +1715,7 @@ export class SortByNode extends ClassicPreset.Node {
 
 // ─── XMATCH ───────────────────────────────────────────────────────────────────
 
-export type { XMatchMatchMode };
+export type { XMatchMatchMode, XMatchSearchMode };
 
 export const XMATCH_MATCH_MODE_META: Record<XMatchMatchMode, string> = {
   exact:        "Exact match (0)",
@@ -1723,17 +1723,28 @@ export const XMATCH_MATCH_MODE_META: Record<XMatchMatchMode, string> = {
   next_smaller: "Exact or next smaller (-1)",
 };
 
+/** Which end to scan from — so which DUPLICATE wins. Excel's binary modes (±2) are
+ *  deliberately absent here as on the frame XLOOKUP: over a materialized column they
+ *  find the row a linear scan already finds, so they'd be a speed knob with no
+ *  distinct result (node-coverage.md). */
+export const XMATCH_SEARCH_MODE_META: Record<XMatchSearchMode, { label: string; title: string }> = {
+  first: { label: "First", title: "On duplicate values, return the first match, scanning top to bottom" },
+  last:  { label: "Last",  title: "On duplicate values, return the last match, scanning bottom to top" },
+};
+
 export class XMatchNode extends ClassicPreset.Node {
   label: string;
   matchMode: XMatchMatchMode;
+  searchMode: XMatchSearchMode;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { value: 0 };
-  width = 180; height = 200;
+  width = 180; height = 232;
 
-  constructor(init?: { label?: string; matchMode?: XMatchMatchMode }) {
+  constructor(init?: { label?: string; matchMode?: XMatchMatchMode; searchMode?: XMatchSearchMode }) {
     super("XMatch");
-    this.label     = init?.label     ?? "XMATCH";
-    this.matchMode = init?.matchMode ?? "exact";
+    this.label      = init?.label      ?? "XMATCH";
+    this.matchMode  = init?.matchMode  ?? "exact";
+    this.searchMode = init?.searchMode ?? "first";
     this.addInput("value",  numIn("Lookup value"));
     this.addInput("array",  listIn("Array"));
     this.addOutput("result", numOut("1-based position (#N/A when not found)"));
@@ -1744,7 +1755,7 @@ export class XMatchNode extends ClassicPreset.Node {
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (val === null) { this.cachedResult = null; return { result: null }; }
     const wired = inputs.array?.[0] ?? null;
-    const found = xmatchIndex(val, wired ?? [], this.matchMode);
+    const found = xmatchIndex(val, wired ?? [], this.matchMode, this.searchMode);
     let result: number | SolError | null =
       isSolError(found) ? found : found === -1 ? null : found + 1;
     if (wired !== null && result === null) {
