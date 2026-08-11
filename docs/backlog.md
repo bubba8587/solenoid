@@ -112,17 +112,10 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `CHOOSECOLS` `CHOOSEROWS`) or THROWS out of the evaluator (`HSTACK` `VSTACK`
   `EXPAND` → "array.reduce is not a function"; the `D*` database family →
   "Cannot read properties of undefined"). The declared natives (`TRANSPOSE`
-  `MDETERM` `TAKE`) work, which is the contrast that proves the mechanism.
+  `MDETERM` `TAKE` `INDEX`) work, which is the contrast that proves the mechanism.
   A throw escaping as a throw rather than a SolError is the sharp end. Decide
-  per name: declare `matrixArgs` + own it, or eliminate per D10.
-- [ ] **`COLUMN`/`ROW` specifically — eliminate?** `nodeExcel.ts` already declares
-  both `oos: true` ("Returns column number; out of scope"), yet the formula editor
-  advertises them with a hint. Formula.js's are array EXTRACTORS
-  (`COLUMN(array, index)` → that column), not Excel's reference functions, and per
-  the item above they cannot succeed on any input. The node-surface equivalents
-  exist: whole-axis `INDEX` (blank/0 axis) and the Select Columns / `TableSelect`
-  nodes. NOTE: whole-axis `INDEX` is the NODE only — formula `INDEX(list, 0)` is
-  `#VALUE!` and `INDEX(matrix, …)` is `#SHAPE!`.
+  per name: declare `matrixArgs` + own it, or eliminate per D10. (`COLUMN`/`ROW`
+  are done — eliminated to `INDEX`; `INDEX` itself now owns rank 2.)
 
 ## Architecture spec (`docs/rules.md`)
 

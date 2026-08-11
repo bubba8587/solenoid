@@ -114,6 +114,22 @@ describe("D23 tranche 2 — the array-returning core, node-equals-formula", () =
     expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortByNode().data({ array: [a], by_array: [by] }).list);
   });
 
+  it("INDEX is the node's accessor — whole-axis and rank 2, not a 1-D pick", async () => {
+    const { ListIndexNode } = await import("./nodes/list");
+    const node = (v: unknown, row?: number, col?: number) =>
+      new ListIndexNode().data({ list: [v], index: row === undefined ? undefined : [row], column: col === undefined ? undefined : [col] }).result;
+    const x = [10, 20, 30];
+    expect(ev("INDEX(x, 2)", { x })).toEqual(node(x, 2));
+    expect(ev("INDEX(x, 0)", { x })).toEqual(node(x));            // 0 = the whole axis
+    expect(ev("INDEX(m, 2, 1)", { m: M })).toEqual(node(M, 2, 1)); // a cell out of rank 2
+    expect(ev("INDEX(m, 0, 2)", { m: M })).toEqual(node(M, 0, 2)); // whole column → 1-D list
+    expect(ev("INDEX(m, 1, 0)", { m: M })).toEqual(node(M, 1, 0)); // whole row → 1-D list
+    expect(ev("INDEX(m, 0, 0)", { m: M })).toEqual(node(M, 0, 0)); // both whole → the matrix
+    // Out-of-range wording is shared, not merely the code.
+    expect(ev("INDEX(m, 9, 1)", { m: M })).toEqual(node(M, 9, 1));
+    expect(code(ev("INDEX(m, 9, 1)", { m: M }))).toBe("#REF!");
+  });
+
   it("TAKE / DROP share the signed kernel with all three nodes", async () => {
     const { ListTakeDropNode } = await import("./nodes/list");
     const { TableTakeDropNode } = await import("./nodes/matrix");

@@ -10,13 +10,14 @@ import { pairIdsFromKeys } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
-import { forAggregateUnits, tagDim, matrixUnitOf, type UnitCell } from "../unitValue";
-import { stripUnitCells } from "../unitBridge";
+import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
+import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
+import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -335,93 +336,62 @@ export class ListIndexNode extends ClassicPreset.Node {
     return comboOfFamily(c.type) ?? "trueany";
   }
 
-  data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
-    const v = inputs.list?.[0] ?? null;
+  data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: IndexResult } {
     // Excel INDEX reads an OMITTED axis as the WHOLE axis — the unwired empty slot,
     // not a cable carrying blank.
     const rowIn = readInput(inputs.index, this.literals.index as number | undefined);
     const colIn = readInput(inputs.column, this.literals.column as number | undefined);
-    const done = (result: number | SolError | null | CubeCell | FrameValue | CubeValue) => {
-      this.cachedResult = result;
-      return { result };
-    };
-    if (v === null || v === undefined) return done(null);
-    // Excel INDEX: 0 (or omitted) selects the WHOLE axis.
-    if (rowIn === null || colIn === null) return done(null); // a WIRED blank axis
-    const rowAll = rowIn === undefined || Math.round(rowIn) === 0;
-    const colAll = colIn === undefined || Math.round(colIn) === 0;
-    const r = rowAll ? -1 : Math.round(rowIn as number) - 1;
-    const c = colAll ? -1 : Math.round(colIn as number) - 1;
-    const refErr = (n: number, max: number, what: string) =>
-      solError("#REF!", `${what} ${n} is outside 1…${max}`);
-
-    if (isCubeValue(v)) {
-      if (rowAll && colAll) return done(v);
-      const rows = cubeRowCount(v);
-      if (!rowAll && (r < 0 || r >= rows)) return done(refErr(r + 1, rows, "Row"));
-      if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
-      // Whole column / whole row stay CUBES so nested cells survive intact.
-      if (rowAll) return done(cubeFromColumns([v.columns[c]]));
-      if (colAll) return done(cubeFromColumns(v.columns.map((col) => ({ name: col.name, type: col.type, cells: [col.cells[r] ?? null] }))));
-      return done(v.columns[c].cells[r] ?? null);
-    }
-    if (isFrameValue(v)) {
-      if (rowAll && colAll) return done(v);
-      const rows = frameRowCount(v);
-      if (!rowAll && (r < 0 || r >= rows)) return done(refErr(r + 1, rows, "Row"));
-      if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
-      // Whole column = the values list; a unit-locked column tags each cell so the
-      // unit rides out of the frame.
-      if (rowAll) {
-        const col = v.columns[c];
-        return done((col.unit ? col.values.map((x) => tagFrameCellUnit(x, col.unit!)) : [...col.values]) as CubeCell);
-      }
-      if (colAll) {
-        // Whole row = a ONE-ROW FRAME (Get Row / XLOOKUP `*` convention).
-        const columns: FrameColumn[] = v.columns.map((col) => ({
-          ...col, values: [col.values[r] ?? null], raw: col.raw ? [col.raw[r] ?? ""] : undefined,
-        }));
-        return done({ __frame: true, columns });
-      }
-      // A single cell from a unit-locked column carries the column's unit.
-      const cell = v.columns[c].values[r] ?? null;
-      return done(v.columns[c].unit ? (tagFrameCellUnit(cell, v.columns[c].unit!) as CubeCell) : cell);
-    }
-
-    if (!Array.isArray(v)) {
-      // A scalar wired in is a 1×1 — row/col 1 (or [all]) returns it, anything else #REF!.
-      const ok = (rowAll || r === 0) && (colAll || c === 0);
-      return done(ok ? (v as number) : solError("#REF!", "Index is outside a single value; only index 1 exists"));
-    }
-
-    if (Array.isArray((v as unknown[])[0])) {
-      // A genuine 2-D matrix.
-      const grid = v as unknown[][];
-      // A homogeneous matrix unit (D20) must ride out into the extraction, so each
-      // extracted number is tagged; `tag` is identity for a plain matrix.
-      const mUnit = matrixUnitOf(v);
-      const tag = (x: unknown): unknown => (mUnit ? tagFrameCellUnit(x, mUnit) : x);
-      if (rowAll && colAll) return done(grid as CubeCell);
-      if (!rowAll && (r < 0 || r >= grid.length)) return done(refErr(r + 1, grid.length, "Row"));
-      if (rowAll) {
-        // Whole column as a 1-D list (a ragged short row contributes null).
-        const width = grid.reduce<number>((m, row) => Math.max(m, Array.isArray(row) ? row.length : 1), 0);
-        if (c < 0 || c >= width) return done(refErr(c + 1, width, "Column"));
-        return done(grid.map((row) => tag(Array.isArray(row) ? (row[c] ?? null) : c === 0 ? row : null)) as CubeCell);
-      }
-      const rowArr = Array.isArray(grid[r]) ? grid[r] : [grid[r] as unknown];
-      if (colAll) return done(rowArr.map(tag) as CubeCell); // whole row as a 1-D list
-      if (c < 0 || c >= rowArr.length) return done(refErr(c + 1, rowArr.length, "Column"));
-      return done(tag(rowArr[c] ?? null) as CubeCell);
-    }
-
-    // is2D treats a flat list as an n×1 column, so Column (when given) must be 1.
-    const arr = v as (number | SolError | null)[];
-    if (!colAll && c !== 0) return done(refErr(c + 1, 1, "Column"));
-    if (rowAll) return done([...arr] as CubeCell); // whole column = the list itself
-    if (r < 0 || r >= arr.length) return done(refErr(r + 1, arr.length, "list"));
-    return done(arr[r]);
+    const result = indexIntoContainer(inputs.list?.[0] ?? null, rowIn, colIn);
+    this.cachedResult = result;
+    return { result };
   }
+}
+
+type IndexResult = number | SolError | null | CubeCell | FrameValue | CubeValue;
+
+/** INDEX over a frame or cube. Only the NODE can reach this — a formula holds
+ *  neither (FX-9) — so it rides here rather than in the shared accessor, which the
+ *  formula path loads and must keep clear of the socket lattice (FX-2). */
+function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexResult {
+  if (v === null || v === undefined) return null;
+  if (!isFrameValue(v) && !isCubeValue(v)) {
+    return indexInto(v, row, col, tagFrameCellUnit) as IndexResult;
+  }
+  const ax = resolveAxes(row, col);
+  if (ax.blank) return null; // a WIRED blank axis
+  const { rowAll, colAll, r, c } = ax;
+
+  if (isCubeValue(v)) {
+    if (rowAll && colAll) return v;
+    const rows = cubeRowCount(v);
+    if (!rowAll && (r < 0 || r >= rows)) return indexRefError(r + 1, rows, "Row");
+    if (!colAll && (c < 0 || c >= v.columns.length)) return indexRefError(c + 1, v.columns.length, "Column");
+    // Whole column / whole row stay CUBES so nested cells survive intact.
+    if (rowAll) return cubeFromColumns([v.columns[c]]);
+    if (colAll) return cubeFromColumns(v.columns.map((col) => ({ name: col.name, type: col.type, cells: [col.cells[r] ?? null] })));
+    return v.columns[c].cells[r] ?? null;
+  }
+
+  if (rowAll && colAll) return v;
+  const rows = frameRowCount(v);
+  if (!rowAll && (r < 0 || r >= rows)) return indexRefError(r + 1, rows, "Row");
+  if (!colAll && (c < 0 || c >= v.columns.length)) return indexRefError(c + 1, v.columns.length, "Column");
+  // Whole column = the values list; a unit-locked column tags each cell so the
+  // unit rides out of the frame.
+  if (rowAll) {
+    const col = v.columns[c];
+    return (col.unit ? col.values.map((x) => tagFrameCellUnit(x, col.unit!)) : [...col.values]) as CubeCell;
+  }
+  if (colAll) {
+    // Whole row = a ONE-ROW FRAME (Get Row / XLOOKUP `*` convention).
+    const columns: FrameColumn[] = v.columns.map((col) => ({
+      ...col, values: [col.values[r] ?? null], raw: col.raw ? [col.raw[r] ?? ""] : undefined,
+    }));
+    return { __frame: true, columns };
+  }
+  // A single cell from a unit-locked column carries the column's unit.
+  const cell = v.columns[c].values[r] ?? null;
+  return v.columns[c].unit ? (tagFrameCellUnit(cell, v.columns[c].unit!) as CubeCell) : cell;
 }
 
 export type SortDir = "asc" | "desc";

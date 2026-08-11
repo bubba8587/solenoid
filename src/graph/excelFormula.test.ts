@@ -628,8 +628,18 @@ describe("classic lookups redirect to their current-Excel replacements (D10)", (
     expect(ev("INDEX(x, 2)", { x: ["a", "b", "c"] })).toBe("b");
     const past = ev("INDEX(x, 9)", { x: [1, 2] });
     expect(isSolError(past) && past.code).toBe("#REF!");
-    const zero = ev("INDEX(x, 0)", { x: [1, 2] });
-    expect(isSolError(zero) && zero.code).toBe("#VALUE!");
+    // 0 is Excel's WHOLE-axis form, not an error — the node's rule, now shared.
+    expect(ev("INDEX(x, 0)", { x: [1, 2] })).toEqual([1, 2]);
+  });
+
+  it("COLUMN / ROW → #NAME? 'Use INDEX'", () => {
+    // Excel's answer a cell reference's position; this graph has no cell
+    // references, and INDEX's whole-axis form is the accessor that replaces them.
+    for (const expr of ["COLUMN(x, 1)", "ROW(x, 1)"]) {
+      const r = ev(expr, { x: [1, 2, 3] });
+      expect(isSolError(r) && r.code, expr).toBe("#NAME?");
+      expect(isSolError(r) && r.message, expr).toBe("Use INDEX");
+    }
   });
 
   it("XLOOKUP / XMATCH text matching is case-insensitive (Excel default)", () => {

@@ -6,6 +6,7 @@ import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
+import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
@@ -300,6 +301,13 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   "FDIST.RT": "F.DIST.RT", "FINV.RT": "F.INV.RT",
   "BINOMDIST.RANGE": "BINOM.DIST.RANGE",
   "ISO.CEILING.MATH": "ISO.CEILING", "ISO.CEILING.PRECISE": "ISO.CEILING",
+
+  // Excel's COLUMN/ROW answer a cell REFERENCE's position, which this graph has no
+  // notion of — `nodeExcel.ts` has them out of scope and no node provides them.
+  // Formula.js's are unrelated array extractors that could never run here anyway
+  // (no `matrixArgs`, so the matrix was broadcast away before the call). INDEX's
+  // whole-axis form is the accessor that replaces both.
+  COLUMN: "INDEX", ROW: "INDEX",
 };
 
 /** Names blocked on the formula surface (the LEGACY_ALIASES keys) — excluded from
@@ -425,7 +433,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   XLOOKUP:     { returns: "any", arity: [3, 4] },
   XMATCH:      { returns: "number", arity: [2, 4] },
   IF:          { returns: "any", arity: [2, 3] },
-  INDEX:       { returns: "any", arity: [2, 3] },
+  INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
   RIGHT:      { returns: "string", arity: [1, 2], family: "text" },
   MID:        { returns: "string", arity: [3, 3], family: "text" },
@@ -876,12 +884,19 @@ registerInternal("IF", (test, thenV, elseV) => {
 for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
   registerInternal(name, () => solError("#NAME?", `Use ${use}`));
 }
+// INDEX is the node's accessor (nodes/indexAccess.ts), so the formula answers what
+// the card answers: rank-2 containers, and 0-or-omitted selecting the WHOLE axis.
+// An axis WRITTEN blank stays the node's wired-blank — unknown, so the result is.
 registerInternal("INDEX", (list, row, col) => {
-  const ks = Array.isArray(list) ? list : [list];
-  const r = toNum(row);
-  if (Number.isNaN(r) || r < 1) return solError("#VALUE!", "INDEX position must be 1 or greater");
-  if (col !== undefined && toNum(col) !== 1) return solError("#REF!", "INDEX: a 1-D list has only column 1");
-  return r <= ks.length ? ks[Math.trunc(r) - 1] : solError("#REF!", "INDEX position is past the end of the list");
+  const axis = (v: unknown): IndexAxis | SolError => {
+    if (v === undefined || v === null) return v;
+    const n = toNum(v);
+    return Number.isNaN(n) ? solError("#VALUE!", "INDEX position must be a number") : n;
+  };
+  const r = axis(row), c = axis(col);
+  if (isSolError(r)) return r;
+  if (isSolError(c)) return c;
+  return indexInto(list, r, c);
 });
 
 // FX returns a LOCAL-midnight Date object, and `jsDateToSerial` reads UTC, so the serial
