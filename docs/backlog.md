@@ -96,19 +96,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Small builds & calls (still 1.3-sized)
 
-- [ ] **Spec-map view, steps 2–4 (IN FLIGHT — user-requested 2026-08-11; step 1 landed)**:
-  a View-menu overlay visualizing the rules/architecture, DERIVED live from the docs.
-  Step 1 (done) is the derivation layer: `specMap.ts` parses `docs/rules.md` (domains →
-  rules: id/title/grade/MUST/enforcement/cited tests) + `docs/architecture.md` (module
-  tables) — pinned by `specMap.test.ts` against the real docs' own declared totals.
-  Remaining: **(2)** the overlay component — import the two docs via `?raw` (the
-  `FunctionReference.tsx` pattern; works because both live in the repo and Vite inlines
-  at build, HMR in dev), render domains as cards with enforcement status + grade badges
-  and the module map grouped by concern; simple HTML/CSS per `DESIGN.md` (quiet accent:
-  color = enforcement STATE only). `testCitationIndex()` links rules ↔ cited suites.
-  **(3)** launch from View menu via `menuModel.ts` (palette command comes free) + a
-  store-gated overlay mount in `App.tsx` (follow `frStore`/`helpDialogStore`). **(4)**
-  reconcile docs (`architecture.md` row, this line deleted).
 - [ ] **AUTHOR CALL — mode-selector inputs on a wired blank**: `text.ts` / `date.ts`
   selector inputs fall back to the literal on a wired blank, diverging from
   value-semantics' "mode selector propagates" row. Decide; reconcile table or code.
