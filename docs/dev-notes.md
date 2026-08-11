@@ -86,7 +86,18 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-11 — hint-vs-arity consistency machine-checked)
+### SESSION DIGEST (2026-08-11b — spec-map view, step 1: the derivation layer)
+- **User-requested feature, split into steps (limited-usage session did step 1 only;
+  steps 2–4 are in the backlog under "Spec-map view")**: a live visual map of the
+  rules/architecture, launchable from the View menu. Step 1 landed the parser:
+  `specMap.ts` (pure, rete-free) turns `docs/rules.md` into domains → rules (id, title,
+  provenance grade, MUST text, enforcement status from the summary table — the doc's
+  own SSOT for it — plus cited `*.test.ts` files) and `docs/architecture.md`'s 2- and
+  3-column module tables into concern groups; `testCitationIndex()` inverts rules →
+  suites. `specMap.test.ts` pins it against the REAL docs using their own declared
+  totals ("<N> rules.", the enforcement-summary counts) as the oracle, same as
+  `rules.test.ts`. Prose-only architecture sections (App chrome, node layers, Tauri)
+  carry no tables and are deliberately absent from the model.
 - **Every autocomplete hint now agrees with its impl's declared arity**, pinned by
   a new sweep in `formulaSignatures.test.ts` that runs through `signatureFor()` so
   curated, pack-declared, and synthesized hints are all held to one grammar
