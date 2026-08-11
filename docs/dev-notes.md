@@ -105,6 +105,10 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   and binary search (±2) refuse with #VALUE!. Arities [3,6]/[2,4], hints match.
   Kernel skips null/error key cells — also fixes the node's old null-coerces-to-0
   comparison in approximate modes.
+- **XMatch node gains the search-mode toggle** (First/Last SegToggle, the frame
+  XLOOKUP's control for the same argument) — closing the mirror-image gap the
+  formula work opened. Binary ±2 stays omitted on every surface (author call):
+  over a materialized column it finds the row a linear scan already finds.
 
 ### SESSION DIGEST (2026-08-10b — op-vs-arg harmonized across its three consequences)
 - **The author's spec, now recorded in D29:** "having op" is ONE property with three

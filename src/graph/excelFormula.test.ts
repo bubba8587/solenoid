@@ -661,9 +661,16 @@ describe("classic lookups redirect to their current-Excel replacements (D10)", (
     expect(isSolError(miss) && miss.code).toBe("#N/A");
   });
 
-  it("XMATCH search_mode -1 scans from the end — the LAST duplicate wins", () => {
+  it("XMATCH search_mode -1 scans from the end — the LAST duplicate wins", async () => {
+    const { XMatchNode } = await import("./nodes/list");
+    const node = (value: number, array: number[], searchMode: "first" | "last") => {
+      const n = new XMatchNode({ searchMode });
+      n.literals.value = value;
+      return n.data({ array: [array] }).result;
+    };
+    expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "last"));
+    expect(ev("XMATCH(7, x, 0, 1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "first"));
     expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toBe(3);
-    expect(ev("XMATCH(7, x, 0, 1)", { x: [5, 7, 7] })).toBe(2);
   });
 
   it("XLOOKUP carries the mode arguments; a blank mode is the Excel default", () => {

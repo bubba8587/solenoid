@@ -62,6 +62,18 @@ describe("XMATCH — the match-mode family (first match wins)", () => {
     node.literals.value = value;
     return node.data({ array: [array] }).result;
   };
+  const runSearch = (value: number, array: number[], searchMode: "first" | "last") => {
+    const node = new XMatchNode({ searchMode });
+    node.literals.value = value;
+    return node.data({ array: [array] }).result;
+  };
+  it("search mode picks WHICH duplicate — the frame XLOOKUP's argument, same meaning", () => {
+    expect(runSearch(7, [5, 7, 7], "first")).toBe(2);
+    expect(runSearch(7, [5, 7, 7], "last")).toBe(3);
+  });
+  it("search mode defaults to first (unset = Excel's search_mode 1)", () => {
+    expect(new XMatchNode().searchMode).toBe("first");
+  });
   it("exact returns the FIRST duplicate's 1-based position", () => {
     expect(run(7, [5, 7, 7])).toBe(2);
   });
