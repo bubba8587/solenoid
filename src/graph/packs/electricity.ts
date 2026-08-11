@@ -118,7 +118,7 @@ const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
       return parallelCombine(cells as Parameters<typeof parallelCombine>[0]);
     },
     returns: "number", listArgs: true, arity: [1, 255],
-    signature: "values…",
+    signature: "value1, [value2], …",
   },
   {
     name: "ESERIESVALUE",
@@ -132,7 +132,7 @@ const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
       return nearestESeries(v, s);
     },
     returns: "number", arity: [1, 2],
-    signature: "value, series (E24)",
+    signature: "value, [series (E24)]",
   },
   {
     name: "AWGWIRE",
@@ -150,7 +150,7 @@ const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
       return w[p as keyof typeof w];
     },
     returns: "number", arity: [1, 2],
-    signature: "gauge, property (diameter)",
+    signature: "gauge, [property (diameter)]",
   },
   {
     name: "RESISTORCOLORCODE",

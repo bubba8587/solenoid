@@ -69,7 +69,7 @@ const EARTHSKY_PACK_FORMULAS: PackFormula[] = [
       return solError("#VALUE!", `Unknown part "${p}" — elevation, azimuth, declination`);
     },
     returns: "number", arity: [3, 4],
-    signature: "datetime UTC, lat, lon, part (elevation)",
+    signature: "datetime UTC, lat, lon, [part (elevation)]",
   },
   {
     name: "SUNRISE",
@@ -112,7 +112,7 @@ const EARTHSKY_PACK_FORMULAS: PackFormula[] = [
       return solError("#VALUE!", `Unknown part "${p}" — phase, age, illumination`);
     },
     returns: "number", arity: [1, 2],
-    signature: "date, part (phase)",
+    signature: "date, [part (phase)]",
   },
 ];
 

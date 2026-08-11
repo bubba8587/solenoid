@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { FORMULA_SIGNATURES, signatureFor, signatureParams, genericSignature } from "./formulaSignatures";
 import { formulaFunctionNames, formulaSyntaxHint } from "./excelFormula";
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
+import { initPackFormulas } from "./formulaExtensions";
 
 describe("formula signatures (display hints)", () => {
   it("every curated signature names a REAL dispatchable function", () => {
@@ -26,6 +27,33 @@ describe("formula signatures (display hints)", () => {
       expect(sig, `${name} has no hint`).not.toBeNull();
       expect(sig, `${name} hints a bare count "${sig}"`).not.toMatch(/^\d+(\+|–\d+)? args?$/);
     }
+  });
+
+  it("every hint agrees with its impl's declared arity — the hint IS the contract", () => {
+    // A hint promising an argument the impl ignores (or hiding one it takes) lies in
+    // the UI exactly like a wrong result would. Rule: unbracketed params = arity min;
+    // total named params = arity max, unless a `…` tail makes the family variadic, in
+    // which case max must genuinely exceed the named prefix. Runs through
+    // signatureFor(), so curated, pack-declared and synthesized hints are all held
+    // to it. Formula.js-backed names carry no declared arity and stay uncheckable.
+    initPackFormulas();
+    // LAMBDA is a special FORM — "parameter1, …, calculation" shows the common shape;
+    // its mid-signature ellipsis doesn't parse as a variadic tail.
+    const SPECIAL_FORMS = new Set(["LAMBDA"]);
+    const bad: string[] = [];
+    for (const [name, meta] of Object.entries(EXCEL_IMPL_META)) {
+      if (FRAME_SURFACE_NAMES[name] || SPECIAL_FORMS.has(name)) continue;
+      const sig = signatureFor(name);
+      const params = sig === null ? null : signatureParams(sig);
+      if (params === null) continue; // prose redirect
+      const [min, max] = meta.arity;
+      const variadic = params.length > 0 && params[params.length - 1].includes("…");
+      const named = variadic ? params.slice(0, -1) : params;
+      const required = named.filter((p) => !p.startsWith("[")).length;
+      const ok = required === min && (variadic ? max > named.length : named.length === max);
+      if (!ok) bad.push(`${name}: "${sig}" (${required} required, ${named.length}${variadic ? "+…" : ""} named) vs arity [${min}, ${max}]`);
+    }
+    expect(bad).toEqual([]);
   });
 
   it("genericSignature (the arity fallback) names args with optional brackets and a variadic tail", () => {

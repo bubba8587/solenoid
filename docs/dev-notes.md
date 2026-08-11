@@ -86,6 +86,20 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-11 — hint-vs-arity consistency machine-checked)
+- **Every autocomplete hint now agrees with its impl's declared arity**, pinned by
+  a new sweep in `formulaSignatures.test.ts` that runs through `signatureFor()` so
+  curated, pack-declared, and synthesized hints are all held to one grammar
+  (unbracketed = required = arity min; `[x]` optional; honest `…` tail; LAMBDA the
+  one special form). Found by an audit of the 2026-08-10 signature work — the new
+  entries were clean; the failures were all OLDER: XLOOKUP promised a `[match_mode]`
+  the impl never had, XMATCH's hint/arity claimed args the exact-only registration
+  ignores (arity now [2,2] with the node's match modes noted), the REGEX* family
+  hinted a nonexistent `[flags]` instead of the real Excel-documented optionals,
+  five min-1 variadics overstated `x2` as required, and seven pack signatures used
+  a private `property (default)` notation — normalized to `[property (default)]`.
+  Backlog: XMATCH/XLOOKUP formula-vs-node match-mode gap recorded (INDEX genus).
+
 ### SESSION DIGEST (2026-08-10b — op-vs-arg harmonized across its three consequences)
 - **The author's spec, now recorded in D29:** "having op" is ONE property with three
   consequences — the ops are genuine top-level formula functions, they get the accent

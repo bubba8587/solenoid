@@ -84,7 +84,7 @@ const THERMO_PACK_FORMULAS: PackFormula[] = [
       return isSolError(pt) ? pt : pt[field];
     },
     returns: "number", arity: [1, 2],
-    signature: "altitude m, property (pressure)",
+    signature: "altitude m, [property (pressure)]",
   },
   {
     name: "ANTOINE",

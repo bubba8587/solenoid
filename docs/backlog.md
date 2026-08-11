@@ -116,6 +116,11 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   A throw escaping as a throw rather than a SolError is the sharp end. Decide
   per name: declare `matrixArgs` + own it, or eliminate per D10. (`COLUMN`/`ROW`
   are done — eliminated to `INDEX`; `INDEX` itself now owns rank 2.)
+- [ ] **XMATCH formula lacks the node's match modes** — the node has the full
+  match-mode family (`finePrintContract.test.ts`); the formula registration is
+  exact-only, 2 args (arity + hint now say so honestly). Same surface-parity genus
+  as the INDEX unification: share the node's kernel or record exact-only as
+  intended. XLOOKUP ditto (no match_mode; `[if_not_found]` only).
 
 ## Architecture spec (`docs/rules.md`)
 
