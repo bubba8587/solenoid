@@ -136,6 +136,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   and binary search (±2) refuse with #VALUE!. Arities [3,6]/[2,4], hints match.
   Kernel skips null/error key cells — also fixes the node's old null-coerces-to-0
   comparison in approximate modes.
+- **`marked` 14.1.4 → 18.0.9** — four majors, ZERO output change: the rendered
+  HTML is byte-identical across all 511 catalog descriptions, the four
+  `help/*.md` docs, and 15 GFM edge cases (tables, task lists, `breaks:true`
+  soft-wraps, raw HTML, script injection, escaped table pipes). All six call sites
+  use one narrow API (`marked.parse(md, {async:false, gfm:true, breaks:true})`),
+  and the 15→18 churn was in the extension/tokenizer surface plus options removed
+  back in v5–v7 — none of which we touch; DOMPurify sanitizes downstream either
+  way. Half the weight (928KB → 468KB unpacked). tsc + suite + build green.
 - **TypeScript 5.8.3 → 7.0.2 (the native/Go compiler).** `tsc --noEmit` over the
   839-file source: ~19–21.7 s → ~2.5–3.9 s (**~8×**); `npm run build`'s typecheck
   leg likewise. The package now pulls a per-platform native binary
