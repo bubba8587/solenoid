@@ -51,15 +51,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `simpleNodesOrder` MOVES the picked node in the DOM tree (their own docstring),
   and re-parenting a subtree is a mechanism that WOULD kill an open `<select>` —
   see the `zIndexNodesOrder` item under Dependency updates.
-- [ ] **`SUMIF` string-concatenates a numeric-string range** — `SUMIF(k, "a", v)`
-  with `v = ["1","2","3","4"]` answers `"01030"` (i.e. `0 + "1" + "3"`) where Excel
-  answers `4`. It falls through to Formula.js — no `registerInternal` — and 4.6.1
-  patched the sibling `SUMIFS` (`arrayValuesToNumbers(flatten(...))`) while leaving
-  `SUMIF` alone. `SUMIFS`/`AVERAGEIFS`/`MAXIFS` all answer correctly on the same
-  data, so `SUMIF` is alone in it. Reachable from a text column, a read-as that
-  leaves strings, or a Text-typed Table Input column. Plausible wrong answer, not
-  an error — the divergence-catalogue class. Fix is the family's standard one:
-  register it against the kernel the node runs (also puts it in the FX-1 seam).
 - [ ] **The other singular criteria-aggregates (small, follows SUMIF).** `SUMIF` is
   now classed like `MATCH`: blocked to `SUMIFS`, claim removed from `NODE_EXCEL`,
   `EXCEL_GAP` row `oos: "Superseded by SUMIFS"`. `COUNTIF` and `AVERAGEIF` are still
