@@ -12,7 +12,8 @@ proceed on `develop`; mention it in one line, don't ask.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `windows-portable.yml` auto-publishes the GitHub
-Release + portable exe on the tag. Installers build path-stripped via `npm run release:desktop`
+Release + portable exe on the tag. **The TAG is always the author's to push** (a container session
+cannot — see Environment constraints); an agent does the merge + version bump and stops there. Installers build path-stripped via `npm run release:desktop`
 (strips the build-machine username from the binary).
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
@@ -29,6 +30,14 @@ tests aren't set up; reserve tests for logic. When unsure which environment is a
 than push.
 
 ## Environment constraints
+**TAG PUSHES DO NOT WORK from a cloud/container session** (Claude Code web + mobile). BRANCH
+pushes are fine — `main` and `develop` go up normally — but `git push origin <tag>` always dies
+with `send-pack: unexpected disconnect while reading sideband packet` / `the remote end hung up`,
+for annotated and lightweight alike, and the GitHub MCP surface has no create-tag/create-ref tool
+(only `create_branch`). Do NOT retry or hunt for a workaround: merge and push the branch, then
+hand the author the one command to run in their DESKTOP terminal, where it works:
+`git fetch origin main && git tag -a vX.Y.Z <sha> -m "Release vX.Y.Z" && git push origin vX.Y.Z`.
+
 **WebFetch is unreliable on JS-rendered sites — and worse, it fabricates** plausible-looking
 specifics that aren't on the page. Don't trust it for exact content. What works: `curl -sL -A
 "<browser UA>" <url> -o page.html`, then extract the real content (Next.js/techcommunity pages
