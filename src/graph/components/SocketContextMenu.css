@@ -31,6 +31,19 @@
   color: var(--text);
 }
 
+/* The catalog one-liner heading the NODE menu — the header tooltip's only
+   touch-reachable home. Deliberately tiny and tightly wrapped: it must not
+   grow the menu (the width cap wraps it instead of widening the column). */
+.solenoid-socket-ctx__blurb {
+  max-width: 186px;
+  padding: 3px 10px 5px;
+  margin-bottom: 3px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
 /* Fixed, centered icon slot so a text-glyph icon ("⊙" / "⛓" / "⊷") and an SVG
    icon (Pin) occupy the same box — otherwise the SVG's intrinsic width pushes its
    row's label out of the column. */

@@ -18,26 +18,18 @@ import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from 
 import type { SolError } from "../errorValue";
 import "./ExpressionNode.css";
 
-// cachedResult on these nodes is value-polymorphic (number | string | their
-// lists/matrices | error); the display components already branch on each shape.
 type ScalarVal = number | string | SolError | null;
 type ListVal = number[] | string[] | SolError | null;
-
-// The LAMBDA-family formula is edited in the roomy box below (or the big
-// FormulaPopup); a wired LAMBDA value supersedes it. Variables are fixed per
-// node — a small hint names them.
 
 const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
-/** Formula editor bound to node.stringLiterals.formula. When a wired LAMBDA
- *  supersedes the inline text, this shows WHAT actually runs and WHO sends it
- *  instead of dimming stale text: the lambda's live signature + source label. */
+/** Formula editor bound to node.stringLiterals.formula; a wired LAMBDA value
+ *  supersedes the inline text. */
 function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
-  // Re-render when processGraph refreshes live values — the wired lambda's
-  // signature can change without a topology change.
+  // The wired lambda's signature can change without a topology change.
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const lambdaSrc = incoming.get("lambda");
   const [val, setVal] = useState(node.stringLiterals.formula ?? "");
@@ -56,10 +48,8 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   if (lambdaSrc) {
     const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind to this node's variables BY NAME (D18). A body variable that is
-    // one of this node's variables but ISN'T declared as a param can't be bound —
-    // it silently reads as a captured constant (0), not the live value. Advise it;
-    // a param that isn't one of the node's variables is a hard cachedError, not here.
+    // Params bind BY NAME (D18), so a body variable that is one of this node's variables
+    // but isn't declared a param silently reads as a captured constant rather than binding.
     const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (
       <>
@@ -91,8 +81,6 @@ function FormulaError({ msg }: { msg: string | null }) {
   return msg ? <div className="solenoid-expr__error">{msg}</div> : null;
 }
 
-// ─── MAP ──────────────────────────────────────────────────────────────────────
-
 export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="MAP">
@@ -105,8 +93,6 @@ export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
   );
 }
 
-// ─── BYROW / BYCOL ──────────────────────────────────────────────────────────────
-
 const AXIS_OPTS: ReadonlyArray<{ value: ByAxis; label: string }> = [
   { value: "row", label: "By row" },
   { value: "col", label: "By column" },
@@ -117,7 +103,7 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="BYROW / BYCOL">
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
-      <OpSelect value={axis} onChange={setAxis} options={AXIS_OPTS} />
+      <OpSelect arg value={axis} onChange={setAxis} options={AXIS_OPTS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="combo" />
       <ValueDisplay value={data.cachedResult as ListVal} />
@@ -125,8 +111,6 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
     </NodeShell>
   );
 }
-
-// ─── REDUCE ─────────────────────────────────────────────────────────────────────
 
 export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNodeType>) {
   return (
@@ -140,8 +124,6 @@ export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNode
   );
 }
 
-// ─── SCAN ───────────────────────────────────────────────────────────────────────
-
 export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="SCAN">
@@ -153,8 +135,6 @@ export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType
     </NodeShell>
   );
 }
-
-// ─── MAKEARRAY ──────────────────────────────────────────────────────────────────
 
 export function MakeArrayComponent({ data, emit }: NodeProps<MakeArrayNodeType>) {
   return (

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type {
-  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode,
+  WaterfallNode, CandlestickNode, BoxplotNode,
   CalendarHeatmapNode, WaffleNode, QuiverNode,
 } from "../rete-nodes";
 import type { ChartValue, ChartPayload } from "../chartValue";
@@ -11,12 +11,8 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 
-// ─── The canvas-figure cards (2026-07-16 chart wave) ──────────────────────────
-// Every one of these nodes is the same card: input rows, a divider, the figure
-// (via ChartFigure, so the node and a Report embed render identically), and the
-// [Chart] chip when collapsed — exactly SurfaceComponent minus its rotate D-pad.
-// One factory instead of seven near-identical files; the per-node knobs are the
-// figure height and a payload emptiness check.
+// One shared card for every figure node; the figure comes from ChartFigure, so a
+// node and a Report embed render identically.
 
 type FigureNode = ClassicPreset.Node & {
   id: string;
@@ -51,12 +47,6 @@ function makeFigureComponent<N extends FigureNode>(
     );
   };
 }
-
-export const ContourComponent = makeFigureComponent<ContourNode>(
-  190,
-  (p) => p?.kind === "contour" && p.xs.length >= 2 && p.ys.length >= 2
-    && p.z.some((r) => r.some((v) => v != null && Number.isFinite(v))),
-);
 
 export const WaterfallComponent = makeFigureComponent<WaterfallNode>(
   170,

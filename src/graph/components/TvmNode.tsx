@@ -10,9 +10,8 @@ const TIMING_OPTS = (Object.keys(PAYMENT_TIMING_META) as PaymentTiming[]).map((t
   label: PAYMENT_TIMING_META[t],
 }));
 
-// The Equation card plus one config row: payment timing swaps which locked
-// relation is compiled (end vs beginning of period — Excel's `type` argument),
-// so it lives in a dropdown, not a variable socket.
+// Payment timing swaps which locked relation is compiled, so it's a dropdown rather
+// than a variable socket.
 export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
   const [timing, setTiming] = useState<PaymentTiming>(data.paymentTiming);
   return (
@@ -21,6 +20,7 @@ export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
       emit={emit}
       config={
         <OpSelect
+          arg
           value={timing}
           onChange={(t) => {
             data.setPaymentTiming(t);

@@ -13,6 +13,7 @@
 .solenoid-settings__panel {
   width: min(760px, 94vw);
   max-height: 80vh;
+  max-height: 80dvh;
   display: flex;
   flex-direction: column;
   /* Clip (not scroll) at the panel, so the rounded corner cleanly clips the
@@ -209,6 +210,21 @@
   color: var(--accent-ink);
 }
 
+/* A setting with no counterpart in mobile mode: grayed and inert, kept in place so
+   the page reads the same on both. Matches the existing :disabled convention
+   (opacity 0.5 + default cursor) rather than inventing a second disabled look. The
+   label text dims too, so the row reads as off at a glance and not just untouchable. */
+.solenoid-settings__row--disabled .solenoid-settings__row-label,
+.solenoid-settings__row--disabled .solenoid-settings__row-help {
+  color: var(--text-muted);
+}
+.solenoid-settings__switch:disabled,
+.solenoid-settings__segbtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.solenoid-settings__row--disabled { cursor: default; }
+
 /* Palette control: dropdown + a swatch legend stacked under it, right-aligned. */
 .solenoid-settings__row--palette { align-items: flex-start; }
 .solenoid-settings__palette-control {
@@ -263,7 +279,7 @@
   right: 9px;
   top: 50%;
   transform: translateY(-50%);
-  margin-top: 1px; /* match the select's margin-top so the glyph sits centred */
+  margin-top: 1px; /* match the select's margin-top so the glyph sits centered */
   color: var(--text-dim);
   pointer-events: none;
 }

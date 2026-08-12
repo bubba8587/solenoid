@@ -1,0 +1,24 @@
+{ "verb": "select",
+  "cases": [
+    { "name": "keeps the named columns in the given order",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] },
+        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "select", "columns": ["b", "a"] },
+      "expect": { "columns": [
+        { "name": "b", "type": "string", "values": ["x", "y"] },
+        { "name": "a", "type": "number", "values": [1, 2] } ] } },
+    { "name": "an unknown column errors",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "select", "columns": ["nope"] },
+      "expectError": "#REF!" },
+    { "name": "a repeated name keeps the first occurrence only",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1] },
+        { "name": "b", "type": "number", "values": [2] } ] } },
+      "op": { "kind": "select", "columns": ["a", "a", "b"] },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1] },
+        { "name": "b", "type": "number", "values": [2] } ] } }
+  ] }

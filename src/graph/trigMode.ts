@@ -7,37 +7,24 @@ type AnyEditor = NodeEditor<{
   Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 }>;
 
-// ─── Auto angle-mode resolution ────────────────────────────────────────────────
-// A MathFn trig node in `auto` mode computes in degrees when the value feeding it
-// is a BARE degrees magnitude carrying a `deg` display annotation (a Triangle
-// Solver angle, an inverse-trig-in-degrees output). A genuinely dimensioned angle
-// (a UnitCell) is already stored in base RADIANS, so the trig node computes on its
-// magnitude directly (see MathFnNode.data unit-aware path) and never needs this
-// pass — this only resolves the annotation-tagged bare-degree case. It reads the
-// incoming FORMAT annotation's unit ONCE per recompute and stamps a transient
-// `_resolvedAngleMode` the node's data() then reads. A manual Rad/Deg pin never
-// enters here (effectiveMode ignores `_resolvedAngleMode` unless the mode is auto).
-//
-// Runs from processGraph before the engine fetch (so data() sees a fresh mode),
-// and early-outs when no auto-mode trig node exists — the overwhelming common
-// case pays only one getNodes() scan.
+// Resolves ONLY the annotation-tagged bare-degree case — a dimensioned angle is
+// already base RADIANS and takes data()'s unit-aware path. Must run BEFORE the
+// engine fetch so data() sees a fresh `_resolvedAngleMode`.
 
-/** True when this unit id denotes degrees (so trig should interpret in degrees).
- *  `grad` (gradians) is also non-radian, but degrees is the only mode the toggle
- *  offers, so grad falls through to rad — a Convert bridges it. */
+/** True when this unit id denotes degrees; `grad` falls through to rad, since the
+ *  toggle offers no gradian mode — a Convert bridges it. */
 function isDegreeUnit(unit: string): boolean {
   return unit === "deg";
 }
 
 /** Stamp every auto-mode trig MathFn's `_resolvedAngleMode` from its input's
- *  resolved unit. Returns the nodes whose resolved mode CHANGED (so a caller can
- *  re-render them if it wants; processGraph recomputes the whole cone anyway). */
+ *  resolved unit. Returns only the nodes whose resolved mode CHANGED. */
 export function resolveTrigModes(editor: AnyEditor): MathFnNode[] {
   const autos: MathFnNode[] = [];
   for (const n of editor.getNodes()) {
     if (n instanceof MathFnNode && n.angleMode === "auto" && isTrigOp(n.op)) autos.push(n);
   }
-  if (autos.length === 0) return []; // no work → skip building the resolver
+  if (autos.length === 0) return [];
 
   const resolver = makeAnnotationResolver(editor);
   const changed: MathFnNode[] = [];

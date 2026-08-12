@@ -1,8 +1,5 @@
-// GENERATED ONCE from the former FUNCTION_ROWS, now the source of truth for
-// each node's Excel equivalence. Applied onto catalog leaves by buildCatalog
-// (like NODE_PACK_TAGS). Pack nodes may instead declare `excel` inline on their
-// entry. The dev catalog validator flags any Excel-mapped node missing metadata,
-// so this can't silently go stale (the bug that left LAMBDA marked "to-do").
+// The source of truth for each node's Excel equivalence, applied onto catalog leaves by
+// buildCatalog; pack nodes may instead declare `excel` inline on their entry.
 import type { ExcelEquiv } from "./AddNodeMenu";
 
 /** catalog node type -> the Excel function(s) it stands in for. */
@@ -32,11 +29,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "bessel-besselj": [{ excel: "BESSELJ", syntax: "=BESSELJ(x, n)", parity: false, note: "n must be a non-negative integer" }],
   "bessel-besselk": [{ excel: "BESSELK", syntax: "=BESSELK(x, n)", parity: false, note: "x must be > 0; n must be a non-negative integer" }],
   "bessel-bessely": [{ excel: "BESSELY", syntax: "=BESSELY(x, n)", parity: false, note: "x must be > 0; n must be a non-negative integer" }],
-  "betadist": [{ excel: "BETA.DIST", syntax: "=BETA.DIST(x, α, β, cum)", parity: true }],
-  "betainv": [{ excel: "BETA.INV", syntax: "=BETA.INV(p, α, β)", parity: true }],
-  "binomdist": [{ excel: "BINOM.DIST", syntax: "=BINOM.DIST(k, n, p, cum)", parity: true }],
   "binomdistrng": [{ excel: "BINOM.DIST.RANGE", syntax: "=BINOM.DIST.RANGE(n, p, lo, hi)" }],
-  "binominv": [{ excel: "BINOM.INV", syntax: "=BINOM.INV(n, p, α)" }],
   "bitwise-bitand": [{ excel: "BITAND", syntax: "=BITAND(a, b)", parity: true }],
   "bitwise-bitlshift": [{ excel: "BITLSHIFT", syntax: "=BITLSHIFT(a, n)", parity: true }],
   "bitwise-bitor": [{ excel: "BITOR", syntax: "=BITOR(a, b)", parity: true }],
@@ -57,14 +50,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "UNICODE", syntax: "=UNICODE(text)", parity: true, note: "Same as CODE in Solenoid — full Unicode range" },
   ],
   "chisq-test": [{ excel: "CHISQ.TEST", syntax: "=CHISQ.TEST(obs, exp)" }],
-  "chisqdist": [
-    { excel: "CHISQ.DIST", syntax: "=CHISQ.DIST(x, df, cum)", parity: true },
-    { excel: "CHISQ.DIST.RT", syntax: "=CHISQ.DIST.RT(x, df)", parity: true },
-  ],
-  "chisqinv": [
-    { excel: "CHISQ.INV", syntax: "=CHISQ.INV(p, df)", parity: true },
-    { excel: "CHISQ.INV.RT", syntax: "=CHISQ.INV.RT(p, df)", parity: true },
-  ],
   "choose": [{ excel: "CHOOSE", syntax: "=CHOOSE(idx, v1, v2, ...)", parity: true }],
   "comb-combin": [{ excel: "COMBIN", syntax: "=COMBIN(n, k)", parity: true }],
   "comb-combina": [{ excel: "COMBINA", syntax: "=COMBINA(n, k)", parity: true }],
@@ -158,33 +143,53 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "depr-ddb": [{ excel: "DDB", syntax: "=DDB(cost, salv, life, per)", parity: true }],
   "depr-sln": [{ excel: "SLN", syntax: "=SLN(cost, salv, life)", parity: true }],
   "depr-syd": [{ excel: "SYD", syntax: "=SYD(cost, salv, life, per)", parity: true }],
+  "distribution": [
+    { excel: "BETA.DIST", syntax: "=BETA.DIST(x, α, β, cum)", parity: true },
+    { excel: "BETA.INV", syntax: "=BETA.INV(p, α, β)", parity: true },
+    { excel: "BINOM.DIST", syntax: "=BINOM.DIST(k, n, p, cum)", parity: true },
+    { excel: "BINOM.INV", syntax: "=BINOM.INV(n, p, α)" },
+    { excel: "CHISQ.DIST", syntax: "=CHISQ.DIST(x, df, cum)", parity: true },
+    { excel: "CHISQ.DIST.RT", syntax: "=CHISQ.DIST.RT(x, df)", parity: true },
+    { excel: "CHISQ.INV", syntax: "=CHISQ.INV(p, df)", parity: true },
+    { excel: "CHISQ.INV.RT", syntax: "=CHISQ.INV.RT(p, df)", parity: true },
+    { excel: "EXPON.DIST", syntax: "=EXPON.DIST(x, λ, cum)" },
+    { excel: "F.DIST", syntax: "=F.DIST(x, d1, d2, cum)", parity: true },
+    { excel: "F.DIST.RT", syntax: "=F.DIST.RT(x, d1, d2)", parity: true },
+    { excel: "F.INV", syntax: "=F.INV(p, d1, d2)", parity: true },
+    { excel: "F.INV.RT", syntax: "=F.INV.RT(p, d1, d2)", parity: true },
+    { excel: "GAMMA.DIST", syntax: "=GAMMA.DIST(x, α, β, cum)", parity: true },
+    { excel: "GAMMA.INV", syntax: "=GAMMA.INV(p, α, β)", parity: true },
+    { excel: "HYPGEOM.DIST", syntax: "=HYPGEOM.DIST(s, ns, M, N, cum)" },
+    { excel: "LOGNORM.DIST", syntax: "=LOGNORM.DIST(x, μ, σ, cum)" },
+    { excel: "LOGNORM.INV", syntax: "=LOGNORM.INV(p, μ, σ)" },
+    { excel: "NEGBINOM.DIST", syntax: "=NEGBINOM.DIST(k, r, p, cum)" },
+    { excel: "NORM.DIST", syntax: "=NORM.DIST(x, μ, σ, cum)", parity: true },
+    { excel: "NORM.INV", syntax: "=NORM.INV(p, μ, σ)", parity: true },
+    { excel: "NORM.S.DIST", syntax: "=NORM.S.DIST(z, cum)", parity: true },
+    { excel: "NORM.S.INV", syntax: "=NORM.S.INV(p)", parity: true },
+    { excel: "POISSON.DIST", syntax: "=POISSON.DIST(k, λ, cum)" },
+    { excel: "T.DIST", syntax: "=T.DIST(x, df, cum)", parity: true },
+    { excel: "T.DIST.2T", syntax: "=T.DIST.2T(x, df)", parity: true },
+    { excel: "T.DIST.RT", syntax: "=T.DIST.RT(x, df)", parity: true },
+    { excel: "T.INV", syntax: "=T.INV(p, df)", parity: true },
+    { excel: "T.INV.2T", syntax: "=T.INV.2T(p, df)", parity: true },
+    { excel: "WEIBULL.DIST", syntax: "=WEIBULL.DIST(x, α, β, cum)" },
+  ],
   "dollar-dollarde": [{ excel: "DOLLARDE", syntax: "=DOLLARDE(frac_dollar, fraction)" }],
   "dollar-dollarfr": [{ excel: "DOLLARFR", syntax: "=DOLLARFR(decimal_dollar, fraction)" }],
   "duration-duration": [{ excel: "DURATION", syntax: "=DURATION(settle,maturity,coupon,yld,freq)", parity: false, note: "Macaulay duration; not yet supported" }],
   "duration-mduration": [{ excel: "MDURATION", syntax: "=MDURATION(settle,maturity,coupon,yld,freq)", parity: false, note: "Modified Macaulay duration; not yet supported" }],
-  "expodist": [{ excel: "EXPON.DIST", syntax: "=EXPON.DIST(x, λ, cum)" }],
   "f-test": [{ excel: "F.TEST", syntax: "=F.TEST(a, b)" }],
-  "fdist": [
-    { excel: "F.DIST", syntax: "=F.DIST(x, d1, d2, cum)", parity: true },
-    { excel: "F.DIST.RT", syntax: "=F.DIST.RT(x, d1, d2)", parity: true },
-  ],
-  "finv": [
-    { excel: "F.INV", syntax: "=F.INV(p, d1, d2)", parity: true },
-    { excel: "F.INV.RT", syntax: "=F.INV.RT(p, d1, d2)", parity: true },
-  ],
   "fisher-fisher": [{ excel: "FISHER", syntax: "=FISHER(x)", parity: true }],
   "fisher-fisherinv": [{ excel: "FISHERINV", syntax: "=FISHERINV(y)", parity: true }],
   "forecast": [{ excel: "FORECAST.LINEAR", syntax: "=FORECAST.LINEAR(x, ys, xs)", parity: true }],
   "frequency": [{ excel: "FREQUENCY", syntax: "=FREQUENCY(data, bins)", parity: true }],
   "fvschedule": [{ excel: "FVSCHEDULE", syntax: "=FVSCHEDULE(pv, schedule)" }],
-  "gammadist": [{ excel: "GAMMA.DIST", syntax: "=GAMMA.DIST(x, α, β, cum)", parity: true }],
-  "gammainv": [{ excel: "GAMMA.INV", syntax: "=GAMMA.INV(p, α, β)", parity: true }],
   "gcd-lcm": [
     { excel: "GCD", syntax: "=GCD(a, b)", parity: true },
     { excel: "LCM", syntax: "=LCM(a, b)", parity: true },
   ],
   "hstack-table": [{ excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
-  "hypgeomdist": [{ excel: "HYPGEOM.DIST", syntax: "=HYPGEOM.DIST(s, ns, M, N, cum)" }],
   "iferror": [
     { excel: "IFERROR", syntax: "=IFERROR(v, fallback)", parity: true },
     { excel: "IFNA", syntax: "=IFNA(v, fallback)", parity: true },
@@ -219,7 +224,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "SLOPE", syntax: "=SLOPE(ys, xs)", parity: false, note: "Superseded by LINEST — use the Slope output socket" },
   ],
   "lambda-make": [{ excel: "LAMBDA", syntax: "=LAMBDA(param, ..., calculation)", parity: false, note: "LAMBDA node emits a function value for MAP/BYROW/REDUCE/MAKEARRAY; non-parameter variables become captured inputs (the LET/closure equivalent). No recursion (a self-reference is a graph cycle) and no lambdas of lambdas" }],
-  "list-cumulative": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, value, ...))", parity: false, note: "Solenoid's Cumulative covers the fixed running ops (CumSum/CumMax/…); the SCAN node runs a running fold with an arbitrary formula, and REDUCE gives just the final value" }],
+  "list-running": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, value, ...))", parity: false, note: "Solenoid's Running covers the fixed ops in both window modes; the SCAN node runs a running fold with an arbitrary formula, and REDUCE gives just the final value. A Last N window in Excel is a dragged range formula like =AVERAGE(A1:A3)" }],
   "list-drop": [{ excel: "DROP", syntax: "=DROP(list, count)", parity: false, note: "The 1-D list spelling; DROP (table) is the 2-D rows+cols one" }],
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions live on the card (extensible AND/OR rows) instead of an include vector; filtering by a PARALLEL list is the SUMIFS node or Frame from Lists → Frame Filter" }],
   "list-groupby": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "1D parallel-list version: keys + values lists; 2D range grouping not supported" }],
@@ -232,18 +237,14 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
-  // Keys MUST track the catalog types (bool-*/if/not) — a drift test enforces
-  // it, catching stale keys. AND/OR/XOR are N-ary reducers, so there's no
-  // "binary only" caveat.
+  // Keys MUST track the catalog types; a drift test catches stale ones.
   "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: true }],
   "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],
   "not": [{ excel: "NOT", syntax: "=NOT(a)", parity: true }],
   "bool-or": [{ excel: "OR", syntax: "=OR(a, b, ...)", parity: true }],
   "bool-xor": [{ excel: "XOR", syntax: "=XOR(a, b, ...)", parity: true }],
-  "lognormdist": [{ excel: "LOGNORM.DIST", syntax: "=LOGNORM.DIST(x, μ, σ, cum)" }],
-  "lognorminv": [{ excel: "LOGNORM.INV", syntax: "=LOGNORM.INV(p, μ, σ)" }],
   "lookup-xlookup": [{ excel: "XLOOKUP", syntax: "=XLOOKUP(x, lookup, return)", parity: true }],
-  "lookup-xmatch": [{ excel: "XMATCH", syntax: "=XMATCH(x, array, mode)", parity: false, note: "Modes 0 (exact), 1 (next larger), -1 (next smaller) supported; wildcard mode not supported" }],
+  "lookup-xmatch": [{ excel: "XMATCH", syntax: "=XMATCH(x, array, [match_mode], [search_mode])", parity: false, note: "Match modes 0 / 1 / -1 and search modes 1 (first) / -1 (last); wildcard (2) and binary search (±2) not supported" }],
   "make-array": [{ excel: "MAKEARRAY", syntax: "=MAKEARRAY(rows, cols, LAMBDA(row, col, ...))", parity: false, note: "MAKEARRAY node builds a grid from its own formula of (row, col), or a wired LAMBDA value" }],
   "map-table": [{ excel: "MAP", syntax: "=MAP(array1, [array2, ...], LAMBDA(value, ...))", parity: false, note: "MAP node zips up to three same-shape arrays through its own formula (value, value2, value3; a 1×1 broadcasts) or a wired LAMBDA value; Excel takes any number of arrays" }],
   "matdet-mdeterm": [{ excel: "MDETERM", syntax: "=MDETERM(array)", parity: false, note: "Square matrices only; uses LU decomposition with partial pivoting" }],
@@ -314,11 +315,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "multinomial": [{ excel: "MULTINOMIAL", syntax: "=MULTINOMIAL(n1, n2, ...)", parity: true }],
   "na": [{ excel: "NA", syntax: "=NA()", parity: true }],
-  "negbinomdist": [{ excel: "NEGBINOM.DIST", syntax: "=NEGBINOM.DIST(k, r, p, cum)" }],
-  "normdist": [{ excel: "NORM.DIST", syntax: "=NORM.DIST(x, μ, σ, cum)", parity: true }],
-  "norminv": [{ excel: "NORM.INV", syntax: "=NORM.INV(p, μ, σ)", parity: true }],
-  "normsdist": [{ excel: "NORM.S.DIST", syntax: "=NORM.S.DIST(z, cum)", parity: true }],
-  "normsinv": [{ excel: "NORM.S.INV", syntax: "=NORM.S.INV(p)", parity: true }],
   "npv": [{ excel: "NPV", syntax: "=NPV(rate, v1, v2, ...)", parity: true }],
   "nth-large": [{ excel: "LARGE", syntax: "=LARGE(array, k)", parity: true }],
   "nth-small": [{ excel: "SMALL", syntax: "=SMALL(array, k)", parity: true }],
@@ -327,7 +323,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "oddcoupon-oddlprice": [{ excel: "ODDLPRICE", syntax: "=ODDLPRICE(...)", parity: false, note: "30/360 basis only" }],
   "oddcoupon-oddlyield": [{ excel: "ODDLYIELD", syntax: "=ODDLYIELD(...)", parity: false, note: "30/360 basis only" }],
 
-  "poissondist": [{ excel: "POISSON.DIST", syntax: "=POISSON.DIST(k, λ, cum)" }],
   "pricedisc-pricedisc": [{ excel: "PRICEDISC", syntax: "=PRICEDISC(settle,maturity,discount,redemption)", parity: false, note: "Discount bond price; not yet supported" }],
   "pricedisc-yielddisc": [{ excel: "YIELDDISC", syntax: "=YIELDDISC(settle,maturity,pr,redemption)", parity: false, note: "Discount bond yield; not yet supported" }],
   "pricemat-pricemat": [{ excel: "PRICEMAT", syntax: "=PRICEMAT(settle,maturity,issue,rate,yld)", parity: false, note: "Maturity-pay bond price; not yet supported" }],
@@ -425,7 +420,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "stat-standardize": [{ excel: "STANDARDIZE", syntax: "=STANDARDIZE(x, μ, σ)", parity: true }],
   "switch": [{ excel: "SWITCH", syntax: "=SWITCH(expr, w1, t1, ...)", parity: false, note: "Fixed 3 cases; Excel is variadic" }],
-  "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, type)", parity: false, note: "2-tailed only; for 1-tailed divide result by 2" }],
+  // All three leaves ARE T.TEST (Excel splits by its `type` argument), and all three must
+  // say so or the parity measurement reads the other two as Solenoid-native.
+  "t-test-paired": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 1)", parity: false, note: "This leaf is type 1 (paired); 2-tailed only" }],
+  "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 2)", parity: false, note: "This leaf is type 2 (pooled variance); 2-tailed only, for 1-tailed divide result by 2" }],
+  "t-test-unequal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 3)", parity: false, note: "This leaf is type 3 (Welch); 2-tailed only" }],
   "table-info": [
     { excel: "COLUMNS", syntax: "=COLUMNS(array)", parity: false, note: "Works on table socket; use List → Length node for 1D lists" },
     { excel: "ROWS", syntax: "=ROWS(array)", parity: false, note: "Works on table socket; use List → Length node for 1D lists" },
@@ -438,11 +437,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "tbill-tbillyield": [{ excel: "TBILLYIELD", syntax: "=TBILLYIELD(settle,maturity,pr)", parity: false, note: "T-bill yield; not yet supported" }],
   "tblsel-choosecols": [{ excel: "CHOOSECOLS", syntax: "=CHOOSECOLS(array, col1, col2, ...)", parity: false, note: "Takes a list of indices; negative indices count from end" }],
   "tblsel-chooserows": [{ excel: "CHOOSEROWS", syntax: "=CHOOSEROWS(array, row1, row2, ...)", parity: false, note: "Takes a list of indices; negative indices count from end" }],
-  "tdist": [
-    { excel: "T.DIST", syntax: "=T.DIST(x, df, cum)", parity: true },
-    { excel: "T.DIST.2T", syntax: "=T.DIST.2T(x, df)", parity: true },
-    { excel: "T.DIST.RT", syntax: "=T.DIST.RT(x, df)", parity: true },
-  ],
   "text-after-before-after": [{ excel: "TEXTAFTER", syntax: "=TEXTAFTER(text, delimiter)", parity: false, note: "First occurrence only; instance_num and match_mode not supported" }],
   "text-after-before-before": [{ excel: "TEXTBEFORE", syntax: "=TEXTBEFORE(text, delimiter)", parity: false, note: "First occurrence only; instance_num and match_mode not supported" }],
   "text-clean": [{ excel: "CLEAN", syntax: "=CLEAN(text)", parity: false }],
@@ -475,8 +469,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "MID", syntax: "=MID(text, start, chars)", parity: false },
     { excel: "MIDB", syntax: "=MIDB(text, start, bytes)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
-  // TEXT / VALUE / VALUETOTEXT live on Cast now (their dedicated nodes are
-  // deprecated — hidden from the menu, load-only).
+  // TEXT / VALUE / VALUETOTEXT live on Cast; their dedicated nodes are load-only.
   "cast": [
     { excel: "TEXT", syntax: "=TEXT(value, format)", parity: false, note: "Cast to Text with a format — simplified formats: \"\", \"0\", \"0.00\", \"0.00%\"; date patterns (YYYY-MM-DD) for date sources" },
     { excel: "VALUE", syntax: "=VALUE(text)", parity: false, note: "Cast to Number" },
@@ -501,15 +494,10 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-trim": [{ excel: "TRIM", syntax: "=TRIM(text)", parity: false }],
   "text-upper": [{ excel: "UPPER", syntax: "=UPPER(text)", parity: false }],
   "time-value": [{ excel: "TIMEVALUE", syntax: "=TIMEVALUE(time_text)", parity: false, note: "Parses HH:MM:SS format" }],
-  "tinv": [
-    { excel: "T.INV", syntax: "=T.INV(p, df)", parity: true },
-    { excel: "T.INV.2T", syntax: "=T.INV.2T(p, df)", parity: true },
-  ],
   "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, new_xs)", parity: false, note: "Linear only; new_xs required (Excel makes it optional)" }],
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
   "sumifs": [
     { excel: "SUMIFS", syntax: "=SUMIFS(sum_range, criteria_range1, criteria1, ...)", parity: true, note: "Takes one frame: ranges are named columns; criteria are op + value rows instead of criteria strings (\">10\")" },
-    { excel: "SUMIF", syntax: "=SUMIF(range, criteria, [sum_range])", parity: true },
     { excel: "COUNTIFS", syntax: "=COUNTIFS(criteria_range1, criteria1, ...)", parity: true },
     { excel: "COUNTIF", syntax: "=COUNTIF(range, criteria)", parity: true },
     { excel: "AVERAGEIFS", syntax: "=AVERAGEIFS(average_range, criteria_range1, criteria1, ...)", parity: true },
@@ -533,7 +521,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "twomath-log": [{ excel: "LOG", syntax: "=LOG(x, base)", parity: true }],
   "url-encode": [{ excel: "ENCODEURL", syntax: "=ENCODEURL(text)", parity: false, note: "Not yet supported" }],
   "vdb": [{ excel: "VDB", syntax: "=VDB(cost,salv,life,start,end,[factor])", note: "factor defaults to 2 (DDB); no_switch flag not exposed" }],
-  "weibulldist": [{ excel: "WEIBULL.DIST", syntax: "=WEIBULL.DIST(x, α, β, cum)" }],
   "xirr": [{ excel: "XIRR", syntax: "=XIRR(flows, dates)", parity: false, note: "Dates as serials (wire from date nodes); guess parameter not supported" }],
   "xnpv": [{ excel: "XNPV", syntax: "=XNPV(rate, flows, dates)", parity: false, note: "Date-based NPV; not yet supported" }],
   "z-test": [{ excel: "Z.TEST", syntax: "=Z.TEST(array, μ, σ)", parity: false, note: "σ is optional; if omitted uses sample stdev (Excel behavior matches)" }],
@@ -548,15 +535,20 @@ export interface ExcelGapRow {
   note?: string;
 }
 
-/** Excel functions with no Solenoid node. Self-heals: the reference drops any
- *  entry whose name later becomes node-backed. */
+/** Excel functions with no Solenoid node; the reference drops any entry whose name later
+ *  becomes node-backed. */
 export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "SUBTOTAL", syntax: "=SUBTOTAL(fn, range)", category: "Math & Trig", composition: true, note: "Use Aggregate with the matching op; hidden-row exclusion (101–111 variants) not applicable in a node graph" },
-  { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", composition: true, note: "Compose Filter → Aggregate (SUM)" },
+  { excel: "AGGREGATE", syntax: "=AGGREGATE(fn, opts, range)", category: "Math & Trig", composition: true, note: "Use Aggregate with the matching op; the ignore-errors/hidden-rows options are cell-grid concepts" },
+  { excel: "CEILING.PRECISE", syntax: "=CEILING.PRECISE(x, sig)", category: "Math & Trig", composition: true, note: "Ceiling rounds toward +∞ already — PRECISE differs from CEILING only in ignoring the sign of the significance" },
+  { excel: "FLOOR.PRECISE", syntax: "=FLOOR.PRECISE(x, sig)", category: "Math & Trig", composition: true, note: "Floor rounds toward −∞ already — PRECISE differs from FLOOR only in ignoring the sign of the significance" },
+  { excel: "ISO.CEILING", syntax: "=ISO.CEILING(x, sig)", category: "Math & Trig", composition: true, note: "Identical to CEILING.PRECISE; Excel keeps both for ISO compatibility" },
+  { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", oos: true, note: "Superseded by SUMIFS" },
   { excel: "SUMIFS", syntax: "=SUMIFS(range, crit, ...)", category: "Math & Trig", composition: true, note: "Chain multiple Filter nodes, then Aggregate (SUM)" },
   { excel: "AVERAGEIF", syntax: "=AVERAGEIF(range, crit)", category: "Statistics", composition: true, note: "Compose Filter → Aggregate (AVERAGE)" },
   { excel: "AVERAGEIFS", syntax: "=AVERAGEIFS(range, crit, ...)", category: "Statistics", composition: true, note: "Chain multiple Filter nodes" },
   { excel: "COUNTBLANK", syntax: "=COUNTBLANK(range)", category: "Statistics", oos: true, note: "Counts empty cells; not applicable in node graph" },
+  { excel: "GROWTH", syntax: "=GROWTH(ys, xs, new_xs)", category: "Statistics", note: "Exponential counterpart of TREND (which has a node); no node yet" },
   { excel: "COUNTIF", syntax: "=COUNTIF(range, crit)", category: "Statistics", composition: true, note: "Compose Filter → Aggregate (COUNT)" },
   { excel: "COUNTIFS", syntax: "=COUNTIFS(range, crit, ...)", category: "Statistics", composition: true, note: "Chain multiple Filter nodes" },
   { excel: "MAXIFS", syntax: "=MAXIFS(range, crit, ...)", category: "Statistics", composition: true, note: "Compose Filter → Aggregate (MAX)" },
@@ -576,6 +568,9 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "RTD", syntax: "=RTD(prog_id, server, ...)", category: "Lookup & Reference", oos: true, note: "Real-time data from COM server; out of scope" },
   { excel: "VLOOKUP", syntax: "=VLOOKUP(x, table, col)", category: "Lookup & Reference", oos: true, note: "Superseded by XLOOKUP" },
   { excel: "CELL", syntax: "=CELL(info_type, ref)", category: "Info", oos: true, note: "Cell metadata; out of scope" },
+  { excel: "N", syntax: "=N(value)", category: "Info", oos: true, note: "Coerces a value to a number; sockets are typed, so there is nothing to coerce blind" },
+  { excel: "T", syntax: "=T(value)", category: "Info", oos: true, note: "Returns text or empty by inspecting an untyped cell; sockets are typed" },
+  { excel: "TYPE", syntax: "=TYPE(value)", category: "Info", oos: true, note: "Excel's type enum for an untyped cell; a socket already declares its type" },
   { excel: "ERROR.TYPE", syntax: "=ERROR.TYPE(error_val)", category: "Info", oos: true, note: "Excel error-type enum; no cell-error model in a node graph" },
   { excel: "INFO", syntax: "=INFO(type_text)", category: "Info", oos: true, note: "Environment info; out of scope" },
   { excel: "ISFORMULA", syntax: "=ISFORMULA(ref)", category: "Info", oos: true, note: "Cell formula check; out of scope" },

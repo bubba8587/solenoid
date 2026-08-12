@@ -1,8 +1,4 @@
-// One result box that dispatches on container kind: a Cube → CubeDisplay, a Frame
-// → FrameDisplay, everything else → ValueDisplay (scalar / list / string / error).
-// Centralizing it here means any node whose output can be a frame or cube (the
-// upgraded INDEX, Build Cube, Relate, a future cube-returning op) renders the
-// right viewer for free — components don't each re-do the isFrame/isCube branch.
+// The ONE result box, so components don't each re-do the isFrame/isCube branch.
 import type { ReactNode } from "react";
 import { isFrameValue, isCubeValue } from "../frame";
 import { ValueDisplay } from "./nodeKit";

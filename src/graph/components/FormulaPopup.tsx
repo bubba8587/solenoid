@@ -10,7 +10,7 @@ import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { cableValueStore } from "../cableValueStore";
-import { themeAccent, darkenAccent } from "../palette";
+import { themeAccent, darkenAccent, contrastInk } from "../palette";
 import { applyExprChange, applyLambdaChange, applyEquationChange } from "./expressionEdit";
 import { FormulaEditor } from "./FormulaEditor";
 import { useFormulaFit } from "./formulaFit";
@@ -18,39 +18,27 @@ import { formatScalar } from "./format";
 import { PopupShell } from "./PopupShell";
 import "./FormulaPopup.css";
 
-// Step-by-step evaluator: built, then shelved. Flip to re-enable — all the wiring
-// below (gatherVars, the steps section, evaluateSteps in excelFormula) is kept
-// intact behind this flag. Expression-only.
+// Step-by-step evaluator: built, then shelved; flip to re-enable its intact wiring.
 const SHOW_STEPS = false;
 
-// ─── Formula host: the popup edits any node that has a rendered formula ─────────
-// Expression (formula in node.expr, derives sockets, can be locked) and the LAMBDA
-// family (formula in stringLiterals.formula, fixed sockets, overridden when its
-// Formula input is wired). One adapter shape so the popup is node-type-agnostic.
+// One adapter shape, so the popup stays node-type-agnostic across the formula hosts.
 type FormulaHost = {
   label: string;
   text: string;
   locked: boolean;
   setText: (s: string) => void | Promise<void>;
-  /** The Equation node: no "=" prefix (the text carries its own), an equation
-   *  placeholder, and the solve-oriented engine note. */
+  /** The Equation node: no "=" prefix — the text carries its own. */
   equation?: boolean;
-  /** Per-variable prose (var name → description). Present on Expression /
-   *  Equation; editable even when the formula is locked (they're notes, not the
-   *  formula). Undefined = this host doesn't support variable descriptions. */
+  /** Per-variable prose; undefined = this host doesn't support variable descriptions. */
   varDescriptions?: Record<string, string>;
   setVarDescription?: (name: string, desc: string) => void;
 };
 
-// Identify the host by constructor NAME, not instanceof: a Vite hot swap
-// replaces the class objects while rete keeps the node instances built from the
-// old ones, so an instanceof gate silently stops matching mid-session — the
-// popup then opens but never commits ("rename does nothing until reload").
-// Names survive the swap; persistence already keys saved nodes on them.
+// Identify hosts by constructor NAME, never instanceof — a Vite hot swap replaces the class
+// objects while rete keeps instances built from the old ones, silently breaking the gate.
 const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode"]);
 
-/** Set a per-variable description on an Expression/Equation node — display-only
- *  (no recompute), so just update the map and re-render the card for its tooltip. */
+/** Display-only, so no recompute — just re-render the card for its tooltip. */
 function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
   if (desc.trim() === "") delete node.varDescriptions[name];
   else node.varDescriptions[name] = desc;
@@ -67,7 +55,6 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
       varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
   }
   if (typeName === "EquationNode" || typeName === "TvmNode") {
-    // TvmNode is an EquationNode subclass (always locked → read-only view here).
     const n = node as EquationNode;
     return { label, text: n.expr, locked: n.locked, setText: (s) => applyEquationChange(n, s), equation: true,
       varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
@@ -76,6 +63,12 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
     const n = node as LambdaNode;
     return { label, text: n.expr, locked: false, setText: (s) => applyLambdaChange(n, { expr: s }),
       varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
+  }
+  if (typeName === "ComputedColumnNode") {
+    // Its variables are column names, so there are no variable descriptions.
+    const n = node as unknown as { id: string; expr: string };
+    return { label, text: n.expr, locked: false,
+      setText: async (s) => { n.expr = s; await processGraph(n.id); } };
   }
   if (TABLE_LAMBDA_TYPES.has(typeName)) {
     const n = node as MapTableNode;
@@ -89,11 +82,8 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
   return null;
 }
 
-// The per-variable explanation editor + legend (Expression / Equation). The
-// variable name renders as KaTeX; the description is plain prose kept OUT of the
-// formula string, so it never affects the math. Display-only, so edits commit
-// per keystroke (no recompute) and just re-render the card tooltip. Editable even
-// when the formula is locked — the descriptions are notes, not the formula.
+// Descriptions are notes, not formula: kept OUT of the formula string, committed per
+// keystroke, and editable even when the formula is locked.
 function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHost }) {
   const [local, setLocal] = useState<Record<string, string>>(() => ({ ...host.varDescriptions }));
   const set = (v: string, desc: string) => {
@@ -119,9 +109,8 @@ function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHos
   );
 }
 
-// Render a KaTeX string to HTML, falling back to the raw string on error or while
-// katex is still loading (the popup subscribes via useKatexRender, so it re-renders
-// — re-running these calls — once the chunk arrives).
+// Falls back to the raw string while katex is still loading; useKatexRender re-renders
+// the popup once the chunk arrives.
 function renderTex(latex: string): string {
   const render = getKatexRenderer();
   if (!render) return latex;
@@ -129,12 +118,10 @@ function renderTex(latex: string): string {
   catch { return latex; }
 }
 
-// Resolve the live value feeding each variable: its incoming cable's source
-// output, else the node's inline literal, else 0 (mirrors ExpressionNode.data).
-// Returns null when any input isn't a plain number (a list input) — step-by-step
-// is a scalar walk.
+// Mirrors ExpressionNode.data's variable resolution; null when any input isn't a plain
+// number, since the step-by-step walk is scalar-only.
 function gatherVars(node: ExpressionNode, expr: string): Record<string, number> | null {
-  const editor = getOwningEditor(node.id); // drill-in aware (see getOwningEditor)
+  const editor = getOwningEditor(node.id);
   const out: Record<string, number> = {};
   for (const v of extractVariables(expr)) {
     const conn = editor?.getConnections().find((c) => c.target === node.id && c.targetInput === v);
@@ -146,20 +133,10 @@ function gatherVars(node: ExpressionNode, expr: string): Record<string, number> 
   return out;
 }
 
-/**
- * The formula popup: a roomy surface for reading and editing a node's formula,
- * opened from any FormulaField's expand button. The rendered equation sits up top
- * (KaTeX display mode — fractions get vertical room), the formula text below
- * (editable, or read-only when locked / wire-overridden). Chrome mirrors the node
- * card: the same accent header, border, and group-membership treatment, so the
- * popup reads as an extension of its node. Mounted once in App.
- */
+/** The formula popup, mounted once in App and opened from any FormulaField. */
 export function FormulaPopup() {
   const nodeId = useSyncExternalStore(formulaPopup.subscribe, formulaPopup.get);
 
-  // Subscribe to theme + group membership so the popup's accent / group framing
-  // track the node's. cableValueStore so the step-by-step re-evaluates live when
-  // an upstream input value changes.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(groupMembershipStore.subscribe, groupMembershipStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
@@ -167,19 +144,13 @@ export function FormulaPopup() {
   const [text, setText] = useState("");
   const initedFor = useRef<string | null>(null);
   const renderRef = useRef<HTMLDivElement>(null);
-  // Editing is deferred: keystrokes only update the local `text` (and the live
-  // KaTeX preview). The node's formula — and, for Expression, its derived input
-  // sockets — are written once, on exit (close/Escape). This keeps a transient
-  // half-typed formula (e.g. `a+b` → `a+b+` → `a+b+c`) from dropping a variable
-  // mid-edit and destroying the cables already wired to it. `textRef` mirrors the
-  // latest text for the close handlers (the Escape listener closes over a stale
-  // `text`); `committedRef` is the last value pushed to the node, so commit is a
-  // no-op when nothing changed.
+  // The formula is written ONCE on exit, never per keystroke — a half-typed formula would
+  // drop a variable mid-edit and destroy the cables already wired to it. `textRef` exists
+  // because the Escape listener closes over a stale `text`.
   const textRef = useRef("");
   const committedRef = useRef("");
 
-  // Push the pending edit to a node — the single place the formula (and its
-  // sockets, via applyExprChange) is written. No-op when unchanged or locked.
+  // The single place the formula (and, via applyExprChange, its sockets) is written.
   function commit(id: string | null) {
     if (!id) return;
     const host = formulaHostOf(getOwningEditor(id)?.getNode(id));
@@ -189,15 +160,12 @@ export function FormulaPopup() {
     void host.setText(textRef.current);
   }
 
-  // Commit the current edit, then close the popup. Used by every exit path.
   function commitAndClose() {
     commit(initedFor.current);
     formulaPopup.close();
   }
 
-  // (Re)seed the editor text whenever a different node's popup opens. Commit any
-  // pending edit on the previously-open node first (defensive — closing already
-  // commits, but a direct A→B open shouldn't silently drop A's edit).
+  // Commit the previously-open node first: a direct A→B open must not drop A's edit.
   useEffect(() => {
     if (!nodeId) { commit(initedFor.current); initedFor.current = null; return; }
     if (initedFor.current === nodeId) return;
@@ -210,7 +178,6 @@ export function FormulaPopup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
-  // The formula's own variables, offered in autocomplete alongside functions.
   const varSuggestions = useMemo(() => extractVariables(text), [text]);
 
   const render = useKatexRender();
@@ -225,31 +192,30 @@ export function FormulaPopup() {
     }
   }, [text, render]);
 
-  // Scale the rendered equation to fit the popup's width (no upscaling — the popup
-  // is roomy). A genuinely huge formula still floors and h-scrolls.
   useFormulaFit(renderRef, [katexHtml, nodeId], { useHeight: false, max: 1 });
 
-  // Owning editor, not main: an Expression/Equation card inside a composite
-  // drill-in opens this same popup — main lookup found nothing and the popup
-  // silently never rendered (and commits no-opped) for those nodes.
+  // Owning editor, not main — a card inside a composite drill-in opens this same popup.
   const node = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const host = formulaHostOf(node);
   if (!node || !host) return null;
   const locked = host.locked;
 
-  // Mirror NodeCard's accent + group-color CSS vars so the header/border/corner
-  // match this node exactly.
+  // Mirror NodeCard's accent + group-color CSS vars so the chrome matches the node.
   const mode = appThemeStore.getMode();
   const rawAccent = NODE_KIND_ACCENTS[nodeKindOf(node)];
   const groupColor = groupMembershipStore.color(node.id);
   const grouped = !!groupColor;
   const style: CSSProperties = {};
   const cssVars = style as Record<string, string>;
-  if (rawAccent) { cssVars["--node-accent"] = themeAccent(rawAccent, mode); cssVars["--node-accent-dark"] = darkenAccent(rawAccent); }
+  // `--node-accent` must ship with its own ink — the app-wide --accent-ink is a different hue.
+  if (rawAccent) {
+    const accent = themeAccent(rawAccent, mode);
+    cssVars["--node-accent"] = accent;
+    cssVars["--node-accent-ink"] = contrastInk(accent);
+    cssVars["--node-accent-dark"] = darkenAccent(rawAccent);
+  }
   if (groupColor) { cssVars["--group-color"] = themeAccent(groupColor, mode); cssVars["--group-color-dark"] = darkenAccent(groupColor); }
 
-  // Deferred: update the preview only. The node (and its sockets) are written on
-  // exit via commit() — see the close handlers.
   function onChange(next: string) {
     setText(next);
     textRef.current = next;
@@ -257,7 +223,6 @@ export function FormulaPopup() {
 
   const cachedError = (node as { cachedError?: string | null }).cachedError;
 
-  // Step-by-step evaluation (Expression only, shelved behind SHOW_STEPS).
   const exprNode = node.constructor.name === "ExpressionNode" ? (node as ExpressionNode) : null;
   const vars = SHOW_STEPS && exprNode ? gatherVars(exprNode, text) : null;
   const steps = vars ? evaluateSteps(text, vars) : null;
@@ -299,18 +264,18 @@ export function FormulaPopup() {
           />
         </div>
 
-        {/* Engine note: the formula path now resolves through the same registry the
-            consolidation built, so it matches the visual nodes wherever they overlap
-            (the known divergences — MOD/ATAN2/RANK/TRIMMEAN/PERCENTRANK/domain errors —
-            are overridden to our impl). The load-bearing thing left to tell the user is
-            the SHAPE cap: formulas are scalar / 1-D only. See dev-notes 2026-06-25. */}
+        {/* Engine note: the formula path resolves through the same registry as the
+            visual nodes, so they match wherever they overlap. The load-bearing thing
+            to tell the user is the SHAPE boundary as of D23/D24: scalars, lists and
+            MATRICES are in (with complex); frames/cubes stay out — the verb nodes
+            are their surface, and a computed column's references are the row door. */}
         {host.equation ? (
           <div className="formula-popup__engine-note">
             ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
           </div>
         ) : (
         <div className="formula-popup__engine-note">
-          ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
+          ƒ Works on <strong>single values, 1-D lists, and 2-D matrices</strong>: element-wise broadcast, list aggregates (SUM, AVERAGE…), the matrix core (TRANSPOSE, MMULT, SEQUENCE…), and complex numbers. <strong>MAP / BYROW / BYCOL / REDUCE</strong> apply a λ over an array. Data tables stay out — the frame verbs are nodes (a verb name typed here names its node), and in a computed column <code>@name</code> is this row's cell, a bare column name the whole column.
         </div>
         )}
 

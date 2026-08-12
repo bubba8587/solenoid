@@ -7,7 +7,7 @@ pick, not a gate.
 
 ## Grounding — the exact existing nodes
 
-**Decision Matrix node** — `src/graph/nodes/frame.ts:681-726`, class
+**Decision Matrix node** — `src/graph/nodes/frame.ts` (find by class name — line refs rot), class
 `DecisionMatrixNode`, registers as `"DecisionMatrix"`. Fields: `weightMap:
 Record<string,number>` (name-keyed inline weights), `normMap: Record<string,
 DecisionNormalize>`, `criteria: string[]` (detected each compute), `normalize`, `detail:
@@ -18,7 +18,7 @@ inline map, default 1 each) then calls `decisionMatrix(f, weights, normalize,
 detail==="breakdown", normMap)` (verb in `frameVerbs.ts`).
 
 **Existing Sensitivity node — confirms it's Decision-Matrix-specific, not a generic
-sweep:** `DecisionSensitivityNode` (`nodes/frame.ts:737-759`), registers as
+sweep:** `DecisionSensitivityNode` (`nodes/frame.ts`), registers as
 `"DecisionSensitivity"`, label `"Sensitivity"`. Inputs: `scores` (`frameIn`),
 `scenarios` (`frameIn`, each row = one weight scenario). Output: `cube` via
 `decisionSensitivity(scores, scenarios, this.normalize)`. Component:

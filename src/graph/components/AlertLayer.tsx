@@ -6,16 +6,13 @@ import { flyToNode } from "../flyToNode";
 import "./alertLayer.css";
 import { CloseIcon } from "./CloseIcon";
 
-// Per-kind HUD color — matches the toast tones (info / warn / error).
 const KIND_COLOR: Record<AlertKind, string> = {
   info:     "#4c8bf5",
   warning:  "#d9822b",
   critical: "#e0524d",
 };
 
-// Lucide "bell" — the alert trigger icon. An alert isn't necessarily bad (it just
-// fired on a status change), so a bell reads better than a warning triangle (which
-// now marks the Problems panel). https://lucide.dev/icons/bell
+// Lucide "bell" (https://lucide.dev/icons/bell) — the warning triangle marks Problems.
 const AlertSvg = ({ size = 14 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>
     <path d="M10.268 21a2 2 0 0 0 3.464 0" />
@@ -23,21 +20,12 @@ const AlertSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/**
- * The fired-alerts HUD section: a stack of chips, one per recent alert event
- * (see alertStore). An Alert node logs an event here on the rising edge of its
- * trigger condition. Click a chip to fly to the node that raised it; × dismisses
- * it. Collapses to a single alert-icon button with a count badge. Positioned by
- * its parent <HudStack/>, directly below the pinned-values section.
- */
+/** The fired-alerts HUD section, positioned by its parent <HudStack/>. */
 export function AlertLayer() {
-  // Collapsed by default everywhere (click the count button to expand); new
-  // alerts still surface as toasts. On mobile a tap outside re-collapses it.
   const [collapsed, setCollapsed] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Full auto-collapse on mobile: once expanded, a tap anywhere outside the
-  // layer snaps it shut again so the alert chips don't linger over the canvas.
+  // Mobile: a tap outside re-collapses, so chips don't linger over the canvas.
   useEffect(() => {
     if (!IS_MOBILE || collapsed) return;
     const onDown = (e: PointerEvent) => {
@@ -50,7 +38,6 @@ export function AlertLayer() {
   useSyncExternalStore(alertStore.subscribe, alertStore.version);
 
   const events = alertStore.list();
-  // Join the chrome-toggle group (Tab) only while there are alerts to show.
   useEffect(() => {
     if (events.length === 0) return;
     return registerChrome("alerts", { isOpen: () => !collapsed, setOpen: (o) => setCollapsed(!o) });
@@ -70,10 +57,8 @@ export function AlertLayer() {
   );
 
   const chips = events.map((ev) => {
-    // Message is "<label>: <detail>" (see Alert.buildMessage). Colour ONLY the
-    // leading label by kind; the detail stays in the normal text colour. Match the
-    // exact label when the message starts with it (a label may contain a colon),
-    // else fall back to the first colon.
+    // Only the leading label is kind-colored; match the label exactly first, since a
+    // label may itself contain a colon.
     const title = ev.message.startsWith(ev.label) ? ev.label : (ev.message.split(":")[0] ?? ev.message);
     const rest = ev.message.slice(title.length);
     return (
@@ -82,7 +67,7 @@ export function AlertLayer() {
       className="solenoid-alert"
       style={{ ["--alert-color" as string]: KIND_COLOR[ev.kind] }}
       onClick={() => flyToNode(ev.nodeId)}
-      title="Click to go to this alert"
+      title="Go to this alert"
     >
       <span className="solenoid-alert__msg"><span className="solenoid-alert__title">{title}</span>{rest}</span>
       <button

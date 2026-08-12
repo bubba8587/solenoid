@@ -43,44 +43,79 @@ Visual computation graph tool — a node-based "Excel alternative" for data tabl
 (`node.data()` methods). Relational verbs run on native Polars (Rust) on desktop, an identical JS
 oracle on web, behind the `FrameBackend` seam.
 
+### Current phase — 1.3 polish (author pivot, 2026-08-07; reconcile at the 1.3 cut)
+**1.3 ships basically as-is.** The queue (`docs/backlog.md`) is bugs, small patches, and
+thorough SMALL-SCOPE polish sweeps — one node family, one seam, one subsystem at a time,
+investigated completely, fixed, pinned with a test, one terse digest line. Depth on
+something small beats breadth on anything. Feature-shaped work is parked in
+`docs/deferrals.md` "Pushed to 1.4/2.0" — do NOT start it on your own initiative, even
+when a sweep makes it tempting; note the finding and stay on scope.
+
 ### Docs map
-Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs/README.md` (the
-index), `docs/glossary.md` (the invented vocabulary — read before the deep dives).
+Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs/mental-model.md`
+(how the system RUNS, end to end — read before touching code), `docs/README.md` (the index),
+`docs/glossary.md` (the invented vocabulary — read before the deep dives).
 - **`DESIGN.md` (repo root) — the design-system rulebook. READ BEFORE ANY UI/VISUAL CHANGE.**
   Non-obvious hard rules you WILL violate blind: no colored accent stripe by ANY technique — tint
-  the element itself; the Quiet Accent Rule (color conveys type/state, never decoration); no
-  faux-3D/gradient/glassmorphism.
+  the element itself; the Quiet Accent Rule (chrome color conveys type/state; decoration exists
+  only in its named homes — brand, user-authored, opt-in flourishes — and NEW decoration is an
+  author call, never a default); no faux-3D/gradient/glassmorphism. **"UI change" includes STRINGS, not just pixels** — §7 Voice &
+  copy governs `src/graph/help/*.md`, every `nodeCatalog` description, tooltips and empty states;
+  read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
+- **`docs/rules.md` — the NORMATIVE architecture spec. Read before changing sockets, the
+  formula surface, naming, or value handling.** Numbered MUST-rules (`SSOT-n`, `SOCK-n`,
+  `FX-n`, `VAL-n`, `PERSIST-n`, `ENGINE-n`, `EFFECT-n`, `STORE-n`, `PROV-1`), each naming
+  the test that enforces it or marked UNENFORCED. Covers the invariants that CANNOT be
+  caught by looking at the app — a broken socket rule or a mishandled null yields a
+  plausible answer, not a visible defect. Cite rule IDs in comments and commits.
 - **`docs/subsystem-invariants.md`** — full mechanics + invariants for the tricky subsystems
   (indexed below).
-- **`docs/decisions.md`** — the decision log (what/why/what-would-reverse-it). Check it so a
-  change doesn't RELAPSE on a recorded decision — D10 is the standing example: "Excel parity"
-  means CURRENT Excel only; an eliminated function (VLOOKUP/MATCH…) stays eliminated on every
-  surface. This is a relapse-guard, NOT a caution brake: there is NO rule that a cross-cutting
-  change needs a design pass or author sign-off (that reflex is obliterated by author order).
-  Decide each change on its merits, do it, record it. The ONLY author-gated work is the
-  explicitly-named set: never push `main`/releases; D2 (composite toolbar reroute) and D4
-  (conditional formatting), both deferred author-present.
+- **`docs/decisions.md`** — the decision log (what stands / where / what would reopen it).
+  Check it so a change doesn't RELAPSE on a recorded decision — D10 is the standing example:
+  an eliminated function (VLOOKUP/MATCH…) stays eliminated on every surface. It is a
+  relapse-guard, NOT a caution brake: no cross-cutting change needs a design pass or author
+  sign-off (that reflex is obliterated by author order). Decide on merits, do it, record it.
+  The ONLY author-gated work: never push `main`/releases; D2 (composite toolbar reroute) and
+  D4 (conditional formatting), both deferred author-present.
 - **`docs/layout-chrome.md`** — the on-screen chrome map. READ BEFORE ADDING/MOVING ANY BAR OR
-  FLOATING OVERLAY: offsets are hand-keyed magic numbers with no shared envelope var — this is
-  the sync map (the source of the recurring "overlay overlaps a bar" bugs).
+  FLOATING OVERLAY. Vertical envelopes are measured (`--chrome-top`/`--chrome-bottom` — derive,
+  never hand-key); the rest of the offsets/z-index are the sync map (the source of the
+  recurring "overlay overlaps a bar" bugs).
 - `docs/node-coverage.md` — node inventory; `nodeCatalog.ts` is the real source of truth (Add
   menu + Function Reference generate from it). Adding a node: the `add-node` skill /
   `scripts/new-node.mjs`. `docs/architecture.md` — the file map.
 - `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
-  `docs/dev-notes.md` — open problems + the latest session digests only.
-- Rationale/reference: `docs/format-model.md` (FC control truth table, mirrored in
-  `formatModel.ts` — read before touching FC controls), `docs/value-semantics.md`,
-  `docs/cube-node-scope.md`, `docs/pack-architecture.md`, `docs/excel-toolbar-supplementals.md`,
-  `docs/formula-node-parity.md`, `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/`
-  (open plan bundles). Finished/point-in-time docs: `docs/archive/` (see its README).
+  `docs/deferrals.md` — the deferred/parked/author-gated set behind the backlog's single
+  Deferral-review item. `docs/dev-notes.md` — open problems + the latest session digests only.
+- Rationale/reference: `docs/socket-reference.md` (every socket variant — what each
+  accepts, what it's blocked from, what the coercion boundary does; read before typing
+  a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
+  table, mirrored in `formatModel.ts` — read before touching FC controls),
+  `docs/value-semantics.md` (incl. the WIRED-blank vs typed-literal spec — read
+  "Reading an input" before writing a node's `data()`), `docs/formulajs-divergences.md`
+  (why each `registerInternal` override exists — read before deleting one or widening
+  the Formula.js fallthrough), `docs/pack-architecture.md`,
+  `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/` (open plan bundles).
+  Finished/point-in-time docs: `docs/archive/` (see its README — incl. the parity
+  program record, cube scoping, and toolbar-parity verdicts, archived 2026-08-07).
+  **Nothing live is parked in `archive/`** — if it's routed or still load-bearing it
+  lives in the working set (machine-checked: `docsPointers.test.ts`).
+- **`docs/code-comments.md` (D30) — the comment policy: comments are the LAST-RESORT home;
+  default outcome for an existing comment is deletion.** History → commits; rulings →
+  decisions/specs; investigations → dev-notes. Before editing a file, grep it in the
+  "Code → spec routing" table in `docs/README.md` — routed files carry zero comment
+  pointers by design. Read the policy before writing comment prose.
 
 ### Author's UI vocabulary (aliases) — what a name maps to in code
 Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term → code handle.
 - **File / menu bar** — top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
 - **Top bar** — toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
+  On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
 - **Navigator** — left outline panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
   `body.solenoid-nav-open`).
 - **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
+  A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
+  both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
 - **Zoom pill** (desktop) / **Lock pill** (mobile) — upper-right canvas controls. `NavMenu.tsx`.
 - **Align bar** — top-center align/distribute pill (≥2 selected). `SelectionActionsBar.tsx`.
 - **Minimap** — bottom-right. `Minimap.tsx` (hidden on mobile).
@@ -104,8 +139,9 @@ Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term 
   renders as `.solenoid-node__display-value`.
 - **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
   pills on a collapsed group (`.solenoid-node__output-pill` etc.).
-- **App menu** (mobile) — the square icon opening the File sheet. `.solenoid-topbar__icon` →
-  `.solenoid-menubar__sheet`.
+- **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.
+  `.solenoid-topbar__icon` → `.solenoid-menubar__sheet`. (The brand lives in Row A's
+  wordmark, `.solenoid-menubar__wordmark`.)
 - **FC** — the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
   model `formatModel.ts`, flow `unitFlow.ts`.
 - **Reference** — the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
@@ -122,16 +158,30 @@ stay (forward safety); there is no backward migration.
 Forward-looking docs rot because sessions default to appending. When wrapping up (or asked to
 "update the docs"), in order:
 1. **Digest in `docs/dev-notes.md`** — extend the current session's digest; sweep digested
-   sessions to `archive/dev-notes-history.md`. Per-item detail goes in commit messages.
+   sessions to `docs/archive/dev-notes-history.md`. Per-item detail goes in commit messages.
 2. **Reconcile `docs/backlog.md`** — verify landed items against the CODE and DELETE their lines
    (git + digests are the record). Add new follow-ups. Keep items terse.
 3. Update the relevant subsystem/coverage/architecture doc if a mechanism or the file map
    changed. A doc whose job is DONE moves to `docs/archive/`.
 "Reconcile" = verify each claim against current code, not just record what you touched.
 
+**Write OUTCOMES, not narratives (the 2026-08-07 cutdown's standing rule).** Verbosity in a
+doc architecture is a hazard, not a style choice: stale narrative reads as current truth
+(two phantom-gesture incidents came from exactly that), and every duplicated restatement is
+a place a spec can be contradicted. Concretely:
+- A doc entry states what STANDS, where it's enforced, and what would reopen it. Build
+  history, amendment chains, "closed so far" ledgers → commit messages and git.
+- Never duplicate a spec's content into this file or another doc — point at it. One home
+  per fact; a second copy is future drift.
+- Deletion is the default for anything historical, superseded, or restating what a test
+  already pins. When unsure whether prose earns its lines, ask "does an agent need this to
+  act correctly right now?" — if not, cut it.
+
 ### Architecture notes (the traps)
-- **The pixi renderer (`src/graph/pixi/`) is DEPRECATED — do not maintain it.** Live renderers:
-  the DOM default and the html-canvas mode (`drawElementImage`), which reuses the real DOM.
+- **Exactly TWO renderers exist: the DOM default and the experimental html-in-canvas mode
+  (a shipped Setting, gated on `supportsHtmlInCanvas()`).** Every other renderer direction —
+  the pixi spike, the WGSL/`canvas` cable+node layers — was DELETED 2026-08-09 (author
+  order; git has it). Do not rebuild a third path.
 - Rete renders node components in a **separate React root** — no app React context. Use
   module-level singleton stores (`storeKit.ts`), read via `useSyncExternalStore`.
 - `process.ts` — module singletons `_editor/_engine/_area`; `processGraph()` recomputes. The
@@ -152,9 +202,17 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
   `__content` — do NOT make the io-row or `__body` a positioning context. Default-centered branch
   reads `var(--out-socket-top, 50%)` + `marginTop:-6` — never `transform: translateY` (offsetTop
   ignores transforms, rete would misreport the endpoint).
+- **PINCH LISTENS IN CAPTURE, PAN IN BUBBLE** — rete's stock Zoom counts fingers from a
+  BUBBLE-phase container pointerdown, so any `stopPropagation` in a node hid a finger and
+  killed the gesture. `CappedZoom` re-seats the count into capture (unstoppable); pan/node-drag
+  stay bubble (vetoable, deliberately). Never flip either. `isPinching()`
+  (`pointerGesture.ts`) — ≥2 TOUCH contacts — is the only definition; never count raw pointers
+  (a mouse or a stylus in contact is not half a pinch).
 - **Native form popups inside a node need pointer/mouse-down stopPropagation** — the area
   plugin's node pointerdown triggers selection → re-render, which closes an open `<select>`
-  dropdown mid-pick.
+  dropdown mid-pick. NOTE (2026-07-27): widely cited, but no originating incident is on record
+  and the mobile path suggests it may not hold. Untested — kept on precaution. Don't cite it as
+  settled; don't "clean it up" without a real-device check.
 - **`Scope.use(child)` forwards events DOWN only** — to see a plugin's own events
   (`connectionpick`/`connectiondrop`), `plugin.addPipe(...)` on the instance directly.
 - **Don't use `useReducer` forceUpdate to refresh a controlled `<select>`** — drive the value
@@ -167,81 +225,64 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
   `box-shadow`, not a layout border. Never a text `×`/`✕` for a close button — use
   `components/CloseIcon.tsx`. Genuinely asymmetric glyphs get fixed in the path by ink centroid
   (an art call, not the parity rule).
+- **Every render is boundaried now** (`components/ErrorBoundary.tsx`): the app root and
+  EACH rete node. A throw no longer blacks out the app — the app panel prints the message +
+  component stack with a Copy button, and a single bad card degrades to a small red box
+  while the rest of the canvas keeps working. When a black screen IS reported, ask for the
+  copied text first; don't go hunting blind.
 - **Components NEVER call `node.data()`** — extract a pure helper (the coerceInputs wrapper
   assumes engine-driven calls).
 - **A cable drag blurs the focused field first** (Canvas `connectionpick`), so a mid-edit value
   commits before it's wired — rely on this, don't re-implement it.
 
 ### Subsystem deep-dives → `docs/subsystem-invariants.md`
-Read the relevant section there before touching one of these. The one-line "don't break this":
-- **Cable routing** (`cablePaths.ts`): diagonal+straight share one walk-enumeration router;
-  route selection = globally-shortest solvable walk, LENGTH stays the primary sort key. Spline is
-  a single tangent-exact cubic. Ribbons bundle 2+ Conduit cables, membership derived per render.
-  `cablePaths.test.ts` machine-checks continuity — keep it green.
-- **Group expand push** (`groupPushCore.ts`, pure + tested): rails → clear → cascade; restore
-  only if the node wasn't manually moved. Membership changes ONLY on an explicit gesture —
-  autofit must NOT reconcile.
-- **Standoffs** (`standoffSolver.ts`): axis-band constraints; LOCKED (default) = rigid 45°. The
-  pure solver runs LAST after every layout pass; layout ops pass `{forceLock}` so a standoff
-  cluster moves as one rigid block. Area-plane z-order: standoffs −3 < expanded groups −2 <
-  conduits −1 < nodes 0.
-- **Auto-arrange / Tidy** (ELK): custom SYMMETRIC port preset; post-layout anchor keeps LEFT +
-  vertical CENTRE; `arrangeFn` drops its temporary height pins after the size-restores (groups
-  keep theirs — React clears them on collapse).
-- **Resizable-content nodes** (Conduit pattern): constant body, content overflows, toolbar floats
-  at a body-relative offset. Don't size body to content (jiggle) or re-pin via async translate.
-- **Error values** (`errorValue.ts`): failures flow as tagged `SolError` (`#CODE!`);
-  `installErrorGuards` wraps every `data()` (error in → error out). Lists/matrices/frames carry
-  first-class `null` (missing — skipped by aggregators, dropped by Filter, propagated by
-  element-wise math) and per-cell `SolError`s; first-class purple **logical** type with Kleene
-  3-valued logic (`valueKinds.ts`); `logical↔number` is the ONE cross-family socket bridge.
-  Coalesce/Fill is the opt-in to treat null as something. ONE notion of error (`ISERROR` ⟺
-  `IFERROR`); `#N/A` test centralized as `isNaError`. Figure SINKS render an error input as an
-  empty figure and never emit a SolError out a `chart` socket (`SEES_ERRORS`).
-- **Type propagation on in-place retype** (`fcReconcile.ts`): any node that mutates a socket
-  `dataType` in place (Cast target, LAMBDA result, Get Column read-as, Note frontmatter) fires no
-  connection event, so it MUST call `reconcileFcTypes`/`retypeOutputCables` or downstream FCs
-  keep stale formats.
-- **Unit flow** (`unitFlow.ts` + `unitBridge.ts`): the UNIT is a property of the VALUE — a
-  base-SI `UnitCell` AUTHORED by the FC (`applyFcUnit`) or Convert, never the Number node; it
-  rides through passthroughs/selectors and BREAKS at any transform; there is NO graph unit-walk.
-  The number FORMAT stays a display annotation (`makeAnnotationResolver` walks the graph, both
-  directions, through pure passthroughs and Conduit lanes). **The unit-blind boundary (do NOT
-  remove; PER-INPUT):** raw `UnitCell`s must never reach a node that doesn't run the algebra —
-  `coerceInputs` centrally unwraps to display magnitude; `unitAware = true` keeps tags on every
-  input; a `passthrough()` node keeps them only on its spec-named inputs (side inputs unwrap).
-  A new algebra node = add `unitAware = true`. Units attach at the granularity of homogeneity
-  (D20): per-element list `UnitCell`, per-column frame `ColumnUnit`, one homogeneous matrix unit.
-- **Alert node + HUD** (`alertStore.ts`): edge-detect on STATUS (`statusKey`), not a boolean, so
-  range LOW↔HIGH re-fires; boolean mode = `=== 1`.
-- **Addressable model** (`nodeNameStore.ts`, `textForm.ts`): every node has a stable,
-  user-editable, unique `name` separate from rete's regenerated-on-load `id`; `textForm.ts` is a
-  pure `SavedGraph ↔ text` round-trip and `serializeGraph`'s JSON derives from it.
-- **Per-doc autosave** (`documentStore.ts`): two-slot localStorage pair per doc; `persist()`
-  diffs by OBJECT IDENTITY — `documentStoreCore.ts` transforms MUST stay immutable (an in-place
-  `SolDoc` mutation silently never persists). Slot seq is a monotonic counter.
-- **Inline literal maps** (`persistence.ts` load gate): a class declares
-  `literals`/`stringLiterals` iff its card edits them inline; load restores the maps ONLY onto
-  declaring classes, so a save/seed can't hardcode a value the user can't see. A typeable-list
-  input implies a `stringLiterals` declaration (machine-checked in `coerceInputs.test.ts`).
-- **Sink nodes** (Write CSV/JSON/Obsidian): disk writes fire ONLY from the node's Run button;
-  the `enabled` arm/disarm flag is deliberately excluded from the persistence whitelist so every
-  load (save reopen, paste, placeholder restore) starts disarmed.
-- **Composite drill-in mount lifecycle** (`CompositeEditorOverlay.tsx`): the rete stack is
-  cached ONCE per composite (no `unuse` exists); views are per-OPEN — close removes internal
-  views (unmounting React roots so timers stop), open backfills idempotently.
-- **Socket lattice** (`sockets.ts`): enforce TYPE separation (element families never auto-cross;
-  Cast required; sole exception logical↔number), allow DIMENSIONAL flow (scalar → list →
-  matrix → frame; a list widens into a 2-D input as a ROW). The wildcard ladder (D17): `any` =
-  untyped scalar, `anylist`/`anytable` = 1-D/2-D, `trueany` = the adopt-anything supremum
-  (hollow ring). Adoption (`trueAnyAdopt.ts`) never drops cables and never persists;
-  rank-bearing wildcards keep their rank and adopt only the element family; every
-  "resolve past untyped passthroughs" check routes through `isWildcardType()`. Cross-type
-  dimensional edges are explicit in `accepts()`, machine-checked by the full sweep in
-  `socketConnect.test.ts` — adding a socket type is a small, derived edit.
-- **Conduit perpendicular-face sign**: which face carries input vs output lanes flips at
-  `sin r = 0`; the chosen perpendicular leans east (output) / west (input), y-tiebreak keeps
-  cables flowing top-to-bottom.
+Read the relevant section there IN FULL before touching one of these. The one-line index:
+- **Pointer gestures**: pinch = capture + `isPinching()` (≥2 FINGERS); pan/drag = bubble;
+  selection on pointerup, never pointerdown; no palm rejection (author call).
+  **`docs/touch-gestures.md` is the gesture INVENTORY — read before adding/citing any
+  gesture** (long-press = native `contextmenu`; NOTHING double-taps inside the canvas).
+- **Cable routing** (`cablePaths.ts`): one walk-enumeration router; globally-shortest
+  solvable walk, LENGTH stays the primary sort key; `cablePaths.test.ts` stays green.
+- **Group expand push** (`groupPushCore.ts`): rails → clear → cascade; restore only if not
+  manually moved. Membership changes ONLY on an explicit gesture — autofit must NOT reconcile.
+- **Standoffs** (`standoffSolver.ts`): axis-band constraints; the pure solver runs LAST after
+  every layout pass; `{forceLock}` moves a cluster as one rigid block. Area-plane z-order:
+  standoffs −3 < expanded groups −2 < conduits −1 < nodes 0.
+- **Auto-arrange / Tidy** (ELK): custom SYMMETRIC port preset; anchor keeps LEFT + vertical
+  CENTER; `arrangeFn` drops its temporary height pins (groups keep theirs).
+- **Resizable-content nodes** (Conduit pattern): constant body, content overflows; don't size
+  body to content or re-pin via async translate.
+- **Error values** (`errorValue.ts`, `valueKinds.ts`): tagged `SolError` flows (guards wrap
+  every `data()`); first-class null (skipped by aggregators) + per-cell errors + Kleene
+  logical; ONE notion of error (`ISERROR` ⟺ `IFERROR`, `#N/A` via `isNaError`); figure sinks
+  see errors and render empty (`SEES_ERRORS`).
+- **In-place retype** (`fcReconcile.ts`): mutating a socket `dataType` in place fires no
+  connection event — MUST call `reconcileFcTypes`/`retypeOutputCables` or FCs go stale.
+- **Unit flow** (`unitFlow.ts`, `unitBridge.ts`): the unit is a property of the VALUE,
+  authored only by FC/Convert/Table Input/column-unit surfaces; a transform re-derives the
+  dimension through the algebra (display carries when the result's dim matches an operand —
+  VAL-19); an FC downstream of a united value LOCKS (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
+  unwraps unless `unitAware = true` (every new algebra node sets it) or a `passthrough()` spec
+  names the input. Granularity per D20: list per-cell, frame per-column, matrix one unit.
+- **Alerts** (`alertStore.ts`): edge-detect on STATUS, not a boolean (range LOW↔HIGH re-fires).
+- **Addressable model** (`textForm.ts`): stable user-editable `name` ≠ rete `id`; text form is
+  a pure round-trip and the JSON save derives from it.
+- **Per-doc autosave** (`documentStore.ts`): `persist()` diffs by OBJECT IDENTITY —
+  `documentStoreCore` transforms must stay immutable or changes silently never persist.
+- **Inline literal maps** (`persistence.ts`): load restores `literals`/`stringLiterals` ONLY
+  onto declaring classes (a save can't hardcode a value the user can't see).
+- **Sink nodes**: disk writes fire ONLY from the Run button; the arm flag is excluded from
+  persistence so every load starts disarmed.
+- **Composite drill-in** (`CompositeEditorOverlay.tsx`): rete stack cached ONCE per composite;
+  views are per-OPEN (close unmounts, open backfills idempotently).
+- **Socket lattice** (`sockets.ts`): TYPE separation (families never auto-cross; Cast required;
+  sole bridge logical↔number), DIMENSIONAL flow up (a list widens into 2-D as a ROW). Wildcard
+  ladder (D17): `any` → `anycombo` → `anylist`/`anytable` → `anydata` (rank ≤ 2) → `trueany`
+  (adoptive supremum; adoption never drops cables, never persists). "Resolve past untyped
+  passthroughs" routes through `isWildcardType()`; FAMILY resolution (the FC) uses
+  `isWildcardRung()`. The full sweep in `socketConnect.test.ts` machine-checks `accepts()`.
+- **Conduit lane faces**: NO flip rule — inputs local −x, outputs +x, rotating with the block;
+  a face-sign predicate anywhere is dead Manifold code.
 
 ### UX principles
 - **Edits commit on Enter/clickaway, never per keystroke** (like Excel cells). Drafts stay local
@@ -249,9 +290,15 @@ Read the relevant section there before touching one of these. The one-line "don'
   `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes,
   sliders) apply immediately.
 - **Zero learning curve from Excel**: every element self-documenting — hover tooltips (with
-  Excel equivalents), the Socket Legend, per-node descriptions from the catalog, the Function
-  Reference overlay (Ctrl+/). Someone who knows Excel but has never seen a node graph should
-  need zero Googling.
+  Excel equivalents), the Socket Legend, the formula editor's syntax highlighting, per-node
+  descriptions from the catalog, the Function Reference overlay (Ctrl+/). Someone who knows Excel
+  but has never seen a node graph should need zero Googling.
+  **This is a mandate for MECHANISMS, never for prose.** The app is visual and is NOT to be
+  explained by elaborate text. The Reference overlay's tab docs exist SOLELY for systems normal
+  usage cannot make obvious (the socket lattice, unit flow) — the things that would otherwise
+  need annotated examples or a tutorial. If a legend, tooltip, glyph or on-screen control already
+  carries it, the text must NOT restate it: `data-types.md` once held a nine-row shape table
+  rendered directly beneath the Socket Legend that already draws and labels all nine.
 - **No "Captain Obvious" UI strings** (standing aesthetic rule): never narrate the affordance
   ("Click to add", "Drag fields between boxes"), no placeholder sentences, no redundant
   subtitles restating a name. Prefer a single muted word over a sentence; nothing over a word;
@@ -263,39 +310,48 @@ Read the relevant section there before touching one of these. The one-line "don'
   (`ExtensibleInputs` / `PairedExtensibleInputs`) when each input plays a distinct role; a
   single list socket only when elements are interchangeable (SUM). Aligned parallel columns →
   ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs).
+- **Node combining (recurring author program — Running D33, Distribution D34 are the models).**
+  "These could be one node" means the MAXIMAL merge: one card, selectors for what varied
+  (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
+  Mechanics that were gotten wrong once, don't repeat: an op's formula name is `fx ??
+  despace(label)` — when the real name is an Excel spelling or the label went bare, DECLARE
+  `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge an FX-4
+  collision by reclassifying the family argument-kind or inventing a parallel presentation
+  flag — `kind: "operation"` whenever the selector names the card, and the accent follows.
+  Selector-driven socket swaps: prune departing keys via `dropInputCables` BEFORE
+  `removeInput` (SSOT-9), spec-table the per-op shape (`DIST_SPECS` pattern), carry state
+  across switches by meaning (PDF↔PMF, inverse variants → Inverse).
 
 ### Capability map (orientation only — verify in code/docs before relying on detail)
-- **Canvas**: cables (3 shapes, ribbons), groups (collapse/push/autofit), standoffs, Conduits,
-  Tidy/Cleanup (ELK), isolate, minimap (canvas-drawn), lasso, snap-to-grid, undo/copy/paste,
-  single-key shortcuts (A/G/I/T/E/F/C/N; F9 calculate), command palette, presenter mode,
-  cinematic load reveal, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  html-in-canvas GPU render mode (DOM stays the permanent default/fallback).
-- **Value model**: frames (named typed columns), cubes (recursive nesting), matrices/lists/
-  scalars; first-class null/logical/SolError; units by dimensionality with `#UNIT!` algebra;
-  Format Controller (value-mutating unit author + display-format annotations); type-default
-  display (a date reads `20-Mar-2026` anywhere, no FC needed).
-- **Engine**: full relational verb set (Filter/Sort/Join incl. as-of/Group By/Append/Distinct/
-  Pivot/Unpivot/Nest/Unnest/XLOOKUP/Split Column/cleanup verbs…) — lazy `FrameRef` chains fused
-  into one Polars round trip on desktop, identical JS oracle on web (`frameVerbs.ts`, cargo
-  parity tests); manual/automatic/sketch calc modes; headless runner (`npm run run-graph`);
-  Write CSV/JSON/Obsidian sinks; live connections (Web Source, CSV, Data Feed) + auto-refresh.
-- **Nodes**: current-Excel function parity (native families + Formula.js via Expression/LAMBDA —
-  deliberately the type-agnostic scalar/1-D subset only), Equation (acausal solve), composites
-  (drill-in editor; run modes: goal-seek/scenarios/data-table/simulation/Monte Carlo), charts
-  (recharts + canvas-drawn figures + draw-your-data controls), Note (frontmatter → typed output
-  sockets — a pure SOURCE) / Report (`` `=name` `` embeds — a pure SINK; the two are deliberate
-  opposites, not convertible) / Mermaid, ~10 domain packs (one file per pack on
-  `packs/packShared.ts`, each with a formula-pinning vitest file), Placeholder for unknown types.
-- **Desktop**: Tauri shell (Windows portable exe), native Polars engine + CSV reader, F12
-  devtools, F11 fullscreen, accent window border, image bundling beside the doc.
+- **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
+  lasso, undo/copy/paste, single-key shortcuts (F9 calculate), command palette, presenter
+  mode, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
+  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (D27/D28:
+  validator-gated whole-doc rewrite with diff approval; Anthropic key in Settings ▸ AI).
+- **Value model**: frames / cubes (recursive) / matrices / lists / scalars; first-class
+  null/logical/SolError; units by dimensionality with `#UNIT!` algebra; the FC (unit author
+  + display-format annotations); type-default display.
+- **Engine**: full relational verb set — lazy `FrameRef` chains fused into one Polars round
+  trip on desktop, identical JS oracle on web (`frameVerbs.ts`, cargo parity tests); calc
+  modes; headless runner (`npm run run-graph`); Write CSV/JSON/Obsidian sinks; live
+  connections (Web Source, CSV, Data Feed).
+- **Nodes**: current-Excel function parity (rank ≤ 2 per D23), Equation (acausal), composites
+  (drill-in; run modes incl. Monte Carlo/by-row; Query = manual-mode preset, D22), charts,
+  Note (pure SOURCE) / Report (pure SINK — deliberate opposites) / Mermaid, ~10 domain packs,
+  Placeholder for unknown types.
+- **Desktop**: Tauri shell (Windows portable exe), native Polars + CSV reader, F12 devtools,
+  accent window border, image bundling beside the doc.
 
 ### Standing constraints (quick list — details in decisions.md / backlog.md)
 - Author-gated: `main`/releases; D2 composite toolbar reroute; D4 conditional formatting.
-- Expression/LAMBDA stay capped to the type-agnostic scalar + 1-D subset until the parity
-  program's Tier 4 decision — don't silently widen (`docs/formula-node-parity.md`).
+- Formulas compute at rank ≤ 2 (D23 lifted the old 1-D cap; matrices + tagged complex are in);
+  frames/cubes stay OUT of formulas by design — the verb engine is their surface. Containment:
+  Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md FX-9).
 - Units are authored ONLY by the FC / Convert — the Number node is a plain literal source.
-- The header/body border seam under zoom is UNSOLVED and parked — dev-notes "UNSOLVED" lists the
-  two eliminated approaches; don't retread them.
+- Node card frames (body border + header accent cap + divider) paint as ONE SVG overlay
+  (`CardFrame`, `NodeCard.tsx`) so the strokes can't subpixel-crack under zoom. Never
+  reintroduce painted CSS borders on the card/header (transparent borders there are
+  layout-only); a new card-like surface reuses `CardFrame`.
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names.
 - Default date format is `DD-MMM-YYYY` (`DEFAULT_DATE_FORMAT` in `nodes/date.ts`); ISO stays a
   selectable FC style.

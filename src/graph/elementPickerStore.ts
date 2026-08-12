@@ -1,6 +1,5 @@
-// The currently-open Element picker (search field + clickable periodic table),
-// or null. Module store like tablePopup / chartPopup: opened from inside an
-// Element node (a separate React root), mounted once in App.
+// A module store like tablePopup: opened from inside an Element node (a separate React
+// root), mounted once in App.
 import { createValueStore } from "./storeKit";
 
 export interface ElementPickerState {

@@ -1,6 +1,4 @@
-// Cards for the 2026-07-09 pack tool wave: EM Spectrum Band (electromagnetism),
-// Heart-Rate Zones (health), Pipe Roughness (fluids), Triangle Solver
-// (geometry). All standard shells — the domain logic lives in their node files.
+// Cards for the pack tool nodes — the domain logic lives in their node files.
 
 import {
   EmSpectrumNode as EmSpectrumNodeType,
@@ -55,8 +53,8 @@ export function PipeRoughnessComponent({ data, emit }: NodeProps<PipeRoughnessNo
   );
 }
 
-// The solved triangle, drawn to scale: vertex A opposite side a, so B sits at
-// the origin and C along the base. Letters only — the numbers live in the rows.
+// The solved triangle, drawn to scale: vertex A opposite side a, B at the origin,
+// C along the base.
 function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
   const { a, c, B } = t;
   if (typeof a !== "number" || typeof c !== "number" || typeof B !== "number") return null;
@@ -123,10 +121,8 @@ function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
 
 const TRIANGLE_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 
-// The current Equation design applied to the triangle: every part is ONE hero
-// row (input socket left, output socket right), the figure draws to scale up
-// top, and Valid is the logical check — TRUE when the parts pin down (or, when
-// over-given, agree on) a real triangle.
+// The Equation design applied to the triangle: every part is ONE hero row, input
+// socket left, output socket right.
 export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolverNodeType>) {
   const v = data.cachedValues;
   // The figure draws ONE triangle — index 0 when parts are broadcast lists.

@@ -2,10 +2,7 @@ import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
 // "Animated mode" — when on, every live cable carries a stream of beads flowing
-// from output to input, so you can watch data travel through the graph. A
-// module-level singleton (like cableShapeStore) so ConnectionComponent, rendered
-// in Rete's own React root, can read it without the main React tree. Persisted to
-// localStorage so the mode survives a reload.
+// from output to input, so you can watch data travel through the graph.
 
 const LS_KEY = "solenoid.cableFlow";
 

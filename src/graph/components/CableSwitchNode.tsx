@@ -1,8 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-// getActiveEditor/getActiveArea, NOT getEditor/getArea: an Input Switch inside a
-// composite drill-in must retype/prune/refresh on its OWN graph (the 9316c2d
-// resolver sweep missed this component — every gesture no-op'd against main).
+// getActiveEditor/getActiveArea, NOT getEditor/getArea: a drill-in Input Switch
+// must retype/prune/refresh on its OWN graph.
 import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
@@ -26,17 +25,16 @@ import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import "./CableSwitchNode.css";
+import { dropInputCables } from "./cablePrune";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-// The selected value is `any`, so render it by kind the way the Display node
-// does — never stringified to [object Object]. A figure/cube that would overflow
-// the narrow control card shows as a compact chip (opens the full view); the
-// flatter kinds (frame grid, table, scalar) render inline as before.
+// The selected value is `any`, so render BY KIND like Display — never stringified;
+// figures/cubes that would overflow the narrow card show as a chip.
 function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
-  // A display-value box so NodeCard measures it (--out-socket-top → the collapsed
-  // input pill + output socket center on it); right-aligned like every value chip.
+  // A display-value box so NodeCard measures it (--out-socket-top centers the
+  // output socket on it).
   if (isCubeValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
   if (isChartValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
@@ -48,9 +46,8 @@ function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
 
-// One input slot: a selector (route radio in single mode / include checkbox in
-// multi mode) + an editable title so it reads as a named choice. A separate
-// component so its title's useDraftCommit hook count stays stable as rows add/remove.
+// A separate component so the title's useDraftCommit hook count stays stable as
+// rows are added and removed.
 function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
   data: CableSwitchNodeType;
   emit: NodeProps<CableSwitchNodeType>["emit"];
@@ -71,8 +68,8 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
     (v) => {
       if (v.trim()) data.titles[keyName] = v;
       else delete data.titles[keyName];
-      // A title relabels the multi-select cube's `name` column → recompute in multi
-      // mode; single mode only needs a re-render.
+      // A title relabels the multi-select cube's `name` column, so multi mode must
+      // recompute; single mode only re-renders.
       if (data.multiSelect) void processGraph();
       else void getActiveArea()?.update("node", data.id);
     },
@@ -148,9 +145,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   function setMode(many: boolean) {
     data.multiSelect = many;
     setMulti(many);
-    // Output is a Cube in Many mode, `any` in One — retype the socket and drop any
-    // downstream cable the new type can't feed (retypeOutputCables), then refresh the
-    // node so the output dot's glyph updates.
+    // Output is a Cube in Many mode, `any` in One — retype in place, so the
+    // downstream cables the new type can't feed must be dropped here.
     const changed = data.syncOutputType();
     const ed = getActiveEditor();
     const area = getActiveArea();
@@ -172,12 +168,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await processGraph();
   }
   async function removeRow(key: string) {
-    const editor = getActiveEditor();
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && c.targetInput === key) await editor.removeConnection(c.id);
-      }
-    }
+    await dropInputCables(data.id, [key]);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);
@@ -188,10 +179,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
       const clamped = Math.max(0, n - 1);
       data.activeIndex = clamped;
       setSelected(clamped);
-      // The clamp is its own history entry, pushed AFTER the row entry so undo
-      // restores the index LAST (row back first; data() clamps the transient
-      // out-of-range render). The component re-syncs off data.activeIndex on
-      // the area update the entry triggers.
+      // Its own history entry, pushed AFTER the row entry so undo restores the
+      // index LAST (the row comes back first).
       pushHistory(
         () => { data.activeIndex = prevActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
         () => { data.activeIndex = clamped; void getActiveArea()?.update("node", data.id); void processGraph(); },
@@ -202,9 +191,6 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await processGraph();
   }
 
-  // Collapsed: the option rows fold into the shared stadium input pill (≥2 inputs)
-  // or a lone centred socket, matching every other extensible node; the selected
-  // value (or collected cube) still shows below.
   if (collapsed) {
     return (
       <NodeShell node={data} emit={emit}>
@@ -241,7 +227,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           canRemove={keys.length > 2}
         />
       ))}
-      <SegToggle
+      <SegToggle arg
         value={multi ? "many" : "one"}
         options={[
           { value: "one", label: "One", title: "Route one input to the output" },
@@ -254,7 +240,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
         <button type="button" className="solenoid-node__add-input" onClick={(e) => { e.stopPropagation(); void addRow(); }}>+ Add</button>
         {!multi && (
           <button type="button" className="sol-switch__cycle" title="Cycle to the next input" onClick={(e) => { e.stopPropagation(); cycle(); }} onPointerDown={stop} onMouseDown={stop}>
-            {/* Lucide "rotate-cw" (ISC) — an icon, not a font glyph. */}
+            {/* Lucide "rotate-cw" (ISC). */}
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
               <path d="M21 3v5h-5" />

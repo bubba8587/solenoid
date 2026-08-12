@@ -1,13 +1,37 @@
 import { describe, it, expect } from "vitest";
 import { ELECTRICITY_FORMULAS } from "./electricity";
-import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "./formulaTestKit";
 import { decodeResistor, ResistorCodeNode } from "../nodes/electrical";
+import { isSolError } from "../errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(ELECTRICITY_FORMULAS, type), inputs);
   expect(typeof r, `${type} → ${JSON.stringify(r)}`).toBe("number");
   return r as number;
 };
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("PARALLELCOMBINE takes scalars or a whole list", () => {
+    expect(evalPackFormula("PARALLELCOMBINE(100, 100)")).toBe(50);
+    expect(evalPackFormula("PARALLELCOMBINE(v)", { v: [10, 10, 10] })).toBeCloseTo(10 / 3, 12);
+  });
+  it("ESERIESVALUE snaps to the chosen series", () => {
+    expect(evalPackFormula('ESERIESVALUE(4700)')).toBe(4700);        // E24 default
+    expect(evalPackFormula('ESERIESVALUE(5000, "E12")')).toBe(4700); // log-nearest
+    const bad = evalPackFormula("ESERIESVALUE(-5)");
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
+  });
+  it("AWGWIRE reads a property; ampacity comes from the NEC table", () => {
+    expect(evalPackFormula("AWGWIRE(12)")).toBeCloseTo(2.05253, 4);       // Ø mm
+    expect(evalPackFormula('AWGWIRE(12, "ampacity")')).toBe(25);
+    const bad = evalPackFormula('AWGWIRE(12, "sparkles")');
+    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
+  });
+  it("RESISTORCOLORCODE decodes 4- and 5-band markings to ohms", () => {
+    expect(evalPackFormula('RESISTORCOLORCODE("brown", "black", "red", "gold")')).toBe(1000);
+    expect(evalPackFormula('RESISTORCOLORCODE("brown", "black", "black", "red", "brown")')).toBe(10000);
+  });
+});
 
 describe("Electricity & Circuits formulas", () => {
   it("every formula compiles and is well-formed", () => {

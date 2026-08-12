@@ -9,7 +9,7 @@
       "y": -220,
       "init": {
         "label": "Unit Flow: units live on the value; format is display",
-        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, metres + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) stays a display lock that rides passthroughs and drops at a transform. Lanes go simple → complex; watch the value boxes and the FC arrows.",
+        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) stays a display lock that rides passthroughs and drops at a transform. Lanes go simple → complex; watch the value boxes and the FC arrows.",
         "color": "gray",
         "width": 900,
         "height": 190
@@ -210,7 +210,7 @@
       "y": 800,
       "init": {
         "label": "D · Convert AUTHORS the new unit",
-        "body": "`mi → km` re-expresses the value in kilometres and **tags the value** with that unit. It rides straight through the Display, and the FC on the result **inherits** `km` (→ → arrows) — a marathon reads `42.20 km`.",
+        "body": "`mi → km` re-expresses the value in kilometers and **tags the value** with that unit. It rides straight through the Display, and the FC on the result **inherits** `km` (→ → arrows) — a marathon reads `42.20 km`.",
         "color": "purple",
         "width": 330,
         "height": 170
@@ -384,7 +384,7 @@
       "y": 1450,
       "init": {
         "label": "F · Units COMPUTE — and cancel to a RATIO",
-        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide metres by metres and the units **cancel to a pure RATIO** — it reads `5:1`, formats naturally as a **percent**, and an FC can't re-label it `$` (**#UNIT!**): a known-dimensionless number isn't money.",
+        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide meters by meters and the units **cancel to a pure RATIO** — it reads `5:1`, formats naturally as a **percent**, and an FC can't re-label it `$` (**#UNIT!**): a known-dimensionless number isn't money.",
         "color": "blue",
         "width": 330,
         "height": 170
@@ -539,7 +539,7 @@
       "y": 2000,
       "init": {
         "label": "G · A bare number ADOPTS the unit",
-        "body": "A plain number in an operation that needs a unit takes the other side's: `$5 + 2` is `$7`, and a `$` list **SUMs to $60**. Only two genuinely different dimensions (metres + seconds) refuse with `#UNIT!`.",
+        "body": "A plain number in an operation that needs a unit takes the other side's: `$5 + 2` is `$7`, and a `$` list **SUMs to $60**. Only two genuinely different dimensions (meters + seconds) refuse with `#UNIT!`.",
         "color": "green",
         "width": 330,
         "height": 170
@@ -853,7 +853,7 @@
       "y": 2960,
       "init": {
         "label": "J · The Equation node derives the unknown's UNIT",
-        "body": "Wire `v` in **m/s** and `t` in **s**, leave `d` unwired — the solve isolates `d = v·t` and runs the same dimensional algebra: the answer comes out in **metres**. Inconsistent knowns are a `#UNIT!`; the Check output refuses to compare different dimensions.",
+        "body": "Wire `v` in **m/s** and `t` in **s**, leave `d` unwired — the solve isolates `d = v·t` and runs the same dimensional algebra: the answer comes out in **meters**. Inconsistent knowns are a `#UNIT!`; the Check output refuses to compare different dimensions.",
         "color": "teal",
         "width": 330,
         "height": 190

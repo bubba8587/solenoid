@@ -24,7 +24,7 @@ interface ClipboardData {
 let _clipboard: ClipboardData | null = null;
 
 export function copySelected() {
-  // Active graph, not main: copy/paste works inside a Composite drill-in too.
+  // Active graph, not main — copy/paste works inside a Composite drill-in too.
   const editor = getActiveEditor();
   const area = getActiveArea();
   if (!editor || !area) return;
@@ -67,18 +67,13 @@ export function copySelected() {
   };
 }
 
-// The fixed field order for a node's construction-arg snapshot — shared with
-// textForm.ts's writer, which needs this SAME order (not alphabetical, not
-// object-insertion-order) so a node's text-form line is byte-identical across
-// writes regardless of edit history (docs/subsystem-invariants.md "Addressable
-// model"). Extending this list is safe for both consumers; reordering it changes
-// every existing save's/text-form's field order, which is fine pre-alpha but
-// worth doing deliberately.
+// textForm.ts's writer shares this order so a node's text-form line is byte-identical
+// across writes; appending is safe, reordering rewrites every existing save.
 export const INIT_FIELD_ORDER = [
-  "label", "op", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen",
-  "tableText", "frameText", "pointsText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat", "provider",
+  "label", "op", "form", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen",
+  "tableText", "frameText", "pointsText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "asofDirection", "mode", "inFormat", "outFormat", "provider",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
-  "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "forecast", "offDiag", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode",
+  "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "forecast", "offDiag", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode", "lambdaKeys", "sideVars",
   "hoverColor",
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
@@ -86,10 +81,9 @@ export const INIT_FIELD_ORDER = [
   "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
 ] as const;
 
-// Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed
-// order, when present — same reuse rationale as INIT_FIELD_ORDER.
+// Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions", "bindings",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -98,27 +92,19 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   for (const key of INIT_FIELD_ORDER) {
     if (key in n && n[key] !== undefined) init[key] = n[key];
   }
-  // PivotNode per-value aggregation map: deep-copy so a paste doesn't share the
-  // source node's object (it's mutated live when a value's function changes).
+  // Every map below is deep-copied because the source node mutates it live; a
+  // shallow share would let a paste edit its original.
   if (n.funcs && typeof n.funcs === "object") {
     init.funcs = { ...(n.funcs as object) };
   }
-  // PivotNode field-value filter (field → excluded value keys). Deep-copy the arrays
-  // so a paste/reload doesn't alias the source node's live filter.
   if (n.filterExclude && typeof n.filterExclude === "object") {
     init.filterExclude = Object.fromEntries(
       Object.entries(n.filterExclude as Record<string, string[]>).map(([k, v]) => [k, [...v]]),
     );
   }
-  // Per-condition {op, matchCase}, keyed by row id — shared by the Frame Filter &
-  // SUMIFS (a `column${id}` + `value${id}` PAIR per row) and the List Filter (a
-  // `value${id}` row ONLY, no column). Deep-copy (each row's config is mutated live
-  // as the op select / Aa toggle changes) and keep only LIVE rows' entries — a
-  // removed row leaves an orphan behind for undo's row-restore, which must not leak
-  // into a save (it would break the text form's byte-identical second write). Match
-  // on EITHER key so a List Filter row (value-only) persists too — checking just
-  // `column${k}` silently dropped every List Filter op back to the "gt" default on
-  // reload.
+  // Keep only LIVE rows: a removed row leaves an orphan behind for undo's row-restore,
+  // which would break the text form's byte-identical second write. Match on EITHER key
+  // so a List Filter row (value-only, no column) persists too.
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     init.condConfig = Object.fromEntries(
@@ -127,81 +113,71 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
         .map(([k, v]) => [k, { ...v }]),
     );
   }
-  // Note frontmatter type-overrides: a per-key map the constructor clones. Deep-copy
-  // so a paste doesn't share the source note's object (it's mutated live on retype).
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
     init.fieldTypes = { ...(n.fieldTypes as object) };
   }
-  // Decision Matrix per-criterion weights + per-column normalize overrides (both
-  // criterion-name → value maps). Deep-copy so a paste/reload doesn't alias the
-  // source node's live maps (mutated as you edit).
   if (n.weightMap && typeof n.weightMap === "object") {
     init.weightMap = { ...(n.weightMap as object) };
   }
   if (n.normMap && typeof n.normMap === "object") {
     init.normMap = { ...(n.normMap as object) };
   }
-  // Input Switch per-slot titles (input key → name). Deep-copy so a paste doesn't
-  // alias the source node's live map (mutated as titles are edited). Keep only LIVE
-  // input keys so an orphan title (undo row-restore) can't leak into a save and
-  // break the text form's byte-identical second write.
+  // Keep only LIVE input keys, else an orphan title breaks the text form's
+  // byte-identical second write.
   if (n.titles && typeof n.titles === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     const entries = Object.entries(n.titles as Record<string, string>).filter(([k]) => k in liveInputs);
     if (entries.length) init.titles = Object.fromEntries(entries);
     else delete init.titles;
   }
-  // Input Switch multi-select membership (live input keys only, same rationale).
+  // Live input keys only, same rationale.
   if (Array.isArray(n.selectedKeys)) {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     const kept = (n.selectedKeys as string[]).filter((k) => k in liveInputs);
     if (kept.length) init.selectedKeys = kept;
     else delete init.selectedKeys;
   }
-  // Expression / Equation per-variable descriptions (var name → prose). Deep-copy
-  // and keep only LIVE variables (`varNames`) so a stale entry can't leak into a
-  // save and break the text form's byte-identical second write.
+  // Live variables only, same rationale.
   if (n.varDescriptions && typeof n.varDescriptions === "object") {
     const live = new Set((n.varNames as string[] | undefined) ?? []);
     const entries = Object.entries(n.varDescriptions as Record<string, string>)
       .filter(([k, v]) => live.has(k) && v.trim() !== "");
     if (entries.length) init.varDescriptions = Object.fromEntries(entries);
   }
-  // Composite node: its declared ports (deep-copied — mutated live as ports are
-  // added) plus its ENTIRE internal subgraph, captured via the node's own
-  // snapshotInternal() (see nodes/composite.ts) so persistence.ts and paste
-  // both round-trip a composite's contents without knowing anything about them.
+  // Live variables only, and SORTED — a reordered entry breaks the text form's
+  // byte-identical second write.
+  if (n.bindings && typeof n.bindings === "object") {
+    const live = new Set((n.defVars as string[] | undefined) ?? []);
+    const entries = Object.entries(n.bindings as Record<string, string>)
+      .filter(([k, v]) => live.has(k) && v !== "")
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    if (entries.length) init.bindings = Object.fromEntries(entries);
+  }
+  // A composite's subgraph rides along via its own snapshotInternal(), so paste and
+  // persistence round-trip its contents without knowing anything about them.
   if (Array.isArray(n.inputPorts)) {
     init.inputPorts = (n.inputPorts as object[]).map((p) => ({ ...p }));
   }
   if (Array.isArray(n.outputPorts)) {
     init.outputPorts = (n.outputPorts as object[]).map((p) => ({ ...p }));
   }
-  // Scenarios run mode: named input-override sets. Deep-copy (each row's
-  // `overrides` map is mutated live as the scenario table is edited).
   if (Array.isArray(n.scenarios)) {
     init.scenarios = (n.scenarios as Array<{ id: string; name: string; overrides: Record<string, unknown> }>)
       .map((s) => ({ id: s.id, name: s.name, overrides: { ...s.overrides } }));
   }
-  // Data Table run mode: per-port sweep value lists. Deep-copy the arrays.
   if (n.dataTableValues && typeof n.dataTableValues === "object") {
     init.dataTableValues = Object.fromEntries(
       Object.entries(n.dataTableValues as Record<string, unknown[]>).map(([k, v]) => [k, [...v]]),
     );
   }
-  // Composite goal-seek config (input/output port ids + target + optional solver
-  // params). Deep-copy; null means unconfigured, so drop it rather than a null.
+  // null means unconfigured, so drop the key rather than persist a null.
   if (n.goalSeek && typeof n.goalSeek === "object") {
     init.goalSeek = { ...(n.goalSeek as object) };
   }
-  // Composite Monte Carlo config (sample count + seed). Same shape as goalSeek —
-  // deep-copy when present, drop the null.
   if (n.monteCarlo && typeof n.monteCarlo === "object") {
     init.monteCarlo = { ...(n.monteCarlo as object) };
   }
-  // Composite INPUT MARKER Monte-Carlo spec (drill-in only). Only when SET — a
-  // point-value marker persists nothing extra, and a default "normal" distribution
-  // is implied, so a bare `± spread` marker stays minimal in the save.
+  // Only when SET: a point-value marker persists nothing, and "normal" is implied.
   if (typeof n.uncertainty === "number" && n.uncertainty > 0) {
     init.uncertainty = n.uncertainty;
     if (n.distribution === "uniform") init.distribution = "uniform";
@@ -213,11 +189,8 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   if (n.literals && typeof n.literals === "object") {
     Object.assign(init, n.literals as object);
   }
-  // Extensible nodes carry an arbitrary set of value-input keys — flat (List,
-  // Concat, CHOOSE: addValueInput) or paired (IFS, SWITCH: addValuePair).
-  // Capture every input key so the constructor rebuilds the exact rows on
-  // clone/load; the constructor filters to the keys it owns (the renderer's pair
-  // helpers / value-key filter ignore fixed inputs like `index`/`expr`/`default`).
+  // Capture EVERY input key so the constructor rebuilds the exact rows on clone/load;
+  // it filters down to the keys it owns.
   if ((typeof n.addValueInput === "function" || typeof n.addValuePair === "function") && n.inputs) {
     init.valueKeys = Object.keys(n.inputs as object);
   }
@@ -228,10 +201,8 @@ function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
   try {
     const Ctor = src.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
     const clone = new Ctor(extractInit(src));
-    // Restore mutable per-instance value maps after construction — the
-    // constructor sets its own defaults, which would otherwise overwrite the
-    // copied values. `literals` holds inline numeric inputs; `stringLiterals`
-    // holds inline text inputs (Text Input, Regex pattern/flags, Text Filter…).
+    // Restore the mutable value maps AFTER construction — the constructor's own
+    // defaults would otherwise overwrite the copied values.
     const srcAny = src as unknown as Record<string, unknown>;
     const cloneAny = clone as unknown as Record<string, unknown>;
     if (srcAny.literals && typeof srcAny.literals === "object") {
@@ -253,9 +224,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   const editor = getActiveEditor();
   const area = getActiveArea();
   if (!editor || !area) return;
-  // Inside a Composite drill-in the selection + settle singletons (main-bound) don't
-  // apply — rete auto-creates the pasted nodes' views on addNode, and one retargeted
-  // recompute below refreshes the subgraph. (No groups/pins/autosave-doc concerns.)
+  // Inside a drill-in the selection + settle singletons are main-bound and don't apply.
   const subgraph = isSubgraphActive();
 
   const originX = canvasX + PASTE_OFFSET;
@@ -263,8 +232,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
 
   const clones = _clipboard.entries.map((e) => cloneNode(e.node));
 
-  // Remap Group member ids to the pasted copies. Members that weren't part of
-  // the copy are dropped (a copied group box doesn't steal the originals).
+  // Members not part of the copy are dropped, so a copied group can't steal originals.
   const oldToNew = new Map<string, string>();
   for (let i = 0; i < clones.length; i++) {
     if (clones[i]) oldToNew.set(_clipboard.entries[i].node.id, clones[i]!.id);
@@ -272,19 +240,14 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   for (const clone of clones) {
     if (!clone) continue;
     const ref = clone as unknown as { members?: string[]; hostNodeId?: string };
-    // Group: keep only members that were part of the copy, remapped to the clones.
     if (Array.isArray(ref.members)) {
       ref.members = ref.members.map((m) => oldToNew.get(m)).filter((m): m is string => !!m);
     }
-    // Docked FC: re-point at the pasted copy of its host. If the host wasn't part
-    // of the copy, undock (clear) instead of binding to the original's host —
-    // otherwise a duplicated group's FC docks onto the *original* group's node.
+    // A docked FC whose host wasn't copied must UNDOCK, not bind to the original.
     if (typeof ref.hostNodeId === "string" && ref.hostNodeId) {
       ref.hostNodeId = oldToNew.get(ref.hostNodeId) ?? "";
     }
-    // Presentation steps: remap each step's node-id set to the pasted copies,
-    // dropping references to nodes that weren't part of the copy (same rule as
-    // group members) — a duplicated deck flies to its OWN nodes, not the originals'.
+    // Same rule for presentation steps: a duplicated deck flies to its OWN nodes.
     const stepsRef = clone as unknown as { steps?: Array<{ nodeIds?: string[] }> };
     if (Array.isArray(stepsRef.steps)) {
       for (const step of stepsRef.steps) {
@@ -295,23 +258,15 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     }
   }
 
-  // Synchronous setup (carry per-node collapse, claim fresh sequence ids), then add +
-  // position the clones CONCURRENTLY under the rebuild gate. The node loop used to be
-  // sequential AND ungated, so each addNode fired `nodecreated` → the live "absorb into
-  // the group it's dropped inside" sweep (an O(nodes) membership rebuild) ran ~N times =
-  // O(N²), and the ~N React-root mounts ran one-at-a-time. That's the post-crash-fix
-  // "paste still hangs". Gating skips absorb (pasted nodes keep their COPIED group
-  // membership — they don't join whatever group they happen to land on, which is the
-  // correct paste behavior), and Promise.all de-serializes the mounts (mirrors load/B1).
+  // The rebuild gate skips the per-`nodecreated` absorb sweep (O(N²) ungated), so
+  // pasted nodes keep their COPIED membership instead of joining where they land.
   const toAdd: Array<{ clone: SolenoidNode; x: number; y: number }> = [];
   for (let i = 0; i < clones.length; i++) {
     const clone = clones[i];
     if (!clone) continue;
-    // Per-node body collapse lives in collapseStore (not on the instance), so carry it
-    // across explicitly — a copied collapsed node pastes collapsed.
+    // Body collapse lives in collapseStore, not on the instance, so carry it across.
     if (collapseStore.get(_clipboard.entries[i].node.id)) collapseStore.set(clone.id, true);
-    // Sequenced identities (Conduit) must not duplicate: the clone re-claims a fresh
-    // number instead of keeping the copied one.
+    // Sequenced identities must not duplicate — the clone re-claims a fresh number.
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);
     toAdd.push({ clone: clone as SolenoidNode, x: originX + _clipboard.entries[i].x, y: originY + _clipboard.entries[i].y });
@@ -322,26 +277,21 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   try {
     await Promise.all(toAdd.map(async ({ clone, x, y }) => {
       await editor.addNode(clone);
-      // A pasted copy always gets a FRESH default name — it never inherits the
-      // source's (uniqueness would collide immediately since the source is
-      // still on the canvas).
+      // A FRESH name, never the source's — the source is still on the canvas, so
+      // inheriting it would collide immediately.
       nodeNameStore.ensure(clone.id, clone.constructor.name);
       await area.translate(clone.id, { x, y });
     }));
-    // A pasted Composite's internal subgraph was captured as a plain snapshot
-    // (extractInit's `internal`, see nodes/composite.ts) — hydrate it into
-    // live node instances now that the clone exists.
+    // The captured subgraph snapshot hydrates into live instances only once the
+    // clone exists.
     const reg = getCtorRegistry();
     for (const { clone } of toAdd) {
       const hydrate = (clone as unknown as { hydrate?: (r: typeof reg) => Promise<void> }).hydrate;
       if (typeof hydrate === "function") await hydrate(reg);
     }
-    // Select the pasted nodes (deterministic order, after the concurrent adds).
-    // (Main-graph selection only; a drill-in paste leaves them unselected for now.)
     if (!subgraph) toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
-    // Each addConnection fires `connectioncreated`, whose settle (FC reconcile +
-    // mismatch rescan + a FULL processGraph + collapse re-sync) is O(cables × nodes);
-    // the gate skips it per-cable and bulkSettle() runs the equivalent ONCE below.
+    // `connectioncreated`'s settle is O(cables × nodes); the gate skips it per-cable
+    // and bulkSettle() runs the equivalent ONCE below.
     for (const conn of _clipboard.connections) {
       const src = clones[conn.srcIdx];
       const tgt = clones[conn.tgtIdx];
@@ -364,14 +314,11 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   }
 
   if (subgraph) {
-    // rete already created the pasted nodes' views on addNode; recompute through the
-    // owning composite (a full pass — findCompositeOwner retargets to its card).
+    // rete already created the views on addNode; recompute through the owning composite.
     await processGraph();
     return;
   }
-  // Render only the pasted nodes: they're a self-contained copy that doesn't touch
-  // existing nodes, so the originals need no recompute/re-render (bulkSettle skips the
-  // engine reset for the additive set).
+  // A paste is self-contained, so only the pasted nodes need rendering.
   await bulkSettle(new Set(toAdd.map((b) => b.clone.id)));
   markGraphCustom(); // a paste makes the doc no longer a pristine seed
 }

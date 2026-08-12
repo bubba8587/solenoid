@@ -28,9 +28,8 @@ const StepFwdIcon = (
   </svg>
 );
 
-// Playback rate: 100% Speed = MAX_HZ steps/second. Every tick runs a full
-// processGraph (recompute + re-render), so the ceiling is deliberately modest —
-// faster would visibly drag on a large graph.
+// 100% Speed = MAX_HZ steps/second; every tick runs a full processGraph, so the
+// ceiling stays modest — faster visibly drags on a large graph.
 const MAX_HZ = 10;
 const clampSpeed = (s: number) => Math.min(100, Math.max(1, s));
 
@@ -64,8 +63,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
   const [speed, setSpeed] = useState(() => data.literals.speed ?? 100);
   const busy = useRef(false); // skip ticks while the previous recompute runs
 
-  // A slider/nudge only changes this node's value (no topology) → targeted
-  // recompute of just its downstream cone (the slider is the most drag-heavy edit).
+  // Value-only change (no topology), so recompute just the downstream cone.
   function onSlider(e: ChangeEvent<HTMLInputElement>) {
     data.value = parseFloat(e.target.value);
     processGraph(data.id);
@@ -94,7 +92,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
         const lo = data.effectiveMin, hi = data.effectiveMax;
         const s = data.effectiveStep || 1;
         const next = fix(data.value + s);
-        data.value = next > hi ? lo : next; // loop back around at the top
+        data.value = next > hi ? lo : next;
         await processGraph(data.id);
       } finally {
         busy.current = false;

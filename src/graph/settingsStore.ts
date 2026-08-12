@@ -1,39 +1,26 @@
-// App-wide user settings: a small, persisted, flat key→value bag, readable from
-// any React root (module singleton, like appThemeStore) so canvas-layer code can
-// gate behavior on it. Extend `Settings` + `DEFAULTS` to add a new toggle; the
-// Settings page renders whatever's declared in SETTINGS_SCHEMA below.
+// Persisted app-wide settings, a module singleton so any React root can read them.
+// A new toggle = `Settings` + `DEFAULTS` + a SETTINGS_SCHEMA entry.
 
 import { createNotifier, createToggleStore } from "./storeKit";
 
 const LS_KEY = "solenoid.settings";
 
 export interface Settings {
-  /** Push neighbouring groups out of the way when a group expands, and slide
-   *  them back on collapse (unless they were moved meanwhile). */
+  /** Push neighboring groups aside on expand, sliding back unless they were moved. */
   groupPush: boolean;
-  /** How Tidy lines connected nodes up vertically: "center" keeps their centres
-   *  level (cables may slant a touch); "top" keeps their top edges level. */
+  /** Tidy's vertical alignment: "center" levels centers, "top" levels top edges. */
   tidyAlign: "center" | "top";
-  /** Absolute path to the folder local CSV connections read from. Empty until
-   *  the user picks one. Desktop only (the browser build can't read files). */
+  /** Absolute path local CSV connections read from; desktop only. */
   csvFolder: string;
-  /** Absolute path to the user's chosen documents/library folder — where they
-   *  keep saved .json graphs. Purely a bookmark for the "open in file manager"
-   *  action (File menu + Settings row); Solenoid doesn't index or scan it. */
+  /** Bookmark for the "open in file manager" action; never indexed or scanned. */
   docsFolder: string;
-  /** Absolute path to the user's Obsidian vault root — the Write to Obsidian /
-   *  Import from Obsidian nodes read + write `.md` files under it. Empty until
-   *  chosen. Desktop only. */
+  /** Obsidian vault root the Obsidian nodes read/write `.md` under; desktop only. */
   obsidianVault: string;
-  /** Vault-relative subfolder that image assets (charts, embedded images) are
-   *  written into when writing a note (e.g. "assets" or "attachments"). Empty =
-   *  write the asset beside the note itself. */
+  /** Vault-relative subfolder for written image assets; empty = beside the note. */
   obsidianAssetSubfolder: string;
 
-  /** Minimap corner behavior: "bottom" (default, above the socket legend),
-   *  "top" (below the Zoom pill), or "hide" (it repaints on every pan). The
-   *  socket legend slides down to fill the freed bottom-right corner whenever
-   *  this isn't "bottom". */
+  /** Minimap corner: "bottom" (default), "top", or "hide"; the socket legend slides
+   *  down into the freed corner whenever this isn't "bottom". */
   minimapPosition: "bottom" | "top" | "hide";
   /** Hide the canvas background dot grid. */
   hideGridDots: boolean;
@@ -41,11 +28,9 @@ export interface Settings {
   /** Drop a cable on empty canvas → the Add menu opens filtered to compatible
    *  node types, pre-wired to whichever one gets picked. */
   quickWire: boolean;
-  /** Swap node cards for simplified placeholders once zoomed out past the point
-   *  where the DOM/canvas renderer would be dropping mip levels anyway. */
+  /** Swap node cards for simplified placeholders once zoomed far out. */
   semanticZoom: boolean;
-  /** Keep the command palette docked and always visible (a persistent command bar)
-   *  instead of opening on Enter and closing on Escape. */
+  /** Keep the command palette docked instead of opening on Enter; desktop only. */
   commandPaletteAlwaysOn: boolean;
 }
 
@@ -63,7 +48,6 @@ const DEFAULTS: Settings = {
   commandPaletteAlwaysOn: false,
 };
 
-// Declarative schema the Settings page renders from. Grouped into sections.
 export interface SettingField {
   key: keyof Settings;
   label: string;
@@ -77,6 +61,9 @@ export interface SettingField {
   placeholder?: string;
   /** Choices for a "segment" field. */
   options?: { value: string; label: string }[];
+  /** No mobile counterpart exists: consumers must BOTH gray the control and skip
+   *  the behavior, never silently do nothing. */
+  disabledOnMobile?: boolean;
 }
 export interface SettingsSection {
   title: string;
@@ -152,6 +139,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "minimapPosition",
         label: "Minimap position",
         type: "segment",
+        // The minimap isn't rendered on mobile at all, so every position is a no-op.
+        disabledOnMobile: true,
         options: [
           { value: "bottom", label: "Bottom" },
           { value: "top", label: "Top" },
@@ -166,6 +155,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "commandPaletteAlwaysOn",
         label: "Always show command palette",
         help: "Keep it docked at the bottom instead of opening on Enter",
+        // The palette is top-anchored on mobile — no bottom strip to dock to.
+        disabledOnMobile: true,
       },
     ],
   },
@@ -194,8 +185,7 @@ export const settingsStore = {
   subscribe,
 };
 
-// CSS-driven toggles → a class on <html>, so canvas/overlay CSS can respond from
-// any React root. Kept in lockstep with the values.
+// CSS-driven toggles → a class on <html>, so any React root's CSS can respond.
 const PERF_CLASS_MAP: Array<[keyof Settings, string]> = [
   ["hideGridDots", "perf-no-grid-dots"],
 ];
@@ -206,7 +196,6 @@ function syncPerfClasses(): void {
   html.classList.toggle("minimap-top", _settings.minimapPosition === "top");
   html.classList.toggle("minimap-hidden", _settings.minimapPosition === "hide");
 }
-// Re-apply on every settings change (cheap: classList.toggle is idempotent).
 subscribe(syncPerfClasses);
 
 /** Read persisted settings (if any). Call once at startup. */
@@ -218,5 +207,4 @@ export function initSettings(): void {
   syncPerfClasses();
 }
 
-// ─── Settings page open/close (separate from the values) ────────────────────────
 export const settingsPanel = createToggleStore();

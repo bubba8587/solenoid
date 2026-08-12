@@ -17,7 +17,7 @@ nodes) + declared boundary ports. None needs new engine features unless noted.
 
 - **% of Total** — Aggregate(sum) → broadcast ÷. The proposal's canonical
   example of "one Expression can't aggregate AND broadcast".
-- **Pareto / Cumulative %** — Sort desc → Cumulative → ÷ grand total.
+- **Pareto / Cumulative %** — Sort desc → Running → ÷ grand total.
 - **Join-If** — Filter → TextJoin.
 - **Lookup All Matches** — Filter-based multi-return lookup.
 

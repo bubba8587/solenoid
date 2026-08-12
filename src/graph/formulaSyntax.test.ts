@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall } from "./formulaSyntax";
-import { FORMULA_FUNCTION_NAMES } from "./excelFormula";
+import { formulaFunctionNames } from "./excelFormula";
 
 // Strip the tags to recover the original text — the highlighter must be lossless.
 const stripTags = (html: string) =>
@@ -46,7 +46,7 @@ describe("suggestFor", () => {
   it("ranks an exact prefix of a real function near the top", () => {
     const names = suggestFor("SUM").map((s) => s.name);
     expect(names).toContain("SUM");
-    expect(FORMULA_FUNCTION_NAMES).toContain("SUM");
+    expect(formulaFunctionNames()).toContain("SUM");
   });
   it("includes the node's own variables + constants, kind-tagged", () => {
     const s = suggestFor("pr", ["price", "profit"]);

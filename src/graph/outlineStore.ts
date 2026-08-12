@@ -1,8 +1,5 @@
-/**
- * Bridge so the app bar's search affordance can open the Outline navigator and
- * focus its search field. OutlinePanel registers a handler on mount; callers
- * invoke `open()`.
- */
+/** Bridge for opening the Outline navigator focused on its search field;
+ *  OutlinePanel registers the handler on mount. */
 let handler: (() => void) | null = null;
 
 export const outlineSearch = {

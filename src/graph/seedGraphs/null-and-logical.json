@@ -626,7 +626,7 @@
    "y": -200,
    "init": {
     "label": "Error codes",
-    "body": "Each row triggers one error code on purpose, wires it through a **Display** (red badge, passes it on) into an **ISERROR** check that explains the code and the fix. Nothing here is broken; hover any badge for the short version.",
+    "body": "Each row triggers one error code on purpose, wires it through a **Display** (red badge, passes it on) into an **ISERROR** check that explains the code and the fix. Nothing here is broken; each badge carries the short version.",
     "color": "blue",
     "width": 900,
     "height": 210
@@ -804,7 +804,7 @@
    "x": 1507,
    "y": 1190,
    "init": {
-    "label": "5 metres",
+    "label": "5 meters",
     "value": 5
    }
   },

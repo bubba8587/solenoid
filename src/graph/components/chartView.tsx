@@ -1,8 +1,5 @@
-// Lazy indirection layer for the recharts renderers. recharts is heavy, so it's
-// isolated in chartRender.tsx and pulled in only when a chart first renders (one
-// shared chunk for Chart/Sparkline/Gauge/Tornado). This module stays recharts-free
-// so the many `import { ChartView, toSeries } from "./chartView"` sites don't drag
-// recharts into the main bundle. recharts-free helpers re-exported from chartCore.
+// This module must stay recharts-FREE, or its many import sites drag recharts into
+// the main bundle.
 import { lazy, Suspense, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries } from "./chartCore";
@@ -28,9 +25,8 @@ const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ defaul
 const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
 const BubbleViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.BubbleView })));
 
-// A blank box the size of the chart so the card doesn't reflow (and sockets don't
-// re-measure) in the instant before recharts arrives. No text/spinner — it flashes
-// too fast to read as anything but a blip; the value box around it is the affordance.
+// A blank box the chart's size so the card doesn't reflow (and sockets don't
+// re-measure) before recharts arrives; no spinner — it flashes too fast to read.
 function box(width: number | string, height: number): ReactNode {
   return <div style={{ width, height }} />;
 }
@@ -42,7 +38,7 @@ type ChartViewProps = {
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Colour bars/columns by value sign (win/loss). */
+  /** Color bars/columns by value sign (win/loss). */
   signColors?: { pos: string; neg: string };
   /** X-axis category labels (Frame col 0) — shown instead of the 1,2,3… index. */
   labels?: (string | number)[];
@@ -90,22 +86,16 @@ export function BubbleView(props: { matrix: (number | null)[][]; width: number; 
   );
 }
 
-/** Render ANY ChartValue by its op: series ops → the recharts ChartView, the
- *  eager payload cards (kpi/bullet), or the structured recharts figures
- *  (treemap/sankey). The ONE place that maps a chart value to a figure — shared by
- *  the Display and Composite-boundary node surfaces (a report embed keeps its own
- *  width-measured wrapper). Empty → the muted em-dash box. */
+/** The ONE place that maps a chart value to a figure (a report embed keeps its own
+ *  width-measured wrapper); empty → the muted em-dash box. */
 export function ChartFigure({ value, width, height, axes = true, fontScale }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
-  /** Display-layer text multiplier (an FC on the chart socket); composes with
-   *  the value's own options.fontsize (matplotlib points, 10 = built-in). */
+  /** Composes with the value's own options.fontsize (10 = the built-in sizes). */
   fontScale?: number;
 }) {
-  // The payload/matrix figures don't read options, so fold both factors here;
-  // ChartView folds options.fontsize itself (it takes `opts` directly).
+  // The payload/matrix figures don't read options, so fold both factors here.
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
-  // Hook BEFORE any early return (a conditional hook here black-screens the app —
-  // the TablePopup lesson). Waffle is the only consumer; the others theme inside.
+  // Hook BEFORE any early return — a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
   if (value.op === "bullet" && value.payload?.kind === "bullet") return <BulletBar payload={value.payload} width={width} fscale={fscale} />;
@@ -115,7 +105,6 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
     return <SurfaceView payload={value.payload} width={width} height={height} />;
-  // The canvas-figure wave (2026-07-16): each draws itself into one <canvas>.
   if (value.op === "contour" && value.payload?.kind === "contour")
     return <ContourView payload={value.payload} width={width} height={height} />;
   if (value.op === "waterfall" && value.payload?.kind === "waterfall")
@@ -132,8 +121,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <QuiverView payload={value.payload} width={width} height={height} />;
   if (value.op === "sevenseg" && value.payload?.kind === "sevenseg")
     return <SevenSegView text={value.payload.text} width={width} height={height} />;
-  // The 2-D ops read the matrix; with no matrix wired they fall back to the
-  // single `values` series (composed → columns, bubble → a scatter).
+  // With no matrix wired the 2-D ops fall back to the single `values` series.
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;
   if (value.op === "composed") {
     if (hasMatrix) return <ComposedView matrix={value.matrix!} width={width} height={height} fscale={fscale} />;
@@ -146,8 +134,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 }
 
-/** The single-series ChartView path with the em-dash empty state — shared by the
- *  series ops and the matrix ops' no-matrix fallback. */
+/** The single-series path, shared with the matrix ops' no-matrix fallback. */
 function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean, fontScale?: number) {
   const series = toSeries(value.values);
   if (series.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
@@ -163,8 +150,7 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
 }
 
 export function TornadoBars(props: { data: TornadoBar[]; grid: string; axis: string }) {
-  // 218 = TORNADO_W (kept a literal so the lazy chartRender chunk isn't pulled
-  // eagerly just to read the constant).
+  // 218 = TORNADO_W, a literal so reading it doesn't pull the lazy chunk eagerly.
   return (
     <Suspense fallback={box(218, Math.max(70, props.data.length * 22 + 16))}>
       <TornadoBarsInner {...props} />

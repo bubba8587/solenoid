@@ -1,12 +1,6 @@
-/**
- * Inherit the host node's (or group's) accent + group color off the live DOM so
- * a popup opened from a chip matches the node it came from — header tint, and
- * (when grouped) the border + corner triangle, like the Formula popup. These
- * vars are set on the card / group root and cascade to the chip. `fallbackVar`
- * is the value TYPE's socket colour (`--sock-list`, `--sock-frame`, …) so a
- * chip opened with no node context (e.g. inline in a Report) still gets the
- * standard coloured header instead of a bare one.
- */
+/** Reads the host card's accent/group vars off the live DOM so a chip's popup matches
+ *  the node it came from; `fallbackVar` is the value TYPE's socket color, used when
+ *  there is no node context. */
 export function readChipPopupStyle(
   el: HTMLElement,
   fallbackVar?: string,

@@ -181,3 +181,51 @@ describe("Depreciation", () => {
     expect(p2.result).toBeCloseTo(2400, 9);
   });
 });
+
+describe("Depreciation — VDB absorbed as an op", () => {
+  it("VDB matches the standalone kernel's period-range result", () => {
+    const r = new DepreciationNode({ op: "vdb" }).data({ cost: [10000], salvage: [1000], life: [10], start: [0], end: [1], factor: [2] });
+    expect(r.result).toBeCloseTo(2000, 6); // first-period DDB at factor 2
+  });
+
+  it("the op switch swaps the method's own tail rows, keeping cost/salvage/life", () => {
+    const n = new DepreciationNode({ op: "ddb" });
+    expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life", "per", "factor"]);
+    expect(n.keysDroppedBySwitch("vdb")).toEqual(["per"]);
+    expect(n.keysDroppedBySwitch("sln").sort()).toEqual(["factor", "per"]);
+    n.setOp("vdb");
+    expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life", "start", "end", "factor"]);
+    n.setOp("sln");
+    expect(Object.keys(n.inputs)).toEqual(["cost", "salvage", "life"]);
+  });
+});
+
+describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
+  it("dated NPV discounts by explicit dates", () => {
+    const r = new NpvNode({ mode: "dates" }).data({
+      rate: [0.1],
+      list: [[-1000, 600, 600]],
+      dates: [[45000, 45365, 45730]],
+    }).result as number;
+    expect(r).toBeCloseTo(-1000 + 600 / 1.1 + 600 / 1.1 ** 2, 0);
+  });
+
+  it("dated IRR recovers the rate NPV used", () => {
+    const r = new IrrNode({ mode: "dates" }).data({
+      list: [[-1000, 1100]],
+      dates: [[45000, 45365]],
+    }).result as number;
+    expect(r).toBeCloseTo(0.1, 3);
+  });
+
+  it("the toggle adds/removes only the Dates socket", () => {
+    const n = new NpvNode();
+    expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
+    n.setMode("dates");
+    expect(Object.keys(n.inputs)).toEqual(["rate", "list", "dates"]);
+    n.setMode("periods");
+    expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
+    const i = new IrrNode({ mode: "dates" });
+    expect(Object.keys(i.inputs)).toEqual(["list", "dates"]);
+  });
+});

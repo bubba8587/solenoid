@@ -35,14 +35,14 @@
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block        { fill: #515761; }
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block-border { fill: #9aa1ad; }
 
-/* Selected keeps the connector greys (the size change communicates selection);
+/* Selected keeps the connector grays (the size change communicates selection);
    the border picks up the accent and the shell gets a soft accent glow. */
 .solenoid-conduit--selected .solenoid-conduit__block-border { fill: var(--accent); }
 .solenoid-conduit--selected .solenoid-conduit__svg {
   filter: drop-shadow(0 0 6px var(--accent-mid));
 }
 
-/* Lane wrapper — positioned at the socket-square centre. */
+/* Lane wrapper — positioned at the socket-square center. */
 .solenoid-conduit__lane {
   position: absolute;
 }
@@ -68,11 +68,11 @@
 }
 
 /* ── Light mode ──────────────────────────────────────────────────────────────
-   The housing fills above are dark-theme greys; on the pale light-mode canvas a
-   dark shell reads as a blob. Use a lighter IDC-grey shell with a DARKER rim (in
+   The housing fills above are dark-theme grays; on the pale light-mode canvas a
+   dark shell reads as a blob. Use a lighter IDC-gray shell with a DARKER rim (in
    dark mode the rim is a lighter highlight; here it's an outline for definition
    against the bright canvas), and soften the recessed socket squares to a mid
-   grey so they still read as pin holes without going harsh-black. The pin-1
+   gray so they still read as pin holes without going harsh-black. The pin-1
    stripe stays red, and the toolbar already themes through CSS vars. */
 :root[data-theme="light"] .solenoid-conduit__block        { fill: #c5cad3; }
 :root[data-theme="light"] .solenoid-conduit__block-border { fill: #969db0; }
@@ -116,7 +116,7 @@
 .solenoid-conduit-toolbar--docked {
   position: fixed;
   left: 14px;
-  bottom: 34px;
+  bottom: calc(var(--chrome-bottom, 19px) + 15px);
   transform: none;
   z-index: 60;
   transition: left 120ms ease;
@@ -171,7 +171,7 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--conduit-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--conduit-accent) var(--mix-ink), var(--text));
 }
 .solenoid-conduit-toolbar__seq {
   width: 44px;
@@ -180,7 +180,7 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--conduit-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--conduit-accent) var(--mix-ink), var(--text));
   background: transparent;
   border: none;
   outline: none;

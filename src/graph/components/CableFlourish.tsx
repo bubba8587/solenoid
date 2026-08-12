@@ -4,17 +4,8 @@ import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import { cableFlourishBridge } from "../cableFlourishStore";
 
-/**
- * Decorative flourish: a palette-colored open circle travels along an invisible
- * track that wanders semi-randomly on then off screen, leaving a short fading
- * highlight behind it. The track is routed leg-by-leg through getCablePath — the
- * same walk router / spline as real cables — so it reads as a cable in the
- * current shape, and RE-ROUTES live when the cable shape is switched. Purely
- * cosmetic: a viewport-space overlay, pointer-events:none, unrelated to graph.
- *
- * Triggered by the NavMenu button (via cableFlourishBridge) or by calling
- * window.__cableFlourish() from the console.
- */
+// Purely cosmetic viewport-space overlay (pointer-events:none), unrelated to the
+// graph; triggered by the NavMenu button or `window.__cableFlourish()`.
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
@@ -39,22 +30,15 @@ const angleDeg = (from: Pt, to: Pt) => (Math.atan2(to.y - from.y, to.x - from.x)
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
-// The cardinal side a unit-ish direction most points along — the router's
-// fallback when no angle hint is set. We always pass an angle hint, so this is
-// just correctness hygiene (an honest Position to match the tangent).
+// The cardinal side a direction most points along — the router's no-angle-hint fallback.
 function posFromDir(dx: number, dy: number): Position {
   return Math.abs(dx) >= Math.abs(dy)
     ? (dx >= 0 ? Position.Right : Position.Left)
     : (dy >= 0 ? Position.Bottom : Position.Top);
 }
 
-// Build one continuous track through the waypoints. Each leg is routed by
-// getCablePath in the given shape, with Catmull-Rom tangents (the direction
-// through each waypoint from its neighbours) as exact exit/entry angles, so
-// adjacent legs leave and enter a shared waypoint collinearly — the joins stay
-// smooth in every mode (the walk router emits matching stubs; the spline matches
-// tangents). The leading moveto of every leg after the first becomes a lineto so
-// the legs fuse into a single stroke.
+// Catmull-Rom tangents become exact exit/entry angles so adjacent legs meet a shared
+// waypoint collinearly; each later leg's leading moveto becomes a lineto to fuse them.
 function buildPathD(shape: ReturnType<typeof cableShapeStore.get>, wp: Pt[]): string {
   let d = "";
   for (let i = 0; i < wp.length - 1; i++) {
@@ -62,8 +46,8 @@ function buildPathD(shape: ReturnType<typeof cableShapeStore.get>, wp: Pt[]): st
     const b = wp[i + 1];
     const prev = wp[i - 1] ?? a;
     const next = wp[i + 2] ?? b;
-    const exit = angleDeg(prev, b); // tangent through a → toward b
-    const entry = angleDeg(a, next); // tangent through b ← from a
+    const exit = angleDeg(prev, b);
+    const entry = angleDeg(a, next);
     const seg = getCablePath(shape, {
       sourceX: a.x, sourceY: a.y,
       sourcePosition: posFromDir(Math.cos((exit * Math.PI) / 180), Math.sin((exit * Math.PI) / 180)),
@@ -77,7 +61,6 @@ function buildPathD(shape: ReturnType<typeof cableShapeStore.get>, wp: Pt[]): st
   return d;
 }
 
-// (Re)build the detached track element for a set of waypoints in a given shape.
 function trackElement(waypoints: Pt[], shape: ReturnType<typeof cableShapeStore.get>): { d: string; el: SVGPathElement; total: number } {
   const d = buildPathD(shape, waypoints);
   const el = document.createElementNS(SVGNS, "path");
@@ -97,7 +80,7 @@ function makeRun(id: number, w: number, h: number): Run {
   let endEdge = Math.floor(rand(0, 4));
   if (endEdge === startEdge) endEdge = (endEdge + 2) % 4;
   const interior: Pt[] = [];
-  const interiorCount = Math.floor(rand(1, 3)); // 1–2 interior points: a gentler route
+  const interiorCount = Math.floor(rand(1, 3));
   for (let i = 0; i < interiorCount; i++) {
     interior.push({ x: rand(0.15, 0.85) * w, y: rand(0.15, 0.85) * h });
   }
@@ -113,7 +96,7 @@ function makeRun(id: number, w: number, h: number): Run {
     el,
     total,
     start: performance.now(),
-    duration: rand(11000, 16000), // slower drift
+    duration: rand(11000, 16000),
   };
 }
 
@@ -125,8 +108,7 @@ export function CableFlourish() {
   const runsRef = useRef(runs);
   runsRef.current = runs;
 
-  // Portal target: the rete canvas, so the flourish can paint behind the
-  // node/cable layer (z-index:-1) but above the grid background.
+  // Portal into the rete canvas so it paints behind nodes/cables but above the grid.
   useEffect(() => {
     setCanvasEl(document.querySelector<HTMLElement>(".solenoid-canvas"));
   }, []);
@@ -138,8 +120,6 @@ export function CableFlourish() {
     if (run.total > 0) setRuns((r) => [...r, run]);
   };
 
-  // Expose the trigger to chrome in the main React root (the NavMenu button),
-  // plus a console hook for manual firing.
   useEffect(() => {
     const unregister = cableFlourishBridge.register(trigger);
     (window as unknown as { __cableFlourish?: () => void }).__cableFlourish = trigger;
@@ -149,17 +129,13 @@ export function CableFlourish() {
     };
   }, []);
 
-  // Re-route every in-flight track when the cable shape changes, so the
-  // flourish always demonstrates the current routing mode. Progress is
-  // time-based (start/duration), so the head simply resumes at the same
-  // fraction along the freshly-routed track.
+  // Re-route in-flight tracks on a shape change; progress is time-based, so the head
+  // resumes at the same fraction of the freshly-routed track.
   useEffect(() => cableShapeStore.subscribe(() => {
     const shape = cableShapeStore.get();
     setRuns((rs) => rs.map((r) => ({ ...r, ...trackElement(r.waypoints, shape) })));
   }), []);
 
-  // rAF loop runs only while something is on screen; ticks re-renders and
-  // retires finished runs.
   useEffect(() => {
     if (runs.length === 0) return;
     let raf = 0;
@@ -209,11 +185,10 @@ export function CableFlourish() {
           const trailLen = Math.min(180, run.total * 0.28);
           const fromLen = Math.max(0, headLen - trailLen);
           const head = run.el.getPointAtLength(headLen);
-          // Fade the run in at entry and out at exit.
           const envelope = Math.sin(u * Math.PI);
           return (
             <g key={run.id} style={{ opacity: envelope }}>
-              {/* Render the actual path with dash clipping so corners are exact — no polyline wiggle */}
+              {/* Dash clipping on the real path, so corners stay exact. */}
               <path
                 d={run.d}
                 fill="none"
@@ -230,7 +205,5 @@ export function CableFlourish() {
     </svg>
   );
 
-  // The trigger now lives in NavMenu (fired via cableFlourishBridge); this
-  // component only paints the overlay.
   return canvasEl ? createPortal(overlay, canvasEl) : null;
 }

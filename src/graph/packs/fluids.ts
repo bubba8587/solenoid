@@ -1,11 +1,8 @@
-// Fluid Mechanics — pipe flow, pumps, and the aero/particle classics: Reynolds
-// number, friction factors (explicit Swamee–Jain + the implicit Colebrook as a
-// custom root-finding node), Darcy–Weisbach, Bernoulli, orifice and pump
-// equations, Stokes settling, drag, and compressible-flow basics.
+// Fluid mechanics: pipe flow, pumps, and the aero/particle classics.
 // SI units throughout; g = 9.80665 m/s² baked where gravity appears.
 
-import { ColebrookNode, PipeRoughnessNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { ColebrookNode, PipeRoughnessNode, colebrookFriction, PIPE_ROUGHNESS } from "../rete-nodes";
+import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 const G0 = "9.80665";
 
@@ -72,7 +69,34 @@ export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
   ...FLUIDS_BASE, ...FLUIDS_PIPE, ...FLUIDS_PUMPS, ...FLUIDS_AERO,
 ];
 
+// The pack's custom-logic nodes as formula functions (D19 decision 4).
+const FLUIDS_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "COLEBROOK",
+    impl: (re, rr) => {
+      if (re == null || rr == null) return null;
+      const r = Number(re), e = Number(rr);
+      if (!Number.isFinite(r) || !Number.isFinite(e)) return null;
+      return colebrookFriction(r, e);
+    },
+    returns: "number", arity: [2, 2],
+    signature: "Re, relative roughness ε/D",
+  },
+  {
+    name: "PIPEROUGHNESS",
+    impl: (material) => {
+      if (material == null) return null;
+      const id = String(material);
+      const row = PIPE_ROUGHNESS.find((m) => m.id === id);
+      return row ? row.mm : solError("#NAME?", `Unknown material "${id}" — pvc, copper, steel, castiron…`);
+    },
+    returns: "number", arity: [1, 1],
+    signature: "material — pvc, copper, steel, castiron…",
+  },
+];
+
 export const FLUIDS_PACK: Pack = {
+  formulas: FLUIDS_PACK_FORMULAS,
   id: "fluids",
   name: "Fluid Mechanics",
   description: "Pipe flow, pumps, and aero classics: Reynolds number, the pipe-roughness table, Colebrook/Swamee–Jain friction factors, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, orifice and pump power, Stokes settling, drag, speed of sound. SI units.",
@@ -96,6 +120,7 @@ export const FLUIDS_PACK: Pack = {
       entry: {
         type: "fl-colebrook",
         label: "Friction Factor (Colebrook)",
+        fx: ["COLEBROOK"],
         description: "Solves the implicit Colebrook–White equation for the Darcy friction factor from Reynolds number and relative roughness ε/D; laminar Re hands off to 64/Re",
         keywords: "moody implicit turbulent root",
         create: () => new ColebrookNode(),

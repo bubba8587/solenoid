@@ -8,11 +8,11 @@ const DIRS: { value: SortDir; label: string }[] = [
 ];
 
 export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
-  const [dir, setDir] = useNodeField(data, "dir");
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={dir} onChange={setDir} options={DIRS} />
+      <OpSelect value={op} onChange={setOp} options={DIRS} />
       <ValueDisplay value={data.cachedList} />
     </NodeShell>
   );

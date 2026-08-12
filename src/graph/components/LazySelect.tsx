@@ -3,27 +3,11 @@ import {
   type ReactNode, type SelectHTMLAttributes,
 } from "react";
 
-/**
- * A drop-in `<select>` that keeps its option list OUT of the DOM until the user
- * is about to open it. Native options render zero pixels while the dropdown is
- * closed, yet a mounted catalog-sized list (the FC's unit dropdown, Convert's
- * unit pickers) was the single largest DOM-weight bucket on a formula-heavy
- * graph — thousands of invisible <option>/<optgroup> elements.
- *
- * Width: node cards are max-content-sized, so the WIDEST option is what holds a
- * select (and its card) wide — dropping to one option would shrink the card,
- * then re-grow it on hover. So the first render mounts the full list, a
- * pre-paint layout effect measures the natural width and locks it as an inline
- * min-width, and only then does the list drop to the single selected option —
- * the card's width is pixel-identical to a plain <select> at every moment.
- * Re-measures if the option set changes (pack units, an async file list).
- *
- * Interaction: pointerenter/focus re-mount the real list — both precede the
- * mousedown/keydown that opens the native picker, so the swap is unobservable.
- * Options unmount again on blur / un-focused pointerleave (never while focused:
- * the native popup may be open, and yanking options out from under it breaks
- * the pick).
- */
+/** A drop-in `<select>` that keeps its option list out of the DOM until hover/focus
+ *  (both precede the event that opens the native picker, so the swap is unobservable;
+ *  never unmounts while FOCUSED, which would break an open popup). The first render
+ *  mounts the full list to measure and lock a min-width — a card is max-content sized,
+ *  so the widest option is what holds it wide. */
 export function LazySelect({
   children, value, style, onPointerEnter, onPointerLeave, onFocus, onBlur, ...rest
 }: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -31,16 +15,14 @@ export function LazySelect({
   const [hot, setHot] = useState(false);
   const [minWidth, setMinWidth] = useState<number | null>(null);
 
-  // Any change to the option set invalidates the width lock and forces a
-  // re-measure pass (rendered armed, measured pre-paint, locked, dropped).
+  // Any change to the option set invalidates the width lock and re-measures.
   const sig = optionsSignature(children);
   const [measuredSig, setMeasuredSig] = useState<string | null>(null);
   const needMeasure = measuredSig !== sig;
   useLayoutEffect(() => {
     if (!needMeasure) return;
     const el = ref.current;
-    // 0 width = not laid out (hidden/collapsed) — stay armed rather than lock
-    // a bogus width; the next visible render measures for real.
+    // 0 width = not laid out — stay armed rather than lock a bogus width.
     const w = el ? el.offsetWidth : 0;
     if (w > 0) {
       setMeasuredSig(sig);
@@ -81,17 +63,14 @@ function walkOptions(children: ReactNode, fn: (value: string, label: ReactNode) 
   });
 }
 
-/** A cheap identity for the option set — labels + values — so a changed list
- *  (async file listing, pack units) re-measures the width lock. */
+/** A cheap identity for the option set, so a changed list re-measures the lock. */
 function optionsSignature(children: ReactNode): string {
   let sig = "";
   walkOptions(children, (value, label) => { sig += `${value}|${String(label)};`; });
   return sig;
 }
 
-/** The label the closed select should display: the child <option> matching
- *  `value`, else the first option — mirroring what the native select shows
- *  when no value matches. */
+/** The option matching `value`, else the first — what a native select shows. */
 function selectedLabel(children: ReactNode, value: string): ReactNode {
   let match: ReactNode | undefined;
   let first: ReactNode | undefined;

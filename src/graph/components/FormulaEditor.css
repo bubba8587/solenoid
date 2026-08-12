@@ -1,6 +1,6 @@
 /* Formula editor — a transparent <textarea> layered exactly over a highlighted
    <pre>. The two MUST share identical text metrics (font, size, line-height,
-   padding, wrapping, tab-size) or the coloured layer drifts from the caret. The
+   padding, wrapping, tab-size) or the colored layer drifts from the caret. The
    container owns the border/background; both layers are borderless and share the
    same padding so their text boxes coincide. */
 .fx-editor {
@@ -45,12 +45,15 @@
 }
 .fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
 
-/* Token colours — variables use the number-socket amber (they become input
+/* Token colors — variables use the number-socket amber (they become input
    sockets), an unknown call / stray char reads as an error. Scoped to
    `.fx-tokens` so any surface can paint highlightFormula() output (the editor's
    <pre> and the FC's highlighted lambda view both carry the class). */
 .fx-tokens .fx-fn      { color: #4aa3df; font-weight: 600; }
 .fx-tokens .fx-unknown { color: #e0707a; }
+/* A frame verb: a REAL name whose data type can't flow through formulas — wears
+   the frame socket violet (color conveys type), distinct from the typo red. */
+.fx-tokens .fx-frame   { color: var(--sock-frame); font-weight: 600; }
 .fx-tokens .fx-var     { color: #d9a521; }
 .fx-tokens .fx-const   { color: #b48cff; }
 .fx-tokens .fx-num     { color: #4cae8f; }

@@ -1,22 +1,16 @@
 import { requestRecalc } from "../process";
 import "./nodeCard.css";
+import { stopDragStart } from "../coarse";
 
-/**
- * Reusable "recalculate" control. Triggers the global `requestRecalc()`
- * (the same one a future toolbar / command palette can call), which
- * bumps the volatile-node generation and re-evaluates the graph — so
- * every RANDBETWEEN (and future volatile node) rolls a fresh value.
- *
- * The icon is a small calculator. Rendered in a node body (not the
- * header) per the node's layout.
- */
+/** `requestRecalc()` bumps the volatile-node generation, so every volatile node
+ *  rolls a fresh value. */
 export function RecalcButton({ title = "Recalculate" }: { title?: string }) {
   return (
     <button
       type="button"
       className="solenoid-node__recalc-btn"
       title={title}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();

@@ -14,10 +14,8 @@ import { measuredBox } from "./nodeSize";
 
 export const GROUP_DEFAULT_COLOR = "gray"; // palette slot — neutral gray when there's no clear majority
 
-// The group takes the colour of the most common node kind in the selection — a
-// chain of mostly-number nodes reads as a number-colored group. A tie (or all
-// distinct) falls back to gray. Returns a palette SLOT id (the group stores the
-// slot, like every other color in the app), not a hex.
+// The color of the most common node kind in the selection; a tie (or all
+// distinct) falls back to gray. Returns a palette SLOT id, not a hex.
 function majorityColor(nodes: ClassicPreset.Node[]): string {
   const tally = new Map<string, number>();
   for (const n of nodes) {
@@ -32,26 +30,20 @@ function majorityColor(nodes: ClassicPreset.Node[]): string {
   return bestN > 0 && !tie ? best : GROUP_DEFAULT_COLOR;
 }
 
-// ─── Group geometry + membership (the "hybrid" model) ───────────────────────────
-// A group is a frame around a set of member node ids. The set is seeded from the
-// selection at creation, then reconciled as nodes are dragged in/out of the box.
-
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
 
-// Shared group-box geometry, used by creation, the within-group tidy, AND
-// autofit — they MUST agree or a tidy-then-autofit cycle (Cleanup) drifts the
-// box a few px each run. GROUP_HEADER matches `.solenoid-group__header` (34px).
+// Shared by creation, the within-group tidy AND autofit — they MUST agree or a
+// tidy-then-autofit cycle (Cleanup) drifts the box a few px each run.
 export const GROUP_PAD = 24;     // gap between the box edge and the nodes it wraps
 export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
-// Minimum group box size — shared by the resize grip (GroupNode.tsx) and autofit
-// so a fit can never shrink below what the grip allows.
+// Shared with the resize grip so a fit can never shrink below what the grip allows.
 export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  // measuredBox guarantees a non-zero size: an unpainted member used to read
-  // offsetWidth/Height = 0, collapsing the wrapped bbox to that member's corner.
+  // measuredBox guarantees a non-zero size: an unpainted member reading
+  // offsetWidth/Height = 0 collapses the wrapped bbox to that member's corner.
   return measuredBox(area, id, getEditor() ?? undefined);
 }
 
@@ -65,17 +57,11 @@ export function sendGroupToBack(area: Area, groupId: string): void {
 
 /** Create a group wrapping the current selection. Returns the new group's id, or null. */
 export async function createGroupFromSelection(editor: Editor, area: Area): Promise<string | null> {
-  // A group is built only from selected NODES. Clear any lingering cable
-  // selection first: it's a separate selection channel that can survive a
-  // lasso/multi-select, and carrying a "selected" cable into the group-forming
-  // reflow garbles its rendering. (Membership never includes cables — this just
-  // drops the stale highlight state.)
+  // Clear the separate cable-selection channel first — a "selected" cable carried
+  // into the group-forming reflow garbles its rendering.
   cableSelectionStore.set(null);
-  // Exclude members hidden inside a collapsed group. Belt-and-suspenders behind
-  // the lasso fix (which no longer selects them): a node hidden in a collapsed
-  // group must never be silently absorbed into a NEW group — it already belongs
-  // to one, and it isn't visible to be reasoned about. Guards any selection path
-  // (Ctrl+A + G, etc.), not just the lasso.
+  // Nodes hidden inside a collapsed group are excluded: they already belong to one,
+  // and any selection path (Ctrl+A + G, …) would silently absorb them.
   const sel = editor
     .getNodes()
     .filter((n) => n.selected && !(n instanceof GroupNode) && !groupCollapseStore.isNodeHidden(n.id));
@@ -108,13 +94,8 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
 
 export type GroupGeom = { x: number; y: number; width: number; height: number };
 
-/**
- * Resize + reposition a group's box to tightly wrap its current members (shrinks
- * if the box is too big, grows if a member has drifted outside). Uses the same
- * padding/header offsets as group creation so an autofit looks like a fresh
- * group around the members. Returns { before, after } geometry for an undo
- * entry, or null if the group has no measurable members.
- */
+/** Wrap the box tightly around the current members, using the same padding/header
+ *  offsets as creation. Returns { before, after } for an undo entry, or null. */
 export async function autofitGroupBox(
   _editor: Editor, area: Area, group: GroupNode,
 ): Promise<{ before: GroupGeom; after: GroupGeom } | null> {
@@ -129,7 +110,7 @@ export async function autofitGroupBox(
     maxX = Math.max(maxX, b.x + b.w);
     maxY = Math.max(maxY, b.y + b.h);
   }
-  if (!Number.isFinite(minX)) return null; // nothing to wrap
+  if (!Number.isFinite(minX)) return null;
 
   const before: GroupGeom = { x: gv.position.x, y: gv.position.y, width: group.width, height: group.height };
   const after: GroupGeom = {
@@ -148,21 +129,13 @@ export async function autofitGroupBox(
   return { before, after };
 }
 
-/**
- * Autofit a group's box to its members, then reconcile membership and push a
- * single undo entry (position + size + members). Shared by the resize-grip
- * double-press and the autofit hotkey so both behave identically and undo as
- * one step. No-op if the group has no measurable members.
- */
+/** Autofit, then push ONE undo entry (position + size + members) so the resize-grip
+ *  double-press and the autofit hotkey undo as a single step. */
 export async function autofitGroupWithHistory(editor: Editor, area: Area, group: GroupNode): Promise<void> {
   const res = await autofitGroupBox(editor, area, group);
   if (!res) return;
-  // Autofit ONLY resizes the box around the EXISTING members — it must NOT
-  // re-derive membership from the new geometry (no reconcileGroupBox here).
-  // Membership changes only on an explicit drag in/out or a select→group action,
-  // so a bystander sitting among the members isn't silently absorbed when the box
-  // shrinks to wrap them. (rebuildGroupMembership just refreshes the colour
-  // markers from the unchanged members list.)
+  // Autofit must NOT re-derive membership from the new geometry (no reconcileGroupBox);
+  // rebuildGroupMembership only refreshes color markers from the unchanged list.
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, area);
   // Autofit moved the box edges; re-settle any standoffs anchored to this group
@@ -186,13 +159,9 @@ export async function autofitGroupWithHistory(editor: Editor, area: Area, group:
 /** Move every member of a group by (dx, dy) — called as the group is dragged. */
 export function moveGroupMembers(
   editor: Editor, area: Area, group: GroupNode, dx: number, dy: number,
-  // When a user DRAGS a group whose members are ALSO selected, rete's selector
-  // already translates those members by the same delta (it moves the whole
-  // selection off the picked/lead node). Moving them again here doubles their
-  // speed — the recurring "members outrun their group" bug. So the drag + drop-snap
-  // callers pass `skipSelected` to move ONLY the members the group is solely
-  // responsible for. A programmatic push (translatePushed) is NOT selector-driven,
-  // so it leaves this off and moves every member.
+  // Rete's selector already translates selected members, so drag callers pass
+  // `skipSelected` or those members move at double speed; a programmatic push isn't
+  // selector-driven and leaves it off.
   skipSelected = false,
 ): void {
   if (dx === 0 && dy === 0) return;
@@ -204,10 +173,8 @@ export function moveGroupMembers(
   }
 }
 
-// The group's CURRENT on-screen size. A collapsed group renders as a small
-// compact box, not its (expanded) width/height — so containment must use the
-// rendered element, or a node dropped where the expanded box *would* be gets
-// wrongly absorbed.
+// Containment must use the RENDERED element — a collapsed group draws as a small card,
+// so its stored width/height would absorb nodes dropped where the box merely would be.
 function groupRenderedSize(area: Area, g: GroupNode): { w: number; h: number } {
   const el = area.nodeViews.get(g.id)?.element;
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
@@ -222,12 +189,8 @@ function centerInside(area: Area, group: GroupNode, b: { x: number; y: number; w
          cy >= gv.position.y && cy <= gv.position.y + h;
 }
 
-/**
- * After a node is dragged, reconcile its group membership — but EXCLUSIVELY and
- * STABLY: a node belongs to at most one group, and it stays in its current group
- * as long as its center is inside it (so an overlapping group can't steal it).
- * Only when it has left its current group does it join another it now sits in.
- */
+/** EXCLUSIVE and STABLE: a node belongs to at most one group and keeps it while its
+ *  center is inside, so an overlapping group can never steal it. */
 export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: string): void {
   const dn = editor.getNode(draggedId);
   if (!dn || dn instanceof GroupNode) return; // groups don't nest
@@ -238,14 +201,12 @@ export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: 
   const current = groups.find((g) => g.members.includes(draggedId));
   let host = current;
   if (current && !centerInside(area, current, b)) {
-    current.members = current.members.filter((m) => m !== draggedId); // left → leave it
+    current.members = current.members.filter((m) => m !== draggedId);
     host = undefined;
   }
   if (!host) {
-    // Never join a COLLAPSED group: its rendered box is the small card (you can't
-    // see what's inside), and a new member would be hidden by the very next
-    // syncGroupCollapse — the node visibly vanishes. Membership edits on a
-    // collapsed group require expanding it first.
+    // Never join a COLLAPSED group — the next syncGroupCollapse would hide the new
+    // member, so the node visibly vanishes.
     const target = groups.find((g) => g !== current && !g.collapsed && centerInside(area, g, b));
     if (target) { target.members = [...target.members, draggedId]; host = target; }
   }
@@ -262,9 +223,8 @@ export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: 
 
 /** Re-evaluate a single group's membership against all nodes — after its box is resized. */
 export function reconcileGroupBox(editor: Editor, area: Area, group: GroupNode): void {
-  // A collapsed group's rendered box is the small card — reconciling against it
-  // would dump every member (none are "inside" a card) and absorb bystanders
-  // under it into a hidden set. Membership only reconciles while expanded.
+  // Membership only reconciles while EXPANDED — against the collapsed card every
+  // member would fall outside and every bystander under it would be absorbed.
   if (group.collapsed) return;
   const gv = area.nodeViews.get(group.id);
   if (!gv) return;
@@ -286,11 +246,8 @@ export function reconcileGroupBox(editor: Editor, area: Area, group: GroupNode):
   }
 }
 
-/**
- * If a (just-created) node sits FULLY inside a group's box, make it a member.
- * Returns true if added. Only for LIVE creation (Add menu, paste) — never during
- * a graph load/seed rebuild, where membership is restored from the saved list.
- */
+/** For LIVE creation (Add menu, paste) ONLY — during a load/seed rebuild membership
+ *  is restored from the saved list instead. Returns true if added. */
 export function absorbIntoContainingGroup(editor: Editor, area: Area, nodeId: string): boolean {
   const n = editor.getNode(nodeId);
   if (!n || n instanceof GroupNode) return false;
@@ -301,9 +258,8 @@ export function absorbIntoContainingGroup(editor: Editor, area: Area, nodeId: st
   const b = nodeBox(area, nodeId);
   if (!b) return false;
   for (const g of editor.getNodes()) {
-    // Skip collapsed groups: their rendered box is the small card, and absorbing
-    // a freshly created node would immediately HIDE it (a member of a collapsed
-    // group) — it looks like the new node never appeared.
+    // Skip collapsed groups — absorbing a fresh node would immediately hide it, so it
+    // looks like the new node never appeared.
     if (!(g instanceof GroupNode) || g.collapsed) continue;
     const gv = area.nodeViews.get(g.id);
     if (!gv) continue;

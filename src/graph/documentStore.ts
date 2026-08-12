@@ -1,25 +1,3 @@
-// The documents library: the app's "file system". Multiple named graphs live in
-// localStorage; one is current and shown on the canvas. Autosave writes the live
-// graph into the current document; New / Open / Save As / Rename / Duplicate /
-// Delete manage the set. Seeds are templates (New from template), NOT the
-// working document.
-//
-// Pure library transforms live in documentStoreCore.ts (unit-tested). This file
-// adds: the in-memory library + notifier, per-document two-slot localStorage
-// persistence (crash-safety slots from persistenceCore), and the editor wiring
-// (loadGraph / serializeGraph).
-//
-// PER-DOC AUTOSAVE KEYS (2026-07-05): each document persists under its OWN pair
-// of rotating slots (`solenoid.docs.doc.<id>.a/.b`) plus one light INDEX pair
-// (`solenoid.docs.index.a/.b` — currentId + [{id, name, updatedAt, filePath}],
-// no graphs). An edit autosaves ONLY the changed doc (persist() diffs by object
-// identity — documentStoreCore's transforms are immutable, so an untouched doc
-// keeps its object and costs zero stringify), and a bloated doc exhausts only
-// its own quota headroom. Deleting a doc removes its keys (frees the quota).
-// NO migration (pre-alpha): the old whole-library keys (`solenoid.docs.lib.a/b`)
-// are abandoned + deleted on startup; disk saves untouched; the live session
-// re-autosaves immediately under the new keys.
-
 import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
 import { isGraphRebuilding } from "./process";
@@ -44,8 +22,6 @@ import {
   type SolDoc,
 } from "./documentStoreCore";
 
-// The pre-2026-07-05 whole-library keys — abandoned (no migration, pre-alpha)
-// and deleted on startup so their quota frees up.
 const OLD_LIB_SLOT_A = "solenoid.docs.lib.a";
 const OLD_LIB_SLOT_B = "solenoid.docs.lib.b";
 
@@ -55,9 +31,6 @@ const docSlotKey = (id: string, slot: "a" | "b") => `solenoid.docs.doc.${id}.${s
 
 const EMPTY_GRAPH: SavedGraph = { v: 2, nodes: [], connections: [] };
 
-// The light index: membership + order + currentId + the list()/menu metadata —
-// NO graphs. A doc's slot is the truth for its own fields on any disagreement
-// (the index is rewritten from the in-memory library on every persist anyway).
 interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string }
 interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[] }
 interface DocSlot { seq: number; doc: SolDoc }
@@ -65,14 +38,7 @@ interface DocSlot { seq: number; doc: SolDoc }
 const { notify, subscribe, version } = createNotifier();
 let _lib: DocLibrary = emptyLibrary();
 let _saveFailNoticeId: number | null = null;
-// What's on disk, by OBJECT IDENTITY — documentStoreCore's transforms are
-// immutable (a changed doc is a new object), so `_lastPersisted.get(id) !==
-// doc` is an exact, zero-stringify "this doc needs writing" test.
 const _lastPersisted = new Map<string, SolDoc>();
-// Slot seq: STRICTLY monotonic within a session (two same-millisecond writes
-// would tie Date.now() and make the newer-slot choice ambiguous — the read
-// could resurrect the older write), seeded from the clock so it stays newest
-// across sessions too.
 let _seq = Date.now();
 const nextSeq = () => ++_seq;
 
@@ -84,9 +50,6 @@ function newId(): string {
 
 // ─── localStorage (two rotating slots per doc + per index) ────────────────────
 
-/** A slot's seq WITHOUT parsing the whole value — `JSON.stringify({seq, …})`
- *  puts `seq` first, so a cheap prefix regex avoids re-parsing a large graph
- *  blob just to pick the write slot. */
 function readSlotSeq(key: string): number | null {
   try {
     const raw = localStorage.getItem(key);
@@ -107,8 +70,7 @@ function readParsed<T>(key: string): Partial<T> | null {
   }
 }
 
-/** Write `value` to the OLDER of the two slots (persistenceCore's crash-safety
- *  rotation). Returns false when storage rejects it. */
+/** Write `value` to the OLDER of the two slots; false when storage rejects it. */
 function writeToOlderSlot(keyA: string, keyB: string, value: unknown): boolean {
   const slot = chooseWriteSlot(readSlotSeq(keyA), readSlotSeq(keyB));
   try {
@@ -119,9 +81,8 @@ function writeToOlderSlot(keyA: string, keyB: string, value: unknown): boolean {
   }
 }
 
-/** Read the newest structurally-valid value from a slot pair. `validate` maps
- *  the raw parsed slot to the value we actually want (or null = try the other
- *  slot) — for docs that's the unwrapped SolDoc, not the slot envelope. */
+/** Read the newest structurally-valid value from a slot pair; `validate` returning null
+ *  falls through to the other slot. */
 function readNewestSlot<T, R>(keyA: string, keyB: string, validate: (o: Partial<T>) => R | null): R | null {
   const order = chooseReadSlot(readSlotSeq(keyA), readSlotSeq(keyB)) === "b" ? [keyB, keyA] : [keyA, keyB];
   for (const key of order) {
@@ -140,10 +101,8 @@ function removeDocSlots(id: string): void {
   } catch { /* storage disabled — nothing to remove */ }
 }
 
-/** Persist the library: the index always (it's tiny), plus ONLY the documents
- *  whose object changed since the last persist, plus key removal for documents
- *  that left the library. Surfaces a sticky notice if storage rejects any
- *  write (cleared once a persist next fully succeeds). */
+/** Persist the index always, plus ONLY the documents whose OBJECT changed since the last
+ *  persist; a rejected write raises a sticky notice until one fully succeeds. */
 function persist(): void {
   let ok = true;
 
@@ -206,7 +165,7 @@ function readLibraryFromStorage(): DocLibrary | null {
   const lib = validateLibrary({ documents, currentId });
   if (lib) {
     _lastPersisted.clear();
-    for (const d of lib.documents) _lastPersisted.set(d.id, d); // what's on disk IS these objects
+    for (const d of lib.documents) _lastPersisted.set(d.id, d);
   }
   return lib;
 }
@@ -223,13 +182,8 @@ async function showCurrent(animate = false): Promise<boolean> {
   return loadGraph(cur.graph, { animate });
 }
 
-/** Show the current doc, keeping the session SAFE when the load is refused or
- *  rolled back (loadGraph → false): the canvas then still shows the previous
- *  graph, so `currentId` must not stay pointing at the doc that never loaded —
- *  one edit later, autosave would write doc A's graph into doc B (audit 20p).
- *  Revert to `revertTo` when it still exists (the doc the canvas shows), else
- *  park the session on a fresh blank document (startup restore / post-delete,
- *  where there is nothing to revert to). */
+/** Show the current doc; on a refused load `currentId` must NOT stay pointing at the doc
+ *  that never loaded, or autosave writes doc A's graph into doc B one edit later. */
 async function showCurrentSafe(animate = false, revertTo?: string | null): Promise<void> {
   if (await showCurrent(animate)) return;
   if (revertTo && _lib.documents.some((d) => d.id === revertTo)) {
@@ -277,8 +231,6 @@ export const documentStore = {
   /** Load the library on startup. Returns true if a document was shown; false
    *  means there was nothing to restore (caller should create a first doc). */
   async restore(): Promise<boolean> {
-    // Abandon the pre-per-doc-keys whole-library slots (no migration, D3) —
-    // deleting them frees their quota for the new keys.
     try {
       localStorage.removeItem(OLD_LIB_SLOT_A);
       localStorage.removeItem(OLD_LIB_SLOT_B);
@@ -288,9 +240,6 @@ export const documentStore = {
     _lib = lib;
     persist(); // settle the restored library into the current write slot
     notify();
-    // A refused current doc (e.g. saved by a newer version) parks the session
-    // on a fresh blank — otherwise the first edit autosaves an empty canvas
-    // over the doc that never loaded (audit 20p).
     await showCurrentSafe(true); // startup → play the cinematic reveal
     return getCurrent(_lib) !== null;
   },
@@ -298,10 +247,7 @@ export const documentStore = {
   /** Serialize the live graph into the current document (the autosave action). */
   captureCurrent(): void {
     if (!_lib.currentId) return;
-    // Never capture while a load/rebuild is mid-flight — it would serialize the
-    // half-built canvas into the current doc. The autosave timer already checks
-    // suspension at fire time; this closes the DIRECT call paths (open/newBlank/
-    // saveAs/duplicate/import all captureCurrent unconditionally) (audit 21p).
+    // Never capture mid-rebuild — it would serialize the half-built canvas into the doc.
     if (isGraphRebuilding()) return;
     const g = serializeGraph();
     if (!g) return;
@@ -310,11 +256,7 @@ export const documentStore = {
     notify();
   },
 
-  /** Reload the current document from scratch — capture the live graph, then
-   *  rebuild it from that snapshot with the cinematic load reveal. This is a
-   *  genuine reload (full teardown + rebuild, same path as a startup load), NOT
-   *  an animation-only replay; a browser refresh doesn't re-run the reveal, so
-   *  this is the in-app way to do it. */
+  /** A genuine reload — full teardown + rebuild with the load reveal, not a replay. */
   async reloadCurrent(): Promise<void> {
     if (loadRevealStore.isActive()) return; // a load/reveal is already running
     this.captureCurrent();
@@ -323,7 +265,7 @@ export const documentStore = {
 
   /** New empty document, made current and shown. */
   async newBlank(): Promise<void> {
-    if (isGraphRebuilding()) return; // a doc op during a load races the rebuild (21p)
+    if (isGraphRebuilding()) return; // a doc op during a load races the rebuild
     this.captureCurrent();
     _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
     persist();
@@ -331,13 +273,12 @@ export const documentStore = {
     await loadGraph({ ...EMPTY_GRAPH });
   },
 
-  /** New document from a seed template, made current and shown. `animate` is used
-   *  by the fresh-user first-run path so startup reveals consistently; the in-app
-   *  "New from template" action snaps (it's neither startup nor a file open). */
+  /** New document from a seed template, made current and shown; `animate` only for the
+   *  fresh-user first run — the in-app "New from template" action snaps. */
   async newFromTemplate(seedId: SeedId, animate = false): Promise<void> {
     const seed = SEEDS[seedId];
     if (!seed) return;
-    if (isGraphRebuilding()) return; // (21p)
+    if (isGraphRebuilding()) return;
     this.captureCurrent();
     _lib = addDocument(_lib, makeDoc(seed.label, seed.graph));
     persist();
@@ -345,10 +286,9 @@ export const documentStore = {
     await loadGraph(seed.graph, { animate });
   },
 
-  /** Switch to an existing document. */
   async open(id: string): Promise<void> {
     if (id === _lib.currentId) return;
-    if (isGraphRebuilding()) return; // (21p)
+    if (isGraphRebuilding()) return;
     this.captureCurrent(); // keep the doc we're leaving up to date
     const prevId = _lib.currentId;
     _lib = setCurrent(_lib, id);
@@ -359,7 +299,7 @@ export const documentStore = {
 
   /** Fork the live graph into a new named document, made current. */
   saveAs(name: string): void {
-    if (isGraphRebuilding()) return; // would fork a half-built canvas (21p)
+    if (isGraphRebuilding()) return; // would fork a half-built canvas
     this.captureCurrent(); // freeze the doc we're forking from
     const g = serializeGraph() ?? { ...EMPTY_GRAPH };
     _lib = addDocument(_lib, makeDoc(name.trim() || "Untitled", g));
@@ -381,7 +321,7 @@ export const documentStore = {
   async duplicate(id: string = _lib.currentId ?? ""): Promise<void> {
     const src = _lib.documents.find((d) => d.id === id);
     if (!src) return;
-    if (isGraphRebuilding()) return; // (21p)
+    if (isGraphRebuilding()) return;
     if (id === _lib.currentId) this.captureCurrent();
     const prevId = _lib.currentId;
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
@@ -393,7 +333,7 @@ export const documentStore = {
   /** Delete a document. If it was current, the next one is shown (or a fresh
    *  blank if none remain). */
   async remove(id: string): Promise<void> {
-    if (isGraphRebuilding()) return; // (21p)
+    if (isGraphRebuilding()) return;
     const wasCurrent = id === _lib.currentId;
     _lib = removeDocument(_lib, id);
     if (_lib.documents.length === 0) {
@@ -406,16 +346,15 @@ export const documentStore = {
     }
     persist();
     notify();
-    // No revert target — the doc the canvas showed was just deleted, so a
-    // failed load parks on a blank doc rather than autosaving the deleted
-    // graph into the next doc.
+    // No revert target: the doc the canvas showed was just deleted, so a failed load must
+    // park on a blank doc rather than autosave the deleted graph into the next one.
     if (wasCurrent) await showCurrentSafe();
   },
 
   /** Adopt an imported graph as a new document, made current and shown. A
    *  `filePath` binds the new doc to the file it came from (desktop Open). */
   async importAsDocument(graph: SavedGraph, name: string, filePath?: string): Promise<void> {
-    if (isGraphRebuilding()) return; // (21p)
+    if (isGraphRebuilding()) return;
     this.captureCurrent();
     const prevId = _lib.currentId;
     const doc = makeDoc(name, graph);
@@ -423,8 +362,7 @@ export const documentStore = {
     _lib = addDocument(_lib, doc);
     persist();
     notify();
-    // File → Open / import → reveal. A refused import (newer save version)
-    // reverts to the doc the canvas still shows (20p).
+    // A refused import (newer save version) reverts to the doc the canvas still shows.
     if (!(await loadGraph(graph, { animate: true })) && prevId) {
       _lib = setCurrent(_lib, prevId);
       persist();
@@ -433,8 +371,7 @@ export const documentStore = {
   },
 };
 
-// Fresh user (no library, nothing to migrate): seed the first document from the
-// default template so the canvas is never empty on first run.
+// Seed the first document so a fresh user's canvas is never empty on first run.
 export async function ensureFirstDocument(): Promise<void> {
   await documentStore.newFromTemplate(DEFAULT_SEED_ID, true); // first run is "startup"
 }

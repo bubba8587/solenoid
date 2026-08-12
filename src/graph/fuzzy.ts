@@ -1,6 +1,5 @@
 // Subsequence fuzzy match: returns a score (higher = better, consecutive runs
-// weighted) or null when the query isn't a subsequence of the text. Shared by
-// the Add-node menu and the connection dialog.
+// weighted) or null when the query isn't a subsequence of the text.
 export function fuzzyScore(query: string, text: string): number | null {
   const q = query.toLowerCase().replace(/\s+/g, "");
   if (!q) return 0;
@@ -16,9 +15,8 @@ export function fuzzyScore(query: string, text: string): number | null {
   return qi === q.length ? score : null;
 }
 
-// Tiered match quality for one field: exact ≫ prefix ≫ word-start ≫ subsequence.
-// Returns the contiguity score plus a tier bonus, or null when the query isn't
-// even a subsequence. Lets exact/prefix hits float above incidental matches.
+// Tiered match quality for one field: exact ≫ prefix ≫ word-start ≫ subsequence —
+// the contiguity score plus a tier bonus, or null when it isn't even a subsequence.
 export function fieldScore(query: string, field: string): number | null {
   const sub = fuzzyScore(query, field);
   if (sub === null) return null;

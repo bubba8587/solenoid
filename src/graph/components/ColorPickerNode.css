@@ -1,6 +1,6 @@
-/* Color Picker sliders: the track shows the colour gradient for that channel
-   (set inline per-slider), so the thumb position previews the resulting colour —
-   the standard colour-picker affordance. appearance:none lets the element's
+/* Color Picker sliders: the track shows the color gradient for that channel
+   (set inline per-slider), so the thumb position previews the resulting color —
+   the standard color-picker affordance. appearance:none lets the element's
    background BE the track; the thumb is a white puck visible on any hue. */
 .solenoid-colorpicker__slider {
   -webkit-appearance: none;
@@ -54,4 +54,4 @@
   border-radius: 4px;
   outline: none;
 }
-.solenoid-colorpicker__hex:focus { border-color: var(--accent); }
+.solenoid-colorpicker__hex:focus { border-color: var(--node-accent, var(--accent)); }

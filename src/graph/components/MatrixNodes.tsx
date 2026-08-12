@@ -1,4 +1,3 @@
-// All matrix math + shape node components in one file.
 import type {
   MatDetNode as MatDetNodeType, MatDetOp,
   TableMultNode as TableMultNodeType,
@@ -22,8 +21,6 @@ import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 
-// ─── MDETERM / MINVERSE ───────────────────────────────────────────────────────
-
 const MAT_DET_OPS = (Object.keys(MAT_DET_OP_META) as MatDetOp[]).map(op => ({
   value: op, label: MAT_DET_OP_META[op].label,
 }));
@@ -41,8 +38,6 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
   );
 }
 
-// ─── MMULT ────────────────────────────────────────────────────────────────────
-
 export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
@@ -52,14 +47,12 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
   );
 }
 
-// ─── MUNIT ────────────────────────────────────────────────────────────────────
-
 export function TableUnitComponent({ data, emit }: NodeProps<TableUnitNodeType>) {
   const [offDiag, setOffDiag] = useState(data.offDiag);
   useEffect(() => { setOffDiag(data.offDiag); }, [data.offDiag]);
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle
+      <SegToggle arg
         value={offDiag}
         options={[
           { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (Excel MUNIT)" },
@@ -73,8 +66,6 @@ export function TableUnitComponent({ data, emit }: NodeProps<TableUnitNodeType>)
   );
 }
 
-// ─── TRANSPOSE ────────────────────────────────────────────────────────────────
-
 export function TableTransposeComponent({ data, emit }: NodeProps<TableTransposeNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
@@ -84,8 +75,6 @@ export function TableTransposeComponent({ data, emit }: NodeProps<TableTranspose
   );
 }
 
-// ─── HSTACK ───────────────────────────────────────────────────────────────────
-
 export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
@@ -94,8 +83,6 @@ export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeTy
     </NodeShell>
   );
 }
-
-// ─── WRAPROWS / WRAPCOLS / TOCOL / TOROW ──────────────────────────────────────
 
 const RESHAPE_OPS = (Object.keys(TABLE_RESHAPE_OP_META) as TableReshapeOp[]).map(op => ({
   value: op, label: TABLE_RESHAPE_OP_META[op].label,
@@ -117,8 +104,6 @@ export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNode
   );
 }
 
-// ─── CHOOSEROWS / CHOOSECOLS ──────────────────────────────────────────────────
-
 const SELECT_OPS = (Object.keys(TABLE_SELECT_OP_META) as TableSelectOp[]).map(op => ({
   value: op, label: TABLE_SELECT_OP_META[op].label,
 }));
@@ -133,8 +118,6 @@ export function TableSelectComponent({ data, emit }: NodeProps<TableSelectNodeTy
     </NodeShell>
   );
 }
-
-// ─── TAKE / DROP (2-D) + EXPAND ───────────────────────────────────────────────
 
 const TAKEDROP_OPS = (Object.keys(TABLE_TAKEDROP_OP_META) as TableTakeDropOp[]).map(op => ({
   value: op, label: TABLE_TAKEDROP_OP_META[op].label,
@@ -159,8 +142,6 @@ export function ExpandTableComponent({ data, emit }: NodeProps<ExpandNodeType>) 
     </NodeShell>
   );
 }
-
-// ─── TABLE INFO (ROWS / COLUMNS) ──────────────────────────────────────────────
 
 export function TableInfoComponent({ data, emit }: NodeProps<TableInfoNodeType>) {
   return (

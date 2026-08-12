@@ -6,8 +6,7 @@ import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
 // The Grid Painter's well: left-drag paints the brush value into cells,
-// right-drag (or Alt-drag) erases back to blank (null). The matrix flows out
-// the table socket — hand-input for Heatmap / Surface / MAP masks.
+// right-drag (or Alt-drag) erases back to blank (null).
 
 const WELL_W = 208;
 const MAX_WELL_H = 160;
@@ -31,8 +30,6 @@ export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeTy
   const mode = useRef<"paint" | "erase" | null>(null);
   const wellRef = useRef<HTMLDivElement>(null);
 
-  // Dimensions changed since the state initialized (a rows/cols edit re-renders):
-  // re-derive the grid at the new shape, keeping overlapping cells.
   if (live.current.length !== rows || (live.current[0]?.length ?? 0) !== cols) {
     live.current = parsePaintGrid(paintGridToText(live.current), rows, cols);
   }
@@ -70,7 +67,6 @@ export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeTy
   const setLit = (key: "rows" | "cols" | "brush") => (v: number) => {
     data.literals[key] = v;
     if (key !== "brush") {
-      // Persist the resized grid immediately so the output matches the well.
       live.current = parsePaintGrid(paintGridToText(live.current),
         Math.max(1, Math.round(key === "rows" ? v : data.literals.rows ?? 6)),
         Math.max(1, Math.round(key === "cols" ? v : data.literals.cols ?? 8)));
@@ -80,8 +76,7 @@ export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeTy
     void processGraph(data.id);
   };
 
-  // Tint by |value| relative to the grid's own max, so a multi-brush painting
-  // still reads; blanks stay sunken.
+  // Tint by |value| relative to the grid's own max.
   let maxAbs = 0;
   for (const row of grid) for (const v of row) if (v != null) maxAbs = Math.max(maxAbs, Math.abs(v));
 

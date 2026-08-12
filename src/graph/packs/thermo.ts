@@ -1,17 +1,13 @@
-// Thermodynamics & Air — ideal gas, heat transfer, and humid-air (psychrometric)
-// formulas, plus two formulation custom nodes: the 1976 standard atmosphere and
-// Antoine vapor pressure. Replaces the HVAC/psychrometric calculator-site genre.
-// SI throughout (kelvin where the physics needs absolute temperature, °C where
-// the correlation is °C-native — each description says which).
+// Thermodynamics & Air pack. SI throughout: kelvin where the physics needs an
+// absolute temperature, °C only where the correlation is °C-native.
 
-import { IsaAtmosphereNode, AntoineNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { IsaAtmosphereNode, AntoineNode, standardAtmosphere, antoinePressure, ANTOINE, type AntoineOp } from "../rete-nodes";
+import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 const R_GAS = "8.314462618";   // J/(mol·K)
 const SIGMA = "5.670374419*10^-8"; // Stefan–Boltzmann
 
 export const THERMO_GAS: FormulaPackEntry[] = [
-  // One equation instead of the four solved forms it shipped as pre-Equation.
   { type: "th-ideal-gas", label: "Ideal Gas (pV = nRT)", expr: `p * vol = n * ${R_GAS} * tk`, equation: true,
     description: "The ideal-gas law with any one of p (Pa), vol (m³), n (mol), tk (K) unwired — the node solves for it",
     keywords: "pv nrt pressure volume moles temperature gas law",
@@ -73,7 +69,43 @@ export const THERMO_FORMULAS: FormulaPackEntry[] = [
   ...THERMO_GAS, ...THERMO_HEAT, ...THERMO_AIR,
 ];
 
+// The pack's custom-logic nodes as formula functions (D19 decision 4).
+const THERMO_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "STANDARDATMOSPHERE",
+    impl: (alt, property) => {
+      if (alt == null) return null;
+      const z = Number(alt);
+      if (!Number.isFinite(z)) return null;
+      const key = property == null ? "pressure" : String(property).toLowerCase();
+      const field = ({ temp: "T", temperature: "T", pressure: "p", density: "rho", sound: "a" } as const)[key];
+      if (!field) return solError("#VALUE!", `Unknown property "${key}" — temp, pressure, density, sound`);
+      const pt = standardAtmosphere(z);
+      return isSolError(pt) ? pt : pt[field];
+    },
+    returns: "number", arity: [1, 2],
+    signature: "altitude m, [property (pressure)]",
+  },
+  {
+    name: "ANTOINE",
+    impl: (substance, t) => {
+      if (substance == null || t == null) return null;
+      const id = String(substance) as AntoineOp;
+      const meta = ANTOINE[id];
+      if (!meta) return solError("#NAME?", `Unknown substance "${id}" — water, ethanol, acetone…`);
+      const tc = Number(t);
+      if (!Number.isFinite(tc)) return null;
+      return tc <= -meta.C
+        ? solError("#DOMAIN!", "Below the equation's temperature range")
+        : antoinePressure(id, tc);
+    },
+    returns: "number", arity: [2, 2],
+    signature: "substance, T °C — vapor pressure in Pa",
+  },
+];
+
 export const THERMO_PACK: Pack = {
+  formulas: THERMO_PACK_FORMULAS,
   id: "thermo",
   name: "Thermodynamics & Air",
   description: "Ideal gas, heat transfer (conduction/convection/radiation, R/U values), and humid-air psychrometrics (dew point, wet bulb, heat index, wind chill) — plus the 1976 standard atmosphere and Antoine vapor-pressure nodes.",
@@ -98,6 +130,7 @@ export const THERMO_PACK: Pack = {
       entry: {
         type: "th-antoine",
         label: "Vapor Pressure (Antoine)",
+        fx: ["ANTOINE"],
         description: "Antoine-equation vapor pressure for a chosen solvent (water, alcohols, acetone, benzene…) at T °C, plus its normal boiling point",
         keywords: "antoine volatility solvent evaporation boiling",
         create: () => new AntoineNode(),

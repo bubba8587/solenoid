@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useMenuClamp } from "./menuClamp";
+import { useEffect } from "react";
 import "./SocketContextMenu.css";
 
-// Right-click menu shown when exactly two linkable items are selected and one
-// of them is right-clicked: create a Standoff (arrangement constraint) between
-// them.
+// Shown only when exactly two linkable items are selected and one is right-clicked.
 
 export type StandoffLinkTarget = {
   aId: string;
@@ -19,7 +18,7 @@ type Props = {
 };
 
 export function StandoffLinkMenu({ target, onLink, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {

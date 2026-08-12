@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { evalPackFormula } from "./formulaTestKit";
 import { IsInNode, TallyNode, AggregateNode } from "../rete-nodes";
 import { joinFrames, type JoinOpts } from "../frameVerbs";
 import { shapeOfJoin } from "../frameShape";
@@ -36,6 +37,16 @@ describe("TallyNode", () => {
 
   it("no input → blank", () => {
     expect(new TallyNode().data({}).frame).toBe(null);
+  });
+});
+
+describe("pack formula functions (D19 decision 4)", () => {
+  it("ISIN masks membership aligned to the values list", () => {
+    expect(evalPackFormula("ISIN(v, s)", { v: [1, 2, 3, 4], s: [2, 4, 9] }))
+      .toEqual([false, true, false, true]);
+  });
+  it("TALLY returns counts per distinct value, first-seen order", () => {
+    expect(evalPackFormula("TALLY(v)", { v: ["b", "a", "b", "c", "a", "b"] })).toEqual([3, 2, 1]);
   });
 });
 

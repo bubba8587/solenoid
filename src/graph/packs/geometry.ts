@@ -1,10 +1,9 @@
-// The Geometry pack — the original worked example of the formula-data pack
-// shape (docs/pack-architecture.md). Trig is in radians (the core Trigonometry
-// convention); wire a Convert node to go from degrees.
+// The worked example of the formula-data pack shape; trig is in RADIANS, per the core
+// Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { HypotenuseNode, TriangleSolverNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { HypotenuseNode, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
   { type: "geo-circle-area",    label: "Circle Area",          expr: "PI()*r^2",
@@ -33,8 +32,6 @@ const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
     description: "Area of a regular n-sided polygon with side length s   (=n*s²/(4·tan(π/n)))" },
 ];
 
-// Second wave (2026-07-09): circles & arcs, 3-D solids, and the Ramanujan
-// ellipse circumference. Same conventions — radians, any consistent length unit.
 export const GEOMETRY_CIRCLES: FormulaPackEntry[] = [
   { type: "geo-arc-length", label: "Arc Length", expr: "r*theta",
     description: "Arc of a circle: radius r × central angle theta (radians)   (s = rθ)" },
@@ -66,13 +63,12 @@ export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
   { type: "geo-tetra-vol", label: "Tetrahedron Volume", expr: "s^3/(6*SQRT(2))",
     description: "Volume of a regular tetrahedron with edge s   (V = s³/(6√2))" },
   { type: "geo-torus-vol", label: "Torus Volume", expr: "2*PI()^2*rr*r^2",
-    description: "Volume of a torus: ring radius rr (centre of tube), tube radius r   (V = 2π²Rr²)" },
+    description: "Volume of a torus: ring radius rr (center of tube), tube radius r   (V = 2π²Rr²)" },
   { type: "geo-torus-area", label: "Torus Surface Area", expr: "4*PI()^2*rr*r",
     description: "Surface of a torus: ring radius rr, tube radius r   (A = 4π²Rr)" },
 ];
 
-// Decimal degrees → D°M′S″ (a real geometry/navigation format — demonstrates a
-// pack contributing display logic the core doesn't ship).
+// Decimal degrees → D°M′S″.
 function toDMS(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   const sign = n < 0 ? "-" : "";
@@ -85,10 +81,8 @@ function toDMS(n: number): string {
   return `${sign}${d}°${m}′${s}″`;
 }
 
-// HYPOTENUSE is the archetypal cross-domain timesaver: it belongs to Geometry AND
-// to a general "timesavers" bundle, and is neither core nor a true Excel matcher
-// (Excel has no HYPOT function). Defined once and claimed by both packs; the
-// catalog builder dedupes by `type` and records both owners.
+// Defined once and claimed by BOTH packs — the catalog builder dedupes by `type` and
+// records both owners.
 export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   type: "hypotenuse",
   label: "HYPOTENUSE",
@@ -96,13 +90,34 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   create: () => new HypotenuseNode(),
 };
 
-// Which formulas file under which Add-menu subcategory (see the placement
-// note in `nodes` below).
+// Which formulas file under which Add-menu subcategory.
 const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse-area"]);
 const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
 const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
 
+// Shares the node's own `solveGivenParts`, so the typed function and the card can't disagree.
+const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "TRIANGLESOLVER",
+    impl: (...args: unknown[]) => {
+      const keys = ["a", "b", "c", "A", "B", "C"] as const;
+      const given: Record<string, number> = {};
+      let any = false;
+      keys.forEach((k, i) => {
+        const v = args[i];
+        if (typeof v === "number" && Number.isFinite(v)) { given[k] = v; any = true; }
+      });
+      if (!any) return null;
+      const r = solveGivenParts(given as TriangleGiven);
+      return keys.map((k) => r.values[k]);
+    },
+    returns: "number", rank: "list", arity: [3, 6],
+    signature: "a, b, c, A°, B°, C° — any 3 incl. a side; returns all six",
+  },
+];
+
 export const GEOMETRY_PACK: Pack = {
+  formulas: GEOMETRY_PACK_FORMULAS,
   id: "geometry",
   name: "Geometry",
   description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default; turn off to declutter.",
@@ -115,25 +130,20 @@ export const GEOMETRY_PACK: Pack = {
       entry: {
         type: "geo-triangle-solver",
         label: "Triangle Solver",
-        description: "Give any three parts — sides a b c, angles A B C in degrees, at least one side — and the rest solve, drawn to scale on the card, plus area and perimeter. Valid answers TRUE/FALSE; give more than three parts and it checks they agree. A genuinely ambiguous SSA says so instead of guessing",
+        description: "Any three parts (sides a b c, angles A B C in degrees, at least one side) solve the rest, drawn to scale, plus area and perimeter. Valid answers TRUE/FALSE; extra parts are checked for agreement; a genuinely ambiguous SSA says so instead of guessing",
         keywords: "triangle solve sides angles law sines cosines sss sas asa aas ssa",
         create: () => new TriangleSolverNode(),
       },
     },
-    // Formula-data nodes — each a pre-set Expression node, no new class.
-    // Placement is by SUBJECT, not by wave (2026-07-16 — all first-wave
-    // formulas at top level made a 15-row pane): circle/ellipse and solid
-    // formulas file under their subcategories, and the two point-distance
-    // formulas from the solids wave surface beside Distance (2D). The arrays
-    // stay grouped by wave — that's how the tests slice them.
+    // Menu placement is by SUBJECT; the arrays stay grouped by WAVE, which is how the
+    // tests slice them.
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS.filter((f) => !CIRCLE_IDS.has(f.type) && !SOLID_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_SOLIDS.filter((f) => DISTANCE_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], [...GEOMETRY_FORMULAS.filter((f) => CIRCLE_IDS.has(f.type)), ...GEOMETRY_CIRCLES]),
     ...placeFormulas(["Packs", "Geometry", "Solids"], [...GEOMETRY_FORMULAS.filter((f) => SOLID_IDS.has(f.type)), ...GEOMETRY_SOLIDS.filter((f) => !DISTANCE_IDS.has(f.type))]),
   ],
-  // Pack contributions to the Format Controller: a unit in an existing group
-  // (angle: turns), a unit in a brand-new group (Geometry: pixels), and a number
-  // format with custom logic (degrees-minutes-seconds).
+  // Format Controller contributions: units in an existing and a new group, plus a
+  // custom-logic number format.
   units: [
     { id: "turn", label: " turns", group: "angle" },
     { id: "px", label: " px", group: "geometry", groupLabel: "Geometry" },

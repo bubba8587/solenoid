@@ -1,4 +1,4 @@
-/* Floating align/distribute cluster — a contextual pill at the top-centre of the
+/* Floating align/distribute cluster — a contextual pill at the top-center of the
    canvas (below the menu bar), shown only while ≥2 nodes are selected. Sits up top
    so it never collides with the always-on command palette docked at the bottom.
    Reuses the overlay-pill tokens the nav/zoom pills use so it reads as the same
@@ -6,7 +6,8 @@
 .solenoid-selbar {
   position: fixed;
   /* Clear the header (menu bar 22px + toolbar 44px + accent border). */
-  top: 76px;
+  /* 10px below the header envelope — see Header.tsx / layout-chrome.md. */
+  top: calc(var(--chrome-top, 66px) + 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 7; /* above the StatusBar (6), below the HUD stack + modals */

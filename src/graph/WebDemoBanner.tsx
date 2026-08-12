@@ -2,13 +2,8 @@ import { useState } from "react";
 import { isWebDemo } from "../env";
 import "./WebDemoBanner.css";
 
-/**
- * Notice shown only on the web frontend (the Vercel demo), never inside the
- * Tauri desktop shell. Tells visitors they're using the in-browser demo and
- * points them at the desktop download. Dismissible for the session.
- */
-// Disabled for now (author request) — keep the component so it can be re-enabled
-// by flipping this flag back to true.
+// Web frontend only, never the Tauri shell. Disabled for now (author request) —
+// keep the component so flipping this flag back re-enables it.
 const WEB_DEMO_BANNER_ENABLED = false;
 
 export function WebDemoBanner() {
@@ -22,8 +17,7 @@ export function WebDemoBanner() {
       <span className="solenoid-webdemo__text">
         You're on the <strong>web demo</strong>. Your graph isn't saved between visits.
       </span>
-      {/* Link disabled for now — repo isn't public yet. Re-enable by
-          restoring href={DOWNLOAD_URL} / target / rel. */}
+      {/* Link disabled while the repo isn't public: restore href/target/rel. */}
       <a
         className="solenoid-webdemo__download solenoid-webdemo__download--disabled"
         aria-disabled="true"

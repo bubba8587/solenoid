@@ -10,7 +10,7 @@
       "y": -620,
       "init": {
         "label": "Every relational table verb",
-        "body": "# One source → every verb\nThe **Sales** frame feeds each table verb on its own branch; click a chip for the full table. **Reps** is the Join lookup; **More Sales** is the Append bottom. A row is duplicated (Ada/N/100) for Distinct; Pivot→Unpivot and Nest→Unnest are round-trips. Column lists are typed right in the node, e.g. `Rep, Amount`.",
+        "body": "# One source → every verb\nThe **Sales** frame feeds each table verb on its own branch; a chip opens the full table. **Reps** is the Join lookup; **More Sales** is the Append bottom. A row is duplicated (Ada/N/100) for Distinct; Pivot→Unpivot and Nest→Unnest are round-trips. Column lists are typed right in the node, e.g. `Rep, Amount`.",
         "color": "violet",
         "width": 420,
         "height": 210

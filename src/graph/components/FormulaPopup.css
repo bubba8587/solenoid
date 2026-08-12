@@ -232,5 +232,5 @@
   padding: 4px 7px;
   outline: none;
 }
-.formula-popup__var-desc:focus { border-color: var(--accent); }
+.formula-popup__var-desc:focus { border-color: var(--node-accent, var(--accent)); }
 .formula-popup__var-desc::placeholder { color: var(--text-dim, #888); }

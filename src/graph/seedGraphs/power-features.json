@@ -64,11 +64,12 @@
     },
     {
       "id": "range-1",
-      "type": "RangeNode",
+      "type": "SeriesNode",
       "x": -337,
       "y": 190,
       "init": {
-        "label": "1 to 6"
+        "label": "1 to 6",
+        "op": "range"
       },
       "literals": {
         "start": 1,
@@ -131,7 +132,7 @@
       "y": -420,
       "init": {
         "label": "Conduits & Ribbons",
-        "body": "# Bundle cables\nThree sensor cables enter the **Conduit** and travel on as one wide **Ribbon** into the collapsed group. Click the Conduit to fan its lanes (its toolbar rotates or **Extends** the run); click the trunk to select the whole ribbon. Or select several cables and right-click → **Insert Conduit**.",
+        "body": "# Bundle cables\nThree sensor cables enter the **Conduit** and travel on as one wide **Ribbon** into the collapsed group. The Conduit fans its lanes (its toolbar rotates or **Extends** the run); the trunk selects the whole ribbon. Or select several cables and right-click → **Insert Conduit**.",
         "color": "gray",
         "width": 380,
         "height": 240,
@@ -247,7 +248,7 @@
       "y": 560,
       "init": {
         "label": "Units",
-        "body": "# Units travel with the value\n**Convert** turns miles into kilometres, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number but never mislabel the unit. Convert is the authority in any chain of formats.",
+        "body": "# Units travel with the value\n**Convert** turns miles into kilometers, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number but never mislabel the unit. Convert is the authority in any chain of formats.",
         "color": "vermilion",
         "width": 360,
         "height": 240,
@@ -317,7 +318,7 @@
       "y": 620,
       "init": {
         "label": "Live controls",
-        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labelled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.",
+        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labeled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); the formula opens a big typeset editor.",
         "color": "lime",
         "width": 360,
         "height": 240,

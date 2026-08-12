@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
+import { CardFrame } from "./NodeCard";
 import { isolateStore, isoEndpointSelect } from "../isolateStore";
 import { boundaryCrossings, type BoundaryCrossing } from "../isolateBoundary";
 import { getEditor, getArea, connectionVersionStore, unselectAllNodes } from "../process";
@@ -9,13 +10,8 @@ import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
 
-// Auto-generated boundary endpoints for the Isolate overlay. The chain's
-// crossings (boundaryCrossings) become an "Inputs" terminal on the LEFT and an
-// "Outputs" terminal on the RIGHT — a multi-lane Conduit-style box when several
-// lanes cross, a single socket when one — with a cable from each lane to the
-// focused socket it stands in for. Rendered in the area's transformed plane
-// (canvas coords), so it pans/zooms with the graph. Shares its look with the
-// future Portal nodes.
+// Boundary terminals for the Isolate overlay, rendered in the area's transformed plane
+// (canvas coords) so they pan/zoom with the graph.
 
 type Pt = { x: number; y: number };
 
@@ -24,8 +20,7 @@ const TERM_W = 152;
 const HEAD_H = 26;    // fixed header height so the lane/dot/cable maths line up
 const LANE_H = 22;    // matches .solenoid-node__io-row
 
-// A focused socket's position in canvas coords (transform-invariant), measured
-// from its DOM dot relative to the area's transformed holder.
+// Canvas coords (transform-invariant), measured from the DOM dot relative to the holder.
 function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side: "input" | "output"): Pt | null {
   const el = holder.querySelector<HTMLElement>(
     `[data-node-id="${CSS.escape(nodeId)}"][data-socket-key="${CSS.escape(key)}"][data-socket-side="${side}"]`,
@@ -55,9 +50,7 @@ export function IsolateEndpoints() {
   const editor = getEditor();
   const area = getArea();
 
-  // Terminals are selectable + draggable (ephemeral — reset when the isolated
-  // set changes, like every other layout change inside isolate). Offsets are in
-  // canvas coords, applied on top of the auto-centered position.
+  // Drag offsets are ephemeral and in canvas coords, applied over the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });
   const dragRef = useRef<{ which: "entry" | "exit"; sx: number; sy: number; base: Pt } | null>(null);
   const focusKey = focus ? [...focus].sort().join(",") : "";
@@ -71,8 +64,7 @@ export function IsolateEndpoints() {
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
-    // Join the one selection system — selecting a terminal clears node / cable /
-    // standoff selection (the canvas pointerdown handler clears the terminal back).
+    // One selection system: selecting a terminal clears node / cable / standoff selection.
     isoEndpointSelect.set(which);
     unselectAllNodes();
     cableSelectionStore.set(null);
@@ -136,17 +128,16 @@ export function IsolateEndpoints() {
     paths.push(getCablePath(shape, { sourceX: l.pos.x, sourceY: l.pos.y, sourcePosition: Position.Right, targetX: b.x, targetY: b.y, targetPosition: Position.Left }));
   });
 
-  // Reuse the node card chrome (border, accent header, io rows) so the terminals
-  // are visually identical to real nodes — and so sockets straddle the edge
-  // without being clipped (no overflow:hidden), the way real node sockets do.
+  // Reuse the node card chrome so sockets straddle the edge without being clipped.
   const terminal = (side: "entry" | "exit", x: number, y: number, lanes: { cr: { externalNodeId: string } }[]) => (
     <div
       className={`solenoid-node solenoid-node--no-chevron solenoid-iso-ep solenoid-iso-ep--${side}${selected === side ? " solenoid-node--selected" : ""}`}
-      style={{ left: x, top: y, width: TERM_W, ["--node-accent" as string]: "var(--sock-any)", cursor: "grab" }}
+      style={{ left: x, top: y, width: TERM_W, ["--node-accent" as string]: "var(--sock-any)", ["--header-h" as string]: `${HEAD_H}px`, cursor: "grab" }}
       onPointerDown={startDrag(side)}
       onPointerMove={onDragMove}
       onPointerUp={endDrag}
     >
+      <CardFrame />
       <div className="solenoid-node__header solenoid-iso-ep__head" style={{ height: HEAD_H }}>
         {side === "entry" ? (lanes.length > 1 ? "Inputs" : "Input") : (lanes.length > 1 ? "Outputs" : "Output")}
       </div>

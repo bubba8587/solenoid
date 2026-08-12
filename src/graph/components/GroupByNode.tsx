@@ -2,14 +2,11 @@ import type { GroupByNode as GroupByNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import type { GroupByOp } from "../rete-nodes";
+import { GROUP_BY_OP_META } from "../rete-nodes";
 
-const GROUP_BY_OPTIONS: ReadonlyArray<OpOption<GroupByOp>> = [
-  { value: "sum",   label: "SUM" },
-  { value: "avg",   label: "AVERAGE" },
-  { value: "min",   label: "MIN" },
-  { value: "max",   label: "MAX" },
-  { value: "count", label: "COUNT" },
-];
+// Derived from GROUP_BY_OP_META (SSOT-1) — the table the search rows read too.
+const GROUP_BY_OPTIONS: ReadonlyArray<OpOption<GroupByOp>> = (Object.keys(GROUP_BY_OP_META) as GroupByOp[])
+  .map((value) => ({ value, label: GROUP_BY_OP_META[value].label }));
 
 export function GroupByComponent({ data: node, emit }: NodeProps<GroupByNodeType>) {
   const [op, setOp] = useNodeField(node, "op");

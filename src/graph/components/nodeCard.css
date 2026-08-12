@@ -3,7 +3,9 @@
 
 .solenoid-node {
   background: var(--surface);
-  border: 1px solid var(--border);
+  /* Transparent: keeps the original layout (content box, offsetWidth) while the
+     PAINT lives in the __frame SVG — see the frame block below. */
+  border: 1px solid transparent;
   border-radius: 6px;
   /* Fixed width so every node is uniform. Without this, nodes shrink-to-
      fit their max-content width and a type=number field (~180px+) stretches
@@ -24,6 +26,76 @@
   user-select: none;
 }
 .solenoid-node:active { cursor: grabbing; }
+
+/* The card's painted frame — body border, header accent cap, header/body
+   divider — drawn by ONE SVG overlay so all three strokes rasterize in a
+   single pass. As CSS borders on the card + header (the old way), each stroke
+   was rounded to device pixels independently under the canvas zoom transform,
+   cracking the shared edges apart (the parked "header/body border seam" bug).
+   The card and header keep transparent borders at the ORIGINAL widths, so only
+   the paint moved; layout, offsets, and socket math are untouched. Geometry is
+   pure CSS via SVG-2 geometry properties; the nested __frame-head svg is sized
+   to --header-h and clips the cap + divider to the header region (a card that
+   never sets --header-h — no header — gets no cap and no divider). */
+.solenoid-node__frame {
+  position: absolute;
+  /* Anchors to rete's holder = the card's border box, like the ring. An svg is
+     a REPLACED element: absolute + inset alone leaves it at its intrinsic
+     300×150, so the size must be explicit. --frame-outset covers cards that
+     are their OWN positioning context (iso endpoints, palette sample), where
+     100% is the padding box and the frame must reach back over the border. */
+  top: calc(-1 * var(--frame-outset, 0px));
+  left: calc(-1 * var(--frame-outset, 0px));
+  width: calc(100% + 2 * var(--frame-outset, 0px));
+  height: calc(100% + 2 * var(--frame-outset, 0px));
+  overflow: hidden;
+  z-index: 1; /* over the header's tinted bg; under chevron 2 / ring 6 / badges 7 */
+  pointer-events: none;
+}
+/* The header viewport: same origin, cut to the header's height — its overflow
+   clip is what ends the accent rails and divider at the header/body seam. */
+.solenoid-node__frame-head {
+  height: var(--header-h, 0px);
+}
+/* Body border: stroke centered half a width inside the card edge, so the
+   stroke's OUTER edge is the card's outer edge — same as the old real border. */
+.solenoid-node__frame-body {
+  x: 0.5px;
+  y: 0.5px;
+  width: calc(100% - 1px);
+  height: calc(100% - 1px);
+  rx: 5.5px;
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1px;
+  transition: stroke 80ms ease;
+}
+/* Accent cap: 2px stroke sharing the card's outer edge; the rect runs taller
+   than the header viewport so its bottom stroke and arcs never show. */
+.solenoid-node__frame-cap {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% + 24px);
+  rx: 5px;
+  fill: none;
+  stroke: var(--node-accent, transparent);
+  stroke-width: 2px;
+}
+/* Header/body divider (was an inset shadow on the header): a 1px strip in the
+   header's last pixel, spanning between the cap's inner rails. */
+.solenoid-node__frame-divider {
+  x: 2px;
+  y: calc(100% - 1px);
+  width: calc(100% - 4px);
+  height: 1px;
+  fill: var(--border);
+}
+/* Light mode frames the card in its accent-dark; a gray divider read as an
+   artifact against those accent edges, so it matches the frame color. */
+:root[data-theme="light"] .solenoid-node__frame-divider {
+  fill: var(--node-accent-dark, var(--border));
+}
 
 /* Wide tier — nodes carrying 2D data (table/matrix or frame sockets) so grid and
    named-column previews have room. Applied via nodeWide() (see kind.ts); a manual
@@ -74,8 +146,8 @@
   text-overflow: ellipsis;
 }
 
-.solenoid-node:not(.solenoid-node--selected):hover {
-  border-color: var(--border-strong);
+.solenoid-node:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
+  stroke: var(--border-strong);
 }
 
 /* Selection ring is a pseudo-element overlay so it can sit ABOVE everything via
@@ -88,32 +160,26 @@
   position: absolute;
   inset: 0;
   box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent, var(--accent)) 70%, #fff);
+  border: 2px solid color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ring), var(--ring-into));
   border-radius: 6px;
   pointer-events: none;
   z-index: 6;
 }
-/* Light mode nerfs the ring hard (author 2026-07-05): 32% toward black read as
-   a harsh near-black frame over a pale card. 80% keeps a visible darker-than-
-   hover step (rest −0.07V · hover 12% black · selected 20% black + glow). */
-:root[data-theme="light"] .solenoid-node--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 80%, #000);
-}
 .solenoid-node--selected {
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--node-accent, var(--accent)) 28%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-glow), transparent);
 }
 
 /* Light mode: frame the card in a darker shade of its own accent instead of a
    neutral gray border (a gray ring around a colored header read as off). The
    :not()s yield to the selection ring and the grouped-node treatment. */
-:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped) {
-  border-color: var(--node-accent-dark, var(--border-strong));
+:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped) .solenoid-node__frame-body {
+  stroke: var(--node-accent-dark, var(--border-strong));
 }
 /* Hover must be a REAL step: --node-accent in light is raw−0.06V while the
    resting accent-dark border is raw−0.07V — visually identical. Mix toward
    black instead so rest → hover → selected ramps (0 → 12% → 20% black). */
-:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped):hover {
-  border-color: color-mix(in srgb, var(--node-accent, var(--border-strong)) 88%, #000);
+:root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped):hover .solenoid-node__frame-body {
+  stroke: color-mix(in srgb, var(--node-accent, var(--border-strong)) 88%, #000);
 }
 
 /* Collapse chevron — top-left of the card, over the header. */
@@ -133,7 +199,7 @@
   background: transparent;
   /* Accent-tinted but pulled toward the body text so it keeps contrast on the
      tinted header — dark mode → toward light text, light mode → toward dark. */
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   cursor: pointer;
 }
 .solenoid-node__chevron:hover {
@@ -164,16 +230,28 @@
 .solenoid-node--grouped .solenoid-node__header {
   margin: -2px -2px 0;
 }
+/* The frame's body stroke follows the 2px layout border. */
+.solenoid-node--grouped .solenoid-node__frame-body {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  rx: 5px;
+  stroke-width: 2px;
+}
 .solenoid-node--grouped:not(.solenoid-node--selected),
 .solenoid-node--grouped:not(.solenoid-node--selected):hover {
   box-shadow: none;
-  border-color: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
+}
+.solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
+.solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
+  stroke: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
 }
 /* Light mode: frame in-group members in a darker shade of the group color, to
    match the group's own darker-accent border. */
-:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected),
-:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected):hover {
-  border-color: var(--group-color-dark, var(--border-strong));
+:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
+:root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
+  stroke: var(--group-color-dark, var(--border-strong));
 }
 /* Membership corner: a small solid triangle of the same group color tucked into
    the lower-right, so a node reads as "in a group" at a glance even when the
@@ -237,13 +315,18 @@
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__header {
   display: none;
 }
-/* The chevron is hidden until hover (so the square stays clean) — it reappears
-   top-left on hover as the visible re-expand affordance; double-click works too. */
+/* The chevron is hidden until hover OR selection (so the square stays clean) —
+   it reappears top-left as the re-expand affordance. Selection is the explicit
+   touch path: tap selects, the chevron appears, tap it (previously this leaned
+   on tap-hover emulation). Note dblclick can NEVER fire inside the canvas
+   (capture-phase swallow — touch-gestures.md), so the chevron is the only
+   re-expand control. */
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
   opacity: 0;
   transition: opacity 0.12s;
 }
-.solenoid-node--square-collapse.solenoid-node--collapsed:hover .solenoid-node__chevron {
+.solenoid-node--square-collapse.solenoid-node--collapsed:hover .solenoid-node__chevron,
+.solenoid-node--square-collapse.solenoid-node--collapsed.solenoid-node--selected .solenoid-node__chevron {
   opacity: 1;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed {
@@ -266,33 +349,35 @@
 
 .solenoid-node__header {
   position: relative;
-  padding: 6px 10px 6px 22px; /* extra left room for the collapse chevron */
-  /* Category accent wraps the top + both sides of the header. Negative
-     margins pull it over the card's own 1px border so the accent is the
-     outermost edge. */
+  /* Bottom padding is 5px + a 1px transparent border (not 6px + none): with
+     background-clip: padding-box below, that tucks the tint's bottom edge 1px
+     up, fully under the frame's divider. Same total height, so layout holds. */
+  padding: 6px 10px 5px 22px; /* extra left room for the collapse chevron */
+  /* The accent cap and divider are PAINTED by the __frame SVG (one-pass
+     rasterization); the transparent borders + negative margins here only
+     reproduce the original layout, keeping the header's box on the card's
+     outer edge. */
   margin: -1px -1px 0;
-  border: 2px solid var(--node-accent, transparent);
-  /* No bottom border — a 2px accent side meeting a 1px dark bottom border
-     mitres into a diagonal wedge. The divider is an inset shadow instead. */
-  border-bottom: none;
-  box-shadow: inset 0 -1px 0 var(--border);
+  border: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
   /* Opaque accent-tinted header. Tint strength is themed (--header-tint) so the
      pale-over-white light theme can push it harder. No accent → plain surface. */
   background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
+  /* padding-box: the div's background edge and the SVG strokes rasterize
+     independently under zoom, so a border-box tint pokes a subpixel PAST the
+     strokes (a tinted halo outside the card). Clipped to the padding box the
+     tint ends at the strokes' INNER edges, with the strokes overlapping it by
+     their full width — rounding slack lands inside the card as a tint/surface
+     boundary instead of outside it. */
+  background-clip: padding-box;
 }
 /* No chevron → reclaim the reserved left room so the title sits flush left. */
 .solenoid-node--no-chevron .solenoid-node__header {
   padding-left: 10px;
 }
 
-/* Light mode frames the card in its accent-dark — the gray header/body divider
-   (the inset shadow above) read as an artifact against those accent edges.
-   Match it to the frame color. */
-:root[data-theme="light"] .solenoid-node__header {
-  box-shadow: inset 0 -1px 0 var(--node-accent-dark, var(--border));
-}
 
 /* A small badge pinned to the card body's top-right corner — currently the lock
    indicator on pack presets (the expand button moved into the formula field).
@@ -392,7 +477,7 @@
   box-sizing: border-box;
   /* Tint the label toward the accent, lightened for legibility. Falls
      back to the original muted gray when no accent is set. */
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   font-family: inherit;
   font-size: 10px;
   line-height: 1.3;
@@ -410,12 +495,13 @@
 /* Static title (not editing): clamped to 4 lines with an ellipsis. Matches the
    label-input's type so swapping in/out is seamless. */
 .solenoid-node__label-display {
-  /* Shrink to the title text (not the full header) so the textless part of the
-     header stays draggable — mirrors group headers. Capped so a long title
-     still leaves the reserved right strip. */
+  /* Shrink to the title text (not the full header) so it sits flush left and
+     leaves the reserved right strip for the type hint — mirrors group headers.
+     The whole header drags regardless (the label taps to edit, drags to move
+     the node), so this is layout only, not a draggability carve-out. */
   width: fit-content;
   max-width: calc(100% - 44px);
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   font-family: inherit;
   font-size: 10px;
   line-height: 1.3;
@@ -438,7 +524,7 @@
 /* The content wrapper — everything below the header. It is the SOCKET POSITIONING
    CONTEXT (the nearest positioned ancestor for the sockets, pills and the value
    box inside it), which is what makes socket `top` values header-independent: a
-   socket centred on the value box is measured relative to THIS box, so the header
+   socket centered on the value box is measured relative to THIS box, so the header
    growing/shrinking never moves it within the wrapper — the wrapper just slides
    down and the browser carries the sockets along. rete's getElementCenter walks
    up the offsetParent chain and adds this wrapper's offset back, so cable
@@ -450,7 +536,7 @@
    negative margin, which would fight the display-grow max-content width.) */
 .solenoid-node__content {
   position: relative;
-  /* Horizontal offset of socket dots anchored to this wrapper. -6.5px centres them
+  /* Horizontal offset of socket dots anchored to this wrapper. -6.5px centers them
      on the card's OUTER edge: the wrapper sits inside the 1px border, so the dot
      needs the extra out to straddle the edge (tuned live). The half-pixel is fine —
      the dot is a real SVG shape, crisp on subpixel boundaries. Groups (no wrapper,
@@ -527,8 +613,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
+/* Focus/hover rings inside a card take the CARD's accent, not the app's. The header
+   is already tinted with the node accent, so an app-accent ring put two unrelated
+   hues on one small surface (author 2026-07-27: "they really don't mix"). A node
+   with no accent falls back to the app accent, and app-level chrome — the command
+   palette, Settings, the Navigator, the accentless dialogs — is untouched. */
 .solenoid-node__value-input:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 .solenoid-node__display-value {
@@ -679,7 +770,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 }
 .solenoid-node__resize-handle:hover {
   opacity: 0.9;
-  color: var(--accent);
+  color: var(--node-accent, var(--accent));
 }
 
 /* Touch: pad the hit area out for a fingertip. (It only responds on a SELECTED
@@ -758,7 +849,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 /* A hero output box inside a measured socket row (Reconcile's frame + markdown
    summary): a tall block, NOT the fixed-height label|value flex row — else it
    overflowed the 22px height and overlapped the rows above. The socket dot still
-   measures onto the box centre (it's absolutely positioned, unaffected by this). */
+   measures onto the box center (it's absolutely positioned, unaffected by this). */
 .solenoid-node__io-row--hero {
   display: block;
   height: auto;
@@ -809,7 +900,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   margin: 0;
 }
 .solenoid-node__inline-input:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 /* Scrubbing (InlineNumberField's pointer-drag gesture): pins the cursor to a
@@ -873,7 +964,7 @@ body.solenoid-scrubbing * {
   box-sizing: content-box;
 }
 .solenoid-node__quoted-input:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 /* Multi-line text value (the Text node's main field): a textarea that grows to
@@ -1006,7 +1097,7 @@ body.solenoid-scrubbing * {
   transition: border-color 80ms ease, color 80ms ease;
 }
 .solenoid-node__add-input:hover {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }
 
@@ -1078,7 +1169,7 @@ body.solenoid-scrubbing * {
   transition: border-color 80ms ease, color 80ms ease, background 80ms ease;
 }
 .solenoid-node__recalc-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
   color: var(--text);
   background: var(--surface);
 }
@@ -1111,7 +1202,7 @@ body.solenoid-scrubbing * {
 }
 
 .solenoid-node__op-select:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 /* A labeled control row (Pivot per-value funcs, totals depth, sort) — a left
@@ -1147,7 +1238,7 @@ body.solenoid-scrubbing * {
   border-radius: 4px;
   cursor: pointer;
 }
-.solenoid-node__pivot-config:hover { border-color: var(--accent); }
+.solenoid-node__pivot-config:hover { border-color: var(--node-accent, var(--accent)); }
 .solenoid-node__pivot-summary {
   margin-top: 4px;
   font-size: 11px;
@@ -1312,4 +1403,78 @@ body.solenoid-scrubbing * {
   font-size: 11px;
   font-weight: 500;
   justify-content: flex-start;
+}
+
+/* ─── Op selectors: operation vs argument ────────────────────────────────────
+   A card's dropdown either picks between distinct OPERATIONS or sets an ARGUMENT
+   of one operation. An operation selector carries an accent EDGE over the normal
+   neutral field; an argument selector is left alone.
+
+   An accent fill was tried first and pulled far too much weight for what it says
+   (author, 2026-07-27) — DESIGN.md's "accent never carries large fills" was right.
+   An edge says the same thing at the volume the distinction deserves.
+
+   THE CONFLICT THIS HAS TO DODGE: a full-strength accent border already means
+   FOCUS on this very control (see :focus below). So the resting edge takes the
+   --mix-emphasis rung (DESIGN.md, The Accent-Mix Ladder) and focus keeps the
+   pure accent. Author-walked 2026-08-05: 85% read too close to the focus
+   color, the header-band tint too subtle; the quiet-emphasis rung is the
+   in-between step.
+
+   The 2px edge is paid for out of the PADDING, not the box: the neutral field's
+   1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an
+   operation selector occupies exactly the same space as a neutral one and no row
+   reflows when a family is reclassified.
+
+   `data-op-kind` is set on the card root by NodeCard, and is ABSENT for a family
+   not yet declared in nodeOps.ts — an undeclared node stays neutral rather than
+   claiming to be an argument selector.
+
+   A SECONDARY select on an operation card (SUMIFS' per-criterion comparator,
+   CumPmt's payment timing) is an ARGUMENT and opts out via `data-op-arg`
+   (OpSelect's `arg` prop) — the descendant match alone would edge every select
+   in the card. */
+/* An OPERATION selector renders at the TOP of the card body, above the input
+   rows (author, 2026-08-05): the op names what the card does, so it reads
+   before the inputs it shapes. Enforced HERE as flex order rather than in a
+   hundred components — the body is a flex column, so one rule hoists every
+   current and future node's op selector; component JSX keeps its natural
+   order. Requires the selector to be a DIRECT body child (the norm; a wrapper
+   div would pin it in place). Argument selectors stay in their rows. Socket
+   rows measure offsetTop after layout, so cable endpoints follow the visual
+   order automatically. */
+.solenoid-node__body > .solenoid-node__op-select:not([data-op-arg]) {
+  order: -1;
+}
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]) {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
+  /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
+  padding: 3px 23px 3px 7px;
+}
+
+/* Focus outranks the resting type edge: same width, full-strength accent. Declared
+   after (and at higher specificity than) the rule above so it always wins. */
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]):focus {
+  border-color: var(--node-accent, var(--accent));
+}
+
+/* A SegToggle is the SAME picker in a different shape (Sparkline's chart type,
+   Surface's view, the resistor's band count all bind `op` there), so it takes the same
+   two rules: the family's op picker hoists, and it carries the accent on an operation
+   card. Those are one decision chain, not two axes — `arg` says the control is not the
+   family picker at all, and for the picker itself the family's `kind` alone decides the
+   accent. Binding `op` is not a second vote: the field name only lets NODE_OPS attach.
+   So the NEUTRAL case is the common one (SegToggle.css defines it) — every `arg`
+   toggle, plus the family picker on any argument-kind card, which is most of them. */
+.solenoid-node__body > .solenoid-seg:not([data-op-arg]) {
+  order: -1;
+}
+.solenoid-node[data-op-kind="operation"] .solenoid-seg:not([data-op-arg]) .solenoid-segbtn {
+  background: var(--border-subtle);
+}
+.solenoid-node[data-op-kind="operation"] .solenoid-seg:not([data-op-arg]) .solenoid-segbtn--on {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text);
 }

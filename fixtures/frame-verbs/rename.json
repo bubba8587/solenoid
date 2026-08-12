@@ -1,0 +1,25 @@
+{ "verb": "rename",
+  "cases": [
+    { "name": "renames by map, order preserved",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] },
+        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "rename", "map": { "a": "z" } },
+      "expect": { "columns": [
+        { "name": "z", "type": "number", "values": [1, 2] },
+        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
+    { "name": "an unknown key is a no-op",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "rename", "map": { "nope": "z" } },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1] } ] } },
+    { "name": "a collision uniquifies the displaced column (b -> b2)",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] },
+        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "rename", "map": { "a": "b" } },
+      "expect": { "columns": [
+        { "name": "b", "type": "number", "values": [1, 2] },
+        { "name": "b2", "type": "string", "values": ["x", "y"] } ] } }
+  ] }

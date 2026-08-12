@@ -64,18 +64,15 @@
 }
 
 .solenoid-history--selected {
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }
 .solenoid-history--selected::after {
   content: "";
   position: absolute;
   inset: -1px;
   box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border: 2px solid color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   border-radius: 6px;
   pointer-events: none;
   z-index: 6;
-}
-:root[data-theme="light"] .solenoid-history--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
 }

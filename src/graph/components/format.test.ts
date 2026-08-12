@@ -28,10 +28,9 @@ describe("formatScalar", () => {
     expect(formatScalar(0.00001)).toBe("1e-5");
   });
 
-  it("Infinity falls through to toFixed(4) → 'Infinity'", () => {
-    // Number.isInteger(Infinity) is false; toFixed returns "Infinity" per spec
-    expect(formatScalar(Infinity)).toBe("Infinity");
-    expect(formatScalar(-Infinity)).toBe("-Infinity");
+  it("Infinity renders as the ∞ glyph (value-semantics.md, author call 2026-08-05)", () => {
+    expect(formatScalar(Infinity)).toBe("∞");
+    expect(formatScalar(-Infinity)).toBe("-∞");
   });
 
   it("-0 is an integer and renders as '0'", () => {

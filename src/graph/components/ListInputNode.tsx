@@ -16,19 +16,15 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: s
   { value: "logical", label: "Bool", title: "TRUE / FALSE list" },
 ];
 
-/**
- * Switch the list's element type in place: re-type the row sockets + output, drop any
- * downstream cable the new type can't feed, re-adapt downstream Format Controllers, and
- * recompute. Same mechanics as the Cast node's target swap.
- */
+/** Switch the list's element type in place — an in-place retype fires no connection
+ *  event, so the cable drops and downstream FC re-adaptation must happen here. */
 export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   // Active graph: a List Input inside a Composite drill-in retypes its own graph's cables.
   const editor = getActiveEditor();
   const area = getActiveArea();
   if (editor && area) {
-    // The row INPUT sockets were retyped too — drop any wired cable the new
-    // element type can't accept (retypeOutputCables only walks outputs).
+    // The row INPUT sockets were retyped too, and retypeOutputCables only walks outputs.
     const inType = (node.valueSocket as SolenoidSocket).dataType;
     for (const c of [...editor.getConnections()]) {
       if (c.target !== node.id) continue;
@@ -48,9 +44,8 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
 
   return (
-    // Header accent tracks the element family, matching the output socket.
     <NodeShell node={data} emit={emit} accentOverride={SOCKET_COLORS[data.valueSocket.dataType]}>
-      <SegToggle
+      <SegToggle arg
         value={dt}
         options={TYPE_OPTIONS}
         onChange={(next) => { setDt(next); void applyListType(data, next); }}

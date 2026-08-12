@@ -209,11 +209,12 @@
     },
     {
       "id": "ls_x",
-      "type": "LinSpaceNode",
+      "type": "SeriesNode",
       "x": 10,
       "y": 1715,
       "init": {
-        "label": "Angles 0–2π"
+        "label": "Angles 0–2π",
+        "op": "linspace"
       },
       "literals": {
         "start": 0,
@@ -470,7 +471,7 @@
     },
     {
       "source": "ls_x",
-      "sourceOutput": "result",
+      "sourceOutput": "list",
       "target": "sin",
       "targetInput": "in"
     },

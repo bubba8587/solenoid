@@ -1,5 +1,12 @@
 # docs/archive — finalized & inactive docs
 
+**Nothing LIVE lives here.** If a section is still the reference for current work —
+routed from the code→spec table, or the standing evidence behind code that ships — it
+belongs in the working set, and the finished record stays behind. Split the doc rather
+than parking a live section in a finished one: an agent is told archive is done, so a
+live pointer into it is a pointer that gets skipped (`docsPointers.test.ts` fails the
+routing table on any `archive/` target).
+
 Docs that have **done their job** — point-in-time research, resolved scoping, shipped
 specs, and forward proposals not picked up. Kept out of the top-level `docs/` so the living
 docs (architecture, subsystem-invariants, dev-notes, backlog, the per-subsystem references)
@@ -13,9 +20,13 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`renderer-decision.md`](renderer-decision.md) — *condensed.* The HTML-in-Canvas decision + diagnosis (mipmap-once-at-1.5×, headless Rete). The PixiJS-adoption pitch is dropped — the pixi renderer is deprecated (author 2026-07-19).
 - [`renderer-plan.md`](renderer-plan.md) — *condensed.* The renderer feature-gate safety rule (implemented in `src/main.tsx`), the Linux WebKitGTK hazard, and the Tauri-vs-Electron decision.
 - [`future-directions.md`](future-directions.md) — *kept.* The architecture bets with the author's IN / OUT / PARKED verdicts.
+- [`type-resolution-consolidation.md`](type-resolution-consolidation.md) — *complete 2026-07-25.* The audit + five work items that made ADOPTION the single type resolver (the display walk is deleted, `noWidenInputs` and the adopted-vs-base coercion exception are gone, the `anycombo` rung closed the ladder). Read before reworking `trueAnyAdopt` / `coerceInputs` / `displayedType` — it records what was removed and why, including a before-picture of the five overlapping graph walks.
 - [`node-arity-audit.md`](node-arity-audit.md) — *condensed.* The labeled-slots-vs-list-socket KEEP verdicts (rule also lives in `node-coverage.md`).
 
 ### Still-consumed reference — kept whole; cited by live code / docs
+- [`formula-node-parity.md`](formula-node-parity.md) — *archived 2026-08-07, program complete (548/548 in-scope leaves callable).* The D19 parity program record only. Its Formula.js divergence catalogue was LIVE and moved out 2026-08-11 → `../formulajs-divergences.md`.
+- [`cube-node-scope.md`](cube-node-scope.md) — *archived 2026-08-07, shipped.* The Cube model + node set rationale; live summary in `../node-coverage.md`, deferred slices in `../deferrals.md`.
+- [`excel-toolbar-supplementals.md`](excel-toolbar-supplementals.md) — *archived 2026-08-07.* The ribbon-by-ribbon non-function parity verdicts (all open questions answered 2026-07-05).
 - [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point / function-gap research that seeded the parity work.
 - [`formulajs-vs-native-audit.md`](formulajs-vs-native-audit.md) — the per-family formula.js-vs-native verdicts cited by `excelFunctions.ts`.
 - [`reference-packs.md`](reference-packs.md) — the reference-pack licensing decision + candidate pack menu.
@@ -37,4 +48,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
 
 ### Dev-notes history
-- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-07-19 + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
+- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-08-04a + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
+- [`17-matrix-formulas.md`](17-matrix-formulas.md) — the Tier 4 decision packet, decided as D23 (2026-07-28) and built; live truth is D23 + `broadcastRules.test.ts`.
+- [`18-parity-corpus.md`](18-parity-corpus.md) — the backend parity-corpus bundle, shipped 2026-07-29 as FX-12.
+- [`19-computed-column-surface.md`](19-computed-column-surface.md) — the computed-column surface design bundle, fully landed 2026-07-31 (note: the doc's `source` variant and "Typed" label shipped as sibling `expr?`/`lambda?` fields and the "Data" label).

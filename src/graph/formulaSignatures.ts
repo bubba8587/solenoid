@@ -1,16 +1,8 @@
-import { EXCEL_IMPL_META } from "./excelFunctions";
+import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
+import { packFormulaSignature } from "./formulaExtensions";
 
-// ─── Formula function signatures (display-only) ────────────────────────────────
-// Curated Excel-style parameter hints for the formula editor: the autocomplete
-// menu shows a function's arguments, and a param-hint bar tracks the argument the
-// caret is in. Display-only — nothing here affects evaluation (arity is NOT
-// enforced; Formula.js/our impls do their own checking), so an imperfect entry
-// can't break a formula, only mislabel a hint. Optional args in [brackets],
-// variadic tails as `…`. Names are UPPERCASE; dotted stat names included.
-//
-// Coverage is the widely-used set; anything absent falls back to the registered
-// impl's arity (EXCEL_IMPL_META) as a bare count, then to nothing. Add entries
-// freely — one line each.
+// Display-only parameter hints — arity is NOT enforced here, so a wrong entry only
+// mislabels. UPPERCASE names, optional args in [brackets], variadic tails as `…`.
 export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── logical / branching ──
   IF: "condition, then, [else]",
@@ -25,13 +17,12 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   NOT: "logical",
   // ── lookup / reference ──
   INDEX: "array, row, [col]",
-  XMATCH: "value, array, [match_mode]",
-  XLOOKUP: "value, lookup_array, return_array, [if_not_found], [match_mode]",
+  XMATCH: "value, array, [match_mode], [search_mode]",
+  XLOOKUP: "value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode]",
   // ── math ──
   SUM: "value1, value2, …",
   SUMSQ: "value1, value2, …",
   SUMPRODUCT: "array1, array2, …",
-  SUMIF: "range, criteria, [sum_range]",
   SUMIFS: "sum_range, criteria_range1, criteria1, …",
   PRODUCT: "value1, value2, …",
   ABS: "x",
@@ -72,7 +63,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   AVERAGEIF: "range, criteria, [average_range]",
   AVERAGEIFS: "average_range, criteria_range1, criteria1, …",
   MEDIAN: "value1, value2, …",
-  MODE: "value1, value2, …",
+  MODE: "value1, [value2], …",
   MIN: "value1, value2, …",
   MAX: "value1, value2, …",
   COUNT: "value1, value2, …",
@@ -86,10 +77,10 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   PERCENTILE: "array, k",
   PERCENTRANK: "array, x, [significance]",
   QUARTILE: "array, quart",
-  STDEV: "value1, value2, …",
+  STDEV: "value1, [value2], …",
   "STDEV.S": "value1, value2, …",
   "STDEV.P": "value1, value2, …",
-  VAR: "value1, value2, …",
+  VAR: "value1, [value2], …",
   "VAR.S": "value1, value2, …",
   "VAR.P": "value1, value2, …",
   GEOMEAN: "value1, value2, …",
@@ -102,7 +93,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   SLOPE: "known_ys, known_xs",
   INTERCEPT: "known_ys, known_xs",
   RSQ: "known_ys, known_xs",
-  FORECAST: "x, known_ys, known_xs",
+  "FORECAST.LINEAR": "x, known_ys, known_xs",
   STANDARDIZE: "x, mean, sd",
   "NORM.DIST": "x, mean, sd, cumulative",
   "NORM.INV": "probability, mean, sd",
@@ -133,8 +124,8 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   VALUE: "text",
   NUMBERVALUE: "text, [decimal_sep], [group_sep]",
   TEXTJOIN: "delimiter, ignore_empty, text1, …",
-  CONCAT: "text1, text2, …",
-  CONCATENATE: "text1, text2, …",
+  CONCAT: "text1, [text2], …",
+  CONCATENATE: "text1, [text2], …",
   REPT: "text, count",
   EXACT: "text1, text2",
   CHAR: "code",
@@ -183,28 +174,366 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   NA: "",
   // ── Solenoid extras ──
   CLAMP: "x, min, max",
+
+  TEXTSPLIT: "text, delimiter",
+  TEXTAFTER: "text, delimiter",
+  TEXTBEFORE: "text, delimiter",
+  ENCODEURL: "text",
+  REGEXTEST: "text, pattern, [case_sensitivity]",
+  REGEXEXTRACT: "text, pattern, [return_mode], [case_sensitivity]",
+  REGEXREPLACE: "text, pattern, replacement, [occurrence], [case_sensitivity]",
+  COUPDAYBS: "settlement, maturity, [frequency], [basis]",
+  COUPDAYSNC: "settlement, maturity, [frequency], [basis]",
+  COUPNUM: "settlement, maturity, [frequency], [basis]",
+  COUPNCD: "settlement, maturity, [frequency], [basis]",
+  COUPPCD: "settlement, maturity, [frequency], [basis]",
+  ACCRINTM: "issue, settlement, rate, [par], [basis]",
+  INTRATE: "settlement, maturity, investment, redemption, [basis]",
+  RECEIVED: "settlement, maturity, investment, discount, [basis]",
+  YIELDDISC: "settlement, maturity, pr, [redemption], [basis]",
+  PRICEMAT: "settlement, maturity, issue, rate, yld, [basis]",
+  YIELDMAT: "settlement, maturity, issue, rate, pr, [basis]",
+  DURATION: "settlement, maturity, coupon, yld, [frequency], [basis]",
+  MDURATION: "settlement, maturity, coupon, yld, [frequency], [basis]",
+  PRICE: "settlement, maturity, rate, yld, [redemption], [frequency]",
+  YIELD: "settlement, maturity, rate, pr, [redemption], [frequency]",
+  VDB: "cost, salvage, life, start_period, end_period, [factor]",
+  ODDFPRICE: "settlement, maturity, issue, first_coupon, rate, yld, [redemption], [frequency]",
+  ODDFYIELD: "settlement, maturity, issue, first_coupon, rate, pr, [redemption], [frequency]",
+  ODDLPRICE: "settlement, maturity, last_interest, rate, yld, [redemption], [frequency]",
+  ODDLYIELD: "settlement, maturity, last_interest, rate, pr, [redemption], [frequency]",
+
+  // ── math / scalar (registered natives) ──
+  SQRTPI: "x",
+  ACOSH: "x",
+  ATANH: "x",
+  LOG2: "x",
+  HYPOTENUSE: "a, b",
+  CONVERT: "number, from_unit, to_unit",
+  ORDINAL: "number",
+  BETWEEN: "value, low, high",
+  // ── logical ──
+  NAND: "logical1, [logical2], …",
+  NOR: "logical1, [logical2], …",
+  XNOR: "logical1, [logical2], …",
+  // ── text ──
+  LENB: "text",
+  LEFTB: "text, [count]",
+  RIGHTB: "text, [count]",
+  MIDB: "text, start, count",
+  FINDB: "find_text, within, [start]",
+  SEARCHB: "find_text, within, [start]",
+  REPLACEB: "text, start, count, new",
+  VALUETOTEXT: "value, [format]",
+  REVERSETEXT: "text",
+  SPELLNUMBER: "number",
+  DECODEURL: "text",
+  DOLLAR: "number, [decimals]",
+  // ── statistics ──
+  "RANK.EQ": "value, array, [order]",
+  "RANK.AVG": "value, array, [order]",
+  COUNTDISTINCT: "array",
+  WAVG: "values, weights",
+  WVAR: "values, weights",
+  WSTDEV: "values, weights",
+  "T.TEST": "array1, array2, tails, type",
+  "F.TEST": "array1, array2",
+  PROB: "x_range, prob_range, lower, [upper]",
+  "MODE.MULT": "array",
+  FREQUENCY: "data_array, bins_array",
+  INTERPOLATE: "known_ys, [known_xs], [new_xs]",
+  TREND: "known_ys, [known_xs], [new_xs]",
+  GROWTH: "known_ys, [known_xs], [new_xs]",
+  LINEST: "known_ys, [known_xs]",
+  LOGEST: "known_ys, [known_xs]",
+  // ── distributions ──
+  "T.DIST.RT": "x, deg_freedom",
+  "T.DIST.2T": "x, deg_freedom",
+  "T.INV.2T": "probability, deg_freedom",
+  "CHISQ.DIST.RT": "x, deg_freedom",
+  "CHISQ.INV.RT": "probability, deg_freedom",
+  "F.DIST.RT": "x, deg_freedom1, deg_freedom2",
+  "F.INV.RT": "probability, deg_freedom1, deg_freedom2",
+  "GAMMA.DIST": "x, alpha, beta, cumulative",
+  "GAMMA.INV": "probability, alpha, beta",
+  "ERF.PRECISE": "x",
+  "ERFC.PRECISE": "x",
+  // ── complex (IM* family over tagged Cx) ──
+  COMPLEX: "real, imaginary, [suffix]",
+  IMREAL: "inumber", IMAGINARY: "inumber", IMABS: "inumber", IMARGUMENT: "inumber",
+  IMCONJUGATE: "inumber", IMEXP: "inumber", IMLN: "inumber",
+  IMLOG10: "inumber", IMLOG2: "inumber", IMSQRT: "inumber",
+  IMSIN: "inumber", IMCOS: "inumber", IMTAN: "inumber", IMCOT: "inumber",
+  IMSEC: "inumber", IMCSC: "inumber", IMSINH: "inumber", IMCOSH: "inumber",
+  IMSECH: "inumber", IMCSCH: "inumber",
+  IMSUM: "inumber1, [inumber2], …",
+  IMPRODUCT: "inumber1, [inumber2], …",
+  IMSUB: "inumber1, inumber2",
+  IMDIV: "inumber1, inumber2",
+  IMPOWER: "inumber, power",
+  QUADRATICROOTS: "a, b, c",
+  // ── matrix / dynamic arrays ──
+  TRANSPOSE: "array",
+  MMULT: "array1, array2",
+  MUNIT: "dimension",
+  MDETERM: "array",
+  MINVERSE: "array",
+  WRAPROWS: "vector, wrap_count, [pad_with]",
+  WRAPCOLS: "vector, wrap_count, [pad_with]",
+  TOCOL: "array",
+  TOROW: "array",
+  SEQUENCE: "rows, [columns], [start], [step]",
+  RANDARRAY: "[rows], [columns], [min], [max], [whole_number]",
+  UNIQUE: "array",
+  SORT: "array, [sort_index], [sort_order]",
+  SORTBY: "array, by_array",
+  FILTER: "array, include, [if_empty]",
+  TAKE: "array, rows, [columns]",
+  DROP: "array, rows, [columns]",
+  // ── lambda helpers ──
+  LAMBDA: "parameter1, …, calculation",
+  MAP: "array1, [array2], [array3], lambda",
+  BYROW: "array, lambda",
+  BYCOL: "array, lambda",
+  REDUCE: "initial_value, array, lambda",
+  SCAN: "initial_value, array, lambda",
+  MAKEARRAY: "rows, columns, lambda",
+  GROUPBY: "row_keys, values, lambda",
+  // ── list ops ──
+  REVERSE: "list",
+  SLICE: "list, start, [end]",
+  NTHELEMENT: "list, n",
+  INTERLEAVE: "list1, list2",
+  PADRIGHT: "list, length, [fill]",
+  PADLEFT: "list, length, [fill]",
+  DIFF: "list",
+  NORMALIZE: "list",
+  RUNNING: "operation, list, [window]",
+  LENGTH: "list",
+  ARGMAX: "list",
+  ARGMIN: "list",
+  CONTAINS: "list, value",
+  LINSPACE: "start, stop, count",
+  REPEAT: "value, count",
+  GEOMETRIC: "start, ratio, count",
+  FIBONACCI: "count",
+  SETUNION: "list1, list2",
+  SETINTERSECT: "list1, list2",
+  SETDIFFERENCE: "list1, list2",
+  SETSYMDIFF: "list1, list2",
+  SETEQUAL: "list1, list2",
+  SETSUBSET: "list1, list2",
+  SETSUPERSET: "list1, list2",
+  SETDISJOINT: "list1, list2",
+  FILLVALUE: "list, value",
+  FILLFORWARD: "list",
+  FILLBACKWARD: "list",
+  FILLMEAN: "list",
+  FILLMEDIAN: "list",
+  FILLMODE: "list",
+  FILLINTERPOLATE: "list",
+  FILLDROP: "list",
+  COALESCE: "list, [fallback], …",
+  RANGE: "start, stop, [step]",
+  CONCATLISTS: "list1, [list2], …",
+  SHUFFLE: "list",
+  TEXTFILTER: "list, pattern, [condition]",
+
+  // ── Formula.js-backed names (no native impl — params per the library's own
+  //    signature, which is Excel's except where noted) ──
+  // math / trig
+  ACOT: "x",
+  ACOTH: "x",
+  ASINH: "x",
+  COT: "x",
+  COTH: "x",
+  SEC: "x",
+  SECH: "x",
+  CSC: "x",
+  CSCH: "x",
+  EVEN: "x",
+  ODD: "x",
+  "CEILING.MATH": "x, [significance], [mode]",
+  "CEILING.PRECISE": "x, [significance]",
+  "FLOOR.MATH": "x, [significance], [mode]",
+  "FLOOR.PRECISE": "x, [significance]",
+  "ISO.CEILING": "x, [significance]",
+  BASE: "number, radix, [min_length]",
+  DECIMAL: "text, radix",
+  ARABIC: "roman_text",
+  ROMAN: "number",
+  COMBINA: "n, k",
+  PERMUTATIONA: "n, k",
+  FACTDOUBLE: "n",
+  MULTINOMIAL: "value1, value2, …",
+  SERIESSUM: "x, n, m, coefficients",
+  SUMX2MY2: "array_x, array_y",
+  SUMX2PY2: "array_x, array_y",
+  SUMXMY2: "array_x, array_y",
+  SUBTOTAL: "function_num, ref",
+  AGGREGATE: "function_num, options, ref1, [ref2]",
+  GAMMA: "x",
+  GAMMALN: "x",
+  "GAMMALN.PRECISE": "x",
+  ERF: "lower_limit, [upper_limit]",
+  ERFC: "x",
+  GAUSS: "z",
+  PHI: "x",
+  FISHER: "x",
+  FISHERINV: "y",
+  // engineering — bases, bits, Bessel
+  BESSELI: "x, n",
+  BESSELJ: "x, n",
+  BESSELK: "x, n",
+  BESSELY: "x, n",
+  BIN2DEC: "number",
+  BIN2HEX: "number, [places]",
+  BIN2OCT: "number, [places]",
+  DEC2BIN: "number, [places]",
+  DEC2HEX: "number, [places]",
+  DEC2OCT: "number, [places]",
+  HEX2BIN: "number, [places]",
+  HEX2DEC: "number",
+  HEX2OCT: "number, [places]",
+  OCT2BIN: "number, [places]",
+  OCT2DEC: "number",
+  OCT2HEX: "number, [places]",
+  BITAND: "number1, number2",
+  BITOR: "number1, number2",
+  BITXOR: "number1, number2",
+  BITLSHIFT: "number, shift_amount",
+  BITRSHIFT: "number, shift_amount",
+  DELTA: "number1, [number2]",
+  GESTEP: "number, [step]",
+  // statistics
+  AVEDEV: "value1, value2, …",
+  AVERAGEA: "value1, value2, …",
+  MAXA: "value1, value2, …",
+  MINA: "value1, value2, …",
+  STDEVA: "value1, value2, …",
+  STDEVPA: "value1, value2, …",
+  VARA: "value1, value2, …",
+  VARPA: "value1, value2, …",
+  DEVSQ: "value1, value2, …",
+  "MODE.SNGL": "value1, value2, …",
+  "SKEW.P": "value1, value2, …",
+  MAXIFS: "max_range, criteria_range1, criteria1, …",
+  MINIFS: "min_range, criteria_range1, criteria1, …",
+  "COVARIANCE.P": "array1, array2",
+  "COVARIANCE.S": "array1, array2",
+  PEARSON: "array1, array2",
+  STEYX: "known_ys, known_xs",
+  "PERCENTILE.EXC": "array, k",
+  "PERCENTILE.INC": "array, k",
+  "PERCENTRANK.EXC": "array, x, [significance]",
+  "PERCENTRANK.INC": "array, x, [significance]",
+  "QUARTILE.EXC": "array, quart",
+  "QUARTILE.INC": "array, quart",
+  "CONFIDENCE.NORM": "alpha, sd, size",
+  "CONFIDENCE.T": "alpha, sd, size",
+  "CHISQ.TEST": "actual_range, expected_range",
+  "Z.TEST": "array, x, [sigma]",
+  "F.INV": "probability, deg_freedom1, deg_freedom2",
+  // distributions
+  "BETA.DIST": "x, alpha, beta, cumulative, [a], [b]",
+  "BETA.INV": "probability, alpha, beta, [a], [b]",
+  "BINOM.DIST.RANGE": "trials, probability, successes, [successes2]",
+  "BINOM.INV": "trials, probability, alpha",
+  "HYPGEOM.DIST": "successes, sample_size, population_successes, population_size, cumulative",
+  "LOGNORM.DIST": "x, mean, sd, cumulative",
+  "LOGNORM.INV": "probability, mean, sd",
+  "NEGBINOM.DIST": "failures, successes, probability, cumulative",
+  "WEIBULL.DIST": "x, alpha, beta, cumulative",
+  // text
+  CLEAN: "text",
+  FIXED: "number, [decimals], [no_commas]",
+  UNICHAR: "code",
+  UNICODE: "text",
+  T: "value",
+  // info
+  ISNONTEXT: "value",
+  N: "value",
+  TYPE: "value",
+  "ERROR.TYPE": "error_value",
+  TRUE: "",
+  FALSE: "",
+  // date / time
+  DAYS360: "start, end, [method]",
+  ISOWEEKNUM: "date",
+  "NETWORKDAYS.INTL": "start, end, [weekend], [holidays]",
+  "WORKDAY.INTL": "start, days, [weekend], [holidays]",
+  // finance
+  ACCRINT: "issue, first_interest, settlement, rate, par, frequency, [basis]",
+  COUPDAYS: "settlement, maturity, [frequency], [basis]",
+  CUMIPMT: "rate, nper, pv, start_period, end_period, type",
+  CUMPRINC: "rate, nper, pv, start_period, end_period, type",
+  DISC: "settlement, maturity, pr, redemption, [basis]",
+  DOLLARDE: "fractional_dollar, fraction",
+  DOLLARFR: "decimal_dollar, fraction",
+  FVSCHEDULE: "principal, schedule",
+  ISPMT: "rate, period, nper, pv",
+  PRICEDISC: "settlement, maturity, discount, redemption, [basis]",
+  TBILLEQ: "settlement, maturity, discount",
+  TBILLPRICE: "settlement, maturity, discount",
+  TBILLYIELD: "settlement, maturity, pr",
+  // database (D*) — one shape across the family
+  DAVERAGE: "database, field, criteria",
+  DCOUNT: "database, field, criteria",
+  DCOUNTA: "database, field, criteria",
+  DGET: "database, field, criteria",
+  DMAX: "database, field, criteria",
+  DMIN: "database, field, criteria",
+  DPRODUCT: "database, field, criteria",
+  DSTDEV: "database, field, criteria",
+  DSTDEVP: "database, field, criteria",
+  DSUM: "database, field, criteria",
+  DVAR: "database, field, criteria",
+  DVARP: "database, field, criteria",
+  // lookup / arrays (COLUMN/ROW are blocked — LEGACY_ALIASES → INDEX)
+  COLUMNS: "array",
+  ROWS: "array",
+  CHOOSECOLS: "array, col1, col2, …",
+  CHOOSEROWS: "array, row1, row2, …",
+  EXPAND: "array, rows, [columns], [pad_with]",
+  HSTACK: "array1, array2, …",
+  VSTACK: "array1, array2, …",
 };
 
+/** A named placeholder signature synthesized from an impl's [min, max] arity, so a
+ *  registration with no curated entry still hints "arg1, arg2, [arg3]" rather than a
+ *  bare count. Required args are `argN`, optional ones `[argN]`, a variadic tail `…`. */
+export function genericSignature([min, max]: readonly [number, number]): string {
+  if (max === 0) return "";
+  const variadic = max >= 255;
+  const shown = variadic ? Math.max(min, 1) : max;
+  const parts: string[] = [];
+  for (let i = 1; i <= shown; i++) parts.push(i <= min ? `arg${i}` : `[arg${i}]`);
+  if (variadic) parts.push("…");
+  return parts.join(", ");
+}
+
 /** The display hint for a function name (case-insensitive): the curated signature,
- *  else a bare argument count from the registered impl's arity, else null. */
+ *  else a named placeholder signature synthesized from the registered impl's arity,
+ *  else null. A bare argument count ("2 args") is never returned. */
 export function signatureFor(name: string): string | null {
   const up = name.toUpperCase();
+  // A frame verb's "signature" is the redirect to its node.
+  const frameNode = FRAME_SURFACE_NAMES[up];
+  if (frameNode) return `frame verb — use the ${frameNode} node`;
   const sig = FORMULA_SIGNATURES[up];
   if (sig !== undefined) return sig;
+  const packSig = packFormulaSignature(up);
+  if (packSig) return packSig;
   const meta = EXCEL_IMPL_META[up];
-  if (meta?.arity) {
-    const [min, max] = meta.arity;
-    if (min === max) return `${min} arg${min === 1 ? "" : "s"}`;
-    if (max >= 255) return `${min}+ args`;
-    return `${min}–${max} args`;
-  }
+  if (meta?.arity) return genericSignature(meta.arity);
   return null;
 }
 
-/** Split a curated signature into its comma-separated params for the param-hint
- *  bar. A bare-count fallback ("2 args") has no named params — returns null. */
+/** Split a curated signature into its comma-separated params for the param-hint bar.
+ *  A prose redirect (the frame-verb "use the X node" form) is not a param list —
+ *  returns null so the bar renders it as prose instead of a fake argument. */
 export function signatureParams(sig: string): string[] | null {
   if (sig === "") return [];
-  if (/^\d+(\+|–\d+)? args?$/.test(sig)) return null;
+  if (sig.includes(" — ")) return null;
   return sig.split(", ");
 }

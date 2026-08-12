@@ -1,5 +1,3 @@
-// Screen ↔ canvas coordinate helpers shared by canvas-surface features
-// (FC docking, quick-wire placement). Pure DOM reads over the rete area.
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 

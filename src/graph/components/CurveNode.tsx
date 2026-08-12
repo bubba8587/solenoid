@@ -5,9 +5,8 @@ import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
-// The Curve editor: a strip with draggable control points; the monotone spline
-// through them draws live, and the node samples it into a list. Click to add a
-// point, drag to move, right-click / Alt-click to delete (a curve keeps ≥ 2).
+// A curve keeps ≥ 2 control points; the monotone spline through them draws live and
+// the node samples it into a list.
 
 const PAD_W = 196;
 const PAD_H = 110;
@@ -76,8 +75,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     void processGraph(data.id);
   };
 
-  // The spline path, sampled at 2px steps across the strip (display only — the
-  // node's own sampling drives the outputs).
+  // Display only — the node's own sampling drives the outputs.
   const path = useMemo(() => {
     const sorted = sortByX(pts);
     if (sorted.length === 0) return "";
@@ -93,9 +91,8 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pts, xmin, xmax, ymin, ymax]);
 
-  // The pure sampler drives the output rows — NOT data.data(): the engine wraps
-  // data() with the coercion boundary, which expects an inputs record (calling it
-  // bare threw "Cannot convert undefined or null to object" and killed the card).
+  // NEVER data.data(): the engine wraps it with the coercion boundary, which expects
+  // an inputs record, so calling it bare throws and kills the card.
   const sampled = sampleCurve(data.pointsText, xmin, xmax, data.literals.samples ?? 32);
 
   return (

@@ -14,13 +14,8 @@ import "./ReportNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/**
- * The Report's canvas presence — a small, fixed-size anchor card, deliberately NOT
- * a full editing surface (per the plan: "separate from the graph's node set"). It
- * exists so the report's `` `=name` `` refs have a real place for their wireable
- * INPUT sockets to live (same NodeSocket/RefInputRow machinery as a Note); the
- * actual markdown editing happens in the full-screen ReportOverlay, opened here.
- */
+/** A small anchor card, deliberately NOT an editing surface: it exists so the
+ *  report's refs have somewhere for their INPUT sockets to live. */
 export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [color, setColor] = useState(data.color);
@@ -36,8 +31,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function pick(c: string) { setColor(c); data.color = c; scheduleAutosave(); }
 
-  // Re-render on theme/palette change — the tint below resolves through the
-  // ACTIVE palette (appThemeStore bumps on a palette switch too, same as NoteNode).
+  // The tint resolves through the ACTIVE palette, so a palette switch must re-render.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const refKeys = data.refKeys();
   const mode = appThemeStore.getMode();
@@ -49,7 +43,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
 
   return (
     <div className={`solenoid-report${data.selected ? " solenoid-report--selected" : ""}`} style={{ width: data.width, ...vars }}>
-      <div className="solenoid-report__bar" title="Drag to move">
+      <div className="solenoid-report__bar">
         {editingLabel ? (
           <input
             className="solenoid-report__name"
@@ -132,9 +126,8 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
             {data.embeds.length} embed{data.embeds.length === 1 ? "" : "s"}
           </span>
         )}
-        {/* The `document` OUTPUT — wire the whole report into a document sink (Write
-            to Obsidian). Hosted in the content row so it lines up with "Open report";
-            the row is the positioning context (its 50% centers the dot on the button). */}
+        {/* Hosted in the content row: the row is the positioning context, so its
+            50% centers the dot on the "Open report" button. */}
         {data.outputs.document && (
           <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
         )}

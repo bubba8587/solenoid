@@ -9,24 +9,17 @@ type AngleDialProps = {
   size?: number;
 };
 
-function normalise(deg: number): number {
+function normalize(deg: number): number {
   const m = deg % 360;
   return m < 0 ? m + 360 : m;
 }
 
 function snap(deg: number, step: number): number {
-  return normalise(Math.round(deg / step) * step);
+  return normalize(Math.round(deg / step) * step);
 }
 
-/**
- * Small rotary dial for setting an angle. Click anywhere on the face
- * to point the needle there; drag to spin. Snaps to `step` degrees
- * (default 15). stopPropagation on pointer events so the canvas
- * (rete-area-plugin) can't grab them as a node drag.
- *
- * Angles use screen-space convention: 0° = right, 90° = down,
- * 180° = left, 270° = up.
- */
+/** Angles are screen-space: 0° = right, 90° = DOWN. Pointer events stopPropagation
+ *  or rete-area-plugin grabs them as a node drag. */
 export function AngleDial({
   value,
   step = 15,
@@ -48,7 +41,7 @@ export function AngleDial({
       if (dx === 0 && dy === 0) return;
       const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
       const next = snap(deg, step);
-      if (next !== normalise(value)) onChange(next);
+      if (next !== normalize(value)) onChange(next);
     },
     [value, step, onChange],
   );

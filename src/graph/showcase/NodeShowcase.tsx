@@ -18,21 +18,8 @@ import { ElementPicker } from "../components/ElementPicker";
 import { PivotEditorPopup } from "../components/PivotEditorPopup";
 import "./NodeShowcase.css";
 
-// ─── Node showcase (?showcase) — the UI-audit harness ───────────────────────────
-// Loads ONE node at a time into a static, non-canvas stage so node-level UI
-// (spacing, centering, alignment) can be inspected and driven by tooling that
-// can't cope with a pannable/zoomable canvas. The node is REAL: the same rete
-// render preset as the main canvas (areaPresets.ts), a real DataflowEngine, and
-// the process.ts singletons pointed here (Canvas never mounts in this mode), so
-// every control on the card — literals, dropdowns, formula popups — works and
-// recomputes exactly as it does on the canvas. Pan and wheel-zoom are disabled;
-// the node sits at a fixed offset and zoom is a preset button, so screenshots
-// are stable and coordinates are predictable.
-//
-// Driving:
-//   • URL: ?showcase=<catalog type> deep-links a node (kept in sync on cycle).
-//   • Keyboard: ←/→ (or ↑/↓) cycle through the (filtered) catalog.
-//   • Console: window.__showcase — { list, all, goto(type), next, prev, current }.
+// The ?showcase UI-audit harness: ONE real node on a static stage, driven by URL,
+// arrow keys or window.__showcase. Pan/zoom off, so screenshots are stable.
 
 const PAD = 48; // canvas-units from the stage origin to the node's top-left
 
@@ -42,7 +29,6 @@ type Mount = {
 };
 
 export default function NodeShowcase({ initialType }: { initialType: string }) {
-  // Hidden (deprecated) entries stay out — same visibility rule as the Add menu.
   const entries = useMemo(
     () => [...FLAT_CATALOG.values()].filter((e) => !e.hidden),
     [],
@@ -72,9 +58,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     setType(visible[i].type);
   }
 
-  // The rete stack, built once. Same render preset as the main canvas so what
-  // renders here is byte-for-byte the canvas card; no connection/history/minimap
-  // plugins — there's nothing to wire and the stage never moves.
+  // Same render preset as the canvas, so the card here is byte-for-byte the real one.
   useEffect(() => {
     const container = stageRef.current;
     if (!container) return;
@@ -93,10 +77,8 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     // Static stage: no background pan, no wheel zoom (zoom is the preset buttons).
     area.area.setDragHandler(null);
     area.area.setZoomHandler(null);
-    // Point the module singletons here so every in-card interaction that calls
-    // processGraph()/getArea() drives THIS stack. Safe: Canvas never mounts in
-    // showcase mode, and none of its persistence hooks get registered — so the
-    // harness can't touch the user's documents.
+    // Point the module singletons at THIS stack; safe only because Canvas never mounts
+    // in showcase mode, so no persistence hook can reach the user's documents.
     setEditorRefs(editor, engine, area);
     mountRef.current = { editor, area };
     setReady(true);
@@ -106,23 +88,22 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     };
   }, []);
 
-  // Swap the staged node when the selection changes.
   useEffect(() => {
     const m = mountRef.current;
     if (!m || !ready || !type) return;
-    let cancelled = false;
+    let canceled = false;
     void (async () => {
       await m.editor.clear();
       const entry = FLAT_CATALOG.get(type);
-      if (!entry || cancelled) return;
+      if (!entry || canceled) return;
       const node = entry.create() as unknown as SolenoidNode;
       await m.editor.addNode(node);
-      if (cancelled) return;
+      if (canceled) return;
       nodeNameStore.ensure(node.id, node.constructor.name);
       await m.area.translate(node.id, { x: PAD, y: PAD });
       await processGraph();
     })();
-    return () => { cancelled = true; };
+    return () => { canceled = true; };
   }, [type, ready]);
 
   useEffect(() => {
@@ -130,8 +111,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     if (m && ready) void m.area.area.zoom(zoom, 0, 0);
   }, [zoom, ready]);
 
-  // Deep-link stays current so a reload (or an external driver) lands on the
-  // same node.
+  // Deep-link stays current so a reload lands on the same node.
   useEffect(() => {
     if (!type) return;
     const url = new URL(window.location.href);
@@ -150,7 +130,6 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  // Console / automation driving surface.
   useEffect(() => {
     (window as unknown as { __showcase?: unknown }).__showcase = {
       list: () => visible.map((e) => ({ type: e.type, label: e.label })),
@@ -216,7 +195,6 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
         </header>
         <div ref={stageRef} className="sol-showcase__stage" />
       </main>
-      {/* The value/formula popups a card can open while being driven. */}
       <FormulaPopup />
       <TablePopup />
       <CubePopup />

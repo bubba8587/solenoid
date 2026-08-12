@@ -4,32 +4,41 @@ import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
 import { matrixUnitOf } from "../unitValue";
 import "./ArrayChip.css";
+import { stopDragStart } from "../coarse";
 
-// A list or a table (2D), of numbers (number/list/table sockets) or text
-// (strlist). A 1D list opens in the popup as a single row.
 type ArrayValue = Cell[] | Cell[][];
 
 function is2D(v: ArrayValue): v is Cell[][] {
   return Array.isArray(v[0]);
 }
 function to2D(v: ArrayValue): Cell[][] {
-  // A list is orientation-less; present it as a single row so it reads and copies
-  // horizontally — matching the comma-separated result box and CSV's one-line row.
+  // A list is orientation-less; a single ROW matches the result box and CSV line.
   return is2D(v) ? v : [v as Cell[]];
 }
-// Cell kind drives the popup's alignment / coercion / CSV-quoting (see
-// TablePopup). A list of strings is text; everything else is numeric.
-function cellTypeOf(v: ArrayValue): "number" | "string" {
+// The declared socket FAMILY decides this when known; the fallback reads the FIRST
+// cell only, so a leading `null` misreads a text list as numeric.
+function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
+  if (family) return family;
   const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];
   return typeof first === "string" ? "string" : "number";
 }
 
 export type ElemFamily = "number" | "string" | "date" | "logical";
 
-/** The chip's element-family tint, when the container is HOMOGENEOUS and known.
- *  Dates are indistinguishable from numbers by value (serials) — a caller that
- *  knows the socket family passes `elem` instead. Mixed/unknown → undefined
- *  (the container-kind default color — a chip must not guess). */
+/** Mirrors the `--elem-*` classes in ArrayChip.css; `undefined` (a genuine wildcard)
+ *  falls back to the plain list/table color. */
+export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): string {
+  const suffix = twoD ? "table" : "list";
+  switch (family) {
+    case "string":  return `var(--sock-str${suffix})`;
+    case "date":    return `var(--sock-date${suffix})`;
+    case "logical": return `var(--sock-logical${suffix})`;
+    default:        return twoD ? "var(--sock-table)" : "var(--sock-list)";
+  }
+}
+
+/** Only answers for a HOMOGENEOUS container; mixed/unknown → undefined, since a chip
+ *  must not guess (dates are indistinguishable from numbers by value). */
 function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
   let fam: ElemFamily | undefined;
   for (const cell of (is2D(v) ? (v as Cell[][]).flat() : (v as Cell[]))) {
@@ -46,67 +55,43 @@ function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
   return fam;
 }
 
-/**
- * A clickable chip for an array value — `[List]` for a 1D list, `[R×C Table]` for
- * a 2D table — that opens the full grid in the CSV popup. Works for numeric and
- * text (string-list) arrays alike. Used in node value boxes and collapsed-group
- * readouts: result boxes are too narrow for an inline value preview, so the chip
- * stands alone. Pass a `label` to title the popup.
- */
+/** A clickable chip that opens the full grid in the table popup; `label` titles it. */
 export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides }: {
   value: ArrayValue;
   label?: string;
-  /** `"sm"` is the compact chip used in node result boxes (where a grid preview
-   *  already sits above it); `"md"` is the default, used in collapsed groups. */
+  /** `"sm"` is the compact chip for node result boxes; `"md"` the default. */
   size?: "sm" | "md";
-  /** Accent for the opened popup header (any CSS color, e.g. `var(--sock-list)`).
-   *  Defaults to the host's sniffed `--node-accent`; pass it explicitly when the
-   *  chip itself is recolored (e.g. the neutral pin-HUD chips) so the popup still
-   *  gets a real type accent instead of a body-matching one. */
+  /** Popup-header accent; defaults to the host's sniffed `--node-accent`. Pass it
+   *  when the chip itself is recolored, so the popup still gets a TYPE accent. */
   accent?: string;
-  /** When set, the popup opens editable and Save writes the grid back through
-   *  this. Used by input nodes (e.g. Table Input) whose result box *is* the
-   *  editor — clicking the chip opens the grid to edit. */
+  /** When set, the popup opens editable and Save writes the grid back through this. */
   onSave?: (next: (number | null)[][]) => void;
-  /** The node whose value the popup's Pin action pins. Defaults to the host node
-   *  from context (a chip inside a node body). Pass it explicitly where there's no
-   *  context but a known node — a collapsed-group readout passes its member id so
-   *  the popup can still pin that member. Leave unset (and outside any node) for
-   *  the HUD chips, which are already pinned. */
+  /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
-  /** Element-family tint override — pass when the caller KNOWS the socket family
-   *  (a date list's serials are numbers by value). Otherwise the chip derives it
-   *  from the cells when they're homogeneous, and stays the container color when
-   *  mixed or empty. */
+  /** Tint override for when the caller KNOWS the socket family; otherwise derived
+   *  from homogeneous cells. */
   elem?: ElemFamily;
-  /** Extra fields merged into the popup open() — Table Input passes its raw
-   *  literal cells + onSaveRaw so the grid edits source text, never derived
-   *  values. */
+  /** Merged into the popup open() — Table Input passes raw literal cells + onSaveRaw
+   *  so the grid edits source text, never derived values. */
   popupOverrides?: Partial<TablePopupState>;
 }) {
-  // The node the Pin action targets: an explicit prop wins (group readouts), else
-  // the host node from context (a chip inside a node body), else null (HUD chips).
-  // The hook must run every render (Rules of Hooks), so read it then prefer the prop.
+  // The hook must run every render (Rules of Hooks), so read it, then prefer the prop.
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
   const table = is2D(value);
   const rows = value.length;
   const cols = table ? (value[0] as number[]).length : 1;
-  // Family tint class: explicit socket knowledge wins, else a homogeneous cell
-  // scan; numeric keeps the container default (no visual churn).
+  // Explicit socket knowledge wins; numeric keeps the container default.
   const family = elem ?? elemFamilyOfCells(value);
   const famClass = family && family !== "number"
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20). The chip
-  // stays short (no unit on the label — the popup surfaces it); we still pass the tag
-  // into the popup below.
+  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20).
   const matUnit = table ? matrixUnitOf(value) : undefined;
-  // Lists are always 1D, so the chip just says "List" — only tables show R×C.
   const chipLabel = table ? `${rows}×${cols} Table` : "List";
-  const verb = onSave ? "edit" : "view";
-  const titleText = table ? `${rows}×${cols} table. Click to ${verb}.` : `${rows}-item list. Click to ${verb}.`;
+  const verb = onSave ? "Edit" : "View";
+  const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
 
   return (
     <button
@@ -115,20 +100,15 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
       title={titleText}
       onClick={(e) => {
         e.stopPropagation();
-        // Accent: explicit prop, else the inherited node/group style (list TYPE
-        // colour when there's no node context).
         const st = readChipPopupStyle(e.currentTarget, "--sock-list");
         tablePopup.open({
           title: label || (table ? "Table" : "List"),
           data: to2D(value),
-          cellType: cellTypeOf(value),
+          cellType: cellTypeOf(value, family),
           list: !table,
-          // A read-only numeric matrix gets one format+unit pair (homogeneous).
-          // The popup only renders it when the grid isn't editable, so an editable
-          // Table Input (onSaveRaw via popupOverrides) never shows it.
-          formatControls: table && cellTypeOf(value) === "number" ? "matrix" : undefined,
-          // Carry the matrix's homogeneous unit tag (D20) so the popup bar shows it
-          // (as a static label when the matrix isn't a taggable source).
+          // A homogeneous matrix gets ONE format+unit pair; the popup renders it only
+          // when the grid isn't editable.
+          formatControls: table && cellTypeOf(value, family) === "number" ? "matrix" : undefined,
           columnUnits: matUnit ? [matUnit] : undefined,
           accent: accent || st.accent,
           groupColor: st.groupColor,
@@ -138,7 +118,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
           ...popupOverrides,
         });
       }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       [{chipLabel}]

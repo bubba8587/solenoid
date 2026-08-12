@@ -10,8 +10,7 @@ const OPS = (Object.keys(MROUND_OP_META) as MRoundOp[]).map((op) => ({
 
 export function MRoundComponent({ data, emit }: NodeProps<MRoundNode>) {
   const [op, setOp] = useNodeField(data, "op");
-  // The header tracks the op (the card reads MROUND / CEILING / FLOOR). Set the
-  // label before setOp so the re-render setOp triggers shows the new title.
+  // Set the label BEFORE setOp, so the re-render setOp triggers shows the new title.
   const changeOp = (v: MRoundOp) => {
     data.label = MROUND_OP_META[v].label;
     setOp(v);

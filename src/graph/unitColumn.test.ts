@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildFrame, addColumn } from "./frame";
-import { parseColumnUnitFromHeader, columnUnitLabel, columnDisplayValue, tagFrameCellUnit } from "./unitColumn";
+import { parseColumnUnitFromHeader, columnUnitLabel, tagFrameCellUnit } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { GetColumnNode } from "./nodes/frame";
 import { AggregateNode } from "./nodes/list";
@@ -18,7 +18,7 @@ describe("tagFrameCellUnit — the as-typed frame cell → base-SI UnitCell carr
   it("a scaled unit normalises to base SI but reads back in the display unit: 5 km", () => {
     const cu = parseColumnUnitFromHeader("Distance (km)").unit!;
     const tagged = tagFrameCellUnit(5, cu) as UnitCell;
-    expect(magnitudeOf(tagged)).toBe(5000);        // base SI (metres)
+    expect(magnitudeOf(tagged)).toBe(5000);        // base SI (meters)
     expect(tagged.display).toBe("km");
     expect(displayMagnitudeOf(tagged)).toBe(5);    // reads back as 5 km
   });
@@ -100,9 +100,8 @@ describe("Aggregate over a unit-tagged list carries the unit", () => {
 });
 
 describe("column display helpers", () => {
-  it("columnDisplayValue converts base SI to the display unit", () => {
+  it("columnUnitLabel reads the display id", () => {
     const cu = parseColumnUnitFromHeader("d (km)").unit!;
-    expect(columnDisplayValue(cu, 5000)).toBe(5);
     expect(columnUnitLabel(cu)).toBe("km");
   });
 });

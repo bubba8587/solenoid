@@ -9,10 +9,6 @@ export const CABLE_SHAPES: { value: CableShape; label: string }[] = [
   { value: "straight", label: "Straight" },
 ];
 
-// Module-level store so ConnectionComponent (rendered in Rete's own
-// React root) can read the shape without access to the main React tree.
-// Persisted to localStorage (sibling pattern to gridSnapStore) so the choice
-// survives reload.
 let _shape: CableShape = "diagonal";
 const { notify, subscribe } = createNotifier();
 

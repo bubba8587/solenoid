@@ -1,27 +1,14 @@
-// Pure, dependency-free core for persistence safety — no rete, no DOM, no
-// localStorage. Mirrors the groupPushCore.ts pattern: the load path's risky
-// decisions (is this file structurally sane? which autosave slot do we write /
-// read?) live here as plain functions so they can be unit-tested headlessly,
-// while persistence.ts keeps the editor/area/localStorage wiring.
+// The load path's risky decisions as pure functions; keep it rete/DOM/storage-free.
 
-// Bump in lockstep with SavedGraph.v in persistence.ts. A file claiming a
-// HIGHER version is refused on load rather than opened lossily.
+// Bump in lockstep with SavedGraph.v; a file claiming a HIGHER version is REFUSED on load.
 export const CURRENT_SAVE_VERSION = 2;
 
 export type ValidationResult = { ok: true } | { ok: false; reason: string };
 
 const fail = (reason: string): ValidationResult => ({ ok: false, reason });
 
-/**
- * Structural validation of a parsed save file, run BEFORE the destructive load
- * clears the current graph. Catches the shapes that would otherwise throw
- * mid-rebuild (or silently corrupt the editor) — a non-array `nodes`, a node
- * missing its `id`/`type`, a connection with a non-string endpoint. It does not
- * check that node types exist or that sockets are compatible — those are
- * tolerated at load time (unknown nodes skipped, bad connections dropped) and
- * surfaced to the user; this is only the "is it the right kind of object at
- * all" gate.
- */
+/** Structural validation, run BEFORE the destructive load clears the current graph. Only
+ *  the "right kind of object at all" gate — unknown types and bad cables are load-time. */
 export function validateSavedGraph(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null) return fail("not a graph object");
   const g = data as Record<string, unknown>;
@@ -56,12 +43,8 @@ export function validateSavedGraph(data: unknown): ValidationResult {
   return { ok: true };
 }
 
-// ─── Missing-node placeholders ───────────────────────────────────────────────
-// When a saved node's `type` isn't registered (a pack that's off, or a since-
-// renamed type), persistence keeps it as a placeholder instead of dropping it +
-// its cables. A placeholder needs sockets for those cables to re-link, but we
-// don't know the missing class's socket layout — so synthesize exactly the keys
-// the saved connections reference. Pure + headless so it's unit-tested.
+// An unregistered node type loads as a PLACEHOLDER rather than dropping it and its cables;
+// its socket layout is unknown, so synthesize exactly the keys the saved cables reference.
 
 export interface SavedConnectionLike {
   source: string;
@@ -70,11 +53,7 @@ export interface SavedConnectionLike {
   targetInput: string;
 }
 
-/**
- * For each id in `unknownIds`, the input/output socket keys referenced by the
- * saved connections touching it — de-duplicated, in first-seen order. A node not
- * referenced by any connection gets no entry (a placeholder with no sockets).
- */
+/** Per unknown id, the socket keys its saved connections reference, in first-seen order. */
 export function deriveMissingNodeSockets(
   unknownIds: Set<string>,
   connections: SavedConnectionLike[],
@@ -98,18 +77,13 @@ export function deriveMissingNodeSockets(
   return out;
 }
 
-// ─── Autosave slot rotation ──────────────────────────────────────────────────
-// Two slots instead of one: a single slot means a write that fails partway (or
-// a serialize that throws) can leave the only copy corrupt. We always write to
-// the OLDER slot, so the newer copy is never the one at risk; on restore we read
-// the NEWER valid slot. Each slot carries a monotonic `seq` (wall-clock ms is
-// monotonic enough — newer writes have a larger seq); `null` means the slot is
-// empty or unreadable.
+// Always write the OLDER slot and read the NEWER valid one, so a write that fails partway
+// can never corrupt the only good copy. `seq` is monotonic; `null` = empty or unreadable.
 
 export function chooseWriteSlot(seqA: number | null, seqB: number | null): "a" | "b" {
   if (seqA === null) return "a";
   if (seqB === null) return "b";
-  // Overwrite whichever is older; ties (same ms) go to 'a' deterministically.
+  // Ties (same ms) go to 'a' deterministically.
   return seqB < seqA ? "b" : "a";
 }
 

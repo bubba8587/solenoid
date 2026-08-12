@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useMenuClamp } from "./menuClamp";
+import { useEffect } from "react";
 import "./SocketContextMenu.css";
 
-// Right-click menu for cables. `connIds` is the full set of cables the actions
-// operate on — the right-clicked cable plus the rest of the multi-selection
-// (ribbons already expanded to their member lanes by Canvas).
+// `connIds` is every cable the actions operate on: the right-clicked one plus the
+// multi-selection, ribbons already expanded to their member lanes.
 
 export type CableContextTarget = {
   connIds: string[];
@@ -19,7 +19,7 @@ type Props = {
 };
 
 export function CableContextMenu({ target, onInsertConduit, onDelete, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {

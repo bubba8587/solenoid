@@ -217,11 +217,12 @@
     },
     {
       "id": "seq",
-      "type": "SequenceNode",
+      "type": "SeriesNode",
       "x": 337,
       "y": 2216,
       "init": {
-        "label": "k = 1…terms"
+        "label": "k = 1…terms",
+        "op": "sequence"
       }
     },
     {

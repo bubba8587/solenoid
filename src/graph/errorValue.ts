@@ -1,36 +1,6 @@
-// ─── Tagged error values — Solenoid's #DIV/0! ─────────────────────────────────
-// Excel's most load-bearing UX feature is arguably that #DIV/0! / #NUM! /
-// #VALUE! are VISIBLE and PROPAGATE, so a failure is traceable to its source.
-// Solenoid nodes historically signalled every failure with `null`, which
-// renders identically to "not wired yet" — the answer just went blank
-// somewhere upstream. This module is the error-value story:
-//
-//  • `SolError` — a tagged plain object (tag property, not a class: survives
-//    structuredClone and avoids cross-module instanceof pitfalls) carrying an
-//    Excel-style code plus a structural message.
-//  • `installErrorGuards(node)` — wraps a node's `data()` once, at nodecreated:
-//      1. error in → error out: if any input value is an error, every output
-//         is that error and the node's own logic never runs (first error wins),
-//      2. a THROWING data() yields a local #ERROR! on its outputs instead of
-//         killing the whole recompute pass (review §4.3),
-//      3. `cachedResult` mirrors the error so the value box shows it.
-//    Pass-through nodes (Conduit/Cable Switch — lane i must carry
-//    lane i's error, not poison every lane) and error CONSUMERS (IFERROR,
-//    IS checks) skip the input guard and see raw error values.
-//  • Producers return `solError(code, msg)` instead of null where the failure
-//    is a real error (not merely "blank"): division by zero, lookup miss,
-//    formula eval failure, … Convert sites incrementally — null remains the
-//    legitimate "no value" (empty cell) signal.
-//
-// Value model (array-semantics): a list/matrix/frame CARRIES per-cell SolErrors
-// (and first-class nulls) — lists CAN contain errors. Aggregators propagate the first per-cell error
-// (forAggregate); element-wise ops carry an error cell through unmorphed.
-// See valueKinds.ts + subsystem-invariants "Error values".
-
-// The code set is deliberately MORE specific than Excel's seven, while keeping
-// the #CODE! surface form Excel users recognize. Granularity follows two
-// outside standards — SQLSTATE class 22 (ISO 9075 data exceptions) and
-// OpenFormula / LibreOffice's Err:5xx set — mapped as:
+// `SolError` is a tagged plain object, not a class: it survives structuredClone and
+// avoids cross-module instanceof pitfalls. The code set is more specific than Excel's
+// seven, tracking SQLSTATE class 22 and OpenFormula Err:5xx:
 //
 //   #DIV/0!   division by zero                 (Excel; SQLSTATE 22012; Err:532)
 //   #N/A      no data / lookup miss            (Excel; SQLSTATE 02000)
@@ -40,25 +10,19 @@
 //             Err:523)
 //   #OVERFLOW! result magnitude exceeds a ceiling — a finite computation whose true
 //             answer is a really-big NUMBER the float type can't hold (2^5000), or a
-//             generator asked for more elements than the cap. More descriptive than
-//             #RANGE!, which only shadowed Excel #NUM!'s vague naming — Solenoid
-//             names the cause. (splits Excel #NUM!; SQLSTATE 22003; Err:512)
+//             generator asked for more elements than the cap.
+//             (splits Excel #NUM!; SQLSTATE 22003; Err:512)
 //   #SYNTAX!  formula text didn't parse        (splits Excel #VALUE!; Err:516)
 //   #VALUE!   wrong type / operand misuse      (Excel; SQLSTATE 22018)
-//   #TYPE!    wrong ELEMENT TYPE for the op     (Solenoid-specific — no Excel
-//             equivalent; Excel folds this into #VALUE!). Solenoid's sockets track
-//             element FAMILIES (number / text / date / complex), so feeding text
-//             into a numeric op — or numbers that merely resemble date serials into
-//             a date op — is a distinct, more informative failure than #VALUE!.
+//   #TYPE!    wrong ELEMENT TYPE for the op     (Solenoid-specific; Excel folds
+//             this into #VALUE!)
 //   #SHAPE!   list/matrix dimension mismatch   (no Excel scalar equivalent;
 //             nearest is #SPILL!)
 //   #NAME?    unknown name                     (Excel; Err:525)
 //   #REF!     dangling reference               (Excel; Err:524)
 //   #CIRC!    circular dependency              (Err:522; Excel only warns)
-//   #UNIT!    incommensurable units in an op     (Solenoid-specific — dimensional
-//             algebra; adding metres to seconds, or converting across dimensions.
-//             Distinct from #TYPE! (wrong element type) — same type, wrong
-//             DIMENSION. See dimension.ts.)
+//   #UNIT!    incommensurable units in an op     (Solenoid-specific — same element
+//             type, wrong DIMENSION; see dimension.ts)
 //   #ERROR!   unexpected internal failure      (Err:517) — the guard's catch-all
 //
 // IFERROR catches every code; IFNA / ISNA match only #N/A.
@@ -74,16 +38,14 @@ export type SolErrorCode =
 
 const TAG = "__solError";
 
-/** Where a SolError came from — set once, at mint or first relay, and never
- *  overwritten downstream (see installErrorGuards) so a chain of passthroughs
- *  still points at the original producer. */
+/** Set once at mint or first relay and never overwritten downstream, so a chain of
+ *  passthroughs still points at the original producer. */
 export interface SolErrorOrigin {
   /** The minting node's id (stable name lands with bundle 01; id till then). */
   nodeId: string;
   /** The minting node's title, or its type name if untitled. */
   nodeName: string;
-  /** Which input slot carried the error in, when tagged at a relay rather than
-   *  at the true mint site (defensive — normally the origin is already set). */
+  /** Which input slot carried the error in, when tagged at a relay not the mint site. */
   inputSlot?: string;
   /** Row index within a list/frame column, for a per-cell error. */
   rowIndex?: number;
@@ -98,11 +60,7 @@ export interface SolError {
   origin?: SolErrorOrigin;
 }
 
-/**
- * Longer plain-language explanation per code — what it means and the usual
- * fix. The badge + producer message stay terse; inspection surfaces (the
- * IS-check node's explanation panel, future error tracing UI) show these.
- */
+/** The long-form text inspection surfaces show; the badge + producer message stay terse. */
 export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#DIV/0!": "Divided by zero. Check the divisor; the usual cause is an empty or zeroed field upstream.",
   "#N/A":    "A lookup or match found nothing. Check the search value, or wire an If-not-found fallback.",
@@ -113,7 +71,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#VALUE!": "A value had the wrong type, or a formula failed while evaluating. Check each input is the kind of data the node expects.",
   "#TYPE!":  "The element type is wrong, e.g. a text matrix into a numeric op, or a number where a date is expected. Solenoid keeps element families (number / text / date / complex) separate, so this is more specific than #VALUE!. Cast or reshape the input.",
   "#SHAPE!": "List or matrix dimensions don't line up. Check the connected lists/tables have compatible lengths.",
-  "#UNIT!":  "The units don't match dimensionally, e.g. adding metres to seconds, or converting between quantities that measure different things. Convert one side first, or check the unit an upstream Format Controller assigned.",
+  "#UNIT!":  "The units don't match dimensionally, e.g. adding meters to seconds, or converting between quantities that measure different things. Convert one side first, or check the unit an upstream Format Controller assigned.",
   "#NAME?":  "A name wasn't recognized as a function or variable. Check the spelling in the formula.",
   "#REF!":   "A reference points at something that no longer exists, usually a deleted node or column.",
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
@@ -129,18 +87,14 @@ export function isSolError(v: unknown): v is SolError {
   return typeof v === "object" && v !== null && (v as Record<string, unknown>)[TAG] === true;
 }
 
-/** A `#N/A` (no data / lookup miss) error specifically — the one code that ISNA /
- *  IFNA match (vs ISERROR / IFERROR, which match every code). Single source of
- *  truth so the "is this not-available?" test can't drift between those nodes. */
+/** The single source of truth for the `#N/A` test, so ISNA and IFNA can't drift. */
 export function isNaError(v: unknown): v is SolError {
   return isSolError(v) && v.code === "#N/A";
 }
 
 function fromThrown(e: unknown): SolError {
-  // A ShapeError (nodes/coerce.ts) is a genuine dimension mismatch, not an
-  // internal bug — surface it as #SHAPE! with its own descriptive message. Matched
-  // by name (not instanceof) so this foundational module stays decoupled from the
-  // coercion layer, consistent with the tag-not-class philosophy above.
+  // A ShapeError is a genuine dimension mismatch, not an internal bug; matched by
+  // name so this foundational module stays decoupled from the coercion layer.
   if (e instanceof Error && e.name === "ShapeError") {
     return solError("#SHAPE!", e.message);
   }
@@ -159,24 +113,17 @@ export function firstInputError(
   return null;
 }
 
-// Nodes whose data() must SEE error values rather than auto-propagate.
-// Matched by constructor name, not instanceof (the FormulaPopup precedent).
-//  - IFError / IsTest consume errors (that's their whole job),
-//  - Conduit / CableSwitch route lanes independently: the generic
-//    any-error → all-outputs rule would poison sibling lanes,
-//  - Display is a pass-through whose value box reads `cachedValue` (not the
-//    `cachedResult` the generic short-circuit mirrors to). Letting its data()
-//    run on the raw error lets it both SHOW the badge and forward the error.
-//  - ReportNode's inline refs are independent lanes too (one per `` `=name` ``
-//    span); a bad ref must show its own error badge in place, not blank every
-//    other ref in the same report. NoteNode is output-only (frontmatter fields,
-//    never inputs) — kept here only so its bare data() read path stays uniform.
-//  - ChartNode is a figure SINK: a #DIV/0! (or a list/frame carrying error cells)
-//    wired into its Data socket must render as an empty "no data" figure, not turn
-//    the `chart` output into a SolError object (which every chart consumer — the
-//    inline node figure, Display, a Report embed — would then have to special-case,
-//    and which historically crashed the node). Its data() sanitizes every cell to
-//    a finite number or null, so it needs to SEE the raw error to drop it.
+// Nodes whose data() must SEE error values rather than auto-propagate (matched by
+// constructor name, not instanceof):
+//  - IFError / IsTest consume errors — that's their whole job.
+//  - Conduit / CableSwitch route lanes independently; the any-error → all-outputs
+//    rule would poison sibling lanes.
+//  - Display reads `cachedValue`, so its data() must run on the raw error to both
+//    show the badge and forward it.
+//  - ReportNode's inline refs are independent lanes too; NoteNode is output-only,
+//    listed only to keep its read path uniform.
+//  - ChartNode is a figure SINK: it renders an errored input as an empty figure and
+//    never emits a SolError out its `chart` output.
 const SEES_ERRORS = new Set([
   "IFErrorNode", "IsTestNode",
   "ConduitNode", "CableSwitchNode",
@@ -189,8 +136,8 @@ const WRAPPED = Symbol("solErrorGuard");
 type DataFn = (inputs: Record<string, unknown[] | undefined>) =>
   Record<string, unknown> | Promise<Record<string, unknown>>;
 
-// Duck-typed frame shape (columns of cell arrays) — NOT imported from frame.ts,
-// which itself imports isSolError from this module; a real import would cycle.
+// Duck-typed rather than imported from frame.ts, which imports from here — a real
+// import would cycle.
 interface FrameLikeColumn { values: unknown[] }
 interface FrameLike { __frame: true; columns: FrameLikeColumn[] }
 export function isFrameLike(v: unknown): v is FrameLike {
@@ -199,23 +146,11 @@ export function isFrameLike(v: unknown): v is FrameLike {
     Array.isArray((v as { columns?: unknown }).columns);
 }
 
-// ─── Bounded per-cell error scan ──────────────────────────────────────────────
-// A per-cell SolError inside a list/matrix/frame must surface in the Problems
-// panel and the model fuzzer — but a FULL O(rows×cols) scan on EVERY node's
-// output EVERY recompute pass was rejected on perf (see subsystem-invariants
-// "Error values"). So the scan is BOUNDED: per 1-D container we examine the HEAD
-// (first CELL_SCAN_HEAD cells) plus a stride SAMPLE across the remainder — at
-// most CELL_SCAN_HEAD + CELL_SCAN_STRIDE_SAMPLES indices, a constant. A
-// systematic (whole-column) per-cell error — the overwhelmingly common case, a
-// bad transform applied to every row — is always caught by the head; a lone bad
-// cell buried past the head between two sampled strides can be missed. That miss
-// is the accepted cost of keeping the hot path O(1)-per-output.
 export const CELL_SCAN_HEAD = 64;
 export const CELL_SCAN_STRIDE_SAMPLES = 32;
 
-/** The bounded set of indices to examine in a container of length `len`: the
- *  head (0..HEAD-1) plus a stride sample of the tail. Shared by errorValue's
- *  scan and the model fuzzer so both cap the same way. */
+/** Head plus a stride sample of the tail; shared with the model fuzzer so both cap
+ *  the same way. */
 export function sampledCellIndices(len: number): number[] {
   if (len <= CELL_SCAN_HEAD) return Array.from({ length: len }, (_, i) => i);
   const idx: number[] = [];
@@ -225,10 +160,8 @@ export function sampledCellIndices(len: number): number[] {
   return idx;
 }
 
-/** First SolError reachable in `v` (scalar, list, matrix, or frame) under the
- *  bounded per-cell scan. Returns null when the sampled cells are all clean.
- *  Matrix rows recurse with the SAME per-row bound, so a wide matrix stays
- *  O(constant²) worst-case, not O(rows×cols). */
+/** First SolError under the bounded per-cell scan (null when the SAMPLE is clean);
+ *  matrix rows recurse with the same per-row bound, keeping it O(constant²). */
 export function findCellError(v: unknown): SolError | null {
   if (isSolError(v)) return v;
   if (Array.isArray(v)) {
@@ -250,21 +183,16 @@ export function findCellError(v: unknown): SolError | null {
   return null;
 }
 
-// Same title-or-type-name derivation as nodeNames.ts's baseName — duplicated
-// (rather than imported) because nodeNames.ts pulls in process.ts/rete-nodes.ts,
-// which would cycle back into this foundational module.
+// Duplicates nodeNames.ts's baseName rather than importing it — nodeNames pulls in
+// process.ts, which would cycle back into this module.
 function nodeDisplayName(n: { label?: string; constructor: { name: string } }): string {
   const label = n.label?.trim();
   return label || n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-/** Tag every untagged SolError reachable at the top level of `v` (scalar, list,
- *  or frame column) with `origin`, tracking row index for list/frame cells.
- *  Already-tagged errors (an upstream mint, or a passthrough relay) are left
- *  alone — origin always points at the FIRST place an error was seen, never
- *  the last hop it passed through. No-op (returns `v` unchanged, no copy) when
- *  there's nothing untagged, so this costs nothing on the (overwhelmingly
- *  common) error-free path. */
+/** Tags untagged SolErrors with `origin`; already-tagged ones are left alone so
+ *  origin points at the FIRST place an error was seen. Returns `v` uncopied when
+ *  there's nothing untagged, so the error-free path costs nothing. */
 function withOrigin(v: unknown, nodeId: string, nodeName: string): unknown {
   if (isSolError(v)) return v.origin ? v : { ...v, origin: { nodeId, nodeName } };
   if (Array.isArray(v)) {
@@ -299,8 +227,7 @@ function withOrigin(v: unknown, nodeId: string, nodeName: string): unknown {
   return v;
 }
 
-/** Which input slot (top-level key of `inputs`) carries `err` — for tagging an
- *  origin at a relay when the error somehow reached here untagged. */
+/** Which input slot carries `err`, for tagging an origin at a relay. */
 function findInputSlot(inputs: Record<string, unknown[] | undefined>, err: SolError): string | undefined {
   for (const [key, arr] of Object.entries(inputs)) {
     if (arr?.includes(err)) return key;
@@ -308,17 +235,9 @@ function findInputSlot(inputs: Record<string, unknown[] | undefined>, err: SolEr
   return undefined;
 }
 
-// ─── Error sinks (Problems panel hook) ────────────────────────────────────────
-// A decoupling seam, same shape as nodeStoreRegistry's registerNodeForget: this
-// foundational module stays store-free, but anything that wants to know "a
-// node's output just became an error" (the Problems panel) can subscribe here.
-// Fired at most once per node per data() call — the first error found on its
-// OWN output, whether it came from a throw, the input-propagation short-circuit,
-// or the node's own producer logic returning a SolError with no throw at all
-// (e.g. Divide's #DIV/0!) — every one of those funnels through this module.
-// `err === null` means the node's output is CLEAN this pass — a sink uses it to
-// reset its per-node edge-detect, so a failure that clears and later RECURS is
-// logged as new instead of suppressed forever by last-code equality.
+// A decoupling seam so this module stays store-free. Fires at most once per node per
+// data() call — the first error on its OWN output. `err === null` means CLEAN this
+// pass, which resets a sink's edge-detect so a recurring failure logs as new.
 type ErrorSink = (nodeId: string, err: SolError | null) => void;
 const _errorSinks: ErrorSink[] = [];
 export function registerErrorSink(fn: ErrorSink): () => void {
@@ -334,10 +253,8 @@ function reportError(nodeId: string, err: SolError | null): void {
 function reportOut(nodeId: string, out: Record<string, unknown> | undefined): void {
   if (!out || _errorSinks.length === 0) return;
   for (const v of Object.values(out)) {
-    // Reports the (already origin-tagged, by the time this runs) error — first
-    // error wins, like the guard itself. findCellError also catches a per-cell
-    // error inside a list/matrix/frame (bounded scan), so a bad column surfaces
-    // in the Problems panel, not just a top-level scalar failure.
+    // First error wins, like the guard itself; the bounded scan also catches a
+    // per-cell error so a bad column reaches the Problems panel.
     const err = findCellError(v);
     if (err) { reportError(nodeId, err); return; }
   }
@@ -364,10 +281,8 @@ export function installErrorGuards(node: object): void {
   const typeName = n.constructor.name;
   const nodeId = n.id ?? "?";
 
-  // errorOut() runs at BOTH the input-error short-circuit and the throw catch,
-  // so it's also the one place that tags an origin that arrived untagged
-  // (defensive — a fully-tagged graph never hits this): `inputs`, when passed,
-  // lets it name the input slot the error entered on.
+  // Runs at BOTH the input-error short-circuit and the throw catch, so it is also
+  // the one place that tags an origin that arrived untagged.
   const errorOut = (err: SolError, inputs?: Record<string, unknown[] | undefined>): Record<string, unknown> => {
     const tagged: SolError = err.origin ? err : {
       ...err,
@@ -380,8 +295,7 @@ export function installErrorGuards(node: object): void {
     return out;
   };
 
-  // Tags a node's OWN result (the common mint site — a producer returning
-  // solError(...) directly, not via a thrown exception or an errored input).
+  // Tags a node's OWN result — the common mint site, a producer returning solError().
   const tagOutputs = (out: Record<string, unknown>): Record<string, unknown> => {
     let changed = false;
     const tagged: Record<string, unknown> = {};
@@ -401,8 +315,7 @@ export function installErrorGuards(node: object): void {
       const err = firstInputError(inputs);
       if (err) return errorOut(err, inputs);
     }
-    // Time the real data() when the probe is on — sync return or promise settle,
-    // so an async frame node's IPC round-trip is included in its own row.
+    // Timed through promise settle, so an async node's IPC round-trip lands in its row.
     const probe = perfEnabled();
     const t0 = probe ? performance.now() : 0;
     try {

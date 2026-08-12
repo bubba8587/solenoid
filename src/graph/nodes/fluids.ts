@@ -1,15 +1,12 @@
-// Custom-logic node for the Fluid Mechanics pack: the Colebrook–White friction
-// factor is IMPLICIT (1/√f appears on both sides), so it root-finds — the
-// declared pack exception the Expression compiler can't cover
-// (docs/pack-architecture.md, docs/archive/reference-packs.md "solver" note).
+// The declared Fluid Mechanics pack exception (docs/pack-architecture.md): the
+// Colebrook–White factor is implicit, so it root-finds where a formula can't.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, readInput } from "./shared";
 import { solError, type SolError } from "../errorValue";
 
-/** Solve 1/√f = −2·log₁₀(rr/3.7 + 2.51/(Re·√f)) by fixed-point iteration on
- *  x = 1/√f (contraction for every physical Re/rr; converges in a handful of
- *  steps from the Swamee–Jain seed). Exported for tests. */
+/** Solve 1/√f = −2·log₁₀(rr/3.7 + 2.51/(Re·√f)) by fixed-point iteration on x = 1/√f
+ *  — a contraction for every physical Re/rr, given the Swamee–Jain seed. */
 export function colebrookF(re: number, rr: number): number {
   // Swamee–Jain explicit approximation as the seed.
   let x = 1 / Math.sqrt(0.25 / Math.log10(rr / 3.7 + 5.74 / re ** 0.9) ** 2);
@@ -39,26 +36,23 @@ export class ColebrookNode extends ClassicPreset.Node {
   data(inputs: { re?: (number | null)[]; rr?: (number | null)[] }) {
     const re = readInput(inputs.re, this.literals.re);
     const rr = readInput(inputs.rr, this.literals.rr);
-    let result: number | SolError | null = null;
-    if (typeof re === "number" && typeof rr === "number") {
-      if (re <= 0 || rr < 0 || rr >= 1) {
-        result = solError("#DOMAIN!", "Needs Re > 0 and relative roughness 0 ≤ ε/D < 1");
-      } else if (re < 2300) {
-        result = 64 / re; // laminar — Colebrook doesn't apply, hand off to 64/Re
-      } else {
-        result = colebrookF(re, rr);
-      }
-    }
+    const result = typeof re === "number" && typeof rr === "number" ? colebrookFriction(re, rr) : null;
     this.cachedResult = result;
     return { result };
   }
 }
 
-// ─── Pipe roughness ───────────────────────────────────────────────────────────
-// Absolute roughness ε for common pipe materials (textbook engineering values,
-// mm) — the number every Colebrook / Swamee–Jain / Moody problem starts with.
-// With a diameter (same unit family: mm) it also emits the relative roughness
-// ε/D, ready to wire straight into the pack's Friction Factor nodes.
+/** The guarded friction factor the node and the pack's COLEBROOK formula share:
+ *  #DOMAIN! outside Re > 0 / 0 ≤ ε/D < 1, the laminar 64/Re hand-off below
+ *  Re 2300, Colebrook–White above. */
+export function colebrookFriction(re: number, rr: number): number | SolError {
+  if (re <= 0 || rr < 0 || rr >= 1) {
+    return solError("#DOMAIN!", "Needs Re > 0 and relative roughness 0 ≤ ε/D < 1");
+  }
+  return re < 2300 ? 64 / re : colebrookF(re, rr);
+}
+
+// Absolute roughness ε in mm, textbook engineering values.
 
 export const PIPE_ROUGHNESS: Array<{ id: string; label: string; mm: number }> = [
   { id: "pvc",        label: "PVC / plastic / drawn tubing", mm: 0.0015 },
@@ -90,7 +84,6 @@ export class PipeRoughnessNode extends ClassicPreset.Node {
     super("PipeRoughness");
     this.label = init?.label ?? "Pipe Roughness";
     this.op = init?.op && ROUGHNESS_BY_ID.has(init.op) ? init.op : "steel";
-    // Optional: a diameter (mm) turns the lookup into a ready ε/D.
     this.addInput("d", numIn("Diameter mm"));
     this.addOutput("eps", numOut("ε mm"));
     this.addOutput("rel", numOut("ε/D"));

@@ -25,9 +25,8 @@ import { useFcFormatOptions, FcArrow } from "./fcControls";
 import type { NodeProps } from "./nodeKit";
 import "./nodeCard.css";
 import "./FormatControllerNode.css";
+import { stopDragStart } from "../coarse";
 
-// FcArrow (the flow-direction arrow) lives in fcControls now, shared with the
-// value-popup dropdowns so both speak the same ←/→ flow language.
 
 export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
   const node = data;
@@ -61,14 +60,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     () => formatMismatchStore.has(node.id),
   );
 
-  // Built-in units/formats merged with the ones active packs contribute, so the
-  // dropdowns grow when a pack is switched on. Shared with the table popup's
-  // per-column format row (fcControls) — one source of truth for the menus.
+  // Shared with the table popup's per-column format row so the menus can't drift.
   const { unitGroups, unitGroupOrder, packFormatGroups } = useFcFormatOptions();
 
-  // Re-home onto a different-typed socket (drag-to-dock) can change node.format
-  // and socketDataType externally; resync local state so the controlled selects
-  // reflect it instead of showing a stale value.
+  // Drag-to-dock changes node.format and socketDataType externally, so the controlled
+  // selects must resync or they show a stale value.
   useEffect(() => {
     setFormatLocal(node.format);
     setUnitLocal(node.unit);
@@ -85,16 +81,14 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setTextAlignLocal(node.textAlign);
     setTextMdLocal(node.textMarkdown);
     setTextMonoLocal(node.textMono);
-    // Resync when the wiring changes these externally — e.g. a forwarding FC's
-    // unit being mirrored/locked from its upstream — so the dropdowns reflect it.
+    // Resync when the wiring changes these externally, e.g. a forwarding FC's locked unit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
 
   function syncNode() {
     const editor = getOwningEditor(node.id); // refresh FCs in this node's own graph (drill-in too)
     if (editor) {
-      // Refresh every FC, not just this one: a unit change here must propagate
-      // to any downstream forwarding FC (whose unit is locked to its upstream).
+      // Every FC, not just this one — a downstream forwarding FC's unit is locked to this.
       for (const n of editor.getNodes()) {
         if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
       }
@@ -106,8 +100,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     node.format = f;
     setFormatLocal(f);
     syncNode();
-    // Decimal/Percent add a middle row, changing the chip height; a docked FC
-    // must re-center on its host socket once the new height has laid out.
+    // The row count changes the chip height, so a docked FC must re-center after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -147,8 +140,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     node.lambdaView = v;
     setLambdaLocal(v);
     syncNode();
-    // KaTeX/highlighted views change the host box height; a docked FC must
-    // re-center on its host socket once the new height has laid out.
+    // These views change the host box height, so a docked FC must re-center after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -178,9 +170,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // Expanding/collapsing the advanced tier changes the chip height; a docked
-  // FC must re-center on its host socket once the new height has laid out
-  // (same double-RAF as a format change).
+  // The advanced tier changes the chip height, so a docked FC must re-center after layout.
   function toggleAdvanced() {
     node.advancedOpen = !node.advancedOpen;
     setAdvancedLocal(node.advancedOpen);
@@ -235,8 +225,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // While typing: reflect exactly what's in the box (including empty), and
-  // commit only when it parses — so backspacing the last digit isn't blocked.
+  // Commit only when it parses, so backspacing the last digit isn't blocked.
   function onDigitsInput(raw: string) {
     setDigitsText(raw);
     if (raw === "") return; // transient empty — wait for more input or blur
@@ -249,8 +238,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // On blur, an empty/invalid box falls back to 1 (0 sig figs is meaningless,
-  // and an empty value shouldn't stick).
+  // An empty or invalid box falls back to 1 — 0 sig figs is meaningless.
   function onDigitsBlur() {
     const d = parseInt(digitsText, 10);
     commitDigits(digitsText === "" || !Number.isFinite(d) ? 1 : d);
@@ -271,23 +259,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const socketAccent = SOCKET_COLORS[node.socketDataType];
   const accent = mismatch ? "#e06c2e" : socketAccent;
 
-  // The FC adapts its controls to the host socket's type via the format model
-  // (formatModel.ts / docs/format-model.md) — the ONE truth table for which
-  // rows exist per family. A control outside the family is hidden, not
-  // disabled: dates get date styles (no units), text gets case/B/I/size,
-  // logical gets show-as, numbers get styles + precision + units, complex a
-  // reduced style list, structural types (frame/cube/chart/…) nothing.
+  // A control outside the host socket's family is hidden, not disabled.
   const family = familyOf(node.socketDataType);
   const c = controlsFor(family, format);
 
-  // Flow arrows flanking the controls — a three-state visual language matching
-  // the v0.9 annotation semantics (the WHOLE annotation rides the value forward
-  // through passthroughs; only the unit can be inherited or Convert-dictated):
-  //   ← →  authored HERE: applies to the box behind, travels ahead with the value
-  //   → →  inherited: the upstream value's unit passes through (forwarding FC)
-  //   ← ←  dictated from ahead (Convert primacy)
-  // The format/style row is always "authored here" (a downstream FC can
-  // re-format — format never inherits), so it gets the fixed ← → pair.
+  // Format never inherits, so the format/style row always gets the fixed ← → pair.
   const hasUnit = unit !== "none";
   let unitLeft: "back" | "fwd" | null = null;
   let unitRight: "back" | "fwd" | null = null;
@@ -303,6 +279,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       node={node}
       className="solenoid-fc"
       accentOverride={accent}
+      // The FC paints its own single-stroke accent ring — no multi-stroke seam,
+      // so it skips the frame SVG and keeps its real CSS border.
+      frameless
     >
       {/* Input socket (left) */}
       {inputPort && (
@@ -344,7 +323,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             className={`solenoid-fc__toggle${bold ? " solenoid-fc__toggle--on" : ""}`}
             style={{ fontWeight: 700 }}
             onClick={toggleBold}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             title="Bold"
           >B</button>
@@ -353,7 +332,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             className={`solenoid-fc__toggle${italic ? " solenoid-fc__toggle--on" : ""}`}
             style={{ fontStyle: "italic" }}
             onClick={toggleItalic}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             title="Italic"
           >I</button>
@@ -376,7 +355,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <>
             <div className="solenoid-fc__row">
               <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <SegToggle
+              <SegToggle arg
                 className="solenoid-seg--inline"
                 value={textAlign}
                 onChange={onTextAlignChange}
@@ -393,7 +372,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <label
                 className="solenoid-fc__check"
                 title="Render the text as markdown"
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={stopDragStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <input type="checkbox" checked={textMarkdown} onChange={toggleTextMarkdown} />
@@ -406,7 +385,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <label
                 className="solenoid-fc__check"
                 title="Render in a monospace face"
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={stopDragStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <input type="checkbox" checked={textMono} onChange={toggleTextMono} />
@@ -422,7 +401,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="button"
               className="solenoid-fc__more"
               onClick={toggleAdvanced}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title="Advanced text options"
               aria-expanded={advancedOpen}
@@ -456,7 +435,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
-        {format === "date_custom" && (
+        {c.customPattern && (
           <div className="solenoid-fc__row solenoid-fc__row--custom">
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
@@ -465,7 +444,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               value={customPattern}
               placeholder="pattern, e.g. YYYY-MM-DD"
               onChange={(e) => onPatternChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -590,11 +569,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               step={1}
               onChange={(e) => onDigitsInput(e.target.value)}
               onBlur={onDigitsBlur}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
             />
-            <SegToggle
+            <SegToggle arg
               className="solenoid-seg--inline"
               value={decimalMode}
               onChange={onModeSet}
@@ -607,7 +586,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </div>
         )}
         {/* Custom pattern directly under the style rows — it IS a format. */}
-        {format === "custom" && (
+        {c.customPattern && (
           <div className="solenoid-fc__row solenoid-fc__row--custom">
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
@@ -616,7 +595,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               value={customPattern}
               placeholder='format, e.g. "0.00"'
               onChange={(e) => onPatternChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -634,7 +613,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
                 <label
                   className="solenoid-fc__check"
                   title="Thousands separator"
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={stopDragStart}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <input type="checkbox" checked={grouping} onChange={toggleGrouping} />
@@ -690,7 +669,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="button"
               className="solenoid-fc__more"
               onClick={toggleAdvanced}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title="Advanced formatting"
               aria-expanded={advancedOpen}
@@ -750,7 +729,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               value={customUnit}
               placeholder="unit, e.g. psi"
               onChange={(e) => onCustomUnitChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />

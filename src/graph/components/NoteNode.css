@@ -63,7 +63,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   opacity: 0.8;
   cursor: pointer;
 }
@@ -82,7 +82,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -103,7 +103,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
@@ -125,7 +125,7 @@
   background: transparent;
   border: none;
   /* Share the header title's color (the icon strokes with currentColor). */
-  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  color: color-mix(in srgb, var(--note-color) var(--mix-ink), var(--text));
   cursor: pointer;
   opacity: 0.85;
 }
@@ -324,24 +324,87 @@
 .solenoid-note__rendered.sol-md ol { margin: 5px 0; }
 .solenoid-note__rendered.sol-md pre { margin: 6px 0; }
 
-/* Selection ring — copied from the Group node's (its own ring at the 8px
-   radius so it hugs the frame; raised above the border via z-index). */
+/* ── Markdown ink tinted by the note's OWN color ──────────────────────────────
+   The rendered body reached for the APP accent (links) and the neutral chrome
+   tokens (code, tables, rules) while every other part of the card — border,
+   header, chevron, title, fields separator, grip — is drawn from --note-color.
+   That's the Nearest-Accent Rule (DESIGN.md §2): inside a surface carrying its
+   own accent, the surface's accent wins, or an app-accent link lands next to a
+   note-colored border as two unrelated hues on one small card.
+   Every value below is a color-mix off --note-color, so it retints WITH the card
+   and there is nothing to keep in sync: picking a swatch rewrites the inline var
+   (NoteComponent `pick`), and a palette or light/dark switch re-renders the note
+   through themeAccent ∘ resolveColor (it subscribes to appThemeStore, which
+   appTheme re-notifies on every palette change). No JS reads these.
+   Deliberately QUIET (Quiet Accent Rule): the note color stays a MINORITY share
+   against the same text/chrome tokens as before, so prose contrast is unchanged
+   in both themes and only markdown's structural marks — headings, code, links,
+   rules, table headers — carry the tint. Body text (p / li / strong) is
+   untouched. The blockquote's left rule deliberately stays NEUTRAL: a 3px
+   colored left border is the accent stripe the design system bans outright,
+   whatever element it sits on. The percentages are the tuning knob; the
+   Import-from-Obsidian card renders these same classes and picks it up free. */
+.solenoid-note__rendered.sol-md h1,
+.solenoid-note__rendered.sol-md h2,
+.solenoid-note__rendered.sol-md h3 {
+  color: color-mix(in srgb, var(--note-color, var(--accent)) 40%, var(--text-bright));
+}
+.solenoid-note__rendered.sol-md a {
+  color: color-mix(in srgb, var(--note-color, var(--accent)) 72%, var(--text-bright));
+}
+.solenoid-note__rendered.sol-md code,
+.solenoid-note__rendered.sol-md pre,
+.solenoid-note__rendered.sol-md kbd,
+.solenoid-note__rendered.sol-md th {
+  background: color-mix(in srgb, var(--note-color, var(--accent)) 14%, var(--surface-sunken));
+}
+/* Hairlines: the fenced-block frame, table edges, the h2 underline, the `---`. */
+.solenoid-note__rendered.sol-md pre,
+.solenoid-note__rendered.sol-md th,
+.solenoid-note__rendered.sol-md td {
+  border-color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border));
+}
+.solenoid-note__rendered.sol-md h2 {
+  border-bottom-color: color-mix(in srgb, var(--note-color, var(--accent)) 40%, var(--border));
+}
+.solenoid-note__rendered.sol-md hr {
+  border-top-color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-edge), var(--border));
+}
+
+/* An INLINE chip has to fit the line box, and the shared .sol-md sizes these for
+   a doc column (13.5px / 1.6 → a 21.6px line, room to spare) while the note
+   compacts to 12px / 1.45 → 17.4px. There, content (~14px) + 2px of vertical
+   padding + 2px of border comes to ~18px — taller than the line, so the fill
+   bleeds into the rows above and below. It always did; carrying the note tint is
+   what made it visible. So drop both contributions to HEIGHT: zero the vertical
+   padding, and draw the hairline as a 1px inset ring — paint, not layout (the
+   same trick the Import card's selected row uses) — instead of a border. The chip
+   keeps its fill, its edge and its horizontal breathing room, and now clears the
+   line with a couple of px to spare. Horizontal padding is untouched: it costs
+   width, which a chip has, not height. */
+.solenoid-note__rendered.sol-md code,
+.solenoid-note__rendered.sol-md kbd {
+  padding: 0 4px;
+  border: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border));
+}
+.solenoid-note__rendered.sol-md kbd {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border-strong));
+}
+/* A fenced block is a BLOCK — it owns its margins, so it keeps the real border
+   and padding above; only the inline chips fought the line box. Its inner <code>
+   resets to bare: the chip selectors are two classes deep and out-specify
+   Markdown.css's own `.sol-md pre code` reset, which would otherwise paint a
+   second chip inside the already-tinted <pre>. */
+.solenoid-note__rendered.sol-md pre code { padding: 0; background: none; box-shadow: none; }
+
+/* Selection ring = the note's OWN border, recolored. The old ::after ring at
+   inset:-2px was a second box with the identical geometry (2px at radius 8
+   over the border box), but its edges rounded independently of the card's
+   under a content-driven fractional height and overhung ~0.5px on the
+   right/bottom. Recoloring the border itself makes the ring and the card edge
+   the same painted stroke — nothing to misalign. */
 .solenoid-note--selected {
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
-}
-.solenoid-note--selected::after {
-  content: "";
-  position: absolute;
-  /* The note carries its own 2px border, so an inset:0 absolute child positions
-     against the padding box (inside that border) and the ring reads several px
-     in from the edge. Pull out to -2px so the ring sits over the outer border. */
-  inset: -2px;
-  box-sizing: border-box;
-  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 6;
-}
-:root[data-theme="light"] .solenoid-note--selected::after {
-  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+  border-color: color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }

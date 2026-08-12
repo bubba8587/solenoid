@@ -10,7 +10,7 @@
       "y": -360,
       "init": {
         "label": "Multiple pivot tables, one source",
-        "body": "# Pivots from one Orders table\nThe **Orders** frame is 36 rows · 10 columns: a **date**, text dims, and numeric **Units / Price / Revenue**. It feeds *every* pivot on its own branch. Each **Pivot** node is Excel `=PIVOTBY` with different Rows / Columns / Values / function / totals; click a chip for the full table. Edit a number in Orders and **every** pivot recomputes.",
+        "body": "# Pivots from one Orders table\nThe **Orders** frame is 36 rows · 10 columns: a **date**, text dims, and numeric **Units / Price / Revenue**. It feeds *every* pivot on its own branch. Each **Pivot** node is Excel `=PIVOTBY` with different Rows / Columns / Values / function / totals; a chip opens the full table. Edit a number in Orders and **every** pivot recomputes.",
         "color": "violet",
         "width": 460,
         "height": 210

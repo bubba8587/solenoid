@@ -1,19 +1,10 @@
-// Focus-set derivation for Isolate (see isolateStore for the store + chain BFS).
-// Two entry points off the current selection:
-//  - isolateSelection: the selection itself, plus any selected group's members
-//    and the docked FCs of focused nodes (so an isolated node keeps its badge).
-//  - isolateChain: the transitive up/downstream closure over the cables.
-
 import { getEditor, downstreamClosure } from "./process";
 import { getActiveEditor } from "./activeGraph";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
 import type { SolenoidNode } from "./schemes";
 import { chainClosure, isolateStore } from "./isolateStore";
 
-// Isolate resolves through the ACTIVE editor (the composite drill-in when one is
-// open, else main) so the focus-set / dim view works INSIDE a subgraph too — the
-// drill-in node cards read the same global isolateStore.isVisible(). getEditor()
-// === getActiveEditor() on the main canvas, so nothing changes there.
+// Isolate resolves through the ACTIVE editor, so it works inside a drill-in too.
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
 function selectedIds(editor: AnyEditor): Set<string> {
@@ -24,8 +15,7 @@ function selectedIds(editor: AnyEditor): Set<string> {
   );
 }
 
-// Pull a focus set up to "whole entities": a selected group brings its members,
-// and any node in the set brings the FCs docked to it.
+// Whole entities: a group brings its members, a node brings its docked FCs.
 function expandEntities(editor: AnyEditor, ids: Set<string>): Set<string> {
   const out = new Set(ids);
   for (const id of [...out]) {
@@ -55,26 +45,22 @@ export function isolateChainOf(ids: Iterable<string>): boolean {
   if (!editor) return false;
   const seed0 = new Set(ids);
   if (seed0.size === 0) return false;
-  // Seed with members so a selected group's cables are walked, then close over
-  // the connection list, then re-expand for any group/FC reached along the way.
+  // Seed with members so a group's cables are walked, then re-expand for anything
+  // reached along the way.
   const seed = expandEntities(editor, seed0);
   const edges = editor.getConnections().map((c) => ({ source: c.source, target: c.target }));
   isolateStore.set(expandEntities(editor, chainClosure(edges, seed)));
   return true;
 }
 
-/** Where-used: isolate the DOWNSTREAM stream from one node — "everything this
- *  value eventually feeds" (right-click → Where used). One-directional, unlike
- *  Isolate chain (which walks both ways) — reuses the same downstreamClosure
- *  the targeted-recompute path walks (process.ts), fed into the existing
- *  isolate/dim visual (no new dim CSS — see isolateStore + IsolatePill). */
+/** Where-used: isolate the DOWNSTREAM stream from one node. One-directional,
+ *  unlike Isolate chain (which walks both ways). */
 export function isolateWhereUsed(nodeId: string): boolean {
   const editor = getActiveEditor();
   if (!editor) return false;
   const downstream = downstreamClosure(editor, nodeId);
-  // The mode label keeps the pill from reading as a plain Isolate — the SET
-  // differs from Isolate chain (downstream-only vs both directions), but the
-  // dim visual is identical, so the pill is what tells them apart.
+  // The dim visual is identical to Isolate chain, so the label is the only thing
+  // distinguishing the downstream-only set.
   isolateStore.set(expandEntities(editor, downstream), "Where used");
   return true;
 }

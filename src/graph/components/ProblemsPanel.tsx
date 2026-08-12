@@ -11,9 +11,7 @@ import { insertClampBefore } from "../modelFuzz";
 import "./problemsPanel.css";
 import { CloseIcon } from "./CloseIcon";
 
-// Lucide "triangle-alert" — the Problems trigger icon (Problems ARE errors, so the
-// warning triangle belongs here; Alerts, which aren't necessarily bad, use a bell).
-// https://lucide.dev/icons/triangle-alert
+// Lucide "triangle-alert" — Problems ARE errors; Alerts, which aren't, use a bell.
 const ProblemsSvg = ({ size = 14 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>
     <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
@@ -22,13 +20,8 @@ const ProblemsSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/**
- * The Problems HUD panel: a log of every tagged #CODE! error the graph has hit
- * (live compute-pass hits), plus model-fuzzing findings once run (origin "fuzz",
- * see #44). Each entry jumps-and-flashes to its node. Filterable by code.
- * Collapses to a count button, same shape as PinLayer/AlertLayer (its own state,
- * own registerChrome call) — HudStack is a hardcoded stack, not a generic API.
- */
+/** Every tagged #CODE! error the graph has hit, plus fuzz findings. Carries its own
+ *  collapsed state + registerChrome call — HudStack is hardcoded, not a generic API. */
 export function ProblemsPanel() {
   const [collapsed, setCollapsed] = useState(true);
   const [codeFilter, setCodeFilter] = useState<string | null>(null);
@@ -44,8 +37,7 @@ export function ProblemsPanel() {
   }, [collapsed]);
 
   useSyncExternalStore(problemsStore.subscribe, problemsStore.version);
-  // The StatusBar badge can force the panel open (problemsPanelUi) — mirror that
-  // external "open" request into the local collapsed state.
+  // Mirror the StatusBar badge's external "open" request into the local collapsed state.
   const forcedOpen = useSyncExternalStore(problemsPanelUi.subscribe, problemsPanelUi.isOpen);
   useEffect(() => {
     if (forcedOpen) { setCollapsed(false); problemsPanelUi.setOpen(false); }

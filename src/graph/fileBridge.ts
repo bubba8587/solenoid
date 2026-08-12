@@ -1,8 +1,5 @@
-// Thin wrapper over Tauri's filesystem + dialog plugins, guarded so the browser
-// dev build (no Tauri runtime) degrades gracefully instead of throwing. Local
-// file connections only work in the desktop app; in the browser isDesktop() is
-// false and every call here is a safe no-op, so the CSV-folder node can render a
-// "desktop only" state rather than crash.
+// Thin wrapper over Tauri's fs + dialog plugins. In the browser (no Tauri runtime)
+// every call is a guarded no-op rather than a throw.
 import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname } from "@tauri-apps/api/path";
@@ -17,16 +14,14 @@ export function isDesktop(): boolean {
 }
 
 /** Open the OS folder picker; returns the chosen absolute path, or null if the
- *  user cancelled (or we're not on desktop). */
+ *  user canceled (or we're not on desktop). */
 export async function pickFolderDialog(): Promise<string | null> {
   if (!isDesktop()) return null;
   const res = await open({ directory: true, multiple: false, title: "Choose a data folder" });
   return typeof res === "string" ? res : null;
 }
 
-/** List the file names directly inside `folder` matching `extension` (sorted,
- *  case-insensitive) — the shared listing behind every folder-scoped file-source
- *  node (CSV, Parquet, …). */
+/** File names directly inside `folder` matching `extension` (sorted, case-insensitive). */
 async function listFilesByExt(folder: string, extension: string): Promise<string[]> {
   if (!isDesktop() || !folder) return [];
   const entries = await readDir(folder);
@@ -58,11 +53,8 @@ export function listMarkdownFiles(folder: string): Promise<string[]> {
   return listFilesByExt(folder, "md");
 }
 
-/** Recursively collect the vault-relative subfolder paths under `root` (POSIX-style
- *  "a/b/c", sorted). The root itself is NOT included (the caller offers "" for it).
- *  Skips hidden/dot folders — chiefly Obsidian's own `.obsidian` config dir and
- *  `.trash`. Bounded depth so a pathological vault can't hang the picker. Desktop
- *  only; [] in the browser. */
+/** Vault-relative subfolder paths under `root` (POSIX-style, sorted), EXCLUDING the
+ *  root itself; dot-folders skipped and depth bounded. Desktop only. */
 export async function listVaultFolders(root: string, maxDepth = 6): Promise<string[]> {
   if (!isDesktop() || !root) return [];
   const out: string[] = [];
@@ -107,15 +99,8 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
   return readTextFile(path);
 }
 
-// ─── Graph file save / open ───────────────────────────────────────────────────
-// Desktop uses native dialogs + real file writes; the browser falls back to a
-// blob download / file-input upload (no persistent path). Each returns the chosen
-// absolute path on desktop (so the doc can be bound to it), or null in the browser.
-
-/** Temp + rename so a crash mid-write can't destroy the previous good file
- *  (audit finding 37) — the disk mirror of the localStorage two-slot rotation.
- *  Falls back to a direct write when the `.tmp` sibling is outside the granted
- *  fs scope (a dialog-picked path grants exactly the picked file). */
+/** Temp + rename so a crash mid-write can't destroy the previous good file; falls
+ *  back to a direct write when the `.tmp` sibling is outside the granted fs scope. */
 async function writeTextFileAtomic(path: string, content: string): Promise<void> {
   const tmp = `${path}.tmp`;
   try {
@@ -131,14 +116,10 @@ export async function writeTextFilePath(path: string, content: string): Promise<
   await writeTextFileAtomic(path, content);
 }
 
-// ── Binary files + folders (the image-asset bundle needs these) ──────────────
-
-/** The directory containing an absolute file path. */
 export function dirOfPath(path: string): Promise<string> {
   return dirname(path);
 }
 
-/** Join path segments (Tauri-side, OS-correct separator). */
 export function joinPath(...parts: string[]): Promise<string> {
   return join(...parts);
 }
@@ -160,19 +141,15 @@ export function writeBinaryFilePath(path: string, bytes: Uint8Array): Promise<vo
   return writeFile(path, bytes);
 }
 
-/** Show a Save dialog to CHOOSE a path WITHOUT writing anything (a sink node's
- *  "Browse…" button uses this to populate its path field before the separate,
- *  explicit write). Returns null on cancel, and in the browser (no filesystem
- *  there — a sink node just shows "desktop only"). */
+/** Choose a path WITHOUT writing anything; null on cancel and in the browser. */
 export async function pickSaveFilePath(suggestedName: string, extensions: string[]): Promise<string | null> {
   if (!isDesktop()) return null;
   const path = await save({ defaultPath: suggestedName, filters: [{ name: extensions.join("/").toUpperCase(), extensions }] });
   return typeof path === "string" ? path : null;
 }
 
-/** Desktop: pick a graph save path (Solenoid .json filter) WITHOUT writing —
- *  saveToDisk needs the destination first so image assets can bundle into the
- *  right folder before the JSON (which references them) is written. */
+/** Pick a graph save path WITHOUT writing — image assets must bundle into the
+ *  destination folder before the JSON that references them is written. */
 export async function pickSaveGraphPath(suggestedName: string): Promise<string | null> {
   if (!isDesktop()) return null;
   const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
@@ -180,7 +157,7 @@ export async function pickSaveGraphPath(suggestedName: string): Promise<string |
 }
 
 /** Show a Save dialog and write the file. Returns the chosen path, or null if the
- *  user cancelled. In the browser, downloads `suggestedName` and returns null. */
+ *  user canceled. In the browser, downloads `suggestedName` and returns null. */
 export async function saveTextFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
     const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
@@ -192,8 +169,7 @@ export async function saveTextFileDialog(suggestedName: string, content: string)
   return null;
 }
 
-/** Save a .csv (a popup's Export CSV). Same shape as saveTextFileDialog, separate
- *  for the CSV file-type filter in the desktop dialog. */
+/** saveTextFileDialog with the CSV file-type filter. */
 export async function saveCsvFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
     const path = await save({ defaultPath: suggestedName, filters: CSV_FILTER });
@@ -205,9 +181,7 @@ export async function saveCsvFileDialog(suggestedName: string, content: string):
   return null;
 }
 
-/** Show a Save dialog for a self-contained exported .html file (static export —
- *  see reportExport.ts). Same shape as saveTextFileDialog, separate function
- *  because the file-type filter and browser download mime type differ. */
+/** saveTextFileDialog with the HTML filter + download mime type. */
 export async function saveHtmlFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
     const path = await save({ defaultPath: suggestedName, filters: HTML_FILTER });
@@ -219,7 +193,6 @@ export async function saveHtmlFileDialog(suggestedName: string, content: string)
   return null;
 }
 
-/** Trigger a browser download of an HTML string as `name`. */
 function downloadHtml(name: string, content: string): void {
   const blob = new Blob([content], { type: "text/html" });
   const url = URL.createObjectURL(blob);
@@ -233,7 +206,7 @@ function downloadHtml(name: string, content: string): void {
 }
 
 /** Show an Open dialog and read the file. Returns its path + text, or null if the
- *  user cancelled. In the browser, uses a file input (path is null). */
+ *  user canceled. In the browser, uses a file input (path is null). */
 export async function openTextFileDialog(): Promise<{ path: string | null; content: string } | null> {
   if (isDesktop()) {
     const res = await open({ multiple: false, directory: false, filters: JSON_FILTER });
@@ -244,7 +217,6 @@ export async function openTextFileDialog(): Promise<{ path: string | null; conte
   return openTextFileBrowser();
 }
 
-/** Trigger a browser download of `content` as `name`. */
 function downloadText(name: string, content: string): void {
   const blob = new Blob([content], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -257,8 +229,8 @@ function downloadText(name: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-/** Browser file-input read, as a promise. Resolves null if the user cancels (the
- *  dialog refocuses the window without firing change). */
+/** Browser file-input read; resolves null on cancel, detected via the refocus (the
+ *  dialog fires no change event). */
 function openTextFileBrowser(): Promise<{ path: null; content: string } | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
@@ -279,16 +251,14 @@ function openTextFileBrowser(): Promise<{ path: null; content: string } | null> 
   });
 }
 
-/** The file name (no directory, no .json extension) of an absolute path — the
- *  document's display name after a Save As / Open. */
+/** The file name of an absolute path, without directory or .json extension. */
 export function fileNameFromPath(path: string): string {
   const base = path.split(/[/\\]/).pop() ?? path;
   return base.replace(/\.json$/i, "");
 }
 
-/** Open a URL in the user's browser. Desktop uses the Tauri opener (a bare
- *  target=_blank is blocked in the webview); the browser build falls back to
- *  window.open. */
+/** Open a URL externally — desktop needs the Tauri opener, since a bare
+ *  target=_blank is blocked in the webview. */
 export async function openExternal(url: string): Promise<void> {
   if (isDesktop()) {
     try {
@@ -302,10 +272,8 @@ export async function openExternal(url: string): Promise<void> {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-/** Open the OS file manager at `path` (desktop only, no-op in the browser).
- *  Uses the opener plugin's revealItemInDir, which is covered by the
- *  `opener:default` capability already granted (unlike openPath, no extra
- *  fs scope needed). */
+/** Open the OS file manager at `path` (desktop only). revealItemInDir is covered by
+ *  the granted `opener:default` capability; openPath would need extra fs scope. */
 export async function openInFileManager(path: string): Promise<void> {
   if (!isDesktop() || !path) return;
   try {

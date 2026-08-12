@@ -1,0 +1,50 @@
+{ "verb": "distinct",
+  "cases": [
+    { "name": "whole-row distinct keeps first occurrence, in order",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2, 1, 2, 3] },
+        { "name": "b", "type": "string", "values": ["x", "y", "x", "z", "x"] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2, 2, 3] },
+        { "name": "b", "type": "string", "values": ["x", "y", "z", "x"] } ] } },
+    { "name": "distinct on a subset keeps the first full row per key",
+      "frames": { "in": { "columns": [
+        { "name": "k", "type": "string", "values": ["a", "b", "a"] },
+        { "name": "v", "type": "number", "values": [1, 2, 3] } ] } },
+      "op": { "kind": "distinct", "columns": ["k"] },
+      "expect": { "columns": [
+        { "name": "k", "type": "string", "values": ["a", "b"] },
+        { "name": "v", "type": "number", "values": [1, 2] } ] } },
+    { "name": "null is a distinct value, not equal to 0 or empty text",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [0, null, 0, null] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [0, null] } ] } },
+    { "name": "unknown subset column errors",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "distinct", "columns": ["missing"] },
+      "expectError": "#REF!" },
+    { "name": "two nulls collapse to one bucket",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "string", "values": ["1", "1", null, null] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "v", "type": "string", "values": ["1", null] } ] } },
+    { "name": "crafted separator strings never collide (the old \u0001-join bug class)",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "string", "values": ["x\u0001s:y", "x"] },
+        { "name": "b", "type": "string", "values": ["z", "y\u0001s:z"] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "a", "type": "string", "values": ["x\u0001s:y", "x"] },
+        { "name": "b", "type": "string", "values": ["z", "y\u0001s:z"] } ] } },
+    { "name": "all non-finite numbers share one key bucket (first occurrence wins)",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, {"__nf": "-inf"}, {"__nf": "nan"}, 1] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, 1] } ] } }
+  ] }

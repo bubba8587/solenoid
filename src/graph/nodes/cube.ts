@@ -1,32 +1,15 @@
 import { ClassicPreset } from "rete";
-import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
+import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
 import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
 
-// ─── Cube nodes (the recursive container) ─────────────────────────────────────
-// A Cube is a Frame whose cells can each hold ANY value (a scalar, a list, a
-// matrix, a nested Frame, or another Cube) — the lattice supremum (see frame.ts).
-// Two producers, mirroring the two honest ways a cube can be made (see
-// docs/cube-node-scope.md):
-//   • Build Cube — the manual general constructor. Each extensible `any` input is
-//     one cell of a single column, so a non-frame value (a scalar, a list, a
-//     cube) gets in by being wired/typed into a row. This is the node that proves
-//     "a cell holds any value" — without it the value model's promise is one the
-//     node set can't keep.
-//   • Nest Join — the data-driven relational path: nest two frames on a shared key.
-// Reading a cell back out is the upgraded INDEX (frame/cube-aware, returns `any`).
-
-// ─── BUILD CUBE ────────────────────────────────────────────────────────────────
-// Extensible `any` cells → a single named cube column. The cube generalises a
-// "list of frames": wire N frames into N rows and you get an N×1 cube whose cells
-// are frames. An unwired row accepts a typed scalar (a number) as its cell.
+// Cube nodes — the recursive container. See docs/archive/cube-node-scope.md.
 
 export class BuildCubeNode extends ClassicPreset.Node {
   label: string;
   cachedResult: CubeValue | null = null;
-  // Unwired `any` rows accept a typed numeric scalar as their cell; `name` (the
-  // column header) is a string input backed here.
+  // Unwired `any` rows accept a typed numeric scalar as their cell; `name` is a string.
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { name: "" };
   nextInputId = 0;
@@ -72,28 +55,18 @@ export class BuildCubeNode extends ClassicPreset.Node {
       if (wired && wired.length) return wired[0] as CubeCell;
       return (k in this.literals ? this.literals[k] : null) as CubeCell;
     });
-    const name = (inputs.name?.[0] as string | undefined)?.trim() || this.stringLiterals.name?.trim() || "Items";
+    // Read raw, guard, THEN trim: a wired blank name is unknown, not "Items".
+    const nameRaw = readInput(inputs.name as string[] | undefined, this.stringLiterals.name ?? "");
+    if (nameRaw === null) { this.cachedResult = null; return { cube: null }; }
+    const name = nameRaw.trim() || "Items";
     this.cachedResult = cubeFromColumns([{ name, cells }]);
     return { cube: this.cachedResult };
   }
 }
 
-// ─── NEST JOIN ───────────────────────────────────────────────────────────────────
-// Parent + child + the key column they share → a Cube: the parent's columns flow
-// through flat, plus one nested column whose every cell is the child rows matching
-// that parent row's key (tidyr's nest_join — the dual of a flat Join, which fans out
-// instead of nesting). BOTH sockets are `any`:
-//   • Parent — a Frame (depth-1 nest) OR a Cube (feeding a previous Nest Join's output
-//     deepens the hierarchy one level, nest-joining the child into each leaf frame).
-//   • Child — a Frame (each cell nests a flat sub-frame) OR a pre-built Cube (each cell
-//     nests a sub-CUBE, keeping the child's own nesting — so an Orders-with-LineItems
-//     cube nests whole under Customers in one step, vs. the incremental parent-cube path
-//     which adds a flat child one level at a time). Both build Customer→Order→LineItem.
-
-// The child socket is `any` so it takes a Frame OR a Cube (a cube can't narrow into a
-// frame socket; and a `cube` socket would wrongly widen a frame child TO a cube, turning
-// depth-1 sub-frames into sub-cubes). A bare list/matrix/scalar still widens to a frame
-// (coerceValue's frame case, mirrored here).
+// The child socket is `any` so it takes a Frame OR a Cube: a cube can't narrow into a
+// frame socket, and a `cube` socket would widen a frame child TO a cube, turning depth-1
+// sub-frames into sub-cubes.
 function asNestChild(v: unknown): FrameValue | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v)) return v;
@@ -123,13 +96,17 @@ export class NestJoinNode extends ClassicPreset.Node {
   data(inputs: { parent?: unknown[]; child?: unknown[]; key?: string[]; name?: string[] }) {
     const parent = inputs.parent?.[0] ?? null;
     const child = asNestChild(inputs.child?.[0] ?? null);
-    const key = (inputs.key?.[0] ?? this.stringLiterals.key ?? "").trim();
-    const name = (inputs.name?.[0] ?? this.stringLiterals.name ?? "").trim();
+    // Read raw, guard, THEN trim: `?? ""` would collapse a wired blank into the empty
+    // literal's "not chosen" reading.
+    const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
+    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
+    if (keyRaw === null || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
+    const key = keyRaw.trim();
+    const name = nameRaw.trim();
     if (!child || key === "") { this.cachedResult = null; return { cube: null }; }
-    // Cube parent → deepen one level into the nested sub-frames; Frame parent →
-    // the original nest join. A WIRED parent that's neither (a bare list / scalar) is
-    // a type mistake → #TYPE!, not a silent blank (error-value rule); an UNWIRED
-    // parent (null) stays blank, like any incomplete input.
+    // Cube parent → deepen one level into the nested sub-frames; Frame parent → the
+    // original nest join; a WIRED parent that is neither → #TYPE!, never a silent blank;
+    // an UNWIRED parent stays blank.
     this.cachedResult = isCubeValue(parent)
       ? relateCubeToFrame(parent, child, key, name)
       : isFrameValue(parent)
@@ -141,14 +118,8 @@ export class NestJoinNode extends ClassicPreset.Node {
   }
 }
 
-// ─── CUBE COLUMNS ──────────────────────────────────────────────────────────────
-// Assemble a MULTI-column cube from N column inputs (the columns-wise complement of
-// the cell-wise Build Cube). Each extensible `any` input is one column: a wired list
-// → its elements are the cells; a single-column cube (e.g. from Build Cube) → that
-// column's cells; a frame/scalar → one cell. A `names` CSV labels the columns
-// positionally. Build Cube wraps values into one nested column; Cube Columns lines
-// several columns up side by side — together they make a Customers[id, name, orders]
-// cube without a "list of frames" socket type.
+// Each extensible `any` input is one COLUMN: a wired list → its elements are the cells;
+// a single-column cube → that column's cells; a frame/scalar → one cell.
 
 export class CubeColumnsNode extends ClassicPreset.Node {
   label: string;
@@ -205,14 +176,8 @@ export class CubeColumnsNode extends ClassicPreset.Node {
   }
 }
 
-// ─── CUBE ROLLUP ─────────────────────────────────────────────────────────────
-// Aggregate one column INSIDE each row's nested sub-frame, flattening the cube
-// back to a plain Frame with the roll-up appended as a new column — "cost of an
-// assembly = SUM of its nested parts". The BOM/nested-costing vertical's one bit
-// of new mechanics: everything else (parent/child → Cube, per-row extended-cost
-// columns) is Nest Join + Join + Add Column, already built. Reuses `aggregateGroup`
-// (the Group By aggregator) so a roll-up and a Group By agree on every op's edge
-// cases (null-skip, error-propagate, empty-group values) — no new aggregation math.
+// Reuses `aggregateGroup` (the Group By aggregator) so a roll-up and a Group By agree
+// on every op's edge cases.
 
 export class CubeRollupNode extends ClassicPreset.Node {
   label: string;
@@ -236,9 +201,14 @@ export class CubeRollupNode extends ClassicPreset.Node {
   data(inputs: { cube?: (CubeValue | null)[]; nested?: string[]; column?: string[]; as?: string[] }) {
     const cube = inputs.cube?.[0] ?? null;
     if (!cube) { this.cachedResult = null; return { frame: null }; }
-    const nestedName = (inputs.nested?.[0] ?? this.stringLiterals.nested ?? "").trim();
-    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    const outName = (inputs.as?.[0] ?? this.stringLiterals.as ?? "Total").trim() || "Total";
+    // Read raw, guard, THEN trim — a wired blank is unknown, never the default.
+    const nestedRaw = readInput(inputs.nested, this.stringLiterals.nested ?? "");
+    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
+    const asRaw = readInput(inputs.as, this.stringLiterals.as ?? "Total");
+    if (nestedRaw === null || colRaw === null || asRaw === null) { this.cachedResult = null; return { frame: null }; }
+    const nestedName = nestedRaw.trim();
+    const col = colRaw.trim();
+    const outName = asRaw.trim() || "Total";
     const nestedIdx = cube.columns.findIndex((c) => c.name === nestedName);
     if (nestedName === "" || col === "") { this.cachedResult = null; return { frame: null }; }
     if (nestedIdx < 0) {

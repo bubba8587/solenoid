@@ -1,15 +1,5 @@
-// Shared kernel for the module-level "external stores" the app reads through
-// useSyncExternalStore. Rete renders node components in a separate React root,
-// so any state both roots touch lives in these module singletons instead of
-// React context. Every store needs the same listener plumbing — a Set of
-// callbacks, a notify() that fans out, and a subscribe() returning an
-// unsubscribe — plus, for stores whose snapshot is "did anything change?", a
-// monotonic version counter.
-//
-// createNotifier() is that plumbing. createToggleStore() is the further-shared
-// shape for the handful of boolean open/closed flag stores, and
-// createValueStore() the one for the "current value or null (closed)" popup /
-// dialog stores.
+// Rete renders node components in a SEPARATE React root, so any state both roots
+// touch must live in these module singletons rather than React context.
 
 export interface Notifier {
   /** Call after mutating state to re-render subscribers (also bumps version). */
@@ -39,9 +29,7 @@ export interface ToggleStore {
   subscribe: (listener: () => void) => () => void;
 }
 
-/** A boolean open/closed flag store — the shape shared by the Function
- *  Reference / shortcuts overlays, the mobile menu, touch-select mode, the
- *  canvas lock, and the settings panel. set/open/close no-op when unchanged;
+/** A boolean open/closed flag store. set/open/close no-op when unchanged;
  *  toggle always flips. */
 export function createToggleStore(initial = false): ToggleStore {
   const { notify, subscribe } = createNotifier();
@@ -59,19 +47,14 @@ export function createToggleStore(initial = false): ToggleStore {
 export interface ValueStore<T> {
   /** The current value, or null when closed. */
   get: () => T | null;
-  /** Set the value (replacing any previous one) and notify. */
   open: (value: T) => void;
-  /** Clear the value; no-op when already closed. */
+  /** No-op when already closed. */
   close: () => void;
   subscribe: (listener: () => void) => () => void;
   version: () => number;
 }
 
-/** A "current value or null (closed)" store — the shape shared by the popup and
- *  dialog stores (table/chart/cube/formula popups, the connection dialog, the
- *  element picker, the pivot editor). Stores with extra verbs or a non-standard
- *  open (cubePopup's drill/backTo, formulaPopup's same-id dedupe) spread the
- *  core and layer them on via get()/open(). */
+/** Stores needing extra verbs spread this core and layer them on via get()/open(). */
 export function createValueStore<T>(): ValueStore<T> {
   const { notify, subscribe, version } = createNotifier();
   let value: T | null = null;

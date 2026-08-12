@@ -11,19 +11,9 @@ type PillNode = {
   inputs: Record<string, { socket: ClassicPreset.Socket } | undefined>;
 };
 
-/**
- * Collapsed-node aggregate for ≥2 inputs: stacks the (functional, but
- * visually hidden) sockets at one point and draws a single stadium pill
- * the cables converge on. Avoids many dots spilling past a small collapsed
- * node. Sockets/pill center on the display box via --out-socket-top.
- *
- * Used by both InlineInputs (fixed-arity nodes) and ExtensibleInputs.
- * `keys` is the ordered list of input keys to aggregate.
- *
- * Highlight: the stacked sockets' dot-shaped flashes are suppressed (CSS);
- * when any of them is lit the pill draws a pill-shaped flash instead, so
- * the highlight matches what the user actually sees.
- */
+/** Collapsed-node aggregate for ≥2 inputs: the sockets stay functional but hidden,
+ *  stacked at one point behind a single pill the cables converge on. The stacked
+ *  dot flashes are suppressed in CSS, so the pill draws the highlight instead. */
 export function CollapsedInputPill({
   node,
   emit,
@@ -54,8 +44,7 @@ export function CollapsedInputPill({
           />
         ) : null;
       })}
-      {/* Solid fill to the edge + an inset ring fully inside it (same as
-          the socket dot, so the ring doesn't straddle the edge). */}
+      {/* Inset ring fully inside the fill, so it doesn't straddle the edge. */}
       <svg className="solenoid-node__input-pill" viewBox="0 0 12 28" aria-hidden>
         <rect x="0" y="0" width="12" height="28" rx="6" fill={pillColor} />
         <rect x="1" y="1" width="10" height="26" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />

@@ -1,14 +1,10 @@
-// Electromagnetism — fields, forces, waves, and induction, one level deeper
-// than the Electricity & Circuits pack it builds on (dependsOn pulls that pack
-// in on activation). Constants are baked into each formula at CODATA 2018
-// precision — a locked preset's promise is that the number is RIGHT — and the
-// Physics Constant node exposes the same library as a wireable source.
-// SI units throughout; angles in radians (core Trigonometry convention).
+// Constants are baked into each formula at CODATA 2018 precision. SI units throughout;
+// angles in radians (core Trigonometry convention).
 
-import { PhysicsConstantNode, EmSpectrumNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { PhysicsConstantNode, EmSpectrumNode, emSpectrum, PHYS_CONSTANTS, type PhysConstOp } from "../rete-nodes";
+import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
-// CODATA 2018, written as decimal·10^n so the formula grammar stays simple.
+// Written as decimal·10^n so the formula grammar stays simple.
 const KE   = "8.9875517923*10^9";    // Coulomb constant (N·m²/C²)
 const EPS0 = "8.8541878128*10^-12";  // vacuum permittivity (F/m)
 const MU0  = "1.25663706212*10^-6";  // vacuum permeability (H/m)
@@ -37,13 +33,13 @@ export const EM_MAGNETISM: FormulaPackEntry[] = [
     description: "Inductance of an air-core solenoid: n total turns, cross-section a (m²), length len (m)   (L = µ₀N²A/ℓ)",
     keywords: "coil henries" },
   { type: "em-solenoid-field", label: "Solenoid Field", expr: `${MU0}*n*i`,
-    description: "Field inside a long solenoid: n turns per metre, current i   (B = µ₀nI, tesla)",
+    description: "Field inside a long solenoid: n turns per meter, current i   (B = µ₀nI, tesla)",
     keywords: "coil tesla" },
   { type: "em-wire-field", label: "Straight-Wire Field", expr: `${MU0}*i/(2*PI()*r)`,
     description: "Field at distance r from a long straight wire carrying i   (B = µ₀I/(2πr))",
     keywords: "ampere tesla" },
-  { type: "em-loop-field", label: "Loop-Centre Field", expr: `${MU0}*i/(2*r)`,
-    description: "Field at the centre of a circular loop of radius r carrying i   (B = µ₀I/(2r))" },
+  { type: "em-loop-field", label: "Loop-Center Field", expr: `${MU0}*i/(2*r)`,
+    description: "Field at the center of a circular loop of radius r carrying i   (B = µ₀I/(2r))" },
   { type: "em-wire-force", label: "Force on a Wire", expr: "b*i*len*SIN(theta)",
     description: "Force on a wire of length len carrying i in field b, at angle theta (radians)   (F = BIℓ·sinθ)" },
   { type: "em-lorentz", label: "Lorentz Force (Magnetic)", expr: "q*v*b*SIN(theta)",
@@ -66,7 +62,7 @@ export const EM_WAVES: FormulaPackEntry[] = [
   { type: "em-photon-energy-wl", label: "Photon Energy (Wavelength)", expr: `${H}*${C}/lambda`,
     description: "Energy of one photon from wavelength lambda (m)   (E = hc/λ, joules)" },
   { type: "em-skin-depth", label: "Skin Depth", expr: `SQRT(rho/(PI()*f*${MU0}*mur))`,
-    description: "AC skin depth: resistivity rho (Ω·m), frequency f, relative permeability mur   (δ = √(ρ/πfµ), metres)",
+    description: "AC skin depth: resistivity rho (Ω·m), frequency f, relative permeability mur   (δ = √(ρ/πfµ), meters)",
     keywords: "eddy high frequency conductor" },
 ];
 
@@ -83,7 +79,33 @@ export const EM_FORMULAS: FormulaPackEntry[] = [
   ...EM_ELECTROSTATICS, ...EM_MAGNETISM, ...EM_WAVES, ...EM_INDUCTION,
 ];
 
+const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "EMSPECTRUMBAND",
+    impl: (freq, wavelength) => {
+      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+      const r = emSpectrum(num(freq), num(wavelength));
+      if (r === null) return null;
+      return isSolError(r) ? r : r.band;
+    },
+    returns: "string", arity: [1, 2],
+    signature: "frequency Hz — or blank, wavelength m",
+  },
+  {
+    name: "PHYSICSCONSTANT",
+    impl: (id) => {
+      if (id == null) return null;
+      const k = String(id);
+      const m = PHYS_CONSTANTS[k as PhysConstOp];
+      return m ? m.value : solError("#NAME?", `Unknown constant "${k}" — c, G, h, e, kb, na… (case matters)`);
+    },
+    returns: "number", arity: [1, 1],
+    signature: "id — c, G, h, e, kb, na…",
+  },
+];
+
 export const ELECTROMAGNETISM_PACK: Pack = {
+  formulas: ELECTROMAGNETISM_PACK_FORMULAS,
   id: "electromagnetism",
   name: "Electromagnetism",
   description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law, the EM spectrum band namer, and the CODATA physical-constants node. Builds on Electricity & Circuits.",

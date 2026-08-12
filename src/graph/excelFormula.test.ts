@@ -395,7 +395,10 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
 
   it("zips ragged lists to the longest, padding with null (the settled P3 policy)", () => {
     expect(ev("a + b", { a: [1, 2, 3], b: [10, 20] })).toEqual([11, 22, null]);
-    expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, null, null]);
+    // A LENGTH-1 list broadcasts — the other half of the same P3 ruling
+    // ("length-1 still broadcasts"), unbuilt until D23's mapCells and formerly
+    // pinned here as [11, null, null], i.e. the test enforced the gap.
+    expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, 21, 31]);
   });
 
   it("pads ragged args to a broadcast function with null (missing in, missing out)", () => {
@@ -443,13 +446,14 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    for (const f of ["SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
+    // SUMIF is absent on purpose — D10 blocks it, and FX-7 strips a blocked
+    // spelling from RANGE_FUNCTIONS so it answers before its args are shaped.
+    for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE"]) {
       expect(RANGE_FUNCTIONS.has(f)).toBe(true);
     }
     // the range arg passes WHOLE (would be wrong if broadcast element-wise)
     expect(ev('COUNTIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(2);
-    expect(ev('SUMIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(7);
     expect(ev("SUBTOTAL(9, x)", { x: [1, 2, 3, 4] })).toBe(10);
   });
 
@@ -615,6 +619,18 @@ describe("classic lookups redirect to their current-Excel replacements (D10)", (
     }
   });
 
+  it("SUMIF → #NAME? 'Use SUMIFS'", () => {
+    // Superseded like the lookup classics: SUMIFS covers it with one criteria row,
+    // and the library's SUMIF concatenated a numeric-string sum_range ("01030").
+    const r = ev('SUMIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] });
+    expect(isSolError(r) && r.code).toBe("#NAME?");
+    expect(isSolError(r) && r.message).toBe("Use SUMIFS");
+    // The plural stays, and the siblings are NOT blocked (they answer correctly).
+    expect(ev('SUMIFS(v, k, "a")', { k: ["a", "b"], v: [1, 2] })).toBe(1);
+    expect(ev('COUNTIF(k, "a")', { k: ["a", "b"] })).toBe(1);
+    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] })).toBe(1);
+  });
+
   it("MATCH → #NAME? 'Use XMATCH'", () => {
     const r = ev("MATCH(30, x, 0)", { x: [10, 20, 30] });
     expect(isSolError(r) && r.code).toBe("#NAME?");
@@ -625,13 +641,69 @@ describe("classic lookups redirect to their current-Excel replacements (D10)", (
     expect(ev("INDEX(x, 2)", { x: ["a", "b", "c"] })).toBe("b");
     const past = ev("INDEX(x, 9)", { x: [1, 2] });
     expect(isSolError(past) && past.code).toBe("#REF!");
-    const zero = ev("INDEX(x, 0)", { x: [1, 2] });
-    expect(isSolError(zero) && zero.code).toBe("#VALUE!");
+    // 0 is Excel's WHOLE-axis form, not an error — the node's rule, now shared.
+    expect(ev("INDEX(x, 0)", { x: [1, 2] })).toEqual([1, 2]);
+  });
+
+  it("COLUMN / ROW → #NAME? 'Use INDEX'", () => {
+    // Excel's answer a cell reference's position; this graph has no cell
+    // references, and INDEX's whole-axis form is the accessor that replaces them.
+    for (const expr of ["COLUMN(x, 1)", "ROW(x, 1)"]) {
+      const r = ev(expr, { x: [1, 2, 3] });
+      expect(isSolError(r) && r.code, expr).toBe("#NAME?");
+      expect(isSolError(r) && r.message, expr).toBe("Use INDEX");
+    }
   });
 
   it("XLOOKUP / XMATCH text matching is case-insensitive (Excel default)", () => {
     expect(ev('XLOOKUP("Apple", k, v)', { k: ["apple", "pear"], v: [1, 2] })).toBe(1);
     expect(ev('XMATCH("PEAR", k)', { k: ["apple", "pear"] })).toBe(2);
+  });
+
+  it("XMATCH match modes are the node's kernel (finePrintContract cases, formula-side)", async () => {
+    const { XMatchNode } = await import("./nodes/list");
+    const node = (value: number, array: number[], matchMode?: "exact" | "next_larger" | "next_smaller") => {
+      const n = new XMatchNode(matchMode ? { matchMode } : undefined);
+      n.literals.value = value;
+      return n.data({ array: [array] }).result;
+    };
+    expect(ev("XMATCH(7, x)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7]));            // 2 — first duplicate
+    expect(ev("XMATCH(6, x, 1)", { x: [5, 7, 9, 7] })).toEqual(node(6, [5, 7, 9, 7], "next_larger"));   // 2
+    expect(ev("XMATCH(8, x, -1)", { x: [5, 7, 9] })).toEqual(node(8, [5, 7, 9], "next_smaller"));       // 2
+    const miss = ev("XMATCH(10, x, 1)", { x: [5, 7] });
+    expect(isSolError(miss) && miss.code).toBe("#N/A");
+  });
+
+  it("XMATCH search_mode -1 scans from the end — the LAST duplicate wins", async () => {
+    const { XMatchNode } = await import("./nodes/list");
+    const node = (value: number, array: number[], searchMode: "first" | "last") => {
+      const n = new XMatchNode({ searchMode });
+      n.literals.value = value;
+      return n.data({ array: [array] }).result;
+    };
+    expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "last"));
+    expect(ev("XMATCH(7, x, 0, 1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "first"));
+    expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toBe(3);
+  });
+
+  it("XLOOKUP carries the mode arguments; a blank mode is the Excel default", () => {
+    const k = [5, 7, 9], v = ["a", "b", "c"];
+    expect(ev("XLOOKUP(6, k, v,, 1)", { k, v })).toBe("b");   // next larger
+    expect(ev("XLOOKUP(6, k, v,, -1)", { k, v })).toBe("a");  // next smaller
+    expect(ev('XLOOKUP(1, k, v, "none", -1)', { k, v })).toBe("none"); // below the range → fallback
+    expect(ev("XLOOKUP(7, k2, v2,, 0, -1)", { k2: [7, 7], v2: ["x", "y"] })).toBe("y"); // last duplicate
+  });
+
+  it("wildcard (2) and binary search (±2) refuse rather than mislead", () => {
+    for (const expr of ["XMATCH(7, x, 2)", "XMATCH(7, x, 0, 2)", "XLOOKUP(7, x, x,, 2)", "XLOOKUP(7, x, x,, 0, -2)"]) {
+      const r = ev(expr, { x: [5, 7] });
+      expect(isSolError(r) && r.code, expr).toBe("#VALUE!");
+    }
+  });
+
+  it("approximate match needs a numeric lookup value", () => {
+    const r = ev('XMATCH("pear", k, 1)', { k: ["apple", "pear"] });
+    expect(isSolError(r) && r.code).toBe("#VALUE!");
   });
 });
 

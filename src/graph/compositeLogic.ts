@@ -10,31 +10,22 @@ import { beginGraphRebuild, endGraphRebuild, bulkSettle, getEditor } from "./pro
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { measuredBox } from "./nodeSize";
 
-// ─── "Select N → make composite" — mirrors createGroupFromSelection ────────────
-// (groupLogic.ts:63-94) exactly for the selection-read + bounding-box pattern,
-// but instead of wrapping the selection in a spatial frame, it PHYSICALLY
-// RELOCATES the selected nodes into a new CompositeNode's private internal
-// editor and rewires the boundary: every cable crossing the selection becomes
-// a typed, declared port on the composite card. See nodes/composite.ts.
+// Composite make/unpack PHYSICALLY RELOCATE node instances between the outer editor and a
+// composite's private internal one; every crossing cable becomes a declared boundary port.
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  // Non-zero guaranteed — an unpainted member used to read offsetWidth/Height = 0.
   return measuredBox(area, id, getEditor() ?? undefined);
 }
 
 /** Create a composite wrapping the current selection. Returns the new
  *  composite's id, or null if nothing selectable was picked. */
 export async function createCompositeFromSelection(editor: Editor, area: Area): Promise<string | null> {
-  // Same reasoning as createGroupFromSelection: a lingering cable selection
-  // shouldn't ride along into the relocation reflow.
+  // A lingering cable selection must not ride along into the relocation reflow.
   cableSelectionStore.set(null);
-  // Exclude members hidden inside a collapsed group — same guard as
-  // createGroupFromSelection, and it matters more here: this PHYSICALLY relocates
-  // the selection into the composite's internal editor, so absorbing a hidden
-  // collapsed member would silently rip it out of its group.
+  // Absorbing a member hidden in a collapsed group would silently rip it out of that group.
   const sel = editor.getNodes().filter(
     (n) => n.selected && !(n instanceof GroupNode) && !(n instanceof CompositeNode) && !groupCollapseStore.isNodeHidden(n.id),
   );
@@ -59,9 +50,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
 
   beginGraphRebuild(); // these nodes are being RELOCATED, not deleted
   try {
-    // rete requires a node's connections gone before the node itself is
-    // removed — detach everything touching the selection from the OUTER
-    // editor first (internal wiring gets rebuilt inside internalEditor below).
+    // rete requires a node's connections gone before the node itself is removed.
     for (const c of [...internalConns, ...incoming, ...outgoing]) {
       await editor.removeConnection(c.id);
     }
@@ -69,8 +58,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       const b = nodeBox(area, n.id);
       await editor.removeNode(n.id);
       await composite.internalEditor.addNode(n as SolenoidNode);
-      // Layout survives the relocation (bbox-relative) so the drill-in editor
-      // and unpack both restore the arrangement the user built.
+      // Positions are stored BBOX-RELATIVE, so drill-in and unpack both restore the layout.
       if (b) composite.internalPositions[n.id] = { x: b.x - minX, y: b.y - minY };
     }
     for (const c of internalConns) {
@@ -82,8 +70,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       );
     }
 
-    // Incoming crossing cables → exposed INPUT ports, one CompositeInputNode
-    // marker per crossing (its label names the internal node+port it feeds).
+    // Incoming crossing cables → exposed INPUT ports, one marker node per crossing.
     for (const c of incoming) {
       const target = composite.internalEditor.getNode(c.target);
       const outerSource = editor.getNode(c.source);
@@ -92,8 +79,9 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       if (!targetInputDef) continue;
       const portLabel = `${target.label || target.constructor.name} · ${targetInputDef.label || c.targetInput}`;
       const marker = new CompositeInputNode({ label: portLabel });
-      installErrorGuards(marker);
+      // AFTER addNode — guard outside coercion (see CompositeNode.hydrate).
       await composite.internalEditor.addNode(marker as SolenoidNode);
+      installErrorGuards(marker);
       await composite.internalEditor.addConnection(
         new ClassicPreset.Connection(marker, "value", target, c.targetInput) as SolenoidConnection,
       );
@@ -116,8 +104,9 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       if (!sourceOutputDef) continue;
       const portLabel = `${source.label || source.constructor.name} · ${sourceOutputDef.label || c.sourceOutput}`;
       const marker = new CompositeOutputNode({ label: portLabel });
-      installErrorGuards(marker);
+      // AFTER addNode — guard outside coercion (see CompositeNode.hydrate).
       await composite.internalEditor.addNode(marker as SolenoidNode);
+      installErrorGuards(marker);
       await composite.internalEditor.addConnection(
         new ClassicPreset.Connection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
       );
@@ -130,9 +119,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       );
     }
 
-    // Boundary ports now all exist — derive the internal wildcard types and let
-    // each output port adopt the concrete type feeding its marker (the per-cable
-    // pipe settle above ran before the ports were registered, so it couldn't).
+    // Must run AFTER the ports exist — the per-cable pipe settle above couldn't see them.
     composite.settleInternalTypes();
     await editor.addNode(composite as SolenoidNode);
     await area.translate(composite.id, { x: minX, y: minY });
@@ -140,26 +127,16 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
     endGraphRebuild();
   }
 
-  // The per-cable settle was suppressed above (beginGraphRebuild) — run the
-  // equivalent once (FC reconcile, mismatch rescan, full recompute + render).
+  // beginGraphRebuild suppressed the per-cable settle, so run the equivalent once.
   await bulkSettle();
   return composite.id;
 }
-
-// ─── Unpack — the exact inverse of createCompositeFromSelection ────────────────
-// Dissolves the card: internal nodes return to the outer canvas at the
-// composite's position plus their bbox-relative layout (internalPositions),
-// internal wiring is rebuilt, and each boundary port collapses back into a
-// direct cable (outer source → the internal target its marker fed; internal
-// source → the outer target its port drove). Markers dissolve; run-mode
-// config (scenarios / data-table / steps) is tied to the card and goes with it.
 
 /** Returns true if the node was a composite and was unpacked. */
 export async function unpackComposite(editor: Editor, area: Area, compositeId: string): Promise<boolean> {
   const composite = editor.getNode(compositeId);
   if (!(composite instanceof CompositeNode)) return false;
-  // A loaded-but-never-computed composite still holds its snapshot — build the
-  // live internal graph first (same registry persistence uses).
+  // A loaded-but-never-computed composite still holds only its snapshot.
   await composite.hydrate(ctorRegistry());
 
   const box = nodeBox(area, compositeId);
@@ -180,13 +157,9 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
   beginGraphRebuild();
   try {
     for (const c of outerConns) await editor.removeConnection(c.id);
-    // Do NOT mutate the internal editor — it (and its area/history plugin from a
-    // prior drill-in open) is discarded whole with the composite. Removing nodes
-    // from it fired `noderemoved` at that history plugin, which throws Error("node")
-    // for any node it never saw *created* — and the internal nodes predate the
-    // plugin (they're hydrated at collapse/load), so EVERY internal removal threw
-    // once the editor had been opened. Moving the shared node INSTANCES onto the
-    // outer editor is all that's needed; the internal editor is dropped as garbage.
+    // Do NOT remove nodes from the internal editor: that fires `noderemoved` at a prior
+    // drill-in's history plugin, which throws for nodes it never saw created. Moving the
+    // shared INSTANCES out is enough — the internal editor is discarded whole.
     for (const n of internalNodes) {
       if (markerIds.has(n.id)) continue; // boundary markers dissolve with the card
       await editor.addNode(n as SolenoidNode);
@@ -194,7 +167,6 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
       await area.translate(n.id, { x: baseX + (rel?.x ?? 0), y: baseY + (rel?.y ?? 0) });
     }
 
-    // Internal (non-marker) wiring, rebuilt verbatim.
     for (const c of internalConns) {
       if (markerIds.has(c.source) || markerIds.has(c.target)) continue;
       const s = editor.getNode(c.source);
@@ -207,8 +179,7 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
       } catch { /* incompatible after an internal edit — dropped */ }
     }
 
-    // Input boundary: outer cable → composite socket → marker → internal target
-    // collapses to outer source → internal target.
+    // Input boundary collapses: outer source → marker → internal target becomes one cable.
     for (const p of composite.inputPorts) {
       const feeds = internalConns.filter((c) => c.source === p.internalNodeId);
       const outers = outerConns.filter((c) => c.target === compositeId && c.targetInput === p.id);
@@ -226,8 +197,7 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
       }
     }
 
-    // Output boundary: internal source → marker → composite socket → outer target
-    // collapses to internal source → outer target.
+    // Output boundary collapses the same way.
     for (const p of composite.outputPorts) {
       const feed = internalConns.find((c) => c.target === p.internalNodeId);
       if (!feed) continue;

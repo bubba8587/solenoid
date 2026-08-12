@@ -5,9 +5,7 @@ import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
-// The Point Plotter's pad: click empty space to drop a point, drag a point to
-// move it, right-click (or Alt-click) a point to delete it. Same interaction
-// economy as the XY Pad — live handle, graph recomputes on release.
+// Live handle, graph recomputes on release — the XY Pad's interaction economy.
 
 const PAD_W = 196;
 const PAD_H = 140;
@@ -29,8 +27,7 @@ const padStyle: CSSProperties = {
   overflow: "hidden",
 };
 
-// A compact "label + two fields" range row (X 0…10) — literals, not sockets: the
-// ranges are the pad's coordinate frame, not graph data.
+// Ranges are literals, not sockets: they are the pad's coordinate frame, not data.
 function RangeRow({ label, lo, hi, onLo, onHi }: {
   label: string; lo: number; hi: number; onLo: (v: number) => void; onHi: (v: number) => void;
 }) {
@@ -118,8 +115,7 @@ export function PointPlotterComponent({ data, emit }: NodeProps<PointPlotterNode
         onPointerCancel={() => { if (dragIdx.current != null) { dragIdx.current = null; commit(); } }}
         onMouseDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => {
-          // Right-click deletes the point under the cursor (and never opens the
-          // canvas menu from inside the pad).
+          // Never open the canvas menu from inside the pad.
           e.preventDefault();
           e.stopPropagation();
           const hit = hitTest(e.clientX, e.clientY);

@@ -5,8 +5,7 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { useDraftCommit, useNumberScrub, INVALID_DRAFT } from "./inlineInput";
 
 export function NumberInputComponent({ data, emit }: NodeProps<NumberInputNodeType>) {
-  // Commit on Enter/clickaway (project rule) — typing must not recompute the
-  // graph per keystroke. Empty commits as 0, like clearing a cell.
+  // Empty commits as 0, like clearing a cell.
   const field = useDraftCommit<number>(
     data.value,
     String,
@@ -18,8 +17,8 @@ export function NumberInputComponent({ data, emit }: NodeProps<NumberInputNodeTy
     (v) => { data.value = v; void processGraph(data.id); },
   );
 
-  // Drag-to-scrub, same gesture as the per-row inline literals (a plain click
-  // still focuses for typing — the drag only engages past the move threshold).
+  // Drag-to-scrub, same gesture as the per-row inline literals — the drag engages
+  // only past the move threshold, so a plain click still focuses for typing.
   const apply = (v: number) => { data.value = v; void processGraph(data.id); };
   const scrub = useNumberScrub(
     data.value,

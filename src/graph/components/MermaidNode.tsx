@@ -7,9 +7,6 @@ import { useConnectedInputs } from "./inlineInput";
 import { MermaidView } from "./MermaidView";
 import { processGraph } from "../process";
 
-// Starter diagrams — picking one drops a minimal, valid example of that mermaid
-// type into the source so the user has a working shape to edit, instead of a
-// blank page + a syntax-error hunt. Kept small; the point is the skeleton.
 const MERMAID_TEMPLATES: ReadonlyArray<{ label: string; source: string }> = [
   { label: "Flowchart", source: "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]" },
   { label: "Sequence", source: "sequenceDiagram\n  Alice->>Bob: Request\n  Bob-->>Alice: Response\n  Alice->>Bob: Ack" },
@@ -34,8 +31,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     void processGraph();
   }
 
-  // Local draft while typing; commit to the node + recompute on blur only (Enter
-  // must insert a newline in a diagram, so this can't use the Enter-commits helper).
+  // Enter must insert a newline in a diagram, so this can't use the Enter-commits helper.
   const [draft, setDraft] = useState(data.stringLiterals.source ?? "");
   useLayoutEffect(() => { setDraft(data.stringLiterals.source ?? ""); }, [data.stringLiterals.source]);
   function commit() {
@@ -44,8 +40,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     void processGraph();
   }
 
-  // The source socket sits centred on the editor (its main feed), measured against
-  // the card so it lines up with the textarea / preview block.
+  // Measured against the card so the socket lines up with the textarea / preview block.
   const feedRef = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {

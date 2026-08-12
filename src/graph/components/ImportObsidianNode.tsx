@@ -23,26 +23,18 @@ import "./ImportObsidianNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-// Height floor grows with the frontmatter-fields strip, same as a Note.
 const MIN_W = 200;
 const MIN_H = 96;
 const FIELD_ROW_H = 22;
 const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 
-/** The base name (no folders, no `.md`) of a vault-relative path — the default node
- *  title when a file is picked. */
+/** The base name (no folders, no `.md`) — the default title when a file is picked. */
 function baseName(rel: string): string {
   return (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
 }
 
-/**
- * Import from Obsidian Vault — a read-only Note sourced from a vault `.md` file.
- * A file picker (search + list + refresh) drops the file's markdown into the card;
- * its frontmatter becomes typed output sockets (the Note machinery, inherited) and
- * the body renders read-only. The `document` output carries the whole note for
- * re-export. Desktop only for the file read; a loaded save still shows the imported
- * body anywhere (it's persisted).
- */
+/** Desktop only for the file READ; a loaded save still shows the persisted body
+ *  anywhere. */
 export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidianNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [label, setLabel] = useState(data.label);
@@ -67,7 +59,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
 
-  // List the vault's `.md` files when the picker opens or the vault changes.
   useEffect(() => {
     if (!pickerOpen) return;
     let live = true;
@@ -80,13 +71,11 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
   }, [files, search]);
 
-  // Apply a freshly-read body: mirror it, re-derive the frontmatter sockets, drop
-  // cables stranded by a removed/retyped key, then re-render + recompute. Same
-  // reconcile the Note's on-blur commit runs, shared via dropStrandedFrontmatterCables.
+  // The same reconcile the Note's on-blur commit runs: re-derive the frontmatter
+  // sockets, then drop the cables a removed/retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
     data.fileName = sourcePath;
-    // Name the node after the file the first time (leave a user-set title alone).
     if (sourcePath && (data.label === "Imported Note" || data.label.trim() === "")) {
       data.label = baseName(sourcePath);
       setLabel(data.label);
@@ -176,7 +165,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
       className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${fieldKeys.length ? " solenoid-note--has-fields" : ""}`}
       style={{ width: data.width, height: collapsed ? undefined : Math.max(data.height, minH), ...vars }}
     >
-      <div className="solenoid-note__bar" title="Drag to move">
+      <div className="solenoid-note__bar">
         <button
           type="button"
           className="solenoid-note__chevron"
@@ -337,7 +326,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
       )}
 
       {!collapsed && (
-        <div className="solenoid-note__resize" title="Drag to resize" onPointerDown={onResizeDown} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="solenoid-note__resize" onPointerDown={onResizeDown} onMouseDown={(e) => e.stopPropagation()}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M11 5 5 11M11 9l-2 2" />
           </svg>

@@ -1,8 +1,5 @@
-// Desktop devtools hotkey. WebView2 on Windows doesn't reliably bind F12 to the
-// inspector inside a Tauri shell, so we bind it ourselves: F12 (and the Chromium
-// muscle-memory Ctrl+Shift+I) invoke the Rust `open_devtools` command, which calls
-// webview.open_devtools() — available because the tauri crate is built with the
-// `devtools` feature (see src-tauri). No-op on web.
+// WebView2 doesn't reliably bind F12 inside a Tauri shell, so we bind it here; the
+// Rust `open_devtools` command needs the tauri crate's `devtools` feature.
 import { isDesktop } from "./fileBridge";
 
 export function initDevtoolsHotkey(): void {

@@ -3,6 +3,8 @@ import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
+import { AI_PROVIDER } from "./aiKey";
+import { IS_MOBILE } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
@@ -13,19 +15,21 @@ import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
-/**
- * Rudimentary Settings page. A modal rendered from SETTINGS_SCHEMA — add a field
- * there and a toggle shows up here automatically. (Node Packs will get their own
- * section here in a later pass.)
- */
+// Rendered from SETTINGS_SCHEMA — add a field there and its control appears here.
 
-function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
+// A desktop-only setting greys rather than hides, so the page keeps one shape and a
+// user who knows the desktop app still finds the row.
+const MOBILE_NA = "Not available in mobile mode.";
+const naOnThisDevice = (field: SettingField): boolean => IS_MOBILE && !!field.disabledOnMobile;
+
+function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       aria-label={label}
+      disabled={disabled}
       className={`solenoid-settings__switch${on ? " solenoid-settings__switch--on" : ""}`}
       onClick={onClick}
     >
@@ -34,27 +38,32 @@ function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; labe
   );
 }
 
-function Row({ label, help, on, onToggle }: { label: string; help?: string; on: boolean; onToggle: () => void }) {
+function Row({ label, help, on, onToggle, disabled, disabledNote }: {
+  label: string; help?: string; on: boolean; onToggle: () => void;
+  disabled?: boolean; disabledNote?: string;
+}) {
   return (
-    // Stays a <label> so clicking anywhere on the row toggles the switch (the
-    // browser forwards the click to the first labelable descendant). Switch's
-    // own explicit aria-label wins over that implicit association, so the
-    // announced name is just the label — the help text doesn't fold in.
-    <label className="solenoid-settings__row">
+    // Must stay a <label> so a click anywhere on the row reaches the switch; the
+    // Switch's own aria-label keeps the help text out of the announced name.
+    <label className={`solenoid-settings__row${disabled ? " solenoid-settings__row--disabled" : ""}`}>
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{label}</span>
         {help && <span className="solenoid-settings__row-help">{help}</span>}
+        {disabled && disabledNote && <span className="solenoid-settings__muted">{disabledNote}</span>}
       </span>
-      <Switch on={on} onClick={onToggle} label={label} />
+      <Switch on={on} onClick={onToggle} label={label} disabled={disabled} />
     </label>
   );
 }
 
 function Toggle({ field }: { field: SettingField }) {
+  const off = naOnThisDevice(field);
   return (
     <Row
       label={field.label}
       help={field.help}
+      disabled={off}
+      disabledNote={MOBILE_NA}
       on={settingsStore.get(field.key) as boolean}
       onToggle={() => settingsStore.toggle(field.key as Parameters<typeof settingsStore.toggle>[0])}
     />
@@ -64,11 +73,13 @@ function Toggle({ field }: { field: SettingField }) {
 // A mutually-exclusive choice: a row of buttons, one highlighted.
 function SegmentRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
+  const off = naOnThisDevice(field);
   return (
-    <div className="solenoid-settings__row">
+    <div className={`solenoid-settings__row${off ? " solenoid-settings__row--disabled" : ""}`}>
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
+        {off && <span className="solenoid-settings__muted">{MOBILE_NA}</span>}
       </span>
       <span className="solenoid-settings__segment" role="radiogroup">
         {(field.options ?? []).map((o) => (
@@ -77,6 +88,7 @@ function SegmentRow({ field }: { field: SettingField }) {
             type="button"
             role="radio"
             aria-checked={value === o.value}
+            disabled={off}
             className={`solenoid-settings__segbtn${value === o.value ? " solenoid-settings__segbtn--on" : ""}`}
             onClick={() => settingsStore.set(field.key, o.value as never)}
           >
@@ -88,8 +100,7 @@ function SegmentRow({ field }: { field: SettingField }) {
   );
 }
 
-// A path setting: shows the chosen folder + an OS picker. Desktop only — in the
-// browser the picker is disabled with a note (no filesystem there).
+// A path setting; the picker is desktop-only (no filesystem in the browser).
 function FolderRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const desktop = isDesktop();
@@ -114,8 +125,7 @@ function FolderRow({ field }: { field: SettingField }) {
   );
 }
 
-// A free-text setting (e.g. a relative subfolder name). Commits on blur / Enter,
-// the typed-field convention — never per keystroke.
+// Commits on blur / Enter, the typed-field convention — never per keystroke.
 function TextRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const [draft, setDraft] = useState(value);
@@ -143,12 +153,8 @@ function TextRow({ field }: { field: SettingField }) {
   );
 }
 
-// App-wide color palette switcher. Lives here (not in the accent dropdown) so the
-// accent picker stays about the accent only. Bound to paletteStore, not
-// settingsStore, so it can't reuse the schema-driven SegmentRow — but it borrows
-// the same segment styling. setActiveBase retints everything that resolves a slot
-// (notes, groups, accent, node headers) via the appThemeStore re-notify wired in
-// appTheme.ts; the group member-dot store caches resolved hexes, so rebuild it too.
+// Bound to paletteStore, not settingsStore, so it can't reuse SegmentRow. The group
+// member-dot store caches resolved hexes, so a palette change must rebuild it.
 function PaletteSection() {
   useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
   const active = paletteStore.activeBase();
@@ -164,8 +170,6 @@ function PaletteSection() {
         <span className="solenoid-settings__row-text">
           <span className="solenoid-settings__row-label">Color palette</span>
         </span>
-        {/* Dropdown + an "Edit…" that opens the custom-palette editor, with a
-            read-only swatch legend of the active palette stacked under them. */}
         <div className="solenoid-settings__palette-control">
           <div className="solenoid-settings__palette-row">
             <span className="solenoid-settings__select-wrap">
@@ -194,10 +198,7 @@ function PaletteSection() {
     </div>
   );
 }
-// Renderer toggle — the HTML-in-Canvas ("html") renderer vs the permanent DOM renderer.
-// Unlike the parked WGSL "canvas" mode (which was net-negative and stayed console-only),
-// html is perf-validated, so it gets a real UI toggle — gated on the Chrome flag being on
-// (supportsHtmlInCanvas). Off → DOM. The choice persists (renderModeStore).
+// HTML-in-Canvas vs the permanent DOM renderer, gated on the Chrome flag.
 function RendererSection() {
   const mode = useRenderMode();
   const [supported] = useState(supportsHtmlInCanvas);
@@ -210,7 +211,7 @@ function RendererSection() {
         help={
           supported
             ? "Faster zoom and pan on big graphs. Experimental; the DOM renderer is the fallback."
-            : "Requires Chrome with chrome://flags/#canvas-draw-element (Canary 149+). Unavailable in this browser."
+            : "Requires Chrome with chrome://flags/#canvas-draw-element. Unavailable in this browser."
         }
         on={on && supported}
         onToggle={() => { if (supported) renderModeStore.set(on ? "dom" : "html"); }}
@@ -258,18 +259,14 @@ function PacksSection() {
   );
 }
 
-// API keys for the data-connection providers (FRED, Alpha Vantage). Stored per
-// provider in localStorage on this device only (apiKeyStore) — the "never bundled"
-// key store. Stooq stocks need no key, so they're not listed here.
 const API_PROVIDERS = [
   { id: "fred", label: "FRED", help: "Economic data series from the St. Louis Fed; free key at fredaccount.stlouisfed.org." },
-  { id: "alphavantage", label: "Alpha Vantage", help: "Stock quotes; free key at alphavantage.co. Stooq needs no key." },
+  { id: "alphavantage", label: "Alpha Vantage", help: "Stock history; free key at alphavantage.co." },
 ] as const;
 
 function ApiKeyRow({ id, label, help }: { id: string; label: string; help: string }) {
   const [draft, setDraft] = useState("");
   const stored = apiKeyStore.has(id);
-  // Commit on blur / Enter (typed-field convention), not per keystroke.
   const commit = () => {
     if (draft.trim()) { apiKeyStore.set(id, draft); setDraft(""); }
   };
@@ -311,6 +308,25 @@ function ApiKeysSection() {
   );
 }
 
+// Its own section: this key gates the command palette's AI mode, not a data node.
+function AiSection() {
+  useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
+  return (
+    <div className="solenoid-settings__section">
+      <div className="solenoid-settings__section-title">AI</div>
+      <ApiKeyRow
+        id={AI_PROVIDER}
+        label="Anthropic API key"
+        help="Connects an AI account. The command palette gains a sparkle that switches it to asking the AI."
+      />
+      <div className="solenoid-settings__note">
+        Stored only on this device and sent only to Anthropic. Type demo instead of a key
+        to preview the assistant with canned replies.
+      </div>
+    </div>
+  );
+}
+
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
@@ -341,6 +357,7 @@ export function Settings() {
           ))}
           <PaletteSection />
           <RendererSection />
+          <AiSection />
           <ApiKeysSection />
           <PacksSection />
         </div>

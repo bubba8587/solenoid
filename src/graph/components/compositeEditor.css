@@ -195,6 +195,7 @@
   gap: 4px;
   padding: 0 10px 8px;
   max-height: calc(100vh - 160px - 40px);
+  max-height: calc(100dvh - 160px - 40px);
   overflow-y: auto;
 }
 
@@ -261,12 +262,12 @@ html.is-mobile .solenoid-composite-editor__btn {
    present"). Sit it just above that pill; collapsed by default it's a small bar. */
 html.is-mobile .solenoid-composite-editor__controls {
   top: auto;
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
   left: 8px;
   width: min(280px, calc(100vw - 16px));
 }
 html.is-mobile .solenoid-composite-editor__controls-head { min-height: 40px; }
-html.is-mobile .solenoid-composite-editor__controls-body { max-height: 40vh; }
+html.is-mobile .solenoid-composite-editor__controls-body { max-height: 40vh; max-height: 40dvh; }
 
 /* The drill-in minimap is off on mobile — it overlapped other chrome and a phone
    has no room for it (later than the desktop re-show rule, so this wins). */

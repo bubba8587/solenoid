@@ -1,13 +1,8 @@
 import { ClassicPreset } from "rete";
 import { clamp } from "./mathUtils";
 
-// ─── Presentation ───────────────────────────────────────────────────────────
-// Bundle 13 #51 — presenter mode, kept deliberately light. Stores an ORDERED list
-// of steps (a title + an explicit node-id set per step, picked from the current
-// canvas selection — like a navigator list, not typed by hand). Stepping calls a
-// per-step camera function built on flyToNode's pattern (flyToNodes, flyToNode.ts)
-// — pan/zoom only. No isolate/highlight/dim; those are separate, unrelated
-// mechanisms this deliberately doesn't touch.
+// An ORDERED list of steps (title + explicit node-id set), stepped by pan/zoom only —
+// isolate/highlight/dim are separate mechanisms this deliberately doesn't touch.
 
 export interface PresentationStep {
   title: string;
@@ -52,8 +47,7 @@ export class PresentationNode extends ClassicPreset.Node {
     }
   }
 
-  /** Swap a step with its neighbor (dir -1 = up, +1 = down) — the whole reorder
-   *  UI, no drag-and-drop needed for a list this short. */
+  /** Swap a step with its neighbor (dir -1 = up, +1 = down) — the whole reorder UI. */
   moveStep(index: number, dir: -1 | 1): void {
     const j = index + dir;
     if (index < 0 || index >= this.steps.length || j < 0 || j >= this.steps.length) return;

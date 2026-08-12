@@ -4,8 +4,7 @@ import { flyToNodeAndFlash } from "../flyToNode";
 import { getOwningEditor } from "../activeGraph";
 import { resolveValueOrigin } from "../unitFlow";
 
-// Lucide "pin" — https://lucide.dev/icons/pin. Even size in an even (24px) button
-// so it centers on a whole pixel (see CLAUDE.md icon-parity rule).
+// Lucide "pin". EVEN size in an even (24px) button so it centers on a whole pixel.
 const PinGlyph = () => (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
     <path d="M12 17v5" />
@@ -13,13 +12,8 @@ const PinGlyph = () => (
   </svg>
 );
 
-/**
- * The Pin action shared by the value popups (Table/Frame/List, Formula, Chart) —
- * pins the host node's value to the HUD, the same gesture as the node's right-click
- * "Pin value". Subscribes to pinStore so it reflects the pinned state live (a
- * filled look + "Unpin" label when already pinned). The popups pass the host node
- * id, which they learn from NodeFormatContext when opened from a node body.
- */
+/** The Pin action shared by the value popups; the host node id comes from the popup,
+ *  which learns it from NodeFormatContext. */
 export function PopupPinButton({ nodeId }: { nodeId: string }) {
   useSyncExternalStore(pinStore.subscribe, pinStore.version);
   const pinned = pinStore.has(nodeId);
@@ -37,7 +31,7 @@ export function PopupPinButton({ nodeId }: { nodeId: string }) {
   );
 }
 
-// Lucide "crosshair" — even 16px in the same even button, per the icon-parity rule.
+// Lucide "crosshair" — even 16px, per the icon-parity rule.
 const LocateGlyph = () => (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
@@ -48,15 +42,8 @@ const LocateGlyph = () => (
   </svg>
 );
 
-/**
- * "Go to source" — closes the popup and flies the camera (with the error
- * click-to-jump's flash ring) to the node that PRODUCED the shown value:
- * the host's origin resolved upstream through passthroughs/FCs/selectors
- * (`resolveValueOrigin`). On a Display that's the producer feeding it — the
- * host itself is where you just clicked, so jumping there is a no-op. A
- * producer node (Aggregate, Join…) resolves to itself. Sits beside the Pin
- * action in every value popup (the backlog's "+ more" follow-up on Pin).
- */
+/** "Go to source" — flies the camera to the node that PRODUCED the shown value, resolved
+ *  upstream through passthroughs/FCs/selectors; a producer resolves to itself. */
 export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
   return (
     <button
@@ -64,8 +51,7 @@ export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: 
       className="sol-popup__pin"
       onClick={() => {
         onClose();
-        // Owning editor: a popup opened from a node inside a drill-in resolves
-        // its origin within the SUBGRAPH (main lookup made this a silent no-op).
+        // A popup opened inside a drill-in resolves its origin within the SUBGRAPH.
         const editor = getOwningEditor(nodeId);
         flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
       }}

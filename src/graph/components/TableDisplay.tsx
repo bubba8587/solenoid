@@ -1,4 +1,3 @@
-// Compact table preview — shows up to 4×4 with ellipsis for larger matrices.
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
 import type { TablePopupState } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
@@ -8,8 +7,7 @@ import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { extremeSci } from "./format";
 import type { ResultType } from "../nodes/shared";
 
-// A polyform matrix cell — a number (date serial included), text, a boolean
-// (logical, e.g. a 2-D ISNULL/ISNUMBER result), null (missing), or a per-cell error.
+// A polyform matrix cell: number (date serial included), text, logical, null, or SolError.
 type Cell = number | string | boolean | null | SolError;
 type Mat = Cell[][];
 
@@ -40,24 +38,18 @@ function fmtCell(v: Cell, kind?: ResultType): string {
 export function TableDisplay({ table, label, onSave, full, kind, elem, popupOverrides }: {
   table: Mat | SolError | null;
   label?: string;
-  /** When set, the chip opens the grid in editable mode and Save writes back
-   *  through this — used by Table Input, whose result box is its editor. */
+  /** When set, the chip opens the grid editable and Save writes back through this. */
   onSave?: (next: (number | null)[][]) => void;
   /** Element-family chip tint when the caller knows the socket family. */
   elem?: ElemFamily;
-  /** Forwarded to the chip's popup open() — Table Input's raw literal cells +
-   *  onSaveRaw (the grid edits source text, never derived values). */
+  /** Forwarded to the chip's popup open(): the grid edits source text, never derived. */
   popupOverrides?: Partial<TablePopupState>;
-  /** Render the full matrix (no 4×4 cap, no chip) — for the Display node, whose
-   *  box scrolls when resized. Default is the compact preview. */
+  /** Render the full matrix, no 4×4 cap and no chip; default is the compact preview. */
   full?: boolean;
-  /** Polyform result element type — drives text passthrough / date formatting of
-   *  cells. Omitted for plain numeric tables. */
+  /** Drives text passthrough / date formatting of cells; omitted for numeric tables. */
   kind?: ResultType;
 }) {
-  // A table-output node whose input errored (or whose own coercion narrowed a
-  // wrong-shaped value) carries a SolError in cachedResult — render the same red
-  // #CODE! badge a scalar box shows, structural message in the tooltip.
+  // A SolError in cachedResult renders the same red #CODE! badge a scalar box shows.
   if (isSolError(table)) {
     return (
       <div
@@ -72,13 +64,8 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
     );
   }
   if (!table || table.length === 0) {
-    // An EDITABLE input (Table Input — its box IS the editor) must never lose its
-    // chip: if the text parses to nothing (e.g. the user typed just a comma, which
-    // is all-blank → no numeric cells), keep a chip so the grid editor stays
-    // reachable. Without this the node blanks to "—" and becomes wholly
-    // uneditable. The starter is a 1×1 the user grows via the popup's Add Row/Col
-    // or CSV view. (Inc 6 / matrix-null will let blanks round-trip as real null
-    // cells instead of collapsing the whole table.)
+    // An EDITABLE input must never lose its chip: text that parses to nothing would blank
+    // the node to "—" and make it wholly uneditable.
     if (onSave || popupOverrides) {
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
@@ -95,9 +82,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
   const maxR = full ? rows : Math.min(rows, 4), maxC = full ? cols : Math.min(cols, 4);
 
   return (
-    // `solenoid-table-display` lets the collapsed-node CSS hide the grid preview
-    // and keep only the chip — so a table node collapses to just its chip, the way
-    // a scalar node collapses to its value box.
+    // The class lets the collapsed-node CSS hide the grid and keep only the chip.
     <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
       <table className="solenoid-table-display__grid" style={{ borderCollapse: "collapse", width: "100%", tableLayout: full ? "auto" : "fixed" }}>
         <tbody>

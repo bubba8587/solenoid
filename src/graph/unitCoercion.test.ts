@@ -223,16 +223,19 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     await k.fetch(cv2);
   });
 
-  it("an FC fed by another FC forwards: → → arrows, dropdown mirrors km", () => {
+  it("an FC fed by another FC forwards: → → arrows, dropdown mirrors km and LOCKS", () => {
+    // An inherited unit is the value's, set elsewhere in the chain (author
+    // ruling 2026-07-31) — the downstream FC never re-authors over it.
     expect(fc2.forwarding).toBe(true);
     expect(fc2.lockedByConvert).toBe(false);
-    expect(fc2.unitLocked).toBe(false);
+    expect(fc2.unitLocked).toBe(true);
     expect(fc2.unit).toBe("km");
   });
 
-  it("an FC fed by a Convert forwards the converted unit: → →, mirrors km", () => {
+  it("an FC fed by a Convert forwards the converted unit: → →, mirrors km and LOCKS", () => {
     expect(fcAfterConvert.forwarding).toBe(true);
     expect(fcAfterConvert.lockedByConvert).toBe(false);
+    expect(fcAfterConvert.unitLocked).toBe(true);
     expect(fcAfterConvert.unit).toBe("km");
   });
 
@@ -255,7 +258,7 @@ describe("Convert primacy on the outgoing value", () => {
     const out = (await g.fetch(disp)).out as UnitCell;
     expect(isUnitCell(out)).toBe(true);
     expect(out.display).toBe("yd");                    // primacy: toUnit rides the value
-    expect(displayMagnitudeOf(out)).toBeCloseTo(10.936, 3); // renders in yards, not metres
+    expect(displayMagnitudeOf(out)).toBeCloseTo(10.936, 3); // renders in yards, not meters
   });
 
   it("a tagged value whose dimension clashes with the Convert target errors", async () => {

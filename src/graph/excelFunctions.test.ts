@@ -6,11 +6,14 @@ import {
   excelFunctionInfo,
   resolveExcelFunction,
   registerInternal,
+  internalFunctionNames,
+  ELIMINATED_FUNCTIONS,
   EXCEL_IMPL_META,
   numberToText,
   type FuncFamily,
+  unregisterInternal,
 } from "./excelFunctions";
-import { compileEvaluator, FORMULA_FUNCTION_NAMES } from "./excelFormula";
+import { compileEvaluator, formulaFunctionNames } from "./excelFormula";
 import { isSolError, type SolError } from "./errorValue";
 import { jsDateToSerial, serialToJsDate } from "./nodes/date";
 
@@ -33,7 +36,10 @@ describe("numberToText — 15 significant digits, trailing zeros stripped", () =
 
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   it("keeps the families a difference-that-matters dictates internal", () => {
-    for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative"] as const) {
+    // "complex" flipped verify → internal with the D23-amendment tranche: the
+    // tagged Cx (VAL-15) IS the difference that matters — Formula.js's IM* speak
+    // text complexes, a different currency.
+    for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative", "complex"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("internal");
     }
   });
@@ -45,7 +51,7 @@ describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   });
 
   it("marks the verify-then-decide families", () => {
-    for (const fam of ["rounding", "combinatorics", "complex"] as const) {
+    for (const fam of ["rounding", "combinatorics"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("verify");
     }
   });
@@ -78,8 +84,10 @@ describe("excelFunctionInfo", () => {
 
 describe("resolveExcelFunction (the resolution seam)", () => {
   afterEach(() => {
-    // registerInternal mutates module state — clear what tests added.
-    registerInternal("ABS", undefined as unknown as (...a: unknown[]) => unknown);
+    // registerInternal mutates module state — WITHDRAW what tests added. (The old
+    // cleanup registered `undefined` as the impl, which the duplicate-registration
+    // guard now correctly refuses — registering a hole is not unregistering.)
+    unregisterInternal("ABS");
   });
 
   it("falls through to the Formula.js impl today (no internals registered)", () => {
@@ -155,7 +163,7 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   it("CLAMP / ORDINAL / BETWEEN don't exist in Formula.js but ARE in the autocomplete list", () => {
     for (const name of ["CLAMP", "ORDINAL", "BETWEEN"]) {
       expect((FX as Record<string, unknown>)[name]).toBeUndefined();   // not from Formula.js
-      expect(FORMULA_FUNCTION_NAMES).toContain(name);                  // but offered + highlighted
+      expect(formulaFunctionNames()).toContain(name);                  // but offered + highlighted
     }
   });
   it("CLAMP bounds a number (number type)", () => {
@@ -177,10 +185,19 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
     expect(EXCEL_IMPL_META.BETWEEN).toMatchObject({ returns: "logical", native: true });
   });
   it("each registered impl declares an output type that matches the audit families", () => {
-    // Every meta entry has a known ExcelReturn (number/string/logical/date).
+    // Every meta entry has a known ExcelReturn ("any" = type-neutral passthrough).
     for (const m of Object.values(EXCEL_IMPL_META)) {
-      expect(["number", "string", "logical", "date"]).toContain(m.returns);
+      expect(["number", "string", "logical", "date", "complex", "any"]).toContain(m.returns);
     }
+  });
+  it("every registered internal declares its meta (FX-3, the registered→declared direction)", () => {
+    // The reverse direction (declared→dispatches) lives in formulaTier3; without
+    // THIS one, 28 registrations had no entry and the rule was fiction.
+    const meta = new Set(Object.keys(EXCEL_IMPL_META));
+    // The D10 redirect stubs are the GATE, not implementations — their whole
+    // contract is answering #NAME? — so the blocklist is out of scope here.
+    const undeclared = internalFunctionNames().filter((n) => !meta.has(n) && !ELIMINATED_FUNCTIONS.has(n));
+    expect(undeclared, `registerInternal names with no EXCEL_IMPL_META entry: ${undeclared.join(", ")}`).toEqual([]);
   });
 });
 
@@ -238,7 +255,7 @@ describe("statistics flat names — registered so a formula can call them at all
     expect(ev("TRIMMEAN(x, 0.2)", X)).toBe(5);             // floor(8*0.2/2)=0 → mean of all = 40/8
   });
 
-  it("PERCENTRANK interpolates + truncates (formula path == PercentrankNode)", () => {
+  it("PERCENTRANK interpolates + truncates (formula path == RankPercentileNode)", () => {
     expect(ev("PERCENTRANK(x, 4)", { x: [1.5, 2.5, 3.5, 10.25] })).toBe(0.691);
     expect(ev("PERCENTRANK(x, 4)", X)).toBe(0.142);        // duplicates → first occurrence, truncated
   });
@@ -303,5 +320,16 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(serial).toBe(46096);
     expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toBe(46157);    // 2026-05-15, still a number
     expect(typeof ev("DATEVALUE(\"2026-03-15\")")).toBe("number");
+  });
+});
+
+describe("the duplicate-registration guard (FX-4's registry half)", () => {
+  it("a second claim on a live name throws instead of silently overwriting", () => {
+    registerInternal("GUARDTESTNAME", () => 1);
+    expect(() => registerInternal("GUARDTESTNAME", () => 2)).toThrow(/Duplicate formula registration/);
+    unregisterInternal("GUARDTESTNAME");
+    // A REVOCABLE name may return after withdrawal — the pack-rebuild path.
+    expect(() => registerInternal("GUARDTESTNAME", () => 3)).not.toThrow();
+    unregisterInternal("GUARDTESTNAME");
   });
 });

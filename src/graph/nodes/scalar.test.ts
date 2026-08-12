@@ -64,10 +64,15 @@ describe("MathFn — rounding family", () => {
     expect(fn("odd", 2)).toBe(3);
     expect(fn("odd", -2)).toBe(-3);
   });
-  it("ROUND rounds halves away from zero (Excel, not JS)", () => {
-    expect(fn("round", 2.5)).toBe(3);
-    expect(fn("round", -2.5)).toBe(-3);
-    expect(fn("round", -0.5)).toBe(-1);
+  // The math-fn `round` op was DELETED 2026-07-28: it duplicated RoundN at
+  // digits 0 while its leaf claimed ROUND — a name that dispatches the 2-arg
+  // Excel ROUND (which refuses one argument). The Excel half-rule pin moves to
+  // the surviving node.
+  it("half-away-from-zero at digits 0 lives on RoundN", () => {
+    const at0 = (v: number) => new RoundNNode({ op: "round" }).data({ value: [v], digits: [0] }).result;
+    expect(at0(2.5)).toBe(3);
+    expect(at0(-2.5)).toBe(-3);
+    expect(at0(-0.5)).toBe(-1);
   });
 });
 

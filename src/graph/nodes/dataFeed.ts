@@ -6,14 +6,9 @@ import { frameRowCount, type FrameValue } from "../frame";
 import { apiKeyStore } from "../apiKeyStore";
 import { getProvider, type ProviderId, type ProviderPreset } from "../dataProviders";
 
-// ─── Data Feed (Finance) connection node ─────────────────────────────────────────
-// ONE node family for the market/economic data providers (FRED / Stooq / Alpha
-// Vantage) — a provider preset dropdown + a series/ticker field, fetching a Frame on
-// refresh via httpBridge (never baking the data into the project). It reuses the
-// WebSourceNode pattern: data() stays SYNCHRONOUS (a source that returns a Promise
-// sits on the engine's async critical path forever), serving the cached frame and
-// firing ONE background fetch per new cache key. A keyed provider with no stored key
-// short-circuits to a "needs key" error state instead of hitting the network.
+// One node for every market/economic data provider. Like WebSourceNode, data() must
+// stay SYNCHRONOUS — a Promise-returning source sits on the engine's critical path
+// forever — so it serves the cached frame and fires one background fetch per key.
 
 export class DataFeedNode extends ClassicPreset.Node {
   label: string;
@@ -58,21 +53,17 @@ export class DataFeedNode extends ClassicPreset.Node {
     }
     if (this.needsKey()) {
       this.cachedResult = null;
-      // A friendly, actionable message — the component turns this into an "add key" link.
       connectionStore.setState(this.id, { status: "error", message: `Add a ${p.label} API key in Settings.` });
       return { frame: null };
     }
     const key = p.needsKey ? apiKeyStore.get(p.keyProvider ?? p.id) : "";
-    // Optional refinements (date range / frequency) live in stringLiterals so they
-    // round-trip; empty → undefined so the URL omits them. They're in the URL, hence
-    // the cache key, so changing any of them re-fetches.
+    // These ride in the URL, hence the cache key, so changing any of them re-fetches.
     const url = p.buildUrl(input, key, {
       start: this.stringLiterals.start?.trim() || undefined,
       end: this.stringLiterals.end?.trim() || undefined,
       freq: this.stringLiterals.freq?.trim() || undefined,
     });
-    // The cache key folds in the provider so switching provider re-fetches; a stored
-    // key change also re-fetches (the URL changes for keyed providers).
+    // The key folds in the provider so switching provider re-fetches.
     const cacheKey = connectionStore.key(this.id, `${this.provider}:${url}`);
     if (cacheKey === this.lastKey) return { frame: this.cachedResult };
     if (this.inflightKey !== cacheKey) {

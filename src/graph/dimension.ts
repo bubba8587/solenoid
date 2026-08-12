@@ -1,56 +1,32 @@
-// ─── Dimensional algebra — the units foundation (Bundle 05, Phase D core) ──────
-// A unit is an exponent vector over base dimensions plus a linear scale to the
-// base-SI magnitude (and, for temperature, an affine offset). This is the pure,
-// graph-free core the whole units feature stands on: real unit CALCULATION
-// (5 m ÷ 1 s = 5 m/s), commensurability checking, conversion, unit-expression
-// parsing, and derived-unit display. The value-model integration (units riding
-// per-element through lists / per-column through frames) and the FC's lock/carry
-// semantics build ON this — they live elsewhere and are gated on the FC function
-// model. This file has no dependency on the editor, React, or any node.
-//
-// Mirrors valueKinds.ts's "one small pure module every consumer calls" shape.
+// Dimensional algebra — the units foundation: an exponent vector plus a scale to
+// base SI. Must stay free of the editor, React and every node.
 
-// The base dimensions. SI's seven, plus three the app treats as first-class:
-// `angle` (radian — dimensionless in strict SI but engineering tracks deg/rad),
-// `currency` (money — its own axis, for the finance surfaces), and `information`
-// (bit/byte). The exponent vector is sparse: a missing key means exponent 0.
+// SI's seven, plus three first-class app axes: angle, currency, information.
 export const BASE_DIMS = [
   "length", "mass", "time", "current", "temperature",
   "amount", "luminous", "angle", "currency", "information",
 ] as const;
 export type BaseDim = (typeof BASE_DIMS)[number];
 
-// A CUSTOM unit (an FC's free-text unit, e.g. "poop") gets its own opaque
-// dimension axis keyed `custom:<name>`, so it participates in the algebra as a
-// first-class base dimension — `poop ÷ s` is `poop/s`, `poop + poop` is `poop`,
-// `poop + s` is `#UNIT!` — instead of collapsing to dimensionless (which made
-// `poop ÷ s` read as `1/s` = Hz). The prefix can't collide with a base dim name.
+// A custom (free-text FC) unit gets its own axis so it stays first-class in the
+// algebra; collapsing it to dimensionless made `poop ÷ s` read as Hz.
 export const CUSTOM_DIM_PREFIX = "custom:";
-// The AXIS is case-insensitive ("Widgets" and "widgets" are the same quantity —
-// two FCs differing only in case must add, not #UNIT!); the typed casing still
-// shows via the annotation's display id. formatDim's derived label reads the
-// normalized axis (lowercase) — the display-id path covers user-facing casing.
+// The axis is case-insensitive: two FCs differing only in case must add, not #UNIT!
+// (the typed casing survives on the annotation's display id).
 export const customDim = (name: string): Dim => ({ [CUSTOM_DIM_PREFIX + name.trim().toLowerCase()]: 1 });
 
-/** A dimension = exponents over the base dims AND any `custom:<name>` axes. Sparse
- *  — absent key ⇒ 0. */
+/** Exponents over the base dims AND any `custom:<name>` axes; absent key ⇒ 0. */
 export type Dim = Record<string, number>;
 
-/** The distinct axes present across the given dims (base + custom), for the
- *  key-agnostic algebra below — a custom axis must not be dropped. */
+/** Every axis present in either operand — a custom axis must not be dropped. */
 function dimAxes(...ds: Dim[]): string[] {
   const seen = new Set<string>();
   for (const d of ds) for (const k of Object.keys(d)) seen.add(k);
   return [...seen];
 }
 
-/**
- * A unit = a dimension + how its numeric magnitude relates to the base-SI unit.
- * `scale` is the linear factor (1 km = 1000 m ⇒ scale 1000 with length base m).
- * `offset` is the affine shift for temperature only (base = value·scale + offset;
- * 0 °C = 273.15 K ⇒ scale 1, offset 273.15). Offset units convert but can't
- * participate in ×/÷/^ (see requireLinear).
- */
+/** A dimension plus its relation to base SI: `scale` linear, `offset` affine
+ *  (temperature only). An offset unit converts but can't take ×/÷/^. */
 export interface Unit {
   dim: Dim;
   scale: number;
@@ -59,10 +35,7 @@ export interface Unit {
 
 export const DIMENSIONLESS: Dim = {};
 
-// ─── Dimension-vector algebra ──────────────────────────────────────────────────
-
-/** Fold two dims elementwise with `f` (used by mul/div). Key-agnostic: folds over
- *  every base AND custom axis present in either operand. */
+/** Fold two dims elementwise over every base AND custom axis present in either. */
 function combine(a: Dim, b: Dim, f: (x: number, y: number) => number): Dim {
   const out: Dim = {};
   for (const k of dimAxes(a, b)) {
@@ -84,8 +57,7 @@ export function dimPow(a: Dim, n: number): Dim {
   return out;
 }
 
-/** Same dimension? (Commensurable — a conversion between them exists.) Compares
- *  every base AND custom axis present in either dim. */
+/** Same dimension — i.e. a conversion between them exists. */
 export function dimEqual(a: Dim, b: Dim): boolean {
   return dimAxes(a, b).every((k) => (a[k] ?? 0) === (b[k] ?? 0));
 }
@@ -94,10 +66,7 @@ export function isDimensionless(a: Dim): boolean {
   return Object.keys(a).every((k) => (a[k] ?? 0) === 0);
 }
 
-// ─── Unit algebra ──────────────────────────────────────────────────────────────
-
-/** An offset (affine) unit can't be multiplied/divided/powered — °C·°C is
- *  meaningless. Callers get null and should surface #UNIT!. */
+/** An affine unit can't be multiplied/divided/powered; callers surface #UNIT!. */
 function isLinear(u: Unit): boolean {
   return !u.offset;
 }
@@ -122,12 +91,8 @@ export function commensurable(a: Unit, b: Unit): boolean {
   return dimEqual(a.dim, b.dim);
 }
 
-/**
- * Convert `value` from unit `a` to unit `b`. Returns null if the units are
- * incommensurable (different dimensions) — the caller turns that into #UNIT!.
- * Handles the affine (temperature) case: to base = v·scale + offset, then from
- * base = (base − offset)/scale.
- */
+/** Convert between units, affine cases included; null when incommensurable, which
+ *  the caller turns into #UNIT!. */
 export function convert(value: number, a: Unit, b: Unit): number | null {
   if (!commensurable(a, b)) return null;
   const base = value * a.scale + (a.offset ?? 0);
@@ -135,11 +100,8 @@ export function convert(value: number, a: Unit, b: Unit): number | null {
   return Number.isFinite(out) ? out : null;
 }
 
-// ─── The unit registry ─────────────────────────────────────────────────────────
-// Base-SI reference units per dimension: metre, kilogram, second, ampere,
-// kelvin, mole, candela, radian, one currency unit, bit. Every entry's `scale`
-// is relative to those. This is the single source of truth for unit magnitudes —
-// the Convert node's category table (nodes/convert.ts) sources its factors here.
+// The single source of truth for unit magnitudes — the Convert node's category
+// table sources its factors here. Every `scale` is relative to base SI.
 
 const L = (n: number): Dim => ({ length: n });
 const d = (dim: Dim, scale: number, offset?: number): Unit =>
@@ -187,8 +149,7 @@ export const UNITS: Record<string, Unit> = {
   L_vol: d(L(3), 0.001), // litre; keyed L_vol so the parser's "L" prefix rules don't clash
 };
 
-// A registry of derived units for FORMATTING (dim vector → nice symbol). Order
-// matters: more specific / more common first.
+// Formatting only (dim → symbol); order matters, most specific first.
 const DERIVED_DISPLAY: Array<{ sym: string; dim: Dim }> = [
   { sym: "N", dim: { mass: 1, length: 1, time: -2 } },
   { sym: "Pa", dim: { mass: 1, length: -1, time: -2 } },
@@ -204,13 +165,9 @@ const BASE_SYMBOL: Partial<Record<BaseDim, string>> = {
   amount: "mol", luminous: "cd", angle: "rad", currency: "¤", information: "bit",
 };
 
-// ─── Parsing a unit expression ────────────────────────────────────────────────
-// Grammar (informal): a product of factors separated by `*`/`·`, then an
-// optional `/` denominator (also a product). Each factor is a symbol with an
-// optional integer/decimal power via `^` or a trailing superscript-style digit
-// ("m2" == "m^2"). Symbols resolve against UNITS directly, else a single SI
-// prefix + a base symbol (km, ms, µs, kWh-style compounds are the caller's job
-// to spell with operators). Returns null on anything unrecognized.
+// Grammar: factors joined by `*`/`·`, one optional `/` denominator; a factor is a
+// symbol with an optional `^n` or trailing-digit power, resolved against UNITS or a
+// single SI prefix + base symbol. Unrecognized anything → null.
 
 function resolveSymbol(sym: string): Unit | null {
   if (UNITS[sym]) return UNITS[sym];
@@ -229,7 +186,6 @@ function resolveSymbol(sym: string): Unit | null {
 function parseFactor(tok: string): Unit | null {
   const t = tok.trim();
   if (t === "") return null;
-  // "m^2", "m2", "s^-1", "m^-1"
   const caret = /^([^\^]+)\^(-?\d+(?:\.\d+)?)$/.exec(t);
   const trailing = /^([A-Za-zµ¤%]+?)(-?\d+)$/.exec(t);
   let symStr = t;
@@ -274,25 +230,18 @@ export function parseUnit(expr: string): Unit | null {
   return unitDiv(num, den);
 }
 
-// ─── Formatting a dimension as a unit string ───────────────────────────────────
-
-/**
- * Render a dimension vector as a readable unit symbol: a named derived unit
- * where one matches exactly ("N", "W", "Pa"), else a base-symbol product with
- * ^ exponents and a `/` split for the negative powers ("m/s", "kg·m/s²" style
- * rendered as "kg*m/s^2"). Dimensionless → "" (the caller shows the number bare).
- */
+/** A named derived unit where one matches exactly, else a base-symbol product with
+ *  a `/` split for negative powers. Dimensionless → "" (caller shows it bare). */
 export function formatDim(dim: Dim): string {
   if (isDimensionless(dim)) return "";
   for (const der of DERIVED_DISPLAY) if (dimEqual(dim, der.dim)) return der.sym;
 
   const pos: string[] = [];
   const neg: string[] = [];
-  // Base dims first (stable order), then any custom axes by their name — so a mixed
-  // dimension like `poop/s` reads with the base symbol and the custom name together.
+  // Base dims first, then custom axes by name, so the label is order-stable.
   const axes = [
     ...BASE_DIMS.filter((k) => (dim[k] ?? 0) !== 0),
-    ...Object.keys(dim).filter((k) => k.startsWith(CUSTOM_DIM_PREFIX)).sort(), // stable label regardless of op order
+    ...Object.keys(dim).filter((k) => k.startsWith(CUSTOM_DIM_PREFIX)).sort(),
   ];
   for (const k of axes) {
     const e = dim[k] ?? 0;

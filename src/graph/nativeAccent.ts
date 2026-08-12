@@ -1,8 +1,5 @@
-// Sync the app accent to the native Windows 11 window border (DWMWA_BORDER_COLOR),
-// so the focused-frame color Windows draws matches the theme instead of the system
-// accent. Called from appTheme's apply() with the resolved accent hex, on every
-// accent / mode / palette change. No-op on web (no Tauri) and off Windows 11 (the
-// Rust command is a no-op there).
+// Sync the app accent to the native Windows 11 window border (DWMWA_BORDER_COLOR).
+// No-op on web (no Tauri) and off Windows 11 (the Rust command is a no-op there).
 import { isDesktop } from "./fileBridge";
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {

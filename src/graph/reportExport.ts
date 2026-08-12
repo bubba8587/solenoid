@@ -11,31 +11,19 @@ import { reportPaletteStore } from "./palette";
 import { EMBED_RE } from "./reportEmbeds";
 import { APP_LOCALE } from "./locale";
 
-// ─── Static HTML export (bundle 13 #47) ────────────────────────────────────────
-// "Export as webpage": freezes a Report into ONE self-contained .html file — the
-// markdown with every `` `=name` `` ref substituted for its CURRENT formatted
-// value as plain text (not live — reuses the same resolver stack + formatting as
-// the live rendering, one more time, per the plan), embedded Notes frozen the
-// same way, key charts as inline SVG (already free — recharts/hand-drawn SVGs
-// serialize as-is), and a canvas snapshot via canvasCapture.ts's NEW rasterize
-// path (drawElementImage is Chrome-flag-gated, unusable in a portable file the
-// recipient opens in any browser). Everything inlines as data URIs / literal
-// markup — no external references, so the file is truly standalone.
+// "Export as webpage" freezes a Report into ONE self-contained .html: everything
+// inlines as data URIs / literal markup, with no external references.
 
 const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)`/g;
 
-/** Escape the handful of markdown-special characters in a frozen VALUE (not the
- *  surrounding prose) so re-parsing the substituted body doesn't reinterpret a
- *  literal string value (e.g. "the *dev* build") as markdown emphasis. */
+/** Escape markdown-special characters in a frozen VALUE (not the surrounding
+ *  prose), so re-parsing the substituted body can't reinterpret it as markup. */
 export function escapeMd(s: string): string {
   return s.replace(/([\\`*_[\]])/g, "\\$1");
 }
 
-/** Replace every `` `=name` `` span in `body` with its CURRENT formatted value as
- *  plain escaped text — the freeze step. A name with no live value (removed ref,
- *  or edited away since) is left as its original span, unmangled. Exported for
- *  unit testing — resolveRefAnnotation degrades to undefined with no live editor,
- *  so this runs without a real graph. */
+/** The freeze step: every `` `=name` `` span becomes its CURRENT formatted value as
+ *  escaped text; a name with no live value is left as its original span. */
 export function freezeInlineRefs(
   nodeId: string,
   body: string,
@@ -53,15 +41,8 @@ function renderMarkdown(md: string): string {
   return DOMPurify.sanitize(marked.parse(md, { async: false, gfm: true, breaks: true }) as string);
 }
 
-/**
- * The export's CSS. `accent` is the resolved BRAND color (reportPaletteStore's
- * "sky" slot, the same slot the app's own accent defaults to — appTheme.ts
- * DEFAULT_ACCENT) — used for the title + section-heading rule ONLY WHEN the
- * document actually declares a report palette (`branded`). With no declaration
- * this renders byte-identical to the original neutral scheme: colors-only
- * branding must never change the default export's look for a doc that never
- * asked for it.
- */
+/** The export's CSS. `accent` tints the title + heading rules ONLY when the doc
+ *  declares a report palette — branding never alters an export that didn't ask. */
 export function buildExportCss(branded: boolean, accent: string): string {
   const titleColor = branded ? accent : "#f3f4f5";
   const ruleColor = branded ? accent : "#2d2d2d";
@@ -89,12 +70,9 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 `;
 }
 
-/** Node ids the report actually references: sources wired into the report's own
- *  `` `=ref` `` inputs, plus sources wired into any embedded Note's refs. Used to
- *  scope the exported "Charts" section to report-referenced charts instead of
- *  every chart on the canvas (deliberately DIRECT wiring only, not the upstream
- *  closure — a chart belongs in the report when the user wired it in). Pure over
- *  the connection list so it stays unit-testable in the node vitest env. */
+/** Node ids the report references — sources wired into its own refs plus any
+ *  embedded Note's. Deliberately DIRECT wiring only, not the upstream closure:
+ *  a chart belongs in the report when the user wired it in. */
 export function reportReferencedNodeIds(
   report: { id: string; embeds: string[] },
   connections: readonly { source: string; target: string }[],
@@ -105,9 +83,8 @@ export function reportReferencedNodeIds(
   return out;
 }
 
-/** Build the self-contained HTML document string. Exported for unit testing —
- *  the async canvas image is captured by the caller and passed in as a data URI
- *  (or null), keeping this half of the logic synchronous and DOM-free. */
+/** Build the self-contained HTML document string; the caller captures the canvas
+ *  image and passes it in, keeping this half synchronous and DOM-free. */
 export function buildReportExportHtml(
   report: ReportNode,
   opts: { canvasImage: string | null },
@@ -118,10 +95,8 @@ export function buildReportExportHtml(
 
   const bodyFrozen = freezeInlineRefs(report.id, report.body, report.refKeys(), (k) => report.refValue(k));
 
-  // Render the body with each `![[Name]]` token substituted INLINE for the
-  // named Note's frozen block — the same placement the live overlay shows,
-  // instead of a separate bottom section. Splitting the frozen markdown at the
-  // token (always on its own paragraph) keeps each segment valid standalone.
+  // Each `![[Name]]` token is substituted INLINE for the named Note's block;
+  // splitting at the token (always its own paragraph) keeps each segment valid.
   const notes = allNodes.filter((n): n is NoteNode => n instanceof NoteNode);
   const noteByName = (name: string) =>
     notes.find((n) => (names.get(n.id) ?? n.label ?? "").trim().toLowerCase() === name.trim().toLowerCase());
@@ -134,8 +109,7 @@ export function buildReportExportHtml(
     const name = m[1].trim();
     const note = noteByName(name);
     if (note) {
-      // A Note is output-only — no inline refs to freeze; render its markdown as-is
-      // (a `` `=name` `` span stays literal code).
+      // A Note is output-only — no inline refs to freeze.
       parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${names.get(note.id) ?? name}</div>${renderMarkdown(note.renderBody)}</div>`);
     } else {
       parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${name} (missing)</div></div>`);
@@ -187,9 +161,8 @@ export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
     const html = buildReportExportHtml(report, { canvasImage });
     const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
     const chosen = await saveHtmlFileDialog(name, html);
-    // Desktop: null = the user cancelled the dialog, stay quiet. Web: the
-    // download always fires (the dialog helper returns null there too), so
-    // the success toast must not key off the path.
+    // Desktop: null = canceled. Web: the download always fires (the helper
+    // returns null there too), so the toast must not key off the path.
     if (chosen || !isDesktop()) pushNotice(`Exported ${name}`, "info", 2500);
   } catch (e) {
     console.error("[solenoid] report export failed", e);

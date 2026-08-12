@@ -1,4 +1,9 @@
 .solenoid-topbar {
+  /* Width reserved for the out-of-flow pinned trio when the bar wraps (tablet,
+     narrow — see the media query at the bottom of this file). Slightly generous:
+     over-reserving leaves a little slack, under-reserving would let a wrapped
+     row slide under the pinned cluster. */
+  --tablet-pinned-w: 140px;
   /* Positioned by the Header (menu bar sits above it). Kept below the menu bar
      in the stacking order so its dropdowns paint over the toolbar. */
   position: relative;
@@ -57,19 +62,9 @@
    this base hide it renders as a bare default button — a duplicate Navigator in the
    desktop top bar. */
 .solenoid-topbar__nav { display: none; }
-/* The mark itself — masked so it recolors per theme via --wordmark-color, sized
-   to sit inside the round button with a little inset (crops the logo's reach). */
-.solenoid-topbar__icon-glyph {
-  display: block;
-  width: 20px;
-  height: 20px;
-  background-color: var(--wordmark-color);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+/* The overflow dots inherit the bar's text color via currentColor. */
+.solenoid-topbar__icon {
+  color: var(--text);
 }
 
 .solenoid-topbar__divider {
@@ -109,7 +104,7 @@
   /* No padding: the pill wraps the 28px buttons + its 1px border = 30px, the SAME
      total size as the apptools pill — so every pill in the bar is one height. The
      earlier 3px padding bloated this pill to 36px, reading as a bigger control than
-     its neighbours. */
+     its neighbors. */
   padding: 0;
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
@@ -120,4 +115,84 @@
    centered in the menu bar). mobile.css reveals + styles it for the app bar. */
 .solenoid-topbar__doctitle {
   display: none;
+}
+
+/* ─── Tablet touch actions ────────────────────────────────────────────────────
+   A tablet runs the DESKTOP chrome (IS_MOBILE is false there — iPadOS ships a
+   desktop UA on purpose), so it never gets the bottom action bar and had no
+   touch target for delete / group / select-mode / undo / the palette. The top
+   bar carries them instead, gated on `html.is-tablet` (set in main.tsx from
+   IS_TABLET = coarse && !mobile).
+
+   HEIGHT IS UNCHANGED — deliberately. The bar stays 44px inside the 66px header
+   envelope, because four overlays clear that envelope with hand-keyed offsets
+   (nav pill top:80, align pill top:76, HUD top:124, report dock top:66 — see
+   docs/layout-chrome.md). Growing the bar would silently push the bar's bottom
+   edge under all four. These are ordinary 28px pill buttons in the existing row. */
+.solenoid-topbar__group--tablet {
+  display: none;
+}
+html.is-tablet .solenoid-topbar__group--tablet {
+  display: flex;
+}
+
+/* Dimmed = needs a selection. Still TAPPABLE (not `disabled`): the selection
+   state is polled at 200ms, so a hard-disabled button would swallow the first
+   tap after a fresh select. Matches the bottom bar's rule and its opacity. */
+.solenoid-nav__btn--dim {
+  opacity: 0.3;
+}
+
+/* ── Narrow (portrait): the bar WRAPS on a tablet ─────────────────────────────
+   The desktop bar doesn't fit a tablet in portrait. It wraps: fill the line,
+   push the overflow to the next one. Nothing is reordered and nothing is forced
+   onto a chosen row — an earlier version broke the line after the layout pills
+   whether or not more would have fit, which is a two-row SPLIT, not a wrap.
+
+   The one thing that can't just flow is the pinned trio (theme · Reference ·
+   Settings, all inside `.solenoid-apptools`): it must hold the top-right corner,
+   and an in-flow flex item can't — it goes wherever the line ends up. So it
+   leaves the flow entirely and the bar reserves its column with padding-right.
+   Everything else then wraps naturally into what's left, which is exactly the
+   normal wrap behaviour, just against a narrower line.
+
+   Reserving on EVERY line costs a little width on row 2. That is the price of
+   the corner staying put, and row 2 has the room.
+
+   Safe because the header height is MEASURED, not written down: Header.tsx
+   publishes `--chrome-top` and every top-anchored overlay offsets from it, so a
+   second row pushes them all down on its own. */
+@media (max-width: 1100px) {
+  html.is-tablet .solenoid-topbar {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 6px;
+    /* Left/top/bottom as the desktop bar; the right pad is the reserved column
+       for the out-of-flow pinned trio (its width + the normal 8px gap). */
+    padding: 7px calc(12px + var(--tablet-pinned-w)) 7px 12px;
+  }
+  /* Out of the flow so the corner is a corner. The bar is already
+     `position: relative`. */
+  html.is-tablet .solenoid-topbar > .solenoid-apptools {
+    position: absolute;
+    top: 7px;
+    right: 12px;
+  }
+  /* The dividers separated groups along ONE row; across two they'd orphan at a
+     row edge. The pill outlines already do the separating. */
+  html.is-tablet .solenoid-topbar > .solenoid-topbar__divider { display: none; }
+}
+
+/* A tablet is a touch device on the desktop layout, where buttons are sized for
+   a cursor. Widen the touch target without changing the LAID-OUT size: the pill
+   row must stay 30px tall to match every other pill in the bar, so the extra
+   reach comes from a pseudo-element, not from padding. */
+html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn {
+  position: relative;
+}
+html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn::after {
+  content: "";
+  position: absolute;
+  /* 28px button + 8px top/bottom = a 44px tap target, the platform minimum. */
+  inset: -8px -2px;
 }

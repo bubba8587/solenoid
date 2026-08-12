@@ -65,7 +65,7 @@
 }
 .sol-conn__date-sep { color: var(--text-muted); font-size: 11px; flex: 0 0 auto; }
 
-/* Inline labelled field (Import HTML's table index). */
+/* Inline labeled field (Import HTML's table index). */
 .sol-conn__field {
   display: flex;
   align-items: center;

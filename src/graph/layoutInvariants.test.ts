@@ -13,7 +13,7 @@ import { anchorPoint, ANCHOR_DIR, STANDOFF_MIN, type Standoff, type StandoffAnch
 //   • separateOverlaps  — the HARD no-overlap backstop: after it, no non-baseline
 //     pair overlaps (this is the guarantee the group-expand pipeline leans on;
 //     computeExpandPush alone is heuristic and CAN leave overlaps by design).
-//   • distributeDeltas  — ≥ DISTRIBUTE_GAP between neighbours ALONG the distributed
+//   • distributeDeltas  — ≥ DISTRIBUTE_GAP between neighbors ALONG the distributed
 //     axis (overlap-free on that axis; the cross axis is intentionally untouched).
 //   • alignDeltas       — aligns the chosen edge; it is DELIBERATELY not overlap-free
 //     (a manual gesture, like every design tool's Align), so we assert the alignment
@@ -127,7 +127,7 @@ describe("group expand push → separateOverlaps (the app pipeline) is finite + 
   });
 });
 
-describe("distributeDeltas — ≥ DISTRIBUTE_GAP between neighbours along the axis", () => {
+describe("distributeDeltas — ≥ DISTRIBUTE_GAP between neighbors along the axis", () => {
   for (const axis of ["h", "v"] as const) {
     it(`no along-axis overlap after distribute (axis ${axis}, randomized)`, () => {
       const rng = mulberry32(axis === "h" ? 0x0D44 : 0x0D55);
@@ -184,12 +184,12 @@ describe("alignDeltas — aligns the chosen edge (overlap is allowed BY DESIGN)"
     }
   });
 
-  it("align-center-h shares one vertical centre line (centres equal)", () => {
+  it("align-center-h shares one vertical center line (centers equal)", () => {
     const rng = mulberry32(0x0F88);
     for (let iter = 0; iter < 100; iter++) {
       const its = items(rng, ri(rng, 2, 8));
-      const centres = place(its, alignDeltas(its, "center-h")).map((r) => r.x + r.w / 2);
-      for (const c of centres) expect(c).toBeCloseTo(centres[0], 6);
+      const centers = place(its, alignDeltas(its, "center-h")).map((r) => r.x + r.w / 2);
+      for (const c of centers) expect(c).toBeCloseTo(centers[0], 6);
     }
   });
 });

@@ -1,4 +1,5 @@
 import { createNotifier } from "./storeKit";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export type DockedRelationship = {
   hostNodeId: string;
@@ -27,5 +28,22 @@ export const dockedNodeStore = {
     }
     return result;
   },
+  /** Registry forget: the node may be the DOCKED FC or a HOST, and every relationship
+   *  it takes part in is dead either way. */
+  removeForNode(nodeId: string): void {
+    let changed = _store.delete(nodeId);
+    for (const [id, rel] of [..._store]) {
+      if (rel.hostNodeId === nodeId) { _store.delete(id); changed = true; }
+    }
+    if (changed) notify();
+  },
+  clear(): void {
+    if (_store.size === 0) return;
+    _store.clear();
+    notify();
+  },
   subscribe,
 };
+
+registerNodeForget((nodeId) => dockedNodeStore.removeForNode(nodeId));
+registerNodeForgetAll(() => dockedNodeStore.clear());

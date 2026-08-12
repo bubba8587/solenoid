@@ -3,11 +3,11 @@
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { extremeSci } from "./components/format";
-import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
+import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES } from "./formatModel";
+import { assembleCx, type Cx } from "./cxValue";
 import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
-
-// ─── Format style (how the number renders) ───────────────────────────────────
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export type FormatStyle =
   | "auto"
@@ -17,8 +17,7 @@ export type FormatStyle =
   | "fraction"     // 1/3
   | "fraction_adv" // π/2, 3π/2, e/4 … (rational multiples of constants)
   | "scientific"   // 1.23e+4
-  // NOTE: currency is NOT a format — it's a UNIT ($, €, … in UNIT_ANNOTATIONS).
-  // Pick a number format (decimal/integer/…) and set the unit to a currency.
+  // currency is NOT a format — it's a UNIT ($, €, … in UNIT_ANNOTATIONS).
   | "custom"
   // Date styles — applied to a date serial via formatDateSerial.
   | "date_dmy"     // 03-Jun-2026 (the app default)
@@ -32,9 +31,8 @@ export type FormatStyle =
   | "datetime"     // 2026-06-03 14:30
   | "date_custom";
 
-// A format id that may be a built-in FormatStyle OR a pack-contributed format id.
 // The `& {}` keeps the built-in union members in editor autocomplete while still
-// accepting any string (pack formats are registered at runtime, see below).
+// accepting any string (pack formats are registered at runtime).
 export type FormatStyleId = FormatStyle | (string & {});
 
 export const FORMAT_STYLE_LABELS: Record<FormatStyle, string> = {
@@ -62,11 +60,9 @@ export const FORMAT_STYLE_GROUPS: Record<string, FormatStyle[]> = {
   "General":   ["auto"],
   "Number":    ["decimal", "integer", "fraction", "fraction_adv", "scientific"],
   "Percent":   ["percent"],
-  // Currency is not a format — it's a unit (see the unit dropdown / UNIT_ANNOTATIONS).
   "Custom":    ["custom"],
 };
 
-// Date styles shown by the FC when docked to a date socket (one flat list).
 export const DATE_FORMAT_STYLES: FormatStyle[] = [
   "date_dmy", "date_iso", "date_us", "date_long", "date_med", "date_dow",
   "time_24", "time_12", "datetime", "date_custom",
@@ -90,9 +86,8 @@ export function isDateStyle(style: FormatStyleId): boolean {
 
 export type DecimalMode = "places" | "sigfigs";
 
-// The ONE precision resolver (format-model.md "precision × style resolution
-// rule") — every style that supports precision delegates here; no style case
-// carries private digit logic. Clamps: places 0–20, sig figs 1–21.
+// The ONE precision resolver (format-model.md) — no style case may carry private digit
+// logic. Clamps: places 0–20, sig figs 1–21.
 function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode, useGrouping = true): string {
   if (decimalMode === "sigfigs") {
     const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
@@ -102,7 +97,6 @@ function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMod
   return n.toLocaleString(APP_LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping });
 }
 
-/** Apply a FormatStyle to a number. Returns the formatted string. */
 export function applyFormatStyle(
   n: number,
   style: FormatStyleId,
@@ -119,8 +113,7 @@ export function applyFormatStyle(
     case "fraction":     return toFraction(n);
     case "fraction_adv": return toFractionAdvanced(n);
     case "scientific": {
-      // Honors the precision row (format model): places d → d mantissa fraction
-      // digits; s sig figs → s mantissa digits (toExponential(s − 1)).
+      // Precision row: places d → d mantissa fraction digits; s sig figs → toExponential(s − 1).
       const d = decimalMode === "sigfigs"
         ? Math.max(0, Math.min(20, Math.round(decimalDigits) - 1))
         : Math.max(0, Math.min(20, Math.round(decimalDigits)));
@@ -128,8 +121,7 @@ export function applyFormatStyle(
     }
     case "custom":       return applyCustomPattern(n, customPattern ?? "0.00");
     default: {
-      // Not a built-in style — maybe a pack-contributed format (registered for
-      // every known pack, so saved graphs render even with the pack off).
+      // Not built-in — maybe a pack format (registered even for an inactive pack).
       const pf = _packFormats.get(style);
       return pf ? pf.apply(n) : autoFormat(n);
     }
@@ -154,20 +146,12 @@ function toFraction(n: number, maxDen = 99): string {
   if (frac < 1e-12) return `${neg ? "-" : ""}${whole}`;
   // Best rational for the fractional part via continued-fraction convergents.
   const { num, den } = cfConvergent(frac, maxDen);
-  // Non-aggressive: only render a fraction when it matches to high precision.
-  // Otherwise the value isn't a clean fraction — show it as a decimal instead
-  // of coercing it into an ugly approximation.
+  // Only render a fraction when it matches to high precision; otherwise show a decimal
+  // rather than coercing the value into an ugly approximation.
   if (!den || Math.abs(frac - num / den) > 1e-9) return autoFormat(n);
   const sign = neg ? "-" : "";
   return whole > 0 ? `${sign}${whole} ${num}/${den}` : `${sign}${num}/${den}`;
 }
-
-// ─── Fraction (advanced): rational multiples of constants ──────────────────────
-// Established method (no home-grown heuristic): recognize x ≈ (p/q)·c by dividing
-// by each candidate constant c and finding the best low-denominator rational p/q
-// via the continued-fraction convergents algorithm — the standard way to get the
-// closest rational with a bounded denominator. (This is the lightweight cousin of
-// PSLQ / the Inverse Symbolic Calculator, restricted to a single-constant basis.)
 
 /** Best rational p/q ≈ x with q ≤ maxDen, via continued-fraction convergents. */
 function cfConvergent(x: number, maxDen: number): { num: number; den: number } {
@@ -216,19 +200,16 @@ function toFractionAdvanced(n: number): string {
     if (!den || num === 0) continue;
     const approx = Math.sign(q) * (num / den) * c;
     const err = Math.abs(approx - n) / Math.abs(n);
-    // Genuine matches converge to a small-denominator rational within tolerance;
-    // arbitrary numbers don't. Prefer the simplest (smallest denominator) hit.
+    // Prefer the simplest (smallest-denominator) hit; arbitrary numbers won't converge.
     if (err < relTol && (!best || den < best.den)) {
       best = { num: Math.sign(q) * num, den, sym };
     }
   }
-  // No constant fits → fall back to a plain fraction.
   return best ? formatConstFraction(best.num, best.den, best.sym) : toFraction(n);
 }
 
 function applyCustomPattern(n: number, pattern: string): string {
-  // Minimal Excel-ish custom number format support.
-  // Supports: 0, #, ., comma grouping.
+  // Minimal Excel-ish custom number format: 0, #, ., comma grouping.
   const dp = (pattern.match(/\.([0#]+)/) ?? [, ""])[1]?.length ?? 0;
   const useGrouping = pattern.includes(",");
   return n.toLocaleString(APP_LOCALE, {
@@ -237,8 +218,6 @@ function applyCustomPattern(n: number, pattern: string): string {
     useGrouping,
   });
 }
-
-// ─── Unit labels (physical/semantic annotation) ───────────────────────────────
 
 export type UnitGroup =
   | "none"
@@ -312,8 +291,7 @@ export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
   { id: "mb",    label: " MB",   group: "data" },
   { id: "gb",    label: " GB",   group: "data" },
   { id: "tb",    label: " TB",   group: "data" },
-  // Currency is a UNIT (a value's currency carries real meaning — $ ≠ € at the
-  // exchange rate), not a number format. Rendered as a leading symbol.
+  // Currency is a UNIT ($ ≠ € at the exchange rate), not a number format.
   { id: "usd",   label: "$", group: "currency", prefix: true },
   { id: "eur",   label: "€", group: "currency", prefix: true },
   { id: "gbp",   label: "£", group: "currency", prefix: true },
@@ -337,13 +315,8 @@ export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
   custom:      "Custom",
 };
 
-// ─── Pack extensions (units + number formats) ─────────────────────────────────
-// Packs can contribute extra FC units and number formats. Like pack node
-// constructors, these are registered for EVERY known pack (active or not) so a
-// saved graph that uses a pack's unit/format still renders when the pack is
-// deactivated. The FC dropdown offers only ACTIVE packs' entries — see
-// fcExtensions.ts, which owns the active filtering; this module stays
-// pack-agnostic and only holds the merged resolution maps.
+// Pack units/formats are registered for EVERY known pack (active or not) so a saved graph
+// still renders when the pack is deactivated; active-only filtering is in fcExtensions.ts.
 
 export interface PackUnit {
   id: string;
@@ -407,16 +380,11 @@ export function unitsCompatible(a: string, b: string): boolean {
   return ga === gb;
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
-
 export type TextCase = "none" | "upper" | "lower" | "proper";
 
-// Text-value advanced tier (format-model.md): horizontal alignment override
-// (the display box is right-aligned by default), render-as-markdown, and a
-// monospace toggle (text renders in the sans face by default). All display-only.
+// The display box is right-aligned by default; this overrides it. Display-only.
 export type TextAlign = "left" | "center" | "right";
 
-// Logical "show-as" (format-model.md): how a boolean renders through an FC.
 export type LogicalStyle = "truefalse" | "binary" | "yesno" | "check";
 
 export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
@@ -426,9 +394,7 @@ export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
   check:     "✓ / ✗",
 };
 
-// Lambda-socket view-as (display only): how a flowing LambdaValue renders in a
-// value box. The value already carries its source (`expr`/`params`), so every
-// view derives from the same object — nothing extra travels the cable.
+// Display only: the LambdaValue already carries its source, so nothing extra travels the cable.
 export type LambdaView = "signature" | "katex" | "syntax" | "mono";
 
 export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
@@ -438,8 +404,7 @@ export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
   mono:      "Monospace formula",
 };
 
-// Chart-socket text scale (display only): multiplies every text size inside a
-// chart figure (axis ticks, title, labels, KPI digits). 1 = the built-in sizes.
+// Multiplies every text size inside a chart figure. 1 = the built-in sizes.
 export const CHART_FONT_SCALES: number[] = [0.8, 1, 1.25, 1.5, 2];
 
 /** Display-only boolean rendering (default = the Excel TRUE/FALSE form). */
@@ -452,10 +417,8 @@ export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
   }
 }
 
-// The advanced tier (format-model.md): number-family extras behind the chip's
-// expander. Scale divides the value and appends K/M/B; negative style is a
-// string transform (parens) plus a render hint (red — surfaces apply the color
-// via annotationRendersNegativeRed, the string form stays minus/parens).
+// Negative style is a string transform (parens) plus a render hint: red is applied
+// by surfaces via annotationRendersNegativeRed, the string form stays minus/parens.
 export type NegativeStyle = "minus" | "paren" | "red" | "redparen";
 export type ScaleMode = "none" | "k" | "m" | "b";
 
@@ -503,15 +466,13 @@ export type FormatAnnotation = {
   scaleMode?: ScaleMode;
 };
 
-/** Should a surface paint this (negative) value in the danger red? The string
- *  form from formatNumberWithAnnotation already carries the minus/parens; red
- *  is a color the render layer applies on top. */
+/** Red is a color the render layer applies on top — the formatted string already
+ *  carries the minus/parens. */
 export function annotationRendersNegativeRed(ann: FormatAnnotation | undefined, n: unknown): boolean {
   return !!ann && typeof n === "number" && n < 0 &&
     (ann.negativeStyle === "red" || ann.negativeStyle === "redparen");
 }
 
-/** Display-only case transform for a string (UPPER / lower / Proper). */
 export function applyTextCase(s: string, c: TextCase | undefined): string {
   switch (c) {
     case "upper": return s.toUpperCase();
@@ -522,12 +483,8 @@ export function applyTextCase(s: string, c: TextCase | undefined): string {
 }
 
 const _store = new Map<string, FormatAnnotation>();
-// Per-node index so getForNode is O(1) — every value box calls it every render,
-// and the startsWith scan over the whole map multiplied out on big graphs
-// (audit finding 41).
+// Per-node index so getForNode is O(1) — every value box calls it every render.
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
-// Version bumps on every change so useSyncExternalStore consumers (every node's
-// value box) re-render when an annotation is added / edited / removed.
 const { notify, subscribe, version } = createNotifier();
 
 function key(nodeId: string, socketKey: string): string {
@@ -562,6 +519,21 @@ export const formatAnnotationStore = {
       notify();
     }
   },
+  removeForNode(nodeId: string): void {
+    const inner = _byNode.get(nodeId);
+    if (!inner) return;
+    for (const socketKey of inner.keys()) _store.delete(key(nodeId, socketKey));
+    _byNode.delete(nodeId);
+    notify();
+  },
+  /** Leaves the pack-contributed format/unit REGISTRATIONS alone — those are
+   *  extensions, not node state. */
+  clearNodes(): void {
+    if (_store.size === 0) return;
+    _store.clear();
+    _byNode.clear();
+    notify();
+  },
   subscribe,
   /** Monotonic version for useSyncExternalStore snapshots. */
   version,
@@ -571,11 +543,8 @@ export const formatAnnotationStore = {
   },
 };
 
-// ─── Mismatch store ───────────────────────────────────────────────────────────
-// Tracks which Format Controller node IDs are in a "unit mismatch" state
-// (a cable connects them to a socket annotated with an incompatible unit group).
-// Written by the Canvas connection pipe; read by FormatControllerComponent.
-
+// FC node ids in a "unit mismatch" state (cabled to a socket annotated with an
+// incompatible unit group). Written by the Canvas connection pipe.
 const _mismatch = new Set<string>();
 const mismatchNotifier = createNotifier();
 
@@ -592,11 +561,9 @@ export const formatMismatchStore = {
   subscribe: mismatchNotifier.subscribe,
 };
 
-/** Format a number with a resolved annotation — the format-model pipeline:
- *  scale-divide → style (precision + grouping) → scale suffix → unit affix →
- *  negative wrap. Red negatives are a render-layer color on top of this string
- *  (annotationRendersNegativeRed); parens wrap OUTSIDE the unit, Excel
- *  accounting style: ($1.2K). */
+/** The format-model pipeline: scale-divide → style (precision + grouping) → scale
+ *  suffix → unit affix → negative wrap. Parens wrap OUTSIDE the unit, Excel accounting
+ *  style: ($1.2K); red negatives are a render-layer color on top. */
 export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
   if (!Number.isFinite(n)) return String(n);
   // Date styles render the value as a date serial; units don't apply.
@@ -626,6 +593,25 @@ export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): st
   return paren ? `(${out})` : out;
 }
 
+/** A style outside COMPLEX_FORMAT_STYLES falls back to `auto` (an annotation can survive
+ *  a socket retype). Precision applies to BOTH components and the unit wraps the WHOLE
+ *  value ("(3 + 2i) V", never "3 V + 2i V"). */
+export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
+  const style: FormatStyleId =
+    (COMPLEX_FORMAT_STYLES as readonly string[]).includes(ann.format) ? ann.format : "auto";
+  const { text, hasBothParts } = assembleCx(z, (n) =>
+    style === "auto"
+      // `auto` keeps formatCx's own trim — the FC is annotating, not overriding.
+      ? (Number.isInteger(n) ? n.toString() : n.toFixed(4).replace(/\.?0+$/, ""))
+      : applyFormatStyle(n, style, ann.customPattern, ann.decimalDigits, ann.decimalMode, true));
+  if (text === "NaN") return text;
+  const unit = ann.unit === "custom" ? (ann.customUnit ?? "") : unitById(ann.unit).label;
+  if (!unit) return text;
+  const body = hasBothParts ? `(${text})` : text;
+  // A prefix unit ($) still leads, matching the number path.
+  return ann.unit !== "custom" && unitById(ann.unit).prefix ? `${unit}${body}` : `${body}${unit}`;
+}
+
 /** Format a number using the annotation for a given socket, falling back to auto. */
 export function formatWithAnnotation(
   n: number,
@@ -636,3 +622,7 @@ export function formatWithAnnotation(
   if (!ann) return autoFormat(n);
   return formatNumberWithAnnotation(n, ann);
 }
+
+// Registered like every node-keyed store (nodeStoreRegistry / STORE-1).
+registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));
+registerNodeForgetAll(() => formatAnnotationStore.clearNodes());

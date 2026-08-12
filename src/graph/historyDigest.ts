@@ -1,20 +1,9 @@
 import { Presets as HistoryPresets } from "rete-history-plugin";
 import { nodeTypeName } from "./nodeNames";
 
-// ─── Session History digest ────────────────────────────────────────────────────
-// Turns rete-history-plugin's raw undo/redo record stream into a dated,
-// human-readable log for the Session History node (bundle 13 #49). Pure +
-// unit-tested (no editor/DOM deps) — the SessionHistoryComponent supplies the
-// live records (history.getHistorySnapshot()) and a node-name lookup, both of
-// which need the editor.
-//
-// The classic preset's action classes mark most fields TypeScript-`private` —
-// compile-time only, not enforced at runtime (same as Canvas's own
-// `history.history.limit` reach-around into the plugin's internals). Only
-// DragNodeAction's nodeId/prev/new are genuinely public; AddNodeAction.nodeId,
-// RemoveNodeAction.node, and both connection actions' `connection` need a cast to
-// read. Best-effort: a field that isn't there (a future plugin version, an action
-// mid-undo) degrades to a generic phrase instead of throwing.
+// Pure human-readable log from rete-history-plugin's raw records. Its action fields are
+// TypeScript-`private` only (not runtime), so they're cast-read; a missing one degrades
+// to a generic phrase instead of throwing.
 const { AddNodeAction, RemoveNodeAction, DragNodeAction, AddConnectionAction, RemoveConnectionAction } = HistoryPresets.classic;
 
 export interface HistoryDigestRecord {
@@ -78,9 +67,8 @@ export function describeAction(action: unknown, lookup: DigestLookup): string {
   return "Other action";
 }
 
-/** The full digest: one line per record, grouped under a date header whenever
- *  the date changes (a session that runs past midnight, or a reopened autosave
- *  history — rete-history-plugin doesn't clear on its own, only on document load). */
+/** One line per record under a date header; records can span days, since
+ *  rete-history-plugin clears only on document load. */
 export function digestHistory(records: HistoryDigestRecord[], lookup: DigestLookup): string {
   if (records.length === 0) return "No actions yet this session.";
   const lines: string[] = [];

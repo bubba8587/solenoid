@@ -6,12 +6,8 @@ import type { PresentationNode } from "../nodes/presentation";
 import { CloseIcon } from "./CloseIcon";
 import "./PresentationOverlay.css";
 
-// ─── Presenter mode ───────────────────────────────────────────────────────────
-// A Presentation node's steps only fly the CAMERA to a node set — useless while
-// the controls live on the node card, which flies off-screen on the first step.
-// This is the actual slideshow: a full-screen layer that drives the camera step
-// by step. It hides the app chrome (restored on exit), advances on click / Space /
-// →, steps back on ←, and exits on Esc — the canvas itself is the slide.
+// Drives the camera through a Presentation node's steps and hides the app chrome (restored
+// on exit) — the canvas itself is the slide.
 
 export function PresentationOverlay() {
   useSyncExternalStore(presentationStore.subscribe, presentationStore.version);
@@ -35,22 +31,18 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
   const next = () => go(idx + 1);
   const prev = () => go(idx - 1);
 
-  // Hide the app chrome while presenting; restore it on exit (unmount).
   useEffect(() => {
     document.documentElement.classList.add("solenoid-presenting");
     return () => document.documentElement.classList.remove("solenoid-presenting");
   }, []);
 
-  // Fly the camera to the current step's nodes on mount and on every step change.
   useEffect(() => {
     const step = steps[idx];
     if (step && step.nodeIds.length) flyToNodes(step.nodeIds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
-  // Keyboard: Space / → / ↓ / PageDown / Enter advance; ← / ↑ / PageUp step back;
-  // Home/End jump to ends; Esc exits. No dep array so each render's handler closes
-  // over the current idx.
+  // No dep array, so each render's handler closes over the current idx.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -73,8 +65,7 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
   const step = steps[idx];
 
   return (
-    // The whole layer advances on click (the slide IS the canvas below); the
-    // control bar stops propagation so its buttons don't also advance.
+    // The whole layer advances on click, so the control bar must stop propagation.
     <div className="solenoid-present" onClick={next}>
       <div className="solenoid-present__bar" onClick={(e) => e.stopPropagation()}>
         <button

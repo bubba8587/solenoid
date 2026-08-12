@@ -17,7 +17,12 @@ branch, registry, catalog, vitest file.
 
 Solenoid bundles multi-op families behind one node with a dropdown. **Do not
 add a standalone node for something that's an op of an existing family** —
-add it to that family's op union + `data()` switch + catalog row instead:
+add it to that family's op union + `data()` switch + `X_OP_META` table +
+catalog row instead. The meta table is the ONE place the op is named: the
+card's dropdown and the Add-menu search row both read it, and its
+`satisfies Record<XOp, …>` is what makes tsc tell you the op is missing.
+Never write a label anywhere else — a second copy is how ISBOOLEAN on the
+card shipped as ISLOGICAL in search (2026-07-28). The families:
 
 - unary math (abs/sqrt/sin/round…) → `MathFnOp` (`scalar.ts`)
 - two-input arithmetic (+−×÷ % ^) → `ArithmeticOp` (`scalar.ts`)
@@ -58,15 +63,30 @@ script when the component needs hand-writing anyway (op select, custom render).
    - **Ports**: use the factories in `nodes/shared.ts` — every socket family
      has typed in/out helpers (`numIn`, `strIn`, `dateIn`, `logicalIn`,
      `complexIn`, plus `list`/`combo`/`table` variants, `frameIn`, `cubeIn`,
-     `lambdaIn`, `chartIn`…). Wildcards are a LADDER (see CLAUDE.md "Socket
-     lattice"): `anyIn` (adoptive element-agnostic scalar),
+     `lambdaIn`, `chartIn`…). **An ELEMENT-WISE OPERAND takes the family's
+     COMBO, not its scalar** — `numListIn` / `strComboIn` / `dateComboIn` /
+     `logicalComboIn` / `complexComboIn`, and the matching `…Out`. All five
+     families were swept onto their combo rung (2026-07-25), so a new
+     element-wise node on `strIn`/`dateIn` is a regression, not a style
+     choice. Reserve the scalar rung for a MODE or a structural control param
+     (a window size, a separator, a return-type flag) — the full test is
+     node-coverage.md's input-dimensionality rule. Wildcards are a LADDER (see
+     CLAUDE.md "Socket lattice"): `anyIn` (adoptive element-agnostic scalar),
      `adoptiveListIn`/`adoptiveTableIn` (1-D/2-D), `trueAnyIn/Out` (the
      hollow-ring supremum). A new socket TYPE is a bigger, derived edit —
      follow the `anylist` worked example in CLAUDE.md.
-   - **`data()` is the only non-boilerplate.** Element-wise ops go through
-     `broadcast(fn, ...args)`. Cache the result on the instance
-     (`cachedResult: number | number[] | null`, or `cachedList` /
-     `cachedString` — whatever the component reads).
+   - **`data()` is the only non-boilerplate.** Element-wise ops broadcast, and
+     WHICH broadcaster depends on the element type: `broadcast(fn, …)` /
+     `broadcastErr` for numbers and dates (a date serial is a number);
+     `broadcastCells(fn, …)` (`shared.ts`) when operands or results are text /
+     booleans / mixed families (LEN is string→number); `broadcastComplex`
+     (`complex.ts`) for complex, whose values are themselves `[re, im]` arrays
+     and so need an exact shape test plus per-operand tags. All three share the
+     ragged-zip + per-cell error/missing contract. Cache the result on the
+     instance — `cachedResult: BroadcastResult` (= `CellResult<number>`) or
+     `CellResult<T>` for another element type, or `cachedList` / `cachedString`
+     — whatever the component reads. `ValueDisplay` renders a scalar and a
+     broadcast list from the same field, so this needs no component branch.
    - **Errors**: `installErrorGuards` wraps every `data()` at `nodecreated` —
      an incoming `SolError` short-circuits to the outputs automatically, so
      your `data()` sees clean inputs (unless the class opts into
@@ -117,6 +137,14 @@ script when the component needs hand-writing anyway (op select, custom render).
   is shared with `textForm.ts`'s byte-identical writer — extend, don't reorder.
   The constructor must accept the same fields back (guard stale enum values
   from old saves — fall back, don't crash).
+- **Reading an input**: use `readInput(inputs.x, this.literals.x ?? default)`,
+  NEVER `inputs.x?.[0] ?? this.literals.x`. `??` can't tell "no cable" from "a
+  cable carrying blank", so it substitutes the card's value for the graph's
+  answer. Then decide what a wired blank DOES from the input's role —
+  propagate / skip / skip-the-check / fall back — per the table in
+  `docs/value-semantics.md` "Reading an input". Pin both halves in a test
+  (wired blank AND unwired default); `nodes/readInputSweep.test.ts` fails on a
+  new `?? literal` read.
 - **`literals` / `stringLiterals`**: declare the map on the class IFF the card
   edits those values inline — that declaration is the LOAD GATE (persistence
   restores the maps only onto declaring classes, so a save can't hardcode a
@@ -137,9 +165,11 @@ script when the component needs hand-writing anyway (op select, custom render).
   immediately; `OpSelect` is already drag-safe (stopPropagation) — any other
   popup-opening control needs `onPointerDown`/`onMouseDown` stopPropagation.
 - **`InlineInputs` renders literal fields for you**, keyed by socket type:
-  number → `InlineNumberField` (backed by `literals`), string →
-  `InlineTextField` (backed by `stringLiterals`), typeable lists → a CSV
-  field. Wired inputs automatically show the "↩ source" chip instead.
+  number *or* `numlist` → `InlineNumberField` (backed by `literals`), string
+  *or* `strcombo` → `InlineTextField` (backed by `stringLiterals`), typeable
+  lists → a CSV field. A combo edits as ONE value in place — it only becomes a
+  list when a cable brings one in. Wired inputs automatically show the
+  "↩ source" chip instead.
 - Multi-output values → `InlineOutputRows` (collapse-safe). Role-distinct
   variadic inputs → `ExtensibleInputs`/`PairedExtensibleInputs`; interchangeable
   elements → a single list socket (see `docs/node-coverage.md` design rules).

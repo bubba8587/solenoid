@@ -15,7 +15,7 @@
 }
 .sol-switch__opt:hover { border-color: var(--node-accent, var(--accent)); }
 .sol-switch__opt--on {
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
   border-color: var(--node-accent, var(--accent));
   color: var(--text-bright);
   font-weight: 700;

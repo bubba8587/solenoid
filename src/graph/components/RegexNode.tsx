@@ -1,16 +1,15 @@
 import { useState } from "react";
 import type { RegexNode as RegexNodeType } from "../rete-nodes";
+import { REGEX_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import { processGraph } from "../process";
 import type { RegexOp } from "../rete-nodes";
+import { stopDragStart } from "../coarse";
 
-const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = [
-  { value: "test",        label: "REGEXTEST" },
-  { value: "extract",     label: "REGEXEXTRACT" },
-  { value: "extract_all", label: "REGEXEXTRACT (all)" },
-  { value: "replace",     label: "REGEXREPLACE" },
-];
+// Derived from REGEX_OP_META (SSOT-1) — the table the search rows read too.
+const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = (Object.keys(REGEX_OP_META) as RegexOp[])
+  .map((value) => ({ value, label: REGEX_OP_META[value].label }));
 
 export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
   const [op, setOp]     = useNodeField(node, "op");
@@ -38,7 +37,7 @@ export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
           value={flags}
           placeholder="i, g, …"
           onChange={(e) => handleFlags(e.target.value)}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
           style={{ width: 52 }}

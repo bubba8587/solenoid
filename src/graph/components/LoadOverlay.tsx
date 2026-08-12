@@ -2,15 +2,8 @@ import { useSyncExternalStore } from "react";
 import { loadRevealStore } from "../loadReveal";
 import "./LoadOverlay.css";
 
-/**
- * The build-phase curtain: a centered card with an accurate progress bar shown
- * while a graph is constructed on load (startup / File → Open), and while a big
- * document SWITCH tears down + rebuilds (the curtain path — that one never enters
- * "revealing", it just unmounts when the load finishes). It covers the canvas so
- * the node-by-node construction never shows; on an animated load the phase flips
- * to "revealing" and this fades out, uncovering the staged reveal. Driven
- * entirely by loadRevealStore (see loadReveal.ts).
- */
+/** Curtain hiding node-by-node construction during a load; a document SWITCH never
+ *  enters "revealing" — it just unmounts when the load finishes. */
 export function LoadOverlay() {
   const phase = useSyncExternalStore(loadRevealStore.subscribe, loadRevealStore.phase);
   const progress = useSyncExternalStore(loadRevealStore.subscribe, loadRevealStore.progress);

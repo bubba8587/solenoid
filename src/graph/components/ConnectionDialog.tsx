@@ -18,15 +18,13 @@ const TYPE_LABEL: Record<SocketDataType, string> = {
   complexcombo: "Complex/List", complextable: "Complex matrix",
   logical: "Boolean", logicallist: "Boolean list", logicalcombo: "Boolean/List", logicaltable: "Boolean matrix",
   table: "Matrix", strtable: "Text matrix",
-  datetable: "Date matrix", anytable: "Matrix (any)", anylist: "List (any)", frame: "Frame", cube: "Cube",
+  datetable: "Date matrix", anytable: "Matrix (any)", anylist: "List (any)", anycombo: "Any value or list", anydata: "Any value, list or matrix", frame: "Frame", cube: "Cube",
   lambda: "Lambda", chart: "Chart", document: "Document", any: "Any value", trueany: "Anything",
 };
 const typeName = (t?: SocketDataType) => (t ? TYPE_LABEL[t] : "—");
 
-// ─── Endpoint combobox ────────────────────────────────────────────────────────
-// Conduit lanes are plumbing, not destinations — 8 declared lanes per block
-// swamp the list, so they're hidden unless the user opts in. Matched by
-// constructor name, not instanceof (see the FormulaPopup precedent).
+// Conduit lanes are plumbing, not destinations — 8 per block swamp the list, so they're
+// hidden unless the user opts in.
 const isPlumbing = (nodeId: string) => {
   const name = (getEditor()?.getNode(nodeId) as { constructor?: { name?: string } } | undefined)
     ?.constructor?.name;
@@ -47,14 +45,12 @@ function EndpointCombo({
   const all = useMemo(() => {
     let eps = listEndpoints(side);
     const sel = value ? `${value.nodeId} ${value.socketKey}` : "";
-    // Conduit lanes hidden unless opted in; the selected endpoint survives
-    // every filter (same rule as the open-only one below).
+    // The selected endpoint survives every filter (same rule as the open-only one below).
     if (!showConduits) {
       eps = eps.filter((e) => `${e.nodeId} ${e.socketKey}` === sel || !isPlumbing(e.nodeId));
     }
     if (!openOnly) return eps;
-    // "Open" = no existing cable on that socket. The currently-selected one is
-    // always kept (so an edit prefill / current pick doesn't vanish).
+    // "Open" = no existing cable on that socket; the current pick is always kept.
     const used = new Set<string>();
     for (const c of getEditor()?.getConnections() ?? []) {
       used.add(side === "input" ? `${c.target}\u0000${c.targetInput}` : `${c.source}\u0000${c.sourceOutput}`);
@@ -67,8 +63,7 @@ function EndpointCombo({
   const [query, setQuery] = useState(value?.text ?? "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  // Sync the field text only when a value is actually set (prefill / pick) — not
-  // when typing clears the selection to null, which would wipe what was typed.
+  // Sync the field text only when a value is set — clearing to null would wipe typing.
   useEffect(() => { if (value) setQuery(value.text); }, [value]);
 
   const results = useMemo(() => {
@@ -124,7 +119,6 @@ function EndpointCombo({
   );
 }
 
-// ─── Dialog ───────────────────────────────────────────────────────────────────
 export function ConnectionDialog() {
   const req = useSyncExternalStore(connectionDialog.subscribe, connectionDialog.get);
   const [src, setSrc] = useState<Endpoint | null>(null);
@@ -136,7 +130,7 @@ export function ConnectionDialog() {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(!!req, dialogRef);
 
-  // Initialise from the request (edit prefill, or socket prefill, or blank).
+  // Initialize from the request (edit prefill, or socket prefill, or blank).
   useEffect(() => {
     if (!req) { initedFor.current = null; return; }
     if (initedFor.current === req) return;
@@ -180,7 +174,6 @@ export function ConnectionDialog() {
     const srcNode = editor.getNode(src.nodeId);
     const tgtNode = editor.getNode(tgt.nodeId);
     if (!srcNode || !tgtNode) return;
-    // Editing re-wires: drop the old cable first.
     if (req?.editId) { try { await editor.removeConnection(req.editId); } catch { /* gone */ } }
     // Single-connection inputs: replace whatever's already on the target.
     for (const c of editor.getConnections().filter((c) => c.target === tgt.nodeId && c.targetInput === tgt.socketKey)) {

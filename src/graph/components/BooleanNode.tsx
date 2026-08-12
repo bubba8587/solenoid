@@ -13,9 +13,7 @@ const OPS = (Object.keys(BOOLEAN_OP_META) as BooleanOp[]).map((op) => ({
   label: BOOLEAN_OP_META[op].label,
 }));
 
-// AND/OR/XOR/NAND/NOR/XNOR — all N-ary reducers over extensible operand rows.
-// (NOT is its own NotNode.) Every op emits the logical type, so switching the op
-// never swaps the output socket — only the result changes.
+// Every op emits the logical type, so an op switch never swaps the output socket.
 export function BooleanComponent({ data, emit }: NodeProps<BooleanOpNodeType>) {
   const [op, setOp] = useState<BooleanOp>(data.op);
   useEffect(() => { setOp(data.op); }, [data.op]);

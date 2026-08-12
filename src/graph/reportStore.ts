@@ -1,17 +1,8 @@
 import { createNotifier } from "./storeKit";
 
-// Open/close + dock state for the Report overlay (ReportOverlay.tsx) — module-level
-// singleton (like frStore) so both the ReportNode canvas card (a separate Rete
-// React root) and the main app root can open/close it. Tracks WHICH ReportNode is
-// open (a document may have more than one Report, even though the typical case is
-// one) rather than a bare boolean.
-//
-// DOCKED (desktop): instead of a centered modal, the report pins to the right side
-// of the page between the top chrome and the footer, and the canvas area (canvas,
-// minimap, pills, socket legend) is squeezed left. Driven by a root class
-// `html.sol-report-docked` (+ the `--report-dock-w` var) so plain CSS does the
-// shift. Opening a different report while docked just replaces the docked one
-// (single openNodeId). Closing undocks.
+// A module singleton so the ReportNode's own React root and the main app root both reach
+// it; it tracks WHICH report is open, since a document may hold more than one. Docking is
+// driven by the root class `html.sol-report-docked` so plain CSS does the layout shift.
 
 let _openNodeId: string | null = null;
 let _docked = false;

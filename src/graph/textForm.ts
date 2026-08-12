@@ -1,39 +1,3 @@
-// The text projection (the addressable model — decided session
-// in docs/subsystem-invariants.md "Addressable model"). A pure SavedGraph <-> text
-// conversion — no rete, no DOM, no live editor — mirroring the persistenceCore.ts /
-// groupPushCore.ts "pure core" pattern so it's unit-testable headlessly and reusable
-// by both persistence.ts (JSON generation, see serializeGraph) and any future CLI/AI
-// surface that reads or writes the text form directly.
-//
-// Grammar (one node per line, in topological/dependency order, ties broken
-// alphabetically by name):
-//
-//   Name: Type key="literal value" lit:key=0 str:key="text" input<-Other.output
-//
-// - `Name:` then `Type` (both bare identifiers).
-// - Then space-separated fields, each either:
-//     `key=<JSON-encoded value>`      — an `init` field (canonical order below)
-//     `lit:key=<JSON-encoded number>` — an inline numeric-input literal
-//     `str:key=<JSON-encoded string>` — an inline text-input literal
-//     `key<-SourceName.outputKey`     — an incoming connection (name-addressed)
-//   Field keys are restricted to `[A-Za-z_][A-Za-z0-9_:]*` so a value can always be
-//   told apart from the next field: it starts right after the first unescaped `=`
-//   or `<-`, and a JSON-encoded value never contains a top-level unquoted space.
-// - After the node lines: a blank "---" line, then one JSON block ("the sidecar")
-//   carrying everything that ISN'T node logic — position, manual size, per-node
-//   body-collapse, standoffs, pins, seedId, palette, packs, the save-format version.
-//   Node/standoff/pin references in the sidecar are also name-addressed.
-//
-// Canonicalization (so two writes of an unmodified graph are byte-identical):
-// numbers via JS's default `String(n)` (implicit in JSON.stringify for finite
-// numbers — no locale formatting, no fixed padding); every node's `init` fields in
-// the SAME fixed order copyPaste.ts's extractInit uses (INIT_FIELD_ORDER +
-// INIT_EXTRA_FIELD_ORDER), never alphabetical-by-key or insertion-order for those;
-// remaining (dynamically-keyed) init/literal fields and connections sorted
-// alphabetically, which is still fully deterministic even though it isn't a
-// "declared" order — there is no single declared order for a class's arbitrary
-// input-row keys the way there is for the whitelisted init fields.
-
 import type { SavedGraph, SavedNode, SavedConnection, SavedStandoff } from "./persistence";
 import type { Pin } from "./pinStore";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
@@ -41,13 +5,7 @@ import { NAME_RE, typePrefix, nextAvailableName } from "./nodeNaming";
 
 const SEPARATOR = "---";
 
-// ─── Name assignment (write side) ───────────────────────────────────────────────
-// Every node needs a final, unique, identifier-safe name before anything else can
-// be written (topo order tie-breaks on it too). Prefer the node's own saved name
-// if it's valid and not already claimed by an earlier node in file order;
-// otherwise synthesize a fresh type-scoped default — the same algorithm the live
-// nodeNameStore uses (nodeNaming.ts), just against a local taken-set instead of
-// the module singleton.
+// The same algorithm the live nodeNameStore uses, against a local taken-set.
 function assignNames(nodes: SavedNode[]): Map<string, string> {
   const idToName = new Map<string, string>();
   const taken = new Set<string>();
@@ -68,11 +26,8 @@ function assignNames(nodes: SavedNode[]): Map<string, string> {
   return idToName;
 }
 
-// ─── Topological order ──────────────────────────────────────────────────────────
-// Kahn's algorithm, picking the alphabetically-smallest-by-name ready node at each
-// step. Any leftover (a dependency cycle — a runtime #CIRC! concern, not something
-// the writer should choke on) is appended alphabetically by name so this never
-// throws or hangs on a pathological graph.
+// Kahn's, picking the alphabetically-smallest ready node; a leftover cycle is
+// appended alphabetically, so this never throws or hangs.
 function topoOrder(nodeIds: string[], connections: SavedConnection[], nameOf: (id: string) => string): string[] {
   const indeg = new Map<string, number>();
   for (const id of nodeIds) indeg.set(id, 0);
@@ -106,8 +61,6 @@ function topoOrder(nodeIds: string[], connections: SavedConnection[], nameOf: (i
   return [...order, ...leftover];
 }
 
-// ─── Canonical field ordering ────────────────────────────────────────────────────
-
 function canonicalEntries(obj: Record<string, unknown>): [string, unknown][] {
   const out: [string, unknown][] = [];
   const seen = new Set<string>();
@@ -122,8 +75,7 @@ function canonicalEntries(obj: Record<string, unknown>): [string, unknown][] {
   return out;
 }
 
-// ─── Field-token grammar (shared by writer + reader) ────────────────────────────
-
+// Field-token grammar, shared by writer + reader.
 const FIELD_KEY_RE = /^([A-Za-z_][A-Za-z0-9_:]*)(=|<-)/;
 
 function tokenizeFields(s: string): string[] {
@@ -158,23 +110,13 @@ function splitField(token: string): { key: string; op: "=" | "<-"; rest: string 
   return { key: m[1], op: m[2] as "=" | "<-", rest: token.slice(m[0].length) };
 }
 
-// A connection's source-output key is USER-CONTROLLED text when it comes from a
-// Note's frontmatter (`unit price: 5` → an output socket keyed "unit price" —
-// noteFrontmatter.ts allows spaces/dots/hyphens in keys). A bare key with a
-// space shears the token in two at the tokenizer (found by probe: `in<-
-// Note_1.unit price` → 'malformed field "price"' — and serializeGraph routes
-// every JSON save through this writer, so it broke SAVING such a doc). Emit
-// bare only when the tokenizer carries it intact (no space/quote/backslash — a
-// DOT is fine, the reader splits at the FIRST dot, node names are NAME_RE-safe
-// and never contain one); otherwise JSON-quote it, which tokenizeFields already
-// keeps whole. (targetInput keys are class-defined identifiers by construction,
-// FIELD_KEY_RE-safe — only the output side is user-controlled today.)
+// A Note's frontmatter makes the source-output key USER text, so emit it bare only
+// when the tokenizer carries it intact (a dot is fine — the reader splits at the
+// FIRST one), else JSON-quote it. Only the output side needs this.
 const BARE_OUTPUT_RE = /^[^"\\ ]+$/;
 function outputToken(key: string): string {
   return BARE_OUTPUT_RE.test(key) ? key : JSON.stringify(key);
 }
-
-// ─── Writer ──────────────────────────────────────────────────────────────────────
 
 export function writeTextForm(g: SavedGraph): string {
   const idToName = assignNames(g.nodes);
@@ -182,8 +124,6 @@ export function writeTextForm(g: SavedGraph): string {
   const order = topoOrder(g.nodes.map((n) => n.id), g.connections, nameOf);
   const byId = new Map(g.nodes.map((n) => [n.id, n]));
 
-  // Group incoming connections by target, so each node's line can pull just its
-  // own without a full-array scan per node.
   const incoming = new Map<string, SavedConnection[]>();
   for (const c of g.connections) {
     const arr = incoming.get(c.target);
@@ -201,10 +141,8 @@ export function writeTextForm(g: SavedGraph): string {
     const init: Record<string, unknown> = { ...sn.init };
     if (typeof init.hostNodeId === "string") init.hostNodeId = nameOf(init.hostNodeId);
     if (Array.isArray(init.members)) init.members = (init.members as unknown[]).map((m) => (typeof m === "string" ? nameOf(m) : m));
-    // Presentation steps each reference a node-id SET (the camera target). Like
-    // members, these are live ids on the instance — translate them to names so
-    // they stay addressable across a reload (rebuildGraph maps names back to fresh
-    // ids). Without this the steps survive but point at dead ids after reload.
+    // Presentation steps reference live node ids, so translate them to names or
+    // they point at dead ids after a reload.
     if (Array.isArray(init.steps)) {
       init.steps = (init.steps as Array<{ nodeIds?: unknown }>).map((s) => ({
         ...s,
@@ -254,12 +192,11 @@ export function writeTextForm(g: SavedGraph): string {
     sidecar.pins = g.pins.map((p) => ({ nodeId: nameOf(p.nodeId), outputKey: p.outputKey }));
   }
   if (g.comments && g.comments.length > 0) {
-    // Node-anchored, so name-address the nodeId like pins/standoffs (names ARE ids
-    // on read). The comment's own `id` is not a node reference — kept as-is.
+    // Name-address the nodeId like pins/standoffs; the comment's own `id` is not a
+    // node reference.
     sidecar.comments = g.comments.map((c) => ({ ...c, nodeId: nameOf(c.nodeId) }));
   }
   if (g.frameFormats && g.frameFormats.length > 0) {
-    // Per-column frame formats — name-address the nodeId like comments/pins.
     sidecar.frameFormats = g.frameFormats.map((f) => ({ ...f, nodeId: nameOf(f.nodeId) }));
   }
   if (g.seedId !== undefined) sidecar.seedId = g.seedId;
@@ -271,8 +208,6 @@ export function writeTextForm(g: SavedGraph): string {
   const header = lines.length > 0 ? lines.join("\n") + "\n" : "";
   return `${header}${SEPARATOR}\n${JSON.stringify(sidecar, null, 2)}\n`;
 }
-
-// ─── Reader ──────────────────────────────────────────────────────────────────────
 
 export function readTextForm(text: string): SavedGraph {
   const allLines = text.split("\n");
@@ -298,13 +233,8 @@ export function readTextForm(text: string): SavedGraph {
     names.add(p.name);
   }
 
-  // Names ARE the ids in the reconstructed SavedGraph — rete's rebuildGraph
-  // remaps every saved id to a fresh live id on load regardless of its shape
-  // (idMap), so there's no reason to invent a second opaque id alongside the
-  // name; using the name directly keeps the JSON generated from this text form
-  // just as addressable as the text itself.
-  // `hostNodeId`/`members` inside `init` are already names (the writer translated
-  // them) — and names ARE ids here, so no further translation is needed on read.
+  // Names ARE the ids in the reconstructed SavedGraph, so `hostNodeId`/`members`
+  // inside `init` need no further translation.
   const nodes: SavedNode[] = parsed.map((p) => {
     const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean };
     const sn: SavedNode = {
@@ -351,7 +281,7 @@ export function readTextForm(text: string): SavedGraph {
   return g;
 }
 
-function parseNodeLine(line: string): {
+export function parseNodeLine(line: string): {
   name: string;
   type: string;
   init: Record<string, unknown>;
