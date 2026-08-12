@@ -4,7 +4,7 @@
 
    The wrapping <span class="input-socket"|"output-socket"> is sized
    the same as the dot so rete-render-utils measures the right box
-   and cables land on the dot's centre. */
+   and cables land on the dot's center. */
 
 /* All three layers — our outer span, rete's wrapper span, the SVG —
    read the same size variable so width === height always. The dot
@@ -84,6 +84,18 @@
      sockets a much smaller target. */
   .solenoid-conduit .input-socket::before,
   .solenoid-conduit .output-socket::before {
+    inset: -2px;
+  }
+
+  /* While cabling, coarse targets must GROW past their resting -8px — without
+     this, the 2-class cabling rule above (-6px) outranks the media rule and
+     SHRINKS the target mid-drag. */
+  .solenoid-canvas--cabling .input-socket::before,
+  .solenoid-canvas--cabling .output-socket::before {
+    inset: -14px;
+  }
+  .solenoid-canvas--cabling .solenoid-conduit .input-socket::before,
+  .solenoid-canvas--cabling .solenoid-conduit .output-socket::before {
     inset: -2px;
   }
 }

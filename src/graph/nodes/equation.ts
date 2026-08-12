@@ -1,37 +1,41 @@
-// The Equation node — the first ACAUSAL node in the causal dataflow graph.
-// Type a relation ("V = I * R"); every variable becomes an input AND an output.
-// Leave exactly one variable unknown (unwired) and the node solves for it —
-// symbolically where the algebra inverts (equationSolve.ts), numerically
-// otherwise. Wire every variable and the always-present Check output turns
-// into a truth check with a relative tolerance. The card is wire-driven: a
-// variable is known ONLY through its cable — there is no inline-literal
-// fallback, so a save/seed can't carry an invisible hardcoded known.
-// Numeric domain only (scalars + 1-D lists; symbolic solving broadcasts).
+// ACAUSAL: every variable is both an input and an output, and the one UNWIRED
+// variable is solved for. Wire-driven by design — a variable is known ONLY through
+// its cable, so a save/seed can't carry an invisible hardcoded known.
 
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { dimEval, type DimEnv } from "../unitDimExpr";
+import { dimEval, dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, isDimensionless } from "../dimension";
 
 type Val = number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
 
-// ── Units through the equation (FC A4 consistency) ──────────────────────────────
-// A known wired in with a unit keeps it on its passthrough output, the numeric
-// engine runs on BASE-SI magnitudes (the same convention as the arithmetic
-// algebra), and the SOLVED unknown comes out in the unit the relation implies —
-// dimEval over the isolated expression (V = I × R solved for R ⇒ dim(V)/dim(I)).
-// A multi-occurrence unknown (a true quadratic) has no isolated form, so its unit
-// stays underived (bare result — honest, not guessed).
+// Units: the numeric engine runs on BASE-SI magnitudes, and the solved unknown's
+// unit is dimEval over the isolated expression — a multi-occurrence unknown has no
+// isolated form, so its unit stays underived rather than guessed.
 
 /** The dimension a wired value carries (first tagged cell of a list). */
 function dimOfVal(v: unknown): Dim {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) { for (const c of v) if (isUnitCell(c)) return c.dim; }
   return DIMENSIONLESS;
+}
+
+/** A currency's real identity (VAL-19), threaded through dimEval so `$P = €C`
+ *  refuses instead of holding by magnitude. */
+function codeOfVal(v: unknown, dim: Dim): string | undefined {
+  if (!dimEqual(dim, { currency: 1 })) return undefined;
+  const cells = Array.isArray(v) ? v : [v];
+  let code: string | undefined;
+  for (const c of cells) {
+    if (!isUnitCell(c) || c.display == null) continue;
+    if (code === undefined) code = c.display;
+    else if (code !== c.display) return undefined; // mixed within one input → lenient
+  }
+  return code;
 }
 
 /** Strip a value to base-SI magnitudes for the numeric engine. */
@@ -66,9 +70,8 @@ function checkEquals(l: Val, r: Val): boolean | (boolean | SolError | null)[] | 
   return equalsWithin(l, r);
 }
 
-/** Guard one evaluator result into the node-layer Val shape. A `UnitCell` counts
- *  as a number (its base magnitude is checked finite) so a tagged known passes
- *  through to its output with the unit intact. */
+/** A `UnitCell` counts as a number (its base magnitude is finite-checked) so a
+ *  tagged known reaches its output with the unit intact. */
 function guardVal(raw: unknown): Val {
   if (isSolError(raw)) return raw;
   if (isUnitCell(raw)) return Number.isFinite(raw.value) ? raw : null;
@@ -95,9 +98,7 @@ export class EquationNode extends ClassicPreset.Node {
   cachedError: string | null = null;
   /** Per-variable displayed value (solved or passthrough), by var name. */
   cachedValues: Record<string, Val> = {};
-  /** Optional prose explaining each variable (var name → description). Kept OUT
-   *  of the formula string (KaTeX never renders it); a card tooltip + a popup
-   *  legend. Display-only. */
+  /** Display-only prose per variable, kept OUT of the formula string. */
   varDescriptions: Record<string, string> = {};
   cachedHolds: boolean | (boolean | SolError | null)[] | SolError | null = null;
   /** The variable currently being solved for (accent highlight), or null. */
@@ -119,8 +120,7 @@ export class EquationNode extends ClassicPreset.Node {
     this.expr = init?.expr ?? "";
     this.locked = init?.locked ?? false;
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
-    // Output key stays "holds" (existing cables reference it); the user-facing
-    // name is "Check".
+    // Key stays "holds" (existing cables reference it); the user-facing name is Check.
     this.addOutput("holds", logicalComboOut("Check"));
     this._rebuild();
   }
@@ -203,15 +203,16 @@ export class EquationNode extends ClassicPreset.Node {
     }
     for (const v of this.varNames) if (!unknowns.includes(v)) values[v] = guardVal(env[v]);
 
-    // Units: capture each known's dimension (for dimEval + the solved unknown's
-    // derivation), then run the numeric engine on BASE-SI magnitudes — the same
-    // convention as the arithmetic algebra.
+    // Capture each known's dimension BEFORE stripping to base-SI magnitudes.
     const dims: DimEnv = {};
+    const codes: CodeEnv = {};
     let anyDim = false;
     for (const v of this.varNames) {
       if (unknowns.includes(v)) continue;
       const d = dimOfVal(env[v]);
       dims[v] = d;
+      const code = codeOfVal(env[v], d);
+      if (code !== undefined) codes[v] = code;
       if (!isDimensionless(d)) anyDim = true;
     }
     if (anyDim) for (const k of Object.keys(env)) env[k] = toBaseVal(env[k]);
@@ -221,15 +222,20 @@ export class EquationNode extends ClassicPreset.Node {
     }
 
     if (unknowns.length === 0) {
-      // Fully determined → dimensional consistency FIRST (comparing a metre to a
-      // second can't "hold"), then the numeric truth check on base magnitudes.
+      // Dimensional consistency FIRST — a metre can't "hold" against a second.
       if (anyDim) {
-        const dl = dimEval(this.equation.lhs, dims);
-        const dr = dimEval(this.equation.rhs, dims);
+        const dl = dimEvalWithCode(this.equation.lhs, dims, codes);
+        const dr = dimEvalWithCode(this.equation.rhs, dims, codes);
         if (isSolError(dl)) { this.cachedHolds = dl; return finish(null); }
         if (isSolError(dr)) { this.cachedHolds = dr; return finish(null); }
-        if (dl !== null && dr !== null && !dimEqual(dl, dr)) {
+        if (dl !== null && dr !== null && !dimEqual(dl.dim, dr.dim)) {
           this.cachedHolds = unitError("The two sides carry different units.");
+          return finish(null);
+        }
+        // Different CURRENCIES share the dimension but can't be equated (VAL-19):
+        // `$5 = €5` must refuse, not "hold" by base magnitude.
+        if (dl !== null && dr !== null && dl.code !== undefined && dr.code !== undefined && dl.code !== dr.code) {
+          this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code} — different currencies, no exchange rate.`);
           return finish(null);
         }
       }
@@ -246,10 +252,8 @@ export class EquationNode extends ClassicPreset.Node {
     // Exactly one unknown → solve.
     const unknown = unknowns[0];
     this.solvedFor = unknown;
-    // Derive the unknown's UNIT from the relation: dimEval over the isolated
-    // expression with the knowns' dims (V = I × R solved for R ⇒ dim(V)/dim(I)).
-    // No isolated form (a true quadratic — the unknown appears twice) ⇒ the unit
-    // stays underived and the value is bare; inconsistent knowns ⇒ #UNIT!.
+    // No isolated form (the unknown appears twice) ⇒ the unit stays underived and
+    // the value is bare; inconsistent knowns ⇒ #UNIT!.
     const tagUnknown = () => {
       if (!anyDim || !this.equation) return;
       const raw = values[unknown];
@@ -261,7 +265,7 @@ export class EquationNode extends ClassicPreset.Node {
           ? isolate(eq.rhs, eq.lhs, unknown)
           : null;
       if (!iso) return;
-      const dr = dimEval(iso, dims);
+      const dr = dimEval(iso, dims, codes);
       if (isSolError(dr)) { values[unknown] = dr; return; }
       if (dr === null || isDimensionless(dr)) return;
       const tag = (n: number | UnitCell | SolError | null) => (typeof n === "number" ? tagDim(n, dr) : n);
@@ -273,9 +277,8 @@ export class EquationNode extends ClassicPreset.Node {
     if (errIn) { values[unknown] = errIn as SolError; return finish(null); }
     if (knownVals.some((k) => k === null)) { values[unknown] = null; return finish(null); }
 
-    // With scalar knowns, check for a QUADRATIC in the unknown before anything
-    // else — symbolic isolation would keep only the principal root (x² = 36
-    // must yield [−6, 6], not 6). Degree ≤ 1 returns null and falls through.
+    // The QUADRATIC check must precede symbolic isolation, which would keep only
+    // the principal root (x² = 36 must yield [−6, 6], not 6).
     const lhs = this.lhsEval, rhs = this.rhsEval;
     const scalarKnowns = !knownVals.some(Array.isArray);
     const residual = (x: number): number | null => {

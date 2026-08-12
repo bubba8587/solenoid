@@ -3,21 +3,20 @@ import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
 import { COND_AGG_OP_META } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
+import { stopDragStart } from "../coarse";
+import { dropInputCables } from "./cablePrune";
 
 const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   value: op,
   label: COND_AGG_OP_META[op].label,
 }));
 
-// Excel's SUMIFS mental model over ONE FRAME (D16, amended): pick the op, name
-// the Values column, and add criteria rows (column + op + value, AND-combined
-// like the *IFS family). The frame Filter's condition-row UI plus an aggregate.
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
   const [op, setOp] = useNodeField(data, "op");
@@ -48,14 +47,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   }
 
   async function removePair(colKey: string, valKey: string) {
-    const editor = getActiveEditor();
-    if (editor) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && (c.targetInput === colKey || c.targetInput === valKey)) {
-          await editor.removeConnection(c.id);
-        }
-      }
-    }
+    await dropInputCables(data.id, [colKey, valKey]);
     pushRowRemovalUndo(data, [colKey, valKey], () => data.removeValuePair(colKey));
     data.removeValuePair(colKey);
     await getActiveArea()?.update("node", data.id);
@@ -100,7 +92,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
                 </button>
               )}
             </MeasuredSocketRow>
-            <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
+            <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
             <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
               <span className="solenoid-node__io-label">Value</span>
               {connected.has(valKey) ? (
@@ -114,7 +106,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
                   title="Match case. Off matches text like Excel's = does."
                   aria-pressed={c.matchCase ?? false}
                   onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={stopDragStart}
                   onMouseDown={(e) => e.stopPropagation()}
                   style={{
                     flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",

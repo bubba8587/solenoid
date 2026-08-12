@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canConnect, areCompatible, type SocketDataType } from "./sockets";
+import { canConnect, areCompatible, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 
 // Directional connection rule, DERIVED from the (element × dimension) lattice in
 // sockets.ts: widening up the dimensionality ladder (scalar → list → combo →
@@ -51,7 +51,7 @@ describe("canConnect (directional)", () => {
     expect(canConnect("list", "numlist")).toBe(true);
     expect(canConnect("string", "strcombo")).toBe(true);
     expect(canConnect("date", "datecombo")).toBe(true);
-    // numlist→numlist still fine; numlist→list keeps its old (symmetric) behaviour.
+    // numlist→numlist still fine; numlist→list keeps its old (symmetric) behavior.
     expect(canConnect("numlist", "numlist")).toBe(true);
   });
 
@@ -184,6 +184,12 @@ describe("logical family — lattice derivation falls out automatically", () => 
     expect(canConnect("number", "logical")).toBe(true);       // a 0/1 → a logic input
     expect(canConnect("list", "logicallist")).toBe(true);
     expect(canConnect("logicaltable", "number")).toBe(false); // rank still can't narrow
+    // combo→scalar mirrors ACROSS the bridge too: EXACT/Comparison emit
+    // `logicalcombo`, and a combo can be a scalar, so it reaches a `number` input
+    // exactly as a bare `logical` does. A plain `logicallist` still cannot.
+    expect(canConnect("logicalcombo", "number")).toBe(true);
+    expect(canConnect("numlist", "logical")).toBe(true);
+    expect(canConnect("logicallist", "number")).toBe(false);
   });
 });
 
@@ -209,18 +215,24 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
   const bridged = (a: string, b: string) =>
     (a === "number" && b === "logical") || (a === "logical" && b === "number");
 
+  // The whole dimensional policy (sockets.ts `dimFlows`): widen up the rank ladder,
+  // plus the one exception — a COMBO may narrow into its element SCALAR.
+  const dimFlows = (dOut: keyof typeof RANK, dIn: keyof typeof RANK) =>
+    RANK[dOut] <= RANK[dIn] || (dOut === "combo" && dIn === "scalar");
+
   it("WITHIN a family: a value widens UP (+ combo→scalar), and never narrows", () => {
     for (const f of fams) for (const dOut of DIMS) for (const dIn of DIMS) {
-      const expected = RANK[dOut] <= RANK[dIn] || (dOut === "combo" && dIn === "scalar");
-      expect(canConnect(FAM[f][dOut], FAM[f][dIn])).toBe(expected);
+      expect(canConnect(FAM[f][dOut], FAM[f][dIn])).toBe(dimFlows(dOut, dIn));
     }
   });
 
-  it("CROSS-family is blocked everywhere EXCEPT logical↔number (rank-mirrored)", () => {
+  // The bridge mirrors the within-family rule EXACTLY — same predicate, so the
+  // combo→scalar exception can't apply on one side and not the other.
+  it("CROSS-family is blocked everywhere EXCEPT logical↔number (dim-mirrored)", () => {
     for (const fOut of fams) for (const fIn of fams) {
       if (fOut === fIn) continue;
       for (const dOut of DIMS) for (const dIn of DIMS) {
-        const expected = bridged(fOut, fIn) && RANK[dOut] <= RANK[dIn];
+        const expected = bridged(fOut, fIn) && dimFlows(dOut, dIn);
         expect(canConnect(FAM[fOut][dOut], FAM[fIn][dIn])).toBe(expected);
       }
     }
@@ -314,6 +326,37 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
     expect(canConnect("anylist", "cube")).toBe(true);
   });
 
+  // `anycombo` — the element-agnostic COMBO (2026-07-25), what `numlist` is to
+  // `number`. It ACCEPTS exactly what `anylist` accepts; the two differ only in
+  // COERCION (a scalar stays a scalar here — coerceInputs), which is what let it
+  // replace the `noWidenInputs` side-channel on Expression's variables. Its OUTPUT
+  // may BE a scalar, so unlike `anylist` it also reaches a scalar input.
+  it("anycombo INPUT: accepts exactly what anylist accepts", () => {
+    for (const f of fams) for (const d of DIMS) {
+      expect(canConnect(FAM[f][d], "anycombo")).toBe(canConnect(FAM[f][d], "anylist"));
+    }
+    expect(canConnect("anylist", "anycombo")).toBe(true);
+    expect(canConnect("anycombo", "anycombo")).toBe(true);   // identity
+    expect(canConnect("anytable", "anycombo")).toBe(false);  // still no 2-D → 1-D
+    expect(canConnect("frame", "anycombo")).toBe(false);
+  });
+
+  it("anycombo OUTPUT: reaches a SCALAR too (that's the whole difference from anylist)", () => {
+    for (const f of fams) {
+      expect(canConnect("anycombo", FAM[f].scalar)).toBe(true);  // anylist cannot
+      expect(canConnect("anycombo", FAM[f].list)).toBe(true);
+      expect(canConnect("anycombo", FAM[f].combo)).toBe(true);
+      expect(canConnect("anycombo", FAM[f].matrix)).toBe(true);  // widening up
+    }
+    expect(canConnect("anycombo", "anytable")).toBe(true);
+    expect(canConnect("anycombo", "frame")).toBe(true);
+    expect(canConnect("anycombo", "cube")).toBe(true);
+    // The object family stays out of reach, exactly as for `any`.
+    for (const t of ["lambda", "chart", "document"] as SocketDataType[]) {
+      expect(canConnect("anycombo", t)).toBe(false);
+    }
+  });
+
   // The OBJECT socket family (`lambda`, `chart`, `document`) sits OUTSIDE the
   // element×dimension lattice entirely — none is in FAMILIES/MATRIX_TYPES/
   // FAMILY_VALUE_TYPES, so `accepts()` falls through to identity + `trueany` only
@@ -386,5 +429,62 @@ describe("cube — universal recursive container (lattice supremum)", () => {
   it("areCompatible(cube, …) is symmetric over everything it accepts", () => {
     expect(areCompatible("cube", "frame")).toBe(true);
     expect(areCompatible("number", "cube")).toBe(true);
+  });
+});
+
+// ─── The two projection helpers agree wherever both apply ────────────────────
+// `adoptTypeForBase` (INPUT side — what a port becomes when a cable lands) and
+// `projectTypeToBase` (OUTPUT side — what a resolved type becomes on an adoptive
+// output) are near-duplicates with different tie-breaks, and nothing forced them to
+// stay consistent. They disagreed on a CONNECTABLE pair until 2026-07-25: a
+// family-less wire (another wildcard) made `adoptTypeForBase` return the wire
+// verbatim, so a `trueany` cable into a Concat-Lists row turned that row INTO a
+// `trueany` port — which then accepted a frame or a lambda, breaking the restriction
+// AdoptiveSocket's own contract promises ("a narrower base keeps the port RESTRICTED
+// to that rung's acceptance").
+describe("adoptTypeForBase / projectTypeToBase — one answer per connectable pair", () => {
+  const RANK_BASES = ["anylist", "anytable"] as const;
+  const EVERY: SocketDataType[] = [
+    "number","list","numlist","table","string","strlist","strcombo","strtable",
+    "date","datelist","datecombo","datetable","complex","complexlist","complexcombo","complextable",
+    "logical","logicallist","logicalcombo","logicaltable","anytable","anylist","anycombo","anydata",
+    "frame","cube","lambda","chart","document","any","trueany",
+  ];
+
+  it("they agree for every type that can legally connect into the base", () => {
+    for (const base of RANK_BASES) for (const t of EVERY) {
+      if (!canConnect(t, base)) continue; // outside the domain adoption is ever asked about
+      expect(`${base}|${t}|${adoptTypeForBase(base, t)}`).toBe(`${base}|${t}|${projectTypeToBase(base, t)}`);
+    }
+  });
+
+  it("a rank-bearing port KEEPS its rung when a wildcard lands on it", () => {
+    for (const base of RANK_BASES) for (const w of ["any", "anylist", "anycombo", "trueany"] as SocketDataType[]) {
+      if (!canConnect(w, base)) continue;
+      expect(adoptTypeForBase(base, w)).toBe(base);
+    }
+    // …so the port still refuses what its rung refuses.
+    expect(canConnect("frame", adoptTypeForBase("anylist", "trueany"))).toBe(false);
+    expect(canConnect("lambda", adoptTypeForBase("anylist", "trueany"))).toBe(false);
+    expect(canConnect("table", adoptTypeForBase("anylist", "trueany"))).toBe(false);
+  });
+
+  it("but a CONCRETE wire is still adopted, at the port's rank", () => {
+    expect(adoptTypeForBase("anylist", "date")).toBe("datelist");    // scalar widens to the rung
+    expect(adoptTypeForBase("anylist", "datelist")).toBe("datelist"); // same rank, verbatim
+    expect(adoptTypeForBase("anytable", "strlist")).toBe("strtable");
+    expect(adoptTypeForBase("anytable", "logicaltable")).toBe("logicaltable");
+    // A `trueany` BASE has no rank to keep, so it adopts anything verbatim.
+    expect(adoptTypeForBase("trueany", "frame")).toBe("frame");
+    expect(adoptTypeForBase("trueany", "lambda")).toBe("lambda");
+  });
+
+  // The one place they still differ is OUTSIDE that domain, and deliberately: an
+  // adoptive OUTPUT projects a rank-CROSSING reshape down as well as up (TOCOL:
+  // strtable in → strlist out), which no legal INPUT connection can ask for.
+  it("only the OUTPUT side projects DOWN a rank, and that pair never connects", () => {
+    expect(projectTypeToBase("anylist", "strtable")).toBe("strlist");
+    expect(adoptTypeForBase("anylist", "strtable")).toBe("strtable");
+    expect(canConnect("strtable", "anylist")).toBe(false);
   });
 });

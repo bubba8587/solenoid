@@ -2,17 +2,13 @@ import { useSyncExternalStore } from "react";
 import { isolateStore } from "../isolateStore";
 import "./isolatePill.css";
 
-/**
- * A small floating "Isolated — Esc to exit" pill, shown only while isolation is
- * active so the user can't get lost in a local view. Click it (or press Esc, or
- * "I") to exit. Viewport-fixed, rendered in the main React root.
- */
+/** The floating pill shown while isolation is active, so a local view can't be
+ *  mistaken for the whole graph. */
 export function IsolatePill() {
   useSyncExternalStore(isolateStore.subscribe, isolateStore.version);
   if (!isolateStore.isActive()) return null;
   const count = isolateStore.get()?.size ?? 0;
-  // A directional mode (Where used) labels itself and counts "downstream" —
-  // the dim visual is shared, so the pill is what distinguishes the gestures.
+  // The dim visual is shared, so the pill is what distinguishes the gestures.
   const mode = isolateStore.mode();
   return (
     <button

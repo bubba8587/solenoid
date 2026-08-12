@@ -14,7 +14,7 @@
 .solenoid-cmdpalette {
   position: fixed;
   left: 50%;
-  bottom: 40px;
+  bottom: calc(var(--chrome-bottom, 19px) + 21px);
   transform: translateX(-50%);
   width: min(480px, calc(100vw - 32px));
   font-family: inherit;
@@ -33,6 +33,7 @@
   box-shadow: var(--overlay-shadow);
   padding: 3px;
   max-height: min(320px, 50vh);
+  max-height: min(320px, 50dvh);
   overflow-y: auto;
 }
 
@@ -71,6 +72,12 @@
   font-size: 11px;
 }
 
+/* Wraps the input so the sparkle can sit inside the field's right edge. */
+.solenoid-cmdpalette__field {
+  position: relative;
+  display: flex;
+}
+
 .solenoid-cmdpalette__input {
   width: 100%;
   box-sizing: border-box;
@@ -91,6 +98,181 @@
 .solenoid-cmdpalette__input::-webkit-search-cancel-button,
 .solenoid-cmdpalette__input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
 
+/* ── AI mode ──────────────────────────────────────────────────────────────────
+   The sparkle switches the palette from running commands to asking the AI. It only
+   exists once an AI account is connected (Settings ▸ AI), so an unconnected app is
+   visually unchanged.
+
+   Filling the palette with the accent is a deliberate, narrow exception to the Quiet
+   Accent Rule, which permits a colored surface when it "is colored because something
+   about its state or type is being communicated". The whole point here is that Enter
+   now does something categorically different, and a small badge would be too quiet a
+   signal for a mode that reroutes the primary action. Flat accent + --accent-ink (the
+   app-wide readable-on-accent token, so it tracks a user-swapped accent and both
+   themes) — no gradient, no glow, nothing that reads as the AI-startup look. */
+.solenoid-cmdpalette__ai {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  /* 24px box + a 16px glyph: both even, so the icon centers on whole pixels. */
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.solenoid-cmdpalette__ai:hover { color: var(--text-bright); }
+/* Room for the button so a long query never runs under it. Keyed on a modifier the
+   field carries only when the button renders, so an app with no AI key keeps the
+   original symmetric padding. */
+.solenoid-cmdpalette__field--ai .solenoid-cmdpalette__input { padding-right: 38px; }
+
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__input,
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__results {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__input::placeholder {
+  color: color-mix(in srgb, var(--accent-ink) 62%, transparent);
+}
+/* Sub-surfaces are tints of the ink rather than new colors, so the whole panel
+   stays one accent field however the accent is swapped (the documentTitle pattern). */
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__item:hover,
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__item--active {
+  background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+}
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__sub,
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__shortcut {
+  color: color-mix(in srgb, var(--accent-ink) 65%, transparent);
+}
+.solenoid-cmdpalette--ai .solenoid-cmdpalette__ai {
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent-ink) 16%, transparent);
+}
+
+/* ── AI turn output ───────────────────────────────────────────────────────────
+   The panel above the prompt field carrying the turn's result. A NEUTRAL overlay
+   surface (the accent stays on the input, marking the mode); diff-line tints are
+   state colors per the Quiet Accent Rule — success = added, danger = removed. */
+.solenoid-cmdpalette__airesult {
+  order: -1;
+  margin-bottom: 4px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 6px;
+  box-shadow: var(--overlay-shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.solenoid-cmdpalette__aibusy { color: var(--text-dim); font-size: 12px; padding: 2px 4px; }
+
+.solenoid-cmdpalette__aianswer {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 4px;
+  white-space: pre-wrap;
+  max-height: min(280px, 40vh);
+  max-height: min(280px, 40dvh);
+  overflow-y: auto;
+}
+
+/* Status hues are the DESIGN.md literals (the codebase pattern — no app-wide
+   status vars; errorChip.css does the same), shared across both themes. */
+.solenoid-cmdpalette__aierror {
+  color: #e0473a;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 4px;
+  white-space: pre-wrap;
+  max-height: min(280px, 40vh);
+  max-height: min(280px, 40dvh);
+  overflow-y: auto;
+}
+
+.solenoid-cmdpalette__aidiff {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 0;
+  max-height: min(280px, 40vh);
+  max-height: min(280px, 40dvh);
+  overflow: auto;
+}
+.solenoid-cmdpalette__aidiffline { padding: 0 8px; white-space: pre; }
+.solenoid-cmdpalette__aidiffline--add { background: color-mix(in srgb, #2fae7a 14%, transparent); }
+.solenoid-cmdpalette__aidiffline--del {
+  background: color-mix(in srgb, #e0473a 12%, transparent);
+  color: var(--text-dim);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, #e0473a 55%, transparent);
+}
+
+.solenoid-cmdpalette__aiwarnings { color: #d9a93b; font-size: 11px; line-height: 1.4; padding: 0 4px; }
+
+.solenoid-cmdpalette__aiactions { display: flex; justify-content: flex-end; gap: 6px; }
+.solenoid-cmdpalette__aibtn {
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.solenoid-cmdpalette__aibtn:hover { background: var(--btn-hover); border-color: var(--btn-border-hover); }
+/* The one confirming action: accent-filled with the readable-on-accent ink. */
+.solenoid-cmdpalette__aibtn--apply {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.solenoid-cmdpalette__aibtn--apply:hover { background: var(--accent); filter: brightness(1.06); }
+
+/* ── AI-added node reveal (aiReveal.ts) ───────────────────────────────────────
+   New nodes from an applied AI edit settle in: fade + a small rise, staggered.
+   The class sits on rete's node holder; the animation runs on the CHILD card
+   root so the holder's translate positioning stays untouched. `backwards` fill
+   keeps a delayed node hidden until its turn. Short and functional. */
+.solenoid-ainew > * {
+  animation: solenoid-ainew-in 480ms ease var(--ainew-delay, 0ms) backwards;
+}
+@keyframes solenoid-ainew-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .solenoid-ainew > * { animation: none; }
+}
+
+/* The transform between the two states. Short and functional per DESIGN.md's motion
+   rule — long enough to read as a change of mode, not a choreographed reveal. The
+   transition lives on the resting rules so it plays in BOTH directions. */
+.solenoid-cmdpalette__input,
+.solenoid-cmdpalette__results {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .solenoid-cmdpalette__input,
+  .solenoid-cmdpalette__results,
+  .solenoid-cmdpalette__ai { transition: none; }
+}
+
 /* Mobile: the on-screen keyboard owns the bottom half of the viewport, so the
    palette anchors to the TOP with the input first and results below it
    (desktop keeps the Spotlight-style input-at-bottom). Rows get touch-sized
@@ -101,11 +283,13 @@ html.is-mobile .solenoid-cmdpalette {
   top: calc(env(safe-area-inset-top, 0px) + 92px);
   bottom: auto;
 }
-html.is-mobile .solenoid-cmdpalette__results {
+html.is-mobile .solenoid-cmdpalette__results,
+html.is-mobile .solenoid-cmdpalette__airesult {
   order: 1;
   margin-bottom: 0;
   margin-top: 4px;
   max-height: 38vh;
+  max-height: 38dvh;
 }
 html.is-mobile .solenoid-cmdpalette__item { padding: 11px 12px; }
 html.is-mobile .solenoid-cmdpalette__shortcut { display: none; }

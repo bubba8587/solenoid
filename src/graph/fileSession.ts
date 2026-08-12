@@ -1,8 +1,5 @@
-// Disk-file save/open — the primary file flow. On desktop these use native OS
-// dialogs and write real .json files; in the browser they fall back to a download
-// / file-input upload (no persistent path). The localStorage documents library
-// (documentStore) stays the working store + crash-recovery + recents; a document
-// can be bound to a disk path, and Save writes straight through to it.
+// Disk save/open: native dialogs on desktop, download / file-input in the browser. The
+// documentStore library stays the working store; a doc bound to a path saves through to it.
 
 import { serializeGraph, type SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";
@@ -23,24 +20,19 @@ function suggestedName(): string {
   return /\.json$/i.test(n) ? n : `${n}.json`;
 }
 
-/**
- * Save the current graph to disk. With an existing bound path and no forceDialog,
- * writes straight through (Ctrl+S on an already-saved file); otherwise shows a
- * Save dialog and binds the document to the chosen path. In the browser this
- * downloads a .json (no path to bind).
- */
+/** Writes straight through when a path is bound and forceDialog is off; otherwise prompts
+ *  and binds the document to the chosen path. */
 export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<void> {
   documentStore.captureCurrent(); // freshen the localStorage copy first
   try {
     if (isDesktop()) {
-      // Resolve the destination FIRST: locally-attached images bundle into an
-      // images/ folder beside it (stamping each node's assetPath), and the JSON
-      // serialized after that carries those paths.
+      // Resolve the destination FIRST — bundling images stamps assetPaths that the JSON
+      // serialized afterwards must carry.
       let path = documentStore.currentFilePath();
       let fresh = false;
       if (!path || opts.forceDialog) {
         path = await pickSaveGraphPath(suggestedName());
-        if (!path) return; // cancelled
+        if (!path) return; // canceled
         fresh = true;
       }
       const { failed } = await bundleLocalImages(path);
@@ -55,8 +47,7 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       }
       return;
     }
-    // Browser: no filesystem to bundle into — plain JSON download, and the
-    // browser's own download UI is the confirmation (no toast).
+    // No filesystem to bundle into; the browser's own download UI is the confirmation.
     const g = serializeGraph();
     if (!g) return;
     await saveTextFileDialog(suggestedName(), JSON.stringify(g, null, 2));
@@ -76,7 +67,7 @@ export async function openFromDisk(): Promise<void> {
     pushNotice("Couldn't open the file picker.", "error", 0);
     return;
   }
-  if (!res) return; // cancelled
+  if (!res) return; // canceled
 
   let graph: SavedGraph;
   try {

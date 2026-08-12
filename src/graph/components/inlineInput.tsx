@@ -4,29 +4,23 @@ import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
 import { connectionVersionStore, processGraph, pushHistory } from "../process";
-import { getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
+import { stopDragStart } from "../coarse";
 
-// Vertical pitch between input rows. Socket *placement* no longer uses a fixed
-// top offset — each input dot centers on its own row via CSS (.solenoid-node__io-row
-// sets --out-socket-top: 50%), so it's immune to header height. PITCH is still
-// used to size nodes whose body grows by row count (e.g. Expression).
+// Sizes nodes whose body grows by row count; socket PLACEMENT never uses it — each
+// dot centers on its own row via CSS, immune to header height.
 export const INPUT_ROW_PITCH = 28;
 
-/**
- * Set of input-socket keys on `nodeId` that currently have an incoming
- * cable. Derived fresh on every render (cheap: one pass over connections);
- * the version subscription only forces a render the instant a cable lands
- * or leaves. Deriving at render time (not caching in state) means anything
- * else that re-renders the node — e.g. processGraph after a source-node
- * rename — also picks up current graph state, with no stale snapshot.
- */
+/** Input-socket keys with an incoming cable, derived at render time (never cached in
+ *  state) so any re-render picks up current graph state with no stale snapshot. */
 export function useConnectedInputs(nodeId: string): Set<string> {
-  // getOwningEditor, not getEditor: a node INSIDE a composite drill-in must read
-  // its own graph's connections, or its wired rows render as unwired there.
+  // getOwningEditor, not getEditor: a node inside a drill-in must read its own graph's
+  // connections, or its wired rows render as unwired.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const conns = getOwningEditor(nodeId)?.getConnections() ?? [];
   const set = new Set<string>();
@@ -38,14 +32,8 @@ export function useConnectedInputs(nodeId: string): Set<string> {
 
 export type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
 
-/**
- * Per-input-key info about the cable feeding it — who drives this input, not
- * just THAT it's driven. The wired marker and the formula-override rows render
- * the source node's label from this so the connection is legible in place.
- * Derived at render time for the same reason as useConnectedInputs: the label
- * lives on the source node and changes on rename (which re-renders every node
- * via processGraph), not only on connection changes.
- */
+/** Who drives each input, not just THAT it's driven; derived at render time because
+ *  the source label changes on rename, not only on connection changes. */
 export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const editor = getOwningEditor(nodeId); // own graph inside a drill-in (see above)
@@ -53,8 +41,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
   for (const c of editor?.getConnections() ?? []) {
     if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
     const src = editor?.getNode(c.source);
-    // An unlabeled source shows its catalog name as its header PLACEHOLDER, so the
-    // wire marker mirrors that (e.g. "↩ Expression") instead of a bare "wired".
+    // An unlabeled source falls back to its catalog name, as its header placeholder does.
     const srcLabel = (src as { label?: string } | undefined)?.label?.trim();
     map.set(c.targetInput, {
       sourceId: c.source,
@@ -68,14 +55,8 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
 /** `parse` result for a draft that can't become a value (commit reverts). */
 export const INVALID_DRAFT = Symbol("invalid-draft");
 
-/**
- * Commit-on-Enter/clickaway editing for a typed field — the project-wide rule:
- * typing NEVER propagates into the graph; the draft lives locally until Enter
- * or blur commits it (Escape reverts), like Excel's cell editing. One undo
- * entry per committed change. Wire the returned props onto the input and call
- * `apply` with the mirror-to-node + processGraph logic; don't call processGraph
- * from onChange.
- */
+/** Commit-on-Enter/clickaway editing: typing NEVER propagates into the graph, and one
+ *  undo entry per commit. `apply` owns the mirror + processGraph — never onChange. */
 export function useDraftCommit<T>(
   committed: T,
   toText: (v: T) => string,
@@ -83,12 +64,12 @@ export function useDraftCommit<T>(
   apply: (v: T) => void,
 ) {
   const [draft, setDraft] = useState(() => toText(committed));
-  const cancelled = useRef(false);
+  const canceled = useRef(false);
   // Resync when the committed value changes underneath us (undo, external edit).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(toText(committed)); }, [committed]);
   const onBlur = () => {
-    if (cancelled.current) { cancelled.current = false; setDraft(toText(committed)); return; }
+    if (canceled.current) { canceled.current = false; setDraft(toText(committed)); return; }
     const next = parse(draft);
     if (next === INVALID_DRAFT || Object.is(next, committed)) {
       setDraft(toText(committed)); // revert / normalize ("5." → "5")
@@ -99,7 +80,7 @@ export function useDraftCommit<T>(
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-    else if (e.key === "Escape") { cancelled.current = true; e.currentTarget.blur(); }
+    else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return { draft, setDraft, onBlur, onKeyDown };
 }
@@ -111,38 +92,28 @@ const parseNum = (t: string): number | undefined | typeof INVALID_DRAFT => {
   return Number.isFinite(n) ? n : INVALID_DRAFT;
 };
 
-// Scrubbing: drag the field to move the value, without derailing a plain click
-// (which must still focus + place a caret for typing). A gesture only becomes a
-// "drag" once the pointer clears this threshold; under it, pointerup is a no-op
-// and the native click/focus proceeds untouched.
+// A gesture becomes a drag only past this threshold; under it pointerup is a no-op so
+// a plain click still focuses and places a caret.
 const SCRUB_MOVE_THRESHOLD = 4; // px
 const SCRUB_PX_PER_STEP = 6; // px of drag per unit step, at the unmodified rate
 
 type ScrubState = { startX: number; startY: number; startValue: number; currentValue: number; dragging: boolean };
 
-/** Pointer handlers for drag-to-scrub on a number field. Shared by the per-row
- *  inline literals AND the Number Input's main field (which shipped without
- *  scrub handlers at all — the "scrubber is bugged" report). `showValue` is the
- *  live draft preview (also called to revert on cancel); `commitValue` applies
- *  the final value and owns its undo entry. */
+/** Drag-to-scrub handlers for a number field: `showValue` previews the live draft (and
+ *  reverts on cancel), `commitValue` applies the final value and owns its undo entry. */
 export function useNumberScrub(
   committed: number | undefined,
   showValue: (v: number | undefined) => void,
   commitValue: (next: number) => void,
 ) {
   const dragRef = useRef<ScrubState | null>(null);
-  // The Escape listener is added imperatively (keydown during a drag isn't
-  // guaranteed to land on the input — it's blurred the moment a drag engages),
-  // so it needs its own ref to unbind on unmount if a drag is interrupted by
-  // e.g. the node being deleted mid-scrub.
+  // The Escape listener is window-level because a drag blurs the input, so it needs its
+  // own ref to unbind when a drag is interrupted.
   const escRef = useRef<((e: KeyboardEvent) => void) | null>(null);
   useEffect(() => () => {
     if (escRef.current) window.removeEventListener("keydown", escRef.current);
-    // Unmount MID-DRAG (node deleted while scrubbing — dragging blurs focus, so
-    // Delete reaches the canvas; also Undo/doc-switch): endDrag never runs, so
-    // clear the drag state and the app-wide ns-resize cursor class here too.
-    // Gated on THIS field owning a live drag, so an unrelated field unmounting
-    // can't strip the class out from under another field's active scrub.
+    // On an unmount MID-DRAG endDrag never runs; gated on THIS field owning the drag so
+    // an unrelated unmount can't strip the cursor class from an active scrub.
     if (dragRef.current) {
       dragRef.current = null;
       document.body.classList.remove("solenoid-scrubbing");
@@ -157,8 +128,6 @@ export function useNumberScrub(
     document.body.classList.remove("solenoid-scrubbing");
     if (!d || !d.dragging) return; // was a plain click — nothing to revert or commit
     if (commit) {
-      // Mirrors useDraftCommit's onBlur commit sequence (apply → one undo entry),
-      // just triggered by pointerup instead of blur/Enter.
       if (!Object.is(d.currentValue, committed)) commitValue(d.currentValue);
     } else {
       showValue(d.startValue);
@@ -198,11 +167,8 @@ export function useNumberScrub(
       document.body.classList.add("solenoid-scrubbing");
     }
     const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
-    // Shift = coarse (10x), Alt = fine (0.1x), unmodified = 1 unit per
-    // SCRUB_PX_PER_STEP px. Steps are counted first, THEN scaled: the old
-    // Math.round(steps × mult) rounded the whole product to an integer, so
-    // Alt-fine could never actually produce a 0.1 — it just made a slower
-    // integer scrub. Fine steps snap to the 0.1 grid to avoid float dust.
+    // Steps are counted first, THEN scaled — rounding the product would make Alt-fine a
+    // slower integer scrub instead of a 0.1 one; fine steps snap to the 0.1 grid.
     const mult = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
     const raw = d.startValue + Math.round(delta / SCRUB_PX_PER_STEP) * mult;
     const next = mult < 1 ? Math.round(raw * 10) / 10 : raw;
@@ -225,8 +191,7 @@ export function InlineNumberField({
 }: {
   value: number | undefined;
   onChange: (v: number | undefined) => void;
-  /** Shown (muted) when the field is empty. IFS/SWITCH pass "N/A" on their
-   *  fallback box, so an unset Otherwise/Default reads as "no match → #N/A". */
+  /** Shown (muted) when the field is empty. */
   placeholder?: string;
 }) {
   const field = useDraftCommit(value, numToText, parseNum, onChange);
@@ -255,29 +220,19 @@ export function InlineNumberField({
   );
 }
 
-/**
- * A string-literal input framed by static quote chrome. The `"` glyphs frame
- * the editable field (they are decoration, never part of the value), and the
- * input auto-sizes to its content so a lone or trailing space shows as the gap
- * before the closing quote — the Excel `" "` look, in the one place Excel uses
- * quotes (authoring a literal). Result/display boxes drop quotes entirely and
- * mark whitespace with middots instead (see ValueDisplay).
- */
+/** A string-literal input framed by quote chrome — the `"` glyphs are decoration,
+ *  never part of the value; display boxes drop them and use middots instead. */
 export function QuotedTextInput(props: {
   value: string;
   onChange: (v: string) => void;
   variant?: "inline" | "value";
   autoFocus?: boolean;
   placeholder?: string;
-  // When set, the field shows a resize grip (the main input on a node — not the
-  // per-row inline literals, which don't pass this).
+  // When set, the field shows a resize grip.
   nodeId?: string;
 }) {
-  // The main text field (value variant) is a MULTI-LINE textarea: a single-line
-  // <input> silently strips newlines on paste, so a multi-line literal (a Mermaid
-  // diagram, an address block, wrapped prose) collapsed to one line — and it grew
-  // horizontally off the card instead of scaling. The per-row inline literals stay
-  // single-line (they fill a fixed 22px row).
+  // The value variant is a MULTI-LINE textarea: a single-line <input> silently strips
+  // newlines on paste, flattening a multi-line literal.
   return props.variant === "value"
     ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />
     : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} placeholder={props.placeholder} />;
@@ -297,7 +252,7 @@ function QuotedInlineInput({ value, onChange, autoFocus, placeholder }: { value:
           onChange={(e) => field.setDraft(e.target.value)}
           onBlur={field.onBlur}
           onKeyDown={field.onKeyDown}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
           autoFocus={autoFocus}
@@ -308,17 +263,16 @@ function QuotedInlineInput({ value, onChange, autoFocus, placeholder }: { value:
   );
 }
 
-// Max textarea height before it scrolls — a big paste doesn't run the card off
-// the bottom of the screen.
+// Max textarea height before it scrolls, so a big paste can't run the card off-screen.
 const VALUE_TEXTAREA_MAX = 200;
 
 function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   const [draft, setDraft] = useState(value);
-  const cancelled = useRef(false);
+  const canceled = useRef(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   // Resync when the committed value changes underneath (undo, external edit).
   useEffect(() => { setDraft(value); }, [value]);
-  // Grow to content, capped then scroll (before paint, so no flicker).
+  // Grow to content before paint, so there's no flicker.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -326,14 +280,13 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
     el.style.height = `${Math.min(el.scrollHeight, VALUE_TEXTAREA_MAX)}px`;
   }, [draft]);
   const commit = () => {
-    if (cancelled.current) { cancelled.current = false; setDraft(value); return; }
+    if (canceled.current) { canceled.current = false; setDraft(value); return; }
     if (draft === value) return;
     onChange(draft);
     pushHistory(() => onChange(value), () => onChange(draft));
   };
-  // Enter inserts a newline (this is multi-line); Escape reverts + blurs.
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Escape") { cancelled.current = true; e.currentTarget.blur(); }
+    if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return (
     <span className="solenoid-node__quoted solenoid-node__quoted--value solenoid-node__quoted--multiline">
@@ -368,11 +321,8 @@ export function InlineTextField({
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} />;
 }
 
-/** A `"Foo (default X)"` socket label documents its default. Split it into the
- *  bare label + `X` (surrounding quotes stripped) so the row renders "Foo" and the
- *  empty field shows `X` as a MUTED PLACEHOLDER — the default reads as a cue in the
- *  box, not parenthetical prose (the no-Captain-Obvious rule). Non-matching labels
- *  pass through unchanged (no placeholder). */
+/** Split a `"Foo (default X)"` socket label into label + placeholder, so the default
+ *  reads as a muted cue in the box rather than parenthetical prose. */
 const DEFAULT_LABEL_RE = /^(.*?)\s*\(default\s+(.+?)\)\s*$/;
 export function splitDefaultLabel(label: string): { label: string; placeholder?: string } {
   const m = DEFAULT_LABEL_RE.exec(label);
@@ -380,14 +330,8 @@ export function splitDefaultLabel(label: string): { label: string; placeholder?:
   return { label: m[1], placeholder: m[2].replace(/^["']|["']$/g, "") };
 }
 
-/**
- * Inline editor for a 1-D LIST input: a plain comma-separated field ("a, b, c").
- * A 1-D list is just CSV, so a list socket is typeable in place exactly like a
- * scalar — no quote chrome (that signals a single string). The raw text lives in
- * the node's `stringLiterals[key]`; the engine boundary (coerceInputs) parses it
- * per the socket's element type (strings / date serials / TRUE-FALSE) and injects
- * it as the list when the input is unwired. A cable still overrides it.
- */
+/** Inline CSV editor for a 1-D LIST input — no quote chrome, which would signal a
+ *  single string. coerceInputs parses the raw text per the socket's element type. */
 export function InlineCsvField({
   value,
   onChange,
@@ -405,7 +349,7 @@ export function InlineCsvField({
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />
@@ -438,8 +382,7 @@ type Props = {
   mathLabelKeys?: ReadonlySet<string>;
 };
 
-/** A row label rendered as math (KaTeX) — falls back to plain text on error or
- *  while katex is still loading. */
+/** A row label rendered as math (KaTeX), falling back to plain text. */
 function MathLabel({ text }: { text: string }) {
   const render = useKatexRender();
   const html = useMemo(() => {
@@ -455,17 +398,8 @@ function MathLabel({ text }: { text: string }) {
     : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/**
- * Default renderer for a node's input rows. For every input it draws a
- * row containing the input's socket (on the card's left edge) plus a
- * label, and — when the socket is a number type with no incoming cable
- * — an editable literal field bound to `node.literals[key]`. A wired
- * input shows a muted marker instead; non-number inputs (e.g. list)
- * show just the socket + label.
- *
- * Each input dot centers on its own row (see .solenoid-node__io-row), so rows
- * can sit anywhere in the body — no fixed-offset assumption about the header.
- */
+/** Default renderer for a node's input rows; each dot centers on its own row, so rows
+ *  can sit anywhere in the body with no fixed-offset assumption about the header. */
 export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
@@ -478,22 +412,29 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
 
   const strLiterals = (node.stringLiterals ??= {});
 
-  // Editing one node's literal is a pure value change (no topology) → targeted
-  // recompute: only this node + its downstream cone recompute and re-render.
+  // A literal can move a derived SOCKET type and no connection event fires on this
+  // path, so the wildcard types must be re-settled after a literal edit.
+  function settleTypes() {
+    const ed = getOwningEditor(node.id);
+    const ar = getOwningArea(node.id);
+    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+  }
+
   async function set(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
+    settleTypes();
     await processGraph(node.id);
   }
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
+    settleTypes();
     await processGraph(node.id);
   }
 
-  // Collapsed: ≥2 inputs aggregate into a single pill (avoids dots
-  // spilling past the small node); a lone input centers on the display
-  // box (no explicit top → --out-socket-top), matching the output.
+  // Collapsed: ≥2 inputs aggregate into one pill, or the dots spill past the small
+  // node; a lone input centers on the display box, matching the output.
   if (collapsed) {
     if (entries.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={entries.map(([k]) => k)} />;
@@ -519,12 +460,11 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
       {entries.map(([key, input], i) => {
         const socket = input.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        // A combo only becomes a list when a cable brings one in, so both edit in place.
         const isNumber = dt === "number" || dt === "numlist";
-        const isStr    = dt === "string";
-        // A 1-D non-numeric list is typeable as CSV in place (parsed at the engine
-        // boundary). Numeric lists keep their single-number field for now.
+        const isStr    = dt === "string" || dt === "strcombo";
+        // Numeric lists keep their single-number field; other 1-D lists type as CSV.
         const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist";
-        // Split a "(default X)" convention label → bare label + muted placeholder.
         const { label, placeholder } = splitDefaultLabel(labelFor ? labelFor(key, i) : (input.label || key));
         const isConn = connected.has(key);
         return (
@@ -533,8 +473,6 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               ? <MathLabel text={label} />
               : <span className="solenoid-node__io-label" title={titleFor?.(key)}>{label}</span>}
             {isConn ? (
-              // Name the driver, not just the fact: "↩ Rate" beats "↩ wired".
-              // The tooltip stays structural — dynamic data lives in the text.
               <span
                 className="solenoid-node__io-wired"
                 title="Driven by the incoming cable named here"

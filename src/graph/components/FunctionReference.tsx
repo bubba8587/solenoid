@@ -19,13 +19,13 @@ export function FunctionReference() {
   const tab = useSyncExternalStore(frStore.subscribe, frStore.tab);
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState<string | "All">("All");
-  // "To-do only" and "Out of scope" are opposite slices of the unimplemented
-  // rows, so they're one exclusive mode rather than two booleans.
+  // The row whose catalog description is expanded beneath it (tap/click toggles).
+  const [openDesc, setOpenDesc] = useState<string | null>(null);
+  // Opposite slices of the unimplemented rows, so one exclusive mode, not two booleans.
   const [filterMode, setFilterMode] = useState<"all" | "todo" | "oos">("all");
   const [showExcel, setShowExcel] = useState(true);
 
-  // Generated from catalog/node metadata. Independent of pack activation
-  // (buildCatalog(false) includes every pack), so it's stable for the session.
+  // Independent of pack activation (every pack is included), so stable for the session.
   const rows = useMemo(() => buildFunctionReference(), []);
   const groups = useMemo(() => fnRefGroups(rows), [rows]);
   const packName = useMemo(() => {
@@ -51,7 +51,7 @@ export function FunctionReference() {
       || (r.note ?? "").toLowerCase().includes(q);
   });
 
-  // Summary counts over Excel functions only (skip Solenoid-only rows).
+  // Counts cover Excel functions only — Solenoid-only rows are skipped.
   const excelRows = rows.filter((r) => r.excel !== null);
   const implemented = excelRows.filter((r) => r.implemented);
   const parityCount = implemented.filter((r) => r.parity).length;
@@ -111,8 +111,7 @@ export function FunctionReference() {
               placeholder="Search functions, syntax, nodes…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              // Touch: don't pop the on-screen keyboard over the freshly
-              // opened panel — the user taps the field when they want it.
+              // Touch must not pop the on-screen keyboard over the fresh panel.
               autoFocus={!IS_COARSE}
             />
             <div className="fr-filters">
@@ -193,16 +192,24 @@ export function FunctionReference() {
                     <tr key={`gh-${g.key}`} className="fr-group-row">
                       <td colSpan={showExcel ? 7 : 5}>{g.label}</td>
                     </tr>,
-                    ...gr.map((r, i) => {
+                    ...gr.flatMap((r, i) => {
                       const isSolOnly = r.excel === null;
-                      return (
-                        <tr key={`${g.key}-${i}`}>
+                      const rowKey = `${g.key}-${i}`;
+                      const expandable = !!r.description;
+                      const rows = [
+                        <tr
+                          key={rowKey}
+                          // Tap/click toggles the catalog description under the
+                          // row — the table stays dense; touch reaches it too.
+                          className={expandable ? "fr-row--expandable" : undefined}
+                          onClick={expandable ? () => setOpenDesc(openDesc === rowKey ? null : rowKey) : undefined}
+                        >
                           <td className={`fr-td-sol${r.implemented ? "" : " fr-td-sol--missing"}`}>
                             {!r.implemented ? "—" : r.catalogType && r.nodeLabel ? (
                               <button
                                 className="fr-sol-btn"
                                 title="Add this node to the canvas"
-                                onClick={() => { void addNodeByCatalogType(r.catalogType!); frStore.close(); }}
+                                onClick={(e) => { e.stopPropagation(); void addNodeByCatalogType(r.catalogType!); frStore.close(); }}
                               >
                                 {r.nodeLabel}
                                 <span className="fr-sol-btn__add">+</span>
@@ -231,8 +238,16 @@ export function FunctionReference() {
                                     : <span className="fr-parity-warn">⚠</span>}
                           </td>
                           <td className="fr-td-note">{r.note ?? ""}</td>
-                        </tr>
-                      );
+                        </tr>,
+                      ];
+                      if (expandable && openDesc === rowKey) {
+                        rows.push(
+                          <tr key={`${rowKey}-d`} className="fr-desc-row">
+                            <td colSpan={showExcel ? 7 : 5}>{r.description}</td>
+                          </tr>,
+                        );
+                      }
+                      return rows;
                     }),
                   ];
                 })}

@@ -82,7 +82,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
 }
 
 .sol-popup__close {
@@ -97,7 +97,7 @@
   height: 24px;
   background: none;
   border: none;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
@@ -118,7 +118,7 @@
   background: none;
   border: none;
   border-radius: 4px;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   cursor: pointer;
   padding: 0;
   opacity: 0.7;
@@ -144,7 +144,7 @@
   background: none;
   border: none;
   border-radius: 4px;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   cursor: pointer;
   padding: 0;
   opacity: 0.7;

@@ -6,18 +6,11 @@ import { isWebDemo } from "../env";
 import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
 import { problemsStore, problemsPanelUi } from "./problemsStore";
+import { useBottomChrome } from "./chromeBottom";
 
-/**
- * Thin bottom status strip: graph counts, a light selection indicator, and the
- * zoom level. Polls the editor/area a few times a second (cheap) rather than
- * wiring selection/zoom into dedicated stores.
- *
- * On the WEB DEMO only, the node count doubles as a soft-budget meter: an inline
- * fill bar behind the "N / 100 nodes" readout, coloured as it approaches/exceeds
- * the budget, plus a one-time modal on the crossing ABOVE it (see nodeBudget.ts /
- * docs/archive/performance-hardening.md). Desktop (Tauri) shows the plain count — the limit is
- * a property of the in-browser webview, not the product.
- */
+/** Bottom status strip, polled a few times a second rather than wired to stores.
+ *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
+ *  product's. */
 
 type Snapshot = { nodes: number; cables: number; selection: string; zoom: number };
 
@@ -33,8 +26,7 @@ function read(): Snapshot {
 
   let selection: string;
   if (selected.length === 0) selection = "Ready";
-  // Node TYPE, not the user-editable header title — the same string the
-  // header shows on hover.
+  // Node TYPE, not the user-editable header title.
   else if (selected.length === 1) selection = nodeTypeName(selected[0]);
   else selection = `${selected.length} selected`;
 
@@ -44,18 +36,15 @@ function read(): Snapshot {
 export function StatusBar() {
   const [snap, setSnap] = useState<Snapshot>(() => ({ nodes: 0, cables: 0, selection: "Ready", zoom: 100 }));
   const [modalOpen, setModalOpen] = useState(false);
-  // Edge-detect the budget crossing (like alertStore): fire the modal only when
-  // we go from at/under-budget to over, not on every add while already over.
+  // Edge-detected so the modal fires on the crossing, not on every add while over.
   const wasOver = useRef(false);
 
   useEffect(() => {
     let prev = "";
     const tick = () => {
       const s = read();
-      // Web-demo budget crossing — runs every tick, independent of the render
-      // gate below. Suppressed during the cinematic load reveal (nodes stream in
-      // there; a graph that loads already-over never pops it — only editing past
-      // the line does).
+      // Runs every tick, independent of the render gate below, and is suppressed
+      // during the load reveal so only EDITING past the line pops it.
       if (isWebDemo) {
         const over = s.nodes > WEB_DEMO_NODE_BUDGET;
         if (over && !wasOver.current && !loadRevealStore.isActive()) setModalOpen(true);
@@ -72,9 +61,8 @@ export function StatusBar() {
   const ratio = WEB_DEMO_NODE_BUDGET > 0 ? snap.nodes / WEB_DEMO_NODE_BUDGET : 0;
   const level = ratio >= 1 ? "over" : ratio >= WEB_DEMO_NODE_WARN_RATIO ? "warn" : "ok";
 
-  // Calc-mode indicator (Excel's status-bar "Calculate"). Only shown in manual mode:
-  // a muted "Manual" when up to date, an actionable "Calculate" (click / F9) when a
-  // suppressed change left the graph stale. Nothing in automatic mode (no clutter).
+  // Manual mode only: "Manual" when up to date, an actionable "Calculate" when a
+  // suppressed change left the graph stale.
   useSyncExternalStore(calcModeStore.subscribe, calcModeStore.version);
   const manual = calcModeStore.isManual();
   const calcDirty = calcModeStore.dirty();
@@ -82,9 +70,12 @@ export function StatusBar() {
 
   const problemCount = useSyncExternalStore(problemsStore.subscribe, () => problemsStore.list().length);
 
+  // Joins the measured `--chrome-bottom` envelope (chromeBottom.ts).
+  const bottomRef = useBottomChrome<HTMLDivElement>();
+
   return (
     <>
-      <div className="solenoid-statusbar" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="solenoid-statusbar" ref={bottomRef} onPointerDown={(e) => e.stopPropagation()}>
         <span
           className={`solenoid-statusbar__counts${isWebDemo ? ` solenoid-statusbar__counts--${level}` : ""}`}
           title={isWebDemo
@@ -145,8 +136,8 @@ export function StatusBar() {
         )}
         <span className="solenoid-statusbar__zoom">{snap.zoom}%</span>
       </div>
-      {/* Rendered as an App-level sibling (not inside the status strip, whose
-          backdrop-filter would trap the modal's stacking context below it). */}
+      {/* An App-level sibling: the strip's backdrop-filter would trap the modal's
+          stacking context below it. */}
       {modalOpen && <NodeBudgetModal count={snap.nodes} onClose={() => setModalOpen(false)} />}
     </>
   );

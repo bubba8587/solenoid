@@ -8,7 +8,7 @@ import { SolenoidSocket, type SocketDataType } from "../sockets";
 
 // Polyform: the formula producers loop ANY Excel function over arrays of any
 // element type, declaring their output element type with a result selector that
-// swaps the output socket at the node's dimensionality. Numeric behaviour is
+// swaps the output socket at the node's dimensionality. Numeric behavior is
 // unchanged (see expression / tableLambda existing suites); these tests cover
 // text + date results, the socket swap, and that the engine stays polymorphic.
 
@@ -31,7 +31,7 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ d: [45000] }).result).toBe(45007);
   });
 
-  it("keeps numeric behaviour identical (default resultAs = number)", () => {
+  it("keeps numeric behavior identical (default resultAs = number)", () => {
     const n = new ExpressionNode({ expr: "a * b" });
     expect(n.data({ a: [[1, 2, 3]], b: [10] }).result).toEqual([10, 20, 30]);
   });
@@ -46,10 +46,10 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ x: [[1, 3, 4]] }).result).toEqual([0.125, 0.375, 0.5]);
   });
 
-  it("fails loud with #SHAPE! on a 2-D matrix input (P4 placeholder)", () => {
+  it("computes over a 2-D matrix input (D23 — the old #SHAPE! cap is lifted)", () => {
     const n = new ExpressionNode({ expr: "a * 2" });
     const r = n.data({ a: [[[1, 2], [3, 4]]] }).result;
-    expect(isSolError(r) && r.code).toBe("#SHAPE!");
+    expect(r).toEqual([[2, 4], [6, 8]]);
   });
 
   it("tags scalar division by zero as #DIV/0! (P5)", () => {
@@ -104,7 +104,10 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new ExpressionNode({ resultAs: "number" }).outputs.result?.socket)).toBe("numlist");
     expect(dt(new ExpressionNode({ resultAs: "text" }).outputs.result?.socket)).toBe("strcombo");
     expect(dt(new ExpressionNode({ resultAs: "date" }).outputs.result?.socket)).toBe("datecombo");
-    expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("any");
+    // anyCOMBO, not `any`: an Auto result IS a list whenever a list variable
+    // broadcasts, so the scalar circle was a lying dot — and it let a list-shaped
+    // result reach strict scalar inputs (#SHAPE! at runtime).
+    expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anycombo");
   });
 
   it("the 2-D producers: Number default is the numeric matrix; Auto is anytable (D17)", () => {
@@ -113,9 +116,11 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
   });
 
-  it("variable inputs are `any` so text/date arrays connect", () => {
+  it("variable inputs are `anydata` so text/date arrays AND matrices connect, and a scalar stays scalar", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    expect(dt(n.inputs.name?.socket)).toBe("anylist");
+    // `anydata` (D23/SOCK-9) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
+    // same acceptance, but the SOCKET now says the evaluator takes either rank.
+    expect(dt(n.inputs.name?.socket)).toBe("anydata");
   });
 });
 

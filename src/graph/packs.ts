@@ -1,30 +1,6 @@
-// ─── Node packs ─────────────────────────────────────────────────────────────────
-// A "pack" is an additive bundle layered on top of the permanent core catalog
-// (Solenoid controls + Excel-matcher nodes, which are never toggleable). Packs are
-// how node domains — geometry, timesavers, engineering references — ship and
-// switch on/off.
-//
-// Each pack's DEFINITION lives in its own file under src/graph/packs/ (built on
-// packs/packShared.ts — the authoring types + the formula-preset helper). This
-// module is the registry + activation store.
-//
-// Placement, not a separate subtree: a pack's nodes are INSERTED into the existing
-// Add-menu category tree (or the catch-all "Other" category) at a target path, so
-// activating a pack never grows the top-level menu. Each placed node is marked with
-// a subtle "from a pack" indicator (see AddNodeMenu). A node `type` may be claimed
-// by several packs (e.g. HYPOTENUSE is both Geometry and Timesavers) — the catalog
-// builder inserts it once and records every owning pack (catalogUtils.buildCatalog).
-//
-// Activation is a PRESENTATION filter only:
-//   • The Add menu shows a pack's nodes only while it (or another pack claiming the
-//     same type) is active.
-//   • Every pack's node constructors are ALWAYS registered (nodeRegistry +
-//     FLAT_CATALOG over all packs), so a saved graph using a node from a deactivated
-//     pack still loads and renders. Deactivating never breaks a file.
-//
-// Custom packs (dropped into a user data folder) are stubbed: the interface and
-// loader exist, but loading real packs is a later step (needs the desktop shell's
-// filesystem access + a settled pack format). The web build has no folder.
+// Pack registry + activation store (definitions live under src/graph/packs/).
+// Activation filters the Add menu ONLY — every pack's constructors stay registered,
+// so a saved graph using a deactivated pack's node still loads.
 
 import { createNotifier } from "./storeKit";
 import { GEOMETRY_PACK } from "./packs/geometry";
@@ -55,11 +31,8 @@ export const BUILTIN_PACKS: Pack[] = [
   CHEMISTRY_PACK,
 ];
 
-// Reclassification of EXISTING core catalog nodes into add-on packs — a node
-// `type` → the pack id(s) that claim it. Derived from each pack's `tags`.
-// Unlike `nodes` (which add NEW pack-only nodes), these re-home nodes already
-// defined in NODE_CATALOG: the catalog builder marks them with the pack
-// indicator and hides them when all their packs are off.
+// Node `type` → the pack id(s) claiming it: re-homes nodes already in NODE_CATALOG,
+// unlike `nodes`, which adds pack-only ones.
 export const NODE_PACK_TAGS: Record<string, string[]> = (() => {
   const out: Record<string, string[]> = {};
   for (const p of BUILTIN_PACKS) {
@@ -76,19 +49,16 @@ export function customPacksFolder(): string {
   return "<app data>/Solenoid/packs";
 }
 
-/** Load custom packs from the user data folder. Stub — returns none until the
- *  desktop shell wires up filesystem access and the pack format is settled. */
+/** Stub — returns none until filesystem access and the pack format are settled. */
 export function loadCustomPacks(): CustomPack[] {
   return [];
 }
 
-/** Every pack the app knows about (built-in + any loaded custom). */
 export function allPacks(): Pack[] {
   return [...BUILTIN_PACKS, ...loadCustomPacks()];
 }
 
-// A pack node placement carrying its owning pack's identity — what the catalog
-// builder consumes to insert + tag + dedupe.
+// A placement carrying its owning pack's identity — the catalog builder's input.
 export interface PlacedPackNode {
   packId: string;
   packName: string;
@@ -106,7 +76,6 @@ export function packPlacements(opts: { activeOnly: boolean }): PlacedPackNode[] 
   return out;
 }
 
-// ─── Active-state store (persisted) ─────────────────────────────────────────────
 const LS_KEY = "solenoid.packs";
 let _active = new Set<string>();
 let _initialised = false;
@@ -135,8 +104,7 @@ export const packsStore = {
     if (on === _active.has(id)) return;
     if (on) {
       _active.add(id);
-      // Pull in dependencies so the pack's nodes resolve (a pack may build on
-      // another's). Transitive, guarded against cycles by the visited set.
+      // Transitively activate dependencies so the pack's nodes resolve.
       const seen = new Set<string>([id]);
       const queue = [...(allPacks().find((p) => p.id === id)?.dependsOn ?? [])];
       while (queue.length) {

@@ -1,8 +1,4 @@
-// In-app confirmation dialog, module-store style (like cableState /
-// dockedNodeStore). Used instead of window.confirm so it renders as a
-// real DOM modal — works identically in browser dev and in the Tauri
-// desktop WebView, where window.confirm is unreliable.
-//
+// Used instead of window.confirm, which is unreliable in the Tauri desktop WebView.
 // Usage:  if (await requestConfirm("Do the thing?")) { ... }
 
 import { createNotifier } from "./storeKit";
@@ -22,7 +18,7 @@ const { notify, subscribe } = createNotifier();
 export function requestConfirm(opts: ConfirmOptions | string): Promise<boolean> {
   const options: ConfirmOptions = typeof opts === "string" ? { message: opts } : opts;
   return new Promise<boolean>((resolve) => {
-    // If one is somehow already open, treat it as cancelled first.
+    // If one is somehow already open, treat it as canceled first.
     _pending?.resolve(false);
     _pending = { ...options, resolve };
     notify();

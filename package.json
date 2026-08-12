@@ -1,7 +1,7 @@
 {
   "name": "solenoid",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.5",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -13,9 +13,13 @@
     "tauri": "tauri",
     "desktop:live": "tauri dev --config src-tauri/tauri.live.conf.json",
     "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-build.ps1",
-    "run-graph": "tsx scripts/run-graph.ts"
+    "run-graph": "tsx scripts/run-graph.ts",
+    "validate-graph": "tsx scripts/validate-graph.ts",
+    "ai-grounding": "tsx scripts/ai-grounding.ts",
+    "ai-prompt": "tsx scripts/ai-prompt.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.2.5",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.2.6",
     "@formulajs/formulajs": "^4.6.0",
@@ -30,10 +34,9 @@
     "dompurify": "^3.4.11",
     "elkjs": "^0.8.2",
     "katex": "^0.17.0",
-    "marked": "^14.1.4",
+    "marked": "^18.0.9",
     "mermaid": "^11.16.0",
     "papaparse": "^5.5.3",
-    "pixi.js": "^8.19.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "recharts": "^3.8.1",
@@ -57,7 +60,7 @@
     "@webgpu/types": "^0.1.71",
     "puppeteer-core": "^25.1.0",
     "rollup-plugin-license": "^3.7.1",
-    "typescript": "~5.8.3",
+    "typescript": "~7.0.2",
     "vite": "^7.0.4",
     "vitest": "^4.1.8"
   }

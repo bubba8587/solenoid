@@ -1,13 +1,10 @@
-// The two Help-menu dialogs — "About Solenoid" and "What's New" — share one modal
-// slot (only one shows at a time). A tiny mode store, plus the once-per-release
-// auto-show for What's New (localStorage-flagged, dismissible, re-openable from Help).
+// The two Help-menu dialogs share one modal slot — only one shows at a time.
 import { createValueStore } from "./storeKit";
 
 export type HelpDialog = "about" | "whatsnew";
 
-// The What's New CONTENT version — bump when the slides change for a release so a
-// returning user sees the new set once. Deliberately separate from package.json's
-// app version (which only bumps at a tagged release, lagging the dev feature set).
+// The What's New CONTENT version — bump when the slides change. Deliberately
+// separate from package.json's app version, which only moves at a tagged release.
 export const WHATS_NEW_VERSION = "1.2";
 const SEEN_KEY = "solenoid.whatsNewSeen";
 
@@ -27,12 +24,8 @@ export const helpDialogStore = {
   close: () => set(null),
 };
 
-/**
- * Auto-show What's New ONCE per content release. First-ever visitors (no flag yet)
- * are recorded silently — they get the app itself as their intro, not a modal over
- * the load reveal; a returning user whose flag predates this release sees it once.
- * Idempotent and private-mode-safe.
- */
+/** Auto-show What's New ONCE per content release; a first-ever visitor is recorded
+ *  SILENTLY, so no modal lands over their first load reveal. */
 export function autoShowWhatsNewOnce(): void {
   try {
     const seen = localStorage.getItem(SEEN_KEY);

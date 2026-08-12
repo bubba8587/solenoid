@@ -7,6 +7,7 @@ import { makeArrangeFn, symmetricPortPreset } from "./tidyArrange";
 import { ArithmeticNode } from "./nodes/scalar";
 import { DisplayNode } from "./nodes/display";
 import { FormatControllerNode } from "./nodes/formatController";
+import { NoteNode } from "./nodes/annotation";
 import { nodeSizeStore } from "./nodeSizeStore";
 
 // ── Regression: "num → Display + Format Controller widens on every Tidy" ────────
@@ -31,6 +32,8 @@ interface FakeView {
   naturalH: number;
   stampedW: number | null;
   stampedH: number | null;
+  /** true once the pin-drop loop called removeProperty("width") on this card */
+  widthCleared: boolean;
   translate: (x: number, y: number) => Promise<void>;
   element: {
     offsetWidth: number;
@@ -42,13 +45,17 @@ interface FakeView {
 
 function makeFakeArea() {
   const nodeViews = new Map<string, FakeView>();
-  const add = (id: string, x: number, y: number, w: number, h: number) => {
+  // rootClass models the card root's CSS class: "solenoid-node" for standard
+  // NodeCard roots, "solenoid-note" etc. for React-sized roots the pin-drop
+  // loop must leave alone.
+  const add = (id: string, x: number, y: number, w: number, h: number, rootClass = "solenoid-node") => {
     const view: FakeView = {
       position: { x, y },
       naturalW: w,
       naturalH: h,
       stampedW: null,
       stampedH: null,
+      widthCleared: false,
       translate: async (x2: number, y2: number) => { view.position = { x: x2, y: y2 }; },
       element: {
         get offsetWidth() { return (view.stampedW ?? view.naturalW) + BORDER; },
@@ -58,9 +65,10 @@ function makeFakeArea() {
           if (sel.startsWith("[data-socket")) return null;
           // The pin-drop loop selects the card and clears the inline dims.
           return {
+            classList: { contains: (c: string) => c === rootClass },
             style: {
               removeProperty: (p: string) => {
-                if (p === "width") view.stampedW = null;
+                if (p === "width") { view.stampedW = null; view.widthCleared = true; }
                 if (p === "height") view.stampedH = null;
               },
               // A manual re-apply writes style.width back onto the card.
@@ -161,7 +169,7 @@ async function buildScene() {
     repositionDockedTo: () => {},
     isDestroyed: () => false,
   });
-  return { editor, area, arrangeFn, disp };
+  return { editor, area, arrangeFn, disp, add };
 }
 
 describe("Tidy with a docked FC does not widen the host on repeat", () => {
@@ -197,5 +205,28 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
 
     // The card carries the manual width (re-applied), not a dropped/CSS default.
     expect(view.stampedW).toBe(260);
+  });
+
+  // Regression: "Tidy makes Notes very very wide (sockets misaligned), fixed by
+  // touching the resize grip". Note / Image / Conduit / Obsidian roots set their
+  // inline width from React's style prop (data.width) — removeProperty("width")
+  // strips React's own value, React doesn't re-stamp an unchanged style, and the
+  // unsized element shrink-wraps against the zoom plane. The pin-drop loop must
+  // only touch .solenoid-node (NodeCard) roots.
+  it("Tidy never clears the inline width of a React-sized root (Note)", async () => {
+    const { editor, area, arrangeFn, add } = await buildScene();
+    const note = new NoteNode({ body: "hello" });
+    await editor.addNode(note as never);
+    const view = add(note.id, 600, 200, note.width, note.height, "solenoid-note");
+
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+
+    expect(view.widthCleared).toBe(false);
+    // The standard cards in the same pass DID get their pins dropped.
+    const cleared = [...area.nodeViews.entries()]
+      .filter(([id]) => id !== note.id)
+      .map(([, v]) => (v as unknown as FakeView).widthCleared);
+    expect(cleared.some(Boolean)).toBe(true);
   });
 });

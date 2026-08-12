@@ -15,14 +15,8 @@ import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
 
-/**
- * The Report's real editing surface — a standalone full-screen document, separate
- * from the graph's node cards (bundle 13 #13). Plain markdown source (left) + a
- * live preview (right) that renders inline `` `=name` `` refs with their connected
- * value via the SAME InlineRefBody component the Note card uses, plus a strip of
- * embedded Notes (read-only mini previews of an existing Note node, placed as
- * objects). No WYSIWYG toolbar — that's the scope line the plan draws.
- */
+/** The Report's editing surface: markdown source + live preview. No WYSIWYG
+ *  toolbar — that is the scope line the plan draws. */
 export function ReportOverlay() {
   const nodeId = useSyncExternalStore(reportStore.subscribe, reportStore.openNodeId);
   const docked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
@@ -32,27 +26,17 @@ export function ReportOverlay() {
   const [body, setBody] = useState(node?.body ?? "");
   const [embedPickerOpen, setEmbedPickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // Mobile only: the split-pane doesn't fit a phone, so Draft/Preview become
-  // tabs (one pane at a time). Ignored on desktop (the tab bar is CSS-hidden and
-  // both panes show). Committing the draft when switching to Preview keeps the
-  // rendered refs/embeds fresh.
+  // Mobile only: the split pane becomes Draft/Preview tabs; ignored on desktop.
   const [mobileTab, setMobileTab] = useState<"draft" | "preview">("draft");
   const embedBtnRef = useRef<HTMLButtonElement>(null);
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
 
-  // Reset the editor's local draft ONLY when a different report opens (keyed on
-  // nodeId, NOT node.body). onBody writes node.body live for autosave, so
-  // depending on node.body here would re-run this mid-typing and clobber
-  // lastSyncRef — which made commitBody's "did it change since last sync?" guard
-  // always short-circuit, so the ref sockets were NEVER minted. (The whole
-  // reason Report sockets appeared broken.)
+  // Reset the draft on nodeId ONLY, never node.body: onBody writes it live, so a
+  // body dependency would clobber lastSyncRef mid-typing and the sockets never mint.
   const lastSyncRef = useRef(node?.body ?? "");
-  // The preview renders from a DEBOUNCED copy of the draft, not `body` itself:
-  // re-parsing markdown + rebuilding the preview DOM on every keystroke tore the
-  // whole rendered pane down and back up each character (scroll jumped, every
-  // embedded chart/table/diagram re-mounted). The textarea stays fully live off
-  // `body`; only the rendered side settles a beat after you stop typing.
+  // The preview renders from a DEBOUNCED copy — re-parsing per keystroke tore down
+  // and remounted the whole rendered pane (scroll jumped, embeds re-mounted).
   const [previewBody, setPreviewBody] = useState(node?.body ?? "");
   useEffect(() => {
     setBody(node?.body ?? "");
@@ -65,9 +49,8 @@ export function ReportOverlay() {
     return () => clearTimeout(t);
   }, [body]);
 
-  // Commit (mint sockets) THEN close — the reliable trigger on every exit path.
-  // syncRefs runs synchronously at the top of commitBody, before any await, so
-  // the sockets are minted even though we don't await here.
+  // Commit THEN close: syncRefs runs synchronously before commitBody's first await,
+  // so the sockets mint even though this doesn't await.
   function closeReport() {
     void commitBody();
     reportStore.close();
@@ -75,10 +58,8 @@ export function ReportOverlay() {
   useEscapeToClose(closeReport, !!nodeId);
 
   const bodyHtml = useMemo(
-    // preprocessEmbeds turns each `![[Name]]` token into a data-embed marker
-    // BEFORE markdown parse, so an embedded Note renders where the author put
-    // it (DOMPurify keeps class + data-* on the bare span). ADD_ATTR is belt-
-    // and-suspenders — data-* survive by default, but be explicit.
+    // Embed tokens become data-embed markers BEFORE the markdown parse, so a Note
+    // renders where the author put it.
     () => DOMPurify.sanitize(
       marked.parse(preprocessEmbeds(previewBody || ""), { async: false, gfm: true, breaks: true }) as string,
       { ADD_ATTR: ["data-embed"] },
@@ -92,20 +73,13 @@ export function ReportOverlay() {
 
   function onBody(v: string) { setBody(v); node!.body = v; scheduleAutosave(); }
 
-  // Commit on blur (edits never propagate per keystroke — see CLAUDE.md). Reconciles
-  // the ref INPUT sockets on the small anchor card, drops cables into any vanished
-  // ref, re-renders that card, and recomputes so the preview reflects the new refs.
-  // Reads node.body (kept live per keystroke by onBody), NOT the `body` React
-  // state — so it can be called from ANY close path (Esc / X / backdrop / tab)
-  // without a stale closure. This is what mints the `=name` ref sockets; on
-  // mobile there's no textarea blur when you tap X, so committing on close is
-  // the only reliable trigger.
+  // Mints the `=name` ref sockets. Must read node.body, not the `body` state, so any
+  // close path can call it without a stale closure — mobile has no textarea blur.
   async function commitBody() {
     const current = node!.body;
     if (current === lastSyncRef.current) return;
     lastSyncRef.current = current;
-    // Keep node.embeds in step with the `![[Name]]` tokens actually in the body
-    // (the export reads embeds), resolving each name to a live Note id.
+    // node.embeds must track the tokens actually in the body — the export reads it.
     const embedNames = extractEmbedNames(current);
     const ed0 = getEditor();
     const allNotes = (ed0?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
@@ -128,18 +102,15 @@ export function ReportOverlay() {
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
-  // Every Note is insertable — a note can be placed more than once, and
-  // placement is a token, not a membership toggle.
+  // Every Note stays insertable: placement is a token, not a membership toggle.
   const embeddable = notes;
-  // Resolve an `![[Name]]` token to a Note by display name (case-insensitive).
   function noteByName(name: string): NoteNode | undefined {
     const target = name.trim().toLowerCase();
     return notes.find((n) => (names.get(n.id) ?? n.label ?? "").trim().toLowerCase() === target);
   }
 
-  // Embedding now INSERTS an `![[Name]]` token at the cursor — placement lives
-  // in the markdown, the author controls it. `embeds` still tracks which notes
-  // are referenced (kept in sync from the tokens on commit) for the export.
+  // The markdown token is the source of truth for placement; `embeds` only tracks
+  // which notes are referenced, for the export.
   function addEmbed(id: string) {
     const note = editor?.getNode(id) as NoteNode | undefined;
     const label = names.get(id) ?? note?.label ?? "Note";
@@ -148,7 +119,6 @@ export function ReportOverlay() {
     if (ta) {
       const start = ta.selectionStart ?? body.length;
       const end = ta.selectionEnd ?? body.length;
-      // Own paragraph if we're mid-line, so the block sits clean.
       const before = body.slice(0, start);
       const needsNL = before.length > 0 && !before.endsWith("\n\n");
       const insert = `${needsNL ? "\n\n" : ""}${token}\n\n`;
@@ -231,8 +201,7 @@ export function ReportOverlay() {
           </div>
         </div>
 
-        {/* Mobile tab bar (CSS-hidden on desktop). Switching to Preview commits
-            the draft so the rendered refs/embeds reflect the latest edit. */}
+        {/* Mobile tab bar, CSS-hidden on desktop. */}
         <div className="report-tabs" role="tablist">
           <button
             type="button"
@@ -274,9 +243,7 @@ export function ReportOverlay() {
                 renderEmbed={(name) => {
                   const note = noteByName(name);
                   if (!note) return <span className="report-embed-missing">![[{name}]]: no note by that name</span>;
-                  // A note embed folds under the same titled bar as chart/table
-                  // embeds — the bar's title IS the note name, so the note renders
-                  // bare (no second header).
+                  // The bar's title IS the note name, so the note renders bare.
                   return (
                     <CollapsibleFigure title={names.get(note.id) ?? name}>
                       <EmbeddedNote noteId={note.id} name={names.get(note.id) ?? name} />
@@ -292,17 +259,13 @@ export function ReportOverlay() {
       </div>
   );
 
-  // Docked: the panel is CSS-positioned on the right (no modal backdrop, so the
-  // canvas stays interactive). Floating: the usual centered modal over a backdrop.
+  // Docked drops the backdrop so the canvas stays interactive.
   return docked ? panel : (
     <div className="report-backdrop" onPointerDown={() => closeReport()}>{panel}</div>
   );
 }
 
-/** A read-only mini preview of an embedded Note — its rendered markdown, placed
- *  inline where its `![[Name]]` token sits. The title/collapse bar is the wrapping
- *  CollapsibleFigure's job; this renders the note BODY only. Removal is deleting
- *  the token (the markdown is the source of truth for placement). */
+/** The note BODY only — the title/collapse bar is the wrapping CollapsibleFigure's. */
 function EmbeddedNote({ noteId, name }: { noteId: string; name: string }) {
   const editor = getEditor();
   const note = editor?.getNode(noteId) as NoteNode | undefined;

@@ -17,8 +17,10 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
 
 1. **Type gate.** The FC's adopted socket type maps to a **format family**
    (`familyOf`). The family selects which controls exist at all (the truth table
-   below). A control outside the family is HIDDEN in the popup and INERT in
-   resolution — never disabled-but-visible, never silently applied.
+   below). A control outside the FAMILY is HIDDEN in the popup and INERT in
+   resolution — never disabled-but-visible, never silently applied. (The one
+   sanctioned disabled-but-visible control is WITHIN a family: the unit dropdown
+   under a lock state, below — locked is a fact worth showing, absence is not.)
 2. **Style.** The numeric magnitude renders per the format style, with precision
    resolved by ONE shared rule (below) — no per-style private precision logic.
    Dates render via their pattern instead; text/logical skip this stage.
@@ -29,12 +31,29 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
 
    **Unit = VALUE-level, format = DISPLAY-level (FC A4, 2026-07-13).** The FC is
    VALUE-MUTATING for the unit: `FormatControllerNode.data()` tags the value's
-   `UnitCell` (dimension + the chosen display id) via `applyFcUnit` — a
-   dimensionless number is authored (`5` + km → 5000 m base, display km), a
-   commensurable dimensioned value is re-displayed, an incommensurable one is a
-   `#UNIT!`. Because the unit now rides the VALUE (`unitValue.ts`, base-SI +
+   `UnitCell` (dimension + the chosen display id) via `applyFcUnit`, whose three
+   branches are: a dimensionless number is authored (`5` + km → 5000 m base,
+   display km), a commensurable dimensioned value is re-displayed, an
+   incommensurable one is a `#UNIT!`. But the FC as a user-facing tool can only
+   REACH the authoring branch (D26): the re-display branch serves the mirror of
+   an inherited unit, never a dropdown pick — re-displaying a dimensioned value
+   is Convert's job. Because the unit rides the VALUE (`unitValue.ts`, base-SI +
    `display`), it carries downstream through passthroughs/selectors and DROPS at a
-   transform on its own — there is no graph unit-walk. The rest of this pipeline
+   transform on its own — there is no graph unit-walk.
+
+   **Unit lock states (D26 — a unit is first-class like the magnitude).** Who
+   owns the FC's unit dropdown (`formatController.ts` `data()` lock block):
+   - **authored** (`← →`) — the incoming value carries no unit; the FC's pick
+     authors it. The only editable state.
+   - **forwarding** (`→ →`) — the value arrives already united (set elsewhere in
+     the chain); the dropdown MIRRORS it and LOCKS. This FC never re-authors
+     over it.
+   - **lockedByConvert** (`← ←`) — a downstream Convert's `fromUnit` dictates
+     the unit; locked.
+
+   `unitLocked = lockedByConvert || forwarding`; the popup renders the dropdown
+   present-but-disabled under a lock (`disabled={node.unitLocked}`) — the value
+   HAS a unit, so the control shows it; it just isn't this FC's to change. The rest of this pipeline
    (style / precision / negatives / K-M-B) stays a DISPLAY annotation the FC locks
    onto the box behind it (`unitFlow.ts` `makeAnnotationResolver` carries it to a
    downstream passthrough box). So the unit computes and clashes honestly; the
@@ -49,22 +68,27 @@ non-finite number → `String(n)`. These outrank any annotation.
 
 `familyOf(socketDataType)`:
 
-| family | socket types |
+| family | socket types (all four rungs per family) |
 |---|---|
-| `number` | `number`, `list`, `combo`, `matrix`, `anytable` (numeric cells) |
-| `date` | `date`, `datelist` |
-| `text` | `string`, `strlist` |
+| `number` | `number`, `list`, `numlist`, `table`, plus `anytable` (numeric cells) |
+| `date` | `date`, `datelist`, `datecombo`, `datetable` |
+| `text` | `string`, `strlist`, `strcombo`, `strtable` |
 | `logical` | `logical`, `logicallist`, `logicalcombo`, `logicaltable` |
-| `complex` | `complex`, `complexlist` |
+| `complex` | `complex`, `complexlist`, `complexcombo`, `complextable` |
 | `lambda` | `lambda` — display-only view-as for a flowing LambdaValue |
 | `chart` | `chart` — display-only text scale for a flowing chart figure |
-| `number` (provisional) | `any` — an FC docked to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it |
-| `none` | everything else (`frame`, `cube`, …) |
+| `number` (provisional) | the wildcard rungs — an FC attached to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it. `trueany` is the FC's own default/reset type, and it is what the FC resolves to against ANY family-less rung: adoption never lands the FC on a family-less rung (the settle routes family resolution through `isWildcardRung`), so every wildcard leaves the FC provisional. NOTE the `familyOf` MAP itself is narrower: it returns `number` only for `any`/`trueany`/`anytable` (pinned in `formatModel.test.ts`) and `none` for `anylist`/`anycombo`/`anydata` — the FC never consults it for those because adoption already refused them |
+| `none` | everything else — `frame`, `cube`, `document`: resolved types that genuinely carry no element family (so no controls), as opposed to the wildcard rungs above, which carry no ANSWER yet |
 
 Lists/matrices format PER CELL with the one annotation (the array-semantics model:
 `null` and `SolError` cells short-circuit per cell). Frames are `none` in this
-model — per-column units/formats are v1.1 A4 (units by dimensionality), a separate
-representation, not a scalar annotation stretched over a table.
+model — per-column units/formats are a SEPARATE representation, not a scalar
+annotation stretched over a table: `ColumnUnit` on `FrameColumn.unit`
+(`unitColumn.ts`), authored by a header spec or the table popup's per-column
+format+unit row. A COMPUTED column keeps its authored unit the same way — the
+source column's unit tag rides onto the derived column (`nodes/frame.ts`), gated
+on the derived cells inferring as `number`: a computed column whose cells come
+out non-numeric silently drops its authored unit.
 
 ## The control truth table
 
@@ -74,7 +98,7 @@ Which controls exist per family (popup rows AND resolution axes):
 |---|---|---|---|---|---|
 | number style dropdown | ✔ all styles | — | — | — | ✔ reduced: `auto` / `decimal` / `scientific` |
 | precision row (digits + places\|sig figs) | per style, see rule | — | — | — | per style (both components) |
-| unit dropdown | ✔ | — | — | — | ✔ |
+| unit dropdown | ✔ (disabled under a lock state — see the unit lock states above) | — | — | — | ✔ (same) |
 | date style dropdown | — | ✔ | — | — | — |
 | custom pattern field | when style = `custom` | when style = `date_custom` | — | — | — |
 | case (Aa) | — | — | ✔ | — | — |
@@ -110,10 +134,26 @@ Notes:
 - **Logical "show-as"** is new (`logicalStyle`): `TRUE/FALSE` (default, the Excel
   form) · `1/0` · `Yes/No` · `✓/✗`. Display-only, applied wherever a boolean
   renders through an annotation.
-- **Complex** applies the precision rule to BOTH components (`3.14+2.72i` at
-  2 places). Percent/fraction/integer are meaningless on a complex value → not
-  offered. (Implementation may lag the spec here; the popup must still gate to the
-  reduced style list from day one.)
+- **Complex** — WIRED END TO END (2026-08-01). `formatCxWithAnnotation` is the
+  render half; the popup half (`controlsFor` + `COMPLEX_FORMAT_STYLES` gating the
+  dropdown to auto/decimal/scientific, plus the precision and unit rows) was
+  already done. Three rules, each forced by a complex having two components and
+  one sign structure:
+  - **Precision applies to BOTH components** — `3.14 + 2.72i` at 2 places, never
+    one formatted and the other trimmed.
+  - **The style list is reduced**: percent/fraction/integer/custom and the date
+    styles are meaningless on a complex, so they aren't offered — and an
+    annotation still carrying one (from before the socket was retyped) falls back
+    to `auto` rather than rendering nonsense.
+  - **The unit wraps the WHOLE value**: `(3 + 2i) V`, never `3 V + 2i V`.
+    Parenthesised only in the two-term form, where `3 + 2i V` would read as the
+    unit attaching to the imaginary term alone.
+  The advanced tier (grouping/negative/scale) is number-and-text only per
+  `controlsFor` and is deliberately not consulted: a complex has no single sign
+  to parenthesise and no magnitude to scale. A `Cx` reaches the value box RAW —
+  the display layer formats it, so the annotation can act (cards that
+  pre-formatted in their own components were exactly why it never could).
+  `assembleCx` (cxValue.ts) owns the written form for both formatters.
 - **Advanced-tier composition order** (2026-07-05): scale divides the magnitude
   and appends its suffix inside the number (`1.2M`); the unit wraps that
   (`$1.2M`); a paren negative wraps OUTSIDE the unit, Excel accounting style
@@ -124,8 +164,10 @@ Notes:
 
 ## The precision × style resolution rule
 
-One rule, one implementation (`resolvePrecision`), consumed by every style that
-supports precision. `decimalDigits` (`d`) + `decimalMode` (`places` | `sigfigs`):
+One rule, one implementation (the private `formatPrecise` in
+`formatAnnotationStore.ts`), consumed by every style that supports precision —
+except `scientific`, which computes its own mantissa digit count inline (same
+semantics, own arithmetic). `decimalDigits` (`d`) + `decimalMode` (`places` | `sigfigs`):
 
 | style | `places` mode | `sigfigs` mode | precision row shown? |
 |---|---|---|---|
@@ -138,8 +180,9 @@ supports precision. `decimalDigits` (`d`) + `decimalMode` (`places` | `sigfigs`)
 | `custom` | — the pattern owns precision | — | no |
 | pack formats | — the pack's `apply` owns everything | — | no |
 
-Clamps (unchanged): `places` → 0–20, `sigfigs` → 1–21; switching to `sigfigs`
-bumps 0 → 1.
+Clamps: the resolver takes `places` 0–20, `sigfigs` 1–21 — but the FC popup caps
+the digits box at 20 in BOTH modes, so 21 significant figures is unreachable from
+the control; switching to `sigfigs` bumps 0 → 1.
 
 **Behavior change vs today** (deliberate, per this model): `scientific` previously
 ignored precision entirely (hardcoded `toExponential(3)`). It now honors the
@@ -150,10 +193,17 @@ compat shim.
 
 - `formatModel.ts` — `familyOf`, `controlsFor(family, style)`,
   `precisionApplies(style)`: the single source for both the popup and resolution.
-- `applyFormatStyle` — style cases delegate precision to the shared resolver;
-  no case carries private digit logic.
-- `FormatControllerNode.tsx` — renders rows strictly off `controlsFor`; no inline
-  `isDate`/`isText`/`format === "decimal"` gates.
+  `formatModel.test.ts` sweeps `familyOf` + `precisionApplies` exhaustively; the
+  advanced-tier predicates (`groupingApplies`/`scaleApplies`/`negativeApplies`)
+  are only spot-checked behaviorally in `formatAnnotationStore.test.ts` — their
+  per-style rows here are UNENFORCED as a table.
+- `applyFormatStyle` — style cases delegate precision to the shared resolver
+  (`scientific` carries its own inline digit clamp — the one exception).
+- `FormatControllerNode.tsx` — renders rows strictly off `controlsFor` (including
+  the custom-pattern field, `customPattern`); no inline `isDate`/`isText`/
+  `format === "decimal"` gates. The unit dropdown's `disabled` under a lock state
+  is the one sanctioned non-`controlsFor` modifier (presence is still the
+  family's call; only editability is the lock's).
 - Render surfaces (`ValueDisplay`, `DisplayNode`, `CableInspector`,
   `inlineRefDisplay`, Report embeds) — booleans route through
   `applyLogicalStyle` when an annotation is present; numbers keep routing through
@@ -161,7 +211,6 @@ compat shim.
 
 ## Non-goals (this spec deliberately excludes)
 
-- **Per-column / per-element units** — A4's representation problem.
 - **The FC visual redesign** — A2 renders this matrix; the matrix doesn't dictate
   pixels.
 - **Number styles for logical/text** (e.g. formatting `1/0` coerced from TRUE) —

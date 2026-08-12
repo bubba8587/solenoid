@@ -1,251 +1,190 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
-import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax } from "./mathUtils";
+import { fillBorderedGrid } from "./mathUtils";
+import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
-import { fitSurface, type FitPoint } from "./surfaceFit";
 
-// Pair two parallel sample lists for a bivariate stat (CORREL/COVARIANCE/regression):
-// propagate the first SolError in either list (error-in → error-out), and drop any
-// index where either side is null/missing so a blank isn't silently scored as 0.
-// NaN is kept (matches the univariate forAggregate). Clean number lists pass through
-// unchanged, so this only changes behavior when a null/error is actually present.
-function forPair(
-  xsRaw: (number | null | SolError)[] | null,
-  ysRaw: (number | null | SolError)[] | null,
-): { error?: SolError; xs: number[]; ys: number[] } {
-  const xs = xsRaw ?? [], ys = ysRaw ?? [];
-  for (const v of xs) if (isSolError(v)) return { error: v, xs: [], ys: [] };
-  for (const v of ys) if (isSolError(v)) return { error: v, xs: [], ys: [] };
-  const n = Math.min(xs.length, ys.length);
-  const ox: number[] = [], oy: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = xs[i], b = ys[i];
-    if (a === null || b === null) continue; // missing in either → drop the pair
-    ox.push(a as number); oy.push(b as number);
-  }
-  return { xs: ox, ys: oy };
-}
+
+// The pairwise cell policy, shared with the formula surface (mathUtils.pairPresent):
+// first cell error propagates, a pair with a missing side drops, ragged tails truncate.
+const forPair = pairPresent;
 
 // ─── Statistics nodes ─────────────────────────────────────────────────────────
 
-export type NthValueOp = "large" | "small";
+// ─── Order statistics — ONE node (LARGE/SMALL, RANK, PERCENTILE/QUARTILE/
+// PERCENTRANK) ────────────────────────────────────────────────────────────────
+// Every op reads a list plus one position-or-value scalar and answers a single
+// number; only the scalar's meaning varies (k / value / p / q). PERCENTILE and
+// PERCENTRANK are each other's inverse (value at a rank / rank of a value).
 
-export const NTH_VALUE_OP_META = {
-  large: { label: "LARGE", description: "Kth largest value. Excel: LARGE." },
-  small: { label: "SMALL", description: "Kth smallest value. Excel: SMALL." },
-} satisfies Record<NthValueOp, { label: string; description: string }>;
+export type RankPercentileOp =
+  | "large" | "small"
+  | "rank-eq" | "rank-avg"
+  | "percentile-inc" | "percentile-exc"
+  | "quartile-inc" | "quartile-exc"
+  | "percentrank-inc" | "percentrank-exc";
 
-export class NthValueNode extends ClassicPreset.Node {
+export const RANK_PERCENTILE_OP_META = {
+  large:             { label: "LARGE",           description: "Kth largest value. Excel: LARGE." },
+  small:             { label: "SMALL",           description: "Kth smallest value. Excel: SMALL." },
+  "rank-eq":         { label: "RANK.EQ",         description: "Rank; ties share the lowest rank. Excel: RANK.EQ." },
+  "rank-avg":        { label: "RANK.AVG",        description: "Rank; ties share the average rank. Excel: RANK.AVG." },
+  "percentile-inc":  { label: "PERCENTILE.INC",  description: "Value at percentile p (0–1), including the endpoints. Excel: PERCENTILE.INC." },
+  "percentile-exc":  { label: "PERCENTILE.EXC",  description: "Value at percentile p, excluding 0 and 1. Excel: PERCENTILE.EXC." },
+  "quartile-inc":    { label: "QUARTILE.INC",    description: "Quartile Q0–Q4, including the endpoints. Excel: QUARTILE.INC." },
+  "quartile-exc":    { label: "QUARTILE.EXC",    description: "Quartile Q1–Q3, excluding the endpoints. Excel: QUARTILE.EXC." },
+  "percentrank-inc": { label: "PERCENTRANK.INC", description: "Percentile rank of a value (0–1), including the endpoints. Excel: PERCENTRANK.INC." },
+  "percentrank-exc": { label: "PERCENTRANK.EXC", description: "Percentile rank of a value, excluding 0 and 1. Excel: PERCENTRANK.EXC." },
+} satisfies Record<RankPercentileOp, { label: string; description: string }>;
+
+type RankPercentileFamily = "nth" | "rank" | "percentile" | "quartile" | "percentrank";
+
+const RANK_PERCENTILE_FAMILY: Record<RankPercentileOp, RankPercentileFamily> = {
+  large: "nth", small: "nth",
+  "rank-eq": "rank", "rank-avg": "rank",
+  "percentile-inc": "percentile", "percentile-exc": "percentile",
+  "quartile-inc": "quartile", "quartile-exc": "quartile",
+  "percentrank-inc": "percentrank", "percentrank-exc": "percentrank",
+};
+
+const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
+  inputs: ReadonlyArray<{ key: string; label: string; def: number }>;
+  outLabel: string;
+  height: number;
+}> = {
+  nth:         { inputs: [{ key: "k", label: "K", def: 1 }],                                                    outLabel: "Value",      height: 170 },
+  rank:        { inputs: [{ key: "value", label: "Value", def: 0 }],                                            outLabel: "Rank",       height: 185 },
+  percentile:  { inputs: [{ key: "p", label: "Percentile (0–1)", def: 0.5 }],                                   outLabel: "Value",      height: 185 },
+  quartile:    { inputs: [{ key: "q", label: "Quartile (0–4)", def: 2 }],                                       outLabel: "Value",      height: 185 },
+  percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
+};
+
+/** The shared interpolating percentile kernel; `exc` uses Excel's exclusive rank. */
+function percentileOf(sorted: number[], p: number, exc: boolean): number {
+  const n = sorted.length;
+  const i = exc ? p * (n + 1) - 1 : p * (n - 1);
+  const lo = Math.floor(i), hi = exc ? Math.min(n - 1, Math.ceil(i)) : Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+
+export class RankPercentileNode extends ClassicPreset.Node {
   label: string;
-  op: NthValueOp;
+  op: RankPercentileOp;
   cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { k: 1 };
+  literals: Record<string, number> = {};
   width = 180;
-  height = 170;
+  height = 185;
 
-  constructor(init?: { label?: string; op?: NthValueOp }) {
-    super("NthValue");
-    this.label = init?.label ?? "LARGE";
+  constructor(init?: { label?: string; op?: RankPercentileOp }) {
+    super("RankPercentile");
+    this.label = init?.label ?? "Rank & Percentile";
     this.op = init?.op ?? "large";
     this.addInput("list", listIn("List"));
-    this.addInput("k",    numIn("K"));
-    this.addOutput("result", numOut("Value"));
+    for (const i of RANK_PERCENTILE_SPECS[this.family].inputs) this.addInput(i.key, numIn(i.label));
+    this.addOutput("result", numOut(RANK_PERCENTILE_SPECS[this.family].outLabel));
+    this.seedLiterals();
+    this.height = RANK_PERCENTILE_SPECS[this.family].height;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; k?: number[] }) {
+  get family(): RankPercentileFamily { return RANK_PERCENTILE_FAMILY[this.op]; }
+
+  private seedLiterals(): void {
+    for (const i of RANK_PERCENTILE_SPECS[this.family].inputs) this.literals[i.key] ??= i.def;
+  }
+
+  /** The keys a switch to `next` would remove. Callers on a live graph prune
+   *  these BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: RankPercentileOp): string[] {
+    const keep = new Set(RANK_PERCENTILE_SPECS[RANK_PERCENTILE_FAMILY[next]].inputs.map((i) => i.key));
+    return RANK_PERCENTILE_SPECS[this.family].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
+  }
+
+  setOp(next: RankPercentileOp): void {
+    if (next === this.op) return;
+    const before = RANK_PERCENTILE_SPECS[this.family].inputs;
+    this.op = next;
+    const spec = RANK_PERCENTILE_SPECS[this.family];
+    for (const i of before) if (!spec.inputs.some((j) => j.key === i.key)) this.removeInput(i.key);
+    for (const i of spec.inputs) if (!this.inputs[i.key]) this.addInput(i.key, numIn(i.label));
+    const out = this.outputs.result;
+    if (out) out.label = spec.outLabel;
+    this.seedLiterals();
+    this.height = spec.height;
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][]; k?: number[]; value?: number[]; p?: number[]; q?: number[]; significance?: number[] }): { result: number | SolError | null } {
+    const family = this.family;
+    const exc = this.op.endsWith("-exc");
+
+    if (family === "rank" || family === "percentrank") {
+      // The raw list: excelRank / excelPercentRank own their null handling
+      // (shared with the formula surface — one impl both call).
+      const arr = inputs.list?.[0] ?? null;
+      const v = readInput(inputs.value, this.literals.value ?? null);
+      if (family === "percentrank") {
+        const sigRaw = readInput(inputs.significance, this.literals.significance ?? 3);
+        if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
+        if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
+        const result = excelPercentRank(arr as number[], v, Math.round(sigRaw), exc);
+        this.cachedResult = result;
+        return { result };
+      }
+      if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
+      const result = excelRank(v, arr as number[], this.op === "rank-avg");
+      this.cachedResult = result;
+      return { result };
+    }
+
     // SolError propagates; null (missing) is skipped before ranking.
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
-    const k = Math.round(inputs.k?.[0] ?? this.literals.k ?? 1);
-    let result: number | null = null;
-    if (arr.length > 0 && k >= 1 && k <= arr.length) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      result = this.op === "large" ? sorted[arr.length - k] : sorted[k - 1];
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
+    let result: number | SolError | null = null;
 
-export type PercentileMode = "inc" | "exc";
-
-export class PercentileNode extends ClassicPreset.Node {
-  label: string;
-  op: PercentileMode;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { p: 0.5 };
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: PercentileMode }) {
-    super("Percentile");
-    this.label = init?.label ?? "PERCENTILE";
-    this.op = init?.op ?? "inc";
-    this.addInput("list", listIn("List"));
-    this.addInput("p",    numIn("Percentile (0–1)"));
-    this.addOutput("result", numOut("Value"));
-  }
-
-  data(inputs: { list?: (number | null | SolError)[][]; p?: number[] }): { result: number | SolError | null } {
-    // SolError propagates; null (missing) is skipped before ranking.
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    const p = inputs.p?.[0] ?? this.literals.p ?? 0.5;
-    let result: number | null = null;
-    if (arr.length > 0) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      const n = sorted.length;
-      if (this.op === "inc") {
-        if (p < 0 || p > 1) {
-          const err = solError("#DOMAIN!", "Percentile must be between 0 and 1");
-          this.cachedResult = err; return { result: err };
+    if (family === "nth") {
+      const kRaw = readInput(inputs.k, this.literals.k ?? 1);
+      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
+      const k = Math.round(kRaw);
+      if (arr.length > 0 && k >= 1 && k <= arr.length) {
+        const sorted = [...arr].sort((a, b) => a - b);
+        result = this.op === "large" ? sorted[arr.length - k] : sorted[k - 1];
+      }
+    } else if (family === "percentile") {
+      const p = readInput(inputs.p, this.literals.p ?? 0.5);
+      if (p === null) { this.cachedResult = null; return { result: null }; }
+      if (arr.length > 0) {
+        const n = arr.length;
+        if (!exc && (p < 0 || p > 1)) {
+          result = solError("#DOMAIN!", "Percentile must be between 0 and 1");
+        } else if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
+          // Excel PERCENTILE.EXC: p must lie strictly inside (1/(n+1), n/(n+1)) —
+          // outside it Excel returns #NUM!.
+          result = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
+        } else {
+          result = percentileOf([...arr].sort((a, b) => a - b), p, exc);
         }
-        const i = p * (n - 1);
-        const lo = Math.floor(i), hi = Math.ceil(i);
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-      } else {
-        // Excel PERCENTILE.EXC: p must lie strictly inside (1/(n+1), n/(n+1)) —
-        // outside it Excel returns #NUM!. Clamping here silently returned the
-        // min/max element instead.
-        if (p < 1 / (n + 1) || p > n / (n + 1)) {
-          const err = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
-          this.cachedResult = err; return { result: err };
+      }
+    } else {
+      const qRaw = readInput(inputs.q, this.literals.q ?? 2);
+      if (qRaw === null) { this.cachedResult = null; return { result: null }; }
+      const q = Math.round(qRaw);
+      if (arr.length > 0 && q >= 0 && q <= 4) {
+        const n = arr.length;
+        const p = q / 4;
+        if (exc && (q === 0 || q === 4)) {
+          result = solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");
+        } else if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
+          // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): an interior q can still fall
+          // outside the EXC domain at small n.
+          result = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
+        } else {
+          result = percentileOf([...arr].sort((a, b) => a - b), p, exc);
         }
-        const i = p * (n + 1) - 1;
-        const lo = Math.floor(i), hi = Math.min(n - 1, Math.ceil(i));
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       }
     }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type QuartileMode = "inc" | "exc";
-
-export class QuartileNode extends ClassicPreset.Node {
-  label: string;
-  op: QuartileMode;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { q: 2 };
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: QuartileMode }) {
-    super("Quartile");
-    this.label = init?.label ?? "QUARTILE";
-    this.op = init?.op ?? "inc";
-    this.addInput("list", listIn("List"));
-    this.addInput("q",    numIn("Quartile (0–4)"));
-    this.addOutput("result", numOut("Value"));
-  }
-
-  data(inputs: { list?: (number | null | SolError)[][]; q?: number[] }): { result: number | SolError | null } {
-    // SolError propagates; null (missing) is skipped before ranking (matches Percentile).
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    const q = Math.round(inputs.q?.[0] ?? this.literals.q ?? 2);
-    let result: number | null = null;
-    if (arr.length > 0 && q >= 0 && q <= 4) {
-      if (this.op === "exc" && (q === 0 || q === 4)) {
-        const err = solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");
-        this.cachedResult = err; return { result: err };
-      }
-      const p = q / 4;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const n = sorted.length;
-      if (this.op === "inc") {
-        const i = p * (n - 1);
-        const lo = Math.floor(i), hi = Math.ceil(i);
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-      } else {
-        // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): p must lie in [1/(n+1), n/(n+1)]
-        // or Excel returns #NUM! — clamping (as this did) silently returned the
-        // min/max element instead. Same fix as PercentileNode EXC above; the q=0/4
-        // guard catches the endpoints, this catches an interior q at small n.
-        if (p < 1 / (n + 1) || p > n / (n + 1)) {
-          const err = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
-          this.cachedResult = err; return { result: err };
-        }
-        const i = p * (n + 1) - 1;
-        const lo = Math.floor(i), hi = Math.min(n - 1, Math.ceil(i));
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type PercentrankMode = "inc" | "exc";
-
-export class PercentrankNode extends ClassicPreset.Node {
-  label: string;
-  op: PercentrankMode;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { value: 0, significance: 3 };
-  width = 180;
-  height = 210;
-
-  constructor(init?: { label?: string; op?: PercentrankMode }) {
-    super("Percentrank");
-    this.label = init?.label ?? "PERCENTRANK";
-    this.op = init?.op ?? "inc";
-    this.addInput("list",         listIn("List"));
-    this.addInput("value",        numIn("Value"));
-    this.addInput("significance", numIn("Digits"));
-    this.addOutput("result", numOut("Rank (0–1)"));
-  }
-
-  data(inputs: { list?: number[][]; value?: number[]; significance?: number[] }): { result: number | SolError | null } {
-    const arr = inputs.list?.[0] ?? null;
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    const sig = Math.round(inputs.significance?.[0] ?? this.literals.significance ?? 3);
-    if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-    // Shared with the formula path (excelFunctions `excelPercentRank`) — interpolates
-    // between data points + truncates to `sig` digits, matching Excel. One impl both call.
-    const result = excelPercentRank(arr, v, sig, this.op === "exc");
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type RankOp = "eq" | "avg";
-
-export const RANK_OP_META = {
-  eq:  { label: "RANK.EQ",  description: "Rank; ties share the lowest rank. Excel: RANK.EQ." },
-  avg: { label: "RANK.AVG", description: "Rank; ties share the average rank. Excel: RANK.AVG." },
-} satisfies Record<RankOp, { label: string; description: string }>;
-
-export class RankNode extends ClassicPreset.Node {
-  label: string;
-  op: RankOp;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { value: 0 };
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: RankOp }) {
-    super("Rank");
-    this.label = init?.label ?? "RANK";
-    this.op = init?.op ?? "eq";
-    this.addInput("list",  listIn("List"));
-    this.addInput("value", numIn("Value"));
-    this.addOutput("result", numOut("Rank"));
-  }
-
-  data(inputs: { list?: number[][]; value?: number[] }): { result: number | SolError | null } {
-    const arr = inputs.list?.[0] ?? null;
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-    // Shared with the formula path (excelFunctions `excelRank`) — one impl both call.
-    const result = excelRank(v, arr, this.op === "avg");
     this.cachedResult = result;
     return { result };
   }
@@ -318,12 +257,11 @@ export class StandardizeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[]; mean?: (number | number[])[]; stdev?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    const m = inputs.mean?.[0]  ?? this.literals.mean  ?? null;
-    const s = inputs.stdev?.[0] ?? this.literals.stdev ?? null;
-    // A zero std dev divides by zero — #DIV/0! — tagged the same at every
-    // dimensionality: a scalar → a #DIV/0! scalar, a per-element zero sigma in a
-    // LIST → a per-cell #DIV/0! (array-semantics: lists carry per-cell errors).
+    const v = readInput(inputs.value, this.literals.value ?? null);
+    const m = readInput(inputs.mean, this.literals.mean ?? null);
+    const s = readInput(inputs.stdev, this.literals.stdev ?? null);
+    // #DIV/0! is tagged at every dimensionality — a per-element zero sigma in a LIST
+    // becomes a per-cell error, not a whole-list one.
     const divZero = () => solError("#DIV/0!", "Standard deviation is zero");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (v !== null && m !== null && s !== null) {
@@ -338,8 +276,8 @@ export class StandardizeNode extends ClassicPreset.Node {
 export type CovarianceOp = "pop" | "samp";
 
 export const COVARIANCE_OP_META = {
-  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together; divides by n. Use when you have every data point. Excel: COVARIANCE.P." },
-  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together; divides by n−1. Use for a sample of a bigger population. Excel: COVARIANCE.S." },
+  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together; divides by n. For when you have every data point. Excel: COVARIANCE.P." },
+  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together; divides by n−1. For a sample of a bigger population. Excel: COVARIANCE.S." },
 } satisfies Record<CovarianceOp, { label: string; description: string }>;
 
 export class CovarianceNode extends ClassicPreset.Node {
@@ -397,10 +335,8 @@ export class FisherNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    // FISHER is only defined on the open interval (−1, 1). A value outside it is a
-    // domain error — #DOMAIN! — tagged the same at every dimensionality (a scalar
-    // → a #DOMAIN! scalar, a per-element miss in a LIST → a per-cell #DOMAIN!).
+    const v = readInput(inputs.value, this.literals.value ?? null);
+    // Defined only on (−1, 1); #DOMAIN! is tagged per-cell in a LIST, not whole-list.
     const domainErr = () => solError("#DOMAIN!", "FISHER requires −1 < x < 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (v !== null) {
@@ -471,8 +407,7 @@ export class RegressionNode extends ClassicPreset.Node {
       } else if (this.op === "intercept") {
         result = intercept;
       } else {
-        // steyx — needs at least 3 points for the (n−2) denominator; fewer is
-        // "not enough data yet", a blank (null), not an error.
+        // The (n−2) denominator needs 3+ points; fewer is a blank, not an error.
         result = n >= 3 ? Math.sqrt((SSyy - slope * SSxy) / (n - 2)) : null;
       }
     }
@@ -500,30 +435,21 @@ export class ForecastNode extends ClassicPreset.Node {
   }
 
   data(inputs: { x?: number[]; ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { result: number | SolError | null } {
-    const x = inputs.x?.[0] ?? this.literals.x ?? 0;
+    const x = readInput(inputs.x, this.literals.x ?? 0);
+    if (x === null) { this.cachedResult = null; return { result: null }; }
     const { error, xs: xsP, ys: ysP } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     const ys = ysP, xs = xsP;
     let result: number | null = null;
     if (ys.length >= 2 && xs.length >= 2) {
-      const n = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = xs[i] - xMean, dy = ys[i] - yMean;
-        SSxy += dx * dy;
-        SSxx += dx * dx;
-      }
+      const fit = linearFit(xs, ys);
       // Zero X variance — the linear fit divides by SSxx and is undefined.
-      if (SSxx === 0) {
+      if (!fit) {
         const err = solError("#DIV/0!", "Known Xs have zero variance");
         this.cachedResult = err;
         return { result: err };
       }
-      const slope = SSxy / SSxx;
-      const intercept = yMean - slope * xMean;
-      result = intercept + slope * x;
+      result = fit.intercept + fit.slope * x;
     }
     this.cachedResult = result;
     return { result };
@@ -542,9 +468,8 @@ export class ModeNode extends ClassicPreset.Node {
     super("Mode");
     this.label = init?.label ?? "MODE";
     this.addInput("list", listIn("List"));
-    // Number combo output (scalar OR list): ONE most-frequent value comes out as a
-    // scalar; when several tie, ALL of them come out as a list — so there's no
-    // arbitrary tie-break to pick (supersedes Excel's MODE.SNGL/MODE.MULT split).
+    // Combo output: one mode → scalar, a tie → the full list, so no arbitrary tie-break
+    // is needed (this supersedes Excel's MODE.SNGL/MODE.MULT split).
     this.addOutput("result", numListOut("Result"));
   }
 
@@ -588,7 +513,8 @@ export class TrimMeanNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; percent?: number[] }): { result: number | SolError | null } {
     const arr = inputs.list?.[0] ?? null;
-    const percent = inputs.percent?.[0] ?? this.literals.percent ?? 0.1;
+    const percent = readInput(inputs.percent, this.literals.percent ?? 0.1);
+    if (percent === null) { this.cachedResult = null; return { result: null }; }
     if (!arr || arr.length === 0) { this.cachedResult = null; return { result: null }; }
     // Shared with the formula path (excelFunctions `excelTrimmean`) — one impl both call.
     const result = excelTrimmean(arr, percent);
@@ -648,12 +574,6 @@ export const CONFIDENCE_OP_META = {
   t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: CONFIDENCE.T(alpha, stdev, n)." },
 } satisfies Record<ConfidenceOp, { label: string; description: string }>;
 
-function tCDF(x: number, df: number): number {
-  const z = df / (df + x * x);
-  const betaCDF = regularizedBeta(z, df / 2, 0.5);
-  return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
-}
-
 function tInv(prob: number, df: number): number {
   return bisectionInv((x) => tCDF(x, df), prob, -1e6, 1e6);
 }
@@ -677,9 +597,11 @@ export class ConfidenceNode extends ClassicPreset.Node {
   }
 
   data(inputs: { alpha?: number[]; stdev?: number[]; n?: number[] }) {
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? 0.05;
-    const stdev = inputs.stdev?.[0] ?? this.literals.stdev ?? 1;
-    const n = Math.round(inputs.n?.[0] ?? this.literals.n ?? 30);
+    const alpha = readInput(inputs.alpha, this.literals.alpha ?? 0.05);
+    const stdev = readInput(inputs.stdev, this.literals.stdev ?? 1);
+    const nRaw  = readInput(inputs.n,     this.literals.n     ?? 30);
+    if (alpha === null || stdev === null || nRaw === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.round(nRaw);
     let result: number | null = null;
     if (n >= 1 && stdev > 0 && alpha > 0 && alpha < 1) {
       if (this.op === "norm") {
@@ -699,13 +621,6 @@ export class ConfidenceNode extends ClassicPreset.Node {
 
 // ─── Shared helpers for test nodes ────────────────────────────────────────────
 
-function arrMean(arr: number[]): number {
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-function arrSampleVar(arr: number[]): number {
-  const m = arrMean(arr);
-  return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
-}
 function binomPmfLocal(k: number, n: number, p: number): number | null {
   if (p === 0) return k === 0 ? 1 : 0;
   if (p === 1) return k === n ? 1 : 0;
@@ -713,173 +628,138 @@ function binomPmfLocal(k: number, n: number, p: number): number | null {
   return Number.isFinite(r) ? r : null;
 }
 
-// ─── Z.TEST ───────────────────────────────────────────────────────────────────
+// ─── Hypothesis tests — ONE node (Z / t / F / chi-square) ────────────────────
+// Every test emits a p-value; the op selector swaps the input rows (Z: one
+// sample + μ₀ + optional σ; t/F: two samples; chi-square: observed/expected).
+// The sample keys are shared (`a`/`b`) so a switch between two-sample tests
+// keeps the cables and only the row labels change.
 
-export class ZTestNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { x: 0 };
-  width = 180; height = 200;
+export type HypothesisTestOp = "z" | "t-paired" | "t-equal" | "t-welch" | "f" | "chisq";
 
-  constructor(init?: { label?: string }) {
-    super("ZTest");
-    this.label = init?.label ?? "Z.TEST";
-    this.addInput("array", listIn("Array"));
-    this.addInput("x",     numIn("μ₀"));
-    this.addInput("sigma", numIn("σ (optional)"));
-    this.addOutput("result", numOut("p-value (upper)"));
-  }
+export const HYPOTHESIS_TEST_OP_META = {
+  z:          { label: "Z.TEST",             description: "One-tailed z-test: P(mean > μ₀) given a population or sample. Excel: Z.TEST." },
+  "t-paired": { label: "T.TEST (paired)",    description: "Paired t-test: the same subjects measured twice, 2-tailed. Excel: T.TEST type 1." },
+  "t-equal":  { label: "T.TEST (equal var)", description: "Two-sample t-test with pooled variance, 2-tailed. Excel: T.TEST type 2." },
+  "t-welch":  { label: "T.TEST (Welch)",     description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: T.TEST type 3." },
+  f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: F.TEST." },
+  chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: CHISQ.TEST." },
+} satisfies Record<HypothesisTestOp, { label: string; description: string }>;
 
-  data(inputs: { array?: number[][]; x?: number[]; sigma?: number[] }) {
-    const arr   = inputs.array?.[0] ?? null;
-    const x     = inputs.x?.[0]     ?? this.literals.x ?? 0;
-    const sigma = inputs.sigma?.[0] ?? null;
-    let result: number | null = null;
-    if (arr && arr.length >= 2) {
-      const n   = arr.length;
-      const m   = arrMean(arr);
-      const std = (sigma != null && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(arr));
-      if (std > 0) {
-        const z = (m - x) / (std / Math.sqrt(n));
-        result  = 1 - stdNormCDF(z);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
-  }
+interface HypothesisTestSpec {
+  inputs: ReadonlyArray<{ key: string; label: string; num?: boolean }>;
+  outLabel: string;
 }
 
-// ─── T.TEST ───────────────────────────────────────────────────────────────────
+const TWO_SAMPLE_SPEC: HypothesisTestSpec = {
+  inputs: [{ key: "a", label: "Array 1" }, { key: "b", label: "Array 2" }],
+  outLabel: "p-value (2-tail)",
+};
 
-export type TTestOp = "paired" | "equal-var" | "unequal-var";
+export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec> = {
+  z: {
+    inputs: [
+      { key: "a", label: "Array" },
+      { key: "x", label: "μ₀", num: true },
+      { key: "sigma", label: "σ (optional)", num: true },
+    ],
+    outLabel: "p-value (upper)",
+  },
+  "t-paired": TWO_SAMPLE_SPEC,
+  "t-equal": TWO_SAMPLE_SPEC,
+  "t-welch": TWO_SAMPLE_SPEC,
+  f: TWO_SAMPLE_SPEC,
+  chisq: {
+    inputs: [{ key: "a", label: "Observed" }, { key: "b", label: "Expected" }],
+    outLabel: "p-value",
+  },
+};
 
-export const T_TEST_OP_META = {
-  paired:          { label: "Paired",       description: "Paired t-test: the same subjects measured twice. Excel: T.TEST type 1." },
-  "equal-var":     { label: "Equal var",    description: "Two-sample t-test with pooled variance. Excel: T.TEST type 2." },
-  "unequal-var":   { label: "Unequal var",  description: "Welch's t-test: variances may differ. Excel: T.TEST type 3." },
-} satisfies Record<TTestOp, { label: string; description: string }>;
+const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "unequal-var" } as const;
 
-export class TTestNode extends ClassicPreset.Node {
+export class HypothesisTestNode extends ClassicPreset.Node {
   label: string;
-  op: TTestOp;
+  op: HypothesisTestOp;
   cachedResult: number | null = null;
   literals: Record<string, number> = {};
-  width = 180; height = 210;
+  width = 180;
+  height = 210;
 
-  constructor(init?: { label?: string; op?: TTestOp }) {
-    super("TTest");
-    this.label = init?.label ?? "T.TEST";
-    this.op    = init?.op    ?? "equal-var";
-    this.addInput("a", listIn("Array 1"));
-    this.addInput("b", listIn("Array 2"));
-    this.addOutput("result", numOut("p-value (2-tail)"));
+  constructor(init?: { label?: string; op?: HypothesisTestOp }) {
+    super("HypothesisTest");
+    this.label = init?.label ?? "Hypothesis Test";
+    this.op = init?.op ?? "z";
+    for (const i of HYPOTHESIS_TEST_SPECS[this.op].inputs) {
+      this.addInput(i.key, i.num ? numIn(i.label) : listIn(i.label));
+    }
+    this.addOutput("result", numOut(HYPOTHESIS_TEST_SPECS[this.op].outLabel));
+    this.seedLiterals();
+    this.height = this.heightFor();
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
+  private heightFor(): number {
+    return 210 + 28 * (HYPOTHESIS_TEST_SPECS[this.op].inputs.length - 2);
+  }
+
+  private seedLiterals(): void {
+    if (this.op === "z") this.literals.x ??= 0;
+  }
+
+  /** The keys a switch to `next` would remove. Callers on a live graph prune
+   *  these BEFORE calling setOp (SSOT-9). */
+  keysDroppedBySwitch(next: HypothesisTestOp): string[] {
+    const keep = new Set(HYPOTHESIS_TEST_SPECS[next].inputs.map((i) => i.key));
+    return HYPOTHESIS_TEST_SPECS[this.op].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
+  }
+
+  setOp(next: HypothesisTestOp): void {
+    if (next === this.op) return;
+    const before = HYPOTHESIS_TEST_SPECS[this.op].inputs;
+    const after = HYPOTHESIS_TEST_SPECS[next].inputs;
+    this.op = next;
+    for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
+    for (const i of after) {
+      const live = this.inputs[i.key];
+      if (!live) this.addInput(i.key, i.num ? numIn(i.label) : listIn(i.label));
+      else live.label = i.label; // a kept key keeps its cable; the role name follows the op
+    }
+    const out = this.outputs.result;
+    if (out) out.label = HYPOTHESIS_TEST_SPECS[next].outLabel;
+    this.seedLiterals();
+    this.height = this.heightFor();
+  }
+
+  data(inputs: { a?: number[][]; b?: number[][]; x?: number[]; sigma?: number[] }) {
     const a = inputs.a?.[0] ?? null;
-    const b = inputs.b?.[0] ?? null;
     let result: number | null = null;
-    if (a && b && a.length >= 2 && b.length >= 2) {
-      let t: number, df: number;
-      if (this.op === "paired") {
-        const n     = Math.min(a.length, b.length);
-        const diffs = Array.from({ length: n }, (_, i) => a[i] - b[i]);
-        const dVar  = arrSampleVar(diffs);
-        if (dVar <= 0) { this.cachedResult = null; return { result: null }; }
-        t  = arrMean(diffs) / Math.sqrt(dVar / n);
-        df = n - 1;
-      } else if (this.op === "equal-var") {
-        const n1 = a.length, n2 = b.length;
-        const v1 = arrSampleVar(a), v2 = arrSampleVar(b);
-        const sp2 = ((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2);
-        if (sp2 <= 0) { this.cachedResult = null; return { result: null }; }
-        t  = (arrMean(a) - arrMean(b)) / Math.sqrt(sp2 * (1 / n1 + 1 / n2));
-        df = n1 + n2 - 2;
-      } else {
-        const n1 = a.length, n2 = b.length;
-        const v1n = arrSampleVar(a) / n1, v2n = arrSampleVar(b) / n2;
-        const sum = v1n + v2n;
-        if (sum <= 0) { this.cachedResult = null; return { result: null }; }
-        t  = (arrMean(a) - arrMean(b)) / Math.sqrt(sum);
-        df = sum ** 2 / (v1n ** 2 / (n1 - 1) + v2n ** 2 / (n2 - 1));
+    if (this.op === "z") {
+      const x = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
+      // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
+      // unknown and propagates (value-semantics.md, "Reading an input").
+      const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
+      if (a && a.length >= 2 && x !== null && sigma !== null) {
+        const n = a.length;
+        const m = arrMean(a);
+        const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(a));
+        if (std > 0) result = 1 - stdNormCDF((m - x) / (std / Math.sqrt(n)));
       }
-      if (df > 0 && Number.isFinite(t) && Number.isFinite(df)) {
-        const p = 2 * (1 - tCDF(Math.abs(t), df));
-        result  = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : null;
+    } else if (this.op === "chisq") {
+      const exp = inputs.b?.[0] ?? null;
+      if (a && exp && a.length >= 2 && exp.length >= a.length) {
+        const n = a.length;
+        let chi2 = 0;
+        for (let i = 0; i < n; i++) {
+          if (exp[i] <= 0) { chi2 = NaN; break; }
+          chi2 += (a[i] - exp[i]) ** 2 / exp[i];
+        }
+        if (Number.isFinite(chi2) && chi2 >= 0) {
+          result = 1 - regularizedGamma((n - 1) / 2, chi2 / 2);
+          if (!Number.isFinite(result)) result = null;
+        }
       }
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── F.TEST ───────────────────────────────────────────────────────────────────
-
-export class FTestNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = {};
-  width = 180; height = 170;
-
-  constructor(init?: { label?: string }) {
-    super("FTest");
-    this.label = init?.label ?? "F.TEST";
-    this.addInput("a", listIn("Array 1"));
-    this.addInput("b", listIn("Array 2"));
-    this.addOutput("result", numOut("p-value (2-tail)"));
-  }
-
-  data(inputs: { a?: number[][]; b?: number[][] }) {
-    const a = inputs.a?.[0] ?? null;
-    const b = inputs.b?.[0] ?? null;
-    let result: number | null = null;
-    if (a && b && a.length >= 2 && b.length >= 2) {
-      const n1 = a.length, n2 = b.length;
-      const v1 = arrSampleVar(a), v2 = arrSampleVar(b);
-      if (v1 > 0 && v2 > 0) {
-        const F  = v1 / v2;
-        const df1 = n1 - 1, df2 = n2 - 1;
-        const p1  = regularizedBeta((F * df1) / (F * df1 + df2), df1 / 2, df2 / 2);
-        result = 2 * Math.min(p1, 1 - p1);
-        if (!Number.isFinite(result)) result = null;
-      }
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── CHISQ.TEST ───────────────────────────────────────────────────────────────
-
-export class ChisqTestNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = {};
-  width = 180; height = 185;
-
-  constructor(init?: { label?: string }) {
-    super("ChisqTest");
-    this.label = init?.label ?? "CHISQ.TEST";
-    this.addInput("obs", listIn("Observed"));
-    this.addInput("exp", listIn("Expected"));
-    this.addOutput("result", numOut("p-value"));
-  }
-
-  data(inputs: { obs?: number[][]; exp?: number[][] }) {
-    const obs = inputs.obs?.[0] ?? null;
-    const exp = inputs.exp?.[0] ?? null;
-    let result: number | null = null;
-    if (obs && exp && obs.length >= 2 && exp.length >= obs.length) {
-      const n = obs.length;
-      let chi2 = 0;
-      for (let i = 0; i < n; i++) {
-        if (exp[i] <= 0) { chi2 = NaN; break; }
-        chi2 += (obs[i] - exp[i]) ** 2 / exp[i];
-      }
-      if (Number.isFinite(chi2) && chi2 >= 0) {
-        result = 1 - regularizedGamma((n - 1) / 2, chi2 / 2);
-        if (!Number.isFinite(result)) result = null;
-      }
+    } else {
+      // ONE implementation with the formula surface (mathUtils.tTestP / fTestP — FX-1).
+      const b = inputs.b?.[0] ?? null;
+      if (a && b) result = this.op === "f" ? fTestP(a, b) : tTestP(T_KERNEL_OP[this.op], a, b);
     }
     this.cachedResult = result;
     return { result };
@@ -910,38 +790,19 @@ export class TrendNode extends ClassicPreset.Node {
     const newXsErr = newXsRaw?.find(isSolError);
     if (newXsErr) { this.cachedList = newXsErr; return { result: newXsErr }; }
     const newXs = (newXsRaw ?? []).filter((v): v is number => v !== null) as number[];
-    let result: number[] = [];
-    if (ys.length >= 2 && xs.length >= 2 && newXs.length > 0) {
-      const n     = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0;
-      for (let i = 0; i < n; i++) {
-        SSxy += (xs[i] - xMean) * (ys[i] - yMean);
-        SSxx += (xs[i] - xMean) ** 2;
-      }
-      if (SSxx !== 0) {
-        const slope     = SSxy / SSxx;
-        const intercept = yMean - slope * xMean;
-        result = newXs.map(x => intercept + slope * x);
-      }
-    }
+    // Shared fitting kernel (mathUtils) — the TREND registration runs the same one.
+    const fit = newXs.length > 0 ? linearFit(xs, ys) : null;
+    const result: number[] = fit ? newXs.map((x) => fit.intercept + fit.slope * x) : [];
     this.cachedList = result;
     return { result };
   }
 }
 
 // ─── Interpolate (List = 1-D, Grid = fill a bordered 2-D table) ──────────────────
-// A true lookup-table interpolation, which Excel has no direct function for:
-// LOOKUP/XLOOKUP do a STEP match (nearest key, no blending), and FORECAST/TREND fit a
-// regression LINE through the cloud rather than honouring each point. One node, two
-// modes (a dropdown swaps the socket set):
-//  • LIST — 1-D: interpolate y for a query x between known (x, y) points.
-//  • GRID — fill the blanks in a coordinate-BORDERED table. The first row holds the X
-//    coordinate of each column, the first column the Y coordinate of each row (the
-//    top-left corner is ignored on input and blanked on output); each blank interior
-//    cell is filled by interpolating from the known cells. ONE self-describing table in
-//    and out — coordinates sit next to their data, no parallel-list alignment to eyeball.
+// Two modes; the dropdown swaps the whole socket set:
+//  • LIST — interpolate y for a query x between known (x, y) points.
+//  • GRID — fill the blanks of a coordinate-BORDERED table (row 1 = X coords,
+//    column 1 = Y coords, top-left ignored on input and blanked on output).
 // Both CLAMP at the ends (no extrapolation past the known range).
 
 export type InterpolateMode = "list" | "grid";
@@ -953,168 +814,7 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 
 // The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
 // with value = (1-t)·v[i0] + t·v[i1], clamped at both ends (t=0 outside the range).
-function bracket(axis: number[], x: number): [number, number, number] {
-  const last = axis.length - 1;
-  if (x <= axis[0]) return [0, 0, 0];
-  if (x >= axis[last]) return [last, last, 0];
-  let lo = 0, hi = last;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (axis[mid] <= x) lo = mid; else hi = mid;
-  }
-  const x0 = axis[lo], x1 = axis[hi];
-  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
-}
 
-// 1-D piecewise-linear interpolation over a known (x, y) dataset. Points are sorted
-// by x (known data may arrive unordered); a duplicated x resolves to its first-seen y
-// (via bracket's t=0). A NaN query stays NaN. Clamped at the ends.
-export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
-  const n = Math.min(xs.length, ys.length);
-  if (n === 0) return queryXs.map(() => NaN);
-  const pairs: Array<[number, number]> = [];
-  for (let i = 0; i < n; i++) pairs.push([xs[i], ys[i]]);
-  pairs.sort((a, b) => a[0] - b[0]);
-  const sx = pairs.map((p) => p[0]);
-  const sy = pairs.map((p) => p[1]);
-  return queryXs.map((x) => {
-    if (Number.isNaN(x)) return NaN;
-    const [i0, i1, t] = bracket(sx, x);
-    return sy[i0] + t * (sy[i1] - sy[i0]);
-  });
-}
-
-// Fill the blank interior cells of a coordinate-BORDERED grid by true BILINEAR
-// interpolation — the standard lookup-table method (MATLAB `interp2`, SciPy
-// `RegularGridInterpolator` with method="linear"). The first row holds the X coordinate
-// of each column, the first column the Y coordinate of each row; the top-left corner is
-// ignored and comes back blank. The KNOWN cells define a coarse grid — its rows/columns
-// are the lines that carry data. A blank cell (an inserted intermediate coordinate, or a
-// hole) is the bilinear blend of the four surrounding known corners: its X is bracketed
-// among the data columns and its Y among the data rows, then interpolated in both. The
-// bracket WIDENS past any line whose corner is blank, so a hole interpolates across it
-// from the neighbouring data lines — the closest four-corner box with all corners known
-// is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
-// no four known corners ENCLOSE (the query outside every known-corner box) is left for
-// the forecast pass.
-//
-// `forecast` (default true): after the bilinear pass, every still-blank cell is filled
-// by a smooth surface fitted through ALL the known points — a thin-plate spline, or a
-// plane for degenerate data (`surfaceFit.ts`). That fills the scattered gaps and
-// extrapolates past the data (a linear trend at the edges). With forecast OFF, only the
-// bilinear-enclosed cells fill; the rest stay blank.
-export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
-  const R = table.length;
-  const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
-  const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
-  // Rectangular working copy; a blank (null / non-finite) cell becomes `null`.
-  const g: (number | null)[][] = Array.from({ length: R }, (_, i) =>
-    Array.from({ length: C }, (_, j) => { const v = table[i]?.[j]; return isKnown(v) ? v : null; }),
-  );
-  if (R < 2 || C < 2) { if (g[0]) g[0][0] = null; return g; } // no interior to fill
-
-  const colXs = g[0].slice(1).map((v) => (v == null ? NaN : v));    // X of each interior column
-  const rowYs = g.slice(1).map((r) => (r[0] == null ? NaN : r[0])); // Y of each interior row
-  const Ri = R - 1, Ci = C - 1;
-  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior values
-
-  const out: (number | null)[][] = g.map((r) => [...r]);
-  out[0][0] = null; // corner always blank on output
-
-  // The coarse grid: interior columns/rows that carry ≥1 known value (a blank INSERTED
-  // line has none).
-  const coarseCols: number[] = [];
-  for (let j = 0; j < Ci; j++) if (!Number.isNaN(colXs[j]) && Z.some((row) => row[j] != null)) coarseCols.push(j);
-  const coarseRows: number[] = [];
-  for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
-
-  // Data lines bracketing a query on an axis: those at-or-below (nearest first) and
-  // at-or-above (nearest first). Returns null when the query sits past the data on that
-  // axis (one side empty) — the cell can't be ENCLOSED, so it's left for the forecast.
-  const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] | null => {
-    const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
-    const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
-    if (lo.length === 0 || hi.length === 0) return null;
-    return [lo, hi];
-  };
-
-  // Every labelled known point, for pass 1's containment test and pass 2's fit.
-  const knownPts: Array<{ x: number; y: number; i: number; j: number; z: number }> = [];
-  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    const v = Z[i][j];
-    if (v != null && !Number.isNaN(colXs[j]) && !Number.isNaN(rowYs[i])) {
-      knownPts.push({ x: colXs[j], y: rowYs[i], i, j, z: v });
-    }
-  }
-
-  // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
-  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; } // known passes through
-    const qx = colXs[j], qy = rowYs[i];
-    if (Number.isNaN(qx) || Number.isNaN(qy)) continue; // unlabelled line → stays blank
-    const rs = sides(coarseRows, (k) => rowYs[k], qy);
-    const cs = sides(coarseCols, (k) => colXs[k], qx);
-    if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
-    // Cap the widening DEPTH per side. Un-capped, scattered data (a diagonal)
-    // rejects every box and the four nested loops exhaust O(lines⁴) combinations
-    // per cell — seconds on a modest grid. A cap of 4 still crosses runs of
-    // several consecutive holes on a line (each hole costs one widening step);
-    // anything needing a wider reach is scattered, and the spline handles it.
-    const WIDEN = 4;
-    const [rLoC, rHiC] = [rs[0].slice(0, WIDEN), rs[1].slice(0, WIDEN)];
-    const [cLoC, cHiC] = [cs[0].slice(0, WIDEN), cs[1].slice(0, WIDEN)];
-    // Nearest-first search for the closest box whose four corners are all known; widening
-    // past blank corners (a hole) is what lets it interpolate across missing samples. The
-    // query is always inside the box (lo ≤ q ≤ hi), so this is pure interpolation.
-    search:
-    for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
-      const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
-      if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
-      const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
-      // A box is only an HONEST bilinear cell when no OTHER known data lies within
-      // it (coordinate-space, borders included): bilinear over the corners would
-      // ignore that nearer data. The sine-diagonal case made this concrete — the
-      // only all-known-corner box was the grid's four 0-corners, so every blank
-      // filled flat-0 while the whole diagonal sat inside the box. A DEGENERATE
-      // (1-D) span is likewise contested by data strictly between its two samples
-      // in the cross direction, ANY distance off-axis — otherwise the outer edges
-      // clamp to a corner-to-corner line while the interior curves (author
-      // 2026-07-16: edges defer to the spline). A contested cell falls through to
-      // the surface fit, which uses ALL the points.
-      const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
-      const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
-      const degenRow = rLo === rHi, degenCol = cLo === cHi;
-      let contested = false;
-      for (const p of knownPts) {
-        if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
-        const hit =
-          degenRow && !degenCol ? p.x > xA && p.x < xB :
-          degenCol && !degenRow ? p.y > yA && p.y < yB :
-          p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB;
-        if (hit) { contested = true; break; }
-      }
-      if (contested) continue;
-      const tx = x1 === x0 ? 0 : (qx - x0) / (x1 - x0);
-      const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
-      const top = z00 + tx * (z01 - z00);
-      const bot = z10 + tx * (z11 - z10);
-      out[i + 1][j + 1] = top + ty * (bot - top);
-      break search;
-    }
-  }
-
-  // ── Pass 2 — Forecast: fill every cell pass 1 left blank with a smooth surface fitted
-  // through ALL the known points (thin-plate spline, or a plane for degenerate data). ──
-  if (forecast) {
-    const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
-    if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-      if (out[i + 1][j + 1] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
-      const v = f(colXs[j], rowYs[i]);
-      if (Number.isFinite(v)) out[i + 1][j + 1] = v;
-    }
-  }
-  return out;
-}
 
 export class InterpolateNode extends ClassicPreset.Node {
   label: string;
@@ -1136,17 +836,12 @@ export class InterpolateNode extends ClassicPreset.Node {
     this._rebuildSockets();
   }
 
-  // Rebuild the I/O set for the current mode. The two modes are different operations
-  // with different sockets (LIST: two data lists + a combo query; GRID: a numeric
-  // table + four axis lists), so the dropdown swaps the whole set — see
-  // applyInterpolateMode, which drops this node's cables first (removeInput is unsafe
-  // while a cable references the socket).
+  // Callers must drop this node's cables first (applyInterpolateMode) — removeInput is
+  // unsafe while a cable still references the socket.
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
     if (this.mode === "grid") {
-      // ONE self-describing table: row 1 = X coords, column 1 = Y coords, interior = Z
-      // with blanks to fill. Output = the same bordered grid, blanks filled.
       this.addInput("grid", tableIn("Bordered grid"));
       this.addOutput("result", tableOut("Filled grid"));
       this.height = 215;
@@ -1154,8 +849,7 @@ export class InterpolateNode extends ClassicPreset.Node {
     }
     this.addInput("ys",     listIn("Known Ys"));
     this.addInput("xs",     listIn("Known Xs"));
-    // Query is a numlist COMBO (scalar-or-list): a single X in → a single y out,
-    // a list of Xs in → a list out (result mirrors the query's shape).
+    // Combo query: the result mirrors the query's shape, scalar in → scalar out.
     this.addInput("new_xs", numListIn("X"));
     this.addOutput("result", numListOut("Interpolated Y"));
     this.height = 215;
@@ -1171,8 +865,6 @@ export class InterpolateNode extends ClassicPreset.Node {
     // Known data: propagate the first error, drop pairs missing on either side.
     const { error, xs, ys } = forPair(xsIn?.[0] ?? null, ysIn?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    // The combo query arrives as a scalar (a single X wired/typed) or an array (a
-    // list wired) — readInput unwraps it and falls back to the literal when unwired.
     const q = readInput(inputs.new_xs as (number | (number | null | SolError)[] | null | SolError)[] | undefined, this.literals.x);
     if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
     const noData = xs.length === 0;
@@ -1237,26 +929,12 @@ export class LinestNode extends ClassicPreset.Node {
       this.cachedSlope = this.cachedIntercept = this.cachedR2 = error;
       return { slope: error, intercept: error, r2: error };
     }
-    let slope: number | null = null, intercept: number | null = null, r2: number | null = null;
-    if (ys.length >= 2 && xs.length >= 2) {
-      const n     = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0, SSyy = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = xs[i] - xMean, dy = ys[i] - yMean;
-        SSxy += dx * dy; SSxx += dx * dx; SSyy += dy * dy;
-      }
-      if (SSxx !== 0) {
-        slope     = SSxy / SSxx;
-        intercept = yMean - slope * xMean;
-        r2        = (SSxx > 0 && SSyy > 0) ? (SSxy / Math.sqrt(SSxx * SSyy)) ** 2 : 0;
-      }
-    }
-    this.cachedSlope     = slope;
-    this.cachedIntercept = intercept;
-    this.cachedR2        = r2;
-    return { slope, intercept, r2 };
+    // Shared fitting kernel (mathUtils) — the LINEST registration runs the same one.
+    const fit = linearFitR2(xs, ys);
+    this.cachedSlope     = fit?.slope ?? null;
+    this.cachedIntercept = fit?.intercept ?? null;
+    this.cachedR2        = fit?.r2 ?? null;
+    return { slope: this.cachedSlope, intercept: this.cachedIntercept, r2: this.cachedR2 };
   }
 }
 
@@ -1279,26 +957,10 @@ export class LogestNode extends ClassicPreset.Node {
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }) {
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedList = error; return { result: error }; }
-    let result: number[] = [];
-    if (ys.length >= 2 && xs.length >= 2) {
-      const n      = Math.min(ys.length, xs.length);
-      const ySlice = ys.slice(0, n);
-      const xSlice = xs.slice(0, n);
-      if (ySlice.every(y => y > 0)) {
-        const logYs  = ySlice.map(y => Math.log(y));
-        const xMean  = xSlice.reduce((a, b) => a + b, 0) / n;
-        const lyMean = logYs.reduce((a, b) => a + b, 0) / n;
-        let SSxy = 0, SSxx = 0;
-        for (let i = 0; i < n; i++) {
-          SSxy += (xSlice[i] - xMean) * (logYs[i] - lyMean);
-          SSxx += (xSlice[i] - xMean) ** 2;
-        }
-        if (SSxx !== 0) {
-          const logM = SSxy / SSxx;
-          result = [Math.exp(logM), Math.exp(lyMean - logM * xMean)];
-        }
-      }
-    }
+    // ONE implementation with the LOGEST/GROWTH registrations; a degenerate fit stays
+    // the quiet empty list.
+    const fit = expFit(xs, ys);
+    const result: number[] = fit ? [fit.m, fit.b] : [];
     this.cachedList = result;
     return { result };
   }
@@ -1323,10 +985,15 @@ export class BinomDistRangeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; p?: number[]; lo?: number[]; hi?: number[] }) {
-    const n  = Math.floor(inputs.n?.[0]  ?? this.literals.n  ?? 10);
-    const p  = inputs.p?.[0]             ?? this.literals.p  ?? 0.5;
-    const lo = Math.floor(inputs.lo?.[0] ?? this.literals.lo ?? 0);
-    const hi = Math.floor(inputs.hi?.[0] ?? this.literals.hi ?? n);
+    const nRaw  = readInput(inputs.n,  this.literals.n  ?? 10);
+    const p     = readInput(inputs.p,  this.literals.p  ?? 0.5);
+    if (nRaw === null || p === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.floor(nRaw);
+    const loRaw = readInput(inputs.lo, this.literals.lo ?? 0);
+    const hiRaw = readInput(inputs.hi, this.literals.hi ?? n);
+    if (loRaw === null || hiRaw === null) { this.cachedResult = null; return { result: null }; }
+    const lo = Math.floor(loRaw);
+    const hi = Math.floor(hiRaw);
     let result: number | null = null;
     if (n >= 0 && p >= 0 && p <= 1 && lo >= 0 && hi >= lo && hi <= n) {
       let sum = 0;
@@ -1346,7 +1013,7 @@ export class BinomDistRangeNode extends ClassicPreset.Node {
 
 export class ProbNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { lo: 0, hi: 1 };
   width = 180; height = 250;
 
@@ -1363,17 +1030,11 @@ export class ProbNode extends ClassicPreset.Node {
   data(inputs: { range?: number[][]; probs?: number[][]; lo?: number[]; hi?: number[] }) {
     const range = inputs.range?.[0] ?? null;
     const probs = inputs.probs?.[0] ?? null;
-    const lo    = inputs.lo?.[0]    ?? this.literals.lo ?? 0;
-    const hi    = inputs.hi?.[0]    ?? this.literals.hi ?? 1;
-    let result: number | null = null;
-    if (range && probs && range.length > 0 && probs.length >= range.length) {
-      const n = range.length;
-      let prob = 0;
-      for (let i = 0; i < n; i++) {
-        if (range[i] >= lo && range[i] <= hi) prob += probs[i];
-      }
-      result = Number.isFinite(prob) ? Math.min(1, Math.max(0, prob)) : null;
-    }
+    const lo    = readInput(inputs.lo, this.literals.lo ?? 0);
+    const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
+    if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
+    // ONE implementation with the formula surface (mathUtils.probBetween — FX-1).
+    const result = probBetween(range, probs, lo, hi);
     this.cachedResult = result;
     return { result };
   }

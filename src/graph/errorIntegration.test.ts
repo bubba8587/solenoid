@@ -107,7 +107,7 @@ describe("error propagation through the engine", () => {
 });
 
 describe("dependency loops (#CIRC!)", () => {
-  it("loopMembers flags only the true loop, not its neighbours", async () => {
+  it("loopMembers flags only the true loop, not its neighbors", async () => {
     const editor = new NodeEditor<Schemes>();
     const a = new ArithmeticNode({ op: "add" });
     const b = new ArithmeticNode({ op: "add" });

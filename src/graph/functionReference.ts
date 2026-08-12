@@ -1,18 +1,5 @@
-// Function Reference — GENERATED from node metadata, not a hand-maintained list.
-//
-// The reference rows are derived by walking the catalog (core + packs): each node
-// carries its own Excel equivalence (`NodeCatalogEntry.excel`), its Add-menu
-// location is its position in the tree, its pack membership is `leaf.packs`, and
-// "dependency" is whether one of its packs is depended-on by another pack. So a
-// node (or a whole pack) appearing / disappearing moves its reference rows
-// automatically — there is no parallel file to go stale.
-//
-// The only standalone data is the "Excel-only gap" (`EXCEL_GAP` in nodeExcel.ts) —
-// functions Solenoid has no node for, which by definition can't be derived from a
-// node. It self-corrects: any gap entry whose Excel name has become node-backed is
-// dropped, so implementing a node always removes it from the missing list. And the
-// dev catalog validator fails loudly if a mapped node lacks its Excel metadata, so
-// the reverse (a shipped node missing from the reference — the LAMBDA bug) is caught.
+// GENERATED from catalog metadata — never add a hand-maintained row here. The one
+// piece of standalone data is EXCEL_GAP (functions with no node), which self-heals.
 
 import { buildCatalog } from "./catalogUtils";
 import { EXCEL_GAP } from "./nodeExcel";
@@ -35,8 +22,8 @@ export interface FnRefRow {
   parity: boolean;
   oos: boolean;
   note?: string;
-  groupKey: string;            // section key
-  groupLabel: string;          // section header text
+  groupKey: string;
+  groupLabel: string;
 }
 
 interface LeafInfo {
@@ -51,7 +38,6 @@ interface LeafInfo {
 function isCategory(e: CatalogEntry): e is CatalogCategory { return e.type === "category"; }
 function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
 
-// Walk the built catalog into a type → location/packs/parity/excel index.
 function indexCatalog(): Map<string, LeafInfo> {
   const idx = new Map<string, LeafInfo>();
   const add = (leaf: NodeCatalogEntry, path: string[]) => {
@@ -112,9 +98,7 @@ export function buildFunctionReference(): FnRefRow[] {
     }
   }
 
-  // 1b. Solenoid-native nodes (no Excel equivalent) — so the reference is a
-  //     complete node list, not just Excel parity. Grouped by Add-menu location
-  //     (Control, Input, Output, …), which is how the user finds them.
+  // 1b. Solenoid-native nodes — the reference is a complete node list, not just parity.
   for (const [type, info] of idx) {
     if (info.excel?.length) continue; // already emitted as Excel rows above
     rows.push({
@@ -125,8 +109,7 @@ export function buildFunctionReference(): FnRefRow[] {
     });
   }
 
-  // 2. Excel-only gap — functions with no node. Self-heals: an entry whose name
-  //    has become node-backed (emitted above) is dropped.
+  // 2. Excel-only gap — self-heals: an entry that became node-backed above is dropped.
   for (const g of EXCEL_GAP) {
     if (emitted.has(g.excel)) continue;
     const composition = g.composition ?? false;

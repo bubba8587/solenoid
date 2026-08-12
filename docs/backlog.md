@@ -1,185 +1,277 @@
-# Solenoid — Backlog
+# Solenoid — Backlog (1.3)
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
-the dev-notes digests are the record; this file is the working queue, not a ledger.
-Ruled-out ideas live in `out-of-scope.md`; settled rationale in `decisions.md`.
+the dev-notes digests are the record. **The 1.3 pivot (author, 2026-08-07):** the app
+ships as 1.3 basically as-is; this queue is bugs, small patches, and thorough
+small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md`
+"Pushed to 1.4/2.0". Ruled-out ideas: `out-of-scope.md`; settled rationale:
+`decisions.md`.
 
 ---
 
+## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
+
+- [ ] **Node-by-node sweep** — walk the catalog one node at a time: null/error/empty
+  inputs handled per `value-semantics.md`; collapsed card reads right; description
+  matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings
+  in the session digest; fix small, file anything big.
+- [ ] **Fine-print residue (small, from the completed inventory).** The 45-claim
+  sweep is DONE (2026-08-08; digest has the full record — every cluster verified
+  agent-assisted, 1 false + 4 imprecise descriptions fixed, `caseContract` +
+  `finePrintContract` pin the risky set). Leftovers, all small: (a) **AUTHOR
+  SMELL — TEXTJOIN defaults disagree across surfaces**: the node defaults
+  include-empties, the formula registration defaults ignore-empties (D11
+  harmony; both explicit, but a bare call answers differently). (b) Expect's
+  "fires once per new failure" edge-detects on the failing CHECK-NAME set, so a
+  different cell failing the same check doesn't re-fire — verify intended,
+  then say so. (c) Unpinned-but-verified minor claims if their nodes come up in
+  the sweep: add-column pad, build-frame ragged rows, MUNIT blanks-out-of-sums.
+
+## Bugs & verifications
+
+- [ ] **Editing a node header blacks out the app (tablet)** — author-reported
+  2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
+  5 seeds, clean). The app now has error boundaries (app + per node) — next
+  occurrence prints a copyable message; get that text and this is a 5-minute fix.
+- [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`
+  `create_overlay_titlebar()` not rendering. Ruled out: the accent border. Needs a
+  live devtools look or a decorum/tauri version check; fallback = native OS
+  decorations. Regression, cause unknown.
+- [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
+  intermittent, no repro; suspected z-order/hit-area or group-membership sync.
+- [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` wheel;
+  verify on hardware. NOTE: `rete-area-plugin` 2.2.1 fixed exactly this upstream
+  (normalize wheel delta for touchpad pinch, their #31) — but `CappedZoom.wheel`
+  REPLACES their handler, so the fix cannot reach us while we override it. Either
+  delete our `wheel` and tune `intensity`, or keep our curve and fix it ourselves.
+- [ ] **Settle the OS-dropdown rule** (needs a device/emulated CDP) — the "native
+  `<select>` needs a pointerdown swallow" claim has no recorded incident and the
+  mobile path suggests it may not hold; 21 sites held on precaution. If false, they
+  join the `stopDragStart` sweep; if true, record the repro. LEAD:
+  `simpleNodesOrder` MOVES the picked node in the DOM tree (their own docstring),
+  and re-parenting a subtree is a mechanism that WOULD kill an open `<select>` —
+  see the `zIndexNodesOrder` item under Dependency updates.
+- [ ] **The other singular criteria-aggregates (small, follows SUMIF).** `SUMIF` is
+  now classed like `MATCH`: blocked to `SUMIFS`, claim removed from `NODE_EXCEL`,
+  `EXCEL_GAP` row `oos: "Superseded by SUMIFS"`. `COUNTIF` and `AVERAGEIF` are still
+  claimed by the `sumifs` node and still dispatch — neither is buggy (both handle a
+  numeric-string range correctly), so this is consistency, not a defect. Decide:
+  supersede them the same way, or keep them and give their `NODE_EXCEL` rows the
+  interface note their plural siblings carry (one frame, named columns, criteria
+  ROWS instead of `">10"` strings) — today the singular rows have none, and the
+  node's op set and description name only the plural five.
+- [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
+  the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
+  gate the rest — build nothing before those.
+- [ ] **AI palette verification tail** — first real-key end-to-end (`ANTHROPIC_API_KEY=…
+  npm run ai-prompt`), palette on the preview (author eyeball), Tidy on an all-at-0,0
+  generated graph, one desktop CSP smoke test. (Known + accepted: Apply drops undo
+  history — autosave keeps the pre-apply doc.)
+- [ ] **De-group non-finite keys in distinct/groupBy (reopen B-1a)** — grouping/distinct
+  file +Inf, −Inf, and NaN into ONE shared key bucket (null gets its own), which is
+  internally consistent web↔desktop but INCONSISTENT with the rest of the app: sort
+  orders ±Inf at opposite ends and tails NaN with blanks; aggregation/`guardFinite`
+  treat NaN as `#DOMAIN!` yet pass a real ±Inf through. Desktop grouped them separately
+  natively before B-1a (dev-notes 2026-07-05, pt 5) — that's the target: +Inf, −Inf each
+  own bucket, all NaN together, null its own. Edge-case in practice (most non-finites
+  become `#OVERFLOW!`/`#DOMAIN!` before landing in a frame). Touches the B-1a
+  cross-engine contract: re-cut `frameVerbs.ts` `encodeCell`, the Rust group key exprs,
+  the `distinct`/`groupBy` corpus fixtures, and the B-1a pin in `frameVerbs.test.ts`.
+  Full write-up: `docs/review/AGGRESSIVE-CODE-REVIEW-2026-08.md` #4.
+- [ ] **OUTSIDE REVIEW WANTED: number→text semantics of the text predicates** —
+  author defers to a reviewer. Today: text predicates on number/date columns compare
+  the JS display string (oracle `String(cell)`; engine mirrors via hand-written
+  `js_number_string` — the own-it-forever liability under review). Alternatives:
+  (a) status quo; (b) `#TYPE!` + require Cast (most lattice-consistent, deletes the
+  Rust formatter); (c) app-format strings (rejected-by-default). Verdict lands as a
+  VAL rule + corpus cases.
+
+## Node-combining parked (round 1 LANDED 2026-08-09, D36 — review these with the author)
+
+- **Paired-list aggregate** (SUMPRODUCT + SUMX2MY2/SUMX2PY2/SUMXMY2 + CORREL +
+  COVARIANCE.P/.S + WAVG/WSTDEV/WVAR — 4 classes, 10 ops, all two parallel
+  lists → number; the two-list Aggregate) — author: wait.
+- **Payment breakdown 2×2** (IPMT/PPMT + CUMIPMT/CUMPRINC: op Interest/Principal ×
+  window one-period/period-range; CUMIPMT over [k,k] = IPMT) — author unfamiliar
+  with the family; explain before deciding.
+- **Text Filter ⊂ List Filter** — absorption/delete: `FilterOp` already has
+  contains/startsWith/endsWith + Match case; Dropped covers not-contains. The
+  `TEXTFILTER` formula name needs a call.
+- **TREND ⊂ FORECAST.LINEAR** — widen Forecast's `x` to `numlist` combo (it's a
+  per-element operand) and TREND is redundant. Related: LINEST + LOGEST differ only
+  in model → model selector.
+- **PHI / GAUSS → Distribution forms** — both are standard-normal forms already
+  living in the Distributions menu.
+- **Smaller pairs**: Select+Drop Columns (keep/remove toggle); Set + Set relation
+  (one card, output socket swaps list↔logical per op — Split Frame precedent);
+  discount securities (TBill 3 + SecurityDisc 3 + PriceDisc 2 + PriceMat 2, all
+  settlement/maturity/basis-shaped); BondPrice + OddCoupon (odd variants = extra
+  date params per op); ACCRINT + ACCRINTM; CSV File +
+  Parquet File (format from extension) and Write CSV + Write JSON.
+
+## Small builds & calls (still 1.3-sized)
+
+- [ ] **AUTHOR CALL — mode-selector inputs on a wired blank**: `text.ts` / `date.ts`
+  selector inputs fall back to the literal on a wired blank, diverging from
+  value-semantics' "mode selector propagates" row. Decide; reconcile table or code.
+- [ ] **Matrix-null round-trip in Table Input** (`TableDisplay.tsx`): blanks should
+  round-trip as real null cells instead of collapsing the table.
+- [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
+- [ ] **Finish evicting live material from `docs/archive/`** — the routing table is
+  clean and machine-checked now, but three archived docs are still cited as current
+  by CODE: `formulajs-vs-native-audit.md` (the per-family verdicts `FAMILY_BACKING`
+  encodes), `cube-node-scope.md` (`nodes/cube.ts`, `frameLookup.test.ts`),
+  `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
+  message). Same split as the divergence catalogue: live half out, finished record
+  stays.
+- [ ] **By-Row cap: silent truncation → Problems-panel warning** (`composite.ts`
+  `BY_ROW_MAX_ROWS` = 500).
+- [ ] **Every Formula.js-only 2-D function is DEAD on the formula surface** — a
+  matrix arg only survives dispatch through a declared `matrixArgs`
+  (`excelFormula.ts` D23 containment), which no library-backed name has. So the
+  matrix is broadcast element-wise BEFORE the function sees it and every call
+  returns a same-shape array of `#VALUE!` (`COLUMN` `ROW` `COLUMNS` `ROWS`
+  `CHOOSECOLS` `CHOOSEROWS`) or THROWS out of the evaluator (`HSTACK` `VSTACK`
+  `EXPAND` → "array.reduce is not a function"; the `D*` database family →
+  "Cannot read properties of undefined"). The declared natives (`TRANSPOSE`
+  `MDETERM` `TAKE` `INDEX`) work, which is the contrast that proves the mechanism.
+  A throw escaping as a throw rather than a SolError is the sharp end. Decide
+  per name: declare `matrixArgs` + own it, or eliminate per D10. (`COLUMN`/`ROW`
+  are done — eliminated to `INDEX`; `INDEX` itself now owns rank 2.)
+
+### XMATCH / XLOOKUP are narrower than they advertise (2026-08-11 analysis)
+
+Excel's `lookup_array` is 1-D but ORIENTATION-FREE — a single row or a single
+column; a true grid is `#VALUE!`. Ours takes a vertical list only, and the
+advertised surface says otherwise: the hint reads exactly like Excel's signature
+and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
+
+- [ ] **Orientation — a 1×N or N×1 matrix is `#SHAPE!`** on both `XMATCH` and
+  `XLOOKUP`. A header ROW is a matrix in our model, so the common Excel shape is
+  refused, and `INDEX(grid, XMATCH(…), XMATCH(…))` only composes when the headers
+  are already 1-D lists (an `INDEX` whole-axis slice is, a raw grid row isn't).
+  SHALLOW: declare `matrixArgs`, flatten a single row/column to its vector, and
+  answer `#VALUE!` on a real grid — which is Excel's own answer, so this removes a
+  limit rather than inventing one. Kernel unchanged.
+- [ ] **An ARRAY `lookup_value` answers `#N/A` instead of spilling** — Excel
+  returns one position per element; we treat the array as a single needle and
+  report "not found". A plausible wrong answer, not a refusal: the worst failure
+  shape and the only one here that lies quietly. `XLOOKUP` identical. Interim fix
+  is a loud `#VALUE!`. The real fix is DEEP and belongs to the engine, not the
+  lookups: `broadcastCall` is all-or-nothing per FUNCTION (`RANGE_FUNCTIONS.has`),
+  so "spill this argument, take that one whole" is not expressible — a
+  per-ARGUMENT prep declaration is an FX-5/FX-6 design item serving a whole class.
+- [ ] **The XMATCH NODE is number-only** (`numIn` + `listIn`) while the formula
+  matches text case-insensitively — a live surface divergence. SHALLOW and
+  low-risk: `anyListIn` + `anyIn`, output invariant (a position is always a
+  number), so no adoption/passthrough work; `numlist` still connects below
+  `anylist` on the D17 ladder, so no graph breaks. This is D15's own rule
+  (position-only utilities ride element-agnostic sockets) and the `CONTAINS`
+  sibling is the precedent. Two wrinkles: approximate modes stay numeric (runtime
+  `#VALUE!`, mirroring the frame kernel's `isOrderableKey`), and a TYPED literal
+  needle stays impossible until the `stringLiterals` question is settled — shared
+  with CONTAINS, not XMATCH's to solve.
+- **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
+  container to guarantee its TWO columns line up ("Build Frame two aligned lists
+  first"); XMATCH reads one column and returns a position, so it has no alignment
+  problem, and Get Column → XMATCH already is frame-XMATCH with column typing
+  intact. Adding it would duplicate a working composition and force a column-name
+  input onto a node that needs none.
+
+## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
+
+Changelogs ship INSIDE the rete packages — `npm pack <pkg>@<old>` and `@<new>`,
+untar, diff the bundled changelog. Read those, not the GitHub releases (that API
+is blocked here for out-of-scope repos).
+
+- [ ] **`rete-react-plugin` 2.1.0 → 2.1.2, and measure a big-doc load.** 2.1.2 is
+  literally `root.render(el)` → `flushSync(() => root.render(el))`, so a node's
+  root is layout-ready when the mount returns — directly upstream of
+  `MeasuredSocketRow`, `getDOMSocketPosition` and `guardedSocketPosition.ts`, and
+  plausibly retires a class of first-paint wrong-endpoint cable bugs. The mirror
+  risk is the reason to measure: `rebuildGraph` batches with `Promise.all`
+  precisely to avoid ~2N sequential layout hops, and N synchronous flushes could
+  make a large load SLOWER. (2.1.1 only colors rete's stock `<input>`; we render
+  none, so it can't reach us.)
+- [ ] **`rete-area-plugin` 2.1.5 → 2.3.2** — own change, needs a selection-test
+  pass + a trackpad check. Two behaviour changes reach us: 2.3.1 makes
+  `Selector.add` unselect everything EXCEPT the re-picked entity instead of
+  `unselectAll()`-then-add (less selection churn → fewer re-renders, interacts
+  with selection-on-pointerup); 2.2.x normalizes wheel deltas — the same algorithm
+  `CappedZoom.wheel` implements, differently tuned (theirs 8px/line, 24px/page,
+  `intensity/8` per px, cap `intensity`; ours 16/400, ×0.0028, cap 0.24). **Rewrite
+  the `CappedZoom.wheel` comment on contact** — it now overrides a WORKING
+  implementation, not a broken one. `CappedZoom.down` (capture-phase finger count)
+  is unaffected.
+- [ ] **Evaluate `zIndexNodesOrder` (new in area 2.3.0)** — "relies only on
+  z-index. Use this extension when click handlers inside nodes must stay stable",
+  vs `simpleNodesOrder` which moves the picked node in the DOM tree. Candidate
+  answer to the OS-dropdown rule above. NOT a drop-in: `groupLogic.ts` pins a group
+  behind its members BECAUSE stacking follows DOM order, `Canvas.tsx` reasons about
+  the picked node landing at the DOM end, and the extension's own ladder (nodes ≥1,
+  connections 0) has to be reconciled with ours (standoffs −3 < groups −2 <
+  conduits −1 < nodes 0). Its own investigation.
+- [ ] **`rete-history-plugin` 2.1.1 → 2.2.0** — inert for us (comment-plugin undo
+  presets; we use our own `commentStore`, not rete's). Bump whenever.
+- [ ] **`vite` 7.3.6 → 8.2.1 WITH `@vitejs/plugin-react` 4.7.0 → 6.0.5** — hard
+  coupled (plugin-react 6 declares `vite: ^8.0.0`, no `^7`). Highest-risk bump left,
+  and BOTH risks are invisible to `tsc` and vitest, so gate it on a trial build that
+  checks two artifacts: (1) `dist/third-party-licenses.txt` present and POPULATED,
+  (2) our class names survive in the bundle (`grep dist` for `XMatchNode`,
+  `ListIndexNode`). Vite 8 swaps Rollup → **Rolldown** (`rolldown: ~1.2.1`) and
+  esbuild → **Oxc** (esbuild demoted to an optional peer; `lightningcss` promoted to
+  a direct dep; `build.minify` now `boolean | "oxc" | "terser" | "esbuild"`).
+  What that lands on in `vite.config.ts`:
+  - **`rollup-plugin-license` runs under Rolldown.** It emits the third-party
+    license file we SHIP — compliance, not cosmetics. A build error is fine
+    (loud); a silently empty/partial file is the bad outcome.
+  - **`esbuild: { keepNames: true }` is deprecated and `keepNames` appears NOWHERE
+    in vite 8's types** (`OxcOptions` extends rolldown's transform options, which
+    don't carry it). That flag is what keeps `constructor.name` intact for the node
+    type hints — so the failure is production-only, silent and user-visible: dev is
+    unminified, tests never build, and `release:desktop` ships it. Expect to set
+    `build.minify` explicitly — `"esbuild"` keeps the old minifier (still a
+    supported optional peer), or `"terser"` + `terserOptions: { keep_classnames:
+    true, keep_fnames: true }`.
+  NOT blockers (checked): vitest 4.1.8 already allows `vite ^6 || ^7 || ^8`; node
+  engines are identical across 7 and 8; every new peer on both packages is optional.
+  Downstream: this is the build tool, so the Tauri desktop release rides on it.
+- [ ] **`elkjs` 0.8.2 → 0.12.0 — only worth it WITH the Tidy-options work.**
+  Verified inert on its own: layout output is byte-identical on both a connected
+  and a disconnected graph with our four options, and the full suite passes under
+  0.12. It buys no visible change and costs a standing `npm warn ERESOLVE
+  overriding peer dependency` — `rete-auto-arrange-plugin@2.0.2` (the LATEST; none
+  newer exists) peer-pins `elkjs: ^0.8.2`, i.e. `<0.9.0`, and we reach ELK only
+  through that plugin. What it DOES buy is `layered.layerUnzipping.*`, which lays a
+  9→1 fan out 3×3 at 929×710 where Coffman-Graham (available today) manages
+  929×987 — plus `considerModelOrder.groupModelOrder.*`, `inLayerPredOf/SuccOf`,
+  and `topdownLayout` (ELK's native answer to the super-node trick our group Tidy
+  hand-rolls). Gotcha for whoever builds it: `layerUnzipping.layerSplit` is a
+  PER-NODE option — set on the root it is silently ignored — so Tidy must stamp it
+  onto the wide layer's nodes, ~`ceil(sqrt(count))`; 4 on a 9-fan splits 3/2/2/2
+  and buys no further height. Also note the license moves EPL-2.0 →
+  `EPL-2.0 OR GPL-3.0-or-later`, which changes the shipped
+  `third-party-licenses.txt`. Full option survey + the open cable-routing question:
+  `deferrals.md` "Tidy options".
+- [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
+  `katex` 0.17→0.18. Plus ~17 in-range patches, incl.
+  `@formulajs/formulajs` 4.6.0→4.6.1 — read that diff rather than bumping blind,
+  given how much of the formula surface leans on it. Core `rete` 2.0.6 is already
+  current.
+
+## Architecture spec (`docs/rules.md`)
+
+- [ ] **The author ARR pass — READY (author-present).** Walk every rule and
+  authorize as permanent; the rule index + marking procedure are in place.
+- [ ] **Spec-promotion remainder** — read-as is coercion-not-assertion
+  (`applyGetColumnReadAs` pins it); promote if config-driven coercions grow.
+- [ ] **Enforcement tail (low value)** — SOCK-8 partial (un-greppable visual half),
+  SOCK-6 unenforced (recorded un-greppable).
+
 ## Release tail (author-run)
 
-- [ ] **Cut 1.2**: version is 1.2.0 on `develop`, tag not yet cut (latest tag v1.1.5).
-  Author performs: desktop-gated checks (cargo on Windows, path-stripped
-  `release:desktop` build, exe smoke), merge → `main`, tag `v1.2.0`.
-- [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
-  slide source (author writes the final release notes).
-
-## Needs an author decision / author-present session
-
-- [ ] **Everyday widget nodes (v2.0 bundle 16)** — Weather / Geocode / FX / Holidays /
-  TZ Convert / QR. Build is autonomous-friendly on the connection pattern, but 4 gate
-  calls come first: `v2.0/16-widget-nodes.md`.
-- [ ] **iFrame / embed node [1.3]** — general web-embed out the `chart` socket (FRED,
-  YouTube, social). Blocked on the author's CSP-posture call: Tauri CSP has no
-  `frame-src` today, so external iframes are blocked; the call is `https:` (broad) vs a
-  domain allowlist. Non-negotiables when built: `sandbox` without allow-top-navigation,
-  `referrerpolicy=no-referrer`, https-only, click-to-load (saved URLs are untrusted;
-  also the perf lever — each iframe is a full browser context, so don't render
-  off-screen and cap concurrency). Most sites send X-Frame-Options: DENY — this serves
-  embed-friendly content, not arbitrary pages.
-- [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened)** — not decidable
-  until the registry unification (Tier 1 of the parity program) is done. Criteria fixed
-  by the author: correctness + coherence only (the identity/auditability objection is
-  RETIRED — don't re-litigate). When it returns, bring a shape-branding design for the
-  type-agnostic evaluator + a machine-checked Excel-DA broadcast-rules table; endpoints
-  are "never" vs "matrices-only, full DA semantics" (frames-in-formulas rejected).
-  Full record: `formula-node-parity.md` "Tier 4 in full".
-- [ ] **Composite drill-in — remaining gaps**: (a) Group/Cleanup/Autofit/Expand inside a
-  drill-in (needs the group-drag reconcile pipe + push/standoffs/GroupNode taught the
-  active area — a real DOM-verified lift, folded until then); (b) Navigator + lasso
-  (folded/hidden while drilled in); (c) **D2 proper** — reroute the real top toolbar /
-  mobile bar to the active subgraph (author-present, wants live eyeballing).
-- [ ] **D4 — conditional formatting for tables** — needs its own design pass: must clear
-  Excel's version by a lot (author's explicit dislike), Display-node-only, must not
-  step on FC format/units territory.
-- [ ] **FC A4 tails** (author-present polish): per-element mixed-unit trig (a list
-  mixing deg/rad cells should interpret EACH cell in its own unit —
-  `resolveTrigModes` still reads one socket-level unit); Cube popup FC controls
-  (frames/matrices/lists have the per-column format+unit row in `TablePopup` via
-  `fcControls.tsx`; cubes wait on nothing now that `CubeColumn` is typed).
-- [ ] **Document-level FC defaults** (default places / number format; the Document
-  Properties window ships without them) — a format-pipeline integration, author-present.
-- [ ] **Header/body border seam under zoom — UNSOLVED, parked** for a human/later model.
-  See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
-- [ ] **Traveling-cable flow pulse → maybe the app's cables** (author likes the landing
-  page's marching-dash cable rendering, `LandingScenes.tsx` `.sol-cable__flow`).
-  Author-gated: touches the never-degrade-cables rule and DESIGN.md's no-decoration
-  stance — this would make the pulse MEANING, not decoration.
-- [ ] **Feature/value copy doc** for landing/marketing — author will initiate; ranked
-  candidate copy lines per feature, author ranks value.
-
-## Decided, unbuilt (mechanical)
-
-- [ ] **Formula ↔ node parity program (D19, greenlit — build in a dedicated session)** —
-  converge the formula language and the node set; audit + tiers + decisions in
-  `formula-node-parity.md` (numbers regenerable via `scripts/formula-node-parity.ts`).
-  Build order: ratchet test first (pin the 57 + the blocklist), then Tier 1
-  registrations, alias gate, pack seam. Legacy aliases BLOCKED (`#NAME?` + redirect
-  hint); Solenoid-native formula names = the node hover hint despaced; packs register
-  their own formula functions. Tier 4 is separate (author-present, above). Residual:
-  distributions are validated only at representative points — widen if accuracy is
-  ever in doubt.
-- [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose
-  variables are column names, appended in place (PQ Custom Column); wants a design pass
-  on sharing the Expression engine.
-- [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
-  what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts
-  "series (2-D)"). Every frame-consuming node reuses it, per the aligned-columns rule
-  (one frame input, not parallel sockets — charts + SUMIFS + the frame verbs).
-- [ ] **Reference overlay — Socket tab → full data-model chapter** — grow the socket tab
-  into a real explanation of types, units, dimensionality (the lattice, wildcard
-  ladder, list-is-a-row, per-container unit granularity). Sources: `sockets.ts` +
-  `socketConnect.test.ts`, D17/D20, `archive/units-format-controller.md`.
-- [ ] **Data Feed widening [1.3]** — a richer series/symbol picker (today a text field +
-  quick-picks), more providers. Shipped baseline: 3 providers (FRED keyless default /
-  Stooq keyless / Alpha Vantage keyed), a plain ticker/series field + FRED common-series
-  quick-picks (UNRATE, CPIAUCSL, GDP, FEDFUNDS, DGS10…), chart-ready typed output (date
-  col + numeric values; Stooq = date+OHLCV). Widening = a real symbol-search picker beyond
-  the free field, and more providers. Stays Excel STOCKHISTORY scope — NOT crypto/FX, no
-  real-time/intraday/options/fundamentals.
-- [ ] **Seed follow-ups**: personal-finance is generator-locked (structure via
-  `gen-personal-finance-seed.cjs`; geometry owned by the tuned JSON —
-  `scripts/tune-seeds.mjs`); composite-workbench still has no scenarios/data-table card.
-- [ ] **Aliasing / hidden-port promotion UI** (composites) — the data model has
-  `hidden`/`advanced` per port; no UI to flip exposure or edit a hidden port's baked
-  default. Includes the pack-shell "many internal ports → one shell parameter" aliasing.
-- [ ] **Native Polars mirrors for the eager cleanup verbs** (perf follow-up, only if a
-  real workload demands): fillBlanks / replaceValues / sliceRows are trivially lazy;
-  today they materialize like Split Column.
-- [ ] **Obsidian follow-ups (if wanted)**: auto-reload an imported note on file change;
-  write config for `![[Note]]` transclusion vs inlining an embedded note's body.
-
-## Small calls / polish
-
-- [ ] **Expression `/` doesn't mint a pure ratio** — the Divide NODE mints `5:1` on a
-  same-dimension cancel; Expression strips UnitCells at its boundary, so `a/b` yields a
-  bare number. Decide: leave (Expression is deliberately type-agnostic — likely fine)
-  or make Expression unit-aware someday.
-- [ ] **XLOOKUP `rawInputs` bypass retirement (optional cleanup)** — with typed
-  frame→cube, the bypass is no longer needed to preserve types; the frame + cube lookup
-  paths could collapse to one. Behaviour-touching refactor of a covered node; only if
-  it pulls weight.
-- [ ] **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever
-  appears; documented-strip is the deliberate stance (D20).
-- [ ] **Error UX on restriction violation** — typed error out the socket vs the node
-  flagging the offending input locally. Pending a call.
-- [ ] **Provenance Tier 2 — on-demand "why is this?" walk** — a backward-derivation
-  trace for any value (Tier 1, error origin + fly-to-source, shipped in
-  `errorValue.ts`). Never built; idea salvaged from the archived provenance bundle.
-- [ ] **Inside-solve stale dot is uniform** — after an INSIDE Solve the dot reads green
-  though the held result is seed-based; distinguishing needs a drill-state signal in
-  the compute layer (couples `data()` to `compositeEditorStore`). Left simple on
-  purpose; revisit only if it reads as misleading.
-- [ ] **Pack variant-switch reconciles the socket set** — a variant dropdown must
-  add/remove sockets like Cast/read-as do. (The existing custom nodes all keep fixed
-  sockets across their dropdowns, deliberately — nothing waits on this.)
-- [ ] **Optically center the last asymmetric icons** — canvas-lock toggle (reads low) +
-  the cable-flourish sparkle; author's eye needed. Ink-centroid method: archived
-  dev-notes (2026-06-20).
-- [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
-  events; verify on hardware, intercept manually if not.
-- [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
-  intermittent, no repro; suspected z-order / hit-area or membership-sync issue tied to
-  group membership.
-
-## Packs
-
-- [ ] **Materials & Mechanical pack** — next domain candidate; the INTERPOLATE gate is
-  cleared (List + Grid modes shipped). Only the domain content (datasets + presets)
-  remains. See `pack-composite-plans.md`.
-- [ ] **Timesavers remainder**: date idioms carrying a config or judgment call (Fiscal
-  Quarter start-month, Age/Tenure with DATEDIF `"MD"` nuance, Nth Weekday), the
-  duration trio (wants an elapsed-`[h]:mm` format first), Split Name (multi-output),
-  and the list-reducer batch (Conditional Aggregate AND/OR, Multi-Criteria Lookup,
-  Last/First Non-Blank, Rank-in-Group…).
-- [ ] **Composite pack-node shape** — packs can't ship subgraphs yet; the queued
-  composite pack nodes (Wheatstone, pump operating point, psychrometric state point,
-  Pareto, % of Total…) are planned in `pack-composite-plans.md`.
-- [ ] **Pack distribution + dependency system** — third-party pack DISTRIBUTION; must
-  land in tandem with subgraphs. (In-app `dependsOn` auto-activation already works —
-  Electromagnetism → Electricity is the live example.)
-
-## Desktop shell
-
-- [ ] **Window min/max/close controls missing** — `tauri-plugin-decorum`'s
-  `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent
-  border. Needs a live devtools look (F12 — CSP/decorum errors?) or a decorum/tauri
-  version check. Fallback: drop the overlay for native OS decorations. Worked before;
-  regression cause unknown.
-
-## Perf levers (only when a real workload demands)
-
-- [ ] **Figure rasterize-at-rest (recharts + KaTeX)** — the last real DOM lever; the
-  remaining big subtrees are figure CONTENT (~200–400 el/chart, ~70/formula). SvgPicker
-  precedent: raster at rest, live tree on hover; KaTeX needs re-raster-on-zoom for
-  crispness. Quality gate: pixel-crisp at any zoom, hover indistinguishable. Per-card
-  complexity is real (theme invalidation, fonts-ready, blob lifecycle).
-- [ ] **#23 persistent compute cache** · **#35 MCP port** — deferred, unscheduled.
-
-## Parked (revisit only if the trigger returns)
-
-- [ ] **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't
-  build per-panel resize.
-- [ ] **Uncertain values + money mode** — in, but sequenced dead last; each needs an
-  author representation call first. Design context: `v2.0/12-value-model-extensions.md`.
-- [ ] **Cable collision avoidance** — spec: `archive/cable-routing.md` §2.
-- [ ] **Grid system** — spec: `grid-system.md`.
-- [ ] **WebGPU/wgpu renderer + LOD swap** — superseded by HTML-in-Canvas as the
-  zoom-at-scale lever; reopen only if `drawElementImage` never reaches stable or a
-  native-GPU need appears. Records: `archive/renderer-plan.md`,
-  `archive/performance-hardening.md`.
-- [ ] **`content-visibility: auto` on node roots — ruled out** while socket positions are
-  measured from live DOM geometry (off-screen subtrees don't compute descendant layout
-  → cable endpoints jump at the viewport edge). With SVG-picker-rasterize +
-  collapsed-figure-unmount shipped, the DOM-weight lever set is exhausted — the GPU
-  renderer is the remaining path at scale.
+- [ ] **Deferral review (author-present)** — walk `deferrals.md` (now incl. the
+  Pushed-to-1.4/2.0 section) and ratify/amend `out-of-scope.md` (still DRAFT).
+- [ ] **Keep `release-notes-features.md` current** — the 1.3 selling list.
+- [ ] **Cut 1.3**: desktop-gated checks (cargo on Windows, path-stripped
+  `release:desktop`, exe smoke), bump 1.3.0, merge → `main`, tag `v1.3.0`.

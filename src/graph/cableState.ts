@@ -1,19 +1,7 @@
-// Two pieces of shared state about cables that live OUTSIDE rete's
-// editor: the currently "selected" connections (highlight + delete via
-// keyboard), and the set of connection IDs currently rendered as
-// "ghosts" (a dashed cable left behind after splicing a 1-in/1-out
-// node out of a chain — click to materialise as a real cable).
-//
-// We hold them in module-level stores instead of React context because
-// ConnectionComponent and the keyboard handler in Canvas don't share a
-// React tree (rete renders connections in its own React root).
+// Cable state that lives OUTSIDE rete's editor: cable selection, socket highlight, and
+// ghost cables (the dashed stub left after splicing a node out of a chain).
 
 type Listener = () => void;
-
-// ─── selection ──────────────────────────────────────────────────────
-// Multi-select: a set of connection ids. Plain click replaces the
-// selection (`set`), Ctrl/Cmd-click toggles membership (`toggle`),
-// the lasso replaces it wholesale (`replaceAll`).
 
 let _selectedConnIds = new Set<string>();
 let _selVersion = 0;
@@ -37,7 +25,6 @@ export const cableSelectionStore = {
   count: () => _selectedConnIds.size,
   // Version snapshot for useSyncExternalStore (stable primitive getter).
   version: () => _selVersion,
-  // Replace the selection with one cable (or clear with null).
   set: (id: string | null) => {
     cableSelectionStore.replaceAll(id ? [id] : []);
   },
@@ -65,19 +52,9 @@ export const cableSelectionStore = {
   },
 };
 
-// ─── socket highlight ────────────────────────────────────────────────
-// Three independent slots so the three sources of highlight — cable
-// drag, cable hover, and socket hover — never overwrite each other.
-// A socket is lit if it appears in any slot.
-//
-//  drag        set by Canvas during cable draw
-//  cableHover  set by ConnectionComponent on mouseenter/mouseleave
-//  socketHover set by NodeSocket on mouseenter/mouseleave
-//
-// Keeping them separate is critical: when the mouse slides off an
-// output socket onto its cable, the socket's mouseleave fires before
-// the cable's mouseenter. If they share a slot, the cable's mouseenter
-// would see its work cleared by the socket's mouseleave.
+// Three independent highlight slots (drag, cable hover, socket hover); a socket is lit
+// if any slot holds it. Sharing one slot lets the socket's mouseleave clear the cable's
+// mouseenter as the pointer slides off a socket onto its cable.
 
 export function dragSocketKey(nodeId: string, key: string) {
   return `${nodeId}::${key}`;
@@ -96,10 +73,8 @@ function notifyHighlights() {
   for (const l of _hlListeners) l();
 }
 
-// Skip the notify when the incoming keys equal the slot's current set — the drag
-// handler calls setDrag on EVERY pointermove, and each notify re-renders every
-// mounted NodeSocket, CollapsedInputPill and GroupNode summary (hidden collapsed
-// members included), which made cable drags jank on a big graph.
+// Skip the notify on unchanged keys: setDrag fires on EVERY pointermove and each notify
+// re-renders every mounted socket/pill/group summary, janking drags on a big graph.
 function sameKeys(cur: Set<string>, keys: string[]): boolean {
   if (cur.size !== keys.length) return false;
   for (const k of keys) if (!cur.has(k)) return false;
@@ -131,9 +106,7 @@ export const socketHighlightStore = {
   },
 };
 
-// ─── socket-hover cable propagation ─────────────────────────────────
-// Cable IDs highlighted because a SOCKET is being hovered.
-// Only NodeSocket writes/clears this.
+// Cable IDs highlighted because a SOCKET is hovered — only NodeSocket writes/clears it.
 
 const _shPropIds = new Set<string>();
 let _shPropVersion = 0;
@@ -159,12 +132,8 @@ export const socketHoverCableStore = {
   },
 };
 
-// ─── ghost cables ───────────────────────────────────────────────────
-
-// We could put a `.ghost` property on the connection object itself,
-// but rete copies / serialises that object opaquely. Keeping a side
-// set keyed by id sidesteps that concern, and the ghost set is
-// trivially serialisable on its own.
+// A side set keyed by id, not a `.ghost` property on the connection object — rete
+// copies / serialises that object opaquely.
 
 const _ghostIds = new Set<string>();
 const _ghostListeners = new Set<Listener>();
@@ -182,9 +151,7 @@ export const cableGhostStore = {
     if (!_ghostIds.delete(id)) return;
     notifyGhost();
   },
-  // Version snapshot — useSyncExternalStore wants a stable
-  // primitive-returning getter. `.size` flips when membership
-  // changes so any component that subscribes re-renders.
+  // `.size` flips when membership changes so any subscriber re-renders.
   version: () => _ghostIds.size,
   subscribe: (l: Listener) => {
     _ghostListeners.add(l);

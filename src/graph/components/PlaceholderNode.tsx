@@ -2,9 +2,7 @@ import { NodeShell, PortSockets, type NodeProps } from "./nodeKit";
 import type { PlaceholderNode } from "../rete-nodes";
 import "./placeholderNode.css";
 
-// Renders a missing-type node (see PlaceholderNode): the original type name in
-// red, a short explanation, and the synthesized input sockets (NodeShell draws
-// the outputs) so the preserved cables stay attached and visible.
+// The synthesized input sockets keep the preserved cables attached and visible.
 export function PlaceholderComponent({ data, emit }: NodeProps<PlaceholderNode>) {
   return (
     <NodeShell

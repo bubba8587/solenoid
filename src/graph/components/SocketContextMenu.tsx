@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useMenuClamp } from "./menuClamp";
+import { useEffect } from "react";
 import "./SocketContextMenu.css";
 
 export type SocketContextTarget = {
@@ -16,7 +17,7 @@ type Props = {
 };
 
 export function SocketContextMenu({ target, onAttachFormat, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {

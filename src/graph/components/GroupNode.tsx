@@ -25,28 +25,24 @@ import { formatScalar } from "./format";
 import { NodeSocket } from "./NodeSocket";
 import type { NodeProps } from "./nodeKit";
 import "./GroupNode.css";
+import { stopDragStart } from "../coarse";
 
-// Format a readout value, honoring an FC annotation keyed by `annNodeId`.
+// Honors the FC annotation keyed by `annNodeId`.
 function formatReadout(v: unknown, annNodeId: string): string {
   if (v === undefined || v === null) return "—";
-  // An errored member shows its #CODE! in the collapsed readout, matching the
-  // red badge its own value box renders (rather than a bare "[object Object]").
   if (isSolError(v)) return v.code;
   const ann = formatAnnotationStore.getForNode(annNodeId);
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
   if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? one(x) : String(x))).join(", ");
-  // Object-valued kinds (chart / frame / cube / diagram / image / lambda) get a
-  // compact label instead of "[object Object]".
+  // Object-valued kinds get a compact label instead of "[object Object]".
   const kind = describeValueKind(v);
   if (kind != null) return kind;
   return String(v);
 }
 
-// The raw current value behind a retained terminal. Displays read their
-// cachedValue; generic members read their live output, falling back to the
-// node's cachedResult (LAMBDA table nodes cache there and may not be in the
-// cable store yet).
+// Falls back to `cachedResult` because LAMBDA table nodes cache there and may not
+// be in the cable store yet.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
     const n = getEditor()?.getNode(t.displayId) as { cachedValue?: unknown } | undefined;
@@ -58,17 +54,12 @@ function readoutValue(t: RetainedTerminal): unknown {
   return n?.cachedResult ?? v;
 }
 
-// The current readout string for a (non-array) retained terminal.
 function readoutText(t: RetainedTerminal): string {
   return formatReadout(readoutValue(t), t.kind === "display" ? t.displayId : t.effNodeId);
 }
 
-// Render a (non-array) readout: an errored member shows the shared red #CODE!
-// chip (with the full error tooltip), matching its own value box; an OBJECT
-// kind with a chip (frame/cube/chart/document — valueChipFor, the ONE registry)
-// shows its clickable chip, rendered as a DIRECT flex child so the row's
-// align-items:center centres it (wrapping in the 15px row-val span baseline-
-// aligned the chip low); everything else is plain formatted text.
+// A chip renders as a DIRECT flex child so the row's align-items:center centers it —
+// wrapping it in the 15px row-val span baseline-aligns it low.
 function renderReadout(t: RetainedTerminal) {
   const v = readoutValue(t);
   if (isSolError(v)) return <ErrorChip err={v} className="solenoid-group__row-val" />;
@@ -91,35 +82,27 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
   const taRef = useRef<HTMLTextAreaElement>(null);
-  // Timestamp of the last grip pointerdown — used to detect a double-press
-  // (autofit) without relying on the native dblclick, which the grip's
-  // setPointerCapture + preventDefault suppress.
+  // The grip's setPointerCapture + preventDefault suppress the native dblclick, so
+  // the double-press is timed by hand.
   const lastGripDown = useRef(0);
 
   useEffect(() => { setLabel(node.label); }, [node.label]);
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  // Combined-pill highlight tracks socket highlights (ribbon hover etc.).
   useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
   const mode = appThemeStore.getMode();
   // Group tint reads heavier on a light canvas — give it a touch more fill.
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
 
-  // Expanded: pin BEHIND members (it's a frame). Collapsed: members are hidden,
-  // so sit ABOVE the cables like a normal node — otherwise cables draw over the
-  // edge pill sockets.
   useLayoutEffect(() => {
     const el = getArea()?.nodeViews.get(node.id)?.element;
-    // Expanded groups sit behind members AND behind member Conduits (which are
-    // at -1 so wires plug in over their grid) — so a Conduit inside a group stays
-    // clickable. Layering: standoffs -3 < group -2 < conduit -1 < nodes 0. Raise
-    // above everything while the color palette is open so it isn't hidden.
+    // Expanded sits BEHIND members (standoffs −3 < group −2 < conduit −1 < nodes 0)
+    // so a member Conduit stays clickable; collapsed must sit ABOVE the cables or
+    // they draw over the edge pill sockets.
     if (el) el.style.zIndex = pickerOpen ? "20" : node.collapsed ? "1" : "-2";
   });
 
-  // Draft-only while typing (project-wide rule: commit on Enter/blur, never per
-  // keystroke). Escape reverts to the last committed label without writing.
   const labelCancelled = useRef(false);
   function onLabelChange(v: string) {
     setLabel(v); // draft only — node.label unchanged until commit
@@ -146,9 +129,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   function onResizeDown(e: React.PointerEvent) {
     e.stopPropagation();
     e.preventDefault();
-    // Double-press the grip → autofit the box to its members (instead of a
-    // drag). Detected by hand because the native dblclick doesn't survive the
-    // pointer capture + preventDefault below.
     const now = Date.now();
     if (now - lastGripDown.current < 350) {
       lastGripDown.current = 0;
@@ -164,7 +144,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
 
-    // Apply a saved {width,height,members} snapshot (used by undo/redo).
     const applySnapshot = (s: { width: number; height: number; members: string[] }) => {
       node.width = s.width;
       node.height = s.height;
@@ -185,9 +164,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
       handle.releasePointerCapture(e.pointerId);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      // Snap-to-grid mode: land the bottom-right corner on the grid (snap-on-
-      // release, like a dropped node). The top-left stays fixed during a BR
-      // resize, so snap the corner's WORLD position and derive width/height.
+      // The top-left stays fixed during a BR resize, so snap the corner's WORLD
+      // position and derive width/height from it.
       if (gridSnapStore.get()) {
         const pos = area?.nodeViews.get(node.id)?.position;
         if (pos) {
@@ -198,18 +176,15 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
       }
       const editor = getEditor();
       if (editor && area) {
-        // A MANUAL box resize DOES re-evaluate membership — dragging the edge over
-        // a node to include it is a deliberate act. (Autofit is the exception: it
-        // wraps the existing members and must not absorb bystanders — see
-        // autofitGroupWithHistory, which omits this.)
+        // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
+        // it wraps existing members and must not absorb bystanders.
         reconcileGroupBox(editor, area, node);
         rebuildGroupMembership(editor);
         syncGroupCollapse(editor, area);
       }
       scheduleAutosave();
-      // Re-resolve standoffs against the new bbox once we let go (matches the Note
-      // resize). The solver MEASURES offsetWidth/Height, so defer one frame to let
-      // the resize paint; pin this group so its standoff partner re-aligns to it.
+      // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
+      // paint; pinning this group makes its partner re-align to it.
       if (!standoffStore.isEmpty()) {
         requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
       }
@@ -223,9 +198,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     window.addEventListener("pointerup", up);
   }
 
-  // Autofit the box to wrap its members exactly (shrink or grow). Triggered by
-  // a grip double-press. Undoable, position included. Shares its body with the
-  // autofit hotkey (Ctrl+Shift+F) via autofitGroupWithHistory.
   async function autofitToMembers() {
     const editor = getEditor();
     const area = getArea();
@@ -233,11 +205,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     await autofitGroupWithHistory(editor, area, node);
   }
 
-  // The Tidy button lays the members out within the current box (which only
-  // auto-GROWS); follow it with an autofit so the box wraps the new layout exactly
-  // (shrink or grow). The within-group tidy snaps docked FCs back onto their hosts
-  // in a DEFERRED frame, so wait two frames (like Cleanup) before autofitting, or
-  // the box would wrap the members' stale far-right ELK spots.
+  // The within-group tidy snaps docked FCs back onto their hosts in a DEFERRED
+  // frame, so autofit must wait two frames or it wraps stale far-right ELK spots.
   async function tidyThenAutofit() {
     await autoArrange({ groupId: node.id });
     await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
@@ -259,17 +228,13 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     const editor = getEditor();
     const area = getArea();
     if (!editor || !area) return;
-    // Centralised toggle: flip + sync + re-render + settle + push/restore.
     void setGroupsCollapsed(editor, area, [node], !node.collapsed);
   }
 
-  // Display color is the stored color, shifted slightly for the active theme
-  // (node.color stays the canonical value — a palette SLOT id, resolved to a hex
-  // here). The group re-renders on theme toggle via the appThemeStore subscription.
+  // `node.color` stays the canonical value — a palette SLOT id, resolved here.
   const baseHex = resolveColor(node.color);
   const color = themeAccent(baseHex, mode);
   const ink = contrastInk(color);
-  // Light mode frames the group in a darker shade of its color (matches nodes).
   const borderCol = mode === "light" ? darkenAccent(baseHex) : color;
   const collapsed = node.collapsed;
   const retained = collapsed ? groupCollapseStore.retainedFor(node.id) : [];
@@ -278,9 +243,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const summaryMinH = rowCount * COLLAPSE_LAYOUT.rowH
     + Math.max(0, rowCount - 1) * COLLAPSE_LAYOUT.rowGap + COLLAPSE_LAYOUT.padTop * 2;
 
-  // Publish the group color the same way a member NodeCard does (--group-color /
-  // --group-color-dark), so a Table/Array chip opened from the collapsed summary
-  // reads them and frames its popup with the membership border + corner triangle.
+  // Published the same way a member NodeCard does, so a chip opened from the
+  // collapsed summary frames its popup with the membership border.
   const groupVars = {
     "--node-accent": color,
     "--group-color": color,
@@ -301,7 +265,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           className="solenoid-group__chevron"
           title={collapsed ? "Expand group" : "Collapse group"}
           onClick={toggleCollapse}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -330,13 +294,12 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             style={{ color: ink }}
             title={label}
             onClick={() => setEditingLabel(true)}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             {label || "Group"}
           </div>
         )}
-        {/* Tidy — auto-arrange just this group's members within its box. */}
         {node.members.length > 1 && (
           <button
             type="button"
@@ -348,8 +311,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             onMouseDown={stop}
           >
             <svg width="13" height="13" viewBox="-1 -1 18 18" fill="none" stroke={ink} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              {/* One source node branching into two — a tidy graph layout. The
-                  padded viewBox keeps the rounded stroke from clipping at the edges. */}
+              {/* The padded viewBox keeps the rounded stroke from clipping. */}
               <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
               <rect x="11.2" y="2" width="3.6" height="3.6" rx="0.8" />
               <rect x="11.2" y="9.8" width="3.6" height="3.6" rx="0.8" />
@@ -359,7 +321,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             </svg>
           </button>
         )}
-        {/* Color picker — a swatch that opens the node-palette popover. */}
         <button
           ref={swatchRef}
           type="button"
@@ -387,8 +348,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             <div className="solenoid-group__empty">no readouts</div>
           ) : (
             retained.map((t) => {
-              // A combined Conduit-output row (its outputs leave as one ribbon)
-              // shows the lane count, not a single lane's value.
+              // A combined Conduit-output row shows the lane count, not a value.
               const combo = (t.lanes ?? 0) > 1;
               const val = combo ? null : readoutValue(t);
               return (
@@ -406,11 +366,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             })
           )}
         </div>
-        {/* Edge pills are real sockets (so they match other sockets and the
-            outputs are draggable). Inputs are ephemeral — they vanish when their
-            cable breaks (recompute drops the crossing). A pill with lanes > 1 is
-            the COMBINED pill a Conduit ribbon trunk terminates on: the socket
-            stays functional underneath, a taller neutral stadium is the visual. */}
+        {/* Edge pills are REAL sockets, so outputs stay draggable; a lanes > 1 pill
+            is a Conduit ribbon trunk's terminus, functional socket under a stadium. */}
         {inputPills.map((ip) => {
           const sock = getEditor()?.getNode(ip.nodeId)?.inputs[ip.socketKey]?.socket;
           if (!sock) return null;
@@ -427,8 +384,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             <Fragment key={`in${ip.nodeId}-${ip.socketKey}`}>
               <NodeSocket side="input" socketKey={ip.socketKey} nodeId={ip.nodeId} emit={emit}
                           payload={sock} top={pillY(ip.index) - 6} className="solenoid-node__pill-socket" />
-              {/* Same stadium as the collapsed-node input pill, repositioned to
-                  this pill row; lit flash matches the pill shape. */}
               <svg className="solenoid-node__input-pill" style={{ top: pillY(ip.index) - 11, height: 22 }}
                    viewBox="0 0 12 22" aria-hidden>
                 <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
@@ -443,9 +398,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         {retained.map((t, i) => {
           const sock = getEditor()?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
           if (!sock) return null;
-          // A combined Conduit-output terminal (its outputs leave as one ribbon)
-          // gets the same neutral stadium as the combined INPUT pill, mirrored to
-          // the right edge — the visual the fan-out ribbon emerges from.
+          // Mirrors the combined INPUT pill's stadium to the right edge.
           if ((t.lanes ?? 0) > 1) {
             const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888";
             const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(t.effNodeId, t.effSocketKey));
@@ -475,7 +428,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           <div
             className="solenoid-group__resize"
             style={{ color }}
-            title="Drag to resize · double-click to fit members"
             onPointerDown={onResizeDown}
             onMouseDown={(e) => e.stopPropagation()}
           >

@@ -2,22 +2,16 @@ import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import type { ChartValue } from "../chartValue";
+import { stopDragStart } from "../coarse";
 
-/**
- * The compact "[Chart]" chip — the chart analogue of FrameChip. Shown where a
- * chart VALUE can't be drawn full size: a collapsed chart node's hero box and a
- * collapsed-group readout row. Click opens the read-only ChartPopup, which
- * renders the full figure via ChartFigure (so it covers every op). Label only,
- * no data — the whole point is a tidy stand-in for the plot.
- */
+/** The compact "[Chart]" chip, shown where a chart value can't be drawn full size;
+ *  label only, with the full figure behind a click. */
 export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
   value: ChartValue;
   label?: string;
-  /** Node whose value the popup's Pin/Go-to acts on; defaults to the host from
-   *  context. A collapsed-group readout passes its member id explicitly. */
+  /** Node the popup's Pin/Go-to acts on; defaults to the host from context. */
   pinNodeId?: string;
-  /** "sm" in node hero boxes (the historical hardcoded look); "md" matches the
-   *  Frame/Cube chips in collapsed-group readout rows (valueChipFor passes it). */
+  /** "sm" in node hero boxes; "md" matches the Frame/Cube chips in readout rows. */
   size?: "sm" | "md";
 }) {
   const ctxHostId = useHostNodeId();
@@ -26,8 +20,8 @@ export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--chart${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title="Chart. Click to view."
-      onPointerDown={(e) => e.stopPropagation()}
+      title="Chart"
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();

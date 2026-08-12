@@ -118,7 +118,7 @@
   cursor: pointer;
 }
 .solenoid-fc__toggle--on {
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
   border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }

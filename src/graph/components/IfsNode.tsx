@@ -4,8 +4,6 @@ import { NodeShell, ValueDisplay } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";
 import type { DisplayValue } from "./valueDisplayFormat";
 
-// IFS: an extensible list of condition/value pairs. Returns the first value
-// whose condition is non-zero (chained IF), else null.
 export function IfsComponent({ data, emit }: NodeProps<IfsNode>) {
   return (
     <NodeShell node={data} emit={emit}>

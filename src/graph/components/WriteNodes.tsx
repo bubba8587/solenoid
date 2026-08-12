@@ -8,13 +8,10 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import "./ConnectionNodes.css";
 import "./WriteNodes.css";
+import { stopDragStart } from "../coarse";
 
-// ─── File sink nodes (Write CSV / Write JSON) ───────────────────────────────────
-// The write action (`data.run()`) touches disk; it must run ONLY from the
-// explicit Run click below — never from a graph recompute. This component's
-// job is entirely local state (path/armed/status) mirrored onto the node
-// instance for persistence, exactly the useNodeField pattern nodeKit.tsx
-// documents for a controlled input driven off React state, not a forceUpdate.
+// `data.run()` touches disk, so it must fire ONLY from the explicit Run click below —
+// never from a graph recompute.
 
 type WriteNodeData = (WriteCsvNodeType | WriteJsonNodeType) & {
   path: string; enabled: boolean; status: string; statusMessage: string;
@@ -49,8 +46,7 @@ function WriteFileComponent({
   }
 
   async function run() {
-    // Reflect "writing" synchronously so the button disables NOW — waiting for
-    // the await leaves it clickable for the whole write (double-click race).
+    // Set "writing" synchronously — awaiting first leaves the button clickable (double-click race).
     setStatus("writing");
     await data.run();
     setStatus(data.status);
@@ -72,7 +68,7 @@ function WriteFileComponent({
             onChange={(e) => setPath(e.target.value)}
             onBlur={commitPath}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           />
           {desktop && (
@@ -81,7 +77,7 @@ function WriteFileComponent({
               className="sol-conn__refresh"
               title="Choose a file"
               onClick={(e) => { e.stopPropagation(); void browse(); }}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             >
               …
@@ -91,7 +87,7 @@ function WriteFileComponent({
         <div className="sol-write__row">
           <label
             className="sol-write__armed"
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <input type="checkbox" checked={armed} disabled={!desktop} onChange={toggleArmed} />
@@ -103,7 +99,7 @@ function WriteFileComponent({
             disabled={!desktop || !armed || path.trim() === "" || status === "writing"}
             title="Write the file now"
             onClick={(e) => { e.stopPropagation(); void run(); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             Run
@@ -131,10 +127,7 @@ export function WriteJsonComponent(props: NodeProps<WriteJsonNodeType>) {
   return <WriteFileComponent {...(props as unknown as NodeProps<WriteNodeData>)} kindLabel="Write JSON" ext="json" />;
 }
 
-// ─── Write to Obsidian Vault ────────────────────────────────────────────────────
 // Same arm/disarm discipline as the file sinks: Run is the only thing that writes.
-// Takes a whole document (a Note's/Report's `document` output), a note name, and a
-// vault-relative destination subfolder picked from the vault's folder tree.
 
 type WriteObsidianData = WriteObsidianNodeType & {
   fileName: string; subfolder: string; enabled: boolean; status: string; statusMessage: string;
@@ -156,8 +149,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 
   useEffect(() => { setName(d.fileName); }, [d.fileName]);
 
-  // List the vault's subfolders for the destination picker (refreshable). Re-lists
-  // whenever the vault path changes.
+  // Re-lists the vault's subfolders whenever the vault path changes.
   useEffect(() => {
     let live = true;
     void listVaultFolders(vault).then((f) => { if (live) setFolders(f); });

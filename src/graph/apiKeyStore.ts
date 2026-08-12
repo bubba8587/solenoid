@@ -1,14 +1,11 @@
-// Per-provider API keys for the data connections (FRED, Alpha Vantage, …). Kept in
-// localStorage on the USER'S machine only — never bundled with the app, never written
-// into a saved graph, never sent anywhere but the provider's own API. A small
-// map<provider, key> with a subscribe() for React reads (module singleton, like
-// settingsStore, so any React root can gate on it).
+// Per-provider API keys. Device-local by rule: never bundled, never written into a
+// saved graph, never sent anywhere but the provider's own API.
 import { createNotifier } from "./storeKit";
 
 const LS_KEY = "solenoid.apiKeys";
 
-// localStorage is absent in the node test env (and in private-mode browsers); every
-// access is guarded so the store degrades to in-memory-only rather than throwing.
+// Every localStorage access is guarded: it is absent in the node test env and in
+// private mode, where the store must degrade to in-memory rather than throw.
 function load(): Record<string, string> {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -44,7 +41,6 @@ export const apiKeyStore = {
   get(provider: string): string {
     return keys[provider] ?? "";
   },
-  /** Whether a non-empty key is stored for the provider. */
   has(provider: string): boolean {
     return !!keys[provider];
   },
@@ -58,7 +54,6 @@ export const apiKeyStore = {
     persist();
     notify();
   },
-  /** Remove a provider's key entirely. */
   remove(provider: string): void {
     if (!(provider in keys)) return;
     const next = { ...keys };
@@ -67,7 +62,6 @@ export const apiKeyStore = {
     persist();
     notify();
   },
-  /** Providers that currently have a stored key (for the Settings list). */
   providers(): string[] {
     return Object.keys(keys);
   },

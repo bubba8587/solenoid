@@ -1,13 +1,5 @@
-// ─── Write to Obsidian — the Run-time (DOM + filesystem) half ──────────────────
-// The impure counterpart to obsidianMarkdown.ts's pure serializer. Given a
-// DocumentValue (from a Note or Report) it assembles the final `.md` and writes it
-// into an Obsidian vault, plus any image assets a `` `=name` `` ref needs:
-//   • a chart ref  → rasterize the SOURCE node's live <svg> to a PNG asset
-//   • an image ref → write the image's bytes (a data: URL) as an asset
-//   • a web-URL image → embed the URL directly (no local asset)
-//   • everything else → native markdown (frame table, mermaid block, math, text)
-// Charts need the live DOM (the source node's rendered SVG), which is exactly why
-// this can't live in the pure module and runs only from the Write node's Run click.
+// The impure half of obsidianMarkdown.ts: charts rasterize from the source node's
+// LIVE svg, so this runs only from the Write node's Run click.
 
 import {
   isDesktop, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath,
@@ -30,21 +22,16 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Rasterize a live in-document `<svg>` (a chart node's) to PNG bytes at 2× for
- *  crispness. Bakes computed styles in first (the vault has none of our CSS), then
- *  draws through an off-screen canvas — the same foreignObject-free path the static
- *  export uses. Returns null if the SVG is too small or the raster fails. */
+/** Rasterize a live `<svg>` to PNG bytes at 2×, baking computed styles in first —
+ *  the vault has none of our CSS. Null if the SVG is too small or the raster fails. */
 async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
   const box = svgEl.getBoundingClientRect();
   const w = Math.max(1, Math.round(box.width));
   const h = Math.max(1, Math.round(box.height));
   if (w < 8 || h < 8) return null;
   const markup = serializeSvgWithComputedStyles(svgEl);
-  // Ensure the root carries explicit pixel dimensions + the SVG namespace so the
-  // off-document Image can size it. Set them through the DOM, not a string prepend:
-  // a recharts root already HAS width/height attributes, and a duplicated attribute
-  // is a fatal XML parse error (the blob is image/svg+xml), which silently killed
-  // every chart raster. XMLSerializer emits the xmlns declaration itself.
+  // Size the root through the DOM, not a string prepend: a recharts root already has
+  // width/height, and a duplicated attribute is a fatal XML parse error.
   const holder = document.createElement("div");
   holder.innerHTML = markup;
   const root = holder.querySelector("svg");
@@ -77,7 +64,7 @@ function nodeChartSvg(nodeId: string): SVGSVGElement | null {
   const view = getArea()?.nodeViews.get(nodeId);
   if (!view) return null;
   const svgs = Array.from(view.element.querySelectorAll("svg"));
-  // The chart is the node's biggest SVG (glyphs are ~≤20px); pick the largest.
+  // The chart is the node's biggest SVG; glyphs are ~≤20px.
   let best: SVGSVGElement | null = null;
   let bestArea = 40 * 40; // ignore anything glyph-sized
   for (const s of svgs) {
@@ -108,13 +95,11 @@ export interface WriteVaultResult {
   assets: number;
 }
 
-/** Assemble `doc` into Obsidian markdown and write it (plus any chart/image assets)
- *  into the vault. Desktop only — throws if called off-desktop (the node guards
- *  first). Overwrites an existing note of the same name (a re-run refreshes it). */
+/** Desktop only — THROWS off-desktop (the node guards first); overwrites an existing
+ *  note of the same name. */
 export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultOptions): Promise<WriteVaultResult> {
   if (!isDesktop()) throw new Error("Desktop app only");
-  // Vault-relative only: drop empty / "." / ".." segments so a stray ".." can't
-  // climb out of the vault.
+  // Drop empty / "." / ".." segments so a stray ".." can't climb out of the vault.
   const cleanParts = (p: string) =>
     p.split("/").map((s) => s.trim()).filter((s) => s && s !== "." && s !== "..");
   const subParts = cleanParts(opts.subfolder);
@@ -127,8 +112,7 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   let assetCount = 0;
   const base = sanitizeName(opts.name) || "note";
 
-  // Write image bytes into the asset folder under a per-ref name; return the
-  // Obsidian embed token (`![[filename]]`, resolved by filename across the vault).
+  // Returns the Obsidian embed token, which resolves by FILENAME across the vault.
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
     if (assetParts.length) await ensureDir(assetDir);
     const fileName = `${base}-${sanitizeName(refName)}.${ext}`;

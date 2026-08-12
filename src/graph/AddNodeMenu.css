@@ -40,6 +40,7 @@
      Sized so the default 12-item tree fits without a scrollbar (the inner
      __scroll's padding + this panel's border share the budget). */
   max-height: min(392px, 85vh);
+  max-height: min(392px, 85dvh);
   /* Clip here (radius + overflow:hidden) and scroll __scroll inside, so the
      rounded bottom corner cleanly clips the native scrollbar. */
   overflow: hidden;
@@ -130,6 +131,18 @@
 
 /* Subtle marker that a node came from an add-on pack (not built-in). A small
    dim dot at the row's trailing edge — present but easy to ignore. */
+/* Marks a card that hosts ops with no Add-menu entry of their own. Sits between the
+   label and the pack dot, in the same dim ink and at the same weight as the label so
+   it reads as part of the name rather than as an added ornament. `▶` is reserved for
+   a category that really expands, so this must not be a triangle. */
+.solenoid-add-menu__ops-mark {
+  flex: 0 0 auto;
+  margin-left: 0.35em;
+  color: var(--text-dim);
+  opacity: 0.7;
+  letter-spacing: -0.06em;
+}
+
 .solenoid-add-menu__pack-dot {
   flex: 0 0 auto;
   width: 5px;
@@ -149,7 +162,7 @@
      background — which hid it in the root menu. */
   z-index: 0;
   /* Same accent-tinted text the node header label uses. */
-  color: color-mix(in srgb, var(--item-accent) 55%, var(--text));
+  color: color-mix(in srgb, var(--item-accent) var(--mix-ink), var(--text));
 }
 .solenoid-add-menu__item--accent::before {
   content: "";

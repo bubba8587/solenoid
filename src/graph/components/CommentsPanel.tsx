@@ -8,7 +8,7 @@ import { nodeTypeName } from "../nodeNames";
 import "./commentsPanel.css";
 import { CloseIcon } from "./CloseIcon";
 
-// Lucide "message-square" — the Comments trigger icon. https://lucide.dev/icons/message-square
+// Lucide "message-square".
 const CommentSvg = ({ size = 14 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -47,12 +47,8 @@ function ComposeRow({ nodeId, onAdded }: { nodeId: string; onAdded: () => void }
   );
 }
 
-/**
- * The Comments HUD panel: node-anchored {author, text, resolved} threads.
- * Same bespoke shape as PinLayer/AlertLayer/ProblemsPanel — own state, own
- * registerChrome("comments", ...) call. Right-click a node -> "Add comment"
- * opens the panel focused on that node's thread (commentsPanelUi.openFor).
- */
+/** The Comments HUD panel — node-anchored threads; like the other HUD layers it
+ *  owns its state and its own registerChrome("comments") call. */
 export function CommentsPanel() {
   const [collapsed, setCollapsed] = useState(true);
   const [composeFor, setComposeFor] = useState<string | null>(null);

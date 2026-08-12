@@ -1,6 +1,4 @@
 // Barrel re-export — mirrors rete-nodes.ts for node classes.
-// Canvas.tsx imports everything from here; individual files stay unchanged.
-// To add a new node: create the component file, add one line below.
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────
 export { SocketComponent } from "./SocketComponent";
@@ -53,8 +51,7 @@ export { IfsComponent } from "./IfsNode";
 
 // ─── Lists — build ────────────────────────────────────────────────────────────
 export { ListInputComponent } from "./ListInputNode";
-export { RangeComponent } from "./RangeNode";
-export { LinSpaceComponent } from "./LinSpaceNode";
+export { SeriesComponent } from "./SeriesNode";
 export { VStackComponent } from "./VStackNode";
 export { RepeatComponent } from "./RepeatNode";
 export { GeometricComponent } from "./GeometricNode";
@@ -64,8 +61,7 @@ export { FibonacciComponent } from "./FibonacciNode";
 export { SortComponent } from "./SortNode";
 export { ReverseComponent } from "./ReverseNode";
 export { SliceComponent } from "./SliceNode";
-export { TakeComponent } from "./TakeNode";
-export { DropComponent } from "./DropNode";
+export { ListTakeDropComponent } from "./ListTakeDropNode";
 export { UniqueComponent } from "./UniqueNode";
 export { SetOpComponent } from "./SetOpNode";
 export { SetRelationComponent } from "./SetRelationNode";
@@ -73,13 +69,12 @@ export { FilterComponent } from "./FilterNode";
 export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
-export { CumulativeComponent } from "./CumulativeNode";
+export { RunningComponent } from "./RunningNode";
 export { NormalizeComponent } from "./NormalizeNode";
 export { ShuffleComponent } from "./ShuffleNode";
 export { InterleaveComponent } from "./InterleaveNode";
 export { NthElementComponent } from "./NthElementNode";
 export { PadComponent } from "./PadNode";
-export { RollingComponent } from "./RollingNode";
 
 // ─── Lists — find / lookup ────────────────────────────────────────────────────
 export { ListLengthComponent } from "./ListLengthNode";
@@ -90,11 +85,7 @@ export { ContainsComponent } from "./ContainsNode";
 // ─── Lists — aggregate / stats ────────────────────────────────────────────────
 export { AggregateComponent } from "./AggregateNode";
 export { SumProductComponent } from "./SumProductNode";
-export { NthValueComponent } from "./NthValueNode";
-export { PercentileComponent } from "./PercentileNode";
-export { QuartileComponent } from "./QuartileNode";
-export { PercentrankComponent } from "./PercentrankNode";
-export { RankComponent } from "./RankNode";
+export { RankPercentileComponent } from "./RankPercentileNode";
 export { CorrelComponent } from "./CorrelNode";
 export { CovarianceComponent } from "./CovarianceNode";
 export { FisherComponent } from "./FisherNode";
@@ -117,7 +108,6 @@ export { CumPmtComponent } from "./CumPmtNode";
 export { FvScheduleComponent } from "./FvScheduleNode";
 export { IspmtComponent } from "./IspmtNode";
 export { DollarComponent } from "./DollarNode";
-export { VdbComponent } from "./VdbNode";
 export { TBillComponent } from "./TBillNode";
 export { SecurityDiscComponent } from "./SecurityDiscNode";
 export { CouponComponent } from "./CouponNode";
@@ -126,9 +116,7 @@ export { AccrintMComponent } from "./AccrintMNode";
 export { PriceDiscComponent } from "./PriceDiscNode";
 export { PriceMatComponent } from "./PriceMatNode";
 export { DurationComponent } from "./DurationNode";
-export { XnpvComponent } from "./XnpvNode";
 export { BondPriceComponent } from "./BondPriceNode";
-export { XirrComponent } from "./XirrNode";
 export { OddCouponComponent } from "./OddCouponNode";
 
 // ─── Currency formatting ──────────────────────────────────────────────────────
@@ -147,13 +135,13 @@ export { LambdaComponent } from "./LambdaNode";
 
 // ─── Frames (named-column data tables) ─────────────────────────────────────────
 export {
-  FrameInputComponent, BuildFrameComponent, SplitFrameComponent, GetColumnComponent, AddColumnComponent, GetRowComponent,
+  FrameInputComponent, BuildFrameComponent, SplitFrameComponent, GetColumnComponent, AddColumnComponent, ComputedColumnComponent, GetRowComponent,
   DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, XLookupComponent,
   SelectColumnsComponent, DropColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
   ReconcileComponent,
-  FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, PromoteHeadersComponent, DropBlankRowsComponent,
+  FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
 } from "./FrameNodes";
 
 // ─── Trust & data quality ───────────────────────────────────────────────────────
@@ -197,9 +185,7 @@ export { GroupComponent } from "./GroupNode";
 // ─── Composite (computing subgraph container) ──────────────────────────────────
 export { CompositeComponent, CompositeInputMarkerComponent, CompositeOutputMarkerComponent } from "./CompositeNode";
 // CompositeEditorOverlay is deliberately NOT re-exported here: it imports
-// nodeRegistry (for the drill-in's render preset), and nodeRegistry imports
-// this barrel — a barrel export would close a module-init cycle (TDZ on
-// whatever component the registry touches first). Import it from its file.
+// nodeRegistry, which imports this barrel — that closes a module-init cycle (TDZ).
 
 // ─── Complex numbers ──────────────────────────────────────────────────────────
 export { ComplexFromComponent } from "./ComplexFromNode";
@@ -209,42 +195,17 @@ export { ComplexBinaryComponent } from "./ComplexBinaryNode";
 export { ComplexPowerComponent } from "./ComplexPowerNode";
 
 // ─── Distributions — normal / t / chi-squared ─────────────────────────────────
-export { NormDistComponent } from "./NormDistNode";
-export { NormInvComponent } from "./NormInvNode";
-export { NormSDistComponent } from "./NormSDistNode";
-export { NormSInvComponent } from "./NormSInvNode";
-export { TDistComponent } from "./TDistNode";
-export { TInvComponent } from "./TInvNode";
-export { ChisqDistComponent } from "./ChisqDistNode";
-export { ChisqInvComponent } from "./ChisqInvNode";
+export { DistributionComponent } from "./DistributionNode";
 
 // ─── Distributions — continuous ───────────────────────────────────────────────
-export { FDistComponent } from "./FDistNode";
-export { FInvComponent } from "./FInvNode";
-export { BetaDistComponent } from "./BetaDistNode";
-export { BetaInvComponent } from "./BetaInvNode";
-export { GammaDistComponent } from "./GammaDistNode";
-export { GammaInvComponent } from "./GammaInvNode";
-export { LognormDistComponent } from "./LognormDistNode";
-export { LognormInvComponent } from "./LognormInvNode";
-export { WeibullDistComponent } from "./WeibullDistNode";
-export { ExponDistComponent } from "./ExponDistNode";
 
 // ─── Distributions — discrete ─────────────────────────────────────────────────
-export { BinomDistComponent } from "./BinomDistNode";
-export { BinomInvComponent } from "./BinomInvNode";
-export { PoissonDistComponent } from "./PoissonDistNode";
-export { HypgeomDistComponent } from "./HypgeomDistNode";
-export { NegbinomDistComponent } from "./NegbinomDistNode";
 
 // ─── Distributions — discrete (extra) ────────────────────────────────────────
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 
 // ─── Statistical tests ────────────────────────────────────────────────────────
-export { ZTestComponent } from "./ZTestNode";
-export { TTestComponent } from "./TTestNode";
-export { FTestComponent } from "./FTestNode";
-export { ChisqTestComponent } from "./ChisqTestNode";
+export { HypothesisTestComponent } from "./HypothesisTestNode";
 
 // ─── Regression (extended) ────────────────────────────────────────────────────
 export { TrendComponent } from "./TrendNode";
@@ -272,15 +233,14 @@ export { NumberValueComponent } from "./NumberValueNode";
 export { TextFilterComponent } from "./TextFilterNode";
 export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
-export { TextMapComponent } from "./TextMapNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";
 
 // ─── Date & Time ──────────────────────────────────────────────────────────────
 export {
   TodayNowComponent, DateConstructComponent, TimeConstructComponent,
-  DateValueComponent, TimeValueComponent, DatePartComponent,
+  DateTimeValueComponent, DatePartComponent,
   WeekInfoComponent, DateDiffComponent, DateAddComponent,
-  WorkdayComponent, NetworkdaysComponent, DateIfComponent,
+  WorkdaysComponent,
 } from "./DateNodes";
 
 // ─── Stats (extended) ─────────────────────────────────────────────────────────
@@ -289,7 +249,6 @@ export { WeightedComponent } from "./WeightedNode";
 
 // ─── List extras ──────────────────────────────────────────────────────────────
 export { RandArrayComponent } from "./RandArrayNode";
-export { SequenceComponent } from "./SequenceNode";
 export { SortByComponent } from "./SortByNode";
 export { XMatchComponent } from "./XMatchNode";
 
@@ -306,7 +265,7 @@ export { TreemapComponent } from "./TreemapNode";
 export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
-  ContourComponent, WaterfallComponent, CandlestickComponent, BoxplotComponent,
+  WaterfallComponent, CandlestickComponent, BoxplotComponent,
   CalendarHeatmapComponent, WaffleComponent, QuiverComponent,
 } from "./FigureNodes";
 export { SevenSegComponent } from "./SevenSegNode";
@@ -370,7 +329,7 @@ export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } fr
 // ─── Chemistry Basics pack ───────────────────────────────────────────────────────
 export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 
-// ─── Lists → tables fast path (2026-07-09) ──────────────────────────────────────
+// ─── Lists → tables fast path ─────────────────────────────────────────────────
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";

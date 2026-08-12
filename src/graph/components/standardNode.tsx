@@ -5,27 +5,11 @@ import { ExtensibleInputs, type ExtensibleNode } from "./ExtensibleInputs";
 import { ResultDisplay } from "./ResultDisplay";
 import { RecalcButton } from "./RecalcButton";
 
-// ─── Standard node-component factories ──────────────────────────────────────────
-// The vast majority of nodes render the exact same shape: input rows, then one
-// result box. Hand-writing that as a 12-line component per node is pure
-// boilerplate, so these factories collapse it to a one-liner:
-//
-//   export const ClampComponent = makeNodeComponent<ClampNode>((n) => n.cachedResult);
-//
-// A pack author gets the same primitive — a display node with zero JSX. Nodes
-// that need more (an op <select>, a custom value render, local state) still
-// hand-write their component against NodeShell directly; this only covers the
-// "inputs + value box" base case.
-
-// A converted producer can read its cachedResult straight into the value box.
-// ResultDisplay routes a Frame → FrameDisplay and a Cube → CubeDisplay; everything
-// else (scalar / list / string / SolError / null — the array-semantics value
-// model) falls through to ValueDisplay (red #CODE! badge, per-cell error/blank).
-// `unknown` so a node whose output can be a frame/cube (the upgraded INDEX) fits.
+// Factories for the input-rows-then-one-result-box shape; a node needing more writes its
+// component against NodeShell directly.
 type Displayable = unknown;
 
-/** Options shared by the factories. `recalc` adds a volatile-node Recalculate
- *  button (the global F9 / requestRecalc trigger) with the given tooltip. */
+/** `recalc` adds a volatile-node Recalculate button with the given tooltip. */
 type StandardOpts = { recalc?: string };
 
 /** Standard node: inline input rows + a value box reading `value(node)`. */

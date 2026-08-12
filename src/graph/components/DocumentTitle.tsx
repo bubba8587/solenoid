@@ -6,13 +6,8 @@ import { IS_MOBILE } from "../coarse";
 import { SEEDS } from "../seeds";
 import "./documentTitle.css";
 
-/**
- * The current document's name, centered in the menu bar. Clicking the name opens
- * an inline rename editor (Excel-style); the ▾ caret opens the documents menu —
- * switch between saved documents, start a new blank one, or start from one of
- * the bundled examples. This is the home of the "file system"; the example
- * graphs appear here only as starting points, not as a working-graph picker.
- */
+/** The current document's name + the documents menu — the home of the "file system";
+ *  examples appear only as starting points, not as a working-graph picker. */
 export function DocumentTitle() {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
   const name = documentStore.currentName();
@@ -21,13 +16,10 @@ export function DocumentTitle() {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Inline rename of a specific row in the documents menu (the pencil action).
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rowDraft, setRowDraft] = useState("");
-  // The menu is portaled to <body> so it escapes the app bar's stacking context
-  // (which otherwise traps it below the pin/alert HUD) and can be bounded to the
-  // viewport (so a long name truncates instead of shoving the row off-screen).
-  // Its fixed position is computed from the trigger when opened.
+  // Portaled to <body> to escape the app bar's stacking context, which otherwise traps
+  // the menu below the pin/alert HUD.
   const [menuPos, setMenuPos] = useState<{ top: number; left?: number }>({ top: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -45,7 +37,6 @@ export function DocumentTitle() {
     if (renaming) { setDraft(name); inputRef.current?.select(); }
   }, [renaming, name]);
 
-  // Close menu / rename on outside interaction.
   useEffect(() => {
     if (!menuOpen && !renaming) return;
     const onDown = (e: PointerEvent) => {
@@ -95,7 +86,7 @@ export function DocumentTitle() {
         <button
           type="button"
           className="solenoid-doctitle__name"
-          title="Click to rename"
+          title="Rename"
           onClick={() => setRenaming(true)}
         >
           {name}

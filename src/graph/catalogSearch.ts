@@ -1,13 +1,9 @@
-// Add-menu search scoring — extracted from AddNodeMenu so it's unit-testable and
-// shared. The searchable text for a leaf is deliberately WIDER than what's shown:
-// the label + description + Excel function names, PLUS the ancestor category path
-// (so "arithmetic" finds the Add/Subtract/… leaves under the Arithmetic category,
-// and "table input" finds the leaf labelled "Table" under the Input category),
-// the kebab `type` id turned into words ("table-input" → "table input"), and an
-// optional explicit `keywords` string for synonyms the label doesn't carry.
+// Add-menu search scoring. A leaf's searchable text is deliberately WIDER than what
+// is shown — label, description, Excel names, category path, kebab type, keywords.
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { fuzzyScore, fieldScore } from "./fuzzy";
+import { opsFor, opEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
@@ -21,26 +17,37 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 /** A leaf plus the labels of the categories it lives under (outermost first). */
 export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };
 
-/** Flatten the catalog tree to leaves, carrying each leaf's ancestor category
- *  labels so search can match a node by the category it lives in. */
+/** Flatten the catalog to leaves, PLUS a row per hidden op — folding a family onto
+ *  one leaf must never make an op unfindable. The rows are generated at SEARCH time,
+ *  never inserted into the tree, so catalog walkers don't count them as extra nodes. */
 export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
+  const out = flattenTree(entries, ancestors);
+  for (const { leaf, categoryPath } of [...out]) {
+    const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
+    // hiddenOps is only ever populated for a declaration that lists ops, so `create`
+    // is present — the guard keeps that guarantee visible to the type checker.
+    if (!decl?.create) continue;
+    for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
+  }
+  return out;
+}
+
+function flattenTree(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
   const out: LeafWithContext[] = [];
   for (const e of entries) {
-    if (isCategory(e)) out.push(...flattenLeaves(e.children, [...ancestors, e.label]));
+    if (isCategory(e)) out.push(...flattenTree(e.children, [...ancestors, e.label]));
     else if (isPair(e)) out.push(...e.children.map((leaf) => ({ leaf, categoryPath: ancestors })));
     else out.push({ leaf: e, categoryPath: ancestors });
   }
   return out;
 }
 
-// "table-input" → "table input"; "arith-add" → "arith add".
 function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
 
-// "+ Add" / "× Multiply" → "Add" / "Multiply". An op-glyph prefix on the label
-// otherwise demotes an exact query ("add") to the word-start tier, letting
-// "Add Column" (prefix tier) outrank the Add node itself.
+// An op-glyph prefix ("+ Add") otherwise demotes an exact query to the word-start
+// tier, letting "Add Column" outrank the Add node itself.
 function stripGlyphPrefix(label: string): string {
   return label.replace(/^[^\p{L}\p{N}]+\s*/u, "");
 }
@@ -51,14 +58,11 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  // Subsequence gate over everything searchable.
   const haystack = `${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`;
   const s = fuzzyScore(query, haystack);
   if (s === null) return null;
-  // Tiered bonus = the strongest tier among: the label, the label+category combo
-  // (so "table input" EXACT-matches "Table Input" for a leaf labelled "Table"
-  // under the Input category), the kebab type, keywords, and Excel names (Excel
-  // weighed slightly under the rest so an exact label still wins a tie).
+  // Strongest tier across the fields; Excel names weigh slightly under the rest so
+  // an exact label still wins a tie.
   const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   const bare = stripGlyphPrefix(leaf.label);
   if (bare && bare !== leaf.label) fields.push(bare);
@@ -85,15 +89,9 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
   return scored.map((x) => x.leaf);
 }
 
-// ─── Quick-wire compatibility filter ───────────────────────────────────────────
-// Quick-wire drops a cable on empty canvas and needs the Add menu narrowed to
-// nodes that can actually receive the dragged value. There's no static
-// socket-type metadata on a catalog leaf, so the SET of socket types is read off a
-// throwaway `leaf.create()` (the same constructor a real pick calls) — but a node
-// type's INITIAL sockets are deterministic per catalog `type`, so that signature is
-// memoized: the first drop instantiates each leaf once, every later drop reuses the
-// cached type set and only re-runs the (cheap) per-origin compatibility check. Was
-// O(all leaves × create()) on EVERY drop.
+// Quick-wire narrows the Add menu by socket type, which a leaf carries no metadata
+// for: the types come off a throwaway `leaf.create()`, memoized because a node
+// type's INITIAL sockets are deterministic per catalog `type`.
 
 type PortLike = { socket?: unknown };
 type NodeLike = {
@@ -135,8 +133,6 @@ function hasCompatibleSocket(
   originSide: "input" | "output",
 ): boolean {
   const sig = socketSignature(leaf);
-  // Origin is an OUTPUT → each candidate INPUT type must accept it: canConnect(origin, in).
-  // Origin is an INPUT → each candidate OUTPUT type must flow into it: canConnect(out, origin).
   const candidates = originSide === "output" ? sig.inputs : sig.outputs;
   for (const dt of candidates) {
     const ok = originSide === "output" ? canConnect(origin.dataType, dt) : canConnect(dt, origin.dataType);

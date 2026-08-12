@@ -1,6 +1,6 @@
 [package]
 name = "solenoid"
-version = "1.2.0"
+version = "1.2.5"
 description = "Solenoid — a local-first node graph for wiring live data into personal computation"
 authors = ["Solenoid"]
 edition = "2021"
@@ -31,7 +31,11 @@ tauri-plugin-http = "2"
 # the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.
 tauri-plugin-decorum = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# float_roundtrip: serde_json's DEFAULT float parse is lossy (fast path, can
+# land one ulp off) — a JS cell crossing the IPC then differs from the value
+# the oracle computed with, which the parity corpus catches as byte drift.
+# The wire must round-trip doubles exactly.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 # WS2 — the native relational engine. Lazy frames behind opaque handles; only a
 # preview/column materializes. Lean feature set: lazy plans + string predicates +
 # asof_join (the Join node's "as-of" `how`, nearest-match on a sorted key) + csv

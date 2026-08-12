@@ -1,19 +1,13 @@
-// CSS color parsing + sRGB mixing — pure helpers the canvas renderer needs.
-// NOT WIRED IN beyond what imports it (currently nothing). A 2D/WebGL canvas can't
-// evaluate `color-mix(in srgb, …)` (the cable flow tint) or `var(--…)`, so any
-// canvas drawing of those has to compute them in JS. This is the design-agnostic
-// math for that — reusable by cable flow beads AND node-body tints, whichever
-// renderer path we land on. Pure (no DOM); var() resolution is the caller's job
-// (it needs getComputedStyle) and feeds resolved literals in here.
+// A canvas can't evaluate `color-mix()` or `var(--…)`, so the renderer computes them here.
+// Keep this DOM-free — var() resolution needs getComputedStyle and stays the caller's job.
 
 export interface RGBA { r: number; g: number; b: number; a: number }
 
 const clamp255 = (n: number) => (n < 0 ? 0 : n > 255 ? 255 : n);
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
-/** Parse a hex (`#rgb`/`#rgba`/`#rrggbb`/`#rrggbbaa`) or `rgb()`/`rgba()` color to
- *  RGBA (0–255, a 0–1). Returns null for anything else (named colors, hsl, var(),
- *  color-mix — the caller resolves those first). Whitespace-tolerant. */
+/** Parse a hex or `rgb()`/`rgba()` color to RGBA (0–255, a 0–1); null for anything else,
+ *  which the caller must resolve first. */
 export function parseColor(input: string): RGBA | null {
   const s = input.trim();
   if (s.startsWith("#")) return parseHex(s);
@@ -29,17 +23,14 @@ export function parseColor(input: string): RGBA | null {
     if (![r, g, b, a].every(Number.isFinite)) return null;
     return { r, g, b, a };
   }
-  // Modern wide-gamut serialization: `color(srgb 0.3 0.55 0.96 / 0.78)`. Chrome
-  // returns this form for any color derived via color-mix() (header tints, the
-  // group-tinted node borders), so it MUST parse or those colors fall back to a
-  // flat body fill. Channels are 0–1 floats (optionally %); only the srgb space.
+  // Chrome serializes any color-mix() result as `color(srgb …)`, so this MUST parse or
+  // header tints and group-tinted borders fall back to a flat body fill.
   const cm = /^color\(\s*srgb\s+([^)]+)\)$/i.exec(s);
   if (cm) {
     const parts = cm[1].split(/[/\s]+/).filter(Boolean);
     if (parts.length < 3) return null;
     const ch = (p: string) => p.endsWith("%") ? parseFloat(p) / 100 : parseFloat(p);
-    // Round — the 0–1 floats are truncated (76/255 → "0.298039"), so a bare
-    // multiply lands at 75.9999 and would truncate down to the wrong byte.
+    // ROUND: the serialized floats are truncated, so a bare multiply lands a byte low.
     const r = clamp255(Math.round(ch(parts[0]) * 255));
     const g = clamp255(Math.round(ch(parts[1]) * 255));
     const b = clamp255(Math.round(ch(parts[2]) * 255));
@@ -69,10 +60,8 @@ export function toCss(c: RGBA): string {
   return `rgba(${r}, ${g}, ${b}, ${clamp01(c.a)})`;
 }
 
-/** Mix two colors in sRGB by weight `t` of `b` (t=0 → a, t=1 → b) — the model
- *  `color-mix(in srgb, a (1-t), b t)` uses: a straight component lerp of the
- *  gamma-encoded channels (NOT linear-light). Matches `color-mix(in srgb, A X%, B)`
- *  where the flow tint does `color-mix(in srgb, <type> 85%, #fff)` → t_white = 0.15. */
+/** Mix two colors in sRGB by weight `t` of `b`, matching `color-mix(in srgb, …)`: a
+ *  component lerp of the GAMMA-ENCODED channels, not linear-light. */
 export function mixSrgb(a: RGBA, b: RGBA, t: number): RGBA {
   const u = clamp01(t);
   const v = 1 - u;
@@ -84,11 +73,10 @@ export function mixSrgb(a: RGBA, b: RGBA, t: number): RGBA {
   };
 }
 
-/** Convenience: the cable flow tint — `color-mix(in srgb, base P%, #fff)`.
- *  `base` is any parseable color; falls back to white-ish if unparseable. */
+/** The cable flow tint — `color-mix(in srgb, base P%, #fff)`; white-ish if unparseable. */
 export function flowTint(base: string, basePercent: number): string {
   const c = parseColor(base) ?? { r: 200, g: 200, b: 200, a: 1 };
   const white: RGBA = { r: 255, g: 255, b: 255, a: 1 };
-  // base P% means weight (1 - P/100) toward white.
+  // base P% means weight (1 − P/100) toward white.
   return toCss(mixSrgb(c, white, 1 - clamp01(basePercent / 100)));
 }

@@ -3,15 +3,27 @@ import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { contrastInk } from "../palette";
 
-/**
- * The modal chrome shared by the value/editor popups (Table, Cube, Formula,
- * Chart, Pivot, Element picker): the full-screen overlay (pointer-down outside
- * closes), the accent-tinted card, the header row — title, any extra header
- * content, the optional go-to/pin pair, the close button — and the
- * capture-phase Escape wiring. Callers mount it only while open, so the hook's
- * lifetime IS the popup's; the body is just `children`.
- */
+/** Derives `--node-accent-ink` per node: the app-wide `--accent-ink` is computed for the
+ *  APP accent, so accent-filled popup chrome would otherwise wear ink for the wrong hue. */
+export function popupCardVars(v: {
+  accent?: string;
+  groupColor?: string;
+  groupColorDark?: string;
+}): CSSProperties {
+  const vars: Record<string, string> = {};
+  if (v.accent) {
+    vars["--node-accent"] = v.accent;
+    vars["--node-accent-ink"] = contrastInk(v.accent);
+  }
+  if (v.groupColor) vars["--group-color"] = v.groupColor;
+  if (v.groupColorDark) vars["--group-color-dark"] = v.groupColorDark;
+  return vars as CSSProperties;
+}
+
+/** Shared modal chrome for the value/editor popups. Callers must mount it only while
+ *  open — the capture-phase Escape hook's lifetime IS the popup's. */
 export function PopupShell({
   title,
   onClose,

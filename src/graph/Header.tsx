@@ -1,15 +1,33 @@
+import { useEffect, useRef } from "react";
 import { MenuBar } from "./MenuBar";
 import { TopBar } from "./TopBar";
 import "./Header.css";
 
-/**
- * App header: the menu bar stacked above the toolbar, pinned full-width to the
- * top edge. The two rows together are the "app bar"; the bottom accent
- * highlight lives on the toolbar (TopBar).
- */
+/** Publishes its own MEASURED height as `--chrome-top`, which every top-anchored overlay
+ *  offsets from; the height is conditional (a tablet wraps to two rows) so it must never be
+ *  written down, and every `var()` call keeps a static fallback for the first paint. */
 export function Header() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // The ROOT, not the header: the overlays are siblings, so the var must inherit to reach.
+    const publish = () =>
+      document.documentElement.style.setProperty(
+        "--chrome-top",
+        `${Math.round(el.getBoundingClientRect().height)}px`,
+      );
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty("--chrome-top");
+    };
+  }, []);
+
   return (
-    <div className="solenoid-header">
+    <div className="solenoid-header" ref={ref}>
       <MenuBar />
       <TopBar />
     </div>

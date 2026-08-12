@@ -1,22 +1,3 @@
-// The Equation node's solver: rearrange `LHS = RHS` for whichever variable is
-// unknown. Two layers (docs/equation-node design, 2026-07-09):
-//
-//   1. SYMBOLIC ISOLATION over the formula AST — when the unknown appears
-//      exactly once, walk down to it inverting each step (+−×÷^, EXP/LN, trig,
-//      SQRT…). The result is a NEW FORMULA STRING for the unknown, compiled by
-//      the ordinary evaluator — so list broadcasting, function dispatch, and
-//      per-cell error semantics all come free. Exact and deterministic.
-//   2. NUMERIC ROOT-FINDING on residual(x) = LHS(x) − RHS(x) — the fallback
-//      when the unknown appears more than once (x² + x…) or behind a
-//      non-invertible step (ABS). Scalar-only; bracket scan over a log grid,
-//      then bisection. No outside library: the residual is our own compiled
-//      evaluator, and bisection is a dozen lines.
-//
-// Inversion picks PRINCIPAL branches (√ of a square, ASIN of a sine): the
-// returned value always SATISFIES the equation, but a negative/other-branch
-// solution is the numeric layer's job (it reports the root nearest the grid
-// scan). #SOLVE! is the failure code for "no root found".
-
 import { parseFormula, compileEvaluator, type Ast, type ExprEvaluator } from "./excelFormula";
 import { solError, type SolError } from "./errorValue";
 
@@ -31,13 +12,13 @@ function containsEquals(n: Ast): boolean {
   switch (n.t) {
     case "bin": return n.op === "=" || containsEquals(n.l) || containsEquals(n.r);
     case "call": return n.args.some(containsEquals);
+    case "apply": return containsEquals(n.fn) || n.args.some(containsEquals);
     case "unary": case "percent": return containsEquals(n.arg);
     default: return false;
   }
 }
 
-/** Split "LHS = RHS" into two ASTs. Null on a syntax error; a string return is
- *  a human-readable shape problem (no "=", or more than one). */
+/** Null on a syntax error; a STRING return is a human-readable shape problem. */
 export function parseEquation(expr: string): ParsedEquation | string | null {
   const root = parseFormula(expr);
   if (!root) return null;
@@ -52,33 +33,36 @@ export function countOccurrences(n: Ast, name: string): number {
     case "name": return n.name === name ? 1 : 0;
     case "bin": return countOccurrences(n.l, name) + countOccurrences(n.r, name);
     case "call": return n.args.reduce((s, a) => s + countOccurrences(a, name), 0);
+    case "apply": return countOccurrences(n.fn, name) + n.args.reduce((s, a) => s + countOccurrences(a, name), 0);
     case "unary": case "percent": return countOccurrences(n.arg, name);
     default: return 0;
   }
 }
 
-/** Unparse an AST back to formula text, fully parenthesised (round-trip safe —
- *  precedence never has to be reconstructed). */
+/** Unparse an AST to formula text, FULLY parenthesised so precedence never has to be
+ *  reconstructed on the round trip. */
 export function astToFormula(n: Ast): string {
   switch (n.t) {
     case "num": return n.v;
     case "blank": return "";
+    case "atcol": return /^[A-Za-z_][A-Za-z0-9_]*$/.test(n.name) ? `@${n.name}` : `@[${n.name}]`;
+    case "wholecol": return `[${n.name}]`;
     case "str": return `"${n.v}"`;
     case "bool": return n.v ? "TRUE()" : "FALSE()";
     case "name": return n.name;
     case "call": return `${n.name}(${n.args.map(astToFormula).join(",")})`;
+    case "apply": return `(${astToFormula(n.fn)})(${n.args.map(astToFormula).join(",")})`;
     case "unary": return `(${n.op}${astToFormula(n.arg)})`;
     case "percent": return `((${astToFormula(n.arg)})/100)`;
     case "bin": return `(${astToFormula(n.l)}${n.op}${astToFormula(n.r)})`;
   }
 }
 
-// AST construction shorthands for the inverter.
 const bin = (op: string, l: Ast, r: Ast): Ast => ({ t: "bin", op, l, r });
 const call = (name: string, ...args: Ast[]): Ast => ({ t: "call", name, args });
 const num = (v: number): Ast => ({ t: "num", v: String(v) });
 
-// Single-argument functions with a clean inverse: f(u) = O  →  u = f⁻¹(O).
+// Single-argument functions with a clean inverse: f(u) = O → u = f⁻¹(O).
 const CALL_INVERSE: Record<string, (o: Ast) => Ast> = {
   SQRT: (o) => bin("^", o, num(2)),
   EXP: (o) => call("LN", o),
@@ -100,12 +84,8 @@ const CALL_INVERSE: Record<string, (o: Ast) => Ast> = {
   RADIANS: (o) => call("DEGREES", o),
 };
 
-/**
- * Isolate `unknown` from `side = other`: peel the tree one inverted step at a
- * time until the bare name remains. Returns the AST that computes the unknown,
- * or null when a step has no clean inverse (→ numeric fallback). The unknown
- * must appear exactly once in `side` (the caller checks).
- */
+/** Isolate `unknown` from `side = other`; null when a step has no clean inverse. The
+ *  unknown must appear EXACTLY ONCE in `side` — the caller checks that. */
 export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
   let s = side;
   let o = other;
@@ -137,7 +117,7 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
             o = inL ? bin("^", o, bin("/", num(1), oth)) : bin("/", call("LN", o), call("LN", oth));
             break;
           default:
-            return null; // & and comparisons aren't algebra
+            return null;
         }
         s = sub;
         continue;
@@ -174,17 +154,13 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
         return null;
       }
       default:
-        return null; // num/str/bool can't contain the unknown
+        return null;
     }
   }
 }
 
-/**
- * Build the evaluator that solves `eq` for `unknown` symbolically, or null when
- * isolation can't (multiple occurrences / non-invertible step) — callers then
- * fall to `solveNumeric`. The returned evaluator takes the KNOWN variables' env
- * and yields the unknown (broadcasting over lists like any formula).
- */
+/** The evaluator solving `eq` for `unknown` symbolically; null (→ `solveNumeric`) when
+ *  isolation can't. It takes the KNOWN variables' env and yields the unknown. */
 export function compileSolver(eq: ParsedEquation, unknown: string): ExprEvaluator | null {
   const inL = countOccurrences(eq.lhs, unknown);
   const inR = countOccurrences(eq.rhs, unknown);
@@ -194,15 +170,9 @@ export function compileSolver(eq: ParsedEquation, unknown: string): ExprEvaluato
   return compileEvaluator(astToFormula(iso));
 }
 
-// ─── Quadratic detection (both roots, not a principal branch) ─────────────────
-// x² − 36 = 0 must yield [−6, 6] — symbolic isolation would take the principal
-// square root and lose −6, and the bracket scan would report one root. So when
-// the knowns are scalars, the node first SNIFFS whether the residual is a
-// polynomial of degree ≤ 2 in the unknown: probe it at 3 nodes (the fit is
-// EXACT for a true polynomial — a = (f(1)+f(−1)−2f(0))/2 …) and verify at 4
-// more generic points. Any arrangement of a quadratic passes ((x−1)(x+3) = 5
-// included); anything with the unknown behind SQRT/trig/1/x fails a probe or
-// the verification and falls through to the symbolic/numeric layers.
+// Sniffs a degree-≤2 residual so BOTH roots survive — symbolic isolation would take the
+// principal square root and lose one. A 3-point fit is exact for a true polynomial; the
+// 4 verification points are what reject SQRT/trig/1/x arrangements.
 
 export interface QuadraticFit { a: number; b: number; c: number }
 
@@ -226,13 +196,12 @@ export function sniffQuadratic(residual: (x: number) => number | null): Quadrati
   return { a, b, c };
 }
 
-/** Real roots of a·x² + b·x + c = 0. Two roots → ascending list; a double root →
- *  scalar; negative discriminant → #SOLVE!; degree < 2 (a ≈ 0) → null so the
- *  caller falls through to the symbolic/numeric layers. */
+/** Real roots of a·x² + b·x + c = 0: ascending list, scalar for a double root, #SOLVE! for
+ *  a negative discriminant, null for degree < 2 (the caller falls through). */
 export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | null {
   const { a, b, c } = q;
   const cscale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c));
-  if (cscale === 0 || Math.abs(a) <= 1e-12 * cscale) return null; // linear/constant — not ours
+  if (cscale === 0 || Math.abs(a) <= 1e-12 * cscale) return null;
   const disc = b * b - 4 * a * c;
   const dscale = Math.max(b * b, Math.abs(4 * a * c));
   if (Math.abs(disc) <= 1e-12 * dscale) return -b / (2 * a); // double root
@@ -247,16 +216,9 @@ export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | 
   return r1 < r2 ? [r1, r2] : [r2, r1];
 }
 
-// ─── Numeric fallback ─────────────────────────────────────────────────────────
-
-/** Residual sign-change scan over a symmetric log grid, then bisection. The
- *  residual comes from the node's own compiled LHS/RHS evaluators; a point
- *  where either side errors or goes non-finite is skipped. EVERY sign-change
- *  bracket is bisected and the root CLOSEST TO ZERO wins — not the first
- *  bracket in ascending order, which for a multi-root equation picks whichever
- *  root lies most negative (a TVM rate residual also crosses zero out at
- *  1+r < 0; an interest rate of −290% is never the answer). Returns #SOLVE!
- *  when no bracket exists. */
+/** Residual sign-change scan over a symmetric log grid, then bisection. EVERY bracket is
+ *  bisected and the root CLOSEST TO ZERO wins — taking the first bracket in ascending
+ *  order picks the most negative root (a TVM rate of −290% is never the answer). */
 export function solveNumeric(residual: (x: number) => number | null): number | SolError {
   const grid: number[] = [0];
   for (let k = -6; k <= 12; k++) {
@@ -275,7 +237,6 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
     if (f === null || !Number.isFinite(f)) { prevX = null; prevF = null; continue; }
     if (f === 0) { consider(x); prevX = x; prevF = f; continue; }
     if (prevX !== null && prevF !== null && Math.sign(f) !== Math.sign(prevF)) {
-      // Bisect [prevX, x].
       let lo = prevX, hi = x, flo = prevF;
       let root: number | null = null;
       for (let i = 0; i < 200; i++) {

@@ -9,7 +9,7 @@
       "y": -940,
       "init": {
         "label": "Personal Finance dashboard",
-        "body": "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. Click a **Display** chip to inspect a table; **Ctrl+/** opens the function reference.",
+        "body": "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
         "color": "blue",
         "width": 580,
         "height": 220,
@@ -322,7 +322,7 @@
       "y": -647,
       "init": {
         "label": "3 · Spending pivot",
-        "body": "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. Click the grouped-table chip to inspect it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
+        "body": "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
         "color": "gold",
         "width": 380,
         "height": 200,
@@ -450,7 +450,7 @@
       "y": 518,
       "init": {
         "label": "4 · Net worth",
-        "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; click the class-totals chip to inspect the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
+        "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
         "color": "violet",
         "width": 380,
         "height": 230,
@@ -909,11 +909,12 @@
     },
     {
       "id": "seq-years",
-      "type": "SequenceNode",
+      "type": "SeriesNode",
       "x": 2566,
       "y": 890,
       "init": {
-        "label": "Years 1…N"
+        "label": "Years 1…N",
+        "op": "sequence"
       }
     },
     {
@@ -1493,7 +1494,7 @@
       "y": -602,
       "init": {
         "label": "8 · One-glance dashboard",
-        "body": "# Bundled KPIs arrive as ribbons\nThe cash-flow, net-worth, mortgage and budget groups each ship their headline numbers through an in-group **Conduit**; the lanes travel together as one **Ribbon** and fan out into these readouts. Click a Conduit to fan its lanes; click a trunk to grab the whole ribbon.",
+        "body": "# Bundled KPIs arrive as ribbons\nThe cash-flow, net-worth, mortgage and budget groups each ship their headline numbers through an in-group **Conduit**; the lanes travel together as one **Ribbon** and fan out into these readouts. A Conduit fans its lanes; a trunk grabs the whole ribbon.",
         "color": "gray",
         "width": 380,
         "height": 210,

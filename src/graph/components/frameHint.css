@@ -1,0 +1,64 @@
+/* Frame-input example hint — the TablePopup grid in MINIATURE (the surface a
+   frame chip opens), floating beside the socket: solid panel, sticky-style
+   corner + row-number column, sunken column heads with the popup's tinted-name
+   recipe, per-cell gridlines, mono cells. Extremely small on purpose: a glance
+   cue for "wire a frame shaped like this", not a surface to read. Sits in the
+   110–199 band: above the HUD, below modals (layout-chrome.md ladder). */
+.solenoid-frame-hint {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none; /* a tooltip — never a hover target itself */
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-border);
+  border-radius: 4px;
+  box-shadow: var(--overlay-shadow);
+  overflow: hidden; /* clips the grid's corners to the panel radius */
+}
+
+.solenoid-frame-hint table {
+  /* `separate` like the popup grid: each cell draws its own right+bottom
+     gridline; the panel border supplies the outer frame. */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  line-height: 1.5;
+}
+.solenoid-frame-hint th,
+.solenoid-frame-hint td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.solenoid-frame-hint th:last-child,
+.solenoid-frame-hint td:last-child {
+  border-right: none;
+}
+/* Column names — the popup's .table-popup__colhead--name recipe, with the FRAME
+   socket hue standing in for the node accent (the input has no node yet). */
+.solenoid-frame-hint__name {
+  background: var(--surface-sunken);
+  padding: 0 4px;
+  text-align: left;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--sock-frame, var(--text)) 70%, var(--text));
+  white-space: nowrap;
+}
+.solenoid-frame-hint td {
+  padding: 0 4px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.solenoid-frame-hint td[data-num] {
+  text-align: right;
+}
+
+/* Footer strip below the sample rows — one muted word carries "this is an
+   example, not your data" (the grid's last-row border is the seam above it). */
+.solenoid-frame-hint__tag {
+  padding: 1px 4px 2px;
+  text-align: right;
+  font-size: 7px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

@@ -10,27 +10,20 @@ import {
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode,
   AppendNode, RenameNode, SplitColumnNode, AddIndexNode, GetRowNode,
 } from "./nodes/frame";
+import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
+import { passthroughForOutput, type PassthroughSpec } from "./nodes/passthrough";
 
-// ─── Static shape graph walk ────────────────────────────────────────────────────
-// Propagates `shapeOf` forward from every literal frame source across the graph —
-// pure, no engine call, no IPC (static shape, ahead of data).
-// Per-node config is read from the SAME literal storage the node's own data()
-// falls back to when its socket is unwired (`stringLiterals` CSV/text, the public
-// op/how/funcs fields) — a wired-in dynamic column name can't be resolved without
-// actually running the graph, so those inputs are treated as "unconfigured" here,
-// same as the node itself treats them when disconnected. `null` = unknown (a
-// runtime-loaded source like CSV/Web Source, Build Frame's data-dependent matrix
-// width, a misconfigured verb, or a node this walk doesn't cover).
+// Propagates `shapeOf` forward from literal frame sources — pure, no engine call, no IPC.
+// A wired-in dynamic config can't be resolved without running the graph, so it reads as
+// unconfigured here; `null` = unknown.
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
   Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 }>;
 
-/** Every frame verb node's literal config lives in a dynamically-added
- *  `stringLiterals` bag (InlineInputs creates it lazily on first edit — see
- *  coerceInputs.ts), which most of these classes don't declare as a field. Read it
- *  duck-typed, the same way coerceInputs.ts does. */
+/** The `stringLiterals` bag is created lazily on first edit and most classes don't declare
+ *  it as a field, so read it duck-typed the way coerceInputs.ts does. */
 function lit(n: unknown, key: string): string {
   return (n as { stringLiterals?: Record<string, string> }).stringLiterals?.[key] ?? "";
 }
@@ -62,16 +55,45 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
     return null;
   }
 
-  /** A misconfigured verb (e.g. a column name that doesn't exist yet) throws the
-   *  same #REF!/#TYPE!/#VALUE! a real run would — swallow it here to "unknown",
-   *  mirroring how a bad config just shows an error VALUE at runtime, not a crash. */
+  /** A misconfigured verb throws the same error a real run would; swallow it to "unknown",
+   *  mirroring how a bad config shows an error VALUE at runtime rather than crashing. */
   function safe(fn: () => Shape | null): Shape | null {
     try { return fn(); } catch { return null; }
   }
 
-  function compute(nodeId: string): Shape | null {
+  /** Column names + types, in order — the structural analogue of `agreeTypes`. */
+  function sameShape(a: Shape, b: Shape): boolean {
+    return a.columns.length === b.columns.length &&
+      a.columns.every((c, i) => c.name === b.columns[i].name && c.type === b.columns[i].type);
+  }
+
+  /** Resolved from the ONE `passthrough()` declaration rather than a second instanceof
+   *  list, so a new type-agnostic node needs no edit here; every WIRED branch must agree. */
+  function passthroughShape(nodeId: string, spec: PassthroughSpec): Shape | null {
+    if (spec.combine === "single") return inputShape(nodeId, spec.inputs[0]);
+    if (spec.combine === "active") {
+      const i = spec.activeIndex ? Math.max(0, Math.min(spec.activeIndex(), spec.inputs.length - 1)) : 0;
+      return spec.inputs.length ? inputShape(nodeId, spec.inputs[i]) : null;
+    }
+    const wired = spec.inputs.map((k) => inputShape(nodeId, k)).filter((x): x is Shape => x != null);
+    if (wired.length === 0) return null;
+    return wired.every((x) => sameShape(x, wired[0])) ? wired[0] : null;
+  }
+
+  function compute(nodeId: string, outKey: string): Shape | null {
     const n = editor.getNode(nodeId) as unknown;
     return safe(() => {
+      // A Conduit lane forwards verbatim but declares no `passthrough()` — conduitTrace
+      // owns lane routing — so it is named here.
+      if (n instanceof ConduitNode) {
+        const lane = conduitLaneOf(outKey, "out");
+        return lane < 0 ? null : inputShape(nodeId, conduitInKey(lane));
+      }
+      // Everything else declares its forwarding; skip this and a frame routed through a
+      // Display / IF / Expect loses its static shape and every verb downstream goes unknown.
+      const pass = passthroughForOutput(n, outKey);
+      if (pass) return passthroughShape(nodeId, pass);
+
       if (n instanceof FrameInputNode) return shapeOfFrameValue(frameFromInputText(n.frameText));
       if (n instanceof GetRowNode) return inputShape(nodeId, "frame");
       if (n instanceof DistinctNode) return inputShape(nodeId, "frame");
@@ -152,9 +174,7 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
         return shapeOfAddIndex(input, lit(n, "name") || "Index");
       }
 
-      // Unknown source (CSV/Web Source, Build Frame's data-dependent matrix width)
-      // or a node outside this walk's scope (Nest/Unnest cross into Cube, Frame
-      // Lookup returns a scalar, Decision Matrix/Sensitivity are terminal reports).
+      // A runtime-loaded source, or a node outside this walk's scope.
       return null;
     });
   }
@@ -164,7 +184,7 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
     if (memo.has(key)) return memo.get(key)!;
     if (visiting.has(key)) return null; // cycle guard
     visiting.add(key);
-    const s = compute(nodeId);
+    const s = compute(nodeId, outKey);
     visiting.delete(key);
     memo.set(key, s);
     return s;

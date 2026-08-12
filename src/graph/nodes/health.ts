@@ -1,7 +1,5 @@
-// Heart-Rate Zones — the Health & Fitness pack's training-zone table. Age (or a
-// wired max HR from the pack's Tanaka node) → a five-zone Frame ready for a
-// table popup, a chart, or a lookup. With a resting HR it switches to the
-// Karvonen (heart-rate reserve) method; without one, plain %-of-max.
+// Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR,
+// plain %-of-max without one.
 
 import { ClassicPreset } from "rete";
 import { numIn, frameOut, readInput } from "./shared";
@@ -16,9 +14,24 @@ const ZONES: Array<{ name: string; lo: number; hi: number }> = [
   { name: "Z5 Maximum", lo: 0.9, hi: 1 },
 ];
 
-/** The zone table: %-of-max bands, or Karvonen bands off the heart-rate reserve
- *  when a resting HR is given (rest + pct·(max − rest)). BPM rounded — nobody
- *  trains to a tenth of a beat. */
+/** The one domain rule, shared by the node and HEARTRATEZONES: a positive max,
+ *  and any resting HR strictly between 0 and it. */
+export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolean {
+  return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
+}
+
+/** The formula surface's matrix form of the frame — five [low, high] rows, since
+ *  frames stay out of formulas. */
+export function hrZonesMatrix(maxHr: number, restingHr: number | null): number[][] | SolError {
+  if (!hrZonesDomainOk(maxHr, restingHr)) {
+    return solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
+  }
+  const f = hrZonesFrame(maxHr, restingHr);
+  const lo = f.columns[1].values as number[];
+  const hi = f.columns[2].values as number[];
+  return lo.map((l, i) => [l, hi[i]]);
+}
+
 export function hrZonesFrame(maxHr: number, restingHr: number | null): FrameValue {
   const at = (pct: number) =>
     Math.round(restingHr !== null ? restingHr + pct * (maxHr - restingHr) : pct * maxHr);
@@ -58,7 +71,7 @@ export class HrZonesNode extends ClassicPreset.Node {
     let zones: FrameValue | SolError | null = null;
     if (maxHr !== null) {
       const rest = typeof resting === "number" ? resting : null;
-      zones = maxHr > 0 && (rest === null || (rest > 0 && rest < maxHr))
+      zones = hrZonesDomainOk(maxHr, rest)
         ? hrZonesFrame(maxHr, rest)
         : solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
     }

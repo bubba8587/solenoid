@@ -77,7 +77,7 @@ describe("installErrorGuards", () => {
   });
 
   it("lets error consumers see the raw error", () => {
-    const n = new IFErrorNode({ mode: "iferror" });
+    const n = new IFErrorNode({ op: "iferror" });
     installErrorGuards(n);
     const e = solError("#DIV/0!", "x");
     const out = n.data({ value: [e as unknown as number], fallback: [7] }) as { result: unknown };
@@ -186,28 +186,28 @@ describe("error consumers", () => {
   const na = solError("#N/A", "x") as unknown as number;
 
   it("IFERROR catches every code; IFNA only #N/A", () => {
-    expect(new IFErrorNode({ mode: "iferror" }).data({ value: [div0], fallback: [9] }).result).toBe(9);
-    expect(new IFErrorNode({ mode: "iferror" }).data({ value: [na], fallback: [9] }).result).toBe(9);
-    expect(new IFErrorNode({ mode: "ifna" }).data({ value: [na], fallback: [9] }).result).toBe(9);
-    const passed = new IFErrorNode({ mode: "ifna" }).data({ value: [div0], fallback: [9] }).result;
+    expect(new IFErrorNode({ op: "iferror" }).data({ value: [div0], fallback: [9] }).result).toBe(9);
+    expect(new IFErrorNode({ op: "iferror" }).data({ value: [na], fallback: [9] }).result).toBe(9);
+    expect(new IFErrorNode({ op: "ifna" }).data({ value: [na], fallback: [9] }).result).toBe(9);
+    const passed = new IFErrorNode({ op: "ifna" }).data({ value: [div0], fallback: [9] }).result;
     expect(isSolError(passed)).toBe(true); // non-NA passes through IFNA
   });
 
   it("a real null (missing) is NOT an error — it passes through both modes", () => {
     // null is no longer "not found"; a not-found is a tagged #N/A (e.g. XLOOKUP).
-    expect(new IFErrorNode({ mode: "iferror" }).data({ value: [null], fallback: [9] }).result).toBeNull();
-    expect(new IFErrorNode({ mode: "ifna" }).data({ value: [null], fallback: [9] }).result).toBeNull();
+    expect(new IFErrorNode({ op: "iferror" }).data({ value: [null], fallback: [9] }).result).toBeNull();
+    expect(new IFErrorNode({ op: "ifna" }).data({ value: [null], fallback: [9] }).result).toBeNull();
   });
 
   it("catches per-cell errors element-wise, leaving null + good cells", () => {
     // IFERROR over a list: the #DIV/0! cell → fallback, the null stays, 1 & 3 pass.
-    const r = new IFErrorNode({ mode: "iferror" })
+    const r = new IFErrorNode({ op: "iferror" })
       .data({ value: [[1, div0, null, 3]], fallback: [9] }).result;
     expect(r).toEqual([1, 9, null, 3]);
   });
 
   it("IFNA over a list catches only #N/A cells, passing other errors + null", () => {
-    const r = new IFErrorNode({ mode: "ifna" })
+    const r = new IFErrorNode({ op: "ifna" })
       .data({ value: [[na, div0, null]], fallback: [0] }).result as unknown[];
     expect(r[0]).toBe(0);             // #N/A caught
     expect(isSolError(r[1])).toBe(true); // #DIV/0! passes through
@@ -217,10 +217,10 @@ describe("error consumers", () => {
   it("ISERROR (Test) and IFERROR agree: only a tagged error counts (a bare NaN does not)", () => {
     // A bare NaN is neither an error nor caught — Test's ISERROR and IFERROR match.
     expect(new IsTestNode({ op: "iserror" }).data({ value: [NaN] }).result).toBe(false);
-    expect(new IFErrorNode({ mode: "iferror" }).data({ value: [NaN], fallback: [9] }).result).toBeNaN();
+    expect(new IFErrorNode({ op: "iferror" }).data({ value: [NaN], fallback: [9] }).result).toBeNaN();
     // A tagged error is caught/flagged by both.
     expect(new IsTestNode({ op: "iserror" }).data({ value: [div0] }).result).toBe(true);
-    expect(new IFErrorNode({ mode: "iferror" }).data({ value: [div0], fallback: [9] }).result).toBe(9);
+    expect(new IFErrorNode({ op: "iferror" }).data({ value: [div0], fallback: [9] }).result).toBe(9);
   });
 
   it("IS-check remembers the observed error for the explanation panel", () => {
@@ -365,7 +365,7 @@ describe("error producers", () => {
     const cross = new ConvertNode({ fromUnit: "m", toUnit: "kg" }).data({ in: [5] }).out;
     expect(isSolError(cross)).toBe(true);
     expect((cross as SolError).code).toBe("#N/A");
-    // A same-family conversion works (metres → kilometres): a base-SI UnitCell of
+    // A same-family conversion works (meters → kilometres): a base-SI UnitCell of
     // 2000 m tagged display "km" (2 km) — FC A4 value-mutating Convert.
     const ok = new ConvertNode({ fromUnit: "m", toUnit: "km" }).data({ in: [2000] }).out;
     expect(isUnitCell(ok)).toBe(true);

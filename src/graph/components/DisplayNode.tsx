@@ -22,10 +22,8 @@ import { isLambdaValue } from "../nodes/lambda";
 import { LambdaValueView } from "./LambdaView";
 import { isSolError } from "../errorValue";
 
-// A chart in a RESIZED Display fills its box and scales live. Only used when the
-// Display has a definite size — measuring a content-driven (max-content) card
-// would feed back (chart size → card size → chart size…) and oscillate. overflow
-// is hidden so the figure can't spawn a scrollbar that re-triggers the measure.
+// Only for a Display with a DEFINITE size — measuring a content-driven card feeds
+// back (chart size → card size → …) and oscillates; overflow stays hidden for it.
 function MeasuredChart({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 210, h: 130 });
@@ -50,30 +48,20 @@ function MeasuredChart({ value, fontScale }: { value: ChartValue; fontScale?: nu
 }
 
 export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
-  // Re-render when any Format Controller annotation changes.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
-  // Expanded → show the full value; collapsed → fall back to the compact preview,
-  // which is the form that collapses cleanly to just a chip (list/table/frame).
+  // Collapsed falls back to the compact preview — the form that reduces to a chip.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const full = !collapsed;
-  // A chart scales to fill only once the Display has a manual size (a definite
-  // box); before that it renders at its fixed default — measuring the
-  // content-driven card would feed back and oscillate.
-  // The hook must run UNCONDITIONALLY — `!collapsed && !!useSyncExternalStore(…)`
-  // short-circuited it away while collapsed, so toggling collapse changed the
-  // per-render hook count (React #310) and crashed the node.
+  // The hook must run UNCONDITIONALLY — guarding it behind `!collapsed` changes the
+  // per-render hook count with collapse (React #310).
   const manualSize = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
   const sized = !collapsed && !!manualSize;
 
-  // Honor an FC docked to EITHER of the Display's sockets (in or out), not
-  // just "in" — the FC keys the annotation to whichever socket it snapped to.
-  // With no direct annotation, resolve the FC's lock in EITHER direction (a
-  // Display is a passthrough, so the same value rides through it unchanged):
+  // A direct (docked) annotation wins; otherwise resolve the FC's lock in EITHER
+  // direction, both breaking at a transform:
   //   • inAnnotation — an FC UPSTREAM, its lock riding the value down into here.
-  //   • downstreamAnnotation — an FC DOWNSTREAM, reachable through a run of
-  //     passthroughs; the value reaches it unchanged, so this earlier Display in
-  //     the same segment shows the same lock (`…→Disp1→Disp2→FC` formats Disp1 too).
-  // Both break at a transform. A direct (docked / trailing-FC) annotation wins.
+  //   • downstreamAnnotation — an FC DOWNSTREAM through a run of passthroughs, so
+  //     `…→Disp1→Disp2→FC` formats Disp1 too.
   const editor = getOwningEditor(data.id); // internal drill-in nodes resolve their FC in the internal editor
   const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
   const ann =
@@ -82,8 +70,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     resolver?.downstreamAnnotation(data.id, "out");
 
   function fmt(v: number): string {
-    // Backstop: the kind-branches below keep objects out of here, but never let a
-    // stray non-number reach formatWithUnit (.toFixed) and crash the node.
+    // Backstop: a stray non-number reaching formatWithUnit (.toFixed) crashes the node.
     if (typeof v !== "number") return String(v);
     if (ann) return formatNumberWithAnnotation(v, ann);
     return formatWithUnit(v, data.unitSuffix);
@@ -93,24 +80,19 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const isError = isSolError(v);
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
-  // Object-valued figures/values that must NOT reach the number formatter (fmt
-  // calls .toFixed) — that crashed the whole Display node off the canvas when a
-  // Chart (or Mermaid / lambda) was wired in. Render each by kind instead.
+  // Object-valued figures must NOT reach the number formatter (fmt calls .toFixed).
   const isChart = isChartValue(v);
   const isMermaid = isMermaidValue(v);
   const isSvg = isSvgValue(v);
   const isLambda = isLambdaValue(v);
   const isTable = Array.isArray(v) && Array.isArray((v as unknown[])[0]);
-  // 2D data (frame/cube/table) and a figure (chart/diagram/svg) grow the card to
-  // fit; a SCALAR grows to fit a long number/string (capped, then ellipsizes)
-  // instead of clipping in the fixed card. Lists wrap as text.
+  // 2-D data and figures grow the card to fit; a scalar grows (capped) rather than
+  // clipping, and lists wrap as text.
   const grow = full && (isFrame || isCube || isTable || isChart || isMermaid || isSvg);
   const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
-  // Publish the resize floor for THIS content type (card width, box height): a
-  // chart/diagram needs room for the figure, a frame/table for a header + a couple
-  // rows; scalars/lists fall to the global minimum. The grip reads this to clamp.
+  // The resize floor for THIS content type; the grip reads it to clamp.
   const minSize = isChart ? { w: 230, h: 150 }
     : isMermaid ? { w: 200, h: 120 }
     : isSvg ? { w: 200, h: 120 }
@@ -130,8 +112,6 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isCube ? (
         <CubeDisplay cube={v} label={data.label} full={full} />
       ) : isChart ? (
-        // Collapsed → the [Chart] chip in the hero box (matching how a frame/table
-        // collapses to its chip); expanded → the full figure.
         !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
               : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} />
               : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} />

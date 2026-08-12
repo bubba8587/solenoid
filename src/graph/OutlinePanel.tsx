@@ -3,7 +3,7 @@ import { getEditor, getArea, selectNode, unselectAllNodes, connectionVersionStor
 import { outlineSearch } from "./outlineStore";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
-import { IS_MOBILE } from "./coarse";
+import { IS_COARSE, IS_MOBILE } from "./coarse";
 import { connectionDialog } from "./connectionDialogStore";
 import { nodeConnections } from "./nodeNames";
 import {
@@ -17,15 +17,8 @@ import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 
-/**
- * Left-docked outline / navigator. Respects Group membership (members nested
- * under their group) and collapse state (a collapsed group hides its members,
- * matching the canvas; its chevron toggles the canvas collapse too). Format
- * Controllers are filtered out entirely (their navigator semantics get murky
- * with FC chains and the Convert hybrid). Quick filters narrow to Inputs /
- * Displays; search flattens across everything. Reads names/kinds/structure only
- * and polls a few times a second.
- */
+/** Left-docked outline / navigator, mirroring canvas group membership and collapse
+ *  state; Format Controllers are filtered out entirely. */
 
 type Cat = "group" | "input" | "display" | "other";
 type Row = {
@@ -43,13 +36,12 @@ type State = { tree: Row[]; flat: Row[] };
 
 function colorOf(n: unknown, mode: "dark" | "light"): string {
   const base = n instanceof GroupNode
-    ? resolveColor((n as GroupNode).color) // resolve the palette SLOT to a hex, exactly like GroupNode does
+    ? resolveColor((n as GroupNode).color)
     : NODE_KIND_ACCENTS[nodeKindOf(n as never)] ?? "#8a8f98";
   return themeAccent(base, mode);
 }
 
-// Same readable type string the node header shows on hover (see nodeKit's
-// typeHint): class name minus the "Node" suffix, camelCase split.
+// The same type string the node header shows on hover (nodeKit's typeHint).
 function typeOf(n: unknown): string {
   return (n as { constructor: { name: string } }).constructor.name
     .replace(/Node$/, "")
@@ -59,12 +51,9 @@ function typeOf(n: unknown): string {
 function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
   if (n instanceof GroupNode) return "group";
   if (n instanceof DisplayNode) return "display";
-  // An "input" is a SOURCE by EITHER measure:
-  //  (1) structurally leaf — no input sockets at all, but produces an output (Number /
-  //      Text / Frame / Web Source, Constant …), so it shows even before it's wired; OR
-  //  (2) functioning as a source right now — nothing WIRED into it but its output is
-  //      wired onward — which catches nodes that CAN take control inputs but don't
-  //      (RANDBETWEEN's min/max, a Slider), and drops them the moment one is wired in.
+  // An "input" is a SOURCE by EITHER measure: (1) structurally leaf — no input
+  // sockets but an output, so it shows before it's wired; or (2) nothing WIRED in
+  // while its output is wired onward, which drops the moment an input is wired.
   const io = n as { id: string; inputs?: Record<string, unknown>; outputs?: Record<string, unknown> };
   const noInputSockets = Object.keys(io.inputs ?? {}).length === 0;
   const hasOutputSockets = Object.keys(io.outputs ?? {}).length > 0;
@@ -82,19 +71,12 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   const nodes = editor.getNodes();
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
-  // Wiring, for the "input" category (see catOf): which nodes have a cable INTO them
-  // (targets) vs OUT of them (sources). A source = wired out, not wired in.
   const conns = editor.getConnections();
   const wiredIn = new Set(conns.map((c) => c.target));
   const wiredOut = new Set(conns.map((c) => c.source));
 
-  // Sort SIBLINGS (top-level nodes, and members within a group) by the chosen
-  // mode. Alpha = label A→Z; Position = canvas reading order — top→bottom in loose
-  // row bands, then left→right within a band. ROW_BAND is intentionally GENEROUS
-  // (biased toward left-right): nodes within ~120px of vertical land in one band
-  // and read left→right, so the order tracks columns/rows the way the eye scans
-  // rather than reacting to small y jitter. Reads coords from area.nodeViews, so
-  // the order tracks the canvas as nodes move.
+  // Position mode reads top→bottom in loose row bands, then left→right; ROW_BAND is
+  // intentionally GENEROUS so the order doesn't react to small y jitter.
   const labelOf = (n: (typeof nodes)[number]) => (n as { label?: string }).label ?? "";
   const posOf = (n: (typeof nodes)[number]) => area?.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
   const ROW_BAND = 120;
@@ -128,10 +110,8 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
     };
   };
 
-  // Flat list (all real nodes, FCs excluded) for search / filters.
   const flat = sorted(nodes.filter((n) => !(n instanceof FormatControllerNode))).map((n) => rowOf(n, 0));
 
-  // Tree (respects membership + collapse) for browsing.
   const tree: Row[] = [];
   const seen = new Set<string>();
   const push = (n: (typeof nodes)[number], depth: number) => {
@@ -148,8 +128,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   return { tree, flat };
 }
 
-/** Select + pan-to-center a node. Shared with the command palette's
- *  jump-to-node (both need the exact same "center it" math). */
+/** Select + pan-to-center a node; shared with the palette's jump-to-node. */
 export async function focusNode(id: string) {
   const editor = getEditor();
   const area = getArea();
@@ -161,9 +140,8 @@ export async function focusNode(id: string) {
   if (!node || !box) return;
   const { k } = area.area.transform;
   const rect = area.container.getBoundingClientRect();
-  // measuredBox reads the LIVE rendered size first — the old node.width-first
-  // read centered a collapsed group on its stored EXPANDED box, off-centering
-  // the camera by half the size difference.
+  // measuredBox reads the LIVE size first — a collapsed group's STORED box is its
+  // expanded one, which would off-center the camera.
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
   await area.area.translate(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
@@ -175,27 +153,22 @@ function toggleGroup(id: string) {
   if (!editor || !area) return;
   const g = editor.getNode(id);
   if (!(g instanceof GroupNode)) return;
-  // Centralised toggle: flip + sync + re-render + settle + push/restore.
   void setGroupsCollapsed(editor, area, [g], !g.collapsed);
 }
 
-// Collapse every group, or expand them all if they're already collapsed.
-// Routes through setGroupsCollapsed so the neighbour-push (and the top-left →
-// bottom-right expand sweep) is applied, same as the single-group toggle.
-// Exported so the TopBar's layout pill can host a duplicate of this button
-// (shared handler, no behavior change).
+// Routes through setGroupsCollapsed so the neighbor-push and expand sweep apply,
+// same as the single-group toggle.
 export function toggleAllGroups() {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return;
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   if (groups.length === 0) return;
-  const collapse = groups.some((g) => !g.collapsed); // any expanded → collapse all
+  const collapse = groups.some((g) => !g.collapsed);
   void setGroupsCollapsed(editor, area, groups, collapse);
 }
 
-/** Live group-collapse summary for the toggle button (icon direction +
- *  whether to show it at all). Reads the editor directly, so callers should
+/** Live group-collapse summary; reads the editor directly, so callers must
  *  subscribe to groupCollapseStore to re-render on changes. */
 export function groupCollapseSummary(): { hasGroups: boolean; allCollapsed: boolean } {
   const editor = getEditor();
@@ -209,17 +182,12 @@ const FILTERS: { key: "input" | "display"; label: string }[] = [
   { key: "display", label: "Displays" },
 ];
 
-// Touch has no Ctrl/Shift, so a plain row tap has to do something. In mobile
-// mode a tap selects + focuses the node, and a tap while select mode is on
-// accumulates (the navigator's multi-select path on mobile).
-
 export function OutlinePanel() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Set<"input" | "display">>(new Set());
-  // Navigator sort order, persisted. Position = canvas reading order; Alpha = A→Z.
   const [sortMode, setSortMode] = useState<SortMode>(
     () => (typeof localStorage !== "undefined" && localStorage.getItem("solenoid.navSort") === "alpha" ? "alpha" : "position"),
   );
@@ -232,9 +200,8 @@ export function OutlinePanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingFocus = useRef(false);
 
-  // Per-node connection list (the "plug" toggle). Live-tracks connection changes
-  // via connectionVersionStore — buildState's poll signature ignores connections,
-  // so without this the inline lists wouldn't refresh on wire/unwire.
+  // buildState's poll signature ignores connections, so the inline lists need
+  // connectionVersionStore to refresh on wire/unwire.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const [expandedConns, setExpandedConns] = useState<Set<string>>(new Set());
   const connCounts = useMemo(() => {
@@ -256,15 +223,12 @@ export function OutlinePanel() {
       return next;
     });
   const deleteConn = (id: string) => {
-    // The editor's connectionremoved pipe reprocesses + bumps the version, which
-    // re-renders this list.
+    // The connectionremoved pipe bumps the version, which re-renders this list.
     void getEditor()?.removeConnection(id);
   };
 
-  // App-bar search / Ctrl+F: open the panel and focus its search field. We set a
-  // pending flag and bump a signal; the focus runs in the effect below AFTER the
-  // panel (and its input) has actually rendered, so it works even when the
-  // panel was collapsed.
+  // The focus runs in the effect below, AFTER the panel and its input have
+  // rendered, so Ctrl+F works even when the panel was collapsed.
   const requestSearch = useCallback(() => {
     pendingFocus.current = true;
     setOpen(true);
@@ -272,13 +236,10 @@ export function OutlinePanel() {
   }, []);
 
   useEffect(() => outlineSearch.register(requestSearch), [requestSearch]);
-  // Register with the chrome-toggle group so the Tab hotkey can open/close the
-  // navigator along with the pin / alert HUDs. Re-registers on `open` change so
-  // its isOpen getter stays current.
+  // Re-registers on `open` change so the isOpen getter stays current.
   useEffect(() => registerChrome("navigator", { isOpen: () => open, setOpen }), [open]);
-  // While the expanded panel is open, flag <body> so screen-anchored popups that
-  // dock to the bottom-left (the Conduit / Standoff inspector toolbars, which
-  // portal to body) shift right past the panel instead of hiding under it.
+  // Flags <body> so bottom-left screen-anchored popups shift right past the panel
+  // instead of hiding under it.
   useEffect(() => {
     document.body.classList.toggle("solenoid-nav-open", open);
     return () => document.body.classList.remove("solenoid-nav-open");
@@ -300,7 +261,7 @@ export function OutlinePanel() {
   }, [searchSignal, open]);
 
   useEffect(() => {
-    if (!open) return; // no need to track the graph while the panel is hidden
+    if (!open) return;
     let prev = "";
     const tick = () => {
       const next = buildState(appThemeStore.getMode(), sortMode);
@@ -327,22 +288,21 @@ export function OutlinePanel() {
     );
   }, [state, query, filters]);
 
-  // Row interaction: plain click does nothing (avoids the jumpy per-click
-  // recentering); DOUBLE-click jumps to + focuses the node. Ctrl/Cmd-click
-  // toggles a node in/out of the selection; Shift-click range-selects from the
-  // last click. Modifier clicks mirror canvas multi-select and don't recenter.
+  // Plain click is a deliberate no-op (avoids jumpy recentering); double-click
+  // focuses, and the modifier clicks mirror canvas multi-select without recentering.
   const lastClicked = useRef<string | null>(null);
   const handleRowDoubleClick = (id: string) => {
     lastClicked.current = id;
     void focusNode(id);
   };
   const handleRowClick = (e: MouseEvent, id: string) => {
-    // Ctrl/Cmd (desktop) or select mode (touch) accumulates; Shift range-selects.
-    const accumulate = e.ctrlKey || e.metaKey || (IS_MOBILE && touchSelectStore.get());
+    // IS_COARSE, not IS_MOBILE: a tablet reaches select mode from the top bar while
+    // IS_MOBILE is false there (the plain-click branch below is about double-click,
+    // which a tablet shares with the desktop pointer model).
+    const accumulate = e.ctrlKey || e.metaKey || (IS_COARSE && touchSelectStore.get());
     const range = e.shiftKey;
     if (!accumulate && !range) {
-      // Plain: desktop is a deliberate no-op (avoids jumpy recentering); on
-      // touch it selects and jumps to the node, since there's no double-click.
+      // Touch selects and jumps, since there is no double-click there.
       if (IS_MOBILE) { void focusNode(id); lastClicked.current = id; }
       return;
     }
@@ -373,9 +333,6 @@ export function OutlinePanel() {
     });
 
   if (!open) {
-    // Collapsed: a small pill pairing the navigator toggle with a search button.
-    // Search is just "open the navigator AND focus its search field", so the two
-    // live together rather than search hiding off in the app menu.
     return (
       <div className="solenoid-outline__open-pill" onPointerDown={(e) => e.stopPropagation()}>
         <button
@@ -419,8 +376,7 @@ export function OutlinePanel() {
             aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
             onClick={toggleAllGroups}
           >
-            {/* Lucide list-chevrons — the glyph shows the ACTION: converging
-                (down-up) to collapse, diverging (up-down) to expand. */}
+            {/* The glyph shows the ACTION: converging to collapse, diverging to expand. */}
             <svg
               viewBox="0 0 16 16" width="14" height="14" fill="none"
               stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
@@ -493,11 +449,8 @@ export function OutlinePanel() {
               style={{
                 paddingLeft: 8 + r.depth * 14,
                 ...(r.isGroup
-                  // A group reads as a CONTAINER, like on canvas: a muted tint fill inside a
-                  // full 1px border in its own color (a FRAME, not a left/right accent stripe —
-                  // DESIGN.md). The border gives a group more presence than a selected member
-                  // row (which is a borderless accent-soft fill), so nested selections don't
-                  // read the same as their group header. Selection adds the accent ring on top.
+                  // A group reads as a CONTAINER: tint fill inside a full 1px border in
+                  // its own color — a FRAME, never an accent stripe (DESIGN.md).
                   ? {
                       background: hexToRgba(r.color, 0.24),
                       border: `1px solid ${hexToRgba(r.color, 0.55)}`,
@@ -534,7 +487,6 @@ export function OutlinePanel() {
                   onClick={(e) => { e.stopPropagation(); toggleConns(r.id); }}
                 >
                   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    {/* Two sockets joined by a cable — the app's own connection metaphor. */}
                     <path d="M5 11 L11 5" />
                     <circle cx="3.5" cy="12.5" r="2" fill="currentColor" stroke="none" />
                     <circle cx="12.5" cy="3.5" r="2" fill="currentColor" stroke="none" />

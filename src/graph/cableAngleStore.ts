@@ -1,11 +1,5 @@
-// Per-socket cable exit angles. Nodes whose sockets exit at non-cardinal
-// angles (e.g. a rotated Conduit) write their angles here; the
-// ConnectionComponent reads them so the spline bezier curves enter and
-// exit on the correct face.
-//
-// Keyed by `${nodeId}::${socketKey}`. Angle is in degrees, CW from +X
-// (0 = right, 90 = down, 180 = left, 270 = up). null / absent means
-// "no override — fall back to cardinal Position.Right / .Left".
+// Per-socket cable exit angles for non-cardinal sockets (a rotated Conduit).
+// Degrees CW from +X (0 = right, 90 = down); absent = cardinal Right/Left.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -31,7 +25,6 @@ export const cableAngleStore = {
   get(nodeId: string, socketKey: string): number | null {
     return _angles.get(key(nodeId, socketKey)) ?? null;
   },
-  /** Forget all of a deleted node's socket angles (noderemoved → forgetNode). */
   forget(nodeId: string) {
     const prefix = `${nodeId}::`;
     let changed = false;

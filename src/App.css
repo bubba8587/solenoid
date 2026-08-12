@@ -47,6 +47,22 @@
      --node-accent via an outline — see nodeCard.css / GroupNode.css.) */
   --header-tint: 22%;
 
+  /* ── The accent-mix ladder (DESIGN.md §2, The Accent-Mix Ladder) ──
+     Every accent-derived shade picks a rung; no ad-hoc percentages. Each rung
+     is a STRENGTH — the mix target stays at the use site (--text for ink,
+     --border for edges, transparent for glows). */
+  --mix-hairline: 30%; /* tinted hairline: markdown table edges, io-row rules */
+  --mix-edge: 45%;     /* structural edge on a field/bar */
+  --mix-emphasis: 60%; /* active/operation edge — the quiet-emphasis step */
+  --mix-ink: 55%;      /* accent-tinted glyph/label, mixed toward --text */
+  --mix-glow: 28%;     /* selection glow alpha, mixed toward transparent */
+  /* Selection ring: accent pulled toward a contrast pole — lighter in dark
+     mode; lightness-flipped AND nerfed harder in light (author 2026-07-05:
+     a 68–70% mix toward black read as a harsh near-black frame over a pale
+     card; 80% keeps a visible darker-than-hover step). */
+  --mix-ring: 70%;
+  --ring-into: #fff;
+
   /* Socket type colors (--sock-*) are now written from the active palette by
      appTheme.ts (see SOCKET_VARS in palette.ts): each scalar is a palette slot,
      arrays are a darker sibling, matrices a punchier hue-shifted one. So a palette
@@ -109,6 +125,11 @@
   /* Stronger header tint (pale-on-white needs more). */
   --header-tint: 52%;
 
+  /* Accent-mix ladder, light overrides: ring flips toward black and nerfs
+     harder (see the dark-root ladder comment). Strength rungs stay the same. */
+  --mix-ring: 80%;
+  --ring-into: #000;
+
   /* Socket --sock-* colors are written from the palette by appTheme (light mode
      shifts each slot via themeAccent before deriving array/matrix siblings), so the
      per-var light overrides that used to live here are gone. Ring + cable only. */
@@ -137,7 +158,7 @@ body,
   /* Stop mobile pull-to-refresh / rubber-band bounce so a drag that starts on
      the canvas stays a canvas pan instead of scrolling the page. */
   overscroll-behavior: none;
-  /* Drop the grey flash on tap; chrome buttons signal touch via their own
+  /* Drop the gray flash on tap; chrome buttons signal touch via their own
      :active styles instead. */
   -webkit-tap-highlight-color: transparent;
   background: var(--app-bg);
@@ -147,7 +168,14 @@ body,
 .solenoid-app {
   position: relative;
   width: 100vw;
+  /* Track the VISUAL viewport (dvh), not the layout viewport: on mobile-browser
+     Chrome (phone OR tablet-running-desktop-UI) 100vh includes the strip behind
+     the URL bar / toolbars, so every bottom-anchored descendant (status bar,
+     minimap, navigator) lands below the usable screen. Desktop browsers have no
+     dynamic toolbars, so dvh == vh there; the plain vh line is the fallback for
+     engines without dvh. */
   height: 100vh;
+  height: 100dvh;
 }
 
 /* Form controls don't inherit font-family from the UA stylesheet — a bare

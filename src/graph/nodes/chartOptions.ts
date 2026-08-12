@@ -1,10 +1,4 @@
-// Chart options vocabulary — matplotlib's pyplot kwarg names, not ours.
-//
-// The Chart Builder node emits, and the Chart node reads, a flat
-// `key=value;key=value` string using matplotlib's well-known parameter names
-// (title / xlabel / ylabel / color / grid / marker / linewidth / alpha / ylim).
-// Borrowing an established, documented vocabulary keeps the option set legible
-// to anyone who has touched a plotting library and avoids inventing a private
+// A flat `key=value;…` string in matplotlib's pyplot kwarg names, deliberately not a private
 // dialect. Unknown keys are ignored, so the string degrades gracefully.
 
 export interface ChartOptions {
@@ -18,8 +12,7 @@ export interface ChartOptions {
   ymax?: number;
   linewidth?: number;
   alpha?: number;
-  // matplotlib's font.size rcParam: points, default 10 = the built-in sizes.
-  // Render surfaces scale every text size by fontsize/10.
+  // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
 }
 
@@ -40,12 +33,9 @@ function toNum(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/**
- * Parse a matplotlib-style `key=value;…` options string into a `ChartOptions`.
- * Tolerant: whitespace is trimmed, keys are case-insensitive, booleans accept
- * on/off/true/false/1/0, `ylim=min,max` splits into ymin/ymax (and a bare side
- * like `ylim=,100` sets only that bound), and unrecognised keys are skipped.
- */
+/** Tolerant parse: whitespace trimmed, keys case-insensitive, booleans as
+ *  on/off/true/false/1/0, `ylim=min,max` split into ymin/ymax (a bare side sets one
+ *  bound), unrecognised keys skipped. */
 export function parseChartOptions(input: string | null | undefined): ChartOptions {
   const opts: ChartOptions = {};
   if (!input) return opts;
@@ -96,11 +86,8 @@ export interface ChartBuilderFields {
   fontsize?: number | null;
 }
 
-/**
- * Build the `key=value;…` string the Chart Builder outputs. Only set fields are
- * emitted (so an untouched builder yields ""), and the two Y bounds collapse
- * into matplotlib's single `ylim=min,max`.
- */
+/** Only set fields are emitted, so an untouched builder yields ""; the two Y bounds
+ *  collapse into matplotlib's single `ylim=min,max`. */
 export function serializeChartOptions(f: ChartBuilderFields): string {
   const parts: string[] = [];
   const str = (k: string, v: string | undefined) => {
@@ -126,10 +113,9 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   return parts.join(";");
 }
 
-// ─── Chart Builder targets ───────────────────────────────────────────────────
-// Which option keys each figure's RENDERER actually reads — the truth behind
-// the Chart Builder's chart-type dropdown (it shows a type's accepted rows).
-// Derived from the render layer, keep in sync when a view learns an option:
+// Which option keys each figure's RENDERER actually reads; keep in sync with the render
+// layer when a view learns an option. The builder still SERIALIZES every set field — an
+// unread key is inert, and one builder may feed several charts.
 //   • ChartView (the Chart node, any shape) reads everything; its column/bar
 //     path skips marker/linewidth but the Chart node can be a line, so the
 //     "chart" target keeps the full set.
@@ -138,9 +124,6 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 //     their text scale; title flows to the figure title everywhere.
 //   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar
 //     Heatmap / Waffle) read nothing but the title.
-// The builder still SERIALIZES every set field regardless of target — an
-// unread key is inert matplotlib-style, and one builder may feed several
-// charts — the target only shapes which rows the card shows.
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker"

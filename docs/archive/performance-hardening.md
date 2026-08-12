@@ -1,5 +1,14 @@
 # Performance hardening — the final zoom verdict
 
+> **PARTIALLY SUPERSEDED (2026-07-25) — read the "choppy zoom BAND" open problem in
+> `../dev-notes.md` first.** The author has since observed that zoom chop is *not*
+> monotonic: a specific INTERIOR range of camera scales is choppier than both very close
+> and very far zoom. Every lever in the ledger below was measured without knowing a band
+> existed, so an ablation that reads "negligible" here may simply have been run outside
+> it. The conclusion that DOM compositing is a floor may still hold — but the ledger's
+> negative results are *unconfirmed inside the band*, not foreclosed. The "Reverted
+> experiments — DO NOT re-attempt" list is unaffected and still binding.
+
 This is the condensed close-out of the 2026-06 perf-hardening arc. The root-cause A–E
 bug-fix history (paste/delete/undo O(N²) settle fixes, targeted recompute, load
 parallelization, pan quality drops) is DROPPED — those wins shipped and live in the

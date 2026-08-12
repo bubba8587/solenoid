@@ -22,13 +22,10 @@ html.is-mobile {
   /* ── The bottom action bar (Undo/Redo/Add/Select/Delete) becomes visible. ── */
   .solenoid-mobile-bar { display: flex; }
 
-  /* The app container must track the VISUAL viewport (dvh), not the layout viewport
-     (vh includes the strip behind the mobile URL bar). The bottom action bar is
-     position:fixed → visual-viewport-anchored; the outline navigator is absolute
-     inside .solenoid-app, so if that's 100vh the navigator anchors to the LAYOUT
-     bottom — below the fixed bar by exactly the URL-bar height, which is why it
-     overflowed the bar on-device but never in a (URL-bar-less) emulator. */
-  .solenoid-app { height: 100dvh; }
+  /* The app container tracks the VISUAL viewport (100dvh) — set app-wide in
+     App.css, not here: a tablet runs the DESKTOP UI in the same toolbar-bearing
+     mobile browser, so gating dvh on is-mobile left its bottom chrome (status
+     bar, minimap, navigator) below the usable screen. */
 
   /* The minimap lives bottom-right and is of little use on a phone-sized canvas
      — hide it so the corner is free for the socket legend. */
@@ -70,10 +67,9 @@ html.is-mobile {
   .solenoid-topbar__group--layout { display: flex; gap: 2px; }
   .solenoid-topbar .solenoid-nav__btn { width: 34px; height: 34px; }
   .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
-  /* The square icon doubles as the app-menu button on a phone — a finger-sized tap
-     target at the left edge. Neutral chrome now (Row B isn't accent). */
+  /* The app-menu (overflow ⋯) button on a phone — a finger-sized tap target at
+     the left edge. Neutral chrome (Row B isn't accent). */
   .solenoid-topbar__icon { display: flex; }
-  .solenoid-topbar__icon-glyph { background-color: var(--wordmark-color); }
   /* Navigator (outline) toggle — mobile only; sits next to the menu icon. Matches
      the icon button's round-chrome look. */
   .solenoid-topbar__nav {
@@ -134,6 +130,23 @@ html.is-mobile {
     z-index: 8;
   }
   .solenoid-menubar__item { display: none; }
+  /* Row A brand: masked wordmark in the bar's own ink (currentColor follows
+     --accent-ink through theme/palette swaps), doc name to its right. */
+  .solenoid-menubar__wordmark {
+    display: block;
+    flex: 0 0 auto;
+    align-self: center;
+    height: 19px;
+    aspect-ratio: 573 / 119; /* the wordmark SVG's viewBox */
+    margin-right: 6px;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
   .solenoid-menubar__center {
     /* Desktop centers it ABSOLUTELY (out of flow); on mobile it must be IN flow so
        it gives the thin accent row its height (else the menu bar collapses to 0).
@@ -249,7 +262,7 @@ html.is-mobile {
   .solenoid-add-menu { font-size: 13px; }
   .solenoid-add-menu__item { padding: 7px 12px; }
   .solenoid-add-menu__search { padding: 7px 10px; font-size: 13px; }
-  .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); }
+  .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); max-height: min(86dvh, 448px); }
 
   /* ── Outline navigator (upper-left): bigger launcher; panel fits width and
         clears the (notch-padded) header at the top and the status bar / home
@@ -259,9 +272,10 @@ html.is-mobile {
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
     top: calc(88px + env(safe-area-inset-top));
-    /* Clear the bottom action bar AND its raised + FAB (which sticks ~8px proud of
-       the ~57px bar and casts a shadow). 84px keeps the list well above both. */
-    bottom: calc(84px + env(safe-area-inset-bottom));
+    /* Clear the bottom action bar AND its raised + FAB (which sticks ~8px proud
+       of the bar and casts a shadow). The measured envelope is the bar itself
+       (safe-area included); +27 keeps the list well above the FAB too. */
+    bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);
     width: min(248px, 84vw);
   }
   .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
@@ -286,7 +300,7 @@ html.is-mobile {
         corner — lift it clear of the bottom action bar (~74px tall). ── */
   .solenoid-conduit-toolbar--docked {
     left: 12px;
-    bottom: calc(96px + env(safe-area-inset-bottom));
+    bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
   }
   .solenoid-conduit-toolbar__extend { padding: 8px 14px; font-size: 12px; }
 
@@ -296,7 +310,7 @@ html.is-mobile {
   .table-popup__view button { padding: 9px 14px; }
   .table-popup__btn { padding: 9px 14px; }
   .table-popup__grid-scroll,
-  .table-popup__csv { max-height: 48vh; }
+  .table-popup__csv { max-height: 48vh; max-height: 48dvh; }
 
   /* ── Connection dialog (Insert ▸ Add connection) — the no-drag way to wire
         sockets, extra useful on touch. ── */
@@ -320,7 +334,7 @@ html.is-mobile {
   /* Leave a tappable backdrop margin on every side so the panel can be dismissed
      by tapping away (the old 96vw left only ~2vw of backdrop at the sides — too
      thin to hit). */
-  .fr-panel { width: 92vw; height: 88vh; }
+  .fr-panel { width: 92vw; height: 88vh; height: 88dvh; }
 
   /* Tabs: let the labels scroll horizontally on a narrow phone instead of being
      clipped, and reserve room on the right so the last tab can't hide under the
@@ -378,4 +392,24 @@ html.is-mobile {
 /* Narrow phones: the two-column shortcuts grid runs out of room. */
 @media (max-width: 540px) {
   html.is-mobile .solenoid-shortcuts__grid { grid-template-columns: 1fr; }
+}
+
+/* ── Settings on a phone: a row carrying a WIDE control (a text input, the
+   palette stack) squeezes its description into a word-per-line tower beside
+   the control — stack those rows, control full-width below the text. Toggle
+   and segment rows keep the inline layout (they fit). ── */
+html.is-mobile .solenoid-settings__row--palette,
+html.is-mobile .solenoid-settings__row:has(.solenoid-settings__key-input) {
+  flex-direction: column;
+  align-items: stretch;
+}
+html.is-mobile .solenoid-settings__key-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+}
+/* Stacked, the palette stack's right-alignment would leave the swatch grid
+   hanging beside an empty label column — left-align it under the label. */
+html.is-mobile .solenoid-settings__row--palette .solenoid-settings__palette-control {
+  align-items: flex-start;
 }

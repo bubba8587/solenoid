@@ -1,11 +1,7 @@
 import { createNotifier, createToggleStore } from "./storeKit";
 
-// Per-document metadata (F-2) — author + tags, edited in the Document Properties
-// window. A module singleton (like paletteStore's doc palette) so it's readable from
-// Rete's separate React root; the OPEN document's values live here, applied on load
-// (setDocMeta) and captured on save (docMeta → SavedGraph.meta, carried in the
-// text-form sidecar). The document TITLE stays the documentStore name — not
-// duplicated here.
+// The OPEN document's author + tags, a module singleton so Rete's separate React root
+// can read it. The document TITLE stays the documentStore name, never duplicated here.
 
 export interface DocMeta {
   author?: string;

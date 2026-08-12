@@ -5,7 +5,8 @@
    through the empty gaps to the canvas; the chips/buttons re-enable themselves. */
 .solenoid-hud-stack {
   position: fixed;
-  top: 124px; /* below the horizontal nav pill (top: 80px + 34px height + 10px gap) */
+  /* below the nav pill: envelope + 14 (pill top) + 34 (pill height) + 10 (gap). */
+  top: calc(var(--chrome-top, 66px) + 58px);
   right: 12px;
   z-index: 110;
   display: flex;

@@ -10,11 +10,11 @@ const DIRS: { value: PadDir; label: string }[] = (Object.keys(PAD_OP_META) as Pa
 }));
 
 export function PadComponent({ data, emit }: NodeProps<PadNodeType>) {
-  const [dir, setDir] = useNodeField(data, "dir");
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={dir} onChange={setDir} options={DIRS} />
+      <OpSelect value={op} onChange={setOp} options={DIRS} />
       <ValueDisplay value={data.cachedList as DisplayValue} />
     </NodeShell>
   );

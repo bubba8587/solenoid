@@ -12,17 +12,15 @@ const MODE_OPTS = (Object.keys(BLEND_MODE_META) as BlendMode[]).map((m) => ({
 }));
 
 export function ColorBlendComponent({ data, emit }: NodeProps<ColorBlendNodeType>) {
-  const [mode, setMode] = useNodeField(data, "mode");
+  const [op, setOp] = useNodeField(data, "op");
   const out = data.cachedString;
   const colorOut = data.outputs.color;
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Blend" hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <div style={{ padding: "6px 0 2px" }}>
-        <OpSelect value={mode} onChange={setMode} options={MODE_OPTS} />
-      </div>
-      {/* Swatch + output string on the output-socket row — the Color Picker's
-          result-row pattern, so the dot sits next to what it emits. */}
+      {/* Direct body child — the top-of-card op-selector hoist (nodeCard.css
+          flex order) only reaches unwrapped selects. */}
+      <OpSelect value={op} onChange={setOp} options={MODE_OPTS} />
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           {isSolError(out) ? (
@@ -30,7 +28,7 @@ export function ColorBlendComponent({ data, emit }: NodeProps<ColorBlendNodeType
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>
               <span
-                aria-label="Colour preview"
+                aria-label="Color preview"
                 style={{ width: 18, height: 18, borderRadius: 5, border: "1px solid var(--border-strong)", background: out ?? "transparent", flex: "0 0 auto" }}
               />
               <code style={{ flex: "1 1 auto", minWidth: 0, fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{out ?? "—"}</code>

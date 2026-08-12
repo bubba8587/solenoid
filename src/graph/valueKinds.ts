@@ -1,39 +1,17 @@
-// ── Value kinds: missing (null), logical, and how they flow ──────────────────
-// The formula/value model carries, besides plain numbers/strings/dates/complex,
-// two special kinds that ride INSIDE lists and matrices:
-//
-//   • `null`  — a MISSING value. Distinct from 0 and from an error. Rendered
-//               literally as `null`. SKIPPED by aggregators; PROPAGATES through
-//               element-wise ops (a missing operand makes the result missing).
-//   • `SolError` — a computation FAILURE (#DIV/0!, #TYPE!, …). PROPAGATES
-//               everywhere (element-wise and through aggregators).
-//
-// (See dev-notes "Array-semantics policy DECISIONS" + "Second-ring decisions".)
-// This module is the pure home for the predicates, the Kleene three-valued
-// boolean logic, logical↔number coercion, and the aggregator-prep helper. It is
-// engine-agnostic and has no React/Rete deps so it can be unit-tested in
-// isolation and reused by every host node.
 import { isSolError, solError, type SolError } from "./errorValue";
 
-// The missing sentinel is JS `null` (the value frames already store). Use the
-// predicate rather than `=== null` at call sites so intent reads clearly and a
-// future representation change has one place to move.
+// Call sites use the predicate rather than `=== null` so a representation change
+// has one place to move.
 export type Missing = null;
 export const MISSING: Missing = null;
 export function isMissing(v: unknown): v is Missing {
   return v === null;
 }
 
-// A logical value is a real JS boolean. It renders TRUE/FALSE but coerces to
-// 1/0 in any numeric context (see logicalToNumber).
 export function isLogical(v: unknown): v is boolean {
   return typeof v === "boolean";
 }
 
-// ── Logical ↔ number coercion ────────────────────────────────────────────────
-// Excel + Polars: a logical coerces to 1/0 in arithmetic; a number coerces to a
-// logical as "non-zero is true" (the spreadsheet multiply-by-a-condition trick).
-// `null` stays `null` either way (missing propagates), errors propagate.
 export function logicalToNumber(v: boolean): 1 | 0 {
   return v ? 1 : 0;
 }
@@ -41,16 +19,9 @@ export function numberToLogical(n: number): boolean {
   return n !== 0;
 }
 
-// Liberal coercion of one scalar to a logical, for the EXPLICIT coercion path —
-// Cast → Boolean and Get Column read-as Logical. Deliberately distinct from the
-// CONSERVATIVE column inference in frame.ts (`isLogicalCell`), which only auto-types
-// a column logical when every cell is literally TRUE/FALSE, so a 0/1 mask column
-// stays numeric. Once the user opts IN to a logical read, we coerce generously, on
-// the same rules the rest of the type system uses: a real boolean passes through;
-// "TRUE"/"FALSE" (any case) parse; a number — or a numeric string — follows the
-// logical↔number bridge (0 → FALSE, nonzero → TRUE, via numberToLogical). Returns
-// `null` when the value can't be read as a logical at all; the CALLER decides what
-// that means (Cast tags it #VALUE!, read-as treats it as a missing cell).
+// Liberal coercion for the EXPLICIT path (Cast → Boolean, Get Column read-as Logical),
+// deliberately distinct from frame.ts's conservative `isLogicalCell`. `null` = not
+// readable as a logical at all; the CALLER decides what that means.
 export function coerceLogical(v: unknown): boolean | null {
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return Number.isFinite(v) ? numberToLogical(v) : null;
@@ -64,9 +35,8 @@ export function coerceLogical(v: unknown): boolean | null {
   return null;
 }
 
-// Spreadsheet-style coercion of one scalar to a number: a boolean is 1/0, non-blank
-// numeric text parses. NaN signals "not a number" — the CALLER decides what that
-// means (a formula impl returns #VALUE!, goal-seek gives up on the objective).
+// NaN signals "not a number" — the CALLER decides what that means (a formula impl
+// returns #VALUE!, goal-seek gives up on the objective).
 export function coerceNumber(v: unknown): number {
   if (typeof v === "number") return v;
   if (isUncertain(v)) return v.value; // an error bar collapses to its central estimate
@@ -75,21 +45,8 @@ export function coerceNumber(v: unknown): number {
   return NaN;
 }
 
-// ── Uncertain numbers (COMPOSITE-scoped) ─────────────────────────────────────
-// A number with a symmetric error bar: `value ± error`, where `error` is a 1σ
-// standard deviation (always non-negative). Unlike null/logical (bare values that
-// are their own tag), an uncertain number MUST be a wrapper object, so it carries
-// an explicit `kind: "uncertain"` brand — the same "tagged object" shape as
-// SolError.
-//
-// SCOPE (author, 2026-07-12): this kind exists ONLY for the composite subsystem.
-// A composite's Monte Carlo run mode samples the distribution declared on an
-// internal input marker and emits the OUTPUT distribution as an UncertainNumber
-// (mean ± sd). It is deliberately NOT threaded through general graph arithmetic —
-// a downstream numeric consumer coerces it to its central `value` (see
-// coerceNumber above). The analytic propagation helpers below (add-in-quadrature
-// sums, relative-error products) are the closed-form companion to the numeric MC
-// sampler, for a caller that combines two error bars directly.
+// `value ± error`, `error` a non-negative 1σ. SCOPED to the composite subsystem — NOT
+// threaded through general graph arithmetic; a numeric consumer takes the central `value`.
 export interface UncertainNumber {
   readonly kind: "uncertain";
   readonly value: number;
@@ -108,34 +65,24 @@ export function isUncertain(v: unknown): v is UncertainNumber {
   );
 }
 
-/** Build an UncertainNumber, normalizing the error bar to |error| (a σ is
- *  non-negative). `samples` rides along when a Monte Carlo summary supplies them. */
+/** Normalizes the error bar to |error| (a σ is non-negative). */
 export function uncertain(value: number, error: number, samples?: readonly number[]): UncertainNumber {
   const e = Math.abs(error);
   return samples ? { kind: "uncertain", value, error: e, samples } : { kind: "uncertain", value, error: e };
 }
 
-/** The central estimate of any scalar: an UncertainNumber's `value`, else the
- *  number itself. The one place error bars collapse when an uncertain value meets
- *  a plain-number context. */
+/** The one place error bars collapse when an uncertain value meets a plain-number
+ *  context. */
 export function uncertainCenter(v: number | UncertainNumber): number {
   return isUncertain(v) ? v.value : v;
 }
 
-/** Widen a plain number to a zero-error UncertainNumber; pass an uncertain
- *  through unchanged. The normalizer every propagation op runs on its operands. */
+/** The normalizer every propagation op runs on its operands. */
 export function asUncertain(v: number | UncertainNumber): UncertainNumber {
   return isUncertain(v) ? v : { kind: "uncertain", value: v, error: 0 };
 }
 
-// ── Analytic error propagation (first-order / Gaussian) ───────────────────────
-// The textbook independent-variable rules (no covariance term — the honest
-// default for two separately-specified uncertain inputs):
-//   sum / difference → absolute errors add in QUADRATURE:  σ = √(σa² + σb²)
-//   product / quotient → RELATIVE errors add in quadrature, i.e. the absolute
-//     result error is √((∂f/∂a·σa)² + (∂f/∂b·σb)²) with the partials of a·b / a÷b.
-// These mirror how SolError propagates through element-wise ops: a well-defined
-// rule applied per combination.
+// First-order Gaussian propagation, independent variables (no covariance term).
 export function addUncertain(a: number | UncertainNumber, b: number | UncertainNumber): UncertainNumber {
   const x = asUncertain(a), y = asUncertain(b);
   return uncertain(x.value + y.value, Math.hypot(x.error, y.error));
@@ -158,26 +105,11 @@ export function divUncertain(a: number | UncertainNumber, b: number | UncertainN
   return uncertain(q, err);
 }
 
-// ── Per-element broadcast contract ────────────────────────────────────────────
-// ONE rule, shared by every element-wise broadcaster (the numeric ones in
-// nodes/shared.ts, the formula-layer broadcastCall/unary in excelFormula.ts, and
-// the logic family's broadcastEl), decided PER OUTPUT CELL before the op runs:
-//
-//   1. a SolError operand → that error, UNMORPHED (first in argument order) —
-//      the op never sees it, so an error cell can't decay to NaN/"[object Object]";
-//   2. else a missing (`null`) operand → `null` — missing propagates (the settled
-//      P6 SQL/pandas/Polars model: null+5 is null, not 5);
-//   3. else COMPUTE — every operand is present, run the op.
-//
-// This makes an in-range list cell behave identically to a scalar and to a
-// ragged-padded position. The logic (Kleene) family is the one exception on rule
-// 2: it feeds `null` INTO its fn (Kleene decides `null AND FALSE = FALSE`), so it
-// uses `cellError` (the error half only) rather than `cellShortCircuit`.
 export const COMPUTE = Symbol("compute");
 export type CellShort = SolError | Missing | typeof COMPUTE;
 
-/** The full contract (error → missing → compute). Returns the short-circuit value
- *  for a determined cell, or the COMPUTE sentinel when the op should run. */
+/** The full contract (error → missing → compute): the short-circuit value for a
+ *  determined cell, or COMPUTE when the op should run. */
 export function cellShortCircuit(args: ReadonlyArray<unknown>): CellShort {
   for (const a of args) if (isSolError(a)) return a; // first error wins, unmorphed
   for (const a of args) if (isMissing(a)) return null; // else missing → missing
@@ -191,20 +123,7 @@ export function cellError(args: ReadonlyArray<unknown>): SolError | undefined {
   return undefined;
 }
 
-// ── Non-finite result guard ────────────────────────────────────────────────────
-// Settled model (author 2026-07-02): a COMPUTATION never yields a bare NaN/Infinity
-// — those are classified into tagged errors, so a residual NaN can only be dirty
-// DATA, never a computed value. Given a numeric result and the operands that made
-// it:
-//   • NaN  → #DOMAIN! — indeterminate/undefined (∞−∞, ∞/∞, 0×∞, a root/log outside
-//     its domain, or a NaN that entered the op).
-//   • ±Inf from all-FINITE inputs → #OVERFLOW! — the true answer is a really-big
-//     NUMBER the float can't hold (2^5000, EXP(1000)), not a genuine infinity.
-//   • ±Inf when an INPUT was already infinite → PASSES THROUGH — a definable
-//     infinity (the Constant node's ∞ is first-class: ∞+5=∞, 2×∞=∞, 5/∞=0).
-// Runs per output cell AFTER the op, so it composes with the per-cell error/null
-// contract (cellShortCircuit gates on the inputs first; a present, finite cell
-// computes, then this classifies the RESULT).
+// Runs per output cell AFTER the op: cellShortCircuit gates the inputs, this the RESULT.
 export function guardFinite(result: number, ...inputs: unknown[]): number | SolError {
   if (Number.isFinite(result)) return result;
   if (Number.isNaN(result)) {
@@ -214,13 +133,7 @@ export function guardFinite(result: number, ...inputs: unknown[]): number | SolE
   return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent; the true value exceeds the numeric range.");
 }
 
-// ── Kleene (three-valued) boolean logic ──────────────────────────────────────
-// T / F / N(=null). Polars implements this natively; pandas (pd.NA) and ANSI SQL
-// use identical tables. Rule of thumb: `null` only propagates when it could
-// change the answer.
-//   OR  → T if any T, else N if any N, else F
-//   AND → F if any F, else N if any N, else T
-//   NOT → NOT N = N
+// Kleene three-valued logic: T / F / N(=null), matching Polars, pandas and ANSI SQL.
 export type Tri = boolean | Missing;
 
 export function kleeneNot(a: Tri): Tri {
@@ -239,13 +152,7 @@ export function kleeneAnd(a: Tri, b: Tri): Tri {
   return true; // both T
 }
 
-// ── Aggregator prep ───────────────────────────────────────────────────────────
-// The single chokepoint every list reducer (SUM/AVERAGE/MIN/…) runs first:
-//   • a `SolError` anywhere PROPAGATES — return it, the aggregate is that error.
-//   • `null` (missing) is SKIPPED — dropped from the working set.
-// Everything else (finite numbers AND NaN) is kept as-is, so this is a behavior
-// no-op for today's all-number lists: NaN still flows exactly as before. Only
-// once producers actually emit `null`/`SolError` into lists does it bite.
+// The single chokepoint every list reducer (SUM/AVERAGE/MIN/…) runs first.
 export type AggregatePrep =
   | { error: SolError }
   | { error?: undefined; nums: number[] };
@@ -254,6 +161,8 @@ export function forAggregate(values: ReadonlyArray<unknown>): AggregatePrep {
   for (const v of values) {
     if (isSolError(v)) return { error: v };
   }
-  const nums = values.filter((v) => !isMissing(v)) as number[];
+  // Only NUMERIC cells aggregate (callers coerce logicals first): a text cell must not
+  // ride into sum's `+` (concatenation) or min/max's `<` (lexical).
+  const nums = values.filter((v): v is number => typeof v === "number");
   return { nums };
 }

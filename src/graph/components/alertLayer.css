@@ -92,7 +92,7 @@
   font-size: 11px;
   font-weight: 600;
 }
-/* Kind conveyed by the leading label's colour now (no per-chip icon) — info blue,
+/* Kind conveyed by the leading label's color now (no per-chip icon) — info blue,
    warning orange, critical red; the detail after it stays --text. */
 .solenoid-alert__title {
   color: var(--alert-color, var(--text));

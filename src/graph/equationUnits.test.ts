@@ -49,7 +49,7 @@ describe("Equation node — units derive through the solve", () => {
     expect((out.d as UnitCell).display).toBe("km");
   });
 
-  it("a quadratic through isolation derives too: x² = A (area) → x in metres", () => {
+  it("a quadratic through isolation derives too: x² = A (area) → x in meters", () => {
     const eq = new EquationNode({ expr: "x^2 = A" });
     const A = fromUnit(36, parseUnit("m^2")!) as UnitCell;
     const out = eq.data({ A: [A] });

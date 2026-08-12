@@ -1,12 +1,10 @@
 import { describe, it, expect } from "vitest";
 import type { CondAggOp } from "./list";
 import {
-  RangeNode,
-  LinSpaceNode,
+  SeriesNode,
   NormalizeNode,
   DiffNode,
-  CumulativeNode,
-  RollingNode,
+  RunningNode,
   WeightedNode,
   ArgMinMaxNode,
   AggregateNode,
@@ -27,30 +25,38 @@ import {
   type FillOp,
 } from "./list";
 import { broadcast, broadcastErr } from "./shared";
+import { cx } from "../cxValue";
 import { solError, isSolError } from "../errorValue";
 import katex from "katex";
 
 describe("Range", () => {
   it("counts up, stop-exclusive", () => {
-    expect(new RangeNode().data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4]);
-    expect(new RangeNode().data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8]);
   });
   it("counts down with a negative step", () => {
-    expect(new RangeNode().data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1]);
   });
-  it("is empty when stop is unreachable or step is 0", () => {
-    expect(new RangeNode().data({ start: [0], stop: [5], step: [-1] }).list).toEqual([]);
-    expect(new RangeNode().data({ start: [0], stop: [5], step: [0] }).list).toEqual([]);
+  it("is empty when stop is unreachable; step 0 is a LOUD #DOMAIN!", () => {
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [-1] }).list).toEqual([]);
+    // A walk that never terminates is a config mistake, not an empty series —
+    // the old silent [] hid it (same reasoning as the generator overflow guard).
+    const r = new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [0] }).list;
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+  });
+  it("overflows loudly past MAX_GENERATED instead of silently truncating", () => {
+    const r = new SeriesNode({ op: "range" }).data({ start: [0], stop: [2_000_000], step: [1] }).list;
+    expect(isSolError(r) && r.code).toBe("#OVERFLOW!");
   });
 });
 
 describe("LinSpace", () => {
   it("includes both endpoints", () => {
-    expect(new LinSpaceNode().data({ start: [0], end: [1], count: [5] }).result).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(new SeriesNode({ op: "linspace" }).data({ start: [0], end: [1], count: [5] }).list).toEqual([0, 0.25, 0.5, 0.75, 1]);
   });
   it("handles count 1 and 0", () => {
-    expect(new LinSpaceNode().data({ start: [3], end: [9], count: [1] }).result).toEqual([3]);
-    expect(new LinSpaceNode().data({ start: [3], end: [9], count: [0] }).result).toEqual([]);
+    expect(new SeriesNode({ op: "linspace" }).data({ start: [3], end: [9], count: [1] }).list).toEqual([3]);
+    expect(new SeriesNode({ op: "linspace" }).data({ start: [3], end: [9], count: [0] }).list).toEqual([]);
   });
 });
 
@@ -98,13 +104,98 @@ describe("List Input (multi-type)", () => {
     expect(typeof out[0]).toBe("number");
     expect(out[1] as number).toBeGreaterThan(out[0] as number);
   });
-  it("logical type parses booleans (true/false/1/0/yes/no) and drops junk", () => {
+  it("logical type parses booleans (true/false/1/0/yes/no); junk is null, not FALSE", () => {
+    // "maybe" is UNKNOWN, so it's Kleene null — the old `?? false` asserted a FALSE the
+    // user never typed. (This test used to pin the DEAD in-file parser, which dropped
+    // junk; production ran parseListLiteral and returned false. Both are now null.)
     const n = new ListInputNode({ dataType: "logical" });
     n.stringLiterals["v0"] = "true, false, 1, 0, yes, no, maybe";
-    expect(n.data({}).list).toEqual([true, false, true, false, true, false]);
+    expect(n.data({}).list).toEqual([true, false, true, false, true, false, null]);
   });
   it("setDataType is a no-op (returns false) when unchanged", () => {
     expect(new ListInputNode().setDataType("number")).toBe(false);
+  });
+
+  // ─── The 2026-07-25 List Input audit (all four types × wired/typed) ──────────
+  // Every case below was a silent wrong answer, found by sweeping the four SegToggle
+  // positions against the same inputs. They share one cause: the node treated its list
+  // as "elements of my type, everything else discarded", which the value model doesn't
+  // allow (null and SolError ride through ANY typed list), and it parsed its typed text
+  // with a second, divergent parser that only ever ran in Number mode.
+
+  it("a wired element is CONVERTED to the row's type, not filtered out", () => {
+    // List Input is a typed literal SOURCE, so a wired element is converted exactly
+    // like the typed text on the same row. Filtering meant the SAME value behaved
+    // differently typed vs wired.
+    const run = (t: "number" | "string" | "date" | "logical", v: unknown) =>
+      new ListInputNode({ dataType: t }).data({ v0: [v] }).list;
+    expect(run("date", ["01-Jan-2026", "02-Jan-2026"])).toEqual([46023, 46024]); // parsed, was []
+    expect(run("number", ["1", "2.5"])).toEqual([1, 2.5]);
+    expect(run("string", [1, 2])).toEqual(["1", "2"]);
+    expect(run("logical", ["yes"])).toEqual([null]); // coerceLogical's vocabulary, wired
+    // Genuinely unconvertible is null (MISSING) — never a dropped element.
+    expect(run("number", ["abc", 5])).toEqual([null, 5]);
+    expect(run("date", ["nope"])).toEqual([null]);
+  });
+
+  it("a WILDCARD source can't silently empty the list (any / anylist / trueany)", () => {
+    // The wildcard ladder means `any`/`anylist`/`trueany` connect to EVERY row socket,
+    // but carry whatever value flowed in. A number reaching a Text row used to make the
+    // whole list vanish — empty output, no cable rejected, no error shown.
+    expect(new ListInputNode({ dataType: "string" }).data({ v0: [[1, 2]] }).list).toEqual(["1", "2"]);
+    expect(new ListInputNode({ dataType: "string" }).data({ v0: [5] }).list).toEqual(["5"]);
+  });
+
+  it("a wired null (MISSING) rides through — it is NOT dropped, and does NOT resurrect the row text", () => {
+    for (const t of ["number", "date", "logical", "string"] as const) {
+      const n = new ListInputNode({ dataType: t });
+      // Dropping compacted the list: positions shifted out of step with any parallel
+      // list wired alongside it, silently.
+      expect(n.data({ v0: [[1, null, 3]] }).list).toContain(null);
+      // A CONNECTED cable wins even when its value is null — the old `wired != null`
+      // test fell back to the typed text, so a blank flowing in became whatever number
+      // sat in the box (the `??`-swallowing bug readInput exists to prevent).
+      const m = new ListInputNode({ dataType: t });
+      m.stringLiterals["v0"] = "7";
+      expect(m.data({ v0: [null] }).list).toEqual([null]);
+    }
+  });
+
+  it("a per-cell SolError PROPAGATES instead of vanishing (error in → error out)", () => {
+    const err = solError("#DIV/0!", "divide by zero");
+    for (const t of ["number", "date"] as const) {
+      const out = new ListInputNode({ dataType: t }).data({ v0: [[1, err, 3]] }).list;
+      expect(out).toEqual([1, err, 3]); // was [1, 3] — the upstream failure disappeared
+    }
+  });
+
+  it("typed text parses IDENTICALLY however the SegToggle is set (one parser, RFC 4180)", () => {
+    // Number mode used a naive split(","), the other three used parseListLiteral —
+    // so quoting worked in Text mode but not Number mode. Same text, same fielding.
+    const fields = (t: "number" | "string" | "date" | "logical") => {
+      const n = new ListInputNode({ dataType: t });
+      n.stringLiterals["v0"] = '"First, Last", qty';
+      return n.data({}).list.length;
+    };
+    expect([fields("number"), fields("string"), fields("date"), fields("logical")]).toEqual([2, 2, 2, 2]);
+  });
+
+  it("an unparseable typed cell is null (MISSING) in EVERY type — never dropped, never NaN", () => {
+    // Number mode dropped it (shifting positions), Date mode emitted a NaN, Logical mode
+    // coerced it to FALSE. Three different answers to the same question; now one.
+    const parse = (t: "number" | "string" | "date" | "logical", text: string) => {
+      const n = new ListInputNode({ dataType: t });
+      n.stringLiterals["v0"] = text;
+      return n.data({}).list;
+    };
+    expect(parse("number", "abc, 5")).toEqual([null, 5]);
+    expect(parse("date", "abc, 01-Jan-2026")).toEqual([null, 46023]);
+    expect(parse("logical", "maybe, true")).toEqual([null, true]);
+    // Length is preserved in every mode, so a typo can't silently re-index the list.
+    for (const t of ["number", "date", "logical", "string"] as const) expect(parse(t, "x, y, z").length).toBe(3);
+    // NaN is never a cell — it reads as a number but means "undefined", so it would
+    // slip past every isMissing/isSolError guard downstream.
+    expect(parse("date", "1, 2, 3").every((c) => !Number.isNaN(c as number))).toBe(true);
   });
   it("concatenates rows + a wired list, keeping only elements of the current type", () => {
     const n = new ListInputNode();
@@ -151,18 +242,18 @@ describe("Set operations (two lists)", () => {
     expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
   });
 
-  it("complex numbers compare by VALUE, not array identity (Set-node fix)", () => {
-    // A complex is an [re, im] array; each 3+4i below is a SEPARATE array instance,
+  it("complex numbers compare by VALUE, not object identity (Set-node fix, VAL-8)", () => {
+    // A complex is a tagged OBJECT (VAL-15); each 3+4i below is a SEPARATE instance,
     // so a reference-keyed Set would never match them. They must intersect/dedupe.
-    expect(run("intersect", [[3, 4], [1, 2]], [[3, 4], [5, 6]])).toEqual([[3, 4]]);
-    expect(run("union", [[3, 4], [1, 2]], [[3, 4]])).toEqual([[3, 4], [1, 2]]);
-    expect(run("difference", [[3, 4], [1, 2]], [[3, 4]])).toEqual([[1, 2]]);
+    expect(run("intersect", [cx(3, 4), cx(1, 2)], [cx(3, 4), cx(5, 6)])).toEqual([cx(3, 4)]);
+    expect(run("union", [cx(3, 4), cx(1, 2)], [cx(3, 4)])).toEqual([cx(3, 4), cx(1, 2)]);
+    expect(run("difference", [cx(3, 4), cx(1, 2)], [cx(3, 4)])).toEqual([cx(1, 2)]);
     // Is In: membership by value across distinct instances.
-    expect(new IsInNode().data({ a: [[[3, 4], [9, 9]]], b: [[[3, 4]]] }).result).toEqual([true, false]);
+    expect(new IsInNode().data({ a: [[cx(3, 4), cx(9, 9)]], b: [[cx(3, 4)]] }).result).toEqual([true, false]);
     // Tally: equal complexes count together — two distinct rows, not three.
     // (The frame Value column stringifies complex since frames have no complex
     // type — a separate limitation; the fix is that the COUNT groups by value.)
-    const tally = new TallyNode().data({ list: [[[3, 4], [3, 4], [1, 2]]] }).frame;
+    const tally = new TallyNode().data({ list: [[cx(3, 4), cx(3, 4), cx(1, 2)]] }).frame;
     expect(tally?.columns[0].values.length).toBe(2);
     expect(tally?.columns[1].values).toEqual([2, 1]);
   });
@@ -217,31 +308,61 @@ describe("Set relation tests (two lists → TRUE/FALSE)", () => {
   });
 });
 
-describe("Cumulative", () => {
-  it("cumsum", () => {
-    expect(new CumulativeNode({ op: "cumsum" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 3, 6, 10]);
+describe("Running — all so far (window grows)", () => {
+  it("sum / product", () => {
+    expect(new RunningNode({ op: "sum" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 3, 6, 10]);
+    expect(new RunningNode({ op: "product" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 2, 6, 24]);
   });
-  it("cumprod", () => {
-    expect(new CumulativeNode({ op: "cumprod" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 2, 6, 24]);
+  it("max / min", () => {
+    expect(new RunningNode({ op: "max" }).data({ list: [[3, 1, 4, 1, 5]] }).result).toEqual([3, 3, 4, 4, 5]);
+    expect(new RunningNode({ op: "min" }).data({ list: [[5, 3, 4, 1, 2]] }).result).toEqual([5, 3, 3, 1, 1]);
   });
-  it("cummax / cummin", () => {
-    expect(new CumulativeNode({ op: "cummax" }).data({ list: [[3, 1, 4, 1, 5]] }).result).toEqual([3, 3, 4, 4, 5]);
-    expect(new CumulativeNode({ op: "cummin" }).data({ list: [[5, 3, 4, 1, 2]] }).result).toEqual([5, 3, 3, 1, 1]);
+  it("avg / median / stdev accumulate over the whole prefix", () => {
+    expect(new RunningNode({ op: "avg" }).data({ list: [[2, 4, 6]] }).result).toEqual([2, 3, 4]);
+    expect(new RunningNode({ op: "median" }).data({ list: [[5, 1, 3, 9]] }).result).toEqual([5, 3, 3, 4]);
+    const sd = new RunningNode({ op: "stdev" }).data({ list: [[2, 4, 6]] }).result as (number | null)[];
+    expect(sd[0]).toBeNull(); // sample stdev undefined below n = 2
+    expect(sd[1]).toBeCloseTo(Math.SQRT2, 9);
+    expect(sd[2]).toBeCloseTo(2, 9);
+  });
+  it("the grow path answers exactly what the slide path does at window = length", () => {
+    const list = [3, null, 1, 4, 1, 5, 9, 2, 6];
+    for (const op of ["sum", "avg", "min", "max", "median", "product"] as const) {
+      const grow = new RunningNode({ op }).data({ list: [list] }).result;
+      const slide = new RunningNode({ op, mode: "window" }).data({ list: [list], window: [list.length] }).result;
+      expect(grow, op).toEqual(slide);
+    }
+  });
+  it("an error poisons its own position and every later one", () => {
+    const err = solError("#DIV/0!", "boom");
+    const r = new RunningNode({ op: "sum" }).data({ list: [[1, err, 3]] }).result as unknown[];
+    expect(r[0]).toBe(1);
+    expect(isSolError(r[1])).toBe(true);
+    expect(isSolError(r[2])).toBe(true); // the grown window still contains the error
+  });
+  it("nulls are skipped; an all-null prefix is 0 for sum, null otherwise", () => {
+    expect(new RunningNode({ op: "max" }).data({ list: [[null, -5, null, -3]] }).result).toEqual([null, -5, -5, -3]);
+    expect(new RunningNode({ op: "sum" }).data({ list: [[null, null, 5]] }).result).toEqual([0, 0, 5]);
   });
 });
 
-describe("Rolling", () => {
-  it("trailing-window sum grows then slides", () => {
-    expect(new RollingNode({ op: "sum" }).data({ list: [[1, 2, 3, 4, 5]], window: [3] }).result).toEqual([1, 3, 6, 9, 12]);
+describe("Running — last N (window slides)", () => {
+  const windowed = (op: "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev") =>
+    new RunningNode({ op, mode: "window" });
+  it("sum grows then slides", () => {
+    expect(windowed("sum").data({ list: [[1, 2, 3, 4, 5]], window: [3] }).result).toEqual([1, 3, 6, 9, 12]);
   });
-  it("trailing-window average", () => {
-    expect(new RollingNode({ op: "avg" }).data({ list: [[2, 4, 6, 8]], window: [2] }).result).toEqual([2, 3, 5, 7]);
+  it("average", () => {
+    expect(windowed("avg").data({ list: [[2, 4, 6, 8]], window: [2] }).result).toEqual([2, 3, 5, 7]);
+  });
+  it("product", () => {
+    expect(windowed("product").data({ list: [[1, 2, 3, 4]], window: [2] }).result).toEqual([1, 2, 6, 12]);
   });
 
   // v1.0 audit finding 14: each window runs through forAggregate.
   it("a per-cell error lands in exactly the windows that contain it", () => {
     const err = solError("#DIV/0!", "boom");
-    const r = new RollingNode({ op: "sum" }).data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];
+    const r = windowed("sum").data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];
     expect(r[0]).toBe(1);
     expect(isSolError(r[1])).toBe(true); // window [1, err]
     expect(isSolError(r[2])).toBe(true); // window [err, 3]
@@ -249,15 +370,26 @@ describe("Rolling", () => {
   });
 
   it("nulls are skipped, not counted as 0 (average divides by present count)", () => {
-    const r = new RollingNode({ op: "avg" }).data({ list: [[2, null, 4]], window: [2] }).result;
+    const r = windowed("avg").data({ list: [[2, null, 4]], window: [2] }).result;
     expect(r).toEqual([2, 2, 4]); // [2], [2,·], [·,4]
   });
 
   it("an all-null window is 0 for sum, null otherwise", () => {
-    const r1 = new RollingNode({ op: "sum" }).data({ list: [[null, null, 5]], window: [1] }).result;
-    expect(r1).toEqual([0, 0, 5]);
-    const r2 = new RollingNode({ op: "max" }).data({ list: [[null, 5]], window: [1] }).result;
-    expect(r2).toEqual([null, 5]);
+    expect(windowed("sum").data({ list: [[null, null, 5]], window: [1] }).result).toEqual([0, 0, 5]);
+    expect(windowed("max").data({ list: [[null, 5]], window: [1] }).result).toEqual([null, 5]);
+  });
+
+  it("a wired blank window leaves the result unknown", () => {
+    expect(windowed("sum").data({ list: [[1, 2]], window: [null as never] }).result).toBeNull();
+  });
+
+  it("setMode owns the Window socket", () => {
+    const node = new RunningNode();
+    expect(node.inputs.window).toBeUndefined();
+    node.setMode("window");
+    expect(node.inputs.window).toBeDefined();
+    node.setMode("all");
+    expect(node.inputs.window).toBeUndefined();
   });
 });
 
@@ -416,17 +548,22 @@ describe("Filter — condition rows over the list's own values (D16)", () => {
     expect(out.dropped).toBeNull();
   });
 
-  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null reads as unwritten", () => {
+  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null is UNKNOWN", () => {
     const n = mk([{ op: "gt", value: "999" }]); // literal is overridden by the cable
     expect(n.data({ list: [[1, 5, 10]], value0: [4] }).result).toEqual([5, 10]);
     // Boolean threshold on a logical list (stringifies to "true").
     const nb = mk([{ op: "eq", value: "" }]);
     expect(nb.data({ list: [[true, false, true]], value0: [true] }).result).toEqual([true, true]);
-    // A wired MISSING wins over the literal and reads as "not written yet".
+    // A wired MISSING makes the condition unevaluable, so which elements survive is
+    // unknown — blank out, NOT the unfiltered list. That reading (an empty literal's
+    // "not written yet") belongs to the UNWIRED slot only; value-semantics.md,
+    // "Reading an input" -> "absent is not unknown".
     const nn = mk([{ op: "gt", value: "2" }]);
     const out = nn.data({ list: [[1, 5]], value0: [null] });
-    expect(out.result).toEqual([1, 5]);
+    expect(out.result).toBeNull();
     expect(out.dropped).toBeNull();
+    // The UNWIRED slot with an empty literal still passes the list through.
+    expect(mk([{ op: "gt", value: "" }]).data({ list: [[1, 5]] }).result).toEqual([1, 5]);
   });
 
   it("a per-cell error fails its condition and lands in Dropped unmorphed", () => {
@@ -632,11 +769,11 @@ describe("Aggregate — n<2 stdev blanks; empty-list identities (audit finding 3
 describe("Sort — nulls and per-cell errors last in both directions (frame blanks-last policy)", () => {
   const err = solError("#DIV/0!", "test");
   it("ascending: values sort, null/error tail keeps input order", () => {
-    expect(new SortNode({ dir: "asc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+    expect(new SortNode({ op: "asc" }).data({ list: [[3, null, 1, err, 2]] }).result)
       .toEqual([1, 2, 3, null, err]);
   });
   it("descending: values flip, tail stays last", () => {
-    expect(new SortNode({ dir: "desc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+    expect(new SortNode({ op: "desc" }).data({ list: [[3, null, 1, err, 2]] }).result)
       .toEqual([3, 2, 1, null, err]);
   });
 });
@@ -679,5 +816,31 @@ describe("broadcast / broadcastErr — ragged lists pad to the longest with null
   it("broadcastErr pads too, alongside genuine per-cell errors", () => {
     const div = (a: number, b: number) => (b === 0 ? solError("#DIV/0!", "test") : a / b);
     expect(broadcastErr(div, [10, 20], [2, 0, 5])).toEqual([5, solError("#DIV/0!", "test"), null]);
+  });
+});
+
+describe("Series — one arithmetic-progression node, op-switch mechanics", () => {
+  it("SEQUENCE matches the count-first parameterization", () => {
+    expect(new SeriesNode({ op: "sequence" }).data({ count: [4], start: [10], step: [5] }).list).toEqual([10, 15, 20, 25]);
+    // Unwired Start/Step fall back to 1 (Excel's SEQUENCE defaults).
+    expect(new SeriesNode({ op: "sequence" }).data({ count: [3] }).list).toEqual([1, 2, 3]);
+  });
+
+  it("Start survives every switch; Stop/End/Count swap per parameterization", () => {
+    const n = new SeriesNode({ op: "range" });
+    expect(n.keysDroppedBySwitch("linspace")).toEqual(["stop", "step"]);
+    expect(n.keysDroppedBySwitch("sequence")).toEqual(["stop"]);
+    n.setOp("linspace");
+    expect(Object.keys(n.inputs).sort()).toEqual(["count", "end", "start"]);
+    n.setOp("sequence");
+    expect(Object.keys(n.inputs).sort()).toEqual(["count", "start", "step"]);
+    expect(n.inputs.start!.label).toBe("Start (default 1)");
+  });
+
+  it("Range's Stop stays unset across switches — empty until the user provides one", () => {
+    const n = new SeriesNode({ op: "linspace" });
+    n.setOp("range");
+    expect(n.literals.stop).toBeUndefined();
+    expect(n.data({}).list).toEqual([]);
   });
 });

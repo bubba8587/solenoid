@@ -38,19 +38,14 @@ type Props = {
   emit: RenderEmit<ClassicScheme>;
 };
 
-// Fixed hit-area / pivot box. The visible connector grows around the pivot (body
-// centre) and overflows this box, so the node's top-left never moves between
-// states — no async-translate recenter, no jiggle. (See the "resizable-content
-// nodes" note in CLAUDE.md.)
+// Fixed hit-area / pivot box: the connector grows around the pivot and overflows it, so
+// the node's top-left never moves between states — no async-translate recenter, no jiggle.
 const BODY_SIZE = CONDUIT_BODY_SIZE;
 const PIVOT = BODY_SIZE / 2;
 
-// The body IS a 2×N grid of dark-gray squares, and each square IS a socket: the
-// left column is the inputs, the right column the outputs, one row per lane.
-// Base (full-scale) sizes; deselecting multiplies every dimension by
-// COLLAPSED_SCALE — a real layout scale (NOT a CSS transform, which rete's
-// offset-based socket measurement would ignore) so cable endpoints track it.
-// SQ / gaps live in ribbonCable.ts (shared with the ribbon-trunk geometry).
+// The body IS a 2×N grid of squares and each square IS a socket. COLLAPSED_SCALE is a
+// real LAYOUT scale, not a CSS transform — rete measures socket offsets, which ignore
+// transforms, so cable endpoints would stop tracking.
 const COLLAPSED_SCALE = 0.6;
 const SQ = CONDUIT_SQ;            // socket square size
 const COL_GAP = CONDUIT_COL_GAP;  // gap between the input and output columns
@@ -61,21 +56,18 @@ const BORDER_WIDTH = 1.25;
 const STRIPE_H = 3;
 const STRIPE_GAP = 2;
 const STRIPE_INSET = 1;
-// Rotation snaps to 45° increments only: the per-socket cable leads exit along
-// the connector angle, and off-45° angles make the diagonal cable shape look bad.
+// Rotation snaps to 45°: the cable leads exit along the connector angle, and off-45°
+// angles make the diagonal cable shape look bad.
 const ANGLE_STEP = 45;
 
 // Wrap an angle into [0, 360). Degrees, CW from +X (SVG screen-space).
 const normaliseAngle = (deg: number): number => { const m = deg % 360; return m < 0 ? m + 360 : m; };
 
-// Conduit rotation is quantized to 45°, so the cable leads always exit on a
-// diagonal-friendly angle.
 const snap45 = (deg: number) => normaliseAngle(Math.round(deg / 45) * 45);
 
 // How many lanes are currently wired (max used in_/out_ index + 1).
 function countUsedLanes(nodeId: string): number {
-  // Owning editor: a Conduit inside a composite drill-in counts its OWN graph's
-  // cables (main-editor lookup saw zero lanes for it).
+  // A Conduit inside a drill-in must count its OWN graph's cables, not the main editor's.
   const editor = getOwningEditor(nodeId);
   if (!editor) return 0;
   let max = -1;
@@ -95,10 +87,8 @@ function countUsedLanes(nodeId: string): number {
 export function ConduitComponent({ data, emit }: Props) {
   const node = data;
 
-  // Angle is DERIVED from node.angle (not held in local state) so a rotate from
-  // OUTSIDE this React root — Canvas's `[` / `]` keys — re-renders the block too.
-  // Both the dial and the keyboard mutate node.angle then bump conduitAngleStore,
-  // which re-renders here; angle re-derives from the node. One source of truth.
+  // Angle is DERIVED from node.angle (never local state) so a rotate from OUTSIDE
+  // this React root — Canvas's `[` / `]` keys — re-renders the block too.
   useSyncExternalStore(conduitAngleStore.subscribe, conduitAngleStore.get);
   const angle = snap45(node.angle);
   const setAngle = (v: number) => {
@@ -106,8 +96,7 @@ export function ConduitComponent({ data, emit }: Props) {
     bumpConduitAngle();
   };
 
-  // Sequenced ID — commit on Enter/clickaway (project rule). setSeq also
-  // renames a derived "Conduit N" label, so recompute to refresh consumers.
+  // setSeq also renames a derived "Conduit N" label, so recompute to refresh consumers.
   const seqField = useDraftCommit<number>(
     node.seq,
     String,
@@ -118,14 +107,11 @@ export function ConduitComponent({ data, emit }: Props) {
     (v) => { node.setSeq(v); void processGraph(); },
   );
 
-  // Re-render on any connection change (lane count). cableDragStore flips while a
-  // cable is in flight, gating the expand-on-drag-near behavior.
+  // Re-render on any connection change (lane count); cableDragStore gates expand-on-drag-near.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const dragging = useSyncExternalStore(cableDragStore.subscribe, cableDragStore.get);
 
-  // Proximity gate: only treat a drag as "near" when the pointer is within
-  // PROXIMITY_PX of the body box, so the block only expands for cables aimed at
-  // THIS conduit.
+  // Proximity gate, so the block only expands for cables aimed at THIS conduit.
   const rootRef = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   useEffect(() => {
@@ -144,8 +130,6 @@ export function ConduitComponent({ data, emit }: Props) {
   }, [dragging]);
 
   const selected = (node as { selected?: boolean }).selected ?? false;
-  // The connector is at full scale when selected OR when a cable is dragged near
-  // (easy targeting); otherwise it shrinks to COLLAPSED_SCALE.
   const expanded = selected || (dragging && near);
 
   const realLanes = countUsedLanes(node.id);
@@ -154,11 +138,10 @@ export function ConduitComponent({ data, emit }: Props) {
   // At least one lane is always shown so a fresh Conduit has a socket to grab.
   const lanes = Math.max(realLanes + (showPhantom ? 1 : 0), 1);
 
-  // One uniform scale drives the whole connector: full size when expanded,
-  // shrunk when compressed. Every dimension below is base × scale.
+  // One uniform scale drives the whole connector: every dimension is base × scale.
   const scale = expanded ? 1 : COLLAPSED_SCALE;
   const sq = SQ * scale;
-  const halfW = (sq + COL_GAP * scale) / 2; // socket column x offset from centre
+  const halfW = (sq + COL_GAP * scale) / 2; // socket column x offset from center
   const rowStep = sq + ROW_GAP * scale;
   const socketSize = sq;                     // the square IS the socket
 
@@ -175,9 +158,7 @@ export function ConduitComponent({ data, emit }: Props) {
   const inputHandles  = Array.from({ length: lanes }, (_, i) => place(-1, i));
   const outputHandles = Array.from({ length: lanes }, (_, i) => place(1, i));
 
-  // Housing wraps the square grid tightly (small SHELL_PAD) plus a stripe row at
-  // the top. The grid stays centred on the pivot; the housing pokes up a little
-  // for the stripe. `rot` spins everything together in pivot-local coords.
+  // The grid stays centered on the pivot; the housing pokes up for the stripe row.
   const gridHalfW = halfW + sq / 2;
   const gridHalfH = ((lanes - 1) * rowStep) / 2 + sq / 2;
   const shellPad = SHELL_PAD * scale;
@@ -193,17 +174,15 @@ export function ConduitComponent({ data, emit }: Props) {
   const radius = Math.min(rectW / 2, 6 * scale);
   const rot = `rotate(${angle} ${PIVOT} ${PIVOT})`;
 
-  // Publish live layout for the ribbon-trunk geometry (face centres move when
-  // the connector expands/compresses or rotates). `selected` rides along so
-  // ribbons touching a selected Conduit separate into individual cables.
+  // Publish live layout for ribbon-trunk geometry; `selected` rides along so ribbons
+  // touching a selected Conduit separate into individual cables.
   useEffect(() => {
     conduitLayoutStore.set(node.id, { angle, scale, selected });
   }, [node.id, angle, scale, selected]);
   useEffect(() => () => conduitLayoutStore.clear(node.id), [node.id]);
 
-  // Per-socket cable leads. Cables flow along +x (the block's `angle`): inputs
-  // arrive heading into the −x face, outputs leave the +x face — both resolve to
-  // `angle`. Angle is snapped to 45°, so the diagonal lead always looks clean.
+  // Per-socket cable leads: inputs arrive into the −x face, outputs leave the +x face,
+  // so both resolve to `angle`.
   useEffect(() => {
     const a = snap45(angle);
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
@@ -218,23 +197,19 @@ export function ConduitComponent({ data, emit }: Props) {
     };
   }, [node.id, angle]);
 
-  // Render the connector BEHIND the cables (z-index:-1 on the node holder, the
-  // same trick groups + CableFlourish use), so wires plug in over the square grid.
+  // Render the connector BEHIND the cables (z-index:-1 on the node holder) so wires
+  // plug in over the square grid.
   useLayoutEffect(() => {
     const el = getOwningArea(node.id)?.nodeViews.get(node.id)?.element;
     if (el) el.style.zIndex = "-1";
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
 
-  // Re-process when the lane count changes so downstream nodes pick up newly
-  // routed lanes.
+  // Downstream nodes pick up newly routed lanes only on a recompute.
   useEffect(() => { void processGraph(); }, [realLanes]);
 
-  // Extend: spawn a new Conduit downstream (along the flow direction) and wire
-  // every current lane's output into it, continuing the ribbon.
   const extendToNewConduit = async () => {
-    // Owning graph: extending a Conduit that lives inside a drill-in must spawn
-    // the new block in the SAME subgraph, not on the main canvas.
+    // A Conduit inside a drill-in must spawn the new block in the SAME subgraph.
     const editor = getOwningEditor(node.id);
     const area = getOwningArea(node.id);
     if (!editor || !area) return;
@@ -257,15 +232,10 @@ export function ConduitComponent({ data, emit }: Props) {
     <div
       key={key}
       className={`solenoid-conduit__lane${isPhantom ? " solenoid-conduit__lane--phantom" : ""}`}
-      // Rotate the square to align with the housing. This is a visual-only
-      // transform around the square's centre — it spins the box without moving
-      // its centre, so rete still measures the cable endpoint at p (offsetLeft/Top
-      // ignore the transform).
-      // COMPRESSED sockets are pointer-transparent: the bunched squares cover
-      // the whole pill, so every click would start a cable drag and the block
-      // could never be (re)selected. Click-to-select expands it (and a cable
-      // dragged near expands it too), which re-enables the sockets exactly
-      // when they're big enough to aim at.
+      // The rotate is visual-only around the square's center, so rete still measures the
+      // endpoint at p (offsetLeft/Top ignore transforms). COMPRESSED sockets are
+      // pointer-transparent — the bunched squares cover the whole pill, so otherwise every
+      // click starts a cable drag and the block can never be re-selected.
       style={{
         left: PIVOT + p.x - socketSize / 2,
         top: PIVOT + p.y - socketSize / 2,
@@ -302,7 +272,6 @@ export function ConduitComponent({ data, emit }: Props) {
             className="solenoid-conduit__block"
             x={rectX} y={rectY} width={rectW} height={rectH} rx={radius}
           />
-          {/* Red pin-1 stripe row at the top, just above the square grid. */}
           <rect
             className="solenoid-conduit__stripe"
             x={stripeX} y={stripeY} width={stripeW} height={stripeH} rx={stripeH / 2}
@@ -313,18 +282,13 @@ export function ConduitComponent({ data, emit }: Props) {
       {inputHandles.map((p, i)  => renderSocket("input",  conduitInKey(i),  p, i === phantomIdx))}
       {outputHandles.map((p, i) => renderSocket("output", conduitOutKey(i), p, i === phantomIdx))}
 
-      {/* Inspector docks to the lower-left of the SCREEN (portal escapes the
-          canvas transform, so it's also zoom-invariant) rather than floating
-          by the node. */}
+      {/* Portal escapes the canvas transform, so the inspector is zoom-invariant. */}
       {selected && createPortal(
         <div
           className="solenoid-conduit-toolbar solenoid-conduit-toolbar--docked"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          {/* Header bar styled like a node-card header (accent border wrapping
-              top + sides, uppercase tinted label) — accent derived from the
-              Conduit's pin-1 stripe red. Holds the editable sequenced ID. */}
           <div className="solenoid-conduit-toolbar__header" title="Sequenced Conduit number. Drives the default name, Conduit N.">
             <span className="solenoid-conduit-toolbar__header-name">Conduit</span>
             <input

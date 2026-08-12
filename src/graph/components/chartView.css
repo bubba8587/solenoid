@@ -1,12 +1,17 @@
 /* recharts renders <text> (axis ticks, labels) and <rect>/<path> marks as
    selectable SVG content, so a click-drag over a chart produces several partial
    text-selection highlights — the "7 different selectable boxes" that read as one
-   chart. A chart is a figure, not prose: nothing in it is meant to be selected.
-   Kill selection on the whole recharts subtree wherever a chart renders (node
-   card, Report inline figure, expand popup, Sparkline). */
+   chart. Separately, recharts 3's accessibilityLayer (on by default) puts
+   tabIndex=0 on the root <svg> and makes Pie/sector groups focusable, so any
+   click paints the browser's focus ring — a thick white border — around
+   whatever was hit, including the chart background. A chart is a figure, not
+   prose and not a form control: nothing in it is meant to be selected or
+   focused. Kill both on the whole recharts subtree wherever a chart renders
+   (node card, Report inline figure, expand popup, Sparkline). */
 .recharts-wrapper,
 .recharts-surface,
 .recharts-wrapper * {
   user-select: none;
   -webkit-user-select: none;
+  outline: none;
 }

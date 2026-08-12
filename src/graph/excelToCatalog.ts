@@ -1,8 +1,5 @@
-// Excel function name ↔ catalog type maps. DERIVED from NODE_EXCEL — each node
-// declares its own Excel equivalence in one place (nodeExcel.ts, or inline `excel`
-// on a pack entry). Don't hand-edit these; add the metadata to the node and both
-// maps update automatically. Used by the Add menu (Excel-name search) and the
-// dev catalog validator.
+// DERIVED from NODE_EXCEL — don't hand-edit; declare the equivalence on the node
+// and both maps update.
 
 import { NODE_EXCEL } from "./nodeExcel";
 

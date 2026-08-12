@@ -1,18 +1,8 @@
 import { useEffect, useRef } from "react";
 
-/**
- * Close an overlay when Escape is pressed anywhere in the window — the shared
- * dismiss gesture every popup/panel here wires. Attaches only while `active`.
- * `onClose` is read through a ref so an inline callback doesn't re-bind the
- * listener every render (this also keeps the handler seeing the latest render's
- * state).
- *
- * `capture: true` is for the modal popups that must own the key ahead of any
- * other handler (the canvas keydown, a focused field): it registers on the
- * capture phase AND swallows the browser default (`preventDefault`). Every
- * capture-phase site here does both and every bubble-phase site does neither,
- * so the two travel as one switch.
- */
+/** Close an overlay on window-level Escape; `onClose` is read through a ref so an inline
+ *  callback doesn't re-bind the listener every render. `capture: true` registers on the
+ *  capture phase AND swallows the browser default — the two always travel together. */
 export function useEscapeToClose(
   onClose: () => void,
   active = true,

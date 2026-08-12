@@ -5,28 +5,6 @@ import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./ret
 import { dockedNodeStore } from "./dockedNodeStore";
 import { createNotifier } from "./storeKit";
 
-// ─── Group collapse engine ──────────────────────────────────────────────────────
-// Collapse is visual-only: members stay wired and computing. When a group is
-// collapsed we (1) hide its member nodes and every cable touching them, and (2)
-// re-present the group's "terminal" readouts compactly in its header box. Pill
-// sockets that re-expose external cables on the group edge are a later step.
-//
-// Retain rule (which member readouts survive the collapse):
-//   Any member whose output leaves the group becomes a readout row. Two flavors:
-//   - Display members are the special-cased *visible* readout. A Display is
-//     retained iff its effective output has no connection, or that connection
-//     leaves the group. "Effective output" follows a single Display→FC hop: if a
-//     Display feeds a member FC, the FC's output is what's tested and exposed
-//     (the Display stays the visible readout; the FC is hidden). So:
-//       Display → FC → outside : retained (shown as the Display)
-//       Display → FC → inside  : hidden
-//       Display → (nothing)    : retained
-//   - Any *other* member with an output connection that leaves the group gets a
-//     generic readout row (its label + live value, read from cableValueStore).
-//     Unlike a Display it must actually cross the boundary — an unconnected
-//     internal node isn't a terminal worth surfacing. Nodes already exposed as a
-//     Display (or a Display's FC hop) are not double-counted.
-
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
 
@@ -36,20 +14,13 @@ export interface RetainedTerminal {
   label: string;
   effNodeId: string;        // node whose output is exposed (the FC if Display→FC, else the node itself)
   effSocketKey: string;
-  // > 1 marks a COMBINED output: a hidden Conduit member whose outputs all leave
-  // the group. Its cables render as ONE ribbon trunk fanning out of this pill
-  // (the mirror of the combined input pill), and the row shows the lane count
-  // instead of a single lane's value.
+  // > 1 marks a COMBINED output: one ribbon trunk fans out of this pill and the row
+  // shows the lane count instead of a single lane's value.
   lanes?: number;
 }
 
-// Virtual membership: a node DOCKED to a member (an FC that was never absorbed
-// as a member itself — docked from outside the group box, host sitting on the
-// group's edge, or an old save) collapses WITH its host. Without this the FC
-// chip stayed VISIBLE, floating over the collapsed box while its host hid
-// (v1.1 A3 audit). Treating it as a member here makes every downstream
-// computation — hiding, the Display→FC hop, crossing detection, pills —
-// consistent with the absorbed-member case.
+// Virtual membership: a node DOCKED to a member collapses WITH its host, so every
+// downstream computation treats it exactly like an absorbed member.
 function extendedMembers(editor: Editor, group: GroupNode): string[] {
   const base = new Set(group.members);
   const ext = [...group.members];
@@ -61,26 +32,23 @@ function extendedMembers(editor: Editor, group: GroupNode): string[] {
   return ext;
 }
 
-// Generic readout label for a non-Display member: its user label, else a name
-// derived from the class (keepNames preserves constructor.name in production).
+// Falls back to constructor.name, which the build's keepNames setting preserves.
 function genericLabel(node: { constructor: { name: string }; label?: string }): string {
   const l = (node.label ?? "").trim();
   if (l) return l;
   return node.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-// A pill on a collapsed group's edge. Keyed by the *socket* it stands in for
-// (not a connection) so in-progress cables dragged from an output pill redirect
-// too — otherwise they'd anchor at the hidden member's 0,0.
+// Keyed by the SOCKET it stands in for, not a connection, so an in-progress cable
+// dragged from an output pill redirects instead of anchoring at the hidden member's 0,0.
 export interface PillPos {
   groupId: string;
   side: "left" | "right";
   index: number; // pill row (drives its vertical offset)
 }
 
-// An input pill rendered for a member input socket that an external cable feeds.
-// `lanes` > 1 marks a COMBINED pill: every cable from one external Conduit's
-// outputs shares this single pill (the ribbon trunk terminates on it whole).
+// `lanes` > 1 marks a COMBINED pill: every cable from one external Conduit's outputs
+// shares it, so the ribbon trunk terminates whole.
 export interface InputPill {
   nodeId: string;
   socketKey: string;
@@ -88,11 +56,8 @@ export interface InputPill {
   lanes?: number;
 }
 
-// Compact-collapse layout — shared by the group component (pill dots, box size)
-// and ConnectionComponent (redirected cable endpoints) so they line up.
-// rowGap MUST match the `.solenoid-group__summary` flex `gap` in GroupNode.css —
-// the readout rows are laid out with that gap between them, so a socket/cable
-// endpoint that ignores it drifts index*gap further off with every row down.
+// rowGap MUST match the `.solenoid-group__summary` flex `gap` in GroupNode.css, or cable
+// endpoints drift index*gap further off with every row down.
 export const COLLAPSE_LAYOUT = { width: 264, headerH: 34, padTop: 6, rowH: 24, rowGap: 3 };
 export function pillY(index: number): number {
   return COLLAPSE_LAYOUT.headerH + COLLAPSE_LAYOUT.padTop
@@ -111,8 +76,6 @@ export const groupCollapseStore = {
   isNodeHidden: (id: string) => _hiddenNodes.has(id),
   isConnHidden: (id: string) => _hiddenConns.has(id),
   retainedFor: (groupId: string): RetainedTerminal[] => _retained.get(groupId) ?? [],
-  // A pill standing in for an output / input socket (keyed by socket, so the
-  // in-progress cable dragged from an output pill redirects too).
   outPillFor: (nodeId: string, key: string): PillPos | undefined => _outPill.get(`${nodeId}::${key}`),
   inPillFor: (nodeId: string, key: string): PillPos | undefined => _inPill.get(`${nodeId}::${key}`),
   inputPillsFor: (groupId: string): InputPill[] => _inputPillList.get(groupId) ?? [],
@@ -124,11 +87,8 @@ function outgoing(editor: Editor, nodeId: string, socketKey: string) {
   return editor.getConnections().filter((c) => c.source === nodeId && c.sourceOutput === socketKey);
 }
 
-// The external bundling-destination a crossing cable lands on, for the inverse
-// (group-source) ribbon: another collapsed group (target hidden there), or a
-// visible Conduit's lane input. Plain nodes / uncollapsed groups → null (no
-// bundle; the output renders as a normal readout row + cable). Membership-based
-// so it doesn't depend on pill computation order.
+// The external bundling-destination a crossing cable lands on; null = no bundle. Derived
+// from MEMBERSHIP so it doesn't depend on pill computation order.
 function bundleDest(
   editor: Editor,
   c: { target: string; targetInput: string },
@@ -142,13 +102,8 @@ function bundleDest(
   return null;
 }
 
-/**
- * A group's readout terminals (Display rows + each member output that leaves the
- * group + leaf members), derived independently of collapse state — so a PINNED
- * group shows the same readouts a collapsed one would. Same Pass 1/2/2b logic as
- * recomputeGroupCollapse, minus the edge-pill / ribbon bundling (one row per
- * crossing output socket; Pin shows each lane's value).
- */
+/** A group's readout terminals, derived independently of collapse state so a PINNED group
+ *  shows what a collapsed one would; same passes as recomputeGroupCollapse, minus bundling. */
 export function groupReadouts(editor: Editor, group: GroupNode): RetainedTerminal[] {
   const members = new Set(extendedMembers(editor, group));
   const conns = editor.getConnections();
@@ -214,10 +169,8 @@ export function recomputeGroupCollapse(editor: Editor): void {
   );
   const conns = editor.getConnections();
 
-  // Pass 0: hidden-node membership for ALL collapsed groups, complete before any
-  // per-group processing — output bundling needs to know whether a target is
-  // hidden in a DIFFERENT collapsed group. Membership is EXTENDED: a node docked
-  // to a member hides (and bundles) with its host even if never absorbed.
+  // Pass 0 must complete for ALL collapsed groups before any per-group processing —
+  // bundling needs to know whether a target is hidden in a DIFFERENT collapsed group.
   const nodeGroup = new Map<string, string>(); // hidden member id → its group id
   const membersOf = new Map<string, string[]>();
   for (const g of groups) {
@@ -231,10 +184,8 @@ export function recomputeGroupCollapse(editor: Editor): void {
 
     const terminals: RetainedTerminal[] = [];
     const exposed = new Set<string>(); // node ids already surfaced (Display + its FC hop)
-    // Value-source node id → the readout row that already shows it (a Display
-    // readout's upstream feeder). A crossing whose underlying value matches one
-    // of these anchors its cable at that row instead of adding a duplicate row —
-    // so a value that feeds both a Display and an exporting Conduit shows once.
+    // Value-source node id → the row already showing it, so a crossing carrying the same
+    // value anchors there instead of adding a duplicate row.
     const displayRowBySource = new Map<string, number>();
 
     // Pass 1: Display readouts (the special-cased visible terminals).
@@ -242,7 +193,6 @@ export function recomputeGroupCollapse(editor: Editor): void {
       const node = editor.getNode(id);
       if (!(node instanceof DisplayNode)) continue;
 
-      // Effective output: follow one Display→FC member hop.
       let effNodeId = id, effKey = "out";
       const fcHop = outgoing(editor, id, "out")
         .map((c) => editor.getNode(c.target))
@@ -256,21 +206,16 @@ export function recomputeGroupCollapse(editor: Editor): void {
         terminals.push({ kind: "display", displayId: id, label: node.label, effNodeId, effSocketKey: effKey });
         exposed.add(id);
         exposed.add(effNodeId);
-        // Remember which nodes feed this Display, so an exporting Conduit lane (or
-        // any crossing) carrying the same value merges into this row.
+        // Remember this Display's feeders so a crossing carrying the same value merges here.
         for (const ic of conns) if (ic.target === id) displayRowBySource.set(ic.source, rowIndex);
       }
     }
 
-    // Pass 2: any other member whose output crosses the boundary → generic row.
-    // One row per source socket; skip nodes already exposed by a Display.
+    // Pass 2: any other member whose output crosses the boundary → one row per source socket.
     const seenOut = new Set<string>();
     const rowedMembers = new Set<string>(); // members that already have a generic row
-    // A hidden Conduit's outputs that land on ONE external bundling-destination (a
-    // visible Conduit, or another collapsed group) share a COMBINED output pill +
-    // row, keyed by (conduit, destination) — their cables render as one ribbon
-    // trunk running all the way to that destination. Outputs to plain nodes /
-    // uncollapsed groups fall through to normal per-socket readout rows.
+    // A hidden Conduit's outputs landing on ONE external bundling-destination share a
+    // COMBINED pill + row so their cables render as a single ribbon trunk.
     const conduitDestRow = new Map<string, number>(); // `${conduit}|${kind}:${id}` → row index
     for (const c of conns) {
       if (!members.has(c.source) || members.has(c.target)) continue; // not outbound-crossing
@@ -298,17 +243,14 @@ export function recomputeGroupCollapse(editor: Editor): void {
         }
         // dest is a plain node / uncollapsed group → normal row (fall through)
       }
-      // The node whose VALUE this crossing carries: a Conduit lane mirrors the
-      // node feeding the matching input lane; any other crossing is its own
-      // source. Used for both the readout LABEL and dedup against Display rows —
-      // so the row reads "Net cash flow", not the Conduit's name ("Cash KPIs").
+      // A Conduit lane's VALUE comes from the node feeding its matching input lane, so the
+      // row reads that node's name, not the Conduit's.
       let valueSrcId = c.source;
       if (isConduitLane) {
         const laneIn = `in_${c.sourceOutput.slice(4)}`;
         valueSrcId = conns.find((cc) => cc.target === c.source && cc.targetInput === laneIn)?.source ?? c.source;
       }
-      // Already shown by a Display readout → anchor this cable at that row, no
-      // duplicate readout. (Cable still needs a pill, so we set it, then skip.)
+      // Already shown by a Display readout → still needs a pill, but no duplicate row.
       const dispRow = displayRowBySource.get(valueSrcId);
       if (dispRow !== undefined) {
         _outPill.set(key, { groupId: g.id, side: "right", index: dispRow });
@@ -319,10 +261,7 @@ export function recomputeGroupCollapse(editor: Editor): void {
       terminals.push({ kind: "node", displayId: c.source, label: genericLabel(valueSrc ?? node), effNodeId: c.source, effSocketKey: c.sourceOutput });
     }
 
-    // Pass 2b: a leaf member — an output node with NO outgoing connection at all
-    // (e.g. a LAMBDA / Filter whose table result is the group's endpoint but isn't
-    // wired onward) — is also a terminal worth surfacing. Its first output socket
-    // becomes the readout row. (Crossing-out leaves are already covered above.)
+    // Pass 2b: a leaf member (an output node wired onward to nothing) is a terminal too.
     for (const id of members) {
       if (exposed.has(id) || rowedMembers.has(id)) continue;
       const node = editor.getNode(id);
@@ -334,16 +273,12 @@ export function recomputeGroupCollapse(editor: Editor): void {
     }
 
     _retained.set(g.id, terminals);
-    // Each retained terminal's effective output is a right pill at its row.
     terminals.forEach((t, i) =>
       _outPill.set(`${t.effNodeId}::${t.effSocketKey}`, { groupId: g.id, side: "right", index: i }),
     );
 
-    // Inbound cables crossing the boundary (external → member input) → left pills.
-    // (Outbound crossings are now represented by the readout rows above.)
-    // All crossings sourced from one visible external Conduit's outputs share a
-    // single COMBINED pill row: their cables render as one ribbon trunk that
-    // terminates whole on the pill, so they need one anchor point, not N rows.
+    // Inbound crossings → left pills; all from one external Conduit share a single COMBINED
+    // pill, since their ribbon trunk terminates whole and needs one anchor, not N.
     const inputs: InputPill[] = [];
     let inIdx = 0;
     const conduitPill = new Map<string, InputPill>(); // external conduit id → shared pill
@@ -352,9 +287,6 @@ export function recomputeGroupCollapse(editor: Editor): void {
       const key = `${c.target}::${c.targetInput}`;
       if (_inPill.has(key)) continue;
       const srcNode = editor.getNode(c.source);
-      // A Conduit source bundles into one combined input pill — whether it's a
-      // visible external Conduit (forward ribbon) OR a Conduit hidden in another
-      // collapsed group (inverse ribbon lands whole on this pill).
       const conduitSrc =
         srcNode instanceof ConduitNode &&
         c.sourceOutput.startsWith("out_");
@@ -376,9 +308,8 @@ export function recomputeGroupCollapse(editor: Editor): void {
     _inputPillList.set(g.id, inputs);
   }
 
-  // Hide a cable only when both ends are in the SAME collapsed group (truly
-  // internal). A cable between two *different* collapsed groups stays visible —
-  // both its ends are already redirected to those groups' pills.
+  // Hide a cable only when both ends sit in the SAME collapsed group; one spanning two
+  // different collapsed groups stays visible, redirected to both groups' pills.
   for (const c of conns) {
     const sg = nodeGroup.get(c.source);
     const tg = nodeGroup.get(c.target);
@@ -387,16 +318,9 @@ export function recomputeGroupCollapse(editor: Editor): void {
   notify();
 }
 
-/**
- * Settle cable endpoints after a collapse/expand toggle. The collapse pills are
- * real sockets that reuse each member's nodeId/socketKey, so mounting/unmounting
- * them overwrites and then removes the members' entries in rete's socket-position
- * watcher. On EXPAND the member node doesn't re-render on its own, so its real
- * socket never re-registers and a cable can stay anchored at the gone pill's
- * coords. Fix: next frame, re-render the members (re-registering their sockets),
- * then a frame later re-measure every cable touching a member. (On collapse we
- * only re-measure — re-rendering members would clobber the pills' positions.)
- */
+/** Settle cable endpoints after a collapse/expand toggle: pills reuse member socket keys,
+ *  so EXPAND must re-render members a frame before re-measuring, and COLLAPSE must not
+ *  (re-rendering members would clobber the pills' positions). */
 export function settleCollapse(
   editor: Editor,
   area: Area,
@@ -404,10 +328,8 @@ export function settleCollapse(
   members: string[],
   expanding: boolean,
 ): void {
-  // Include docked satellites (virtual members — see extendedMembers): a
-  // retained Display→FC hop registers a PILL on the FC's out socket, so an
-  // unabsorbed docked FC needs the same expand re-render to re-register its
-  // real socket, and its cables the same re-measure.
+  // Docked satellites need the same treatment — a retained Display→FC hop registers a PILL
+  // on the FC's out socket even when the FC was never absorbed as a member.
   const set = new Set(members);
   for (const m of members) for (const d of dockedNodeStore.getDockedTo(m)) set.add(d.id);
   requestAnimationFrame(() => {
@@ -428,12 +350,8 @@ export function syncGroupCollapse(editor: Editor, area: Area): void {
     const el = area.nodeViews.get(n.id)?.element;
     if (!el) continue;
     const shouldHide = _hiddenNodes.has(n.id);
-    // Hide with `visibility` (not `display: none`): the element stays laid out,
-    // so its ResizeObserver-measured size and socket positions remain valid.
-    // `display: none` collapses them to 0, leaving member boxes half-rendered and
-    // cables anchored at the origin when the group is later expanded (esp. after
-    // a Tidy moved the collapsed group). Cables to hidden members are hidden /
-    // redirected by the store, and `pointer-events:none` keeps them un-clickable.
+    // Hide with `visibility`, never `display: none` — the element must stay laid out or its
+    // measured size and socket positions collapse to 0 and cables re-anchor at the origin.
     el.style.visibility = shouldHide ? "hidden" : "";
     el.style.pointerEvents = shouldHide ? "none" : "";
   }

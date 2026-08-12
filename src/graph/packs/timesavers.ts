@@ -1,17 +1,5 @@
-// Common Excel Timesavers — Solenoid conveniences that aren't single Excel
-// functions. Three layers: a reclassification of existing core nodes (`tags`),
-// the cross-domain HYPOTENUSE claim, and — first landed 2026-07-09, from
-// docs/archive/timesavers-pack-proposal.md — a formula-preset batch (the [F]
-// idioms: percent change, CAGR, ordinal, whitespace cleanup, masking, counting)
-// plus the two marquee custom nodes with NO Excel answer at all (Reverse Text,
-// Spell Number), and the first date-serial [F] idioms. The serial-interop gate is
-// CLEARED (2026-07-10): the date extractors (MONTH/DAY/EOMONTH…) are OWNED
-// internally by excelFunctions.ts on Solenoid's serial model — not delegated to
-// Formula.js — so a preset Expression over them reads a date serial correctly.
-// Only the zero-config idioms land here (Quarter, Days in Month); the ones that
-// need a config widget or carry a judgment call (Fiscal Quarter's start month,
-// Age's DATEDIF "MD" nuance, Nth Weekday) stay for the author. Composites are in
-// the composite plan doc.
+// Conveniences that are not single Excel functions: reclassified core nodes, the shared
+// HYPOTENUSE claim, formula presets, and nodes with no Excel answer at all.
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode } from "../rete-nodes";
@@ -90,29 +78,16 @@ export const TIMESAVERS_PACK: Pack = {
       },
     },
   ],
-  // Reclassification of EXISTING core catalog nodes into this pack. Because
-  // Timesavers ships on, nothing disappears by default.
-  //
-  // Best-effort first pass (auto-derived: not core primitives, not Excel
-  // matchers). Fundamental list ops (Range, LinSpace, Reverse, Slice, Length)
-  // are intentionally left as core. Refine freely.
+  // Reclassifies EXISTING core nodes; the pack ships ON, so nothing disappears by default.
+  // Fundamental list ops (Range, LinSpace, Reverse, Slice, Length) stay core deliberately.
   tags: [
-    // Rolling window aggregates — Excel does these by hand with OFFSET/ranges.
-    "rolling-sum", "rolling-avg", "rolling-min",
-    "rolling-max", "rolling-stdev", "rolling-median",
-    // Weighted statistics — no single Excel function.
     "weighted-wavg", "weighted-wstdev", "weighted-wvar",
-    // Position-of-extreme — Excel uses INDEX/MATCH.
     "arg-argmax", "arg-argmin",
-    // List utilities with no direct Excel equivalent.
     "list-contains", "list-diff", "list-normalize",
     "list-shuffle", "list-interleave", "list-nthelement",
     "list-geometric", "list-fibonacci", "list-repeat",
-    // List-wise text transforms (Solenoid extras).
-    "text-map", "text-filter",
-    // Excel ships ENCODEURL but not a decoder.
+    "text-filter",
     "url-decode",
-    // Extended boolean logic (Excel has AND/OR/NOT/XOR, not these).
     "logic-xnor", "logic-nand", "logic-nor",
   ],
 };

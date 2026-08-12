@@ -1,8 +1,7 @@
 import { createNotifier } from "./storeKit";
 
-// Most-recently-used command list (by label), shared by the Command Palette AND the
-// menu bar — running an action in either records it here, and the palette's no-query
-// suggestions lead with the most recent few. Persisted so recents survive a reload.
+// MRU command labels, shared by the Command Palette AND the menu bar — an action run
+// in either records here.
 const LS_KEY = "solenoid.command.recents";
 const CAP = 12;
 

@@ -6,6 +6,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
 import "./ColorPickerNode.css";
+import { stopDragStart } from "../coarse";
 
 const MODE_OPTS = [
   { value: "rgb", label: "RGB", title: "Red / Green / Blue, 0–255" },
@@ -33,8 +34,7 @@ const CHANNELS: Record<"rgb" | "hsv", { key: ChKey; label: string; max: number }
   ],
 };
 
-// The colour gradient to paint under a channel's slider: the colour as THAT
-// channel sweeps its range with the others held — the standard picker cue.
+// The slider track gradient: the color as THAT channel sweeps, others held.
 function channelGradient(mode: "rgb" | "hsv", key: ChKey, ch: Ch): string {
   if (mode === "rgb") {
     const { c0: r, c1: g, c2: b } = ch;
@@ -57,7 +57,6 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
   const [ch, setCh] = useState<Ch>({ c0: data.literals.c0, c1: data.literals.c1, c2: data.literals.c2 });
   const [hexDraft, setHexDraft] = useState(data.stringLiterals.hex ?? "#56b4e9");
 
-  // Live colour from the current model — drives the swatch + output string.
   const raw = mode === "hex"
     ? colord(hexDraft || "#000000")
     : mode === "rgb"
@@ -76,7 +75,6 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
 
   function changeMode(next: ColorMode) {
     if (next === mode) return;
-    // Carry the colour across the model switch.
     if (next === "hex") {
       const hx = c.toHex();
       setHexDraft(hx);
@@ -110,9 +108,9 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Color" hideOutputSockets>
-      <SegToggle value={mode} onChange={changeMode} options={MODE_OPTS} />
+      <SegToggle arg value={mode} onChange={changeMode} options={MODE_OPTS} />
       {mode === "hex" ? (
-        <div style={{ padding: "8px 2px 2px" }} onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <div style={{ padding: "8px 2px 2px" }} onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}>
           <input
             className="solenoid-colorpicker__hex"
             value={hexDraft}
@@ -124,7 +122,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
         </div>
       ) : (
         <div
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           style={{ padding: "8px 2px 2px", display: "flex", flexDirection: "column", gap: 8 }}
         >
@@ -150,16 +148,16 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
       )}
 
       <div style={{ padding: "6px 0 2px" }}>
-        <OpSelect value={format} onChange={changeFormat} options={FORMAT_OPTS} />
+        <OpSelect arg value={format} onChange={changeFormat} options={FORMAT_OPTS} />
       </div>
 
-      {/* Swatch + output string, with the colour output socket measured onto this
-          row so it sits right next to what it emits — below the format dropdown. */}
+      {/* The color output socket is measured onto the swatch row so it sits next
+          to what it emits. */}
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>
             <span
-              aria-label="Colour preview"
+              aria-label="Color preview"
               style={{ width: 18, height: 18, borderRadius: 5, border: "1px solid var(--border-strong)", background: swatch, flex: "0 0 auto" }}
             />
             <code style={{ flex: "1 1 auto", minWidth: 0, fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{output}</code>

@@ -1,19 +1,26 @@
-import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import type { SurfaceNode as SurfaceNodeType } from "../rete-nodes";
+import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { SURFACE_VIEW_OP_META } from "../rete-nodes";
+import type { SurfaceNode as SurfaceNodeType, SurfaceViewOp } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
+import { SegToggle } from "./SegToggle";
+import { dropInputCables } from "./cablePrune";
+import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
+import { stopDragStart } from "../coarse";
+
+const VIEW_OPTIONS = (Object.keys(SURFACE_VIEW_OP_META) as SurfaceViewOp[]).map((op) => ({
+  value: op, label: SURFACE_VIEW_OP_META[op].label,
+}));
 
 // Fills the wide card (240) minus body padding.
 const W = 218;
 const H = 190;
 
-// A tiny D-pad in the figure's corner: yaw (←/→, 45° around Z) and pitch (↑/↓, 45°
-// elevation, clamped to 0–90° so it never flips). Buttons stop pointer/mouse-down so
-// the click doesn't start a node drag or selection.
+// D-pad buttons stop pointer/mouse-down so a click can't start a node drag or selection.
 const ROT_BTN: CSSProperties = {
   width: 16, height: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
   fontSize: 11, lineHeight: 1, cursor: "pointer", borderRadius: 3,
@@ -27,7 +34,7 @@ function RotBtn({ title, onClick, children }: { title: string; onClick: () => vo
       style={ROT_BTN}
       title={title}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {children}
@@ -35,7 +42,7 @@ function RotBtn({ title, onClick, children }: { title: string; onClick: () => vo
   );
 }
 
-// A small house glyph (stroked, even 12px so it centres crisply — see the icon rule).
+// A small house glyph (stroked, even 12px so it centers crisply — see the icon rule).
 const HomeIcon = () => (
   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
     <path d="M2.5 8 L8 3 L13.5 8" />
@@ -48,9 +55,19 @@ const wrap360 = (deg: number) => ((deg % 360) + 360) % 360;
 
 export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const [op, setOp] = useState<SurfaceViewOp>(data.op);
   const cv = data.cachedChart;
-  const p = cv?.payload?.kind === "surface" ? cv.payload : null;
+  const p = cv?.payload?.kind === "surface" || cv?.payload?.kind === "contour" ? cv.payload : null;
   const has = !!p && p.xs.length >= 2 && p.ys.length >= 2 && p.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
+
+  async function pickOp(next: SurfaceViewOp) {
+    if (next === data.op) return;
+    if (next === "surface") await dropInputCables(data.id, ["levels"]);
+    data.setOp(next);
+    setOp(next);
+    await getActiveArea()?.update("node", data.id);
+    await processGraph();
+  }
 
   const rotate = (dYaw: number, dPitch: number) => {
     // Both axes wrap fully (0–360) — pitch flips all the way over, not clamped.
@@ -66,13 +83,14 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
+      <SegToggle value={op} options={VIEW_OPTIONS} onChange={(o) => void pickOp(o)} />
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__section-divider" />
       <div style={{ position: "relative", height: H, marginTop: 4 }}>
         {has && cv && !collapsed
           ? <ChartFigure value={cv} width={W} height={H} />
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
-        {has && !collapsed && (
+        {has && !collapsed && op === "surface" && (
           <div style={{ position: "absolute", right: 4, bottom: 4, display: "grid", gridTemplateColumns: "repeat(3, 16px)", gridTemplateRows: "repeat(3, 16px)", gap: 2, opacity: 0.85 }}>
             <RotBtn title="Rotate left + tilt up" onClick={() => rotate(-45, 45)}>↖</RotBtn>
             <RotBtn title="Tilt up" onClick={() => rotate(0, 45)}>↑</RotBtn>

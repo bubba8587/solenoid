@@ -16,8 +16,8 @@ function isoToSerial(iso: string): number {
   return Number.isNaN(d.getTime()) ? 0 : Math.floor(jsDateToSerial(d));
 }
 
-// Each date input sits on its own output row so its serial leaves the matching
-// socket on the right — no redundant "value" line, the picker IS the readout.
+// Each date input sits on its own output row, so its serial leaves the matching
+// socket; the picker IS the readout.
 export function DateRangeComponent({ data, emit }: NodeProps<DateRangeNodeType>) {
   const [startIso, setStartIso] = useState(serialToISO(data.literals.start));
   const [endIso, setEndIso] = useState(serialToISO(data.literals.end));

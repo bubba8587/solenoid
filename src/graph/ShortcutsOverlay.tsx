@@ -3,11 +3,7 @@ import { shortcutsStore } from "./shortcutsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import "./ShortcutsOverlay.css";
 
-/**
- * Keyboard-shortcuts reference overlay. Opened from Help → Keyboard shortcuts.
- * A static, hand-maintained list grouped by area; mirrors the actual bindings
- * wired in Canvas's keydown handler and the canvas interactions.
- */
+/** A static, HAND-MAINTAINED mirror of the bindings wired in Canvas's keydown handler. */
 
 type Row = { keys: string[]; label: string };
 type Group = { title: string; rows: Row[] };

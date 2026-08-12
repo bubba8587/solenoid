@@ -15,6 +15,7 @@
 .table-popup__grid-scroll {
   margin: 12px 14px;
   max-height: 56vh;
+  max-height: 56dvh;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -122,9 +123,12 @@
   text-align: right;
   outline: none;
 }
+/* The edited cell, the format selects and the CSV box all ring in the POPUP's own
+   accent. An app-accent ring inside an accent-tinted card puts two unrelated hues on
+   one surface — the header says frame violet, the ring said gold. */
 .table-popup__input:focus {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
 }
 .table-popup__input[readonly] {
   color: var(--text);
@@ -174,6 +178,112 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
+/* The per-column SOURCE select (column-source model): Typed, an inline Formula,
+   or a wired λ. Literal-source frame editors only; sits under the name row. */
+.table-popup__srcselect {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+/* The Formula source's inline formula, under the source select: an =-prefixed
+   one-liner (one definition per column, popup-local until Save). */
+.table-popup__exprrow {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+}
+.table-popup__exprprefix {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.table-popup__exprinput {
+  flex: 1;
+  min-width: 60px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+/* A COMPUTED column's cells: derived, read-only — quiet tint, no edit caret.
+   Color conveys state (the frame violet at low strength), not decoration. */
+.table-popup__cell--computed .table-popup__input {
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--sock-frame) 7%, transparent);
+  cursor: default;
+}
+
+/* ── Visual-only column sort (columnSort.tsx) ─────────────────────────────────
+   The whole header cell is the click target, so the cursor is the affordance and
+   there is no resting glyph on any column — the chevron exists ONLY while that
+   column is sorted, as state.
+
+   It is OVERLAID on the header's right edge, absolutely positioned, so it
+   contributes nothing to layout: the header cell is what sizes a column here, and an
+   in-flow marker would widen the column the moment you sorted it. Nothing is
+   reserved for it either, so an unsorted grid measures exactly as it did before the
+   feature existed. The header <th> is already `position: sticky` (a positioned
+   element), so it's the containing block; don't add `position: relative` — it would
+   lose the specificity fight with the sticky rule anyway.
+
+   The pad behind it is a scrim, not decoration: with nothing reserved it lands on
+   top of a long column name, and without it the glyphs tangle. Translucent black in
+   dark theme as authored; light theme flips it to translucent white, since a dark
+   chip carrying a dark glyph on a near-white header is the same collision. */
+.table-popup__colhead--sortable { cursor: pointer; }
+/* …except over the controls that opt out of the trigger (frame editor). */
+.table-popup__colhead--sortable .table-popup__colhead-input { cursor: text; }
+
+.table-popup__sort {
+  position: absolute;
+  right: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  /* An active sort is STATE, so it earns color (the Quiet Accent Rule) — the
+     surface's own accent, like every other tinted thing in the popup. */
+  color: var(--node-accent, var(--accent));
+  pointer-events: none; /* an indicator: clicks belong to the header underneath */
+  z-index: 1;
+}
+:root[data-theme="light"] .table-popup__sort { background: rgba(255, 255, 255, 0.72); }
+
+/* FRAME headers only: the name field fills the cell, so on a phone there's no reliable
+   margin left to tap. There the chevron is drawn even when unsorted and is itself the
+   control — quiet in that resting state (it's an affordance, not state), full strength
+   once it carries a direction. The header reserves room for it (--sortpad) so a
+   full-width name input can't slide under it while you type. */
+.table-popup__sort--btn {
+  pointer-events: auto;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.table-popup__sort--off { color: var(--text-dim); opacity: 0.6; }
+.table-popup__sort--btn:hover { opacity: 1; color: var(--text); }
+.table-popup__colhead--sortpad { padding-right: 18px; }
+
+@media (pointer: coarse) {
+  .table-popup__sort { width: 20px; height: 20px; }
+  .table-popup__colhead--sortpad { padding-right: 24px; }
+}
+
 /* ── Format-Controller controls row (read-only frames / matrices) ────────────
    A row of Format Controller dropdowns between the header and the body: a frame
    stacks format-over-unit per column; a matrix shows one pair side by side. The
@@ -216,7 +326,7 @@
 }
 .table-popup__fmtinline .table-popup__fmtselect { width: auto; min-width: 92px; }
 .table-popup__fmtselect:hover { border-color: var(--node-accent, var(--accent)); }
-.table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+.table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 
 /* Matrix: one format+unit pair for the whole sheet, above the grid (between the
    popup header and the table). */
@@ -255,6 +365,7 @@
   margin: 12px 14px;
   min-height: 120px;
   max-height: 56vh;
+  max-height: 56dvh;
   padding: 8px 10px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
@@ -268,7 +379,7 @@
   resize: vertical;
   outline: none;
 }
-.table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+.table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 .table-popup__csv[readonly] { color: var(--text); }
 
 /* Grid / CSV segmented toggle. */
@@ -336,12 +447,17 @@
   color: var(--text);
   cursor: pointer;
 }
-.table-popup__btn:hover { border-color: var(--accent); }
+/* The footer actions take the POPUP's own accent — the same one tinting its header —
+   not the app-wide accent, so Save/Done on a frame popup reads violet like the frame
+   it edits. Falls back to the app accent when the popup has no host node. The ink
+   comes from `--node-accent-ink` (popupCardVars), never `--accent-ink`: that one is
+   computed for the app accent's hue and would go dark on a dark accent. */
+.table-popup__btn:hover { border-color: var(--node-accent, var(--accent)); }
 
 .table-popup__btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink, #fff);
+  background: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink, #fff));
   font-weight: 600;
 }
 .table-popup__btn--primary:hover { filter: brightness(1.08); }
@@ -362,7 +478,7 @@
    fit without the card running off the screen. */
 @media (max-width: 640px) {
   .table-popup { width: 96vw; }
-  .table-popup__grid-scroll { max-height: 42vh; margin: 10px; }
+  .table-popup__grid-scroll { max-height: 42vh; max-height: 42dvh; margin: 10px; }
   .table-popup__grid { font-size: 14px; }
   .table-popup__input {
     padding: 9px 8px; /* taller rows = easier to tap into */
@@ -395,7 +511,7 @@
   border: none;
   padding: 1px 4px;
   border-radius: 4px;
-  color: var(--accent, var(--text-dim));
+  color: var(--node-accent, var(--accent, var(--text-dim)));
   cursor: pointer;
   font: inherit;
 }

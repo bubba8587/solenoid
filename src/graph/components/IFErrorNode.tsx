@@ -9,11 +9,11 @@ const OPS: { value: IFErrorMode; label: string }[] = [
 ];
 
 export function IFErrorComponent({ data, emit }: NodeProps<IFErrorNodeType>) {
-  const [mode, setMode] = useNodeField(data, "mode");
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={mode} onChange={setMode} options={OPS} />
+      <OpSelect value={op} onChange={setOp} options={OPS} />
       <ValueDisplay value={data.cachedResult as DisplayValue} />
     </NodeShell>
   );

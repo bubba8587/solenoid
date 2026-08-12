@@ -3,13 +3,8 @@ import "./popupChrome.css";
 
 export type PopupMenuItem = { label: string; onClick: () => void; disabled?: boolean };
 
-/**
- * The header ⋯ overflow menu shared by the value popups (Table / Frame / List).
- * A muted kebab button matching the close/pin icon buttons; the dropdown closes on
- * an item click or a pointerdown outside it. The popup lives in a fixed overlay
- * (not a rete node), so no drag-plane pointer dance is needed — the menu sits inside
- * `.sol-popup` whose own pointerdown already stops the overlay from closing.
- */
+/** The value popups live in a fixed overlay, not a rete node, so no drag-plane
+ *  pointer dance is needed — `.sol-popup`'s own pointerdown already guards it. */
 export function PopupOverflowMenu({ items, label = "More actions" }: { items: PopupMenuItem[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

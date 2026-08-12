@@ -1,16 +1,14 @@
-// Electricity & Circuits — the everyday electrical formula set: Ohm's law and
-// power, dividers, reactance and resonance, RC/RL transients, decibels, and the
-// component/wire references (E-series, AWG). Replaces the ad-ridden
-// single-purpose calculator sites (docs/archive/reference-packs.md thesis).
-// SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
-//
-// Ships OFF by default. The Electromagnetism pack builds on this one.
+// Electricity & Circuits pack. SI units throughout: volts, amps, ohms, farads,
+// henries, hertz, seconds.
 
-import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import {
+  ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode,
+  parallelCombine, awgWire, nearestESeries, decodeResistor, E_SERIES, type ESeriesOp,
+} from "../rete-nodes";
+import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
-// Base category: Ohm's law, power, and the everyday one-liners. Rearrangement
-// groups ship as ONE locked Equation preset (wire any two, read the third).
+// A rearrangement group ships as ONE locked Equation preset, not several solved
+// forms.
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
     description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Check answers TRUE/FALSE",
@@ -47,7 +45,6 @@ export const ELECTRICITY_BASE: FormulaPackEntry[] = [
     keywords: "joules stored" },
 ];
 
-// AC behaviour: reactance, impedance, resonance.
 export const ELECTRICITY_AC: FormulaPackEntry[] = [
   { type: "elec-cap-reactance", label: "Capacitive Reactance", expr: "1/(2*PI()*f*c)",
     description: "Reactance of a capacitor at frequency f   (Xc = 1/(2πfC))",
@@ -62,7 +59,6 @@ export const ELECTRICITY_AC: FormulaPackEntry[] = [
     keywords: "tank tuned lc" },
 ];
 
-// Transients & timing: first-order RC/RL responses and the 555.
 export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
   { type: "elec-rc-tau", label: "RC Time Constant", expr: "r*c",
     description: "First-order RC time constant: 63% of a step in one τ, ~settled in 5τ   (τ = R·C)" },
@@ -79,7 +75,6 @@ export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
     keywords: "oscillator ne555" },
 ];
 
-// Signal levels: decibel ratios and dBm.
 export const ELECTRICITY_DB: FormulaPackEntry[] = [
   { type: "elec-db-power", label: "Decibels (Power Ratio)", expr: "10*LOG10(p2/p1)",
     description: "Power ratio in dB   (10·log₁₀(P₂/P₁))",
@@ -96,8 +91,7 @@ export const ELECTRICITY_FORMULAS: FormulaPackEntry[] = [
   ...ELECTRICITY_BASE, ...ELECTRICITY_AC, ...ELECTRICITY_TRANSIENTS, ...ELECTRICITY_DB,
 ];
 
-// Engineering/SI-prefix display: 4700 → "4.7k", 0.0000022 → "2.2µ" — how every
-// component value is actually written. 3 significant figures.
+// Engineering/SI-prefix display at 3 significant figures: 4700 → "4.7k".
 function toSiPrefix(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   if (n === 0) return "0";
@@ -114,7 +108,67 @@ function toSiPrefix(n: number): string {
   return `${Number((n / 1e-12).toPrecision(3))}p`;
 }
 
+// Each impl delegates to the same exported core its node calls, so the node and
+// formula surfaces cannot drift.
+const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
+  {
+    name: "PARALLELCOMBINE",
+    impl: (...args: unknown[]) => {
+      const cells = args.flatMap((a) => (Array.isArray(a) ? a : a == null ? [] : [a]));
+      return parallelCombine(cells as Parameters<typeof parallelCombine>[0]);
+    },
+    returns: "number", listArgs: true, arity: [1, 255],
+    signature: "value1, [value2], …",
+  },
+  {
+    name: "ESERIESVALUE",
+    impl: (value, series) => {
+      if (value == null) return null;
+      const v = Number(value);
+      if (!Number.isFinite(v)) return null;
+      const s = (series == null ? "E24" : String(series).toUpperCase()) as ESeriesOp;
+      if (!(s in E_SERIES)) return solError("#VALUE!", `Unknown E-series "${s}" — E3, E6, E12, E24, E48, E96`);
+      if (v <= 0) return solError("#DOMAIN!", "A component value must be a positive number");
+      return nearestESeries(v, s);
+    },
+    returns: "number", arity: [1, 2],
+    signature: "value, [series (E24)]",
+  },
+  {
+    name: "AWGWIRE",
+    impl: (gauge, property) => {
+      if (gauge == null) return null;
+      const n = Number(gauge);
+      if (!Number.isFinite(n)) return null;
+      const p = property == null ? "diameter" : String(property).toLowerCase();
+      if (!["diameter", "area", "resistance", "ampacity"].includes(p)) {
+        return solError("#VALUE!", `Unknown property "${p}" — diameter, area, resistance, ampacity`);
+      }
+      const w = awgWire(n);
+      // Mirror the node: ampacity is blank outside the NEC table, never an error.
+      if (isSolError(w)) return p === "ampacity" ? null : w;
+      return w[p as keyof typeof w];
+    },
+    returns: "number", arity: [1, 2],
+    signature: "gauge, [property (diameter)]",
+  },
+  {
+    name: "RESISTORCOLORCODE",
+    impl: (...bands: unknown[]) => {
+      if (bands.some((b) => b == null)) return null;
+      const c = bands.map((b) => String(b).toLowerCase());
+      const r = c.length === 5
+        ? decodeResistor(c[0], c[1], c[2], c[3], c[4], true)
+        : decodeResistor(c[0], c[1], "black", c[2], c[3], false);
+      return isSolError(r) ? r : r.ohms;
+    },
+    returns: "number", arity: [4, 5],
+    signature: "digit, digit, multiplier, tolerance — or 5-band with a 3rd digit",
+  },
+];
+
 export const ELECTRICITY_PACK: Pack = {
+  formulas: ELECTRICITY_PACK_FORMULAS,
   id: "electricity",
   name: "Electricity & Circuits",
   description: "Everyday electrical engineering: Ohm's law and power, dividers, reactance and resonance, RC/RL transients, decibels, the resistor color-code decoder, E-series component values, and AWG wire properties. SI units.",
@@ -141,7 +195,7 @@ export const ELECTRICITY_PACK: Pack = {
         type: "elec-resistor-code",
         label: "Resistor Color Code",
         description: "Decode resistor bands: pick the colors on a live band diagram → resistance (Ω) and tolerance (±%). 4- or 5-band, IEC 60062",
-        keywords: "resistor bands color colour code ohms decode",
+        keywords: "resistor bands color color code ohms decode",
         create: () => new ResistorCodeNode(),
       },
     },
@@ -150,6 +204,7 @@ export const ELECTRICITY_PACK: Pack = {
       entry: {
         type: "elec-eseries",
         label: "E-Series Value",
+        fx: ["ESERIESVALUE"],
         description: "Snaps a value to the nearest IEC 60063 standard component value (E12 = 10% resistors, E24 = 5%, E96 = 1%…), with the % error",
         keywords: "resistor standard preferred value iec 60063",
         create: () => new ESeriesNode(),

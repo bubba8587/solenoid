@@ -4,13 +4,13 @@ import { CloseIcon } from "./CloseIcon";
 import pkg from "../../../package.json";
 import "./helpDialogs.css";
 
-// ── What's New slides — the [slide]-tagged headliners from
-//    docs/release-notes-features.md. Keep in sync with WHATS_NEW_VERSION. ──
+// The [slide]-tagged headliners from docs/release-notes-features.md — keep them in
+// sync with WHATS_NEW_VERSION.
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
     title: "Real units",
-    body: "Values carry units now. SUM(5 km, 3) is 8 km, m × m is m², and metres plus seconds fails loud with #UNIT! instead of silently adding nonsense. Units ride through lists, frame columns, lookups and selectors; the Format Controller authors them, Convert changes them, and 10 m ÷ 2 m cancels to a pure 5:1 ratio.",
+    body: "Values carry units now. SUM(5 km, 3) is 8 km, m × m is m², and meters plus seconds fails loud with #UNIT! instead of silently adding nonsense. Units ride through lists, frame columns, lookups and selectors; the Format Controller authors them, Convert changes them, and 10 m ÷ 2 m cancels to a pure 5:1 ratio.",
   },
   {
     title: "Monte Carlo",
@@ -46,7 +46,6 @@ export function HelpDialogs() {
   const mode = useSyncExternalStore(helpDialogStore.subscribe, helpDialogStore.get);
   const [slide, setSlide] = useState(0);
 
-  // Reset to the first slide whenever What's New (re)opens.
   useEffect(() => {
     if (mode === "whatsnew") setSlide(0);
   }, [mode]);

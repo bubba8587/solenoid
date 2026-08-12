@@ -8,17 +8,12 @@ import type {
   WafflePayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
 
-// ─── Canvas figure views ───────────────────────────────────────────────────────
-// The 2026-07-16 chart wave (Waterfall / Candlestick / Boxplot / Calendar /
-// Waffle / Vector Field / Contour) draws to a <canvas> like SurfaceView — one DOM
-// element regardless of data size, supersampled for crispness, themed by reading
-// the live CSS vars + palette at draw time (the components subscribe to
-// appThemeStore so a theme/palette flip redraws).
+// Canvas figure views: one DOM element regardless of data size, themed by reading the live
+// CSS vars at draw time (the components subscribe to appThemeStore so a flip redraws).
 
 type Ctx = CanvasRenderingContext2D;
 
-/** Prepare a supersampled canvas and return its 2D context (same trick as
- *  SurfaceView: render above device resolution, let the browser downscale). */
+/** Supersampled 2D context: render above device resolution, let the browser downscale. */
 function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | null {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
@@ -61,8 +56,7 @@ function trim3(n: number): string {
   return String(Number(n.toPrecision(3)));
 }
 
-/** Left-axis gridlines + tick labels over [lo, hi] mapped by sy. Returns the
- *  plot-left x (after the labels). */
+/** Left-axis gridlines + ticks over [lo, hi] mapped by sy; returns the plot-left x. */
 function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number) {
   ctx.font = TICK_FONT;
   ctx.textAlign = "right";
@@ -134,7 +128,6 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
     const yA = sy(b.a), yB = sy(b.b);
     ctx.fillStyle = b.kind === "up" ? ink.up : b.kind === "down" ? ink.down : ink.neutral;
     ctx.fillRect(x, Math.min(yA, yB), barW, Math.max(1, Math.abs(yB - yA)));
-    // Dashed connector from this bar's end to the next bar's start.
     if (i < bars.length - 1) {
       const yEnd = b.kind === "total" ? yB : sy(b.b);
       ctx.strokeStyle = ink.dim;
@@ -222,14 +215,12 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
     const cx = padL + (i + 0.5) * bw;
     ctx.strokeStyle = ink.accent;
     ctx.lineWidth = 1;
-    // Whiskers with end caps.
     for (const [from, to] of [[b.lo, b.q1], [b.q3, b.hi]] as const) {
       ctx.beginPath(); ctx.moveTo(cx, sy(from)); ctx.lineTo(cx, sy(to)); ctx.stroke();
     }
     for (const v of [b.lo, b.hi]) {
       ctx.beginPath(); ctx.moveTo(cx - boxW / 4, sy(v)); ctx.lineTo(cx + boxW / 4, sy(v)); ctx.stroke();
     }
-    // The IQR box (translucent fill so the grid shows through) + median.
     const yQ1 = sy(b.q1), yQ3 = sy(b.q3);
     ctx.globalAlpha = 0.22;
     ctx.fillStyle = ink.accent;
@@ -238,7 +229,6 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
     ctx.strokeRect(cx - boxW / 2, yQ3, boxW, Math.max(1, yQ1 - yQ3));
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(cx - boxW / 2, sy(b.med)); ctx.lineTo(cx + boxW / 2, sy(b.med)); ctx.stroke();
-    // Outlier dots.
     ctx.fillStyle = ink.down;
     for (const v of b.outliers) {
       ctx.beginPath(); ctx.arc(cx, sy(v), 1.6, 0, Math.PI * 2); ctx.fill();
@@ -265,9 +255,8 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   if (!ctx) return;
   const ink = themeInk(canvas);
   if (p.days.length === 0) return;
-  // Aggregate duplicate days (sum) and pick the shown WINDOW: at most a year, and
-  // at most what the box can render at a legible cell size — a multi-year feed in
-  // a narrow card shows its most recent weeks instead of sub-pixel mush.
+  // The window is capped at a year AND at what the box renders legibly, so a multi-year
+  // feed shows its most recent weeks instead of sub-pixel mush.
   const byDay = new Map<number, number>();
   for (let i = 0; i < p.days.length; i++) byDay.set(p.days[i], (byDay.get(p.days[i]) ?? 0) + (p.values[i] ?? 0));
   const dayList = [...byDay.keys()];
@@ -291,8 +280,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   const cell = Math.min((W - padL - padR) / weeks, (H - padT - padB) / 7);
   const gap = cell > 6 ? 1 : 0.5;
 
-  // Truncation is state the reader must know — the data reaches further back
-  // than the grid shows.
+  // Truncation is state the reader must know — the data reaches further back than the grid.
   if (truncated) {
     ctx.font = TICK_FONT;
     ctx.fillStyle = ink.dim;
@@ -314,7 +302,6 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
       lastMonth = m;
     }
   }
-  // Weekday hints (M/W/F rows).
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   for (const [row, ch] of [[0, "M"], [2, "W"], [4, "F"]] as const) {
@@ -348,8 +335,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: WafflePayload, W: number, H: n
   const vals = p.values.filter((v) => Number.isFinite(v) && v > 0);
   if (p.values.length === 0) return;
 
-  // Cell counts out of 100: a single value in [0,1] is a plain fraction; multiple
-  // categories split by share (largest-remainder so counts always sum to 100).
+  // Multiple categories split by share via largest-remainder, so counts always sum to 100.
   let counts: Array<{ n: number; color: string; name: string }> = [];
   const single = p.values.length === 1 && p.values[0] >= 0 && p.values[0] <= 1;
   if (single) {
@@ -365,7 +351,6 @@ function drawWaffle(canvas: HTMLCanvasElement, p: WafflePayload, W: number, H: n
     counts = floors.map((n, i) => ({ n, color: colors[i % colors.length], name: p.names[i] ?? "" }));
   }
 
-  // Legend below the grid when there's room and real categories to name.
   const legend = !single && counts.some((c) => c.name);
   const legendH = legend ? 12 : 0;
   const side = Math.min(W, H - legendH);
@@ -426,8 +411,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
   if (maxMag === 0) maxMag = 1;
   const reach = Math.min(cw, ch) * 0.46;
 
-  // A faint dot lattice anchors the grid, arrows on top. +v points UP on screen
-  // (plot convention), so canvas-y is negated.
+  // +v points UP on screen (plot convention), so canvas-y is negated.
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
     const cx = pad + (ix + 0.5) * cw, cy = pad + (iy + 0.5) * ch;
     const u = p.u[iy]?.[ix], v = p.v[iy]?.[ix];
@@ -451,10 +435,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     // Thinner shaft on small arrows — a full-width stroke on a 3px arrow reads as a blob.
     ctx.lineWidth = Math.max(0.7, Math.min(cw, ch) * 0.07 * (0.55 + 0.45 * t));
     ctx.lineCap = "round";
-    // Arrowhead: a FILLED triangle (crisp at any size — the old two swept strokes
-    // smudged into the shaft at small magnitudes). The shaft stops at the head's
-    // base so it can't poke past the tip; arrows too small to carry a head draw
-    // as a bare shaft.
+    // The shaft stops at the head's base so it can't poke past the tip.
     const hl = Math.min(4.5, len * 0.55);
     if (hl >= 2.2) {
       const bx = hx - hl * cosA, by = hy - hl * sinA; // head base on the shaft
@@ -488,8 +469,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   if (!Number.isFinite(zmin)) return;
   if (zmin === zmax) zmax = zmin + 1;
 
-  // Real gutters for the coordinate hints — drawn OVER the filled bands they were
-  // illegible (and looked clipped into the plot, esp. at Report sizes).
+  // Real gutters: drawn over the filled bands the coordinate hints are illegible.
   const padL = 6, padR = 6, padT = 12, padB = 12;
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
@@ -497,9 +477,8 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   const sy = (v: number) => H - padB - ((v - ymin) / (ymax - ymin || 1)) * (H - padT - padB); // y up
   const tz = (v: number) => (v - zmin) / (zmax - zmin);
 
-  // Filled height bands: each cell subdivides into bilinear-shaded subquads —
-  // smooth without a per-pixel raster. Cells with a missing corner stay blank
-  // (a hole, like Surface).
+  // Each cell subdivides into bilinear-shaded subquads; a cell with a missing corner stays
+  // blank, a hole like Surface.
   const SUB = 6;
   for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
     const z00 = z[iy]?.[ix], z10 = z[iy]?.[ix + 1], z01 = z[iy + 1]?.[ix], z11 = z[iy + 1]?.[ix + 1];
@@ -543,7 +522,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
       if (pts.length === 2) {
         ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); ctx.stroke();
       } else if (pts.length === 4) {
-        // Saddle: split by the cell-centre value.
+        // Saddle: split by the cell-center value.
         const zc = (z00 + z10 + z01 + z11) / 4;
         const pairs = zc > t ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]];
         for (const [a, b] of pairs) {
@@ -567,9 +546,8 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
 }
 
 // ─── React wrappers ────────────────────────────────────────────────────────────
-// One tiny component per figure: theme-subscribed (redraw on theme/palette flip),
-// draw-on-layout like SurfaceView. Each view checks its own emptiness and falls
-// back to the standard em-dash placeholder.
+// Theme-subscribed and draw-on-layout; each view checks its own emptiness and falls back to
+// the standard em-dash placeholder.
 
 function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -626,9 +604,8 @@ export function ContourView({ payload, width, height }: { payload: ContourPayloa
 }
 
 // ─── Seven-segment readout ─────────────────────────────────────────────────────
-// Flat SVG segments (no canvas needed): lit segments in the accent over faint
-// ghosts — the LCD idiom that makes a 7-seg read as a display, not seven
-// floating bars. Shared by the node card and Report embeds via ChartFigure.
+// Lit segments in the accent over faint ghosts — the LCD idiom that makes this read as a
+// display rather than seven floating bars.
 
 // Segment geometry in an 11 × 20.5 digit box: three horizontals (a/g/d), four
 // verticals (f/b top, e/c bottom).

@@ -1,13 +1,3 @@
-// ─── Standoff constraint solver ─────────────────────────────────────────────────
-// Pure iterative projection over plain boxes (no rete/DOM — unit-tested in
-// standoffSolver.test.ts). Each standoff constrains the projection of
-// (anchorPoint(b) − anchorPoint(a)) onto its axis (from a.anchor) to [min, max].
-// A violated standoff slides its endpoints along the axis only — the
-// perpendicular offset is never touched (axis-band semantics). Pinned boxes
-// (the dragged node, an expanding group) never move; corrections go to the
-// free end, or split evenly when both ends are free. Contradictory networks
-// don't explode — iteration is bounded and the result is best-effort.
-
 import { Standoff, Box, anchorPoint, ANCHOR_DIR } from "./standoffs";
 
 export interface Disp {
@@ -24,9 +14,7 @@ export function solveStandoffs(
   pinned: Set<string> = new Set(),
   opts: { forceLock?: boolean } = {},
 ): Map<string, Disp> {
-  // forceLock treats EVERY standoff as rigid for this solve (perpendicular
-  // pulled to 0) regardless of its own `locked` flag — used by layout ops so a
-  // standoff-connected cluster moves as one block, without mutating saved state.
+  // forceLock makes every standoff rigid for THIS solve without mutating saved state.
   const forceLock = opts.forceLock === true;
   const disp = new Map<string, Disp>();
   if (standoffs.length === 0) return disp;
@@ -64,7 +52,6 @@ export function solveStandoffs(
       if (aPinned && bPinned) continue;
       const bShare = bPinned ? 0 : aPinned ? 1 : 0.5;
 
-      // Axis term: clamp the projection onto the axis into [min, max].
       const t = (pb.x - pa.x) * axis.x + (pb.y - pa.y) * axis.y;
       const err = Math.min(Math.max(t, s.min), s.max) - t;
       if (Math.abs(err) > EPSILON) {
@@ -75,9 +62,6 @@ export function solveStandoffs(
         da.dy -= axis.y * err * (1 - bShare);
       }
 
-      // Perpendicular term (locked, or forced by a layout op): pull the offset
-      // to 0 so the bar lies exactly on the axis — a rigid 45° lock instead of
-      // axis-band slack.
       if (s.locked || forceLock) {
         const px = -axis.y;
         const py = axis.x;

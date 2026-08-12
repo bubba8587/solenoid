@@ -20,7 +20,7 @@ export function IpmtPpmtComponent({ data, emit }: NodeProps<IpmtPpmtNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <OpSelect value={paymentTiming} onChange={setPaymentTiming} options={TIMING_OPTS} />
+      <OpSelect arg value={paymentTiming} onChange={setPaymentTiming} options={TIMING_OPTS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

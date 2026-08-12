@@ -85,7 +85,7 @@ describe("reshapers are element-polymorphic", () => {
     const grown = new ExpandNode().data({ matrix: [[[1, 2]]], rows: [2], cols: [3], fill: [0] }).result as unknown[][];
     expect(grown).toEqual([[1, 2, 0], [0, 0, 0]]);
     // Unwired Fill = first-class missing (author 2026-07-16), not Excel's #N/A —
-    // wire the NA node into Fill for the Excel pad_with-omitted behaviour.
+    // wire the NA node into Fill for the Excel pad_with-omitted behavior.
     const padded = new ExpandNode().data({ matrix: [[[1]]], rows: [1], cols: [2] }).result as unknown[][];
     expect(padded).toEqual([[1, null]]);
     expect(isSolError(new ExpandNode().data({ matrix: [[[1, 2], [3, 4]]], rows: [1] }).result)).toBe(true);

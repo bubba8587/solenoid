@@ -16,14 +16,8 @@ interface FormulaEditorProps {
   className?: string;
 }
 
-/**
- * A formula text editor with live syntax highlighting + fuzzy function/variable
- * autocomplete. The highlight is a classic overlay: a transparent <textarea> (real
- * caret + selection + editing) layered exactly over a coloured <pre> mirror. The
- * autocomplete menu drops below the field; ↑/↓ move, Enter/Tab accept (a function
- * inserts its `(`), and it dismisses itself once the typed word no longer matches.
- * Pure presentational — no graph deps; used by FormulaPopup + FormulaField.
- */
+/** The highlight is an overlay: a transparent <textarea> layered exactly over a colored
+ *  <pre> mirror. Pure presentational — no graph deps. */
 export function FormulaEditor({
   value, onChange, onBlur, readOnly, placeholder, autoFocus, rows = 2, extraNames = [], className,
 }: FormulaEditorProps) {
@@ -35,8 +29,8 @@ export function FormulaEditor({
   // A caret position to restore after a controlled value change (e.g. on accept).
   const pendingCaret = useRef<number | null>(null);
 
-  // Trailing newline needs a filler char or the <pre> is one line short of the
-  // <textarea>, knocking the overlay out of alignment on the last line.
+  // A trailing newline needs a filler char or the <pre> runs one line short of the
+  // <textarea>, knocking the overlay out of alignment.
   const html = useMemo(
     () => highlightFormula(value) + (value.endsWith("\n") ? " " : ""),
     [value],
@@ -57,8 +51,6 @@ export function FormulaEditor({
     }
   }
 
-  // Recompute the autocomplete menu from the word ending at the caret, and the
-  // param-hint bar from the call the caret sits inside.
   function refreshMenu(text: string, caret: number) {
     setCallHint(enclosingCall(text, caret));
     const tok = tokenAtCaret(text, caret);
@@ -109,9 +101,8 @@ export function FormulaEditor({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onKeyUp={(e) => {
-          // Arrow keys / Home / End move the caret without an input event — keep
-          // the param-hint bar tracking the caret (the menu keys are handled in
-          // keydown and don't move the caret).
+          // Arrow keys / Home / End move the caret without an input event, so the
+          // param-hint bar has to be refreshed here.
           const k = e.key;
           if (k.startsWith("Arrow") || k === "Home" || k === "End") {
             setCallHint(enclosingCall(value, (e.target as HTMLTextAreaElement).selectionStart));
@@ -146,9 +137,8 @@ export function FormulaEditor({
   );
 }
 
-/** The param-hint bar: the enclosing call's signature with the caret's argument
- *  emphasized — `INDEX(array, ❰row❱, [col])`. Hidden for names with no known
- *  signature; a bare-count fallback ("2 args") shows as `NAME — 2 args`. */
+/** The enclosing call's signature with the caret's argument emphasized; hidden for a
+ *  name with no known signature. */
 function ParamHintBar({ name, argIndex }: { name: string; argIndex: number }) {
   const sig = signatureFor(name);
   if (sig == null) return null;
@@ -159,9 +149,8 @@ function ParamHintBar({ name, argIndex }: { name: string; argIndex: number }) {
   if (params.length === 0) {
     return <div className="fx-editor__sigbar"><b>{name.toUpperCase()}</b>()</div>;
   }
-  // Past the named params the highlight clamps to the last one (a variadic "…"
-  // tail legitimately absorbs the extras; a wrong-arity call still shows where
-  // the signature ended).
+  // Past the named params the highlight clamps to the last one — a variadic tail
+  // absorbs the extras, and a wrong-arity call still shows where the signature ended.
   const last = params.length - 1;
   const active = Math.min(argIndex, last);
   return (

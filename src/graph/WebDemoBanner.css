@@ -1,7 +1,7 @@
 .solenoid-webdemo {
   position: absolute;
   /* Clear of the full-width header (menu bar + toolbar). */
-  top: 80px;
+  top: calc(var(--chrome-top, 66px) + 14px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 5;

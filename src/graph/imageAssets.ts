@@ -1,12 +1,6 @@
-// Image-asset bundling (desktop) — the file-over-app answer to "a locally
-// attached image doesn't survive reload". On save-to-disk, each Image node's
-// session `dataUrl` is written as a PLAIN image file into an `images/` folder
-// beside the saved doc (original filename kept, "name (2).ext" only when a
-// DIFFERENT file already owns the name), and the node persists the doc-relative
-// `assetPath`. On load, `assetPath` is read back into `dataUrl`. The save JSON
-// stays plain text (no base64 bloat), the folder is a normal, browsable images
-// directory shared by any docs saved next to it, and git diffs stay clean.
-// Web build: no filesystem — attach stays session-only, both hooks no-op.
+// A node's session `dataUrl` is written as a PLAIN file into `images/` beside the
+// doc and persisted as a doc-relative `assetPath`, so the save JSON never carries
+// base64. Desktop only — on web both hooks no-op and attach stays session-only.
 
 import {
   isDesktop,
@@ -22,8 +16,7 @@ import { documentStore } from "./documentStore";
 
 export const IMAGES_DIR = "images";
 
-// Duck-typed Image node shape (the codebase convention — no node-class import):
-// only ImageNode carries both `dataUrl` and `assetPath` string fields.
+// Duck-typed rather than importing the node class: only ImageNode carries BOTH fields.
 type ImageAssetNode = {
   id: string;
   label: string;
@@ -113,15 +106,9 @@ function contentHash(bytes: Uint8Array): string {
 
 // ── save hook ─────────────────────────────────────────────────────────────────
 
-/**
- * Write every locally-attached image to `<docdir>/images/<name>.<ext>` and stamp
- * the node's `assetPath`. Keeps the original filename; if a DIFFERENT file
- * already owns it, tries "name (2).ext" … then a content-hash suffix. Writing
- * the same content again (re-save, another doc sharing the folder) is a no-op —
- * the existing file is reused. Call BEFORE serializeGraph so the JSON carries
- * the fresh assetPaths. Desktop only; a failure on one image is reported by the
- * caller in aggregate (returns the count that couldn't be written).
- */
+/** Must be called BEFORE serializeGraph so the JSON carries the fresh assetPaths.
+ *  Identical content reuses the existing file; a name owned by DIFFERENT content
+ *  falls back to "name (2).ext" then a content-hash suffix. */
 export async function bundleLocalImages(docPath: string): Promise<{ bundled: number; failed: number }> {
   let bundled = 0;
   let failed = 0;
@@ -155,7 +142,6 @@ export async function bundleLocalImages(docPath: string): Promise<{ bundled: num
           finalName = cand;
           break;
         }
-        // Same bytes already there (an earlier save, or a shared folder) → reuse.
         if (bytesEqual(await readBinaryFilePath(p), parsed.bytes)) {
           finalName = cand;
           break;
@@ -175,15 +161,9 @@ export async function bundleLocalImages(docPath: string): Promise<{ bundled: num
 
 // ── load hook ─────────────────────────────────────────────────────────────────
 
-/**
- * Read ONE Image node's bundled file back into its session `dataUrl` —
- * `<docdir>/<assetPath>`, resolved against the CURRENT doc's bound disk path.
- * Called by the Image component on mount (rete mounts every node, so this
- * covers doc load, paste, and placeholder restore without a per-load-path
- * hook). A missing/unreadable file just leaves the node's placeholder — the
- * folder is the user's, files can move. Recomputes the node on success so
- * wired consumers (a Report embed) pick the image up.
- */
+/** Called from the Image component's MOUNT, which covers doc load, paste and
+ *  placeholder restore without a per-load-path hook. A missing file is not an
+ *  error — the folder is the user's and files can move. */
 export async function hydrateImageAsset(node: unknown): Promise<void> {
   if (!isDesktop() || !isImageAssetNode(node)) return;
   const n = node;

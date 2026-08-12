@@ -10,8 +10,7 @@ import { rebuildGroupMembership } from "../groupMembership";
 import "../Settings.css";
 import "./DocumentProperties.css";
 
-// A labelled text field committing on Enter/blur (Escape reverts) — never per
-// keystroke, matching the app's edit-commit principle.
+// Commits on Enter/blur (Escape reverts), never per keystroke.
 function TextRow({ label, value, placeholder, onCommit }: {
   label: string;
   value: string;
@@ -42,12 +41,8 @@ function TextRow({ label, value, placeholder, onCommit }: {
 
 const splitTags = (v: string) => v.split(",").map((t) => t.trim()).filter(Boolean);
 
-/**
- * Document Properties window (F-2). Title (the documentStore name), author + tags
- * (docMetaStore → SavedGraph.meta), and a per-document color palette base override.
- * Edits capture into the current document so they persist; the palette override
- * retints the canvas live. Reuses the Settings modal chrome.
- */
+/** Title lives in documentStore, author/tags in docMetaStore (→ SavedGraph.meta);
+ *  edits capture into the current document so they persist. */
 export function DocumentProperties() {
   const open = useSyncExternalStore(docPropertiesPanel.subscribe, docPropertiesPanel.get);
   useSyncExternalStore(documentStore.subscribe, documentStore.version);

@@ -75,3 +75,39 @@ describe("per-doc autosave keys", () => {
     expect(documentStore.list().some((m) => m.name === "Zeta")).toBe(false);
   });
 });
+
+// ─── PERSIST-4 — slot freshness is a PREFIX read, so `seq` must come first ────
+// readSlotSeq decides which slot is newer with /^\{"seq":(\d+)/ — a prefix
+// regex, deliberately not a parse (the doc blob is large). A payload whose
+// stringify puts any other key first reads as seq null: chooseWriteSlot(null,…)
+// collapses the rotation to always-overwrite-A and chooseReadSlot resurrects
+// the OLDER write — silent loss of the newest edit, with perfectly valid JSON
+// in both slots. This pins the coupling the writers currently honor by literal
+// key order alone.
+describe("PERSIST-4 — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
+  const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));
+
+  it("every slot payload the STORE wrote is prefix-readable", () => {
+    // The corrupt-slot restore test above plants "{not json" by hand — that
+    // fixture is exactly what this rule protects against and is not a store
+    // write; drop it before sweeping.
+    for (const [k, v] of [..._mem]) if (v === "{not json") _mem.delete(k);
+    documentStore.saveAs("SeqCheck");
+    expect(slotKeys().length).toBeGreaterThan(0);
+    for (const k of slotKeys()) {
+      expect(_mem.get(k)!, `${k} does not start with {"seq": — readSlotSeq will read it as EMPTY`).toMatch(/^\{"seq":\d+/);
+    }
+  });
+
+  it("successive writes to one pair carry strictly increasing seq", () => {
+    documentStore.saveAs("SeqCheck2");
+    const metas = documentStore.list();
+    const d = metas.find((m) => m.name === "SeqCheck2")!;
+    const seqOf = (k: string) => Number(/^\{"seq":(\d+)/.exec(_mem.get(k) ?? "")?.[1] ?? NaN);
+    const pair = () => [`solenoid.docs.doc.${d.id}.a`, `solenoid.docs.doc.${d.id}.b`].filter((k) => _mem.has(k));
+    const before = Math.max(...pair().map(seqOf));
+    documentStore.rename(d.id, "SeqCheck2 Renamed");
+    const after = Math.max(...pair().map(seqOf));
+    expect(after, "a rewrite must carry a strictly larger seq — a tie makes newest-slot selection ambiguous").toBeGreaterThan(before);
+  });
+});

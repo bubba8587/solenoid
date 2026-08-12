@@ -1,6 +1,1224 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Latest sweep 2026-07-21: all session digests through 2026-07-19 (that block is newest-first, marked below).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-08-09 (through the 2026-08-07 window).
+
+---
+
+## Sweep 2026-08-09 — the 2026-08-07 window (docs cutdown pivot through frame-hint v3)
+
+### SESSION DIGEST (2026-08-07 — the 1.3 pivot: docs cutdown, backlog re-triage)
+- **Author pivot: 1.3 ships basically as-is.** The coming weeks are bugs, patches, and
+  thorough small-scope polish sweeps (node-by-node passes); everything feature-shaped
+  is pushed to 1.4/2.0. Backlog rewritten to that shape (polish sweeps + bugs + small
+  builds + release tail); the moved items live in `deferrals.md` "Pushed to 1.4/2.0".
+- **Docs cutdown** (author: historical logs and verbose pattern-matching trip agents
+  up). `decisions.md` rewritten 803→253 lines to the relapse-guard format — what
+  stands / where / reopen-if per entry, IDs and the genuine relapse-guard lists kept,
+  ADR narrative (when/cost/amendment chains) dropped to git. Dev-notes swept 968→232
+  (sessions 2026-07-30a–08-04a to the archive). Archived whole: `formula-node-parity.md`
+  (program complete, 548/548; the divergence catalogue stays the routed reference from
+  archive), `cube-node-scope.md`, `excel-toolbar-supplementals.md` — all citations
+  repointed. CLAUDE.md: stale claims fixed (rule count dropped, layout-chrome now names
+  the measured envelopes, decisions format), capability map halved. Two stale deferrals
+  reconciled out (∞ glyph, chrome-envelope hoist — both shipped 2026-08-05).
+- **Cutdown pass 2:** CLAUDE.md's subsystem deep-dive index compressed back to actual
+  one-liners (the detail lives in subsystem-invariants; entries had regrown to
+  paragraphs). subsystem-invariants § Pointer gestures de-duplicated (census + palm
+  rejection were each explained twice). architecture.md docs table reconciled (archive
+  rows out, three missing docs in, stale counts dropped). pack-architecture's
+  proposal-era tail ("none of this is built yet" / "if this ever gets picked up")
+  replaced with the current state: Placeholder shipped, provenance record parked with
+  pack distribution, eager registration deliberate.
+- **Cutdown pass 3 (reconcile sweep over the unread set):** out-of-scope's stale
+  claims fixed (Expression cap now cites D23's rank ≤ 2; publish-as-form noted as
+  ruled OUT); glossary's autosave entry updated to the per-doc two-slot model;
+  v2.0/README + value-semantics pointers repointed post-pivot; rules.md "Known
+  violations" compressed to the one live item (the closed-history paragraph → git);
+  release-notes-features caught up on the 2026-08 arc — AI palette added as a
+  headliner, body lines for the one-paint card frame (the known-issues seam entry
+  retired), frame-input EXAMPLE hints, error boundaries, and the touch-polish batch.
+- **The posture is now IN CLAUDE.md** (pass 4): a "Current phase — 1.3 polish" section
+  (small-scope sweeps only; parked work stays parked even when a sweep tempts) and the
+  cutdown's standing rule under Doc maintenance ("write OUTCOMES, not narratives" —
+  one home per fact, deletion as the default for history). Both were only in
+  backlog/digest before, which a quick session never loads.
+- **Pass 5 (structural):** (1) **The Quiet Accent Rule RESCOPED** (author: "not really
+  that true") — the "never decoration" absolute was contradicted by the app (wordmark,
+  accent window border, note/group tints, palettes, flow beads/`cableFlourishStore`,
+  the two choreographed reveals, the planned art slot). DESIGN.md §1/§2 now say: chrome
+  color conveys type/state; decoration lives in named homes (brand / user-authored /
+  opt-in flourishes); NEW decoration is an author call, never an agent default.
+  CLAUDE.md's citation updated to match. (2) **`docs/mental-model.md`** — the missing
+  onboarding story (two React worlds, the compute path commit→processGraph→wrappers→
+  data()→render, derived types, the FrameBackend seam, display pipeline, save/load);
+  now step 2 of the Start-here order. (3) **`docsPointers.test.ts`** — pointer hygiene
+  is machine-checked (140 assertions): live docs all indexed, no dead `.md` citation
+  anywhere, archive index complete, routing-table code files exist. Its first run
+  caught two live dead pointers (rules.md → the archived 17-matrix-formulas path;
+  CLAUDE.md's root-unresolvable dev-notes-history shorthand) — the drift class the
+  cutdown fixed by hand is now a CI failure.
+- **Fine-print sweep, round 1 (2026-08-08 — the case family):** scanned all catalog
+  descriptions for behavioral claims (45 leaves, 8 clusters). Finding: **Text Filter
+  was OFF the D12 line** — case-sensitive raw `includes` while its two sibling
+  filters fold case and D12 rules every comparison insensitive; `filterTextList` now
+  folds (both surfaces — the node and TEXTFILTER share the kernel), description
+  updated. **`caseContract.test.ts`** pins the whole D12 line in one place: `=`/`<>`
+  insensitive, EXACT sensitive, frame Filter ops ± matchCase, Text Filter, join/
+  group/distinct identity-sensitive, Replace Values (case-sensitive whole-cell,
+  numeric match, substring strings-only, blanks/errors untouched). Replace Values'
+  description claims all verified true against `replaceValues`. Sort nulls/errors-
+  last already double-pinned. Remaining clusters recorded in the backlog item.
+- **Fine-print sweep, rounds 2–4 (all clusters closed, agent-verified claim-by-claim
+  with file:line evidence):** one FALSE description — **IFERROR claimed it catches
+  null** while the code and a passing test (`errorValue.test.ts`) pin the opposite
+  (null is first-class missing and passes through) — plus four imprecise ones fixed:
+  Base Convert (the null rule is PER-DIGIT, not per-base — base-16 works when every
+  digit is 0–9; `BASE_CONVERT_META` had the same overstatement), INDEX ("a blank Row"
+  conflated omitted-or-0 with a WIRED blank, which blanks the result), DATEDIF ("day
+  remainders" mislabeled the month-remainder op), Frame Filter ("blanks/errors fail"
+  is inverted by design for the four valueless ops). **`finePrintContract.test.ts`**
+  pins the previously-untested set: XMATCH's whole match-mode family + first-of-
+  duplicates (largest untested surface found), Get Row (zero tests existed), Base
+  Convert (zero tests existed), TEXTJOIN ignore-empty, DROP-last, Slice's 1-based
+  inclusive end, Merge Columns' blank→"", Drop Blank Rows' error-is-a-value. Sort
+  STABILITY turned out corpus-pinned (sort.json "stable" case, both engines).
+  Residue (TEXTJOIN cross-surface default mismatch — an author smell — and two
+  minor items) recorded in the backlog.
+- **subsystem-invariants + layout-chrome claims-vs-code audit (2026-08-08, four
+  agents, ~230 claims spot-verified):** 21 stale/false claims fixed in
+  subsystem-invariants. The dangerous ones: the Alert section named the WRONG init
+  key (`mode`; it's `op` per VAL-12 — and `mode` is a real different shared key);
+  `applyFcUnit` grew a third `customUnit` arg the doc omitted (a 2-arg caller drops
+  custom units); the LAMBDA capture sockets are `anylist`, not `anydata`; and the
+  "unit BREAKS at any transform" doctrine predates VAL-19 — `tagDim` now carries an
+  operand's display when the result's dimension matches ($5+2=$7), fixed here AND in
+  its echoes (CLAUDE.md, glossary, mental-model, the unitFlowSeed test header).
+  Other corrections: groupSource ribbons (one shared destination, beads DO render),
+  Conduit toolbar is a viewport-fixed portal (not body-relative), the finger census
+  is not-mouse-and-not-pen (CappedZoom alone is strict `touch`; Zoom never reads the
+  census), tablets ARE drag-transparent to touch (pointer-type keyed), group
+  collapse Pass 2b (leaf members get readouts), bordered-grid pass 1 leaves
+  out-of-range blank (no clamp) and the contested test is edge-inclusive, Convert
+  broadcasts via `broadcastUnit`, `broadcast` no longer NaN-collapses, the readInput
+  sweep is complete (zero-floor ratchet), `label` is per-instance, textForm's real
+  field order, camera targets exclude the minimap, `arithmeticCell` replaced
+  addUnits/subUnits (currency guard covers every op). **layout-chrome:** all
+  ~34 `file:line` citations stripped to file+selector (line numbers rot on every
+  edit — now a stated rule), 7 stale values fixed (`.solenoid-cmdk` →
+  `.solenoid-cmdpalette`, the pre-envelope 80/76/124px table values, the legend
+  reflow literals). Sections verified fully clean: standoffs, tidy, autosave,
+  literal maps, drill-in, socket-position guard, load/teardown, live connections,
+  equation solver, cable pruning, conduit faces.
+- **Multi-row FC annotation bug FIXED** (backlog item, found 2026-08-01): inline
+  output rows (Equation, Quadratic Roots, Regression, Triangle Solver…) now resolve
+  the format annotation PER SOCKET exactly like a socketKey'd ValueDisplay — docked
+  FC's direct write first, else the node's own `annotationFor` declaration through
+  the shared resolver — so a docked FC formats those rows, and Triangle Solver's
+  angles show their declared deg on-card. The row formatters moved to
+  `valueDisplayFormat.ts` as pure annotated helpers (`formatRowCell`/`formatRowValue`
+  — numbers, Cx, text case, logical style; errors/null untouched), pinned in
+  `valueDisplayFormat.test.ts`. Author eyeball: dock an FC on a Quadratic Roots /
+  Equation card; check Triangle Solver rows read e.g. "45 deg".
+- **RENDERER PURGE (author order 2026-08-09): exactly two renderers survive** — the
+  DOM default and the experimental HTML-in-Canvas Setting. Deleted outright (git has
+  it all): the pixi spike (`pixiScenes`/`pixiPicker`/`pixiCardLayout`/`RendererSpike`
+  + its store + the Edit hook), the WGSL/`canvas` render mode and its whole layer
+  (`cableScene`, `CableCanvas`, `NodeCanvas`, `RenderOverlay`, `overlayTransform`,
+  `gpuCableRenderer`, `gpuNodeRenderer`, `nodeScene`, `nodeInstances`,
+  `cableTessellate`, `gpuProbe` + `gpuCapabilityStore`), and the hit-index groundwork
+  (`spatialIndex`, `cableHitIndex`, `nodeHitIndex`, `hitTestCables`). The four
+  modules HIC genuinely imports moved OUT of `pixi/` and renamed
+  (`hicCamera`/`hicCableGeom`/`hicGraphSnapshot`/`hicColors` + `hicSocketGlyph`;
+  `cableHitTest` slimmed to `pathPoints.ts` = just the M/L/C/Q flattener).
+  `renderMode` is now `dom | html`; ConnectionComponent lost its canvas-publish
+  branch; main.tsx lost the GPU probe. ~90 groundwork tests went with their modules
+  (suite 4095 → 4005, green). Docs reconciled: CLAUDE.md trap, architecture's
+  renderer section, D6's reversal line, deferrals' two WebGPU items deleted.
+  En route the same audit fixed a real touch bug: the cabling hit-area rule SHRANK
+  coarse targets (-8px → -6px absolute); coarse cabling now grows to -14px.
+- **rules.md + mental-model/glossary claims audit (the closing sweep):** all 74 rules
+  agent-verified against code ahead of the ARR pass — 47 verified clean, 27 drift
+  fixes applied across every family (intro scope table, PROV-1's DEFAULT list, an
+  honest recount of citation coverage: 122 machine-checked quotes, 21 bare suite
+  citations across 20 rules; SOCK-3/4/6/7/10/11/12; PERSIST-5/8; ENGINE-1/2/3;
+  FX-1/2/5/6/9/11/12; VAL-2/3/10/14/20). ONE real code bug found and fixed:
+  **VAL-14's composite hydrate path restored literal maps unconditionally** —
+  a composite's internal graph could plant a value invisible on the card; it now
+  carries the same declaring-class gate as the main load path. mental-model +
+  glossary audited too (104 claims clean; 7 fixed: the FC-settle fixpoint claim,
+  coercion's literal-injection scope, scalar-null renders the em-dash — also
+  fixed at its value-semantics source, the VAL-19→VAL-9/D26 citation,
+  compileFormula is retired not dormant, packs are MOSTLY off-by-default —
+  also fixed in pack-architecture, and the engine is PULL-based, not push/pull). — subpixel purge: border seam + note-ring overhang SOLVED)
+- **The parked seam bug (2026-07-05 "UNSOLVED") is fixed** via the previously-untried
+  lead: the card's whole painted frame — 1px body border, 2px header accent cap, and the
+  header/body divider — now renders as ONE SVG overlay (`CardFrame` in `NodeCard.tsx`;
+  geometry lives entirely in `nodeCard.css` via SVG-2 geometry properties), so all three
+  strokes rasterize in a single pass and cannot round apart under the canvas zoom
+  transform. Pixel-measuring the author's zoomed phone screenshots confirmed the failure
+  was NOT device-pixel snapping: the 1px and 2px borders painted with a ~0.29 CSS-px
+  outer-edge offset and different width rounding (0.86px vs 2.0px) — separately-painted
+  strokes can't be made to coincide, so width/margin tweaks were dead ends by principle.
+- Mechanics: the card + header keep transparent borders at the ORIGINAL widths (layout,
+  offsets, socket math untouched — only the paint moved). `--header-h` is now published
+  unconditionally (shared `useHeaderHeightVar`, fractional via `borderBoxSize`); the frame
+  is TWO sibling svg viewports — an abs-pos svg is a replaced element that keeps its
+  intrinsic 300×150 unless explicitly sized (first deploy shipped exactly that bug), and
+  the second viewport is CSS-sized to `--header-h` so its overflow clip ends the cap +
+  divider at the seam. All hover/light-theme/grouped border-COLOR rules now set the
+  frame's `stroke`. The FC opts out (`frameless` — its single-stroke accent ring has no
+  seam and stays a real border). The isolate endpoints and the palette-editor sample card
+  carry `CardFrame` too (`--frame-outset`, being their own positioning contexts).
+- Follow-up (author-eyeballed halo): the header's TINT painted to its border box and the
+  div-rasterized bg edge poked a subpixel past the SVG strokes → `background-clip:
+  padding-box` + 1px of bottom padding traded for a transparent bottom border tucks the
+  tint fully under cap + divider (same header height, verified in headless Chromium).
+- **Note-family selection-ring overhang (OPEN PROBLEM 2026-07-16) also SOLVED**: the
+  `inset:-2px` `::after` ring duplicated the card's own 2px/radius-8 border geometry on a
+  second box that rounded independently. The ring is now the card's OWN border, recolored
+  on `--selected` (Note / Presentation / Report) — same painted stroke, nothing to
+  misalign. SvgPicker/SessionHistory/Image keep their `::after` rings (different anatomy:
+  2px ring over a 1px border, never showed the bug) — port the recolor treatment if the
+  overhang ever appears there.
+- **Op-selector resting edge stepped down to the 60%-toward-border accent mix** (the
+  existing quiet-emphasis shade, same as `.solenoid-pres__step--active`). Author-walked:
+  85% too close to the focus color, the header-band tint too subtle; 60% is the
+  in-between step already in the system. Focus keeps the pure accent.
+- **Accent-mix ladder formalized** (author-invited): named rungs as App.css vars —
+  `--mix-hairline` 30 / `--mix-edge` 45 / `--mix-emphasis` 60 (toward border),
+  `--mix-ink` 55 (toward text), `--mix-glow` 28 (toward transparent), `--mix-ring` +
+  `--ring-into` (70%/#fff dark, 80%/#000 light, themed) — rule written into DESIGN.md §2
+  ("The Accent-Mix Ladder"); all exact-recipe sites migrated. TWO reclassifications with
+  visible deltas (eyeball): note-family/group/svgpick/history/image glows 22%→28% (the
+  DESIGN-documented glow), and their LIGHT-theme rings 68%→80% (the nodeCard nerf, now
+  uniform — 7 per-family light overrides deleted). Washes (12–22% transparent fills) left
+  loose, documented as such.
+- **Op selectors now render at the TOP of the card body** (author order), above the input
+  rows: one flex-order rule in `nodeCard.css` (`.solenoid-node__body >
+  .solenoid-node__op-select:not([data-op-arg]) { order: -1 }`) hoists every current and
+  future node's operation selector; component JSX keeps its natural order, argument
+  selectors stay in their rows. Requires the op select to be a DIRECT body child — a
+  source scan found ONE wrapped case (ColorBlend's padding div, unwrapped). Socket rows
+  measure offsetTop after layout, so cable endpoints follow the visual order.
+- **Small-things batch (author-picked from the 1.3 design sweep):** (1) Infinity renders
+  as the `∞` glyph (`format.ts`, scalar + list previews; value-semantics row → shipped).
+  (2) The last two asymmetric icons optically centered by the archived 2026-06-20
+  centroid measurements (lock viewBox +0.7y, sparkle +0.7x/−1y) — deferrals item
+  cleared, author eyeball on preview. (3) Cube popup gained the TablePopup overflow
+  trio (Copy CSV / Copy as Markdown / Export CSV…) — serializes the CURRENT drill
+  level, all rows, source order, nested containers as their chip tokens. (4) **SOCK-14**:
+  frame-input labels follow the column-role grammar (`Role + Role`, plain noun when no
+  expectation, no shape parentheticals; λ-table exception) — enforced in
+  `sourceInvariants.test.ts`; "Series (2-D)" → "Series", "Date + O H L C" → "Date + OHLC"
+  (73 rules). (5) **`--chrome-bottom` hoisted** to mirror `--chrome-top`:
+  `chromeBottom.ts` takes the max of the registered status bar + mobile action bar
+  heights (safe-area rides inside the measurement); 13 bottom-anchored offsets across 10
+  files now derive; mobile overrides keep winning the cascade with measured bases —
+  `layout-chrome.md` reconciled.
+- **Frame-input EXAMPLE hints** (author-directed, design delegated): hovering a
+  column-expecting frame input's socket pops a compact mini-table of example data
+  (3–5 rows) beside the socket — the worked example to SOCK-14's terse role label.
+  Mechanics: a node class declares `static frameHints` keyed by input key (the
+  literals-style declare-on-the-class shape; survives minification), `NodeSocket`
+  resolves it per render (hover-intent 300ms, `hover: hover` media only, native type
+  tooltip suppressed on hinted sockets), `frameHintStore` + `FrameHintLayer` (app root,
+  z 120, fixed screen-space, flips right at the viewport edge, hides on leave / press /
+  wheel). Styled on overlay chrome framed in the FRAME socket hue via the ladder rungs;
+  dates format through `formatFrameCell` (app default format). Ten hints authored:
+  Chart, Treemap, Sankey, Waterfall, Waffle, Candlestick, Calendar, Boxplot, Decision
+  Matrix, Sensitivity. Playwright-verified against the live dev server (position, flip,
+  date formatting, hide-on-leave, both themes). Author-walked twice same session: v2 is
+  EXTREMELY mini (8px mono micro-grid) in the FRAME CHIP's language (translucent
+  `--sock-frame` card, TablePopup's tinted column-name recipe), no example tag; TOUCH
+  gets tap-to-show (pointerup on the dot; next tap / 4s dismisses — desktop-stack
+  hover unchanged). **SOCK-15 (74 rules)**: the label↔hint pair is an enforced
+  contract — every role-chain-labeled frame input MUST declare a hint whose column
+  names match the label's roles (OHLC expands), `frameHint.test.ts` sweeps the catalog
+  (existence + name match + 3–5 rectangular typed rows).
+- **Touch-gesture spec formalized** (`docs/touch-gestures.md`, author-ordered after TWO
+  phantom-gesture incidents in one session: layout-chrome's fictional "canvas double-tap
+  add", then the real long-press-add going unfound because it rides the browser's native
+  long-press → `contextmenu` with no greppable name). The doc is the normative gesture
+  inventory per device config + the standing invariants (pinch capture / pan bubble,
+  selection gating, the container-wide dblclick swallow). Two findings recorded in it:
+  NOTHING can double-click/double-tap inside the canvas (the swallow is
+  `stopImmediatePropagation` in capture — `NodeCard`'s square-collapse `onDoubleClick`
+  is a DEAD PATH; the chevron is the only re-expand control, and its reveal now
+  includes `--selected` explicitly so touch doesn't lean on tap-hover emulation —
+  author caught the earlier "no touch re-expand" overclaim), and the marquee/lasso
+  trigger is deliberately left unrecorded pending verification.
+  layout-chrome's add-path note corrected to name long-press; CLAUDE.md points at the
+  inventory. Mobile frame-hint tap fixed en route: the DOT scales with the canvas
+  transform (2px at overview zoom — untappable), so on touch the whole socket ROW
+  triggers the hint (verified on emulated Pixel 7, `html.is-mobile` gating active).
+- **Mobile cable-draw jump FIXED (author-confirmed)** — `seatAreaPointerInCapture`
+  (`areaPresets.ts`): `area.pointer` (the picked ghost cable's free end) updated only from
+  BUBBLE pointerdown, which a socket press stops; desktop hover masked it, touch has no
+  hover. Position bookkeeping now re-seats in CAPTURE like the pinch count (main canvas +
+  drill-in). Emulated-Pixel probes of the other suspect stores (`CappedZoom.pointers`,
+  the pointer census) came back strand-free across pick/drop/pinch/long-press flows.
+- **Node descriptions reach touch** (author-directed A+E): (A) the node context menu —
+  long-press's existing home — is now HEADED by the catalog one-liner (`describeNode`,
+  the header tooltip's text) as a 9px muted width-capped blurb, so mobile and desktop
+  right-click both get it without hover. (E) the Function Reference SEARCHED
+  descriptions but never RENDERED them (no column) — a row with one now tap/click
+  expands a full-width 10px description line beneath it (dense table stays dense;
+  the add-node button stops propagation so it doesn't toggle).
+- **Context menus clamp to the viewport** (`menuClamp.ts`, shared by all four:
+  node/socket/cable/standoff-link): a layout-effect measures the menu and pins it
+  inside 8px side margins and above `--chrome-bottom`, so a long-press near a screen
+  edge (the blurb made the node menu taller) never runs offscreen or under a bar.
+- **Description-length outlier trim** (author-directed distribution pass): scanned all
+  catalog/pack `description:` strings — n=648, mean 100, σ76, max 556 — and rewrote the
+  35 outliers beyond mean+2σ (~250 chars) tighter, keeping the load-bearing semantics
+  and every Excel / Power Query equivalence. Max is now 447 (Expression, irreducibly
+  the formula-surface explainer), p99 389→297.
+- Eyeball list: stroke crispness at zoom 1 (SVG strokes aren't pixel-snapped the way CSS
+  borders were — slight softness on fractional card positions is expected, matching the
+  cables); collapsed cards; light theme; grouped members; iso endpoints; palette sample;
+  selected notes/reports/presentations at fractional sizes; op-selector-on-top across a
+  few families (math, frame verbs, dates, packs); lock + sparkle icon centering; bottom
+  chrome positions (minimap/legend/palette/toasts, desktop AND a phone — the mobile
+  lifts now derive from the measured bar); the frame-input example hints on a real
+  mouse (hover feel, delay, sizing) AND phone (row tap). Hint v3 (author-walked): the
+  TablePopup grid in MINIATURE (corner + row numbers + sunken heads + gridlines,
+  solid panel) — the chip-tint card looked nothing like the frame popup; the ROW tap
+  is the INTENTIONAL touch trigger (the dot's own tap can't work: cable pick captures
+  the pointer), the dot's dead touch handler removed.
+
+---
+
+## Sweep 2026-08-07 — AI layer arc, tablet bars, computed-column tail (2026-07-30a – 2026-08-04a)
+
+### D30 comment cutdown: policy, routing table, ~5,900 comment lines removed (2026-08-04a)
+
+The comment-minimalism pass, author-driven over several rule-building turns. **Policy:**
+`docs/code-comments.md` (D30) — comments are the LAST-RESORT home; deletion is the
+default outcome; homes hierarchy code > tests > specs/decisions/dev-notes > commits >
+comments; test files exempt for now. **Routing:** `docs/README.md` gained the
+"Code → spec routing" table (file → governing doc; routed files carry zero comment
+pointers by design — the table IS the pointer). **The sweep:** 12 Opus agents over all
+651 non-test source files (pixi excluded, deprecated); ~5,900 comment-ish lines
+removed (22.1k → ~15.3k line comments + block trimming), `tsc` + full vitest green
+after every batch. **Promotions** (knowledge that existed ONLY in comments, now in
+docs): D29 (aggregators are arguments + the operation-vs-argument framework), D31
+(Table Input raw-text truth), D32 (string byte order); new subsystem-invariants
+sections (Group collapse retain rule, Equation solver, Renderer gesture GPU layers,
+Semantic zoom gate, HIC raster atlas + clone-position, Bordered-grid fill); the
+Formula.js divergence catalogue + P6 scalar-operator table into parity/value-semantics
+docs; palette HSV sibling derivation into DESIGN.md; the Add-menu ~12-row pane budget
+into node-coverage; tablet-bar deliberate omissions into layout-chrome; 6 latent
+TODOs into the backlog (incl. one OPEN AUTHOR CALL: mode-selector inputs on a wired
+blank diverge from value-semantics' propagate rule). One stale deferral (UNIQUE/SORT
+range functions) verified already-executed and dropped. Agents' uncertain keeps are
+flagged in the workflow outputs; nothing was deleted that lives nowhere else.
+
+**Round 2 — the compression pass + the spec split (same session).** An author audit
+found the sweep under-cut four classes (rationale essays, scope headers on routed
+files, narration one-liners, banners); the policy gained the **blast-radius test**
+(comment vs spec) and **compression rules** (one-sentence keepers; 2-line header
+cap; zero scope prose on routed files; banners only ~400+ lines). A second 12-agent
+pass removed ~8,400 more lines → **9.5k line comments** (22.1k at start, −57%).
+`docs/renderer-performance.md` extracted as the first NEW domain spec (the four
+renderer sections subsystem-invariants briefly held, + domSync, WICG spec-drift,
+REF=1, the engage gate, the quality-drop negative result). Compression promotions
+landed in: subsystem-invariants (Live connections cache+refresh + the FRED WAF UA,
+Socket position bookkeeping, Graph load/teardown perf, drill-in breadcrumb stack +
+activeGraph seam, camera targets across collapsed groups, ribbon bead-phase,
+fillBorderedGrid algorithm + WIDEN=4, equation-solver root-closest-to-zero — fixing
+an inaccuracy in the round-1 wording), node-coverage (multi-op expose/kind
+taxonomy), layout-chrome (tablet-bar omissions, LABEL_MAX_HEIGHT derivation), and
+the backlog (By-Row cap warning, lazy-handle collect(), WebGPU cable follow-ups).
+
+### D27 + the AI prerequisite layer: strict reader, grounding spec, headless loop (2026-08-01f)
+
+Author reversed the #7/#19 NL/AI ruled-OUT (recorded as **D27**: the AI layer is IN,
+marketing stays minimal, the cage framing is the design rule). Then the backlog's
+prerequisite layer was built:
+- **`graphValidate.ts`** — the strict validating reader over the text form / SavedGraph.
+  Contract: every condition the permissive loader silently repairs (unknown type →
+  Placeholder, refused cable → dropped in rebuild, unknown init key → ignored, inline
+  literal on a non-declaring class → dropped, sidecar ref to a missing name → lost)
+  is an ERROR with a repair-grade, line-anchored message + nearest-name suggestion;
+  what's legal-but-suspect (a dependency cycle → #CIRC!) is a WARNING — the
+  null-and-logical seed ships a deliberate cycle, which is what forced the split.
+  Init keys are judged against the CONSTRUCTED INSTANCE, not the static whitelist
+  alone — extractInit also emits literals-spread keys (Slider min/max/step),
+  extensible row keys (`valueKeys`), and composite fields, and every such key comes
+  from the instance. Cable checks reuse `canConnect` (the live guard's own check);
+  empty socket records (a Composite pre-hydrate) skip key checks rather than
+  false-positive. Seeds sweep-tested clean both as JSON and through the text form
+  (`graphValidate.test.ts`).
+- **`npm run validate-graph <file>`** — the gate as a CLI (text form or JSON).
+- **`npm run ai-grounding [-- --out f]`** — the model-facing spec, GENERATED from
+  `buildCatalog(false)` + live instances (the Add-menu/Function-Reference move):
+  grammar, socket lattice + type table, init whitelist, all ~315 classes with
+  sockets, inline-literal keys, and op variants. Deprecated (hidden) leaves excluded.
+- **`run-graph` accepts the text form** and gates both formats on the validator
+  (`--force` overrides) — generate → validate → run works headlessly end to end.
+- `textForm.ts`: `parseNodeLine` exported (the validator's per-line grammar pass
+  reports EVERY malformed line; the reader still throws on the first).
+Open before wiring the palette send site: the edit-granularity call and the
+cold-graph Tidy check (backlog).
+
+### AI demo mode + added-node reveal (2026-08-01j)
+
+Two author asks: a fake-AI demo and animated AI additions.
+- **`aiDemo.ts`** — type `demo` in Settings ▸ AI instead of a key and the palette
+  runs against a canned local model, offline. The fake sits at the TRANSPORT seam
+  (`makeDemoFetch` answers like the Messages API), so the production pipeline —
+  fence extraction, strict validator, canonicalization, diff, Apply — runs
+  unchanged; only the reply is canned. Behavior: a STAGED BUILD (sales frame +
+  computed Revenue → regional totals via Group By → column chart), each stage
+  appended to the RIGHT of whatever the document holds under Demo* names, so
+  repeated prompt → Apply rounds grow the graph; a question-shaped prompt gets a
+  computed summary of the current document instead; after stage 3, prose "done".
+  `aiDemo.test.ts` executes the finished build headlessly to the real numbers
+  (North 3250 / South 2402.5) and proves user content survives untouched.
+- **`aiReveal.ts`** — an applied AI edit now animates ONLY its additions: the
+  palette diffs node names before/after, maps them through `getLastLoadIdMap` to
+  the fresh live ids, and stamps a class on each rete node holder; the keyframes
+  (fade + 6px rise, 90ms stagger, `backwards` fill) run on the holder's CHILD so
+  rete's translate positioning is untouched (and socket measurement reads offset
+  boxes, transform-blind). Kept nodes stay put. Honors prefers-reduced-motion at
+  both layers; the class self-removes after the last node settles.
+- Settings note names the demo key. Real-key applies get the same reveal.
+
+### Validator depth: op vocabularies, composite recursion — and a live seed bug (2026-08-01i)
+
+The blind-hardening pass after the wiring:
+- **`opVocab.ts`** — per-class `op=` vocabulary derived once (NODE_OPS families +
+  every catalog leaf's constructed op + builder `hiddenOps` + the dropdown-only
+  aggregate families via `AGG_OP_META`/`GROUP_BY_OP_META`, compile-complete).
+  Shared by the validator and the grounding spec (Group By and kin now list their
+  op tokens; before, a model had only description prose).
+- **`graphValidate.ts`** — two new checks: an op OUTSIDE a known vocabulary of 2+
+  (an unknown op constructs fine and then miscomputes — the reduce switch just
+  never matches); and RECURSION into `init.internal`, so a generated composite's
+  subgraph is held to the same standard (internal rete ids skip the name check).
+- **Whole-catalog sweep test** — every Add-menu leaf, saved exactly as its factory
+  constructs it, validates clean. This is the license to enforce the new checks.
+- **It immediately caught a shipped bug**: `live-market-data.json` had
+  `AggregateNode op="average"` ("Average since 2015") — not a `ReduceOp` token
+  (`avg` is), so the reduce switch matched nothing and the card showed a wrong
+  value. Seed fixed to `avg`.
+- **`scripts/ai-prompt.ts`** (`npm run ai-prompt -- "<prompt>" [doc.txt] [--out]`) —
+  the palette's EXACT loop from a terminal (same aiService), for the first
+  real-key end-to-end without the UI. Needs ANTHROPIC_API_KEY; unrunnable in the
+  container (no key), guards tested.
+- **Authoring round 2** (blind, spec-only): join + computed column + XLOOKUP +
+  chart doc converged; two stumbles were both spec-answerable (D24 `@Col`
+  row-cell semantics; the output column name is `str:name`, not `addAs`) — noted
+  as prompt-quality intel, no spec change needed.
+- Palette CSS reconciled to real tokens (status hues as DESIGN literals — no
+  app-wide status vars exist; buttons on the `--btn-*` set so both themes hold).
+
+### The AI palette send site goes live: Anthropic, full authoring (2026-08-01h)
+
+Author calls: Anthropic only · full authoring as the first scope · Vercel-preview
+verification. The palette's inert TODO is now the working loop:
+- **`aiGrounding.ts`** — the spec emitter moved from the script into src (the script
+  is a thin CLI shell; output byte-identical). The app builds the system prompt from
+  it at runtime, cached per session so the provider prompt-cache prefix stays stable.
+- **`aiService.ts`** — official `@anthropic-ai/sdk` (browser opt-in; the key is the
+  user's own from Settings ▸ AI), `claude-opus-5`, `max_tokens` 16000, server-side
+  refusal fallback (`fallbacks: "default"`). Protocol: prose answer OR a full
+  replacement text form in a ```solenoid fence; the fence is validator-gated
+  (`graphValidate`), hard issues go back as repair rounds (≤2), the accepted rewrite
+  is canonicalized through readTextForm→writeTextForm so the diff shows semantic
+  changes only. Typed-error mapping to plain messages. Injectable fetch; the test
+  file drives every branch against a fake transport (`aiService.test.ts`).
+- **`textDiff.ts`** — pure LCS line diff for the approval view (`textDiff.test.ts`).
+- **`CommandPalette.tsx`** — Enter in AI mode submits; result panel above the field
+  (neutral overlay surface — the accent stays on the input marking the mode): busy /
+  answer / error / diff-with-Cancel+Apply. Apply parses the validated text and rides
+  `loadGraph` (the file-open path; undo history drops, recorded in the backlog).
+  Escape steps out of a result before it closes the palette.
+- **`Settings.tsx`** — the AI key row names Anthropic; stale "no requests are sent
+  yet" copy corrected.
+- **Tauri CSP** gains `https://api.anthropic.com` in connect-src (untested on a
+  desktop build — backlogged).
+tsc + vitest green (3916); `npm run build` clean for the preview.
+
+### The authoring loop proven; the spec fixed where it failed; D28 (2026-08-01g)
+
+Acted as the model in the backlog-prescribed prototype: authored three docs from
+`ai-grounding` output alone (TVM mortgage — correct −2528.27 after wiring fv=0,
+which the spec's "any four wired" prose did cover; frame filter+group-by; Expression
+`pv*(1+r)^n` broadcast over a list), validating and running each headlessly. Every
+failure was a SPEC gap, and each got a mechanical generator fix:
+- **`- init:` per class** from `extractInit(defaultInstance)` keys (how a model
+  learns TextInput's `value` or FrameInput's `frameText` exist), width/height
+  filtered as geometry noise.
+- **Op vocabularies**: NODE_OPS registry by ctor where declared; catalog-leaf
+  variants otherwise; leaf `hiddenOps` appended (ops with no menu leaf). Residual:
+  an op dropdown living only in a component (GroupBy's agg select) still isn't
+  enumerated — its tokens ride the description prose only.
+- **"Structured init payloads" section**: `frameText` = JSON `[{name, type
+  (number|string|date|logical), values[]}]`; `condConfig` = row-index-keyed
+  `{op, matchCase}` with the full FilterOp list (a `Record<FilterOp, string>` in the
+  generator so tsc enforces completeness); row-literal convention (`str:v0="1, 2"`).
+- **Empty-default inline maps** (List Input, Filter rows) now emit
+  `inline: str: (input-row keys)` instead of silence.
+**D28 recorded**: whole-doc text-form rewrite is the AI edit granularity —
+validator-gated, approval = old→new diff; no edit-op layer (reversal conditions:
+docs outgrowing whole-doc regeneration, or #35's MCP tools shipping).
+
+### Note markdown reads the note's accent, not the app's (2026-07-30i)
+
+`.solenoid-note__rendered.sol-md` inherited the shared doc styles wholesale, so
+the note body's links took `--accent` (the APP accent) and its code / tables /
+rules took the neutral chrome tokens — while every other part of the card
+(border, header, chevron, title, fields separator, grip) is drawn from
+`--note-color`. That's the Nearest-Accent Rule: inside a surface carrying its
+own accent, the surface's wins, or a gold link sits inside a violet note as two
+unrelated hues on one small card.
+
+Note-scoped overrides in `NoteNode.css` now mix the structural marks off
+`--note-color`: headings 40% toward `--text-bright`, links 72%, code/pre/kbd/th
+fills 14% over `--surface-sunken`, hairlines (code + table edges, the h2
+underline, `hr`) 30–45% over `--border`. Prose (p / li / strong) and the
+blockquote are untouched — the quote's 3px left rule stays neutral because a
+colored one is the banned accent stripe.
+
+CSS-only, and reactive for free: the mixes resolve `--note-color`, which
+`NoteComponent` writes inline from `themeAccent ∘ resolveColor` and re-renders
+on both a swatch pick (`pick` → `area.update`) and any palette/theme change (it
+subscribes to `appThemeStore`, which `appTheme` re-notifies from
+`paletteStore.subscribe`). The Import-from-Obsidian card renders the same
+classes over its own `--note-color`, so it picked this up unchanged. Percentages
+are the tuning knob.
+
+### Column source reads "Data"; the seed drops its gratuitous @ (2026-07-30h)
+
+Three author copy/idiom corrections, no mechanism change.
+
+1. The TablePopup per-column source select's first option is **Data**, not
+   "Typed" — it sits directly under the type-cycle glyph (Number/Text/Date/
+   Boolean), so "Typed" read as a second, contradictory type control. The
+   value is still `""`; only the label moved.
+2. `computed-columns.json`'s Margin rule is now `LAMBDA(revenue, revenue *
+   0.25)` — a declared param that binds to the column BY NAME — instead of a
+   zero-param λ reading `@revenue`. Both compute; the param form is what
+   you'd actually write, and it drops the inert `revenue` capture socket the
+   @-name grew (the 2026-07-30 "the λ owns its names" ruling).
+3. Same seed, the CC verb reads `scaled = revenue * @scale`. A bare column
+   name in a row formula ALREADY resolves to this row's cell
+   (`computedColumnCore` binds it `{kind:"col"}` and indexes per row), so
+   `@revenue` was noise. `@scale` stays and is load-bearing: `scale` names no
+   column, and only the @-path reads a wired row-aligned list element per row
+   (a plain variable would be a row-invariant side value).
+
+The seed's notes said "a plain name reads the column of that name and `@name`
+reads *this row's* cell", which is simply wrong — both are this row's cell.
+Rewritten to the real distinction: @ is how you reach a name that ISN'T a
+column. Re-verified through the headless runner, values unchanged (margin
+90/140/135/100, scaled 360/1120/1620/1600).
+
+### Tablet portrait: the bar wraps, and the envelope becomes measured (2026-08-01e)
+
+Two device-test findings from the author, fixed together.
+
+**1. Select mode panned AND lassoed.** `Canvas.tsx`'s effect that disables
+rete's area Drag while select mode is on was gated `if (!IS_MOBILE) return`.
+A tablet is not IS_MOBILE, so it kept its pan handler: one finger did both.
+Now gated on `IS_COARSE` — the real condition is "a touch device where select
+mode is reachable", and the tablet reaches it from the top bar. Desktop stays
+excluded on purpose (shift-lasso blocks the pan per-gesture). The Navigator
+had the identical bug from the identical cause — its accumulate test was
+`IS_MOBILE && touchSelectStore.get()`, so select mode did nothing in the
+outline on the one device with no keyboard to Ctrl-click with. Also IS_COARSE
+now; its plain-click branch stays IS_MOBILE (that one is about double-click,
+which a tablet shares with desktop).
+
+**2. The bar doesn't fit in portrait** → it wraps below 1100px: fill the
+line, push the overflow to the next one. The pinned trio is **theme ·
+Reference · Settings**; "palette" in the original request meant the THEME
+control, not the command palette, which is ordinary wrapping content.
+
+Three wrong attempts before this landed, all worth not repeating:
+- **`order` rules, unscoped.** A landscape tablet fits on one row and needs
+  no help, but got reordered anyway — Reference/Settings shoved into the
+  middle, edit clusters pinned right. Scoped to the narrow case.
+- **A flexible spacer to hold the gap.** `__art` has `min-width:0`, so in a
+  WRAPPING container it collapses to zero and the line just fills; the pinned
+  trio ended up beside the wordmark.
+- **A forced break element** (`flex-basis:100%`, zero height). This is the one
+  the author caught: it ends the line whether or not more would have fit, so
+  the bar broke after the layout pills with usable width left over. That is a
+  two-row split, not a wrap.
+
+What actually works: the trio leaves the flow (`position:absolute`, top-right)
+and the bar reserves its column with `padding-right`. Everything else wraps
+normally against the narrower line — no orders, no break, no spacer. Measured
+in Chromium at 768/800/1024/1280; at 1024 row 1 correctly takes `cable` and
+the palette too, and only `sel/grp/del` wraps.
+
+**The wrap forced the envelope fix, and that's the durable part.** Six
+top-anchored overlays hard-coded an offset derived from the same 66px header
+(nav 80, Navigator 80, banner 80, align 76, HUD 124, report dock 66) — the
+exact hand-keyed duplication `layout-chrome.md` was started for, and which it
+deferred as "a cross-cutting refactor, do it author-present". A wrapped bar
+makes the height CONDITIONAL — two rows in portrait, one in landscape, the
+wrap point depending on the viewport — so the number stopped being writable
+down at all and the deferral stopped being viable. `Header.tsx` now measures
+itself with a ResizeObserver and publishes `--chrome-top` on `:root`; all six
+derive from it, each keeping a static fallback so the first paint is right
+before the observer fires. Mobile's overrides are untouched (they carry
+safe-area insets and win later in the cascade). Pinned in
+`touchActions.test.ts`. The bottom edge is the same shape of problem and is
+now backlogged.
+
+### Tablet: the top bar grows the touch actions (2026-08-01d)
+
+Author request. A tablet fell between the two chromes: `IS_MOBILE` is
+`IS_COARSE && IS_MOBILE_UA` and iPadOS ships a desktop UA deliberately, so
+`MobileControls` never mounts — and a tablet user had NO touch target for
+delete, group, select-mode, undo/redo or the palette. They're in the top bar
+now (`TabletActions.tsx`), gated on `html.is-tablet` from the new derived
+`IS_TABLET = IS_COARSE && !IS_MOBILE` (never sniffed at a call site, so a
+device can't be both or neither — pinned).
+
+**The height does not change, and that was the design constraint.** The bar
+stays 44px inside the 66px header envelope because four overlays clear that
+envelope with hand-keyed offsets (nav pill 80, align pill 76, HUD 124, report
+dock 66) — growing the bar would have pushed its bottom edge under all four
+at once, which is the exact recurring bug `layout-chrome.md` exists for. The
+controls are ordinary 28px pill buttons in the existing row; the touch target
+widens to 44px via a pseudo-element, so the laid-out pill height stays 30px
+like every other pill in the bar.
+
+Per the instruction to reuse the mobile bar exactly, the shared pieces moved
+to `touchActions.tsx` — handlers, the selection poll, and the glyphs — and
+`MobileControls` now consumes them too. Undo/redo/group still dispatch the
+same synthetic keydowns Canvas already handles, so neither bar owns a private
+path into the editor. The drift risk is silent (redraw a glyph in one bar and
+both still compile and render), so `touchActions.test.ts` greps both files:
+every shared symbol imported, no local re-declaration, and no inlined glyph
+except the bottom bar's Add FAB, which the top bar deliberately doesn't carry.
+Mutation-checked — inlining one glyph fails it.
+
+Not carried over: the Add FAB (the bar has its own Add, and the canvas has
+double-tap) and the raised accent treatment, which is a thumb-reach
+accommodation for a phone's bottom edge and up here would just be a loud
+button against the Quiet Accent Rule.
+
+### FC annotations reach complex values — and a Display bug falls out (2026-08-01c)
+
+The popup half had gated correctly since 2026-07-29; the annotation just had
+nothing to act on, because the complex cards pre-formatted to a fixed string
+in their own components. Fixed at the layer that owns formatting: a `Cx` now
+rides RAW into the value box (`DisplayValue`/`OutputRowValue` carry it), and
+`ValueDisplay` resolves it right after the annotation, before the rest of the
+pipeline — so every downstream branch (box, chip, clipboard) keeps working
+unchanged while finally honouring the FC. `formatCxValue` is deleted, not
+kept as a shim.
+
+`assembleCx` (cxValue.ts) now owns the WRITTEN FORM — "a + bi", the elided
+unit coefficient, the dropped zero term — and both `formatCx` (default trim)
+and the new `formatCxWithAnnotation` come through it, so they can't drift
+into two spellings. The three complex-specific rules, each forced by two
+components and one sign structure: style falls back to `auto` outside
+`COMPLEX_FORMAT_STYLES` (an annotation can still carry `percent` from before
+a retype); **precision applies to BOTH components** (the visible defect —
+one formatted, one trimmed); and the unit wraps the WHOLE value, "(3 + 2i) V",
+parenthesised only in the two-term form. The advanced tier is deliberately
+not consulted — a complex has no single sign to parenthesise, no magnitude
+to scale.
+
+**Bug found on the way:** a complex wired into a **Display** rendered
+`[object Object]`. The Display's fallthrough casts its value to
+`number | string | …` and hands it to a number formatter whose backstop is
+`String(v)` — which is `"[object Object]"` for a tagged Cx. Verified against
+the old path before fixing. The same normalization fixes it, because it runs
+before the component's own `render`.
+
+Also queued from this work: `InlineOutputRows` resolves no annotation for ANY
+type, so an FC on a multi-output card (Quadratic Roots, Equation, Regression)
+doesn't reach its rows. Not complex-specific, not a regression — backlog.
+
+### The distributions tranche closes the ops-list program (2026-08-01b)
+
+Author ruling, asked directly: the right-tail forms stay **SEARCH ROWS, not
+leaves** — a row per form would triple the Distributions section and bury it,
+the same failure mode as the data pickers. So all 17 distribution families
+went from kind-only to declaring their ops, which generates a search row per
+form. The Add-menu tree is unchanged (pinned).
+
+**FX-4 decided the `kind`, and it overruled the signal the module doc had
+recorded.** That doc argued cdf/pdf were *operations* ("nobody computes
+whether they want a probability density"), and by the pick-it-by-hand test
+that's right. But an operation-kind op claims a formula name derived from its
+label, and the forms don't have 17 families' worth of distinct names — Excel
+models cdf/pdf as a `cumulative` ARGUMENT on one function, so "CDF"/"PDF"
+collide across every family at once and with the leaves' own names. The full
+FX-4 sweep caught it the moment the ops were declared. They're argument-kind:
+the family takes one formula name, the form rides in as an argument, exactly
+like the Excel signature. Nothing was traded away — `kind` and the menu are
+separate axes, so the search rows are unaffected. The classification doc now
+carries "does it have its own NAME?" as the signal that can overrule the
+others, with this as the worked example.
+
+Search quality got the same treatment as the ruling implies: since search IS
+the discoverability mechanism now, the form labels are declared rather than
+inherited (the SET_OPS precedent). The metas disagreed across families —
+T.DIST said "RT" where CHISQ.DIST said "Right-tail" — so a query for one
+form ranked another's row first. They now read the same everywhere
+("Right-tail (RT)", "Two-tail (2T)"), and "right tail" ranks all four RT rows
+first. Pinned: every form has a row, no family grew a leaf, and the natural
+query ranks the right rows.
+
+### Two audit findings built out: FC family resolution + INTERPOLATE grid (2026-08-01a)
+
+Cashing the two items the harmonization sweep left actionable.
+
+**The `isWildcardType` question, settled with a repro.** It WAS a real
+inconsistency, two lines to reproduce: an FC wired OUT-only into an
+Expression variable adopted `anydata` → `familyOf` none → NO controls,
+while the same FC into a Display (`trueany`) showed the provisional number
+set. Same intent, two answers, decided purely by which family-less rung the
+consumer declared. The fix keeps the two questions apart: `isWildcardType`
+stays the RANKLESS test (`any`/`trueany`) because rank-sensitive checks must
+keep treating `anylist` &c. as a real dimensional constraint; family
+resolution gets `isWildcardRung` (all six family-less rungs), used at the
+FC's four resolution sites plus the docked-to-an-input read that had no
+guard at all. `frame`/`cube`/`lambda`/`chart`/`document` are unaffected —
+no element family, but genuinely resolved types with their own FC treatment.
+Pinned both ways in `fcReconcile.test.ts`.
+
+**INTERPOLATE grid mode is callable in a formula.** D23 lifted the cap that
+parked it; the registration now dispatches the node's two MODES on the first
+argument's RANK — a matrix runs the bilinear fill (`INTERPOLATE(table)`, an
+optional second argument being grid mode's Forecast flag), rank ≤ 1 keeps
+the 3-arg list form. One node, one name (FX-4). The move it forced is the
+interesting part: `fillBorderedGrid` lived in `nodes/stats.ts`, which imports
+rete AND `excelFunctions` — so sharing it would have been both an FX-2
+violation and an import cycle. The kernel moved to `mathUtils.ts` where the
+other shared kernels live, which is what FX-1 has always implied for a
+two-surface kernel. Five pins in `formulaMatrix.test.ts`, all node-equality.
+Parity counts unchanged (INTERPOLATE already counted via list mode) — this
+closed a capability gap, not a counting gap.
+
+### Docs-harmonization sweep: six audits, five reconcile tranches (2026-07-31i)
+
+Author put the session on specs/docs duty ("the internal docs are yours").
+Six parallel audits (glossary, socket-reference, format-model +
+value-semantics, architecture + node-coverage, rules.md, the planning set)
+diffed every internal doc against the code; findings verified by hand and
+reconciled in five pushed tranches. The pattern behind most of it: the
+D23–D26 run updated the code and the *adjacent* doc but missed the other
+copies. Highlights beyond copy-fixes:
+- **rules.md grew FX-13** (D24 resolution law) **and SOCK-13**
+  (settle-before-dock); VAL-9 now carries the whole D26 model; **72 rules**.
+- **A real SSOT-9 violation found and fixed**: Computed Column's side-socket
+  reconcile was the twelfth hand-rolled cable-prune copy, in a node class the
+  components-only sweep couldn't see — now `dropInputCables`, and the scan
+  walks `nodes/` + `packs/` too.
+- **A live wrong hint**: the formula syntax hint still called square brackets
+  non-syntax (pre-D24) and outranked the paren-balance check; now only an
+  UNBALANCED bracket is diagnosed.
+- **The spec's own promise made true**: the custom-pattern field was the one
+  FC control gated inline in the popup rather than in `formatModel.ts` —
+  added `FcControls.customPattern`.
+- **socketConnect's independent sweep gained `anydata`** — the D23 rung was
+  absent from its `EVERY` array (only checked transitively before).
+- Planning set: bundles 17 + 19 archived (v2.0 now 4 live), the 2026-07-29
+  digests swept to history, parity backlog re-derived from the script
+  (548 of 548 in-scope leaves), Data Feed baseline corrected (Stooq is dead),
+  D2/D19-4/D24-Where fixed in decisions.md.
+- Late tranches: SSOT-8 converted to a direct quantifier pin (the extracted
+  `excelCoverage`; the live catalog can't distinguish some/every while gap A
+  is empty); the four stale Stooq mentions swept incl. a user-facing Settings
+  string; subsystem-invariants reconciled — its "Conduit perpendicular-face
+  sign" section described a DELETED Manifold rule (no flip exists: −x in,
+  +x out, rotated), the lattice edge-list gained the missing wildcard rungs +
+  cube-as-supremum, unit authorship/branch facts corrected, a new SSOT-9
+  pruning section added; dead `columnDisplayValue` deleted (base-SI premise,
+  no callers); the `isWildcardType` two-of-six-rungs question is a backlog
+  item needing a repro.
+
+### Docked FC false Frame type on reload: settle before dock (2026-07-31h)
+
+Author repro on the same chain as -f: reload the doc and the docked FC
+"deloads", reading a false Frame type; re-docking by hand restored it.
+Root cause was load ORDER in `persistence.ts` `rebuildGraph`: the FC dock
+loop (`dockSelf` → `adaptTypeFromConnections`, which resolves the HOST
+socket) ran BEFORE `settleWildcardTypes`, so INDEX's projected wildcard
+output still read as its upstream's raw "frame" when the FC adopted —
+and nothing re-adapts after the settle. Manual re-docking repaired it
+because that re-ran the adapt post-settle. Fix: rebuild tail is now
+composite hydrate → settleWildcardTypes → dock loop → syncUnitArrows →
+refreshAnnotation, with an ORDER MATTERS comment naming the bug.
+`fcDockReload.test.ts` pins both halves: the old order yields "frame"
+(the mechanism — if that half ever passes with "numlist", the ordering
+constraint can be relaxed), the fixed order yields "numlist" plus a
+locked usd FC after the first compute.
+
+### Stale shape-cap copy swept off the formula surfaces (2026-07-31g)
+
+Author caught the formula POPUP still teaching the pre-D23 cap ("scalar /
+1-D only, a matrix returns #SHAPE!"). Swept the class: the popup's engine
+note now states the D23/D24 boundary (scalars + lists + matrices +
+complex in; MAP/BYROW/REDUCE apply λs; frames out — verbs are nodes, and
+in a computed column @name is this row, a bare name the whole column);
+help/notes.md "where the edges are" likewise; and the Expression catalog
+description dropped TWO dead claims — the 1-D cap AND "Formula.js …
+can differ from the matching node" (false since the Tier-3 registry
+unification: one shared impl, node-equality-tested). Equation's "numbers
+and 1-D lists" line verified still TRUE (numListIn) and kept.
+
+### FC forwarding LOCKS: an inherited unit is set elsewhere (2026-07-31f)
+
+Author repro: computed column's unit → INDEX pulls a cell → FC inherits
+the unit but the dropdown stayed editable; expected locked. The A2
+forwarding state was DELIBERATELY unlocked ("a user pick still wins —
+re-display"); the ruling flips it: an incoming `UnitCell` now mirrors the
+inherited unit into the dropdown unconditionally (a stale pick must not
+sit under a locked dropdown) and sets `unitLocked` — the FC never
+re-authors over an upstream unit; Convert is the re-display tool. Also
+closed C4 (author eyeballed the computed-cell look: fine). Pins updated
+(unitCoercion fc2/fcAfterConvert now expect locked) + the author's exact
+INDEX repro pinned; the STALE subsystem-invariants claim that the lock
+states were "inert, always false" reconciled to the live three-state
+model. Suite 3838. The author then supplied the load-bearing WHY, recorded
+as **D26**: the unit is first-class like the magnitude — "you wouldn't just
+let its magnitude be overwritten; a unit change is in reality affecting the
+magnitude, comparatively" — so only the algebra (Convert) may change a
+value's unit, ever.
+
+### D25: no per-cell formulas, ever (2026-07-31e)
+
+Author ruling, verbatim intent: grid-cell formula typing is "too Excel" —
+"100% unbreakably consistent columns are a must." The backlog idea dies
+(deleted, not deferred); recorded as D25 (the D10 class: eliminated stays
+eliminated) and stamped into the design doc. A column's definition lives
+on the COLUMN — one Formula or λ for all rows — on every surface, forever.
+
+### Computed columns: copy/CSV/sort read the derived values (2026-07-31d)
+
+The popup's working grid holds "" for computed columns (no raw text), so
+Copy / Copy-as-Markdown / Export CSV emitted BLANKS for them and the
+visual sort had no keys. `rawAt` now substitutes the derived values (raw
+string form: TRUE/FALSE, error codes) into the shown window and the sort
+keys; `grid` stays the edit/save truth (computed cells are read-only, and
+Save drops their cells regardless).
+
+### Live commit: the formula applies on blur (2026-07-31c)
+
+Author: "the typed formula column must update on blur." The popup's source
+model was popup-local until Save; now it WRITES THROUGH live via a new
+`onCommitSource` on the popup contract (Frame Input implements: set
+frameText → reconcileTypesAfterEdit → targeted processGraph → hand back
+the fresh derived cells + types). Triggers: a Formula input's blur/Enter
+(draft-local per keystroke, Escape reverts to the last committed text —
+the app-wide commit rule, with an escape flag so the revert's blur can't
+commit the stale closure draft); a COMPLETE source pick (Data or a λ —
+Formula waits for its expr); and a computed column's unit pick (its tag
+rides the derived value, so it can't wait for Save). The popup overrides
+its opening snapshot with the returned cells/types (`liveComputed`), so
+the result shows in place; Save stays the closing no-op re-commit.
+
+### Format + unit selectors work on computed columns (2026-07-31b)
+
+Author ask. Three seams closed: (1) Frame Input's compute path now carries
+the source column's `unit` onto the rebuilt computed column (number-typed,
+deriveFrame's exact rule) — it used to DROP the tag, so the popup's unit
+dropdown saved a choice that never reached the value; (2) FrameChip passes
+the DERIVED type for computed columns, so the format row shows the right
+selector family for what the cells actually are; (3) computed cells render
+their raw derived VALUES through `controlledCell` — the same per-column
+format+unit path literal cells use — instead of pre-formatted strings that
+bypassed the controls (`computedCells` is now `Cell[][]`). Unit-ride pin in
+computedColumn.test.ts (60).
+
+### Bracket references replace col()/at() (2026-07-31a)
+
+The author: "why not the [] bracket syntax." Right — brackets are what an
+Excel-tables user types; col()/at() were the cheap path. Both functions are
+DELETED (registrations, meta, signatures); the grammar gained structured
+references: `[Unit Price]` = the whole column, `@[Unit Price]` = this row,
+and Excel's own `[@Name]` / `[@[Name]]` spellings parse too. New
+colref/rowref tokens + a `wholecol` AST node (evalAst → readWholeColumn;
+tex/numeric/equation/unitDim walks; tsc exhaustiveness found them);
+collectRowRefs feeds the topo from both; atColNames filters λ captures to
+identifier @names (a bracketed name can never be a variable). Highlighting
+colors a whole bracket ref as one fx-var token. Dynamic col(expr) names
+lost their spelling — accepted (Get Column territory). D24 amended in
+place; seed/catalog/docs re-spelled.
+
+### D24: Excel table semantics — bare = whole column, @ = this row (2026-07-30h)
+
+The author's late-day concern — "filter column A by this row's B needs
+whole references mixed with @" — exposed that the whole column was
+UNSPELLABLE (bare names read this-row) and inconsistent (bare SIDE values
+already meant whole), with a silent trap (`revenue / SUM(revenue)` = 1.0
+per row). Ruling: **the Excel version** — recorded as D24, built same
+turn:
+- Bare column name (inline exprs) = the WHOLE column as a list; `@name` =
+  this row. `@revenue / SUM(revenue)` and `SUMIFS(amt, cat, @cat)` work
+  verbatim. A bare column in scalar position is a LOUD per-row #SHAPE!
+  whose message points at @ — the old trap's silent 1.0 is dead.
+- λ PARAMS stay row-bound (the λ's explicit per-row interface); picker
+  bindings follow the same split (expr var → whole target, λ param → row).
+- Unspellable names use Excel's BRACKET syntax (amended same day — the
+  first cut shipped `col()`/`at()` functions, the author asked "why not the
+  [] bracket syntax", both functions deleted): `[Unit Price]` = the whole
+  column, `@[Unit Price]` = this row, and Excel's own `[@Name]` /
+  `[@[Name]]` spellings parse too. New tokenizer colref/rowref tokens + a
+  `wholecol` AST node (all four walks; tsc exhaustiveness); both feed the
+  topo (collectRowRefs); neither grows λ captures (atColNames filters to
+  identifier @names). Dynamic col(expr) names lost their spelling —
+  accepted, that's Get Column territory.
+- Inside a λ body a bare free name is still a capture (the definition owns
+  its names); whole-column reads there are `[name]`.
+- Core: bindings split by spec kind (`wholecol` passes the same values
+  array every row); the row context grew `whole()`; the per-row error
+  pre-check now applies to ROW-bound cells only (errors inside a whole
+  column flow into aggregates).
+Rewrote: the seed (share column = the D24 headline; @-exprs), catalog
+copy, placeholders, signatures, 23 pins + 2 new (59 in
+computedColumn.test.ts). decisions.md D24 has the full record.
+
+### Backlog claim stale: topology recompute IS targeted (2026-07-30g)
+
+The queued "extend targeted recompute to topology changes (D8 follow-
+through)" was already BUILT — audit finding 40, landed `35fe709` (the 1.2
+cycle): the Canvas `connectioncreated/removed` settle runs
+`processGraph(cable.target, …, { topology: true })` — the target's
+downstream closure only, plus the loop-cache refresh (the one global a
+cable change touches); bulk ops settle once via `withGraphRebuild`;
+`processTargeted.test.ts` guards the closure≡reset equivalence. Backlog
+line deleted; D8's "cost accepted: full recompute on connect/disconnect"
+clause corrected (it recorded the pre-landing state).
+
+### Ops lists: the AggOp table + the Percentile trio (2026-07-30f, amended same day)
+
+The searchability gap's easy half — with one AUTHOR RULING mid-flight:
+**aggregators are ARGS, not ops, and are NOT searchable.** The first cut
+gave Pivot/CubeRollup/GroupByFrame searchable op rows ("Group By: MEDIAN");
+the author struck that, and it took the 1-D Group Lists' pre-existing rows
+with it — all four aggregator hosts are now kind-only `argument`
+declarations, and `op-exposure.ts` skips argument-kind families outright
+(their variants are parameters, never exposure gaps; this also
+retires its GroupByFrame→GROUP_BY_OP_META mis-join for good).
+
+What stands: `AGG_OP_META` (nodes/frame.ts) is the ONE AggOp table — the
+Group By / Cube Rollup card dropdowns and the Pivot editor's per-value
+selector derive from it (`pivotOnly` keeps PERCENTOF to the pivot editor,
+since only the pivot assembly computes the relative total set), replacing
+two drifted hand lists. And Percentile/Quartile/Percentrank declare
+inc/exc with PERCENTILE.INC-style search names — those ARE Excel functions
+(operation-kind; the names already dispatch via Formula.js, FX-4 sweep
+green). Remaining in the backlog item: the 17 distributions
+(leaf-vs-search question).
+
+### Small-queue pass: release-notes reconcile + INDEX-cube slices (2026-07-30e)
+
+Two small items while the author is away. (1) `release-notes-features.md`
+reconciled against the 188 commits since v1.2.0 — three slide headliners
+now (computed columns; matrix formulas & LAMBDA + the full parity closure;
+Query) plus a body list (element-wise families, frame-verb redirects,
+popup column sort, op-exposure search, corpus-verified engine parity,
+touch fixes, socket/copy polish). (2) INDEX over a CUBE types its
+whole-axis slices: `cubeProjection` — any BLANK unwired axis ⇒ `cube`
+(data() keeps nested cells whole; one blank axis guarantees a cube
+whatever the other says), Row AND Column both given (or wired) ⇒ the
+placeholder (a single cell is genuinely unknowable). Backlog line
+deleted; pins in trueAnyAdopt + passthroughSystem (the old "cube is
+unknowable" pin updated — it now depends on the axis literals).
+
+### Identity-stable computed frames — mitigation (a) built (2026-07-30d)
+
+The scale assessment's cheap rung, landed: an unchanged pass now returns
+the SAME objects end to end, so `_sourceCache` (identity-keyed) keeps its
+Polars handle across full recomputes instead of re-uploading computed
+frames every pass. Three memos, each keyed on what actually shapes the
+value: **LambdaNode** (expr + params + captured values by Object.is +
+descriptions) returns the same `LambdaValue`; **Frame Input's computed
+path** (`_computedFrom`: frameText + per-λ input identities); **the CC
+node** (`_lastKey`: input frame identity + λ identity + expr/addAs/name/
+after + bindings JSON + side values by Object.is). The chain composes: a
+stable λ makes the Frame Input stable makes downstream identity checks
+hold; any upstream that mints fresh objects just misses harmlessly (a verb
+ref's collect is per-pass — the CC-after-verbs case still re-collects,
+that's rung (b)'s territory). Errors are never memoized. 2 pins (57).
+
+### Computed-column scale: measured envelope + a quadratic killed (2026-07-30c)
+
+Benchmarked `computeColumnCells` (tsx, this container — relative numbers are
+what matter): the interpreted row loop runs **~0.4–0.9 M rows/s per
+computed column** (simple arithmetic ~0.9M, a ROUND() call ~0.4M; λ vs
+inline expr is a wash; column count is irrelevant — the row context is
+Map-indexed). Envelope: 10k rows ≈ 15–25ms/column, 100k ≈ 100–225ms, 1M ≈
+1.1–2.4s. Columns stack linearly.
+
+Killed while measuring: **the @-list read was QUADRATIC** — `at()` ran its
+matrix-scan + length validation (O(list)) on every row, so a 100k-row
+`@scale` read cost 3.9s (and 1M extrapolated to ~6.5 min). The verdict is
+now memoized per name (row-invariant by contract): 213ms at 100k, 2.4s at
+1M — linear.
+
+The REAL scale costs are architectural, not the loop (assessment, nothing
+built): (1) the CC node is a **materialization barrier** on desktop — verbs
+chain lazily in Polars, but coerceInputs collects the ref for every other
+node, so Filter → CC → Sort = full download + JS loop + re-upload; (2) the
+re-upload repeats every pass because `_sourceCache` keys by FrameValue
+IDENTITY and the CC node (and Frame Input's computed path, deliberately)
+emit a fresh object per data(). Mitigation ladder if heavy-data computed
+columns become real: (a) memoize CC output by input-identity + config so
+the handle cache holds across passes; (b) transpile the expr subset to a
+Polars `with_columns` verb (JS oracle stays the λ/fallback path — the
+frameVerbs seam); (c) compile the interpreted evaluator (web-only gain once
+b exists).
+
+### The computed-columns seed + the sideVars load fix (2026-07-30b)
+
+`seedGraphs/computed-columns.json` ("Computed Columns & @", order 18, author
+request): one canvas touring the whole surface — a Frame Input whose
+`revenue` is a Formula column (`price * qty`) and `margin` a λ column bound
+to a wired ZERO-param λ reading `@revenue` (intra-table topo on display),
+then the CC verb node adding `scaled = @revenue * @scale` with the scale
+LIST wired to the @-grown side port. Verified by the headless runner, not
+just the seed sweep: margin 90/140/135/100, scaled 360/1120/1620/1600.
+
+Prerequisite fix the seed exposed: **CC side sockets now persist**
+(`sideVars` joined INIT_FIELD_ORDER; the constructor regrows the sockets,
+the Expression pattern). Before, a saved cable into a side socket DROPPED on
+reload — connections restore before the first data() would have re-derived
+the socket. The reconcile still owns growth/pruning after load. Pinned in
+computedColumn.test.ts (55).
+
+### @ over side values + binding pickers (2026-07-30a)
+
+Two Computed Column moves, author-directed.
+
+**@ reads row-aligned side LISTS, not just columns.** The author's shape:
+`λ(qty, price) → qty * price * @scale` where `scale` is a 5-row list, not a
+column. Resolution chain in the core's row context (shared by `@` and
+`col()`): the column → the `row`/`rows` builtins → the DEFINITION's own
+environment → the surface's SIDE value — a list must line up with the
+frame's rows (mismatch → per-row #SHAPE! naming both counts; a matrix
+refuses), a scalar reads the same every row. **Where the port grows
+(author-corrected same day): the definition owns its names.** A λ's `@name`
+grows a CAPTURE socket on the Lambda card (`atColNames` joins `_rebuild`'s
+free-variable set; the first cut routed λ @-misses to the CC node's side
+ports and the author overruled it — "@ swallowing them left no place to wire
+the value"). Columns/builtins win over the capture at row-eval, so a table
+λ's `@price` still computes with zero wiring and its unwired capture is
+inert; `@row`/`@rows` capture nothing. The eval seam: `readRowCell` takes an
+env-fallback the `atcol` case supplies, and a captured list is row-indexed
+(length-checked) like any @-read. The CC node's side ports serve its OWN
+inline expr's @-misses (rowRefs, filtered by a wired λ's `captured`); COL()
+reaches columns + side ports but never captures (its impl has no env — @ is
+the capture-reaching form). Side sockets widened `anyIn` → `anyDataIn`
+(rank ≤ 2, the Expression variable socket) so lists can actually wire in —
+which also makes the core's long-stated "a whole list for SUM(...)"
+side-value contract reachable. Behavior flip pinned: `col("nope")` on the CC
+node now grows a side port reading its default (like any unknown name)
+instead of erroring; the per-row `#REF! No column` case stays on the
+port-less Frame Input sources.
+
+**Binding pickers.** Explicit variable/param → column bindings
+(`bindings: Record<string,string>`, persisted via a bespoke extras block —
+live-vars-only + sorted keys, the varDescriptions pattern). The core's
+`alias` opt: a bound name is ALWAYS a column read (stale target → #REF!
+naming both ends, never a silent fallback); a bound would-be side var loses
+its socket. Card UI: one `field-row` per variable (auto | column names),
+shown once a frame is wired, fed by the transient `sourceColumns`/`defVars`
+stash (Pivot's pattern). 9 pins (54 total in computedColumn.test.ts).
+
+
+## Sweep 2026-07-31 — the computed-column build arc (2026-07-29j–p + 29d)
+
+### FC complex verification: popup done, render half unwired (2026-07-29d)
+
+The backlog's "verify FC complex styles against the format-model truth table"
+item: verified. The POPUP half is correctly implemented (`controlsFor` +
+`COMPLEX_FORMAT_STYLES` gate to auto/decimal/scientific; precision + unit rows
+show; advanced tier correctly absent). The RENDER half is NOT wired at all —
+the complex cards pre-format to strings inside `data()` (`formatCxValue`,
+fixed 4-digit trim), so a docked FC's annotation never reaches a complex
+value on any surface. format-model.md's vague "may lag" warning replaced with
+this precise status; the build (annotation-aware formatCx + routing the value
+boxes/chips/Display) is a visual change and sits in the backlog for an
+author-eyeball loop.
+
+### Surface slice 2 SHIPS: the Formula column source + the chip's ƒ (2026-07-29p)
+
+The pure-text rung of the column-source ladder, per the ratified design:
+- **`FrameSourceColumn.expr`** — an inline row-wise formula on the column
+  itself, riding `frameText` (serialize/parse; blank exprs dropped). A
+  `lambda` binding wins when both are set (the wired, reusable definition,
+  mirroring the CC node's λ-over-expr precedence); removing the λ socket
+  falls the column back to its expr.
+- **Frame Input's topo loop generalizes** to computed = λ OR expr: deps for
+  an expr column are its variables + `rowRefNames` (so `@`-only formulas
+  order correctly); a non-parsing expr fills the column with #VALUE!; a
+  variable naming no column is a per-row `#REF! No column "x"` (Formula
+  columns have no side inputs — that's the CC node's/λ-captures' job).
+  Compiled evaluators cache per expr text across data() calls.
+- **TablePopup (C2)**: the source select now reads Typed | Formula | λ… and
+  renders for EVERY literal-source frame editor (it no longer waits for a λ
+  socket to exist); picking Formula opens an =-prefixed formula row under the
+  header — one definition per column, popup-local until Save. Type-cycle
+  hides on computed columns either way.
+- **The chip's ƒ** (C2's glyph): a Frame Input chip with computed columns
+  reads `[3×4 Frame ƒ]`, title counting them — the at-a-glance mark that part
+  of the table is defined, not typed.
+7 pins (45 total in computedColumn.test.ts). C4 (the author eyeball of the
+computed-cell look + formula row) is the surface's only open item; the tail
+(binding pickers, per-column format on the CC node) stays in the backlog.
+
+### The @ operator: this-row reads, Excel's [@Price] as @price (2026-07-29o)
+
+Author proposal, built: `@price` is Excel's table this-row reference, and it
+makes the ZERO-PARAM λ the natural row formula — `λ() → @price * @qty`
+computes a column with no param↔column binding ceremony at all. Mechanics:
+- **AST**: a first-class `atcol` node (identifier names only; extractVariables
+  skips it, so `@price` never grows a socket or a λ capture). Tokenizer takes
+  `@`; the parser reads `@name` in primary position; KaTeX renders `@name`
+  literally; the equation/unit/step-trace walks each carry the case (tsc's
+  exhaustiveness found all four).
+- **The dynamic row context** (computedColumnCore): the core pushes a
+  current-row accessor around EVERY evaluation — the inline expr and a wired
+  λ's body alike — and `readRowCell` resolves against the stack top. This
+  replaced the env-injected col accessor, which also FIXES col() inside λ
+  bodies (it only worked in inline exprs before). Outside any row context, @
+  and COL answer a targeted #REF! ("read the current row…"), never a typo's
+  #NAME?.
+- **COL is now a REGISTERED native** (`EXCEL_IMPL_META`, returns any,
+  arity 1) — the spelled-out @ for names an identifier can't
+  (`col("Unit Price")`, `col(2024)`), dispatching case-insensitively,
+  advertised + hinted like any function.
+- **Topo integration**: `rowRefNames(expr)` collects `@name` + col(<literal>)
+  reads, and Frame Input's dependency sort unions them with the λ's params —
+  a zero-param λ reading `@revenue` still orders after the revenue column
+  (and cycles through @ still refuse).
+- Highlighting: `@name` colors as the variable it behaves as (fx-var).
+6 pins (38 total in computedColumn.test.ts).
+
+### Surface slice 1 SHIPS: Frame Input λ columns (2026-07-29n)
+
+The ratified design's first slice, end to end:
+- **Model**: `FrameSourceColumn.lambda?` (the λ input key defining the
+  column) rides `frameText` (serializer + parser); a computed column's raw
+  cells are empty — the raw-text guarantee is now a per-column fact.
+- **Node**: `FrameInputNode.lambdaKeys` (persisted via INIT_FIELD_ORDER) +
+  addable `lambdaIn` sockets (`addValueInput`/`removeValueInput`, the
+  ExtensibleInputs contract — removing a λ row unbinds its columns back to
+  Typed). data() computes λ columns via the SHARED core in TOPO order (a
+  computed column can reference another; declaration order is irrelevant), a
+  cycle refuses per column with #REF! naming the members, an unwired λ leaves
+  its column blank, an unbound λ param errors per row pointing at captures.
+  Computed frames skip the identity cache (λ results change without a text
+  edit). inferColumn supplies TYPE only — its constructed column would mangle
+  per-row SolErrors (caught by the pins).
+- **UI**: the card grows the λ input group (ExtensibleInputs, new `minRows=0`
+  — an optional group's last row can go; `lambda` joined the wire-only row
+  types); the TablePopup's editable header gains the per-column SOURCE select
+  (Typed | λ…, rendered only when the host has λ inputs), computed cells
+  render read-only in a quiet frame-violet tint from the derived frame
+  (`computedCells` threaded chip→popup), the type-cycle hides on computed
+  columns (type is inferred), Save writes `lambda` back through
+  buildSourceColumns. C4 (the computed-cell look) awaits the author eyeball.
+5 slice pins (32 total in computedColumn.test.ts). Slice 2 next: the Formula
+source (popup editing) + the card-chip glyph.
+
+### The computed-column SURFACE: design bundle + shared core (2026-07-29m)
+
+The author raised the altitude: computed columns should live PER-COLUMN in
+Frame Input too ("maybe frame input grows addable lambda sockets… columns
+pick from inputs"), with the full ladder — trivial math as text, reusable
+math as a λ, arbitrary logic as a node subgraph injected back — because
+"a very large percentage of Excel work is table computed columns, we can't
+half-ass this UIUX surface." Two deliverables:
+- **`v2.0/19-computed-column-surface.md`** — the design: every editable-table
+  column has a SOURCE (Typed | Formula | λ | Wired list); Frame Input grows
+  extensible λ/list input groups; intra-table references evaluate in topo
+  order with per-column #REF! on cycles (in slice 1, not later); the wired-
+  list source is the node-built injection path (upstream data only — feeding
+  a table's own output back is a graph cycle and refuses as one); the CC verb
+  node stays as the mid-pipeline form. Crux decisions C1–C4 wait on the
+  author (λ sockets individually-addable vs a lambda-list type; where Formula
+  text is edited; Frame from Lists' fate; computed-cell rendering).
+- **`computedColumnCore.ts`** — the row-eval rules extracted to ONE module
+  (binding precedence, row/rows, col(), the per-row contract) so the CC node
+  and the coming Frame Input sources cannot disagree; the node now only
+  supplies its ports. 27 pins (kitchen-sink round added: IF/UPPER/TEXT
+  chains, a λ erroring one row, col()+column+row+side in one formula).
+
+### Computed Column v3 — col() for unspellable names, rows, placement (2026-07-29l)
+
+The author's next two catches, closed:
+- **Columns a variable can't spell** — a "2024" year column, "Unit Price".
+  The `col` accessor: `col("Unit Price")`, `col(2024)` (a numeric literal
+  coerces to the NAME, never a positional index — deliberately unlike
+  requireColumn's `^\d+$` fallback). Mechanically an env LAMBDA injected per
+  row and resolved by the evaluator's higher-order call path (the 2026-07-28
+  `f(x)` machinery), so `col` never parses as a variable and never grows a
+  side socket; one closure serves every row via a cursor. An absent name is a
+  per-row #REF! cell. This also un-blocks the picker item's worst case —
+  pickers are now purely a comfort, not the only path.
+- **`rows`** — total row count builtin (`row / rows` = position fraction);
+  shadowed by a real column like `row` is.
+- **Placement** — the `After` input (socket + literal): blank appends at the
+  end; a column name inserts the NEW column right after it; a REPLACED column
+  keeps its position regardless (replacement detected by column count, not by
+  re-parsing the unit header); a missing anchor is #REF!. `after` joins the
+  reserved input names.
+Six more pins (24 total in computedColumn.test.ts); catalog copy teaches
+row/rows/col().
+
+### Computed Column v2 — the author's "it's missing a ton" round (2026-07-29k)
+
+Four holes the v1 shipped with, all closed:
+- **Side inputs** (the Expression idiom restored): a variable naming no column
+  becomes an input SOCKET (`anyIn`), row-invariant, with an inline literal
+  default (0). Grows/shrinks from data() via the reconcile-in-a-microtask
+  pattern (Expression's result-rank swap); a column appearing with the same
+  name takes the variable over and drops the socket's cables. A wired LIST
+  side input is legal — `price / SUM(prices)` is percent-of-total in ONE node,
+  totals wired the graph-native way.
+- **`row`** — the 1-based row number as a builtin variable; a column named
+  `row` shadows it (user data outranks convenience). Reserved input names
+  (frame/name/fn) refuse with #REF!.
+- **Output type control** (`addAs`: Auto/Number/Text/Date/Boolean, persisted —
+  the field name reuses Add Column's): Auto infers; Date is the case inference
+  cannot reach (a serial is indistinguishable from a number). `start + 7` can
+  finally BE a date column.
+- **λ side params**: a λ param naming no column becomes a side input too, so a
+  generic λ(v, rate) applies to any frame — the reusability story v1 promised
+  and didn't deliver.
+Two sweeps corrected the build again (PERSIST-9: sideVars classified
+transient-derived; VAL-12: the addAs OpSelect marked `arg`). 18 pins. Still
+open in the UX tail: pickers (non-identifier columns stay unreachable by
+typed name — the one v1 hole that needs UI, not mechanics).
+
+### Computed Column lands — the row-wise formula verb (2026-07-29j)
+
+The design-first backlog item built, to the author's three directions (frames
+stay pure data; the computation is a graph citizen; reuse the existing
+surfaces). `ComputedColumnNode` (nodes/frame.ts, beside Add Column): frame +
+name + optional λ in, frame out. The math comes from the inline `expr`
+(variables ARE column names — resolved by exact name, #REF! naming a miss) or
+a wired LambdaValue (params bind to columns the same way; the λ wins over the
+expr — it's the deliberate, reusable definition, and its capture sockets carry
+side parameters). Per-row contract: an error cell in a bound column propagates
+to that row (first in binding order); a NULL FLOWS INTO the formula (a formula
+is not an element-wise op — ISBLANK/IF can see it); NaN → #DOMAIN!, a
+list-shaped result → #SHAPE! (one value per row); output type inferred
+(inferColumn), `Name (unit)` headers tag units via addColumn, name collisions
+replace in place. Eager like Add Column/XLOOKUP/Pivot (not in
+LAZY_FRAME_NODES — a JS formula has no Polars op). Editing routes through the
+shared FormulaPopup (new ComputedColumnNode arm); the card is
+FormulaField + FrameDisplay. Two sweeps caught the first draft (worked as
+designed): VAL-10 rejected a per-cell isUnitCell strip (frame cells are plain
+— D20, units live on the column; deleted), uiCopy rejected a
+"wire a λ" instruction in the catalog description (reworded). 14 pins in
+nodes/computedColumn.test.ts. The frame-verb refusal message now ends
+"…or a Computed Column for row math", and COMPUTEDCOLUMN itself joined
+FRAME_SURFACE_NAMES (the derivation ratchet demanded it). UX tail
+(binding pickers, output-column format controls, grid typing) → backlog.
 
 ---
 
@@ -67,7 +1285,7 @@ Third sub-pass:
 - **Live standoff settle rAF-throttled** (`Canvas.tsx`, §3). The O(network²)
   solver ran on every `nodetranslated` (per pointermove); now coalesced to one
   solve/frame on the latest positions (converges identically), with the exact
-  final settle still on drop and the pending rAF cancelled on drop.
+  final settle still on drop and the pending rAF canceled on drop.
 - **Cable SVG bounded to its bbox** (`ConnectionComponent.tsx`, §2 partial). Each
   cable rendered into a 9999×9999 (~100MP) `<svg>` anchored at the holder origin;
   now `boundedSvgProps` positions the `<svg>` at the cable's content bbox with a
@@ -218,7 +1436,7 @@ nodes + 123 cables stays mounted and in the display list the rasterizer walks.
 `cullStore` fixes this by actually not rendering content far from the view:
 - Canvas's `recomputeCull` (throttled to a rAF, run on transform, `rendered`,
   and node add/remove/translate) computes the node ids within the viewport + ~1
-  screen of margin, plus the immediate **neighbours** of those nodes so every
+  screen of margin, plus the immediate **neighbors** of those nodes so every
   on-screen cable can still measure both socket endpoints. That set goes into
   `cullStore`.
 - Each node is wrapped (`culledNodeComponent`, memoized per real component) and
@@ -308,7 +1526,7 @@ headlines:
   Groups uniformly). Removed the dead `.rete-node { cursor: grab }` rule and gave
   the grab cursor to the real root classes (`.solenoid-node` was `cursor: default`,
   which had overridden the dead wrapper rule anyway).
-- **Table node colour.** Added a `table` node kind (`NODE_KIND_ACCENTS.table =
+- **Table node color.** Added a `table` node kind (`NODE_KIND_ACCENTS.table =
   #e96b3c`, matching the `--sock-table` vermilion) and routed the matrix/table-
   lambda nodes to it in `kind.ts` — they were falling through to `math` (blue)
   while their sockets were orange. Table Input's Add-menu accent was green; fixed.
@@ -334,7 +1552,7 @@ live in CLAUDE.md (the invariants); the headlines:
 - **Tidy port preset.** The ELK `classic` preset staircases chains upward
   (output ports at top, input at bottom). Replaced with a symmetric preset +
   a Center/Top `tidyAlign` setting; the post-layout anchor now preserves the
-  vertical CENTRE, not the top. (See CLAUDE.md "Auto-arrange / Tidy".)
+  vertical CENTER, not the top. (See CLAUDE.md "Auto-arrange / Tidy".)
 - **Group autofit no longer changes membership** — only explicit drag in/out,
   select→group, or a manual box resize do (CLAUDE.md group section).
 - **IS-check → "Test"**, ISLOGICAL displayed as ISBOOLEAN (op value unchanged).
@@ -342,7 +1560,7 @@ live in CLAUDE.md (the invariants); the headlines:
   (it's just "open navigator + focus search"); "Export" → "Save As" with a new
   Save button (flushes the always-on autosave) in the toolbar + File menu;
   minimap view-rect drawn at 80% so Fit-all still shows it; mobile light-mode
-  document-title colour + dropdown position fixes.
+  document-title color + dropdown position fixes.
 
 ## Mobile chrome reorg — bottom action bar (2026-06-16)
 
@@ -350,7 +1568,7 @@ The scattered floating touch controls (bottom-left undo/redo pill + a bottom-
 right vertical action column) were consolidated into one **full-width bottom
 action bar** (`MobileControls` → `.solenoid-mobile-bar`): **6 buttons + the
 raised Add FAB** — `Search · Undo · Redo · ➕ · Select · Delete · Fit`. The
-centre Add is a raised accent FAB (`translateY(-14px)`, visual-only so the bar
+center Add is a raised accent FAB (`translateY(-14px)`, visual-only so the bar
 height is unaffected). **Delete is disabled (dimmed) when nothing's selected**
 rather than appearing/disappearing, so the bar never reflows. Buttons are 40px,
 FAB 54px, `justify-content: space-between` so 7 fit a portrait phone. Search →
@@ -530,7 +1748,7 @@ Editing reuses the one grid popup rather than a second editor. `TablePopupState`
 A connection node references outside data and fetches a Frame on refresh; the project file stores only the reference (a URL now; a folder-relative filename next), never the data. Phase 1 is the **Web Source** node plus the shared layer; the local-folder CSV node (needs Tauri fs/dialog) is phase 2.
 
 - **Shared layer (`connectionStore.ts`):** mirrors the volatile-recalc pattern (`getRecalcGen`/`requestRecalc`) but for async, cached fetches. A global generation + a per-node refresh token + the reference compose a cache key (`connectionStore.key(id, ref)`). A connection's `data()` returns its cache when the key is unchanged, so an ordinary `processGraph()` (editing some unrelated node) does NOT re-hit the network. `refreshConnection(id)` bumps that node's token; `refreshAllConnections()` bumps the global gen. Status (idle/loading/ok/error + rows×cols + fetchedAt) lives in the store; node components subscribe via `useSyncExternalStore`.
-- **First async `data()` in the codebase.** Rete's DataflowEngine awaits it (process.ts already `await`s `engine.fetch`). The node dedupes concurrent fetches with an in-flight promise keyed by the cache key: `engine.reset()` throws `Cancelled` into the in-flight engine fetch on an overlapping `processGraph`, but the fetch promise keeps running, so sharing it means the result is never lost. `lastKey` is set in both success and error branches (error doesn't retry until gen/token/url changes — no network spam).
+- **First async `data()` in the codebase.** Rete's DataflowEngine awaits it (process.ts already `await`s `engine.fetch`). The node dedupes concurrent fetches with an in-flight promise keyed by the cache key: `engine.reset()` throws `Canceled` into the in-flight engine fetch on an overlapping `processGraph`, but the fetch promise keeps running, so sharing it means the result is never lost. `lastKey` is set in both success and error branches (error doesn't retry until gen/token/url changes — no network spam).
 - **Web Source (`nodes/connection.ts`):** URL → numeric Frame. `remoteTextToFrame` picks JSON vs CSV from content-type, then `.json` extension, then a leading `[`/`{`. JSON accepts array-of-records (keys = columns), array-of-arrays, array-of-scalars, and columnar objects. Non-numeric cells → NaN (numeric-only v1). The URL field commits on blur/Enter (not per keystroke) so typing never fires a fetch. **CSV is quote-aware** (`csv.ts` `parseCsvRows`, delimiter-detecting) — the old comma-split is gone, so quoted embedded commas (titanic.csv) no longer mis-align.
 - **CORS (2026-06-16):** the fetch routes through `httpBridge.fetchText` — Tauri's native HTTP plugin on desktop (no same-origin wall, so any URL works), `window.fetch` in the browser. A browser cross-site block becomes a `CorsLikelyError` whose message points the user at the desktop app. Tauri: `tauri-plugin-http` + `http:default` capability scoped to `http://**` / `https://**` (cargo-check verified; runtime still wants a `tauri dev` pass).
 - **Refresh UX:** a ⟳ button + status dot on each node, and **Data ▸ Refresh all connections** in the MenuBar. Add menu: Web Source lives under **Input** (the menu caps at 12 top-level domains, so no new "Connections" category).
@@ -948,9 +2166,9 @@ The seed↔autosave overlap is fixed: the app now has a real **documents library
 
 A **Ribbon** node (`nodes/ribbon.ts` + `components/RibbonComponent.tsx`) — a forked, simplified Conduit. One rotatable block bundles up to `RIBBON_MAX_LANES` (8) `any` cables; lane i routes in_i → out_i (output mirrors input). Built on the Conduit's invariants:
 
-- **Fixed hit-body, overflow the visual.** `BODY_SIZE = 72`, pivot = body centre. The block + sockets grow symmetrically around the pivot and overflow the body, so the node's top-left never moves between states — no `area.translate` recenter, no one-frame flash (the trap the old design note flagged). This is what makes the deselect-collapse free.
+- **Fixed hit-body, overflow the visual.** `BODY_SIZE = 72`, pivot = body center. The block + sockets grow symmetrically around the pivot and overflow the body, so the node's top-left never moves between states — no `area.translate` recenter, no one-frame flash (the trap the old design note flagged). This is what makes the deselect-collapse free.
 - **One uniform scale, not a layout change, on select/deselect.** `expanded = selected || (dragging && near)` picks `scale = 1` vs `COLLAPSED_SCALE` (0.6), and **every** dimension is base × scale (HALF_W, SPREAD, END_PAD, PIN, socket size, stripe). Must be a real layout scale, NOT `transform: scale()` — rete measures sockets from `offsetLeft/Top`, which ignores transforms, so a CSS scale would desync cable endpoints. The scaled socket size is pushed to `--socket-size` inline on the root so the dots track the body. Re-render on select/deselect (the selector's `area.update`) is what swaps the scale.
-- **Connector look (per the IDC-ribbon reference photo).** Darker-gray shell (`#464b54`) + lighter-gray border (`#8a909c`) + a **pin field** (`__pin`, a grid of small dark-gray squares filling the interior — cols/rows derived from the body size, not lane count, so it never collapses to "two dots"; body floors at `MIN_BODY_LANES` so a 1–2 lane ribbon still reads as a connector) + a red **pin-1 stripe** on the lane-0 edge. Selected keeps the greys (size communicates selection) and just lights the border accent + a glow. Body, pins, and stripe all live in one `<g transform={rot}>` so they rotate together in pivot-local coords; the socket dots are HTML, rotated in JS via `place()`.
+- **Connector look (per the IDC-ribbon reference photo).** Darker-gray shell (`#464b54`) + lighter-gray border (`#8a909c`) + a **pin field** (`__pin`, a grid of small dark-gray squares filling the interior — cols/rows derived from the body size, not lane count, so it never collapses to "two dots"; body floors at `MIN_BODY_LANES` so a 1–2 lane ribbon still reads as a connector) + a red **pin-1 stripe** on the lane-0 edge. Selected keeps the grays (size communicates selection) and just lights the border accent + a glow. Body, pins, and stripe all live in one `<g transform={rot}>` so they rotate together in pivot-local coords; the socket dots are HTML, rotated in JS via `place()`.
 - **Geometry.** Inputs on the −x face, outputs on the +x face, pins at x=0; `place()` rotates (lx, ly) by `angle` around the pivot.
 - **Rotation is quantized to 45°** (`snap45`, AngleDial `step=45`). Off-45 angles made the per-socket diagonal cable leads look bad, so the leads (`cableAngleStore` set to `angle` for every in_/out_) only ever exit on diagonal-friendly angles.
 - **Inspector (selected only):** an **Extend** button — spawns a new Ribbon downstream along the flow direction and wires every current lane's output into it — and a 45°-step rotation **AngleDial**. No spacing control (unlike Conduit). No internal in→out cables.
@@ -975,12 +2193,12 @@ Also from this pass: the Conduit inspector toolbar docks to the lower-left of th
 
 Ribbon **outputs render as one cable** when 2+ non-ghost lanes go to the same entity — another visible Ribbon, or one collapsed group (`ribbonBundle.ts`):
 
-- **Trunk + fans, mirrored at both ends.** The lowest-lane connection is the *representative*: it draws the wide neutral trunk (`BUNDLE_COLOR #8a909c`, `BUNDLE_WIDTH 7.2` ≈ 4× a normal cable, fixed regardless of lane count per product direction) with **flat butt caps**, from a merge point `BUNDLE_SPLIT 24`px past the source output face to a split point 24px before the target input face. **Every** member (rep included) draws two straight fan branches — source socket → its own *slot* on the trunk's flat starting face, and its slot on the flat end face → its rete-measured target socket. Slots spread across the trunk width (`((rank+0.5)/n − 0.5)·width`), ranked by source-lane order at the start and target-lane order at the end, so branches sit side-by-side emerging from the flat cut and can never cross; no component ever needs another lane's socket position. Fans carry the lane's type colour; the trunk stays neutral.
-- **Collapsed-group target: no target fan.** All crossings from one external Ribbon share a single pill row (`InputPill.lanes > 1` in `groupCollapse.ts`); the trunk terminates whole on a combined pill that reuses the collapsed-node `solenoid-node__input-pill` stadium (socket functional underneath via the `pill-socket` dot-hiding trick), coloured by the first member socket's type. Source-side fans still apply.
+- **Trunk + fans, mirrored at both ends.** The lowest-lane connection is the *representative*: it draws the wide neutral trunk (`BUNDLE_COLOR #8a909c`, `BUNDLE_WIDTH 7.2` ≈ 4× a normal cable, fixed regardless of lane count per product direction) with **flat butt caps**, from a merge point `BUNDLE_SPLIT 24`px past the source output face to a split point 24px before the target input face. **Every** member (rep included) draws two straight fan branches — source socket → its own *slot* on the trunk's flat starting face, and its slot on the flat end face → its rete-measured target socket. Slots spread across the trunk width (`((rank+0.5)/n − 0.5)·width`), ranked by source-lane order at the start and target-lane order at the end, so branches sit side-by-side emerging from the flat cut and can never cross; no component ever needs another lane's socket position. Fans carry the lane's type color; the trunk stays neutral.
+- **Collapsed-group target: no target fan.** All crossings from one external Ribbon share a single pill row (`InputPill.lanes > 1` in `groupCollapse.ts`); the trunk terminates whole on a combined pill that reuses the collapsed-node `solenoid-node__input-pill` stadium (socket functional underneath via the `pill-socket` dot-hiding trick), colored by the first member socket's type. Source-side fans still apply.
 - **One entity.** `bundleHoverStore` shares hover across the components drawing the parts (plus all endpoint sockets light via `setCableHover`); clicking selects `repId` and every member renders selected; Canvas `deleteSelected` removes **all** member connections in one keypress. Bundle membership is computed fresh per render from the editor (`bundleForConnection`) — no derived state to sync.
 - **Selecting a Ribbon separates its bundles.** `ribbonLayoutStore` carries `selected`; `bundleForConnection` returns null when either end's Ribbon is selected, so the lanes render (and delete) as individual cables while you manage them, and re-bundle on deselect.
 - **Pill-shaped highlight for ALL pills.** `NodeSocket`'s dot-shaped lit flash carries `.solenoid-socket-lit`, hidden under `.solenoid-node__pill-socket`; `CollapsedInputPill` and the group combined pill draw a stadium-shaped flash themselves when any aggregated socket is highlighted.
-- **Geometry plumbing.** `ribbonLayoutStore` publishes each Ribbon's live `{angle, scale}` (face centres move on expand/compress/rotate); `ribbonFacePoint` turns that + the area position into trunk endpoints. The grid constants (`RIBBON_SQ 8`, gaps 1 — tightened from 12/2/2) live in `ribbonBundle.ts`, shared by the component and the trunk math. ConnectionComponent additionally subscribes to `connectionVersionStore` + `ribbonLayoutStore` so membership/geometry changes re-render cables.
+- **Geometry plumbing.** `ribbonLayoutStore` publishes each Ribbon's live `{angle, scale}` (face centers move on expand/compress/rotate); `ribbonFacePoint` turns that + the area position into trunk endpoints. The grid constants (`RIBBON_SQ 8`, gaps 1 — tightened from 12/2/2) live in `ribbonBundle.ts`, shared by the component and the trunk math. ConnectionComponent additionally subscribes to `connectionVersionStore` + `ribbonLayoutStore` so membership/geometry changes re-render cables.
 - Single-lane Ribbon→Ribbon/group links stay normal cables (bundle style starts at 2).
 
 ## ~~Future~~ Ribbon cables (design, 2026-06-07 — since built)
@@ -1051,7 +2269,7 @@ Also wanted (lighter): **more visual output nodes & controls** (sparkline is the
 ## Group UX pass + Ctrl-drag fix (2026-06-05)
 
 - **Ctrl-drag detaching a group from its members (fixed).** Root cause: the Ctrl/tap "toggle an already-selected node OUT of the selection" branch in Canvas's first area pipe ran on `nodepicked` and `return`ed to swallow the event. Swallowing skips the selector's `core.pick` AND our `draggingGroupId` bookkeeping — but the node's own DOM drag handler is a separate listener, so a Ctrl-*drag* still moved the body with neither member-follow (`moveGroupMembers`, gated on `draggingGroupId`; nor the selector's follow, gated on `isPicked`) engaged. Fix: defer the toggle-out to pointerup-if-click via `pendingDeselectId` (mirrors the existing `pendingCollapseId`). A Ctrl-drag now behaves exactly like a plain drag; a Ctrl-click still toggles. The reported cable glitches were the same desync (cables stretched between displaced group pills and stationary members).
-- **`setGroupsCollapsed(editor, area, targets, collapse)` (`groupPush.ts`)** is the one place that collapses/expands a *set* of groups with neighbour-push applied. It sets the flags, `syncGroupCollapse`, **awaits all `area.update`s** (so footprints reflect the new sizes), then on expand calls **`pushAfterMultiExpand`** and on collapse calls `restoreNeighborsOnCollapse` (a frame apart — see below). The Navigator's collapse-all button (was applying *no* push — that was the bug), the Ctrl+Shift+E hotkey, and any future multi-group toggle route through it. Single-group toggles still call `pushNeighborsOnExpand` directly.
+- **`setGroupsCollapsed(editor, area, targets, collapse)` (`groupPush.ts`)** is the one place that collapses/expands a *set* of groups with neighbor-push applied. It sets the flags, `syncGroupCollapse`, **awaits all `area.update`s** (so footprints reflect the new sizes), then on expand calls **`pushAfterMultiExpand`** and on collapse calls `restoreNeighborsOnCollapse` (a frame apart — see below). The Navigator's collapse-all button (was applying *no* push — that was the bug), the Ctrl+Shift+E hotkey, and any future multi-group toggle route through it. Single-group toggles still call `pushNeighborsOnExpand` directly.
 - **`pushAfterMultiExpand` does the multi-group push in ONE in-memory pass** (not per-group with awaits). Two reasons: (a) `area.translate` sets `.position` only *after* its async guard, so a per-group loop reads stale positions and the pushes cancel — that's why a multi-toggle first looked like it applied no push at all; (b) the push axis for each overlap is chosen from the two groups' **original (pre-expand) relative position**, not the shortest displacement, so a left-to-right row stays a row instead of cascading into an L (third group dropping below the second). Boxes still only move right/down so it converges; pushes are recorded under the top-left seed so collapse-all restores them.
 - **Cleanup (Ctrl+Shift+L)** = (confirm past the same `TIDY_CONFIRM_THRESHOLD` as Tidy, counting layout units the same way — it's a bigger, harder-to-undo change) → clear selection → tidy each group's members → (settle a frame for deferred docked-FC snap-backs) → autofit each box to its members → collapse all → tidy top level (`{skipConfirm:true}`) → fit. **Tidy-all then autofit-all in separate loops with a 2-frame settle between**: the within-group tidy snaps docked FCs back onto hosts in a *deferred* rAF, so autofitting immediately would wrap the FC at its stale far-right ELK position and pad the box (didn't repro on a manual grip double-click because those FCs were already settled). **Fit reuses the navmenu's `fitAll`** (exported from `NavMenu.tsx`), which is chrome-aware (frames into the free rect between docked panels) and collapse-aware (`collapsedAwareNodesRect`); a raw `zoomAt` centered content in the full container so it landed under the panels and scaled off.
 - **Per-group Tidy button** in the group header calls `autoArrange({ groupId })` — the within-group layout path already existed (Case A), just gated on selection before; now forceable. `autoArrange` grew `{ groupId?, skipConfirm? }`.
@@ -1067,7 +2285,7 @@ Merged the `claude/project-backend-no-ui-testing` branch (done on mobile) into `
 - **Touch select mode** (`touchSelectStore.ts`): a phone has no Shift (lasso) or Ctrl (accumulate), so one mobile toggle drives both. When on, a one-finger background drag draws the lasso instead of panning, and tapping a node adds/removes it from the selection. Canvas reads it; `MobileControls` toggles it.
 - **Mobile chrome**: `MobileControls.tsx`/`.css`, `mobileMenuStore.ts`, `mobile.css` — mobile-only controls and a menu store, plus a mobile stylesheet wired in `main.tsx`.
 - **Connection dialog** (`connectionDialogStore.ts`, `components/connectionDialog.css`): an Add/Edit Connection dialog that creates or re-wires a cable by *picking* its two endpoints (optionally prefilled from a node's socket), instead of press-dragging socket to socket. This is the non-drag answer to the old "cable creation is awkward on touch" note. Mounted once in App; the MenuBar's Insert command drives it.
-- **Group expand-push** (`groupPush.ts`): expanding a collapsed group grows its footprint and can overlap neighbouring groups; each overlapping group is now pushed clear along its shortest axis (right or down) and the displacement recorded, then slid back on collapse — but only if it's still exactly where we left it (a since-moved group has its record dropped as stale, so a deliberately-repositioned group is never yanked back). Manually dragging either group also invalidates the touching records. Records are in-memory only. The "Pin the expanding group so the push can't displace it" commit fixed the case where the expander itself got shoved; this is the part now confirmed working.
+- **Group expand-push** (`groupPush.ts`): expanding a collapsed group grows its footprint and can overlap neighboring groups; each overlapping group is now pushed clear along its shortest axis (right or down) and the displacement recorded, then slid back on collapse — but only if it's still exactly where we left it (a since-moved group has its record dropped as stale, so a deliberately-repositioned group is never yanked back). Manually dragging either group also invalidates the touching records. Records are in-memory only. The "Pin the expanding group so the push can't displace it" commit fixed the case where the expander itself got shoved; this is the part now confirmed working.
 - **Test suite**: `vitest.config.ts` + `*.test.ts` across scalar / list / stats / finance / distributions / convert / coerce / mathUtils and `excelFormula.test.ts`. First real automated coverage for the node compute layer.
 - **Node packs framework** (`packs.ts`) + **Settings page** (`settingsStore.ts`): the opt-in node-pack framework is in place (enable toggles on the Settings page; packs register into the catalog/registry behind an enabled flag). Building more domain packs (Geometry, Electromagnetics, …) is future add-on work, not framework work.
 - Support bits: `fuzzy.ts`, `nodeNames.ts`.
@@ -1102,7 +2320,7 @@ The grip (`ResizeHandle`) lives **inside the value box**, not on the card, and r
 
 - **`selected` is reserved on a node.** `ClassicPreset.Node` carries a `selected?: boolean` (the editor's selection flag), so a node class must not declare its own `selected` field of another type — it fails to satisfy the `Node` constraint at the registry. The Cable Switch's live-input index is `activeIndex` for this reason.
 - **Rete selection group-translate**: translating a *selected* node moves every other selected node by the same delta. Any code that programmatically moves nodes one-by-one must **clear the selection first** (capture ids → `unselectAllNodes()` → move → re-select), or placements compound into garbage. This was the subset-Tidy bug.
-- **`DataflowEngine` cancellation**: `processGraph()` calls `engine.reset()`, which throws `Cancelled` on any in-flight fetch. Overlapping calls during seed load are expected — `processGraph` swallows only `Cancelled` and rethrows anything else.
+- **`DataflowEngine` cancellation**: `processGraph()` calls `engine.reset()`, which throws `Canceled` on any in-flight fetch. Overlapping calls during seed load are expected — `processGraph` swallows only `Canceled` and rethrows anything else.
 - **Volatile nodes** roll a fresh value only when the recalc generation advances (`getRecalcGen()` / `requestRecalc()` in `process.ts`), so editing an unrelated node doesn't churn them. Pattern: cache the raw randomness (a `[0,1)` roll, a permutation key array) keyed by `lastGen`; re-roll when `getRecalcGen()` differs (or the input size changes), then apply live inputs (bounds, list values) on top. Each renders a `<RecalcButton/>` (the global "F9"). Covered: **RAND** (RandBetween), **RANDARRAY**, **SHUFFLE**, **TODAY/NOW** (the date one re-reads `new Date()` each recompute, so its button just forces a recompute — no gen cache).
 - **Multi-input patterns** — two kinds of arbitrary-input nodes:
   1. *Extensible value rows* (built): distinct scalar/string values entered in-node with a "+ Add" button (**ListLiteral** numbers, **Concat** strings). Uses `ExtensibleInputs` + the `ExtensibleNode` interface (`addValueInput`/`removeValueInput`, plus `literals` and/or `stringLiterals`); the row renders an `InlineNumberField` or `InlineTextField` based on the input socket's `dataType`. Keys are uniform `v0,v1,…` (a private `addInputWithKey` keeps `nextInputId` past the max). **Round-trip**: `extractInit` captures `valueKeys = Object.keys(inputs)` for any node with `addValueInput`+`nextInputId`, and the constructor rebuilds those exact rows (so added rows + their literals/cables survive save/load/paste — previously lost).
@@ -1244,7 +2462,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
   node card has no naturally-sized parent, so a measured container would race
   the first paint. Fixed dims inside the (fixed) node body are deterministic.
   Heatmap needs no lib — it's a CSS-gradient swatch with a luminance-picked
-  text colour.
+  text color.
 - **The visual nodes are pass-through** (`result` mirrors the input value), so
   they drop onto a cable mid-chain like Display/Progress. Sparkline/Chart take
   a `numlist`; the input socket is drawn bare via `leading={<PortSockets
@@ -1259,7 +2477,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
   `nodes/visual.test.ts` covers construct + `data()` + round-trip.
 - **XY Pad** is a multi-output node (`x`, `y`): `hideOutputSockets` +
   `InlineOutputRows` so the two dots sit on measured rows instead of stacking
-  at the card centre. The handle maps screen → [0,1] via
+  at the card center. The handle maps screen → [0,1] via
   `getBoundingClientRect` (folds in canvas zoom); pointer-capture on the pad,
   `stopPropagation` so the drag doesn't also move the node. Y is flipped so up
   = 1.
@@ -1282,7 +2500,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
 - **No tooltip.** Recharts' hover tooltip showed raw float coordinates, which
   was noise; dropped entirely from `ChartView`.
 - **Heatmap is now a Table heatmap**, not a single cell: input `table`, output
-  `table` (pass-through), and the component colours every cell on the cool→warm
+  `table` (pass-through), and the component colors every cell on the cool→warm
   ramp spanning the data's own min..max (auto-scaled, no min/max inputs). Values
   print inside cells only when the grid is small enough (≤8 cols, ≤10 rows).
 
@@ -1294,7 +2512,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
   innerHeight` — clamped to the old 620×380 desktop max, floored at 200×140 —
   and re-measures on `resize` and on each open. Still explicit pixels (no
   `ResponsiveContainer`), which is valid here because the popup is a
-  viewport-centred overlay (unlike the inline node charts, which have no
+  viewport-centered overlay (unlike the inline node charts, which have no
   naturally-sized parent in Rete's root). Inline node charts were already within
   a phone width (≤240px), so only the popup needed it.
 - **Gauge shows its scale.** The radial gauge printed only the value with no
@@ -1317,11 +2535,11 @@ marker / ylim / linewidth / alpha`.
   back into `ylim`). Unit-tested in `chartOptions.test.ts`.
 - **Chart** parses `inputs.options?.[0]` into `this.chartOptions` in `data()`;
   the component threads it to `ChartView` (and the expand popup via
-  `chartPopupStore`). `ChartView` grew an optional `opts` param applying colour,
+  `chartPopupStore`). `ChartView` grew an optional `opts` param applying color,
   grid on/off, axis labels (recharts `label` on X/Y, with margins bumped to make
   room), Y domain, line width, markers, fill alpha, and an optional title row
   drawn above the plot (stripped in the popup, whose header already shows it).
-- **Chart Builder** (`ChartBuilderNode`, `display` kind) is a labelled "Concat
+- **Chart Builder** (`ChartBuilderNode`, `display` kind) is a labeled "Concat
   for chart options": one input per matplotlib field, rendered by `InlineInputs`
   so each is *also* a wireable socket (wire a value to override the inline text —
   e.g. a computed title or a slider-driven Y max). String fields live in
@@ -1338,10 +2556,10 @@ marker / ylim / linewidth / alpha`.
 A **Color Picker** control (`ColorPickerNode`, `input` kind, `nodes/input.ts`):
 three sliders in **RGB or HSV** (a `SegToggle`), an output-**format** dropdown
 (hex / rgb() / hsl()), a live swatch + the output string, and one `color`
-string output. All three formats are valid CSS colours, so it drops straight
-into a **Chart Builder**'s Colour field. Channels live in `literals` (`c0/c1/c2`,
+string output. All three formats are valid CSS colors, so it drops straight
+into a **Chart Builder**'s Color field. Channels live in `literals` (`c0/c1/c2`,
 read per mode); `mode` + `format` round-trip via extractInit (both keys were
-already whitelisted). Switching mode preserves the colour (converts the triple
+already whitelisted). Switching mode preserves the color (converts the triple
 rather than reinterpreting raw channels). Conversions are delegated to
 **`colord`** (a new dependency — zero-deps, ~7 kB, TS-native) so we don't
 hand-roll RGB↔HSV/hex maths; `colord({r,g,b})` / `colord({h,s,v})` →
@@ -1349,18 +2567,18 @@ hand-roll RGB↔HSV/hex maths; `colord({r,g,b})` / `colord({h,s,v})` →
 `hsv()`, and offering `hsl()` would mismatch the HSV input model (the
 inconsistency that prompted dropping it). Tests in `colorPicker.test.ts`.
 
-  **Refinement pass (same day):** the sliders paint a **colour gradient** under
+  **Refinement pass (same day):** the sliders paint a **color gradient** under
   each channel track (colord computes the stops — the standard picker cue: the
-  thumb position previews the resulting colour), set inline per channel with a
+  thumb position previews the resulting color), set inline per channel with a
   CSS-class thumb (`ColorPickerNode.css`). A third mode, **Hex**, swaps the
   sliders for a hex text field (stored in `stringLiterals.hex`; commits on
-  Enter/blur, swatch tracks the draft live). The colour **output socket** moved
+  Enter/blur, swatch tracks the draft live). The color **output socket** moved
   to sit on the swatch+string row *below* the format dropdown
   (`hideOutputSockets` + a `MeasuredSocketRow side="output"`). Chart Builder's
   output socket got the same treatment — measured onto its preview row.
 
   **Chart sockets:** the two input sockets used to overlap. Now the `values`
-  socket is **measured-centred on the chart plot** (a `useLayoutEffect` reads the
+  socket is **measured-centered on the chart plot** (a `useLayoutEffect` reads the
   chart div's `offsetTop+h/2` against the card — `__body` is static, so that's the
   same reference the dot positions against — and feeds it as the socket `top` via
   the `leading` slot), and `options` is its own row below: an `InlineInputs`
@@ -1626,9 +2844,9 @@ A batch of `html` render-mode fixes the author hit using it as the day-to-day re
   rectangle; instead the rAF loop detects a selection-set change and re-captures, so the REAL
   `.solenoid-node--selected::after` accent ring (already in the cloned DOM) shows — matching the DOM.
   The lasso box-select rect is the only thing `drawSelection` still draws.
-- **Cable parity.** Canvas cables were flat grey; now each is stroked in its SOURCE socket's
-  data-type colour (added `color` to `SnapCable` = `src.color`; `drawCables` buckets visible cables
-  by colour into one `Path2D` each), at 1.8px to match the DOM's default visible stroke.
+- **Cable parity.** Canvas cables were flat gray; now each is stroked in its SOURCE socket's
+  data-type color (added `color` to `SnapCable` = `src.color`; `drawCables` buckets visible cables
+  by color into one `Path2D` each), at 1.8px to match the DOM's default visible stroke.
 - **Quick quality knobs** (console, no UI), wired in the rAF loop like `__hcLive`: `__hcQuality = n`
   → `engine.setQuality` LOD bias (target texture px ÷ on-screen px; 1 = 1:1, >1 sharper but capped by
   the 1× capture since supersampling/REF stays disabled, <1 cheaper/softer). `__hcLive = true` is the
@@ -1639,7 +2857,7 @@ Chasing the residual shift in canvas-rendered cards (vs the live DOM). **A first
 "API rasterization, shelved" — DO NOT trust that; it was a measurement artifact.** The real symptom,
 seen on a clean canvas (one MAP node in a Group, overlay via `window.__hcOverlay`): elements toward the
 TOP of the card shift DOWN and elements near the BOTTOM shift UP — content compressed toward the vertical
-centre — and it's the same on every node. That's a SYSTEMATIC GEOMETRY bug in our pipeline, not random
+center — and it's the same on every node. That's a SYSTEMATIC GEOMETRY bug in our pipeline, not random
 API blur. The visibly-wrong elements are the CARD-ANCHORED chrome: chevron, header text, the f(x…)/lambda
 strings, the group-membership corner indicator (all OUTSIDE `.solenoid-node__content`); the content
 wrapper's internals look fine.
@@ -1925,12 +3143,12 @@ Harness lives in scratchpad (puppeteer-core + the pre-installed Chromium, WebGL2
 swiftshader): seed → wait `__spike.revealPhase()==='idle'` → `dom.png`, then open spike +
 "My graph" → `pixi.png`, crop/compare. Added a DEV-only `src/graph/devHarness.ts`
 (`window.__spike`: open/close/seed/revealPhase/transform/mismatches). Confirmed the camera
-is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bugs, fixed:
+is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were color/scrape bugs, fixed:
 - **`color(srgb r g b / a)` parsing** (`cssColor.ts`): Chrome serializes every `color-mix()`
   result this way (header tints, the group-tinted node borders). `parseColor` returned null,
   so they fell back to a flat body fill — headers looked untinted. Now parsed (+test).
 - **Real card border**: grouped nodes adopt the GROUP hue at ~0.78α, NOT the kind accent.
-  Snapshot now captures the computed border colour+alpha (`SnapNode.border/borderAlpha`);
+  Snapshot now captures the computed border color+alpha (`SnapNode.border/borderAlpha`);
   dropped the fake drop-shadow + header divider (the DOM has neither).
 - **Headerless nodes (FC)**: no phantom node-label title painted over the "Decimal" select
   (only add the fallback title when `headerH>0`).
@@ -1938,7 +3156,7 @@ is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bug
   layout but don't paint) — was drawing a whole hidden cluster. Drops their cables for free.
 - **Group titles**: apply the `.solenoid-group__label` `text-transform` (UPPERCASE).
 - **Heatmap / inline swatch grids**: class-less `<div>`s with an inline `background` — a
-  generic small-leaf colour-cell pass captures them (chart/control containers excluded).
+  generic small-leaf color-cell pass captures them (chart/control containers excluded).
 - **Table/frame value displays**: a `<table>` inside a value box was read as one concatenated
   run; now each `td/th` is emitted at its own position (grid layout matches).
 - **Translucent fills composited**: a Note tints at 30%α; `flatten()` bakes any sub-opaque
@@ -1950,7 +3168,7 @@ is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bug
   table grids, swatches, sliders, checkboxes, sockets, cables, LAMBDA.
 - **Known remaining gaps** (niche, deferred): ribbon-cable bundling (spike does point-to-point),
   conduit floating-body position offset + lane detail, inline **bold**/emphasis inside notes
-  (whole `<p>` is one run), gauge centre value + arc placement, and **large-graph DOM
+  (whole `<p>` is one run), gauge center value + arc placement, and **large-graph DOM
   virtualization** — a 140-node seed mounts/keeps ~7 nodes visible (rest `visibility:hidden`
   for DOM perf), so the *scrape* mirrors that. The production renderer reads the model, not
   the DOM, so it won't virtualize; this is a limit of the spike's DOM-scrape, not a bug.
@@ -1959,16 +3177,16 @@ is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bug
 Author: "do 100%, stop stopping." Drove the card fidelity broad. The model is now a
 near-complete DOM scrape rendered on the GPU (all theme-aware):
 - **Background**: the 24px dot grid as a GPU TilingSprite (tilePosition/tileScale).
-- **Text**: every run scraped with position/size/colour/mono **+ font-weight** — generated
+- **Text**: every run scraped with position/size/color/mono **+ font-weight** — generated
   **bold (wght=600) MSDF atlases** (fonttools instancer) for Next+Mono so 600 titles/values
   render bold, not thin. Tall runs **word-wrap** (notes, wrapped values).
 - **Controls**: input boxes, op-select dropdowns (+caret), sliders (track+thumb), checkboxes
   (+check), **segmented toggles + Format-Controller chrome**.
 - **Generic decoration scraper**: any small chrome box (buttons — incl. a generic `button`
-  catch, pills, badges, dividers, quoted fields, **colour swatches**) → real bg/border/radius
-  + centred label, Set-dedup'd.
+  catch, pills, badges, dividers, quoted fields, **color swatches**) → real bg/border/radius
+  + centered label, Set-dedup'd.
 - **Charts/visuals**: recharts `.recharts-surface` serialized to SVG → **GPU texture** Sprite.
-- **Groups**: solid-colour header + translucent body + border + chevron + label.
+- **Groups**: solid-color header + translucent body + border + chevron + label.
 - **Notes**: markdown blocks (h/p/li) at real positions. **Conduits**: rotated square body
   (node.angle), sockets at scraped positions.
 - New pure tested module bits: `wrapText`, `mix`, `pickTextColor`, `socketGlyphKind`.
@@ -1983,14 +3201,14 @@ Author: "keep working on the actual look and feel of everything." Closed the vis
 between the Pixi cards and the real DOM cards (all scraped from the live DOM, theme-aware):
 - **Card chrome**: soft drop shadow (stacked offset rects), the accent-TINTED header (not
   a saturated bar) + header/body divider line + collapse chevron, 1.5px accent border.
-- **Sockets**: the 2px inset ring (surface colour) on circle/square/split/grid — they read
+- **Sockets**: the 2px inset ring (surface color) on circle/square/split/grid — they read
   as bordered sockets, not flat blobs.
 - **Controls**: input field boxes, **op-select dropdowns** (chosen option + caret),
   **sliders** (track + accent fill + thumb at value frac), **checkboxes** (box + checkmark).
   Scraped from the real `<select>`/`<input type=range|checkbox>`.
-- **Cables**: per-cable stroke in the SOURCE socket's type colour; selected cable thicker/blue.
-- **Groups**: solid-colour header bar + translucent body + coloured border + chevron + label
-  (scraped header colour/border/height), radius 11 — matches the real group.
+- **Cables**: per-cable stroke in the SOURCE socket's type color; selected cable thicker/blue.
+- **Groups**: solid-color header bar + translucent body + colored border + chevron + label
+  (scraped header color/border/height), radius 11 — matches the real group.
 - Known remaining-niche gaps: color **swatchgrid** picker, **conduit rotation** (rendered
   axis-aligned for now), note markdown formatting, exact text baseline (~1–2px).
 - LESSON: run `vitest` BEFORE committing — the group `g.rect()` needed adding to the test's
@@ -2001,8 +3219,8 @@ Author: "there's so much to port, go for everything; I'll check it all at once."
 spike now works like a real editor (still gated, DOM untouched, all green):
 - **Render breadth**: nodes + **Notes + Conduits** (generalized the snapshot from just
   `.solenoid-node` to any node-like root; notes/conduits show bbox + own bg + sockets +
-  a clipped content fallback) + groups. Cables are **type-coloured** (per-cable stroke =
-  source socket colour). Header is the tinted-surface + accent-border treatment.
+  a clipped content fallback) + groups. Cables are **type-colored** (per-cable stroke =
+  source socket color). Header is the tinted-surface + accent-border treatment.
 - **Selection**: shift-click toggle, plain click = one, **box-select** (shift+drag empty),
   ring uses the node accent. Selection lives in `selectedRef`; `scene.setSelected` drives it.
 - **Drag**: dragging any selected card moves the **whole selection**; persists via
@@ -2030,11 +3248,11 @@ Built, all gated in the spike, all green:
   see pixi/README). Loaded with `Assets.load`; **graceful fallback** to Pixi's dynamic
   bitmap font on any failure (HUD shows MSDF vs fallback). ASCII charset for now.
 - **Type-faithful sockets** (`pixiSocketGlyph`): circle/square/split/grid/hex by
-  `dataType` (read off the rete node), coloured from `SOCKET_COLORS`' `var(--sock-*)`
+  `dataType` (read off the rete node), colored from `SOCKET_COLORS`' `var(--sock-*)`
   resolved off the document root (cached, theme-aware).
 - **Real text runs**: dropped the hardcoded title+value; the snapshot now scrapes
   every text-bearing element (label-display / io-label / display-value / output-value /
-  inline-input / value-input) with real position + size + colour + mono-ness, and the
+  inline-input / value-input) with real position + size + color + mono-ness, and the
   scene draws each in place — so multi-output / tall / input nodes render faithfully.
   The title run is flagged for the in-place rename.
 - **Faithful header**: the real header is an accent-TINTED surface + 2px accent border
@@ -2146,7 +3364,7 @@ Rete as headless model + DataflowEngine. The WS4 WGSL modules stay parked.
   "Renderer spike (Pixi)") evolved from a synthetic stress test into a real proof.** Two
   modes: **Synthetic** (N grid cards 500–10k, the perf ceiling) and **My graph** (the LIVE
   rete graph snapshotted onto the GPU — faithful cards with scraped title/value + kind
-  colour + real socket world-positions, the app's REAL cable router, group rects). Drag a
+  color + real socket world-positions, the app's REAL cable router, group rects). Drag a
   live card → persists via `area.translate`; double-click → floating-`<input>` rename →
   `node.label` + `processGraph(id)` (the hidden-input pattern, the production answer to the
   blocker). Multi-touch pinch, selection, Fit, **Benchmark** (orbit+zoom 3s → avg/worst fps).
@@ -2172,7 +3390,7 @@ Rete as headless model + DataflowEngine. The WS4 WGSL modules stay parked.
 Where the WebGPU renderer landed (author: park it for now). **Working + proven on the
 build:** WebGPU cable rendering (`gpuCableRenderer.ts`) and WebGPU node-card rendering
 (`gpuNodeRenderer.ts` instanced rounded-rect SDF) — author confirmed cables render and
-node cards align (size/pos/kind-colour/header height). Both behind canvas render-mode
+node cards align (size/pos/kind-color/header height). Both behind canvas render-mode
 (console `__solenoidCanvasCables()`); node cards as an opt-in alignment overlay
 (`__solenoidNodeCards()`, semi-transparent, drawn over the DOM). DOM is default + the
 only live path; nothing ships on by default.
@@ -2205,12 +3423,12 @@ zoom — the DOM *nodes* are the heavy half of the compositing layer tree. So th
 win is nodes off DOM. Built the GPU node-card layer (the LOD stand-in for DOM node
 bodies): `nodeInstances.ts` (pure instance packer, tested), `gpuNodeRenderer.ts` (WGSL,
 instanced unit-quad, rounded-rect SDF + header/body split + AA, ONE instanced draw for
-all nodes), `nodeScene.ts` (reads live world-rects from `area.nodeViews` + kind colours
+all nodes), `nodeScene.ts` (reads live world-rects from `area.nodeViews` + kind colors
 from `NODE_KIND_ACCENTS`; `nodeGeomBus` bumped by Canvas's area pipe on render/move/add/
 remove, NOT pan), `components/NodeCanvas.tsx`.
 - **Current state = ALIGNMENT-CHECK overlay, NOT the perf win.** `NodeCanvas` draws the
   cards semi-transparent (0.55) ON TOP of the DOM nodes so the author can confirm each
-  card matches its node's size/pos/colour. Toggle `__solenoidNodeCards()` (needs canvas
+  card matches its node's size/pos/color. Toggle `__solenoidNodeCards()` (needs canvas
   render-mode on too). Regular `.solenoid-node` roots only (groups/notes/conduits skipped).
 - **The actual perf win is the NEXT step — the LOD swap:** when zoomed out past a
   threshold, HIDE the DOM node elements (so they leave the compositing layer tree) and
@@ -2276,7 +3494,7 @@ TWICE before — third strike in the cheap (hybrid) form.
 ### WS4 Phase 3 groundwork built UNWIRED — canvas cable hit-testing (2026-06-25)
 Author cleared building hard-gated pieces as long as they aren't wired in. Built the
 full Phase-3 cable hit-test stack, pure + tested, with NOTHING importing it (no
-behaviour change): `cableHitTest.ts` (flatten an SVG `d` → polyline; point→polyline
+behavior change): `cableHitTest.ts` (flatten an SVG `d` → polyline; point→polyline
 distance; `hitTestCables`), `spatialIndex.ts` (`SpatialGrid` bucket-by-bbox + point/
 radius query, so a query touches a tiny candidate set on a 5k-element graph instead of
 scanning all cables), and `cableHitIndex.ts` (composes them — `update(cables)` keeps a
@@ -2322,8 +3540,8 @@ toggle (GPU-gated) and the `__solenoidCanvasCables()` console hook. DOM is the d
 and is byte-identical (every change guarded on `renderMode === "canvas"`).
 
 **Architecture (deliberately low-divergence):** `ConnectionComponent` stays the SINGLE
-producer — it already owns rete's live socket positions + ribbon/pill/colour/selection
-logic, so in canvas mode it just PUBLISHES its computed stroke (the same `d`/colour/
+producer — it already owns rete's live socket positions + ribbon/pill/color/selection
+logic, so in canvas mode it just PUBLISHES its computed stroke (the same `d`/color/
 width/opacity it would have put on the `<path>`) into `cableScene` via a render-written
 ref synced in a deps-less layout effect, and emits only its invisible hit `<svg>`. One
 `CableCanvas` paints the scene. So the canvas geometry can't drift from the DOM render —
@@ -2638,9 +3856,9 @@ Follow-on session after the Cube shipped. Changes:
   translucent embossed cross. The live socket nudges down 1px (`dy`); the legend
   doesn't. Chips read `[R×C×D Cube]`.
 - **Two general fixes (not cube-specific):** socket dots now sit at `--node-socket-x:
-  -6.5px` (centred on the card edge — the wrapper sits inside the 1px border, so the
+  -6.5px` (centered on the card edge — the wrapper sits inside the 1px border, so the
   earlier -5/-6 landed inward; tuned live). Node titles clamp to **4 lines** (was 2),
-  now that header centring is solid (`line-clamp` + `LABEL_MAX_HEIGHT`).
+  now that header centering is solid (`line-clamp` + `LABEL_MAX_HEIGHT`).
 - **`formatScalar` hardened** to coerce non-numbers instead of `.toFixed`-throwing
   (a throw in render blacks out the app). Was hit by the Frame Input editor seeding
   its grid with raw text for numeric columns.
@@ -2851,7 +4069,7 @@ Author's batch after reviewing the v0.9 finish list:
   `body`/`documentElement`/null); on any control it does native focus traversal.
 - **Node-budget meter folded into the status bar.** Was a separate floating pill; now the
   footer's node counter reads `N / 100 nodes` (web demo only) with a slim inline fill bar
-  behind it, coloured by level. The one-time over-budget modal moved into `StatusBar` too,
+  behind it, colored by level. The one-time over-budget modal moved into `StatusBar` too,
   rendered as an App-level sibling (NOT inside the strip — its `backdrop-filter` would trap
   the modal's stacking context below it). Deleted `NodeBudgetMeter.tsx/.css`; desktop shows
   the plain count.
@@ -2966,10 +4184,10 @@ into itself. Full write-up + sequenced investment ladder in
   cache + silent store subs); cost is browser paint/composite of visible cables. Author's notes
   confirmed: **viewport culling was tried and didn't help** (cost is in-viewport), and a
   **`<canvas>` cable layer was tried and reverted** (2026-06-19 `cableCanvas.ts` — canvas
-  full-clears every frame so it's a wash vs SVG's change-only re-raster, plus an AA colour-shift
+  full-clears every frame so it's a wash vs SVG's change-only re-raster, plus an AA color-shift
   that violates "cables never change appearance"). The cheap wins (bounded SVG bbox, shadow-drop,
   flow-pause, path cache) are already in. Only untried idea: collapse N per-cable `<svg>` into one
-  shared SVG (fewer layers, still SVG so no colour shift). Least tractable of the three — needs a
+  shared SVG (fewer layers, still SVG so no color shift). Least tractable of the three — needs a
   profiler trace on the real build before any larger spend.
 
 ### Expression node — scope capped permanently at the type-agnostic subset (2026-06-23)
@@ -2999,7 +4217,7 @@ The registry foundation (Increment 1: `FAMILY_BACKING` policy + the
 `dispatch` still called Formula.js directly and no impls were registered. Activated it
 (author: "scaffold ~5-6 functions across the breadth"):
 - `excelFormula.ts` `dispatch` now routes through `resolveExcelFunction` — a registered
-  native impl wins, everything else still falls through to Formula.js (behaviour-
+  native impl wins, everything else still falls through to Formula.js (behavior-
   identical for those; full suite unchanged at 1061). This is the seam that lets the
   typed-formula path and the nodes eventually share one impl per function.
 - Registered a first wave (`excelFunctions.ts`): overlap functions owned for a reason —
@@ -3046,10 +4264,10 @@ MAKEARRAY), all of which edit through `FormulaPopup`.
   tokenizer → classed spans (function / unknown-call / variable / constant / number
   / string / operator); `tokenAtCaret` + `suggestFor` (fuzzyScore over functions +
   constants + the node's own variables; a fully-typed FUNCTION still suggests to add
-  its `(`, a fully-typed constant doesn't). Variables colour amber — they become
-  input sockets; an unknown call colours red (a typo, or a future lambda variable).
+  its `(`, a fully-typed constant doesn't). Variables color amber — they become
+  input sockets; an unknown call colors red (a typo, or a future lambda variable).
 - `FormulaEditor.tsx` — the classic overlay: a transparent `<textarea>` (real caret
-  + selection) layered exactly over a coloured `<pre>` mirror (identical font/padding/
+  + selection) layered exactly over a colored `<pre>` mirror (identical font/padding/
   wrapping/tab-size or they drift). Autocomplete menu drops below; ↑/↓ navigate,
   Enter/Tab accept, dismisses when the word stops matching. Caret restored after an
   accept via a `pendingCaret` ref + `useLayoutEffect` (the value is controlled).
@@ -3308,12 +4526,12 @@ and needed a re-measure, and any mismatch showed as a slide.
   input dot; Boolean checkbox alignment; 2-line titles; the docked Format Controller.
 
 
-### Node-header colours match output type; Add-menu pin-on-click + soft shape validator (2026-06-23)
-- **Header colour = output type, for the type-emitting source/predicate nodes.** `nodeKindOf` (kind.ts):
+### Node-header colors match output type; Add-menu pin-on-click + soft shape validator (2026-06-23)
+- **Header color = output type, for the type-emitting source/predicate nodes.** `nodeKindOf` (kind.ts):
   **Boolean** input amber→logic (purple — it's the TRUE/FALSE source), **Test** (IsCheck) util→logic and
   **ISEVEN/ISODD** math→logic (both emit the logical type), **DatePicker** input→date (pink — emits a date
   serial). Left Number/Color/Constant/Choose/Switch/IFError as-is (no single first-class output type, or
-  amber IS the number/source colour). The menu accent is separate (set per catalog leaf), so Boolean's
+  amber IS the number/source color). The menu accent is separate (set per catalog leaf), so Boolean's
   menu chip was already purple; this aligns the card.
 - **Add menu: click-to-pin a submenu** (`AddNodeMenu.tsx`). Hover still navigates, but clicking a category
   now PINS its submenu open: `pinned` path-prefix gates `onMouseEnter` so straying the cursor elsewhere
@@ -3334,11 +4552,11 @@ catalog `type` ids are unchanged, so saves and `nodeExcel`/validator mappings ar
 **Boolean** (`boolean-input`) with the logical/purple accent (`NODE_KIND_ACCENTS.logic` — it's the
 TRUE/FALSE source) and **LAMBDA** with green, per request.
 
-**Kind-colour follow-up (same day):** made the green real instead of a menu-only chip, and freed it from
+**Kind-color follow-up (same day):** made the green real instead of a menu-only chip, and freed it from
 `list`. New `lambda` NodeKind on the green palette slot; `nodeKindOf(LambdaNode) → "lambda"` (it used to
 fall through to `math`/blue), so LAMBDA's card AND menu chip are both green now. And the **`list` kind
 slot moved green → gold**: a list isn't a first-class socket type (a number-list socket is still
-number-coloured), so list nodes don't earn a dedicated hue — they share the neutral gold with
+number-colored), so list nodes don't earn a dedicated hue — they share the neutral gold with
 display/format. All the `NODE_KIND_ACCENTS.list` menu accents (List, Range, Filter, Fill, XLookup…)
 follow the slot automatically, so they're gold with no per-leaf edits. NodeKind is a `Record`-keyed union,
 so adding `lambda` forced updating `NODE_KIND_SLOTS` + `NODE_KIND_LABELS` (tsc enforces; ACCENTS is
@@ -4402,9 +5620,9 @@ top-left is fixed during a BR drag, so snap the corner's WORLD position
 
 **Dots-only grid + dot phase (the subtle one).** Snap was a 12px half sub-grid
 (`GRID_SNAP_STEP = DOT_SPACING/2`); author wanted dots-only, so step = `DOT_SPACING`
-= 24. But the dots are drawn by `radial-gradient(circle, …)` whose default centre
+= 24. But the dots are drawn by `radial-gradient(circle, …)` whose default center
 is the MIDDLE of each 24px tile, so the visible dots sit at world `12 + 24·n`, and
-plain multiples of 24 are the square centres BETWEEN dots. `snapCoord` therefore
+plain multiples of 24 are the square centers BETWEEN dots. `snapCoord` therefore
 carries a `DOT_PHASE = 12` offset: `round((v-12)/24)*24 + 12`. Without it, snapping
 lands dead between four dots (the bug the author caught).
 
@@ -4419,7 +5637,7 @@ the canvas can rotate, picking by what's selected:
   `settleStandoffs` — exactly mirroring the inspector dial's `onAngle`.
 - **Conduit(s)**: `node.rotateBy(±1)` (the 45° quantum).
 - **Angle Dial node(s)**: `value += ±node.step` (each node's own step, default
-  15°), normalised to [0,360); `processGraph()` re-renders + propagates downstream.
+  15°), normalized to [0,360); `processGraph()` re-renders + propagates downstream.
 
 The key only swallows the event when something was actually rotated (returns a
 count) so `[` / `]` stay free otherwise. Matched on **`e.key`** (the produced
@@ -4470,7 +5688,7 @@ sockets (`seeds.test.ts` was green). The real defect was in the **generator**
 gone). The JSON had been hand-patched to `AggregateNode` at some point but the
 generator never was — a latent landmine: the *next* `node gen-…cjs` would have
 re-introduced four unconstructable nodes, and on load every cable touching them
-drops silently (the pre-alpha "skip incompatible" behaviour). Fixed the four
+drops silently (the pre-alpha "skip incompatible" behavior). Fixed the four
 type strings; a regenerate is now byte-identical to the committed JSON (only EOL
 differs — generator writes LF, working tree is CRLF via `core.autocrlf`).
 
@@ -4516,7 +5734,7 @@ zoom level** (the author's "it shifts right when I zoom" — the diagnostic clue
 app is even (26 / 32 / 18 / 22), so the invariant is simply:
 
 > **Icon-only buttons use EVEN-sized icons** (`width`/`height` even px). Equal
-> parity with the even container → integer-centred → no sub-pixel blur or
+> parity with the even container → integer-centered → no sub-pixel blur or
 > zoom-shift. No per-icon `transform` nudges.
 
 Rounded every odd icon to even (15→14, 13→14, 11→12) across `AppToolbar.tsx`,
@@ -4526,26 +5744,26 @@ divider was a layout `border-left` on the 2nd button → shrank its content-box 
 and removed the old compensating `translateX(1px)` nudge. Verified with puppeteer:
 all gaps now integer, dx/dy = 0.
 
-**Cause 3 — text-glyph close buttons are never optically centred.** A `×`/`✕`
-font character's ink isn't centred on its em (it sits low, near the math axis), so
-flex-centring — which centres the *line-box*, not the ink — still leaves it low.
+**Cause 3 — text-glyph close buttons are never optically centered.** A `×`/`✕`
+font character's ink isn't centered on its em (it sits low, near the math axis), so
+flex-centering — which centers the *line-box*, not the ink — still leaves it low.
 Fixed at the root: a shared **`CloseIcon`** (`components/CloseIcon.tsx`) renders an
 SVG × (two crossed lines), symmetric about both axes → centroid IS the viewBox
-centre, lands dead-centre at any size. Swapped into all 7 close/dismiss buttons
+center, lands dead-center at any size. Swapped into all 7 close/dismiss buttons
 (popup Chart/Formula/Table, fr-close, outline collapse, pin remove, alert dismiss).
 **Rule: use `CloseIcon`, never a text "×", for close buttons.**
 
-**Measuring optical centre (the author asked how).** Three different centres:
-(1) *literal* = viewBox centre (where the icon is positioned); (2) *geometric* =
-`getBBox()` centre (tight box round the strokes); (3) *optical* = ink centroid =
-centre of mass of the rendered pixels. They differ for mass-asymmetric shapes.
+**Measuring optical center (the author asked how).** Three different centers:
+(1) *literal* = viewBox center (where the icon is positioned); (2) *geometric* =
+`getBBox()` center (tight box round the strokes); (3) *optical* = ink centroid =
+center of mass of the rendered pixels. They differ for mass-asymmetric shapes.
 Method (standard): rasterise the SVG to a canvas, average the (x,y) of every
 opaque pixel weighted by alpha (math equivalent: the shoelace polygon-centroid
-formula). Measured offsets from viewBox centre: pushpin centroid +0/−1.38 (head-
-heavy → reads high, bbox said centred); lock +0/+0.73 (body-heavy → low); alert
+formula). Measured offsets from viewBox center: pushpin centroid +0/−1.38 (head-
+heavy → reads high, bbox said centered); lock +0/+0.73 (body-heavy → low); alert
 triangle +0/+2.09 (base-heavy → low); sparkle +0.69/−1.03 (upper-right). So
-`getBBox`-centred ≠ optically centred. **Applied:** shifted the pushpin viewBox
-(`0 -1.4 24 24`) so its centroid sits at centre (both `PinSvg` copies). Alert HUD
+`getBBox`-centered ≠ optically centered. **Applied:** shifted the pushpin viewBox
+(`0 -1.4 24 24`) so its centroid sits at center (both `PinSvg` copies). Alert HUD
 trigger/chip icons were 13px (odd) → 14px. Context-menu icon slot made a fixed
 16px flex box so a text-glyph icon and the Pin SVG share one column.
 
@@ -4553,10 +5771,10 @@ trigger/chip icons were 13px (odd) → 14px. Context-menu icon slot made a fixed
 `position: fixed; right: 12px`; at fractional browser zoom, `12px` is a fractional
 number of device px and the browser rounds the element's position differently per
 zoom step, so the whole button hops ±1px left/right. Every fixed element does this;
-the icon stays centred *within* the button. Don't chase it as an icon bug.
+the icon stays centered *within* the button. Don't chase it as an icon bug.
 
 Author calls the popup-header (uppercase title vs close) "fine" — left as-is
-(uppercase caps ride ~1px above the line-box centre flex uses; within tolerance).
+(uppercase caps ride ~1px above the line-box center flex uses; within tolerance).
 
 Done as agent 2 (parallel session; see `docs/agent-coordination.md`).
 
@@ -4816,7 +6034,7 @@ any element type. What landed, and the gotchas:
   via a `guard(v, scalar)`: a string passes through, a finite number (date serial
   included) passes through, everything else (non-finite number, **boolean
   comparison**, undefined) collapses to the empty sentinel (`null` scalar / `NaN`
-  in a list) — so numeric+boolean behaviour is byte-identical to before. The
+  in a list) — so numeric+boolean behavior is byte-identical to before. The
   shared numeric `broadcast` (Add, scalar/stats/convert/logic) is DELIBERATELY
   untouched — those ops are inherently numeric, and widening it would ripple
   through dozens of call sites for no gain.
@@ -5048,12 +6266,12 @@ Staged:
 
 A within-group Tidy (`autoArrange({ groupId })`) autogrows `group.width/height`
 to wrap the freshly laid-out members, but it used to grow silently — the box
-could expand over neighbouring nodes/groups with no push. Now, if the box grew,
+could expand over neighboring nodes/groups with no push. Now, if the box grew,
 Canvas calls the new `pushForGrownGroups` (groupPush.ts), which reuses the
 existing `runExpandPushes` engine fed the pre-grow size as `preSizes`. So tidy-
-grow shoves neighbours off the grown edges. Unlike the expand-on-uncollapse push,
+grow shoves neighbors off the grown edges. Unlike the expand-on-uncollapse push,
 it's PERMANENT: `pushForGrownGroups` passes `record:false`, so no restore record
-is written and a later collapse leaves the neighbours where Tidy parked them — a
+is written and a later collapse leaves the neighbors where Tidy parked them — a
 Tidy is a deliberate manual action, so re-parking should stick (the user's call).
 Gated by the `groupPush` setting.
 
@@ -5175,8 +6393,8 @@ each frame) did keep it crisp at any zoom.
   while the canvas repaints all — a wash, sometimes worse. The earlier "feels
   smoother" impression didn't hold up against an A/B toggle. (Canvas only clearly
   wins when nearly everything repaints at once, e.g. huge graphs.)
-- **Slight colour difference.** Canvas and SVG rasterize a thin semi-transparent
-  stroke with subtly different anti-aliasing → a visible colour shift on toggle.
+- **Slight color difference.** Canvas and SVG rasterize a thin semi-transparent
+  stroke with subtly different anti-aliasing → a visible color shift on toggle.
   Cables must not change appearance (hard rule — see the reverted
   straight-line-during-drag experiment), so even a slight shift is disqualifying.
 - A subtle bug it had: toggling the layer flipped canvas `display` synchronously
@@ -5439,7 +6657,7 @@ isolation; this covers the INTEGRATION they scoped out — `layoutTidyIntegratio
   nodes, incl. a group container node); the test then EXPANDS the super-node into its two members
   with a deliberate skew, runs the app's final `solveStandoffs` (forceLock) → asserts the locked
   band holds (perpendicular ≈ 0, gap in [min,max]), then runs `separateOverlaps` (the overlap
-  backstop) over the settled members + neighbours → asserts fully overlap-free. That chains ELK
+  backstop) over the settled members + neighbors → asserts fully overlap-free. That chains ELK
   output → standoff settle → separate, the exact hand-off the pure tests couldn't reach.
 - **Gotcha:** `elkjs` default-imports cleanly for both tsc and vitest at 0.8.2; the ELK graph is
   built by hand (not via the rete `AutoArrangePlugin`, which needs the area/DOM). If the app's ELK
@@ -5526,7 +6744,7 @@ guarantees (and, importantly, what it does NOT — so the suite asserts the righ
   NOTE `computeExpandPush` ALONE is heuristic and CAN leave overlaps by design (its own header
   says so) — separateOverlaps is what makes it safe, so the suite only asserts no-overlap on the
   COMPOSED result, never on the raw push.
-- **`distributeDeltas` (selectionOps)** — ≥ `DISTRIBUTE_GAP` between neighbours ALONG the
+- **`distributeDeltas` (selectionOps)** — ≥ `DISTRIBUTE_GAP` between neighbors ALONG the
   distributed axis (overlap-free on that axis; the cross axis is intentionally untouched). 400
   fixtures (both axes).
 - **`alignDeltas` (selectionOps)** — asserts the ALIGNMENT contract (align-left → shared min-x,
@@ -5617,7 +6835,7 @@ socket types. A node type's INITIAL sockets are deterministic per catalog `type`
 input/output socket-type sets are now memoized in a module-level `_sigCache` keyed by
 `leaf.type`: the first drop instantiates each leaf once, later drops reuse the cached set and
 only re-run the cheap per-origin `canConnect` check (the origin varies per drop; the signature
-doesn't). Behaviour is identical — verified by a test that the 2nd filter pass triggers zero
+doesn't). Behavior is identical — verified by a test that the 2nd filter pass triggers zero
 new `create()` calls, plus a real-catalog narrowing check. The cache is never invalidated (a
 type's socket shape is constant for the app's life). `firstCompatibleSocketKey` stays as-is —
 it runs once on the actually-picked node and needs the concrete socket KEY, not a type set.
@@ -5856,14 +7074,14 @@ imported and `area.use`d at Canvas init even though only Tidy needs it. Now lazy
   init was removed; registration now happens inside `ensureArrange` (registering a plugin on
   the area after init is fine — auto-arrange only acts on explicit `.layout()` calls).
 - Verified: `rete-auto-arrange-plugin.esm-*.js` is now its own ~1.49 MB chunk in the build
-  output (was folded into `index`); tsc + full vitest green (2047 passed). No behaviour
+  output (was folded into `index`); tsc + full vitest green (2047 passed). No behavior
   change to Tidy itself.
 
 ### Align/distribute UI affordance — the selection action bar (2026-07-05)
 The six aligns + two distributes existed only in the Command Palette; author's standing
 rule is nothing reachable solely via the palette. Added `components/SelectionActionsBar.tsx`
 (+ `selectionActions.css`, mounted in `App.tsx`): a floating overlay pill at the
-**bottom-centre** of the canvas that appears whenever **≥2 top-level nodes are selected**,
+**bottom-center** of the canvas that appears whenever **≥2 top-level nodes are selected**,
 carrying the six align buttons + a divider + the two distribute buttons. Pure surface —
 every click calls the existing `alignSelection`/`distributeSelection` in `selectionOps.ts`,
 no logic added there.
@@ -5881,7 +7099,7 @@ no logic added there.
   returning `[]`).
 - **Gotchas honoured:** `onPointerDown` stopPropagation on the pill so clicking a button
   doesn't reach the canvas selection-clear (same guard the mobile bar uses); 16px (even)
-  icon glyphs in 26px (even) buttons per the even-icon centring rule; the group divider is
+  icon glyphs in 26px (even) buttons per the even-icon centering rule; the group divider is
   its own 1px element, NOT a button border (a border would shrink the adjacent button's
   content-box to an odd width and blur its icon). Align-center titles name the END EFFECT,
   matching the palette ("Align center (vertical)" = `center-h`). On touch the bar lifts to
@@ -5914,7 +7132,7 @@ stale design-time estimate.
   set so a node under two seeds (group+member, cluster) isn't translated twice. Pure
   `alignDeltas`/`distributeDeltas` extracted + unit-tested (`selectionOps.test.ts`).
   Align-center palette labels name the END EFFECT (author): `center-h` aligns the
-  horizontal centres → nodes stack VERTICALLY, so it's labelled "Align center
+  horizontal centers → nodes stack VERTICALLY, so it's labeled "Align center
   (vertical)", and vice versa. `separateOverlaps` backstop declined (author 2026-07-05):
   align/distribute/Tidy own overlap, no standalone command/load-hook.
 - **Still TODO (the reshuffling piece):** a top-level `separateOverlaps` backstop after
@@ -5926,7 +7144,7 @@ stale design-time estimate.
 - **Flagged:** align/distribute live only in the Command Palette; author wants a visible
   UI affordance (backlog, tied to #57). Bundle-split recharts + KaTeX out of the main
   chunk this session too (main 4.0→3.53MB); alert chips lost their per-kind icon (label
-  coloured by kind instead), Problems/Alerts icons swapped (triangle vs bell).
+  colored by kind instead), Problems/Alerts icons swapped (triangle vs bell).
 
 ### 1.0-tail readInput sweep — RESOLVED (not a blanket sweep) (2026-07-05)
 The item's "sweep the scalar nodes' data()" was applied to scalar.ts (element-wise math). Task #7
@@ -6374,7 +7592,7 @@ Small, verified fixes, grouped: charts + Mermaid figures are `user-select: none`
 longer grabs recharts/mermaid SVG text as several partial highlights); the value popup
 overlay z-index went 300→9500 so a frame chip opened INSIDE a full-screen overlay (Report /
 Composite / Reference, all 9000) lands ON TOP, not behind — and Frame/Array/Cube chips fall
-back to their TYPE colour for the header when opened with no node context; a Report chart is
+back to their TYPE color for the header when opened with no node context; a Report chart is
 sized to its container (ResizeObserver, cap 640) instead of a fixed 360 that scrolled a
 narrow report; a Note's first heading/para no longer floats below a phantom blank line
 (`InlineRefBody` wraps content in a bare `<div>`, so the `> :first-child` margin reset had to
@@ -7244,7 +8462,7 @@ Author's steer: stop whack-a-mole on individual heavy ops. Two-layer answer.
   so a heavy pass can't be interleaved with a pan/drag/add — the jank the profiler traced to
   overlapping main-thread work. Suppressed while the load overlay owns the screen. Wrapping
   `processGraph` in a thin `beginCompute`/try/`runGraphPass`/finally/`endCompute` keeps the
-  counter balanced on every exit (guard, Cancelled, throw).
+  counter balanced on every exit (guard, Canceled, throw).
 
 ### Compute-pipeline perf probe + targeted-recompute for standalone inputs (2026-07-01)
 Author reported "random" jank on the desktop (Polars) build during zoom/pan and when
@@ -7657,7 +8875,7 @@ tools, F-2 doc-level FC defaults → 1.3), then movement pass, composite parity 
 release prep; author gates the merge to `main`.
 - **Movement pass (`dad24aa`):** the Align Bar's `measuredBox()` (nodeSize.ts) is now the ONE size
   read across the movement stack (tidy/push/standoffs/splice/focus — five ad-hoc variants replaced;
-  OutlinePanel had a REVERSED read that centred on a collapsed group's stored expanded box). **The
+  OutlinePanel had a REVERSED read that centered on a collapsed group's stored expanded box). **The
   wonky-Tidy-around-expanded-groups root cause (1.2-plan Tier 1): stale expand-push restore records
   re-armed by the merge path** — programmatic moves (Tidy/Cleanup/align) fire no `nodedragged`, so
   records survived with ancient preX/preY; the merge now voids-and-replaces a record whose node moved.
@@ -7922,7 +9140,7 @@ height colormap), painted back-to-front; a null Z cell is a hole. **Reference fr
 inside the box and the near parts are occluded (matplotlib/plotly look), X/Y/Z labels on the box edges —
 NOT lines floated on top. **Rotation (author):** the fixed axonometric projection became a yaw/pitch
 orthographic CAMERA (yaw about Z, pitch = elevation); a D-pad of 4 arrows in the figure corner steps yaw
-±45° / pitch ±45° (both wrap 0–360 — pitch flips all the way over), with a centre Home button resetting to
+±45° / pitch ±45° (both wrap 0–360 — pitch flips all the way over), with a center Home button resetting to
 the default 45°/45° (symmetric, so the 45° steps land on clean multiples). Occlusion is recomputed from the rotated cell centroid and the two back frame walls are re-chosen by
 depth, so the box stays correct at any angle. Angles live in `literals` (persist via extractInit spread +
 ride into the payload, so a Report embed shows the same view). **Quality:** supersampled backing store
@@ -8100,7 +9318,7 @@ well (`hovering` state, `onPointerEnter`→mount / `onPointerLeave`→unmount), 
 hover glow, then drops. The selected-layer STEADY glow is preserved when idle by baking it into the
 raster: `bakeSelectionGlow` parses the source, applies `selectedGlow`'s `filter: drop-shadow` to the
 named element, re-serializes (no-selection → source unchanged, no parse). Raster rebuild is debounced
-80ms (a colour drag doesn't re-parse a big SVG per tick; the lag hides behind the hovered live SVG);
+80ms (a color drag doesn't re-parse a big SVG per tick; the lag hides behind the hovered live SVG);
 blob URLs revoke prev-once-new-exists (no blank gap) + on unmount. SVG-in-`<img>` stays vector/crisp
 so no zoom re-raster needed. `resolveLayer`/`elementName` (`svgLayer.ts`) unchanged; Report `SvgFigure`
 embeds still inline. NB the drop-shadow-in-img idle glow is the one thing an author eyeball should
@@ -8160,11 +9378,11 @@ Each dot in the Socket Legend / Reference now shows an INSTANT hover pill with i
 per-dimension name (Numeric / Numeric List / Numeric Matrix, …, Frame, Cube, LAMBDA, Chart,
 Any Scalar / Any List / Any Matrix, True Any). Design (author-specced): NOT OS-native (no
 hover delay — `onMouseEnter` → render), a tight SVG STADIUM (not CSS shapes), body fill = the
-socket type colour, border = `--socket-ring` (the same edge-darken the sockets use), text =
-`contrastInk(colour)` (the adaptive ink the menu bar uses). `SocketLegend.tsx`: `SocketDot`
+socket type color, border = `--socket-ring` (the same edge-darken the sockets use), text =
+`contrastInk(color)` (the adaptive ink the menu bar uses). `SocketLegend.tsx`: `SocketDot`
 became a glyph (`SocketGlyphSvg`) + hover wrapper; `SocketTip` renders the pill via a portal to
 `<body>` (fixed position — escapes the legend's `scale(0.85)` transform + overflow), width from a
-shared-canvas `measureText`, colour→ink via a `getComputedStyle` probe (resolves `var(--sock-*)`
+shared-canvas `measureText`, color→ink via a `getComputedStyle` probe (resolves `var(--sock-*)`
 + palette overrides to the exact rendered hex), horizontal clamp so it can't clip the viewport
 (legend is bottom-right). Chose "Matrix" over "Table" for the homogeneous 2-D types (matches
 `SOCKET_LABELS` "Matrix (any)"; distinguishes from Frame/Cube). Visual — author eyeball pending.
@@ -8188,7 +9406,7 @@ for these (bool↔num are no-ops on matching values). **NOT yet opted in** (foll
 multi-input APPEND family (Concat/Interleave/HSTACK/VSTACK — need `agree` combine), the RANK-CHANGING
 reshapers (TOCOL/TOROW/WRAP — need element-family-remap with a rank change), and Filter (2 outputs +
 predicate). The global `anyIn`/`anyListIn`/`anyTableIn`→adoptive flip (broad input color — the user's main ask)
-LANDED: all element-agnostic input dots now colour to the wired type and revert on disconnect. The
+LANDED: all element-agnostic input dots now color to the wired type and revert on disconnect. The
 `coerceInputs` risk (it runs the adopted concrete type's coercion) proved theoretical — the full suite
 stayed green, so the adopted coercion is equivalent to the neutral one for these. VISUAL change across
 many nodes (MAP/REDUCE tables, Concat rows, Cast, Set, …) — author eyeball pending.
@@ -8363,7 +9581,7 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
   Unit Flow seed lane J.
 - **Convert PRIMACY restored on the value layer (2026-07-13)**: (1) every Convert unit id
   registers with the display bridge (`registerDisplayUnits` — no import cycle), so Convert-to-yd/
-  psi/km_h tags a display that actually renders (was: display-less cell → base-SI metres downstream);
+  psi/km_h tags a display that actually renders (was: display-less cell → base-SI meters downstream);
   (2) the A2 ← ← lock direction was WRONG-WAY after the revival — corrected: an FC FEEDING a Convert
   (through pure passthroughs, `refreshAnnotation` downstream walk → `dictatedFromUnit`) is dictated
   the Convert's fromUnit — dictation FILLS an unauthored dropdown + locks while following, but NEVER
@@ -8386,7 +9604,7 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
 ### SESSION DIGEST (2026-07-13 — FC A4 units by dimensionality: wired into the value engine)
 The pure unit-value foundation (`unitValue.ts`, `unitDimExpr.ts`, `dimension.ts`) is now
 WIRED LIVE. A number carries a physical dimension and computes with it: `5 m ÷ 1 s = 5 m/s`,
-`mass·accel → N`, `metres + seconds → #UNIT!`. The mechanism, end to end:
+`mass·accel → N`, `meters + seconds → #UNIT!`. The mechanism, end to end:
 - **Storage**: a list element is a base-SI `UnitCell` (magnitude + dim vector), tagged the
   way `valueKinds` carries `null`/`SolError`; a bare number is dimensionless (so untagged
   graphs are unchanged). A frame column carries ONE `ColumnUnit` (cells stay bare base-SI).
@@ -9042,7 +10260,7 @@ task-shaped additions, one per pack, each with pinned tests:
   `SvgValue` on the `chart` socket so a Report embeds the picture (highlighting the same
   pick). Layer name = element `inkscape:label`/`data-name`/`aria-label`/`id`
   (human-first, walks up to the nearest named ancestor; pure `svgLayer.ts`). Highlight
-  colour adjustable; hover/select glow is an imperative `drop-shadow` (not per-move
+  color adjustable; hover/select glow is an imperative `drop-shadow` (not per-move
   React state). Markup persists in `stringLiterals.source` (Mermaid pattern, no bundling
   — SVG is text). Full wiring in node-coverage "Annotation → SVG Picker". Shared
   read-only renderer `SvgFigure.tsx` reused by Display/CableSwitch/Composite/Report.
@@ -9065,7 +10283,7 @@ task-shaped additions, one per pack, each with pinned tests:
   sentence. (Judgment call left to the author: the model fuzzer/trust set reads as
   slide-worthy by the same bar; it stayed in the release-notes body, not the deck.)
 - **American spelling in shipped strings** (author): three nodeCatalog descriptions
-  carried "colour"/"coloured"; respelled. Code comments keep whatever they have.
+  carried "color"/"colored"; respelled. Code comments keep whatever they have.
 - **Post-1.1 work organized into two release views:** `docs/1.2-plan.md` (tiered:
   known-issue fixes with tidy/cleanup-around-groups as the backbone, half-built tails
   F-2/D-2/goal-seek-params/drill-in-subsystems, widening incl. the CSP-gated iFrame
@@ -9326,7 +10544,7 @@ full vitest (2280) green.
   overlay are genuinely unbuilt (correctly open).
 - **Gauge is now a single-value percentage dial.** Dropped the Min/Max inputs — the node
   takes ONE `value` read as a fraction of 100% (1 → 100%, 1.5 → 150%). The arc always spans
-  0→100% and fills the clamped fraction (150% overfills to a full arc); the centre label shows
+  0→100% and fills the clamped fraction (150% overfills to a full arc); the center label shows
   the true percentage (`formatPct`), and the end labels are a fixed `0%` / `100%`. Node class,
   component, catalog description, and `visual.test.ts` all updated.
 - **Gauge track contrast:** new `--gauge-track` token (both themes) for the unfilled arc —
@@ -9398,7 +10616,7 @@ Local dev server; commit freely, no pushes. tsc + full vitest (2277) green.
   output doesn't change, so processGraph's changed-output re-render pruning would skip the
   card; the card subscribes to the store instead. UI = a Solve (play) button + an ALWAYS-present
   status circle (so it never resizes the button): amber ring (#d9822b, the alert tone — reused,
-  not a new colour) while stale, filled green (`--sock-lambda`, semantic positive) once solved.
+  not a new color) while stale, filled green (`--sock-lambda`, semantic positive) once solved.
   Tooltip "Stale"/"Up to date", no instructional copy.
 - **Still open (author raised, not built):** solver PARAMETERS — goal-seek max-iterations /
   tolerance / driver bounds; simulation step count is `simulationSteps` already; Monte Carlo
@@ -9481,9 +10699,9 @@ Local dev server; commit freely, no pushes. tsc + full vitest (2271) green.
   properties, which also moved to the File menu); dropped the per-node catalog entries
   (Add node… + the `A` hotkey cover browsing); added an **always-on docked palette**
   setting (click-through scrim, focus→suggestions, Enter/Esc keep it docked); moved the
-  align/distribute pill to the top-centre (clears the header at 76px); a persisted
+  align/distribute pill to the top-center (clears the header at 76px); a persisted
   `commandRecents` MRU feeds the **3 most-recent actions** to the head of the no-query
-  suggestions (recorded from palette OR menu bar). Chips now carry their TYPE colour
+  suggestions (recorded from palette OR menu bar). Chips now carry their TYPE color
   (lists/tables gold, frames/cubes violet, charts green) via a `--chip-accent` modifier,
   everywhere incl. Reports. Equinox palette added (all-gray monochrome). Cube glyph seams
   derive from the fill (color-mix) not a hardcoded violet.
@@ -9534,7 +10752,7 @@ dedicated modal.
   a real MODAL you enter/exit + Save/Cancel — NOT the old always-inline editor. **Edits live in a
   local DRAFT** that previews ONLY in the sample; the whole app retints ONCE on Save (`setCustomMap`
   + `setActiveBase("Custom")`), never live on every color-drag tick (the reported lag — the old
-  onChange→setCustomSlot retinted the whole app per tick). 12 role-labelled color wells
+  onChange→setCustomSlot retinted the whole app per tick). 12 role-labeled color wells
   (Number/Text/Date/…), Load-template buttons, and a sample built from the **REAL** node/group/note
   chrome (`.solenoid-node`/`--grouped` in a `.solenoid-group`, a `.solenoid-note`) colored from the
   draft via the same inline vars the real components set — not a hand-drawn mockup. Only the 12 base
@@ -9655,15 +10873,15 @@ Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest
   normalize on load (area→line, bar→column).
 - Small: socket legend clears the footer when the minimap hides; collapsed-group edge sockets
   align with their readout rows (the summary's flex `gap` wasn't in `pillY`).
-- **Late stretch (colour system + polish):** `prefers-reduced-motion` snaps the load reveal
+- **Late stretch (color system + polish):** `prefers-reduced-motion` snaps the load reveal
   (reuses the doc-switch instant path); dropped the now-dead `nodeSizeStore` dragging flag.
-  **Colour consolidation:** the Table (numeric-matrix) socket moved off `vermilion` → `amber`
+  **Color consolidation:** the Table (numeric-matrix) socket moved off `vermilion` → `amber`
   (distinct orange from gold/Number in default/solarized; coincides only in the colourblind
   set — no free CVD hue), freeing `vermilion` to be the semantic ERROR red — `appTheme` now
   writes `--sol-error` from the `vermilion` slot so a custom palette retints every error
   surface (default value unchanged). Reordered `COLOR_PALETTE` (the SWATCH PICKER only — chart
   series use a separate `SERIES_SLOTS`): gold-led, gold/gray + green/red column pairs, rest
-  alternating. **Sparkline win/loss colours by sign** (up = palette green, down = the palette
+  alternating. **Sparkline win/loss colors by sign** (up = palette green, down = the palette
   error red) — resolved to hex (recharts fills are SVG attrs), reaching the node AND the expand
   popup; still plain in a Report/Display embed (would need `winloss` as a first-class op — a
   deliberate small follow-up, author OK). Minified sparkline made slightly rectangular + tighter
@@ -9871,3 +11089,2752 @@ b, amended); composite toolbar-reroute → DEFERRED (architecture write-up in th
 archived drill-in entry). Eyeball list passed review.
 
 ---
+
+<!-- Sweep of 2026-07-22: session digests 2026-07-20 through 2026-07-20e, moved verbatim (newest-first within this block). -->
+
+### SESSION DIGEST (2026-07-20e — REVERSAL: gesture cables return to the canvas)
+Author call: the zoom-time cable artifacting isn't a flash/thrash problem after all —
+**partially translucent thin strokes inherently shimmer under scale**, so keeping every cable
+as live DOM through gestures (37995b5, 2026-07-18) was chasing the wrong thing. Reverted: the
+engine cable pipeline (`setCables`/`relayoutCables`/`drawCables`) is back, canvas-resolvable
+cables draw on the canvas during gestures, and only conduit cables / snapshot-unresolvable
+ones (e.g. into a collapsed group) stay DOM. Known fidelity gaps return with it (opaque
+stroke vs 0.72 idle opacity, no ribbons/hover/dimming mid-gesture) — accepted over the AA
+shimmer. KEPT through the revert: the post-collapse conduit-ghost fix (override-aware
+show/hide + old-set clearing — independent bug), the 2026-07-20d zoom settle-holds (both
+renderers), and 2681cb9's lasso/gesture separation. This also mostly retires 2026-07-20d's
+"during-zoom cable repaint" backlog item (deleted): the per-notch DOM re-raster now covers
+only the conduit subset. The 2026-07-19 digest below records the reverted state — superseded.
+
+### SESSION DIGEST (2026-07-20d — GPU renderer: why zoom is worse than panning; settle-hold fix)
+Diagnosis (measured in a live browser, DOM-mode proxies on PF — headless raster inflates the
+magnitudes, the ASYMMETRY is the finding). Three stacked causes, all zoom-only:
+1. **Pan is composite-only; zoom re-rasters.** A pan translates the composited layer (p95
+   17ms/frame regardless of content). A zoom notch changes the raster SCALE, which repaints
+   painted DOM at the new scale (full DOM p95 117ms, worst 283ms per notch).
+2. **The live-DOM gesture subset is cable-heavy.** During a GPU-mode gesture the canvas carries
+   the cards, but ALL cables + conduits stay live DOM (by design, 37995b5) — and the cable layer
+   ALONE measured p95 67ms/notch under zoom (92 cables on PF) vs 17ms under pan. This is why
+   collapsing nodes doesn't help: collapse removes card paint, not cables.
+3. **The 140ms gesture-exit timer thrashes under notchy wheel zoom (FIXED).** A pan gesture is
+   held by `pointerDown` even when motionless; zoom has no held-pointer signal, so wheel notches
+   arriving slower than 140ms exited + re-entered the gesture PER NOTCH — each exit re-showing
+   the full DOM at a NEW scale (cause 1's worst case, repeatedly, mid-zoom). Fix: a gesture that
+   changed the camera scale now settles on a longer quiet period (`ZOOM_SETTLE_MS` 420ms vs
+   `PAN_SETTLE_MS` 140ms, `HtmlCanvasLayer.tsx` `gestureZoomed`), paying the scale-change
+   repaint ONCE at the true settle. Could not be exercised end-to-end in this container —
+   headless Chromium 141's API drifted to `drawElement`/`drawHTMLElement` with a
+   child-of-canvas model and no `captureElementImage`, so the html layer can't engage here
+   (a THIRD drift shape after e309792/9f11cea — the desktop pin is what matters).
+Remaining lever (author call, backlog): the during-zoom cable repaint (cause 2).
+**Follow-up (same day): the DOM renderer had the IDENTICAL thrash — the reported
+"cables still flash during zoom with GPU off".** `Canvas.tsx`'s `onZoomActivity` promotes the
+holder (`will-change: transform`) per zoom and demoted it on a pan-tuned 160ms quiet timer;
+notchy wheel zoom flipped promote↔demote PER NOTCH (measured: 16 will-change flips over 8
+notches at 200ms), and each flip re-creates the compositor layer + re-rasters the holder — the
+un-rastered-layer frame is the cable flash (thin strokes blink hardest). Fixed with the same
+constant as the GPU side (`ZOOM_SETTLE_MS` 420ms → one promote/demote pair per zoom, A/B
+16→2 flips), AND the settle timer now refreshes only on real `zoomed` events — with the longer
+window, a `translated` refresh would have kept the holder promoted through a follow-on pan
+(the tile-reveal flicker the pan-no-promotion NOTE exists to avoid); a pinch's interleaved
+translates are covered by its own zoomed stream.
+
+### SESSION DIGEST (2026-07-20c — PF seed internals modernized to the current node set)
+Author call: the Personal Finance seed still taught the pre-D16 patterns. Via the generator
+(structure) + committed-geometry adoption (layout), all values verified identical in a live
+browser (Income 16,910 · Net 7,758.99 · rate 46% · NW 101,010 · Assets 123,650 · Debt −22,640):
+- **FILTER + REDUCE → SUMIFS** ×4: cash-flow income/spend and net-worth assets/debt are now one
+  `SumIfsNode` each, straight off the frame (`values`/`column0`/`value0` stringLiterals +
+  `condConfig` gt/lt + `valueKeys:["column0"]` — the valueKeys is REQUIRED or the ctor ignores
+  condConfig). The advisor's outflow feed rewired to `sumif-out`.
+- **Parallel-lists list-GroupBy → frame Group By** ×3: the spending pivot (sum + count) and the
+  asset-class pivot now run `GroupByFrameNode` (native Polars on desktop) with Get Column pulling
+  chart/spark lists; the grouped FRAME shows directly on a Display chip (click → table popup),
+  replacing the separate keys/values list displays. `col-type` deleted (nothing else read it).
+- Notes rewritten to teach SUMIFS/the frame verb. New nodes sit at the tuned coords of the chains
+  they replaced (inside the tuned group boxes — seeds.test's geometry invariant); a future
+  tune-seeds pass may polish spacing. 175 → 171 nodes, 188 connections.
+
+### SESSION DIGEST (2026-07-20b — Chart Builder targets; doc-switch curtain; minimap → canvas)
+- **Chart Builder chart-type dropdown**: a `target` select (Chart / Histogram / KPI / Bullet /
+  Treemap / Sankey / Waterfall / Candlestick / Boxplot / Calendar Heatmap / Waffle) shapes the
+  form to the option keys that figure's RENDERER actually reads — truth table
+  `CHART_BUILDER_TARGETS` in `chartOptions.ts`, derived from ChartView / the payload figures
+  (title+fontsize) / the canvas figures (title only), machine-checked in `visual.test.ts`.
+  A wired-or-valued row stays visible (dimmed, "Not read by X") so switching type never hides
+  live state; serialization stays FULL-WIDTH — inert keys are matplotlib-ignored, one builder
+  can feed several charts. Not per-type catalog nodes (author call).
+- **Doc-switch Loading curtain** (`persistence.ts` `rebuildGraph`): a document switch with real
+  work on either side (teardown+build > 60 nodes+connections) now runs behind the same
+  LoadOverlay as File→Open — progress counts the CHUNKED TEARDOWN too (it dominates leaving a
+  big doc; it used to show as a dead half-blank canvas) — and snaps to idle from loadGraph's
+  finally, never entering the reveal. Small docs still swap with no flash.
+- **Minimap node rects → one `<canvas>`** (`Minimap.tsx` `drawMinimapNodes`): was a div per
+  visible node (N elements + N style-diffs, scales with the graph). Same coordinate origin,
+  same geometry+fill signature gating so pan/zoom frames still skip the redraw; viewport box
+  stays DOM (drag target). Verified pixel-painted + A/B'd against the old divs in a live
+  browser (PF).
+- **DOM re-measure (the levers stand)**: hard-load `querySelectorAll('*')` — PF ≈9.6k
+  (175 nodes, median ~43/node), FM ≈4.5k (median ~38). Per-node chrome is lean; the big
+  remaining subtrees are figure CONTENT (recharts ~200–400/chart, KaTeX ~70/formula) →
+  "figure rasterize-at-rest" queued in backlog with the SvgPicker precedent. `style:~95`
+  bucket = Vite-dev artifact (one tag per CSS file; bundled in prod). content-visibility
+  stays ruled out (unchanged).
+
+### SESSION DIGEST (2026-07-20 — Color Blend node + add-node skill rewrite; bundle 16 scoped)
+- **Color Blend node** (author ask): two color-string inputs (typeable literals or wired; anything
+  `colord` parses — the `names` plugin is now extended globally, so named CSS colors work in every
+  color field incl. ColorPicker hex) × a blend-mode dropdown (W3C separable formulas per RGB channel,
+  A = backdrop) → hex out the string socket on a ColorPicker-style swatch row. Class beside
+  ColorPicker in `nodes/input.ts`; kind `string`; Control catalog next to Color; `colorBlend.test.ts`.
+- **`.claude/skills/add-node` rewritten against current reality** — it predated the split of
+  LogicalNode (still said "→ LogicalOp"), packs, the literals load gate, INIT_FIELD_ORDER
+  persistence, error guards, unitAware, the wildcard ladder, and the tests-required step. Now
+  documents all of those + points at Color Blend as the compact worked example.
+- **v2.0 bundle 16 scoped** (`docs/v2.0/16-widget-nodes.md`): everyday widget nodes (Weather /
+  Geocode / FX / Holidays / TZ / QR), dashboard-framed; 4 author gate calls listed there.
+
+---
+
+# Sweep 2026-07-28 — sessions 2026-07-21 through 2026-07-27b (plus the earlier-today wired-null window filed under that thread)
+
+### SESSION DIGEST (2026-07-27b — the formula surface stops drifting: D19 ratchet, alias gate, Tier 1)
+
+Picked up the D19 parity program (author call: "#2 is the important one"). Built in the order the
+plan doc mandates — **ratchet first, so the gap lists are pinned before they move.**
+
+**What landed**
+1. **The measurement moved into `formulaNodeParity.ts`**, shared by the report script and the new
+   `formulaNodeParity.test.ts`. Deliberate: a report that computes the gap differently from the
+   test is how a ratchet silently stops ratcheting.
+2. **The ratchet pins both gaps BOTH ways** — a new gap fails CI, and a *closed* gap must be
+   deleted from the pin. Subset-only (as originally specced) lets the pin rot into fiction.
+3. **`LEGACY_ALIASES` — D10 now applies to formulas** (D19 decision 1). 93 names: superseded Excel
+   spellings (NORMDIST, TDIST, CRITBINOM, FORECAST…) and Formula.js spellings that were never Excel
+   (CEILINGMATH, MODESNGL, RANKEQ, STDEVS, TDISTRT). Each returns `#NAME?` naming the current
+   function, and drops out of autocomplete + range routing. Replaces the four hand-written
+   VLOOKUP-era stubs.
+4. **Tier 1: 28 registrations** — TEXTSPLIT/TEXTAFTER/TEXTBEFORE/ENCODEURL/REGEX*, FORECAST.LINEAR,
+   and the 20-name bond block (PRICE/YIELD/DURATION/MDURATION/COUP*/ACCRINTM/INTRATE/RECEIVED/
+   YIELDDISC/PRICEMAT/YIELDMAT/VDB/ODD*). Scope was only what **FX lacks**: `FAMILY_BACKING.finance`
+   already ruled the closed-form functions it *has* stay on Formula.js, so DISC and COUPDAYS were
+   left alone — registering them would have been an unrecorded backing flip.
+
+**Numbers:** gap A (Excel-named node, name not dispatchable) 47 → 19; gap C (dispatchable, no node,
+no decision) 102 → 0; leaves formula-callable 276 → 302.
+
+**The structural point, which is the whole program:** every registration calls the NODE'S OWN
+compute. Where a node's `data()` held the logic, it moved to a pure module both surfaces import —
+`textOps.ts`, `financeOps.ts`, `mathUtils.linearFit`. Both new modules exist as separate files for
+the same reason: `text.ts` and `finance.ts` already import `excelFunctions`, so pulling helpers the
+other way would cycle *and* drag rete into the headless formula path. `mathUtils.ts` was already
+this pattern. Writing the op twice is exactly how the surfaces drifted; `formulaTier1.test.ts`
+asserts node == formula per function rather than trusting it.
+
+**Two real bugs the ratchet surfaced on its first run:**
+- **`fxLookup` couldn't walk through a FUNCTION**, only an object — but the name walk descends into
+  both. Formula.js hangs `.MATH`/`.PRECISE`/`.INTL`/`.TEST` off a callable parent (`FX.CEILING` is
+  the CEILING function *and* the home of CEILING.MATH), so **ten current-Excel names autocompleted
+  in the formula editor and then threw "Unknown function" when called**: CEILING.MATH,
+  CEILING.PRECISE, FLOOR.MATH, FLOOR.PRECISE, GAMMALN.PRECISE, SKEW.P, T.TEST, NETWORKDAYS.INTL,
+  WORKDAY.INTL, BINOM.DIST.RANGE. Autocomplete and dispatch have to walk the same way.
+- **Formula.js's internal `utils.*` namespace** (`utils.symbols.ADD`, `utils.date.serialToDate`) was
+  being advertised as callable Excel functions.
+
+**Gotcha worth keeping:** a blocked name must short-circuit at the CALL SITE, before arguments are
+shaped. The redirect stub ignores its args, so letting a list arg reach the broadcaster mapped the
+stub element-wise and returned a *list* of identical `#NAME?`s. Dropping blocked names from
+RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belong together.
+
+**Left open, deliberately, not half-built:** the pack seam (D19 decision 4) needs
+`FORMULA_FUNCTION_NAMES`/autocomplete to become pack-sensitive — they're built once at load, so a
+pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
+it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
+
+### The spec's real gap, found by testing it against the remainder (2026-07-27b)
+
+Author: *"your spec means you should be able to do the rest mechanically. if not, evolve
+the spec."* Read the remaining sites rather than assuming. It was mostly mechanical, and
+one gap was NOT — and it is everywhere in the four files still open.
+
+**"Absent" is not "unknown".** Most nodes already have a code path for an input being
+absent, sitting right next to the read:
+
+    const min = inputs.min?.[0] ?? this.literals.min ?? null;    // null = no floor
+    const rk  = (inputs.rightKey?.[0] ?? …).trim() || lk;        // blank = same as left
+    const tol = inputs.tolerance?.[0] ?? this.literals.tolerance; // undefined = exact
+
+That path is for the UNWIRED slot. Routing a wired blank into it LOOKS like reuse and is
+a semantic change — "the user didn't supply this" and "the graph computed this and got
+nothing" are different facts. Clamp with a wired blank `min` is blank, not unclamped; an
+as-of Join whose `tolerance` arrives blank is blank, not an exact-match join; a KPI whose
+`prev` arrives blank shows no comparison. The unwired readings are unchanged.
+
+It earns its own section because the absent-branch is already written, which makes the
+wrong answer the path of least resistance. Also recorded: an existing comment saying
+"unwired/blank → default" (RoundN's `digits` had one) predates the spec and conflates the
+two cases — the spec wins.
+
+**Batch 5** — scalar (13) and stats (22). 194 → 159; only finance, frame, list and visual
+remain, and all four are full of the optional-input shape, which is why finding this
+before touching them mattered.
+
+### The blank-wire SPEC, and sweep batch 4 (2026-07-27b)
+
+Author: *"I need you to be writing these rules out formally somewhere, so we have a spec
+to target for new nodes."* Fair — they had been accumulating across commit messages and
+comments, which is not something a node author can target.
+
+`value-semantics.md` gains **"Reading an input"**, deliberately next to the propagation
+table it complements: that table says how a missing value behaves once it is INSIDE a
+computation, this says how it gets there. It carries the one rule (`readInput` — a
+connected cable wins even when null, only an unwired slot falls back), a table of what a
+wired blank DOES by the input's ROLE, why each non-default row exists in checkable terms
+rather than as taste, and a four-step procedure for a new node. Step 3 is the Slider
+lesson: **check what CONSUMES the value, not just `data()`** — that bug was invisible in
+its own method, with a DOM attribute, a wrap-around and a sensitivity sweep in another
+file each assuming a finite bound. Linked from the add-node skill where literals are
+introduced, the docs index, and CLAUDE.md; the ratchet now points at the spec instead of
+restating a shorter version of it.
+
+**Batch 4** — cube, display, expression, lambda (12 sites). 206 → 194, and every small
+file is now done; only the six big ones remain. The formula hosts were the notable ones:
+`=x+1` with a wired blank `x` returned **1**, because `?? 0` asserted a zero the graph
+never supplied. The evaluator already carried the missing contract, so the fix was the
+read alone — the fifth file in a row where the plumbing was waiting on the reader.
+
+### Sweep batch 3 — a THIRD policy: a source keeps emitting (2026-07-27b)
+
+date, input, matrix, tableLambda (17 sites). 223 → 206 across 10 files.
+
+**The Slider is the one case where the LITERAL is the right answer** — and I got it
+wrong first, with "a blank bound stops constraining" (`±Infinity`). Author caught it.
+That breaks three things, none of them visible from the data() method alone:
+`<input type="range" min="-Infinity">` is invalid, so the browser substitutes its own
+0–100; the play loop (`next > hi ? lo : next`) never wraps and runs away; and
+`tornadoRun` reads these bounds through `??`, which does NOT catch an Infinity, so a
+sensitivity sweep would run to infinity. Propagating null instead would drop the value
+the user physically set. A Slider is a source whose CONTROL cannot exist without finite
+bounds, so a wired blank honours the bound printed on the card.
+
+Written as `readInput(x, lit) ?? lit` with the literal hoisted to a local — explicit
+about the fallback, and it doesn't re-trip the sweep regex. Pinned that the bounds stay
+FINITE, which is the property the three breakages all violate.
+
+So the policy set is four-way, not two:
+  • element-wise operand / mode selector → PROPAGATE
+  • aggregator, reducer                  → SKIP the missing
+  • a CHECK whose parameter is missing   → skip that check, pass the data
+  • a CONTROL that needs a usable value  → fall back to the card's own
+The first is the default; the rest are what "read the node, not the pattern" means —
+and the Slider adds "read its CONSUMERS too", since nothing in `data()` hinted that
+three separate call sites would choke on a non-finite bound.
+
+Everything else in this batch was shape-or-operand and took the default: matrix
+dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
+answered blank for blank text and only needed the swallow removed.
+
+### SHUFFLE registered; Pad's op selector had the wrong name (2026-07-28d)
+
+Author correction on the previous entry: I parked SHUFFLE for lacking a volatility
+model, but RAND and RANDBETWEEN are already dispatchable, so volatility in a formula
+is established behaviour and SHUFFLE introduces no new category. Registered.
+
+The useful part of the fix is the split it forced. `shuffleList(arr, keys)` takes its
+sort keys as an ARGUMENT, so the permutation is one implementation and only the key
+SOURCE differs: the node holds its keys until the next recalc (an unrelated edit must
+not reshuffle the card you're looking at), a formula redraws per evaluation. It is the
+one Tier 3 function whose test can't assert node-equals-formula, so it asserts a
+permutation — same multiset, same length — plus real variation across 40 draws.
+
+**Pad closed the last `Lists ›` row, by renaming.** Its op selector was called `dir`.
+That single naming difference meant `list-pad` had no `NODE_OPS` declaration at all,
+because the declaration mechanism reads `inst.op` — so PADLEFT/PADRIGHT were
+unsearchable in the Add menu, and the parity walk had no ops to check either. Renamed
+to `op` like every other family and declared. Worth noting the shape of this: it wasn't
+missing work, it was work that couldn't attach because one field had a different name.
+
+Sort / Take / Drop still use `dir` and are still undeclared — same fix, logged.
+338/646 leaves callable; every remaining Lists gap is a D2-capped Excel name.
+
+### Ten functions were quietly computing garbage (2026-07-28c)
+
+Closing Tier 3's last stragglers — COUNTDISTINCT, INTERPOLATE (list mode; grid is
+2-D and stays behind D2), and declaring the two orphaned T.TEST leaves — turned up
+something much bigger than the stragglers. Smoke-testing `T.TEST(a,b,2,3)` returned
+`[{},{},{},{}]`.
+
+`RANGE_FUNCTIONS` is the hand-kept set of functions whose array arguments arrive
+WHOLE. A function missing from it doesn't error — `broadcastCall` maps it element-wise,
+so it runs N times on N scalars and returns N answers to a question that has one. Ten
+were missing: T.TEST, F.TEST, Z.TEST, CHISQ.TEST, SUMX2MY2, SUMX2PY2, SUMXMY2,
+MODE.SNGL, PROB, SERIESSUM. Every one had been returning a plausible-LOOKING value —
+a list of empty objects, or `MODE.SNGL([1,2,3,4])` echoing its own input straight back
+— which is exactly why nobody noticed.
+
+`rangeRouting.test.ts` is the guard, and it checks SHAPE, not value: give a
+whole-sample function real arrays, assert the result is not shaped like the input. The
+numbers are Formula.js's business; the routing is ours. It covers the long-standing
+members too, not just the additions, and pins the array-RETURNING set (TREND, GROWTH,
+LINEST, LOGEST, FREQUENCY, MODE.MULT, UNIQUE, SORT, FILTER, TRANSPOSE) as still
+unrouted — those need the list-model pass `RANGE_FUNCTIONS`' own comment defers, so
+the test records that as a state rather than letting it read as an oversight.
+
+**T.TEST and F.TEST are deliberately NOT index-paired.** Their two arrays are SAMPLES,
+which for an independent test may legitimately differ in length, and the paired
+policy's min-length zip would discard the tail of the longer one on every such call.
+The pooled policy misaligns pairs only for a paired test that ALSO contains a null —
+rarer and narrower. Excel requires equal lengths for type 1 anyway, so the zip would
+have been a no-op in exactly the case pairing was meant to help. CHISQ.TEST, PROB and
+the three pairwise sums ARE paired: they're defined term-by-term.
+
+The T.TEST leaves are worth noting separately: all three are the same Excel function
+one `type` argument apart, but only `t-test-equal-var` said so in `nodeExcel.ts`, so
+Paired and Welch measured as Solenoid-native. A declaration gap, not a registration
+one — and the second time this session that the coverage data, not the code, was what
+was wrong.
+
+`interpolateLinear` moved to `mathUtils.ts` (with its `bracket` helper) so the
+registration doesn't drag rete and the socket lattice into the headless formula path —
+the same separation `textOps`/`financeOps`/`listOps` exist for.
+
+### Tier 3 finished, and two measurement bugs it exposed (2026-07-28b)
+
+The rest of the list family: the eight SET* names, the nine FILL*/COALESCE ops, RANGE
+and CONCATLISTS. 51 Tier 3 names total, 332/646 leaves callable. The interesting part
+is again not the names.
+
+**D19 2(a) is not injective, and nothing checked.** Despacing a label works while the
+label is a NAME. Fill's `Interpolate` op and the INTERPOLATE node in `stats.ts` both
+despace to INTERPOLATE — a straight collision inside our own naming scheme, found only
+by trying to register it. Three families also label themselves in sentences for the
+dropdown ("Union: in A or B"), where despacing gives nonsense. Both cases now use the
+same escape: an op may declare an `fx` beside its label on its OP_META table, and
+`formulaTier3.test.ts` machine-checks that no two leaves despace to one name and no
+declared `fx` collides with a label. The check is the point — the collision was a
+one-line fix, the absence of a guard was the bug.
+
+`nodeOps.ts` already had this exact problem one surface over: `SET_OPS` overrides those
+prose labels for the Add-menu SEARCH rows. So `fx` rides through `fromMeta` and the
+search overrides pull it from the meta table — one declaration per op, not two.
+
+**The coverage metric was lying twice, in opposite directions.** First: it matched a
+leaf by its host LABEL, so a collapsed op family read as uncovered even with every op
+registered — nine FILL* functions reported as a gap. It now consults `opsFor(type)`
+and counts a family covered when every op is callable.
+
+Fixing that immediately broke the OTHER direction, which is the one worth remembering.
+Gap A means "an Excel-named node whose Excel name gives #NAME?". It was computed as
+`!inFormula`, so the moment RUNNINGSUM was registered, Cumulative went "covered" and
+SCAN silently dropped OUT of gap A — the ratchet would have stopped watching a name
+that still doesn't dispatch. Coverage and Excel-name coverage are now separate fields
+(`inFormula` vs `excelCovered`), because a node can be perfectly reachable under its
+Solenoid name while its Excel spelling still fails.
+
+Tightening `excelCovered` from "any name dispatches" to "every name dispatches" then
+surfaced 10 more: the seven B-suffixed text functions, ERF.PRECISE, ERFC.PRECISE and
+VALUETOTEXT. All were already declared against real nodes in `nodeExcel.ts` — the
+B-variants explicitly as `parity: false`, "Byte-indexed; treated as character-indexed".
+So the node surface had been promising LENB for a long time while the formula surface
+answered #NAME?. They now delegate to their character-indexed forms, which is the
+position the app already documented, true on both surfaces instead of one.
+
+**SHUFFLE stays unregistered on purpose.** Tier 3's contract is node-equals-formula,
+and Shuffle is volatile — the node keeps its permutation stable within a recalc pass
+(keyed on the recalc generation) and a formula call has no way to. RAND/RANDBETWEEN
+already reach formulas from Formula.js without that model; adding a third volatile
+function would deepen the hole rather than fill it.
+
+### D19 Tier 3 — the list core is callable from a formula (2026-07-28)
+
+31 registrations, and the point of them is not the 31. Tier 3's real deliverable is
+that the two surfaces stop being two implementations: `nodes/listOps.ts` is the single
+copy, extracted out of the nodes' `data()` methods, and both the node and the formula
+call it. `formulaTier3.test.ts` asserts node-equals-formula op by op rather than
+testing the formula in isolation — the discipline Tier 1 set, because a formula test
+that passes on its own is exactly how the two drifted in the first place.
+
+**Naming needed no new decision, which is the payoff from the OP_META unification two
+commits earlier.** D19 2(a) says the formula name is the node's LABEL despaced; the
+labels now live in one table per family, so ROLLINGSUM/RUNNINGMAX/PADLEFT fall out of
+`ROLLING_OP_META`/`CUMULATIVE_OP_META`/`PAD_OP_META` instead of being retyped. The
+test reads the tables too, so renaming an op in one place fails here.
+
+**The measurement was wrong before it was right.** `formulaNodeParity.ts` matched a
+native leaf by its label verbatim, so it kept reporting "Rolling SUM" as a gap after
+ROLLINGSUM was registered. It now despaces exactly the way the registrations do —
+one exported helper, both callers. That is the same failure the module's own header
+warns about (a report that measures differently from the ratchet), caught only
+because the numbers didn't move when they should have. 302 → 325 leaves callable.
+
+**The two plumbing pieces, and why the second one isn't the obvious one.** Output rank
+(`ExcelImplMeta.rank`) splits RANK from element type the way the socket lattice
+already does — with no "matrix" spelling, deliberately, since that arrives with Tier 4
+or not at all. Routing was the interesting half: the instinct is to reuse the existing
+range routing, but its argument prep is the AGGREGATOR policy (drop nulls, hoist the
+first error), and every Tier 3 op is position-preserving. `REVERSE([1,null,3])` must
+be `[3,null,1]`, and a cell error has to stay in the cell it came from. So `listArgs`
+routes with the RAW policy — the one COUNT already has, for the same reason. Both sets
+derive from the meta table rather than being hand-kept beside it.
+
+`listArgs` also does a job that isn't about lists arriving: it marks LINSPACE and
+friends never-broadcast. Without it `LINSPACE(list, 1, 5)` would map element-wise into
+a list of lists — a 2-D value built behind D2's back, from a function whose arguments
+are all scalars.
+
+Generators are capped at the formula boundary (`#OVERFLOW!` past `MAX_GENERATED`,
+reusing RANDARRAY/SEQUENCE's convention and constant). The nodes stay uncapped on
+purpose: a Count field is a spinner the user watches change, a formula field is where
+a typo asks for ten million elements with nothing visible to stop it.
+
+Skipped for now, each for a stated reason rather than fatigue: Set / Set relation
+(prose labels, so 2(a) doesn't name them — SETUNION-style names are a real decision),
+Coalesce/Fill, Range, Concat Lists, and Shuffle, which is nondeterministic and raises
+a question Tier 3 shouldn't answer alone: whether a formula may be non-pure at all.
+
+### The wired-null sweep is DONE — 0 sites, and the spec grew four rules (2026-07-28)
+
+The last four files went in one pass each: finance (73), frame (30), list (31), visual
+(23). Every node file is now at zero, so `readInputSweep.test.ts` stops being a
+countdown and becomes a floor — no per-file list to maintain, and a failure means one
+new read to fix rather than a budget to adjust.
+
+The instruction for these four was to work MECHANICALLY from the spec and evolve it
+where it didn't reach. It reached for finance almost entirely (scalar financial
+parameters, all propagate) but the other three each surfaced a genuinely new rule, now
+written into `value-semantics.md`:
+
+**Where the guard GOES, not just what it does** (from finance). Two placements that
+typecheck and are silently wrong. An **error outranks an unknown**: MIRR/NPV/FVSCHEDULE
+both null-guard scalars and scan a list for `SolError`s, and the error branch has to run
+first — that is the precedence `installErrorGuards` gives an error arriving on any other
+input. And **scope the guard to the ACTIVE op**: a guard hoisted above the `switch` that
+ANDs every op's inputs turns a blank on an input this op ignores into a blank answer.
+TBILLYIELD never reads `discount`.
+
+**The column REFERENCE** (from frame) — the family's dominant shape and the worst case
+for this bug, because the empty literal already means something: *"no column chosen,
+pass the frame through"*. A wired blank fell straight into it and returned the input
+frame UNCHANGED, which reads as a successful no-op rather than a missing answer. Read
+raw, guard, then `.trim()`. Same shape killed `readFilterValue`'s old contract — its doc
+comment literally said a wired missing "reads as not written yet", which is the
+absent/unknown conflation the spec rules against, and it made both Filters and SUMIFS
+return MORE rows than the graph asked for. A filter differs from a validator (which
+skips) because a filter's OUTPUT is the decision.
+
+**The third state** (from list). Excel's omitted-argument readings are real and stay —
+INDEX's omitted axis is the whole row/column, Slice's absent end runs to the end,
+an as-of Join with no tolerance is an exact match. They belong to `undefined`, and
+`readInput` hands back all three states when the literal is passed through WITHOUT an
+`?? default`: undefined = unwired and nothing typed, null = a cable carrying blank, a
+value = wired or typed. Writing `?? 0` collapses the first two. So a default only goes
+on an input that has no omitted reading.
+
+**Presentation is the one place the CONTROL rule doesn't extend** (from visual). The
+control fallback exists because a widget cannot physically work without its bound;
+styling always has a working neutral, so falling back to the card would just reinstate
+styling the graph withheld. The test is the widget's, not the input's: *can it render at
+all?* Bullet proves both halves in one node — `max` is the track's scale and keeps the
+card's bound, while `value` and `target` go blank and the figure draws empty.
+
+Fill/Coalesce is the one node needing no guard at all: filling a missing with a missing
+leaves the cell missing, which is already the honest per-cell answer.
+
+Total: ~350 reads across 20 files, every one now through `readInput`, with a worked
+example of all ten roles pinned in `wiredNull.test.ts` (30 tests).
+
+### Sweep batch 2 — and the sharpest form of the bug (2026-07-27b)
+
+Swept chemistry, dist-discrete, quality and logic (11 sites). Two findings worth more
+than the count.
+
+**`logic.ts` was giving WRONG ANSWERS, not just losing a literal.** `?? 0` on a logical
+operand doesn't merely substitute the box's value — it asserts a definite FALSE where
+the graph said UNKNOWN, and under Kleene those differ: `AND(unknown, TRUE)` is unknown,
+`AND(false, TRUE)` is FALSE. NOT made it visible by flipping — `NOT(blank)` answered
+TRUE. The machinery was already right (`foldBoolean`/`broadcastEl` reason about null);
+only the readers collapsed it. Pinned, including the case that must still settle:
+`AND(unknown, FALSE)` is FALSE, because one definite false ends a conjunction.
+
+**Not every node should propagate — Expect shouldn't.** It is a passthrough VALIDATOR,
+so nulling its output on a wired-blank bound would drop the user's data to report a
+check it couldn't run. A missing bound means the check can't be EVALUATED, which is not
+the same as failing it, so that check is skipped and the data flows on. Worth
+remembering when sweeping the rest: "propagate" is the default, not a reflex.
+
+Also fixed a false positive in the ratchet itself: it counted `shared.ts`'s doc comment,
+which DESCRIBES the idiom. It now strips comment lines — otherwise writing a note about
+a fix would raise the count.
+
+Remaining at the time: 223 across 14 files — all swept by 2026-07-28 (see above).
+
+### The wired-null sweep, ratcheted (2026-07-27b)
+
+Measured the rest of the swallow before grinding at it: **235 `?? literal` reads across
+20 node files**, not the "~144" the backlog estimated. finance alone has 73. Each site
+needs the read routed through `readInput` AND a guard or return-type widening, and most
+of the work is the widening — so a fast blanket sweep would have been the risky kind of
+change to make across finance and stats math.
+
+Bounded it instead, the same way the parity gaps got bounded: `readInputSweep.test.ts`
+pins the remaining count PER FILE, exactly. A new node reintroducing the idiom fails;
+sweeping a file requires lowering its number. Both directions are checked, so the list
+can't rot into fiction the way a subset-only pin would.
+
+It earned its keep immediately — sweeping `complex.ts` (6 sites) made the pin stale and
+the test said so by name, which is precisely the failure mode a hand-maintained count
+has. `complex.ts` needed nothing but the reads: `numOp` already accepts null and
+`broadcastComplex` carries the same per-cell missing contract as the other broadcasters,
+so the plumbing was waiting on the readers there too — the third file in a row where
+that turned out to be true.
+
+Done at the time: text.ts, date.ts, complex.ts; 207 remaining across 18 files. The
+pin held all the way down to zero.
+
+### Wired-null no longer resurrects the typed literal (2026-07-27b)
+
+Top item on the 1.3 bug list, and a live wrong-answer bug: `inputs.x?.[0] ?? this.
+literals.x` swallows a WIRED null into the literal, so a blank flowing down a cable
+silently became whatever value sat in the node's own box. UPPER with a blank in and
+"abc" typed in its field returned `"ABC"`.
+
+Fixed on the OPERAND half — `text.ts`'s `strVal` plus every numeric operand in
+`text.ts`/`date.ts` (LEFT/MID/RIGHT counts, REPT times, CHAR code, FIXED decimals,
+DATE y/m/d, TIME h/m/s, EDATE months, WORKDAY days) now route through `readInput`.
+No downstream change was needed: `broadcast`/`broadcastCells` already accept a null
+arg and short-circuit missing per cell, so the plumbing was waiting on the readers.
+
+**The contract has two halves and both are pinned** (`nodes/wiredNull.test.ts`): a
+CONNECTED cable wins even when its value is null, and only an UNWIRED slot falls back
+to the literal. Tests come in pairs for that reason — a fix that propagated
+unconditionally would break every node's typed default just as badly as the bug it
+replaced. Verified the tests actually FAIL against the old reader rather than passing
+vacuously.
+
+**The MODE selectors followed, once the author settled the policy.** The open question
+was "mode unknown, so answer unknown" (this app's P6 model) versus "nothing supplied,
+use the default" (Excel's omitted-optional-argument reading). Author: *use whatever's
+more aligned with our project, vs Excel.* So a wired blank PROPAGATES on `strScalar`
+(delimiter / separator / filter pattern), on the regex pattern and replacement, and on
+`basis` / `return_type` / `weekend_code` — a blank you deliberately wired is never
+silently reinterpreted as a default. Only an UNWIRED slot falls back to the literal.
+
+**One place the same policy says the OPPOSITE, and it would be easy to sweep wrong:**
+CONCAT is a REDUCER, so the aggregator half of the value model applies — a missing is
+SKIPPED (contributes nothing to the join), exactly as SUM skips nulls, rather than
+propagating the way an element-wise operand does. It still needed the fix, because the
+old read swallowed a wired blank into that row's typed literal first. Element-wise
+propagates, aggregators skip, Filter drops — that split is the thing to carry into the
+remaining ~144 sites, and `nodes/wiredNull.test.ts` pins one of each.
+
+### All 98 op-selector families classified (2026-07-27b)
+
+Finished the declarations behind the op-kind edge. **73 operation / 25 argument**, and
+`nodeOps.test.ts` now FAILS on any node with an op dropdown that has no declaration —
+which is what makes the visual honest: a neutral selector can only mean "argument" once
+every family is classified, because an undeclared one renders neutral too. The check
+caught a family I'd missed (ResistorCode) on its first run.
+
+**Kind-only declarations.** 77 of the 98 declare `kind` and nothing else — no ops list.
+The type enforces the pairing (`ops` implies `create`), so a declaration either lists
+its ops AND can build them, or lists neither. Kind-only leaves the menu completely
+alone, which is correct for the ~48 families already listed op-by-op (nothing hidden =
+nothing to list) and deliberate for the DATA pickers, where a search row per value
+would bury the menu it was meant to help. It does leave the ~30 collapsed families
+without search rows — backlogged with the exact list.
+
+**Classifying is a JUDGEMENT with several partial signals — no single test.** I got this
+wrong twice in one session, in the same way both times: took whichever criterion the
+author had most recently articulated and promoted it to a decision procedure. First
+"would you search the Add menu for it", which put the distributions' cdf/pdf on the
+argument side because Excel models it as a `cumulative` flag; then the sharper dataflow
+question ("could this be the RESULT of a chain, or does the user always pick it?"),
+which I applied mechanically to flip eighteen families at once. Author: *"all the
+criteria are partial rules… you can use your judgement based on the rules."*
+
+The signals now recorded in `nodeOps.ts`, none decisive: would the user pick it or could
+it arrive computed; would they search for it by name; is it meaningless without its
+host; is it already an Excel function. They mostly agree — the interesting families are
+where they don't. An ELEMENT symbol is both picked by hand and searchable, yet it is
+plainly data that can come from a column and a row per element would bury the menu, so
+it stays an argument. A RESISTOR band count is never computed, yet "4-band decode" isn't
+a different operation from "5-band", so it stays an argument too.
+
+**Final: 90 operation / 8 argument.** Arguments are the aggregator a host verb runs
+(GroupBy, GroupByFrame, Pivot, CubeRollup) and the data-driven pickers (element symbol,
+Antoine substance, pipe material, resistor band count). The distribution forms, chart
+types, E-series and physics constants are operations: picked, never computed, and
+searched for by name.
+
+**Edge tuned to 2px** at an 85% accent mix, paid for out of the padding (1px border with
+4px/8px becomes 2px with 3px/7px) so an operation selector occupies exactly the same box
+as a neutral one and nothing reflows when a family is reclassified.
+
+### Op-selector kind, made visible (2026-07-27b)
+
+An op dropdown either picks between distinct OPERATIONS or sets an ARGUMENT of one
+operation (`kind` in `nodeOps.ts`). Author wanted that visible.
+
+**Tried an accent FILL first; author called it back — "DESIGN.md was right, these
+accents are actually too much."** Landed on an accent EDGE over the normal neutral
+field instead. Worth keeping as a data point: the fill objection DESIGN.md states
+("the accent should never carry large fills") held up on a real screen, not just on
+paper.
+
+**The conflict the edge had to dodge:** a full-strength accent border already means
+FOCUS on this exact control (`.solenoid-node__op-select:focus`). A resting accent
+border would have made focus invisible. Resolved by INTENSITY, not a second hue —
+resting takes the accent mixed 62% toward `--border`, focus keeps the pure accent.
+Width stays 1px, so nothing reflows and the control keeps its footprint (the author
+offered padding compensation; it turned out not to be needed).
+
+**The tagging seam:** `NodeCard` stamps `data-op-kind` on the card root, so one CSS
+rule covers every op selector instead of sixty components threading a prop. Resolved
+by `instanceof`, not a constructor-NAME match — the latter works in dev and breaks
+silently under minification. The attribute is ABSENT (not `"argument"`) for a family
+not yet declared, so an undeclared node can't assert something false about itself.
+
+**Inks got baked while the fill was live, and the baking stayed** (it's what the value
+popups already needed): `contrastInk` is now cached, with every palette slot baked for
+BOTH themes on each recompute — `themeAccent` darkens in light mode, so a slot near the
+0.62 luminance threshold lands on opposite sides in the two themes.
+
+**The kind test, sharpened by the author:** *is the variant a distinct thing you would
+search the Add menu for?* "Column chart" and "Sankey" are, so Chart selects OPERATIONS
+despite storing the value as a mode. GroupBy's "avg" is not. **How the value is stored
+does not decide this; how a user looks for it does.** 17 operation / 3 argument so far;
+78 of 98 families still undeclared.
+
+### Op search rows: names, not dropdown prose (2026-07-27b)
+
+Chasing the Headers correction turned up two flaws in the search rows the collapsed
+families generate.
+
+**Prose op labels composed into nonsense.** `SET_OP_META.label` is "Union: in A or B" —
+right on the CARD, where it explains the choice you're looking at, but a search row
+built from it reads "Set: Union: in A or B". The two roles pull opposite ways: a
+dropdown wants an explanation, a search row wants a name. The meta keeps its prose;
+`nodeOps.ts` now supplies plain names (Union / Intersection / Difference / Symmetric
+difference, and the four Set relations) for the menu and search.
+
+**Op rows didn't discriminate between SIBLINGS.** They inherited the host's `keywords`,
+which describe the FAMILY — so every Set op matched a family-level query equally well
+and searching "symmetric" surfaced **Union**. Dropped the inherited keywords: nothing is
+lost, because the host row is still there to answer family-level queries, while each op
+row keeps its own name and the host's name in its label. Pinned in `nodeOps.test.ts`.
+
+**Still open, and it needs an author call on NAMES:** three hosts label themselves with
+ONE of their ops, which is the exact smell behind the Headers correction — "STEYX"
+hosts SLOPE and INTERCEPT, "CORREL" hosts RSQ, "SUMIFS" hosts COUNTIFS/AVERAGEIFS/
+MINIFS/MAXIFS. The rows read "STEYX: SLOPE". All of the hidden ops are real Excel
+functions people search by name, so the alternatives are a family rename (Regression /
+Correlation / Conditional aggregate) or `expose: "leaves"` to give each its own entry.
+Not guessed at — naming has been the author's call every time this session.
+
+### Multi-op nodes: the `{ }` marker + the exposure flag (2026-07-27b)
+
+Author direction: a dropdown on a card is a NAVIGATION convenience for closely-related
+work — each op is still its own thing, and they're normally also listed individually in
+the Add menu. `scripts/op-exposure.ts` found the ones that aren't. `nodeOps.ts` is now
+the one place that declares, per family, what ops it has and how they surface.
+
+**Three independent axes, which is what makes the flag a one-word change:**
+- `expose` — `"collapsed"` (the DEFAULT, per author call) or `"leaves"`. Collapsed
+  leaves the tree alone; flipping to `leaves` generates a leaf per hidden op as a
+  sibling of the host. No catalog edit either way.
+- `kind` — `"operation"` (stands alone as a name → earns its own formula name under
+  D19 2(a)) vs `"argument"` (meaningless without its host → the family takes one
+  formula name and the op rides in as an argument). Author's correction: GroupBy's
+  avg/min/max are ARGUMENTS, not operations. Does not affect the menu at all.
+- `mark` — the subjective per-node opt-out. Default derived.
+
+**The marker is `{ }` (with the space).** Ruled out: `▶` is already the menu's
+"category that expands", so a triangle would promise navigation that doesn't happen;
+`()` collides with formula syntax, and that collision just got worse — after Tier 1,
+node names really are callable, so `Reverse()` would be ambiguous about whether the
+parens mean "has hidden ops" or "you can call this".
+
+**Marked is DERIVED, never declared** — a leaf shows `{ }` iff it has ops with no leaf
+of their own. It cannot claim something the menu contradicts. `mark: false` opts out of
+the glyph only (used on `GCD / LCM` and `ISEVEN / ISODD`, whose labels already name both
+ops); the ops stay searchable regardless.
+
+**Search rows are generated at SEARCH time, not inserted into the tree.** "Chart:
+Column" is findable and builds the card already set to that op, but the tree is
+untouched — so the parity ratchet, the copy lint and the socket filter don't start
+counting them as extra nodes. Verified: catalog leaves stayed 646, parity stayed
+302/646. Net effect is 20 marked leaves and 66 new searchable ops, zero leaves moved.
+
+**Result:** 648 tree leaves (unchanged), 18 marked + 2 opted out, 66 op rows in search.
+
+The one hand-written fact is `leafOps` (which ops already have their own entry, for the
+partially-exposed families) — `nodeOps.test.ts` machine-checks it against the real
+catalog, so it can't go stale.
+
+### D19 decision 2(a) RESOLVED + the absent-pack boundary (2026-07-27b)
+
+**2(a) — per-op names, uniformly; the name is the node's LABEL despaced, not the class
+hint.** The deciding argument is this app's own editor, not taste: a string-literal op is
+invisible to it (no autocomplete, no unknown-name highlight, no signature hint), so
+`SETOP("unoin", a, b)` fails at runtime where `SETUNOIN(a, b)` is flagged as you type.
+Confirmed twice over — the Tier 3 sketch already said "SETEQ/SETDIFF-style", and the node
+LABEL already changes per op (the card reads ARGMIN, never ARGMINMAX). Labels are already
+names for three of the four families (WAVG/WVAR/WSTDEV, ARGMIN/ARGMAX, Rolling SUM →
+ROLLINGSUM); only SetOp needs invented names, its labels being prose.
+
+**The pack seam's guarantee covers DEACTIVATED, not ABSENT — author caught this.** The
+"resolution is global" phrasing oversold it. A `PackFormula.impl` is a JS function
+shipping inside the pack, so a pack removed from the packs folder has nothing to call; it
+sits on the custom-LOGIC side of the line `pack-architecture.md` already draws, not the
+pre-set-formula (data) side that survives its pack being off. The seam handles
+present-but-off, which is what it was built for, and is re-runnable so a folder reload
+works (`loadCustomPacks()` is still a stub, so nothing calls it yet).
+
+The unsolved piece is DIAGNOSIS, and it is narrower than the existing placeholder plan:
+placeholders degrade a missing pack NODE, but a pack function called from a hand-typed
+Expression is NOT a pack node, so nothing degrades it and the error never names the pack
+that would provide it. Filed under the backlog's "Pack distribution" item, which already
+owns the saved-file pack record that would make naming it possible.
+
+**Process note:** several doc edits in the two preceding sessions silently no-opped —
+`str.replace()` with no assertion, against text that had already moved. The parity doc
+still claimed the work was "GREENLIT but not started" after it had shipped. Assert every
+scripted doc replacement; a doc that quietly fails to update is worse than one never
+touched, because the next reader trusts it.
+
+### The pack → formula seam (same session, 2026-07-27b)
+
+D19 decision 4, built as `formulaExtensions.ts` — deliberately the direct sibling of
+`fcExtensions.ts`, which already solved the same problem for FC units.
+
+**The asymmetry is the design, and it is not symmetric on purpose:**
+- **Resolution is GLOBAL** — every known pack's functions register at startup, active or
+  not. A formula pack node serializes as a plain ExpressionNode and reloads with its pack
+  switched off (the `pack-architecture.md` guarantee), so the functions its formula calls
+  have to keep answering. A deactivated pack that turned saved documents into `#NAME?`
+  would be a data-loss bug, not tidiness.
+- **Advertising is ACTIVE-ONLY** — highlighting and autocomplete offer a pack's names only
+  while it's on, so an off pack doesn't teach a name the Add menu isn't showing.
+
+**The actual blocker was smaller than the plan implied.** `FORMULA_FUNCTION_NAMES` was a
+load-time snapshot; packs register after load, so it could never see them. Now
+`formulaFunctionNames()`, memoized against a registry generation counter bumped by
+`registerInternal`, with `advertisedFunctionNames()` as the editor-facing subset (memoized
+against `packsStore.version()` — highlighting runs per keystroke).
+
+**Two bugs found by writing the test, both real beyond the test:**
+- `initPackFormulas()` wasn't re-runnable. The collision check asked "does this already
+  resolve?", which is true of its OWN previous registrations — so a second run rejected
+  every name it had just registered. Fixed with a core-name snapshot taken on the first
+  call, before any pack registers.
+- A removed pack's functions lingered as ghosts, since `registerInternal` had no inverse.
+  Added `unregisterInternal`, and init now withdraws the previous run's registrations
+  first. Only pack registrations are revocable; the core's run once at load.
+
+A pack may not claim a core name, a blocked legacy spelling (no reviving NORMDIST), or
+another pack's name — all three throw at startup, where it's obvious, rather than changing
+what SUM means three screens later.
+
+**Tier 3 naming, settled by inspection while here:** D19 decision 2's rule yields clean
+bare names off the existing classes (`ReverseNode` → REVERSE, `SetRelationNode` →
+SETRELATION, `NthElementNode` → NTHELEMENT). Only 2(a) is open — the multi-op families
+(SetOp, ArgMinMax, Rolling, Weighted) choosing op-as-argument vs per-op names. Recorded in
+the parity doc; recommendation is to decide per family, not globally.
+
+### SESSION DIGEST (2026-07-27 — socket shades onto one HSV axis; the copy rules got teeth)
+
+**Pinch-zoom died over most of a node card, and had for a long time.** Root cause, read out of
+`rete-area-plugin`'s `zoom.ts` rather than guessed: stock `Zoom` counts fingers from a
+**bubble-phase** `pointerdown` on the container, and `Zoom.move` is a `.map` over pointers it
+already holds — never an upsert. So a finger swallowed anywhere below the container is invisible
+to the zoom handler for the WHOLE gesture, with no recovery: two fingers, one counted, no zoom.
+That made all ~180 `onPointerDown={(e) => e.stopPropagation()}` sites pinch-blockers, which is
+why the bug read as random — whether pinch worked depended on which pixel finger 1 landed on.
+Worst surfaces: FC (21 sites), the connection nodes (9), every inline field.
+
+This was diagnosed **once before**, on 2026-07-04, and fixed only for the lasso; the general class
+survived because that fix was per-call-site. Fixed positionally this time — `CappedZoom` re-seats
+the count into **capture phase**, so no call site can break a pinch and none has to remember not
+to. The bubble half is kept on purpose: pan/node-drag stay vetoable, so a control that wants the
+pointer still suppresses them. **Pinch = capture, pan = bubble** is now the stated invariant
+(`subsystem-invariants.md`). Two traps in the override: registering capture *without* removing the
+bubble one double-pushes every contact (`isTranslating()` true on ONE finger), and stock `destroy`
+removes without the capture flag, so it leaks the listener on every drill-in open/close.
+
+**`pointerGesture.ts` (new)** — a window-capture module singleton, the one answer to "what gesture
+is in flight", readable by rete's Zoom instance, the Canvas pipe and the lasso without threading a
+ref. `isPinching()` = **≥2 touch contacts**, and everything now reads that instead of counting raw
+pointers — a mouse or a stylus in contact is not half a pinch. **No palm rejection** (author call,
+same session): this is a precise editor, nobody rests a palm on a node graph, so a pen is handled
+only as a PRECISE pointer — never counted toward a pinch, and keeps select-and-drag in one motion
+like a mouse. Pen barrel/eraser no longer grabs a node drag. Revisit only if a drawing-style
+surface ever lands, and with contact geometry rather than a pen-active flag. 10 tests, incl. the
+phase assertions (a bubble regression fails loudly).
+
+**Pinch also SELECTED whatever finger 1 landed on** (author-reported after the capture fix).
+rete picks on pointerdown because the drag depends on it, so at that instant the gesture is
+genuinely unclassifiable. Deferred rather than corrected: an unselected node is now
+drag-transparent to TOUCH, so the press falls through to a pan and selection happens on pointerup
+only if the gesture stayed one finger and didn't move. Rollback (snapshot + restore on the second
+finger) was built first and rejected by the author — it flashes for however long the fingers are
+apart, and correcting a wrong state reads as a glitch where never entering it reads as nothing
+happening. The model already existed for phones; it's now keyed on **pointer type, not device
+class** (`tapTouchRef`), since "this press might become a pinch" is true of any touchscreen. Mouse
+and pen keep select-and-drag in one motion; a SELECTED node still drags on the first touch. Cost:
+a tablet now needs tap-then-drag to move an unselected node, as a phone always has.
+
+**Tablet** needed nothing beyond the capture fix, and that's the finding: `IS_MOBILE` is false
+there (iPadOS ships a desktop UA), so a tablet runs the desktop model — nodes aren't
+drag-transparent, and two-finger pan is its canvas gesture. Before this it could only pan over
+empty canvas. `stopDragStart`'s `!IS_MOBILE` gate is therefore correct as written, not a gap.
+
+**Sweep: 60 raw sites → `stopDragStart`** across 35 node-card files. Now purely about the
+ONE-finger question (pan vs. element) — pinch is safe regardless. Deliberately NOT swept: chrome
+outside the rete container (can't affect a canvas gesture), drag-interactive controls, `<textarea>`
+(owns its scroll/selection), and native-popup controls. That last group I first reverted on the
+strength of CLAUDE.md's OS-dropdown rule, then checked: **that rule is widely cited but has no
+recorded originating incident**, and the mobile path suggests it may not hold (form controls are
+already excluded from tap-to-select; `patchDragGuard` bails before any pick; mobile opens the
+picker on tap-completion, not pointerdown). Left swallowing anyway — the upside is near zero and a
+broken pick is real — but it is now labelled **precaution, not mechanism** in CLAUDE.md and
+`coarse.ts`. Settling it needs browser automation, not reading.
+
+**Socket colors: every transform is HSV now** (`palette.ts`). `socketArrayShade` was an RGB
+multiply (already equivalent to a value scale, so a free conversion); `socketMatrixShade` was HSL
+and was NOT — its `L ×0.86` traded against saturation per hue, landing as V ×0.89 on saturated
+gold but S ×1.26 on duller sky. Its replacement (h −11°, S ×1.18, V ×0.92) is that transform's
+real HSV effect averaged over every built-in palette's matrix slots, so swapping spaces did not
+move the depth. **Do not reintroduce an RGB multiply or an HSL step here.** Three knobs turned,
+all named constants: `ARRAY_VALUE_SCALE` 0.85, `MATRIX_HUE_SHIFT` −11, `LIGHT_VALUE_DROP` 0.045
+(that last is GLOBAL — `themeAccent` also feeds node accents, groups, notes, minimap,
+`--sol-error`). Rings track automatically, being a fixed step off their own fill.
+
+**Reference overlay → Socket Types rewritten** from `docs/socket-reference.md`. Two false claims
+died: "any node that takes a Frame takes a Cube" (backwards — `cube` reaches only `cube`/`trueany`;
+the FRAME widens into a cube), and `any` described as pass-anything (it is the rank-0 wildcard;
+`trueany` is the one). **Never name color HUES in app copy** — they are false under
+Colorblind-safe / Solarized / Equinox; shape and relative shade are palette-safe.
+
+**"Zero learning curve from Excel" is a mandate for MECHANISMS, not prose** (author ruling, now in
+the CLAUDE.md bullet that caused the misread). The overlay's tab docs cover only what normal usage
+cannot make obvious — the socket lattice, unit flow. **If a legend, tooltip, glyph or control
+already carries it, the text must not restate it.** Caught live: `data-types.md` had a nine-row
+shape table rendered directly between `SocketLegendRows` (which draws all nine with labeled hover
+tips) and `DimensionalityFlow` (which already states the rank rules). Cut.
+
+**`uiCopy.test.ts` machine-checks the decidable part of DESIGN.md §7 + the Captain-Obvious rule**
+over help markdown, every catalog label/description, tooltips (literal AND the static segments of
+template titles), aria-labels, placeholders and seed-graph prose. Rules were selected by ONE
+criterion — **zero false positives on the corpus as written**; anything that would flag legitimate
+prose was dropped, not softened to a warning. Each rule pins the real string that motivated it
+plus the counterexamples a sloppier version would flag, so neither direction can regress.
+
+**The register rulings** (author, in order of how much they cost to relearn):
+- **A control's own action verb is correct copy** — "Cycle Number / Text / Date / Boolean", "Open
+  the Problems panel", "Drill in", "Rename". Fixing a `gesture-narration` hit means deleting
+  "Click to ", **not** the verb after it. An earlier pass deleted whole clauses and flattened
+  eight controls into bare nouns.
+- **A plain mouse gesture is never documentation** — obvious to anyone with a mouse. A NON-default
+  button (`right-click`) or a modifier (`Shift-drag`, `Ctrl+G`) is an unguessable binding and
+  stays. That is why Grid Painter says "(right-click erases to blank)".
+- **Node descriptions are third person**, the register Excel's own reference uses. 116 converted;
+  17 openers left alone because they are noun phrases ("Sum of squares", "Sample variance (n−1)",
+  "Set operations on two lists") that conjugation would wreck.
+- **Upstream/downstream suggestions are OUT of node strings.** If a node's expected neighbours
+  need surfacing, that is a UI affordance to build, not prose. An input CONTRACT is different and
+  survives, reworded: "each row of a 2-column frame (label, value) is one rectangle".
+- **Wire-or-type is true of every literal input**, so saying it describes nothing about the node.
+- **American spelling**, shipped copy and internal prose alike.
+
+**Genre decides whether a string may instruct at all** — four different answers, so the lint has
+three scoping mechanisms (`where`, `GENRE_FREE`, the gesture pattern's button/modifier split):
+a **tooltip** must not instruct; a **control label** names its action; **long-form help** may teach
+an unguessable binding; a **demo document** (seed graph) exists to be poked at, so "Drag any slider
+and the pivots recompute" is the document doing its job. Seed prose is held to `GENRE_FREE` only.
+
+**Traps hit live, all four worth remembering:**
+1. A repo-wide prose sweep **rewrites the rule that defines the sweep** — the British-spelling
+   regex became `colors?|grays?|centers?`, a rule flagging the CORRECT spellings, and DESIGN.md's
+   "color, not colour" became "color, not color". The lint's vocabulary and specimens are the one
+   place British spellings must survive.
+2. The same sweep rewrote **`Cancelled`, an exported symbol of `rete-engine`**, breaking an
+   import. Only `tsc` caught it. A prose sweep over `.ts` will eventually hit a real identifier.
+3. `colou?rs?` **matches the American spelling too**. Spell out `colours?`.
+4. **`personal-finance.json` is GENERATED** (`scripts/gen-personal-finance-seed.cjs`);
+   `pfSeedCheck.test.ts` enforces an exact re-emit. Edit the generator, not the artifact. The
+   other 19 seeds are hand-authored.
+
+**Still unenforced, needing a prose sweep first:** §7's em-dash ban (95 uses across help+catalog)
+and no-trailing-parenthetical (113). Both are flagged as pending in DESIGN.md rather than left
+looking honored. Internal prose (comments, `docs/`) was spelling-normalized — 691 replacements —
+not because the lint governs it but because internal copy is in-context whenever new copy is
+written, so its habits leak into the output.
+
+**INDEX over a Frame passes the COLUMN's type through** (author: "after all the work that's been
+done to harmonize this domain, I'm astounded that that's still not in place"). The 07-25 amendment
+that made INDEX adopt stopped at `comboOfType("frame") === null` → placeholder. That reads the
+SOCKET, and a frame's family isn't there — it's per COLUMN, and INDEX *names the column*. Fixed
+where the fact lives: `PassthroughSpec.project` now takes a `ProjectContext` — `shapeOf(inputKey)`
+(the static frame `Shape` on that input) + `wired(inputKey)` — handed to it by the adoption pass
+from `makeFrameShapeResolver`, the same walk behind the Cable Inspector's shape row. One resolver
+per `reconcileTrueAnyTypes` call, built OUTSIDE the fixpoint loop: a static shape depends on
+topology + literals only, nothing the passes mutate, so its memo survives all 32 passes.
+INDEX's frame arm mirrors `data()` exactly — blank/0 Column → the whole row, still a `frame`;
+Column = c → `comboOfFamily(shape.columns[c-1].type)`. `trueany` survives only where the answer
+genuinely is: a WIRED Column (the cable beats the literal in `data()`, and this walk can't know
+it), an unknown upstream shape (CSV / Web Source), a `dynamic` shape (a pivot's data-driven
+columns SHIFT the ones after them, so a positional index into the known prefix is not
+trustworthy), an out-of-range index, or a cube cell (heterogeneous *within* a column).
+
+**Two accents, and the nearest one wins** (author: "the header accent and app accents really
+don't mix well"). A node card and a value popup both carry `--node-accent` on their header; the
+app accent is the user's theme pick. Wherever they met on one surface — a Save button, a focus
+ring, a drop target — the app accent was winning by default and reading as a mistake. Everything
+inside an accent-bearing surface now resolves `var(--node-accent, var(--accent))`, which also
+means app-level chrome (command palette, Settings, Navigator, the accentless dialogs) needs no
+special-casing: no host node, so the fallback already gives it the app accent. Recorded in
+DESIGN.md as the **Nearest-Accent Rule**.
+The blocker was INK, not hue: `--accent-ink` is computed once from the app accent (appTheme), so
+filling a button with a node accent gave it text picked for a different colour — dark ink on
+Frame Violet. `popupCardVars` (PopupShell) derives `--node-accent-ink` alongside the accent and
+every popup routes through it, so the pair can't drift; a hardcoded `#fff` on the Pivot Done
+button went with it. Deliberately left app-accent: the comment badge (a fixed colour is what
+makes commented nodes findable — tinting it per node camouflages it against its own card) and
+Note markdown links (content, not chrome).
+
+**Visual-only column sort in the value popups** (`columnSort.tsx`, shared by TablePopup and
+CubePopup). A view control, not a transform: it reorders rendered rows and touches nothing else,
+so Copy / CSV / Save / the node's value are byte-identical and the graph never recomputes — the
+real sorts are the Sort / Sort Frame verbs. Click a header chevron to cycle asc → desc → none.
+Three things that are load-bearing, not incidental:
+- **`sortedOrder` returns SOURCE row indices**, so the body maps `order.map((srcRow) => …)` and
+  hands `srcRow` to every edit, draft and row number. That is the whole reason the editable
+  frame/matrix grids stay correct under a sort — you type into the row you're looking at. Row
+  numbers stay the row's real position (a filtered spreadsheet doesn't renumber either).
+- **The sort key comes from the RAW grid, never the rendered text.** A date column displays as
+  `20-Mar-2026` but is stored as a serial; sorting the string would order it alphabetically.
+- **Reset is keyed on which grid is on screen** (the popup state; a cube's drill level), applied
+  during render rather than in an effect — an effect renders the new grid once in the old grid's
+  order first. A column index means nothing across two different tables.
+A list in Column mode had no header row at all; it now gets one labelled `A`, matching what Row
+mode already labels its columns (author offered "list" or "A"). **Row mode has no sort** — it
+lays each element out as its own column of a single row, so ordering one column would order one
+cell; those headers stay inert (no cursor, no indicator).
+**The trigger is the whole header cell, and nothing is drawn until a column is sorted** (author,
+same session — the first pass had a resting double-chevron button on every column). So the
+chevron is an INDICATOR, not a control: `pointer-events: none`, present only for the sorted
+column, in the surface's accent. The cursor is the entire affordance. It stays absolutely
+positioned on the header's right edge with a translucent scrim — black in dark theme as
+authored, white in light, where a dark chip with a dark glyph is the same collision — and now
+reserves NO width at all, so an unsorted grid measures exactly as it did before the feature.
+The one thing this shape needs care with: anything interactive INSIDE a sortable header has to
+stop propagation or it re-sorts the table as you use it. That's the frame editor's column-name
+field and its type toggle (`stopSortTrigger`).
+**FRAME headers are the exception, for a mobile reason:** the name field fills the cell, so
+there's no dependable margin left to tap on a phone. There the chevron is always drawn — muted
+double chevron while unsorted, since it's an affordance not state — and is itself the control,
+with the header reserving room for it so a full-width name input can't slide under it. Every
+other header keeps the invisible-until-sorted shape.
+
+**Multi-column sort, Excel's add-a-level model** (author). Keys accumulate; priority is the
+order they were ADDED, not the order they were touched. Category then Name → Category then
+Name; clear Category → just Name; add Category back and it lands at the END, so it's Name then
+Category. A column changing DIRECTION keeps its place; only clearing and re-adding moves it.
+`nextSort(sort, col)` is the whole rule as a pure step, which is what the tests exercise — the
+hook is a `useState` over it, so there's no second copy of the cycle to drift. `sortedOrder`
+consults keys in order and the first that separates two rows decides; blanks stay last per key
+and, when both rows are blank on a key, the next key gets its turn.
+No priority NUMERALS in the headers — Excel doesn't show them either, and the chevron pad has
+no room. If a 3+ key sort ever gets confusing in practice that's the first thing to add.
+
+**The other half — a socket type can now be derived from static CONFIG, not just wiring.** That
+was a new class of trigger: every derived-type settle hung off a connection event, and a literal
+edit fires none. Three literal-commit paths now call `reconcileTypesAfterEdit` (fcReconcile):
+`InlineInputs` set/setStr (INDEX's own Row/Column *and* every frame verb's `stringLiterals`
+config, which is what the shape walk reads), `useNodeField` (the op/how dropdowns — a Group By
+aggregate decides a column's type), and the Frame Input source editor. It runs the settle and
+pays the full FC reconcile ONLY when a type actually moved, so the overwhelmingly common
+"a literal changed a number" edit costs one pure socket walk.
+
+### SESSION DIGEST (2026-07-25h — the consolidation's parking lot: three real bugs)
+The three "found but unsolved" items from the audit. All three turned out to be genuine
+bugs, and two of them were filed more mildly than they deserved. Full record archived at
+`archive/type-resolution-consolidation.md`.
+- **Bug B — frame SHAPE didn't survive a passthrough.** `frameShapeResolver` was the one
+  walk that never read the `passthrough()` declaration: `compute()` is an `instanceof`
+  chain over the frame VERB classes, so anything else fell to `null`. Confirmed before
+  fixing (`Frame Input → X → Sort Frame` for X ∈ {Display, Conduit lane, IF}: the source
+  resolved, all three routes lost it, taking every downstream verb with them). It reads the
+  declaration now; Conduit lanes are named explicitly since a Conduit declares no spec.
+  Deliberately still its OWN walk — it propagates FORWARD from literal sources and resolves
+  column names/types ahead of running, so folding it in would be a merge for its own sake.
+- **Bug C was filed as "no known bug, but nothing forces them to agree" — it WAS a bug.**
+  Sweeping every (base, type) pair showed `adoptTypeForBase` and `projectTypeToBase`
+  disagree on CONNECTABLE pairs: a family-less wire was returned verbatim, so a `trueany`
+  cable landing on a Concat-Lists row turned that row INTO a `trueany` port, which then
+  **accepted a frame or a lambda**. That is exactly what `AdoptiveSocket`'s doc comment
+  promises can't happen. Family-less now keeps the BASE; a property test pins that the two
+  agree for every legally-connectable type. NOT merged into one function — they still
+  differ outside that domain deliberately (an adoptive OUTPUT projects a rank-crossing
+  reshape DOWN, which no input connection can ask for).
+- **The disagreeing-selector question was the WRONG QUESTION.** A data-aware display is
+  unavailable in both directions: reading `selected()` at render re-adds the second
+  resolver item 5 deleted, and making ADOPTION data-aware would make a selector's output
+  type flip per recompute — so a downstream cable's legality would depend on the data.
+  And when branches genuinely disagree there's nothing to recover. **The motivating case
+  wasn't a selector at all:** `IFERROR(aDate, NA())` lost its date formatting because
+  **NA() declared a `number` output** while emitting a tagged `#N/A` SolError — a
+  type-neutral SOURCE voting a type it doesn't have. NA is `trueany` now (non-voting in
+  `agreeTypes`, connects anywhere, hollow-ring dot).
+  **Rule worth keeping: when a selector's `agree` says unknown, suspect a BRANCH declaring
+  a type it doesn't have before suspecting the selector.**
+- tsc clean; suite 3173 green. The plan doc is archived as an anti-relapse record.
+
+### SESSION DIGEST (2026-07-25g — the type-resolution consolidation, items 1–5)
+Author: *"it seems like our systems have become very convoluted."* A read-only audit
+followed, then five work items done individually. The map, target state and remaining
+parking lot live in `docs/type-resolution-plan.md` — read that, not this, to continue.
+- **The finding, and the reason it was hard to see:** nothing here was a bad line of code.
+  FOUR OR FIVE subsystems each independently answered *"what type does this output carry?"*
+  and had drifted apart. That drift is invisible from any single `data()`, which is why the
+  two bugs that prompted the audit each took a long trace through nodes that were all
+  individually correct. **Diagnosis rule worth keeping: when a shape or type looks wrong,
+  read `coerceInputs` and the resolvers BEFORE reading any node's `data()`.**
+- **1 — the display walk now uses adoption's rule.** `displayedType` hand-rolled its own
+  resolution (first non-wildcard incoming connection wins). It ignored `combine`, so an
+  `IF` over a date and a number rendered the NUMBER as `20-Mar-2026` — a wrong value on
+  screen, verified live. It also couldn't tell a value branch from a side input, so an
+  Expect's wired `min` could set the display type of the box showing `in`. `agree` moved to
+  `passthrough.ts` as `agreeTypes`: one combine rule, not two.
+- **2 — dead exports** (`staticTrueAnyIn`, `anyListOut`, `anyTableOut`), which orphaned the
+  `anyListSocket` singleton. The `anylist` TYPE is alive (19 adoptive ports); the shared
+  non-adoptive INSTANCE was left behind by the 2026-07-15 migration and was a trap —
+  building a port from it silently opts that port out of adoption.
+- **3 — the `anycombo` rung** (author approved; the audit had undersold it as a subtraction
+  when it is a TRADE — a socket type for a flag). It retired `noWidenInputs`, where a node
+  overrode what its own socket said about rank, and `anyOut`, where Regex drew a scalar
+  CIRCLE on a port that spills lists. Glyph: a gray split square whose lower half is the
+  fill's `-ring` shade, because the gray family distinguishes rungs by SHAPE and a
+  [gray, gray] split would have been indistinguishable from `anylist`.
+- **4 — one coercion rule.** A `trueany`-based adoptive coerced on its ADOPTED type while
+  every other adoptive coerced on its BASE; the comment called it "established pre-existing
+  behavior". It made a node's runtime input SHAPE depend on what was wired upstream. Safe
+  to remove because the adopted type IS the upstream's, so it was coercing a value to the
+  type it already had — identity in every correct case, and a silent laundering of the
+  mismatch when a producer's declared type and runtime value disagreed. Removing it also
+  fixed another YEAR-class bug: with `datelist` adopted, a scalar into INDEX became
+  `[scalar]`, so `INDEX([all])` returned a list of one.
+- **5 — the walk is DELETED.** `displayedType` reads the socket; adoption writes it. The
+  precondition is machine-checked now (`passthroughOutputMutable.test.ts`): a passthrough
+  whose output is a WILDCARD must carry a MutableSocket, or `reconcileOnce` computes the
+  type and silently throws it away. The catalog sweep found exactly one concrete
+  passthrough output — Fill/Coalesce, numeric throughout, declaring `passthrough()` purely
+  for UNITS — so the invariant is "wildcard ⇒ mutable", not "always mutable".
+- **Two process lessons.** (a) Deleting redundant machinery is how you find the tests that
+  were quietly depending on it: three display tests, one PRE-EXISTING, never ran
+  `settleWildcardTypes` and so tested the walk rather than the shipped path — the same
+  smell the List Input audit recorded for `wrapNodeData`. (b) The guards earned their keep:
+  tsc proved two new `accepts()` branches unreachable, and `formatModel.test.ts`'s
+  exhaustive `Record<SocketDataType, …>` FORCED an explicit FC-family decision for the new
+  rung instead of letting it default silently.
+- Walks 5 → 4; the remaining three resolve different things (route, annotation, column
+  shape). Parking lot: Bug B (`frameShapeResolver` never reads `passthrough()`), Bug C (the
+  two projection helpers can disagree), and what a DISAGREEING selector should display.
+- tsc clean; suite 3163 green.
+
+### SESSION DIGEST (2026-07-25f — a one-element list IS the scalar, at a combo rung)
+Reported: `List Input [Date]` with ONE entry, straight into YEAR, emitted a LIST of one
+year. Author's reading, which was right: "combo socket mutates single value down into
+Scalar — that's what the combo socket is supposed to do; if I didn't want that I'd use the
+strict-list socket."
+- **The inconsistency was ours, and it predates the combo sweep.** `toScalar` (coerce.ts)
+  has ALWAYS collapsed a one-element list for the numeric SCALAR rung — so the COMBO, the
+  rung that generalizes the scalar, was the STRICTER of the two. The lattice already
+  permits `combo→scalar` on the grounds that "a combo can be a scalar" and sockets.ts
+  called that a runtime-accepted risk; nothing made the promise true.
+- `collapseSingleton` in coerceInputs now applies at every rung whose declared rank can be
+  0: all five combos plus the scalar rungs (`string`/`date`/`complex`/`logical` — `number`
+  already had it via `toScalar`). One place, uniform.
+- **A strict list socket keeps its list**, which is the whole difference between the rungs,
+  and re-widens a scalar on the way in — so the round trip through a collapse is lossless
+  (`LENGTH([7])` is 1, `LENGTH(7)` is 1). List Input still SOURCES a list; the collapse is
+  a consumer-side reading.
+- **The complex trap:** a complex value is itself `[re, im]`, so the test is on the OUTER
+  length only — `[[1,2]]` (a one-element complex list) collapses, `[1,2]` (one complex
+  number) does not, or a scalar would be torn in half. Same shape test as
+  `broadcastComplex`. Pinned by a test.
+- Diagnosis note for next time: DatePart, INDEX, TODAY, Conduit, Get Column and XLOOKUP
+  were each verified scalar-correct in isolation BEFORE looking at the boundary — the bug
+  was never in a node, it was in what the socket does with the value on the way in. When a
+  shape looks wrong, check `coerceInputs` before reading any `data()`.
+- tsc clean; suite 3151 green.
+
+### SESSION DIGEST (2026-07-25e — the type comes from the SOCKET: INDEX adopts, chips stop sniffing)
+Author, on the combo sweep's tail: "every non-scalar value has a forced type already
+associated with it, there's no good reason to re-read cells." Two long-standing places
+were inferring a container's element family from its CELLS instead of its socket, and one
+node was refusing to declare a family it actually knew.
+- **INDEX adopts now** (D18 AMENDED). It was static `trueany` on the grounds that its
+  result "varies per row" — true for a CUBE cell (may hold a nested frame/cube) and a
+  FRAME cell (heterogeneous columns at a runtime index), false for everything else: a
+  list/matrix is HOMOGENEOUS, so the socket fixes the family whichever cell you pull. The
+  cost was real — a date out of a date list lost its date-ness (`isDateType` reads the
+  socket, so it rendered a raw serial) and the output dot stayed a hollow ring while the
+  INPUT dot colored. INDEX now declares a `passthrough()` on `list`: it FORWARDS a value
+  out of its container, which is exactly what that declaration means, and one declaration
+  drives type adoption, unit flow, the display walk and the Conduit trace together.
+- **The rank is what varies, not the family** — so the spec grew a `project` hook and
+  INDEX maps the container type to its family's COMBO. `datelist` in → `datecombo` out,
+  which feeds a `date` scalar input AND a `datelist` input (combo→scalar is a lattice
+  edge). A verbatim passthrough would have emitted `datelist` and REFUSED the scalar
+  input the extracted cell belongs in. `comboOfType` returns null for frame/cube, where
+  the placeholder correctly stands. Declaring INDEX a passthrough did NOT disturb units:
+  its manual `tagFrameCellUnit`/`matrixUnitOf` handling and the whole unit/cube/error
+  suite stayed green.
+- **Chips stopped reading cells.** New `nodeOutputElemFamily(nodeId, outKey?)` resolves
+  the declared family through the same passthrough/conduit walk `nodeOutputIsDate` used —
+  that predicate is now just this `=== "date"`, so they can't diverge. Fixed by it:
+  (1) `ValueDisplay` passed `elem` for dates ONLY, so every other family fell back to
+  ArrayChip's cell scan — and that scan skips nulls, so a list with NO valid entry left
+  has nothing to vote and returns undefined, which renders as the NUMERIC default. That's
+  the reported Bool-List-Input bug: the SegToggle forces socket and values correctly (swept
+  typed and wired, it never leaks a number), but the box tinted numeric once the valid
+  entries ran out. (2) `cellTypeOf` read the FIRST cell and could only answer
+  number|string though TablePopup's CellType has all four — so a boolean list could NEVER
+  open as `logical`, and a leading null made a text list open numeric.
+- **The same first-cell sniff was duplicated in PinLayer and CableInspector** (picking the
+  popup accent) — both had the node id and output key in hand the whole time. Replaced
+  with the resolver plus one shared `arrayAccentFor(family, twoD)`; Filter's Dropped and
+  Split Frame's Matrix/Headers chips now pass their family too. Every first-cell sniff in
+  the components is gone; the cell scan survives ONLY as ArrayChip's fallback for a
+  genuine wildcard output, a set INDEX's adoption just shrank.
+- tsc clean; suite 3146 green.
+
+### SESSION DIGEST (2026-07-25d — combo sockets swept across ALL FIVE element families)
+The combo rung (scalar-or-list, the bicolor split square) has existed for all five element
+families since 2026-06-10, but only the NUMBER one was ever applied — `numListIn` appears 104
+times while `strComboIn`/`dateComboIn` had zero real node uses and `datecombo` showed up only as
+Cast's output. Three passes closed that, one family each; **the sweep is now COMPLETE**, so a
+combo rung with no node uses is a bug rather than a gap.
+- **Date first** (`3d4b066`): nine nodes (DatePart, WeekInfo, DateDiff, DateAdd, DATEDIF,
+  WORKDAY, NETWORKDAYS, DATE, TIME) declare `datecombo`/`numlist` and broadcast. No new machinery
+  — a date serial IS a number, so `broadcast()`/`broadcastErr()` applied as-is.
+- **Then text**, which needed a broadcaster: `broadcast` is typed to numbers, but a text op's
+  operands are MIXED (LEFT takes the text AND a count) and its result is often a different family
+  than its input (LEN: string → number, EXACT: string → boolean). New **`broadcastCells`**
+  (shared.ts) is the same ragged-zip + per-cell error/missing contract with the element type
+  opened up, overloaded by ARITY (1–4) so each call site keeps precise per-operand types. Element
+  types are constrained to `string | number | boolean` because the list check is `Array.isArray`
+  — **that's exactly why the COMPLEX family can't use it** (a complex value is itself `[re, im]`,
+  indistinguishable from a list of them), so complex is the one family still un-swept and will
+  need its own broadcaster. `BroadcastResult` is now just `CellResult<number>`.
+- Seventeen text nodes broadcast: UPPER-family, LEN, LEFT/MID/RIGHT, FIND/SEARCH, SUBSTITUTE,
+  REPLACE, REPT, CHAR/CODE, TEXTAFTER/BEFORE, EXACT, NUMBERVALUE, ENCODEURL/DECODEURL,
+  ROMAN/ARABIC, FIXED, DOLLAR, Reverse Text, Spell Number.
+- **The criterion both passes used** (now written into node-coverage.md's input-dimensionality
+  rule, which contradicted itself on this): is the input an element-wise OPERAND or a MODE? A
+  per-element numeric count IS an operand — `LEFT.n`, `MID.start`/`len`, `REPLACE.num_chars`,
+  `FIXED.decimals` are combos, because `=LEFT(A1:A10,B1:B10)` is a real Excel formula. A value
+  describing ONE operation over the whole input stays scalar: NUMBERVALUE's separators, Text
+  Filter's pattern, WEEKDAY's `return_type`, YEARFRAC's `basis`, WORKDAY's `weekend_code`.
+- **Deliberately left alone**: CONCAT/TEXTJOIN REDUCE a set to one string (Excel's CONCAT
+  FLATTENS an array rather than spilling, so broadcasting would diverge from Excel, not match it);
+  TEXTSPLIT and Text Filter are already 1-D → 1-D and broadcasting either needs a rank-2 result
+  the lattice has no 1-D→2-D edge for; Regex stays on the wildcard ladder because its element type
+  depends on the op (D18 — no untyped combo rung); Text Input/Promo are literal sources.
+- **`TextMap` ("UPPER (list)") deleted.** It existed only because Text Transform was scalar-only;
+  with a `strcombo` input, wiring a list into UPPER *is* TextMap. Old saves load it as a
+  Placeholder. Also dropped from the Timesavers pack's reclassification tags.
+- **The pass surfaced a real lattice gap.** Making EXACT broadcast means a `logicalcombo` output,
+  and `logicalcombo → number` was BLOCKED while `logical → number` flowed — so the change would
+  have broken a cable. Root cause: the combo→scalar exception was bolted onto the within-family
+  derivation only, while the `logical↔number` bridge was derived from rank alone. Both now share
+  one **`dimFlows(dOut, dIn)`** predicate in sockets.ts, and the machine-checked sweep applies the
+  same predicate on both sides so they can't drift apart again. This also un-blocks the
+  pre-existing Comparison/IS.TEST `logicalcombo` outputs into numeric inputs. Purely additive —
+  no edge was removed.
+- One inline-editor edit was load-bearing: `isStr` in `inlineInput.tsx` matched `"string"` only,
+  so every retyped text input would have silently lost its typeable field. `isNumber` already
+  matched `number || numlist` — the combo case just hadn't come up for text.
+- **Complex last, and it needed its OWN broadcaster** (in `complex.ts`, not shared.ts — the
+  knowledge is family-specific). A complex value IS an array (`[re, im]`), so the `Array.isArray`
+  list-test every other broadcaster uses can't tell a scalar from a list of them. Two mechanisms
+  handle it: (1) an EXACT shape test — a scalar `Cx` is a 2-tuple of NUMBERS, so any other array
+  is a list, which correctly reads the empty list and a list whose FIRST cell is a null/SolError
+  (a "first element is an array" test would have got both wrong); (2) per-operand TAGS
+  (`cxOp()`/`numOp()`) at each call site, because one genuine collision survives the shape test —
+  a REAL operand's two-element list `[1, 2]` is byte-identical to a scalar complex. IMPOWER is the
+  only node that mixes kinds, so it's the only place that could bite, and it's pinned by a test.
+  The tags carry the element type too, so `fn`'s parameters infer per position with no casts.
+  Deliberately NO `guardFinite`: the complex ops have their own non-finite conventions (IMDIV by
+  zero → `[NaN, NaN]`, which formats as "NaN"), and classifying those would change established
+  scalar behavior rather than widen it.
+- `formatCxValue` gained the list branch, so all five complex value boxes render a broadcast list
+  for free — **the list check has to come FIRST there**, since a scalar Cx is itself an array.
+  Quadratic Roots' component stopped calling `formatCx` directly and routes through it.
+- Six complex nodes: COMPLEX, IM Unpack (its four numeric outputs each broadcast independently
+  over the same operand), the 16 IM unary ops, the 4 IM binary ops, IMPOWER, Quadratic Roots
+  (a list of quadratics → two parallel root lists; `a = 0` is a per-cell `#DOMAIN!` now).
+- The new `complex.test.ts` deliberately includes a `wrapNodeData` case: `coerceInputs` has an
+  explicit `complexlist` branch that wraps a lone value, and `complexcombo` must pass through
+  UNTOUCHED or a scalar would arrive singleton-wrapped. (Per the List Input lesson — a node test
+  that skips `wrapNodeData` isn't testing what ships.)
+- tsc clean; suite 3140 green (3117 → +10 text, +13 complex).
+
+### SESSION DIGEST (2026-07-25c — VSTACK/HSTACK passthrough; the List Input audit)
+- **List Input was wrong in every SegToggle position, and a sweep is what found it.** Testing all
+  four element types against the same inputs (wired list / wired null / wired error / typed text)
+  made the pattern obvious in a way that reading one path never would. Four bugs, one root cause
+  each:
+  - **Two parsers, split by element type.** `list.ts`'s `parseCsvList` (naive `split(",")`) was
+    DEAD for three of four types: `coerceInputs` injects `parseListLiteral`'s result for any
+    `TYPEABLE_LIST` socket (strlist/datelist/logicallist) *before* `data()` runs, so only Number
+    mode ever reached it — `numlist` isn't in that set. So RFC-4180 quoting worked in Text mode
+    and not in Number mode, and each mode had its own unparseable-cell policy (Number dropped,
+    Date emitted NaN, Logical coerced to FALSE). Now one parser: `parseCsvList` delegates to
+    `parseListLiteral`, which grew a `numlist` branch. **`TYPEABLE_LIST` deliberately did NOT
+    grow one** — adding `numlist` would make every numeric list input in the app typeable in
+    place and force a `stringLiterals` declaration on all of them (machine-checked), a blast
+    radius far beyond this node.
+  - **Unparseable typed cell → first-class `null` in all four modes.** Dropping shifts every
+    position after it (silently re-indexing against a parallel list); NaN is worse than either,
+    since it reads as a number and slips past every `isMissing`/`isSolError` guard downstream.
+  - **A wired `null` was dropped AND resurrected the row's typed text** (`wired != null` — the
+    `??`-swallowing bug `readInput` exists to prevent: a blank flowing in became whatever number
+    sat in the box). Now `readInput` semantics: a CONNECTED cable wins even when null.
+  - **A per-cell `SolError` was swallowed** — an upstream `#DIV/0!` vanished from the list
+    instead of propagating. Both null and SolError now ride through any typed list, per the
+    value model.
+- **A green test was pinning the dead parser.** `list.test.ts`'s logical case called `data({})`
+  directly (no `wrapNodeData`), so it exercised the unreachable path and passed while production
+  returned something else entirely (`false` for junk, not "dropped"). Worth remembering as a test
+  SMELL: a node test that skips `wrapNodeData` isn't testing what ships. Its intent — the friendly
+  `yes/no/y/n/t/f` spellings — was real and is preserved, but as `parseBoolText` local to the
+  typed-text parser rather than widened into `coerceLogical`, which would change how every WIRED
+  value coerces.
+- **The List chip tinted GREEN (text) for a date list.** `ValueDisplay` runs
+  `dateFormatDisplay` FIRST, so by the time the chip is built a date list is a list of
+  STRINGS — it lands on the `listIsString` branch, and that branch was the one place that
+  didn't pass ArrayChip's `elem` override (the numeric branch already did). The chip then
+  sniffed the cells and read "text". Fixed by resolving `nodeOutputIsDate` once and passing
+  it on both branches. General lesson for value boxes: anything DERIVED from the formatted
+  value is sniffing a display artifact — the socket family is the truth, and `elem` exists
+  precisely because a date serial is indistinguishable from a number by value.
+- **Fifth bug, found by sweeping what can CONNECT rather than what data() does: a wired element
+  was FILTERED, not converted.** `isElemKind` kept only `typeof v === <the row's type>` and
+  discarded the rest, so the SAME value behaved differently typed vs wired — `01-Jan-2026` typed
+  into a Date row parses to a serial, wired in it was thrown away. The sharp edge is the WILDCARD
+  ladder: `any`/`anylist`/`trueany` are ACCEPTED by every row socket (correctly — that's what the
+  ladder means) but carry whatever value flowed in, so a Display/Conduit/INDEX carrying a number
+  wired into a Text row silently emptied the list — no cable rejected, no error, just nothing.
+  Fixed by CONVERTING instead (`coerceElem`), which is the right model anyway: List Input is a
+  typed literal SOURCE whose job is "emit a list of type T", so a wired element gets the same
+  treatment as the typed text beside it. Unconvertible → `null`, consistent with the text policy.
+  Note `applyListType` already drops ill-typed input cables when the SegToggle flips, so the
+  toggle path was covered — it was the wildcard path that had no guard at all.
+
+### VSTACK/HSTACK join the passthrough set (same session)
+- **The backlog's "passthrough annotation opt-in" sub-item was mostly STALE** — Concat Lists,
+  Interleave, TOCOL/TOROW and WRAPROWS/WRAPCOLS all already declare `passthrough()` (and are
+  covered in `trueAnyAdopt.test.ts`); the doc claim in node-coverage and the backlog outlived the
+  code. Reconciled both. The one genuine gap was the 2-D rung of the append ladder: **VSTACK and
+  HSTACK** (`StackNodeBase`) had neither a declaration nor an adoptive output, so a strtable
+  stacked on a strtable decayed to a neutral `anytable` downstream while its 1-D sibling Concat
+  Lists kept the type. Now `agree` over `valueInputKeys()` + `adoptiveTableOut`, the exact Concat
+  Lists shape — and because an `anytable` input lifts a wired list to the table rank, a list row
+  and a table row agree on the same element family.
+- **A passthrough decl alone would have been WRONG here, and the reason generalizes.** Declaring
+  passthrough makes coerceInputs keep `UnitCell` tags on the named inputs — correct for a 1-D
+  op (per-element list units, D20) but not for the stackers, whose rows accept a LIST that widens
+  into a matrix ROW: the tags would ride INTO the matrix, and a matrix carries ONE whole-grid
+  Symbol tag, never per-cell `UnitCell`s. So the stackers take WRAPROWS' route instead —
+  `unitAware = true` (which wins over the passthrough keep-tags branch, so the two compose) plus
+  a `demoteUnitCells` reduction per input: `matrixCellsFromList` → bare as-typed magnitudes + the
+  one unit the cells share, re-tagged with `withMatrixUnit`. An already-bare matrix passes
+  through untouched, so `sharedMatrixUnit` sees one uniform story and a km LIST stacked on a km
+  GRID now agrees instead of silently stripping. The rule for the next rank-crossing node:
+  passthrough is about TYPE and format; crossing a unit granularity needs `unitAware` too.
+- Pinned in all three registers rather than one: the declaration shape + extensible-row re-read
+  (`passthroughSystem.test.ts`), the end-to-end socket adoption incl. the disagree/unwired
+  reverts (`trueAnyAdopt.test.ts`), and the unit lift through the real coercion boundary
+  (`matrixUnitPolicy.test.ts`, whose `carry-if-uniform` policy previously only exercised
+  already-tagged grids).
+
+### SESSION DIGEST (2026-07-25b — zoom-band diagnosis; mobile-only settings; AI palette shell)
+- **Choppy zoom band** — the session's main finding, written up as its own OPEN PROBLEM above
+  (symptom, three things ruled out, instrumentation, the T1–T8 plan). Not repeated here. Landed
+  alongside it: `zoomSettle.ts` (the settle window, previously duplicated in `Canvas.tsx` and
+  `HtmlCanvasLayer.tsx`, now one constant with a `window.__zoomSettle` override so it can be
+  re-A/B'd on a deployed preview), and `fpsProbe` now tags every sampled frame with the camera
+  scale, reporting the worst frame's `k` and the `k` range covered — there was previously no
+  console handle for the live transform, which is what T1 needs.
+- **Renderer-alternatives question (no code).** If DOM and HIC both became unacceptable: native is
+  strictly dominated (~126k LOC of app logic is TypeScript against 3.2k of Rust; it kills the web
+  target and still requires the same card port on top). A hand-drawn card toolkit is tractable for
+  the ~169/322 components on `nodeKit` and codegen-able off `nodeCatalog.ts`, but its real cost is
+  structural, not labour: the design system moves from CSS into imperative draw code, and the
+  0.5px/1px fidelity bar has to be met against a DOM reference the author A/Bs it with. The
+  deciding question is whether such a renderer would REPLACE the DOM path or sit beside it forever
+  — a permanent second implementation of every card is the expensive outcome, and free effort makes
+  it worse, not better. Not recorded as a decision; nothing was chosen.
+- **`disabledOnMobile` on a settings-schema field** — a three-consumer contract, not a style: the
+  Settings row grays with a reason, `buildSettingToggles` drops the "Toggle …" command so the
+  palette isn't a back door, and the feature ignores the stored value. Marked on
+  `commandPaletteAlwaysOn` (docking wants a bottom strip mobile doesn't have — the palette is
+  top-anchored there because the keyboard owns the bottom half) and `minimapPosition` (the minimap
+  isn't rendered on mobile at all). `Canvas.tsx` ignores a `commandPaletteAlwaysOn` carried into
+  mobile from a desktop session in the same localStorage. `settingsStore.test.ts` pins the marked
+  set, so adding the flag elsewhere fails until every consumer is updated.
+- **AI command palette — UI SHELL ONLY.** `aiKey.ts` (`AI_PROVIDER` + `aiConnected()`) over the
+  existing `apiKeyStore`; a Settings ▸ AI section stores the key. A stored key reveals a sparkle in
+  the palette that flips it to an accent-filled prompt box (`--accent` + `--accent-ink`, command
+  results suppressed so Enter can't mean two things). Nothing calls a service — submitting is
+  deliberately inert with the TODO at the send site, rather than faking a reply. Accent-filling the
+  palette is a deliberate, narrow exception to the Quiet Accent Rule (which permits a colored
+  surface that communicates STATE): the primary action is rerouted. Flesh-out decisions are
+  enumerated in the backlog item, not here.
+
+### SESSION DIGEST (2026-07-25 — cables see through Conduits: inspector + run selection)
+A Conduit is wiring, not computation, so a single cable is a SEGMENT of a longer run.
+Both cable-legibility surfaces now work on the run instead of the segment.
+- **`conduitPath` (`conduitTrace.ts`, unit-tested)** — the run a cable belongs to: climb
+  lanes upstream to the real producer, then fan out downstream FROM THAT ORIGIN to every
+  real consumer, collecting the segment ids and the Conduits crossed. Walking downstream
+  from the *clicked* cable instead of the origin was the trap: a fan-out branch would
+  hide its siblings and two segments of one run would resolve differently.
+- **Cable inspector** now reports the run's ends — From = origin producer (its value,
+  FC annotation and frame shape too, instead of the opaque Conduit lane), one To row per
+  terminal input, and a quiet `Via` row naming the Conduits in between. It also accepts a
+  whole-run multi-selection (previously any multi-select showed nothing); the ribbon bail
+  now only applies to a lone ribbon cable, since a run's ends are resolved.
+- **Double-click a cable selects its whole run** — the entire path highlights, and Delete
+  takes all of it. Detected from `e.detail >= 2` inside `onClick`, because the canvas
+  swallows native `dblclick` in capture phase to kill rete's zoom-on-dblclick, so React
+  never sees a synthetic double-click here. Ctrl/Cmd double-click adds the run to the
+  selection; a cable with no Conduit either side is its own run and double-click leaves
+  the first click's selection alone rather than toggling it off.
+
+### SESSION DIGEST (2026-07-23 — GPU renderer: WICG API re-research + perf/sync build)
+Author complaint: html-in-canvas mode feels worse than DOM on mobile. Re-researched the
+API itself (primary sources), then built the fixes the drift implies.
+- **API status (2026-07):** origin trial Chrome 148–150, Android DevTrial since 138; the
+  rename (drawElement→drawElementImage / texElementImage2D, old names dead past M145) is
+  final and we're on the new names; **`ElementImage` is spec-final as
+  `{width,height,close()}` — NOT an ImageBitmapSource**, so the 2026-07-16
+  `createImageBitmap(refImg)` rejection is permanent spec behavior, not build drift; the
+  privacy update strips subpixel-AA/system-color content with no opt-out (a fidelity
+  floor, not a bug — `live` mode stays the crisp escape hatch); spec paint model: canvas
+  children are snapshotted just BEFORE the `paint` event, and drawElementImage outside a
+  paint handler draws the PREVIOUS snapshot.
+- **Engine perf (htmlCanvasRenderer):** double paint-listener fix (`onpaint` +
+  addEventListener registered the same handler twice → two full draws per paint on API
+  builds); paint frames re-read the live camera at paint time (`setTransformSource`);
+  any frame that must call drawElementImage routes through requestPaint (in-paint =
+  current snapshot); the paint handler draws cached mips when possible (was an
+  unconditional live re-raster of every visible node); the paint-raster fallback
+  shelf-packs each batch into ONE atlas region → ONE canvas read-back per paint instead
+  of one per node (the expensive pattern on mobile GPUs), per-node textures cropped
+  bitmap→bitmap (`rasterAtlas.ts`, pure + tested).
+- **DOM-trails-canvas pan fix (getElementTransform):** the engine now reports the
+  PRESENTED camera — from the WICG sync matrix (drawElementImage's return /
+  getElementTransform, plausibility-gated against bookkeeping) — and during a gesture
+  the layer steers the holder onto that frame, restoring rete's byte-identical
+  serialization on settle (`domSync.ts`, pure + tested). Coarse pointers additionally
+  get per-element `willChange` promotion for small DOM-only elements (≤1024 CSS px; the
+  holder-wide promotion stays disabled there — texture-limit corruption), so conduits
+  stop trailing during pans.
+- `__hcProbe()` reports getElementTransform's location + identity mapping. Stale
+  API-status comments reconciled (htmlCanvasSupport, Settings copy, decisions D6).
+
+### SESSION DIGEST (2026-07-22d — post-1.2 reorient: backlog → 1.3, deferrals.md born)
+v1.2.0 tagged and released; docs/planning reoriented around 1.3 (author directive: all
+deferred/for-later work collapses into ONE review item; the queue focuses on bugs +
+decided-unbuilt work).
+- **`docs/deferrals.md` created** — every deferred/parked/author-gated item gathered in
+  one reviewable list (author-decision gates, author-present polish, parked bugs,
+  only-if-triggered, parked features). `backlog.md` rewritten as the 1.3 queue: bugs &
+  verifications, the author's 2026-07-16 punt list (iFrame/embed, Data Feed widening,
+  drill-in nav/lasso/group tools, doc-level FC defaults), the decided-unbuilt build
+  queue, packs, ONE **Deferral review** item pointing at deferrals.md (same sitting:
+  ratify `out-of-scope.md`), and the 1.3 release tail. CLAUDE.md + docs/README.md maps
+  updated.
+- **Full-docs sweep vs code (subagent-assisted) — reconciled the stale claims:** the
+  Reference data-model chapter SHIPPED (`help/data-model.md` covers lattice/wildcards/
+  list-is-a-row/unit granularity — backlog item deleted); composite-workbench seed HAS
+  scenarios + data-table cards (item deleted); Nest/Unnest shipped (`cube-node-scope.md`
+  marked [done], unified-XLOOKUP contradiction fixed); `#OVERFLOW!` shipped + toured
+  (value-semantics now says 15 codes); pack-architecture "4 of 5 run modes" → full set;
+  format-model per-column-units non-goal dropped (A4 shipped); node-coverage FC "under
+  active redesign" dropped; docs/README "1.2 tag pending" cleared.
+- **Real gaps promoted into the queue** (found by the sweep, previously un-backlogged):
+  extend targeted recompute to topology changes (D8 follow-through); trueany adoption
+  absent in drill-in composites; `readInput` sweep beyond scalar.ts; passthrough opt-in
+  for Concat/Interleave/TOCOL/WRAP; FC complex-family spec-lag verify; pack-architecture
+  prerequisites folded into the distribution item. D10's residual formula-surface
+  violation (pre-2010 stats family via Formula.js) noted inside the parity-program item.
+- `release-notes-features.md` reset to the 1.3 shell (1.2 list shipped; git history
+  keeps it, per the 1.1 precedent). Dev-notes 07-20 digests swept to the archive.
+
+### SESSION DIGEST (2026-07-22c — tablet zoom corruption: holder GPU-layer promotion)
+Author report: zooming on the tablet drew GREEN SQUARES / broken raster, in BOTH render
+modes. That's Chrome's raster-tile allocation failure — a promoted compositor layer
+sized holder-bounds × zoom × dpr exhausts mobile GPU tile memory. Two promotion sites
+were keyed on the UI mode (IS_MOBILE) instead of the GPU class, so a tablet (desktop
+UI, mobile-class GPU) took the desktop branch:
+- **DOM mode** (`Canvas.tsx` `onZoomActivity`): the desktop pinch promotes the WHOLE
+  holder (`will-change: transform`) for the gesture — the code's own comment already
+  documented that mobile GPUs can't take this. Gate flipped `IS_MOBILE` → `IS_COARSE`;
+  touch devices zoom un-layered (a touch choppier, stable).
+- **Canvas/GPU mode** (`HtmlCanvasLayer.tsx` `enterGesture`): promoted the holder on
+  EVERY gesture with no device gate at all. Now `if (!IS_COARSE)`; the conduit may
+  trail a frame mid-gesture on touch — corruption is worse.
+Rule of thumb recorded in both comments: promotion decisions key on the DEVICE
+(IS_COARSE), interaction decisions on the UI mode (IS_MOBILE).
+
+### SESSION DIGEST (2026-07-22b — tablet mode: dvh viewport + fullscreen on the desktop pill)
+Author report from tablet Chrome: desktop UI (correct — tablet UA is non-mobile), but the
+bottom chrome (status bar, minimap, navigator) sat below the usable screen, and the zoom
+pill lost the mobile view's Fullscreen button. See layout-chrome.md "Tablets" section.
+- **`.solenoid-app` → `100dvh` app-wide** (`App.css`, `100vh` fallback): the dvh fix was
+  gated on `html.is-mobile`, but a tablet runs the DESKTOP stack in the same toolbar-
+  bearing mobile browser — 100vh (layout viewport) overshot the visual viewport by the
+  URL-bar height, sinking every bottom-anchored descendant. mobile.css's own override
+  removed (redundant now).
+- **`vh`+`dvh` pairs on tall overlays** (FR panel, Report window, Settings/Shortcuts/help,
+  table/pivot popups, add menu, palette, drill-in controls): dvh ≤ vh always, no-op on
+  desktop browsers. Keep the pair for new tall overlays.
+- **Fullscreen button gates on `IS_COARSE`, not `IS_MOBILE`** (`NavMenu.tsx`): any
+  touch-primary device gets it (no F11 key); mouse desktops keep F11/browser-native.
+
+### SESSION DIGEST (2026-07-22 — Query node: Manual refresh run mode + Composite preset)
+Author idea, ratified as D22: the Power Query analogue reuses the Composite + drill-in.
+- **`"manual"` run mode** (`nodes/composite.ts`): one `runPass`, but `isHeavyMode()` is
+  unconditionally true — the existing arm-and-run hold gives Power Query's refresh model
+  for free (upstream ticks → stale dot; the button — relabelled **Refresh** with a
+  refresh-cw glyph in this mode — re-runs). `requestSolve(insideOnly)` deliberately drops
+  `insideOnly` in manual mode: frame ports have no numeric seeds, so a drill-in Refresh
+  always re-runs on the real wired inputs.
+- **Query catalog entry** (`nodeCatalog.ts`, paired with Composite; `type: "query"`): the
+  same `CompositeNode` pre-seeded — exposed **Table** marker wired to a **Result** marker,
+  manual mode. Saves/loads as a plain CompositeNode; no new class, no new persistence.
+- **Add paths hydrate now** (Canvas menu `handleMenuSelect`, `addNodeByCatalogType`
+  (duck-typed — catalogUtils imports no node classes), drill-in add menu): a pre-seeded
+  entry ships a pending internal snapshot, which previously only load/paste/unpack/open
+  hydrated. No-op for every other node.
+- Tests: manual-hold semantics + insideOnly override + Query preset hydration/round-trip
+  in `composite.test.ts` ("manual refresh mode" / "Query catalog preset" describes).
+
+### SESSION DIGEST (2026-07-21 — zoom, Tidy/FC bugs, KaTeX loop, scroll-lag, socket rings)
+Targeted UI/UX fixes from an eyeball-driven bug sweep:
+- **Zoom pill buttons** (`NavMenu.tsx`): `ZOOM_STEP` 1.08 → 1.4 so a click crosses noticeably more range;
+  wheel/pinch stay fine-grained.
+- **Tidy widened an FC host every click** (`tidyArrange.ts`): the docked-FC footprint restore captured
+  `measuredBox().w` — an `offsetWidth` (border-box, INCLUDES the 1px border) — and re-stamped it via
+  `area.resize` as `style.width` on the CONTENT-box `.solenoid-node` card, so each Tidy grew the host (and
+  any group autofitting around it) by the border width. Repro: `num → Display + Format Controller`. Fix:
+  the pin-drop loop now clears the inline WIDTH too (it only cleared height before), re-applying a
+  `nodeSizeStore` manual width where one exists. Regression: `tidyDisplayFcWidth.test.ts` (a content-box
+  fake area; fails pre-fix, stable across 3 Tidies after).
+- **KaTeX "flashing" render loop** (`formulaFit.ts`): the `useFormulaFit` ResizeObserver recorded the
+  PRE-fit box size, but `fit()` changes the box size (fontSize scales the content of a content-driven box),
+  so every self-induced reflow read as an external change → infinite refit, box ping-ponging natural↔scaled.
+  Only bit with `useHeight` + a content-driven box (the formula field). Fix: compare against the SETTLED
+  post-fit size with a 1px tolerance, so only a genuine external resize refits.
+- **Scroll-lag on backdrop-filtered overlays** (Settings, then swept): a panel with a full-screen
+  `backdrop-filter` + an inner `overflow:auto` scroller re-rasterizes the frosted blur every scroll frame, so
+  the controls lag. Fix (same as the Navigator list did long ago): give the scroll container its own
+  compositor layer — `transform: translateZ(0); contain: paint`. Applied to `.solenoid-settings__body`,
+  `.solenoid-helpdlg__panel`, `.solenoid-shortcuts__panel`, `.table-popup__grid-scroll`, `.conn-dialog__menu`.
+  The other backdrop-filter users (TopBar/StatusBar/NavMenu/MobileControls/conduit toolbar/align bar/banner)
+  have no inner scroller — left alone.
+- **Group Tidy crept the box down/right on repeat clicks — a docked FC's sub-pixel dock** (`fcDocking.ts`):
+  the group Tidy button runs the within-group arrange then `autofitGroupBox`, which wraps every member incl. a
+  docked FC. `computeDockedCanvasPos` placed the FC via a SCREEN round-trip (getSocketScreenCenter →
+  screenToCanvas ÷ zoom), landing it on sub-pixels — it docked a hair right + up, and, being a fractional edge
+  that shifts with the host, it made the FC the box's moving extreme edge, so repeat Tidies chased it and the
+  group crept. Repro: creep only with a docked FC as the lowest/rightmost edge; undocked, none. Fix: round the
+  dock position to whole canvas px — snaps out the visible misalignment and makes the FC a stable edge the box
+  can wrap without drift. (An autofit-skips-docked-FCs attempt and a 1px-hysteresis attempt were both rejected:
+  the skip let the FC poke outside the box, and the hysteresis was defeated by the arrange step's box-grow.)
+- **Socket glyph border contrast made consistent** (`palette.ts` / `appTheme.ts` / `SocketComponent` /
+  `SocketLegend`): the ring was a single fixed translucent black (`--socket-ring`), so its visible contrast
+  drifted with fill lightness — crisp on the light scalar dots, faint on the dark array/matrix/frame ones.
+  New `socketRingShade` (a fixed HSV value-drop, `RING_VALUE_DROP = 0.23` — the tuning knob) computes a
+  per-fill `--sock-*-ring`; each glyph points its `--socket-ring` at the ring matching its own fill, so every
+  border darkens its fill by the same step. The Cube was drawing its seams with its OWN `color-mix` (why it
+  read darker than the rest) — now it uses the shared `--socket-ring` too, so it aligns. The global
+  `--socket-ring` stays as the fallback for untyped sockets.
+
+### SESSION DIGEST (2026-07-21 — the big docs/comments cleanup)
+Author directive: aggressive prune/rewrite of all supporting docs + code comments so they
+reflect what SHIPPED and constrain future work, without fossilized one-time approvals.
+- **dev-notes** swept to this shape (open problems + latest window); **backlog** rewritten as a
+  terse open-only queue (landed items deleted, duplicates merged, §3a Data-Feed scope inlined).
+- **CLAUDE.md rewritten rules-first**: the What's-working/Still-to-build changelogs became a
+  capability map + standing constraints; every trap/invariant/alias/UX rule kept.
+- **decisions.md**: D14/D16/D17/D18/D20 compressed to ruling+guard+reversal; stale claims fixed
+  (calcModeStore tested, date-parser UTC landed, VLOOKUP formula-blocking shipped).
+- **Archive triage**: deleted 12 spent docs + all 11 built v2.0 bundles (git history keeps
+  them); condensed 12 more to their load-bearing core (scope-features 2028→159 keeping the
+  #NN index + #23/#35 sketches); release-plan/1.2-plan/v2.0-05 archived; archive README is
+  now the single archive index (architecture.md's doc table lists live docs only).
+- **Comment sweep** (src, src-tauri, scripts, help): history narration → current facts;
+  relapse-guards kept. Real staleness fixed: SocketComponent + help still described the
+  pre-F-glyph Frame socket; help/notes.md claimed units "don't multiply out" (A4 shipped) and
+  images "don't survive reload" (desktop bundling shipped). DESIGN.md gained the logical
+  purple family + F-glyph/trueany-ring in the socket vocabulary.
+- **Notes for later (ambiguities deliberately left):** `inlineInput.tsx` "numeric lists keep
+  their single-number field for now" — unconfirmed settled-vs-pending; `nodeHitIndex.ts` stays
+  an unwired Phase-2/3 foundation (claim verified true); `out-of-scope.md` still says DRAFT —
+  author could ratify; two thin unbuilt ideas from deleted bundles (auto-doc-on-Groups #50,
+  engineering-calc/BOM seeds #15/#16) were let lapse into git history rather than backlogged.
+- tsc clean, vitest 3057 green before and after.
+
+# Sweep 2026-07-30 — 2026-07-28b through 2026-07-29i (the spec/parity/D23 window; newest-first within this block, plus the closed 07-29e note)
+
+### Backlog claim FALSE: drill-ins DO adopt — pinned, line deleted (2026-07-29e)
+
+The "trueany adoption runs on the MAIN editor only — drill-in composites don't
+adopt" backlog line was stale when written (2026-07-22): `settleInternalTypes`
+has run `settleWildcardTypes(this.internalEditor)` on every live drill-in
+connection change since 2026-07-18 (35fe709). Verified behaviorally — a new
+composite.test.ts case ("an INTERNAL trueany node adopts on a live drill-in
+wire") wires a Display inside a composite's internal editor and watches both
+rings adopt `number` and revert on disconnect. Line deleted per the reconcile
+rule; the test keeps it true.
+
+### Frame verbs: recognized-but-refused in formulas (2026-07-29i)
+
+D23 keeps frames out of formulas, but the Add menu TEACHES the verb names — so
+a typed JOIN(...) read as a typo's #NAME?, indistinguishable from a
+misspelling. Now: `FRAME_SURFACE_NAMES` (excelFunctions.ts, beside
+LEGACY_ALIASES — deliberately distinct: a legacy spelling is a WRONG name with
+a right substitute, these are RIGHT names whose data type can't flow here).
+33 names (all Tables & Frames leaves' typeable despaced labels + PIVOTBY).
+Behavior: dispatch short-circuits to #TYPE! "Frames don't flow through
+formulas — use the X node" (shared by Expression AND Equation — equations
+compile through the same evaluator); the editor colors the token in the frame
+socket violet (`fx-frame`, `var(--sock-frame)` — color conveys type, distinct
+from the typo red); the hint bar shows "frame verb — use the X node"
+(signatureFor); autocomplete never offers them. SSOT gate:
+frameSurfaceNames.test.ts derives the set from the catalog BOTH ways (a new
+frame verb can't ship outside the map; the map can't shadow a dispatchable
+name, a legacy alias, or a ghost label). When Computed Column ships, the
+message should grow the "or a Computed Column" arm (noted on its backlog
+item). VISUAL half (the violet token) awaits the author's eyeball.
+
+### Pack formulas: the 19 custom-logic nodes are formula-callable (2026-07-29h)
+
+The D19 pack workstream closed: all 19 custom-logic pack nodes register as
+PackFormulas (21 functions — Sunrise/Sunset splits into SUNRISE, SUNSET,
+DAYLENGTH), the first real users of the formulaExtensions seam. Names follow
+D19 2(a) (despaced label) where the label allows; punctuated labels declare a
+leaf-level `fx` in the catalog entry ("Friction Factor (Colebrook)" →
+COLEBROOK), a new NodeCatalogEntry field the parity measurement reads like an
+op's `fx`, one level up. Mechanics: every impl delegates to the SAME core its
+node calls — inline data() logic was extracted into shared exported helpers
+(parallelCombine, awgWire, emSpectrum, hrZonesMatrix + hrZonesDomainOk,
+isInMask, tallyPairs, standardAtmosphere, colebrookFriction) so the two
+surfaces cannot drift; packs mint selector errors via solError/isSolError
+re-exported through packShared (the one core error seam, keeping the pack
+import rule). PackFormula grew `rank`/`listArgs` passthrough into
+EXCEL_IMPL_META so ISIN/TALLY/TRIANGLESOLVER/HEARTRATEZONES ride the whole-arg
+and rank machinery instead of broadcasting into garbage. Frame-out nodes
+project to rank-legal shapes: HEARTRATEZONES → five [low, high] rows (matrix),
+TALLY → the counts list (first-seen distinct order). Pins: a
+`pack formula functions (D19 decision 4)` describe in each pack's vitest file
+via the new `evalPackFormula` test-kit helper. The parity script AND ratchet
+now run initPackFormulas() first (matching app startup): 548/645 leaves
+formula-callable, packs 167/167 — the backlog item's pack half is deleted.
+
+### The aggregate guard reaches the engine — last parity gap closed (2026-07-29g)
+
+The corpus-discovered gap (desktop emitted inf/NaN cells where web shows
+#OVERFLOW!/#DOMAIN!) is closed: `guard_agg_expr` wraps every numeric/date
+aggregate in the group-by plan with the oracle's exact B-1b order (NaN input →
+#DOMAIN! up front; NaN result → #DOMAIN!; ±inf result from all-finite inputs →
+#OVERFLOW!; a wired infinity passes through; empty-group identities and null
+results untouched). Representation: a Polars column can't hold a SolError, so
+the two verdicts ride as RESERVED QUIET-NaN BIT PATTERNS — inside the engine a
+marked cell behaves as NaN (which is what the oracle's error cells get where
+it matters: the sort tail, comparison drops, key masking), and `num_to_json`
+decodes the exact bits to `{"__err": code}` at the download boundary, the form
+`decodeWireCell` has been ready for since B-1b. The corpus now PINS the guard
+cross-engine: expect frames may carry `{"__err"}` (both runners normalize
+error cells to that one form and compare by code), five hand-named guard cases
+in groupBy.json, and the fuzz generator emits single-verb guard cases instead
+of skipping them (six seeds clean). Pipeline cases with error cells at any
+step still skip — mid-chain error semantics stay the oracle's (a marked cell
+that flows into ANOTHER aggregation re-guards to #DOMAIN! rather than
+propagating the original code; recorded approximation). Upload is unchanged:
+error cells still degrade to null (input-error propagation stays pinned
+oracle-side in frameVerbs.test.ts). FX-12's boundary paragraph updated.
+
+### Fuzz round 4 (fused op chains): six finds, both engines AND the oracle (2026-07-29f)
+
+The backlog's "fuzz next territory" landed: a `pipeline` corpus verb —
+`op: {kind: "pipeline", ops: [WireOp…]}` over the "in" frame. The oracle (and
+the JS runner) applies the ops SEQUENTIALLY; the cargo runner hands the list to
+`apply_ops`, which fuses them into ONE lazy Polars plan — so these cases pin
+the fusion seam (predicate pushdown, group-by-mid-chain) no single-op case
+sees. `pipeline.json` holds 11 hand-named chains (report chain, rename→select,
+empty-ops identity, error-mid-chain surfaces its code…); the fuzz generator
+grew per-verb op MAKERS so each chained op is built against the intermediate
+frame (column-aware chains), 2–5 ops, error cells mid-chain skip the case (the
+FX-12 wire boundary). ~28k cases over 35 seeds; six real divergences, all
+fixed + pinned, final 12 seeds clean:
+
+- **Polars median interpolates** (`lo + 0.5*(hi−lo)`, loses ~1e-6 when the
+  even pair spans magnitudes) vs the oracle's midpoint `(lo+hi)/2` →
+  `median_expr` UDF mirroring the oracle (like variance/mode).
+- **Descending sort REVERSED an all-null column** — Polars' all-equal-keys
+  fast path ignores maintain_order (chains manufacture the degenerate column:
+  stdev of single-row groups). `lazy_sort` now rides a row index as the
+  explicit ascending tiebreak key — order is part of the sort contract now.
+- **The outer join's anti TAIL joined on RAW keys** — Polars matches NaN==NaN,
+  so NaN-keyed right rows "matched" and vanished; now masked like every path.
+- **Text predicates read serde's float form, not JS display**: 2^53 fell out
+  of num_to_json's i64 window and read "9007199254740992.0" (endsWith "0"
+  matched); non-finite cells read "" instead of "NaN"/"Infinity". New
+  `js_number_string` (ECMA Number::toString over Rust's `{:e}` shortest
+  digits) now backs `cell_display` + `json_str`.
+- **min/max over a logical column — BOTH sides wrong differently**: the oracle
+  emitted 1/0 numbers in a logical-typed column, the engine left the Float64
+  agg uncast under a logical label. Both now return booleans.
+- **-0 breaks the corpus tautology**: JSON can't write -0, so an oracle
+  -0 (product crossing zero) failed replay under toEqual's Object.is. The JS
+  runner's dump now compares sign-of-zero-blind, matching the wire, the Rust
+  runner's f64 ==, and every user surface.
+
+Follow-up (author call, same day): whether text predicates on number columns
+SHOULD compare JS display strings at all — the spec `js_number_string`
+implements — is flagged for an OUTSIDE reviewer (backlog, "Bugs &
+verifications"); the author explicitly declined to adjudicate it. Behavior is
+corpus-pinned either way, so the review can land as a spec change without
+archaeology.
+
+### Fuzz round 3 (widened pools): three deeper finds, incl. the WIRE itself (2026-07-29c)
+
+Widened the generator (17-digit doubles, denormals, 2^53+1, fractional/negative
+date serials, unicode/whitespace strings, bigger frames) and ran four fresh
+seeds — 2,880 cases. Three finds, the first one striking:
+1. **serde_json's default float parse is LOSSY** — a 17-digit double crossing
+   the IPC could land one ulp off (32594.794185575094 → …098), so the engine
+   computed on subtly different data than the oracle. `float_roundtrip` feature
+   now on in src-tauri/Cargo.toml; the wire round-trips doubles exactly.
+2. **The logical bridge was missing from the engine's filter-value coercion for
+   number/bool values** — `eq 12` on a logical column matched nothing desktop
+   (12 ≠ 1) but every TRUE row on web (coerceLogical: nonzero → 1). Folded now.
+3. **Polars swaps an inner join's build/probe sides by size and maintain_order
+   LOSES** — a right side larger than the left made inner joins emit
+   right-driven row order. Equality joins now row-index BOTH sides and sort the
+   joined result into the contract explicitly (maintain_order dropped — the
+   sort is the guarantee).
+All four seeds fully green after; three permanent corpus cases pinned (114).
+
+### The corpus fuzz sweep: seven more real divergences, all fixed (2026-07-29b)
+
+`scripts/fuzz-frame-verbs.ts` (new, kept): seeded generator that writes random
+corpus cases — oracle-computed expectations, wire format, `fuzz-*.json` beside
+the hand fixtures — so cargo becomes the divergence hunt. 480 cases per run;
+usage in the script header; fuzz files are TRANSIENT (generate → run → delete),
+each find lands as a permanent hand-named case instead (11 added; corpus now
+110). Two seeds run (480 + 600 cases) found EIGHT real defects across both engines:
+1. **Sorting by a logical column PANICKED the engine** (Polars bool sort has no
+   nulls-last) — sort now keys logical as 0/1 and floats with NaN nulled, which
+   also fixed NaN-desc tailing. (`lazy_sort` key exprs)
+2. **The oracle's `forAggregate` admitted text cells** — sum CONCATENATED
+   ("0"+"b"→"0b"), min/max compared lexically by accident. Numeric-only now
+   (engine already skipped): sum 0 / product 1 / min-max null over text.
+3. **Equality-join keys**: the oracle's B-1a bucket matched NaN to −∞; Polars
+   matched inf==inf. Both now: non-finite keys never match (like null). The
+   engine joins on TEMP masked key columns with coalesce done EXPLICITLY —
+   which also fixed 4. **the right-join coalesce naming maze** (a right key
+   named like an unrelated LEFT column coalesced the WRONG column — audit
+   finding 4's last corner, live).
+5. **groupBy keys**: engine grouped inf/−inf/NaN separately; oracle buckets all
+   non-finite as one group, null its own (B-1a). Engine now groups on derived
+   key exprs (masked value + non-finite flag) with `first()` key output.
+6. **Polars' asof kernel retired** (`verb_join_asof` is now a hand-rolled
+   mirror of the oracle's binary search): its `allow_eq` default silently
+   excluded EXACT key ties, `nearest` tie-breaks forward (oracle: backward),
+   and non-finite keys mismatched. Three kernel quirks, one small function.
+7. **mode over a group of non-finite values** answered null engine-side (an
+   old is_finite filter in the UDF; also -0/0 now share a count bucket like
+   JS ===). 8. **Spec clarifications, both sides**: mismatched join key types refuse
+   `#TYPE!` (was silent-empty web / `#ERROR!` desktop); mixed-type unpivot
+   value columns refuse `#TYPE!` (was silent nulls desktop); a null comparison
+   value matches no rows in text predicates (oracle stringified it to "null",
+   engine to ""). Variance/stdev now run the oracle's sequential two-pass in a
+   GroupWise UDF — Polars' own var() drifts in the last digits at large means
+   (date serials), and byte parity is the corpus contract.
+
+### The parity corpus LANDS end to end — FX-12 promoted (2026-07-29)
+
+Bundle 18 steps 1v–4 in one session; `18-parity-corpus.md` → archive. The
+first-ever cargo run of `corpus_cases` (cold Polars build, GTK libs
+apt-installed) compiled clean and immediately earned its keep — **three real
+divergences the hand-mirrored pairs had never caught, each fixed engine-side**:
+1. An unknown groupBy agg op computed a silent null column while the oracle
+   refuses `#NAME?` — `require_agg_ops` now validates the wire's free-string op
+   names (`percentof` stays a null column on both sides).
+2. Polars totally orders floats (NaN greater than everything), so a NaN cell
+   PASSED `gt`/`gte` engine-side; the oracle fails NaN on every comparison but
+   `neq`. `comparison_filter_expr` masks NaN out of the two divergent ops.
+3. OUTER join row order was never pinned engine-side: Polars' Full join tails
+   unmatched LEFT rows, the oracle keeps left rows in order and appends
+   unmatched RIGHT rows. `verb_join` now builds outer as that composition
+   (left join + right-anti tail in the head's schema).
+
+Migration is COMPLETE, unary and binary both: 99 corpus cases across 13
+fixture files; every hand-mirrored Rust+JS verb pair deleted (engine/tests.rs
+1373→680 lines, incl. the dead `#[cfg(test)]` verb wrappers; frameVerbs.test.ts
+keeps only ORACLE-ONLY semantics, marked as such — per-cell SolError behavior,
+the aggregate non-finite guard, the B-1a key-literal pin, XLOOKUP's
+lookupFrameCell which has no engine command). Runner upgrades: `expect` frames
+decode `__nf` (NaN compares equal under toEqual), a corpus-wide input-mutation
+check replaced every per-verb "does not mutate" test, binary verbs dispatch by
+name (join reads frames left/right with the op parsed as PRODUCTION
+WireJoinOpts; append names inputs, op carries order), and pivot is an
+`ORACLE_ONLY_VERBS` entry whose exemption self-destructs (cargo asserts the
+engine still can't parse the op). The completeness whitelist is deleted —
+fixtures must cover `FRAME_OP_KINDS` + `BINARY_VERBS` exactly. Promoted as
+**FX-12** (70 rules, 67 enforced).
+
+**Corpus-discovered gap, left open (backlog):** the aggregate non-finite guard
+(#OVERFLOW!/#DOMAIN! on groupBy sums, B-1b) exists ONLY oracle-side — the
+engine emits inf/NaN cells there, so desktop diverges live on overflow.
+
+Same sitting, rules.md was prepared for the author's hand-authorization pass
+(the stated end state: every rule read and marked permanent by the author):
+- **Rule index** — a 70-row ID→title checklist at the top, machine-checked
+  against the actual headings by rules.test.ts (a stale/missing row fails).
+- **The authorization procedure written down** (PROV section): read → mark the
+  heading [ARR] + add the ID to AUTHOR_MARKED_ARR in rules.test.ts, both in the
+  SAME author-marked change; amend-then-mark; reject = delete or regrade.
+- **Readability restructure of the six densest MUSTs** (SOCK-9, VAL-19, FX-12,
+  PERSIST-4/6/10) — multi-clause paragraphs into scannable clause lists,
+  meaning-preserving. Plus a glossary pointer in the header, the stray VAL-14/15
+  divider removed, FX-12's archived-bundle path fixed, SSOT-5's enforcement note
+  updated to the narrowed reading-job state.
+
+Same sitting, the violations queue worked to its residual:
+- **EFFECT-1 closed** (known-violation 2, exactly as prescribed): a
+  string/comment/template-aware brace-matched sweep over every data() body in
+  nodes/+packs (313, floor-asserted) refuses the write APIs and `this.run(` in
+  any file touching one (the live-connection Imports' fetching run() stays
+  legitimate), with a stays-honest pin on the API-name list. 68 enforced /
+  1 partial (SOCK-8) / 1 unenforced (SOCK-6).
+- **The semantic half narrowed to its residual** (known-violation 1):
+  rules.test.ts now machine-checks every quoted citation — the suite-name →
+  "test name" arrow form, 57 of them — as a whitespace-collapsed substring of
+  the cited suite; its first run caught two drifted quotes (both name-drift,
+  not enforcement loss). The 19 bare-file-cited rules were then read end to
+  end: every cited suite genuinely enforces its rule (checked against each
+  MUST: SSOT-6's shared-metric import, VAL-18's both halves, PERSIST-3's
+  deep-freeze walk, ENGINE-2's transition matrix, etc.). Residual: future
+  bare-file citations — prefer the quoted form, which buys the machine check.
+
+### Two spec lints + the unary fixture set completes (2026-07-28kk)
+
+The in-scope remainder after the audit, all three landed:
+
+**SSOT-5 made mechanical** — rules.test.ts now walks every `### <ID>` section
+and fails any rule without an `*Enforced by:*` line; the meta-rule that "every
+rule labels its enforcement" is itself enforced. Flipped to enforced in the
+summary table (66 enforced / 2 partial / 1 unenforced).
+
+**SOCK-8's greppable half** — sourceInvariants.test.ts pins socket.css's
+deterministic 12×12 block (`display: block`, `var(--socket-size, 12px)`,
+`line-height: 0`), greps the tree for any reborn `INPUT_ROW_TOP`-style
+constant, and refuses `transform: translate` in NodeSocket.tsx (offsetTop
+ignores transforms — rete would misreport the endpoint). The rendering half
+(measured-row correctness) stays unenforceable by grep; noted on the rule.
+
+**Corpus fixtures for all 8 remaining unary verbs** — select/drop/rename/
+head/filterMulti/groupBy/unpivot/pivot, authored from oracle probes (40 cases
+total across 11 files). `NOT_YET_MIGRATED` is EMPTY for unary verbs; the
+completeness ratchet now holds FRAME_OP_KINDS ⊆ fixtures outright. Probing
+found a real wound: the wire carries agg `op` as a free string, and an
+unknown name ("mean" for "avg") fell off the switch to a fabricated silent
+null column — it now REFUSES whole-verb with a thrown #NAME? (a bad op name
+is a request error like a missing column's #REF!, not a per-cell data error).
+Pinned as a groupBy expectError case. Pivot probe also corrected the spec's
+field names on contact: `rowFields/colFields/values/funcs`, not rows/columns.
+The cargo handoff (backlog) is unchanged — pairs still await verification +
+deletion; FX-12 promotes only when cargo agrees.
+
+### The scope audit: Equation currency + the lambda deviations close (2026-07-28jj)
+
+The author asked "sure there's nothing left?" — and the audit found four real
+items I'd waved off. All landed:
+
+**Equation currency** — the Equation runs dimEval too, and `$5 = €5` HELD (the
+`=` compares sides whose dims agree; no operator inside either side ever sees
+both codes). Codes now thread through the Equation's dim checks, and the
+equals compares the sides' RESULT codes via the new `dimEvalWithCode` — the
+one caller whose top level is itself a combination. `$5 = €5` → #UNIT!.
+
+**Eta-lambdas** (`MAP(x, SQRT)`) — a bare dispatchable name in a lambda slot
+(host fn args + APPLY args) eta-expands via `etaOrEval` to a LambdaValue
+marked `eta`; the hosts call an eta wrapper with their MEANINGFUL arity only
+(`etaFn` — a raw SQRT must never receive MAP's (v, v2, v3, row, col) tuple,
+which was exactly why this was recorded as a deviation rather than built).
+Variables/params shadow; unknown names still refuse.
+
+**IIFE + curried + higher-order application** — a new `apply` AST node
+(postfix `(…)` on any primary): `LAMBDA(x, x+1)(5)`, chained `f(2)(3)`, and a
+call whose NAME is a lambda-valued binding (`LAMBDA(f, f(9))(SQRT)`). Declared
+arity is checked; applying a non-lambda refuses. Every Ast walker learned the
+node (tex, collectNames, dimEval → indeterminate, equationSolve, the dormant
+step-trace walk).
+
+**The garbage class, closed for lambdas too** — a lambda leaking into an
+operator (`f + 1`) used to concatenate "[object Object]"; applyOp now refuses
+with #TYPE! like the Cx guard.
+
+The recorded formula-language deviations list is EMPTY. Pins in
+formulaLambda.test.ts + unitCurrencyPolicy.test.ts.
+
+### The Expression two-currency gap closes — codes ride the dim pass (2026-07-28ii)
+
+The last recorded formula-surface wrong answer. The numeric evaluator computes
+on stripped magnitudes and can't see display codes, so `$5 + 5€` answered 10 in
+an Expression while the node-side arithmeticCell refused (VAL-19). The fix
+rides the existing DIMENSIONAL pass: `unitDimExpr` gains an optional `CodeEnv`
+(variable → currency code), the internal walk carries `{dim, code}` operands,
+and every OPERATOR refuses a code mismatch with the same #UNIT! — including
+×/÷, which would fabricate an exchange rate. The code carries by
+arithmeticCell's display-carry rule (only while the result stays in the coded
+operand's dimension); an uncoded computed currency adopts leniently; a
+dimEval #UNIT! already overrides the numeric result in expression.ts, so the
+wrong 10 becomes the right refusal with no new plumbing. Codes DROP at
+function calls — the recorded limitation (a formula's SUM over two coded
+inputs still combines; the node-side aggregators refuse), noted in VAL-19.
+Pins live in unitCurrencyPolicy.test.ts ("the formula surface").
+
+### Parity corpus step 1 BUILT — the loop exists end to end (2026-07-28hh)
+
+The bundle's step 1, same day as the design. `FRAME_OP_KINDS` in frameVerbs.ts
+is compile-time exhaustive (an unlisted FrameOp kind fails tsc via an
+Exclude-to-never check); `fixtures/frame-verbs/{sort,distinct,filter}.json`
+hold 15 wire-shaped cases including #REF! expectError rows, null-cell edges,
+and case-sensitivity toggles; `frameVerbCorpus.test.ts` globs them through
+`applyVerb` with structural compare + the completeness ratchet (fixtures ∪
+NOT_YET_MIGRATED whitelist must equal FRAME_OP_KINDS exactly, no overlap);
+`corpus_cases` in engine/tests.rs walks the same directory through the
+PRODUCTION deserializers (WireFrame/WireOp → apply_ops → dump, numeric-aware
+compare, IpcError codes read via their serde form).
+
+Design correction while building: the doc's invented "__Infinity" sentinel
+died on contact with the code — the wire ALREADY has a non-finite convention
+(`{"__nf": "inf"|"-inf"|"nan"}`, spoken by frameBackend + engine.rs since
+2026-07-02). The corpus uses that, per its own format-is-the-wire rule.
+
+The JS side is green (suite 3655). The cargo runner is written but UNVERIFIED
+here: the Tauri lib link needs the GTK dev libs (apt-installed now), and the
+cold Polars compile was skipped by author call — `cargo test corpus_cases`
+in src-tauri is the one pending verification. Then step 2: migrate the ~30
+hand-mirrored pairs verb by verb, shrinking the whitelist.
+
+### The parity corpus is DESIGNED — the queue's last item, decision-complete (2026-07-28gg)
+
+`v2.0/18-parity-corpus.md`. The one design decision that matters: **the corpus
+format IS the wire format** — a fixture is a recorded IPC payload (frames as
+the engine deserializes them, ops in the `WireOp` tagged shape, which is
+`FrameOp`'s union by construction), so both runners read fixtures with their
+PRODUCTION deserializers and no third representation exists to drift. Two
+runners (a vitest glob; a cargo test walking the same dir via
+CARGO_MANIFEST_DIR), a DERIVED verb inventory (`FRAME_OP_KINDS` pinned against
+the dispatch switch — SSOT-4), non-finite values via the already-pinned
+`["#", null]` convention plus an `"__Infinity"` sentinel for real ∞ inputs,
+and a verb-by-verb migration off the ~30 hand-mirrored test pairs behind a
+shrinking whitelist. Promotes as FX-12 when the whitelist empties. Build order
+in the doc; the build itself is the queue's one remaining (and largest) item.
+
+### PERSIST-10: width/height ownership pinned — the last small residue (2026-07-28ff)
+
+The observer owns `node.width/height` at runtime (measured px every layout,
+read by the minimap + cable geometry); they persist for every node, but only
+the SIZE-OWNER classes re-consume the init — the probe found ten: note, image,
+svg, import-obsidian, composite, query, group, report, presentation,
+session-history. Display's grip is the third channel (nodeSizeStore, its own
+persisted `sn.size` — verified, no bug). The pin probes the whole catalog with
+`{width: 777, height: 555}` and compares against the declared set BOTH ways: a
+new adopter must declare (is the size a user gesture?), and an owner that
+stops re-consuming fails as "the user's drag resets on reload". Rule
+PERSIST-10; 69 rules, 65 enforced.
+
+With this, the spec-promotion queue holds ONE item: the backend parity corpus.
+
+### PERSIST-9: the transient-field triage — 169 fields, one real bug (2026-07-28ee)
+
+The queue's one-sitting item. The fixed-point sweep (PERSIST-1) proves
+whitelisted fields round-trip but is BLIND to a field the whitelist never
+captured — both sides omit it identically, so the test passes while the user's
+setting silently resets. The triage closes the blindness: every own field of
+every catalog node is now classified — persisted (whitelist / literal maps /
+extractInit's bespoke extras), pattern-transient (`cached*` derived display,
+`_*` private runtime), or in a ~70-entry DELIBERATELY_TRANSIENT map grouped by
+mechanism (derived-from-expr, per-pass recompute, FC reconcile state, VAL-17
+roll state, EFFECT-1 disarm, async fetch state, drill-in markers re-stamped by
+the host composite, socket instances, class declarations).
+
+**The one real bug in 169 fields: `asofDirection`.** The as-of join's
+user-facing direction dropdown — constructor took it, the component edited it,
+the whitelist never captured it, so every save/reload/paste reset it to
+"backward". Exactly invisible to PERSIST-1. Whitelisted + pinned. Everything
+else checked out (chartOptions derives from a persisted input; composite run
+CONFIGS ride bespoke extras while run STATE stays transient; AngleDial's
+`step` is a constructor-only knob with no UI; FC lock state re-derives per
+reconcile pass; goalTarget is re-stamped from the host's persisted goalSeek).
+
+Rule PERSIST-9; 68 rules, 64 enforced. The spec-promotion queue's mechanical
+half is now EMPTY — what remains is the backend parity corpus (the one large
+build) and the small residue (width/height ownership; read-as stays deferred
+by design).
+
+### STORE-1: the node-store registry completes — five unregistered stores, one visible bug (2026-07-28dd)
+
+The queue said two stores were unregistered; the census found FIVE, plus two
+decayed hand-wirings:
+
+**Newly registered** — formatAnnotationStore (grew removeForNode via its _byNode
+index + clearNodes, which leaves the pack format/unit REGISTRATIONS alone),
+dockedNodeStore (forget covers both roles: the docked FC's own entry AND every
+FC docked to a deleted host), compositeStaleStore, standoffs (had the methods,
+wired ad hoc), and isolateStore — whose miss was a VISIBLE bug, not a leak:
+nothing exited isolate on a document load, so switching documents while
+isolated left the old graph's ids in the focus set and dimmed the ENTIRE new
+graph (every regenerated id a non-member). Registry forget also drops a deleted
+node from the focus set, exiting when it empties.
+
+**Hand-wirings deleted** — Canvas.tsx called standoffStore.removeForNode
+UNCONDITIONALLY in noderemoved (paying the per-node scan during rebuilds that
+the registry's isGraphRebuilding skip exists to avoid); persistence hand-listed
+four stores' clear() calls beside forgetAllNodes(). Those four
+(nodeSize/collapse/pin/nodeName) now register forgetAll like the rest and the
+hand-list is one registry call.
+
+**The sweep** (sourceInvariants "STORE-1"): every top-level `*Store*.ts` either
+references registerNodeForget or sits in a sanctioned map with the reason it
+holds no per-node state (34 entries — doc-level, settings, dialog/overlay
+state, single-transient-id popup stores); every registrant must also register
+the bulk reset; the sanctioned list is honesty-checked. New STORE domain,
+rule STORE-1; 67 rules, 63 enforced.
+
+### VAL-20: the last bare-NaN producer — the RANGE branch classifies (2026-07-28cc)
+
+The completeness pair's other half. The producer sweep ran as a probe battery:
+the KERNELS came back clean (listOps/matrixOps/mathUtils each carry a recorded
+convention — quiet null, tagged error, IMDIV's cx(NaN, NaN)), and the leak was
+one branch: the formula evaluator's RANGE dispatch returned results raw where
+broadcastCall has always classified. Nine whole-sample calls leaked bare NaN —
+STDEV/VAR of one value, CORREL of a constant, SLOPE of constant xs, RSQ, SKEW
+below n=3, KURT below n=4, GEOMEAN of a negative, Z.TEST of a constant — each
+rendering as an EMPTY cell and computing onward as more NaN, the least visible
+wrong answer in the model.
+
+One guard closes all nine: the range branch now routes a numeric result
+through guardFinite, feeding the flattened arg cells to the ∞-input rule so
+SUM over a first-class ∞ still answers ∞. tTestP's deliberate quiet-null
+stays a null (carve-out pinned). The battery is `rangeRouting.test.ts` →
+"a range RESULT classifies non-finite". Promoted as VAL-20; 66 rules, 62
+enforced. The VAL completeness pair is fully closed.
+
+### VAL-19: currency is guarded in EVERY combinator — four live wrong answers die (2026-07-28bb)
+
+The completeness queue's currency half. Probing before building found the worst
+split possible: unitValue's currency-aware arithmetic combinators
+(add/sub/mul/div/powUnits) were DEAD CODE — no caller anywhere — and also STALE
+(they lacked the 2026-07-16 adoption-scaling call), while the LIVE path
+(`arithmeticCell`, inlined in scalar.ts) had the adoption call but NO currency
+check. Live wrong answers, all pinned then fixed: **$5 + 5€ = $10**,
+**$5 − 5€ = $0**, **$5 mod 5€ = $0**, and **$10 ÷ 5€ = 2:1** — that last one
+mints a pure RATIO, i.e. a fabricated exchange rate.
+
+The consolidation (SSOT-1 applied to an algebra): `arithmeticCell` moved
+rete-free into unitValue.ts (scalar.ts re-exports; the op union moved with it),
+the dead combinators deleted, and the `currencyMismatch` guard placed UP FRONT
+in the one implementation where no op can miss it — ×/÷/quotient refuse too
+(division across codes IS an FX claim). Same-code ÷ still mints its honest
+ratio; an uncoded computed currency cell still adopts leniently. One stale pin
+surfaced in the port: the dead divUnits returned a BARE 5 on cancellation where
+the live rule mints 5:1 — the test had been guarding the wrong behavior.
+
+`unitCurrencyPolicy.test.ts` is the matrixUnitPolicy-shaped sweep: a per-op
+policy table with an every-ArithmeticOp completeness check, the non-arithmetic
+combinators (compareUnits / forAggregateUnits, already currency-aware), and a
+combinator-surface check so a new `*Units` export fails until it registers.
+New rule VAL-19; 65 rules, 61 enforced. Known gap recorded: the Expression
+surface strips tags to magnitudes, so a two-currency formula can still combine
+them — the formula surface has no per-cell display id to check (backlog knows).
+
+### SSOT-9: the input-cable pruning loop unifies — eleven copies, one helper (2026-07-28aa)
+
+The spec-promotion queue's top refactor. `components/cablePrune.ts` is now THE
+loop: `dropInputCables(nodeId, keys | predicate)` — snapshot the connection
+list, filter to the node's departing target inputs, await each removal (undo
+entries), through the ACTIVE editor (drill-ins edit their own graph). The
+queue recorded six copies; the sweep found ELEVEN: Alert (mode keep-set
+complement), Chart (matrix↔list swap), DateDiff (basis), Filter/CableSwitch/
+ExtensibleInputs (row delete), SumIfs/BuildFrame/PairedExtensibleInputs (pair
+delete), Expression + LAMBDA variable removal (expressionEdit), Add Column
+read-as (frameEdit). The drifted detail the unification fixed in passing: four
+of them iterated the LIVE connection list while awaiting removals.
+
+Kept direct, each sanctioned with its reason in the new source sweep
+(sourceInvariants "no component hand-rolls an input-cable pruning loop"):
+ConnectionDialog (one user-selected cable), CompositeEditorOverlay
+(cross-graph port sync with a user-facing tally), Interpolate (variant switch
+prunes BOTH directions), ListInput (type-compat filter via canConnect),
+ReportOverlay (deliberately the MAIN editor), Equation (a variable owns an
+output socket too), RendererSpike (dev harness). New rule SSOT-9 records the
+contract; 64 rules, 60 enforced.
+
+### Spec tranche 2: ENGINE domain + the queue's promotable half (2026-07-28z)
+
+Ten more rules from the remainder queue — rules.md is **63 rules, 59/1/3**:
+
+**New builds**: SOCK-10 (an adopting port OWNS its socket instance — two
+instances of every catalog class, no shared MutableSocket; the Input Switch
+shared-valueSocket incident, and the survey found ZERO live offenders — pure
+ratchet); SOCK-11 (a `trueany` output implies passthrough() — catalog walk;
+the six undeclared classes are all principled and sanctioned with reasons:
+FC/Conduit/composite-boundary resolve their own types, NA/XLOOKUP are
+genuinely unknowable); PERSIST-8 (every documentStore verb that swaps the
+canvas calls captureCurrent + guards isGraphRebuilding — method-body scan;
+restore/remove/reloadCurrent sanctioned with their reasons).
+
+**Pure promotions over existing pins**: SOCK-12 (relay transparency — conduit
+trace + frame shape through passthroughs, "Bug B"); ENGINE-1..3 (a new domain:
+targeted pass ≡ full pass incl. #CIRC! SCC seeding; the calc-mode gate is the
+only pass-skipper; a live-data refresh never enters a rebuild scope); VAL-18
+(positional access filters errors per cell, aggregation propagates whole);
+FX-11 (vendored-engine divergences owned + TRIPWIRED — the bidirectional pin
+pattern from formulaDivergence.test); PERSIST-7 (unknown types round-trip
+losslessly through Placeholder, loud #REF! while it lasts).
+
+**Triage note recorded**: the store-registry gap (formatAnnotationStore /
+standoffs register no forgetters) is a bounded LEAK, not corruption — rete ids
+regenerate per load and never collide — so it stays queued as hygiene rather
+than promoted as a wrong-answer rule. The queue's remaining items are the
+mode-keys pruning refactor, the two VAL completeness sweeps, the backend
+parity corpus (the largest build), the transient-field triage, and
+width/height ownership. Suite 3601 → 3605.
+
+### Deploy fix: the unopened CSS comment + a postcss gate (2026-07-28y)
+
+Seven hours of Vercel deploys were red: `07a117a` (15:07, the op-selector
+session) added a doc paragraph to nodeCard.css whose opening `/*` was lost —
+its own `*/` survived — so the prose sat bare in the stylesheet and postcss
+read `SUMIFS'` as an unclosed string. Nothing local checks CSS syntax (tsc
+ignores it, vitest env is node, the dev server tolerates more than the prod
+pipeline), so the suite stayed green the whole time. Fixed by restoring the
+comment, and `cssSyntax.test.ts` now runs postcss.parse — the SAME parser the
+build uses — over every stylesheet under src/ (pixi excluded), verified to
+reproduce the exact deploy error against the broken state. Production build
+run locally end-to-end before pushing.
+
+### The spec-promotion sweep, tranche 1: PERSIST + EFFECT domains (2026-07-28x)
+
+The author-queued sweep ran as three parallel surveys (folklore docs, the test
+suite, code conventions) and converged hard on one theme: THE SAVE PATH was the
+largest cluster of load-bearing, test-pinned invariants with no normative home.
+Tranche 1 promotes nine rules — rules.md is **53 rules, 49/1/3**:
+
+**PERSIST-1..6** (new domain): extractInit fixed point + JSON-plain (the new
+JSON sweep closes the seam where a Map-valued config passes the live-object
+fixed point while the FILE empties it); the text form is the narrow waist
+(new scan: every SavedGraph interface field must appear in BOTH writeTextForm
+and readTextForm — the comments/reportPalette data-loss class); documentStoreCore
+immutability (new deep-freeze walk over every exported transform — identity IS
+the persist signal, so an in-place mutation is an edit that silently never
+saves); slot rotation + seq-first-key (new tests — freshness is a prefix regex,
+so a payload with another key first silently resurrects the older write);
+persistence binds MAIN never the active surface (activeGraph.test's CARDINAL,
+promoted); class names are load-bearing (new keepNames config scan + catalog
+ctor-name uniqueness walk — `constructor.name` is the save's `type` field and
+the registry is first-wins, so a collision reconstructs the loser as the
+winner with no placeholder).
+
+**EFFECT-1..2** (new domain): a sink acts only from Run and always loads
+disarmed (new catalog-wide quantifier: no class persists `enabled`, none
+constructs armed — generalizing the two per-class pins); outward effects are
+edge-triggered and rebuild-suppressed (new scan: fireAlert ⇒ isGraphRebuilding).
+**VAL-17**: volatile data() freezes on getRecalcGen (new scan; all four
+existing volatile files already complied).
+
+**Found and FIXED by the sweep**: the composite paths installed
+installErrorGuards BEFORE addNode — guard wrapped INSIDE coercion, inverted
+from Canvas's pipe order, so a coercion ShapeError escaped both wrappers
+(degrading a per-node #SHAPE! to a whole-card #ERROR!). Four sites moved to
+after addNode; VAL-3 gained the ordering clause and records the incident. Also
+fixed: the subsystem doc claimed the Number picker authors units (stale — the
+node has no unit field; CLAUDE.md's "FC/Convert only" is the truth), plus the
+matching unitBridge comment.
+
+The unpromoted candidate remainder (SOCK socket-ownership/passthrough-decl/
+mode-keys, an ENGINE domain, guardFinite/currency completeness, the
+Polars↔JS-oracle parity corpus, store-registry completeness) is recorded as
+the backlog's remainder queue. Suite 3588 → 3600; rules.test's prefix
+alternation learned PERSIST|EFFECT.
+
+### CONTAINS made honest: any-element membership, logical answer (2026-07-28w)
+
+Author called for a review; the issues were exactly the visible kind. The node
+was numeric-only (`listIn` + `numIn`) while its own kernel was already
+type-generic — `containsValue` keys by `setKey`, and the VAL-8 complex fix was
+written FOR it — so you couldn't ask whether a string list contains "foo"
+while every membership sibling (Is In, Set, Tally) takes `anyListIn`. And it
+answered `numOut("0 / 1")`, a pre-logical-migration relic, while Is In (the
+same question per-element) answers TRUE/FALSE. Fixed: `anyListIn` list +
+adoptive `anyIn` needle + `logicalOut`; kernel returns boolean (FX-1 — the
+formula CONTAINS follows, meta `returns: "logical"`); blank-needle → null
+(Kleene unknown) unchanged. The component's "✓ found" render override went
+with it — booleans hit the isLogical branch before any override, which also
+exposed Comparison's `1/0` render prop as dead code (removed).
+
+### ONE date-difference family — the Datedif/DateDiff split dies (2026-07-28u/v)
+
+The arc: the author caught `DateIfNode` misreading DATEDIF ("Date If" leaked as
+the Navigator's `DateIf_1`); the first fix renamed it `DatedifNode` — which put
+`Datedif_1` beside `DateDiff_1`, and the author then asked the right question:
+why are there TWO date-difference nodes at all? My "the merge needs the
+deferred variant-switch socket work" objection was WRONG — deferrals.md scopes
+that item to PACK variant dropdowns and Interpolate's LIST↔GRID already
+rebuilds socket sets live — so the split was history, not design, and the
+merge landed one commit after the rename (the Datedif class lived one commit).
+
+**The merged DateDiffNode**: eight ops — the day-count functions (DAYS,
+DAYS360, YEARFRAC) plus DATEDIF's units flattened to first-class ops
+(Whole years / Whole months / Months ignoring years / Days ignoring months /
+Days ignoring years; grouped in the dropdown). DATEDIF "D" was deleted as a
+duplicate of DAYS (the math-fn `round` precedent); the formula surface still
+dispatches all six unit strings via Formula.js, unchanged. Reversed-range
+semantics stay per-op: DAYS signed, DATEDIF ops null. The `basis` input exists
+ONLY while the op uses it (`syncBasisInput` — the Interpolate pattern narrowed
+to one socket; the component drops a basis cable before switching away). The
+NODE_OPS decl moved its host to the DATEDIF leaf so hidden units search as
+"DATEDIF: Whole months"; leafOps = days/days360/yearfrac/years. An old save's
+DateIfNode OR DatedifNode loads as a Placeholder; DateDiffNode saves load
+unchanged (old op keys still valid).
+
+**rules.md ripple**: VAL-12's recorded borderline (DATEDIF's `unit` — op
+dropdown by mechanism, argument by semantics) is DISSOLVED, not settled — the
+units are now genuine ops. The rule text says so.
+
+**Backlog gains the spec-promotion sweep** (author queue): walk code + tests
+for invariants worth promoting into rules.md — comment/folklore rules, tests
+that pin meaning no rule states, conventions nothing enforces.
+
+### The partial set hits zero: VAL-10 / VAL-12 / VAL-14 completeness (2026-07-28t)
+
+The last three partially-enforced rules flip to enforced; the spec's summary is
+**41 enforced / 0 partial / 3 unenforced** — the partial set is empty for the
+first time. Known violations 4 → 1 (only the rules.test semantic half remains).
+
+**VAL-10** (`sourceInvariants.test.ts`) — a source scan over `nodes/` + `packs/`:
+any file calling a per-cell algebra identifier (isUnitCell / dimOf / magnitudeOf
+/ the *Units combinators / broadcastUnit / anyDimensioned) must declare
+`unitAware = true`, with one sanctioned entry (shared.ts, the helper library)
+and the honesty test that keeps it sanctioned only while true. The matrix-unit
+family is deliberately OUTSIDE the consuming set — a D20 matrix unit tags the
+outer array of a bare-number grid and survives the unit-blind strip, so a
+unit-blind reshape carrying it (stats.ts) is correct, not a violation. Scan
+found zero offenders; the value is the ratchet.
+
+**VAL-12's blindness** closed where the field is still visible: the component
+source. A brace-aware scan parses every `<OpSelect>` tag (props hold arrow
+functions, so naive `[^>]*` dies on `=>`); each must bind `op` — directly,
+a per-row `.op` config field, or via `useNodeField(…, "op")` — or carry the
+`arg` prop, now the machine-readable "not the family op selector" declaration.
+That contract surfaced 20 unmarked argument/config/data-pick dropdowns (TVM's
+payment timing — CumPmt/IpmtPpmt already had `arg`, TVM had missed the same
+sweep; XMATCH match mode, FIXED no-commas, TEXTJOIN ignore-empty, Datedif's
+`unit` — the recorded borderline, settled as argument-by-semantics; ByAxis's
+BYROW/BYCOL axis, resistor band picks, Slicer column, run-mode/target/format
+configs, the frame-filter condition rows). All sit on neutral cards, so the
+`arg` additions are visually inert today — they encode semantics + feed the
+scan.
+
+**VAL-14's only-if** (`catalogRegistry.test.ts`) — every class declaring
+`literals`/`stringLiterals` must have a registered component whose source
+(Function.toString) shows an editing surface (InlineInputs / ExtensibleInputs /
+a direct map reference), so a hand-authored save can't restore a value onto a
+card that can never show it. First run listed 13 candidates; all 13 verified
+real editors once the heuristic learned the bespoke surfaces — the miss was the
+`stringLiterals` SPELLING (capital L, so `/literals/` didn't match) and the
+ExtensibleInputs/Paired family. Negative-tested (stripping one `arg` fails the
+VAL-12 scan by name; the VAL-14 detector demonstrably fired pre-widening).
+
+Suite 3583 → 3587, tsc clean.
+
+### FX-4's full sweep — and the two live wounds it caught first run (2026-07-28s)
+
+The last mechanical partial: the naming-side injectivity sweep covered catalog
+leaves and three hand-listed `fx` tables. The full version derives from NODE_OPS
+(every OPERATION-kind op's `fx` ?? despaced label), checks pairwise across
+families and against leaves with a leaf-IDENTITY escape (a leaf that constructs
+the family at that op IS the op, not a clash), and one reasoned exemption
+(chart/sparkline share a figure-STYLE vocabulary — LINE/COLUMN — and never
+register formula names). Argument-kind ops take no names; kind-only families
+surface ops AS leaves, already swept by leaf uniqueness — two tests, both
+surfaces. FX-4 → fully enforced; summary now **38 / 3 / 3**.
+
+First run caught two real wounds the partial sweep had been blind to:
+
+**Text Filter's `Contains` claimed CONTAINS** — the list-membership function.
+Fixed by RECLASSIFYING the family operation → argument: the ops are a filter
+CONDITION ("keep strings that…"), meaningless without the host, exactly Frame
+Filter's condition parameter. That turned the recorded "per-op naming pass" into
+one registration: **TEXTFILTER(strings, pattern, [condition])**, same kernel as
+the node (`filterTextList` extracted to textOps.ts), condition spellings the op
+keys with spaces/hyphens tolerated, blank → "contains". The Text Filter leaf is
+CLOSED.
+
+**The math-fn `round` op claimed ROUND while being a different thing** — a 1-arg
+integer round whose leaf despaced to a name that dispatches the 2-arg Excel
+ROUND, which REFUSES one argument (`ROUND(3.7)` → #VALUE!). The op duplicated
+RoundN at digits 0 (whose literal default IS 0), so per the pre-alpha
+delete-don't-preserve rule the op and its leaf are gone; the Excel half-rule pin
+moved to RoundN. An old save's math-round loads as a Placeholder.
+
+Parity: **non-pack 381/478** (TEXTFILTER +1 covered; the deleted leaf −1 from
+both sides — it had been counted "covered" by a dispatch that refused its
+semantics, so the old number was flattering). Every REGISTRABLE named leaf is
+now closed; the non-pack remainder is entirely sources/sinks/UI/frames-cubes +
+Image/SVG/Promo. Suite 3581 → 3583.
+
+### Enforcement tranche: three rules flip to enforced, VAL-12 closes (2026-07-28r)
+
+The author waved off packs, so the next-highest-value item was the spec's own
+"partially enforced six" (rules.md's stated highest-value gap). Four moves:
+
+**`sourceInvariants.test.ts`** — a new home for grep-shaped completeness checks,
+same discipline as formulaPathIsReteFree: static scans over the real source, so a
+NEW offender fails CI naming the rule. Two scans: SOCK-7 completeness (every file
+that retypes a socket in place — `.socket =` / `.setType(` / `.dataType =` — must
+reference a reconciler; a SANCTIONED map with per-file reasons covers the central
+adoption machinery, and a second test keeps that list honest by re-verifying each
+entry still exists and still retypes) and VAL-13 (no component source calls
+`.data(`). Both found ZERO offenders — the codebase was already clean; the value
+is the ratchet.
+
+**SOCK-5's "never persists" pinned** — adopt onto a Display, `extractInit`, assert
+the adopted type is absent from the init and a reconstructed node starts hollow
+(`trueany`). The save records init fields, never sockets, so this is the exact
+leak surface.
+
+**VAL-12 closed** — Alert and ColorBlend, the last two `mode` misnames, renamed to
+`op` (nodes, components, tests; `op` was already in the persistence whitelist).
+The coverage check immediately demanded declarations — the machinery working as
+designed — so both got argument-kind entries in NODE_OPS (a trigger condition and
+a blend formula are parameters, not searchable operations).
+
+**SOCK-6 honestly recorded un-greppable** — the survey found every wildcard-literal
+comparison outside sockets.ts is a RENDERING classifier (glyph shape, combo
+drawing, wire-only rows), not a semantic untyped-check; a mechanical scan can't
+separate them. The rule's Enforced-by line now says so instead of promising a
+grep that would never work.
+
+Enforcement summary moves 34/6/4 → **37 enforced / 4 partial / 3 unenforced**;
+known violations 8 → 5. Remaining partials: FX-4 naming sweep, VAL-10 unitAware
+completeness, VAL-12 blindness, VAL-14 only-if.
+
+### The regression quartet owned — the broadcast-garbage class closes (2026-07-28q)
+
+TREND/GROWTH/LINEST/LOGEST were the last array-RETURNING names still broadcast
+(rangeRouting's DEFERRED): a 1-D list mapped the call element-wise into a
+plausible-looking garbage list, the same silent class as T.TEST. Same fix shape
+as every D23 tranche:
+
+**Kernels shared** — `linearFitR2` (LINEST's slope/intercept/R² in one pass) and
+`expFit` (y = b·mˣ via least squares in log space) join `linearFit` in
+mathUtils; the Trend/Linest/Logest nodes' inline math collapsed onto them
+(three near-identical SSxy/SSxx loops deleted from stats.ts).
+
+**Four listArgs registrations** running those kernels (FX-1; GROWTH has no node
+— it's TREND's exponential sibling on the same kernels). Pair prep is
+`pairPresent` (error propagates, null pair drops, ragged truncates). Excel's
+optional arguments, which node sockets can't express, work on the formula
+surface: xs omitted/blank → 1..n, TREND/GROWTH's new_xs omitted/blank → the
+known xs. Excel's trailing const/stats args are NOT taken: LINEST answers
+[slope, intercept, r²] (the node's three outputs as a list; degenerate → null),
+LOGEST [m, b] (y ≤ 0 → the node's quiet empty).
+
+rangeRouting.test.ts's DEFERRED block became the quartet's owned pins
+(node-equality + shape + value model). rules.md known-violation 7 DELETED —
+the array-returning broadcast class is now fully closed; the backlog paragraph
+about it reconciled the same way. Suite 3572 → 3577.
+
+### The complex tranche: IM* owned over tagged Cx, operators typed (2026-07-28p)
+
+The build the D23 amendment queued, landed. Four moves:
+
+**Kernels extracted rete-free** — cxAdd…cxCsch, cxPow, cxLog10/2 moved from
+`nodes/complex.ts` into `cxValue.ts` (the family's rete-free home, per the
+listOps pattern), plus two new ones: `parseCx` (Excel's "a+bi"/"bi"/"a" grammar,
+`i` or `j`, tolerant of formatCx's spaced output so the two round-trip) and
+`quadraticRoots` (shared by the node and the registration).
+
+**27 registrations** — the 25 IM* names + COMPLEX + QUADRATICROOTS, each running
+the node's kernel (FX-1, node-equality-tested per op in `formulaComplex.test.ts`).
+Arguments coerce IN from Excel's representations (tagged Cx, real number, text
+form — invalid text #VALUE!, logicals #TYPE!); results are always tagged Cx.
+IMSUM/IMPRODUCT are variadic folds; element-wise like the nodes, so they
+broadcast over complex lists via broadcastCall with the per-cell contract.
+IMARGUMENT(0) is 0 (the node's atan2), not Excel's #DIV/0! — FX-1 sides with the
+node. `FAMILY_BACKING.complex` flipped verify → internal (the tagged currency IS
+the difference that matters).
+
+**Operators answer typed, never garbage** — `applyCxOp` routes a Cx operand
+before numeric coercion: arithmetic and ordering → #TYPE! naming the IM* family
+(was "[object Object]1"); `=`/`<>` structural within the family, type-strict
+FALSE against anything else (the 5 = "5" rule); `&` renders through formatCx
+(like logicals render TRUE/FALSE); unary minus and percent guard the same way.
+No second cross-family bridge: the lattice's one bridge stays logical↔number.
+
+**FX-9 grew a per-element half** — a Cx reaches a dispatch only through a
+declared `cxArgs` registration (the matrixArgs pattern). Exempt: NULL_INSPECTING
+value-passers (IF hands a complex branch through, predicates answer honestly)
+and whole-list natives (REVERSE of a complex list is a legitimate shape op —
+blocking it would have REGRESSED working behavior; their numeric members coerce
+a Cx like any other non-number). SUM/SQRT/TEXTJOIN over a Cx now refuse with
+#TYPE! instead of silently NaN-ing.
+
+Non-pack parity 380 → **381/479** (Quadratic Roots was the leaf riding this);
+remaining named leaves: Text Filter + Image/SVG/Promo. Suite 3552 → 3572.
+Stale known-violation 7 in rules.md reconciled while there (only the regression
+quartet TREND/GROWTH/LINEST/LOGEST is still unrouted).
+
+### D23 amended: the complex exclusion was false, and unenforced (2026-07-28o)
+
+The author caught it directly: "didn't we just fix complex to let it be in?" —
+and yes. D23's "matrices-only: frames, cubes AND COMPLEX stay out" carried
+complex on reasons that only ever applied to frames/cubes (verb-engine
+competition, FrameRef economics, no-Excel-semantics — Excel HAS complex
+semantics, the IM* family). Complex's real blocker was the [re,im]/2-list
+ambiguity, which VAL-15 deleted the same morning. I wrote the exclusion anyway —
+the exact carried-forward-constraint failure the provenance system exists for.
+
+Verified live before amending: the exclusion is not even enforced. anydata
+accepts the complex family, so tagged Cx values flow into Expression variables
+TODAY; `x + 1` with a complex x concatenates "[object Object]1"; and IMSUM
+dispatches through Formula.js on TEXT complexes ("3+4i" → "4+6i") while
+answering #VALUE! on our tagged form — two representations of one type across
+the two surfaces, the FX-1 drift in the flesh.
+
+D23 carries a same-day amendment narrowing the exclusion to frames/cubes;
+complex-in-formulas is now an open BUILD in the backlog (extract the complex
+kernels rete-free, own IM* over tagged Cx + accept the text form, operators on
+a Cx answer #TYPE!). Quadratic Roots' gap leaf rides on it.
+
+### The remainder audit: false deliberations dissolved by measurement (2026-07-28n)
+
+The author challenged the 289-leaf "deliberate" remainder; the audit found one
+false blanket and one measurement artifact, and fixing the MEASUREMENT dissolved
+most of the gap without registering anything:
+
+- **Preset-formula leaves detected mechanically.** A locked ExpressionNode with
+  its expr baked in (the timesaver pattern — and, it turns out, 148 of the 167
+  pack leaves) has its own expr as its formula equivalent, typeable today. The
+  walk now instantiates each leaf and checks `.locked && .expr` (SSOT-3 —
+  derived, no hand-kept list). My "pack parity moot" blanket was HALF-true: true
+  for these 148, false for the 19 custom-logic nodes now named in the backlog as
+  the real pack workstream (PackFormulas through the existing seam).
+- **The language's own leaves** (the four operator nodes, Comparison,
+  Expression/Equation) counted as gaps — their equivalent is the language
+  itself. A small named set, author-reviewed.
+- **Eight genuine stragglers registered**: REVERSETEXT and SPELLNUMBER (their
+  custom kernels moved to textOps — FX-2), DECODEURL (the existing decode half),
+  LOG2 (matching the node's quiet-null on x ≤ 0, per FX-1, not an invented
+  #DOMAIN!), HYPOTENUSE, and the Kleene trio XNOR/NAND/NOR (variadic,
+  coerceLogical per operand, null poisons XNOR / flows by Kleene in NAND/NOR).
+
+Non-pack: 380/479 — the remainder is sources/sinks/UI/endpoint plus five named
+leaves each with a stated reason. Packs: 148/167, remainder = the 19
+custom-logic nodes. The lesson is the audit's own thesis again: most of the
+"gap" was the measurement not understanding the system, not missing work.
+
+### The registry stops accepting silent collisions (2026-07-28m)
+
+registerInternal was "idempotent-overwrite" — Map.set, so two modules claiming
+one formula name was a lottery decided by import order, with the loser silently
+dead. After a week that added ~120 registrations across five tranches, that was
+the next collision waiting. It now THROWS on a duplicate live name (FX-4's
+registry half, complementing the naming-side injectivity sweep); pack-revocable
+names may return after unregisterInternal, which is the rebuild path.
+
+The guard immediately caught a test-suite hack: excelFunctions.test "cleaned up"
+its ABS test double by registering `undefined` as the impl — registering a hole
+instead of unregistering. Cleanup is now unregisterInternal, and the guard has
+its own pin (throw on duplicate, allow re-registration after withdrawal).
+
+### D23 step 3, the lambda tranche: gap A reaches ZERO (2026-07-28l)
+
+LAMBDA is now the evaluator's one SPECIAL FORM — handled before the generic
+evaluate-args-then-dispatch path, because its parameters are unbound names and
+its body waits for arguments. It constructs the SAME tagged LambdaValue the
+LAMBDA node emits (extracted to `lambdaValue.ts`, rete-free, the cxValue
+pattern), so a formula lambda and a wired lambda are one currency and one
+evaluation core (FX-1). An unapplied lambda at the top level answers a typed
+#VALUE! (Excel shows #CALC!) rather than leaking the object into the graph.
+
+The seven hosts registered against that currency: MAP (the node's exact
+(value, value2, value3, row, col) positional binding, 1–3 arrays), BYROW/BYCOL
+(whole row/column as a list), REDUCE/SCAN ((acc, value, step) row-major; a cell
+error stops the fold), MAKEARRAY ((row, col) 1-based, n×1 reads as a list,
+MAX_GENERATED at the boundary), GROUPBY (first-seen groups, setKey-keyed, lambda
+per group's value list, [key, result] rows — the Group Lists node's two outputs
+side by side). formulaLambda.test.ts pins node-equality host by host, plus
+SCAN(0,x,add) ≡ RUNNINGSUM(x) — the old gap-A alias made literal.
+
+**EXCEL_NAMED_GAP is []** — every Excel name a node carries now dispatches.
+357/646 leaves callable. The ratchet's empty-list comment says what a
+reappearance means: a new node shipped without its registration.
+
+Recorded deviations (backlog): eta-lambdas (bare SUM as a function argument) and
+immediately-invoked lambdas (call-on-call in the parser) are not supported;
+GROUPBY is the (keys, values, lambda) three-arg form, not Excel's full
+field-spec signature.
+
+### D23 step 3, tranche 2: the array-returning core (2026-07-28k)
+
+UNIQUE, SORT, SORTBY, FILTER, TAKE, DROP, MODE.MULT, FREQUENCY, RANDARRAY.
+349/646; gap A is 8 — entirely the function-argument family now (LAMBDA/MAP/
+BYROW/BYCOL/MAKEARRAY/REDUCE + SCAN/GROUPBY), one tranche, a language feature.
+
+Again the urgent half was the OLD names: UNIQUE, SORT, MODE.MULT, FREQUENCY and
+DROP were dispatchable through Formula.js and broadcasting — UNIQUE([3,1,3,2])
+answered a column of singletons, SORT a list of empty objects. Owned now, same
+displacement as MMULT.
+
+Kernel extractions came with two small honesty wins: UniqueNode's dedupe keyed a
+raw Set by IDENTITY (harmless only because its socket is numeric — the VAL-8
+letter now holds via setKey), and TAKE/DROP's signed count slice is ONE kernel
+(takeSlice/dropSlice) under the two 1-D nodes, the 2-D node's per-axis slice,
+and the formula — the 1-D and 2-D nodes previously disagreed about 0
+(empty vs identity); each card keeps its own 0-guard, the kernel is shared.
+
+One honest FX-1 note: FILTER's node (List Filter) is condition-ROW configured —
+a different MECHANISM from Excel's computed boolean mask, so node-equality
+doesn't apply term-for-term; the test pins the mask semantics directly and says
+so. SORT is 1-D scoped (sort_index must be 1/omitted); ragged FILTER masks are
+#SHAPE! rather than null-padded — a mask that doesn't cover the data is a user
+error, not missing data. RANDARRAY is volatile per the SHUFFLE precedent, full
+Excel signature (rows/cols/min/max/integer), MAX_GENERATED at the boundary.
+
+rangeRouting's DEFERRED is down to TREND/GROWTH/LINEST/LOGEST — the regression
+quartet, real fitting math, its own tranche when the kernels exist.
+
+### The provenance audit: every rule graded, one stale claim caught (2026-07-28j)
+
+All 43 non-PROV rules now carry a grade on their heading, and rules.test.ts
+enforces completeness (every heading has exactly one of [ARR]/[INFERRED]/
+[DEFAULT]) — so a future rule can't land ungraded any more than a future ARR can
+be minted by an agent.
+
+The grading itself was the audit: INFERRED requires a CONCRETE incident, named in
+the rule's Origin, and 38 rules have one. The DEFAULT set — the rules held up by
+nothing but agent judgment — is exactly five: SOCK-3 (derived lattice edits),
+SOCK-6 (the wildcard predicate), FX-10 (one broadcast engine), VAL-13 (components
+never call data()), VAL-14 (literal-map iff). Named in the PROV section as the
+thinnest ice: first candidates for either an enforcing incident or deletion.
+Notably VAL-13 and the OS-dropdown folklore in CLAUDE.md are the same epistemic
+class — widely cited, no recorded incident — and now the doc says so out loud.
+
+decisions.md gets the PROV reading at its head: nothing in the log is
+author-ruled, INCLUDING verbatim quotes — a quote is evidence with the weight of
+its reasoning, not a standing order; the reversal conditions are the honest
+interface for reopening. This is the sentence that retires "the author said" as
+a trump card, which is what the author's 99%-assumptions note asked for.
+
+Caught during the walk (the audit paying rent immediately): rangeRouting.test's
+DEFERRED list still called TRANSPOSE "unrouted" after the matrix tranche owned
+it — the pin still PASSED (ownership isn't RANGE membership, so the assertion
+held while its meaning rotted). The exact silent-staleness class the spec
+fights, inside the spec's own test. Fixed, with the post-D23 note that ownership
+at rank 2 (FX-9), not range routing, is now the right shape for the other nine.
+
+### PROV: the provenance constitution — one ARR, by author ruling (2026-07-28i)
+
+The author issued the spec system's first genuinely author-ruled rule, and it is
+about ruling itself. PROV-1: a rule is author-ruled (ARR) if and only if the
+author, in a specific session, has read the rules doc and marked the rule
+THEMSELVES. Nothing else confers ARR — including things the author said in the
+past. As of its creation, every other rule in the document is explicitly NOT
+author-ruled, whatever its history; the agent was permitted to mark PROV-1 ARR
+and no others.
+
+Implemented as a new PROV section in rules.md: three provenance grades (ARR /
+INFERRED / DEFAULT — a past author statement is EVIDENCE for reasoning, never
+authority), PROV-1 marked [ARR], and a consequences paragraph downgrading every
+"author-gated"/"author ruling" reading in the document to INFERRED. 44 rules.
+
+The enforcement is the point: rules.test.ts gained the ARR-uniqueness guard —
+exactly one [ARR] mark may exist and it must sit on PROV-1, with the literal
+barred from hiding in prose. The agent cannot promote a rule to ARR without that
+test failing; promotion happens by the author editing the file, moving the
+guard's expected set in the same author-marked change. The rule that limits the
+agent's authority is the first one the agent physically cannot break alone.
+
+Standing implication for the audit (next turn's likely work): every recorded
+"permanently", every "author-gated", every deference in decisions.md now reads
+as the agent's inference. The per-rule provenance marks land with that audit.
+
+### D23 step 3, tranche 1: the matrix core owns its names (2026-07-28h)
+
+TRANSPOSE, MMULT, MUNIT, MDETERM, MINVERSE, WRAPROWS, WRAPCOLS, TOCOL, TOROW,
+SEQUENCE — kernels extracted to `nodes/matrixOps.ts` (rete-free, FX-2), both
+surfaces call them (FX-1), `formulaMatrix.test.ts` pins node-equals-formula
+including the ERROR taxonomy (#TYPE!/#VALUE!/#SHAPE!/#DIV/0!). 344/646; gap A
+down to 12; the ratchet caught its own seven stale pins.
+
+The urgent part wasn't the new names — it was the three OLD ones. MMULT,
+TRANSPOSE and MUNIT were already dispatchable through Formula.js, and step 2's
+lift meant a wired matrix reached them ELEMENT-WISE: MMULT answered the Hadamard
+grid of [object Object]s under the correct name. Ownership displaced that
+(pinned: "ownership displaced the broadcast garbage"). This ordering lesson is
+general — lifting a cap turns every already-dispatchable array name into a
+potential silent-garbage source until it's owned or routed.
+
+Blanks per VAL-1: Excel-style optional args arrive as blanks (`SEQUENCE(4,, 10,
+5)`), so the tranche names joined NULLABLE_SCALARS_OK and each registration
+decides blank-by-blank — a missing REQUIRED arg propagates null (the node
+agrees), an omitted OPTIONAL one takes its default. WRAPROWS/WRAPCOLS carry
+Excel's pad_with, defaulting to D15's #N/A. SEQUENCE's 1-arg form IS the
+Sequence node (shared `sequenceList`); cols>1 wraps the same arithmetic
+row-major with the shared MAX_GENERATED overflow.
+
+Remaining tranches recorded in the backlog: the array-returning six
+(FILTER/SORTBY/GROUPBY/RANDARRAY/SCAN/table-TAKE), then the LAMBDA family
+(compilePositional at rank 2 — a language feature, last).
+
+### D23 build step 2: the anydata rung — matrices reach formulas (2026-07-28g)
+
+Spec-first, per the author's standing instruction: SOCK-9 (the rung), FX-9
+(containment), FX-10 (one broadcast engine, table = test) and VAL-16 (the rank
+grammar) went into rules.md BEFORE the code, and rules.test.ts caught the one
+forward reference (SOCK-9 citing expressionMatrix.test.ts before it existed).
+43 rules, 33 enforced.
+
+The lift itself: `anydata` — element-agnostic rank ≤ 2, the rung between
+`anycombo` (refuses the matrices D23 admits) and `trueany` (admits the frames and
+cubes D23 excludes). Expression VARIABLES are anydata; the #SHAPE! matrix block in
+expression.ts is deleted; a wired matrix computes by the broadcast table.
+
+The RESULT socket is deliberately NOT anydata: it keeps its `resultAs` FAMILY (the
+thing FCs key on — familyOf(anydata) is "none") and reconciles its RANK to the
+computed value, swapping combo ↔ matrix rung through retypeOutputCables — the
+standard SOCK-7 machinery, value-driven via a post-compute microtask so it never
+runs inside data(). An error result leaves the socket where the last real value
+put it. Headless runs skip the swap and just flow the value.
+
+Everything downstream of the lattice edit was found by the existing machinery,
+which is the spec system paying rent: the full sweep passed derivation untouched;
+socketReference.test.ts flagged every stale connection list (regenerated
+mechanically — the patcher must keep "all N variants other than…" shorthands on
+one line, readSet parses them single-line), the glyph table, the FC-family table,
+the gray-wildcards pin, and the variant count (31 now). The legend gains a
+split-grid glyph (anycombo's split square + the matrix cross); units flow per D20
+(envDim flattens a matrix — one homogeneous unit).
+
+Still capped until step 3: the registrations (TRANSPOSE, SEQUENCE, the LAMBDA
+family, matrix math) — a matrix can now reach a formula and every element-wise op
+and aggregate works over it, but the 19 gap-A names still #NAME?.
+
+### D23: the cap lifts — matrices in formulas (decision + build step 1) (2026-07-28f)
+
+**The author decided Tier 4 with the packet on the table: YES, matrices-only.**
+Recorded as D23 (criteria, bound rules, reversal conditions); the deferral entry is
+gone; the packet is now the build spec and says so.
+
+Build step 1 — the engine understands rank 2 before any socket admits it:
+- `mapCells` in excelFormula.ts implements the eleven-row table ONCE, and every
+  element-wise surface routes through it: operators (broadcast2 is now a shim),
+  unary, percent, and broadcastCall. Shape (alignment, singleton-axis broadcast,
+  null pad) lives there; each caller keeps its own per-cell semantics.
+- `broadcastRules.test.ts` transcribes the table row by row (SSOT-6: the doc table
+  and the test are one data). Aggregates flatten row-major, so SUM/AVERAGE/MAX over
+  a matrix work with their 1-D null/error prep unchanged.
+- Containment: a matrix reaches a dispatch whole ONLY through a declared
+  `matrixArgs` registration (none yet). A 1-D whole-list native answers #SHAPE!
+  honestly; positional lookups #SHAPE! until their 2-D forms are registered;
+  Formula.js never sees rank 2 (element-wise broadcasting hands it scalars only).
+  `ExcelRank` gains the reserved "matrix" spelling.
+
+**Found while building: the evaluator was violating P3, and a test was pinning the
+violation.** P3 rules "length-1 still broadcasts"; the zip padded `[5]+[1,2,3]` to
+`[6,null,null]`, and excelFormula.test.ts asserted exactly that under the P3 label.
+B11 closes it — the singleton broadcasts to `[6,7,8]` — and the pin now points the
+right way with the history in a comment.
+
+No user-visible change yet: the connect-time gate and the Expression #SHAPE! block
+still stand, so no matrix can reach a formula from the canvas. Next: step 2 (the
+`anydata` rung + the Expression lift), then step 3 (registrations in tranches).
+
+### The Tier 4 decision packet exists (2026-07-28e)
+
+`v2.0/17-matrix-formulas.md` — the two artifacts the recorded Tier 4 plan requires
+before the author-present decision session, written immediately after the VAL-15
+rebrand cleared the recorded shape-branding blocker.
+
+Part 1 shows the branded-value/type-pass D2 feared is no longer needed: with every
+special scalar tagged, `Array.isArray` at two depths IS the complete rank test, and
+the two residual questions (orientation, empty `[]`) are conventions the lattice
+already answered, not mechanisms. It also fixes the containment line: Formula.js
+never sees a matrix — rank-2 dispatch requires a declared registration, permanently.
+
+Part 2 is the broadcast table, eleven rows written to be transcribed into
+`broadcastRules.test.ts` as a literal. The PAD question the first draft posed as
+open turned out to be ALREADY ANSWERED, twice, and better than either blanket
+option: P3 (2026-06-22) rules element-wise ragged ops pad with null ("the missing
+tail is literally missing data" — built, pinned by broadcastContract.test), and
+D15 (2026-07-09) rules shape CONSTRUCTION pads with #N/A per cell like Excel
+(VSTACK/HSTACK/WRAPROWS/WRAPCOLS, cost accepted on record). Split by operation
+kind, not rank — and it carries into formulas for free, because the construction
+functions arrive as FX-1 shared impls whose #N/A padding rides inside the
+implementation; the broadcaster's null rule never touches them. The packet is now
+sub-decision-free. Part 3 is the yes-path build order and the no-path cleanup.
+
+### Complex is a tagged object; VAL-15 (2026-07-28d)
+
+Author authorized the Tier 4 prep sequence; step 1 is this rebrand. `Cx` is now
+`{ __cx, re, im }` (`cxValue.ts`, rete-free beside errorValue) instead of a bare
+`[re, im]` array — the last bare-array scalar in the value model, and the sole reason
+"a cell may be an array" was ever true. New rule VAL-15 records it; `Array.isArray`
+now means exactly "1-D list" everywhere.
+
+What the ambiguity had been costing, all deleted rather than worked around:
+- complex.ts's broadcaster needed an EXACT shape sniff (2-tuple-of-numbers) plus
+  call-site tagging because `[1,2]` as a real list was indistinguishable from one
+  complex. The tags stay (they carry per-operand element types); the sniff is `isCx`.
+- Cast threaded a `cx` boolean from the SOURCE SOCKET through castOne — and passed
+  `false` on the list path, so a cell of a complex list could never cast correctly.
+  Self-identifying now; the flag is gone and the list path just works. `sourceKind`
+  survives only for date-vs-number, the one genuinely untagged ambiguity left.
+- coerceInputs carried outer-length special cases for complexlist/anylist ("can't
+  disambiguate from a 2-list here"); both now take the generic path, and a lone
+  complex correctly wraps to a singleton at strict list inputs — under the tuple it
+  slipped through as a fake 2-list.
+- setKey's canonicalization narrows from "any array" to exactly `isCx`.
+- `ArrayChip.is2D` sniffs `Array.isArray(v[0])`, so a complexlist reaching a generic
+  chip had rendered as a 2-column TABLE, silently. Tagged, it reads as the 1-D list
+  it is; `formatListCell` renders a Cx cell as "a+bi".
+
+This is also the Tier 4 shape-branding prerequisite: the recorded blocker ("a complex
+[re,im] is indistinguishable from a 2-list") is gone, so the residual ambiguity
+landscape for a matrix formula path is orientation only. No save-format impact —
+complex values never persist (no complex literals; computed values aren't saved).
+
+### SESSION DIGEST (2026-07-28c — the adversarial review walk over the post-1.2 work)
+
+Author instruction: walk the post-1.2 commits newest→oldest assuming everything is wrong;
+review, fix, push. Seven parallel review agents covered HEAD..cde8a8c by topic (rules.md,
+formula surface, wired-null sweep, nodeOps, popups, copy pass, type-resolution) plus one
+over the 07-22..25 tail. Six fix batches landed; suite grew 3433 → ~3500, all green.
+
+**Wrong answers found live and fixed (the headline set):**
+- `triBool` read a coerced boolean with `x !== 0`, so every WIRED FALSE in the Boolean
+  family computed TRUE — AND(false, true) was TRUE, NOT(false) FALSE. Invisible because
+  typed literals bypass coercion and the Kleene tests called bare `data()`. Now pinned
+  through wrapNodeData.
+- CHISQ.TEST corrupted upstream cached arrays IN PLACE (Formula.js mutates its args;
+  prepRangeArgs returned them by reference). Range args now cloned at the FX boundary.
+- F.TEST answered the variance ratio and T.TEST ignored tails/type entirely under the
+  same names as correct nodes; PROB's null range cells coerced to 0. All three now share
+  the node impls via mathUtils (tTestP/fTestP/probBetween).
+- The wired-null sweep's own misses: Alert fired against the card's bound on a wired
+  blank; Head/Join/Regex/OddCoupon guards not scoped to the active op; the column-LIST
+  references (`?? []`) returned the UNFILTERED frame for a wired blank; Regex stringified
+  null/SolError cells; XIRR reported an upstream error as #CONV!; IFS/SWITCH matched
+  unset rows on null; Histogram/SevenSeg/Contour clobbered typed literals with wired
+  values. The ratchet regex now catches `||`, line breaks and trailing comments — and
+  immediately caught three more live swallows.
+- Tier-3 registrations fabricated answers on blank scalars (Number(null)=0: ROLLINGSUM
+  window-1, CONTAINS "found" a blank); RUNNING*/DIFF/NORMALIZE/ARGMAX were null/error
+  blind ("0[object Object]"); SERIESSUM's pooled null-drop shifted coefficient powers;
+  INTERPOLATE fabricated an x=0 point; RANGE silently truncated at 1000 on BOTH surfaces
+  (now #OVERFLOW!/#DOMAIN!); REGEX* read JS flag strings where Excel's args were
+  documented; TINV/TDIST redirected to the wrong-shaped T.INV/T.DIST.
+- Sockets: `any`/`anycombo` bases adopted a `trueany` wire verbatim (SWITCH row became
+  accept-anything — Bug C only half-fixed); the agree vote conflated unwired with
+  wired-unknowable, so IF(cond, XLOOKUP…, date) typed as date (the fa3565a bug back
+  through another door) — three-state vote now: unwired no-vote, wired trueany VETOES,
+  NA() abstains via `errorOnlyOutput`; `anycombo` output couldn't reach an `any` input
+  (Regex→SWITCH cables silently refused AND silently dropped on load); combo/auto
+  Result socket was the `any` lying dot.
+- Popups: editable cells committed per keystroke (sorted rows moved under the caret —
+  now draft-commit like everything else); stale sort keys re-attached to new columns;
+  header text-selection drags fired sorts; the mixed-type comparator was intransitive
+  (−2 sorted after −1 next to "-1a"-style strings).
+- Copy: the lint's collector couldn't see ternary/template titles (ArrayChip's
+  "Click to view" — the highest-traffic tooltip — survived the purge), stems-only
+  spelling ("penalises", "kilometres" shipped), LinSpace's description said the node
+  COUNTS values, Comparison's claimed 1/0 after the logical migration, Report claimed
+  charts embed as objects. Collector + rules widened; strings fixed.
+
+**Structural: rules.md made true.** financeOps/excelFunctions were NOT rete-free (via
+nodes/date.ts and nodes/convert.ts) — extracted `dateSerial.ts` + `convertUnits.ts`, and
+FX-2 is now ENFORCED by `formulaPathIsReteFree.test.ts` (import-graph walk). FX-3's 53
+undeclared registrations declared + the registered→declared test; FX-7's blocklist swept
+whole (redirect/advertise/routing); VAL-8 was ALREADY pinned (doc corrected); VAL-12's
+five misnamed op fields renamed + declared (IFERROR/IFNA now searchable); `rules.test.ts`
+pins the mechanical half of the doc itself. Summary now 28/6/4.
+
+**nodeOps:** generated op rows no longer inherit the `{ }` marker; the operation accent
+edge skips secondary ARGUMENT selects (OpSelect `arg` prop — SUMIFS comparators, payment
+timing); Chart/Sparkline/Regex/GroupBy dropdowns now derive from their OP_META tables
+(Chart's groups moved INTO the meta); the parity metric's ops-rule is operation-kind
+only (Group Lists no longer counts "callable" via SUM label collisions).
+
+**Reviewed-sound (no action):** CappedZoom/pointerGesture (read directly), the
+extraction fidelity of listOps/textOps/financeOps, LEGACY_ALIASES mechanics, SHUFFLE's
+volatility split, the a657a58 tap-select ordering, seed loadability, 324b665's derived
+family list, socket-shade HSV math, contrastInk baking, c133823's reconcile coverage.
+
+### The label-less op families get their OP_META tables (2026-07-28b)
+
+Closes the last of the op-selector items. Comparison, IS.TEST, Cumulative, GCD/LCM and
+RoundN kept their per-op labels in their React component's `OPS` array, so `nodeOps.ts`
+transcribed them by hand to build the Add-menu search rows.
+
+**It had already drifted, which is the whole argument for the item.** The IS.TEST card
+says ISBOOLEAN; search offered ISLOGICAL. You could read a name off a card and fail to
+find it in the menu — the one failure mode the collapsed-family design is supposed to
+make impossible ("nothing is undiscoverable just because it's folded up"). IsEvenOdd was
+the same bug from the other side: `PARITY_OP_META` existed and nodeOps consumed it, but
+the component still hand-wrote ISEVEN/ISODD beside it. The table existing is not the
+invariant; both surfaces reading it is.
+
+**Where the two roles genuinely differ, the table carries both** rather than one label
+being copied and edited. Comparison gets a `symbol` field: the dropdown reads
+"≥  Greater or equal" because on the card the glyph is the faster read, while a search
+row wants the name alone. That absorbed `COMPARISON_SYMBOLS`, which was exported for
+exactly this purpose and had zero callers.
+
+Two dropdowns lose a gloss, and that was a copy call, not a mechanical one. Cumulative
+went from "CUMSUM: running sum" to "Running SUM" — it matches the sibling Rolling family
+and reads as the pair it is (Rolling is a sliding window, Running is everything so far),
+and CUMSUM was never an Excel name. GCD/LCM go bare like every other Excel-name family;
+the expansion is already in the catalog description, which is what the tooltip shows.
+
+**The Set families keep hand-written name lists and are now the only two.** Their meta
+labels are dropdown PROSE ("Union: in A or B"), which composes into "Set: Union: in A or
+B" as a search row and stops discriminating between siblings — the bug that made
+searching "symmetric" surface Union. Everywhere else `satisfies Record<XOp, …>` now makes
+tsc prove the list is complete; for these two nothing did, so a new set operation could
+reach the card while staying invisible to search. `nodeOps.test.ts` pins both directions
+(the lists cover the meta exactly, and never take the prose as a name) plus the ISBOOLEAN
+case itself.
+
+Worth knowing for the remaining exposure item: `scripts/op-exposure.ts` matches a family
+to its table by op KEYS, so these five reported as bare op lists with no coverage figure.
+Its "no op table matched" bucket drops 18 → 13, and the remainder is genuinely config
+selectors and the DATA pickers that should stay kind-only. Its GroupByFrame line is a
+MIS-match to watch: that node is typed `AggOp` (13 ops, `frameVerbs.ts`), which has no
+meta table, so the heuristic pins it to the 5-op `GROUP_BY_OP_META` off the shared `sum`
+default. Pivot and CubeRollup are the same `AggOp` and show up ambiguous. The backlog
+already says that table needs identifying first — this is what that looks like from the
+audit side.

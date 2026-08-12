@@ -209,12 +209,12 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
   it("RE-DISPLAYS a commensurable already-dimensioned value (base kept, display swapped)", () => {
     const fiveKm = fromUnit(5, UNITS.m, "km"); // 5 m tagged, display km (contrived)
     const asMi = applyFcUnit(fromUnit(5000, UNITS.m, "km"), "mi") as UnitCell;
-    expect(asMi.value).toBeCloseTo(5000, 6);   // base metres unchanged
+    expect(asMi.value).toBeCloseTo(5000, 6);   // base meters unchanged
     expect(asMi.display).toBe("mi");           // re-displayed in miles
     expect(isUnitCell(fiveKm)).toBe(true);
   });
 
-  it("#UNIT! on a true dimension clash (a length can't be re-labelled a mass)", () => {
+  it("#UNIT! on a true dimension clash (a length can't be re-labeled a mass)", () => {
     const lengthCell = fromUnit(3, UNITS.m, "m");
     const clash = applyFcUnit(lengthCell, "kg");
     expect(isSolError(clash) && clash.code).toBe("#UNIT!");

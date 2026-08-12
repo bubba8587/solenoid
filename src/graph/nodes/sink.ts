@@ -6,31 +6,14 @@ import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isSolError, type SolError } from "../errorValue";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
-// ─── File sink nodes (Write CSV / Write JSON) ───────────────────────────────────
-// The write-side mirror of CsvConnectionNode/WebSourceNode (connection.ts): a
-// sink node references an output path and, on refresh… no — UNLIKE a source, a
-// sink must NEVER act on its own. data() only caches the frame currently on the
-// cable (exactly like a source caches its last fetch) so the node can render a
-// preview of what WOULD be written. The actual write happens in `run()`, called
-// ONLY from the node's Run button — never from data(), never on recompute.
-//
-// `enabled` is deliberately absent from copyPaste.ts's extractInit whitelist, so
-// it can NEVER round-trip through save/load/paste — every construction (a freshly
-// authored node, a reloaded save, a paste, a restored placeholder) starts
-// disarmed, and the user must arm it again before Run does anything. There's no
-// reliable "my own file vs. a shared/imported one" signal anywhere else in this
-// codebase (the packs/placeholder provenance breadcrumb in persistence.ts is a
-// compatibility signal, not a trust one) — so rather than invent one, this is the
-// strictly safer reading of "disabled by default when loaded from elsewhere":
-// EVERY load counts, not just an imported one.
+// A sink must NEVER act on its own: data() only caches, and the write happens in
+// `run()`, called only from the Run button. `enabled` is deliberately absent from
+// copyPaste's extractInit whitelist, so EVERY construction starts disarmed.
 
 export type SinkStatus = "idle" | "writing" | "ok" | "error";
 
-/** Render a frame's columns as CSV text (RFC 4180 via Papa Parse, the same
- *  engine csv.ts uses to read one back). CSV has no native types, so every
- *  cell formats exactly like any other frame display (formatFrameCell: dates
- *  as their display string, booleans as TRUE/FALSE, errors as their code); a
- *  missing cell writes empty. */
+/** A frame as CSV text (RFC 4180 via Papa Parse, the engine csv.ts reads back).
+ *  CSV has no native types, so cells format as any other frame display. */
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);
   const fields = f.columns.map((c) => c.name);
@@ -40,11 +23,8 @@ export function frameToCsvText(f: FrameValue): string {
   return Papa.unparse({ fields, data });
 }
 
-/** Unlike CSV (all-text, so formatFrameCell's display strings are exactly
- *  right), JSON has native number/boolean/null — collapsing a real `true` to
- *  the string "TRUE" would lose type information a JSON consumer expects. Only
- *  a date (no native JSON date type) and an error cell (no JSON error type)
- *  become display strings; everything else passes through as its own kind. */
+/** JSON has native number/boolean/null, so only a date and an error cell become
+ *  display strings; everything else passes through as its own kind. */
 function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {
   if (v === null) return null;
   if (isSolError(v)) return v.code;
@@ -83,8 +63,7 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
     this.addInput("in", frameIn("Frame"));
   }
 
-  // Caches only — never touches disk. Mirrors a source's cachedResult, so the
-  // node's preview always reflects the live upstream value.
+  // Caches only — never touches disk.
   data(inputs: { in?: (FrameValue | SolError)[] }): Record<string, never> {
     this.cachedFrame = inputs.in?.[0] ?? null;
     return {};
@@ -93,11 +72,9 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
   protected abstract serialize(f: FrameValue): string;
   protected abstract defaultExt(): string;
 
-  /** Explicit write — call ONLY from the node's Run button. Desktop only (no
-   *  filesystem in the browser build). Re-entrancy-guarded: a second Run while
-   *  a write is in flight is a no-op (the component's disabled state is React
-   *  state that only updates after the await, so it can't be the only gate —
-   *  two rapid clicks would race concurrent writes to the same file). */
+  /** Explicit write — call ONLY from the Run button, desktop only. The
+   *  re-entrancy guard is required: the component's disabled state updates only
+   *  after the await, so two rapid clicks would race writes to the same file. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled; arm it first"; return; }

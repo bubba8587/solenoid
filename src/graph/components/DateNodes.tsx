@@ -2,28 +2,27 @@ import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
   TimeConstructNode as TimeConstructNodeType,
-  DateValueNode as DateValueNodeType,
-  TimeValueNode as TimeValueNodeType,
+  DateTimeValueNode as DateTimeValueNodeType,
   DatePartNode as DatePartNodeType,
   WeekInfoNode as WeekInfoNodeType,
   DateDiffNode as DateDiffNodeType,
   DateAddNode as DateAddNodeType,
-  WorkdayNode as WorkdayNodeType,
-  NetworkdaysNode as NetworkdaysNodeType,
-  DateIfNode as DateIfNodeType,
-  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, DateIfUnit,
+  WorkdaysNode as WorkdaysNodeType,
+  TodayNowOp, DateTimeValueOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
 } from "../rete-nodes";
 import {
-  TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
-  DATE_DIFF_OP_META, DATE_ADD_OP_META, DATEIF_UNIT_META,
+  TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
+  DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
+import { getActiveArea, getActiveEditor } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { dropInputCables } from "./cablePrune";
 
-// Date nodes don't format their own serials: ValueDisplay does it for any
-// node whose OUTPUT socket is a date type (see valueDisplayFormat.ts), so the
-// value box shows a formatted date for scalars AND lists, consistently.
+// Date nodes never format their own serials — ValueDisplay does it for any date-typed
+// output socket, so scalars and lists format consistently.
 
 const TODAY_NOW_OPS = (Object.keys(TODAY_NOW_OP_META) as TodayNowOp[]).map(op => ({
   value: op, label: TODAY_NOW_OP_META[op].label,
@@ -63,19 +62,31 @@ export function TimeConstructComponent({ data, emit }: NodeProps<TimeConstructNo
   );
 }
 
-export function DateValueComponent({ data, emit }: NodeProps<DateValueNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+const DATE_TIME_VALUE_OPS = (Object.keys(DATE_TIME_VALUE_OP_META) as DateTimeValueOp[]).map(op => ({
+  value: op, label: DATE_TIME_VALUE_OP_META[op].label,
+}));
 
-export function TimeValueComponent({ data, emit }: NodeProps<TimeValueNodeType>) {
+export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNodeType>) {
+  const [op, setOpField] = useNodeField(data, "op");
+  const [, setLabel] = useNodeField(data, "label");
+
+  async function pickOp(next: DateTimeValueOp) {
+    if (next === data.op) return;
+    data.setOp(next);
+    // The output retyped in place (date ↔ number): drop cables the new type
+    // can't feed, and let docked FCs re-resolve — no connection event fires.
+    const editor = getActiveEditor();
+    const area = getActiveArea();
+    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
+    if (area) await area.update("node", data.id);
+    setOpField(next);
+    setLabel(DATE_TIME_VALUE_OP_META[next].label);
+  }
+
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={DATE_TIME_VALUE_OPS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
@@ -123,14 +134,20 @@ export function WeekInfoComponent({ data, emit }: NodeProps<WeekInfoNodeType>) {
 
 const DATE_DIFF_OPS = (Object.keys(DATE_DIFF_OP_META) as DateDiffOp[]).map(op => ({
   value: op, label: DATE_DIFF_OP_META[op].label,
+  group: dateDiffNeedsBasis(op) || op === "days" ? "Day count" : "Calendar (DATEDIF)",
 }));
 
 export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const [, setLabel] = useNodeField(data, "label");
-  function handleOp(next: DateDiffOp) {
-    setOp(next);
+  async function handleOp(next: DateDiffOp) {
+    // removeInput while a cable still references the socket is unsafe, so drop it first.
+    if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
+      await dropInputCables(data.id, ["basis"]);
+    }
+    setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
     setLabel(DATE_DIFF_OP_META[next].label);
+    if (data.syncBasisInput()) await getActiveArea()?.update("node", data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -161,35 +178,33 @@ export function DateAddComponent({ data, emit }: NodeProps<DateAddNodeType>) {
   );
 }
 
-export function WorkdayComponent({ data, emit }: NodeProps<WorkdayNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
-
-export function NetworkdaysComponent({ data, emit }: NodeProps<NetworkdaysNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
-
-const DATEIF_UNITS = (Object.keys(DATEIF_UNIT_META) as DateIfUnit[]).map(u => ({
-  value: u, label: DATEIF_UNIT_META[u].label,
+const WORKDAYS_OPS = (Object.keys(WORKDAYS_OP_META) as WorkdaysOp[]).map(op => ({
+  value: op, label: WORKDAYS_OP_META[op].label,
 }));
 
-export function DateIfComponent({ data, emit }: NodeProps<DateIfNodeType>) {
-  const [unit, setUnit] = useNodeField(data, "unit");
+export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
+  const [op, setOpField] = useNodeField(data, "op");
+
+  async function pickOp(next: WorkdaysOp) {
+    if (next === data.op) return;
+    const departing = data.keysDroppedBySwitch(next);
+    if (departing.length > 0) await dropInputCables(data.id, departing);
+    data.setOp(next);
+    // The output retyped in place (date ↔ number): drop cables the new type
+    // can't feed, and let docked FCs re-resolve — no connection event fires.
+    const editor = getActiveEditor();
+    const area = getActiveArea();
+    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
+    if (area) await area.update("node", data.id);
+    setOpField(next);
+  }
+
   return (
     <NodeShell node={data} emit={emit}>
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={WORKDAYS_OPS} />
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={unit} onChange={setUnit} options={DATEIF_UNITS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
 }
+

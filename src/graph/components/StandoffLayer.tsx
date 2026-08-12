@@ -13,9 +13,7 @@ import {
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 
-// A standoff band number input that commits on Enter / blur (Escape reverts),
-// never per keystroke — so clearing digits to retype a value doesn't recompute
-// the band mid-edit. The project-wide typed-field rule (see useDraftCommit).
+// Commits on Enter / blur so clearing digits to retype doesn't recompute the band mid-edit.
 function BandField({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const field = useDraftCommit<number>(
     value,
@@ -41,16 +39,9 @@ import { scheduleAutosave } from "../persistence";
 import "./conduit.css"; // reuse the docked-toolbar chrome
 import "./StandoffLayer.css";
 
-// ─── Standoff layer ─────────────────────────────────────────────────────────────
-// Renders every standoff as a pale, thick bar UNDER the graph (the layer's
-// holder sits at z-index -2 inside the area's transformed plane — below
-// conduits at -1 and all nodes). Bars are drawn between the two live anchor
-// points, so they slant to show perpendicular slack; the constrained axis is
-// the line between the anchors' boxes, not the bar's angle.
-//
-// Selection is standoff-local (standoffStore.selected) and mutually exclusive
-// with node/cable selection. A selected standoff shows a docked toolbar with
-// its min/max band and a delete button.
+// Bars render UNDER the graph at z-index -3 (below expanded groups -2, conduits -1,
+// nodes 0). A bar slants to show perpendicular slack — the constrained axis is the line
+// between the anchors' boxes, not the drawn angle.
 
 const BAR_WIDTH = 9;
 const HIT_WIDTH = 18;
@@ -125,8 +116,7 @@ function StandoffToolbar({ s }: { s: Standoff }) {
     settleStandoffs();
     scheduleAutosave();
   };
-  // The axis direction as a screen-space angle (0° = east, 90° = south) so the
-  // dial's needle points the way the standoff constrains.
+  // Screen-space angle (0° = east, 90° = south), so the needle points the constrained way.
   const dir = ANCHOR_DIR[s.a.anchor];
   const angle = ((Math.atan2(dir.y, dir.x) * 180) / Math.PI + 360) % 360;
   return createPortal(

@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react";
 import wordmark from "../logo/solenoidwordmark.svg";
-import icon from "../logo/solenoidicon.svg";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
+import { TabletActions } from "./TabletActions";
 import { autoArrange, cleanup } from "./process";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { frStore } from "./frStore";
@@ -14,23 +14,10 @@ import { toggleAllGroups, groupCollapseSummary } from "./OutlinePanel";
 import { groupCollapseStore } from "./groupCollapse";
 import "./TopBar.css";
 
-/**
- * Full-width application bar pinned to the top edge. Gathers the brand
- * wordmark, the graph-document controls (example picker, save, open,
- * auto-arrange, function reference), the cable-shape switch, and the
- * accent/theme controls into one strip.
- *
- * Pure *canvas* tools — zoom, fit, lock — stay floating on the canvas in
- * NavMenu, since they act on the viewport rather than the document.
- */
 export function TopBar() {
-  // Re-render on group collapse/expand so the all-groups toggle's icon + title
-  // flip (Expand ↔ Collapse), matching the Navigator button (shared handler — see
-  // OutlinePanel).
+  // Re-render on group collapse/expand so the all-groups toggle's icon + title flip.
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   const { allCollapsed } = groupCollapseSummary();
-  // Snap-to-grid lives with the layout tools (it's about node placement), not the
-  // cable-shape switch.
   const { snap, toggleSnap } = useGridSnap();
   return (
     <div
@@ -38,11 +25,8 @@ export function TopBar() {
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => { if (e.key === "?" || (e.key === "/" && e.ctrlKey)) frStore.toggle(); }}
     >
-      {/* Masked rather than <img> so the single-color mark recolors per theme
-          via --wordmark-color. The full wordmark shows on desktop (a plain,
-          non-interactive mark); on a phone it's hidden and the compact square
-          icon takes its place — doubling as the app-menu button (the old
-          separate hamburger is gone; CSS swaps wordmark↔icon). */}
+      {/* Masked, not <img>, so the mark recolors per theme; CSS swaps wordmark↔icon
+          on a phone, where the icon doubles as the app-menu button. */}
       <span
         className="solenoid-topbar__mark"
         role="img"
@@ -55,14 +39,16 @@ export function TopBar() {
         aria-label="Menu"
         onClick={() => mobileMenuStore.toggle()}
       >
-        <span
-          className="solenoid-topbar__icon-glyph"
-          style={{ WebkitMaskImage: `url("${icon}")`, maskImage: `url("${icon}")` }}
-        />
+        {/* Standard overflow dots (the PopupOverflowMenu glyph, turned vertical) —
+            the brand mark moved to the mobile menu bar's wordmark. */}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="8" cy="3" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="8" cy="13" r="1.4" />
+        </svg>
       </button>
 
-      {/* Mobile-only: Navigator (outline) toggle. On desktop the outline has its
-          own floating open-pill, so this is CSS-hidden there. */}
+      {/* Mobile-only: on desktop the outline has its own pill, so this is CSS-hidden. */}
       <button
         type="button"
         className="solenoid-topbar__nav"
@@ -70,16 +56,13 @@ export function TopBar() {
         title="Navigator"
         onClick={() => toggleChrome("navigator")}
       >
-        {/* Same panel-left glyph the desktop navigator open-pill uses. */}
         <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="3" width="12" height="10" rx="1.6" />
           <path d="M6 3 V13" />
         </svg>
       </button>
 
-      {/* Mobile-only: the current document name + caret. On desktop it's centered
-          in the menu bar; on mobile it moves UP to the thin accent row (the menu
-          bar), so this in-app-bar copy is CSS-hidden on mobile now too. */}
+      {/* CSS-hidden on mobile, where the name moves up into the menu bar. */}
       <div className="solenoid-topbar__doctitle">
         <DocumentTitle />
       </div>
@@ -87,8 +70,6 @@ export function TopBar() {
       <span className="solenoid-topbar__divider" />
 
       <div className="solenoid-topbar__group solenoid-topbar__group--file">
-        {/* Save: writes the current graph to its .json file (prompting the first
-            time). Your work also autosaves to the in-app document continuously. */}
         <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveToDisk()}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3.5 2.5 h7 L13.5 5.5 V12.5 a1 1 0 0 1 -1 1 H3.5 a1 1 0 0 1 -1 -1 V3.5 a1 1 0 0 1 1 -1 Z" />
@@ -108,11 +89,9 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Layout pill: Tidy + Cleanup + collapse/expand-all together. */}
       <div className="solenoid-topbar__group solenoid-topbar__group--layout">
         <button className="solenoid-nav__btn" title="Tidy: auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-            {/* One source node branching into two — a tidy graph layout. */}
             <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
             <rect x="11.2" y="2" width="3.6" height="3.6" rx="0.8" />
             <rect x="11.2" y="9.8" width="3.6" height="3.6" rx="0.8" />
@@ -129,17 +108,14 @@ export function TopBar() {
             <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />
           </svg>
         </button>
-        {/* Collapse/expand all groups — a duplicate of the Navigator's button
-            (shared toggleAllGroups handler), so it's reachable without opening
-            the outline. Same chevron icon, flipping when all groups are collapsed. */}
+        {/* A duplicate of the Navigator's button (shared toggleAllGroups handler). */}
         <button
           className="solenoid-nav__btn"
           title={allCollapsed ? "Expand all groups (E)" : "Collapse all groups (E)"}
           aria-label={allCollapsed ? "Expand all groups" : "Collapse all groups"}
           onClick={() => toggleAllGroups()}
         >
-          {/* Lucide list-chevrons — the glyph shows the ACTION: converging
-              (down-up) to collapse, diverging (up-down) to expand. */}
+          {/* The glyph shows the ACTION: converging to collapse, diverging to expand. */}
           <svg
             viewBox="0 0 16 16" width="14" height="14" fill="none"
             stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
@@ -160,7 +136,6 @@ export function TopBar() {
             )}
           </svg>
         </button>
-        {/* Snap to grid — node placement, so it belongs with the layout tools. */}
         <button
           className={`solenoid-nav__btn${snap ? " solenoid-nav__btn--on" : ""}`}
           title={snap ? "Snap to grid: on" : "Snap to grid: off"}
@@ -184,19 +159,19 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Find/search lives with the navigator toggle now (see OutlinePanel's
-          collapsed pill) — it only opens the navigator + focuses its search. */}
-
       <span className="solenoid-topbar__divider" />
 
       <CableShapeSelector />
 
-      {/* Decorative art slot — fills the middle gap. Drop an SVG here later,
-          e.g. <img className="solenoid-topbar__art-svg" src={...} /> or inline
-          <svg>. Empty for now; it just holds the space. */}
+      {/* Tablet only (no bottom bar there); BEFORE the art slot so a wrap keeps them
+          with the other tool pills. */}
+      <TabletActions />
+
+      {/* Decorative art slot — fills the middle gap; empty for now. */}
       <div className="solenoid-topbar__art" />
 
       <AppToolbar />
+
     </div>
   );
 }

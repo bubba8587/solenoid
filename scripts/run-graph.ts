@@ -22,6 +22,7 @@ import type { Schemes } from "../src/graph/schemes";
 import { installInputCoercion } from "../src/graph/coerceInputs";
 import { installErrorGuards } from "../src/graph/errorValue";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
+import { validateGraph, validateText, formatIssues, hardIssues } from "../src/graph/graphValidate";
 
 type SavedNode = {
   id: string;
@@ -105,12 +106,38 @@ export async function runGraph(g: SavedGraph): Promise<Record<string, unknown>> 
 }
 
 async function main() {
-  const file = process.argv[2];
+  const args = process.argv.slice(2);
+  const force = args.includes("--force");
+  const file = args.find((a) => a !== "--force");
   if (!file) {
-    console.error("Usage: npx tsx scripts/run-graph.ts <graph.json>");
+    console.error("Usage: npx tsx scripts/run-graph.ts <graph.json|graph.txt> [--force]");
     process.exit(1);
   }
-  const g = JSON.parse(readFileSync(file, "utf8")) as SavedGraph;
+  // Either surface of the same document runs: a saved JSON graph or the text
+  // form ("Name: Type … --- sidecar"). The strict validator gates both — this
+  // is the generate → validate → run loop for programmatic/AI authors, so a
+  // graph the loader would silently repair fails loudly here instead
+  // (--force runs it anyway).
+  const raw = readFileSync(file, "utf8");
+  let g: SavedGraph;
+  if (raw.trimStart().startsWith("{")) {
+    g = JSON.parse(raw) as SavedGraph;
+    const hard = hardIssues(validateGraph(g as Parameters<typeof validateGraph>[0]));
+    if (hard.length > 0 && !force) {
+      console.error(formatIssues(hard));
+      console.error(`\n${file}: ${hard.length} issue${hard.length === 1 ? "" : "s"} — not running (pass --force to run anyway).`);
+      process.exit(1);
+    }
+  } else {
+    const { issues, graph } = validateText(raw);
+    const hard = hardIssues(issues);
+    if ((hard.length > 0 && !force) || !graph) {
+      console.error(formatIssues(hard));
+      console.error(`\n${file}: ${hard.length} issue${hard.length === 1 ? "" : "s"} — not running${graph ? " (pass --force to run anyway)" : ""}.`);
+      process.exit(1);
+    }
+    g = graph as unknown as SavedGraph;
+  }
   const out = await runGraph(g);
   console.log(JSON.stringify(out, null, 2));
 }

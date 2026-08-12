@@ -300,7 +300,15 @@ fn num_to_json(n: f64) -> Json {
     // Infinity/-Infinity/NaN (frameBackend `decodeWireCell`). Keys still use
     // `key_num` (null-for-non-finite, JSON.stringify parity) — don't merge them.
     if n.is_nan() {
-        return serde_json::json!({"__nf": "nan"});
+        // The aggregate guard's reserved payloads decode to the wire's per-cell
+        // error form here — the download boundary is where a verdict becomes a
+        // SolError (frameBackend decodeWireCell). A canonical NaN stays the
+        // ordinary sentinel.
+        match n.to_bits() {
+            ERR_DOMAIN_BITS => return serde_json::json!({"__err": "#DOMAIN!"}),
+            ERR_OVERFLOW_BITS => return serde_json::json!({"__err": "#OVERFLOW!"}),
+            _ => return serde_json::json!({"__nf": "nan"}),
+        }
     }
     if n.is_infinite() {
         return serde_json::json!({"__nf": if n > 0.0 { "inf" } else { "-inf" }});
@@ -850,8 +858,8 @@ fn require_in(names: &[String], cols: &[String]) -> Result<(), IpcError> {
 
 // select / drop / rename / sort / head — the lazy builders. Each takes the plan's
 // CURRENT (possibly uncollected) schema instead of a live `DataFrame`, so no
-// collect happens here; `verb_select` etc. below are thin single-op wrappers that
-// collect immediately (kept for the standalone call sites + the unit tests).
+// collect happens here; production traffic reaches them only through
+// `apply_step`'s fused path (the parity corpus tests through the same door).
 fn lazy_select(plan: Plan, columns: &[String]) -> Result<Plan, IpcError> {
     // Dedupe repeats, keeping the first — matches the oracle; a duplicate
     // selection was a hard Polars error here (audit finding 32).
@@ -894,38 +902,43 @@ fn lazy_rename(plan: Plan, map: &HashMap<String, String>) -> Result<Plan, IpcErr
 
 fn lazy_sort(plan: Plan, by: &str, dir: &str) -> Result<Plan, IpcError> {
     require_in(&plan.names, std::slice::from_ref(&by.to_string()))?;
+    let ty = type_of_in(&plan.names, &plan.types, by).unwrap_or(SolType::Str);
+    // Sort by a KEY expression, not the raw column (surfaced by the corpus
+    // fuzz sweep): a logical column keys as 0/1 — Polars' bool sort has no
+    // nulls-last and PANICS outright — and a float NaN keys as null, so dirty
+    // data joins the null tail in BOTH directions like the oracle (which tails
+    // null / error / NaN as one stable group; an error cell arrives here as
+    // null already). maintain_order keeps the tail group in input order.
+    let key = match ty {
+        SolType::Logical => col(by).cast(DataType::Float64),
+        SolType::Number | SolType::Date => {
+            let c = col(by);
+            when(c.clone().is_nan()).then(lit(NULL)).otherwise(c).cast(DataType::Float64)
+        }
+        SolType::Str => col(by),
+    };
     let desc = dir == "desc";
+    // A row index rides as the ASCENDING tiebreak key instead of relying on
+    // maintain_order: Polars' descending sort has an all-equal-keys fast path
+    // that REVERSES the rows even with maintain_order set (an all-null sort
+    // column — e.g. a stdev over single-row groups — came back reversed;
+    // corpus fuzz seed 910007, pinned in sort.json). The index makes the
+    // within-tie order part of the sort contract itself.
+    const SORT_IDX: &str = "__solenoid_sort_idx__";
     let opts = SortMultipleOptions::default()
-        .with_order_descending(desc)
-        .with_nulls_last(true)
-        .with_maintain_order(true);
-    let lf = plan.lf.sort_by_exprs(vec![col(by)], opts);
+        .with_order_descending_multi([desc, false])
+        .with_nulls_last(true);
+    let lf = plan
+        .lf
+        .with_row_index(SORT_IDX, None)
+        .sort_by_exprs(vec![key, col(SORT_IDX)], opts)
+        .drop([SORT_IDX]);
     Ok(Plan { lf, ..plan })
 }
 
 fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
     let take = n.trunc().max(0.0) as IdxSize;
     Ok(Plan { lf: plan.lf.limit(take), ..plan })
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_select(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
-    lazy_select(Plan::from_frame(frame), columns)?.collect()
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_drop(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
-    lazy_drop(Plan::from_frame(frame), columns)?.collect()
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_rename(frame: &SolFrame, map: &HashMap<String, String>) -> Result<SolFrame, IpcError> {
-    lazy_rename(Plan::from_frame(frame), map)?.collect()
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_sort(frame: &SolFrame, by: &str, dir: &str) -> Result<SolFrame, IpcError> {
-    lazy_sort(Plan::from_frame(frame), by, dir)?.collect()
 }
 
 // Re-materialize a frame from a row-index list (the basis for distinct).
@@ -964,11 +977,6 @@ fn verb_distinct(frame: &SolFrame, columns: &Option<Vec<String>>) -> Result<SolF
 }
 
 // head
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_head(frame: &SolFrame, n: f64) -> Result<SolFrame, IpcError> {
-    lazy_head(Plan::from_frame(frame), n)?.collect()
-}
-
 // ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
 // Deterministic (never random) evenly-strided subset of up to `n` rows, mirroring
 // the JS oracle's `sampleFrame` (frameVerbs.ts) exactly — same stride formula, same
@@ -989,25 +997,77 @@ fn verb_sample(frame: &SolFrame, n: usize) -> Result<(SolFrame, f64), IpcError> 
 }
 
 // filter
+/// The exact string JS `String(n)` produces (ECMA-262 Number::toString, base
+/// 10). The text predicates compare DISPLAY strings, and serde's float form is
+/// not that display: it appends ".0" to an integral float outside
+/// num_to_json's i64 window, so 9007199254740992 (2^53, the window's first
+/// miss) read "9007199254740992.0" and an `endsWith "0"` kept it while the
+/// oracle's "9007199254740992" dropped it (corpus fuzz seed 910020, pinned in
+/// filter.json). Rust's `{:e}` yields the same shortest round-trip digits JS
+/// computes — only the formatting rules differ, and those are spelled out
+/// here: decimal form for exponents in (-7, 21], exponential with an explicit
+/// sign otherwise.
+fn js_number_string(n: f64) -> String {
+    if n.is_nan() {
+        return "NaN".into();
+    }
+    if n.is_infinite() {
+        return if n > 0.0 { "Infinity".into() } else { "-Infinity".into() };
+    }
+    if n == 0.0 {
+        return "0".into(); // JS String(-0) is "0" — the sign never prints
+    }
+    let neg = n < 0.0;
+    let sci = format!("{:e}", n.abs()); // "9.007199254740992e15"
+    let (mant, exp) = sci.split_once('e').expect("{:e} always carries an exponent");
+    let exp: i32 = exp.parse().expect("{:e} exponent is an integer");
+    let digits: String = mant.chars().filter(|c| *c != '.').collect();
+    let digits = digits.trim_end_matches('0');
+    let digits = if digits.is_empty() { "0" } else { digits };
+    let k = digits.len() as i32;
+    let np = exp + 1; // ECMA's n: value = 0.d1..dk × 10^n
+    let s = if k <= np && np <= 21 {
+        format!("{}{}", digits, "0".repeat((np - k) as usize))
+    } else if 0 < np && np <= 21 {
+        format!("{}.{}", &digits[..np as usize], &digits[np as usize..])
+    } else if -6 < np && np <= 0 {
+        format!("0.{}{}", "0".repeat((-np) as usize), digits)
+    } else {
+        let mut t = String::from(&digits[..1]);
+        if k > 1 {
+            t.push('.');
+            t.push_str(&digits[1..]);
+        }
+        t.push('e');
+        t.push(if np > 0 { '+' } else { '-' });
+        t.push_str(&(np - 1).abs().to_string());
+        t
+    };
+    if neg { format!("-{s}") } else { s }
+}
+
 fn json_str(v: &Json) -> String {
     match v {
         Json::String(s) => s.clone(),
-        Json::Number(n) => n.to_string(),
+        // The oracle stringifies a numeric comparison value with String(value)
+        // — mirror it exactly (an integral float needle would otherwise read
+        // "5.0" here and "5" there).
+        Json::Number(n) => n.as_f64().map(js_number_string).unwrap_or_else(|| n.to_string()),
         Json::Bool(b) => b.to_string(),
         _ => String::new(),
     }
 }
 /// A non-null cell as the string the oracle's `String(cell)` would produce (for
 /// the text predicates). `null` → None (excluded by the predicate, SQL WHERE).
+/// Non-finite cells read "NaN"/"Infinity"/"-Infinity" like JS — they used to
+/// display as "" (num_to_json's sentinel isn't a Number), silently missing
+/// every needle the oracle's "NaN" would contain.
 fn cell_display(c: &Cell) -> Option<String> {
     match c {
         Cell::Null => None,
         Cell::Str(s) => Some(s.clone()),
         Cell::Bool(b) => Some(b.to_string()),
-        Cell::Num(n) => Some(match num_to_json(*n) {
-            Json::Number(num) => num.to_string(),
-            _ => String::new(),
-        }),
+        Cell::Num(n) => Some(js_number_string(*n)),
     }
 }
 
@@ -1025,6 +1085,12 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
         "isblank" => return Ok(Some(c.is_null())),
         "notblank" => return Ok(Some(c.is_not_null())),
         _ => {}
+    }
+    // A null comparison VALUE matches no rows — the oracle's rule (the blank
+    // predicates above ignore the value by design). Without this the string
+    // branch compared against "" (corpus fuzz sweep).
+    if value.is_null() {
+        return Ok(None);
     }
     if ty == SolType::Str {
         let s = json_str(value);
@@ -1060,16 +1126,30 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
         }
         _ => None,
     };
+    // The logical bridge: ANY value compared against a logical column collapses
+    // to 0/1 first (the oracle's coerceLogical — `eq 12` on a logical column
+    // matches TRUE rows, not nothing). The string branch above already folds;
+    // this folds the number/bool branches the same way.
+    let parsed = if ty == SolType::Logical {
+        parsed.map(|n| if n == 0.0 { 0.0 } else { 1.0 })
+    } else {
+        parsed
+    };
     let Some(v) = parsed else { return Ok(None) };
     let x = c.cast(DataType::Float64);
     let y = lit(v);
+    // Polars totally orders floats (NaN greater than everything), so a NaN cell
+    // would PASS gt/gte — the oracle compares IEEE (`compareOp`), where NaN
+    // fails every comparison except neq. Mask NaN out of the two divergent ops
+    // (lt/lte/eq already agree; neq keeps NaN on both sides). Surfaced by the
+    // parity corpus.
     let e = match op {
         "eq" => x.eq(y),
         "neq" => x.neq(y),
         "lt" => x.lt(y),
         "lte" => x.lt_eq(y),
-        "gt" => x.gt(y),
-        "gte" => x.gt_eq(y),
+        "gt" => x.clone().gt(y).and(x.is_not_nan()),
+        "gte" => x.clone().gt_eq(y).and(x.is_not_nan()),
         _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
     };
     Ok(Some(e))
@@ -1090,6 +1170,11 @@ fn filter_needs_text_scan(ty: SolType, op: &str, match_case: bool) -> bool {
 /// feature is needed). Both sides fold with a plain Unicode lowercase unless
 /// `match_case`. Shared by `verb_filter` and the multi-condition masks.
 fn text_scan_mask(frame: &SolFrame, column: &str, op: &str, value: &Json, match_case: bool) -> Vec<bool> {
+    // A null comparison value matches no rows (the oracle's rule — it would
+    // otherwise stringify to "", making startsWith/contains match everything).
+    if value.is_null() {
+        return vec![false; frame.df.height()];
+    }
     let fold = |s: String| if match_case { s } else { s.to_lowercase() };
     let needle = fold(json_str(value));
     let (_, cells) = frame.column_cells(column).unwrap();
@@ -1183,6 +1268,45 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 // guarantees. Mirrors the oracle op-for-op; every
 // op the node UI offers is implemented via `group_agg_expr`. Booleans coerce to
 // 1/0 in BOTH implementations.
+
+// ─── The aggregate non-finite guard (B-1b), engine side ─────────────────────────
+// The oracle classifies every aggregate result (`aggregateGroup` →
+// `guardFinite`): any NaN INPUT poisons the group to #DOMAIN! up front; a NaN
+// RESULT (∞−∞ sums) is #DOMAIN!; a ±Inf result from all-FINITE inputs is
+// #OVERFLOW! (the true answer is a too-big NUMBER); a ±Inf result when an
+// input was already infinite passes through (a definable infinity). A Polars
+// column cannot hold a SolError, so the two error verdicts ride as RESERVED
+// QUIET-NaN BIT PATTERNS: within the engine a marked cell behaves exactly like
+// NaN — which is what the oracle's error cells get anyway where it matters
+// (sort tails null/error/NaN as one group; comparisons drop them; group keys
+// mask non-finite) — and `num_to_json` decodes the exact bits to the wire's
+// per-cell error form ({"__err": code}, the download half frameBackend's
+// decodeWireCell already speaks). A genuine data NaN is always the canonical
+// 0x7ff8000000000000, so the payloads can't collide with real values; any
+// arithmetic on a marked cell canonicalizes it back to plain NaN, which at
+// worst re-guards to #DOMAIN! at the next aggregation (the oracle would
+// propagate the original code — an accepted, chain-only approximation).
+const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
+const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
+
+/// Wrap an aggregate expression with the B-1b verdicts, in the oracle's exact
+/// order: NaN input → #DOMAIN!; NaN result → #DOMAIN!; ±Inf result with no
+/// infinite input → #OVERFLOW!; else the result (an empty group's identity and
+/// a null result fall through untouched — `when` treats their null conditions
+/// as false).
+fn guard_agg_expr(r: Expr, src: Expr) -> Expr {
+    let domain = lit(f64::from_bits(ERR_DOMAIN_BITS));
+    let overflow = lit(f64::from_bits(ERR_OVERFLOW_BITS));
+    let any_nan = src.clone().is_nan().any(true);
+    let any_inf = src.is_infinite().any(true);
+    when(any_nan)
+        .then(domain.clone())
+        .when(r.clone().is_nan())
+        .then(domain)
+        .when(r.clone().is_infinite().and(any_inf.not()))
+        .then(overflow)
+        .otherwise(r)
+}
 fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
     if op == "count" {
         // count is on the RAW column regardless of type — a string cell counts
@@ -1207,18 +1331,118 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
         "min" => base.min(),
         "max" => base.max(),
         "product" => base.product().fill_null(lit(1.0)),
-        "median" => base.median(),
+        "median" => median_expr(base),
         "mode" => mode_expr(base),
-        // Sample (ddof 1) vs population (ddof 0) variance; Polars' own
-        // insufficient-sample-size result (null/NaN) already matches the
-        // oracle's "undefined under 2 points → Null" (num_to_json maps any
-        // non-finite float to JSON null at the wire boundary).
-        "stdev" => base.std(1),
-        "stdevp" => base.std(0),
-        "var" => base.var(1),
-        "varp" => base.var(0),
+        // Sequential two-pass variance, byte-identical to the oracle's
+        // `varianceOf` — Polars' own var() uses a different summation and
+        // drifts in the last digits once the mean is large (a date-serial
+        // column: 2465.333333333281 vs …333333; corpus fuzz sweep). Sample
+        // (ddof 1) is null under 2 points, population 0 under 1 — the UDF
+        // mirrors both.
+        "stdev" => variance_expr(base, true, true),
+        "stdevp" => variance_expr(base, false, true),
+        "var" => variance_expr(base, true, false),
+        "varp" => variance_expr(base, false, false),
+        // "percentof" (pivot-only, needs a total set) and anything validated
+        // by require_agg_ops — unreachable for unknown names.
         _ => lit(NULL).cast(DataType::Float64),
     }
+}
+
+/// Midpoint median in the ORACLE's exact form (`rawAggregate` "median",
+/// frameVerbs.ts): sort ascending, odd count takes the middle, EVEN count is
+/// `(lo + hi) / 2`. Polars' own median() interpolates `lo + 0.5*(hi - lo)`,
+/// whose subtract-then-add loses ~1e-6 once the pair spans magnitudes (1e10
+/// and 0.3 gave 5000000000.150001 vs the oracle's 5000000000.15 — corpus fuzz
+/// seed 910005). Nulls are skipped like every aggregate; ±inf sorts fine under
+/// total_cmp and averages honestly.
+fn median_expr(e: Expr) -> Expr {
+    let options = FunctionOptions {
+        collect_groups: ApplyOptions::GroupWise,
+        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
+        fmt_str: "median_midpoint",
+        ..Default::default()
+    };
+    e.function_with_options(
+        move |c: Column| {
+            let s = c.as_materialized_series();
+            let mut vals: Vec<f64> = Vec::with_capacity(s.len());
+            for i in 0..s.len() {
+                if let AnyValue::Float64(v) = s.get(i).unwrap_or(AnyValue::Null) {
+                    vals.push(v);
+                }
+            }
+            let name = c.name().clone();
+            if vals.is_empty() {
+                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+            }
+            vals.sort_by(|a, b| a.total_cmp(b));
+            let m = vals.len() / 2;
+            let out = if vals.len() % 2 == 1 { vals[m] } else { (vals[m - 1] + vals[m]) / 2.0 };
+            Ok(Some(Series::new(name, &[out]).into_column()))
+        },
+        GetOutput::from_type(DataType::Float64),
+        options,
+    )
+}
+
+/// Two-pass variance in the ORACLE's exact operation order (`varianceOf`,
+/// frameVerbs.ts): sequential sum → mean, sequential squared-deviation sum →
+/// ss/(n−ddof). GroupWise UDF like `mode_expr` — the group's cells arrive in
+/// original row order, so both engines run the identical float sequence.
+fn variance_expr(e: Expr, sample: bool, sqrt: bool) -> Expr {
+    let options = FunctionOptions {
+        collect_groups: ApplyOptions::GroupWise,
+        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
+        fmt_str: "variance_two_pass",
+        ..Default::default()
+    };
+    e.function_with_options(
+        move |c: Column| {
+            let s = c.as_materialized_series();
+            let mut vals: Vec<f64> = Vec::with_capacity(s.len());
+            for i in 0..s.len() {
+                if let AnyValue::Float64(v) = s.get(i).unwrap_or(AnyValue::Null) {
+                    vals.push(v);
+                }
+            }
+            let name = c.name().clone();
+            let n = vals.len();
+            if n == 0 || (sample && n < 2) {
+                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+            }
+            let mut sum = 0.0;
+            for &v in &vals { sum += v; }
+            let mean = sum / n as f64;
+            let mut ss = 0.0;
+            for &v in &vals { ss += (v - mean) * (v - mean); }
+            let var = ss / if sample { (n - 1) as f64 } else { n as f64 };
+            let out = if sqrt { var.sqrt() } else { var };
+            Ok(Some(Series::new(name, &[out]).into_column()))
+        },
+        GetOutput::from_type(DataType::Float64),
+        options,
+    )
+}
+
+/// The agg-op names both engines speak (the oracle's `AggOp` union). The wire
+/// carries op as a FREE STRING, and an unknown name used to fall off
+/// `group_agg_expr`'s catch-all into a silent null column — the oracle refuses
+/// with #NAME? (`aggregateGroup`), so the engine must too (surfaced by the
+/// parity corpus). "percentof" stays accepted: it's pivot-only, a group-by
+/// nulls it on both sides.
+const AGG_OPS: &[&str] = &[
+    "count", "percentof", "sum", "avg", "min", "max", "product", "median",
+    "mode", "stdev", "stdevp", "var", "varp",
+];
+
+fn require_agg_ops(aggs: &[WireAgg]) -> Result<(), IpcError> {
+    for a in aggs {
+        if !AGG_OPS.contains(&a.op.as_str()) {
+            return Err(IpcError::new("#NAME?", format!("Unknown aggregation \"{}\"", a.op)));
+        }
+    }
+    Ok(())
 }
 
 /// Most-frequent value in a group; ties break by FIRST OCCURRENCE (oracle
@@ -1244,9 +1468,10 @@ fn mode_expr(e: Expr) -> Expr {
             let mut vals: Vec<f64> = Vec::with_capacity(s.len());
             for i in 0..s.len() {
                 if let AnyValue::Float64(v) = s.get(i).unwrap_or(AnyValue::Null) {
-                    if v.is_finite() {
-                        vals.push(v);
-                    }
+                    // ±Inf is a countable value like any other (the oracle's
+                    // modeOf sees it; a NaN group short-circuits upstream on
+                    // the oracle side, so it never reaches a corpus compare).
+                    vals.push(v);
                 }
             }
             let name = c.name().clone();
@@ -1254,11 +1479,13 @@ fn mode_expr(e: Expr) -> Expr {
                 return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
             }
             // Most-frequent value; ties break by FIRST OCCURRENCE (oracle `modeOf`).
+            // Key -0 as 0: JS `===` unifies them, to_bits would not.
             let mut counts: HashMap<u64, usize> = HashMap::new();
             let mut best = vals[0];
             let mut best_count = 0usize;
             for &v in &vals {
-                let cnt = counts.entry(v.to_bits()).or_insert(0);
+                let k = if v == 0.0 { 0.0f64 } else { v };
+                let cnt = counts.entry(k.to_bits()).or_insert(0);
                 *cnt += 1;
                 if *cnt > best_count {
                     best_count = *cnt;
@@ -1285,6 +1512,7 @@ fn group_by_lazy_plan(
     require_in(names, keys)?;
     let agg_cols: Vec<String> = aggs.iter().map(|a| a.column.clone()).collect();
     require_in(names, &agg_cols)?;
+    require_agg_ops(aggs)?;
 
     // De-dupe output names up front (a key name + an agg `as` may collide) so
     // the Polars aliases are already unique — matches the oracle's makeHeaders
@@ -1294,27 +1522,62 @@ fn group_by_lazy_plan(
     let out_names = make_headers(&proposed, proposed.len());
     let agg_names = &out_names[keys.len()..];
 
-    let key_exprs: Vec<Expr> = keys.iter().map(|k| col(k.as_str())).collect();
+    // Group on DERIVED key exprs, not the raw columns: a float key's
+    // non-finite values share ONE bucket, distinct from the null bucket — the
+    // oracle's B-1a key encoding (JSON keys every non-finite as the same
+    // token; corpus fuzz sweep). Per float key: (value masked to null when
+    // non-finite, an is-non-finite flag) — finite x → (x, false), any
+    // non-finite → (null, true), null → (null, null). The OUTPUT key value is
+    // the group's first-seen ORIGINAL cell, like the oracle's bucket walk.
+    let mut group_exprs: Vec<Expr> = Vec::new();
+    for (i, k) in keys.iter().enumerate() {
+        let kt = type_of_in(names, types, k).unwrap();
+        let c = col(k.as_str());
+        if matches!(kt, SolType::Number | SolType::Date) {
+            group_exprs.push(
+                when(c.clone().is_finite()).then(c.clone()).otherwise(lit(NULL)).alias(format!("__gk{i}v")),
+            );
+            group_exprs.push(c.is_finite().not().alias(format!("__gk{i}nf")));
+        } else {
+            group_exprs.push(c.alias(format!("__gk{i}v")));
+        }
+    }
     let mut out_types: Vec<SolType> = keys.iter().map(|k| type_of_in(names, types, k).unwrap()).collect();
-    let mut agg_exprs: Vec<Expr> = Vec::with_capacity(aggs.len());
+    let mut agg_exprs: Vec<Expr> = keys
+        .iter()
+        .enumerate()
+        .map(|(i, k)| col(k.as_str()).first().alias(out_names[i].as_str()))
+        .collect();
     for (i, a) in aggs.iter().enumerate() {
         let src_ty = type_of_in(names, types, &a.column).unwrap();
-        agg_exprs.push(group_agg_expr(&a.column, src_ty, &a.op).alias(agg_names[i].as_str()));
+        let preserves = a.op == "min" || a.op == "max";
+        let mut e = group_agg_expr(&a.column, src_ty, &a.op);
+        // The B-1b guard applies where non-finite inputs can exist (float
+        // columns) and the op runs the numeric path — count counts raw cells
+        // before the oracle's guard, and percentof is pivot-only (nulled).
+        if matches!(src_ty, SolType::Number | SolType::Date)
+            && a.op != "count"
+            && a.op != "percentof"
+        {
+            e = guard_agg_expr(e, col(a.column.as_str()));
+        }
+        // A preserved LOGICAL column casts the aggregated 0/1 back to bool —
+        // group_agg_expr coerces logicals to Float64 on the way in, and the
+        // declared logical output must not carry number cells (the oracle
+        // converts back the same way; corpus fuzz seed 910021).
+        if preserves && src_ty == SolType::Logical {
+            e = e.neq(lit(0.0));
+        }
+        agg_exprs.push(e.alias(agg_names[i].as_str()));
         // min/max preserve the source type; sum/avg/count/… are numeric
-        out_types.push(if a.op == "min" || a.op == "max" { src_ty } else { SolType::Number });
+        out_types.push(if preserves { src_ty } else { SolType::Number });
     }
     // Polars' agg() output column order isn't contractually the input order —
-    // pin it explicitly (mirrors verb_join's by-name reselect).
+    // pin it explicitly (mirrors verb_join's by-name reselect). The select also
+    // drops the derived __gk* group columns.
     let select_exprs: Vec<Expr> = out_names.iter().map(|n| col(n.as_str())).collect();
-    let out_lf = lf.group_by_stable(&key_exprs).agg(agg_exprs).select(select_exprs);
+    let out_lf = lf.group_by_stable(&group_exprs).agg(agg_exprs).select(select_exprs);
     Ok((out_lf, out_names, out_types))
-}
-
-#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
-fn verb_group_by(frame: &SolFrame, keys: &[String], aggs: &[WireAgg]) -> Result<SolFrame, IpcError> {
-    let (lf, _names, types) = group_by_lazy_plan(frame.df.clone().lazy(), &frame.names(), &frame.types, keys, aggs)?;
-    let df = collect_lazy(lf)?;
-    Ok(SolFrame { df, types })
 }
 
 // ─── unpivot (manual, row-major) ────────────────────────────────────────────────
@@ -1331,6 +1594,18 @@ fn verb_unpivot(
         id_columns.iter().map(|n| frame.column_cells(n).unwrap()).collect();
     let val_data: Vec<(SolType, Vec<Cell>)> =
         value_columns.iter().map(|n| frame.column_cells(n).unwrap()).collect();
+    // The melted `value` column is ONE typed column — mixed-type value columns
+    // refuse (reject-on-mismatch, like append; the oracle throws the same
+    // #TYPE!). Without this, off-type cells silently nulled at series build
+    // (corpus fuzz sweep).
+    if let Some((first_ty, _)) = val_data.first() {
+        if let Some((other_ty, _)) = val_data.iter().find(|(t, _)| t != first_ty) {
+            return Err(IpcError::new(
+                "#TYPE!",
+                format!("Unpivot value columns must share a type (\"{}\" vs \"{}\")", first_ty.tag(), other_ty.tag()),
+            ));
+        }
+    }
     let nrows = frame.df.height();
 
     let mut id_out: Vec<Vec<Cell>> = id_data.iter().map(|_| Vec::new()).collect();
@@ -1366,21 +1641,19 @@ fn verb_unpivot(
 
 // ─── join (Polars, with key-coalesce; oracle column layout) ─────────────────────
 
-/// Assemble the oracle's join OUTPUT layout — LEFT columns (key coalesced from
-/// the RIGHT side only when `coalesce_from_right`, i.e. a right join's unmatched
-/// left) + RIGHT non-key columns, names de-duped via `make_headers` — by looking
-/// each column up BY NAME in Polars' `joined` result. Shared by the equi-join and
-/// the as-of join: Polars emits the joined columns in a how/API-DEPENDENT order
-/// and naming (a right join puts the coalesced key, named after the RIGHT key,
-/// after the left non-key columns; a colliding right column gains a "_right"
-/// suffix) — a positional rename put values under the wrong headers (audit
-/// finding 4, right joins), so every column is selected by name, then renamed.
+/// Assemble the oracle's join OUTPUT layout — LEFT columns (the key already
+/// coalesced by the caller where a right join needs it) + RIGHT non-key
+/// columns, names de-duped via `make_headers` — by looking each column up BY
+/// NAME in Polars' `joined` result. Shared by the equi-join and the as-of
+/// join: Polars emits the joined columns in a how/API-DEPENDENT order (a
+/// colliding right column gains a "_right" suffix) — a positional rename put
+/// values under the wrong headers (audit finding 4, right joins), so every
+/// column is selected by name, then renamed.
 fn assemble_join_layout(
     left: &SolFrame,
     right: &SolFrame,
     opts: &WireJoinOpts,
     joined: &DataFrame,
-    coalesce_from_right: bool,
 ) -> Result<SolFrame, IpcError> {
     let left_names = left.names();
     let mut right_nonkey_names: Vec<String> = Vec::new();
@@ -1400,7 +1673,7 @@ fn assemble_join_layout(
     let left_name_set: HashSet<&String> = left_names.iter().collect();
     let mut joined_names: Vec<String> = Vec::with_capacity(final_names.len());
     for n in &left_names {
-        joined_names.push(if coalesce_from_right && n == &opts.left_key { opts.right_key.clone() } else { n.clone() });
+        joined_names.push(n.clone());
     }
     for n in &right_nonkey_names {
         joined_names.push(if left_name_set.contains(n) { format!("{n}_right") } else { n.clone() });
@@ -1422,101 +1695,285 @@ fn assemble_join_layout(
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
     require_columns(left, std::slice::from_ref(&opts.left_key))?;
     require_columns(right, std::slice::from_ref(&opts.right_key))?;
+    // Keys of two different types can never match (SOCK-1's discipline at the
+    // verb surface) — refuse loudly, like the oracle, instead of a Polars
+    // dtype error or a garbage coalesce (corpus fuzz sweep).
+    let lt = left.type_of(&opts.left_key).unwrap_or(SolType::Str);
+    let rt = right.type_of(&opts.right_key).unwrap_or(SolType::Str);
+    if lt != rt {
+        return Err(IpcError::new(
+            "#TYPE!",
+            format!("Join keys must share a type (\"{}\" vs \"{}\")", lt.tag(), rt.tag()),
+        ));
+    }
     if opts.how.as_str() == "asof" {
         return verb_join_asof(left, right, opts);
     }
+    // Equality joins match on a MASKED key: a non-finite float key masks to
+    // null, and null keys never match (Polars' default) — the oracle's rule,
+    // where null / error / non-finite keys all sit outside the match set
+    // (corpus fuzz sweep; Polars would otherwise match inf == inf). The mask
+    // lives in TEMP columns so the real key columns ride through untouched.
+    const JKL: &str = "__solenoid_join_key_left__";
+    const JKR: &str = "__solenoid_join_key_right__";
+    let mask_key = |name: &str, ty: SolType, alias: &str| -> Expr {
+        let c = col(name);
+        let e = if matches!(ty, SolType::Number | SolType::Date) {
+            when(c.clone().is_finite()).then(c).otherwise(lit(NULL))
+        } else {
+            c
+        };
+        e.alias(alias)
+    };
+
     // Semi/anti FILTER the left frame (left columns only, original order, no
     // fan-out) — Polars' own semi/anti layout already matches the oracle's, so
-    // no assemble_join_layout pass is needed. Null keys never match (Polars'
-    // default), mirroring the oracle: dropped by semi, kept by anti.
+    // no assemble_join_layout pass is needed: an unmatched (null/non-finite)
+    // key drops in semi, stays in anti.
     if matches!(opts.how.as_str(), "semi" | "anti") {
         let how = if opts.how == "semi" { JoinType::Semi } else { JoinType::Anti };
         let mut args = JoinArgs::new(how);
         args.maintain_order = MaintainOrderJoin::LeftRight;
-        let joined = collect_lazy(left.df.clone().lazy().join(
-            right.df.clone().lazy(),
-            vec![col(opts.left_key.as_str())],
-            vec![col(opts.right_key.as_str())],
-            args,
-        ))?;
+        let joined = collect_lazy(
+            left.df
+                .clone()
+                .lazy()
+                .with_column(mask_key(&opts.left_key, lt, JKL))
+                .join(
+                    right.df.clone().lazy().with_column(mask_key(&opts.right_key, rt, JKR)),
+                    vec![col(JKL)],
+                    vec![col(JKR)],
+                    args,
+                ),
+        )?;
+        let joined = joined
+            .drop(JKL)
+            .map_err(|e| IpcError::internal(format!("semi/anti key drop failed: {e}")))?;
         return Ok(SolFrame { df: joined, types: left.types.clone() });
+    }
+    if opts.how.as_str() == "outer" {
+        // The oracle's OUTER layout is a composition Polars' maintain_order
+        // can't express (a Full join tails the unmatched LEFT rows): every left
+        // row in order with grouped fan-out — i.e. the LEFT join — then the
+        // unmatched RIGHT rows in right order, key coalesced from the right.
+        // Build exactly that composition (surfaced by the parity corpus).
+        let left_opts = WireJoinOpts {
+            left_key: opts.left_key.clone(),
+            right_key: opts.right_key.clone(),
+            how: "left".into(),
+            asof_direction: None,
+            asof_tolerance: None,
+        };
+        let head = verb_join(left, right, &left_opts)?;
+        let mut args = JoinArgs::new(JoinType::Anti);
+        args.maintain_order = MaintainOrderJoin::LeftRight;
+        // The anti tail must compare MASKED keys like every other path: on raw
+        // keys Polars matches NaN == NaN, so a NaN-keyed right row "matched"
+        // the left's NaN and vanished from the tail — the oracle masks
+        // non-finite keys to unmatchable, so those rows belong IN the tail
+        // (corpus fuzz seed 910016, pinned in join.json).
+        let tail = collect_lazy(
+            right
+                .df
+                .clone()
+                .lazy()
+                .with_column(mask_key(&opts.right_key, rt, JKR))
+                .join(
+                    left.df.clone().lazy().with_column(mask_key(&opts.left_key, lt, JKL)),
+                    vec![col(JKR)],
+                    vec![col(JKL)],
+                    args,
+                ),
+        )?;
+        let tail = tail
+            .drop(JKR)
+            .map_err(|e| IpcError::internal(format!("outer tail key drop failed: {e}")))?;
+        let tail_frame = SolFrame { df: tail, types: right.types.clone() };
+        // Tail rows in the head's schema: the key coalesces from the right,
+        // every other LEFT column is null, right non-key columns carry over.
+        let head_names = head.names();
+        let left_names = left.names();
+        let mut right_nonkey = right.names().into_iter().filter(|n| n != &opts.right_key);
+        let mut cols: Vec<Vec<Cell>> = Vec::with_capacity(head_names.len());
+        for i in 0..head_names.len() {
+            let src = if i < left_names.len() {
+                if left_names[i] == opts.left_key { Some(opts.right_key.clone()) } else { None }
+            } else {
+                right_nonkey.next()
+            };
+            cols.push(match src {
+                Some(rn) => tail_frame.column_cells(&rn).unwrap().1,
+                None => vec![Cell::Null; tail_frame.df.height()],
+            });
+        }
+        let tail_df = build_df(&head_names, &head.types, &cols)?;
+        let df = head
+            .df
+            .vstack(&tail_df)
+            .map_err(|e| IpcError::internal(format!("outer join tail stack failed: {e}")))?;
+        return Ok(SolFrame { df, types: head.types });
     }
     let how = match opts.how.as_str() {
         "inner" => JoinType::Inner,
         "left" => JoinType::Left,
         "right" => JoinType::Right,
-        "outer" => JoinType::Full,
         other => return Err(IpcError::new("#VALUE!", format!("unknown join how \"{other}\""))),
     };
     let is_right = matches!(how, JoinType::Right);
-    // Row order must match the oracle (strict driving-side order with grouped
-    // fan-out) — Polars docs say join order is unspecified unless maintain_order
-    // is set (audit finding 15). The driving side is the RIGHT frame for a right
-    // join, the left frame otherwise.
-    let maintain = if is_right { MaintainOrderJoin::RightLeft } else { MaintainOrderJoin::LeftRight };
-    let mut args = JoinArgs::new(how).with_coalesce(JoinCoalesce::CoalesceColumns);
-    args.maintain_order = maintain; // no builder method in polars 0.46
+    // Row order must match the oracle: strict DRIVING-side order with grouped
+    // fan-out in the other side's row order (audit finding 15; the driving
+    // side is the RIGHT frame for a right join, the left frame otherwise).
+    // maintain_order is NOT enough: Polars swaps an inner join's build/probe
+    // sides by size and the flag loses (corpus fuzz sweep) — so both sides
+    // carry a row index and the joined result is SORTED into the contract.
+    // Coalesce is OFF and done EXPLICITLY below: Polars' CoalesceColumns names
+    // the merged key by a how/collision-dependent rule — audit finding 4's
+    // maze, where a right key sharing an unrelated LEFT column's name made the
+    // by-name lookup read the WRONG column (corpus fuzz sweep caught it live).
+    const IDXL: &str = "__solenoid_join_idx_left__";
+    const IDXR: &str = "__solenoid_join_idx_right__";
+    let args = JoinArgs::new(how);
 
-    let joined = collect_lazy(left.df.clone().lazy().join(
-        right.df.clone().lazy(),
-        vec![col(opts.left_key.as_str())],
-        vec![col(opts.right_key.as_str())],
-        args,
-    ))?;
+    let mut joined_lf = left
+        .df
+        .clone()
+        .lazy()
+        .with_row_index(IDXL, None)
+        .with_column(mask_key(&opts.left_key, lt, JKL))
+        .join(
+            right
+                .df
+                .clone()
+                .lazy()
+                .with_row_index(IDXR, None)
+                .with_column(mask_key(&opts.right_key, rt, JKR)),
+            vec![col(JKL)],
+            vec![col(JKR)],
+            args,
+        );
+    let (primary, secondary) = if is_right { (IDXR, IDXL) } else { (IDXL, IDXR) };
+    joined_lf = joined_lf.sort_by_exprs(
+        vec![col(primary), col(secondary)],
+        SortMultipleOptions::default().with_nulls_last(true).with_maintain_order(true),
+    );
+    if is_right {
+        // Unmatched right rows have a null left side — fill the key from the
+        // RIGHT key column, whose joined name is deterministic: suffixed iff it
+        // collides with any left column name.
+        let rk_joined = if left.names().iter().any(|n| n == &opts.right_key) {
+            format!("{}_right", opts.right_key)
+        } else {
+            opts.right_key.clone()
+        };
+        joined_lf = joined_lf.with_column(
+            coalesce(&[col(opts.left_key.as_str()), col(rk_joined.as_str())]).alias(opts.left_key.as_str()),
+        );
+    }
+    let joined = collect_lazy(joined_lf)?;
 
-    assemble_join_layout(left, right, opts, &joined, is_right)
+    assemble_join_layout(left, right, opts, &joined)
 }
 
-// ─── as-of join (Polars join_asof — nearest match on a sorted number/date key) ──
-/// Every LEFT row is kept, matched to the nearest RIGHT row by key (never fans
-/// out) — mirrors the oracle's `asofPairs` (frameVerbs.ts). `join_asof` requires
-/// BOTH sides sorted ascending by the key, and its result follows the SORTED left
-/// order, not the caller's — a row-index column restores the original order.
+// ─── as-of join (hand-rolled binary search, mirroring the oracle exactly) ─────
+/// Every LEFT row is kept in ORIGINAL order, matched to the nearest RIGHT row
+/// by key (never fans out) — a line-for-line mirror of the oracle's
+/// `asofPairs`/`asofNearest` (frameVerbs.ts). Polars' own AsOf kernel was
+/// retired here by the corpus fuzz sweep: it has no backward tie-break for
+/// `nearest`, its `allow_eq` default silently excluded EXACT key ties, and its
+/// non-finite handling differs — three divergences from one kernel. The data
+/// is small enough that a sort + per-row binary search is the simpler truth.
 fn verb_join_asof(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
     let lt = left.type_of(&opts.left_key).unwrap_or(SolType::Number);
     let rt = right.type_of(&opts.right_key).unwrap_or(SolType::Number);
     if !matches!(lt, SolType::Number | SolType::Date) || !matches!(rt, SolType::Number | SolType::Date) {
         return Err(IpcError::new("#VALUE!", "as-of join requires a numeric or date key".to_string()));
     }
-    let strategy = match opts.asof_direction.as_deref().unwrap_or("backward") {
-        "forward" => AsofStrategy::Forward,
-        "nearest" => AsofStrategy::Nearest,
-        _ => AsofStrategy::Backward,
+    // null / non-finite keys never match, same as the equality joins (an error
+    // cell arrives engine-side as null already).
+    let (_, lcells) = left.column_cells(&opts.left_key).unwrap();
+    let (_, rcells) = right.column_cells(&opts.right_key).unwrap();
+    let mut sorted: Vec<(f64, usize)> = rcells
+        .iter()
+        .enumerate()
+        .filter_map(|(j, c)| match c {
+            Cell::Num(v) if v.is_finite() => Some((*v, j)),
+            _ => None,
+        })
+        .collect();
+    sorted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().then(a.1.cmp(&b.1)));
+    let direction = opts.asof_direction.as_deref().unwrap_or("backward");
+    let matches: Vec<Option<usize>> = lcells
+        .iter()
+        .map(|c| match c {
+            Cell::Num(v) if v.is_finite() => asof_match(&sorted, *v, direction, opts.asof_tolerance),
+            _ => None,
+        })
+        .collect();
+
+    // Output layout = LEFT columns as-is + RIGHT non-key columns gathered by
+    // match (null where none), names de-duped — the oracle's assembleJoinOutput.
+    let mut names = left.names();
+    let mut types = left.types.clone();
+    let mut cols: Vec<Vec<Cell>> = left.df.get_columns().iter().map(cells_of).collect();
+    for n in right.names() {
+        if n == opts.right_key {
+            continue;
+        }
+        let (t, cells) = right.column_cells(&n).unwrap();
+        names.push(n);
+        types.push(t);
+        cols.push(matches.iter().map(|m| m.map(|j| cells[j].clone()).unwrap_or(Cell::Null)).collect());
+    }
+    let final_names = make_headers(&names, names.len());
+    let df = build_df(&final_names, &types, &cols)?;
+    Ok(SolFrame { df, types })
+}
+
+/// The oracle's `asofNearest`, operation for operation: upper/lower bound by
+/// binary search, direction pick (nearest DISTANCE tie favors backward), then
+/// the tolerance gate on the picked side.
+fn asof_match(sorted: &[(f64, usize)], key: f64, direction: &str, tolerance: Option<f64>) -> Option<usize> {
+    let n = sorted.len();
+    if n == 0 {
+        return None;
+    }
+    let (mut lo, mut hi) = (0usize, n);
+    while lo < hi {
+        let mid = (lo + hi) >> 1;
+        if sorted[mid].0 <= key { lo = mid + 1 } else { hi = mid }
+    }
+    let backward = lo as isize - 1; // LAST entry with key ≤ target
+    let (mut lo2, mut hi2) = (0usize, n);
+    while lo2 < hi2 {
+        let mid = (lo2 + hi2) >> 1;
+        if sorted[mid].0 < key { lo2 = mid + 1 } else { hi2 = mid }
+    }
+    let forward = if lo2 < n { lo2 as isize } else { -1 }; // FIRST entry with key ≥ target
+    let pick = match direction {
+        "backward" => backward,
+        "forward" => forward,
+        _ => {
+            if backward == -1 {
+                forward
+            } else if forward == -1 {
+                backward
+            } else {
+                let db = key - sorted[backward as usize].0;
+                let df = sorted[forward as usize].0 - key;
+                if df < db { forward } else { backward } // tie → backward
+            }
+        }
     };
-    let asof_opts = AsOfOptions {
-        strategy,
-        tolerance: opts.asof_tolerance.map(AnyValue::Float64),
-        ..Default::default()
-    };
-
-    const IDX: &str = "__solenoid_asof_idx__";
-    let left_sorted = left
-        .df
-        .clone()
-        .lazy()
-        .with_row_index(IDX, None)
-        .sort_by_exprs(vec![col(opts.left_key.as_str())], SortMultipleOptions::default().with_nulls_last(true));
-    let right_sorted = right
-        .df
-        .clone()
-        .lazy()
-        .sort_by_exprs(vec![col(opts.right_key.as_str())], SortMultipleOptions::default().with_nulls_last(true));
-
-    let joined = collect_lazy(
-        left_sorted
-            .join_builder()
-            .with(right_sorted)
-            .left_on(vec![col(opts.left_key.as_str())])
-            .right_on(vec![col(opts.right_key.as_str())])
-            .how(JoinType::AsOf(asof_opts))
-            .finish()
-            .sort_by_exprs(vec![col(IDX)], SortMultipleOptions::default()),
-    )?;
-    let joined = joined
-        .drop(IDX)
-        .map_err(|e| IpcError::internal(format!("asof join index drop failed: {e}")))?;
-
-    assemble_join_layout(left, right, opts, &joined, false)
+    if pick == -1 {
+        return None;
+    }
+    let p = pick as usize;
+    if let Some(tol) = tolerance {
+        if (sorted[p].0 - key).abs() > tol {
+            return None;
+        }
+    }
+    Some(sorted[p].1)
 }
 
 // ─── append / union by name (manual) ────────────────────────────────────────────

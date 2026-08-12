@@ -1,19 +1,14 @@
-// AutoCAD-style lasso geometry helpers — all operate in screen
-// (container-relative) coords with Y-down.
+// Lasso geometry — all in screen (container-relative) coords, Y-down.
 
 import { createToggleStore } from "./storeKit";
 
 export type Pt = { x: number; y: number };
 
-/** True while a lasso / box-select drag is in flight. Canvas flips it on down/up; the
- *  HTML-canvas renderer reads it to switch to the cheap canvas layer during a lasso over
- *  many nodes (a lasso moves nothing, so the motion path wouldn't otherwise activate it). */
+/** True while a lasso drag is in flight — the HTML-canvas renderer needs it because a
+ *  lasso moves nothing, so its motion path never activates the cheap layer. */
 export const lassoActiveStore = createToggleStore();
 
-// Signed area, in screen coords. Positive = the path winds CLOCKWISE
-// visually (because screen Y is flipped from math Y). Used to decide
-// the lasso mode: CW → "touch / crossing" (any overlap selects), CCW →
-// "window / enclose" (must be fully inside to select).
+// Positive = the path winds CLOCKWISE visually, since screen Y is flipped from math Y.
 export function signedArea(pts: Pt[]): number {
   let s = 0;
   for (let i = 0; i < pts.length; i++) {
@@ -24,7 +19,7 @@ export function signedArea(pts: Pt[]): number {
   return s * 0.5;
 }
 
-// Ray-casting point-in-polygon. Handles arbitrary closed polygons.
+// Ray casting — handles arbitrary closed polygons.
 export function pointInPolygon(p: Pt, pts: Pt[]): boolean {
   let inside = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
@@ -50,10 +45,8 @@ function segmentsIntersect(p1: Pt, p2: Pt, p3: Pt, p4: Pt): boolean {
   return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }
 
-// Test whether ANY edge of the lasso polygon crosses ANY edge of the
-// 4-corner bounding box. Used for the CW "touch" mode where an overlap
-// counts even if no corner is inside the lasso (e.g., the lasso is
-// drawn inside the node).
+// Catches the touch-mode overlap where no corner is inside the lasso — e.g. the
+// lasso drawn entirely within the node.
 export function polygonIntersectsBBox(poly: Pt[], corners: Pt[]): boolean {
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i];

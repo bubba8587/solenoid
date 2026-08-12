@@ -1,16 +1,8 @@
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
 
-// ─── Conduit ──────────────────────────────────────────────────────────────────
-
-// A single-block cable bundler. Lane i routes in_i → out_i (output mirrors
-// input). Up to CONDUIT_MAX_LANES "Any" cables enter one face and leave the
-// opposite face. One rotation angle for the whole block (no per-lane spacing):
-// when deselected the block compresses so the lanes bunch into a single pill,
-// and expands (sockets fan out) when it's selected or a cable is dragged near.
-// All MAX lanes are declared up-front so the
-// engine + connection validator can address any lane; the component renders only
-// as many as are in use.
+// A cable bundler routing lane in_i → out_i. All MAX lanes are declared up-front so the
+// engine + validator can address any lane; the component renders only the ones in use.
 
 export const CONDUIT_MAX_LANES = 8;
 
@@ -27,14 +19,8 @@ export function conduitLaneOf(key: unknown, side: "in" | "out"): number {
 
 type ConnLike = { source: string; sourceOutput: string; target: string; targetInput: string };
 
-/**
- * Per-lane rewire specs for a deleted Conduit. Pairs each incoming lane (`in_i`)
- * with its outgoing lane (`out_i`) and yields a ghost cable from the upstream
- * source to the downstream target — the unambiguous per-lane rewire that the
- * generic 1-in/1-out splice can't express for a multi-lane bundle. Skips a lane
- * missing either end, a self-loop (upstream === downstream), an already-existing
- * wire, and duplicate specs. Pure; the caller applies the result.
- */
+/** Ghost cables bridging each lane of a deleted Conduit; the generic 1-in/1-out splice
+ *  can't express this for a multi-lane bundle. Pure — the caller applies the result. */
 export function conduitGhostSpecs(
   incoming: readonly ConnLike[],
   outgoing: readonly ConnLike[],
@@ -63,11 +49,8 @@ export function conduitGhostSpecs(
   return specs;
 }
 
-// Sequential identity: every Conduit gets a small human number ("Conduit 3")
-// so identical-looking blocks stay tellable-apart in pickers and wired markers.
-// Session-global counter; loading or pasting a numbered conduit bumps it past
-// that number so fresh ones never collide. Claiming an explicit n returns n
-// (the user may deliberately renumber, duplicates included — their call).
+// Session-global counter: loading or pasting a numbered conduit bumps it past that number
+// so fresh ones never collide; an explicit n is returned as-is, duplicates allowed.
 let _nextSeq = 1;
 function claimSeq(n?: number): number {
   if (n != null && Number.isFinite(n)) {
@@ -85,30 +68,20 @@ export class ConduitNode extends ClassicPreset.Node {
   seq: number;
   angle: number;
   // Fixed hit-area box — keep in sync with CONDUIT_BODY_SIZE (ribbonCable.ts).
-  // The visible block can extend beyond it when expanded; the minimap uses this
-  // footprint.
   width = 92;
   height = 92;
-  // Per-lane mirror of incoming values so the component can read latest values
-  // (e.g. to color the internal cables) without re-running the engine.
+  // Per-lane mirror so the component reads latest values without re-running the engine.
   cachedLane: Array<unknown> = new Array(CONDUIT_MAX_LANES).fill(null);
 
   constructor(init?: { label?: string; angle?: number; seq?: number }) {
     super("Conduit");
     this.seq = claimSeq(init?.seq);
-    // The label stays derived ("Conduit N") until the user renames it; older
-    // saves carry the bare "Conduit" default, which we upgrade to the numbered
-    // form so loaded conduits aren't all identically anonymous.
+    // The bare "Conduit" default from older saves upgrades to the numbered form.
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
     this.angle = init?.angle ?? 0;
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
-      // Input is a shared `trueany` singleton — the SUPREMUM wildcard, so a lane
-      // accepts ANY cable (the Conduit's whole point): scalars, lists (an `anylist`
-      // off a List Filter), tables, frames, cubes. (A plain `any` is scalar-only —
-      // it rejected an `anylist`, the bug.) The OUTPUT is a per-lane MUTABLE socket
-      // that ADOPTS the wired-in type (see reconcileConduitTypes in conduitTrace.ts),
-      // so a lane genuinely carries its type downstream — a date leaves as a date
-      // (FC can lock it, a Display formats it), not an opaque wildcard.
+      // Input must be `trueany` (the SUPREMUM) — a plain `any` is scalar-only and would
+      // reject an `anylist`. The output is MUTABLE so the lane carries its adopted type on.
       this.addInput(conduitInKey(i), new ClassicPreset.Input(trueAnySocket));
       this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("trueany")));
     }

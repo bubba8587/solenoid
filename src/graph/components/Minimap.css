@@ -4,8 +4,8 @@
   position: absolute;
   /* Right edge aligned with the socket legend above it. */
   right: 16px;
-  /* Clear of the bottom status bar. */
-  bottom: 30px;
+  /* Clear of the bottom status bar (the measured envelope — layout-chrome.md). */
+  bottom: calc(var(--chrome-bottom, 19px) + 11px);
   padding: 8px;
   overflow: hidden;
   box-sizing: border-box;

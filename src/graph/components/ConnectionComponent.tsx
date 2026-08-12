@@ -17,11 +17,9 @@ import { loadRevealStore } from "../loadReveal";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { ConduitNode } from "../rete-nodes";
-import { resolveTypedSource } from "../conduitTrace";
+import { resolveTypedSource, conduitPath } from "../conduitTrace";
 import { standoffStore } from "../standoffs";
 import { settingsStore } from "../settingsStore";
-import { useRenderMode } from "../renderMode";
-import { cableScene, type CableStroke } from "../cableScene";
 
 const { useConnection } = Presets.classic;
 
@@ -42,18 +40,8 @@ const CABLE_HIT_W = IS_COARSE ? 28 : 20;
 const TRUNK_HIT_W = IS_COARSE ? 30 : 22;
 const FAN_HIT_W = IS_COARSE ? 24 : 14;
 
-// Each cable used to render into a 9999×9999px <svg> anchored at the holder
-// origin. With C cables that's C ~100-megapixel layers, which is the keystone
-// blocking GPU compositing of the area holder (promoting it would blow GPU
-// memory), so pan/zoom repaint every cable every frame instead of moving a
-// cached texture. Instead, bound each cable's <svg> to its own content bbox:
-// position it at (minX,minY) with a matching `viewBox`, so absolute path coords
-// still land in the same holder pixels (no path-string changes), but the layer
-// box shrinks from 100MP to the cable's footprint. `overflow: visible` is kept
-// so stroke/bow/corner ink that spills past the padded bbox still draws — the
-// bbox only needs to be *roughly* right for the layer-size win; correctness
-// doesn't depend on it. Flow beads and hit-strokes are untouched (they live
-// inside this same <svg>), so all cable interaction stays identical.
+// Each cable's <svg> is bounded to its own content bbox with a matching `viewBox`, so
+// path coords are unchanged; `overflow: visible` means the bbox need only be roughly right.
 const SVG_BBOX_PAD = 64; // covers stroke half-width, corner radius, spline bow
 function boundedSvgProps(
   pts: Array<{ x: number; y: number }>,
@@ -72,8 +60,7 @@ function boundedSvgProps(
   maxX += SVG_BBOX_PAD; maxY += SVG_BBOX_PAD;
   const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
   return {
-    // Tags every cable <svg> so the gesture-time AA drop can EXCLUDE cables —
-    // jaggy curves are the most visible quality loss, so cables keep their AA.
+    // Tags the <svg> so the gesture-time AA drop can EXCLUDE cables.
     className: "solenoid-cable-svg",
     style: {
       overflow: "visible",
@@ -84,8 +71,7 @@ function boundedSvgProps(
       height: h,
       pointerEvents: "none",
       ...(isoDim ? { opacity: 0.1 } : null),
-      // Load reveal: fade the whole cable in (opacity only set while hidden, so
-      // it never clobbers the isoDim dim above once revealed).
+      // Opacity is set only while hidden, so it never clobbers the isoDim dim above.
       ...revealStyle,
     },
     viewBox: `${minX} ${minY} ${w} ${h}`,
@@ -93,21 +79,15 @@ function boundedSvgProps(
 }
 
 // ── Flow-bead phase alignment across a ribbon assembly ────────────────────────
-// The bead animation travels FLOW_PERIOD px per FLOW_DURATION s on every cable
-// (keep in sync with .solenoid-cable-flow in canvas.css). A negative
-// animation-delay shifts a segment's bead phase by the upstream length within
-// the assembly, so beads appear to flow continuously: out of the Conduit's
-// sockets down the source fans, onto the trunk exactly when the fan beads
-// reach the merge face, and onward down the target fans. The canonical
-// source-fan length is RIBBON_SPLIT (the face→merge distance); per-lane fans
-// differ by a few px — approximation by design.
+// Beads travel FLOW_PERIOD px per FLOW_DURATION s (keep in sync with
+// .solenoid-cable-flow in canvas.css); a negative animation-delay shifts a segment's
+// phase by its upstream length so beads flow continuously across an assembly.
 const FLOW_PERIOD = 72;
 const FLOW_DURATION = 2.25;
 const flowDelay = (upstreamPx: number) =>
   `${(-((upstreamPx % FLOW_PERIOD) / FLOW_PERIOD) * FLOW_DURATION).toFixed(4)}s`;
 
-// Length of an SVG path string, measured on a detached path element (works in
-// Chromium, which is what Tauri ships). Fallback: straight-line distance.
+// Measured on a detached path element (Chromium, which is what Tauri ships).
 let _measurePath: SVGPathElement | null = null;
 function pathLength(d: string, a: { x: number; y: number }, b: { x: number; y: number }): number {
   try {
@@ -122,13 +102,8 @@ function pathLength(d: string, a: { x: number; y: number }, b: { x: number; y: n
 }
 
 // ── Conduit hit clearance ─────────────────────────────────────────────────────
-// Cable hit strokes are ~20px wide and end exactly on the socket. A compressed
-// Conduit is a ~10×17px pill rendered at z -1 (UNDER the cables, so wires plug
-// in over the block) — the converging hit strokes blanket it completely, and
-// the dead zone matches the conduit's EXPANDED footprint. Clicks meant for the
-// block hit cables instead, and it can't be re-selected once compressed. Trim
-// the HIT coverage (never the visible path) just short of conduit
-// endpoints via a dash pattern, so the block keeps its own hitbox.
+// A compressed Conduit sits UNDER the cables, whose ~20px hit strokes would blanket it,
+// so the HIT coverage (never the visible path) is dashed short of conduit endpoints.
 const BLOCK_HIT_CLEAR = 14;
 
 function hitTrimDash(total: number, trimStart: number, trimEnd: number): string | undefined {
@@ -140,17 +115,10 @@ function hitTrimDash(total: number, trimStart: number, trimEnd: number): string 
 }
 
 // ── Per-connection path cache ─────────────────────────────────────────────────
-// getCablePath (the routeWalk/spline solve) is the expensive part of a cable
-// render. This component subscribes to ~13 stores, most of which change only
-// *appearance* (hover, selection, flow, value tint) — yet every bump re-renders
-// us AND re-solves the path. Cache the last solve keyed on the geometry that
-// actually feeds the solver, so appearance-only re-renders reuse the string and
-// only genuine endpoint/shape/angle changes re-run getCablePath. Keyed by
-// connection id; entries for deleted cables are harmless (bounded by session).
+// Keyed on the geometry feeding the solver, so appearance-only re-renders reuse the string.
 const _pathCache = new Map<string, { key: string; d: string }>();
-// The cache key is shape+coords+angles, which DON'T change when the "direct cables"
-// perf toggle flips (same shape, different routing) — so clear the whole cache on any
-// settings change to force a re-solve.
+// The key does NOT cover the "direct cables" toggle — clear the cache on any settings
+// change or the routing won't re-solve.
 settingsStore.subscribe(() => _pathCache.clear());
 function cachedMainPath(
   id: string,
@@ -186,24 +154,9 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
   // Subscribe to ghost membership changes so a ghost commit re-renders us.
   useSyncExternalStore(cableGhostStore.subscribe, cableGhostStore.version);
-  // Socket-hover re-render trigger, narrowed to kill the all-cables fan-out.
-  // Hovering one socket bumps the store once but used to re-render EVERY cable
-  // (all subscribed to the global version). A standalone cable now watches only
-  // its OWN hover flag, so an unrelated hover is an Object.is-equal snapshot and
-  // skips its re-render. Ribbon members share appearance (one member hovered
-  // lights the whole bundle), so they must still react to any member's change —
-  // they fall back to the global version. ribbonRef is set after `ribbon` is
-  // known below; the value is used only as a re-render key, never as logic
-  // (socketHovered, the real boolean, is read separately).
+  // Narrowed to kill the all-cables fan-out: a standalone cable watches only its OWN
+  // hover flag; ribbon members share appearance, so they stay on the global version.
   const ribbonRef = useRef(false);
-  // Render mode: in "canvas" we publish this cable's visible stroke to cableScene
-  // (CableCanvas paints it) and emit only the invisible hit path. Subscribing here
-  // re-renders every cable when the mode flips.
-  const renderMode = useRenderMode();
-  // What to sync to the cable scene after THIS render (written in the render body,
-  // applied in the layout effect below). Defaults to "remove" each render; only
-  // the normal canvas-eligible return sets it.
-  const publishRef = useRef<{ action: "set" | "remove"; draw?: CableStroke }>({ action: "remove" });
   useSyncExternalStore(
     socketHoverCableStore.subscribe,
     () => (ribbonRef.current ? socketHoverCableStore.version() : socketHoverCableStore.isHovered(data.id)),
@@ -211,8 +164,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   const socketHovered = socketHoverCableStore.isHovered(data.id);
   // Hidden when it touches a member of a collapsed group.
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
-  // Ribbon membership changes with the connection set; trunk endpoints move
-  // when a Conduit expands/rotates; ribbon hover is shared across components.
+  // Ribbon membership tracks the connection set, and its hover is shared across components.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   useSyncExternalStore(conduitLayoutStore.subscribe, conduitLayoutStore.version);
   const hoveredRibbonKey = useSyncExternalStore(ribbonHoverStore.subscribe, ribbonHoverStore.get);
@@ -221,8 +173,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   const isoDim = isolateStore.isActive() && !!data.source && !!data.target
     && (!isolateStore.isVisible(data.source) || !isolateStore.isVisible(data.target));
 
-  // Load reveal: while a graph is animating in, a cable stays hidden until its
-  // turn, then fades + draws on (output → input). See loadReveal.ts.
+  // A revealing cable stays hidden until its turn, then draws on output → input.
   const revealActive = useSyncExternalStore(loadRevealStore.subscribe, loadRevealStore.isActive);
   const revealed = useSyncExternalStore(loadRevealStore.subscribe, () => loadRevealStore.isConnRevealed(data.id));
   const hideForReveal = revealActive && !revealed;
@@ -230,58 +181,33 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
     ? (hideForReveal ? { opacity: 0, transition: "opacity 340ms ease" } : { transition: "opacity 340ms ease" })
     : undefined;
 
-  // The editor that OWNS this cable's endpoints — the drill-in's internal editor
-  // when the cable renders inside an open composite, else main. Keyed on an
-  // endpoint node id (a pseudo cable mid-drag has only one end). Resolving via
-  // getEditor() (main) made every drill-in cable fall back to the default color
-  // (no socket found), skip ribbon bundling, and miss the Conduit hit-trim.
+  // Must be the OWNING editor: resolving via getEditor() (main) loses the socket — and
+  // so the color, ribbon bundling and hit-trim — for every drill-in cable.
   const editor = getOwningEditor(data.source || data.target);
   // Conduit-output ribbon this cable belongs to (2+ lanes to one Conduit/group).
   const ribbon = editor && data.source && data.target ? ribbonForConnection(editor, data) : null;
   const ribbonSelected =
     ribbon !== null && ribbon.members.some((m) => cableSelectionStore.has(m.id));
   const selected = cableSelectionStore.has(data.id);
-  // Drives the socket-hover subscription's fan-out gate (see ribbonRef above):
-  // ribbon members keep the global subscription, standalone cables go narrow.
   ribbonRef.current = ribbon !== null;
 
-  // A selected cable jumps above every node and group. rete-area appends each
-  // node/connection as a position:absolute holder child; rete-react then mounts
-  // our <svg> inside a nested <span> within that child. z-index only bites on the
-  // positioned holder child (the span is static), so target connectionViews'
-  // element, not svg.parentElement. Reset on deselect / unmount.
+  // z-index only bites on rete-area's positioned holder child, not the static span
+  // rete-react mounts our <svg> in — so target connectionViews' element.
   useLayoutEffect(() => {
-    // Owning area, not main: a drill-in cable's holder lives in the drill-in's
-    // AreaPlugin (see getOwningArea).
+    // Owning area, not main — a drill-in cable's holder lives in the drill-in's AreaPlugin.
     const el = getOwningArea(data.source || data.target)?.connectionViews.get(data.id)?.element;
     if (!el) return;
     el.style.zIndex = selected || ribbonSelected ? "100" : "";
     return () => { el.style.zIndex = ""; };
   }, [selected, data.id, ribbonSelected, data.source, data.target]);
 
-  // Evict this connection's cached path on unmount (or id change) so _pathCache
-  // can't grow unbounded across a long session of cable create/delete churn.
-  // Also drop it from the canvas scene so the painter stops drawing it.
-  useLayoutEffect(() => () => { _pathCache.delete(data.id); cableScene.remove(data.id); }, [data.id]);
-
-  // Sync this render's stroke into the cable scene (canvas mode) or remove it
-  // (DOM mode, or a DOM-only case like ribbons / reveal / pseudo). Runs after
-  // every render; publishRef was set during the render body.
-  useLayoutEffect(() => {
-    const p = publishRef.current;
-    if (p.action === "set" && p.draw) cableScene.set(data.id, p.draw);
-    else cableScene.remove(data.id);
-  });
-
-  // Default each render to "don't draw on canvas"; the normal canvas-eligible
-  // return below overrides this. Any early return therefore removes the stroke.
-  publishRef.current = { action: "remove" };
+  // Evict on unmount so _pathCache can't grow unbounded across create/delete churn.
+  useLayoutEffect(() => () => { _pathCache.delete(data.id); }, [data.id]);
 
   if (groupCollapseStore.isConnHidden(data.id)) return null;
 
-  // An endpoint that sits on a collapsed group's hidden member is drawn to that
-  // group's edge pill instead (keyed by socket, so the in-progress drag from an
-  // output pill anchors there too, not at the hidden member's 0,0).
+  // An endpoint on a collapsed group's hidden member redirects to the group's edge pill,
+  // keyed by socket so a drag from the pill doesn't anchor at the member's 0,0.
   const pillPoint = (p: { groupId: string; side: "left" | "right"; index: number } | undefined) => {
     if (!p) return undefined;
     const g = getArea()?.nodeViews.get(p.groupId)?.position;
@@ -302,13 +228,9 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
 
   const ghost = cableGhostStore.isGhost(data.id);
   const isPseudo = !data.target; // in-progress cable being drawn
-  // Cable color follows the source socket's data type. When dragging from
-  // an input socket the source side is null, so fall back to the target socket.
-  // For combo socket types (numlist etc.) we resolve against the live output
-  // value so the cable reflects what's actually flowing, not just the type.
-  // Trace through a Conduit so the lane's real type colours the cable (see
-  // resolveTypedSource) — otherwise a date/logical/frame passing through a
-  // Conduit loses its colour (its `any` lane resolves by JS value type).
+  // Color follows the SOURCE socket (the target when dragging from an input); combos
+  // resolve against the live value, and the trace runs through a Conduit or the lane's
+  // `any` would resolve by JS value type and lose date/logical/frame colors.
   const typed = data.source ? resolveTypedSource(editor, data.source, data.sourceOutput) : null;
   const sourceSocket = typed?.socket;
   const targetSocket = editor?.getNode(data.target)?.inputs[data.targetInput]?.socket;
@@ -349,9 +271,28 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // multi-selection instead of replacing it — mirrors node selection.
   const accumulating = (e: React.MouseEvent) => e.ctrlKey || e.metaKey || touchSelectStore.get();
 
-  // Selecting a SEPARATED ribbon lane deselects its Conduit — pin the
-  // separation open so the ribbon doesn't re-form under the click. The pin
-  // holds exactly as long as this cable stays selected.
+  // Double-click selects the whole RUN (every segment through the Conduits between).
+  // Detected from the click's `detail` count, NOT onDoubleClick: the canvas swallows
+  // native dblclick in CAPTURE phase, so React never sees a synthetic double-click.
+  const selectRun = (e: React.MouseEvent) => {
+    if (!editor || !data.source || !data.target) return;
+    const path = conduitPath(editor, {
+      id: data.id,
+      source: data.source,
+      sourceOutput: data.sourceOutput,
+      target: data.target,
+      targetInput: data.targetInput,
+    });
+    // A cable with no Conduit is its own run — don't toggle the first click back off.
+    if (path.connIds.length < 2) return;
+    cableSelectionStore.replaceAll(
+      accumulating(e) ? [...cableSelectionStore.ids(), ...path.connIds] : path.connIds,
+    );
+    unselectAllNodes();
+  };
+
+  // Selecting a separated lane deselects its Conduit, so pin the separation open for
+  // as long as this cable stays selected or the ribbon re-forms under the click.
   const pinIfSeparatedLane = () => {
     if (!editor || !data.source || !data.target) return;
     const would = ribbonForConnection(editor, data, { ignoreSeparation: true });
@@ -364,23 +305,12 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   };
 
   // ── Conduit ribbon: trunk + fan rendering ──────────────────────────────────
-  // The trunk (drawn by the representative, lowest lane) runs between a merge
-  // point just past the source Conduit's output face and a split point just
-  // before the target Conduit's input face (or all the way onto a collapsed
-  // group's combined pill — no target fan there). EVERY member draws its own
-  // fan branches: source socket → its own slot on the trunk's flat starting
-  // face, and from its own slot on the flat end face → target socket. Slots
-  // are spread across the trunk width, ordered by lane rank on each side, so
-  // branches sit side-by-side and can never cross. Hover and selection are
-  // shared ribbon-wide via ribbonHoverStore / cableSelectionStore(repId), so
-  // the whole thing behaves as one cable.
+  // Only the representative (lowest) lane draws the trunk; EVERY member draws its own
+  // fan branches into rank-ordered slots, so branches can never cross. Hover and
+  // selection are shared ribbon-wide, so the assembly behaves as one cable.
   // ── Inverse ribbon: bundle OUT of a collapsed group all the way to one dest ──
-  // A Conduit hidden in a collapsed group whose outputs land on ONE destination
-  // (a visible Conduit, or another collapsed group). cs is the source group's
-  // combined OUTPUT pill (a stadium, like the input side); there is NO source fan
-  // — the pill is the bundle cap. The trunk runs all the way to the destination:
-  // a visible Conduit gets a target fan into its lanes; a collapsed group lands
-  // whole on its input pill (ce). Mirror of the group-target case below.
+  // A Conduit hidden in a collapsed group whose outputs land on ONE destination: the
+  // group's output pill IS the bundle cap, so there is no source fan.
   if (ribbon && ribbon.kind === "groupSource") {
     const tgtFace = ribbon.destKind === "conduit" ? conduitFacePoint(ribbon.targetId, "in") : null;
     if (ribbon.destKind === "group" || tgtFace) {
@@ -435,6 +365,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       const onRibbonClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         standoffStore.select(null);
+        // Second click of a double-click: widen to this lane's whole run.
+        if (e.detail >= 2) { selectRun(e); return; }
         if (accumulating(e)) {
           cableSelectionStore.toggle(ribbon.repId);
           if (cableSelectionStore.has(ribbon.repId)) unselectAllNodes();
@@ -450,8 +382,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
         onPointerDown: stopDragStart, onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
       };
       const showTrunk = isRep && trunkD;
-      // Trunk hit: trimmed off the source pill (so its socket stays draggable),
-      // and off the destination pill too when landing whole on a group.
+      // Trimmed off the source pill so its socket stays draggable.
       const trunkHitDash = showTrunk
         ? hitTrimDash(pathLength(trunkD!, srcPill, trunkEnd), BLOCK_HIT_CLEAR, ribbon.destKind === "group" ? BLOCK_HIT_CLEAR : 0)
         : undefined;
@@ -538,9 +469,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
         };
         tgtFanD = `M ${tgtSlot.x},${tgtSlot.y} L ${ce.x},${ce.y}`;
         tgtFanLen = Math.hypot(ce.x - tgtSlot.x, ce.y - tgtSlot.y);
-        // Non-reps don't render the trunk, but with flow on they still need
-        // its LENGTH for their target fan's bead phase. Same inputs ⇒ every
-        // member computes the identical trunk.
+        // Non-reps still need the trunk's LENGTH for their fan's bead phase; identical
+        // inputs mean every member computes the same trunk.
         if (isRep || flow) {
           trunkD = getCablePath(shape, {
             sourceX: merge.x, sourceY: merge.y,
@@ -587,6 +517,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       const onRibbonClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         standoffStore.select(null);
+        // Second click of a double-click: widen to this lane's whole run.
+        if (e.detail >= 2) { selectRun(e); return; }
         if (accumulating(e)) {
           // Toggle the whole ribbon (its representative) in/out of the set.
           cableSelectionStore.toggle(ribbon.repId);
@@ -612,9 +544,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
         onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
       };
       const fans = [srcFanD, tgtFanD].filter((d): d is string => d !== null);
-      // Fan hit strokes yield near the conduit faces so the block stays
-      // clickable (see BLOCK_HIT_CLEAR above). The trunk starts/stops
-      // RIBBON_SPLIT off the faces and never covers the block.
+      // Fan hit strokes yield near the conduit faces so the block stays clickable.
       const fanHits: Array<{ d: string; dash?: string }> = [
         { d: srcFanD, dash: hitTrimDash(srcFanLen, BLOCK_HIT_CLEAR, 0) },
       ];
@@ -685,6 +615,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       cableSelectionStore.set(null);
       return;
     }
+    // Second click of a double-click: widen to this cable's whole run.
+    if (e.detail >= 2) { selectRun(e); return; }
     if (accumulating(e)) {
       cableSelectionStore.toggle(data.id);
       if (cableSelectionStore.has(data.id)) {
@@ -694,9 +626,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       return;
     }
     if (selected && cableSelectionStore.count() === 1) {
-      // Plain click on the sole selected cable deselects it; on a cable in a
-      // multi-selection it collapses the selection to just that cable (the
-      // `else` below) — same as plain-clicking a node in a multi-selection.
+      // Deselects the sole selected cable; in a multi-selection it collapses to this one.
       cableSelectionStore.set(null);
     } else {
       cableSelectionStore.set(data.id);
@@ -717,41 +647,17 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       )
     : undefined;
 
-  // Reveal "drawing" effect: dash the whole path length and animate the offset
-  // from full (undrawn) to 0 (drawn) the instant this cable is revealed. The
-  // path string starts at the source output, so the line draws output → input.
+  // Dash the full path length and animate the offset to 0; the path starts at the
+  // source output, so the line draws output → input.
   const drawLen = revealActive ? pathLength(pathD, cs, ce) : 0;
 
   // The 0.72 idle value is mirrored by the gesture canvas (htmlCanvasRenderer
   // drawCables globalAlpha) — change them together or the swap pops.
   const cableOpacity = ghost ? 0.65 : activeHover || selected || isPseudo ? 0.9 : 0.72;
 
-  // Canvas mode: move the VISIBLE stroke to the shared canvas layer (CableCanvas)
-  // for this normal cable, keeping the invisible hit path in the DOM. Excluded:
-  // the reveal cinematic (DOM owns the draw-on animation), in-progress pseudo
-  // cables (transient, follow the cursor), and flow-on cables (the bead animation
-  // stays on the CSS/SVG path). Ribbons never reach here (they returned earlier).
-  const canvasEligible = renderMode === "canvas" && !revealActive && !isPseudo && !flow;
-  if (canvasEligible) {
-    publishRef.current = {
-      action: "set",
-      draw: {
-        d: pathD,
-        color: stroke,
-        width: baseWidth,
-        // isoDim is the DOM SVG wrapper's opacity:0.1; fold it into the stroke
-        // here, since the canvas stroke doesn't inherit that wrapper.
-        opacity: cableOpacity * (isoDim ? 0.1 : 1),
-        dash: ghost ? [6, 5] : undefined,
-        // A selected cable paints above nodes, mirroring the DOM z-index:100 jump.
-        above: selected,
-      },
-    };
-  }
-
   return (
     <svg {...boundedSvgProps([cs, ce], isoDim, revealStyle)}>
-      {!canvasEligible && <path
+      {<path
         d={pathD}
         fill="none"
         stroke={stroke}
@@ -759,9 +665,6 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
         strokeDasharray={revealActive ? drawLen : ghost ? "6 5" : undefined}
         strokeDashoffset={revealActive ? (revealed ? 0 : drawLen) : undefined}
         style={revealActive ? { transition: "stroke-dashoffset 440ms ease" } : undefined}
-        // Idle cables sit slightly dimmer than before; hover / selected
-        // stay at the previous 0.9 so hovering now lifts a cable out of
-        // the pack — easier to trace where overlapping ones go.
         opacity={cableOpacity}
         pointerEvents="none"
       />}

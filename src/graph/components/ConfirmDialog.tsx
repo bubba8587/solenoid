@@ -3,11 +3,7 @@ import { confirmStore, answerConfirm } from "../confirmStore";
 import { useFocusTrap } from "./useFocusTrap";
 import "./confirmDialog.css";
 
-/**
- * Renders the in-app confirmation modal whenever a confirm is pending
- * (see confirmStore). Mounted once near the canvas root. Enter confirms,
- * Escape / overlay-click cancels.
- */
+/** Mounted once near the canvas root; Enter confirms, Escape / overlay-click cancels. */
 export function ConfirmDialog() {
   const pending = useSyncExternalStore(confirmStore.subscribe, confirmStore.get);
   const dialogRef = useRef<HTMLDivElement>(null);

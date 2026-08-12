@@ -9,11 +9,10 @@ import { applyFcUnit } from "./unitBridge";
 import { isSolError } from "./errorValue";
 import seed from "./seedGraphs/unit-flow.json";
 
-// The Unit Flow seed is a teaching graph: each lane's caption claims a specific
-// behavior. This test builds the seed with the REAL node classes and asserts those
-// claims hold (downstream carry, upstream multi-hop, transform-break, Convert
-// forward, selector keeps unit), so a future change to unitFlow / the FC can't
-// quietly turn a captioned demo into a lie.
+// The Unit Flow seed is a teaching graph: each lane's caption (A–J) claims a
+// specific behavior. This test builds the seed with the REAL node classes and
+// asserts every captioned claim holds, so a future change to unitFlow / the FC
+// can't quietly turn a captioned demo into a lie.
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 
@@ -168,7 +167,7 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(out.code).toBe("#UNIT!");
   });
 
-  it("J · the Equation node derives the unknown's unit (d = v·t → metres)", () => {
+  it("J · the Equation node derives the unknown's unit (d = v·t → meters)", () => {
     const v = (real.get("J_vFc") as FormatControllerNode).data({ in: [5] }).out;
     const t = (real.get("J_tFc") as FormatControllerNode).data({ in: [10] }).out;
     const out = (real.get("J_eq") as EquationNode).data({ v: [v], t: [t] });

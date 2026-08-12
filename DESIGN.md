@@ -89,7 +89,7 @@ components:
 
 **Creative North Star: "The Instrument Panel"**
 
-Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. Nothing is decorative for its own sake; color, weight, and contrast are spent on conveying state and type, not on producing mood.
+Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. In the chrome, color, weight, and contrast are spent on conveying state and type; decoration exists but lives in sanctioned homes (brand marks, user-authored color, opt-in flourishes — see the Quiet Accent Rule).
 
 The system is built around legibility before anything else. The typeface is the Braille Institute's Atkinson Hyperlegible family, chosen because it keeps similar glyphs distinct at small sizes, and the type runs small and dense because a working graph wants information per pixel, not whitespace theatre. The default canvas is dark so colored cables and typed sockets read with maximum separation, and a full light theme mirrors every token for users who prefer it. The accent color is user-swappable at runtime, so the system commits to a role for the accent rather than to a single hue.
 
@@ -98,9 +98,10 @@ This system explicitly rejects three looks. It is not a generic SaaS or AI-start
 **Key Characteristics:**
 - Dark-default workbench with a fully mirrored light theme.
 - Small, dense, hyperlegible type. Information per pixel over whitespace.
-- Color is reserved for type and state; the chrome stays neutral.
+- In the chrome, color is spent on type and state; decoration lives in its named homes.
 - Flat at rest; elevation and glow appear only as a response to state.
-- Fast, short, functional motion. Nothing choreographed.
+- Fast, short, functional motion. The two choreographed moments (load reveal, AI-apply
+  reveal) are deliberate showpieces, not a license.
 
 ## 2. Colors
 
@@ -117,8 +118,16 @@ A neutral near-black workbench carrying a typed, saturated socket palette and a 
 - **Hairlines** (`#2d2d2d` border, `#3a3a3a` strong, `#2a2a2a` subtle): Borders and dividers. Thin and quiet.
 - **Ink** (`#e8e8e8` text, `#f3f4f5` bright, `#9aa0a6` dim, `#80868e` muted): The text ramp, brightest reserved for emphasis, muted for secondary labels. The muted tier clears WCAG AA 4.5:1 on the card/sunken surfaces. Light theme inverts to dark inks (`#1b1e23` down to `#6a717b`).
 
+**A palette replaces this whole neutral ramp** — canvas, window, the three surfaces, the three borders, the four inks, per theme mode (`BUILTIN_CHROME` in `palette.ts`). The rest of the neutral chrome (panels, overlays, button hover, the gauge track, the selected cable, light-theme shadows) DERIVES from those thirteen by fixed mixes, so a palette moves one ramp rather than forty tokens; the mix steps are calibrated against App.css's own literals, not eyeballed per palette. The hexes above are the **Default** palette, which authors no ramp of its own because it IS this section. The others each carry chrome their identity earns: Muted lifts off near-black onto a soft charcoal, Colorblind-safe goes fully achromatic and a step crisper so the Okabe–Ito hues carry the whole type signal, Solarized adopts its own canonical base03…base3 ladder, Equinox drops the last of the blue cast, Orchard trades the near-black workbench for Pear's warm cream, and Blueprint puts the whole instrument on a cyanotype ground where the canvas dot grid reads as drafting paper.
+
+It is all or nothing per palette (D35) — a partial ramp derives nothing — and it is **not** a license to renege on the STRUCTURE above. Machine-checked over every ramp, the Default baseline included: canvas darker than card, dots legible without shouting, the field brightest in light and a recess in dark, hover fill stepping toward the ink, three border tiers stepping outward, four ink tiers stepping down in contrast.
+
+**The 4.5:1 ink contrast stated in this section is a promise of two palettes, not of the system** (D35): `Default`, the experience nobody chose, and `Colorblind-safe`, whose brief is legibility. Those two are machine-checked. The rest are aesthetic opt-ins whose value is fidelity to a look, and a palette lifted from a low-contrast source is allowed to be low-contrast — Solarized sits near 3:1 by design, and an earlier pass that forced it up to AA ended up shipping something that was no longer Solarized. Do not "fix" an aesthetic palette's contrast upward; a reader who needs the guarantee has two palettes that make it.
+
 ### Tertiary (Typed Socket Palette)
 The socket colors are the system's real palette: each data type owns a hue so a cable's color tells you what flows through it. They are tuned to stay distinguishable across common color-vision deficiencies, and array and matrix variants are systematic siblings of their scalar (a darker, desaturated shade for lists; a punchier, deeper, hue-shifted shade for tables/matrices).
+
+**The sibling derivation runs in HSV** (`palette.ts`) — the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the whole family is tuned on one set of axes and each knob does exactly one thing: array = HSV value ×0.85; matrix = hue −11°, S ×1.18, V ×0.92 (constants averaged over the matrix slots of every built-in palette when the space was swapped, so the depth didn't move). Do NOT reintroduce an RGB multiply (it silently couples value and saturation) or an HSL step (its L scale trades off against saturation differently per hue — the same constant reads "darker" on saturated slots and "more chromatic" on dull ones). The socket RING is a fixed HSV value drop rather than one translucent black: a translucent black's visible contrast varies with fill lightness — crisp on light dots, faint on the dark array/matrix/frame ones.
 - **Number Amber** (`#f5b914`): scalar numbers. List sibling `#c08512`.
 - **String Lime** (`#c8e040`): scalar text. List sibling `#7a9210`.
 - **Date Orchid** (`#d685b1`): scalar dates. List sibling `#c06a98`.
@@ -137,9 +146,29 @@ A small reserved set for failure and state feedback, kept apart from the typed s
 - **Warning Amber** (`#d9a93b`): caution / out-of-range states.
 
 ### Named Rules
-**The Quiet Accent Rule.** The accent and the saturated socket hues carry meaning, never decoration. Color appears on a socket, a cable, a focus ring, or a selection glow. It never fills a panel, a button background, or a section header for visual interest. If a surface is colored, it is colored because something about its state or type is being communicated.
+**The Quiet Accent Rule (rescoped 2026-08-08 — the old "never decoration" absolute was false).**
+In the WORKING CHROME — panels, bars, buttons, menus, dialogs, section headers — color conveys
+type or state: a socket, a cable, a focus ring, a selection glow, a status badge. Don't inject
+accent or socket hues there for visual interest. But the app is not colorless by doctrine;
+decoration is real and deliberate, in named homes: **brand marks** (the wordmark, the desktop
+accent window border, the top-bar art slot), **user-authored color** (note and group tints,
+theme palettes, report palettes, chart colors), and **opt-in flourishes** (cable flow beads,
+the load reveal, the AI-apply reveal). The rule's actual content for an agent: NEW decorative
+color is an author call, never a default you reach for — when unsure whether a color is meaning
+or mood, keep the chrome neutral and ask.
+
+**The Nearest-Accent Rule.** There are two accents in play — the app's (`--accent`, the user's theme pick) and the surface's (`--node-accent`, the type color tinting a node card's or a value popup's header). Inside a surface that carries its own accent, the surface's wins: its focus rings, drop targets, active states and filled actions all resolve `var(--node-accent, var(--accent))`, so the fallback hands app-level chrome — the command palette, Settings, the Navigator, the accentless dialogs — the app accent untouched. An app-accent ring inside an accent-tinted card puts two unrelated hues on one small surface and reads as a mistake. An accent FILL additionally needs its ink from the matching pair (`--node-accent-ink`, derived per surface); `--accent-ink` is computed for the app accent's hue and goes unreadable on any other.
 
 **The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
+
+**The Accent-Mix Ladder.** Every accent-derived shade is a `color-mix` of the surface's accent at a NAMED rung — never an ad-hoc percentage. The rungs live as CSS vars in `App.css`; the mix target is chosen by role at the use site:
+- `--mix-hairline` (30%) toward a border color — tinted hairlines (markdown table edges, strip separators).
+- `--mix-edge` (45%) toward `--border` — a structural edge on a field or bar.
+- `--mix-emphasis` (60%) toward `--border` — the quiet-emphasis edge: an operation selector at rest, an active step.
+- `--mix-ink` (55%) toward `--text` — accent-tinted glyphs and labels (header titles, chevrons, swatches).
+- `--mix-glow` (28%) toward `transparent` — the selection glow alpha.
+- `--mix-ring` toward `--ring-into` — the selection ring: 70% toward `#fff` in dark, 80% toward `#000` in light (the light nerf; a ~70% mix toward black reads as a harsh near-black frame over a pale card).
+Tint FILLS stay separate: the header band uses `--header-tint` (22% dark / 52% light) toward `--surface`; translucent washes (active rows, count pills, chips) run loose at 12–22% toward `transparent` and are not yet rungs. A new accent shade picks the rung whose role matches; needing a new percentage means proposing a new rung here, not inlining a number.
 
 ## 3. Typography
 
@@ -180,10 +209,25 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Shape:** Two families. Round icon buttons (28px, `border-radius: 50%`) for canvas tools, and pills (`border-radius: 999px`) for grouped toolbar controls and segmented controls.
 - **Default:** Sunken background (`--surface-sunken`), 1px neutral border (`--border`), body-color icon/text. Quiet and recessive.
 - **Hover / Active:** Background lifts to `--btn-hover`, border steps to `--border-strong`. No color injection; the button stays neutral.
+- **Confirming action** (one per dialog at most — Save, Done): the exception to the neutral rule. Filled with its surface's accent and its matching ink, so the button that commits a change reads as belonging to the thing being changed. Every other button in the same dialog stays neutral; two filled buttons in one footer is the misuse.
 
 ### Inputs / Fields
 - **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
 - **Focus:** Border shifts to the accent (`--accent`). No glow, no ring; a single colored border edge.
+
+### Op pickers (the accent's one home on a card body)
+A card's OPERATION picker is the single body control that spends the accent: a 2px edge at `--mix-emphasis`, hoisted to the top of the body so the op reads before the inputs it shapes. Everything else in the body stays neutral. Two components can be that picker and they behave identically — `OpSelect` (a dropdown) and `SegToggle` (a segmented toggle) — differing only in shape.
+
+**"Having op" is ONE property with three consequences** (D29), never three switches you can set apart. An OPERATION's ops are genuine top-level functions in the formula editor, they get the accent and the top-of-body slot, and they are searchable in the Add menu. An ARGUMENT is a parameter inside a top-level function — read that phrase literally, both halves. On the card: neutral control, no search row of its own, searched words riding the host leaf's `keywords`. On the formula surface: no top-level name of its own, but it becomes a PARAMETER of the host's one function. Running is the worked example — `RUNNING(op, list, [window])` with the aggregator as a validated string argument, same shape as `SORT(list, index, order)` carrying its direction. Neither seven per-op names (`RUNNINGSUM`, …) nor zero names is the argument form; both were tried on 2026-08-10 and both were wrong.
+
+**That property has ONE home: `kind` on the family's `NODE_OPS` declaration.** Nothing else may assert it. The control-level `arg` prop answers a different question — *am I the family's picker at all?* — and a control bound to the node's own `op` may never carry it (machine-checked; the two would otherwise be able to disagree, and did, in Sort and Drop Blank Rows).
+
+So a control's treatment reads as:
+
+1. **Not the family's picker** — a criterion comparator, a digit pick. It carries `arg`, stays neutral, never hoists.
+2. **The family's picker** — it binds a field named `op` (VAL-12, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Fourteen families bind `op` and are declared `argument`, rendering neutral: Group By, Cube Rollup, Group By (frame), Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count among them.
+
+The family's picker hoists to the top of the body either way. Reading before the inputs it shapes is about being the picker, not about spending the accent. Adding a third picker component means teaching the scan about it; nothing else will notice.
 
 ### Cards / Containers (the Node Card, signature component)
 - **Corner Style:** 8px radius.
@@ -231,6 +275,21 @@ distilled from a pass that rewrote the What's New / About copy (before → after
 alongside the "no Captain Obvious UI strings" rule in CLAUDE.md (don't narrate an affordance the
 control already conveys) — that rule still governs; these are about tone once the string earns its place.
 
+`uiCopy.test.ts` enforces the machine-checkable subset of this section over the help markdown and
+the node catalog: teased counts, the slogan phrases, conventional-affordance narration, chummy
+asides. The rest stays a human call. Two rules below are NOT yet enforced because the shipped
+corpus predates them — the em-dash ban (95 uses) and no-trailing-parenthetical (113); both need a
+prose sweep before they can be turned on.
+
+- **A control's own action is a verb, and that is not "imperative tone."** "Cycle Number / Text /
+  Date / Boolean", "Open the Problems panel", "Drill in", "Rename" are correct on a button, chip
+  or menu item: they name what the control does, the same register as its label. Only a GESTURE
+  in front of the verb is wrong — "Click to cycle …" → "Cycle …". Strip the gesture, keep the
+  verb. (The third-person rule below is about NODE DESCRIPTIONS, which describe a thing rather
+  than offer an action; do not carry it onto controls.)
+- **American spelling.** color, not colour. Also gray, center, behavior, labeled, neighbor, meter,
+  analyze, normalize, catalog, dialog. Applies to every shipped string; code identifiers and CSS
+  classes are a separate matter. `uiCopy.test.ts` enforces this one.
 - **No em dashes.** Use a period, a colon, or restructure. The em dash is the tell of the machine-written
   aside. _"the whole app comes with you — toolbar, minimap, zoom"_ → _"…the whole editor. The minimap,
   zoom, right-click menu…"_

@@ -4,22 +4,12 @@ import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
 
 // ─── Landing scene primitives ───────────────────────────────────────────────────
-// The deep-feature sections illustrate themselves with STATIC vignettes built
-// from the app's real design recipes: the node-card header-tint formula
-// (nodeCard.css), the real SocketDot glyphs, the real chip classes
-// (ArrayChip.css / errorChip.css), and cables drawn as the same
-// horizontal-tangent cubics the canvas uses. One live rete stage exists on the
-// page (LandingGraph); everything here is plain DOM+SVG, so scenes can repeat
-// freely without a second editor (see the one-live-stage gotcha in
-// LandingGraph.tsx).
-//
-// Each scene is a fixed-coordinate plane scaled to its container (the same
-// fit-to-width trick as the live stage), so cable endpoints and socket dots
-// stay glued at every viewport size.
+// STATIC vignettes rebuilding the app's design recipes in plain DOM+SVG — the page
+// allows only ONE live rete stage (LandingGraph), so scenes must never mount one.
 
 // ── Reveal: scroll-triggered entrance ──
-// The initial hidden state only exists under `.sol-landing--anim` (set on mount
-// when reduced-motion is off), so content is never gated on the transition.
+// The hidden state exists only under `.sol-landing--anim`, so content is never
+// gated on the transition.
 export function Reveal({
   children,
   className = "",
@@ -192,7 +182,6 @@ export function AnatomyScene() {
   const ny = 60;
   return (
     <Diagram w={W} h={H}>
-      {/* Hairline connectors from each caption to the part it names. */}
       <svg className="sol-diagram__cables" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
         <g className="sol-callout__lines">
           <path d={`M 178 84 H ${nx - 6}`} />
@@ -225,10 +214,10 @@ export function AnatomyScene() {
       </MNode>
 
       <div className="sol-callout" style={{ left: 8, top: 56, width: 168 }}>
-        The header carries the node&apos;s category colour as a tint. The card itself stays neutral.
+        The header carries the node&apos;s category color as a tint. The card itself stays neutral.
       </div>
       <div className="sol-callout" style={{ left: 8, top: 142, width: 168 }}>
-        Sockets straddle the card edge. Shape is dimension: circle, list square, matrix grid. Colour is the element type.
+        Sockets straddle the card edge. Shape is dimension: circle, list square, matrix grid. Color is the element type.
       </div>
       <div className="sol-callout" style={{ left: 506, top: 82, width: 166 }}>
         The result box renders in the type&apos;s default format. A date reads as a date, a unit rides its number.

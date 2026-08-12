@@ -7,12 +7,8 @@ export function clamp(v: number, lo: number, hi: number): number {
 }
 
 // ─── Min / max over an iterable ───────────────────────────────────────────────
-// Use these instead of `Math.min(...arr)` / `Math.max(...arr)` on user data:
-// the spread form passes every element as a function argument and throws
-// RangeError("too many arguments") past ~125k elements, so a large list (e.g. a
-// big SEQUENCE) into Aggregate(min) would black out the app during render. These
-// loop instead, accept any iterable (incl. a Map's .values()), and return
-// ±Infinity for an empty input — exactly matching `Math.min()` / `Math.max()`.
+// Use these on user data, never `Math.min(...arr)`: the spread form throws
+// RangeError past ~125k elements. Empty input gives ±Infinity, matching Math.min().
 export function iterMin(it: Iterable<number>): number {
   let m = Infinity;
   for (const v of it) if (v < m) m = v;
@@ -47,7 +43,6 @@ export function regularizedGamma(a: number, x: number): number {
   if (a <= 0 || x < 0) return NaN;
   if (x === 0) return 0;
   if (x < a + 1) {
-    // Series expansion
     let term = 1 / a, sum = term;
     for (let i = 1; i <= 300; i++) {
       term *= x / (a + i);
@@ -56,7 +51,6 @@ export function regularizedGamma(a: number, x: number): number {
     }
     return Math.min(1, sum * Math.exp(-x + a * Math.log(x) - lnGamma(a)));
   } else {
-    // Lentz continued fraction for upper incomplete gamma; subtract from 1
     let b = x + 1 - a, c = 1 / 1e-30, d = 1 / b, h = d;
     for (let i = 1; i <= 300; i++) {
       const an = -i * (i - a);
@@ -72,9 +66,8 @@ export function regularizedGamma(a: number, x: number): number {
   }
 }
 
-// Regularized incomplete beta I_x(a, b) via Lentz continued fraction.
-// Uses symmetry relation I_x(a,b) = 1 - I_{1-x}(b,a) to stay in the
-// convergent region (x < (a+1)/(a+b+2)).
+// Regularized incomplete beta I_x(a, b) via Lentz continued fraction, using
+// I_x(a,b) = 1 - I_{1-x}(b,a) to stay in the convergent region.
 export function regularizedBeta(x: number, a: number, b: number): number {
   if (a <= 0 || b <= 0 || x < 0 || x > 1) return NaN;
   if (x === 0) return 0;
@@ -82,7 +75,6 @@ export function regularizedBeta(x: number, a: number, b: number): number {
   if (x > (a + 1) / (a + b + 2)) return 1 - regularizedBeta(1 - x, b, a);
   const lbeta = lnGamma(a) + lnGamma(b) - lnGamma(a + b);
   const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a;
-  // Lentz CF
   let f = 1, cf = 1, df = 1 - (a + b) * x / (a + 1);
   if (Math.abs(df) < 1e-30) df = 1e-30;
   df = 1 / df; f = df;
@@ -103,10 +95,8 @@ export function regularizedBeta(x: number, a: number, b: number): number {
 
 // ─── Normal distribution ──────────────────────────────────────────────────────
 
-// Standard normal CDF Φ(z) via erf (A&S 7.1.26 approximation, max err ≈1.5e-7).
-// Φ(z) = ½(1 + erf(z/√2)); the erf approximation takes the scaled argument
-// |z|/√2, so the √2 must be applied to z before tabulating — not doing so was a
-// bug that made Φ(1.96) read 0.997 instead of 0.975.
+// Standard normal CDF Φ(z) via erf (A&S 7.1.26, max err ≈1.5e-7); the erf
+// approximation takes |z|/√2, so the √2 applies to z before tabulating.
 function stdNormCDF(z: number): number {
   const x = Math.abs(z) / Math.SQRT2;
   const t = 1 / (1 + 0.3275911 * x);
@@ -141,7 +131,6 @@ export function normSInv(p: number): number {
   }
 }
 
-// ─── Standard normal CDF (exported for nodes that need it directly) ────────────
 export { stdNormCDF };
 
 // ─── Generic inverse CDF via bisection ───────────────────────────────────────
@@ -172,4 +161,306 @@ export function lnFactorial(n: number): number {
 export function lnCombin(n: number, k: number): number {
   if (k < 0 || k > n) return -Infinity;
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);
+}
+
+/** Least-squares line through paired data — null when there are fewer than two
+ *  points or the Xs have zero variance, so each surface tags its own error;
+ *  ragged inputs use the min-length zip. */
+export function linearFit(
+  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
+): { slope: number; intercept: number } | null {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  let xMean = 0, yMean = 0;
+  for (let i = 0; i < n; i++) { xMean += xs[i]; yMean += ys[i]; }
+  xMean /= n; yMean /= n;
+  let SSxy = 0, SSxx = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - xMean;
+    SSxy += dx * (ys[i] - yMean);
+    SSxx += dx * dx;
+  }
+  if (SSxx === 0) return null;
+  const slope = SSxy / SSxx;
+  return { slope, intercept: yMean - slope * xMean };
+}
+
+/** `linearFit` plus R² in one pass; R² is 0 when Y has zero variance. */
+export function linearFitR2(
+  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
+): { slope: number; intercept: number; r2: number } | null {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  let xMean = 0, yMean = 0;
+  for (let i = 0; i < n; i++) { xMean += xs[i]; yMean += ys[i]; }
+  xMean /= n; yMean /= n;
+  let SSxy = 0, SSxx = 0, SSyy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - xMean, dy = ys[i] - yMean;
+    SSxy += dx * dy; SSxx += dx * dx; SSyy += dy * dy;
+  }
+  if (SSxx === 0) return null;
+  const slope = SSxy / SSxx;
+  const r2 = (SSxx > 0 && SSyy > 0) ? (SSxy / Math.sqrt(SSxx * SSyy)) ** 2 : 0;
+  return { slope, intercept: yMean - slope * xMean, r2 };
+}
+
+/** Exponential fit y = b·mˣ by least squares in log space; null when the ln(y)
+ *  fit is undefined or any y ≤ 0. */
+export function expFit(
+  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
+): { m: number; b: number } | null {
+  const n = Math.min(xs.length, ys.length);
+  const ySlice = ys.slice(0, n);
+  if (!ySlice.every((y) => y > 0)) return null;
+  const fit = linearFit(xs.slice(0, n), ySlice.map(Math.log));
+  if (!fit) return null;
+  return { m: Math.exp(fit.slope), b: Math.exp(fit.intercept) };
+}
+
+// ─── Piecewise-linear interpolation ───────────────────────────────────────────
+// Lives here so the INTERPOLATE registration doesn't drag rete in.
+
+function bracket(axis: number[], x: number): [number, number, number] {
+  const last = axis.length - 1;
+  if (x <= axis[0]) return [0, 0, 0];
+  if (x >= axis[last]) return [last, last, 0];
+  let lo = 0, hi = last;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (axis[mid] <= x) lo = mid; else hi = mid;
+  }
+  const x0 = axis[lo], x1 = axis[hi];
+  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
+}
+
+// Points are sorted by x, a duplicated x resolves to its first-seen y, a NaN query
+// stays NaN, and the ends clamp.
+export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
+  const n = Math.min(xs.length, ys.length);
+  if (n === 0) return queryXs.map(() => NaN);
+  const pairs: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) pairs.push([xs[i], ys[i]]);
+  pairs.sort((a, b) => a[0] - b[0]);
+  const sx = pairs.map((p) => p[0]);
+  const sy = pairs.map((p) => p[1]);
+  return queryXs.map((x) => {
+    if (Number.isNaN(x)) return NaN;
+    const [i0, i1, t] = bracket(sx, x);
+    return sy[i0] + t * (sy[i1] - sy[i0]);
+  });
+}
+
+// ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
+// Node and formula both call these (FX-1): Formula.js's T.TEST ignores
+// `tails`/`type` and its F.TEST returns the variance RATIO, not the p-value.
+import { isSolError, type SolError as StatSolError } from "../errorValue";
+
+type StatCell = number | null | StatSolError;
+
+export function arrMean(arr: readonly number[]): number {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+export function arrSampleVar(arr: readonly number[]): number {
+  const m = arrMean(arr);
+  return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
+}
+
+/** Student-t CDF via the regularized incomplete beta. */
+export function tCDF(x: number, df: number): number {
+  const z = df / (df + x * x);
+  const betaCDF = regularizedBeta(z, df / 2, 0.5);
+  return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
+}
+
+/** Index-aligned pairs with the pairwise policy: first cell error propagates,
+ *  a pair with a missing side is dropped, ragged tails truncate. */
+export function pairPresent(
+  xsRaw: readonly StatCell[] | null,
+  ysRaw: readonly StatCell[] | null,
+): { error?: StatSolError; xs: number[]; ys: number[] } {
+  const xs = xsRaw ?? [], ys = ysRaw ?? [];
+  for (const v of xs) if (isSolError(v)) return { error: v, xs: [], ys: [] };
+  for (const v of ys) if (isSolError(v)) return { error: v, xs: [], ys: [] };
+  const n = Math.min(xs.length, ys.length);
+  const ox: number[] = [], oy: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = xs[i], b = ys[i];
+    if (a === null || b === null) continue;
+    ox.push(a as number); oy.push(b as number);
+  }
+  return { xs: ox, ys: oy };
+}
+
+export type TTestKind = "paired" | "equal-var" | "unequal-var";
+
+/** Two-tailed Student-t p-value for two samples, by test kind. Returns null when
+ *  the test is undefined (short samples, zero variance, non-finite t/df). */
+export function tTestP(kind: TTestKind, a: readonly number[], b: readonly number[]): number | null {
+  if (a.length < 2 || b.length < 2) return null;
+  let t: number, df: number;
+  if (kind === "paired") {
+    const n = Math.min(a.length, b.length);
+    const diffs = Array.from({ length: n }, (_, i) => a[i] - b[i]);
+    const dVar = arrSampleVar(diffs);
+    if (dVar <= 0) return null;
+    t = arrMean(diffs) / Math.sqrt(dVar / n);
+    df = n - 1;
+  } else if (kind === "equal-var") {
+    const n1 = a.length, n2 = b.length;
+    const v1 = arrSampleVar([...a]), v2 = arrSampleVar([...b]);
+    const sp2 = ((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2);
+    if (sp2 <= 0) return null;
+    t = (arrMean(a) - arrMean(b)) / Math.sqrt(sp2 * (1 / n1 + 1 / n2));
+    df = n1 + n2 - 2;
+  } else {
+    const n1 = a.length, n2 = b.length;
+    const v1n = arrSampleVar([...a]) / n1, v2n = arrSampleVar([...b]) / n2;
+    const sum = v1n + v2n;
+    if (sum <= 0) return null;
+    t = (arrMean(a) - arrMean(b)) / Math.sqrt(sum);
+    df = sum ** 2 / (v1n ** 2 / (n1 - 1) + v2n ** 2 / (n2 - 1));
+  }
+  if (!(df > 0) || !Number.isFinite(t) || !Number.isFinite(df)) return null;
+  const p = 2 * (1 - tCDF(Math.abs(t), df));
+  return Number.isFinite(p) ? clamp(p, 0, 1) : null;
+}
+
+/** Excel F.TEST: the TWO-TAILED p-value that the samples' variances differ —
+ *  not the variance ratio (which is what Formula.js returns). */
+export function fTestP(a: readonly number[], b: readonly number[]): number | null {
+  if (a.length < 2 || b.length < 2) return null;
+  const v1 = arrSampleVar([...a]), v2 = arrSampleVar([...b]);
+  if (!(v1 > 0) || !(v2 > 0)) return null;
+  const F = v1 / v2;
+  const df1 = a.length - 1, df2 = b.length - 1;
+  const p1 = regularizedBeta((F * df1) / (F * df1 + df2), df1 / 2, df2 / 2);
+  const p = 2 * Math.min(p1, 1 - p1);
+  return Number.isFinite(p) ? p : null;
+}
+
+/** Excel PROB over a 1-D range: total probability of values in [lo, hi].
+ *  Pairwise cell policy: an error propagates, a pair missing either side drops. */
+export function probBetween(
+  range: readonly StatCell[] | null,
+  probs: readonly StatCell[] | null,
+  lo: number,
+  hi: number,
+): number | StatSolError | null {
+  const { error, xs, ys } = pairPresent(range, probs);
+  if (error) return error;
+  if (xs.length === 0) return null;
+  let prob = 0;
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i] >= lo && xs[i] <= hi) prob += ys[i];
+  }
+  return Number.isFinite(prob) ? clamp(prob, 0, 1) : null;
+}
+
+
+// ─── Bilinear lookup-table fill (INTERPOLATE grid mode) ──────────────────────
+// Lives here, not nodes/stats.ts, because the formula path must stay rete-free (FX-2).
+import { fitSurface, type FitPoint } from "./surfaceFit";
+
+// Fill a coordinate-BORDERED grid's blank interior by bilinear interpolation over
+// the closest all-known-corner box, then (unless `forecast` is off) fill whatever
+// is left from a surface fitted through ALL known points.
+export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
+  const R = table.length;
+  const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
+  const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
+  // Rectangular working copy; a blank (null / non-finite) cell becomes `null`.
+  const g: (number | null)[][] = Array.from({ length: R }, (_, i) =>
+    Array.from({ length: C }, (_, j) => { const v = table[i]?.[j]; return isKnown(v) ? v : null; }),
+  );
+  if (R < 2 || C < 2) { if (g[0]) g[0][0] = null; return g; } // no interior to fill
+
+  const colXs = g[0].slice(1).map((v) => (v == null ? NaN : v));    // X of each interior column
+  const rowYs = g.slice(1).map((r) => (r[0] == null ? NaN : r[0])); // Y of each interior row
+  const Ri = R - 1, Ci = C - 1;
+  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior values
+
+  const out: (number | null)[][] = g.map((r) => [...r]);
+  out[0][0] = null; // corner always blank on output
+
+  // The coarse grid: interior columns/rows that carry ≥1 known value (a blank INSERTED
+  // line has none).
+  const coarseCols: number[] = [];
+  for (let j = 0; j < Ci; j++) if (!Number.isNaN(colXs[j]) && Z.some((row) => row[j] != null)) coarseCols.push(j);
+  const coarseRows: number[] = [];
+  for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
+
+  // Bracketing data lines, nearest first; null when the query sits past the data on
+  // that axis, so the cell can't be ENCLOSED.
+  const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] | null => {
+    const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
+    const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
+    if (lo.length === 0 || hi.length === 0) return null;
+    return [lo, hi];
+  };
+
+  // Every labeled known point, for pass 1's containment test and pass 2's fit.
+  const knownPts: Array<{ x: number; y: number; i: number; j: number; z: number }> = [];
+  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+    const v = Z[i][j];
+    if (v != null && !Number.isNaN(colXs[j]) && !Number.isNaN(rowYs[i])) {
+      knownPts.push({ x: colXs[j], y: rowYs[i], i, j, z: v });
+    }
+  }
+
+  // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
+  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; } // known passes through
+    const qx = colXs[j], qy = rowYs[i];
+    if (Number.isNaN(qx) || Number.isNaN(qy)) continue; // unlabelled line → stays blank
+    const rs = sides(coarseRows, (k) => rowYs[k], qy);
+    const cs = sides(coarseCols, (k) => colXs[k], qx);
+    if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
+    // The widening depth MUST stay capped: un-capped, scattered data rejects every
+    // box and the four nested loops exhaust O(lines⁴) combinations per cell.
+    const WIDEN = 4;
+    const [rLoC, rHiC] = [rs[0].slice(0, WIDEN), rs[1].slice(0, WIDEN)];
+    const [cLoC, cHiC] = [cs[0].slice(0, WIDEN), cs[1].slice(0, WIDEN)];
+    // Widening past blank corners is what lets a hole interpolate across missing
+    // samples; the query stays inside the box, so this is pure interpolation.
+    search:
+    for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
+      const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
+      if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
+      const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
+      // A CONTESTED box — one with other known data inside it — falls through to the
+      // surface fit rather than ignoring that nearer data.
+      const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
+      const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
+      const degenRow = rLo === rHi, degenCol = cLo === cHi;
+      let contested = false;
+      for (const p of knownPts) {
+        if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
+        const hit =
+          degenRow && !degenCol ? p.x > xA && p.x < xB :
+          degenCol && !degenRow ? p.y > yA && p.y < yB :
+          p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB;
+        if (hit) { contested = true; break; }
+      }
+      if (contested) continue;
+      const tx = x1 === x0 ? 0 : (qx - x0) / (x1 - x0);
+      const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
+      const top = z00 + tx * (z01 - z00);
+      const bot = z10 + tx * (z11 - z10);
+      out[i + 1][j + 1] = top + ty * (bot - top);
+      break search;
+    }
+  }
+
+  // ── Pass 2 — Forecast: fill what pass 1 left blank from a fitted surface. ──
+  if (forecast) {
+    const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
+    if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+      if (out[i + 1][j + 1] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
+      const v = f(colXs[j], rowYs[i]);
+      if (Number.isFinite(v)) out[i + 1][j + 1] = v;
+    }
+  }
+  return out;
 }

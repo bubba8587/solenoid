@@ -12,7 +12,8 @@ import { formatScalar } from "./format";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
-import { ArrayChip, isArrayValue } from "./ArrayChip";
+import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { FrameChip, FrameRefChip } from "./FrameChip";
 import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
@@ -20,9 +21,8 @@ import { isFrameValue, isCubeValue } from "../frame";
 import "./pinLayer.css";
 import { CloseIcon } from "./CloseIcon";
 
-// The live value behind a group readout terminal — same as GroupNode's readout:
-// a Display reads its cachedValue, a generic member its live output (falling back
-// to cachedResult for LAMBDA-style nodes that cache there).
+// Must mirror GroupNode's readout: a Display reads cachedValue, a generic member its
+// live output, falling back to cachedResult for LAMBDA-style nodes that cache there.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
     return (getEditor()?.getNode(t.displayId) as { cachedValue?: unknown } | undefined)?.cachedValue;
@@ -32,12 +32,9 @@ function readoutValue(t: RetainedTerminal): unknown {
   return (getEditor()?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined)?.cachedResult ?? v;
 }
 
-// Format a pinned output value compactly for the HUD chip. Mirrors ValueDisplay
-// but standalone (no node/FC context): scalars via formatScalar, strings
-// verbatim, errors as the red #CODE! badge, null as a dash. List / table / frame
-// values get the SAME clickable chip the node shows — clicking it opens the full
-// grid in the shared popup (`label` titles that popup) rather than a bare [count].
-function renderValue(v: unknown, label?: string, annNodeId?: string) {
+// Mirrors ValueDisplay but standalone (no node/FC context); `label` titles the popup
+// an array/frame chip opens.
+function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: string) {
   if (isSolError(v)) {
     return <span className="solenoid-pin__value solenoid-pin__value--error" title={errorTip(v)}>{v.code}</span>;
   }
@@ -48,19 +45,13 @@ function renderValue(v: unknown, label?: string, annNodeId?: string) {
   if (isArrayValue(v)) {
     const arr = v as (number | string)[] | (number | string)[][];
     const twoD = Array.isArray(arr[0]);
-    const firstCell = twoD ? (arr[0] as (number | string)[])[0] : (arr as (number | string)[])[0];
-    const str = typeof firstCell === "string";
-    // The chip stays neutral (see pinLayer.css), but the popup header takes the
-    // value's socket-type color so it reads as that type, not the body color.
-    const accent = twoD
-      ? (str ? "var(--sock-strtable)" : "var(--sock-table)")
-      : (str ? "var(--sock-strlist)" : "var(--sock-list)");
-    return <ArrayChip value={arr} label={label} size="sm" accent={accent} />;
+    // Family comes from the SOCKET, not the cells: a date list's serials sniff numeric
+    // and a leading blank sniffs as neither, so both tinted amber.
+    const family = nodeOutputElemFamily(annNodeId ?? null, outKey);
+    return <ArrayChip value={arr} label={label} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
   if (typeof v === "string") return <span className="solenoid-pin__value">{v || "—"}</span>;
   if (typeof v === "number") {
-    // Honor the node's Format Controller (currency / % / decimals), same as the
-    // node's own display + the group readouts; plain formatScalar when there's no FC.
     const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
     return <span className="solenoid-pin__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
   }
@@ -75,21 +66,13 @@ const PinSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/**
- * The pinned-values HUD section: a stack of chips showing a few nodes' live
- * labels + values. Click a chip to fly to the node; × unpins. Collapses to a
- * single circle button with a count badge. Positioned by its parent
- * <HudStack/> (top-right, below the nav pill); this just renders the section.
- */
+/** The pinned-values HUD section; <HudStack/> owns its placement, this renders only
+ *  the section. */
 export function PinLayer() {
-  // Collapsed by default everywhere: start as the compact count button (click to
-  // expand). On mobile a tap outside also re-collapses it (effect below).
   const [collapsed, setCollapsed] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Full auto-collapse on mobile: once expanded, any tap outside the layer
-  // (e.g. back on the canvas) snaps it shut again, so the chips never linger
-  // over the graph.
+  // Mobile: a tap outside re-collapses, so the chips never linger over the graph.
   useEffect(() => {
     if (!IS_MOBILE || collapsed) return;
     const onDown = (e: PointerEvent) => {
@@ -103,8 +86,7 @@ export function PinLayer() {
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   // Labels can change (rename) and nodes can appear/vanish — re-render on topology.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  // Re-render when a Format Controller's annotation changes, so a pinned value
-  // restyles ($/%/decimals) live, matching the node's FC-formatted display.
+  // Re-render on FC annotation changes so a pinned value restyles live.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
   const pins = pinStore.list();
@@ -135,8 +117,7 @@ export function PinLayer() {
     if (!node) return null; // safety — should be dropped on delete
     const label = (node.label ?? "").trim() || nodeTypeName(node);
 
-    // A pinned GROUP shows the same readouts a collapsed group would: a header
-    // plus one row per terminal (label + live value).
+    // A pinned GROUP shows the same readouts a collapsed group would.
     if (node instanceof GroupNode) {
       const rows = groupReadouts(editor, node);
       return (
@@ -152,7 +133,7 @@ export function PinLayer() {
               rows.map((t) => (
                 <div key={`${t.effNodeId}:${t.effSocketKey}`} className="solenoid-pin__row">
                   <span className="solenoid-pin__row-label" title={t.label}>{t.label}</span>
-                  {renderValue(readoutValue(t), undefined, t.effNodeId)}
+                  {renderValue(readoutValue(t), undefined, t.effNodeId, t.effSocketKey)}
                 </div>
               ))
             )}
@@ -165,7 +146,7 @@ export function PinLayer() {
     return (
       <div key={pin.nodeId} className="solenoid-pin" onClick={() => flyToNode(pin.nodeId)} title="Go to this node">
         <span className="solenoid-pin__label">{label}</span>
-        {renderValue(value, undefined, pin.nodeId)}
+        {renderValue(value, undefined, pin.nodeId, pin.outputKey)}
         {removeBtn(label, pin.nodeId)}
       </div>
     );

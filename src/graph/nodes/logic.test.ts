@@ -320,7 +320,7 @@ describe("value-selectors carry ANY value through (logical conditions, text valu
     expect(n.data({ index: [2], v0: ["x"], v1: ["y"] }).result).toBe("y");
   });
   it("IFERROR swaps a caught error for the fallback but passes any non-error through", () => {
-    const n = new IFErrorNode({ mode: "iferror" });
+    const n = new IFErrorNode({ op: "iferror" });
     expect(n.data({ value: [solError("#DIV/0!", "")], fallback: ["safe"] }).result).toBe("safe");
     expect(n.data({ value: ["hello"], fallback: ["safe"] }).result).toBe("hello");
   });
@@ -334,7 +334,7 @@ describe("NA node emits the tagged #N/A (audit finding 13)", () => {
     // the advertised catch actually works
     const isna = new IsTestNode({ op: "isna" }).data({ value: [out] }).result;
     expect(isna).toBe(true);
-    const caught = new IFErrorNode({ mode: "ifna" }).data({ value: [out], fallback: [42] }).result;
+    const caught = new IFErrorNode({ op: "ifna" }).data({ value: [out], fallback: [42] }).result;
     expect(caught).toBe(42);
   });
 });

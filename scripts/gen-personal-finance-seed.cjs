@@ -66,7 +66,7 @@ function fc(id, host, kind, members, label) {
 // ─── Title ──────────────────────────────────────────────────────────────────
 note("note-title", 180, -940,
   "Personal Finance dashboard",
-  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. Click a **Display** chip to inspect a table; **Ctrl+/** opens the function reference.",
+  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
   "blue", 580, 220);
 
 // ─── A · Data Sources ─────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. Click the grouped-table chip to inspect it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
+  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
 // The frame Group By is one relational verb over the frame, then Get Column
@@ -154,7 +154,7 @@ c("col-pcnt","values","spark-cnt","values");
 // ─── D · Accounts / net worth ───────────────────────────────────────────────────
 note("note-acct", 40, 560,
   "4 · Net worth",
-  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; click the class-totals chip to inspect the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
+  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
   "violet", 380, 230);
 n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
@@ -225,7 +225,7 @@ n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { liter
 n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
 n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000, min: 100000, max: 3000000, step: 50000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
 n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
-n("seq-years","SequenceNode",    1960,  440, { label: "Years 1…N" });
+n("seq-years","SeriesNode",      1960,  440, { label: "Years 1…N", op: "sequence" });
 n("expr-traj","ExpressionNode",   2240,  440, { label: "FV after c years", expr: "pv*(1+i)^(12*c) + IF(i=0, pmt*12*c, pmt*((1+i)^(12*c)-1)/i)" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
 // The projection group's exit conduit (the group predates the convention): the
@@ -396,7 +396,7 @@ c("fill-cat", "frame", "gb-cat", "frame");
 // ─── H · Dashboard (in-group conduits → ribbons land here) ──────────────────────
 note("note-dash", 3280, -600,
   "8 · One-glance dashboard",
-  "# Bundled KPIs arrive as ribbons\nThe cash-flow, net-worth, mortgage and budget groups each ship their headline numbers through an in-group **Conduit**; the lanes travel together as one **Ribbon** and fan out into these readouts. Click a Conduit to fan its lanes; click a trunk to grab the whole ribbon.",
+  "# Bundled KPIs arrive as ribbons\nThe cash-flow, net-worth, mortgage and budget groups each ship their headline numbers through an in-group **Conduit**; the lanes travel together as one **Ribbon** and fan out into these readouts. A Conduit fans its lanes; a trunk grabs the whole ribbon.",
   "gray", 380, 210);
 n("d-cash-net","DisplayNode", 3060, -300, { label: "Net cash flow" });
 n("d-cash-in", "DisplayNode", 3060, -160, { label: "Income" });

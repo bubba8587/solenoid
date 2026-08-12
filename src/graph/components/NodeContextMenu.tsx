@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
+import { useMenuClamp } from "./menuClamp";
+import { describeNode } from "../catalogUtils";
+import { getOwningEditor } from "../activeGraph";
 import "./SocketContextMenu.css";
 
-// Right-click menu for a node / group body: Isolate (and Isolate chain), Pin,
-// and — when exactly two linkable items are selected and one was clicked — the
-// Standoff link. One menu so a node's right-click has a single home.
+// The single right-click menu for a node / group body — a node's right-click has
+// one home, so new items land here rather than in a second menu.
 
 // Lucide "pin" icon — https://lucide.dev/icons/pin
 const PinSvg = () => (
@@ -78,7 +80,7 @@ type Props = {
 };
 
 export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -107,12 +109,18 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
     </button>
   );
 
+  // The catalog one-liner (the header tooltip's text) — this menu is its only
+  // touch-reachable home, since hover doesn't exist on mobile.
+  const node = getOwningEditor(target.nodeId)?.getNode(target.nodeId);
+  const blurb = node ? describeNode(node) : null;
+
   return (
     <div
       ref={ref}
       className="solenoid-socket-ctx"
       style={{ left: target.screenX + 6, top: target.screenY - 4 }}
     >
+      {blurb && <div className="solenoid-socket-ctx__blurb">{blurb}</div>}
       {target.isComposite && onEditComposite &&
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
       {target.isComposite && onUnpackComposite &&
