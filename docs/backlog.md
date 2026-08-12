@@ -244,6 +244,16 @@ is blocked here for out-of-scope repos).
   `EPL-2.0 OR GPL-3.0-or-later`, which changes the shipped
   `third-party-licenses.txt`. Full option survey + the open cable-routing question:
   `deferrals.md` "Tidy options".
+- [ ] **`third-party-licenses.txt` under-reports duplicated packages** — 10
+  packages resolve at TWO versions in the tree (mermaid nests its own `marked`,
+  `katex`, `d3-*`, `cose-base`, `layout-base`, `commander`, `internmap`, `immer`),
+  and `rollup-plugin-license` emits ONE entry per package NAME, picking arbitrarily:
+  `marked` reports mermaid's 16.4.2 though we ship 18.0.9, `katex` reports 0.16.47
+  though we ship 0.17.0, `immer` reports the newer 11.1.8. Every pair is the same
+  project under the same license, so the license TEXT is correct and this is an
+  attribution/version accuracy bug, not a compliance hole — but the file is a
+  shipped artifact and currently names versions we do not ship. Found while
+  bumping marked; pre-existing. Check whether the plugin can key on name+version.
 - [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
   `katex` 0.17→0.18. Plus ~17 in-range patches, incl.
   `@formulajs/formulajs` 4.6.0→4.6.1 — read that diff rather than bumping blind,

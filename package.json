@@ -34,7 +34,7 @@
     "dompurify": "^3.4.11",
     "elkjs": "^0.8.2",
     "katex": "^0.17.0",
-    "marked": "^14.1.4",
+    "marked": "^18.0.9",
     "mermaid": "^11.16.0",
     "papaparse": "^5.5.3",
     "react": "^19.1.0",
