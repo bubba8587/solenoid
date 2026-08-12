@@ -40,11 +40,17 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` wheel;
-  verify on hardware.
+  verify on hardware. NOTE: `rete-area-plugin` 2.2.1 fixed exactly this upstream
+  (normalize wheel delta for touchpad pinch, their #31) — but `CappedZoom.wheel`
+  REPLACES their handler, so the fix cannot reach us while we override it. Either
+  delete our `wheel` and tune `intensity`, or keep our curve and fix it ourselves.
 - [ ] **Settle the OS-dropdown rule** (needs a device/emulated CDP) — the "native
   `<select>` needs a pointerdown swallow" claim has no recorded incident and the
   mobile path suggests it may not hold; 21 sites held on precaution. If false, they
-  join the `stopDragStart` sweep; if true, record the repro.
+  join the `stopDragStart` sweep; if true, record the repro. LEAD:
+  `simpleNodesOrder` MOVES the picked node in the DOM tree (their own docstring),
+  and re-parenting a subtree is a mechanism that WOULD kill an open `<select>` —
+  see the `zIndexNodesOrder` item under Dependency updates.
 - [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
   the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
   gate the rest — build nothing before those.
@@ -162,6 +168,47 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   problem, and Get Column → XMATCH already is frame-XMATCH with column typing
   intact. Adding it would duplicate a working composition and force a column-name
   input onto a node that needs none.
+
+## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
+
+Changelogs ship INSIDE the rete packages — `npm pack <pkg>@<old>` and `@<new>`,
+untar, diff the bundled changelog. Read those, not the GitHub releases (that API
+is blocked here for out-of-scope repos).
+
+- [ ] **`rete-react-plugin` 2.1.0 → 2.1.2, and measure a big-doc load.** 2.1.2 is
+  literally `root.render(el)` → `flushSync(() => root.render(el))`, so a node's
+  root is layout-ready when the mount returns — directly upstream of
+  `MeasuredSocketRow`, `getDOMSocketPosition` and `guardedSocketPosition.ts`, and
+  plausibly retires a class of first-paint wrong-endpoint cable bugs. The mirror
+  risk is the reason to measure: `rebuildGraph` batches with `Promise.all`
+  precisely to avoid ~2N sequential layout hops, and N synchronous flushes could
+  make a large load SLOWER. (2.1.1 only colors rete's stock `<input>`; we render
+  none, so it can't reach us.)
+- [ ] **`rete-area-plugin` 2.1.5 → 2.3.2** — own change, needs a selection-test
+  pass + a trackpad check. Two behaviour changes reach us: 2.3.1 makes
+  `Selector.add` unselect everything EXCEPT the re-picked entity instead of
+  `unselectAll()`-then-add (less selection churn → fewer re-renders, interacts
+  with selection-on-pointerup); 2.2.x normalizes wheel deltas — the same algorithm
+  `CappedZoom.wheel` implements, differently tuned (theirs 8px/line, 24px/page,
+  `intensity/8` per px, cap `intensity`; ours 16/400, ×0.0028, cap 0.24). **Rewrite
+  the `CappedZoom.wheel` comment on contact** — it now overrides a WORKING
+  implementation, not a broken one. `CappedZoom.down` (capture-phase finger count)
+  is unaffected.
+- [ ] **Evaluate `zIndexNodesOrder` (new in area 2.3.0)** — "relies only on
+  z-index. Use this extension when click handlers inside nodes must stay stable",
+  vs `simpleNodesOrder` which moves the picked node in the DOM tree. Candidate
+  answer to the OS-dropdown rule above. NOT a drop-in: `groupLogic.ts` pins a group
+  behind its members BECAUSE stacking follows DOM order, `Canvas.tsx` reasons about
+  the picked node landing at the DOM end, and the extension's own ladder (nodes ≥1,
+  connections 0) has to be reconciled with ours (standoffs −3 < groups −2 <
+  conduits −1 < nodes 0). Its own investigation.
+- [ ] **`rete-history-plugin` 2.1.1 → 2.2.0** — inert for us (comment-plugin undo
+  presets; we use our own `commentStore`, not rete's). Bump whenever.
+- [ ] **The rest of the outdated set, still unwalked** — majors: `vite` 7→8 +
+  `@vitejs/plugin-react` 4→6 (coupled), `marked` 14→18, `elkjs` 0.8→0.12 (Tidy),
+  `katex` 0.17→0.18. Plus ~17 in-range patches, incl. `@formulajs/formulajs`
+  4.6.0→4.6.1 — read that diff rather than bumping blind, given how much of the
+  formula surface leans on it. Core `rete` 2.0.6 is already current.
 
 ## Architecture spec (`docs/rules.md`)
 
