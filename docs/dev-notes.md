@@ -116,6 +116,8 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   totals ("<N> rules.", the enforcement-summary counts) as the oracle, same as
   `rules.test.ts`. Prose-only architecture sections (App chrome, node layers, Tauri)
   carry no tables and are deliberately absent from the model.
+
+### SESSION DIGEST (2026-08-11a — the formula surface: hints, INDEX, XLOOKUP/XMATCH; TS7)
 - **Every autocomplete hint now agrees with its impl's declared arity**, pinned by
   a new sweep in `formulaSignatures.test.ts` that runs through `signatureFor()` so
   curated, pack-declared, and synthesized hints are all held to one grammar
