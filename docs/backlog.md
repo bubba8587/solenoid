@@ -51,6 +51,28 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `simpleNodesOrder` MOVES the picked node in the DOM tree (their own docstring),
   and re-parenting a subtree is a mechanism that WOULD kill an open `<select>` —
   see the `zIndexNodesOrder` item under Dependency updates.
+- [ ] **`SUMIF` string-concatenates a numeric-string range** — `SUMIF(k, "a", v)`
+  with `v = ["1","2","3","4"]` answers `"01030"` (i.e. `0 + "1" + "3"`) where Excel
+  answers `4`. It falls through to Formula.js — no `registerInternal` — and 4.6.1
+  patched the sibling `SUMIFS` (`arrayValuesToNumbers(flatten(...))`) while leaving
+  `SUMIF` alone. `SUMIFS`/`AVERAGEIFS`/`MAXIFS` all answer correctly on the same
+  data, so `SUMIF` is alone in it. Reachable from a text column, a read-as that
+  leaves strings, or a Text-typed Table Input column. Plausible wrong answer, not
+  an error — the divergence-catalogue class. Fix is the family's standard one:
+  register it against the kernel the node runs (also puts it in the FX-1 seam).
+- [ ] **AUTHOR CALL — 8 names are in BOTH coverage tables, and no test can see it**
+  — `SUMIF(S)`, `COUNTIF(S)`, `AVERAGEIF(S)`, `MINIFS`, `MAXIFS` are all claimed by
+  the `sumifs` node in `NODE_EXCEL` (`parity: true`) AND listed in `EXCEL_GAP` as
+  `composition: true` ("Compose Filter → Aggregate"). Those tables mean opposite
+  things — node-backed vs deliberately NOT node-backed — so one is wrong; the
+  `EXCEL_GAP` rows read like they predate `SumIfsNode`. Related: `NODE_EXCEL`
+  claims the three SINGULAR forms, while the node's op set and its catalog
+  description name only the plural five. Decide which table is right, then delete
+  the other rows. **The tests can't catch this by construction**: gap C is
+  "dispatchable AND no node AND no EXCEL_GAP entry AND not registered", so a name
+  in both tables is doubly-excused — the parity model detects MISSING coverage and
+  has no notion of CONFLICTING coverage. Guard once resolved: assert
+  `NODE_EXCEL ∩ EXCEL_GAP = ∅` (one line, currently 8 violations).
 - [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
   the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
   gate the rest — build nothing before those.
