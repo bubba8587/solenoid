@@ -60,17 +60,15 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   leaves strings, or a Text-typed Table Input column. Plausible wrong answer, not
   an error — the divergence-catalogue class. Fix is the family's standard one:
   register it against the kernel the node runs (also puts it in the FX-1 seam).
-- [ ] **`sumifs` coverage rows — inert data + a missing note (small).** Eight names
-  (`SUMIF(S)`, `COUNTIF(S)`, `AVERAGEIF(S)`, `MINIFS`, `MAXIFS`) appear in BOTH
-  `NODE_EXCEL` (claimed by the `sumifs` node) and `EXCEL_GAP`. That is LEGAL and
-  self-healing, not a contradiction — `functionReference.ts` skips any gap row whose
-  name was already emitted as node-backed, exactly as `EXCEL_GAP`'s doc comment
-  says. So those 8 gap rows render nothing and are dead weight; deleting them is
-  optional hygiene. What IS worth a fix: `NODE_EXCEL` claims the three SINGULAR
-  forms with `parity: true` and no note, while their plural siblings carry the note
-  explaining the interface difference (one frame, named columns, criteria ROWS
-  instead of `">10"` strings) — and the node's own op set and description mention
-  only the plural five. Give the singular rows the same note, or drop them.
+- [ ] **The other singular criteria-aggregates (small, follows SUMIF).** `SUMIF` is
+  now classed like `MATCH`: blocked to `SUMIFS`, claim removed from `NODE_EXCEL`,
+  `EXCEL_GAP` row `oos: "Superseded by SUMIFS"`. `COUNTIF` and `AVERAGEIF` are still
+  claimed by the `sumifs` node and still dispatch — neither is buggy (both handle a
+  numeric-string range correctly), so this is consistency, not a defect. Decide:
+  supersede them the same way, or keep them and give their `NODE_EXCEL` rows the
+  interface note their plural siblings carry (one frame, named columns, criteria
+  ROWS instead of `">10"` strings) — today the singular rows have none, and the
+  node's op set and description name only the plural five.
 - [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
   the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
   gate the rest — build nothing before those.

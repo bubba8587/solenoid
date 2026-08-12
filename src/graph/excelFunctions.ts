@@ -308,6 +308,11 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   // (no `matrixArgs`, so the matrix was broadcast away before the call). INDEX's
   // whole-axis form is the accessor that replaces both.
   COLUMN: "INDEX", ROW: "INDEX",
+
+  // The singular criteria-aggregate: SUMIFS covers it (one criteria row), the node
+  // implements only the plural five, and Formula.js's SUMIF string-CONCATENATES a
+  // numeric-string sum_range ("01030" for 4) — a wrong answer, not an error.
+  SUMIF: "SUMIFS",
 };
 
 /** Names blocked on the formula surface (the LEGACY_ALIASES keys) — excluded from

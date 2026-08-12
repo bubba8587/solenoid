@@ -446,13 +446,14 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    for (const f of ["SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
+    // SUMIF is absent on purpose — D10 blocks it, and FX-7 strips a blocked
+    // spelling from RANGE_FUNCTIONS so it answers before its args are shaped.
+    for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE"]) {
       expect(RANGE_FUNCTIONS.has(f)).toBe(true);
     }
     // the range arg passes WHOLE (would be wrong if broadcast element-wise)
     expect(ev('COUNTIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(2);
-    expect(ev('SUMIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(7);
     expect(ev("SUBTOTAL(9, x)", { x: [1, 2, 3, 4] })).toBe(10);
   });
 
@@ -616,6 +617,18 @@ describe("classic lookups redirect to their current-Excel replacements (D10)", (
       expect(isSolError(r) && r.code).toBe("#NAME?");
       expect(isSolError(r) && r.message).toBe("Use XLOOKUP");
     }
+  });
+
+  it("SUMIF → #NAME? 'Use SUMIFS'", () => {
+    // Superseded like the lookup classics: SUMIFS covers it with one criteria row,
+    // and the library's SUMIF concatenated a numeric-string sum_range ("01030").
+    const r = ev('SUMIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] });
+    expect(isSolError(r) && r.code).toBe("#NAME?");
+    expect(isSolError(r) && r.message).toBe("Use SUMIFS");
+    // The plural stays, and the siblings are NOT blocked (they answer correctly).
+    expect(ev('SUMIFS(v, k, "a")', { k: ["a", "b"], v: [1, 2] })).toBe(1);
+    expect(ev('COUNTIF(k, "a")', { k: ["a", "b"] })).toBe(1);
+    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] })).toBe(1);
   });
 
   it("MATCH → #NAME? 'Use XMATCH'", () => {

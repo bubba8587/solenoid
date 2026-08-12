@@ -498,7 +498,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
   "sumifs": [
     { excel: "SUMIFS", syntax: "=SUMIFS(sum_range, criteria_range1, criteria1, ...)", parity: true, note: "Takes one frame: ranges are named columns; criteria are op + value rows instead of criteria strings (\">10\")" },
-    { excel: "SUMIF", syntax: "=SUMIF(range, criteria, [sum_range])", parity: true },
     { excel: "COUNTIFS", syntax: "=COUNTIFS(criteria_range1, criteria1, ...)", parity: true },
     { excel: "COUNTIF", syntax: "=COUNTIF(range, criteria)", parity: true },
     { excel: "AVERAGEIFS", syntax: "=AVERAGEIFS(average_range, criteria_range1, criteria1, ...)", parity: true },
@@ -544,7 +543,7 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "CEILING.PRECISE", syntax: "=CEILING.PRECISE(x, sig)", category: "Math & Trig", composition: true, note: "Ceiling rounds toward +∞ already — PRECISE differs from CEILING only in ignoring the sign of the significance" },
   { excel: "FLOOR.PRECISE", syntax: "=FLOOR.PRECISE(x, sig)", category: "Math & Trig", composition: true, note: "Floor rounds toward −∞ already — PRECISE differs from FLOOR only in ignoring the sign of the significance" },
   { excel: "ISO.CEILING", syntax: "=ISO.CEILING(x, sig)", category: "Math & Trig", composition: true, note: "Identical to CEILING.PRECISE; Excel keeps both for ISO compatibility" },
-  { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", composition: true, note: "Compose Filter → Aggregate (SUM)" },
+  { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", oos: true, note: "Superseded by SUMIFS" },
   { excel: "SUMIFS", syntax: "=SUMIFS(range, crit, ...)", category: "Math & Trig", composition: true, note: "Chain multiple Filter nodes, then Aggregate (SUM)" },
   { excel: "AVERAGEIF", syntax: "=AVERAGEIF(range, crit)", category: "Statistics", composition: true, note: "Compose Filter → Aggregate (AVERAGE)" },
   { excel: "AVERAGEIFS", syntax: "=AVERAGEIFS(range, crit, ...)", category: "Statistics", composition: true, note: "Chain multiple Filter nodes" },

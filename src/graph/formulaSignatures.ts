@@ -23,7 +23,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   SUM: "value1, value2, …",
   SUMSQ: "value1, value2, …",
   SUMPRODUCT: "array1, array2, …",
-  SUMIF: "range, criteria, [sum_range]",
   SUMIFS: "sum_range, criteria_range1, criteria1, …",
   PRODUCT: "value1, value2, …",
   ABS: "x",

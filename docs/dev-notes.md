@@ -136,6 +136,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   and binary search (±2) refuse with #VALUE!. Arities [3,6]/[2,4], hints match.
   Kernel skips null/error key cells — also fixes the node's old null-coerces-to-0
   comparison in approximate modes.
+- **`SUMIF` retired to `SUMIFS`, classed exactly like `MATCH`→`XMATCH`** (author
+  call). Formula.js's SUMIF string-CONCATENATED a numeric-string sum_range
+  (`"01030"` for 4) while every sibling handled it; 4.6.1 patched SUMIFS and left it.
+  The classification is the whole lesson: a superseded spelling is NOT claimed in
+  `NODE_EXCEL` — the node claims only the surviving name — and lives solely in
+  `EXCEL_GAP` as `oos: "Superseded by X"`, plus `LEGACY_ALIASES`. Filed that way,
+  the parity model needed NO change. A first attempt instead taught gap A a new
+  "blocked but node-claimed" category; that was over-engineering, reverted.
 - **`third-party-licenses.txt` now lists every SHIPPED version** — ten packages
   resolve at two versions (mermaid nests its own marked/katex/d3-*), and
   `rollup-plugin-license` keys by package NAME by default, so the file named
