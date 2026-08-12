@@ -204,11 +204,34 @@ is blocked here for out-of-scope repos).
   conduits −1 < nodes 0). Its own investigation.
 - [ ] **`rete-history-plugin` 2.1.1 → 2.2.0** — inert for us (comment-plugin undo
   presets; we use our own `commentStore`, not rete's). Bump whenever.
-- [ ] **The rest of the outdated set, still unwalked** — majors: `vite` 7→8 +
-  `@vitejs/plugin-react` 4→6 (coupled), `marked` 14→18, `elkjs` 0.8→0.12 (Tidy),
-  `katex` 0.17→0.18. Plus ~17 in-range patches, incl. `@formulajs/formulajs`
-  4.6.0→4.6.1 — read that diff rather than bumping blind, given how much of the
-  formula surface leans on it. Core `rete` 2.0.6 is already current.
+- [ ] **`vite` 7.3.6 → 8.2.1 WITH `@vitejs/plugin-react` 4.7.0 → 6.0.5** — hard
+  coupled (plugin-react 6 declares `vite: ^8.0.0`, no `^7`). Highest-risk bump left,
+  and BOTH risks are invisible to `tsc` and vitest, so gate it on a trial build that
+  checks two artifacts: (1) `dist/third-party-licenses.txt` present and POPULATED,
+  (2) our class names survive in the bundle (`grep dist` for `XMatchNode`,
+  `ListIndexNode`). Vite 8 swaps Rollup → **Rolldown** (`rolldown: ~1.2.1`) and
+  esbuild → **Oxc** (esbuild demoted to an optional peer; `lightningcss` promoted to
+  a direct dep; `build.minify` now `boolean | "oxc" | "terser" | "esbuild"`).
+  What that lands on in `vite.config.ts`:
+  - **`rollup-plugin-license` runs under Rolldown.** It emits the third-party
+    license file we SHIP — compliance, not cosmetics. A build error is fine
+    (loud); a silently empty/partial file is the bad outcome.
+  - **`esbuild: { keepNames: true }` is deprecated and `keepNames` appears NOWHERE
+    in vite 8's types** (`OxcOptions` extends rolldown's transform options, which
+    don't carry it). That flag is what keeps `constructor.name` intact for the node
+    type hints — so the failure is production-only, silent and user-visible: dev is
+    unminified, tests never build, and `release:desktop` ships it. Expect to set
+    `build.minify` explicitly — `"esbuild"` keeps the old minifier (still a
+    supported optional peer), or `"terser"` + `terserOptions: { keep_classnames:
+    true, keep_fnames: true }`.
+  NOT blockers (checked): vitest 4.1.8 already allows `vite ^6 || ^7 || ^8`; node
+  engines are identical across 7 and 8; every new peer on both packages is optional.
+  Downstream: this is the build tool, so the Tauri desktop release rides on it.
+- [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
+  `elkjs` 0.8→0.12 (Tidy), `katex` 0.17→0.18. Plus ~17 in-range patches, incl.
+  `@formulajs/formulajs` 4.6.0→4.6.1 — read that diff rather than bumping blind,
+  given how much of the formula surface leans on it. Core `rete` 2.0.6 is already
+  current.
 
 ## Architecture spec (`docs/rules.md`)
 
