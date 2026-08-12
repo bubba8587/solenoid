@@ -134,6 +134,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   and binary search (±2) refuse with #VALUE!. Arities [3,6]/[2,4], hints match.
   Kernel skips null/error key cells — also fixes the node's old null-coerces-to-0
   comparison in approximate modes.
+- **TypeScript 5.8.3 → 7.0.2 (the native/Go compiler).** `tsc --noEmit` over the
+  839-file source: ~19–21.7 s → ~2.5–3.9 s (**~8×**); `npm run build`'s typecheck
+  leg likewise. The package now pulls a per-platform native binary
+  (`@typescript/typescript-<os>-<arch>`) as an optional dep — 2 packages total.
+  Migration cost was two lines: TS7's new TS2882 rejects a side-effect import of a
+  package with no type declarations, which hit the two BARE `@fontsource-variable/*`
+  imports in `main.tsx` (their explicit `…/wght-italic.css` siblings were already
+  fine); naming `…/index.css` fixes both and makes the four font imports
+  consistent. Verified: both typecheck paths, full vitest, `npm run build`, and all
+  four Atkinson faces (2 families × upright/italic) still in the built CSS. No
+  TypeScript-API consumers in the tree, which is the usual native-port hazard.
 - **XMatch node gains the search-mode toggle** (First/Last SegToggle, the frame
   XLOOKUP's control for the same argument) — closing the mirror-image gap the
   formula work opened. Binary ±2 stays omitted on every surface (author call):
