@@ -11,6 +11,44 @@ duplicate them, just names them for the review).
 
 Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 
+- **Tidy options — expose ELK's layout knobs on the Tidy call** (author direction
+  2026-08-12; the trigger was "9 nodes → 1 node should be able to lay out 3×3
+  instead of one 9-high column"). Today `arrangeFn` hardcodes four options
+  (`layered`, `RIGHT`, `nodeNodeBetweenLayers 55`, `nodeNode 38`); everything below
+  is an ELK option we already pay for and don't offer. Measured on a 9→1 fan
+  (uniform 180×120 cards, baseline 459×1408):
+  - **Width cap / "wrap a wide fan"** — `layering.strategy: COFFMAN_GRAHAM` +
+    `layering.coffmanGraham.layerBound: 3` → a clean 3×3 at 929×987, **on 0.8.2,
+    no upgrade**. `MIN_WIDTH` + `minWidth.upperBoundOnWidth` also exists but
+    layered raggedly (2/4/3). `elk.aspectRatio` has no effect on `layered`.
+    elkjs 0.12's `layerUnzipping` does the same job better (929×**710**) and more
+    surgically — normal layering, then ONE over-wide layer split into sublayers
+    preserving crossing-minimized order, vs Coffman-Graham replacing the layering
+    algorithm for the whole graph. See the elkjs item in `backlog.md`.
+  - **Direction** — `elk.direction` RIGHT/DOWN/LEFT/UP. We hardcode RIGHT; a
+    left-to-right vs top-to-bottom toggle is the most obvious control of the set.
+  - **Density** — the two spacings as one Compact/Normal/Airy dial.
+  - **"Don't scramble my arrangement"** — `layered.considerModelOrder.*`
+    (`strategy`, `components`, `longEdgeStrategy`, `noModelOrder`, the crossing-
+    counter influences). Available today; 0.12 adds `groupModelOrder.*` (8 options)
+    and `portModelOrder` for much finer control.
+  - **Straight cables vs compact** — `nodePlacement.strategy` (NETWORK_SIMPLEX /
+    BRANDES_KOEPF / LINEAR_SEGMENTS / SIMPLE) + `favorStraightEdges`,
+    `bk.fixedAlignment`, `bk.edgeStraightening`.
+  - **Per-node pins** (a canvas affordance, not a panel row): `layering.
+    layerConstraint` FIRST/LAST pins a node to the first/last layer;
+    `layering.layerChoiceConstraint` / `layerId` assign an explicit layer. 0.12
+    adds `crossingMinimization.inLayerPredOf` / `inLayerSuccOf` for "keep this one
+    above that one" WITHIN a layer.
+  - **Also there, unexplored**: `separateConnectedComponents`,
+    `compaction.postCompaction.strategy`, `layering.nodePromotion.strategy`,
+    `thoroughness`.
+  OPEN QUESTION no ELK option answers: with a fan split across 3 sublayers, the
+  first sublayer's cables must route PAST the later ones. ELK's edge routing is
+  unused — `cablePaths.ts` routes with LENGTH as the primary sort key — so whether
+  a 3×3 reads as a tidy block or as spaghetti is OUR router's business and needs
+  eyeballing on a real canvas before any of this is worth shipping.
+
 - **iFrame / embed node** — web-embed out the `chart` socket. Gate call: CSP
   `https:` vs domain allowlist. Non-negotiables when built: `sandbox` without
   allow-top-navigation, `referrerpolicy=no-referrer`, https-only, click-to-load,
