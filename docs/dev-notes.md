@@ -136,6 +136,12 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   and binary search (±2) refuse with #VALUE!. Arities [3,6]/[2,4], hints match.
   Kernel skips null/error key cells — also fixes the node's old null-coerces-to-0
   comparison in approximate modes.
+- **`third-party-licenses.txt` now lists every SHIPPED version** — ten packages
+  resolve at two versions (mermaid nests its own marked/katex/d3-*), and
+  `rollup-plugin-license` keys by package NAME by default, so the file named
+  `marked 16.4.2` / `katex 0.16.47` — versions we don't ship. `thirdParty.
+  multipleVersions: true` keys by `name@version`; 85 → 93 entries. Same project +
+  license in every pair, so this was attribution accuracy, not a compliance hole.
 - **`marked` 14.1.4 → 18.0.9** — four majors, ZERO output change: the rendered
   HTML is byte-identical across all 511 catalog descriptions, the four
   `help/*.md` docs, and 15 GFM edge cases (tables, task lists, `breaks:true`
