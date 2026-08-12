@@ -18,11 +18,11 @@ import { isDesktop } from "./graph/fileBridge";
 import { IS_MOBILE, IS_TABLET } from "./graph/coarse";
 import { ErrorBoundary } from "./graph/components/ErrorBoundary";
 import "./graph/components/errorBoundary.css";
-import "@fontsource-variable/atkinson-hyperlegible-next";
+import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
 // The italic FACE: the base import is upright-only and `font-synthesis: none`
 // (App.css) bars the synthetic fallback, so without this `*em*` renders upright.
 import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
-import "@fontsource-variable/atkinson-hyperlegible-mono";
+import "@fontsource-variable/atkinson-hyperlegible-mono/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 

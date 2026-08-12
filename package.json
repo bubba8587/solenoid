@@ -60,7 +60,7 @@
     "@webgpu/types": "^0.1.71",
     "puppeteer-core": "^25.1.0",
     "rollup-plugin-license": "^3.7.1",
-    "typescript": "~5.8.3",
+    "typescript": "~7.0.2",
     "vite": "^7.0.4",
     "vitest": "^4.1.8"
   }
