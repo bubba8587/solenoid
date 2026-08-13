@@ -121,6 +121,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   drill camera on open and handed back to main on close. Dot-grid sync deliberately stays
   synchronous (rAF would shear the grid off the nodes); trimmed instead to write only the
   properties that changed, since a pan moves the phase alone.
+- **The main canvas kept painting under the drill-in.** Chasing the mobile flicker to the
+  known VRAM policy (`renderer-performance.md` § GPU layer promotion — the `IS_COARSE`
+  early-return in `onZoomActivity`, because a promoted holder's `bbox × zoom × dpr`
+  overruns the mobile GPU max texture and tiles): the drill-in does NOT violate it, it
+  promotes nothing. The un-addressed half was that `html.sol-drilled-in` hid only the
+  minimap and the Navigator, so the outer canvas stayed live and rasterized under an
+  opaque fixed backdrop — two surfaces resident on a budget that can't afford one. Now
+  `visibility: hidden` on the wrapper (NOT `display: none`: the main area still re-renders
+  and re-measures a card while drilled in, and MeasuredSocketRow needs a layout box).
+  Hypothesis-grade, unlike the minimap: it frees real raster, but it is not proven to be
+  the flicker's mechanism.
 - **A drill-in re-renders its views only on a pass it ran in.** `compositePassStore` ticks
   after every `processGraph`; the overlay swept every internal node each time, including
   for edits elsewhere in the document. Gated on a new `CompositeNode.runSeq` (counts

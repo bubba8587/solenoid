@@ -35,6 +35,15 @@ tiles/flickers mid-pinch and on tablets fails raster-tile allocation outright
 (Chrome's green placeholder squares). Touch zoom stays un-layered: a touch
 choppier, but stable.
 
+**The same budget governs a COVERED surface.** A full-viewport opaque overlay does not
+reliably get its occluded subtree dropped from raster, so a live canvas under one keeps
+its layers and textures resident — two surfaces' worth on a GPU that `bbox × dpr` already
+overruns on its own. `html.sol-drilled-in .solenoid-canvas-wrapper { visibility: hidden }`
+(`compositeEditor.css`) is that rule for the composite drill-in; any future canvas-covering
+surface owes the same. It must be `visibility`, not `display: none` — the covered area is
+still asked to re-render and re-measure cards, and `MeasuredSocketRow` needs a real layout
+box. Pinned by `surfaceParity.test.ts`.
+
 **Negative result — do NOT also drop raster quality on the desktop zoom path.**
 Desktop pinch/wheel zoom is PROMOTED, so content is rasterized once and GPU-scaled,
 not re-rastered per frame: the quality drops save nothing, and toggling them forces

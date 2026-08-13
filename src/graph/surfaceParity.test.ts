@@ -83,6 +83,17 @@ describe("editing-surface parity", () => {
     expect(read("src/graph/components/Minimap.tsx")).toContain("requestAnimationFrame");
   });
 
+  // Not cosmetic: the outer graph is already invisible under the opaque backdrop, so the
+  // rule exists purely to drop its raster. Deleting it as dead styling puts two canvases'
+  // worth of textures on a mobile GPU that can't afford one (see renderer-performance.md
+  // § GPU layer promotion). `display: none` is the wrong cure — it zeroes the layout the
+  // main area still measures while drilled in.
+  it("stops painting the main canvas while a drill-in covers it", () => {
+    const css = read("src/graph/components/compositeEditor.css");
+    expect(css).toMatch(/html\.sol-drilled-in\s+\.solenoid-canvas-wrapper\s*\{\s*visibility:\s*hidden/);
+    expect(css).not.toMatch(/html\.sol-drilled-in\s+\.solenoid-canvas-wrapper\s*\{\s*display:\s*none/);
+  });
+
   it("vetoes node translation while pinching on every surface", () => {
     // Canvas patches its own drag guard inline (it also handles groups and lock), so it
     // vetoes via isPinching() in its area pipe rather than the shared installer.
