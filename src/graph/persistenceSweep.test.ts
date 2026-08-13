@@ -190,6 +190,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     stale: "recomputed staleness", internalEditor: "the live internal rete stack",
     internalEngine: "the live internal rete stack", internalPositions: "runtime mirror; positions persist via snapshotInternal",
     internalEditSeq: "edit counter (session)",
+    runSeq: "data() invocation counter the open drill-in re-renders off (session)",
     // ── live socket instances / class declarations ──
     outSocket: "socket instance", valueSocket: "socket instance",
     passthrough: "the passthrough() declaration (a class-field function)",

@@ -8,7 +8,10 @@ import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./Minimap";
-import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer } from "../areaPresets";
+import {
+  solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer,
+  installSurfaceBackground, installPinchTranslateVeto,
+} from "../areaPresets";
 import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
@@ -101,6 +104,10 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   area.use(minimap);
   // The container is cached with the mount, so the listener lives as long as it.
   installSurfacePointer(area, container);
+  // Camera-tracked dot grid and the pinch veto: both are canvas behavior, not main-canvas
+  // behavior, so the subgraph installs the same ones rather than a look-alike.
+  installSurfaceBackground(area, container);
+  installPinchTranslateVeto(area);
 
   // Outer-only concerns (FC reconcile) don't apply inside the `any` boundary; suppressed
   // during bulk rebuilds, which drive their own settle.
@@ -224,13 +231,19 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositeId]);
 
-  // Each internal view is its own React root, so a completed pass must re-render them.
+  // Each internal view is its own React root, so a completed pass must re-render them —
+  // but ONLY a pass this composite actually ran in. The store ticks after every
+  // processGraph, and an edit anywhere else in the document leaves the engine cache for
+  // this node intact, so `data()` never fires and nothing inside can have moved.
   useEffect(() => {
     if (!isComposite) return;
     const comp = composite as CompositeNode;
+    let lastRunSeq = -1;
     return compositePassStore.subscribe(() => {
       const mount = mountRef.current;
       if (!mount) return;
+      if (comp.runSeq === lastRunSeq) return;
+      lastRunSeq = comp.runSeq;
       for (const n of comp.internalEditor.getNodes()) void mount.area.update("node", n.id);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -312,6 +312,22 @@ accumulate dead pipes on the long-lived `internalEditor`. The lifecycle invarian
 - **`compositeEditorStore.close()` is part of `rebuildGraph`'s bulk-reset** (with
   reportStore/presentationStore): a drill-in open across a document switch would
   render a CompositeNode belonging to the dead graph.
+- **A pass re-renders the internal views only when the composite's `runSeq` advanced.**
+  `compositePassStore` ticks after EVERY `processGraph`, including passes that never
+  touched this composite (an unrelated main-canvas edit leaves its engine-cache entry
+  intact, so `data()` never fires). `runSeq` counts `data()` invocations, and nothing
+  inside the subgraph — values OR marker stamps, which `data()` re-stamps even on a held
+  heavy pass — can move without one, so it is the exact gate. The sweep is still
+  whole-level once it does fire; the per-node cutoff is Phase D of the kernel bundle.
+- **Behavior shared with the main canvas installs from `areaPresets.ts`, never by
+  copy.** Both surfaces call `installSurfacePointer` (capped zoom + dblclick swallow +
+  capture-seated `area.pointer`), `installSurfaceBackground` (the dot grid tracks the
+  camera — CSS alone paints a FROZEN grid, which is what the drill-in had until
+  2026-08-13), and `solenoidClassicRenderSetup`; the drill-in adds
+  `installPinchTranslateVeto` where Canvas vetoes inline in its own guard. Pinned by
+  `surfaceParity.test.ts` — anything else still forked (the connectionpick mirror, the
+  keyboard subset, the whole touch/selection layer) is inventoried in `deferrals.md`
+  under the editing-surface kernel.
 
 **The drill-in stack is a breadcrumb of CompositeNode INSTANCES** (`compositeEditorStore.ts` — a nested composite isn't in the main editor, so an id alone couldn't resolve). Two consequences the stack exists for: (1) recompute always retargets `stack[0]`, the main-editor ancestor, so an edit any number of levels deep ripples outward correctly; (2) a level's PARENT editor is `stack[i-1]`'s internal editor (the main editor at level 0) — the surface a closed level reconciles its ports against.
 

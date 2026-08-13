@@ -10,6 +10,8 @@ import { SocketComponent } from "./components/SocketComponent";
 import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
 import { canvasLockStore } from "./canvasLock";
+import { DOT_SPACING } from "./gridSnapStore";
+import { isPinching } from "./pointerGesture";
 
 // The rete render + connection config that MUST be identical across every editing surface,
 // so a socket-render or connection-rule change can't apply to the canvas but not a subgraph.
@@ -100,6 +102,43 @@ export function installSurfacePointer(
     container.removeEventListener("dblclick", swallowDblClick, true);
     unseat();
   };
+}
+
+/** Track the dot grid to the camera: the tile scales with `k` and the phase follows the
+ *  pan, so the dots stay pinned to world coordinates (which is what grid snap lands on).
+ *  Below k≈0.55 they fade out rather than collapsing into noise. */
+export function syncSurfaceBackground(
+  area: AreaPlugin<Schemes, AreaExtra>,
+  container: HTMLElement,
+): void {
+  const { x, y, k } = area.area.transform;
+  const size = DOT_SPACING * k;
+  container.style.backgroundSize = `${size}px ${size}px`;
+  container.style.backgroundPosition = `${x}px ${y}px`;
+  const fade = Math.max(0, Math.min(1, (k - 0.18) / (0.55 - 0.18)));
+  container.style.setProperty("--dot-pct", `${Math.round(fade * 100)}%`);
+}
+
+/** Keep the grid synced for the life of the surface, and seed it once now. */
+export function installSurfaceBackground(
+  area: AreaPlugin<Schemes, AreaExtra>,
+  container: HTMLElement,
+): void {
+  area.addPipe((ctx) => {
+    if (ctx?.type === "translated" || ctx?.type === "zoomed") syncSurfaceBackground(area, container);
+    return ctx;
+  });
+  syncSurfaceBackground(area, container);
+}
+
+/** Never move a node while pinching — the same veto the main canvas applies, needed on
+ *  every surface or two fingers landing on a card smear it instead of zooming.
+ *  `isPinching()` counts FINGERS, so a stylus resting alongside one can't freeze a drag. */
+export function installPinchTranslateVeto(area: AreaPlugin<Schemes, AreaExtra>): void {
+  area.addPipe((ctx) => {
+    if (ctx?.type === "nodetranslate" && isPinching()) return;
+    return ctx;
+  });
 }
 
 /** The classic React preset with an IDENTITY socket-position offset — our sockets sit

@@ -263,6 +263,10 @@ export class CompositeNode extends ClassicPreset.Node {
   /** Bumped on any edit to the INTERNAL graph and folded into solveKey, so a held
    *  heavy solve reads stale when the subgraph itself changes, not just its inputs. */
   internalEditSeq = 0;
+  /** Counts `data()` invocations. Nothing inside the subgraph — values or marker stamps —
+   *  can move without one, so an open drill-in re-renders its views only when this
+   *  advances, instead of on every pass the surrounding document happens to run. */
+  runSeq = 0;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   /** Internal-graph layout keyed by LIVE internal node id (remapped on hydrate,
@@ -777,6 +781,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    this.runSeq++;
     this.syncPortLabels();
     this.syncMarkerSocketTypes();
     // Marker stamps are topology/config-only, so they stay current even on a held heavy pass.

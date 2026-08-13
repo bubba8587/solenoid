@@ -4,7 +4,7 @@ import { createNotifier } from "./storeKit";
 // The snap step IS the background dot spacing, so snap points land exactly on visible dots.
 // A module singleton so the canvas layer can read it without the main React tree.
 
-/** Background dot spacing in world units (mirrors the 24 in Canvas syncBackground). */
+/** Background dot spacing in world units; `syncSurfaceBackground` scales the tile from it. */
 export const DOT_SPACING = 24;
 /** Snap granularity: the visible dot grid. */
 export const GRID_SNAP_STEP = DOT_SPACING;

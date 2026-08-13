@@ -86,6 +86,36 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-13 — drill-in diagnosed as a second canvas that shares almost nothing; three gaps closed)
+- **Diagnosis (author question: "why do we not just spawn a second canvas?").** It already
+  IS one — `getDrillMount` builds a full second rete stack per composite. What cannot be
+  spawned twice is `Canvas.tsx`: its behavior set is closures inside one `init()` effect
+  married to module singletons (`setEditorRefs`, `documentStore.restore()`, ~10 one-slot
+  callbacks), so a second mount would fight over every slot and restore the document into
+  the subgraph. `activeGraph.ts` retargets chrome OUTSIDE the canvas (220 uses / 57 files,
+  works); nothing rescues what's inside the closure — hence piecemeal drift. Full
+  inventory + the four-phase kernel plan is in `deferrals.md` (1.4, author-approved);
+  what stays out (groups/standoffs/Navigator/lasso in a drill-in, D2) is unchanged.
+- **Dot grid tracks the camera on every surface.** `syncBackground` was a Canvas closure,
+  so the drill-in painted the CSS grid as frozen wallpaper — the author's "they render
+  totally differently". Now `syncSurfaceBackground` / `installSurfaceBackground` in
+  `areaPresets.ts`, installed by both; Canvas's local copy and its `DOT_SPACING` import
+  are gone, and `DOT_SPACING` stops calling itself a mirror of a number that no longer
+  exists.
+- **Pinch no longer smears a card inside a drill-in** — `installPinchTranslateVeto`
+  (`nodetranslate` + `isPinching()`), the veto Canvas has had in its pipe all along. The
+  census is global and Canvas stays mounted under the overlay, so it needs no other
+  wiring.
+- **Canvas now calls `installSurfacePointer`** instead of hand-rolling capped zoom +
+  dblclick swallow + capture-seated pointer. Not planned — `surfaceParity.test.ts`'s
+  drift pin failed on it, which is the pin doing its job on its first run.
+- **A drill-in re-renders its views only on a pass it ran in.** `compositePassStore` ticks
+  after every `processGraph`; the overlay swept every internal node each time, including
+  for edits elsewhere in the document. Gated on a new `CompositeNode.runSeq` (counts
+  `data()` calls — nothing internal, values or marker stamps, moves without one). The
+  per-NODE cutoff stays Phase D. `runSeq` classified transient in `persistenceSweep.test.ts`
+  (PERSIST-9 caught it unprompted).
+
 ### SESSION DIGEST (2026-08-11c — Architecture map overlay landed (spec-map steps 2–4))
 - **View ▸ Architecture map ships** (`SpecMapView.tsx` + `SpecMapView.css` +
   `specMapStore.ts`, mounted in `App.tsx`, launched from `menuModel.ts` so the palette

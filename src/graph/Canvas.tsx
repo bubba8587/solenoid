@@ -3,7 +3,10 @@ import { NodeEditor, ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions, Drag } from "rete-area-plugin";
 import { ConnectionPlugin } from "rete-connection-plugin";
 import { ReactPlugin } from "rete-react-plugin";
-import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow, CappedZoom, seatAreaPointerInCapture } from "./areaPresets";
+import {
+  solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer,
+  syncSurfaceBackground, installSurfaceBackground,
+} from "./areaPresets";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
@@ -83,7 +86,7 @@ import { syncSemanticZoomFor } from "./semanticZoomStore";
 import { setGraphChanged } from "./process";
 import { installInputCoercion } from "./coerceInputs";
 import { scheduleAutosave } from "./persistence";
-import { gridSnapStore, snapCoord, DOT_SPACING } from "./gridSnapStore";
+import { gridSnapStore, snapCoord } from "./gridSnapStore";
 import { HtmlCanvasLayer } from "./components/HtmlCanvasLayer";
 import { zoomSettleMs } from "./zoomSettle";
 import { documentStore, ensureFirstDocument } from "./documentStore";
@@ -377,7 +380,6 @@ export function Canvas() {
       // Installed before any node is created, so every node is wrapped.
       installInputCoercion(editor);
       const area = new AreaPlugin<Schemes, AreaExtra>(container!);
-      area.area.setZoomHandler(new CappedZoom(0.1));
       localArea = area;
       const connection = new ConnectionPlugin<Schemes, AreaExtra>();
       const reactPlugin = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
@@ -732,16 +734,11 @@ export function Canvas() {
       area.use(minimap);
       editor.use(engine);
 
-      // Disable double-click-to-zoom: Zoom's dblclick handler is on this container in
-      // bubble phase, so a capture-phase swallow beats it. (`container` narrowing
-      // doesn't survive the async boundary — re-hoisted here.)
+      // Capped zoom + double-click-to-zoom suppression + capture-seated area.pointer:
+      // the shared surface install, so the subgraph can't drift from it. (`container`
+      // narrowing doesn't survive the async boundary — re-hoisted here.)
       const c = container!;
-      const swallowDblClick = (e: Event) => { e.stopImmediatePropagation(); };
-      c.addEventListener("dblclick", swallowDblClick, true);
-      // Keep area.pointer fresh through socket presses (which stop bubble
-      // propagation) — on touch the picked ghost cable otherwise renders to the
-      // PREVIOUS gesture's last position. See seatAreaPointerInCapture.
-      const unseatPointer = seatAreaPointerInCapture(area, c);
+      const uninstallPointer = installSurfacePointer(area, c);
 
       // Any pointerdown off a cable clears the cable selection, but only on RELEASE and
       // only if the press didn't move — clearing on pointerdown made it impossible to
@@ -776,8 +773,7 @@ export function Canvas() {
       const unsubLock = canvasLockStore.subscribe(applyLock);
 
       dblClickCleanupRef.current = () => {
-        c.removeEventListener("dblclick", swallowDblClick, true);
-        unseatPointer();
+        uninstallPointer();
         c.removeEventListener("pointerdown", clearCableSelection);
         window.removeEventListener("pointerup", maybeClearCableSelection);
         container!.removeEventListener("pointerdown", onPanStart, true);
@@ -1009,16 +1005,6 @@ export function Canvas() {
         }, zoomSettleMs());
       }
 
-      function syncBackground() {
-        const { x, y, k } = area.area.transform;
-        const size = DOT_SPACING * k;
-        container!.style.backgroundSize = `${size}px ${size}px`;
-        container!.style.backgroundPosition = `${x}px ${y}px`;
-        // Fade the dots out as the grid shrinks: full from k≈0.55, gone by k≈0.18.
-        const fade = Math.max(0, Math.min(1, (k - 0.18) / (0.55 - 0.18)));
-        container!.style.setProperty("--dot-pct", `${Math.round(fade * 100)}%`);
-      }
-
       // Called on host MOVE and host RESIZE, so a docked FC follows a socket that
       // shifted because a display box grew a row.
       function repositionDockedTo(hostId: string) {
@@ -1116,13 +1102,15 @@ export function Canvas() {
       window.addEventListener("pointerup", onPanEnd);
       window.addEventListener("pointercancel", onPanEnd);
 
+      // Dot grid tracks the camera; shared so every surface's grid behaves identically.
+      installSurfaceBackground(area, c);
+
       area.addPipe((ctx) => {
-        if (ctx.type === "translated" || ctx.type === "zoomed") {
-          syncBackground();
-          if (ctx.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
+        if (ctx.type === "zoomed") {
+          syncSemanticZoomFor(area.area.transform.k);
           // Only REAL zoomed events refresh the settle timer, or a follow-on pan would
           // hold the holder promoted indefinitely.
-          if (ctx.type === "zoomed") onZoomActivity();
+          onZoomActivity();
         }
         // A re-render can change box sizes, so re-measure the standoff bars.
         if (ctx.type === "rendered") { standoffLayoutTick.bump(); }
@@ -1389,13 +1377,13 @@ export function Canvas() {
 
       setGraphChanged(() => { scheduleAutosave(); });
       if (await documentStore.restore()) {
-        syncBackground();
+        syncSurfaceBackground(area, c);
         syncSemanticZoomFor(area.area.transform.k);
         return;
       }
 
       await ensureFirstDocument();
-      syncBackground();
+      syncSurfaceBackground(area, c);
       syncSemanticZoomFor(area.area.transform.k);
     }
 
