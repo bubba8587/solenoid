@@ -86,7 +86,7 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-13 — drill-in diagnosed as a second canvas that shares almost nothing; three gaps closed)
+### SESSION DIGEST (2026-08-13 — the drill-in is a second canvas sharing almost nothing; a dead finger-pan found and measured)
 - **Diagnosis (author question: "why do we not just spawn a second canvas?").** It already
   IS one — `getDrillMount` builds a full second rete stack per composite. What cannot be
   spawned twice is `Canvas.tsx`: its behavior set is closures inside one `init()` effect
@@ -109,8 +109,32 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **Canvas now calls `installSurfacePointer`** instead of hand-rolling capped zoom +
   dblclick swallow + capture-seated pointer. Not planned — `surfaceParity.test.ts`'s
   drift pin failed on it, which is the pin doing its job on its first run.
-- **Mobile flicker panning/pinching the sudoku drill-in: two gesture-rate costs the main
-  canvas had already solved.** (1) `MinimapPlugin` renders synchronously on
+- **FOUND (measured): a finger pan is dead inside a drill-in — no node there has a drag
+  guard.** Backlog carries the item + the fix shape. The evidence, so nobody re-derives
+  it: headless CDP with touch emulation, same gesture on the same 44 nodes — main canvas
+  pans (cam 358,381 → 258,306, 0 nodes moved), drill-in does NOTHING (cam unchanged, 0
+  nodes moved). `patchDragGuard`'s touch branch (an unselected node is drag-transparent,
+  so a press falls through to a pan) is installed per node from Canvas's `nodecreated`
+  pipe and has never existed in the drill-in, so rete's stock drag captures the pointer
+  and stops propagation before the area can pan. Explains the author's own A/B exactly:
+  unpacking those 44 cards onto the main canvas gives them the guard and the flicker
+  stops. The mid-zoom correlation is not raster — it's simply where cards tile most of
+  the viewport, so nearly every press lands on one.
+- **ELIMINATED on the way there — do not retread.** (1) Not the dot grid: the drill-in
+  never wrote `--dot-pct` before 2026-08-13 yet the flicker predates it, and hiding the
+  grid via Settings ▸ View changed nothing. (2) Not a ResizeObserver loop: 0 loops
+  across every gesture measured, despite `main.tsx` suppressing that warning. (3) Not
+  excess JS: with quiescence gating and a genuinely empty press point, a drill-in pan
+  runs 19.9ms of script vs the main canvas's 135.4ms — LESS, not more. (4) Not idle
+  work: 0.3ms of script per second sitting still with a drill-in open. (5) Not the
+  choppy-zoom BAND — that investigation is untouched by this and its T1-T8 queue still
+  stands. An early probe showing 2275ms of script in a drill-in pan was measurement
+  error: the gesture overlapped the drill-in's own settle. Method is reusable —
+  `puppeteer-core` + the Chromium at `/opt/pw-browsers`, driving the Vite dev server and
+  importing `/src/graph/*.ts` in-page to reach the live module instances.
+- **Two gesture-rate parity gaps closed the same day, which did NOT fix the flicker.**
+  Worth having on their own merits; recorded here so the causal claim isn't left
+  standing: (1) `MinimapPlugin` renders synchronously on
   `translated`/`zoomed`/`nodetranslated` — Canvas rAF-coalesced it years back, the
   drill-in never did, so panning a 44-node subgraph ran a full 44-view map render per
   pointermove. Now one `createSolenoidMinimap` factory (geometry + coalescing) that both
@@ -121,7 +145,9 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   drill camera on open and handed back to main on close. Dot-grid sync deliberately stays
   synchronous (rAF would shear the grid off the nodes); trimmed instead to write only the
   properties that changed, since a pan moves the phase alone.
-- **The main canvas kept painting under the drill-in.** Chasing the mobile flicker to the
+- **The main canvas kept painting under the drill-in** — correct on its own terms, but it
+  produced NO measured improvement to the reported flicker; don't cite it as that fix.
+  Chasing the mobile flicker to the
   known VRAM policy (`renderer-performance.md` § GPU layer promotion — the `IS_COARSE`
   early-return in `onZoomActivity`, because a promoted holder's `bbox × zoom × dpr`
   overruns the mobile GPU max texture and tiles): the drill-in does NOT violate it, it

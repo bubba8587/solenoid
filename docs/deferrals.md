@@ -72,9 +72,10 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
     `installEditingSurface({ editor, area, container, history, selector, hooks })`,
     moving Canvas's closures out one at a time, parameterized rather than ref-bound:
     gesture/tap record + selection semantics (click-collapse, deferred Ctrl-toggle,
-    right-click-preserves); drag-guard patching (touch drag-transparency for
-    unselected nodes, pen-button guard, lock guard, group edge-band behind a
-    predicate); the connectionpick/drop pipe; the `connectioncreate` enforcement pipe
+    right-click-preserves); **drag-guard patching — now a scheduled 1.3 BUG with a
+    measured repro, see `backlog.md` "A finger pan is DEAD inside a drill-in"; it lands
+    first and drags the tap-to-select companions with it**; the connectionpick/drop
+    pipe; the `connectioncreate` enforcement pipe
     (duplicate / self-loop / socket-type / FC-unit conflict / collapsed-extensible
     reroute); semantic zoom + zoom-settle promotion; minimap rAF coalescing; grid
     snap, Shift axis-lock, Ctrl align-snap; cable-deselect-on-background. Canvas

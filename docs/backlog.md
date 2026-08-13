@@ -39,6 +39,27 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
+- [ ] **A finger pan is DEAD inside a drill-in — no node has a drag guard there.**
+  Author-reported as "major flickering" panning/pinching the sudoku solver (44-node
+  subgraph, `runMode: simulation`) on mobile; unpacking the SAME nodes onto the main
+  canvas makes it stop. `patchDragGuard` (`Canvas.tsx:591-631`) is installed per node
+  from Canvas's `nodecreated` pipe, and its touch branch — an unselected node is
+  drag-transparent so the press falls through to a PAN — is what makes finger-panning
+  work at all. The drill-in's editor pipe (`CompositeEditorOverlay.tsx`) installs
+  error guards only, so rete's stock drag captures the pointer and stops propagation:
+  the area never sees the press. MEASURED (headless CDP, touch-emulated, identical
+  gesture on identical content): main canvas pans (cam 358,381 → 258,306, 0 nodes
+  moved); drill-in does nothing at all (cam unchanged, 0 nodes moved). Worst in the
+  mid-zoom band only because that is where cards tile most of the viewport, so nearly
+  every press lands on one. FIX = the first real slice of the editing-surface kernel
+  (`deferrals.md`): extract `installNodeDragGuard(area, editor, opts)` into
+  `areaPresets.ts` and install from both `nodecreated` pipes — lock guard and
+  pen/non-primary-button guard port as-is, the group edge-band branch goes behind an
+  optional predicate (groups don't exist in a drill-in). Must bring the companions or
+  a card becomes unselectable by touch: tap-to-select on `pointerup` plus the
+  `gestureMultiRef` check that stops a pinch from selecting. Pin in
+  `surfaceParity.test.ts`. NOT the choppy-zoom BAND and not raster — see the digest
+  for the eliminated set; don't retread it.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` wheel;
   verify on hardware. NOTE: `rete-area-plugin` 2.2.1 fixed exactly this upstream
   (normalize wheel delta for touchpad pinch, their #31) — but `CappedZoom.wheel`
