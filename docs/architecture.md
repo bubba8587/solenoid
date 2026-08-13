@@ -67,7 +67,7 @@ src/
 |---|---|
 | `process.ts` | Module singleton `_editor/_engine/_area`; `processGraph()` recompute + re-render; recalc generation (volatile nodes); graph-rebuild guard; history hook. **STAYS MAIN-ONLY** (persistence/serialize read it) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore) |
-| `areaPresets.ts` | Shared rete config for EVERY editing surface (main canvas + drill-in), so they can't drift: `solenoidClassicRenderSetup` (node/socket/connection components + socket-position watcher), `makeSolenoidConnectionFlow` (compat + self-loop + lock veto), `CappedZoom` + `installSurfacePointer` (proportional wheel + double-click-zoom suppression + capture-seated `area.pointer`), `installSurfaceBackground` (camera-tracked dot grid), `installPinchTranslateVeto`. Drift-pinned by `surfaceParity.test.ts`; the behaviors still stranded in `Canvas.tsx`'s init closure are the 1.4 kernel bundle in `deferrals.md` |
+| `areaPresets.ts` | Shared rete config for EVERY editing surface (main canvas + drill-in), so they can't drift: `solenoidClassicRenderSetup` (node/socket/connection components + socket-position watcher), `makeSolenoidConnectionFlow` (compat + self-loop + lock veto), `CappedZoom` + `installSurfacePointer` (proportional wheel + double-click-zoom suppression + capture-seated `area.pointer`), `installSurfaceBackground` (camera-tracked dot grid), `installSurfaceSemanticZoom`, `installPinchTranslateVeto`. Drift-pinned by `surfaceParity.test.ts`; the behaviors still stranded in `Canvas.tsx`'s init closure are the 1.4 kernel bundle in `deferrals.md` |
 | `schemes.ts` | Rete scheme types (`SolenoidConnection` must use `ClassicPreset.Node` — variance) |
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
@@ -212,7 +212,9 @@ third path.
 
 `TopBar`, `MenuBar`, `NavMenu` (seeds, export/import, tidy, fit), `StatusBar`,
 `Header`, `AppToolbar` (accent + light/dark via `appTheme.ts`), `OutlinePanel`,
-`Settings` (+`settingsStore`), `ShortcutsOverlay`, `Minimap`,
+`Settings` (+`settingsStore`), `ShortcutsOverlay`, `Minimap` (every surface builds
+its map through `createSolenoidMinimap` — collapse-aware geometry + the rAF
+coalescing the plugin's synchronous per-translate render needs),
 `MobileControls` (+`mobileMenuStore`, `touchSelectStore`),
 `WebDemoBanner`, `CommandPalette.tsx` (+ `palette.ts`, the app palette engine
 behind `PaletteEditor`/`paletteStore`), plus dialog/popup stores

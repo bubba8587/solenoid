@@ -5,12 +5,11 @@ import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
 import { ConnectionPlugin } from "rete-connection-plugin";
 import { ReactPlugin } from "rete-react-plugin";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
-import { MinimapPlugin } from "rete-minimap-plugin";
 import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
-import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./Minimap";
+import { solenoidMinimapPreset, createSolenoidMinimap } from "./Minimap";
 import {
   solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer,
-  installSurfaceBackground, installPinchTranslateVeto,
+  installSurfaceBackground, installSurfaceSemanticZoom, installPinchTranslateVeto,
 } from "../areaPresets";
 import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
@@ -18,6 +17,7 @@ import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getArea, processGraph, isGraphRebuilding, withGraphRebuild, setCableDragging } from "../process";
 import { setActiveGraph } from "../activeGraph";
+import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { copySelected, pasteClipboard } from "../copyPaste";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
@@ -91,10 +91,10 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
     return ctx;
   });
 
-  // collapsedAwareNodesRect reads the ACTIVE graph, so this map reflects the subgraph; CSS
-  // hides the main one while drilled in (both are .solenoid-minimap).
-  const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });
-  (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
+  // Its geometry reads the ACTIVE graph, so this map reflects the subgraph; CSS hides the
+  // main one while drilled in (both are .solenoid-minimap). The rAF coalescing inside the
+  // factory is what keeps a pan off the synchronous per-pointermove render path.
+  const minimap = createSolenoidMinimap();
   reactPlugin.addPreset(solenoidMinimapPreset(105));
 
   editor.use(area);
@@ -107,6 +107,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   // Camera-tracked dot grid and the pinch veto: both are canvas behavior, not main-canvas
   // behavior, so the subgraph installs the same ones rather than a look-alike.
   installSurfaceBackground(area, container);
+  installSurfaceSemanticZoom(area);
   installPinchTranslateVeto(area);
 
   // Outer-only concerns (FC reconcile) don't apply inside the `any` boundary; suppressed
@@ -203,6 +204,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         }
         const nodes = comp.internalEditor.getNodes();
         if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
+        // The far-zoom class is global and the main camera set it last; re-derive it from
+        // THIS camera, or a subgraph opens simplified (or not) on the wrong scale.
+        syncSemanticZoomFor(mount.area.area.transform.k);
       } finally {
         innerHistory.active = false;
       }
@@ -217,6 +221,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       // against ids it doesn't own.
       isolateStore.exit();
       setActiveGraph(null); // back to the main graph (a deeper level re-registers)
+      // Hand the far-zoom class back to the camera that becomes visible again.
+      const mainArea = getArea();
+      if (mainArea) syncSemanticZoomFor(mainArea.area.transform.k);
       const mount = mountRef.current;
       if (mount) {
         // Removing the views unmounts each React ROOT; merely detaching the container keeps

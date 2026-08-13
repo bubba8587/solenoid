@@ -109,6 +109,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **Canvas now calls `installSurfacePointer`** instead of hand-rolling capped zoom +
   dblclick swallow + capture-seated pointer. Not planned — `surfaceParity.test.ts`'s
   drift pin failed on it, which is the pin doing its job on its first run.
+- **Mobile flicker panning/pinching the sudoku drill-in: two gesture-rate costs the main
+  canvas had already solved.** (1) `MinimapPlugin` renders synchronously on
+  `translated`/`zoomed`/`nodetranslated` — Canvas rAF-coalesced it years back, the
+  drill-in never did, so panning a 44-node subgraph ran a full 44-view map render per
+  pointermove. Now one `createSolenoidMinimap` factory (geometry + coalescing) that both
+  surfaces build through, and the pin forbids `new MinimapPlugin` in either. (2) The
+  far-zoom simplification class is a single root toggle driven from Canvas's `zoomed`
+  pipe only, so a drill-in pinch painted every card at full detail while the class held
+  the main camera's scale — `installSurfaceSemanticZoom` on both, re-derived from the
+  drill camera on open and handed back to main on close. Dot-grid sync deliberately stays
+  synchronous (rAF would shear the grid off the nodes); trimmed instead to write only the
+  properties that changed, since a pan moves the phase alone.
 - **A drill-in re-renders its views only on a pass it ran in.** `compositePassStore` ticks
   after every `processGraph`; the overlay swept every internal node each time, including
   for edits elsewhere in the document. Gated on a new `CompositeNode.runSeq` (counts

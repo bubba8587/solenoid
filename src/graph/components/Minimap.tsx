@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { MinimapPlugin } from "rete-minimap-plugin";
 import { getActiveArea, getActiveEditor } from "../activeGraph";
+import type { Schemes } from "../schemes";
 import { GroupNode, NoteNode, nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import { groupCollapseStore } from "../groupCollapse";
 import { appThemeStore } from "../appTheme";
@@ -208,6 +210,27 @@ export function SolenoidMinimap(props: MinimapProps) {
       />
     </div>
   );
+}
+
+/** The configured minimap EVERY editing surface builds: collapse-aware geometry plus
+ *  rAF-coalesced rendering. The plugin re-renders synchronously on `translated`,
+ *  `zoomed` and `nodetranslated` — one full pass over every node view, at pointermove
+ *  rate — so an uncoalesced map turns a pan into layout thrash. `isDestroyed` guards a
+ *  frame that lands after the surface went away (a document switch destroys the area). */
+export function createSolenoidMinimap(isDestroyed?: () => boolean): MinimapPlugin<Schemes> {
+  const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });
+  (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
+  const mm = minimap as unknown as { render: () => void };
+  const rawRender = mm.render.bind(minimap);
+  let rafPending = 0;
+  mm.render = () => {
+    if (rafPending) return;
+    rafPending = requestAnimationFrame(() => {
+      rafPending = 0;
+      if (!isDestroyed?.()) rawRender();
+    });
+  };
+  return minimap;
 }
 
 /** Render preset replacing `ReactPresets.minimap.setup` with the colored map. */

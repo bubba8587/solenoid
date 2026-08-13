@@ -12,6 +12,7 @@ import { SolenoidSocket } from "./sockets";
 import { canvasLockStore } from "./canvasLock";
 import { DOT_SPACING } from "./gridSnapStore";
 import { isPinching } from "./pointerGesture";
+import { syncSemanticZoomFor } from "./semanticZoomStore";
 
 // The rete render + connection config that MUST be identical across every editing surface,
 // so a socket-render or connection-rule change can't apply to the canvas but not a subgraph.
@@ -104,6 +105,12 @@ export function installSurfacePointer(
   };
 }
 
+// Last values written per surface. A PAN moves only the phase — re-writing the tile size
+// and the fade every pointermove invalidates the background for nothing, and this runs
+// synchronously with the holder transform (rAF-deferring it would shear the grid off the
+// nodes it is supposed to be pinned to, so trimming the writes is the lever available).
+const lastBackground = new WeakMap<HTMLElement, { size: string; pos: string; pct: string }>();
+
 /** Track the dot grid to the camera: the tile scales with `k` and the phase follows the
  *  pan, so the dots stay pinned to world coordinates (which is what grid snap lands on).
  *  Below k≈0.55 they fade out rather than collapsing into noise. */
@@ -112,11 +119,16 @@ export function syncSurfaceBackground(
   container: HTMLElement,
 ): void {
   const { x, y, k } = area.area.transform;
-  const size = DOT_SPACING * k;
-  container.style.backgroundSize = `${size}px ${size}px`;
-  container.style.backgroundPosition = `${x}px ${y}px`;
+  const tile = DOT_SPACING * k;
+  const size = `${tile}px ${tile}px`;
+  const pos = `${x}px ${y}px`;
   const fade = Math.max(0, Math.min(1, (k - 0.18) / (0.55 - 0.18)));
-  container.style.setProperty("--dot-pct", `${Math.round(fade * 100)}%`);
+  const pct = `${Math.round(fade * 100)}%`;
+  const prev = lastBackground.get(container);
+  if (prev?.size !== size) container.style.backgroundSize = size;
+  if (prev?.pos !== pos) container.style.backgroundPosition = pos;
+  if (prev?.pct !== pct) container.style.setProperty("--dot-pct", pct);
+  lastBackground.set(container, { size, pos, pct });
 }
 
 /** Keep the grid synced for the life of the surface, and seed it once now. */
@@ -129,6 +141,17 @@ export function installSurfaceBackground(
     return ctx;
   });
   syncSurfaceBackground(area, container);
+}
+
+/** Drive the far-zoom card simplification from THIS surface's camera. The class is
+ *  global (one root-level toggle, so plain CSS does the swap), so whichever surface the
+ *  user is actually zooming must own it — otherwise a subgraph pinch paints every card
+ *  in full detail while the class still reflects the camera behind the overlay. */
+export function installSurfaceSemanticZoom(area: AreaPlugin<Schemes, AreaExtra>): void {
+  area.addPipe((ctx) => {
+    if (ctx?.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
+    return ctx;
+  });
 }
 
 /** Never move a node while pinching — the same veto the main canvas applies, needed on

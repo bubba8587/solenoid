@@ -57,15 +57,31 @@ describe("editing-surface parity", () => {
   });
 
   // Drift pin: a shared installer that only one surface calls is the exact shape of the
-  // bug this module exists to prevent.
-  it.each(["installSurfaceBackground", "installSurfacePointer", "solenoidClassicRenderSetup"])(
-    "%s is installed by every editing surface",
-    (installer) => {
-      for (const file of SURFACES) {
-        expect(read(file), `${file} must install ${installer}`).toContain(installer);
-      }
-    },
-  );
+  // bug this module exists to prevent. The perf ones earn their place the hard way — an
+  // uncoalesced minimap and an unsynced far-zoom class made panning a 44-node subgraph
+  // (the sudoku seed) flicker on mobile while the main canvas stayed smooth.
+  it.each([
+    "installSurfaceBackground",
+    "installSurfacePointer",
+    "installSurfaceSemanticZoom",
+    "createSolenoidMinimap",
+    "solenoidClassicRenderSetup",
+  ])("%s is installed by every editing surface", (installer) => {
+    for (const file of SURFACES) {
+      expect(read(file), `${file} must install ${installer}`).toContain(installer);
+    }
+  });
+
+  // The coalescing is the whole point of the factory: the plugin renders synchronously
+  // per translate/zoom event, so a surface that builds its own MinimapPlugin is back on
+  // the pointermove-rate path.
+  it("builds its minimap through the shared factory, never the raw plugin", () => {
+    for (const file of SURFACES) {
+      expect(read(file), `${file} must not construct MinimapPlugin directly`)
+        .not.toContain("new MinimapPlugin");
+    }
+    expect(read("src/graph/components/Minimap.tsx")).toContain("requestAnimationFrame");
+  });
 
   it("vetoes node translation while pinching on every surface", () => {
     // Canvas patches its own drag guard inline (it also handles groups and lock), so it

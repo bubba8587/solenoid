@@ -323,11 +323,23 @@ accumulate dead pipes on the long-lived `internalEditor`. The lifecycle invarian
   copy.** Both surfaces call `installSurfacePointer` (capped zoom + dblclick swallow +
   capture-seated `area.pointer`), `installSurfaceBackground` (the dot grid tracks the
   camera — CSS alone paints a FROZEN grid, which is what the drill-in had until
-  2026-08-13), and `solenoidClassicRenderSetup`; the drill-in adds
-  `installPinchTranslateVeto` where Canvas vetoes inline in its own guard. Pinned by
-  `surfaceParity.test.ts` — anything else still forked (the connectionpick mirror, the
-  keyboard subset, the whole touch/selection layer) is inventoried in `deferrals.md`
-  under the editing-surface kernel.
+  2026-08-13), `installSurfaceSemanticZoom`, `createSolenoidMinimap` and
+  `solenoidClassicRenderSetup`; the drill-in adds `installPinchTranslateVeto` where
+  Canvas vetoes inline in its own guard. Pinned by `surfaceParity.test.ts` — anything
+  else still forked (the connectionpick mirror, the keyboard subset, the whole
+  touch/selection layer) is inventoried in `deferrals.md` under the editing-surface
+  kernel.
+- **The two gesture-rate costs are the ones that must never be forked again.**
+  `MinimapPlugin` re-renders SYNCHRONOUSLY on `translated`/`zoomed`/`nodetranslated`, one
+  pass over every node view per pointermove, so it is only ever built through
+  `createSolenoidMinimap` (rAF-coalesced). And the far-zoom simplification class is a
+  single root-level toggle, so whichever surface is being zoomed must own it — a
+  subgraph pinch otherwise paints every card at full detail while the class reflects the
+  camera behind the overlay, and the drill-in re-derives it from its own camera on open
+  and hands it back to main on close. Both were main-canvas-only until a 44-node subgraph
+  (the sudoku seed) flickered on mobile. The dot-grid sync stays SYNCHRONOUS with the
+  holder transform on purpose — deferring it to rAF shears the grid off the nodes — so
+  its lever is writing only the properties that changed (a pan moves the phase alone).
 
 **The drill-in stack is a breadcrumb of CompositeNode INSTANCES** (`compositeEditorStore.ts` — a nested composite isn't in the main editor, so an id alone couldn't resolve). Two consequences the stack exists for: (1) recompute always retargets `stack[0]`, the main-editor ancestor, so an edit any number of levels deep ripples outward correctly; (2) a level's PARENT editor is `stack[i-1]`'s internal editor (the main editor at level 0) — the surface a closed level reconciles its ports against.
 

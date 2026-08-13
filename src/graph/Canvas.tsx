@@ -5,11 +5,10 @@ import { ConnectionPlugin } from "rete-connection-plugin";
 import { ReactPlugin } from "rete-react-plugin";
 import {
   solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer,
-  syncSurfaceBackground, installSurfaceBackground,
+  syncSurfaceBackground, installSurfaceBackground, installSurfaceSemanticZoom,
 } from "./areaPresets";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
-import { MinimapPlugin } from "rete-minimap-plugin";
 import { createRoot } from "react-dom/client";
 
 import type { Schemes, AreaExtra, SolenoidNode } from "./schemes";
@@ -69,7 +68,7 @@ import { ComputeOverlay } from "./components/ComputeOverlay";
 import { IsolatePill } from "./components/IsolatePill";
 import { CableInspector } from "./components/CableInspector";
 import { IsolateEndpoints } from "./components/IsolateEndpoints";
-import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./components/Minimap";
+import { solenoidMinimapPreset, createSolenoidMinimap } from "./components/Minimap";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";
 import { isolateStore, isoEndpointSelect } from "./isolateStore";
 import { isolateNodes, isolateChainOf, isolateWhereUsed } from "./isolate";
@@ -393,24 +392,9 @@ export function Canvas() {
       // drill-in isn't stranded on the main stack.
       setPushHistory((action) => { void getActiveHistory()?.add(action); });
       setClearHistory(() => history.clear());
-      const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });
-      // Collapse-aware: hide folded members, size a group to its compact box.
-      (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
-      // rAF-coalesce the plugin's render: it fires synchronously per translate event,
-      // each one re-reading layout, at a rate far above the frame cadence.
-      {
-        const mm = minimap as unknown as { render: () => void };
-        const rawRender = mm.render.bind(minimap);
-        let rafPending = 0;
-        mm.render = () => {
-          if (rafPending) return;
-          rafPending = requestAnimationFrame(() => {
-            rafPending = 0;
-            // A doc switch can destroy the area between schedule and fire.
-            if (!destroyed) rawRender();
-          });
-        };
-      }
+      // Collapse-aware geometry + rAF-coalesced render; a doc switch can destroy the
+      // area between schedule and fire, hence the guard.
+      const minimap = createSolenoidMinimap(() => destroyed);
       const ensureArrange = makeEnsureArrange(area, () => destroyed);
 
       const nodeSelector = AreaExtensions.selector();
@@ -1102,12 +1086,13 @@ export function Canvas() {
       window.addEventListener("pointerup", onPanEnd);
       window.addEventListener("pointercancel", onPanEnd);
 
-      // Dot grid tracks the camera; shared so every surface's grid behaves identically.
+      // Dot grid + far-zoom card simplification track the camera; shared so every
+      // surface behaves identically.
       installSurfaceBackground(area, c);
+      installSurfaceSemanticZoom(area);
 
       area.addPipe((ctx) => {
         if (ctx.type === "zoomed") {
-          syncSemanticZoomFor(area.area.transform.k);
           // Only REAL zoomed events refresh the settle timer, or a follow-on pan would
           // hold the holder promoted indefinitely.
           onZoomActivity();
