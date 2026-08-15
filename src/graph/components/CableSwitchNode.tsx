@@ -171,19 +171,17 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await dropInputCables(data.id, [key]);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
-    data.removeValueInput(key);
+    const prevActive = data.activeIndex;
+    data.removeValueInput(key); // re-points activeIndex at the same slot it named
     setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
-    const n = Object.keys(data.inputs).length;
-    if (data.activeIndex >= n) {
-      const prevActive = data.activeIndex;
-      const clamped = Math.max(0, n - 1);
-      data.activeIndex = clamped;
-      setSelected(clamped);
+    setSelected(data.activeIndex);
+    if (data.activeIndex !== prevActive) {
+      const nextActive = data.activeIndex;
       // Its own history entry, pushed AFTER the row entry so undo restores the
       // index LAST (the row comes back first).
       pushHistory(
         () => { data.activeIndex = prevActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
-        () => { data.activeIndex = clamped; void getActiveArea()?.update("node", data.id); void processGraph(); },
+        () => { data.activeIndex = nextActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
       );
     }
     await getActiveArea()?.update("node", data.id);

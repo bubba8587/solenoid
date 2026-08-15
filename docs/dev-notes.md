@@ -86,6 +86,18 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-15 — Input Switch: removing a row re-pointed the live slot)
+- **Bug.** `CableSwitchNode.activeIndex` is POSITIONAL over `Object.keys(inputs)` while
+  slots are KEYED. Removing a row ABOVE the live one shifted every later slot up, so the
+  output silently jumped to the next input down (4 slots, live = 3rd, drop the 1st → the
+  4th went live). The component only handled the past-the-end case (`activeIndex >= n`).
+- **Fix.** `removeValueInput` now owns the adjustment — decrement when the dropped slot sat
+  above the live one, then clamp — so it is right for every caller (row remove, the
+  add-row undo) rather than one call site. `removeRow` pushes its index-history entry on
+  ANY change instead of only the clamp, and mirrors the new index into local state.
+  Removing the live slot itself still falls to its neighbour. Multi mode was never
+  affected: `selectedKeys` is keyed. `cableSwitch.test.ts` pins all four cases.
+
 ### SESSION DIGEST (2026-08-13 — the drill-in is a second canvas sharing almost nothing; a dead finger-pan found and measured)
 - **Diagnosis (author question: "why do we not just spawn a second canvas?").** It already
   IS one — `getDrillMount` builds a full second rete stack per composite. What cannot be

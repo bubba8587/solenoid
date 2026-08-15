@@ -60,9 +60,17 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   removeValueInput(key: string): void {
+    // `activeIndex` is POSITIONAL, so dropping a slot ABOVE the live one shifts every
+    // later slot up and would silently re-point the output at the next input down.
+    // Follow the slot the user actually chose.
+    const idx = Object.keys(this.inputs).indexOf(key);
     this.removeInput(key);
     delete this.titles[key];
     this.selectedKeys = this.selectedKeys.filter((k) => k !== key);
+    if (idx >= 0 && idx < this.activeIndex) this.activeIndex -= 1;
+    const n = Object.keys(this.inputs).length;
+    // Removing the LIVE slot leaves the index on its neighbour; past the end, clamp.
+    this.activeIndex = n ? clamp(this.activeIndex, 0, n - 1) : 0;
   }
 
   /** A slot's display name: its title, else a 1-based positional fallback. */

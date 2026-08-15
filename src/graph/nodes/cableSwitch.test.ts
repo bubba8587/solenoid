@@ -75,4 +75,46 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(n.titles).toEqual({ v0: "A" });
     expect(n.selectedKeys).toEqual(["v0"]);
   });
+
+  // `activeIndex` is positional while slots are keyed, so a removal ABOVE the live
+  // slot used to hand the output to the next input down.
+  it("removing a slot ABOVE the live one keeps routing the SAME input", () => {
+    const n = new CableSwitchNode();
+    n.addValueInput(); // v2
+    n.addValueInput(); // v3
+    n.activeIndex = 2; // v2
+    n.removeValueInput("v0");
+    expect(Object.keys(n.inputs)[n.activeIndex]).toBe("v2");
+    expect(n.data({ v1: [1], v2: [2], v3: [3] }).out).toBe(2);
+  });
+
+  it("removing a slot BELOW the live one leaves the index alone", () => {
+    const n = new CableSwitchNode();
+    n.addValueInput(); // v2
+    n.activeIndex = 1; // v1
+    n.removeValueInput("v2");
+    expect(Object.keys(n.inputs)[n.activeIndex]).toBe("v1");
+  });
+
+  it("removing the LIVE slot falls to its neighbour, and clamps at the end", () => {
+    const n = new CableSwitchNode();
+    n.addValueInput(); // v2
+    n.activeIndex = 1;
+    n.removeValueInput("v1"); // the live slot itself
+    expect(Object.keys(n.inputs)[n.activeIndex]).toBe("v2"); // next one down
+    n.activeIndex = 1; // v2, now the last slot
+    n.removeValueInput("v2");
+    expect(n.activeIndex).toBe(0);
+    expect(Object.keys(n.inputs)[n.activeIndex]).toBe("v0");
+  });
+
+  it("multi-mode selection is keyed, so a removal never re-points it", () => {
+    const n = new CableSwitchNode();
+    n.addValueInput(); // v2
+    n.multiSelect = true;
+    n.selectedKeys = ["v1", "v2"];
+    n.removeValueInput("v0");
+    const cube = n.data({ v1: [10], v2: [20] }).out as CubeValue;
+    expect(cube.columns[1].cells).toEqual([10, 20]);
+  });
 });
