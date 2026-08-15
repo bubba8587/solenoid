@@ -104,9 +104,11 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   over both maps; `isSet` follows, so an unset Default is still #N/A. Persistence and the
   text form carry `stringLiterals` generically — nothing new there. PERSIST-9 caught
   `autoLiterals` as an unclassified field; it is a class constant.
-- **Left alone, worth a look later:** the same number-only fallthrough covers wildcard
-  rows on Build Frame (`value*`) and the List literal — a widening those would also want,
-  but they are a different family.
+- **No other node needs this** (swept, author-corrected). The List literal switches its
+  ELEMENT TYPE on the card, so its rows carry a concrete `LIST_ELEM_SOCKET` and never hit
+  the wildcard path. SUMIFS and Frame Filter already render `InlineTextField` on their
+  `any` criteria-value rows from their own components. Build Frame's value half is
+  `adoptiveListIn` — a rank-bearing rung `takesAutoLiteral` excludes on purpose.
 
 ### SESSION DIGEST (2026-08-15 — Input Switch: removing a row re-pointed the live slot)
 - **Bug.** `CableSwitchNode.activeIndex` is POSITIONAL over `Object.keys(inputs)` while
