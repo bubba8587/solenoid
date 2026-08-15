@@ -299,6 +299,72 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
   });
 });
 
+// The slots are WILDCARD sockets, so a typed literal can be text as well as a number —
+// it just lands in the other map. The inline field writes exactly one of the two.
+describe("value selectors take TEXT literals on their wildcard slots", () => {
+  it("SWITCH matches a typed text expression against typed text cases", () => {
+    const n = new SwitchNode();
+    n.literals = {};
+    n.stringLiterals = { expr: "b", when0: "a", then0: "first", when1: "b", then1: "second" };
+    expect(n.data({}).result).toBe("second");
+  });
+  it("SWITCH falls to a typed TEXT default, and an unset one is still #N/A", () => {
+    const n = new SwitchNode();
+    n.literals = { expr: 9, when0: 1, then0: 10 };
+    n.stringLiterals = {};
+    const miss = n.data({}).result;
+    expect(isSolError(miss) && (miss as { code: string }).code).toBe("#N/A");
+    n.stringLiterals.default = "none";
+    expect(n.data({}).result).toBe("none");
+  });
+  it("SWITCH keeps a numeric case distinct from a text one", () => {
+    const n = new SwitchNode();
+    n.literals = { expr: 12, when0: 12, then0: 1 };
+    n.stringLiterals = { when1: "12", then1: "text branch" };
+    expect(n.data({}).result).toBe(1);
+    n.literals = { when0: 12, then0: 1 };            // expr now text, not 12
+    n.stringLiterals = { expr: "12", when1: "12", then1: "text branch" };
+    expect(n.data({}).result).toBe("text branch");
+  });
+  it("SWITCH: a WIRED slot still beats the typed literal, blank included", () => {
+    const n = new SwitchNode();
+    n.literals = { expr: 1, when0: 1, then0: 10 };
+    n.stringLiterals = { then0: "typed" };
+    expect(n.data({ then0: [null] }).result).toBeNull();
+  });
+  it("removeValuePair drops the pair's TEXT literals too", () => {
+    const n = new SwitchNode();
+    n.stringLiterals = { when1: "x", then1: "y", when2: "keep" };
+    n.removeValuePair("when1");
+    expect(n.stringLiterals).toEqual({ when2: "keep" });
+  });
+  it("IFS returns a typed text value, and a typed text Otherwise", () => {
+    const n = new IfsNode();
+    n.literals = { cond0: 0, cond1: 1 };
+    n.stringLiterals = { val1: "matched" };
+    expect(n.data({}).result).toBe("matched");
+    n.literals = { cond0: 0, cond1: 0 };
+    n.stringLiterals = { otherwise: "fell through" };
+    expect(n.data({}).result).toBe("fell through");
+  });
+  it("CHOOSE returns a typed text value, and drops it with the row", () => {
+    const n = new ChooseNode();
+    n.literals = { index: 2 };
+    n.stringLiterals = { v1: "second" };
+    expect(n.data({}).result).toBe("second");
+    n.removeValueInput("v1");
+    expect(n.stringLiterals).toEqual({});
+  });
+  it("IF returns a typed text branch on either side", () => {
+    const n = new IfNode();
+    n.literals = { cond: 1 };
+    n.stringLiterals = { then: "yes", else: "no" };
+    expect(n.data({}).result).toBe("yes");
+    n.literals.cond = 0;
+    expect(n.data({}).result).toBe("no");
+  });
+});
+
 import { IFErrorNode, NaNode } from "./logic";
 import { isSolError } from "../errorValue";
 

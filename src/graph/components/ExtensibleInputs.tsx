@@ -11,6 +11,9 @@ import {
   InlineInputs,
   InlineNumberField,
   InlineTextField,
+  InlineAutoField,
+  takesAutoLiteral,
+  type AutoLiteral,
 } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -24,6 +27,8 @@ export interface ExtensibleNode {
   // One or the other: number rows bind to `literals`, string rows to `stringLiterals`.
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
+  /** See `takesAutoLiteral` — a wildcard row takes a number OR text. */
+  autoLiterals?: boolean;
   addValueInput: () => string;
   removeValueInput: (key: string) => void;
 }
@@ -119,6 +124,15 @@ export function ExtensibleInputs({
     await processGraph();
   }
 
+  async function setAuto(key: string, v: AutoLiteral) {
+    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
+    delete literals[key];
+    delete strLiterals[key];
+    if (typeof v === "number") literals[key] = v;
+    else if (typeof v === "string") strLiterals[key] = v;
+    await processGraph();
+  }
+
   async function addRow() {
     const key = node.addValueInput();
     pushRowAddUndo(node, [key], () => node.removeValueInput(key));
@@ -185,6 +199,8 @@ export function ExtensibleInputs({
               )
             ) : isConn ? (
               <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by an incoming cable">↩ wired</span>
+            ) : takesAutoLiteral(node, dt) ? (
+              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} />
             ) : isTextField ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             ) : (

@@ -196,6 +196,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     passthrough: "the passthrough() declaration (a class-field function)",
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (VAL-10)",
+    autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
     // ── runtime edge-detection (EFFECT-2) ──
     lastStatusKey: "EFFECT-2 edge state", lastEvalOp: "EFFECT-2 edge state",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──

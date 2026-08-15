@@ -9,7 +9,12 @@ import {
   InlineInputs,
   InlineNumberField,
   InlineTextField,
+  InlineAutoField,
+  takesAutoLiteral,
+  type AutoLiteral,
 } from "./inlineInput";
+
+const dataTypeOf = (s: ClassicPreset.Socket): string | undefined => (s as { dataType?: string }).dataType;
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
@@ -31,6 +36,8 @@ export interface PairedExtensibleNode {
   pairLabels: [string, string];
   /** Inline TEXT literals for a string-socket half; numeric slots use `literals`. */
   stringLiterals?: Record<string, string>;
+  /** See `takesAutoLiteral` — a wildcard half takes a number OR text. */
+  autoLiterals?: boolean;
 }
 
 /** `leadingKeys`/`trailingKeys` are fixed inputs before/after the pairs; each
@@ -61,6 +68,15 @@ export function PairedExtensibleInputs({
   async function setStrLiteral(key: string, v: string) {
     if (v === "") delete strLiterals[key];
     else strLiterals[key] = v;
+    await processGraph();
+  }
+
+  async function setAutoLiteral(key: string, v: AutoLiteral) {
+    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
+    delete literals[key];
+    delete strLiterals[key];
+    if (typeof v === "number") literals[key] = v;
+    else if (typeof v === "string") strLiterals[key] = v;
     await processGraph();
   }
 
@@ -110,7 +126,9 @@ export function PairedExtensibleInputs({
         <span className="solenoid-node__io-label">{label}</span>
         {isConn ? (
           <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
-        ) : (input.socket as { dataType?: string }).dataType === "string" ? (
+        ) : takesAutoLiteral(node, dataTypeOf(input.socket)) ? (
+          <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAutoLiteral(key, v)} placeholder={placeholder} />
+        ) : dataTypeOf(input.socket) === "string" ? (
           <InlineTextField value={strLiterals[key]} onChange={(v) => void setStrLiteral(key, v)} placeholder={placeholder} />
         ) : (
           <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} placeholder={placeholder} />

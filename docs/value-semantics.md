@@ -142,6 +142,15 @@ single most common way a Solenoid node has produced a confidently wrong answer.
 `nodes/readInputSweep.test.ts` ratchets the remaining occurrences down and fails on new
 ones.
 
+**A WILDCARD slot's literal lives in one of TWO maps.** A slot typed `any`/`trueany` is
+element-agnostic, so its typed literal may be a number (`literals`) or text
+(`stringLiterals`) — the inline field writes exactly one and clears the other, so the
+reader never breaks a tie. Only a node that declares `autoLiterals = true` gets that
+field (the value selectors IF/IFS/SWITCH/CHOOSE, whose wildcard rows are value
+branches); a wildcard SINK or relay — Display, Cast, Report, Cube — leaves it off and
+stays wire-only. The unwired-vs-wired rule above is unchanged; it just reads both maps
+(`pickSlot` in `nodes/logic.ts`).
+
 ### What a wired blank DOES, by the input's role
 
 Reading the input correctly is half of it; the other half is what the node then does.

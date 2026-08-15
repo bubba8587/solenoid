@@ -321,6 +321,84 @@ export function InlineTextField({
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} />;
 }
 
+/** A wildcard slot's literal, kept in whichever of the two maps fits. `Number(t)` and
+ *  not `parseFloat`, so "12abc" is TEXT rather than 12. */
+export type AutoLiteral = number | string | undefined;
+const autoToText = (v: AutoLiteral) => (v == null ? "" : String(v));
+const parseAuto = (t: string): AutoLiteral => {
+  const trimmed = t.trim();
+  if (trimmed === "") return undefined;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : t;
+};
+
+/** ONE field for a WILDCARD value slot, which can hold a number or text: a
+ *  numeric-looking entry commits as a number and anything else as text, with the quote
+ *  chrome showing which landed — a SWITCH case of `12` is not a case of `"12"`. */
+export function InlineAutoField({
+  num,
+  text,
+  onChange,
+  placeholder,
+}: {
+  num: number | undefined;
+  text: string | undefined;
+  /** Writes exactly one of the two maps; the caller clears the other. */
+  onChange: (v: AutoLiteral) => void;
+  placeholder?: string;
+}) {
+  const committed: AutoLiteral = text !== undefined ? text : num;
+  const field = useDraftCommit<AutoLiteral>(committed, autoToText, parseAuto, onChange);
+  const quoted = typeof committed === "string";
+  // Drag-to-scrub is kept for the NUMERIC state, so a wildcard slot holding a number
+  // behaves like the number field it replaced.
+  const scrub = useNumberScrub(
+    num,
+    (v) => field.setDraft(autoToText(v)),
+    (next) => {
+      onChange(next);
+      pushHistory(() => onChange(num), () => onChange(next));
+    },
+  );
+  // Kept `type="text"`: a number input refuses a non-numeric draft outright, which is
+  // the whole point of this field.
+  const input = (
+    <input
+      type="text"
+      className={quoted ? "solenoid-node__quoted-input" : "solenoid-node__inline-input"}
+      value={field.draft}
+      placeholder={placeholder}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      {...(quoted ? { onPointerDown: stopDragStart } : scrub)}
+      onMouseDown={(e) => e.stopPropagation()}
+      spellCheck={false}
+    />
+  );
+  // The chrome only flips on COMMIT, when the field is already blurred, so the input
+  // remounting here costs no focus.
+  if (!quoted) return input;
+  return (
+    <span className="solenoid-node__quoted solenoid-node__quoted--inline">
+      <span className="solenoid-node__quote" aria-hidden="true">"</span>
+      <span className="solenoid-node__quoted-field">{input}</span>
+      <span className="solenoid-node__quote" aria-hidden="true">"</span>
+    </span>
+  );
+}
+
+/** Opted in by the VALUE SELECTORS, whose wildcard rows are value branches. A wildcard
+ *  SINK or relay (Display, Cast, Report, Cube) leaves it off and stays wire-only. */
+export interface AutoLiteralHost {
+  autoLiterals?: boolean;
+  stringLiterals?: Record<string, string>;
+}
+
+export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
+  return !!node.autoLiterals && (dt === "any" || dt === "trueany");
+}
+
 /** Split a `"Foo (default X)"` socket label into label + placeholder, so the default
  *  reads as a muted cue in the box rather than parenthetical prose. */
 const DEFAULT_LABEL_RE = /^(.*?)\s*\(default\s+(.+?)\)\s*$/;
@@ -363,6 +441,8 @@ export type InlineNode = {
   inputs: Record<string, InputPort | undefined>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
+  /** See `takesAutoLiteral` — the value selectors set it. */
+  autoLiterals?: boolean;
 };
 
 type Props = {
@@ -433,6 +513,16 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     await processGraph(node.id);
   }
 
+  async function setAuto(key: string, v: AutoLiteral) {
+    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
+    delete literals[key];
+    delete strLiterals[key];
+    if (typeof v === "number") literals[key] = v;
+    else if (typeof v === "string") strLiterals[key] = v;
+    settleTypes();
+    await processGraph(node.id);
+  }
+
   // Collapsed: ≥2 inputs aggregate into one pill, or the dots spill past the small
   // node; a lone input centers on the display box, matching the output.
   if (collapsed) {
@@ -478,7 +568,9 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
                 title="Driven by the incoming cable named here"
               >↩ {incoming.get(key)?.label || "wired"}</span>
             ) : cableOnlyKeys?.has(key) ? null
-              : isNumber ? (
+              : takesAutoLiteral(node, dt) ? (
+              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} placeholder={placeholder} />
+            ) : isNumber ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />

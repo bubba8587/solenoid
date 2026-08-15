@@ -41,10 +41,27 @@ const triBool = (x: number | boolean | null): Tri =>
 // Condition truthiness for the value-selectors: the coerced boolean AND a raw 0/1.
 const truthy = (x: unknown): boolean => x === true || (typeof x === "number" && x !== 0);
 
+/** A value selector's slots are WILDCARD, so a typed literal lands in whichever of the
+ *  two maps fits and both have to be read back. The inline field writes exactly one, so
+ *  there is no tie to break. */
+type LiteralHost = { literals: Record<string, number>; stringLiterals: Record<string, string> };
+
+function typedLiteral(node: LiteralHost, key: string): number | string | undefined {
+  const text = node.stringLiterals[key];
+  return text !== undefined ? text : node.literals[key];
+}
+
+/** Read a slot: a connected cable's value wins even when null, and only an UNWIRED slot
+ *  falls back to its typed literal (`readInput`'s rule, over both literal maps). */
+function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
+  if (inputs[key]?.length) return inputs[key]![0];
+  return typedLiteral(node, key) ?? null;
+}
+
 /** SET = a cable OR a typed literal; UNSET is distinct from a slot deliberately set
  *  to null/0, and an unmatched selector with an UNSET fallback is #N/A, not null. */
-function isSet(inputs: Record<string, unknown[] | undefined>, literals: Record<string, number>, key: string): boolean {
-  return inputs[key] !== undefined || literals[key] !== undefined;
+function isSet(inputs: Record<string, unknown[] | undefined>, node: LiteralHost, key: string): boolean {
+  return inputs[key] !== undefined || typedLiteral(node, key) !== undefined;
 }
 
 // On load/paste a paired node must rebuild the EXACT pair ids present in the captured
@@ -143,6 +160,9 @@ export class IfNode extends ClassicPreset.Node {
   label: string;
   cachedResult: unknown = null;
   literals: Record<string, number> = { cond: 0, then: 0, else: 0 };
+  stringLiterals: Record<string, string> = {};
+  // The branches are wildcard VALUE slots, so each takes a number or text literal.
+  autoLiterals = true;
   width = 180;
   height = 200;
 
@@ -166,8 +186,8 @@ export class IfNode extends ClassicPreset.Node {
   data(inputs: { cond?: unknown[]; then?: unknown[]; else?: unknown[] }) {
     // Connection-presence, not `??`, so a WIRED null/false survives.
     const cond = inputs.cond?.length ? inputs.cond[0] : this.literals.cond;
-    const then = inputs.then?.length ? inputs.then[0] : this.literals.then;
-    const els  = inputs.else?.length ? inputs.else[0] : this.literals.else;
+    const then = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "then");
+    const els  = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "else");
     this._selectedUnitKey = Array.isArray(cond) || isMissing(cond) ? null : truthy(cond) ? "then" : "else";
     // A missing condition → null: no branch can be picked.
     const result = broadcastEl<unknown, unknown>(
@@ -460,6 +480,9 @@ export class ChooseNode extends ClassicPreset.Node {
   cachedResult: unknown = null;
   // Sparse literals: only typed/wired `v*` slots contribute.
   literals: Record<string, number> = { index: 1 };
+  stringLiterals: Record<string, string> = {};
+  // The `v*` rows are wildcard VALUE slots, so each takes a number or text literal.
+  autoLiterals = true;
   nextInputId = 0;
   width = 180;
   height = 250;
@@ -501,6 +524,7 @@ export class ChooseNode extends ClassicPreset.Node {
   removeValueInput(key: string): void {
     this.removeInput(key);
     delete this.literals[key];
+    delete this.stringLiterals[key];
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -518,7 +542,7 @@ export class ChooseNode extends ClassicPreset.Node {
       this.cachedResult = err;
       return { result: err };
     }
-    const result = inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
+    const result = pickSlot(this, inputs, key);
     this.cachedResult = result;
     return { result };
   }
@@ -531,6 +555,9 @@ export class SwitchNode extends ClassicPreset.Node {
   cachedResult: unknown = null;
   // Pair `i` owns `when${i}` / `then${i}`.
   literals: Record<string, number> = { expr: 0, default: 0 };
+  stringLiterals: Record<string, string> = {};
+  // Every slot here is wildcard, so a case can be matched on text as well as a number.
+  autoLiterals = true;
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
   width = 180;
@@ -580,13 +607,14 @@ export class SwitchNode extends ClassicPreset.Node {
     const id = aKey.slice(4);
     this.removeInput(`when${id}`);
     this.removeInput(`then${id}`);
-    delete this.literals[`when${id}`];
-    delete this.literals[`then${id}`];
+    for (const k of [`when${id}`, `then${id}`]) {
+      delete this.literals[k];
+      delete this.stringLiterals[k];
+    }
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const pick = (key: string): unknown =>
-      inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
+    const pick = (key: string): unknown => pickSlot(this, inputs, key);
     // Exact equality across every type, with no numeric tolerance and no date-serial
     // special case.
     const expr = pick("expr");
@@ -606,7 +634,7 @@ export class SwitchNode extends ClassicPreset.Node {
     }
     // An UNSET Default is a logic hole → #N/A; a SET one — even null/0 — returns as-is.
     this._selectedUnitKey = "default";
-    if (!isSet(inputs, this.literals, "default")) {
+    if (!isSet(inputs, this, "default")) {
       const err = solError("#N/A", "No SWITCH case matched and no Default was set");
       this.cachedResult = err;
       return { result: err };
@@ -624,6 +652,9 @@ export class IfsNode extends ClassicPreset.Node {
   cachedResult: unknown = null;
   // Pair `i` owns `cond${i}` / `val${i}`; sparse literals, only set slots contribute.
   literals: Record<string, number> = {};
+  stringLiterals: Record<string, string> = {};
+  // The `val*` rows and Otherwise are wildcard VALUE slots (a `cond*` stays logical).
+  autoLiterals = true;
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["If", "Then"];
   width = 180;
@@ -671,13 +702,14 @@ export class IfsNode extends ClassicPreset.Node {
     const id = aKey.slice(4);
     this.removeInput(`cond${id}`);
     this.removeInput(`val${id}`);
-    delete this.literals[`cond${id}`];
-    delete this.literals[`val${id}`];
+    for (const k of [`cond${id}`, `val${id}`]) {
+      delete this.literals[k];
+      delete this.stringLiterals[k];
+    }
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const pick = (key: string): unknown =>
-      inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
+    const pick = (key: string): unknown => pickSlot(this, inputs, key);
     for (const [condKey, valKey] of this.valuePairKeys()) {
       const cond = pick(condKey);
       // A WIRED blank condition is UNKNOWN — the row might have matched, so the whole
@@ -697,7 +729,7 @@ export class IfsNode extends ClassicPreset.Node {
     // An UNSET Otherwise is a logic hole → a catchable #N/A, NOT a silent null that
     // aggregators skip; a SET fallback — even null/0 — is returned.
     this._selectedUnitKey = "otherwise";
-    if (!isSet(inputs, this.literals, "otherwise")) {
+    if (!isSet(inputs, this, "otherwise")) {
       const err = solError("#N/A", "No IFS condition matched and no Otherwise was set");
       this.cachedResult = err;
       return { result: err };

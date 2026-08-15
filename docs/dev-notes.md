@@ -86,6 +86,28 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-15 — value selectors: a wildcard slot could only hold a NUMBER)
+- **Bug (author-reported, on SWITCH).** Every SWITCH slot is a wildcard socket, but the
+  inline literal fields were number-only, so a text case could only be WIRED. Wider than
+  the report: `PairedExtensibleInputs`/`ExtensibleInputs` fall through to a number field
+  for an unrecognized type (SWITCH's when/then/default, IFS's val*/otherwise, CHOOSE's
+  v*), while `InlineInputs` falls through to NOTHING — so SWITCH's Expression row and
+  IF's two branch rows had no field at all despite shipping seeded literals.
+- **Fix.** `InlineAutoField` (`inlineInput.tsx`) — one field per wildcard value slot: a
+  numeric-looking entry commits to `literals`, anything else to `stringLiterals`, and the
+  quote chrome shows which landed (a case of `12` is not a case of `"12"`). `Number(t)`,
+  not `parseFloat`, so "12abc" is text. Drag-to-scrub survives in the numeric state.
+- **Opt-in, not a blanket rule.** `autoLiterals = true` on IF/IFS/SWITCH/CHOOSE, read via
+  `takesAutoLiteral` by all three row components. Wildcard SINKS and relays (Display,
+  Cast, Report, Cube, Test) keep no field — they are wire-only by design, and a blanket
+  dataType rule would have grown them a literal box. Reading is `pickSlot`/`typedLiteral`
+  over both maps; `isSet` follows, so an unset Default is still #N/A. Persistence and the
+  text form carry `stringLiterals` generically — nothing new there. PERSIST-9 caught
+  `autoLiterals` as an unclassified field; it is a class constant.
+- **Left alone, worth a look later:** the same number-only fallthrough covers wildcard
+  rows on Build Frame (`value*`) and the List literal — a widening those would also want,
+  but they are a different family.
+
 ### SESSION DIGEST (2026-08-15 — Input Switch: removing a row re-pointed the live slot)
 - **Bug.** `CableSwitchNode.activeIndex` is POSITIONAL over `Object.keys(inputs)` while
   slots are KEYED. Removing a row ABOVE the live one shifted every later slot up, so the
