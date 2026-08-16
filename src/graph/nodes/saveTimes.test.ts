@@ -1,20 +1,27 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { SaveTimesNode } from "./input";
 import { serialToJsDate } from "./dateSerial";
-import { saveTimeStore } from "../saveTimeStore";
+import { saveTimeStore, type SaveClock } from "../saveTimeStore";
 import { extractInit } from "../copyPaste";
 
+// The class reads through the seam, so the tests stub the provider directly; the real
+// provider (documentStore's, over the current SolDoc) is pinned in
+// documentStorePersist.test.ts.
+const NULLS: SaveClock = { autosavedAt: null, fileSavedAt: null };
+const provide = (clock: SaveClock) => saveTimeStore.setProvider(() => clock);
+
 describe("SaveTimesNode", () => {
-  beforeEach(() => saveTimeStore.clear());
+  afterEach(() => provide(NULLS));
 
   it("reads blank before either save has happened", () => {
+    provide(NULLS);
     const n = new SaveTimesNode();
     expect(n.data()).toEqual({ autosave: null, filesave: null });
   });
 
   it("emits each clock reading as a date serial carrying its time of day", () => {
     const at = Date.UTC(2026, 7, 16, 14, 32, 0);
-    saveTimeStore.markAutosave(at);
+    provide({ autosavedAt: at, fileSavedAt: null });
     const n = new SaveTimesNode();
     const { autosave, filesave } = n.data();
     expect(filesave).toBeNull();
@@ -28,8 +35,7 @@ describe("SaveTimesNode", () => {
   it("tracks the two clocks apart", () => {
     const auto = Date.UTC(2026, 7, 16, 9, 0, 0);
     const file = Date.UTC(2026, 7, 16, 9, 5, 0);
-    saveTimeStore.markAutosave(auto);
-    saveTimeStore.markFileSave(file);
+    provide({ autosavedAt: auto, fileSavedAt: file });
     const n = new SaveTimesNode();
     const out = n.data();
     expect(serialToJsDate(out.autosave!).getTime()).toBeCloseTo(auto, -1);
@@ -37,10 +43,11 @@ describe("SaveTimesNode", () => {
   });
 
   it("caches both readings for the card, and re-reads on the next data()", () => {
+    provide(NULLS);
     const n = new SaveTimesNode();
     n.data();
     expect(n.cachedAutosave).toBeNull();
-    saveTimeStore.markAutosave(Date.UTC(2026, 7, 16, 12, 0, 0));
+    provide({ autosavedAt: Date.UTC(2026, 7, 16, 12, 0, 0), fileSavedAt: null });
     n.data();
     expect(n.cachedAutosave).not.toBeNull();
     expect(n.cachedFileSave).toBeNull();

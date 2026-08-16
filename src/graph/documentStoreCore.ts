@@ -11,9 +11,11 @@ export interface SolDoc {
   id: string;
   name: string;
   graph: SavedGraph;
-  updatedAt: number; // epoch ms of the last change
+  updatedAt: number; // epoch ms of the last change — doubles as the autosave clock
   // Absolute disk path (desktop only); undefined for a never-saved doc. Save writes here.
   filePath?: string;
+  // Epoch ms of the last Save / Save As to a file; undefined = never written.
+  fileSavedAt?: number;
 }
 
 export interface DocLibrary {
@@ -69,6 +71,14 @@ export function setDocPath(lib: DocLibrary, id: string, filePath: string, name?:
   };
 }
 
+/** Stamp a document as written to a file (Save / Save As). */
+export function setDocFileSaved(lib: DocLibrary, id: string, at: number): DocLibrary {
+  return {
+    ...lib,
+    documents: lib.documents.map((d) => (d.id === id ? { ...d, fileSavedAt: at } : d)),
+  };
+}
+
 /** Write a graph into the current document, bumping updatedAt and floating it to the top. */
 export function updateCurrentGraph(lib: DocLibrary, graph: SavedGraph, now: number): DocLibrary {
   const cur = getCurrent(lib);
@@ -87,7 +97,8 @@ export function removeDocument(lib: DocLibrary, id: string): DocLibrary {
 }
 
 /** Copy a document under a new id + name; the copy must NOT inherit the source's disk
- *  path, or Save would overwrite the original file. */
+ *  path (or Save would overwrite the original file) — nor its fileSavedAt, since the
+ *  copy has never been written anywhere. */
 export function duplicateDocument(lib: DocLibrary, id: string, newId: string, newName: string): DocLibrary {
   const src = lib.documents.find((d) => d.id === id);
   if (!src) return lib;
@@ -108,6 +119,7 @@ export function validateDoc(data: unknown): SolDoc | null {
     graph: dd.graph as SavedGraph,
     updatedAt: typeof dd.updatedAt === "number" ? dd.updatedAt : 0,
     ...(typeof dd.filePath === "string" ? { filePath: dd.filePath } : {}),
+    ...(typeof dd.fileSavedAt === "number" ? { fileSavedAt: dd.fileSavedAt } : {}),
   };
 }
 

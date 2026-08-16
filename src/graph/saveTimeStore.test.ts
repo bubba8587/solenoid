@@ -1,27 +1,32 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { saveTimeStore } from "./saveTimeStore";
+import { describe, it, expect, afterEach } from "vitest";
+import { saveTimeStore, type SaveClock } from "./saveTimeStore";
+
+const NULLS: SaveClock = { autosavedAt: null, fileSavedAt: null };
 
 describe("saveTimeStore", () => {
-  beforeEach(() => saveTimeStore.clear());
+  afterEach(() => saveTimeStore.setProvider(() => NULLS));
 
-  it("starts empty and keeps the two clocks independent", () => {
+  it("reads null on both clocks with no provider registered", () => {
     expect(saveTimeStore.lastAutosaveAt()).toBeNull();
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();
-    saveTimeStore.markAutosave(1000);
+  });
+
+  it("delegates reads to the provider, live", () => {
+    let clock: SaveClock = { autosavedAt: 1000, fileSavedAt: null };
+    saveTimeStore.setProvider(() => clock);
     expect(saveTimeStore.lastAutosaveAt()).toBe(1000);
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();
-    saveTimeStore.markFileSave(2000);
-    expect(saveTimeStore.lastAutosaveAt()).toBe(1000);
+    clock = { autosavedAt: 1000, fileSavedAt: 2000 }; // no bump needed for a read
     expect(saveTimeStore.lastFileSaveAt()).toBe(2000);
   });
 
-  it("notifies subscribers on every mark", () => {
+  it("notifies subscribers on setProvider and on bump", () => {
     let hits = 0;
     const off = saveTimeStore.subscribe(() => { hits++; });
-    saveTimeStore.markAutosave(1);
-    saveTimeStore.markFileSave(2);
+    saveTimeStore.setProvider(() => NULLS);
+    saveTimeStore.bump();
     off();
-    saveTimeStore.markAutosave(3);
+    saveTimeStore.bump();
     expect(hits).toBe(2);
   });
 });

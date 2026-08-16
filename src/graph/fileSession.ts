@@ -14,7 +14,6 @@ import {
 } from "./fileBridge";
 import { bundleLocalImages } from "./imageAssets";
 import { pushNotice } from "./noticeStore";
-import { saveTimeStore } from "./saveTimeStore";
 
 function suggestedName(): string {
   const n = documentStore.currentName().trim() || "Untitled";
@@ -42,7 +41,7 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       await writeTextFilePath(path, JSON.stringify(g, null, 2));
       if (fresh) documentStore.bindCurrentToPath(path, fileNameFromPath(path));
       documentStore.captureCurrent(); // the localStorage copy carries assetPaths too
-      saveTimeStore.markFileSave();
+      documentStore.markCurrentFileSaved();
       pushNotice(`Saved ${fileNameFromPath(path)}`, "info", 2500);
       if (failed > 0) {
         pushNotice(`${failed} image${failed === 1 ? "" : "s"} couldn't be written to the images folder.`, "warn");
@@ -53,7 +52,7 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
     const g = serializeGraph();
     if (!g) return;
     await saveTextFileDialog(suggestedName(), JSON.stringify(g, null, 2));
-    saveTimeStore.markFileSave();
+    documentStore.markCurrentFileSaved();
   } catch (e) {
     console.error("[solenoid] save failed", e);
     pushNotice("Couldn't save the file.", "error", 0);

@@ -240,9 +240,9 @@ export class BooleanInputNode extends ClassicPreset.Node {
   }
 }
 
-/** Reads the save clock (`saveTimeStore`), so the two serials refresh on any recompute
- *  and the card's Refresh button is just `requestRecalc()`. Session-scoped: a freshly
- *  loaded document reports blank until its first autosave. */
+/** Reads the save clock (`saveTimeStore` — the leaf seam over the current SolDoc's
+ *  per-document timestamps), so the two serials refresh on any recompute and the
+ *  card's Refresh button is just `requestRecalc()`. */
 export class SaveTimesNode extends ClassicPreset.Node {
   label: string;
   cachedAutosave: number | null = null;

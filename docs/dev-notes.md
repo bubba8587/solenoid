@@ -92,13 +92,19 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   (`requestRecalc()`) and Save (`saveToDisk()`, the top bar's own verb). Card is the
   label-above-hero-box pattern (`MeasuredSocketRow hero`), because a `ValueDisplay` plus a
   button does not fit the 22px io-row.
-- **`saveTimeStore.ts` — a LEAF store is the only way a node can read this.** `documentStore`
-  and `fileSession` both reach rete through `persistence`, so importing either from
-  `nodes/*` is a cycle. The store imports `storeKit` alone; `captureCurrent()` marks the
-  autosave and `saveToDisk()` marks the file save. Sanctioned in STORE-1 (not node-keyed).
-- **Session-scoped by choice.** Per-document, reload-surviving timestamps would mean a new
-  `SolDoc` field, `validateDoc`, and a duplicate-drops-it rule like `filePath` — backlogged
-  rather than smuggled in under a UI task.
+- **`saveTimeStore.ts` — a LEAF read seam is the only way a node can reach this.**
+  `documentStore` and `fileSession` both reach rete through `persistence`, so importing
+  either from `nodes/*` is a cycle. The store imports `storeKit` alone; `documentStore`
+  injects a provider over the current `SolDoc` at module load (the `setPushHistory`
+  pattern) and forwards its notifier wholesale (`subscribe(saveTimeStore.bump)`).
+  Sanctioned in STORE-1 (not node-keyed).
+- **The clocks are per-document and reload-surviving** (same session, follow-up to the
+  landed card). Autosave time IS `updatedAt` — one home per fact; it is stamped exactly
+  when the doc's graph lands in storage. File-save time is a new `SolDoc.fileSavedAt`:
+  `setDocFileSaved` (PERSIST-3 freeze walk extended), carried by `validateDoc`, dropped
+  by `duplicateDocument` like `filePath`, stamped by `documentStore.markCurrentFileSaved()`
+  from both `saveToDisk` paths. NOT in the exported `.json` (SavedGraph untouched): a file
+  opened on another machine reads blank until its first save there.
 - **Icons extracted, not copied**: `SaveIcon.tsx` (was inline in `TopBar.tsx`) and
   `RefreshIcon.tsx` (was inline in `ConnectionNodes.tsx`), both now shared; the node reuses
   `.sol-conn__refresh` for the button chrome, as `WriteNodes.tsx` already does.

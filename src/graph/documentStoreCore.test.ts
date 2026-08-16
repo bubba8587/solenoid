@@ -5,6 +5,7 @@ import {
   renameDocument,
   setCurrent,
   setDocPath,
+  setDocFileSaved,
   updateCurrentGraph,
   removeDocument,
   duplicateDocument,
@@ -44,6 +45,29 @@ describe("file path (disk binding)", () => {
     lib = duplicateDocument(lib, "a", "a2", "Budget copy");
     expect(getCurrent(lib)?.id).toBe("a2");
     expect(getCurrent(lib)?.filePath).toBeUndefined();
+  });
+
+  it("setDocFileSaved stamps one doc's file-save clock and no other", () => {
+    let lib = addDocument(addDocument(emptyLibrary(), doc("a", "A")), doc("b", "B"));
+    lib = setDocFileSaved(lib, "a", 1234);
+    expect(lib.documents.find((d) => d.id === "a")?.fileSavedAt).toBe(1234);
+    expect(lib.documents.find((d) => d.id === "b")?.fileSavedAt).toBeUndefined();
+  });
+
+  it("a duplicate does NOT inherit the source's fileSavedAt (it has never been written)", () => {
+    let lib = addDocument(emptyLibrary(), doc("a", "Budget"));
+    lib = setDocFileSaved(lib, "a", 1234);
+    lib = duplicateDocument(lib, "a", "a2", "Budget copy");
+    expect(getCurrent(lib)?.fileSavedAt).toBeUndefined();
+  });
+
+  it("validateLibrary round-trips a fileSavedAt", () => {
+    const raw = {
+      v: 1,
+      documents: [{ id: "a", name: "Budget", graph: graph(), updatedAt: 0, fileSavedAt: 999 }],
+      currentId: "a",
+    };
+    expect(validateLibrary(raw)?.documents[0].fileSavedAt).toBe(999);
   });
 
   it("validateLibrary round-trips a filePath", () => {
@@ -189,6 +213,7 @@ describe("PERSIST-3 — every transform returns new objects, never mutates (iden
       ["renameDocument", () => renameDocument(lib, "a", "A2")],
       ["setCurrent", () => setCurrent(lib, "a")],
       ["setDocPath", () => setDocPath(lib, "a", "/tmp/x.json", "X")],
+      ["setDocFileSaved", () => setDocFileSaved(lib, "a", 5)],
       ["updateCurrentGraph", () => updateCurrentGraph(lib, graph(), 1)],
       ["removeDocument", () => removeDocument(lib, "a")],
       ["duplicateDocument", () => duplicateDocument(lib, "a", "a2", "A copy")],

@@ -14,6 +14,7 @@ import {
   renameDocument,
   setCurrent,
   setDocPath,
+  setDocFileSaved,
   updateCurrentGraph,
   removeDocument,
   duplicateDocument,
@@ -229,6 +230,15 @@ export const documentStore = {
     notify();
   },
 
+  /** Stamp the current document as written to a file (called by fileSession's Save
+   *  paths after the write succeeds). */
+  markCurrentFileSaved(): void {
+    if (!_lib.currentId) return;
+    _lib = setDocFileSaved(_lib, _lib.currentId, Date.now());
+    persist();
+    notify();
+  },
+
   /** Load the library on startup. Returns true if a document was shown; false
    *  means there was nothing to restore (caller should create a first doc). */
   async restore(): Promise<boolean> {
@@ -252,10 +262,8 @@ export const documentStore = {
     if (isGraphRebuilding()) return;
     const g = serializeGraph();
     if (!g) return;
-    const now = Date.now();
-    _lib = updateCurrentGraph(_lib, g, now);
+    _lib = updateCurrentGraph(_lib, g, Date.now());
     persist();
-    saveTimeStore.markAutosave(now);
     notify();
   },
 
@@ -373,6 +381,15 @@ export const documentStore = {
     }
   },
 };
+
+// The save-clock provider (saveTimeStore is the leaf seam node classes read; the
+// clocks themselves live on SolDoc). Every library change may move the current doc's
+// clock — a capture, a file save, a doc switch — so the notifier forwards wholesale.
+saveTimeStore.setProvider(() => {
+  const cur = getCurrent(_lib);
+  return { autosavedAt: cur?.updatedAt ?? null, fileSavedAt: cur?.fileSavedAt ?? null };
+});
+subscribe(saveTimeStore.bump);
 
 // Seed the first document so a fresh user's canvas is never empty on first run.
 export async function ensureFirstDocument(): Promise<void> {

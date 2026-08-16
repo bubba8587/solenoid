@@ -1,36 +1,36 @@
-// Session-scoped save clock: when the document was last autosaved, and when it was last
-// written to a file. A LEAF module (storeKit only) — documentStore and fileSession reach
-// rete through persistence, so a node class can only read the clock from here.
+// The save-clock read seam. The clocks live per-document on SolDoc (updatedAt = last
+// autosave, fileSavedAt = last write to a file), but documentStore reaches rete through
+// persistence, so a node class can't import it — documentStore injects the provider
+// here at module load instead. A LEAF module (storeKit only), like the process.ts
+// setPushHistory pattern.
 
 import { createNotifier } from "./storeKit";
 
-const { notify, subscribe, version } = createNotifier();
+export interface SaveClock {
+  /** Epoch ms of the current doc's last autosave, or null with no doc / no provider. */
+  autosavedAt: number | null;
+  /** Epoch ms of the current doc's last Save / Save As to a file, or null. */
+  fileSavedAt: number | null;
+}
 
-let _autosaveAt: number | null = null;
-let _fileSaveAt: number | null = null;
+const EMPTY: SaveClock = { autosavedAt: null, fileSavedAt: null };
+
+const { notify, subscribe, version } = createNotifier();
+let _read: () => SaveClock = () => EMPTY;
 
 export const saveTimeStore = {
   subscribe,
   version,
 
-  /** Epoch ms of the last autosave, or null when none has run this session. */
-  lastAutosaveAt: (): number | null => _autosaveAt,
-  /** Epoch ms of the last write to a file, or null when none has run this session. */
-  lastFileSaveAt: (): number | null => _fileSaveAt,
+  lastAutosaveAt: (): number | null => _read().autosavedAt,
+  lastFileSaveAt: (): number | null => _read().fileSavedAt,
 
-  markAutosave(at: number = Date.now()): void {
-    _autosaveAt = at;
+  /** documentStore's registration (headless runs never call it, so reads stay null). */
+  setProvider(fn: () => SaveClock): void {
+    _read = fn;
     notify();
   },
 
-  markFileSave(at: number = Date.now()): void {
-    _fileSaveAt = at;
-    notify();
-  },
-
-  clear(): void {
-    _autosaveAt = null;
-    _fileSaveAt = null;
-    notify();
-  },
+  /** The provider's backing state moved (a save landed, or the current doc changed). */
+  bump: notify,
 };

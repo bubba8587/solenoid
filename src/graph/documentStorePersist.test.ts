@@ -19,6 +19,7 @@ const localStorageStub = {
 (globalThis as Record<string, unknown>).localStorage = localStorageStub;
 
 const { documentStore } = await import("./documentStore");
+const { saveTimeStore } = await import("./saveTimeStore");
 
 const keysMatching = (re: RegExp) => [..._mem.keys()].filter((k) => re.test(k));
 const docKeysFor = (id: string) => keysMatching(new RegExp(`^solenoid\\.docs\\.doc\\.${id}\\.`));
@@ -73,6 +74,27 @@ describe("per-doc autosave keys", () => {
     for (const k of docKeysFor(zeta.id)) _mem.set(k, "{not json");
     await documentStore.restore();
     expect(documentStore.list().some((m) => m.name === "Zeta")).toBe(false);
+  });
+});
+
+describe("the save clock — saveTimeStore reads the CURRENT doc through the provider", () => {
+  it("markCurrentFileSaved stamps only the current doc, and the stamp is persisted", () => {
+    documentStore.saveAs("Clock A");
+    const a = documentStore.list().find((m) => m.name === "Clock A")!;
+    expect(saveTimeStore.lastAutosaveAt()).not.toBeNull(); // stamped when the doc landed in storage
+    expect(saveTimeStore.lastFileSaveAt()).toBeNull();     // never written to a file
+
+    documentStore.markCurrentFileSaved();
+    const stamp = saveTimeStore.lastFileSaveAt();
+    expect(stamp).not.toBeNull();
+
+    // The stamp rides the persisted doc slot; validateDoc carries it back on restore.
+    const stored = docKeysFor(a.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    expect(stored.some((s) => s.doc?.fileSavedAt === stamp)).toBe(true);
+
+    // A different current doc reads ITS clock: the fresh fork was never file-saved.
+    documentStore.saveAs("Clock B");
+    expect(saveTimeStore.lastFileSaveAt()).toBeNull();
   });
 });
 
