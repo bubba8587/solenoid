@@ -91,8 +91,9 @@ export interface SavedGraph {
   meta?: { author?: string; tags?: string[] };
   // Epoch ms of the write that produced this file — stamped by the FILE-WRITE path
   // (fileSession) only, never by serializeGraph, so autosave captures and seed
-  // fixtures stay stable. Read once, at adoption: importAsDocument seeds
-  // SolDoc.fileSavedAt from it, which is what the Save Times card shows.
+  // fixtures stay stable. Read once, at adoption: importAsDocument seeds BOTH save
+  // clocks from it (fileSavedAt and updatedAt — saveToDisk captures right before
+  // writing, so at that instant the two facts coincide).
   savedAt?: number;
   // Pack provenance breadcrumb: the ACTIVE SET at save time, not a per-node
   // dependency list. Recorded now, not consumed on load until dormant packs ship.

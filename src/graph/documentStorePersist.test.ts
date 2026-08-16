@@ -97,22 +97,27 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();
   });
 
-  it("importAsDocument seeds fileSavedAt from the file's own savedAt stamp", async () => {
+  it("importAsDocument seeds BOTH clocks from the file's own savedAt stamp", async () => {
     await documentStore.importAsDocument(
       { v: 2, nodes: [], connections: [], savedAt: 1786871100000 },
       "Traveled",
       "/elsewhere/Traveled.json",
     );
     const doc = documentStore.list().find((m) => m.name === "Traveled")!;
-    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number; updatedAt?: number } });
     expect(stored.some((s) => s.doc?.fileSavedAt === 1786871100000)).toBe(true);
+    // The autosave clock (updatedAt) reads the file's stamp too — autosave is the
+    // primary save, so a traveled doc shows when its content was last saved.
+    expect(stored.some((s) => s.doc?.updatedAt === 1786871100000)).toBe(true);
   });
 
-  it("importAsDocument leaves the clock blank for a file with no stamp (old saves)", async () => {
+  it("importAsDocument leaves the clocks fresh/blank for a file with no stamp (old saves)", async () => {
+    const t0 = Date.now();
     await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Unstamped");
     const doc = documentStore.list().find((m) => m.name === "Unstamped")!;
-    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number; updatedAt?: number } });
     expect(stored.every((s) => s.doc?.fileSavedAt === undefined)).toBe(true);
+    expect(stored.some((s) => (s.doc?.updatedAt ?? 0) >= t0)).toBe(true); // adoption time, not zero
   });
 });
 

@@ -371,9 +371,14 @@ export const documentStore = {
     const prevId = _lib.currentId;
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
-    // The file's own write stamp seeds the file-save clock, so a doc opened on
-    // another machine shows when its file was really written, not blank.
-    if (typeof graph.savedAt === "number") doc.fileSavedAt = graph.savedAt;
+    // The file's own write stamp seeds BOTH clocks: saveToDisk captures right before
+    // it writes, so at that instant last-autosave ≡ the write time — one stamp is
+    // both facts. A doc opened on another machine then shows when its content was
+    // really saved (autosave is the primary save), not the import moment.
+    if (typeof graph.savedAt === "number") {
+      doc.fileSavedAt = graph.savedAt;
+      doc.updatedAt = graph.savedAt;
+    }
     _lib = addDocument(_lib, doc);
     persist();
     notify();

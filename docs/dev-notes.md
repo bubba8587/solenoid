@@ -104,13 +104,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   `setDocFileSaved` (PERSIST-3 freeze walk extended), carried by `validateDoc`, dropped
   by `duplicateDocument` like `filePath`, stamped by `documentStore.markCurrentFileSaved()`
   from both `saveToDisk` paths.
-- **The stamp travels in the file too.** `SavedGraph.savedAt` (epoch ms) is written by the
-  FILE-WRITE path only — never by `serializeGraph`, so autosave captures and seed fixtures
-  stay stable — and read once, at adoption: `importAsDocument` seeds `fileSavedAt` from it.
-  One `Date.now()` covers the file bytes and the library, so a round trip through another
-  machine reads back the same instant. Rides the text-form sidecar like `meta`. The
-  autosave clock stays out of the file on purpose: "autosaved" is a statement about THIS
-  machine's storage, and the local `updatedAt` is already honest after an import.
+- **The stamp travels in the file too, and seeds BOTH clocks** (author call: autosave is
+  the primary save; the traveled file must show when its content was last saved, not the
+  import moment). `SavedGraph.savedAt` (epoch ms) is written by the FILE-WRITE path only —
+  never by `serializeGraph`, so autosave captures and seed fixtures stay stable — and read
+  once, at adoption: `importAsDocument` seeds `fileSavedAt` AND `updatedAt` from it. ONE
+  stamp is deliberate, not a shortcut: `saveToDisk` captures right before it writes, so at
+  the write instant last-autosave ≡ savedAt — a second in-file field would be the same
+  number twice. One `Date.now()` covers the file bytes and the library; rides the
+  text-form sidecar like `meta`.
 - **Icons extracted, not copied**: `SaveIcon.tsx` (was inline in `TopBar.tsx`) and
   `RefreshIcon.tsx` (was inline in `ConnectionNodes.tsx`), both now shared; the node reuses
   `.sol-conn__refresh` for the button chrome, as `WriteNodes.tsx` already does.
