@@ -96,6 +96,24 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     documentStore.saveAs("Clock B");
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();
   });
+
+  it("importAsDocument seeds fileSavedAt from the file's own savedAt stamp", async () => {
+    await documentStore.importAsDocument(
+      { v: 2, nodes: [], connections: [], savedAt: 1786871100000 },
+      "Traveled",
+      "/elsewhere/Traveled.json",
+    );
+    const doc = documentStore.list().find((m) => m.name === "Traveled")!;
+    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    expect(stored.some((s) => s.doc?.fileSavedAt === 1786871100000)).toBe(true);
+  });
+
+  it("importAsDocument leaves the clock blank for a file with no stamp (old saves)", async () => {
+    await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Unstamped");
+    const doc = documentStore.list().find((m) => m.name === "Unstamped")!;
+    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    expect(stored.every((s) => s.doc?.fileSavedAt === undefined)).toBe(true);
+  });
 });
 
 // ─── PERSIST-4 — slot freshness is a PREFIX read, so `seq` must come first ────

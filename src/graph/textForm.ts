@@ -203,6 +203,7 @@ export function writeTextForm(g: SavedGraph): string {
   if (g.palette !== undefined) sidecar.palette = g.palette;
   if (g.reportPalette !== undefined) sidecar.reportPalette = g.reportPalette;
   if (g.meta !== undefined) sidecar.meta = g.meta;
+  if (g.savedAt !== undefined) sidecar.savedAt = g.savedAt;
   if (g.packs && g.packs.length > 0) sidecar.packs = g.packs;
 
   const header = lines.length > 0 ? lines.join("\n") + "\n" : "";
@@ -276,6 +277,7 @@ export function readTextForm(text: string): SavedGraph {
   if (sidecar.palette !== undefined) g.palette = sidecar.palette;
   if (sidecar.reportPalette !== undefined) g.reportPalette = sidecar.reportPalette;
   if (sidecar.meta !== undefined) g.meta = sidecar.meta as SavedGraph["meta"];
+  if (typeof sidecar.savedAt === "number") g.savedAt = sidecar.savedAt;
   if (Array.isArray(sidecar.packs) && sidecar.packs.length > 0) g.packs = sidecar.packs;
 
   return g;

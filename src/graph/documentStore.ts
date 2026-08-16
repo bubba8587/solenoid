@@ -231,10 +231,11 @@ export const documentStore = {
   },
 
   /** Stamp the current document as written to a file (called by fileSession's Save
-   *  paths after the write succeeds). */
-  markCurrentFileSaved(): void {
+   *  paths after the write succeeds; `at` matches the `savedAt` stamped into the
+   *  file's own bytes). */
+  markCurrentFileSaved(at: number = Date.now()): void {
     if (!_lib.currentId) return;
-    _lib = setDocFileSaved(_lib, _lib.currentId, Date.now());
+    _lib = setDocFileSaved(_lib, _lib.currentId, at);
     persist();
     notify();
   },
@@ -370,6 +371,9 @@ export const documentStore = {
     const prevId = _lib.currentId;
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
+    // The file's own write stamp seeds the file-save clock, so a doc opened on
+    // another machine shows when its file was really written, not blank.
+    if (typeof graph.savedAt === "number") doc.fileSavedAt = graph.savedAt;
     _lib = addDocument(_lib, doc);
     persist();
     notify();

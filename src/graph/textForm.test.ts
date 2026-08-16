@@ -154,6 +154,18 @@ describe("text form: unit cases", () => {
     expect(reloaded.frameFormats![1]).toMatchObject({ column: "Share", ann: { format: "percent" } });
   });
 
+  it("round-trips the file-write stamp (savedAt) through the sidecar", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [{ id: "a1", type: "FilterNode", name: "F", x: 0, y: 0, init: {} }],
+      connections: [],
+      savedAt: 1786871100000,
+    };
+    expect(readTextForm(writeTextForm(g)).savedAt).toBe(1786871100000);
+    // And an unstamped graph stays unstamped — the writer must not invent one.
+    expect(readTextForm(writeTextForm({ v: 2, nodes: [], connections: [] })).savedAt).toBeUndefined();
+  });
+
   it("re-synthesizes a name that collides with another node's name", () => {
     const g: SavedGraph = {
       v: 2,

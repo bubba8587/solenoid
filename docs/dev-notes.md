@@ -103,8 +103,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   when the doc's graph lands in storage. File-save time is a new `SolDoc.fileSavedAt`:
   `setDocFileSaved` (PERSIST-3 freeze walk extended), carried by `validateDoc`, dropped
   by `duplicateDocument` like `filePath`, stamped by `documentStore.markCurrentFileSaved()`
-  from both `saveToDisk` paths. NOT in the exported `.json` (SavedGraph untouched): a file
-  opened on another machine reads blank until its first save there.
+  from both `saveToDisk` paths.
+- **The stamp travels in the file too.** `SavedGraph.savedAt` (epoch ms) is written by the
+  FILE-WRITE path only — never by `serializeGraph`, so autosave captures and seed fixtures
+  stay stable — and read once, at adoption: `importAsDocument` seeds `fileSavedAt` from it.
+  One `Date.now()` covers the file bytes and the library, so a round trip through another
+  machine reads back the same instant. Rides the text-form sidecar like `meta`. The
+  autosave clock stays out of the file on purpose: "autosaved" is a statement about THIS
+  machine's storage, and the local `updatedAt` is already honest after an import.
 - **Icons extracted, not copied**: `SaveIcon.tsx` (was inline in `TopBar.tsx`) and
   `RefreshIcon.tsx` (was inline in `ConnectionNodes.tsx`), both now shared; the node reuses
   `.sol-conn__refresh` for the button chrome, as `WriteNodes.tsx` already does.
