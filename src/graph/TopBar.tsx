@@ -9,6 +9,7 @@ import { frStore } from "./frStore";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { toggleChrome } from "./chromeToggle";
 import { DocumentTitle } from "./components/DocumentTitle";
+import { SaveIcon } from "./components/SaveIcon";
 import { useGridSnap } from "./gridSnapStore";
 import { toggleAllGroups, groupCollapseSummary } from "./OutlinePanel";
 import { groupCollapseStore } from "./groupCollapse";
@@ -71,11 +72,7 @@ export function TopBar() {
 
       <div className="solenoid-topbar__group solenoid-topbar__group--file">
         <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveToDisk()}>
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3.5 2.5 h7 L13.5 5.5 V12.5 a1 1 0 0 1 -1 1 H3.5 a1 1 0 0 1 -1 -1 V3.5 a1 1 0 0 1 1 -1 Z" />
-            <path d="M5 2.5 V6 h5 V2.5" />
-            <rect x="5" y="8.5" width="6" height="5" rx="0.5" />
-          </svg>
+          <SaveIcon />
         </button>
         <button className="solenoid-nav__btn" title="Save As: save to a new file (Ctrl+Shift+S)" aria-label="Save As" onClick={() => void saveToDisk({ forceDialog: true })}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">

@@ -1,0 +1,19 @@
+/* Label ABOVE its value box, not beside it: a full-height ValueDisplay plus a button
+   doesn't fit the 22px io-row, and the row is `hero` so it grows to the box. */
+.sol-savetimes__label {
+  display: block;
+  margin-bottom: 3px;
+}
+.solenoid-node__io-row + .sol-savetimes__label {
+  margin-top: 8px;
+}
+
+.sol-savetimes__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sol-savetimes__row > .solenoid-node__display-value {
+  flex: 1 1 auto;
+  min-width: 0;
+}

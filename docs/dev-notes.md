@@ -86,6 +86,23 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-16 — Save Times node; the save clock split in two)
+- **New node `SaveTimes`** (Add ▸ Input ▸ Save Times, `nodes/input.ts`): two date outputs,
+  last autosave and last write-to-file, each with a button on its row — Refresh
+  (`requestRecalc()`) and Save (`saveToDisk()`, the top bar's own verb). Card is the
+  label-above-hero-box pattern (`MeasuredSocketRow hero`), because a `ValueDisplay` plus a
+  button does not fit the 22px io-row.
+- **`saveTimeStore.ts` — a LEAF store is the only way a node can read this.** `documentStore`
+  and `fileSession` both reach rete through `persistence`, so importing either from
+  `nodes/*` is a cycle. The store imports `storeKit` alone; `captureCurrent()` marks the
+  autosave and `saveToDisk()` marks the file save. Sanctioned in STORE-1 (not node-keyed).
+- **Session-scoped by choice.** Per-document, reload-surviving timestamps would mean a new
+  `SolDoc` field, `validateDoc`, and a duplicate-drops-it rule like `filePath` — backlogged
+  rather than smuggled in under a UI task.
+- **Icons extracted, not copied**: `SaveIcon.tsx` (was inline in `TopBar.tsx`) and
+  `RefreshIcon.tsx` (was inline in `ConnectionNodes.tsx`), both now shared; the node reuses
+  `.sol-conn__refresh` for the button chrome, as `WriteNodes.tsx` already does.
+
 ### SESSION DIGEST (2026-08-15 — value selectors: a wildcard slot could only hold a NUMBER)
 - **Bug (author-reported, on SWITCH).** Every SWITCH slot is a wildcard socket, but the
   inline literal fields were number-only, so a text case could only be WIRED. Wider than

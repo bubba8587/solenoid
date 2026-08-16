@@ -5,8 +5,10 @@ import namesPlugin from "colord/plugins/names";
 // Global: named CSS colors ("tomato") must parse everywhere colord is used.
 extend([namesPlugin]);
 import { numberSocket } from "../sockets";
-import { numIn, strIn, strOut, logicalOut, readInput } from "./shared";
+import { numIn, strIn, strOut, logicalOut, dateOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { jsDateToSerial } from "./dateSerial";
+import { saveTimeStore } from "../saveTimeStore";
 
 export class NumberInputNode extends ClassicPreset.Node {
   label: string;
@@ -235,5 +237,31 @@ export class BooleanInputNode extends ClassicPreset.Node {
   // `value` stays 0|1 for the toggle UI + persistence; the EMITTED value is a real boolean.
   data() {
     return { value: this.value === 1 };
+  }
+}
+
+/** Reads the save clock (`saveTimeStore`), so the two serials refresh on any recompute
+ *  and the card's Refresh button is just `requestRecalc()`. Session-scoped: a freshly
+ *  loaded document reports blank until its first autosave. */
+export class SaveTimesNode extends ClassicPreset.Node {
+  label: string;
+  cachedAutosave: number | null = null;
+  cachedFileSave: number | null = null;
+  width  = 220;
+  height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("SaveTimes");
+    this.label = init?.label ?? "Save Times";
+    this.addOutput("autosave", dateOut("Autosaved"));
+    this.addOutput("filesave", dateOut("Saved"));
+  }
+
+  data(): { autosave: number | null; filesave: number | null } {
+    const auto = saveTimeStore.lastAutosaveAt();
+    const file = saveTimeStore.lastFileSaveAt();
+    this.cachedAutosave = auto === null ? null : jsDateToSerial(new Date(auto));
+    this.cachedFileSave = file === null ? null : jsDateToSerial(new Date(file));
+    return { autosave: this.cachedAutosave, filesave: this.cachedFileSave };
   }
 }

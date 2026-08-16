@@ -4,6 +4,7 @@ import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
 import { chooseWriteSlot, chooseReadSlot } from "./persistenceCore";
 import { pushNotice, dismissNotice } from "./noticeStore";
+import { saveTimeStore } from "./saveTimeStore";
 import { SEEDS, DEFAULT_SEED_ID, type SeedId } from "./seeds";
 import {
   emptyLibrary,
@@ -251,8 +252,10 @@ export const documentStore = {
     if (isGraphRebuilding()) return;
     const g = serializeGraph();
     if (!g) return;
-    _lib = updateCurrentGraph(_lib, g, Date.now());
+    const now = Date.now();
+    _lib = updateCurrentGraph(_lib, g, now);
     persist();
+    saveTimeStore.markAutosave(now);
     notify();
   },
 

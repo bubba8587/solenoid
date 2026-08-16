@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import type { NodeKind } from "./shared";
 import { SolenoidSocket } from "../sockets";
-import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode } from "./input";
+import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
 import { ConvertNode } from "./convert";
@@ -153,7 +153,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DatePartNode ||
     node instanceof WeekInfoNode || node instanceof DateDiffNode ||
     node instanceof DateAddNode || node instanceof WorkdaysNode ||
-    node instanceof DatePickerNode
+    node instanceof DatePickerNode || node instanceof SaveTimesNode
   ) return "date";
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||

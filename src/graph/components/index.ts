@@ -278,6 +278,7 @@ export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
 export { DatePickerComponent } from "./DatePickerNode";
 export { DateRangeComponent } from "./DateRangeNode";
+export { SaveTimesComponent } from "./SaveTimesNode";
 export { XYPadComponent } from "./XYPadNode";
 
 // ─── Format Controller ────────────────────────────────────────────────────────

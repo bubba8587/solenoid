@@ -138,6 +138,11 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **Matrix-null round-trip in Table Input** (`TableDisplay.tsx`): blanks should
   round-trip as real null cells instead of collapsing the table.
 - [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
+- [ ] **Save Times: make the two clocks per-document and reload-surviving.**
+  `saveTimeStore.ts` is session-scoped and global, so the card reads blank after a
+  reload and shows the last save of ANY document. Per-doc needs a `SolDoc` field
+  (`documentStoreCore.ts`) carried through `validateDoc` and dropped by
+  `duplicateDocument` the way `filePath` is, plus a read keyed off `currentId`.
 - [ ] **Finish evicting live material from `docs/archive/`** — the routing table is
   clean and machine-checked now, but three archived docs are still cited as current
   by CODE: `formulajs-vs-native-audit.md` (the per-family verdicts `FAMILY_BACKING`
