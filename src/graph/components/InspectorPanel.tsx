@@ -3,22 +3,19 @@ import { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
-import { compositePassStore } from "../compositeEditorStore";
 import { describeNode, nodeName, catalogTypeOf } from "../catalogUtils";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
-import { cableValueStore } from "../cableValueStore";
-import { isSolError } from "../errorValue";
-import { valueChipFor } from "./ValueChip";
-import { ErrorChip } from "./ErrorChip";
 import { CloseIcon } from "./CloseIcon";
 import "./InspectorPanel.css";
 
 // The node Inspector: a right-docked panel (the pinned Report's chrome pattern
 // — fixed column between the measured chrome envelopes, canvas squeezed by
 // `html.sol-inspector-docked`) reading the ACTIVE surface's selected node.
-// Selection has no push store (same as SelectionActionsBar), so a light poll
-// tracks it; values refresh on compositePassStore's per-pass tick.
+// REFERENCE data only, by author call (2026-08-17): description, the Function
+// Reference derivation, sockets and their wiring — never live values (the card
+// and its popups are the value surface). Selection has no push store (same as
+// SelectionActionsBar), so a light poll tracks it.
 
 const POLL_MS = 150;
 
@@ -41,10 +38,6 @@ function frRowsFor(catalogType: string | null): FnRefRow[] {
 type AnyNode = ClassicPreset.Node & {
   label?: string;
   selected?: boolean;
-  cachedResult?: unknown;
-  cachedValue?: unknown;
-  cachedString?: unknown;
-  cachedList?: unknown;
 };
 
 function selectedNode(): AnyNode | null {
@@ -52,12 +45,6 @@ function selectedNode(): AnyNode | null {
   if (!editor) return null;
   const sel = editor.getNodes().filter((n) => (n as AnyNode).selected === true);
   return (sel[0] as AnyNode | undefined) ?? null;
-}
-
-function outputValue(node: AnyNode, key: string): unknown {
-  const live = cableValueStore.get(node.id, key);
-  if (live !== undefined && live !== null) return live;
-  return node.cachedResult ?? node.cachedValue ?? node.cachedString ?? node.cachedList;
 }
 
 function socketDot(socket: ClassicPreset.Socket | undefined): ReactNode {
@@ -71,22 +58,8 @@ function socketDot(socket: ClassicPreset.Socket | undefined): ReactNode {
   );
 }
 
-function renderValue(v: unknown): ReactNode {
-  if (v === undefined || v === null) return <span className="inspector-empty">—</span>;
-  if (isSolError(v)) return <ErrorChip err={v} />;
-  const chip = valueChipFor(v, { size: "sm" });
-  if (chip) return chip;
-  if (Array.isArray(v)) {
-    const flat = v.flat().slice(0, 6).map(String).join(", ");
-    return <code className="inspector-value">[{flat}{v.flat().length > 6 ? ", …" : ""}]</code>;
-  }
-  if (typeof v === "object") return <span className="inspector-empty">object</span>;
-  return <code className="inspector-value">{String(v)}</code>;
-}
-
 export function InspectorPanel() {
   const open = useSyncExternalStore(inspectorStore.subscribe, inspectorStore.get);
-  useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   const reportDocked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
   const [, setTick] = useState(0);
   const [node, setNode] = useState<AnyNode | null>(null);
@@ -175,13 +148,23 @@ export function InspectorPanel() {
             })}
 
             {Object.keys(node.outputs).length > 0 && <div className="inspector-label">Outputs</div>}
-            {Object.entries(node.outputs).map(([key, output]) => (
-              <div key={key} className="inspector-row">
-                {socketDot(output?.socket)}
-                <span className="inspector-row__key">{output?.label ?? key}</span>
-                <span className="inspector-row__value">{renderValue(outputValue(node, key))}</span>
-              </div>
-            ))}
+            {Object.entries(node.outputs).map(([key, output]) => {
+              const targets = conns
+                .filter((c) => c.source === node.id && c.sourceOutput === key)
+                .map((c) => {
+                  const dst = editor?.getNode(c.target) as AnyNode | undefined;
+                  return dst ? (dst.label || nodeName(dst) || dst.constructor.name) : c.target;
+                });
+              return (
+                <div key={key} className="inspector-row">
+                  {socketDot(output?.socket)}
+                  <span className="inspector-row__key">{output?.label ?? key}</span>
+                  <span className="inspector-row__meta">
+                    {targets.length ? `→ ${targets.join(", ")}` : "unwired"}
+                  </span>
+                </div>
+              );
+            })}
           </>
         )}
       </div>

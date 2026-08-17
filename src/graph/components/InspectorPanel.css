@@ -123,22 +123,6 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   white-space: nowrap;
   text-align: right;
 }
-.inspector-row__value {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-.inspector-value {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.inspector-empty { color: var(--text-muted); font-size: 11.5px; }
 
 .inspector-excel { margin: 0 0 6px; }
 .inspector-excel__syntax {
