@@ -278,6 +278,10 @@ export class ByAxisNode extends ClassicPreset.Node {
 // Row-major fold (matching Excel) from Initial; `Values` widens any shape to a matrix.
 
 export class ReduceLambdaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    table: "Cells fold in row order, left to right across each row.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -343,6 +347,10 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 // cell, so the output keeps the input's shape.
 
 export class ScanLambdaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    table: "Cells fold in row order, left to right across each row.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;

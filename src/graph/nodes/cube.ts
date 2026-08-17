@@ -76,6 +76,10 @@ function asNestChild(v: unknown): FrameValue | CubeValue | null {
 }
 
 export class NestJoinNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    key: "A blank key cell never matches. A parent row without matches keeps an empty nested table, and a child row matching no parent is dropped.",
+  };
+
   label: string;
   cachedResult: CubeValue | SolError | null = null;
   stringLiterals: Record<string, string> = { key: "", name: "" };
@@ -180,6 +184,10 @@ export class CubeColumnsNode extends ClassicPreset.Node {
 // on every op's edge cases.
 
 export class CubeRollupNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "A row without a nested table rolls up to blank, and a nested table missing the column yields a #REF! cell.",
+  };
+
   label: string;
   op: AggOp;
   cachedResult: FrameValue | SolError | null = null;

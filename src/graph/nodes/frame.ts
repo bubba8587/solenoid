@@ -269,6 +269,11 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
 };
 
 export class HeadNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rows: "First, Last, and Skip read this as a row count; Rows N–To reads it as the 1-based start row.",
+    to: "Only the Rows N–To operation reads this, as the last kept row.",
+  };
+
   label: string;
   op: HeadOp;
   cachedResult: FrameValue | SolError | null = null;
@@ -460,6 +465,13 @@ export class FilterFrameNode extends ClassicPreset.Node {
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
 
 export class JoinNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    leftKey: "A blank or error key never matches any row, and the two key columns must share one type.",
+    rightKey: "An empty name reuses the left key's name for the right frame.",
+    tolerance: "Only the as-of join reads this, as the widest key distance a match may span. An empty value allows any distance.",
+    frame: "The right frame's non-key columns follow the left columns, and the key appears once, filled from whichever side has the row.",
+  };
+
   label: string;
   how: JoinHow;
   asofDirection: AsofDirection;
@@ -517,6 +529,10 @@ function readColumnList(wired: string[][] | undefined): string[] | null {
 }
 
 export class SelectColumnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    columns: "An empty list passes the frame through unchanged; a name the frame lacks is a #REF! error.",
+  };
+
   label: string;
   stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
@@ -580,6 +596,10 @@ export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> 
 };
 
 export class GroupByFrameNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    keys: "Groups keep first-seen row order, and blank key cells group together as their own group.",
+  };
+
   label: string;
   op: AggOp;
   totalDepth = 0;
@@ -643,6 +663,10 @@ function distinctKeys(values: readonly FrameCell[]): string[] {
 // PIVOTBY — full Excel cross-tab; every config field flows into `pivotFrame`, which
 // RE-AGGREGATES the source rather than reshaping a grouped frame (see PivotSpec).
 export class PivotNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    filter: "One cell per source row, in order; only rows where the mask is TRUE feed the pivot.",
+  };
+
   label: string;
   op: AggOp;
   funcs: Record<string, AggOp> = {};
@@ -802,6 +826,10 @@ export class NestNode extends ClassicPreset.Node {
 }
 
 export class UnnestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "A parent row with an empty or missing nested table disappears from the output.",
+  };
+
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "" };
@@ -1124,6 +1152,10 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
 export type DecisionDetail = "summary" | "breakdown";
 
 export class DecisionMatrixNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    weights: "A wired list pairs with the criteria columns in order and overrides the weights typed on the card.",
+  };
+
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
@@ -1208,6 +1240,10 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 // A materialization boundary, not a lazy verb — data() takes plain FrameValue inputs.
 
 export class ReconcileNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    key: "Duplicate keys pair up in order. A row whose key is blank or an error cannot match and comes out as skipped.",
+  };
+
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   cachedSummary = "";
@@ -1426,6 +1462,10 @@ export function splitMatrixOutput(colType: SplitColType) {
 }
 
 export class SplitFrameNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    matrix: "Under All, one text column blanks the whole matrix; date cells ride as serials and booleans as 1 and 0.",
+  };
+
   label: string;
   colType: SplitColType;
   cachedMatrix: (number | string)[][] | null = null;
@@ -1495,6 +1535,10 @@ type GetColumnValues =
   | null;
 
 export class GetColumnNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "Number and Date reads coerce rather than filter: a text cell parses or becomes NaN, a boolean becomes 1 or 0, and blanks stay blank.",
+  };
+
   label: string;
   readAs: GetColumnReadAs;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
@@ -1623,6 +1667,10 @@ export class AddColumnNode extends ClassicPreset.Node {
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
 export class ComputedColumnNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    after: "Empty appends the new column at the end; a column name inserts it just after that column. A replaced column keeps its place.",
+  };
+
   label: string;
   expr: string;
   addAs: ComputedColumnAs;
@@ -1806,6 +1854,10 @@ export class GetRowNode extends ClassicPreset.Node {
 // ─── XLOOKUP (VLOOKUP / XLOOKUP over a table, cube, or widened list) ─────────────
 
 export class XLookupNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
+  };
+
   label: string;
   matchMode: LookupMatchMode;
   searchMode: LookupSearchMode;
