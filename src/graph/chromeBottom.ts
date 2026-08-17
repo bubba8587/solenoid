@@ -15,11 +15,12 @@ let ro: ResizeObserver | null = null;
 function publish() {
   let max = 0;
   for (const el of els) max = Math.max(max, el.getBoundingClientRect().height);
-  // Ceil, never round: a fractional bar height published short leaves anything
-  // anchored to the var a subpixel shy of the bar, which rasterizes as a 1px
-  // gap at some device pixel ratios. Rounded UP, consumers sit flush or tuck
-  // under the opaque bar (the bars z-index above the docked panels).
-  document.documentElement.style.setProperty("--chrome-bottom", `${Math.ceil(max)}px`);
+  // FLOOR, never round or ceil: `bottom: var(--chrome-bottom)` puts a panel's
+  // bottom edge AT the published height, so a value above the bar's true
+  // fractional height lifts the edge off the bar — a 1px gap at fractional
+  // device pixel ratios (Chrome Android). Published at-or-under, the panel
+  // tucks beneath the opaque bar, whose z-index is above the docked panels.
+  document.documentElement.style.setProperty("--chrome-bottom", `${Math.floor(max)}px`);
 }
 
 function register(el: HTMLElement): () => void {

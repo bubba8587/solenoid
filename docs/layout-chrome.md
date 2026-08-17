@@ -97,10 +97,11 @@ offsets from it:
 | Docked report | `var(--chrome-top)` | `66px` |
 
 Each keeps a **static fallback** (`var(--chrome-top, 66px)`) so the first paint is correct
-before the observer fires. Both envelopes publish **rounded UP** (`Math.ceil`): published
-short, a panel anchored to the var sits a subpixel shy of its bar, which rasterizes as a
-1px gap at fractional device pixel ratios (seen on Chrome Android); rounded up, consumers
-sit flush or tuck under the opaque bar, whose z-index is above the docked panels. On desktop the measured value is the old 66px (22 + 44), plus a
+before the observer fires. Both envelopes publish **rounded DOWN** (`Math.floor`): `top:`/`bottom: var(...)`
+puts a panel's edge AT the published height, so a value above the bar's true fractional
+height lifts the edge off the bar — a 1px gap at fractional device pixel ratios (seen on
+Chrome Android). Published at-or-under, panels tuck beneath the opaque bars, whose
+z-index sits above the docked panels. On desktop the measured value is the old 66px (22 + 44), plus a
 2px accent underline ≈ 68px to the canvas.
 
 **Why this changed:** these were six hand-keyed numbers all encoding one envelope, which is
