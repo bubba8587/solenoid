@@ -93,6 +93,10 @@ describe("buildSuiteNodes", () => {
     // fcDockReload has no module row of its own: untabled is the honest answer.
     const dock = suites.find((s) => s.suite === "fcDockReload.test.ts");
     expect(dock?.groups).toEqual([]);
+    // A suite living in an owned directory homes there (nodes/ → Node compute layer).
+    for (const s of suites)
+      if (s.suite.startsWith("nodes/"))
+        expect(s.groups.some((g) => /Node compute/.test(g)), s.suite).toBe(true);
   });
 
   it("orders the middle layer by neighborhood, not doc order", () => {
@@ -130,5 +134,15 @@ describe("parseArchDoc", () => {
   it("keeps group titles readable (path parentheticals stripped)", () => {
     for (const g of groups) expect(g.title).not.toMatch(/`/);
     expect(groups.some((g) => /Engine \/ core/.test(g.title))).toBe(true);
+  });
+
+  it("prose sections carry dir/claims groups (nodes/, App chrome)", () => {
+    const nodes = groups.find((g) => g.dir === "nodes/");
+    expect(nodes?.title).toMatch(/Node compute/);
+    const chrome = groups.find((g) => /App chrome/.test(g.title));
+    expect(chrome?.modules).toEqual([]);
+    expect(chrome?.claims).toContain("TopBar");
+    // The graph ROOT is never a dir claim — Engine / core would swallow everything.
+    for (const g of groups) expect(g.dir, g.title).not.toBe("");
   });
 });

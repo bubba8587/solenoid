@@ -25,6 +25,7 @@ Deep behavioral notes and gotchas live in `CLAUDE.md` (agent-facing) and
 │                             #     loop from a terminal, real key),
 │                             #     formula-node-parity.ts (SSOT-6 gap report), op-exposure.ts,
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
+│                             #     scan-arch-deps.mjs (the import scan behind virtual:arch-deps),
 │                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, parity.ts, release-build.ps1
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
@@ -230,14 +231,17 @@ boolean), `problemsStore` (error-sink relapse tracking), `commentStore`
 drill-in dropped-cable notice). Other cross-cutting toggles:
 `semanticZoomStore`, `gridSnapStore`, `isolateStore`.
 The View ▸ Architecture map overlay (`components/SpecMapView.tsx` + `specMapStore.ts`)
-draws the enforcement web as a three-layer graph — rule domains → cited test suites
-(barycenter-ordered so the middle layer runs diagonal) → this file's module groups —
-beside a reading pane that carries the docs' actual text: a rule's MUST/Why/Origin/
-Exceptions, a group's module roles, plus search and rule-level selection (the pane's
-resting state lists the enforcement gaps). Both docs arrive `?raw` and parse through
-`specMap.ts` (+`.test.ts`, incl. `buildSuiteNodes`): DERIVED at build time, nothing
-hand-kept (SSOT-3). Only TABLED sections here land on the map's right layer; a suite
-whose home module lives in a prose section shows no right-hand edge, deliberately.
+draws the system as a Solenoid graph on a pan/zoom canvas (`hicCamera.ts` camera, ELK
+layered layout, the real cable spline): cards are THIS FILE's module groups, cables are
+the source's actual import dependencies — `scripts/scan-arch-deps.mjs` scans src/graph
+at build time, `vite.config.ts` serves it as `virtual:arch-deps`, `archGraph.ts`
+assigns every file to its group (table rows, then prose citations, then directory
+headings; unclaimed files stay visibly unmapped) and aggregates the edges. A reading
+pane carries the docs' text — a rule's MUST/Why/Origin/Exceptions, a group's module
+roles, a cable's file-level imports — plus search; its resting state lists the
+enforcement gaps, and each card foots a status meter of the rules whose suites live
+there. Both docs arrive `?raw` and parse through `specMap.ts` (+`.test.ts`,
+`archGraph.test.ts`): DERIVED at build time, nothing hand-kept (SSOT-3).
 
 ### External data
 

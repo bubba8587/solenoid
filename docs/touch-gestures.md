@@ -97,6 +97,14 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 | touch action buttons | mobile: bottom bar; tablet: top bar | palette/undo/redo/select/group/delete (+ mobile ➕) | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
 | taps in popups/overlays | all | normal UI; `stopDragStart` guards chrome that sits over the canvas | per component |
 
+### Architecture map overlay (its own surface — NOT the rete canvas)
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| one-pointer drag | all | pan the map camera (a <6px press is a click: select card/cable) | `SpecMapView.tsx` (hicCamera `Camera`) |
+| wheel | desktop | anchored zoom (native non-passive listener; React's is passive) | `SpecMapView.tsx` |
+| two-pointer pinch | coarse | zoom about the midpoint (`pinchStep`) | `SpecMapView.tsx` (`hicCamera.ts`) |
+
 ## Enforcement
 
 `pointerGesture.test.ts` (census + isPinching), `touchActions.test.ts` (mobile/tablet

@@ -47,7 +47,14 @@ export type ArchModule = {
   role: string;
 };
 
-export type ArchGroup = { title: string; modules: ArchModule[] };
+export type ArchGroup = {
+  title: string;
+  modules: ArchModule[];
+  /** Directory the section owns (from a heading like ``(`src/graph/nodes/`)``), graph-root-relative. */
+  dir?: string;
+  /** Inline-code file/identifier citations from a PROSE section (no module table). */
+  claims?: string[];
+};
 
 const RULE_ID = /(?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+/;
 
@@ -130,13 +137,19 @@ export function parseRulesDoc(md: string): SpecRulesModel {
 
 export function parseArchDoc(md: string): ArchGroup[] {
   const groups: ArchGroup[] = [];
-  // Any ##/### section whose body carries a `| Module | Role |` table.
-  for (const sm of md.matchAll(/^#{2,3} (.+)$\n([\s\S]*?)(?=^#{2,3} |$(?![\s\S]))/gm)) {
-    const title = sm[1].replace(/\s*\(`[^`]*`\)\s*/g, " ").trim();
+  // Any ##/### section with a `| Module | Role |` table (a tabled group), plus
+  // any ### section that instead cites its files in prose (a claims group) —
+  // together they carry the whole file → group assignment archGraph.ts makes.
+  for (const sm of md.matchAll(/^(#{2,3}) (.+)$\n([\s\S]*?)(?=^#{2,3} |$(?![\s\S]))/gm)) {
+    const [, hashes, rawTitle, body] = sm;
+    const title = rawTitle.replace(/\s*\(`[^`]*`\)\s*/g, " ").trim();
+    // A directory the heading owns, e.g. `src/graph/nodes/` → "nodes/". The
+    // graph root itself is never a dir claim (it would swallow everything).
+    const dir = rawTitle.match(/\(`src\/graph\/([\w-]+)\/`\)/)?.[1];
     const modules: ArchModule[] = [];
     // Rows are 2 or 3 cells (`| module | role |`, `| file | status | purpose |`);
     // the name cell must be backticked, the rest joins into the role.
-    for (const line of sm[2].split("\n")) {
+    for (const line of body.split("\n")) {
       const cells = line.match(/^\|(.+)\|\s*$/)?.[1].split(" | ").map((c) => c.trim());
       if (!cells || cells.length < 2 || !cells[0].startsWith("`")) continue;
       const nameCell = cells[0].replace(/`/g, "").trim();
@@ -144,7 +157,17 @@ export function parseArchDoc(md: string): ArchGroup[] {
       const role = collapse(cells.slice(1).join(" — "));
       if (name && role) modules.push({ name, nameCell, role });
     }
-    if (modules.length) groups.push({ title, modules });
+    let claims: string[] | undefined;
+    if (!modules.length && hashes === "###") {
+      claims = [...new Set(
+        [...body.matchAll(/`([^`\n]+)`/g)]
+          .map((m) => m[1].trim())
+          .filter((t) => /^[\w./-]+\.tsx?$/.test(t) || /^[A-Za-z]\w*$/.test(t)),
+      )];
+      if (!claims.length) claims = undefined;
+    }
+    if (modules.length || dir || claims)
+      groups.push({ title, modules, ...(dir ? { dir: `${dir}/` } : {}), ...(claims ? { claims } : {}) });
   }
   return groups;
 }
@@ -185,8 +208,10 @@ export function buildSuiteNodes(model: SpecRulesModel, groups: ArchGroup[]): Sui
       ruleIds,
       domains: [...new Set(ruleIds.map((id) => id.split("-")[0]))],
       groups: groups
-        .filter((g) => g.modules.some((m) =>
-          m.name === `${stem}.ts` || m.name.startsWith(`${stem}.`) || m.nameCell.includes(`${stem}.`)))
+        .filter((g) =>
+          g.modules.some((m) =>
+            m.name === `${stem}.ts` || m.name.startsWith(`${stem}.`) || m.nameCell.includes(`${stem}.`)) ||
+          (g.dir !== undefined && suite.startsWith(g.dir)))
         .map((g) => g.title),
     };
   });

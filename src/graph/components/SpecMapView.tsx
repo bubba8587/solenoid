@@ -1,22 +1,31 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect, useMemo, useRef, useState, useSyncExternalStore,
+  type PointerEvent as RPointerEvent, type ReactNode,
+} from "react";
 import { specMapStore } from "../specMapStore";
 import {
   buildSuiteNodes, parseArchDoc, parseRulesDoc,
-  type ArchGroup, type SpecDomain, type SpecRule, type SuiteNode,
+  type SpecDomain, type SpecRule, type SuiteNode,
 } from "../specMap";
+import { buildArchGraph, type ArchLink } from "../archGraph";
+import { Camera, pinchStep } from "../hicCamera";
+import { getCablePath, Position } from "../cablePaths";
 import rulesMd from "../../../docs/rules.md?raw";
 import archMd from "../../../docs/architecture.md?raw";
 import { CloseIcon } from "./CloseIcon";
 import { useEscapeToClose } from "./useEscapeToClose";
 import "./SpecMapView.css";
 
-// The Architecture map overlay: the enforcement web as a three-layer graph
-// (rule domains → cited test suites → the architecture.md module groups their
-// home modules are tabled under) beside a reading pane that carries the actual
-// spec text — a rule's MUST/Why/Origin, a group's module roles — so the map is
-// a browser, not just a picture. A suite with no right-hand edge is real
-// information: its module isn't in an architecture table. Everything derives
-// from the two docs, imported ?raw and parsed by specMap.ts.
+// The Architecture map overlay: the system drawn in the app's own language — a
+// pan/zoom canvas of module-group cards whose cables are the source's REAL
+// import dependencies (virtual:arch-deps, scanned at build; aggregated by
+// archGraph.ts; laid out by ELK, the same engine as Tidy). The reading pane
+// carries the docs' text: a rule's MUST/Why/Origin, a group's module roles, a
+// cable's file-level imports. Enforcement rides the cards as a status meter of
+// the rules whose suites live there. Everything derives from docs/rules.md,
+// docs/architecture.md and the import scan — nothing hand-kept (SSOT-3).
+// Unmapped files and suites without a home card stay visible as counts/notes,
+// never guessed into a group.
 
 const GRADE_LABEL = { ARR: "author-ruled", INFERRED: "inferred", DEFAULT: "default" } as const;
 const STATUS_LABEL = { enforced: "enforced", partial: "partially enforced", unenforced: "unenforced" } as const;
@@ -28,77 +37,201 @@ const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…
 // dash-tail asides stay in the doc; the card carries the name.
 const groupLabel = (t: string) => plain(t).replace(/\s*\([^)]*\)/g, "").split(" — ")[0].trim();
 
-type Sel = { kind: "domain" | "rule" | "suite" | "group"; id: string } | null;
+type Sel = { kind: "group" | "link" | "rule" | "suite" | "domain"; id: string } | null;
+type Card = { title: string; files: string[]; x: number; y: number; w: number; h: number };
+type Layout = {
+  cards: Card[];
+  links: ArchLink[];
+  home: Map<string, string>;
+  unmapped: string[];
+  degree: Map<string, number>;
+  failed?: boolean;
+};
 
-// Fixed layout space in real pixels (no viewBox scaling) so the type stays at
-// its true dense size; the canvas scrolls when the panel is smaller.
-const VIEW_W = 1080;
-const CARD_W = 204;
-const CARD_H = 48;
-const PAD_Y = 16;
-const LEFT_X = 20;
-const RIGHT_X = VIEW_W - CARD_W - 20;
-const SUITE_CX = VIEW_W / 2;
-const SUITE_HALF = 130;
-const SUITE_ROW = 13;
+const CARD_W = 200;
+const HEADER_H = 25;
+const ROW_H = 13.5;
+const SAMPLE_ROWS = 6;
+const linkKey = (l: ArchLink) => `${l.from} ${l.to}`;
 
 export function SpecMapView() {
   const open = useSyncExternalStore(specMapStore.subscribe, specMapStore.get);
   const [sel, setSel] = useState<Sel>(null);
   const [hover, setHover] = useState<Sel>(null);
   const [query, setQuery] = useState("");
+  const [layout, setLayout] = useState<Layout | null>(null);
   const model = useMemo(() => parseRulesDoc(rulesMd), []);
   const groups = useMemo(() => parseArchDoc(archMd), []);
   const suites = useMemo(() => buildSuiteNodes(model, groups), [model, groups]);
+
+  // Rules homed per group (via each suite's home groups) — the card meters.
+  const groupRules = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const sn of suites)
+      for (const gt of sn.groups) {
+        const set = m.get(gt) ?? new Set();
+        sn.ruleIds.forEach((id) => set.add(id));
+        m.set(gt, set);
+      }
+    return m;
+  }, [suites]);
+
+  const allRules = useMemo(() => model.domains.flatMap((d) => d.rules), [model]);
+  const ruleById = (id: string) => allRules.find((r) => r.id === id);
+
+  // Camera: the same pure world↔screen math as the canvas renderers.
+  const camRef = useRef(new Camera({ minScale: 0.12, maxScale: 3 }));
+  const [cam, setCam] = useState({ k: 1, tx: 0, ty: 0 });
+  const syncCam = () => {
+    const c = camRef.current;
+    setCam({ k: c.scale, tx: c.tx, ty: c.ty });
+  };
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const fitted = useRef(false);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; mid: { x: number; y: number } } | null>(null);
+  const moved = useRef(0);
+
+  // Derive the import graph and lay it out — once per session, on first open.
+  useEffect(() => {
+    if (!open || layout) return;
+    let dead = false;
+    (async () => {
+      let graph;
+      try {
+        const { default: deps } = await import("virtual:arch-deps");
+        graph = buildArchGraph(groups, deps);
+      } catch (err) {
+        console.error("Architecture map: dependency scan unavailable", err);
+        if (!dead)
+          setLayout({ cards: [], links: [], home: new Map(), unmapped: [], degree: new Map(), failed: true });
+        return;
+      }
+      const sized = graph.cards.map((c) => {
+        const extra = c.files.length > SAMPLE_ROWS ? 1 : 0;
+        const rows = Math.min(c.files.length, SAMPLE_ROWS) + extra;
+        const meter = groupRules.has(c.title) ? 10 : 4;
+        return { ...c, x: 0, y: 0, w: CARD_W, h: HEADER_H + 7 + rows * ROW_H + meter + 6 };
+      });
+      let placed = sized;
+      try {
+        const ELK = (await import("elkjs")).default;
+        const res = await new ELK().layout({
+          id: "root",
+          layoutOptions: {
+            "elk.algorithm": "layered",
+            "elk.direction": "RIGHT",
+            "elk.layered.spacing.nodeNodeBetweenLayers": "170",
+            "elk.spacing.nodeNode": "52",
+          },
+          children: sized.map((c) => ({ id: c.title, width: c.w, height: c.h })),
+          edges: graph.links.map((l, i) => ({ id: `e${i}`, sources: [l.from], targets: [l.to] })),
+        });
+        const pos = new Map((res.children ?? []).map((ch) => [ch.id, ch]));
+        placed = sized.map((c) => ({ ...c, x: pos.get(c.title)?.x ?? 0, y: pos.get(c.title)?.y ?? 0 }));
+      } catch (err) {
+        console.error("Architecture map: ELK layout failed, using grid", err);
+        placed = sized.map((c, i) => ({ ...c, x: (i % 4) * (CARD_W + 90), y: Math.floor(i / 4) * 240 }));
+      }
+      if (!dead)
+        setLayout({ cards: placed, links: graph.links, home: graph.home, unmapped: graph.unmapped, degree: graph.degree });
+    })();
+    return () => { dead = true; };
+  }, [open, layout, groups, groupRules]);
+
+  // Fit the whole graph on first layout.
+  useEffect(() => {
+    if (!open || !layout?.cards.length || fitted.current) return;
+    const el = canvasRef.current;
+    if (!el) return;
+    const b = {
+      minX: Math.min(...layout.cards.map((c) => c.x)),
+      minY: Math.min(...layout.cards.map((c) => c.y)),
+      maxX: Math.max(...layout.cards.map((c) => c.x + c.w)),
+      maxY: Math.max(...layout.cards.map((c) => c.y + c.h)),
+    };
+    camRef.current.fit(b, el.clientWidth, el.clientHeight, 60);
+    fitted.current = true;
+    syncCam();
+  }, [open, layout]);
+
+  // Wheel zoom needs a non-passive native listener (React's is passive).
+  useEffect(() => {
+    if (!open) return;
+    const el = canvasRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      camRef.current.zoomBy(Math.exp(-e.deltaY * 0.0012), e.clientX - r.left, e.clientY - r.top);
+      syncCam();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [open, layout]);
 
   useEscapeToClose(() => {
     if (query) setQuery("");
     else if (sel) setSel(null);
     else specMapStore.close();
   }, open);
+
+  // Cable endpoints: spread each card's in/out connections along its edges,
+  // sorted by the far card's vertical position so cables fan without crossing
+  // at the socket.
+  const endpoints = useMemo(() => {
+    if (!layout) return new Map<string, { x1: number; y1: number; x2: number; y2: number }>();
+    const cardBy = new Map(layout.cards.map((c) => [c.title, c]));
+    const pts = new Map<string, { x1: number; y1: number; x2: number; y2: number }>();
+    const spread = (card: Card, ls: ArchLink[], far: (l: ArchLink) => string, assign: (l: ArchLink, y: number) => void) => {
+      const sorted = [...ls].sort((a, b) =>
+        (cardBy.get(far(a))?.y ?? 0) - (cardBy.get(far(b))?.y ?? 0) || far(a).localeCompare(far(b)));
+      const top = card.y + HEADER_H + 6;
+      const span = card.h - HEADER_H - 14;
+      sorted.forEach((l, i) => assign(l, top + ((i + 0.5) * span) / sorted.length));
+    };
+    for (const card of layout.cards) {
+      spread(card, layout.links.filter((l) => l.from === card.title), (l) => l.to, (l, y) => {
+        const p = pts.get(linkKey(l)) ?? { x1: 0, y1: 0, x2: 0, y2: 0 };
+        p.x1 = card.x + card.w;
+        p.y1 = y;
+        pts.set(linkKey(l), p);
+      });
+      spread(card, layout.links.filter((l) => l.to === card.title), (l) => l.from, (l, y) => {
+        const p = pts.get(linkKey(l)) ?? { x1: 0, y1: 0, x2: 0, y2: 0 };
+        p.x2 = card.x;
+        p.y2 = y;
+        pts.set(linkKey(l), p);
+      });
+    }
+    return pts;
+  }, [layout]);
+
   if (!open) return null;
 
-  const allRules = model.domains.flatMap((d) => d.rules);
-  const ruleById = (id: string) => allRules.find((r) => r.id === id);
-  const moduleHome = (file: string) =>
-    groups.find((g) => g.modules.some((m) => m.name === file || m.nameCell.includes(file)));
-  const moduleCount = groups.reduce((n, g) => n + g.modules.length, 0);
-
-  const H = Math.max(
-    PAD_Y * 2 + suites.length * SUITE_ROW,
-    PAD_Y * 2 + Math.max(model.domains.length, groups.length) * (CARD_H + 10),
-  );
-  // Cards spread across the full height so edge fans stay shallow.
-  const spreadY = (i: number, count: number) =>
-    count === 1 ? (H - CARD_H) / 2 : PAD_Y + (i * (H - PAD_Y * 2 - CARD_H)) / (count - 1);
-  const domainY = new Map(model.domains.map((d, i) => [d.prefix, spreadY(i, model.domains.length)]));
-  const groupY = new Map(groups.map((g, i) => [g.title, spreadY(i, groups.length)]));
-  const suiteY = new Map(suites.map((s, i) => [s.suite, PAD_Y + i * SUITE_ROW + SUITE_ROW / 2]));
-
-  // Hover previews, selection sticks; both light the same neighborhood. A rule
-  // selection narrows its domain's fan to exactly that rule's suites.
+  // Hover previews, selection sticks; both light the same neighborhood.
   const hot = hover ?? sel;
   const hotSets = (() => {
     if (!hot) return null;
-    const d = new Set<string>(), s = new Set<string>(), g = new Set<string>();
-    const lightSuite = (sn: SuiteNode) => { s.add(sn.suite); sn.groups.forEach((x) => g.add(x)); };
-    if (hot.kind === "domain") {
-      d.add(hot.id);
-      for (const sn of suites) if (sn.domains.includes(hot.id)) lightSuite(sn);
-    } else if (hot.kind === "rule") {
-      const r = ruleById(hot.id);
-      if (r) {
-        d.add(r.domain);
-        for (const sn of suites) if (sn.ruleIds.includes(r.id)) lightSuite(sn);
-      }
-    } else if (hot.kind === "suite") {
-      const sn = suites.find((x) => x.suite === hot.id);
-      if (sn) { lightSuite(sn); sn.domains.forEach((x) => d.add(x)); }
-    } else {
+    const g = new Set<string>(), l = new Set<string>();
+    const lightGroupsOf = (ids: string[]) => {
+      for (const sn of suites) if (ids.some((id) => sn.ruleIds.includes(id))) sn.groups.forEach((x) => g.add(x));
+    };
+    if (hot.kind === "group") {
       g.add(hot.id);
-      for (const sn of suites) if (sn.groups.includes(hot.id)) { s.add(sn.suite); sn.domains.forEach((x) => d.add(x)); }
+      for (const ln of layout?.links ?? [])
+        if (ln.from === hot.id || ln.to === hot.id) { l.add(linkKey(ln)); g.add(ln.from); g.add(ln.to); }
+    } else if (hot.kind === "link") {
+      const ln = layout?.links.find((x) => linkKey(x) === hot.id);
+      if (ln) { l.add(hot.id); g.add(ln.from); g.add(ln.to); }
+    } else if (hot.kind === "rule") {
+      lightGroupsOf([hot.id]);
+    } else if (hot.kind === "suite") {
+      suites.find((s) => s.suite === hot.id)?.groups.forEach((x) => g.add(x));
+    } else {
+      lightGroupsOf(model.domains.find((d) => d.prefix === hot.id)?.rules.map((r) => r.id) ?? []);
     }
-    return { d, s, g };
+    return { g, l };
   })();
 
   const cls = (base: string, active: boolean, selected = false) =>
@@ -109,18 +242,63 @@ export function SpecMapView() {
     setSel(isSel(kind, id) ? null : { kind, id });
     setQuery("");
   };
+  const centerOn = (title: string) => {
+    const card = layout?.cards.find((c) => c.title === title);
+    const el = canvasRef.current;
+    if (!card || !el) return;
+    const c = camRef.current;
+    c.tx = el.clientWidth / 2 - (card.x + card.w / 2) * c.scale;
+    c.ty = el.clientHeight / 2 - (card.y + card.h / 2) * c.scale;
+    syncCam();
+  };
+  const pickGroup = (title: string) => { pick("group", title); centerOn(title); };
   const hoverProps = (kind: NonNullable<Sel>["kind"], id: string) => ({
     onMouseEnter: () => setHover({ kind, id }),
     onMouseLeave: () => setHover(null),
   });
 
-  const edge = (x1: number, y1: number, x2: number, y2: number) =>
-    `M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`;
+  // One-finger pan, two-finger pinch; a real drag suppresses the click behind it.
+  const onPointerDown = (e: RPointerEvent) => {
+    canvasRef.current?.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pinch.current = null;
+    moved.current = 0;
+  };
+  const onPointerMove = (e: RPointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const el = canvasRef.current;
+    if (!el) return;
+    if (pointers.current.size >= 2) {
+      const [a, b] = [...pointers.current.values()];
+      const prev = pinch.current;
+      const step = pinchStep(a, b, prev?.dist ?? 0, prev?.mid ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      if (prev) {
+        const r = el.getBoundingClientRect();
+        camRef.current.zoomBy(step.factor, step.mid.x - r.left, step.mid.y - r.top);
+        camRef.current.panBy(step.panX, step.panY);
+        syncCam();
+      }
+      pinch.current = { dist: step.dist, mid: step.mid };
+      moved.current += 10;
+    } else {
+      moved.current += Math.abs(e.movementX) + Math.abs(e.movementY);
+      camRef.current.panBy(e.movementX, e.movementY);
+      syncCam();
+    }
+  };
+  const onPointerEnd = (e: RPointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    pinch.current = null;
+  };
+  const clickedNotDragged = () => moved.current < 6;
 
   const selDomain = sel?.kind === "domain" ? model.domains.find((d) => d.prefix === sel.id) : undefined;
   const selRule = sel?.kind === "rule" ? ruleById(sel.id) : undefined;
   const selSuite = sel?.kind === "suite" ? suites.find((s) => s.suite === sel.id) : undefined;
-  const selGroup = sel?.kind === "group" ? groups.find((g) => g.title === sel.id) : undefined;
+  const selGroup = sel?.kind === "group" ? layout?.cards.find((c) => c.title === sel.id) : undefined;
+  const selLink = sel?.kind === "link" ? layout?.links.find((l) => linkKey(l) === sel.id) : undefined;
+  const selGroupDoc = sel?.kind === "group" ? groups.find((g) => g.title === sel.id) : undefined;
 
   const ruleRow = (r: SpecRule) => (
     <button key={r.id} className="specmap-row" onClick={() => pick("rule", r.id)} {...hoverProps("rule", r.id)}>
@@ -129,23 +307,32 @@ export function SpecMapView() {
       <span className="specmap-row__label">{plain(r.title)}</span>
     </button>
   );
+  const suiteRow = (s: SuiteNode) => (
+    <button key={s.suite} className="specmap-row" onClick={() => pick("suite", s.suite)} {...hoverProps("suite", s.suite)}>
+      <span className="specmap-row__id">{s.suite}</span>
+      <span className="specmap-row__label">{s.ruleIds.join(" ")}</span>
+    </button>
+  );
 
   const q = query.trim().toLowerCase();
   const found = !q ? null : {
-    rules: allRules.filter((r) =>
-      `${r.id} ${r.title} ${r.must}`.toLowerCase().includes(q)).slice(0, 20),
+    rules: allRules.filter((r) => `${r.id} ${r.title} ${r.must}`.toLowerCase().includes(q)).slice(0, 20),
     suites: suites.filter((s) => s.suite.toLowerCase().includes(q)).slice(0, 12),
     modules: groups
       .flatMap((g) => g.modules.map((m) => ({ g, m })))
-      .filter(({ m }) => `${m.nameCell} ${m.role}`.toLowerCase().includes(q)).slice(0, 20),
+      .filter(({ m }) => `${m.nameCell} ${m.role}`.toLowerCase().includes(q)).slice(0, 14),
+    files: (layout ? [...layout.home.keys(), ...layout.unmapped] : [])
+      .filter((f) => f.toLowerCase().includes(q)).slice(0, 14),
   };
+
+  const mappedCount = layout ? layout.home.size : 0;
 
   return (
     <div className="specmap-backdrop" onPointerDown={() => specMapStore.close()}>
       <div className="specmap-panel" onPointerDown={(e) => e.stopPropagation()}>
         <div className="specmap-head">
           <span className="specmap-head__title">Architecture map</span>
-          <span className="specmap-head__src">derived from docs/rules.md and docs/architecture.md</span>
+          <span className="specmap-head__src">derived from docs/rules.md, docs/architecture.md and the import scan</span>
           <span className="specmap-stat"><span className="specmap-dot specmap-dot--enforced" />{model.summary.enforced} enforced</span>
           {model.summary.partial > 0 && (
             <span className="specmap-stat"><span className="specmap-dot specmap-dot--partial" />{model.summary.partial} partial</span>
@@ -172,102 +359,105 @@ export function SpecMapView() {
         </div>
 
         <div className="specmap-body">
-          <div className="specmap-canvas">
-            <svg className="specmap-svg" width={VIEW_W} height={H} onClick={() => setSel(null)}>
-              {suites.map((s) => {
-                const sy = suiteY.get(s.suite)!;
-                const active = hotSets?.s.has(s.suite) ?? false;
-                return (
-                  <g key={`e-${s.suite}`}>
-                    {s.domains.map((dp) => (
-                      <path
-                        key={dp}
-                        className={cls("specmap-edge", active && (hotSets?.d.has(dp) ?? false))}
-                        d={edge(LEFT_X + CARD_W, domainY.get(dp)! + CARD_H / 2, SUITE_CX - SUITE_HALF, sy)}
-                      />
-                    ))}
-                    {s.groups.map((gt) => (
-                      <path
-                        key={gt}
-                        className={cls("specmap-edge", active && (hotSets?.g.has(gt) ?? false))}
-                        d={edge(SUITE_CX + SUITE_HALF, sy, RIGHT_X, groupY.get(gt)! + CARD_H / 2)}
-                      />
-                    ))}
-                  </g>
-                );
-              })}
+          <div
+            className="specmap-canvas"
+            ref={canvasRef}
+            style={{
+              backgroundSize: `${24 * cam.k}px ${24 * cam.k}px`,
+              backgroundPosition: `${cam.tx}px ${cam.ty}px`,
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerEnd}
+            onPointerCancel={onPointerEnd}
+          >
+            {layout?.failed ? (
+              <div className="specmap-canvas__note">Dependency scan unavailable.</div>
+            ) : layout ? (
+              <svg className="specmap-world" onClick={() => { if (clickedNotDragged()) setSel(null); }}>
+                <g transform={`translate(${cam.tx} ${cam.ty}) scale(${cam.k})`}>
+                  {layout.links.map((l) => {
+                    const p = endpoints.get(linkKey(l))!;
+                    const d = getCablePath("spline", {
+                      sourceX: p.x1, sourceY: p.y1, sourcePosition: Position.Right,
+                      targetX: p.x2, targetY: p.y2, targetPosition: Position.Left,
+                    });
+                    const active = hotSets?.l.has(linkKey(l)) ?? false;
+                    return (
+                      <g
+                        key={linkKey(l)}
+                        className={cls("specmap-cable", active, isSel("link", linkKey(l)))}
+                        onClick={(e) => { e.stopPropagation(); if (clickedNotDragged()) pick("link", linkKey(l)); }}
+                        {...hoverProps("link", linkKey(l))}
+                      >
+                        <path className="specmap-cable__hit" d={d} />
+                        <path
+                          className="specmap-cable__stroke"
+                          d={d}
+                          strokeWidth={1 + Math.min(2.4, Math.log2(l.weight + 1) * 0.55)}
+                        />
+                      </g>
+                    );
+                  })}
 
-              {model.domains.map((d) => {
-                const y = domainY.get(d.prefix)!;
-                const meterW = CARD_W - 24;
-                let mx = 12;
-                return (
-                  <g
-                    key={d.prefix}
-                    className={cls("specmap-node", hotSets?.d.has(d.prefix) ?? false, isSel("domain", d.prefix))}
-                    transform={`translate(${LEFT_X}, ${y})`}
-                    onClick={(e) => { e.stopPropagation(); pick("domain", d.prefix); }}
-                    {...hoverProps("domain", d.prefix)}
-                  >
-                    <rect className="specmap-node__box" width={CARD_W} height={CARD_H} rx={8} />
-                    <text className="specmap-node__id" x={12} y={19}>{d.prefix}</text>
-                    <text className="specmap-node__count" x={CARD_W - 12} y={19} textAnchor="end">
-                      {d.rules.length} {d.rules.length === 1 ? "rule" : "rules"}
-                    </text>
-                    <text className="specmap-node__sub" x={12} y={34}>{trunc(plain(d.title), 32)}</text>
-                    {STATUS_ORDER.map((st) => {
-                      const w = (d.rules.filter((r) => r.enforcement === st).length / d.rules.length) * meterW;
-                      const x = mx;
-                      mx += w;
-                      return w > 0 && (
-                        <rect key={st} className={`specmap-meter specmap-meter--${st}`}
-                          x={x} y={39.5} width={w} height={2.5} />
-                      );
-                    })}
-                  </g>
-                );
-              })}
-
-              {suites.map((s) => {
-                const sy = suiteY.get(s.suite)!;
-                return (
-                  <g
-                    key={s.suite}
-                    className={cls("specmap-suitenode", hotSets?.s.has(s.suite) ?? false, isSel("suite", s.suite))}
-                    onClick={(e) => { e.stopPropagation(); pick("suite", s.suite); }}
-                    {...hoverProps("suite", s.suite)}
-                  >
-                    <rect
-                      className="specmap-suitenode__hit"
-                      x={SUITE_CX - SUITE_HALF} y={sy - SUITE_ROW / 2}
-                      width={SUITE_HALF * 2} height={SUITE_ROW}
-                    />
-                    <text className="specmap-suitenode__label" x={SUITE_CX} y={sy + 3} textAnchor="middle">
-                      {s.suite}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {groups.map((g) => {
-                const y = groupY.get(g.title)!;
-                return (
-                  <g
-                    key={g.title}
-                    className={cls("specmap-node", hotSets?.g.has(g.title) ?? false, isSel("group", g.title))}
-                    transform={`translate(${RIGHT_X}, ${y})`}
-                    onClick={(e) => { e.stopPropagation(); pick("group", g.title); }}
-                    {...hoverProps("group", g.title)}
-                  >
-                    <rect className="specmap-node__box" width={CARD_W} height={CARD_H} rx={8} />
-                    <text className="specmap-node__title" x={12} y={20}>{trunc(groupLabel(g.title), 30)}</text>
-                    <text className="specmap-node__sub" x={12} y={37}>
-                      {g.modules.length} {g.modules.length === 1 ? "file" : "files"}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+                  {layout.cards.map((c) => {
+                    const homedRules = [...(groupRules.get(c.title) ?? [])]
+                      .map(ruleById).filter((r): r is SpecRule => !!r);
+                    const rows = c.files.slice(0, SAMPLE_ROWS);
+                    const more = c.files.length - rows.length;
+                    const meterW = c.w - 20;
+                    let mx = 10;
+                    return (
+                      <g
+                        key={c.title}
+                        className={cls("specmap-card", hotSets?.g.has(c.title) ?? false, isSel("group", c.title))}
+                        transform={`translate(${c.x}, ${c.y})`}
+                        onClick={(e) => { e.stopPropagation(); if (clickedNotDragged()) pick("group", c.title); }}
+                        {...hoverProps("group", c.title)}
+                      >
+                        <rect className="specmap-card__box" width={c.w} height={c.h} rx={8} />
+                        <path
+                          className="specmap-card__header"
+                          d={`M 0 8 A 8 8 0 0 1 8 0 H ${c.w - 8} A 8 8 0 0 1 ${c.w} 8 V ${HEADER_H} H 0 Z`}
+                        />
+                        <line className="specmap-card__divider" x1={0} y1={HEADER_H} x2={c.w} y2={HEADER_H} />
+                        <text className="specmap-card__title" x={10} y={17}>{trunc(groupLabel(c.title), 24)}</text>
+                        <text className="specmap-card__count" x={c.w - 10} y={17} textAnchor="end">{c.files.length}</text>
+                        {rows.map((f, i) => (
+                          <text key={f} className="specmap-card__row" x={10} y={HEADER_H + 16 + i * ROW_H}>
+                            {trunc(f, 30)}
+                          </text>
+                        ))}
+                        {more > 0 && (
+                          <text className="specmap-card__more" x={10} y={HEADER_H + 16 + rows.length * ROW_H}>
+                            +{more} more
+                          </text>
+                        )}
+                        {homedRules.length > 0 && STATUS_ORDER.map((st) => {
+                          const w = (homedRules.filter((r) => r.enforcement === st).length / homedRules.length) * meterW;
+                          const x = mx;
+                          mx += w;
+                          return w > 0 && (
+                            <rect key={st} className={`specmap-meter specmap-meter--${st}`}
+                              x={x} y={c.h - 9} width={w} height={2.5} />
+                          );
+                        })}
+                        {layout.links.filter((l) => l.to === c.title).map((l) => {
+                          const p = endpoints.get(linkKey(l))!;
+                          return <circle key={`i${linkKey(l)}`} className="specmap-sock" cx={0} cy={p.y2 - c.y} r={5.5} />;
+                        })}
+                        {layout.links.filter((l) => l.from === c.title).map((l) => {
+                          const p = endpoints.get(linkKey(l))!;
+                          return <circle key={`o${linkKey(l)}`} className="specmap-sock" cx={c.w} cy={p.y1 - c.y} r={5.5} />;
+                        })}
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+            ) : (
+              <div className="specmap-canvas__note">Loading…</div>
+            )}
           </div>
 
           <div className="specmap-pane">
@@ -283,12 +473,27 @@ export function SpecMapView() {
                 ))}
                 {found.modules.length > 0 && <div className="specmap-pane__label">Modules</div>}
                 {found.modules.map(({ g, m }) => (
-                  <button key={`${g.title}/${m.name}`} className="specmap-row" onClick={() => pick("group", g.title)} {...hoverProps("group", g.title)}>
+                  <button key={`${g.title}/${m.name}`} className="specmap-row" onClick={() => pickGroup(g.title)} {...hoverProps("group", g.title)}>
                     <span className="specmap-row__id">{m.name}</span>
                     <span className="specmap-row__label">{groupLabel(g.title)}</span>
                   </button>
                 ))}
-                {found.rules.length + found.suites.length + found.modules.length === 0 && (
+                {found.files.length > 0 && <div className="specmap-pane__label">Files</div>}
+                {found.files.map((f) => {
+                  const home = layout?.home.get(f);
+                  return home ? (
+                    <button key={f} className="specmap-row" onClick={() => pickGroup(home)} {...hoverProps("group", home)}>
+                      <span className="specmap-row__id">{f}</span>
+                      <span className="specmap-row__label">{groupLabel(home)}</span>
+                    </button>
+                  ) : (
+                    <div key={f} className="specmap-row specmap-row--inert">
+                      <span className="specmap-row__id">{f}</span>
+                      <span className="specmap-row__label">unmapped</span>
+                    </div>
+                  );
+                })}
+                {found.rules.length + found.suites.length + found.modules.length + found.files.length === 0 && (
                   <p className="specmap-pane__note">No matches.</p>
                 )}
               </>
@@ -298,7 +503,8 @@ export function SpecMapView() {
                 domain={model.domains.find((d) => d.prefix === selRule.domain)!}
                 pick={pick}
                 hoverProps={hoverProps}
-                moduleHome={moduleHome}
+                homeOf={(f) => layout?.home.get(f)}
+                pickGroup={pickGroup}
               />
             ) : selDomain ? (
               <>
@@ -317,13 +523,13 @@ export function SpecMapView() {
                 {selSuite.groups.length ? (
                   <div className="specmap-chips">
                     {selSuite.groups.map((gt) => (
-                      <button key={gt} className="specmap-chip" onClick={() => pick("group", gt)} {...hoverProps("group", gt)}>
+                      <button key={gt} className="specmap-chip" onClick={() => pickGroup(gt)} {...hoverProps("group", gt)}>
                         {groupLabel(gt)}
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="specmap-pane__note">Home module not in an architecture table.</p>
+                  <p className="specmap-pane__note">Home module not on a card.</p>
                 )}
                 <div className="specmap-pane__label">Cited by</div>
                 {selSuite.ruleIds.map((id) => {
@@ -331,31 +537,55 @@ export function SpecMapView() {
                   return r ? ruleRow(r) : null;
                 })}
               </>
-            ) : selGroup ? (
+            ) : selLink ? (
               <>
                 <div className="specmap-pane__head">
-                  <span className="specmap-pane__name specmap-pane__name--sans">{groupLabel(selGroup.title)}</span>
+                  <span className="specmap-pane__name specmap-pane__name--sans">
+                    {groupLabel(selLink.from)} → {groupLabel(selLink.to)}
+                  </span>
                   <span className="specmap-pane__meta">
-                    {selGroup.modules.length} {selGroup.modules.length === 1 ? "file" : "files"}
+                    {selLink.weight} {selLink.weight === 1 ? "import" : "imports"}
                   </span>
                 </div>
-                {selGroup.modules.map((m) => (
-                  <div key={m.name} className="specmap-mod">
-                    <div className="specmap-mod__name">{m.nameCell}</div>
-                    <div className="specmap-mod__role">{plain(m.role)}</div>
+                {selLink.pairs.slice(0, 60).map(([a, b]) => (
+                  <div key={`${a}>${b}`} className="specmap-mod">
+                    <div className="specmap-mod__name">{a}</div>
+                    <div className="specmap-mod__role">→ {b}</div>
                   </div>
                 ))}
+                {selLink.pairs.length > 60 && (
+                  <p className="specmap-pane__note">+{selLink.pairs.length - 60} more</p>
+                )}
               </>
+            ) : selGroup ? (
+              <GroupPane
+                card={selGroup}
+                doc={selGroupDoc}
+                links={layout?.links ?? []}
+                suites={suites.filter((s) => s.groups.includes(selGroup.title))}
+                pick={pick}
+                hoverProps={hoverProps}
+                suiteRow={suiteRow}
+              />
             ) : (
               <>
                 <p className="specmap-pane__text">
-                  An edge is a citation: the rule names the suite that enforces it, and the
-                  suite sits with the module group its code lives in.
+                  Each card is a module group from architecture.md; cables are the import
+                  dependencies between them, scanned from the source.
                 </p>
                 <div className="specmap-pane__stats">
                   <span>{model.ruleCount} rules · {model.domains.length} domains</span>
                   <span>{suites.length} cited suites</span>
-                  <span>{moduleCount} files · {groups.length} groups</span>
+                  {layout && !layout.failed && (
+                    <span>{mappedCount} files on {layout.cards.length} cards · {layout.unmapped.length} unmapped</span>
+                  )}
+                </div>
+                <div className="specmap-chips specmap-chips--domains">
+                  {model.domains.map((d) => (
+                    <button key={d.prefix} className="specmap-chip" onClick={() => pick("domain", d.prefix)} {...hoverProps("domain", d.prefix)}>
+                      {d.prefix} {d.rules.length}
+                    </button>
+                  ))}
                 </div>
                 {model.summary.unenforced > 0 && <div className="specmap-pane__label">Unenforced</div>}
                 {allRules.filter((r) => r.enforcement === "unenforced").map(ruleRow)}
@@ -370,12 +600,13 @@ export function SpecMapView() {
   );
 }
 
-function RulePane({ rule, domain, pick, hoverProps, moduleHome }: {
+function RulePane({ rule, domain, pick, hoverProps, homeOf, pickGroup }: {
   rule: SpecRule;
   domain: SpecDomain;
   pick: (kind: NonNullable<Sel>["kind"], id: string) => void;
   hoverProps: (kind: NonNullable<Sel>["kind"], id: string) => object;
-  moduleHome: (file: string) => ArchGroup | undefined;
+  homeOf: (file: string) => string | undefined;
+  pickGroup: (title: string) => void;
 }) {
   return (
     <>
@@ -411,9 +642,9 @@ function RulePane({ rule, domain, pick, hoverProps, moduleHome }: {
           <div className="specmap-pane__label">Cited modules</div>
           <div className="specmap-chips">
             {rule.moduleRefs.map((f) => {
-              const home = moduleHome(f);
+              const home = homeOf(f);
               return home ? (
-                <button key={f} className="specmap-chip" onClick={() => pick("group", home.title)} {...hoverProps("group", home.title)}>
+                <button key={f} className="specmap-chip" onClick={() => pickGroup(home)} {...hoverProps("group", home)}>
                   {f}
                 </button>
               ) : (
@@ -423,6 +654,75 @@ function RulePane({ rule, domain, pick, hoverProps, moduleHome }: {
           </div>
         </>
       )}
+    </>
+  );
+}
+
+function GroupPane({ card, doc, links, suites, pick, hoverProps, suiteRow }: {
+  card: Card;
+  doc: { modules: { name: string; nameCell: string; role: string }[] } | undefined;
+  links: ArchLink[];
+  suites: SuiteNode[];
+  pick: (kind: NonNullable<Sel>["kind"], id: string) => void;
+  hoverProps: (kind: NonNullable<Sel>["kind"], id: string) => object;
+  suiteRow: (s: SuiteNode) => ReactNode;
+}) {
+  const outs = links.filter((l) => l.from === card.title);
+  const ins = links.filter((l) => l.to === card.title);
+  const tabled = doc?.modules ?? [];
+  const tabledNames = new Set(tabled.flatMap((m) => m.nameCell.match(/[\w./-]+\.tsx?/g) ?? []));
+  const rest = card.files.filter((f) => !tabledNames.has(f) && !tabledNames.has(f.split("/").pop()!));
+  const shown = rest.slice(0, 40);
+  return (
+    <>
+      <div className="specmap-pane__head">
+        <span className="specmap-pane__name specmap-pane__name--sans">{groupLabel(card.title)}</span>
+        <span className="specmap-pane__meta">{card.files.length} {card.files.length === 1 ? "file" : "files"}</span>
+      </div>
+      {outs.length > 0 && (
+        <>
+          <div className="specmap-pane__label">Imports</div>
+          <div className="specmap-chips">
+            {outs.map((l) => (
+              <button key={linkKey(l)} className="specmap-chip" onClick={() => pick("link", linkKey(l))} {...hoverProps("link", linkKey(l))}>
+                {groupLabel(l.to)} {l.weight}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {ins.length > 0 && (
+        <>
+          <div className="specmap-pane__label">Imported by</div>
+          <div className="specmap-chips">
+            {ins.map((l) => (
+              <button key={linkKey(l)} className="specmap-chip" onClick={() => pick("link", linkKey(l))} {...hoverProps("link", linkKey(l))}>
+                {groupLabel(l.from)} {l.weight}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {suites.length > 0 && (
+        <>
+          <div className="specmap-pane__label">Test suites</div>
+          {suites.map(suiteRow)}
+        </>
+      )}
+      {tabled.length > 0 && <div className="specmap-pane__label">Modules</div>}
+      {tabled.map((m) => (
+        <div key={m.name} className="specmap-mod">
+          <div className="specmap-mod__name">{m.nameCell}</div>
+          <div className="specmap-mod__role">{plain(m.role)}</div>
+        </div>
+      ))}
+      {rest.length > 0 && <div className="specmap-pane__label">{tabled.length ? "Other files" : "Files"}</div>}
+      {shown.map((f) => (
+        <div key={f} className="specmap-mod specmap-mod--bare">
+          <div className="specmap-mod__name">{f}</div>
+        </div>
+      ))}
+      {rest.length > shown.length && <p className="specmap-pane__note">+{rest.length - shown.length} more</p>}
     </>
   );
 }

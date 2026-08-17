@@ -86,24 +86,37 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-17 — the Architecture map becomes a spec browser)
-- **View ▸ Architecture map redesigned** (author asked for "something great", open brief):
-  the three-layer graph stays (domains → suites → module groups, an edge IS a citation)
-  and gains a permanent READING PANE — the map now surfaces the docs' actual text instead
-  of hiding it in `title` tooltips. Select a domain → blurb + its rules; a rule → full
-  MUST/Why/Origin/Exceptions + clickable enforcing suites + cited modules; a suite → the
-  rules citing it + home group; a group → every module row with its full role text (the
-  architecture.md tables, readable in-app). Resting pane = the enforcement gaps (the
-  unenforced/partial rule lists), which is what the map is FOR.
-- Mechanics: rule-level selection joins the hover/selection neighborhood model; a head
-  search box matches rules/suites/modules (pane-only, the graph never reshuffles); Esc
-  unwinds query → selection → close. Middle layer is barycenter-ordered
-  (`buildSuiteNodes` in `specMap.ts`, tested) so it runs diagonal instead of doc-order
-  spaghetti; domain cards trade the presence dots for a proportional enforcement meter.
-  Parser now captures `*Why:*`/`*Origin:*`/`*Exceptions:*` sections + non-test module
-  refs per rule, pinned in `specMap.test.ts` against the docs' own marker counts.
-  Suite→group stem matching and the honest untabled-suite gap are unchanged (37 of 59
-  suites are untabled today — signal, not a bug).
+### SESSION DIGEST (2026-08-17 — the Architecture map becomes the system's self-portrait)
+- **View ▸ Architecture map rebuilt twice on an open author brief ("something great").**
+  Round 1 (a reading pane bolted onto the citation web) was rated mid; round 2 replaced
+  the citation web with the system drawn in the app's own language: module-group CARDS
+  (node-card anatomy — header band, divider, 8px corners, gray any-sockets, enforcement
+  meter foot) on a pan/zoom dot-grid canvas, whose CABLES are the source's REAL import
+  dependencies. `scripts/scan-arch-deps.mjs` scans src/graph relative imports at build
+  (603 files today), `vite.config.ts` serves it as `virtual:arch-deps` (lazy ~90K
+  chunk), `archGraph.ts` assigns file → group from architecture.md itself (table rows →
+  prose inline-code citations → directory headings; ~74 files stay honestly unmapped and
+  counted, never guessed) and aggregates ~76 weighted group→group links. Layout: ELK
+  layered (the Tidy engine) via lazy import, grid fallback; camera = `hicCamera.ts`
+  (drag pan / wheel zoom / `pinchStep`, wheel via a native non-passive listener);
+  cables use `getCablePath("spline")` so they ARE app cables. Card sample rows are
+  degree-ordered (load-bearing modules first).
+- **The reading pane carries the docs' actual text** (round 1's keeper): rule →
+  full MUST/Why/Origin/Exceptions + enforcing-suite and cited-module chips; group →
+  imports/imported-by chips, homed test suites, module roles (the architecture.md
+  tables readable in-app); cable → its file-level import pairs; resting state = stats +
+  domain chips + the enforcement-gap lists. Head search spans rules/suites/modules/
+  files; Esc unwinds query → selection → close. Hover/selection lights the graph
+  neighborhood; pane picks fly the camera to the card.
+- Derivation stays total (SSOT-3): `parseRulesDoc` now captures Why/Origin/Exceptions
+  sections + per-rule module refs (pinned against the docs' own marker counts);
+  `parseArchDoc` emits dir/claims groups for prose ### sections; `buildSuiteNodes`
+  homes suites by directory too (nodes/* suites land on the Node compute card).
+  New pins: `archGraph.test.ts` (scan resolves to real files only; membership spots;
+  every cable pair is a scanned import; degree ordering), extended `specMap.test.ts`.
+  Gesture inventory updated (`touch-gestures.md` — the overlay is its own surface, not
+  the rete canvas). Known limit: the dev-server scan runs at config load, so a new
+  import shows after a dev restart (prod builds always fresh).
 
 ### SESSION DIGEST (2026-08-17 — chrome fills went opaque; the frosted-glass layer is gone)
 - **`--panel-bg` / `--overlay-bg` are now `var(--surface)`** (`App.css`), so every bar, panel

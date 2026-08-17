@@ -1,8 +1,9 @@
-/* Architecture map overlay: the spec ↔ code citation graph plus its reading
-   pane. Same modal band as the Reference overlay (fr-backdrop, z-index 9000).
-   Color carries state only: enforcement uses the status set (DESIGN.md §2,
-   literals like fr-stats'), edges/nodes light with the accent on
-   hover/selection and stay neutral at rest. */
+/* Architecture map overlay: the system drawn as a Solenoid graph (module-group
+   cards + import-dependency cables on a pan/zoom canvas) plus its reading pane.
+   Same modal band as the Reference overlay (fr-backdrop, z-index 9000). Color
+   carries state only: enforcement uses the status set (DESIGN.md §2, literals
+   like fr-stats'), cards/cables light with the accent on hover/selection and
+   stay neutral at rest. */
 
 .specmap-backdrop {
   position: fixed;
@@ -104,76 +105,100 @@
   display: flex;
 }
 
-/* Fixed-pixel layout space, centered; scrolls when the panel is smaller. The
-   canvas is a shade darker than the panel so the node cards lift off it, the
-   same tonal step the real graph canvas uses. */
+/* The map canvas: the app's own ground — canvas void + dot grid, the grid
+   tracking the camera (background-size/position are set inline per frame, the
+   same trick Canvas.tsx uses). Pan with a drag, zoom on the wheel, pinch on
+   touch; the SVG world layer carries one translate+scale group. */
 .specmap-canvas {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
+  touch-action: none;
+  cursor: grab;
+}
+.specmap-canvas:active { cursor: grabbing; }
+.specmap-world {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.specmap-canvas__note {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  background: var(--surface-sunken);
+  font-size: 11px;
+  color: var(--text-muted);
 }
-.specmap-svg { display: block; }
 
-.specmap-edge {
+/* Cables: neutral at rest like a hairline, accent when their neighborhood is
+   hot. Width scales gently with import count. */
+.specmap-cable { cursor: pointer; transition: opacity 0.1s; }
+.specmap-cable--dim { opacity: 0.15; }
+.specmap-cable__hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 11;
+}
+.specmap-cable__stroke {
   fill: none;
   stroke: var(--border-strong);
-  stroke-width: 1;
-  transition: stroke 0.1s, opacity 0.1s;
+  transition: stroke 0.1s;
 }
-.specmap-edge--hot { stroke: var(--accent); stroke-width: 1.5; }
-.specmap-edge--dim { opacity: 0.2; }
+.specmap-cable:hover .specmap-cable__stroke,
+.specmap-cable--hot .specmap-cable__stroke { stroke: var(--text-muted); }
+.specmap-cable--selected .specmap-cable__stroke { stroke: var(--accent); }
 
-.specmap-node { cursor: pointer; transition: opacity 0.1s; }
-.specmap-node--dim { opacity: 0.35; }
-.specmap-node__box {
+/* Cards: the node-card anatomy — surface body, tonal header band, divider,
+   8px corners — drawn in SVG so the whole card scales with the camera. */
+.specmap-card { cursor: pointer; transition: opacity 0.1s; }
+.specmap-card--dim { opacity: 0.35; }
+.specmap-card__box {
   fill: var(--surface);
   stroke: var(--border-strong);
   transition: stroke 0.1s;
 }
-.specmap-node:hover .specmap-node__box,
-.specmap-node--hot .specmap-node__box { stroke: var(--text-muted); }
-.specmap-node--selected .specmap-node__box { stroke: var(--accent); stroke-width: 2; }
-
-/* Middle layer: one row per cited suite. */
-.specmap-suitenode { cursor: pointer; transition: opacity 0.1s; }
-.specmap-suitenode--dim { opacity: 0.3; }
-.specmap-suitenode__hit { fill: transparent; }
-.specmap-suitenode__label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  fill: var(--text-muted);
-  transition: fill 0.1s;
-}
-.specmap-suitenode:hover .specmap-suitenode__label,
-.specmap-suitenode--hot .specmap-suitenode__label { fill: var(--text); }
-.specmap-suitenode--selected .specmap-suitenode__label {
-  fill: color-mix(in srgb, var(--accent) var(--mix-ink), var(--text));
-}
-
-.specmap-node__id {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  font-weight: 600;
-  fill: var(--text-bright);
-}
-.specmap-node__title {
+.specmap-card:hover .specmap-card__box,
+.specmap-card--hot .specmap-card__box { stroke: var(--text-muted); }
+.specmap-card--selected .specmap-card__box { stroke: var(--accent); stroke-width: 2; }
+.specmap-card__header { fill: var(--btn-hover); }
+.specmap-card__divider { stroke: var(--border); stroke-width: 1; }
+.specmap-card__title {
   font-size: 12px;
   font-weight: 600;
   fill: var(--text);
 }
-.specmap-node__sub {
-  font-size: 10.5px;
+.specmap-card__count {
+  font-family: var(--font-mono);
+  font-size: 10px;
   fill: var(--text-muted);
 }
-.specmap-node__count {
-  font-size: 10.5px;
+.specmap-card__row {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  fill: var(--text-dim);
+}
+.specmap-card__more {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
   fill: var(--text-muted);
 }
 
-/* Per-domain enforcement meter (proportional segments along the card foot). */
+/* Sockets: the 12px typed dot, untyped gray — a card's imports are one
+   relationship, not a data type. */
+.specmap-sock {
+  fill: var(--sock-any);
+  stroke: var(--socket-ring);
+  stroke-width: 2;
+}
+
+/* Per-card enforcement meter (proportional segments along the card foot). */
 .specmap-meter--enforced   { fill: #2fae7a; }
 .specmap-meter--partial    { fill: #d9a93b; }
 .specmap-meter--unenforced { fill: #e0473a; }
@@ -287,6 +312,8 @@
   min-width: 0;
 }
 .specmap-row:hover { background: var(--btn-hover); }
+.specmap-row--inert { cursor: default; }
+.specmap-row--inert:hover { background: none; }
 .specmap-row__id {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -305,6 +332,7 @@
 
 /* Module rows in a group's pane: name + full role text. */
 .specmap-mod { margin: 0 0 8px; }
+.specmap-mod--bare { margin: 0 0 2px; }
 .specmap-mod__name {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -323,6 +351,7 @@
   gap: 5px;
   margin-bottom: 2px;
 }
+.specmap-chips--domains { margin-top: 10px; }
 .specmap-chip {
   display: inline-flex;
   align-items: center;
