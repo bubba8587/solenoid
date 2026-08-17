@@ -9,7 +9,7 @@
    "y": -200,
    "init": {
     "label": "How it works",
-    "body": "# Sudoku solver\nThe container is a **Simulation** loop over an 81\u00d79 **candidate matrix**\n(cell \u00d7 digit). Each step is one deduction round, all pure matrix algebra\n(MAP + MMULT against constant incidence matrices):\n\n1. **Naked singles** \u2014 a pinned digit is eliminated from every peer cell.\n2. **Hidden singles** \u2014 a digit with one home left in a unit claims that cell.\n3. **Naked pairs** \u2014 two cells sharing the same 2-candidate set knock those\n   digits out of every cell that sees both.\n\nCandidates only ever shrink, so the loop hits a fixpoint \u2014 for this puzzle,\nwell inside the configured steps. Edit the puzzle (0 = empty), then press\n**Solve** on the container. *Solved* confirms every cell pinned to exactly\none digit; drill in to see the machinery.\n"
+    "body": "# Sudoku solver\n\nThe container is a **Simulation** loop over an 81\u00d79 **candidate matrix** (cell \u00d7 digit). Each step is one deduction round, all pure matrix algebra (MAP + MMULT against constant incidence matrices):\n\n1. **Naked singles** \u2014 a pinned digit is eliminated from every peer cell.\n2. **Hidden singles** \u2014 a digit with one home left in a unit claims that cell.\n3. **Naked pairs** \u2014 two cells sharing the same 2-candidate set knock those digits out of every cell that sees both.\n\nCandidates only ever shrink, so the loop hits a fixpoint \u2014 for this puzzle, well inside the configured steps. Edit the puzzle (0 = empty), then press **Solve** on the container. *Solved* confirms every cell pinned to exactly one digit; drill in to see the machinery."
    }
   },
   {

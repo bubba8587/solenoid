@@ -20,6 +20,8 @@ type SavedStandoff = { a: { nodeId: string; anchor: string }; b: { nodeId: strin
 type SavedGraph = { v: number; nodes: SavedNode[]; connections: SavedConnection[]; standoffs?: SavedStandoff[] };
 
 const ANCHORS = new Set(["n", "e", "s", "w", "ne", "nw", "se", "sw"]);
+/** Node types whose `body` is markdown prose the user reads on the canvas. */
+const PROSE_TYPES = new Set(["NoteNode", "ReportNode", "ImportObsidianNode", "PresentationNode"]);
 
 const seedModules = import.meta.glob("./seedGraphs/*.json", { eager: true }) as Record<
   string, { default?: SavedGraph } & SavedGraph
@@ -185,6 +187,39 @@ for (const [path, mod] of Object.entries(seedModules)) {
         expect(ANCHORS.has(s.a.anchor) && ANCHORS.has(s.b.anchor)).toBe(true);
         expect(s.min).toBeLessThanOrEqual(s.max);
       }
+    });
+
+    // Note and Report bodies render with `breaks: true`, so a newline INSIDE a
+    // paragraph is a hard <br> — the prose is frozen at whatever column the
+    // author's editor wrapped at and cannot reflow to the card, which is what
+    // the card's `pretty` wrapping (DESIGN.md §3) is there to do. A blank line
+    // between paragraphs and one line per list item / table row are structure
+    // and stay. 13 such breaks shipped across three seeds before this ran.
+    it("prose bodies have no hard-wrapped lines mid-paragraph", () => {
+      const startsBlock = (line: string) =>
+        /^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|\||```|~~~|!\[\[)/.test(line) || line.startsWith("    ");
+      const problems: string[] = [];
+      for (const sn of g.nodes) {
+        if (!PROSE_TYPES.has(sn.type)) continue;
+        const body = sn.init?.body;
+        if (typeof body !== "string" || !body.includes("\n")) continue;
+        const lines = body.split("\n");
+        let fenced = false;
+        for (let i = 0; i < lines.length - 1; i++) {
+          const cur = lines[i], next = lines[i + 1];
+          if (/^\s*(```|~~~)/.test(cur)) fenced = !fenced;
+          if (fenced) continue;
+          // A blank line ends the paragraph; a heading closes its own block; a
+          // block marker on the NEXT line means that line is not a continuation.
+          if (!cur.trim() || !next.trim()) continue;
+          if (/^\s*#{1,6}\s/.test(cur) || startsBlock(next)) continue;
+          problems.push(
+            `${sn.id} line ${i + 1} wraps mid-paragraph (renders as <br>):\n` +
+              `      ...${cur.slice(-56)}\n    + ${next.slice(0, 56)}...`,
+          );
+        }
+      }
+      expect(problems, problems.join("\n")).toEqual([]);
     });
   });
 }

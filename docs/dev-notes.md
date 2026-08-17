@@ -178,6 +178,23 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   of a stranded "inputs.". And a first probe that toggled the style on the CONTAINER showed no
   change at all — `.sol-md p` declares its own `pretty`, which beats an inherited value, so the
   comparison has to be made on the element that actually wraps.
+- **13 hard-wrapped lines swept out of seed Note bodies** (author spotted them in the
+  Architecture map). Every Note/Report surface parses with `breaks: true`, so a newline INSIDE
+  a paragraph is a literal `<br>`: the prose was frozen at the ~70-column wrap of whoever typed
+  it and could not reflow to the card at all, which is what made the `pretty` work above
+  invisible there. `arch-note` (6) and `arch-enforcement` (1) are GENERATED — fixed in
+  `archSeed.ts` (one string per paragraph, `join("\n\n")`) and regenerated, so the next
+  `gen:arch-seed` cannot reintroduce them; `sudoku-solver`'s note (6) was hand-edited.
+  Verified through `marked` with the real options: 13 `<br>` before, 0 after.
+- **`seeds.test.ts` now guards it** ("prose bodies have no hard-wrapped lines mid-paragraph"),
+  over every `NoteNode`/`ReportNode`/`ImportObsidianNode`/`PresentationNode` `body` in every
+  seed. Structure is exempt: blank line between paragraphs, list items, table rows, fenced
+  code, and a heading closing its own block.
+- The false positives that make a naive scan useless here: `frameText` newlines are CSV ROW
+  SEPARATORS (a naive sweep flagged 647 of them across the seeds, all of which must be left
+  alone), and `# Heading` followed by prose is two blocks, not a break. Only `body` on a prose
+  node type is in scope. `src/graph/help/*.md` is also NOT affected — `Markdown.tsx` parses
+  with `breaks: false`, so hard wraps there are ordinary markdown authoring and stay.
 - Not reachable: hover tooltips are native `title=` attributes, which the browser renders and
   CSS cannot touch. Nothing to do there short of a custom tooltip component (feature work).
 
