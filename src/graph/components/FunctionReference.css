@@ -399,6 +399,7 @@
   color: var(--border-strong);
   padding: 48px 0;
   font-size: 13px;
+  text-wrap-style: balance;
 }
 
 /* Socket Types tab — the floating socket legend's rows, given room to breathe. */
@@ -411,6 +412,7 @@
   color: var(--text-dim);
   font-size: 13px;
   line-height: 1.55;
+  text-wrap-style: pretty;
 }
 .fr-sockets .solenoid-legend__row { margin-bottom: 13px; }
 .fr-sockets .solenoid-legend__type { font-size: 14px; }
@@ -427,4 +429,5 @@
   color: var(--text-muted);
   max-width: 0; /* table-layout escape: wrap to the table's width, don't widen it */
   white-space: normal;
+  text-wrap-style: pretty;
 }

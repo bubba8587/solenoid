@@ -39,6 +39,7 @@
 
 .solenoid-notice__msg {
   flex: 1;
+  text-wrap-style: balance;
 }
 
 .solenoid-notice__close {

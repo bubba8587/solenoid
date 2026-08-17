@@ -132,6 +132,21 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   scattered by weak edges, invisible rest cables, an empty-neighborhood dim, and the
   seed's overlapping first layout (card heights underestimated the frame preview).
 
+### SESSION DIGEST (2026-08-17 — wrap styles: prose gets `pretty`, shaped blocks get `balance`)
+- **The Wrap Rule is now DESIGN.md §3.** `balance` for short blocks read as a shape (doc
+  headings, dialog messages, toasts, the sentence-length node-card empty states); `pretty` for
+  running prose (`.sol-md` paragraphs and list items, the socket-legend and Inspector
+  descriptions, the Reference catalog's expandable description row, What's New bodies,
+  Settings notes). Applied at each component's own rule, ~20 declarations.
+- **Only the `text-wrap-style` longhand ships.** The `text-wrap` shorthand also sets
+  `text-wrap-mode`, so it silently resets a `white-space: nowrap` on the same element into
+  wrapping text — `.solenoid-alert__msg` is one ellipsis-clipped line by design and was the
+  live example. `cssSyntax.test.ts` gained two guards (no shorthand anywhere; every
+  `text-wrap-style` is `balance` or `pretty`). The landing page's three pre-existing shorthand
+  uses were normalized to the longhand so there is one idiom.
+- Not reachable: hover tooltips are native `title=` attributes, which the browser renders and
+  CSS cannot touch. Nothing to do there short of a custom tooltip component (feature work).
+
 ### SESSION DIGEST (2026-08-17 — chrome fills went opaque; the frosted-glass layer is gone)
 - **`--panel-bg` / `--overlay-bg` are now `var(--surface)`** (`App.css`), so every bar, panel
   and floating overlay is the raised surface rather than a 90–98% window onto the graph. The

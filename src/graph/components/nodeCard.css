@@ -1018,6 +1018,9 @@ body.solenoid-scrubbing * {
 .solenoid-node__text-empty {
   color: var(--text-muted);
   font-style: italic;
+  /* Sentence-length state lines ("expose an input to sweep it") in a column as
+     narrow as a card — greedy wrapping stranded the last word on its own row. */
+  text-wrap-style: balance;
 }
 
 /* Pill socket: collapsed aggregate of many inputs. Sits over the stacked

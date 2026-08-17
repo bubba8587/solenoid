@@ -24,6 +24,7 @@
 .solenoid-confirm__message {
   line-height: 1.45;
   margin-bottom: 16px;
+  text-wrap-style: balance;
 }
 
 .solenoid-confirm__buttons {

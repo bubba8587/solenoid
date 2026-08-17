@@ -42,6 +42,7 @@
   font-size: 9px;
   line-height: 1.35;
   color: var(--text-muted);
+  text-wrap-style: pretty;
 }
 
 /* Fixed, centered icon slot so a text-glyph icon ("⊙" / "⛓" / "⊷") and an SVG

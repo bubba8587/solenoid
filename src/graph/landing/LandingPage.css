@@ -142,7 +142,7 @@
   font-weight: 600;
   line-height: 1.18;
   color: var(--text-bright);
-  text-wrap: balance;
+  text-wrap-style: balance;
 }
 
 .sol-landing__hero p {
@@ -252,7 +252,7 @@
   font-weight: 600;
   line-height: 1.25;
   color: var(--text-bright);
-  text-wrap: balance;
+  text-wrap-style: balance;
 }
 
 .sol-landing__lede {
@@ -301,7 +301,7 @@
   font-size: 13px;
   line-height: 1.62;
   color: var(--text-dim);
-  text-wrap: pretty;
+  text-wrap-style: pretty;
 }
 
 .sol-landing__deep-copy code,

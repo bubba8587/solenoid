@@ -197,6 +197,12 @@ Tint FILLS stay separate: the header band uses `--header-tint` (22% dark / 52% l
 
 **The Small-and-Dense Rule.** Body is 12px and labels are 11px. The graph wants information per pixel. Do not inflate type for breathing room; rhythm comes from spacing and grouping, not from large headings.
 
+**The Wrap Rule.** Text that wraps to more than one line picks a wrap style; greedy wrapping is for text that never wraps. Two styles, and the choice is the block's job:
+- `text-wrap-style: balance` — short blocks whose silhouette is read as a shape: headings, dialog messages, toasts, and the sentence-length empty states inside a narrow node card. Browsers cap balancing at a few lines, so this is wrong for body copy.
+- `text-wrap-style: pretty` — running prose: help markdown, catalog and socket descriptions, settings notes. It keeps lines full and only rebreaks the tail to kill a one-word orphan.
+
+Always the `text-wrap-style` longhand, never the `text-wrap` shorthand. The shorthand also sets `text-wrap-mode`, so it silently resets a `white-space: nowrap` on the same element into wrapping text (`.solenoid-alert__msg` is one ellipsis-clipped line by design and would have broken). `cssSyntax.test.ts` enforces the longhand and the two allowed values. Both degrade to greedy wrapping where unsupported, so no fallback is needed.
+
 ## 4. Elevation
 
 The system is flat at rest and uses elevation only to communicate state. Cards sit on the canvas with a 1px-deep card shadow that is barely more than a seam; depth comes mostly from the tonal step between the dark canvas and the slightly lighter card, not from cast shadows. Real lift is reserved for two things: floating overlay chrome that must read above a busy graph, and state feedback (hover, selection).
