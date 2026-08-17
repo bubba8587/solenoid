@@ -330,6 +330,11 @@ function inputKeysFor(op: DistKey, form: DistForm): string[] {
 }
 
 export class DistributionNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    k: "The count rounds down to a whole number.",
+    result: "A value or parameter outside the distribution's domain gives a blank, not an error.",
+  };
+
   label: string;
   op: DistKey;
   form: DistForm;

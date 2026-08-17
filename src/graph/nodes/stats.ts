@@ -71,6 +71,10 @@ function percentileOf(sorted: number[], p: number, exc: boolean): number {
 }
 
 export class RankPercentileNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    significance: "The rank truncates to this many digits; it does not round.",
+  };
+
   label: string;
   op: RankPercentileOp;
   cachedResult: number | SolError | null = null;
@@ -198,6 +202,10 @@ export const CORREL_OP_META = {
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
 export class CorrelNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    x: "Pairs with Y by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   op: CorrelOp;
   cachedResult: number | SolError | null = null;
@@ -281,6 +289,10 @@ export const COVARIANCE_OP_META = {
 } satisfies Record<CovarianceOp, { label: string; description: string }>;
 
 export class CovarianceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    x: "Pairs with Y by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   op: CovarianceOp;
   cachedResult: number | SolError | null = null;
@@ -362,6 +374,10 @@ export const REGRESSION_OP_META = {
 } satisfies Record<RegressionOp, { label: string; description: string }>;
 
 export class RegressionNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   op: RegressionOp;
   cachedResult: number | SolError | null = null;
@@ -419,6 +435,10 @@ export class RegressionNode extends ClassicPreset.Node {
 // ─── Forecast ─────────────────────────────────────────────────────────────────
 
 export class ForecastNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
@@ -459,6 +479,10 @@ export class ForecastNode extends ClassicPreset.Node {
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
 export class ModeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "One mode arrives as a number; tied modes arrive together as a sorted list.",
+  };
+
   label: string;
   cachedResult: number | number[] | SolError | null = null;
   width = 180;
@@ -497,6 +521,10 @@ export class ModeNode extends ClassicPreset.Node {
 // ─── TrimMean ─────────────────────────────────────────────────────────────────
 
 export class TrimMeanNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    percent: "A fraction from 0 to 1, not a whole-number percent. Half of the trimmed count comes off each end.",
+  };
+
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { percent: 0.1 };
@@ -526,6 +554,11 @@ export class TrimMeanNode extends ClassicPreset.Node {
 // ─── Frequency ────────────────────────────────────────────────────────────────
 
 export class FrequencyNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    bins: "Bins sort ascending before counting, and each holds values up to and including its bound.",
+    result: "One count per bin plus a final count of everything above the last bin.",
+  };
+
   label: string;
   cachedList: number[] = [];
   width = 180;
@@ -677,6 +710,10 @@ export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec>
 const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "unequal-var" } as const;
 
 export class HypothesisTestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    sigma: "Left unwired, the sample's own standard deviation is used. A wired blank instead blanks the result.",
+  };
+
   label: string;
   op: HypothesisTestOp;
   cachedResult: number | null = null;
@@ -769,6 +806,10 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 // ─── TREND ────────────────────────────────────────────────────────────────────
 
 export class TrendNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   cachedList: number[] | SolError = [];
   literals: Record<string, number> = {};
@@ -817,6 +858,12 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 
 
 export class InterpolateNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped.",
+    new_xs: "A query outside the known range clamps to the nearest end; nothing extrapolates.",
+    grid: "Row 1 holds the X coordinates and column 1 the Y coordinates. The top-left corner cell is ignored.",
+  };
+
   label: string;
   mode: InterpolateMode;
   // LIST mode: scalar-or-list matching the query shape. GRID mode: the filled bordered
@@ -907,6 +954,10 @@ export class InterpolateNode extends ClassicPreset.Node {
 // ─── LINEST ───────────────────────────────────────────────────────────────────
 
 export class LinestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   cachedSlope:     number | SolError | null = null;
   cachedIntercept: number | SolError | null = null;
@@ -941,6 +992,10 @@ export class LinestNode extends ClassicPreset.Node {
 // ─── LOGEST ───────────────────────────────────────────────────────────────────
 
 export class LogestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+  };
+
   label: string;
   cachedList: number[] | SolError = [];
   literals: Record<string, number> = {};

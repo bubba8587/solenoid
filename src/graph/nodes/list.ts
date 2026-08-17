@@ -63,6 +63,10 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
 }
 
 export class ListInputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Rows concatenate in order, and a wired row replaces its typed text.",
+  };
+
   label: string;
   cachedList: AnyCell[] = [];
   dataType: ListElemType;
@@ -276,6 +280,12 @@ export class ListLengthNode extends ClassicPreset.Node {
 // INDEX reads a cell out of ANY container (list / matrix / frame / cube), so its
 // input and output are `any`.
 export class ListIndexNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    index: "Rows count from 1; 0 or unset takes every row. A wired blank blanks the result instead.",
+    column: "Columns count from 1; 0 or unset takes every column. A plain list has only column 1.",
+    result: "A whole row taken from a frame arrives as a one-row frame; a whole column arrives as a list.",
+  };
+
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
   literals: Record<string, number> = {}; // 1-based (Excel INDEX); unset = [all]
@@ -397,6 +407,10 @@ function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexRe
 export type SortDir = "asc" | "desc";
 
 export class SortNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Blank and error cells sort to the end in either direction.",
+  };
+
   label: string;
   op: SortDir;
   cachedList: number[] = [];
@@ -445,6 +459,10 @@ export class ReverseNode extends ClassicPreset.Node {
 }
 
 export class SliceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    end: "The element at End is included. Left unset, the slice runs to the end of the list.",
+  };
+
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -507,6 +525,10 @@ export function readFilterValue(wired: unknown[] | undefined, literal: string | 
 }
 
 export class FilterNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "With no completed condition the whole list passes through unchanged.",
+  };
+
   label: string;
   combine: FilterCombine;
   /** Per-row {op, matchCase}, keyed by the row id (the `value${id}` suffix). */
@@ -640,6 +662,10 @@ export const COND_AGG_OP_META = {
 } satisfies Record<CondAggOp, { label: string; description: string }>;
 
 export class SumIfsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "Names the column to aggregate. COUNTIFS counts rows and ignores it.",
+  };
+
   label: string;
   op: CondAggOp;
   /** Per-pair {op, matchCase}, keyed by the pair id (the `column${id}` suffix). */
@@ -797,6 +823,10 @@ export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string
 // dedupe. Blanks aren't members; an error equals nothing, so it passes through where
 // it sits (union, the A-side of difference) rather than vanishing.
 export class SetOpNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Duplicates collapse to the first occurrence, and blank cells are never members.",
+  };
+
   /** Element-preserving: the result is a subset of A ∪ B, so the output adopts
    *  the agreed element type (a strlist ∖ strlist stays a strlist). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
@@ -829,6 +859,10 @@ export class SetOpNode extends ClassicPreset.Node {
 // A logical list ALIGNED to A. Membership stance matches the Set node: B's blanks and
 // errors aren't members; an A-side blank or error propagates per cell.
 export class IsInNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "A blank cell in Values yields a blank entry rather than FALSE. Blank cells in Set are never members.",
+  };
+
   label: string;
   cachedList: unknown[] = [];
   width = 180;
@@ -865,6 +899,10 @@ export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean
 // Distinct value → count as a two-column Frame, first-seen order; blanks and errors
 // aren't counted (same stance as Set).
 export class TallyNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Distinct values appear in first-seen order; blank and error cells are not counted.",
+  };
+
   label: string;
   cachedResult: FrameValue | null = null;
   width = 200;
@@ -1063,6 +1101,10 @@ export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: st
 ];
 
 export class RunningNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    window: "Rounds to a whole number of at least 1. The first elements use as much of the window as exists.",
+  };
+
   label: string;
   op: RunningOp;
   mode: RunningMode;
@@ -1112,6 +1154,10 @@ export class RunningNode extends ClassicPreset.Node {
 }
 
 export class DiffNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The output is one element shorter than the input; each entry is the change from the element before.",
+  };
+
   label: string;
   cachedList: ListCell[] = [];
   width = 180;
@@ -1237,6 +1283,10 @@ export class RepeatNode extends ClassicPreset.Node {
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The order holds until a recalculation; changed values flow through without reshuffling.",
+  };
+
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -1296,6 +1346,10 @@ export class NthElementNode extends ClassicPreset.Node {
 
 // ─── Interleave ───────────────────────────────────────────────────────────────
 export class InterleaveNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "A shorter side contributes blanks so the alternation stays aligned.",
+  };
+
   /** Element-preserving: cells alternate from A and B untouched, so the output
    *  adopts the agreed type of the two sides. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
@@ -1328,6 +1382,10 @@ export const PAD_OP_META = {
 } satisfies Record<PadDir, { label: string; description: string }>;
 
 export class PadNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    n: "A target at or below the list's length leaves it unchanged; nothing is trimmed.",
+  };
+
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -1387,6 +1445,10 @@ export class GeometricNode extends ClassicPreset.Node {
 
 // ─── Fibonacci ────────────────────────────────────────────────────────────────
 export class FibonacciNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    n: "Caps at 78 terms; later terms would lose precision.",
+  };
+
   label: string;
   cachedList: number[] | null = [];
   literals: Record<string, number> = { n: 10 };
@@ -1421,6 +1483,10 @@ export const WEIGHTED_OP_META = {
 } satisfies Record<WeightedOp, { label: string; description: string }>;
 
 export class WeightedNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    weights: "Pairs with Values by position, and a pair with a blank on either side is dropped. Fewer weights than values blanks the result.",
+  };
+
   label: string;
   op: WeightedOp;
   cachedResult: number | SolError | null = null;
@@ -1495,6 +1561,10 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
 }
 
 export class AggregateNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Blank cells are skipped, not counted as zero. One error cell makes the whole result that error.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -1635,6 +1705,10 @@ export class AggregateNode extends ClassicPreset.Node {
 // #OVERFLOW!; the ceiling lives in listOps.ts so the formulas share this number.
 
 export class RandArrayNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
+  };
+
   label: string;
   cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 }; // min/max ship unset → muted 0/1 placeholders
@@ -1685,6 +1759,10 @@ export class RandArrayNode extends ClassicPreset.Node {
 // ─── SORTBY ───────────────────────────────────────────────────────────────────
 
 export class SortByNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    by_array: "Pairs with the array by position, and a shorter side pads with blanks. A blank or error key sends its element to the end.",
+  };
+
   /** The output adopts the sorted array's type; by_array keys are a side input and
    *  stay unit-blind. */
   passthrough = (): PassthroughSpec[] => [{ output: "list", inputs: ["array"], combine: "single" }];
@@ -1790,6 +1868,10 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
 }
 
 export class GroupByNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "Pairs with Keys by position; rows beyond the shorter list are ignored.",
+  };
+
   /** The unique keys adopt the keys input's element type; the values stay numeric. */
   passthrough = (): PassthroughSpec[] => [{ output: "keys", inputs: ["keys"], combine: "single" }];
   label: string;
@@ -1877,6 +1959,10 @@ type Cell = number | null | SolError;
  *  and a non-finite/error cell is a hard boundary, not a value to interpolate from. */
 
 export class FillNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Only the Fill with value operation reads it.",
+  };
+
   label: string;
   op: FillOp;
   cachedList: Cell[] = [];
