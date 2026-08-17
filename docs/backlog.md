@@ -11,6 +11,15 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
 
+- [ ] **Divergence flags from the socket-docs sweep (2026-08-17)** — surfaced while
+  verifying Inspector docs against `data()`, each needs its own small investigation:
+  (a) FACT/FACTDOUBLE ignore `k` yet a WIRED-BLANK k still blanks the result
+  (`scalar.ts` Combinatorics; looks unintentional); (b) finance `basis` codes
+  diverge from Excel (`securityDisc` uses actual days even for basis 0,
+  `basisDays(1)` is 365.25) — verify against Excel, then either fix or record in
+  `formulajs-divergences.md`; (c) ISPMT's sign convention may diverge from Excel's;
+  (d) FIXED/DOLLAR clamp negative `decimals` where Excel rounds left of the point.
+
 - [ ] **Node-by-node sweep** — walk the catalog one node at a time: null/error/empty
   inputs handled per `value-semantics.md`; collapsed card reads right; description
   matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings

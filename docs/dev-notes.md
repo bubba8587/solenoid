@@ -126,6 +126,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   inspector's job), and actions stay in the right-click menu — the Inspector is
   the static reference for the selected node and its current configuration. Selection polls (no push store, same as SelectionActionsBar);
   values refresh on `compositePassStore`. Recorded in layout-chrome + the alias table.
+- **Socket-docs sweep (author-directed fan-out, 7 parallel agents)**: 119 node
+  classes now carry `static socketDocs` — every sentence verified against the
+  `data()` code or shared kernel, DESIGN §7 voice, opt-in bar held (dynamic-key
+  sockets and label-sufficient sockets deliberately skipped; agents reported their
+  skip lists). Landed as slices 1-7 (one commit per completed agent). The sweep
+  also surfaced real drift: Text Filter's `contains` meta said case-sensitive
+  against the D12 case-insensitive kernel (FIXED), plus four divergence flags now
+  in the backlog (FACT's wired-blank k, finance basis codes, ISPMT sign,
+  FIXED/DOLLAR negative decimals).
 - **The Playwright eyeball loop is now standing practice** (author sanction recorded
   in CLAUDE.md, superseding the screenshot ban). It caught, across the session: a
   setPointerCapture-on-pointerdown click swallow, backwards cable semantics, ELK
