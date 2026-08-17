@@ -8,7 +8,6 @@ import { OutlinePanel } from "./graph/OutlinePanel";
 import { StatusBar } from "./graph/StatusBar";
 import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
-import { SpecMapView } from "./graph/components/SpecMapView";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
 import { CompositeEditorOverlay } from "./graph/components/CompositeEditorOverlay";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
@@ -73,7 +72,6 @@ function MainApp() {
       <OutlinePanel />
       <StatusBar />
       <FunctionReference />
-      <SpecMapView />
       <ReportOverlay />
       <CompositeEditorOverlay />
       <PresentationOverlay />

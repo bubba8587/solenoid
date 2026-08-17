@@ -47,6 +47,7 @@ import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
 import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, TreemapNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode } from "./visual";
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
+import { SubsystemNode } from "./subsystem";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
@@ -133,7 +134,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ImageNode || node instanceof ExpectNode ||
     node instanceof WriteCsvNode || node instanceof WriteJsonNode ||
     node instanceof WriteObsidianNode ||
-    node instanceof CompositeNode
+    node instanceof CompositeNode ||
+    node instanceof SubsystemNode
   ) return "util";
   if (node instanceof DisplayNode) return "util";
   if (

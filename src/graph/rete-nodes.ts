@@ -46,3 +46,4 @@ export * from "./nodes/health";
 export * from "./nodes/triangle";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";
+export * from "./nodes/subsystem";

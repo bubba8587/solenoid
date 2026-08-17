@@ -19,17 +19,17 @@ describe("scanArchDeps", () => {
     expect(deps.files.length).toBeGreaterThan(400);
     for (const f of deps.files) expect(f).not.toMatch(/\.test\.tsx?$/);
     expect(deps.files).toContain("cablePaths.ts");
-    expect(deps.files).toContain("components/SpecMapView.tsx");
+    expect(deps.files).toContain("components/ConnectionComponent.tsx");
   });
 
-  it("resolves relative imports to real files only (spot: this view imports specMap)", () => {
+  it("resolves relative imports to real files only (spot: the seed builder imports specMap)", () => {
     const set = new Set(deps.files);
     for (const [f, outs] of Object.entries(deps.imports)) {
       expect(set.has(f)).toBe(true);
       for (const t of outs) expect(set.has(t), `${f} → ${t}`).toBe(true);
     }
-    expect(deps.imports["components/SpecMapView.tsx"]).toContain("specMap.ts");
-    expect(deps.imports["components/SpecMapView.tsx"]).toContain("archGraph.ts");
+    expect(deps.imports["archSeed.ts"]).toContain("specMap.ts");
+    expect(deps.imports["archSeed.ts"]).toContain("archGraph.ts");
   });
 });
 

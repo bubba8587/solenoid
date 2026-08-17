@@ -1,27 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
-import { fileURLToPath } from "node:url";
-import { scanArchDeps } from "./scripts/scan-arch-deps.mjs";
-
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
-// `virtual:arch-deps` — the src/graph relative-import graph, scanned at build
-// time for the Architecture map's dependency cables (SSOT-3: derived from the
-// source, nothing hand-kept). Loaded lazily by SpecMapView only.
-const archDeps = () => ({
-  name: "arch-deps",
-  resolveId: (id: string) => (id === "virtual:arch-deps" ? "\0virtual:arch-deps" : undefined),
-  load: (id: string) =>
-    id === "\0virtual:arch-deps"
-      ? `export default ${JSON.stringify(scanArchDeps(fileURLToPath(new URL("./src/graph", import.meta.url))))}`
-      : undefined,
-});
-
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), archDeps()],
+  plugins: [react()],
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see

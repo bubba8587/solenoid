@@ -16,7 +16,8 @@
     "run-graph": "tsx scripts/run-graph.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",
     "ai-grounding": "tsx scripts/ai-grounding.ts",
-    "ai-prompt": "tsx scripts/ai-prompt.ts"
+    "ai-prompt": "tsx scripts/ai-prompt.ts",
+    "gen:arch-seed": "tsx scripts/gen-arch-seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

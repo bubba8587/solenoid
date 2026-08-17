@@ -5,7 +5,7 @@ import type { JSXElementConstructor } from "react";
 import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode, SubsystemNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -81,7 +81,7 @@ import {
   TornadoNode,
 } from "./rete-nodes";
 import {
-  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
+  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent, SubsystemComponent,
   SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, WaffleComponent, QuiverComponent, SevenSegComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
@@ -180,6 +180,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],
   [SessionHistoryNode, comp(SessionHistoryComponent)],
+  [SubsystemNode, comp(SubsystemComponent)],
   [PresentationNode, comp(PresentationComponent)],
   [ImageNode,       comp(ImageComponent)],
   [SvgPickerNode,   comp(SvgPickerComponent)],

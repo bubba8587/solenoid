@@ -71,6 +71,25 @@ export function assignFiles(groups: ArchGroup[], files: string[]): Map<string, s
   return home;
 }
 
+/** file → the role text of the architecture.md table row that names it ("" when prose/dir-claimed). */
+export function fileRoles(groups: ArchGroup[], files: string[]): Map<string, string> {
+  const roles = new Map<string, string>();
+  const norm = (t: string) => t.replace(/^src\/graph\//, "");
+  for (const g of groups)
+    for (const m of g.modules)
+      for (const raw of m.nameCell.match(/[\w./-]+\.tsx?/g) ?? []) {
+        const tok = norm(raw);
+        for (const f of files)
+          if ((f === tok || f.endsWith(`/${tok}`) || (!tok.includes("/") && baseOf(f) === tok)) && !roles.has(f))
+            roles.set(f, m.role);
+      }
+  return roles;
+}
+
+/** Display label for an architecture group: parentheticals and dash-tail asides stay in the doc. */
+export const groupDisplayLabel = (t: string) =>
+  t.replace(/`/g, "").replace(/\s*\([^)]*\)/g, "").split(" — ")[0].trim();
+
 export function buildArchGraph(groups: ArchGroup[], deps: ArchDeps): ArchGraph {
   const home = assignFiles(groups, deps.files);
   const degree = new Map<string, number>();

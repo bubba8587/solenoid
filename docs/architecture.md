@@ -267,18 +267,16 @@ shell, `chunkReloadGuard.ts` the once-per-window preload-error reload),
 `nodeBudget.ts` (the soft web-demo node cap), and the remaining popup/panel
 stores (`outlineStore`, `shortcutsStore`, `helpDialogStore`, `chartPopupStore`,
 `elementPickerStore`, `pivotEditorStore`).
-The View ▸ Architecture map overlay (`components/SpecMapView.tsx` + `specMapStore.ts`)
-draws the system as a Solenoid graph on a pan/zoom canvas (`hicCamera.ts` camera, ELK
-layered layout, the real cable spline): cards are THIS FILE's module groups, cables are
-the source's actual import dependencies — `scripts/scan-arch-deps.mjs` scans src/graph
-at build time, `vite.config.ts` serves it as `virtual:arch-deps`, `archGraph.ts`
+View ▸ Architecture map opens the GENERATED seed `seedGraphs/architecture-map.json`
+(via `documentStore.newFromTemplate`): the system as a real document — one Subsystem
+node per module group of THIS FILE, real cables along the strong import edges, ELK
+positions. The derivation chain: `scripts/scan-arch-deps.mjs` scans src/graph's
+relative imports; `specMap.ts` parses this doc + `docs/rules.md`; `archGraph.ts`
 assigns every file to its group (table rows, then prose citations, then directory
-headings; unclaimed files stay visibly unmapped) and aggregates the edges. A reading
-pane carries the docs' text — a rule's MUST/Why/Origin/Exceptions, a group's module
-roles, a cable's file-level imports — plus search; its resting state lists the
-enforcement gaps, and each card foots a status meter of the rules whose suites live
-there. Both docs arrive `?raw` and parse through `specMap.ts` (+`.test.ts`,
-`archGraph.test.ts`): DERIVED at build time, nothing hand-kept (SSOT-3).
+headings — `archGraph.test.ts` pins unmapped at ZERO, enforcing this doc's same-commit
+rule) and aggregates the edges; `archSeed.ts` builds the seed (regenerate:
+`npm run gen:arch-seed`; `archSeed.test.ts` diffs the checked-in file against a fresh
+derivation, so the shipped document cannot drift from the docs or the code).
 
 ### External data
 
