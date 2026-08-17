@@ -5,7 +5,7 @@ import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
 import { compositePassStore } from "../compositeEditorStore";
 import { describeNode, nodeName, catalogTypeOf } from "../catalogUtils";
-import { NODE_EXCEL } from "../nodeExcel";
+import { buildFunctionReference, type FnRefRow } from "../functionReference";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { cableValueStore } from "../cableValueStore";
 import { isSolError } from "../errorValue";
@@ -21,6 +21,22 @@ import "./InspectorPanel.css";
 // tracks it; values refresh on compositePassStore's per-pass tick.
 
 const POLL_MS = 150;
+
+// The Function Reference's generated rows, indexed by catalog type — the
+// Inspector READS the same derivation the Reference overlay renders (catalog +
+// nodeExcel merged in buildCatalog), never a second copy. Built lazily once.
+let _frByType: Map<string, FnRefRow[]> | null = null;
+function frRowsFor(catalogType: string | null): FnRefRow[] {
+  if (!catalogType) return [];
+  if (!_frByType) {
+    _frByType = new Map();
+    for (const row of buildFunctionReference()) {
+      if (!row.catalogType) continue;
+      _frByType.set(row.catalogType, [...(_frByType.get(row.catalogType) ?? []), row]);
+    }
+  }
+  return _frByType.get(catalogType) ?? [];
+}
 
 type AnyNode = ClassicPreset.Node & {
   label?: string;
@@ -98,7 +114,10 @@ export function InspectorPanel() {
   const catalogLabel = node ? nodeName(node) : null;
   const description = node ? describeNode(node) : null;
   const catalogType = node ? catalogTypeOf(node) : null;
-  const excel = catalogType ? NODE_EXCEL[catalogType] ?? [] : [];
+  const frRows = frRowsFor(catalogType);
+  const excel = frRows.filter((r) => r.excel !== null);
+  const location = frRows[0]?.location ?? [];
+  const packs = frRows[0]?.packs ?? [];
 
   return (
     <div className="inspector-panel" onPointerDown={(e) => e.stopPropagation()}>
@@ -117,13 +136,22 @@ export function InspectorPanel() {
             <div className="inspector-type">
               {catalogLabel ?? node.constructor.name.replace(/Node$/, "")}
             </div>
+            {location.length > 0 && (
+              <div className="inspector-crumb">
+                {location.join(" \u25b8 ")}{packs.length > 0 ? ` \u00b7 ${packs.join(", ")} pack` : ""}
+              </div>
+            )}
             {description && <p className="inspector-desc">{description}</p>}
 
             {excel.length > 0 && <div className="inspector-label">Excel</div>}
             {excel.map((eq) => (
               <div key={eq.excel} className="inspector-excel">
                 <code className="inspector-excel__syntax">{eq.syntax}</code>
-                {eq.note && <div className="inspector-excel__note">{eq.note}</div>}
+                {eq.note ? (
+                  <div className="inspector-excel__note">{eq.note}</div>
+                ) : !eq.parity ? (
+                  <div className="inspector-excel__note">Differs from Excel.</div>
+                ) : null}
               </div>
             ))}
 
