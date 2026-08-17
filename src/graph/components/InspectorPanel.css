@@ -151,4 +151,5 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   font-size: 11px;
   line-height: 1.45;
   color: var(--text-muted);
+  text-wrap-style: pretty;
 }
