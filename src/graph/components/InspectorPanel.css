@@ -19,12 +19,21 @@ html.sol-inspector-docked {
   flex-direction: column;
 }
 
-html.sol-inspector-docked .solenoid-canvas-wrapper { width: calc(100% - var(--inspector-w)); }
-html.sol-inspector-docked .solenoid-nav { right: calc(12px + var(--inspector-w)); }
-html.sol-inspector-docked .solenoid-hud-stack { right: calc(12px + var(--inspector-w)); }
+html.sol-inspector-docked:not(.is-mobile) .solenoid-canvas-wrapper { width: calc(100% - var(--inspector-w)); }
+html.sol-inspector-docked:not(.is-mobile) .solenoid-nav { right: calc(12px + var(--inspector-w)); }
+html.sol-inspector-docked:not(.is-mobile) .solenoid-hud-stack { right: calc(12px + var(--inspector-w)); }
 
-/* Desktop/tablet affordance; the phone layout has no room for a side dock. */
-html.is-mobile .inspector-panel { display: none; }
+/* Mobile: a full-width sheet between the chrome envelopes — a 340px side dock
+   has no room on a phone, and the canvas squeeze above stays off. The entry is
+   the node menu's (i); the top bar keeps no button there. */
+html.is-mobile .inspector-panel {
+  left: 0;
+  width: auto;
+  border-left: none;
+}
+/* The floating HUD would ride above the full-width sheet; yield while open. */
+html.is-mobile.sol-inspector-docked .solenoid-hud-stack { display: none; }
+html.is-mobile.sol-inspector-docked .solenoid-nav { display: none; }
 html.is-mobile .solenoid-apptools__inspector { display: none; }
 
 .inspector-head {

@@ -8,6 +8,10 @@ import { reportStore } from "./reportStore";
 
 const s = createToggleStore();
 
+// An explicit "inspect THIS node" (the context menu's (i)) outranks a stale
+// selection until the user selects something new; InspectorPanel clears it.
+let _focus: string | null = null;
+
 function syncClass(): void {
   document.documentElement.classList.toggle("sol-inspector-docked", s.get());
 }
@@ -15,6 +19,12 @@ function syncClass(): void {
 export const inspectorStore = {
   subscribe: s.subscribe,
   get: s.get,
+  getFocus: (): string | null => _focus,
+  clearFocus(): void { _focus = null; },
+  openFor(nodeId: string): void {
+    _focus = nodeId;
+    this.open();
+  },
   open(): void {
     reportStore.setDocked(false);
     s.open();

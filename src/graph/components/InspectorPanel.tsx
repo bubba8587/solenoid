@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
@@ -86,12 +86,25 @@ export function InspectorPanel() {
     if (open && reportDocked) inspectorStore.close();
   }, [open, reportDocked]);
 
+  const prevSel = useRef<AnyNode | null>(null);
   useEffect(() => {
     if (!open) return;
+    // Seed with the selection that already exists, so opening via the menu's
+    // (i) is not immediately retired by it on the first tick.
+    prevSel.current = selectedNode();
     const t = setInterval(() => {
       const sel = selectedNode();
-      setNode((prev) => (prev === sel ? prev : sel));
-      setTick((n) => n + 1); // labels/wiring have no push store either
+      // A NEW selection retires an explicit context-menu focus; until then the
+      // focused node outranks whatever selection the menu left behind.
+      if (sel !== prevSel.current) {
+        if (prevSel.current !== null || sel !== null) inspectorStore.clearFocus();
+        prevSel.current = sel;
+      }
+      const focusId = inspectorStore.getFocus();
+      const focused = focusId ? (getActiveEditor()?.getNode(focusId) as AnyNode | undefined) ?? null : null;
+      const show = focused ?? sel;
+      setNode((prev) => (prev === show ? prev : show));
+      setTick((n) => n + 1); // labels have no push store either
     }, POLL_MS);
     return () => clearInterval(t);
   }, [open]);
