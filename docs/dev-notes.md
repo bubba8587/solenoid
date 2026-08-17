@@ -95,12 +95,22 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   dependencies. `scripts/scan-arch-deps.mjs` scans src/graph relative imports at build
   (603 files today), `vite.config.ts` serves it as `virtual:arch-deps` (lazy ~90K
   chunk), `archGraph.ts` assigns file → group from architecture.md itself (table rows →
-  prose inline-code citations → directory headings; ~74 files stay honestly unmapped and
+  prose inline-code citations → directory headings; 73 files stay honestly unmapped and
   counted, never guessed) and aggregates ~76 weighted group→group links. Layout: ELK
   layered (the Tidy engine) via lazy import, grid fallback; camera = `hicCamera.ts`
   (drag pan / wheel zoom / `pinchStep`, wheel via a native non-passive listener);
   cables use `getCablePath("spline")` so they ARE app cables. Card sample rows are
   degree-ordered (load-bearing modules first).
+- **The Playwright eyeball loop (author-sanctioned this session; CLAUDE.md updated)**
+  caught what blind coding couldn't: `setPointerCapture` on pointerdown retargeted
+  pointerup and swallowed every card/cable click (capture now starts only once a drag
+  passes 6px); cable direction was semantically backwards (now imported → importer, so
+  capability flows foundation-left to chrome-right like data into a sink); ELK steered
+  by all 76 edges scattered the cards (now only weight ≥ 4 arteries + per-card anchors
+  steer, 2-cycles pre-broken by weight so Typing stays upstream of Node compute; ALL
+  links still draw); rest cables were invisible (majors now `--text-muted`, minors
+  recede, hover/selection lights the neighborhood); an unenforced rule's empty
+  neighborhood dimmed the whole canvas with nothing lit (empty hot set no longer dims).
 - **The reading pane carries the docs' actual text** (round 1's keeper): rule →
   full MUST/Why/Origin/Exceptions + enforcing-suite and cited-module chips; group →
   imports/imported-by chips, homed test suites, module roles (the architecture.md

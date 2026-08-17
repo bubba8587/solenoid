@@ -24,10 +24,11 @@ Before pushing or assuming a verification path, ask the author which environment
   `develop`, let them eyeball the preview.
 - **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
 
-Either way: don't spin up local render tests / puppeteer / screenshots to "verify a visual works"
-— the author eyeballs it. The vitest env is `node` (no jsdom/testing-library), so component render
-tests aren't set up; reserve tests for logic. When unsure which environment is active, ask rather
-than push.
+**Playwright screenshotting IS sanctioned** (author 2026-08-17, superseding the old ban): start
+the dev server, drive the real app with playwright-core + the preinstalled Chromium, and LOOK at
+what you changed — iterate on what you see before pushing. The author still eyeballs the final
+result. Component render TESTS stay out (the vitest env is `node`, no jsdom/testing-library);
+reserve tests for logic. When unsure which environment is active, ask rather than push.
 
 ## Environment constraints
 **TAG PUSHES DO NOT WORK from a cloud/container session** (Claude Code web + mobile). BRANCH

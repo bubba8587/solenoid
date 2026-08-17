@@ -137,10 +137,15 @@
   color: var(--text-muted);
 }
 
-/* Cables: neutral at rest like a hairline, accent when their neighborhood is
-   hot. Width scales gently with import count. */
-.specmap-cable { cursor: pointer; transition: opacity 0.1s; }
-.specmap-cable--dim { opacity: 0.15; }
+/* Cables: quiet texture at rest — the arteries read, the minor links recede —
+   full presence only when their neighborhood is hot. Width scales gently with
+   import count. Order matters: minor < rest < hot/selected, dim last. */
+.specmap-cable { cursor: pointer; opacity: 0.55; transition: opacity 0.1s; }
+.specmap-cable--minor { opacity: 0.28; }
+.specmap-cable:hover,
+.specmap-cable--hot,
+.specmap-cable--selected { opacity: 1; }
+.specmap-cable--dim { opacity: 0.08; }
 .specmap-cable__hit {
   fill: none;
   stroke: transparent;
@@ -148,11 +153,12 @@
 }
 .specmap-cable__stroke {
   fill: none;
-  stroke: var(--border-strong);
+  stroke: var(--text-muted);
   transition: stroke 0.1s;
 }
+.specmap-cable--minor .specmap-cable__stroke { stroke: var(--border-strong); }
 .specmap-cable:hover .specmap-cable__stroke,
-.specmap-cable--hot .specmap-cable__stroke { stroke: var(--text-muted); }
+.specmap-cable--hot .specmap-cable__stroke { stroke: var(--text); }
 .specmap-cable--selected .specmap-cable__stroke { stroke: var(--accent); }
 
 /* Cards: the node-card anatomy — surface body, tonal header band, divider,

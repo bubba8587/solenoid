@@ -113,6 +113,23 @@ export function SpecMapView() {
         const meter = groupRules.has(c.title) ? 10 : 4;
         return { ...c, x: 0, y: 0, w: CARD_W, h: HEADER_H + 7 + rows * ROW_H + meter + 6 };
       });
+      // Only the strong arteries steer the layering (plus each card's heaviest
+      // link so nothing floats free); every link still DRAWS. Direction: the
+      // imported module is the SOURCE — capability flows foundation → chrome,
+      // left to right, like data into a sink.
+      const strong = new Set(graph.links.filter((l) => l.weight >= 4).map(linkKey));
+      // Pre-break 2-cycles by weight so ELK never reverses the heavy direction
+      // (Typing ↔ Node compute: 102 beats 48, so Typing stays upstream), then
+      // anchor every card by its heaviest surviving edge so nothing floats.
+      for (const l of graph.links) {
+        const back = graph.links.find((o) => o.from === l.to && o.to === l.from);
+        if (back && back.weight < l.weight) strong.delete(linkKey(back));
+      }
+      for (const c of graph.cards) {
+        const inc = graph.links.filter((l) => l.from === c.title || l.to === c.title);
+        if (inc.length && !inc.some((l) => strong.has(linkKey(l))))
+          strong.add(linkKey(inc.reduce((a, b) => (b.weight > a.weight ? b : a))));
+      }
       let placed = sized;
       try {
         const ELK = (await import("elkjs")).default;
@@ -121,11 +138,14 @@ export function SpecMapView() {
           layoutOptions: {
             "elk.algorithm": "layered",
             "elk.direction": "RIGHT",
-            "elk.layered.spacing.nodeNodeBetweenLayers": "170",
-            "elk.spacing.nodeNode": "52",
+            "elk.layered.spacing.nodeNodeBetweenLayers": "140",
+            "elk.spacing.nodeNode": "64",
+            "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
           },
           children: sized.map((c) => ({ id: c.title, width: c.w, height: c.h })),
-          edges: graph.links.map((l, i) => ({ id: `e${i}`, sources: [l.from], targets: [l.to] })),
+          edges: graph.links
+            .filter((l) => strong.has(linkKey(l)))
+            .map((l, i) => ({ id: `e${i}`, sources: [l.to], targets: [l.from] })),
         });
         const pos = new Map((res.children ?? []).map((ch) => [ch.id, ch]));
         placed = sized.map((c) => ({ ...c, x: pos.get(c.title)?.x ?? 0, y: pos.get(c.title)?.y ?? 0 }));
@@ -176,9 +196,11 @@ export function SpecMapView() {
     else specMapStore.close();
   }, open);
 
-  // Cable endpoints: spread each card's in/out connections along its edges,
-  // sorted by the far card's vertical position so cables fan without crossing
-  // at the socket.
+  // Cable endpoints: the IMPORTED card's right edge feeds the importer's left
+  // edge (capability flows into its consumer, the app's own source → sink
+  // reading). Each side's connections spread along the card edge, sorted by
+  // the far card's vertical position so cables fan without crossing at the
+  // socket.
   const endpoints = useMemo(() => {
     if (!layout) return new Map<string, { x1: number; y1: number; x2: number; y2: number }>();
     const cardBy = new Map(layout.cards.map((c) => [c.title, c]));
@@ -191,13 +213,13 @@ export function SpecMapView() {
       sorted.forEach((l, i) => assign(l, top + ((i + 0.5) * span) / sorted.length));
     };
     for (const card of layout.cards) {
-      spread(card, layout.links.filter((l) => l.from === card.title), (l) => l.to, (l, y) => {
+      spread(card, layout.links.filter((l) => l.to === card.title), (l) => l.from, (l, y) => {
         const p = pts.get(linkKey(l)) ?? { x1: 0, y1: 0, x2: 0, y2: 0 };
         p.x1 = card.x + card.w;
         p.y1 = y;
         pts.set(linkKey(l), p);
       });
-      spread(card, layout.links.filter((l) => l.to === card.title), (l) => l.from, (l, y) => {
+      spread(card, layout.links.filter((l) => l.from === card.title), (l) => l.to, (l, y) => {
         const p = pts.get(linkKey(l)) ?? { x1: 0, y1: 0, x2: 0, y2: 0 };
         p.x2 = card.x;
         p.y2 = y;
@@ -231,7 +253,9 @@ export function SpecMapView() {
     } else {
       lightGroupsOf(model.domains.find((d) => d.prefix === hot.id)?.rules.map((r) => r.id) ?? []);
     }
-    return { g, l };
+    // An empty neighborhood (an unenforced rule has no suites) must not dim
+    // the whole canvas with nothing lit.
+    return g.size + l.size > 0 ? { g, l } : null;
   })();
 
   const cls = (base: string, active: boolean, selected = false) =>
@@ -257,9 +281,10 @@ export function SpecMapView() {
     onMouseLeave: () => setHover(null),
   });
 
-  // One-finger pan, two-finger pinch; a real drag suppresses the click behind it.
+  // One-finger pan, two-finger pinch; a real drag suppresses the click behind
+  // it. Capture starts only once a drag is real — capturing on pointerdown
+  // would retarget pointerup to the canvas and swallow every card/cable click.
   const onPointerDown = (e: RPointerEvent) => {
-    canvasRef.current?.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     pinch.current = null;
     moved.current = 0;
@@ -283,6 +308,7 @@ export function SpecMapView() {
       moved.current += 10;
     } else {
       moved.current += Math.abs(e.movementX) + Math.abs(e.movementY);
+      if (moved.current >= 6) el.setPointerCapture(e.pointerId);
       camRef.current.panBy(e.movementX, e.movementY);
       syncCam();
     }
@@ -386,7 +412,7 @@ export function SpecMapView() {
                     return (
                       <g
                         key={linkKey(l)}
-                        className={cls("specmap-cable", active, isSel("link", linkKey(l)))}
+                        className={`${cls("specmap-cable", active, isSel("link", linkKey(l)))}${l.weight < 4 ? " specmap-cable--minor" : ""}`}
                         onClick={(e) => { e.stopPropagation(); if (clickedNotDragged()) pick("link", linkKey(l)); }}
                         {...hoverProps("link", linkKey(l))}
                       >
@@ -442,11 +468,11 @@ export function SpecMapView() {
                               x={x} y={c.h - 9} width={w} height={2.5} />
                           );
                         })}
-                        {layout.links.filter((l) => l.to === c.title).map((l) => {
+                        {layout.links.filter((l) => l.from === c.title).map((l) => {
                           const p = endpoints.get(linkKey(l))!;
                           return <circle key={`i${linkKey(l)}`} className="specmap-sock" cx={0} cy={p.y2 - c.y} r={5.5} />;
                         })}
-                        {layout.links.filter((l) => l.from === c.title).map((l) => {
+                        {layout.links.filter((l) => l.to === c.title).map((l) => {
                           const p = endpoints.get(linkKey(l))!;
                           return <circle key={`o${linkKey(l)}`} className="specmap-sock" cx={c.w} cy={p.y1 - c.y} r={5.5} />;
                         })}
