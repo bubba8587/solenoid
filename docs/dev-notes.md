@@ -114,9 +114,12 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   `inspectorStore.ts`, the top bar's (i) button + View ▸ Inspector. A right dock on
   the pinned Report's chrome pattern (`html.sol-inspector-docked`, same canvas
   squeeze; the two right docks are mutually exclusive). Reads the ACTIVE surface's
-  selected node: catalog description (`describeNode`), typed socket rows with wired
-  sources, live output values (`cableValueStore` → cached-field fallback, chips via
-  `valueChipFor`). Selection polls (no push store, same as SelectionActionsBar);
+  selected node: catalog description (`describeNode`), the Function Reference's
+  generated rows READ by catalog type (`buildFunctionReference` — Excel syntax +
+  parity notes, Add-menu breadcrumb, pack tags; one derivation, never a copy),
+  typed socket rows with wired sources, live output values (`cableValueStore` →
+  cached-field fallback, chips via `valueChipFor`). Actions stay in the right-click
+  menu by author call — the Inspector is the descriptive surface. Selection polls (no push store, same as SelectionActionsBar);
   values refresh on `compositePassStore`. Recorded in layout-chrome + the alias table.
 - **The Playwright eyeball loop is now standing practice** (author sanction recorded
   in CLAUDE.md, superseding the screenshot ban). It caught, across the session: a
