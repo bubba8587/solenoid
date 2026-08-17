@@ -148,6 +148,10 @@ export type CompositeDataTableValues = Record<string, unknown[]>;
 // runtime VALUE shape matters.
 
 export class CompositeInputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "When the composite's outer port is wired, the outside value flows here and the editable seed is ignored.",
+  };
+
   label: string;
   value: unknown = null;
   /** Transient: the exposed port is EXTERNALLY WIRED, so `value` comes from outside
@@ -188,6 +192,10 @@ export class CompositeInputNode extends ClassicPreset.Node {
 }
 
 export class CompositeOutputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Whatever arrives here becomes the composite's matching outer output; a multi-run mode collects one entry per run.",
+  };
+
   label: string;
   /** Last value seen — the drill-in editor's value box (named cachedResult so the
    *  error guard's short-circuit mirrors an error into it). */

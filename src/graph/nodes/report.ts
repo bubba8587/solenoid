@@ -7,6 +7,10 @@ import { makeDocument, type DocumentValue } from "../documentValue";
 // anchor. Unlike Note it is a pure SINK — no frontmatter output half.
 
 export class ReportNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    document: "Carries the report's markdown with every inline reference resolved to its wired value.",
+  };
+
   body: string;         // markdown — blank by default
   embeds: string[];     // embedded Note node ids, placed-object style
   color: string;        // palette SLOT id — tints the anchor card, like Note

@@ -84,6 +84,12 @@ export const CHART_OP_META = {
 export const CHART_MATRIX_OPS = new Set<ChartOp>(["composed", "bubble"]);
 
 export class ChartNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "A plain list or single column plots by position; from two columns, the first supplies the axis labels and the second the values.",
+    series: "Only the Composed and Bubble types read it; the other types plot the Data input.",
+    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid; unknown keys are ignored.",
+  };
+
   label: string;
   op: ChartOp;
   cachedResult: number | number[] | null = null;
@@ -259,6 +265,10 @@ export class MermaidNode extends ClassicPreset.Node {
 // ─── Gauge ────────────────────────────────────────────────────────────────────
 
 export class GaugeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Read as a fraction of one, so 0.75 shows as 75 percent on a dial fixed at 0 to 100 percent.",
+  };
+
   label: string;
   literals: Record<string, number> = { value: 0 };
   cachedResult: number | null = null;
@@ -364,6 +374,10 @@ export class KpiNode extends ClassicPreset.Node {
 // ─── Bullet graph ─────────────────────────────────────────────────────────────
 
 export class BulletNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    max: "The track always starts at zero, so this sets only its upper end.",
+  };
+
   label: string;
   literals: Record<string, number> = { value: 0, target: 80, max: 100 };
   stringLiterals: Record<string, string> = {};
@@ -560,6 +574,10 @@ export const SURFACE_VIEW_OP_META = {
 // contour twin. The op swaps the view; Contour alone has the Levels input,
 // Surface alone the yaw/pitch literals (the component's D-pad).
 export class SurfaceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    grid: "The first row holds the X coordinates, the first column the Y coordinates, and the interior cells the heights; the corner cell is ignored.",
+  };
+
   label: string;
   op: SurfaceViewOp;
   // View angles (degrees) live in `literals` so they persist and the rotate buttons nudge them.
@@ -640,6 +658,10 @@ export function quantileSorted(sorted: number[], p: number): number {
 // ─── Waterfall ────────────────────────────────────────────────────────────────
 
 export class WaterfallNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Each value is a signed change from the previous bar, and a computed Total bar is appended at the end.",
+  };
+
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -680,6 +702,10 @@ export class WaterfallNode extends ClassicPreset.Node {
 // ─── Candlestick ──────────────────────────────────────────────────────────────
 
 export class CandlestickNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The date column is optional; with exactly four columns all four read as open, high, low, close and rows are numbered instead.",
+  };
+
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -749,6 +775,10 @@ export function boxplotStats(sample: (number | null)[]): { lo: number; q1: numbe
 }
 
 export class BoxplotNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "Each numeric column draws as its own box and other columns are skipped; a plain list draws a single box.",
+  };
+
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -917,6 +947,10 @@ const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker"] a
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Feeds any figure's Options input; only the fields given a value are included.",
+  };
+
   label: string;
   /** Shapes which option rows the card shows; serialization stays full-width. */
   target: ChartTargetId;

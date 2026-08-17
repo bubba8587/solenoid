@@ -66,6 +66,10 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): Front
 }
 
 export class NoteNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
+  };
+
   body: string;        // markdown — may open with a `---`-fenced YAML frontmatter block
   color: string;       // palette SLOT id (resolved to a hex at render); tints the note bg + accent
   width: number;
@@ -218,6 +222,10 @@ export class ImageNode extends ClassicPreset.Node {
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
 export class SvgPickerNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    layer: "Carries the clicked layer's name and stays blank until a shape is picked.",
+  };
+
   url: string;                                  // last web source URL — persisted
   stringLiterals: Record<string, string> = {}; // .source = inlined SVG markup — persisted
   hoverColor: string;                           // hover/selection highlight color — persisted
