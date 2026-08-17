@@ -118,6 +118,10 @@ export const MAT_DET_OP_META = {
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 
 export class MatDetNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    matrix: "The matrix must be square, with every cell filled.",
+  };
+
   label: string;
   op: MatDetOp;
   cachedScalar: number | SolError | null = null;
@@ -178,6 +182,10 @@ export class MatDetNode extends ClassicPreset.Node {
 // ─── MMULT ────────────────────────────────────────────────────────────────────
 
 export class TableMultNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    b: "Its row count must equal A's column count.",
+  };
+
   label: string;
   cachedResult: Mat | SolError | null = null;
   width = 180; height = 210;
@@ -478,6 +486,10 @@ export const TABLE_SELECT_OP_META = {
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
 export class TableSelectNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    indices: "Negative indices count from the end; a zero or out-of-range index errors the whole result.",
+  };
+
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   op: TableSelectOp;

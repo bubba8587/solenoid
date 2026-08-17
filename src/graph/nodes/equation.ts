@@ -88,6 +88,10 @@ function guardVal(raw: unknown): Val {
 }
 
 export class EquationNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    holds: "Equality is judged within a small relative tolerance, cell by cell for lists.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimensional interpretation itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;

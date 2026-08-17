@@ -213,6 +213,12 @@ export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
 const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
 
 export class TvmNode extends EquationNode {
+  static socketDocs: Record<string, string> = {
+    ...EquationNode.socketDocs,
+    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    pmt: "The payment per period. Money paid out is negative, money received is positive.",
+  };
+
   paymentTiming: PaymentTiming;
   private _zeroRate: EquationNode | null = null;
 
@@ -262,6 +268,11 @@ export const IPMT_PPMT_OP_META = {
 } satisfies Record<IpmtPpmtOp, { label: string; description: string }>;
 
 export class IpmtPpmtNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    per: "The single period to report, counted from 1.",
+  };
+
   label: string;
   op: IpmtPpmtOp;
   paymentTiming: PaymentTiming;
@@ -350,6 +361,11 @@ function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (nu
 }
 
 export class NpvNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A blank cell counts as zero; dropping it would shift every later flow.",
+    dates: "Values discount back to the first date. A blank date makes the whole result blank.",
+  };
+
   label: string;
   mode: CashflowMode;
   cachedResult: number | SolError | null = null;
@@ -410,6 +426,10 @@ export class NpvNode extends ClassicPreset.Node {
 
 
 export class IrrNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A blank cell counts as zero; dropping it would shift every later flow.",
+  };
+
   label: string;
   mode: CashflowMode;
   cachedResult: number | SolError | null = null;
@@ -521,6 +541,10 @@ export const MIRR_META = {
 };
 
 export class MirrNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A blank cell counts as zero; dropping it would shift every later flow.",
+  };
+
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { finrate: 0.1, reinrate: 0.12 };
@@ -581,6 +605,10 @@ export const FVSCHEDULE_META = {
 };
 
 export class FvScheduleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    schedule: "Each rate compounds in order; a blank cell counts as zero interest for that period.",
+  };
+
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { pv: 1000 };
@@ -617,6 +645,10 @@ export const ISPMT_META = {
 };
 
 export class IspmtNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+  };
+
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.05, per: 1, nper: 12, pv: 10000 };
@@ -657,6 +689,10 @@ export const DOLLAR_OP_META = {
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
 export class DollarNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    fraction: "The denominator of the fraction, such as 32 for prices in 32nds.",
+  };
+
   label: string;
   op: DollarOp;
   cachedResult: number | null = null;
@@ -705,6 +741,11 @@ export const CUM_PMT_OP_META = {
 } satisfies Record<CumPmtOp, { label: string; description: string }>;
 
 export class CumPmtNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    end: "The sum includes both the start and end periods.",
+  };
+
   label: string;
   op: CumPmtOp;
   paymentTiming: PaymentTiming;
@@ -1197,6 +1238,10 @@ export const ODD_COUPON_OP_META = {
 } satisfies Record<OddCouponOp, { label: string; description: string }>;
 
 export class OddCouponNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    issue: "Left unwired, the issue date falls back to the settlement date.",
+  };
+
   label: string;
   op: OddCouponOp;
   cachedResult: number | null = null;
