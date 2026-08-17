@@ -94,6 +94,26 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   color: var(--text-dim);
 }
 
+
+.inspector-excel { margin: 0 0 6px; }
+.inspector-excel__syntax {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-all;
+}
+.inspector-excel__note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.inspector-crumb {
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
 .inspector-row {
   display: flex;
   align-items: center;
@@ -122,23 +142,4 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
-}
-
-.inspector-excel { margin: 0 0 6px; }
-.inspector-excel__syntax {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text);
-  word-break: break-all;
-}
-.inspector-excel__note {
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.inspector-crumb {
-  margin-top: 3px;
-  font-size: 10.5px;
-  color: var(--text-muted);
 }

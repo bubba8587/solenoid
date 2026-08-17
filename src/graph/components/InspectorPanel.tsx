@@ -5,16 +5,18 @@ import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
 import { describeNode, nodeName, catalogTypeOf } from "../catalogUtils";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
-import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
+import { SolenoidSocket, SOCKET_COLORS, SOCKET_TYPE_LABELS } from "../sockets";
 import { CloseIcon } from "./CloseIcon";
 import "./InspectorPanel.css";
 
 // The node Inspector: a right-docked panel (the pinned Report's chrome pattern
 // — fixed column between the measured chrome envelopes, canvas squeezed by
 // `html.sol-inspector-docked`) reading the ACTIVE surface's selected node.
-// REFERENCE data only, by author call (2026-08-17): description, the Function
-// Reference derivation, sockets and their wiring — never live values (the card
-// and its popups are the value surface). Selection has no push store (same as
+// STATIC reference for the selected node and its current configuration, by
+// author call (2026-08-17): the Function Reference derivation plus the node's
+// socket roster described in plain English (SOCKET_TYPE_LABELS) — never live
+// values (the card and its popups) and never live connections (the canvas and
+// the Cable inspector). Selection has no push store (same as
 // SelectionActionsBar), so a light poll tracks it.
 
 const POLL_MS = 150;
@@ -40,22 +42,22 @@ type AnyNode = ClassicPreset.Node & {
   selected?: boolean;
 };
 
+function socketRow(key: string, port: { label?: string; socket?: ClassicPreset.Socket } | undefined): ReactNode {
+  const t = port?.socket instanceof SolenoidSocket ? port.socket.dataType : null;
+  return (
+    <div key={key} className="inspector-row">
+      <span className="inspector-sockdot" style={{ background: t ? SOCKET_COLORS[t] : "var(--sock-any)" }} />
+      <span className="inspector-row__key">{port?.label ?? key}</span>
+      <span className="inspector-row__meta">{t ? SOCKET_TYPE_LABELS[t] : ""}</span>
+    </div>
+  );
+}
+
 function selectedNode(): AnyNode | null {
   const editor = getActiveEditor();
   if (!editor) return null;
   const sel = editor.getNodes().filter((n) => (n as AnyNode).selected === true);
   return (sel[0] as AnyNode | undefined) ?? null;
-}
-
-function socketDot(socket: ClassicPreset.Socket | undefined): ReactNode {
-  const t = socket instanceof SolenoidSocket ? socket.dataType : null;
-  return (
-    <span
-      className="inspector-sockdot"
-      style={{ background: t ? SOCKET_COLORS[t] : "var(--sock-any)" }}
-      title={t ?? undefined}
-    />
-  );
 }
 
 export function InspectorPanel() {
@@ -81,8 +83,6 @@ export function InspectorPanel() {
 
   if (!open) return null;
 
-  const editor = getActiveEditor();
-  const conns = editor?.getConnections() ?? [];
   const label = node ? (node.label || nodeName(node) || node.constructor.name) : null;
   const catalogLabel = node ? nodeName(node) : null;
   const description = node ? describeNode(node) : null;
@@ -129,42 +129,10 @@ export function InspectorPanel() {
             ))}
 
             {Object.keys(node.inputs).length > 0 && <div className="inspector-label">Inputs</div>}
-            {Object.entries(node.inputs).map(([key, input]) => {
-              const sources = conns
-                .filter((c) => c.target === node.id && c.targetInput === key)
-                .map((c) => {
-                  const src = editor?.getNode(c.source) as AnyNode | undefined;
-                  return src ? (src.label || nodeName(src) || src.constructor.name) : c.source;
-                });
-              return (
-                <div key={key} className="inspector-row">
-                  {socketDot(input?.socket)}
-                  <span className="inspector-row__key">{input?.label ?? key}</span>
-                  <span className="inspector-row__meta">
-                    {sources.length ? `← ${sources.join(", ")}` : "unwired"}
-                  </span>
-                </div>
-              );
-            })}
+            {Object.entries(node.inputs).map(([key, input]) => socketRow(key, input))}
 
             {Object.keys(node.outputs).length > 0 && <div className="inspector-label">Outputs</div>}
-            {Object.entries(node.outputs).map(([key, output]) => {
-              const targets = conns
-                .filter((c) => c.source === node.id && c.sourceOutput === key)
-                .map((c) => {
-                  const dst = editor?.getNode(c.target) as AnyNode | undefined;
-                  return dst ? (dst.label || nodeName(dst) || dst.constructor.name) : c.target;
-                });
-              return (
-                <div key={key} className="inspector-row">
-                  {socketDot(output?.socket)}
-                  <span className="inspector-row__key">{output?.label ?? key}</span>
-                  <span className="inspector-row__meta">
-                    {targets.length ? `→ ${targets.join(", ")}` : "unwired"}
-                  </span>
-                </div>
-              );
-            })}
+            {Object.entries(node.outputs).map(([key, output]) => socketRow(key, output))}
           </>
         )}
       </div>

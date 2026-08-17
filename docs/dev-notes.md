@@ -117,11 +117,11 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   selected node: catalog description (`describeNode`), the Function Reference's
   generated rows READ by catalog type (`buildFunctionReference` — Excel syntax +
   parity notes, Add-menu breadcrumb, pack tags; one derivation, never a copy),
-  typed socket rows with wiring both ways (inputs ← sources, outputs → targets).
-  REFERENCE DATA ONLY, by author call: no live values (the card and its popups are
-  the value surface — on a Subsystem card the outputs row therefore names the
-  DEPENDENT groups, which reads better than a chip did), and actions stay in the
-  right-click menu — the Inspector is the descriptive surface. Selection polls (no push store, same as SelectionActionsBar);
+  and the node's socket roster in plain English (`SOCKET_TYPE_LABELS` + typed
+  dots). STATIC by author call, refined over three rounds: no live values (the
+  card and its popups are the value surface), no live connections (the Cable
+  inspector's job), and actions stay in the right-click menu — the Inspector is
+  the static reference for the selected node and its current configuration. Selection polls (no push store, same as SelectionActionsBar);
   values refresh on `compositePassStore`. Recorded in layout-chrome + the alias table.
 - **The Playwright eyeball loop is now standing practice** (author sanction recorded
   in CLAUDE.md, superseding the screenshot ban). It caught, across the session: a
