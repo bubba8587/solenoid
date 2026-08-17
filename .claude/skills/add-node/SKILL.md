@@ -157,6 +157,16 @@ script when the component needs hand-writing anyway (op select, custom render).
   (orphans from undo break the text form's second-write identity). Follow the
   `condConfig`/`titles` examples there.
 
+## Inspector declarations (both opt-in, both static on the CLASS)
+
+- **`static socketDocs: Record<string, string>`** — one plain-English sentence
+  per socket KEY, shown under that socket's row in the Inspector. Only for
+  sockets whose behavior isn't obvious from label + type name (wired-blank
+  semantics, which duplicate wins, coercion quirks); most sockets need nothing.
+  Reader: `socketDocs.ts`; worked example: `SubsystemNode`. DESIGN.md §7 voice.
+- **`static frameHints`** (`frameHint.ts`) — a tiny example frame per frame
+  input; shows on socket hover AND with that socket in the Inspector.
+
 ## UX rules the component must follow
 
 - **Typed fields commit on Enter/blur** via `useDraftCommit`
