@@ -124,8 +124,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   hover layer so both render one declaration). STATIC by author call, refined over three rounds: no live values (the
   card and its popups are the value surface), no live connections (the Cable
   inspector's job), and actions stay in the right-click menu — the Inspector is
-  the static reference for the selected node and its current configuration. Selection polls (no push store, same as SelectionActionsBar);
-  values refresh on `compositePassStore`. Recorded in layout-chrome + the alias table.
+  the static reference for the selected node and its current configuration. Selection polls (no push store, same as SelectionActionsBar).
+  Recorded in layout-chrome + the alias table.
+  ENTRY refined once more (author): the node context menu's description blurb is
+  GONE in all modes, replaced by an (i) in the menu card's top-right that opens
+  the Inspector focused on that node (`inspectorStore.openFor`; explicit focus
+  outranks a stale selection until a new selection lands). On mobile that (i) is
+  the ONLY entry (no top-bar button): the panel renders as a full-width sheet
+  between the chrome envelopes, canvas squeeze off, HUD and nav pill yielding.
 - **Socket-docs sweep (author-directed fan-out, 7 parallel agents)**: 119 node
   classes now carry `static socketDocs` — every sentence verified against the
   `data()` code or shared kernel, DESIGN §7 voice, opt-in bar held (dynamic-key
