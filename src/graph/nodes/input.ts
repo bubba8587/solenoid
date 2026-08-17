@@ -183,6 +183,10 @@ export class ConstantNode extends ClassicPreset.Node {
 }
 
 export class SliderInputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    min: "Wiring a bound clamps the slider's value to it immediately. A blank on the cable falls back to the bound typed on the card.",
+    max: "Wiring a bound clamps the slider's value to it immediately. A blank on the cable falls back to the bound typed on the card.",
+  };
   label: string;
   value: number;
   literals: Record<string, number> = { min: 0, max: 100, step: 1 };

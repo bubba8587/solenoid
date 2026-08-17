@@ -13,6 +13,9 @@ export type SlicerCell = number | string;
 // ExtensibleInputs machinery so the input set round-trips through persistence (valueKeys).
 
 export class CableSwitchNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    out: "One mode routes the active input through unchanged, keeping its type and unit. Many mode collects the checked inputs into a cube of name and value rows.",
+  };
   label: string;
   /** Index (into the ordered inputs) of the live input. (Not `selected` — that's
    *  rete's node-selection flag.) */
@@ -206,6 +209,9 @@ export class XYPadNode extends ClassicPreset.Node {
 // `selectedValues` empty = every row passes through.
 
 export class SlicerNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "An empty selection passes every row through instead of none.",
+  };
   label: string;
   selectedColumn: string = "";          // "" → first column (auto)
   selectedValues: SlicerCell[] = [];    // empty → all rows pass
@@ -421,6 +427,9 @@ export function paintGridToText(grid: ReadonlyArray<ReadonlyArray<number | null>
 }
 
 export class GridPainterNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Unpainted cells read as null, not zero.",
+  };
   label: string;
   tableText = "";
   literals: Record<string, number> = { rows: 6, cols: 8, brush: 1 };

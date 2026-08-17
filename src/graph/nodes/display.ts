@@ -71,6 +71,10 @@ type AlertInputs = {
 };
 
 export class AlertNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "A blank arriving on the cable makes the status unknown, and an unknown status never fires the alert.",
+    result: "The status is 0 when calm and 1 when triggered. Out of range instead emits 1 below Low and 2 above High.",
+  };
   label: string;
   // The op selector, named `op` per VAL-12 so the family can declare it.
   op: AlertMode;
@@ -222,6 +226,9 @@ function isAlerting(result: number | number[]): boolean {
 // Consolidated RAND/RANDBETWEEN: a 0–1 float by default, Bottom/Top for a range.
 
 export class RandBetweenNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "A fresh draw comes only from Recalculate; changing a bound rescales the current draw.",
+  };
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { bound1: 0, bound2: 1 };

@@ -11,6 +11,9 @@ import { getProvider, type ProviderId, type ProviderPreset } from "../dataProvid
 // forever — so it serves the cached frame and fires one background fetch per key.
 
 export class DataFeedNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The project file stores the series id, not the data; refresh to re-pull.",
+  };
   label: string;
   provider: ProviderId;
   // The series id / ticker, in stringLiterals so it round-trips + renders a field.

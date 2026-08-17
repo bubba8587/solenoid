@@ -55,6 +55,9 @@ export function remoteTextToFrame(text: string, contentType: string, url: string
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
 
 export class WebSourceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Rows are never saved into the project file. Reopening the document fetches from the URL again.",
+  };
   label: string;
   url: string;
   /** Minutes, 0 = off — the component runs the timer. */
@@ -175,6 +178,9 @@ export function xpathToList(html: string, query: string): string[] {
 // ─── IMPORT HTML (Nth table on a page → Frame) ──────────────────────────────────
 
 export class ImportHtmlNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The first row becomes headers only when the page marks it as a header row.",
+  };
   label: string;
   url: string;
   tableIndex: number; // 1-based which <table> on the page
@@ -260,6 +266,9 @@ export class ImportXmlNode extends ClassicPreset.Node {
 // name, so re-pointing either re-reads.
 
 export class CsvConnectionNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
+  };
   label: string;
   /** File name relative to the Settings target folder (not a full path). */
   fileName: string;

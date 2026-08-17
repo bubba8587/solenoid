@@ -47,6 +47,9 @@ export function frameToJsonText(f: FrameValue): string {
 }
 
 abstract class WriteFileNodeBase extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "Wiring a frame never writes the file. The write runs only from the Run button, and the node loads disarmed.",
+  };
   label: string;
   path: string;
   /** Never persisted (see file header) — always false on a fresh construction. */

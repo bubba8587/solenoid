@@ -17,6 +17,9 @@ import { getEditor } from "../process";
 export type ObsidianWriteStatus = "idle" | "writing" | "ok" | "error";
 
 export class WriteObsidianNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "Wiring a document never writes the note. The write runs only from the Run button, and the node loads disarmed.",
+  };
   label: string;
   /** The note file name (no extension — ".md" is appended at write). */
   fileName: string;
