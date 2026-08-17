@@ -56,10 +56,11 @@ describe("buildArchGraph", () => {
     }
   });
 
-  it("leaves unclaimed files unmapped instead of guessing", () => {
-    for (const f of graph.unmapped) expect(graph.home.has(f)).toBe(false);
-    expect(graph.unmapped.length).toBeGreaterThan(0);
-    expect(graph.unmapped.length).toBeLessThan(deps.files.length * 0.25);
+  it("every scanned file has a doc-derived home (architecture.md's same-commit rule, enforced)", () => {
+    // Reconciled to zero on 2026-08-17. A file listed here needs a home in
+    // architecture.md — a table row, a prose inline-code citation, or a
+    // directory-owning section heading — in the same commit that adds it.
+    expect(graph.unmapped).toEqual([]);
   });
 
   it("orders a card's files by import degree, load-bearing first", () => {

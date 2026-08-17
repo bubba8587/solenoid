@@ -51,10 +51,15 @@ function bareTokens(g: ArchGroup): string[] {
 export function assignFiles(groups: ArchGroup[], files: string[]): Map<string, string> {
   const home = new Map<string, string>();
   const claim = (f: string, g: ArchGroup) => { if (!home.has(f)) home.set(f, g.title); };
+  // Doc citations sometimes carry the graph root (`src/graph/monteCarlo.ts`);
+  // scanned paths never do.
+  const norm = (t: string) => t.replace(/^src\/graph\//, "");
   for (const g of groups)
-    for (const tok of fileTokens(g))
+    for (const raw of fileTokens(g)) {
+      const tok = norm(raw);
       for (const f of files)
         if (f === tok || f.endsWith(`/${tok}`) || (!tok.includes("/") && baseOf(f) === tok)) claim(f, g);
+    }
   for (const g of groups)
     for (const tok of bareTokens(g))
       for (const f of files)

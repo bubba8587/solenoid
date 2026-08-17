@@ -75,7 +75,7 @@ src/
 | `coerceInputs.ts` | `nodecreated` pipe wrapping every `data()` — normalizes incoming shapes to the socket's declared type (`#SHAPE!` on coercion failure); widens scalar/list/matrix → `frame` (list = ROW), bridges logical↔number. Per-input policy: a node lists `rawInputs` (a `ReadonlySet<string>`) to receive an input UNCOERCED and branch on the runtime shape itself (XLOOKUP's `frame` — a polymorphic frame-or-cube source); ACCEPTANCE stays lattice-driven, COERCION is the node's call |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph(…, animate)` cinematic load reveal. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (SOCK-13, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | Load-reveal store (phase/progress/revealed conns) + `revealWaves` layering; the build-phase progress overlay |
-| `copyPaste.ts` | Ctrl+C/V with topology, id remap (own `cloneNode`/`pasteClipboard` path); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite |
+| `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (own `cloneNode`/`pasteClipboard` path); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
 | `nodeCtorRegistry.ts` | The ctor lookup, DERIVED from the catalog (calls every `FLAT_CATALOG` factory, keys by `ctor.name`) — what persistence resolves types through |
 | `guardedSocketPosition.ts` | The socket-position watcher `areaPresets` installs (orphan-record eviction — see subsystem-invariants) |
 | `documentStore.ts` (+`documentStoreCore.ts`) | Multi-document library: current doc + open tabs; per-doc autosave as ONE two-slot pair per doc id (`solenoid.docs.doc.<id>.a/.b`) plus a light two-slot index, object-identity change-detection so an unchanged doc costs zero serialization (`documentStorePersist.test.ts`); `documentStoreCore` holds the pure validate/transform helpers |
@@ -83,11 +83,11 @@ src/
 | `graphValidate.ts` | The STRICT validating reader (D27/D28 pre-apply gate): every silently-repaired load condition is a repair-grade, line-anchored issue; op values checked against `opVocab.ts`; recurses into composite internals; cycles are warnings. False-positive guards: the seeds + whole-catalog sweeps in its test |
 | `opVocab.ts` | Per-class `op=` vocabulary (NODE_OPS + catalog leaves + hiddenOps + the dropdown-only aggregate families); shared by the validator and the grounding spec |
 | `aiGrounding.ts` | The model-facing authoring spec, GENERATED from the catalog + live classes (grammar, socket lattice, per-class init/inline/ops); cached per session as the AI system prompt |
-| `aiService.ts` (+`aiKey.ts`) | The AI palette's loop: prompt + current text form → `claude-opus-5` (SDK, browser opt-in, user's key) → prose answer or fenced full rewrite, validator-gated with repair rounds; canonicalized for the diff |
+| `aiService.ts` (+`aiKey.ts`, `apiKeyStore.ts`, `aiDemo.ts`, `aiReveal.ts`) | The AI palette's loop: prompt + current text form → `claude-opus-5` (SDK, browser opt-in, user's key) → prose answer or fenced full rewrite, validator-gated with repair rounds; canonicalized for the diff; `aiDemo.ts` fakes the transport for the keyless demo, `aiReveal.ts` animates AI-added nodes, `apiKeyStore.ts` holds the device-local keys |
 | `textDiff.ts` | Pure LCS line diff for the AI apply-approval view |
-| `nodeNameStore.ts`, `nodeNaming.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from rete's regenerated-on-load `id`) |
+| `nodeNameStore.ts`, `nodeNaming.ts`, `nodeNames.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from rete's regenerated-on-load `id`); `nodeNames.ts` derives live display names + endpoints for the connection dialog |
 | `docMetaStore.ts` | Per-document metadata (F-2): author + tags → `SavedGraph.meta`, sidecar-carried; the Document Properties modal open flag (`docPropertiesPanel`). Title stays the documentStore name |
-| `seeds.ts` + `seedGraphs/*.json` | Example graphs in Export format, globbed into a registry |
+| `seeds.ts` + `seedGraphs/*.json` (+`seedTune.ts`) | Example graphs in Export format, globbed into a registry; `seedTune.ts` is the console-only live group-fit tuner `scripts/tune-seeds.mjs` drives |
 | `Canvas.tsx` | Rete bootstrap: plugin construction + the event pipes (selection semantics, drag bookkeeping, group reconcile, FC dock/undock) and the component JSX. The separable subsystems live in the `canvas*`/`tidyArrange`/`fcDocking` modules below and are wired here |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
 | `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
@@ -96,6 +96,16 @@ src/
 | `canvasGeometry.ts` | Screen ↔ canvas coordinate helpers (`getSocketScreenCenter`, `screenToCanvas`) shared by FC docking + quick-wire placement |
 | `fcDocking.ts` | FC docking: `findDockTarget` (canvas-unit snap), `computeDockedCanvasPos`/`dockedRenderedDims`, and the inline splice/unsplice (`insertFcInline`/`removeFcInline`) |
 | `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureArrange` (lazy ELK), `makeArrangeFn` (the group/standoff/docked-FC-aware ELK layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
+| `storeKit.ts` | The module-singleton store kit (`createNotifier` / `createToggleStore` / `createValueStore`) every cross-root store builds on (see Conventions) |
+| `pointerGesture.ts` | THE two-finger gesture definition: window-capture contact census, `isPinching()` (≥2 fingers) — what the pinch-priority rule stands on |
+| `historyDigest.ts` | Human-readable undo/redo labels over rete-history entries |
+| `modelFuzz.ts` | Model fuzzing: valid-shaped inputs per typed leaf source, driven through targeted recompute; findings land in the Problems panel (origin "fuzz") |
+| `imageAssets.ts` | Desktop image persistence: a node's session `dataUrl` becomes a plain file in `images/` beside the doc (`assetPath`), so saves never carry base64 |
+| `fileSession.ts` | Disk save/open: native dialogs on desktop, download / file-input on web; a path-bound doc saves through documentStore |
+| `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
+| `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
+| `noteInlineRefs.ts` | Note-body `` `=name` `` refs → minted INPUT sockets (Expression's identifier grammar; trailing `!` is display-only) |
+| `reportStore.ts` + `reportEmbeds.ts` + `reportExport.ts` | Report chrome seam (open/docked state), `![[Note]]` embed-token helpers, and the static HTML export |
 
 ### Typing / sockets / units
 
@@ -130,9 +140,17 @@ src/
 | `chartValue.ts` / `mermaidValue.ts` | First-class FIGURE values (`__chart` / `__mermaid`) riding the green `chart` "Special" socket; a node output, embedded in Reports |
 | `nodes/visual.ts` + `components/{ChartNode,MermaidNode,MermaidView}.tsx` | Visual nodes (Sparkline/Chart/Gauge/Heatmap/**Mermaid**); `MermaidView` dynamically imports mermaid.js (heavy) only when a diagram is on screen |
 | `components/inlineRefDisplay.tsx` | The ONE render path for a Report/Note inline `` `=name` `` ref → live value by kind (scalar/frame/chart/mermaid/lambda-KaTeX); `CollapsibleFigure` (Report embeds fold); `InlineRefBody` swaps `=name` code spans + `![[note]]` embeds via imperative innerHTML + portals |
-| `compositeEditorStore.ts` + `components/CompositeEditorOverlay.tsx` | Composite drill-in, now a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`z-index:4`, `html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `installSurfacePointer` + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
+| `compositeEditorStore.ts` + `components/CompositeEditorOverlay.tsx` + `compositeLogic.ts` | Composite drill-in, now a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`z-index:4`, `html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `installSurfacePointer` + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
 | `compositeStaleStore.ts` | Which composites are STALE (a heavy run mode — goal-seek/scenarios/data-table/simulation — whose inputs/config changed since the last Solve). Drives the arm-and-run status dot; a module store because a HELD composite's output doesn't change, so processGraph's re-render pruning would skip the card |
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
+| `cxValue.ts` | Tagged complex values (VAL-15), rete-free (FX-2) — kernels shared with the IM* formulas |
+| `lambdaValue.ts` | Lambda values, rete-free (FX-2) so the formula path runs editor-less |
+| `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
+| `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
+| `stringOrder.ts` | The ONE string comparator (sorts and dedups share it) |
+| `frameFormatStore.ts` | Per-column display-format annotations keyed `${nodeId}::${columnName}` — display only, never the column's UNIT |
+| `frameHint.ts` (+`components/FrameHintLayer.tsx`) | Per-frame-input EXAMPLE hints: a node class declares a tiny sample frame; hovering the socket floats it as a mini-table |
+| `locale.ts` | The single shared locale for every `toLocaleString` call |
 
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
 | Module | Role |
@@ -153,6 +171,7 @@ src/
 | `cableFlowStore.ts`, `cableFlourishStore.ts` | Flow-bead animation toggle; decorative flourish |
 | `ribbonCable.ts` | Ribbon (bundled trunk + fans) membership/geometry — derived fresh per render |
 | `components/ConnectionComponent.tsx` | The cable renderer (owns its SVG wrapper, hit strokes, ribbon/pill rerouting, flow overlay) |
+| `highlightUtils.ts` | Hover-highlight traversal, deliberately asymmetric and depth-limited: an origin lights its whole fan, a destination lights one cable |
 
 ### Renderers — exactly TWO (author 2026-08-09)
 
@@ -176,6 +195,9 @@ third path.
 | `rasterAtlas.ts` | the capture atlas (`packAtlas`) |
 | `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
 | `domSync.ts` | DOM↔canvas transform sync (`camFromDrawMatrix`, holder transforms) |
+| `canvasCapture.ts` | Static-export capture, deliberately separate from the live HTML-in-Canvas capture |
+| `devHarness.ts` | DEV-only screenshot-comparison hooks (tree-shaken from production) |
+| `zoomSettle.ts` | The gesture-exit settle window (default 420 ms; `window.__zoomSettle` override) |
 
 ### Groups / layout / standoffs
 
@@ -192,6 +214,9 @@ third path.
 | `computeOverlayStore.ts` + `components/ComputeOverlay.tsx` | Deferred "Computing…" curtain over an irreducibly heavy pass (150 ms reveal / 350 ms min) |
 | `perfProbe.ts` | Runtime perf instrumentation: `window.__solenoidPerf` per-pass node `data()` + engine IPC timings; `window.__solenoidStats()` cumulative tables |
 | `nodes/placeholder.ts` | `PlaceholderNode` — what an unknown/renamed node type loads as: inert, keeps wiring + init data, re-serializes as the original type (lossless) |
+| `isolate.ts` + `isolateBoundary.ts` | Isolate mode: downstream-closure focus, plus entry/exit boundary analysis for the overlay (outside output feeding a focused input = LEFT; focused output feeding outside = RIGHT) |
+| `nodeSize.ts` | The ONE node-size read for layout math — never raw offsetWidth (an unpainted node reads zero and collapses the bounding box) |
+| `AngleDial.tsx` (+`.css`) | The shared angle-knob control (standoff angles, Conduit rotation) |
 
 ### Catalog / menus / packs
 
@@ -201,7 +226,7 @@ third path.
 | `catalogUtils.ts`, `catalogValidator.ts` | `buildCatalog` (pack insertion, dedup, prune) + dev-time consistency check |
 | `nodeExcel.ts`, `excelToCatalog.ts` | Excel equivalence metadata (single source of truth) + derived maps; `EXCEL_GAP` parity list |
 | `functionReference.ts`, `frStore.ts` | Function Reference overlay data (generated from the catalog) |
-| `packs.ts`, `fcExtensions.ts` | Pack framework (registry/activation store, placements, `NODE_PACK_TAGS` derived from per-pack tags, FC unit/format contributions); definitions live ONE FILE PER PACK in `packs/` on `packs/packShared.ts` (authoring types, `formulaNode`/`placeFormulas`, Equation presets), each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`) |
+| `packs.ts`, `fcExtensions.ts` | Pack framework (registry/activation store, placements, `NODE_PACK_TAGS` derived from per-pack tags, FC unit/format contributions); the pack definitions themselves live in `packs/` (its own section below) |
 | `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts`, `catalogSearch.ts` (+`.test.ts`) | Right-click add menu + search; `catalogSearch.ts` extracts the scoring (label/description/Excel names/category path/keywords) plus the quick-wire drop filter, which memoizes each catalog type's socket signature so a drop doesn't re-`create()` every leaf |
 | `excelFunctions.ts` | The single declared home for "which of the two parallel Excel implementations is authoritative for this function" (the ~150 native nodes vs Formula.js via `excelFormula.ts` `dispatch`) — per the per-family verdicts in `docs/archive/formulajs-vs-native-audit.md` |
 | `excelFormula.ts` (+`.test.ts`) | The Expression/LAMBDA formula compiler (Formula.js scope); also owns the D24 structured-reference syntax (`[Col]` whole column / `@[Col]` this row — tokenizer `colref`/`rowref` → AST `wholecol`/`atcol`) that the computed-column surfaces read |
@@ -230,6 +255,18 @@ boolean), `problemsStore` (error-sink relapse tracking), `commentStore`
 (node-anchored comments), `noticeStore` (the toast/warn channel — e.g. the
 drill-in dropped-cable notice). Other cross-cutting toggles:
 `semanticZoomStore`, `gridSnapStore`, `isolateStore`.
+The rest of the chrome plumbing, one clause each: `menuModel.ts` (ONE source for the
+MenuBar dropdowns AND the Command Palette, so every menubar action is a palette
+command by construction), `commandRecents.ts` (MRU command labels both share),
+the touch cluster (`touchActions.tsx` — one definition of the keyboard-less edit
+actions; `TabletActions.tsx` — the tablet top-bar row; `coarse.ts` — the
+touch-vs-mouse flags), window/boot plumbing (`chromeBottom.ts` measured bottom
+envelope, `chromeToggle.ts` the chrome-collapse hotkey registry, `fullscreen.ts`,
+`nativeAccent.ts` Windows 11 border sync, `devtoolsHotkey.ts` F12 in the Tauri
+shell, `chunkReloadGuard.ts` the once-per-window preload-error reload),
+`nodeBudget.ts` (the soft web-demo node cap), and the remaining popup/panel
+stores (`outlineStore`, `shortcutsStore`, `helpDialogStore`, `chartPopupStore`,
+`elementPickerStore`, `pivotEditorStore`).
 The View ▸ Architecture map overlay (`components/SpecMapView.tsx` + `specMapStore.ts`)
 draws the system as a Solenoid graph on a pan/zoom canvas (`hicCamera.ts` camera, ELK
 layered layout, the real cable spline): cards are THIS FILE's module groups, cables are
@@ -271,7 +308,8 @@ CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
 `placeholder`, plus `shared.ts` (port factories,
 broadcast + `NODE_KIND_ACCENTS`), `mathUtils.ts`, and `kind.ts` (the node → kind classifier).
 Composite run modes live one level up (`src/graph/monteCarlo.ts` + `tornadoRun.ts` —
-simulation / sensitivity sweeps; only the `tornado` node class is in `nodes/`). Vitest covers the math families + the
+simulation / sensitivity sweeps; only the `tornado` node class is in `nodes/`), as
+does `svgLayer.ts` (SVG Picker's DOM-agnostic layer hit-test). Vitest covers the math families + the
 newer data-quality/report nodes (`*.test.ts` alongside; the full inventory
 by category is `docs/node-coverage.md`, hand-maintained against
 `nodeCatalog.ts` — nothing generates it).
@@ -297,6 +335,20 @@ In-app markdown: `help.md` (getting around), `notes.md` (concepts: frames,
 live data, units), `data-model.md` + `data-types.md` (the value-model and
 socket-lattice tabs) — rendered by `components/Markdown.tsx` in the Reference
 overlay tabs.
+
+### Packs (`src/graph/packs/`)
+
+One file per pack on `packs/packShared.ts` (authoring types,
+`formulaNode`/`placeFormulas`, Equation presets; a pack file may import ONLY
+packShared, `../rete-nodes`, and type-only app seams — never core internals),
+each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
+Framework + activation live with the catalog cluster (`packs.ts` /
+`fcExtensions.ts` above); design + isolation levels: `docs/pack-architecture.md`.
+
+### Landing & showcase (`src/graph/landing/`)
+
+The web landing page (`LandingPage.tsx` + `LandingGraph.tsx` +
+`LandingScenes.tsx`) and the dev node gallery `showcase/NodeShowcase.tsx`.
 
 ---
 
