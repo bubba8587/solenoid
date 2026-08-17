@@ -13,9 +13,15 @@ export type SpecRule = {
   grade: ProvenanceGrade;
   /** The **MUST:** paragraph, whitespace-collapsed. */
   must: string;
+  /** The `*Why:*` / `*Origin:*` / `*Exceptions:*` sections, collapsed ("" when absent). */
+  why: string;
+  origin: string;
+  exceptions: string;
   enforcement: EnforcementStatus;
   /** `*.test.ts` files cited anywhere in the rule body. */
   tests: string[];
+  /** Non-test source files backtick-cited in the rule body. */
+  moduleRefs: string[];
   hasExceptions: boolean;
 };
 
@@ -46,6 +52,14 @@ export type ArchGroup = { title: string; modules: ArchModule[] };
 const RULE_ID = /(?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+/;
 
 const collapse = (s: string) => s.replace(/\s+/g, " ").trim();
+
+/** One labelled rule-body section (`*Why:*` …), ending at the next label or blank line. */
+function ruleSection(body: string, label: string): string {
+  const m = body.match(
+    new RegExp(`^\\*${label}:\\*([\\s\\S]*?)(?=^\\*(?:Why|Enforced by|Origin|Exceptions):\\*|^\\s*$)`, "m"),
+  );
+  return collapse(m?.[1] ?? "");
+}
 
 /** Expand a summary-table cell like `SSOT-1,2,3 · SOCK-8` into full rule IDs. */
 function expandIdList(cell: string): string[] {
@@ -81,14 +95,21 @@ export function parseRulesDoc(md: string): SpecRulesModel {
       const [, id, title, grade, ruleBody] = rm;
       const must = collapse(ruleBody.match(/\*\*MUST:\*\*([\s\S]*?)(?:\n\n|\n\*)/)?.[1] ?? "");
       const tests = [...new Set([...ruleBody.matchAll(/`([\w./-]+\.test\.ts)`/g)].map((m) => m[1]))];
+      const moduleRefs = [...new Set(
+        [...ruleBody.matchAll(/`([\w./-]+\.tsx?)`/g)].map((m) => m[1]).filter((f) => !f.endsWith(".test.ts")),
+      )];
       rules.push({
         id,
         domain: prefix,
         title,
         grade: grade as ProvenanceGrade,
         must,
+        why: ruleSection(ruleBody, "Why"),
+        origin: ruleSection(ruleBody, "Origin"),
+        exceptions: ruleSection(ruleBody, "Exceptions"),
         enforcement: statusOf.get(id) ?? "unenforced",
         tests,
+        moduleRefs,
         hasExceptions: /\*Exceptions:\*/.test(ruleBody),
       });
     }
@@ -135,4 +156,49 @@ export function testCitationIndex(model: SpecRulesModel): Map<string, string[]> 
     for (const r of d.rules)
       for (const t of r.tests) index.set(t, [...(index.get(t) ?? []), r.id]);
   return index;
+}
+
+export type SuiteNode = {
+  suite: string;
+  ruleIds: string[];
+  /** Domain prefixes of the citing rules. */
+  domains: string[];
+  /** Architecture-table groups whose module row matches the suite's stem ([] = untabled). */
+  groups: string[];
+};
+
+/**
+ * One node per cited suite, ordered by barycenter over its neighbours' layer
+ * positions (mean of normalized domain + group indices) so the middle layer
+ * runs roughly diagonal and edge crossings stay low. Suite → group is a stem
+ * match: the suite's stem names its home module; no match is honest signal
+ * (the module isn't in an architecture TABLE), never fuzzy-matched away.
+ */
+export function buildSuiteNodes(model: SpecRulesModel, groups: ArchGroup[]): SuiteNode[] {
+  const domainAt = new Map(model.domains.map((d, i) => [d.prefix, i]));
+  const groupAt = new Map(groups.map((g, i) => [g.title, i]));
+  const norm = (i: number, n: number) => (n <= 1 ? 0.5 : i / (n - 1));
+  const nodes = [...testCitationIndex(model)].map(([suite, ruleIds]) => {
+    const stem = suite.replace(/\.test\.ts$/, "").split("/").pop()!;
+    return {
+      suite,
+      ruleIds,
+      domains: [...new Set(ruleIds.map((id) => id.split("-")[0]))],
+      groups: groups
+        .filter((g) => g.modules.some((m) =>
+          m.name === `${stem}.ts` || m.name.startsWith(`${stem}.`) || m.nameCell.includes(`${stem}.`)))
+        .map((g) => g.title),
+    };
+  });
+  const keyOf = (s: SuiteNode) => {
+    const ks = [
+      ...s.domains.map((d) => norm(domainAt.get(d) ?? 0, model.domains.length)),
+      ...s.groups.map((g) => norm(groupAt.get(g) ?? 0, groups.length)),
+    ];
+    return ks.reduce((a, b) => a + b, 0) / ks.length;
+  };
+  return nodes
+    .map((n, i) => ({ n, i, k: keyOf(n) }))
+    .sort((a, b) => a.k - b.k || a.i - b.i)
+    .map((x) => x.n);
 }

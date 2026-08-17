@@ -86,6 +86,25 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-17 — the Architecture map becomes a spec browser)
+- **View ▸ Architecture map redesigned** (author asked for "something great", open brief):
+  the three-layer graph stays (domains → suites → module groups, an edge IS a citation)
+  and gains a permanent READING PANE — the map now surfaces the docs' actual text instead
+  of hiding it in `title` tooltips. Select a domain → blurb + its rules; a rule → full
+  MUST/Why/Origin/Exceptions + clickable enforcing suites + cited modules; a suite → the
+  rules citing it + home group; a group → every module row with its full role text (the
+  architecture.md tables, readable in-app). Resting pane = the enforcement gaps (the
+  unenforced/partial rule lists), which is what the map is FOR.
+- Mechanics: rule-level selection joins the hover/selection neighborhood model; a head
+  search box matches rules/suites/modules (pane-only, the graph never reshuffles); Esc
+  unwinds query → selection → close. Middle layer is barycenter-ordered
+  (`buildSuiteNodes` in `specMap.ts`, tested) so it runs diagonal instead of doc-order
+  spaghetti; domain cards trade the presence dots for a proportional enforcement meter.
+  Parser now captures `*Why:*`/`*Origin:*`/`*Exceptions:*` sections + non-test module
+  refs per rule, pinned in `specMap.test.ts` against the docs' own marker counts.
+  Suite→group stem matching and the honest untabled-suite gap are unchanged (37 of 59
+  suites are untabled today — signal, not a bug).
+
 ### SESSION DIGEST (2026-08-17 — chrome fills went opaque; the frosted-glass layer is gone)
 - **`--panel-bg` / `--overlay-bg` are now `var(--surface)`** (`App.css`), so every bar, panel
   and floating overlay is the raised surface rather than a 90–98% window onto the graph. The

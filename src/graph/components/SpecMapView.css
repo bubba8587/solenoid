@@ -1,7 +1,8 @@
-/* Architecture map overlay: the spec ↔ code citation graph. Same modal band as
-   the Reference overlay (fr-backdrop, z-index 9000). Color carries state only:
-   enforcement dots use the status set (DESIGN.md §2, literals like fr-stats'),
-   edges/nodes light with the accent on hover/selection and stay neutral at rest. */
+/* Architecture map overlay: the spec ↔ code citation graph plus its reading
+   pane. Same modal band as the Reference overlay (fr-backdrop, z-index 9000).
+   Color carries state only: enforcement uses the status set (DESIGN.md §2,
+   literals like fr-stats'), edges/nodes light with the accent on
+   hover/selection and stay neutral at rest. */
 
 .specmap-backdrop {
   position: fixed;
@@ -30,9 +31,9 @@
 
 .specmap-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 14px;
-  padding: 10px 44px 9px 16px;
+  padding: 8px 44px 8px 16px;
   background: var(--surface-sunken);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -62,6 +63,19 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
+.specmap-search {
+  width: 170px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+}
+.specmap-search:focus { border-color: var(--accent); }
+.specmap-search::placeholder { color: var(--text-muted); }
 .specmap-close {
   position: absolute;
   right: 10px;
@@ -82,14 +96,20 @@
 }
 .specmap-close:hover { color: var(--text-dim); background: var(--border); }
 
-/* ─── Graph canvas ─────────────────────────────────────────────────────────── */
+/* ─── Body: graph canvas + reading pane ────────────────────────────────────── */
+
+.specmap-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
 
 /* Fixed-pixel layout space, centered; scrolls when the panel is smaller. The
    canvas is a shade darker than the panel so the node cards lift off it, the
    same tonal step the real graph canvas uses. */
 .specmap-canvas {
   flex: 1;
-  min-height: 0;
+  min-width: 0;
   overflow: auto;
   display: grid;
   place-items: center;
@@ -153,12 +173,12 @@
   fill: var(--text-muted);
 }
 
-/* Per-domain enforcement presence dots (SVG circles). */
-.specmap-nodedot--enforced   { fill: #2fae7a; }
-.specmap-nodedot--partial    { fill: #d9a93b; }
-.specmap-nodedot--unenforced { fill: #e0473a; }
+/* Per-domain enforcement meter (proportional segments along the card foot). */
+.specmap-meter--enforced   { fill: #2fae7a; }
+.specmap-meter--partial    { fill: #d9a93b; }
+.specmap-meter--unenforced { fill: #e0473a; }
 
-/* ─── Enforcement dots (HTML, head + chips) ────────────────────────────────── */
+/* ─── Enforcement dots (HTML, head + pane) ─────────────────────────────────── */
 
 .specmap-dot {
   width: 7px;
@@ -171,38 +191,137 @@
 .specmap-dot--partial    { background: #d9a93b; }
 .specmap-dot--unenforced { background: #e0473a; }
 
-/* ─── Detail strip (the selected node's contents, on demand) ───────────────── */
+/* ─── Reading pane ─────────────────────────────────────────────────────────── */
 
-.specmap-detail {
+.specmap-pane {
+  width: 332px;
   flex-shrink: 0;
-  max-height: 32%;
   overflow-y: auto;
-  padding: 10px 16px 14px;
-  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: 12px 14px 16px;
 }
-.specmap-detail__head {
+
+.specmap-crumb {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+.specmap-crumb:hover { color: var(--text-dim); }
+
+.specmap-pane__head {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
-.specmap-detail__name {
+.specmap-pane__name {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-bright);
 }
-.specmap-detail__sub { font-size: 11px; color: var(--text-muted); }
-.specmap-detail__blurb {
-  margin: 0 0 8px;
+.specmap-pane__name--wrap { word-break: break-all; }
+.specmap-pane__name--sans { font-family: inherit; }
+.specmap-pane__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.specmap-pane__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.specmap-pane__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 10px 0 4px;
+}
+.specmap-pane__text {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.specmap-pane__text--must { color: var(--text); }
+.specmap-pane__note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.specmap-pane__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 8px 0 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Rule / result rows: one line each, dot + id + title. */
+.specmap-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 3px 6px;
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.specmap-row:hover { background: var(--btn-hover); }
+.specmap-row__id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.specmap-row__label {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Module rows in a group's pane: name + full role text. */
+.specmap-mod { margin: 0 0 8px; }
+.specmap-mod__name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-word;
+}
+.specmap-mod__role {
   font-size: 11px;
   line-height: 1.45;
   color: var(--text-muted);
 }
-.specmap-detail__chips {
+
+.specmap-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  margin-bottom: 2px;
 }
 .specmap-chip {
   display: inline-flex;
@@ -215,5 +334,19 @@
   border: 1px solid var(--border);
   border-radius: 5px;
   padding: 2px 7px;
-  cursor: default;
+  cursor: pointer;
+}
+.specmap-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.specmap-chip--inert { cursor: default; }
+.specmap-chip--inert:hover { border-color: var(--border); color: var(--text-dim); }
+
+/* Narrow panel: the pane drops below the graph. */
+@media (max-width: 860px) {
+  .specmap-body { flex-direction: column; }
+  .specmap-pane {
+    width: auto;
+    max-height: 45%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
 }
