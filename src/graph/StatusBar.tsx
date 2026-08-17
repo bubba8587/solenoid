@@ -136,8 +136,8 @@ export function StatusBar() {
         )}
         <span className="solenoid-statusbar__zoom">{snap.zoom}%</span>
       </div>
-      {/* An App-level sibling: the strip's backdrop-filter would trap the modal's
-          stacking context below it. */}
+      {/* An App-level sibling: the strip's own stacking context (position + z-index)
+          would trap the modal below it. */}
       {modalOpen && <NodeBudgetModal count={snap.nodes} onClose={() => setModalOpen(false)} />}
     </>
   );

@@ -157,6 +157,13 @@ the load reveal, the AI-apply reveal). The rule's actual content for an agent: N
 color is an author call, never a default you reach for — when unsure whether a color is meaning
 or mood, keep the chrome neutral and ask.
 
+**The Opaque-Chrome Rule.** Bars, panels, popovers and floating overlays fill with `--surface`
+(via `--panel-bg` / `--overlay-bg`) and never let the graph show through; a chrome surface that
+needs a `backdrop-filter` to stay readable is the glassmorphism §1 rejects. Alpha stays where it
+IS the effect: modal scrims and the compute curtain (they dim what's behind on purpose), tint
+washes over an already-opaque surface, user-authored group and note fills (a group body must show
+its members), and glows, shadows and rings.
+
 **The Nearest-Accent Rule.** There are two accents in play — the app's (`--accent`, the user's theme pick) and the surface's (`--node-accent`, the type color tinting a node card's or a value popup's header). Inside a surface that carries its own accent, the surface's wins: its focus rings, drop targets, active states and filled actions all resolve `var(--node-accent, var(--accent))`, so the fallback hands app-level chrome — the command palette, Settings, the Navigator, the accentless dialogs — the app accent untouched. An app-accent ring inside an accent-tinted card puts two unrelated hues on one small surface and reads as a mistake. An accent FILL additionally needs its ink from the matching pair (`--node-accent-ink`, derived per surface); `--accent-ink` is computed for the app accent's hue and goes unreadable on any other.
 
 **The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
@@ -239,7 +246,7 @@ The family's picker hoists to the top of the body either way. Reading before the
 - **Grouped:** Members drop their shadow and take a 2px border in the group's color, with a small solid corner triangle marking membership.
 
 ### Navigation / Toolbars
-- **Style:** Floating pill and icon clusters over the canvas, using the overlay chrome tokens (near-opaque fill, always-on `--overlay-border`, deep overlay shadow) so they read above the graph. Controls are neutral; only their icons and state feedback carry weight.
+- **Style:** Floating pill and icon clusters over the canvas, using the overlay chrome tokens (opaque `--surface` fill, always-on `--overlay-border`, deep overlay shadow) so they read above the graph. Controls are neutral; only their icons and state feedback carry weight.
 
 ### Signature: Typed Sockets & Cables
 - **Sockets:** A deterministic 12x12 dot straddling the card edge, filled with the socket's type color and an inset ring (`--socket-ring`). Shape encodes type alongside color (circle = scalar, square = list, split square = scalar-or-list, grid = matrix, "F" letterform in a square = frame, hollow border-only ring = the trueany placeholder).

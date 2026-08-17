@@ -223,7 +223,8 @@ Answers to the questions that keep biting:
 ```
 
 MenuBar (z2) and TopBar (z1) are *local* values inside `.solenoid-header` (itself z6 at app
-level); TopBar's `backdrop-filter` makes it a self-contained stacking context. The canvas gets
+level); TopBar is positioned with its own z-index, so it is a self-contained stacking context
+(this is why the node-budget modal renders as an App-level sibling of the status bar). The canvas gets
 its own context via `isolation:isolate` (`canvas.css`), which is why the minimap needs z100 to
 paint over node cards.
 

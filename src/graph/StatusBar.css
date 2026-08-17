@@ -13,8 +13,6 @@
      devices without a safe area, so desktop is unaffected. */
   padding: 0 10px env(safe-area-inset-bottom);
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--panel-border);
   user-select: none;
   font-size: 11px;

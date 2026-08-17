@@ -587,7 +587,7 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
 // shade or two also behaves on a ramp nobody has eyeballed. Retune a step by redoing
 // that comparison, not by nudging until one palette looks right.
 export const DERIVED_CHROME_VARS = [
-  "--panel-bg", "--overlay-bg", "--overlay-border", "--btn-hover",
+  "--overlay-border", "--btn-hover",
   "--gauge-track", "--cable-selected", "--wordmark-color",
   "--shadow-card", "--shadow-pop", "--overlay-shadow",
 ] as const;
@@ -613,10 +613,8 @@ export function chromeCssVars(ramp: ChromeRamp, mode: "dark" | "light"): Record<
   }
   const { surface, surfaceSunken, borderStrong, text, textBright, textMuted } = ramp;
   if (!isHex(surface) || !isHex(text)) return out; // a partial ramp derives nothing
-  // Panels and floating overlays are the surface at near-opacity — the overlay reads
-  // above a busy graph, so it sits a step more opaque than a panel.
-  out["--panel-bg"] = hexToRgba(surface, 0.92);
-  out["--overlay-bg"] = hexToRgba(surface, 0.97);
+  // --panel-bg / --overlay-bg aren't derived: App.css aliases both to --surface, which
+  // the ramp already wrote, so opaque chrome follows the palette on its own.
   // Overlay chrome is defined by its border rather than floated by a big shadow, so
   // its edge steps past --border-strong toward the ink.
   if (isHex(borderStrong)) out["--overlay-border"] = mixHex(borderStrong, text, 0.08);

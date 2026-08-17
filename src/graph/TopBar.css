@@ -14,8 +14,6 @@
   height: 44px;
   padding: 0 12px;
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   /* Hairline structural border plus a 2px accent highlight beneath it. */
   border-bottom: 1px solid var(--panel-border);
   box-shadow: 0 2px 0 0 var(--accent), var(--shadow-pop);

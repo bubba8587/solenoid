@@ -86,6 +86,23 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-17 — chrome fills went opaque; the frosted-glass layer is gone)
+- **`--panel-bg` / `--overlay-bg` are now `var(--surface)`** (`App.css`), so every bar, panel
+  and floating overlay is the raised surface rather than a 90–98% window onto the graph. The
+  light-theme overrides for both are gone (the alias follows `--surface`), and `palette.ts`
+  no longer derives them — a palette's own `surface` carries them, so they left
+  `DERIVED_CHROME_VARS`.
+- **Every `backdrop-filter: blur(8px)` is deleted** (top bar, status bar, Navigator ×2, zoom
+  pill, mobile bottom bar, web-demo banner, align bar, Conduit toolbar): behind an opaque fill
+  it painted nothing and still cost a re-rasterization per frame. Modal SCRIMS keep their
+  1–2px blur — there the translucency IS the effect. DESIGN.md §1 rejects glassmorphism
+  outright, so this is the system converging on its own rulebook.
+- Two consequences the blur used to own, re-pinned: TopBar's stacking context is now its
+  `position` + `z-index` (`MenuBar.css`, `docs/layout-chrome.md`), and the Navigator list's
+  layer promotion is plain scroll containment, not a blur-rerasterization dodge.
+- `mobile.css`'s opaque `.solenoid-topbar` override and the dead `rendererSpike.css` (nothing
+  imported it since the renderer spikes were deleted 2026-08-09) are both gone.
+
 ### SESSION DIGEST (2026-08-16 — Save Times node; the save clock split in two)
 - **New node `SaveTimes`** (Add ▸ Input ▸ Save Times, `nodes/input.ts`): two date outputs,
   last autosave and last write-to-file, each with a button on its row — Refresh

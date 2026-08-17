@@ -7,8 +7,6 @@
   display: inline-flex;
   align-items: stretch;
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   /* A button pill, not a panel — thin border (the thick overlay-border is reserved
      for the usable panels; pills stay light). */
   border: 1px solid var(--panel-border);
@@ -52,8 +50,6 @@
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   /* Visible chrome border (overlay-border), soft shadow kept — see open-pill. */
   border: var(--overlay-border-width) solid var(--overlay-border);
   border-radius: 8px;
@@ -200,10 +196,8 @@
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 0 6px 6px;
-  /* Own compositor layer + paint containment so scrolling the list doesn't
-     force the panel's `backdrop-filter` (frosted blur) to re-rasterize every
-     frame — that re-evaluation is what made the group-row highlights lag while
-     scrolling. */
+  /* Own compositor layer + paint containment: scrolling the list repaints the
+     list, not the panel around it. */
   transform: translateZ(0);
   contain: paint;
 }

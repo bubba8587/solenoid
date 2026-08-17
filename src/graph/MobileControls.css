@@ -11,8 +11,6 @@
   gap: 2px;
   padding: 5px 10px calc(5px + env(safe-area-inset-bottom));
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--panel-border);
   z-index: 100;
   user-select: none;

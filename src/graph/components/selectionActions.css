@@ -16,8 +16,6 @@
   gap: 3px;
   padding: 3px;
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--panel-border);
   border-radius: 999px;
   box-shadow: var(--shadow-pop);

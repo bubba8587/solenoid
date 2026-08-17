@@ -41,13 +41,9 @@ html.is-mobile {
     height: 52px;
     padding: 0 8px;
     gap: 4px;
-    /* OPAQUE surface (not the translucent --panel-bg) so the canvas never shows
-       through. Separator = the DESKTOP one (hairline + 2px ACCENT underline, from
-       the base .solenoid-topbar rule) — it reads cleanly since Row B is neutral,
-       so this rule leaves border-bottom / box-shadow to the base rule. */
-    background: var(--surface);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    /* Separator = the DESKTOP one (hairline + 2px ACCENT underline, from the base
+       .solenoid-topbar rule) — it reads cleanly since Row B is neutral, so this
+       rule leaves background / border-bottom / box-shadow to the base rule. */
   }
   /* File ops (Save/Open) stay in the hamburger sheet; the layout GROUP (Tidy /
      Cleanup / collapse-all / snap) is surfaced on Row B now (there's room). */
