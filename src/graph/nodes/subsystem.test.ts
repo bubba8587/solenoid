@@ -24,6 +24,13 @@ describe("SubsystemNode", () => {
     expect(n.data().modules.columns[0].name).toBe("module");
   });
 
+  it("declares Inspector socket docs for both sockets", async () => {
+    const { socketDocFor } = await import("../socketDocs");
+    const n = new SubsystemNode();
+    expect(socketDocFor(n, "deps")).toMatch(/import dependency/);
+    expect(socketDocFor(n, "modules")).toMatch(/module/);
+  });
+
   it("round-trips through extractInit", () => {
     const n = new SubsystemNode({ label: "Cables", frameText: TEXT });
     const init = extractInit(n) as { label?: string; frameText?: string };

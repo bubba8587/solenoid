@@ -5,7 +5,11 @@ import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
 import { describeNode, nodeName, catalogTypeOf } from "../catalogUtils";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
-import { SolenoidSocket, SOCKET_COLORS, SOCKET_TYPE_LABELS } from "../sockets";
+import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
+import { socketDocFor } from "../socketDocs";
+import { frameHintFor } from "../frameHint";
+import { SocketComponent } from "./SocketComponent";
+import { FrameHintTable } from "./FrameHintLayer";
 import { CloseIcon } from "./CloseIcon";
 import "./InspectorPanel.css";
 
@@ -42,13 +46,24 @@ type AnyNode = ClassicPreset.Node & {
   selected?: boolean;
 };
 
-function socketRow(key: string, port: { label?: string; socket?: ClassicPreset.Socket } | undefined): ReactNode {
+function socketRow(node: AnyNode, key: string, port: { label?: string; socket?: ClassicPreset.Socket } | undefined): ReactNode {
   const t = port?.socket instanceof SolenoidSocket ? port.socket.dataType : null;
+  const doc = socketDocFor(node, key);
+  const hint = frameHintFor(node, key);
   return (
-    <div key={key} className="inspector-row">
-      <span className="inspector-sockdot" style={{ background: t ? SOCKET_COLORS[t] : "var(--sock-any)" }} />
-      <span className="inspector-row__key">{port?.label ?? key}</span>
-      <span className="inspector-row__meta">{t ? SOCKET_TYPE_LABELS[t] : ""}</span>
+    <div key={key}>
+      <div className="inspector-row">
+        {/* The REAL socket glyph (shape encodes type alongside color). */}
+        <span className="inspector-sock">{port?.socket && <SocketComponent data={port.socket} />}</span>
+        <span className="inspector-row__key">{port?.label ?? key}</span>
+        <span className="inspector-row__meta">{t ? SOCKET_TYPE_LABELS[t] : ""}</span>
+      </div>
+      {doc && <div className="inspector-row__doc">{doc}</div>}
+      {hint && (
+        <div className="solenoid-frame-hint solenoid-frame-hint--inline">
+          <FrameHintTable hint={hint} />
+        </div>
+      )}
     </div>
   );
 }
@@ -129,10 +144,10 @@ export function InspectorPanel() {
             ))}
 
             {Object.keys(node.inputs).length > 0 && <div className="inspector-label">Inputs</div>}
-            {Object.entries(node.inputs).map(([key, input]) => socketRow(key, input))}
+            {Object.entries(node.inputs).map(([key, input]) => socketRow(node, key, input))}
 
             {Object.keys(node.outputs).length > 0 && <div className="inspector-label">Outputs</div>}
-            {Object.entries(node.outputs).map(([key, output]) => socketRow(key, output))}
+            {Object.entries(node.outputs).map(([key, output]) => socketRow(node, key, output))}
           </>
         )}
       </div>

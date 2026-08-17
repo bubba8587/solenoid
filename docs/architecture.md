@@ -270,8 +270,10 @@ stores (`outlineStore`, `shortcutsStore`, `helpDialogStore`, `chartPopupStore`,
 The node INSPECTOR (`components/InspectorPanel.tsx` + `inspectorStore.ts`, the top
 bar's (i) button): a right dock on the pinned Report's chrome pattern
 (`html.sol-inspector-docked` squeezes the canvas; the two right docks are mutually
-exclusive) reading the active surface's selected node — catalog description, typed
-sockets with wiring, live output values.
+exclusive) reading the active surface's selected node: STATIC reference only — the
+Function Reference derivation, real socket glyphs with `SOCKET_TYPE_LABELS`, opt-in
+per-socket detail (`socketDocs.ts`, a static class map like `frameHints`), and each
+declared frame-input example table (`FrameHintTable`, shared with the hover layer).
 View ▸ Architecture map opens the GENERATED seed `seedGraphs/architecture-map.json`
 (via `documentStore.newFromTemplate`): the system as a real document — one Subsystem
 node per module group of THIS FILE, real cables along the strong import edges, ELK

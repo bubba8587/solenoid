@@ -121,12 +121,12 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   padding: 3px 0;
   min-width: 0;
 }
-.inspector-sockdot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+.inspector-sock {
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 2px var(--socket-ring);
+  display: block;
+  line-height: 0;
 }
 .inspector-row__key {
   font-size: 11.5px;
@@ -142,4 +142,11 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
+}
+
+.inspector-row__doc {
+  margin: 0 0 4px 19px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }

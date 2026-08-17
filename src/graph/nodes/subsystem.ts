@@ -8,6 +8,12 @@ import { frameFromInputText, type FrameValue } from "../frame";
 // The architecture-map seed (scripts/gen-arch-seed.mjs) authors these.
 
 export class SubsystemNode extends ClassicPreset.Node {
+  /** Inspector detail (socketDocs.ts): the sockets' meaning is not obvious from type. */
+  static socketDocs: Record<string, string> = {
+    deps: "Each cable into this input is an import dependency: the source card is a group this group's code imports. No data flows here.",
+    modules: "The group's file table: module, role, and import count. Load-bearing modules sort first.",
+  };
+
   label: string;
   frameText: string;
   cachedResult: FrameValue | null = null;

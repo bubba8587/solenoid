@@ -117,8 +117,11 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   selected node: catalog description (`describeNode`), the Function Reference's
   generated rows READ by catalog type (`buildFunctionReference` — Excel syntax +
   parity notes, Add-menu breadcrumb, pack tags; one derivation, never a copy),
-  and the node's socket roster in plain English (`SOCKET_TYPE_LABELS` + typed
-  dots). STATIC by author call, refined over three rounds: no live values (the
+  and the node's socket roster: the REAL glyphs (`SocketComponent` reused — shape
+  encodes type; no invented dots), `SOCKET_TYPE_LABELS` names, opt-in per-socket
+  detail (`socketDocs.ts` static class map, Subsystem is the worked example), and
+  any declared frame-input example table (`FrameHintTable`, extracted from the
+  hover layer so both render one declaration). STATIC by author call, refined over three rounds: no live values (the
   card and its popups are the value surface), no live connections (the Cable
   inspector's job), and actions stay in the right-click menu — the Inspector is
   the static reference for the selected node and its current configuration. Selection polls (no push store, same as SelectionActionsBar);

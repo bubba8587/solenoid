@@ -62,3 +62,13 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* Inline variant — the Inspector renders the same mini-table in flow. */
+.solenoid-frame-hint--inline {
+  position: static;
+  z-index: auto;
+  pointer-events: auto;
+  box-shadow: none;
+  display: inline-block;
+  margin: 2px 0 4px 16px;
+}
