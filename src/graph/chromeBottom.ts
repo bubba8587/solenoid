@@ -15,7 +15,11 @@ let ro: ResizeObserver | null = null;
 function publish() {
   let max = 0;
   for (const el of els) max = Math.max(max, el.getBoundingClientRect().height);
-  document.documentElement.style.setProperty("--chrome-bottom", `${Math.round(max)}px`);
+  // Ceil, never round: a fractional bar height published short leaves anything
+  // anchored to the var a subpixel shy of the bar, which rasterizes as a 1px
+  // gap at some device pixel ratios. Rounded UP, consumers sit flush or tuck
+  // under the opaque bar (the bars z-index above the docked panels).
+  document.documentElement.style.setProperty("--chrome-bottom", `${Math.ceil(max)}px`);
 }
 
 function register(el: HTMLElement): () => void {

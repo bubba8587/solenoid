@@ -12,10 +12,12 @@ export function Header() {
     const el = ref.current;
     if (!el) return;
     // The ROOT, not the header: the overlays are siblings, so the var must inherit to reach.
+    // Ceil, never round — the same rule as chromeBottom.ts: published short,
+    // a top-anchored panel gaps below the bar at fractional device pixel ratios.
     const publish = () =>
       document.documentElement.style.setProperty(
         "--chrome-top",
-        `${Math.round(el.getBoundingClientRect().height)}px`,
+        `${Math.ceil(el.getBoundingClientRect().height)}px`,
       );
     publish();
     const ro = new ResizeObserver(publish);
