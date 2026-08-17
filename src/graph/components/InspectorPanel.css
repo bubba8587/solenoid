@@ -139,3 +139,16 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   white-space: nowrap;
 }
 .inspector-empty { color: var(--text-muted); font-size: 11.5px; }
+
+.inspector-excel { margin: 0 0 6px; }
+.inspector-excel__syntax {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-all;
+}
+.inspector-excel__note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}

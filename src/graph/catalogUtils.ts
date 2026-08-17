@@ -239,6 +239,36 @@ function nameIndex(): Map<string, string> {
   return _nameIndex;
 }
 
+// Parallel to descIndex, for the catalog TYPE key — what nodeExcel.ts and the
+// pack metadata are keyed by (the Inspector's Excel-equivalence lookup).
+let _typeIndex: Map<string, string> | null = null;
+function typeIndex(): Map<string, string> {
+  if (_typeIndex) return _typeIndex;
+  _typeIndex = new Map();
+  for (const [type, entry] of FLAT_CATALOG) {
+    try {
+      const inst = entry.create() as unknown as { constructor: { name: string }; op?: unknown };
+      const ctor = inst.constructor.name;
+      const op = typeof inst.op === "string" ? inst.op : "";
+      if (!_typeIndex.has(`${ctor}::${op}`)) _typeIndex.set(`${ctor}::${op}`, type);
+      if (!_typeIndex.has(`${ctor}::`)) _typeIndex.set(`${ctor}::`, type);
+    } catch { /* a leaf that fails to build must not break the lookup for the rest */ }
+  }
+  return _typeIndex;
+}
+
+/** Catalog type key for a placed node (op-aware), or null if unknown. */
+export function catalogTypeOf(node: object): string | null {
+  const idx = typeIndex();
+  const ctor = (node as { constructor: { name: string } }).constructor.name;
+  const op = (node as { op?: unknown }).op;
+  return (
+    idx.get(`${ctor}::${typeof op === "string" ? op : ""}`) ??
+    idx.get(`${ctor}::`) ??
+    null
+  );
+}
+
 /** Catalog label (node name) for a placed node (op-aware), or null if unknown. */
 export function nodeName(node: object): string | null {
   const idx = nameIndex();

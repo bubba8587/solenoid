@@ -4,7 +4,8 @@ import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
 import { compositePassStore } from "../compositeEditorStore";
-import { describeNode, nodeName } from "../catalogUtils";
+import { describeNode, nodeName, catalogTypeOf } from "../catalogUtils";
+import { NODE_EXCEL } from "../nodeExcel";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { cableValueStore } from "../cableValueStore";
 import { isSolError } from "../errorValue";
@@ -96,6 +97,8 @@ export function InspectorPanel() {
   const label = node ? (node.label || nodeName(node) || node.constructor.name) : null;
   const catalogLabel = node ? nodeName(node) : null;
   const description = node ? describeNode(node) : null;
+  const catalogType = node ? catalogTypeOf(node) : null;
+  const excel = catalogType ? NODE_EXCEL[catalogType] ?? [] : [];
 
   return (
     <div className="inspector-panel" onPointerDown={(e) => e.stopPropagation()}>
@@ -115,6 +118,14 @@ export function InspectorPanel() {
               {catalogLabel ?? node.constructor.name.replace(/Node$/, "")}
             </div>
             {description && <p className="inspector-desc">{description}</p>}
+
+            {excel.length > 0 && <div className="inspector-label">Excel</div>}
+            {excel.map((eq) => (
+              <div key={eq.excel} className="inspector-excel">
+                <code className="inspector-excel__syntax">{eq.syntax}</code>
+                {eq.note && <div className="inspector-excel__note">{eq.note}</div>}
+              </div>
+            ))}
 
             {Object.keys(node.inputs).length > 0 && <div className="inspector-label">Inputs</div>}
             {Object.entries(node.inputs).map(([key, input]) => {
