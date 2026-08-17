@@ -466,6 +466,11 @@ export class BaseConvertNode extends ClassicPreset.Node {
 // ─── Clamp ────────────────────────────────────────────────────────────────────
 
 export class ClampNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    min: "Empty and unwired, there is no floor. A wired blank makes the whole result blank.",
+    max: "Empty and unwired, there is no ceiling. A wired blank makes the whole result blank.",
+  };
+
   label: string;
   cachedResult: number | number[] | null = null;
   literals: Record<string, number> = { value: 0 };
@@ -511,6 +516,10 @@ export const MROUND_OP_META = {
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
 export class MRoundNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    multiple: "A multiple of zero gives zero rather than an error.",
+  };
+
   label: string;
   op: MRoundOp;
   cachedResult: BroadcastResult = null;
@@ -802,6 +811,10 @@ export const SUM_PRODUCT_OP_META = {
 } satisfies Record<SumProductOp, { label: string; description: string }>;
 
 export class SumProductNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Lists of unequal length pair to the shorter one, and the extra values are ignored.",
+  };
+
   label: string;
   op: SumProductOp;
   cachedResult: number | null = null;

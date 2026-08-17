@@ -88,6 +88,10 @@ export class TodayNowNode extends ClassicPreset.Node {
 // ─── DATE ─────────────────────────────────────────────────────────────────────
 
 export class DateConstructNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    year: "The year is taken as written: 26 means the year 26, not 1926.",
+  };
+
   label: string;
   literals: Record<string, number> = { year: 2024, month: 1, day: 1 };
   cachedResult: BroadcastResult = null;
@@ -192,6 +196,10 @@ function parseTimeOfDay(text: string): number | SolError {
 }
 
 export class DateTimeValueNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    text: "A date needs a four-digit year; two-digit years do not parse.",
+  };
+
   label: string;
   op: DateTimeValueOp;
   cachedResult: number | SolError | null = null;
@@ -521,6 +529,10 @@ export const WORKDAYS_OP_META = {
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
 export class WorkdaysNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    holidays: "Each holiday covers its whole calendar day; any time of day in the entry is ignored.",
+  };
+
   label: string;
   op: WorkdaysOp;
   literals: Record<string, number> = {};

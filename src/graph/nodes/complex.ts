@@ -97,6 +97,10 @@ export class ComplexFromNode extends ClassicPreset.Node {
 }
 
 export class ComplexUnpackNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    arg: "The angle is in radians, between −π and π.",
+  };
+
   label: string;
   cachedRe: BroadcastResult = null;
   cachedIm: BroadcastResult = null;

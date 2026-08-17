@@ -251,6 +251,10 @@ export const TEXT_SLICE_OP_META = {
 } satisfies Record<TextSliceOp, { label: string; description: string }>;
 
 export class TextSliceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    start: "Position 1 is the first character.",
+  };
+
   label: string;
   op: TextSliceOp;
   cachedText: CellResult<string> = null;
@@ -308,6 +312,10 @@ export const TEXT_FIND_OP_META = {
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
 export class TextFindNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    start: "Counting starts at 1. The position found is still measured from the start of the whole text.",
+  };
+
   label: string;
   op: TextFindOp;
   cachedResult: BroadcastResult = null;
@@ -350,6 +358,10 @@ export class TextFindNode extends ClassicPreset.Node {
 // ─── SUBSTITUTE ───────────────────────────────────────────────────────────────
 
 export class SubstituteNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    old_text: "Matches are case sensitive; every occurrence is replaced.",
+  };
+
   label: string;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", old_text: "", new_text: "" };
@@ -384,6 +396,10 @@ export class SubstituteNode extends ClassicPreset.Node {
 // ─── REPLACE ─────────────────────────────────────────────────────────────────
 
 export class TextReplaceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    start: "Position 1 is the first character.",
+  };
+
   label: string;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", new_text: "" };
@@ -475,6 +491,10 @@ export class ReptNode extends ClassicPreset.Node {
 export type CharCodeOp = "char" | "code";
 
 export class CharCodeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    code: "Accepts the full Unicode range; Excel's CHAR stops at 255. An out-of-range value gives a blank.",
+  };
+
   label: string;
   op: CharCodeOp;
   cachedResult: CellResult<string | number> = null;
@@ -547,6 +567,10 @@ export class TextJoinNode extends ClassicPreset.Node {
 // ─── TEXTSPLIT ────────────────────────────────────────────────────────────────
 
 export class TextSplitNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    delimiter: "An empty delimiter splits the text into single characters.",
+  };
+
   label: string;
   cachedResult: string[] | null = null;
   stringLiterals: Record<string, string> = { text: "", delimiter: "" };
@@ -641,13 +665,17 @@ export class ExactNode extends ClassicPreset.Node {
 export type { TextFilterOp } from "./textOps";
 
 export const TEXT_FILTER_OP_META = {
-  contains:     { label: "Contains",     description: "Keep strings that contain the pattern; case-sensitive" },
+  contains:     { label: "Contains",     description: "Keep strings that contain the pattern; not case sensitive" },
   not_contains: { label: "Not contains", description: "Keep strings that do NOT contain the pattern" },
   starts_with:  { label: "Starts with",  description: "Keep strings that begin with the pattern" },
   ends_with:    { label: "Ends with",    description: "Keep strings that end with the pattern" },
 } satisfies Record<TextFilterOp, { label: string; description: string }>;
 
 export class TextFilterNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    pattern: "Matching is not case sensitive.",
+  };
+
   label: string;
   op: TextFilterOp;
   cachedResult: string[] | null = null;
@@ -858,6 +886,11 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
 
 
 export class RegexNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
+    replacement: "Only the replace operation reads this input. $1 inserts the first capture group.",
+  };
+
   label: string;
   op: RegexOp;
   cachedResult: number | number[] | string | string[] | null = null;

@@ -106,6 +106,10 @@ export const COMPARISON_OP_META = {
 } satisfies Record<ComparisonOp, { symbol: string; label: string; description: string }>;
 
 export class ComparisonNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Ordering values that measure different things is #UNIT!, while equal answers FALSE and not equal TRUE. A plain number compared against a value with a unit is read in that value's display unit.",
+  };
+
   /** Keeps `UnitCell` tags so the comparison runs on BASE-SI magnitudes and
    *  enforces commensurability. */
   unitAware = true;
@@ -157,6 +161,10 @@ function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
 // Returns whichever branch, NOT a logical — boolean combining lives in BooleanOpNode.
 
 export class IfNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    cond: "A list condition picks element by element from the two branches. A blank condition gives a blank result.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   literals: Record<string, number> = { cond: 0, then: 0, else: 0 };
@@ -284,6 +292,10 @@ export class BooleanOpNode extends ClassicPreset.Node {
 // ─── NOT (unary logical flip) ────────────────────────────────────────────────
 
 export class NotNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "A wired blank is unknown, so the result is blank rather than TRUE.",
+  };
+
   label: string;
   cachedResult: Tri | Tri[] = null;
   literals: Record<string, number> = { in: 0 };
@@ -311,6 +323,11 @@ export class NotNode extends ClassicPreset.Node {
 export type IFErrorMode = "iferror" | "ifna";
 
 export class IFErrorNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "A blank is not an error and passes through untouched.",
+    fallback: "Replaces each caught cell. A list fallback pairs with the value by position.",
+  };
+
   label: string;
   op: IFErrorMode;
   cachedResult: unknown = null;
@@ -377,6 +394,10 @@ function toLogical(r: number | number[] | null): boolean | boolean[] | null {
 }
 
 export class IsTestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "With nothing wired there is nothing to test, so the result is blank. ISBLANK answers TRUE only for a wired blank.",
+  };
+
   label: string;
   op: IsTestOp;
   cachedResult: boolean | boolean[] | boolean[][] | null = null;
@@ -476,6 +497,10 @@ export class NaNode extends ClassicPreset.Node {
 // ─── Choose ───────────────────────────────────────────────────────────────────
 
 export class ChooseNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    index: "A fractional index rounds to the nearest whole row, and an out-of-range one is #VALUE! rather than blank.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   // Sparse literals: only typed/wired `v*` slots contribute.
@@ -551,6 +576,11 @@ export class ChooseNode extends ClassicPreset.Node {
 // ─── Switch ───────────────────────────────────────────────────────────────────
 
 export class SwitchNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    expr: "Cases match by exact equality, with no numeric tolerance. A blank expression gives a blank result rather than matching a blank case.",
+    default: "Left unset, an unmatched expression is #N/A. Any typed or wired value, even blank or zero, returns instead.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   // Pair `i` owns `when${i}` / `then${i}`.
@@ -648,6 +678,10 @@ export class SwitchNode extends ClassicPreset.Node {
 // ─── IFS ──────────────────────────────────────────────────────────────────────
 
 export class IfsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    otherwise: "Left unset, falling through every condition is #N/A. Any typed or wired value, even blank or zero, returns instead.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   // Pair `i` owns `cond${i}` / `val${i}`; sparse literals, only set slots contribute.
