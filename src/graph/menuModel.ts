@@ -13,6 +13,7 @@ import { problemsPanelUi } from "./problemsStore";
 import { pushNotice } from "./noticeStore";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { documentStore } from "./documentStore";
+import { inspectorStore } from "./inspectorStore";
 import { addMenuRequest } from "./addMenuStore";
 import { connectionDialog } from "./connectionDialogStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
@@ -106,6 +107,7 @@ export function buildMenus(): Menu[] {
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
+        { label: "Inspector", onClick: () => inspectorStore.toggle() },
         { label: "Architecture map", onClick: () => void documentStore.newFromTemplate("architecture-map") },
         { label: "Settings…", shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
       ],

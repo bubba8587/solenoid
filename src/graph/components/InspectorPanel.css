@@ -1,0 +1,141 @@
+/* The node Inspector's dock chrome mirrors the pinned Report's (a fixed right
+   column between the measured chrome envelopes; the canvas area squeezes left
+   via the root class). Geometry in vars so it stays tunable in one place. */
+html.sol-inspector-docked {
+  --inspector-w: 340px;
+}
+
+.inspector-panel {
+  position: fixed;
+  top: var(--chrome-top, 66px);
+  right: 0;
+  bottom: var(--chrome-bottom, 19px);
+  width: var(--inspector-w, 340px);
+  background: var(--surface);
+  border-left: 1px solid var(--border-strong);
+  box-shadow: -10px 0 28px rgba(0, 0, 0, 0.35);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+}
+
+html.sol-inspector-docked .solenoid-canvas-wrapper { width: calc(100% - var(--inspector-w)); }
+html.sol-inspector-docked .solenoid-nav { right: calc(12px + var(--inspector-w)); }
+html.sol-inspector-docked .solenoid-hud-stack { right: calc(12px + var(--inspector-w)); }
+
+/* Desktop/tablet affordance; the phone layout has no room for a side dock. */
+html.is-mobile .inspector-panel { display: none; }
+html.is-mobile .solenoid-apptools__inspector { display: none; }
+
+.inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 8px 14px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.inspector-head__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+.inspector-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.inspector-close:hover { color: var(--text-dim); background: var(--border); }
+
+.inspector-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 16px;
+}
+
+.inspector-note {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.inspector-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  word-break: break-word;
+}
+.inspector-type {
+  margin-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.inspector-desc {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.inspector-label {
+  margin: 12px 0 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.inspector-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  min-width: 0;
+}
+.inspector-sockdot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 2px var(--socket-ring);
+}
+.inspector-row__key {
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.inspector-row__meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+.inspector-row__value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+.inspector-value {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspector-empty { color: var(--text-muted); font-size: 11.5px; }

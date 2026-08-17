@@ -2,6 +2,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "./appTheme";
 import { settingsPanel } from "./settingsStore";
 import { frStore } from "./frStore";
+import { inspectorStore } from "./inspectorStore";
 import { SwatchGrid } from "./components/SwatchGrid";
 import { useDismissOnOutside } from "./components/useDismissOnOutside";
 import { resolveColor } from "./palette";
@@ -78,6 +79,20 @@ export function AppToolbar() {
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="solenoid-apptools__btn solenoid-apptools__inspector"
+        title="Inspector"
+        aria-label="Inspector"
+        onClick={() => inspectorStore.toggle()}
+      >
+        {/* Lucide "info" (ISC). */}
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
         </svg>
       </button>
       <button

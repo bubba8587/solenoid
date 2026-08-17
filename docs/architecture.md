@@ -267,6 +267,11 @@ shell, `chunkReloadGuard.ts` the once-per-window preload-error reload),
 `nodeBudget.ts` (the soft web-demo node cap), and the remaining popup/panel
 stores (`outlineStore`, `shortcutsStore`, `helpDialogStore`, `chartPopupStore`,
 `elementPickerStore`, `pivotEditorStore`).
+The node INSPECTOR (`components/InspectorPanel.tsx` + `inspectorStore.ts`, the top
+bar's (i) button): a right dock on the pinned Report's chrome pattern
+(`html.sol-inspector-docked` squeezes the canvas; the two right docks are mutually
+exclusive) reading the active surface's selected node — catalog description, typed
+sockets with wiring, live output values.
 View ▸ Architecture map opens the GENERATED seed `seedGraphs/architecture-map.json`
 (via `documentStore.newFromTemplate`): the system as a real document — one Subsystem
 node per module group of THIS FILE, real cables along the strong import edges, ELK

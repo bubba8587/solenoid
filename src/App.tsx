@@ -9,6 +9,7 @@ import { StatusBar } from "./graph/StatusBar";
 import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
+import { InspectorPanel } from "./graph/components/InspectorPanel";
 import { CompositeEditorOverlay } from "./graph/components/CompositeEditorOverlay";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
@@ -73,6 +74,7 @@ function MainApp() {
       <StatusBar />
       <FunctionReference />
       <ReportOverlay />
+      <InspectorPanel />
       <CompositeEditorOverlay />
       <PresentationOverlay />
       <ConnectionDialog />

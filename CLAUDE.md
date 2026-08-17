@@ -155,6 +155,8 @@ Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term 
 - **FC** — the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
   model `formatModel.ts`, flow `unitFlow.ts`.
 - **Reference** — the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
+- **Inspector** — the right-dock node detail panel ((i) in the top bar). `InspectorPanel.tsx` ·
+  `inspectorStore.ts` · `html.sol-inspector-docked`.
 
 ### Pre-alpha — break freely, don't build compat layers
 One user (the author), who says: break old saves, old code, legacy names. Don't add back-compat
