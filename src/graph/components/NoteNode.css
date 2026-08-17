@@ -279,6 +279,12 @@
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+  /* Author-written prose in a card-width column, so the Wrap Rule's `pretty`
+     (DESIGN.md §3) applies to the whole body, not just the <p> blocks `.sol-md`
+     covers: it inherits into table cells and any bare text `marked` emits. The
+     editing textarea is a SIBLING (.solenoid-note__body), so it never inherits
+     this and can't rebreak under the caret mid-keystroke. */
+  text-wrap-style: pretty;
 }
 /* Block children that have intrinsic width (code blocks, tables) must also stay
    within the card and scroll internally rather than stretch it. */

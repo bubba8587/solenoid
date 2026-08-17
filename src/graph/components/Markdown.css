@@ -29,6 +29,10 @@
 .sol-md pre {
   margin: 10px 0; padding: 10px 12px; overflow: auto;
   background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px;
+  /* Code wraps greedily. The Note and Report set `pretty` on the whole rendered
+     body, and rebreaking a wrapped code line to even out its tail moves the
+     break away from where the code actually reads. */
+  text-wrap-style: auto;
 }
 .sol-md pre code { padding: 0; border: none; background: none; }
 .sol-md blockquote {

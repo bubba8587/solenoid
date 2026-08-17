@@ -157,8 +157,20 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   `text-wrap-mode`, so it silently resets a `white-space: nowrap` on the same element into
   wrapping text — `.solenoid-alert__msg` is one ellipsis-clipped line by design and was the
   live example. `cssSyntax.test.ts` gained two guards (no shorthand anywhere; every
-  `text-wrap-style` is `balance` or `pretty`). The landing page's three pre-existing shorthand
-  uses were normalized to the longhand so there is one idiom.
+  `text-wrap-style` is `balance`, `pretty` or the `auto` reset). The landing page's three
+  pre-existing shorthand uses were normalized to the longhand so there is one idiom.
+- **Note and Report bodies set `pretty` on the CONTAINER** (`.solenoid-note__rendered`,
+  `.report-preview`), by author request. The property inherits, so it reaches table cells and
+  whatever bare text `marked` emits rather than only the `<p>`s; embedded notes inherit it from
+  the preview. `.sol-md pre` resets to `auto` — code wraps greedily. Safe only because each
+  surface's editing textarea is a SIBLING of the rendered view (`.solenoid-note__body`,
+  `.report-source`), so prose never rebreaks under the caret.
+- Measured in the real app at a 300px card (playwright, live stylesheets), because two
+  plausible worries were both wrong. `overflow-wrap: anywhere` on the Note body does NOT
+  disable `pretty`: greedy `[260,275,35]` → pretty `[260,259,51]`, i.e. "its inputs." instead
+  of a stranded "inputs.". And a first probe that toggled the style on the CONTAINER showed no
+  change at all — `.sol-md p` declares its own `pretty`, which beats an inherited value, so the
+  comparison has to be made on the element that actually wraps.
 - Not reachable: hover tooltips are native `title=` attributes, which the browser renders and
   CSS cannot touch. Nothing to do there short of a custom tooltip component (feature work).
 

@@ -199,7 +199,9 @@ Tint FILLS stay separate: the header band uses `--header-tint` (22% dark / 52% l
 
 **The Wrap Rule.** Text that wraps to more than one line picks a wrap style; greedy wrapping is for text that never wraps. Two styles, and the choice is the block's job:
 - `text-wrap-style: balance` — short blocks whose silhouette is read as a shape: headings, dialog messages, toasts, and the sentence-length empty states inside a narrow node card. Browsers cap balancing at a few lines, so this is wrong for body copy.
-- `text-wrap-style: pretty` — running prose: help markdown, catalog and socket descriptions, settings notes. It keeps lines full and only rebreaks the tail to kill a one-word orphan.
+- `text-wrap-style: pretty` — running prose: help markdown, catalog and socket descriptions, settings notes, and the user's own writing in a Note or Report body. It keeps lines full and only rebreaks the tail to kill a one-word orphan.
+
+`text-wrap-style` inherits, so a body of rendered markdown sets `pretty` once on its container rather than per block: it then reaches table cells and whatever bare text the renderer emitted, not just the `<p>`s. Two consequences of doing that. A block inside it that must stay greedy resets to `auto` (`.sol-md pre` — rebreaking a wrapped code line moves the break away from where the code reads), and the container must not be an ancestor of the editing textarea, or prose rebreaks under the caret as it is typed. The Note and Report both put the rendered view and the textarea side by side as siblings, which is what makes this safe.
 
 Always the `text-wrap-style` longhand, never the `text-wrap` shorthand. The shorthand also sets `text-wrap-mode`, so it silently resets a `white-space: nowrap` on the same element into wrapping text (`.solenoid-alert__msg` is one ellipsis-clipped line by design and would have broken). `cssSyntax.test.ts` enforces the longhand and the two allowed values. Both degrade to greedy wrapping where unsupported, so no fallback is needed.
 

@@ -54,7 +54,10 @@ describe("stylesheets parse with postcss (what `vite build` runs)", () => {
 // label into a wrapping block. The longhand can only ever change the style, so
 // the rule is: only the longhand ships, and only with a style value.
 describe("wrap styles use the text-wrap-style longhand (DESIGN.md §3)", () => {
-  const ALLOWED = new Set(["balance", "pretty"]);
+  // The two styles the design system picks from, plus `auto` — which is only
+  // ever a RESET, for a block sitting inside a container that set a style it
+  // should not inherit (code inside the Note's `pretty` body).
+  const ALLOWED = new Set(["balance", "pretty", "auto"]);
 
   it("no stylesheet uses the text-wrap shorthand", () => {
     const bad: string[] = [];
@@ -73,7 +76,7 @@ describe("wrap styles use the text-wrap-style longhand (DESIGN.md §3)", () => {
     ).toEqual([]);
   });
 
-  it("every text-wrap-style is balance or pretty", () => {
+  it("every text-wrap-style is a design-system value", () => {
     const bad: string[] = [];
     for (const file of cssFiles(SRC)) {
       postcss.parse(fs.readFileSync(file, "utf8"), { from: file }).walkDecls(
@@ -87,7 +90,7 @@ describe("wrap styles use the text-wrap-style longhand (DESIGN.md §3)", () => {
     }
     expect(
       bad,
-      `Only balance and pretty are in the design system:\n  ${bad.join("\n  ")}`,
+      `Only balance, pretty and the auto reset are in the design system:\n  ${bad.join("\n  ")}`,
     ).toEqual([]);
   });
 });

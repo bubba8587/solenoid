@@ -132,6 +132,10 @@
   min-width: 0;
   overflow: auto;
   padding: 16px 24px;
+  /* Same as the Note's read view: `pretty` over the whole rendered body, which
+     also carries into embedded notes (.report-embed__body renders in here). The
+     .report-source textarea beside it is a sibling and stays greedy. */
+  text-wrap-style: pretty;
 }
 .report-preview__md { max-width: none; margin: 0; }
 /* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
