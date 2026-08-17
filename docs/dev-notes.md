@@ -86,47 +86,43 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-17 — the Architecture map becomes the system's self-portrait)
-- **View ▸ Architecture map rebuilt twice on an open author brief ("something great").**
-  Round 1 (a reading pane bolted onto the citation web) was rated mid; round 2 replaced
-  the citation web with the system drawn in the app's own language: module-group CARDS
-  (node-card anatomy — header band, divider, 8px corners, gray any-sockets, enforcement
-  meter foot) on a pan/zoom dot-grid canvas, whose CABLES are the source's REAL import
-  dependencies. `scripts/scan-arch-deps.mjs` scans src/graph relative imports at build
-  (603 files today), `vite.config.ts` serves it as `virtual:arch-deps` (lazy ~90K
-  chunk), `archGraph.ts` assigns file → group from architecture.md itself (table rows →
-  prose inline-code citations → directory headings; 73 files stay honestly unmapped and
-  counted, never guessed) and aggregates ~76 weighted group→group links. Layout: ELK
-  layered (the Tidy engine) via lazy import, grid fallback; camera = `hicCamera.ts`
-  (drag pan / wheel zoom / `pinchStep`, wheel via a native non-passive listener);
-  cables use `getCablePath("spline")` so they ARE app cables. Card sample rows are
-  degree-ordered (load-bearing modules first).
-- **The Playwright eyeball loop (author-sanctioned this session; CLAUDE.md updated)**
-  caught what blind coding couldn't: `setPointerCapture` on pointerdown retargeted
-  pointerup and swallowed every card/cable click (capture now starts only once a drag
-  passes 6px); cable direction was semantically backwards (now imported → importer, so
-  capability flows foundation-left to chrome-right like data into a sink); ELK steered
-  by all 76 edges scattered the cards (now only weight ≥ 4 arteries + per-card anchors
-  steer, 2-cycles pre-broken by weight so Typing stays upstream of Node compute; ALL
-  links still draw); rest cables were invisible (majors now `--text-muted`, minors
-  recede, hover/selection lights the neighborhood); an unenforced rule's empty
-  neighborhood dimmed the whole canvas with nothing lit (empty hot set no longer dims).
-- **The reading pane carries the docs' actual text** (round 1's keeper): rule →
-  full MUST/Why/Origin/Exceptions + enforcing-suite and cited-module chips; group →
-  imports/imported-by chips, homed test suites, module roles (the architecture.md
-  tables readable in-app); cable → its file-level import pairs; resting state = stats +
-  domain chips + the enforcement-gap lists. Head search spans rules/suites/modules/
-  files; Esc unwinds query → selection → close. Hover/selection lights the graph
-  neighborhood; pane picks fly the camera to the card.
-- Derivation stays total (SSOT-3): `parseRulesDoc` now captures Why/Origin/Exceptions
-  sections + per-rule module refs (pinned against the docs' own marker counts);
-  `parseArchDoc` emits dir/claims groups for prose ### sections; `buildSuiteNodes`
-  homes suites by directory too (nodes/* suites land on the Node compute card).
-  New pins: `archGraph.test.ts` (scan resolves to real files only; membership spots;
-  every cable pair is a scanned import; degree ordering), extended `specMap.test.ts`.
-  Gesture inventory updated (`touch-gestures.md` — the overlay is its own surface, not
-  the rete canvas). Known limit: the dev-server scan runs at config load, so a new
-  import shows after a dev restart (prod builds always fresh).
+### SESSION DIGEST (2026-08-17 — Architecture map: overlay → real seed document; the Inspector)
+- **The Architecture map is now a REAL DOCUMENT** (author-directed, after two overlay
+  rounds rated mid): View ▸ Architecture map opens the generated seed
+  `seedGraphs/architecture-map.json` via `documentStore.newFromTemplate` — one new
+  `SubsystemNode` per architecture.md module group on the main canvas, real violet
+  frame cables along the strong import edges, ELK positions, two Notes (what it is;
+  the rules enforcement summary + gaps). The Subsystem node (nodes/subsystem.ts,
+  kind=util, wide) persists its module table as `frameText` (no new persistence
+  fields) and outputs it as a frame (module, role, imports; rows degree-ordered);
+  its multi-connection `deps` frame input is data-inert BY DESIGN — the cables are
+  the information. The SpecMapView overlay, specMapStore, and the virtual:arch-deps
+  vite plugin are deleted.
+- **Derivation chain, every link machine-pinned**: `scripts/scan-arch-deps.mjs`
+  (relative-import scan, 603 files) → `specMap.ts` (docs parse; now incl.
+  Why/Origin/Exceptions + per-rule module refs) → `archGraph.ts` (file → group from
+  the doc's own tables/prose citations/dir headings; `archGraph.test.ts` pins
+  UNMAPPED AT ZERO, so a new file demands its architecture.md home in the same
+  commit) → `archSeed.ts` (drawn edges admitted heaviest-first and kept ACYCLIC —
+  textForm's topo order caught the cyclic first cut) → `archSeed.test.ts` diffs the
+  checked-in seed against a fresh derivation (`npm run gen:arch-seed` to refresh).
+  Both guards fired the same day they landed (the Inspector's new files).
+- **architecture.md reconciled to FULL source coverage** (73 unclaimed files given
+  real homes: new rows across five tables, App-chrome prose extended, new Packs +
+  Landing & showcase dir sections; `src/graph/`-prefixed citations now match).
+- **The node INSPECTOR ships** (author-requested): `InspectorPanel.tsx` +
+  `inspectorStore.ts`, the top bar's (i) button + View ▸ Inspector. A right dock on
+  the pinned Report's chrome pattern (`html.sol-inspector-docked`, same canvas
+  squeeze; the two right docks are mutually exclusive). Reads the ACTIVE surface's
+  selected node: catalog description (`describeNode`), typed socket rows with wired
+  sources, live output values (`cableValueStore` → cached-field fallback, chips via
+  `valueChipFor`). Selection polls (no push store, same as SelectionActionsBar);
+  values refresh on `compositePassStore`. Recorded in layout-chrome + the alias table.
+- **The Playwright eyeball loop is now standing practice** (author sanction recorded
+  in CLAUDE.md, superseding the screenshot ban). It caught, across the session: a
+  setPointerCapture-on-pointerdown click swallow, backwards cable semantics, ELK
+  scattered by weak edges, invisible rest cables, an empty-neighborhood dim, and the
+  seed's overlapping first layout (card heights underestimated the frame preview).
 
 ### SESSION DIGEST (2026-08-17 — chrome fills went opaque; the frosted-glass layer is gone)
 - **`--panel-bg` / `--overlay-bg` are now `var(--surface)`** (`App.css`), so every bar, panel

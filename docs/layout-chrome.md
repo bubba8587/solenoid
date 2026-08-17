@@ -46,6 +46,7 @@ bottom; everything else floats over the canvas.
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css` |
 | Command palette | `.solenoid-cmdpalette` (+`-scrim`, `--persistent`) | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css` |
 | Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css` |
+| Node inspector panel | `.inspector-panel` | `top: chrome-top; right:0; bottom: chrome-bottom; width:340px` (via `--inspector-w`) | 90 | `InspectorPanel.css` |
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
@@ -189,6 +190,11 @@ Answers to the questions that keep biting:
   The header, status bar, and left navigator are full-width/left-anchored and untouched. Its
   `--report-dock-top`/`--report-dock-bottom` now derive from the measured
   `--chrome-top`/`--chrome-bottom`, so a bar change flows through on its own.
+
+- **Inspector docked** (desktop/tablet) → `html.sol-inspector-docked` (`inspectorStore.ts`),
+  the SAME push mechanics scaled to `--inspector-w:340px` (`InspectorPanel.css`): canvas
+  wrapper shrinks, nav pill + HUD stack shift. The two right docks are mutually exclusive —
+  opening either undocks/closes the other, so their squeeze rules never stack.
 
 - **Presenting** → `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides basically all
   chrome: header, nav pill, status bar, navigator + open-pill, legend, minimap, mobile bar, HUD
