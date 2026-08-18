@@ -47,6 +47,7 @@ import { AGG_OP_META } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
+import { RecordLayoutField } from "./RecordLayoutField";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
@@ -109,15 +110,11 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       columnTypes: src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.type ?? "number") : c.type)),
     };
   }, [data]);
-  // The popup Form view's layout, authored HERE exactly like the Record card
-  // (blur commits — Enter must insert a newline); an emptied layout deletes the
-  // key so the form falls back to stacked.
-  const [layoutDraft, setLayoutDraft] = useState(data.stringLiterals.layout ?? "");
-  useEffect(() => { setLayoutDraft(data.stringLiterals.layout ?? ""); }, [data.stringLiterals.layout]);
-  function commitLayout() {
-    if (layoutDraft === (data.stringLiterals.layout ?? "")) return;
-    if (layoutDraft.trim()) data.stringLiterals.layout = layoutDraft;
-    else { delete data.stringLiterals.layout; setLayoutDraft(""); }
+  // The popup Form view's layout, authored HERE exactly like the Record card;
+  // an emptied layout deletes the key so the form falls back to stacked.
+  function commitLayout(next: string) {
+    if (next.trim()) data.stringLiterals.layout = next;
+    else delete data.stringLiterals.layout;
     scheduleAutosave();
   }
 
@@ -126,16 +123,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} />
-      <textarea
-        className="solenoid-record-layout"
-        value={layoutDraft}
-        placeholder="Layout"
-        spellCheck={false}
-        onChange={(e) => setLayoutDraft(e.target.value)}
-        onBlur={commitLayout}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      />
+      <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
       <FrameDisplay
         frame={data.cachedResult} label={data.label} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys}

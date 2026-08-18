@@ -422,6 +422,40 @@ describe("Record node", () => {
     ]);
   });
 
+  it("parseRecordLayout: *N widens a cell and shifts later cells right", () => {
+    expect(parseRecordLayout("Item | Photo*2 | Qty")).toEqual([
+      { name: "Item", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
+      { name: "Photo", row: 1, col: 2, rowSpan: 1, colSpan: 2 },
+      { name: "Qty", row: 1, col: 4, rowSpan: 1, colSpan: 1 },
+    ]);
+    // A widened cell still merges with plain repeats on other rows (the seed's
+    // Photo shape), and the span is clamped to at least 1.
+    expect(parseRecordLayout("A | Photo*2\nB | Photo")).toEqual([
+      { name: "A", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
+      { name: "Photo", row: 1, col: 2, rowSpan: 2, colSpan: 2 },
+      { name: "B", row: 2, col: 1, rowSpan: 1, colSpan: 1 },
+    ]);
+    expect(parseRecordLayout("A*0 | B")).toEqual([
+      { name: "A", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
+      { name: "B", row: 1, col: 2, rowSpan: 1, colSpan: 1 },
+    ]);
+  });
+
+  it("parseRecordLayout: a first colon splits off the box's placeholder hint", () => {
+    expect(parseRecordLayout("SKU: e.g. HB-401 | Qty")).toEqual([
+      { name: "SKU", row: 1, col: 1, rowSpan: 1, colSpan: 1, hint: "e.g. HB-401" },
+      { name: "Qty", row: 1, col: 2, rowSpan: 1, colSpan: 1 },
+    ]);
+    // The hint composes with *N (span binds to the name), and the first
+    // authored hint wins across repeats.
+    expect(parseRecordLayout("Photo*2: paste an image URL\nPhoto*2: ignored")).toEqual([
+      { name: "Photo", row: 1, col: 1, rowSpan: 2, colSpan: 2, hint: "paste an image URL" },
+    ]);
+    expect(parseRecordLayout("Notes | notes: added later")).toEqual([
+      { name: "Notes", row: 1, col: 1, rowSpan: 1, colSpan: 2, hint: "added later" },
+    ]);
+  });
+
   it("recordImageSrc: data:image and image-extension URLs only", () => {
     expect(recordImageSrc("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
     expect(recordImageSrc(" https://x.test/a.JPG?w=2 ")).toBe("https://x.test/a.JPG?w=2");

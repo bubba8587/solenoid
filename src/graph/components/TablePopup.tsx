@@ -856,7 +856,7 @@ export function TablePopup() {
             {rows > 0 && (() => {
               // Record-look boxes: touching, square, label-in-box; the input is
               // the box's value line (the figure look, made editable).
-              const box = (c: number, name: string, key: number | string, at?: React.CSSProperties) => {
+              const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
                 const type = c === -1 ? "string" : colTypeAt(c);
                 const computedHere = c !== -1 && (!!colLambdas[c] || colExprs[c] !== undefined);
                 const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
@@ -865,7 +865,7 @@ export function TablePopup() {
                   <label className="table-popup__form-box" key={key} style={at}>
                     <span className="table-popup__form-box-label">{label}</span>
                     {c === -1 ? (
-                      <input className="table-popup__form-box-input" value="" readOnly tabIndex={-1} />
+                      <input className="table-popup__form-box-input" value="" placeholder={hint} readOnly tabIndex={-1} />
                     ) : computedHere ? (
                       <input
                         className="table-popup__form-box-input"
@@ -903,6 +903,7 @@ export function TablePopup() {
                       <input
                         className="table-popup__form-box-input"
                         value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
+                        placeholder={hint}
                         inputMode={isTextType(type) ? "text" : "decimal"}
                         spellCheck={false}
                         onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
@@ -925,7 +926,7 @@ export function TablePopup() {
                 <div className="table-popup__form-grid" style={{ gridTemplateColumns: `repeat(${formPlaced.length > 0 ? formCols : 1}, minmax(0, 1fr))` }}>
                   {formPlaced.length > 0
                     ? formPlaced.map((pl, i) =>
-                        box(formColIndex(pl.name), pl.name, i, { gridRow: `${pl.row} / span ${pl.rowSpan}`, gridColumn: `${pl.col} / span ${pl.colSpan}` }))
+                        box(formColIndex(pl.name), pl.name, i, { gridRow: `${pl.row} / span ${pl.rowSpan}`, gridColumn: `${pl.col} / span ${pl.colSpan}` }, pl.hint))
                     : Array.from({ length: cols }, (_, c) => box(c, "", c))}
                 </div>
               );

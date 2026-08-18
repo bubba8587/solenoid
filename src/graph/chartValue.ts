@@ -115,6 +115,9 @@ export interface RecordField {
   value: number | string | null;
   /** An image source when the cell text points at one; the box shows the picture. */
   image?: string;
+  /** Layout-authored placeholder, present only when the value is empty; the box
+   *  shows it muted in place of the dash. */
+  hint?: string;
   row: number;
   col: number;
   rowSpan: number;

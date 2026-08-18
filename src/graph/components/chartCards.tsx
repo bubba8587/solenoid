@@ -56,8 +56,8 @@ function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; 
           {f.image ? (
             <img className="sol-record__img" src={f.image} alt={f.label} draggable={false} />
           ) : (
-            <div className={`sol-record__value${f.value === null ? " sol-record__value--empty" : ""}`}>
-              {f.value === null ? "—" : typeof f.value === "number" ? formatScalar(f.value) : f.value}
+            <div className={`sol-record__value${f.value === null ? (f.hint ? " sol-record__value--hint" : " sol-record__value--empty") : ""}`}>
+              {f.value === null ? (f.hint ?? "—") : typeof f.value === "number" ? formatScalar(f.value) : f.value}
             </div>
           )}
         </div>

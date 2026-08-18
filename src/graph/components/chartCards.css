@@ -123,6 +123,8 @@
   flex: 1;
 }
 .sol-record__value--empty { color: var(--text-muted, var(--text-dim)); }
+/* Layout-authored placeholder in an empty box — quieter than a real value. */
+.sol-record__value--hint { color: var(--text-muted, var(--text-dim)); opacity: 0.75; }
 .sol-record__img {
   flex: 1;
   width: 100%;

@@ -111,6 +111,26 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   ResizeObserver and holds first paint until tracks settle. Pinned by
   `masonryLayout.test.ts`; eyeballed in the Display, popup, and Report embed.
   Arch seed re-emitted (new module shifted an import count).
+- **Record layout syntax: `*N` spans and `: placeholder` hints** (author asks):
+  `Photo*2` widens a cell N columns (expanded before the rect walk, so it
+  composes with repetition and shifts later cells); a first colon splits off a
+  hint — `Qty: e.g. 40` — shown muted in an EMPTY box (`RecordField.hint`) and
+  as the input `placeholder` in the popup Form view (one parser feeds both).
+  The record-cards seed's Photo is now 2 wide via the new syntax; the layout
+  socket doc teaches both forms; parser pinned in `visual.test.ts`. The layout
+  textarea the Record card and Frame Input card each hand-rolled is extracted
+  to `RecordLayoutField` (commit semantics stay per-card).
+- **Record figure: title + pager on the drawn card** (author bug report): the
+  card's move off the node card silently dropped both. The figure now draws the
+  explicit options title (series-chart convention; popup/Report strip it — the
+  doubled-title latent in both is gone), and `recordNav.ts` puts the row pager
+  on drawn cards in the Display and chart popup (single-inlet upstream walk to
+  the steppable Record; wired Row still wins and hides the arrows).
+- **Mobile Inspector under the header** (author bug report): the full-width
+  mobile sheet kept the desktop dock's z 90 + side shadow, painting over the app
+  bar's popovers (they cap at the header's z 6) and shadowing the bar. Mobile
+  sheet now z 5, shadowless; align pill joins the open-sheet hide list;
+  `layout-chrome.md` updated.
 - **Record Options socket documented in the Inspector** (author ask, then cut down
   by author): the entry prints the syntax directly — `title=Parts;fontsize=12`,
   the only two keys a record figure reads.

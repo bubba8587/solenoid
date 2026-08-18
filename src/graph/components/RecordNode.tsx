@@ -10,6 +10,7 @@ import { processGraph } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
+import { RecordLayoutField } from "./RecordLayoutField";
 
 // Derived from RECORD_OP_META so the dropdown can't drift from the Add-menu rows (SSOT-1).
 const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) as RecordOp[])
@@ -61,13 +62,8 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
     void processGraph(data.id);
   }
 
-  // The layout textarea commits on blur — Enter must insert a newline (the
-  // Mermaid source pattern), so this can't use the Enter-commits helper.
-  const [draft, setDraft] = useState(data.stringLiterals.layout ?? "");
-  useLayoutEffect(() => { setDraft(data.stringLiterals.layout ?? ""); }, [data.stringLiterals.layout]);
-  function commitLayout() {
-    if (draft === (data.stringLiterals.layout ?? "")) return;
-    data.stringLiterals.layout = draft;
+  function commitLayout(next: string) {
+    data.stringLiterals.layout = next;
     void processGraph(data.id);
   }
 
@@ -99,20 +95,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
       <InlineInputs node={data} emit={emit} keys={keys} />
       {!collapsed && (
         <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
-          {layoutWired ? (
-            <div className="solenoid-record-layout solenoid-record-layout--wired">connected</div>
-          ) : (
-            <textarea
-              className="solenoid-record-layout"
-              value={draft}
-              placeholder="Layout"
-              spellCheck={false}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitLayout}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            />
-          )}
+          <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} />
         </div>
       )}
       <div className="solenoid-node__section-divider" />
