@@ -79,6 +79,9 @@ export class FrameInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
+  /** `layout` = the popup Form view's field placement (the Record layout text);
+   *  the declaration is the persistence load gate. */
+  stringLiterals: Record<string, string> = {};
   /** The addable λ input keys (fn1, fn2, …); a source column with `lambda: "fn1"`
    *  computes its cells per row from the λ wired there. */
   lambdaKeys: string[] = [];

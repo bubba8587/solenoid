@@ -16,6 +16,7 @@ import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, Tex
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
+import { parseRecordLayout } from "../nodes/visual";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -134,6 +135,9 @@ export function TablePopup() {
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
   // Form view's record cursor (a SOURCE row index, sort-independent).
   const [formRow, setFormRow] = useState(0);
+  // The form's field-placement text (the Record layout), persisted on the host node.
+  const [formLayout, setFormLayoutState] = useState("");
+  const formLayoutCommitted = useRef("");
   const editDraft = useRef("");
   const [, bumpDraft] = useState(0);
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
@@ -193,6 +197,8 @@ export function TablePopup() {
     setDisplayMode("formatted");
     setEditCell(null);
     setFormRow(0);
+    setFormLayoutState(state.formLayout ?? "");
+    formLayoutCommitted.current = state.formLayout ?? "";
   }, [state]);
 
   if (!state) return null;
@@ -404,6 +410,17 @@ export function TablePopup() {
   // the cursor is a SOURCE row, so it reaches rows past the grid's render cap.
   const formCapable = !!state.onSaveSource;
   const fRow = Math.min(formRow, Math.max(0, rows - 1));
+  // Same semantics as the Record node: matched names take the column, an unknown
+  // name keeps an (inert) box, columns not in the layout are simply not shown.
+  const formPlaced = formLayout.trim() !== "" ? parseRecordLayout(formLayout) : [];
+  const formCols = formPlaced.length > 0 ? Math.max(...formPlaced.map((pl) => pl.col + pl.colSpan - 1)) : 1;
+  const formColIndex = (name: string): number =>
+    headerNames.findIndex((h) => (h ?? "").trim().toLowerCase() === name.trim().toLowerCase());
+  function commitFormLayout() {
+    if (formLayout === formLayoutCommitted.current) return;
+    formLayoutCommitted.current = formLayout;
+    state?.onSaveFormLayout?.(formLayout);
+  }
   function addRecord() {
     const at = rows;
     setGrid((g) => (g.length === 0 ? [Array.from({ length: Math.max(1, cols) }, () => "")] : [...g, Array.from({ length: Math.max(1, cols) }, () => "")]));
@@ -833,44 +850,73 @@ export function TablePopup() {
               <button type="button" className="table-popup__btn" onClick={addRecord} title="Add a record">+ Record</button>
               <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
             </div>
-            {rows > 0 && Array.from({ length: cols }, (_, c) => {
-              const type = colTypeAt(c);
-              const computedHere = !!colLambdas[c] || colExprs[c] !== undefined;
-              const label = (headerNames[c] ?? "").trim() || colLabel(c);
-              const editingHere = !!editCell && editCell.r === fRow && editCell.c === c;
+            <textarea
+              className="solenoid-record-layout"
+              value={formLayout}
+              placeholder="Layout"
+              spellCheck={false}
+              onChange={(e) => setFormLayoutState(e.target.value)}
+              onBlur={commitFormLayout}
+            />
+            {rows > 0 && (() => {
+              const field = (c: number, key: number | string, at?: React.CSSProperties) => {
+                const type = colTypeAt(c);
+                const computedHere = !!colLambdas[c] || colExprs[c] !== undefined;
+                const label = (headerNames[c] ?? "").trim() || colLabel(c);
+                const editingHere = !!editCell && editCell.r === fRow && editCell.c === c;
+                return (
+                  <label className="table-popup__form-field" key={key} style={at}>
+                    <span className="table-popup__form-label">{label}</span>
+                    {computedHere ? (
+                      <input
+                        className="table-popup__form-input table-popup__input--computed"
+                        value={controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c)}
+                        readOnly
+                        tabIndex={-1}
+                        spellCheck={false}
+                      />
+                    ) : (
+                      <input
+                        className="table-popup__form-input"
+                        value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
+                        inputMode={isTextType(type) ? "text" : "decimal"}
+                        spellCheck={false}
+                        onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
+                        onChange={(e) => {
+                          editDraft.current = e.target.value;
+                          if (editingHere) bumpDraft((x) => x + 1);
+                          else setEditCell({ r: fRow, c });
+                        }}
+                        onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                          else if (e.key === "Escape") { editDraft.current = grid[fRow]?.[c] ?? ""; e.currentTarget.blur(); }
+                        }}
+                      />
+                    )}
+                  </label>
+                );
+              };
+              if (formPlaced.length === 0) return Array.from({ length: cols }, (_, c) => field(c, c));
               return (
-                <label className="table-popup__form-field" key={c}>
-                  <span className="table-popup__form-label">{label}</span>
-                  {computedHere ? (
-                    <input
-                      className="table-popup__form-input table-popup__input--computed"
-                      value={controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c)}
-                      readOnly
-                      tabIndex={-1}
-                      spellCheck={false}
-                    />
-                  ) : (
-                    <input
-                      className="table-popup__form-input"
-                      value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
-                      inputMode={isTextType(type) ? "text" : "decimal"}
-                      spellCheck={false}
-                      onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
-                      onChange={(e) => {
-                        editDraft.current = e.target.value;
-                        if (editingHere) bumpDraft((x) => x + 1);
-                        else setEditCell({ r: fRow, c });
-                      }}
-                      onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
-                        else if (e.key === "Escape") { editDraft.current = grid[fRow]?.[c] ?? ""; e.currentTarget.blur(); }
-                      }}
-                    />
-                  )}
-                </label>
+                <div className="table-popup__form-grid" style={{ gridTemplateColumns: `repeat(${formCols}, minmax(0, 1fr))` }}>
+                  {formPlaced.map((pl, i) => {
+                    const at: React.CSSProperties = { gridRow: `${pl.row} / span ${pl.rowSpan}`, gridColumn: `${pl.col} / span ${pl.colSpan}` };
+                    const c = formColIndex(pl.name);
+                    if (c === -1) {
+                      // An unmatched name keeps its box (a draftable layout), inert.
+                      return (
+                        <label className="table-popup__form-field" key={i} style={at}>
+                          <span className="table-popup__form-label">{pl.name}</span>
+                          <input className="table-popup__form-input table-popup__input--computed" value="" readOnly tabIndex={-1} />
+                        </label>
+                      );
+                    }
+                    return field(c, i, at);
+                  })}
+                </div>
               );
-            })}
+            })()}
           </div>
         </div>
       ) : (

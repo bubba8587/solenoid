@@ -51,6 +51,7 @@ import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame"
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
 import { processGraph, bumpConnectionVersion } from "../process";
+import { scheduleAutosave } from "../persistence";
 import { getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
@@ -108,13 +109,25 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       columnTypes: src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.type ?? "number") : c.type)),
     };
   }, [data]);
+  // The Form view's layout text lives on the node (stringLiterals.layout) so it
+  // persists with the document; an emptied layout deletes the key.
+  const onSaveFormLayout = useCallback((text: string) => {
+    if (text.trim()) data.stringLiterals.layout = text;
+    else delete data.stringLiterals.layout;
+    scheduleAutosave();
+  }, [data]);
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Frame">
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} />
-      <FrameDisplay frame={data.cachedResult} label={data.label} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys} />
+      <FrameDisplay
+        frame={data.cachedResult} label={data.label} source={source}
+        onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys}
+        formLayout={data.stringLiterals.layout}
+        onSaveFormLayout={onSaveFormLayout}
+      />
     </NodeShell>
   );
 }

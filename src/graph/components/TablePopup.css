@@ -577,3 +577,10 @@
   color: var(--text);
   cursor: default;
 }
+.table-popup__form-grid {
+  display: grid;
+  gap: 6px;
+  align-items: stretch;
+}
+/* A layouted form spreads wider than the stacked list. */
+.table-popup__form:has(.table-popup__form-grid) { max-width: 560px; }

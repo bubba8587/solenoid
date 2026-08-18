@@ -148,6 +148,12 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   new touches persistence. Its cursor is a source row — it reaches rows past the
   grid's 1000-row render cap. Computed columns render read-only. Delete removes
   the CURRENT record (row order is untouched, so column sort keys stay valid).
+  Field placement is the SAME Record layout text (author follow-up): a layout
+  textarea in the view, parsed by `parseRecordLayout`, persisted on the node as
+  `FrameInputNode.stringLiterals.layout` (the declaration is the load gate) and
+  threaded FrameInputComponent → FrameDisplay → FrameChip → popup state. Empty =
+  stacked; unmatched names keep inert boxes; columns off the layout are hidden
+  from the form. The seed's Parts frame carries the Part card's layout.
   Remaining lifts stay in `deferrals.md`.
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
