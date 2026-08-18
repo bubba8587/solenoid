@@ -11,6 +11,40 @@ duplicate them, just names them for the review).
 
 Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 
+- **Record family steals** (author-ordered research dive 2026-08-18 across
+  Airtable / Grist / Notion / Baserow / NocoDB / SeaTable / Coda; session digest
+  has the sources). Candidates, best fit first — all display-side, none make the
+  figure edit its frame:
+  - **Gallery tile click → picks the row**: drive the existing `picked` output
+    (null in gallery today) and highlight the picked tile, so gallery → card
+    master-detail wiring goes live (Grist's linked card-list pattern). Smallest,
+    most node-graph-native of the set; a figure gaining an input gesture is the
+    author call.
+  - **Cover image**: a designated image field drawn full-bleed at the card top,
+    label-less, with Airtable's crop/fit distinction (`object-fit` cover/contain).
+    Universal in the genre (Airtable/Notion/Baserow/SeaTable). Authoring surface:
+    an options key or a layout-text marker.
+  - **Title row**: one field rendered label-less and prominent (Airtable primary
+    field, Notion page title, Grist themes all have it).
+  - **Card size presets**: S/M/L options key scaling the gallery track band
+    (Notion/Airtable both offer exactly three sizes).
+  - **Board lane polish**: per-lane card count, collapsible lanes (Airtable
+    kanban has both; lane DRAG-reorder and card drag stay out — moving a card
+    would edit the frame).
+  - **Hide-empty option**: skip null-valued boxes in gallery/board cards
+    (dense-card practice across the genre); the card view keeps its fixed layout.
+  - **Wrap/clamp option**: line-clamp long values on tiles (Notion's wrap toggle
+    inverted); the popup already shows the full card.
+  - **Color-by field** (Airtable "color records"): D4-ADJACENT — conditional
+    color is author-gated; goes nowhere without that session.
+  - **Two-axis board (swimlanes)**: Airtable kanban notably LACKS it (their
+    timeline has it) — a differentiator if the board ever grows; biggest scope
+    of the set.
+  Not steals: drag-and-drop card layout editing (our layout is TEXT by design —
+  wireable, Note-authorable), in-view search/sort/filter (upstream verb nodes
+  are the Solenoid answer), form entry (its own program; entry widgets already
+  landed 2026-08-18).
+
 - **Tidy options — expose ELK's layout knobs on the Tidy call** (author direction
   2026-08-12; the trigger was "9 nodes → 1 node should be able to lay out 3×3
   instead of one 9-high column"). Today `arrangeFn` hardcodes four options

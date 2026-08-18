@@ -103,3 +103,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   `seeds.test.ts` pins every seed at the current version.
 - Verified in the live app via Playwright (grouped menu renders with the two-level
   hierarchy; a template click-through loads clean) plus the full vitest suite.
+- **Record gallery tiles by masonry** (author: "a better tiling algorithm, look one
+  up"): `masonryLayout.ts` runs the CSSWG masonry explainer's `definite-first pack`
+  rule (the Pinterest algorithm — native CSS masonry is still flag-gated in
+  Chromium) over tracks justified to the measured container (aim 170 / min 140 /
+  max 260, never more tracks than cards). `RecordGallery` measures tiles with a
+  ResizeObserver and holds first paint until tracks settle. Pinned by
+  `masonryLayout.test.ts`; eyeballed in the Display, popup, and Report embed.
+  Arch seed re-emitted (new module shifted an import count).
+- **Record-family competitor dive** (author ask): Airtable/Grist/Notion/Baserow/
+  NocoDB/SeaTable/Coda card+gallery+board features surveyed; the steal list is
+  parked in `deferrals.md` ▸ "Record family steals" (best fit: gallery-click →
+  `picked`; cover image; title row; size presets; lane counts/collapse; color-by
+  flagged D4-adjacent). Sources: Airtable gallery/kanban help, Grist widget-card +
+  record-cards docs (raw GitHub), Notion gallery help, Baserow/NocoDB view docs.
