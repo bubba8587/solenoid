@@ -9,7 +9,7 @@ The things that don't fit in a tooltip — deliberate choices, honest gaps, and 
 - The **lasso's direction decides what it catches** — clockwise grabs anything it touches, counter-clockwise only what's fully inside.
 - A **Format Controller's lock rides the value, not the node**, so a single Controller at the end of a row of Displays formats every box in front of it.
 - **A Cube cell holds a nested table of its own**, drilled into in place.
-- Dates default to **DD-MMM-YYYY**; ISO and other styles are one pick away on a Format Controller.
+- Dates default to **DD-MMM-YYYY**. ISO and other styles are one pick away on a Format Controller.
 
 ## Where the edges are
 
@@ -23,7 +23,7 @@ What Solenoid doesn't do yet, said plainly:
 ## What to expect of performance
 
 - In the browser everything computes in JavaScript, so the browser is the ceiling for very large data. The **desktop app runs the relational table operations on a native engine** — that's where memory-heavy joins, groups, and pivots belong.
-- Cables always draw at full curved fidelity; the app never straightens or hides them mid-drag to buy frames. If something has to give under load, it isn't the thing you're looking at.
+- Cables always draw at full curved fidelity. The app never straightens or hides them mid-drag to buy frames. If something has to give under load, it isn't the thing you're looking at.
 
 ## How it's meant to feel
 

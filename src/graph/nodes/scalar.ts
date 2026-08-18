@@ -103,7 +103,7 @@ export const ARITHMETIC_OP_META = {
   div:      { label: "÷ Divide",   description: "A ÷ B. #DIV/0! when B = 0." },
   mod:      { label: "MOD",        description: "Remainder of A ÷ B. Excel: MOD." },
   quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero. Excel: QUOTIENT." },
-  pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention; Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
+  pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention. Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
 } satisfies Record<ArithmeticOp, { label: string; description: string }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
@@ -182,12 +182,12 @@ export const MATH_FN_OP_META = {
   sqrtpi:  { label: "SQRTPI",  group: "Functions",    description: "√(x × π). Excel: SQRTPI(x)." },
   exp:     { label: "EXP",     group: "Functions",    description: "e raised to the power x. Excel: EXP(x)." },
   trunc:   { label: "TRUNC",   group: "Rounding",     description: "Truncate toward zero: TRUNC(−3.7) = −3. Excel: TRUNC(x)." },
-  int:     { label: "INT",     group: "Rounding",     description: "Rounds DOWN toward −∞: INT(−3.7) = −4. Excel: INT(x)." },
+  int:     { label: "INT",     group: "Rounding",     description: "Rounds down toward −∞: INT(−3.7) = −4. Excel: INT(x)." },
   even:    { label: "EVEN",    group: "Rounding",     description: "Rounds away from zero to nearest even integer. Excel: EVEN(x)." },
   odd:     { label: "ODD",     group: "Rounding",     description: "Rounds away from zero to nearest odd integer. Excel: ODD(x)." },
   log:     { label: "LN",      group: "Logarithms",   description: "Natural log (base e). Excel: LN(x)." },
   log10:   { label: "LOG10",   group: "Logarithms",   description: "Log base 10. Excel: LOG10(x)." },
-  log2:    { label: "LOG2",    group: "Logarithms",   description: "Log base 2: log₂(x), e.g. how many bits represent x. Excel: LOG(x, 2)." },
+  log2:    { label: "LOG2",    group: "Logarithms",   description: "Log base 2: log₂(x), for example how many bits represent x. Excel: LOG(x, 2)." },
   sin:     { label: "SIN",     group: "Trigonometry", description: "Sine. Excel: SIN(x)." },
   cos:     { label: "COS",     group: "Trigonometry", description: "Cosine. Excel: COS(x)." },
   tan:     { label: "TAN",     group: "Trigonometry", description: "Tangent. Excel: TAN(x)." },
@@ -207,7 +207,7 @@ export const MATH_FN_OP_META = {
   coth:    { label: "COTH",    group: "Hyperbolic",   description: "Hyperbolic cotangent (cosh/sinh). Excel: COTH(x)." },
   csch:    { label: "CSCH",    group: "Hyperbolic",   description: "Hyperbolic cosecant (1/sinh). Excel: CSCH(x)." },
   sech:    { label: "SECH",    group: "Hyperbolic",   description: "Hyperbolic secant (1/cosh). Excel: SECH(x)." },
-  acoth:   { label: "ACOTH",   group: "Hyperbolic",   description: "Inverse hyperbolic cotangent; domain |x| > 1. Excel: ACOTH(x)." },
+  acoth:   { label: "ACOTH",   group: "Hyperbolic",   description: "Inverse hyperbolic cotangent. Domain |x| > 1. Excel: ACOTH(x)." },
   phi:     { label: "PHI",     group: "Probability",  description: "Standard normal PDF φ(x). Excel: PHI(x)." },
   gauss:   { label: "GAUSS",   group: "Probability",  description: "Φ(x) − 0.5: the area from 0 to x under the standard normal curve. Excel: GAUSS(x)." },
   erf:     { label: "ERF",     group: "Special",      description: "Error function erf(x) = (2/√π)∫₀ˣ e^(−t²) dt. Excel: ERF(x)." },
@@ -511,8 +511,8 @@ export type MRoundOp = "nearest" | "up" | "down";
 
 export const MROUND_OP_META = {
   nearest: { label: "MROUND",  description: "Round to the nearest multiple. Excel: MROUND(x, multiple)." },
-  up:      { label: "CEILING", description: "Round UP to a multiple (toward +∞). Excel: CEILING.MATH(x, sig)." },
-  down:    { label: "FLOOR",   description: "Round DOWN to a multiple (toward −∞). Excel: FLOOR.MATH(x, sig)." },
+  up:      { label: "CEILING", description: "Round up to a multiple (toward +∞). Excel: CEILING.MATH(x, sig)." },
+  down:    { label: "FLOOR",   description: "Round down to a multiple (toward −∞). Excel: FLOOR.MATH(x, sig)." },
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
 export class MRoundNode extends ClassicPreset.Node {
@@ -738,7 +738,7 @@ export class CombinatoricsNode extends ClassicPreset.Node {
       return { result: err };
     }
     if (result !== null && !Number.isFinite(result)) {
-      const err = solError("#OVERFLOW!", "The result is too large to represent; reduce N");
+      const err = solError("#OVERFLOW!", "The result is too large to represent. Reduce N");
       this.cachedResult = err;
       return { result: err };
     }
@@ -923,9 +923,9 @@ export type BesselOp = "besselj" | "bessely" | "besseli" | "besselk";
 
 export const BESSEL_OP_META = {
   besselj: { label: "BESSELJ", description: "Bessel function of the first kind, order n. Excel: BESSELJ." },
-  bessely: { label: "BESSELY", description: "Bessel function of the second kind, order n; x must be > 0. Excel: BESSELY." },
+  bessely: { label: "BESSELY", description: "Bessel function of the second kind, order n. x must be > 0. Excel: BESSELY." },
   besseli: { label: "BESSELI", description: "Modified Bessel function of the first kind, order n. Excel: BESSELI." },
-  besselk: { label: "BESSELK", description: "Modified Bessel function of the second kind, order n; x must be > 0. Excel: BESSELK." },
+  besselk: { label: "BESSELK", description: "Modified Bessel function of the second kind, order n. x must be > 0. Excel: BESSELK." },
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
 export class BesselNode extends ClassicPreset.Node {

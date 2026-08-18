@@ -213,12 +213,12 @@ export class IfNode extends ClassicPreset.Node {
 export type BooleanOp = "and" | "or" | "xor" | "nand" | "nor" | "xnor";
 
 export const BOOLEAN_OP_META = {
-  and:  { label: "AND",  description: "TRUE if ALL inputs are true. Excel: AND(…)." },
-  or:   { label: "OR",   description: "TRUE if ANY input is true. Excel: OR(…)." },
-  xor:  { label: "XOR",  description: "TRUE if an ODD number of inputs are true. Excel: XOR(…)." },
+  and:  { label: "AND",  description: "TRUE if all inputs are true. Excel: AND(…)." },
+  or:   { label: "OR",   description: "TRUE if any input is true. Excel: OR(…)." },
+  xor:  { label: "XOR",  description: "TRUE if an odd number of inputs are true. Excel: XOR(…)." },
   nand: { label: "NAND", description: "Negated AND: FALSE only when every input is true. Excel: NOT(AND(…))." },
   nor:  { label: "NOR",  description: "Negated OR: TRUE only when every input is false. Excel: NOT(OR(…))." },
-  xnor: { label: "XNOR", description: "TRUE if an EVEN number of inputs are true; the negation of XOR" },
+  xnor: { label: "XNOR", description: "TRUE if an even number of inputs are true. The negation of XOR." },
 } satisfies Record<BooleanOp, { label: string; description: string }>;
 
 /** Folds N tri-valued operands under Kleene three-valued logic. */

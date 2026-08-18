@@ -59,7 +59,7 @@ export type TodayNowOp = "today" | "now";
 
 export const TODAY_NOW_OP_META = {
   today: { label: "TODAY", description: "Today's date as a serial number. Excel: TODAY()." },
-  now:   { label: "NOW",   description: "Current date + time as a serial; the fractional part encodes time of day. Excel: NOW()." },
+  now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: NOW()." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
 export class TodayNowNode extends ClassicPreset.Node {
@@ -197,7 +197,7 @@ function parseTimeOfDay(text: string): number | SolError {
 
 export class DateTimeValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    text: "A date needs a four-digit year; two-digit years do not parse.",
+    text: "A date needs a four-digit year. Two-digit years do not parse.",
   };
 
   label: string;
@@ -524,13 +524,13 @@ export class DateAddNode extends ClassicPreset.Node {
 export type WorkdaysOp = "workday" | "networkdays";
 
 export const WORKDAYS_OP_META = {
-  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
-  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
+  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
+  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
 export class WorkdaysNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    holidays: "Each holiday covers its whole calendar day; any time of day in the entry is ignored.",
+    holidays: "Each holiday covers its whole calendar day. Any time of day in the entry is ignored.",
   };
 
   label: string;

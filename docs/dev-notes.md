@@ -118,8 +118,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   skips honored names (multi-item slash chains, formula labels, muted micro-
   labels); orchestrator reverted one agent overreach (Table Info ROWS/COLUMNS
   labels ARE the Excel function names) and hand-swept the statusMessage strings
-  in nodes/sink+obsidian that no shard covered. Socket docs untouched (STE
-  register, dropped). tsc + full vitest green.
+  in nodes/sink+obsidian that no shard covered. Author flagged the count as low
+  — measurement agreed: rounds 2–3 (five more Sonnet-medium agents) took the
+  semicolon-splice mass round 1's briefs excluded — catalog 101→6 (the 6 are
+  the semicolons.txt series-with-commas exception), help 20→4, socket docs +
+  op-meta + solError messages in nodes/ →0 — socket docs joining the Google
+  register once STE's claim on them died. ~180 further edits; orchestrator
+  hand-closed the cross-file duplicates (excelFunctions/valueKinds singular-
+  matrix + overflow messages) and one pre-existing TRIM grammar bug. tsc +
+  full vitest green after every round.
 - **Dev server starts through a launcher** (author ask): `scripts/dev-up.mjs` spawns
   vite detached, polls until :1420 answers, exits — `/startup` runs it in the
   foreground so the task actually finishes; stop advice is the self-match-proof

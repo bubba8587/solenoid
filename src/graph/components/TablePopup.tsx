@@ -984,7 +984,7 @@ export function TablePopup() {
           <label
             className="table-popup__source-check"
             title={literalSource
-              ? "Checked: show & edit exactly what you typed. Unchecked: the derived render, e.g. TRUE/FALSE and formatted dates."
+              ? "Checked: show and edit exactly what you typed. Unchecked: the derived render, such as TRUE/FALSE and formatted dates."
               : "Show the inputted source text instead of the formatted value"}
           >
             <input

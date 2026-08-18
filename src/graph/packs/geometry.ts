@@ -120,7 +120,7 @@ export const GEOMETRY_PACK: Pack = {
   formulas: GEOMETRY_PACK_FORMULAS,
   id: "geometry",
   name: "Geometry",
-  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default; turn off to declutter.",
+  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default. Turn off to declutter.",
   builtin: true,
   defaultActive: true,
   nodes: [
@@ -130,7 +130,7 @@ export const GEOMETRY_PACK: Pack = {
       entry: {
         type: "geo-triangle-solver",
         label: "Triangle Solver",
-        description: "Any three parts (sides a b c, angles A B C in degrees, at least one side) solve the rest, drawn to scale, plus area and perimeter. Valid answers TRUE or FALSE; extra parts are checked for agreement; a genuinely ambiguous SSA says so instead of guessing",
+        description: "Any three parts (sides a b c, angles A B C in degrees, at least one side) solve the rest, drawn to scale, plus area and perimeter. Valid answers TRUE or FALSE. Extra parts are checked for agreement. A genuinely ambiguous SSA says so instead of guessing",
         keywords: "triangle solve sides angles law sines cosines sss sas asa aas ssa",
         create: () => new TriangleSolverNode(),
       },

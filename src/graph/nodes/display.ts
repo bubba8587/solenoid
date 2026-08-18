@@ -227,7 +227,7 @@ function isAlerting(result: number | number[]): boolean {
 
 export class RandBetweenNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "A fresh draw comes only from Recalculate; changing a bound rescales the current draw.",
+    result: "A fresh draw comes only from Recalculate. Changing a bound rescales the current draw.",
   };
   label: string;
   cachedResult: number | null = null;

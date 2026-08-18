@@ -128,7 +128,7 @@ export function searchElements(query: string): ElementMeta[] {
 
 export function molarMass(input: string): number | SolError {
   const s = input.replace(/\s+/g, "");
-  if (!s) return solError("#VALUE!", "Type a chemical formula, e.g. H2O");
+  if (!s) return solError("#VALUE!", "Type a chemical formula, such as H2O");
   let total = 0;
   for (const segRaw of s.split(/[·•*]|(?<=[)\]\d])\.(?=\d*[A-Z])/)) {
     // A hydrate segment may open with a multiplier: CuSO4·5H2O.

@@ -141,7 +141,7 @@ export const EARTHSKY_PACK: Pack = {
         type: "es-sunrise-sunset",
         label: "Sunrise / Sunset",
         fx: ["SUNRISE", "SUNSET", "DAYLENGTH"],
-        description: "Sunrise and sunset times (UTC) and day length for a date at a lat/lon — NOAA formulation with standard refraction; blank in polar day/night",
+        description: "Sunrise and sunset times (UTC) and day length for a date at a lat/lon — NOAA formulation with standard refraction. Blank in polar day/night",
         keywords: "dawn dusk daylight noaa golden hour",
         create: () => new SunriseSunsetNode(),
       },

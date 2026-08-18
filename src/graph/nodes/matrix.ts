@@ -169,7 +169,7 @@ export class MatDetNode extends ClassicPreset.Node {
     } else {
       const inv = matInverse(m);
       if (inv === null) {
-        const err = solError("#DIV/0!", "Matrix is singular; it has no inverse");
+        const err = solError("#DIV/0!", "Matrix is singular. It has no inverse");
         this.cachedMatrix = err;
         return { result: err };
       }
@@ -396,8 +396,8 @@ export class VStackNode extends StackNodeBase {
 export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";
 
 export const TABLE_RESHAPE_OP_META = {
-  wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row; each row has Wrap_count values. Excel: WRAPROWS." },
-  wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column; each column has Wrap_count values. Excel: WRAPCOLS." },
+  wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row. Each row has Wrap_count values. Excel: WRAPROWS." },
+  wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column. Each column has Wrap_count values. Excel: WRAPCOLS." },
   tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row. Excel: TOCOL." },
   torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column. Excel: TOROW." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
@@ -487,7 +487,7 @@ export const TABLE_SELECT_OP_META = {
 
 export class TableSelectNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    indices: "Negative indices count from the end; a zero or out-of-range index errors the whole result.",
+    indices: "Negative indices count from the end. A zero or out-of-range index errors the whole result.",
   };
 
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
@@ -541,8 +541,8 @@ export class TableSelectNode extends ClassicPreset.Node {
 export type TableTakeDropOp = "take" | "drop";
 
 export const TABLE_TAKEDROP_OP_META = {
-  take: { label: "TAKE (table)", description: "Keeps rows/columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as ONE ROW — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
-  drop: { label: "DROP (table)", description: "Removes rows/columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
+  take: { label: "TAKE (table)", description: "Keeps rows or columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as one row — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
+  drop: { label: "DROP (table)", description: "Removes rows or columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
 } satisfies Record<TableTakeDropOp, { label: string; description: string }>;
 
 export class TableTakeDropNode extends ClassicPreset.Node {

@@ -30,8 +30,8 @@ export type RankPercentileOp =
 export const RANK_PERCENTILE_OP_META = {
   large:             { label: "LARGE",           description: "Kth largest value. Excel: LARGE." },
   small:             { label: "SMALL",           description: "Kth smallest value. Excel: SMALL." },
-  "rank-eq":         { label: "RANK.EQ",         description: "Rank; ties share the lowest rank. Excel: RANK.EQ." },
-  "rank-avg":        { label: "RANK.AVG",        description: "Rank; ties share the average rank. Excel: RANK.AVG." },
+  "rank-eq":         { label: "RANK.EQ",         description: "Rank. Ties share the lowest rank. Excel: RANK.EQ." },
+  "rank-avg":        { label: "RANK.AVG",        description: "Rank. Ties share the average rank. Excel: RANK.AVG." },
   "percentile-inc":  { label: "PERCENTILE.INC",  description: "Value at percentile p (0–1), including the endpoints. Excel: PERCENTILE.INC." },
   "percentile-exc":  { label: "PERCENTILE.EXC",  description: "Value at percentile p, excluding 0 and 1. Excel: PERCENTILE.EXC." },
   "quartile-inc":    { label: "QUARTILE.INC",    description: "Quartile Q0–Q4, including the endpoints. Excel: QUARTILE.INC." },
@@ -72,7 +72,7 @@ function percentileOf(sorted: number[], p: number, exc: boolean): number {
 
 export class RankPercentileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    significance: "The rank truncates to this many digits; it does not round.",
+    significance: "The rank truncates to this many digits. It does not round.",
   };
 
   label: string;
@@ -284,8 +284,8 @@ export class StandardizeNode extends ClassicPreset.Node {
 export type CovarianceOp = "pop" | "samp";
 
 export const COVARIANCE_OP_META = {
-  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together; divides by n. For when you have every data point. Excel: COVARIANCE.P." },
-  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together; divides by n−1. For a sample of a bigger population. Excel: COVARIANCE.S." },
+  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together. Divides by n. For when you have every data point. Excel: COVARIANCE.P." },
+  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together. Divides by n−1. For a sample of a bigger population. Excel: COVARIANCE.S." },
 } satisfies Record<CovarianceOp, { label: string; description: string }>;
 
 export class CovarianceNode extends ClassicPreset.Node {
@@ -480,7 +480,7 @@ export class ForecastNode extends ClassicPreset.Node {
 
 export class ModeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "One mode arrives as a number; tied modes arrive together as a sorted list.",
+    result: "One mode arrives as a number. Tied modes arrive together as a sorted list.",
   };
 
   label: string;
@@ -860,7 +860,7 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 export class InterpolateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped.",
-    new_xs: "A query outside the known range clamps to the nearest end; nothing extrapolates.",
+    new_xs: "A query outside the known range clamps to the nearest end. Nothing extrapolates.",
     grid: "Row 1 holds the X coordinates and column 1 the Y coordinates. The top-left corner cell is ignored.",
   };
 

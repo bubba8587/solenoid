@@ -68,7 +68,7 @@ function buildCommands(): PaletteItem[] {
   // Canvas / selection ops that don't live in the menu bar.
   const extra: { label: string; shortcut?: string; run: () => void }[] = [
     { label: "Isolate selection", shortcut: "I", run: () => fireCanvasKey("KeyI") },
-    { label: "Expand/collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
+    { label: "Expand or collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
     { label: "Align left", run: () => void alignSelection("left") },
     { label: "Align right", run: () => void alignSelection("right") },
     { label: "Align top", run: () => void alignSelection("top") },

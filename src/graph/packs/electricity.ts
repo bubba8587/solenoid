@@ -11,7 +11,7 @@ import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, 
 // forms.
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
-    description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Check answers TRUE or FALSE",
+    description: "V = I·R, solved for whichever of the three you leave unwired. Wire all three and Check answers TRUE or FALSE",
     keywords: "ohm ohms law volts amps resistance triangle",
     varDescriptions: { v: "Voltage (V)", i: "Current (A)", r: "Resistance (Ω)" }, },
   { type: "elec-power-vi", label: "Power (V·I)", expr: "v*i",

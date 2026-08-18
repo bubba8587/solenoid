@@ -160,7 +160,7 @@ export type SeriesOp = "range" | "sequence" | "linspace";
 
 export const SERIES_OP_META = {
   range:    { label: "Range",    description: "Generates a sequence: start, start+step, …, < stop. Excel: SEQUENCE." },
-  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each; like Range but count-first. Excel: SEQUENCE." },
+  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: SEQUENCE." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
 } satisfies Record<SeriesOp, { label: string; description: string }>;
 
@@ -281,9 +281,9 @@ export class ListLengthNode extends ClassicPreset.Node {
 // input and output are `any`.
 export class ListIndexNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    index: "Rows count from 1; 0 or unset takes every row. A wired blank blanks the result instead.",
-    column: "Columns count from 1; 0 or unset takes every column. A plain list has only column 1.",
-    result: "A whole row taken from a frame arrives as a one-row frame; a whole column arrives as a list.",
+    index: "Rows count from 1. 0 or unset takes every row. A wired blank blanks the result instead.",
+    column: "Columns count from 1. 0 or unset takes every column. A plain list has only column 1.",
+    result: "A whole row taken from a frame arrives as a one-row frame. A whole column arrives as a list.",
   };
 
   label: string;
@@ -656,9 +656,9 @@ export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxif
 export const COND_AGG_OP_META = {
   sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: SUMIFS / SUMIF." },
   countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: COUNTIFS / COUNTIF." },
-  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes; nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
-  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MINIFS." },
-  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MAXIFS." },
+  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes. Nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
+  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes. Nothing matching is 0 like Excel. Excel: MINIFS." },
+  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes. Nothing matching is 0 like Excel. Excel: MAXIFS." },
 } satisfies Record<CondAggOp, { label: string; description: string }>;
 
 export class SumIfsNode extends ClassicPreset.Node {
@@ -900,7 +900,7 @@ export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean
 // aren't counted (same stance as Set).
 export class TallyNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "Distinct values appear in first-seen order; blank and error cells are not counted.",
+    frame: "Distinct values appear in first-seen order. Blank and error cells are not counted.",
   };
 
   label: string;
@@ -1092,7 +1092,7 @@ export const RUNNING_OP_META = {
   max:     { label: "MAX",     description: "Largest value in each window." },
   median:  { label: "MEDIAN",  description: "Middle value of each window." },
   product: { label: "PRODUCT", description: "Product of each window." },
-  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window; divides by n−1." },
+  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window. Divides by n−1." },
 } satisfies Record<RunningOp, { label: string; description: string }>;
 
 export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
@@ -1155,7 +1155,7 @@ export class RunningNode extends ClassicPreset.Node {
 
 export class DiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "The output is one element shorter than the input; each entry is the change from the element before.",
+    result: "The output is one element shorter than the input. Each entry is the change from the element before.",
   };
 
   label: string;
@@ -1284,7 +1284,7 @@ export class RepeatNode extends ClassicPreset.Node {
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "The order holds until a recalculation; changed values flow through without reshuffling.",
+    result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
   };
 
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -1383,7 +1383,7 @@ export const PAD_OP_META = {
 
 export class PadNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    n: "A target at or below the list's length leaves it unchanged; nothing is trimmed.",
+    n: "A target at or below the list's length leaves it unchanged. Nothing is trimmed.",
   };
 
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -1446,7 +1446,7 @@ export class GeometricNode extends ClassicPreset.Node {
 // ─── Fibonacci ────────────────────────────────────────────────────────────────
 export class FibonacciNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    n: "Caps at 78 terms; later terms would lose precision.",
+    n: "Caps at 78 terms. Later terms would lose precision.",
   };
 
   label: string;
@@ -1535,7 +1535,7 @@ export const REDUCE_OP_META = {
   devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: DEVSQ." },
   avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: AVEDEV." },
   skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: SKEW." },
-  skew_p:  { label: "SKEW.P",  description: "Population skewness; divides by n. Excel: SKEW.P." },
+  skew_p:  { label: "SKEW.P",  description: "Population skewness. Divides by n. Excel: SKEW.P." },
   kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
 } satisfies Record<ReduceOp, { label: string; description: string }>;
 
@@ -1812,7 +1812,7 @@ export const XMATCH_SEARCH_MODE_META: Record<XMatchSearchMode, { label: string; 
 
 export class XMatchNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    value: "Text matches ignore case, like Excel's lookups; the approximate modes compare numbers and dates only.",
+    value: "Text matches ignore case, like Excel's lookups. The approximate modes compare numbers and dates only.",
   };
 
   label: string;
@@ -1878,7 +1878,7 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
 
 export class GroupByNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "Pairs with Keys by position; rows beyond the shorter list are ignored.",
+    values: "Pairs with Keys by position. Rows beyond the shorter list are ignored.",
   };
 
   /** The unique keys adopt the keys input's element type; the values stay numeric. */

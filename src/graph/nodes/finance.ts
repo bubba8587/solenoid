@@ -38,11 +38,11 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
 
 export const BITWISE_OP_META = {
-  bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in BOTH numbers (mask out the rest); non-negative integers. Excel: BITAND." },
-  bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in EITHER number (combine flags). Excel: BITOR." },
-  bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers DIFFER (toggle flags). Excel: BITXOR." },
-  bitlshift: { label: "BITLSHIFT", description: "Shifts A's bits left by B places; each place doubles the value (A × 2ᴮ). Excel: BITLSHIFT." },
-  bitrshift: { label: "BITRSHIFT", description: "Shifts A's bits right by B places; each place halves it, dropping low bits (⌊A ÷ 2ᴮ⌋). Excel: BITRSHIFT." },
+  bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in both numbers (mask out the rest). Non-negative integers. Excel: BITAND." },
+  bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in either number (combine flags). Excel: BITOR." },
+  bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers differ (toggle flags). Excel: BITXOR." },
+  bitlshift: { label: "BITLSHIFT", description: "Shifts A's bits left by B places. Each place doubles the value (A × 2ᴮ). Excel: BITLSHIFT." },
+  bitrshift: { label: "BITRSHIFT", description: "Shifts A's bits right by B places. Each place halves it, dropping low bits (⌊A ÷ 2ᴮ⌋). Excel: BITRSHIFT." },
 } satisfies Record<BitwiseOp, { label: string; description: string }>;
 
 export class BitwiseNode extends ClassicPreset.Node {
@@ -84,11 +84,11 @@ export class BitwiseNode extends ClassicPreset.Node {
 export type DepreciationOp = "sln" | "syd" | "ddb" | "db" | "vdb";
 
 export const DEPRECIATION_OP_META = {
-  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the SAME amount every period. Excel: SLN(cost, salvage, life)." },
+  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: SLN(cost, salvage, life)." },
   syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD(cost, salvage, life, per)." },
-  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the REMAINING value each period. Excel: DDB(cost, salvage, life, period, [factor])." },
+  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: DDB(cost, salvage, life, period, [factor])." },
   db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Excel: DB(cost, salvage, life, period)." },
-  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range; uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
+  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
 
 // Per-op input rows: the shared cost/salvage/life trunk, then each method's own
@@ -215,7 +215,7 @@ const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
 export class TvmNode extends EquationNode {
   static socketDocs: Record<string, string> = {
     ...EquationNode.socketDocs,
-    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
     pmt: "The payment per period. Money paid out is negative, money received is positive.",
   };
 
@@ -269,7 +269,7 @@ export const IPMT_PPMT_OP_META = {
 
 export class IpmtPpmtNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
     per: "The single period to report, counted from 1.",
   };
 
@@ -362,7 +362,7 @@ function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (nu
 
 export class NpvNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    list: "A blank cell counts as zero; dropping it would shift every later flow.",
+    list: "A blank cell counts as zero. Dropping it would shift every later flow.",
     dates: "Values discount back to the first date. A blank date makes the whole result blank.",
   };
 
@@ -427,7 +427,7 @@ export class NpvNode extends ClassicPreset.Node {
 
 export class IrrNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    list: "A blank cell counts as zero; dropping it would shift every later flow.",
+    list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
 
   label: string;
@@ -487,7 +487,7 @@ export class IrrNode extends ClassicPreset.Node {
     // Newton ran out of iterations (or hit a flat derivative) without settling —
     // typically an all-same-sign cashflow series with no internal rate at all.
     if (!converged || !Number.isFinite(rate)) {
-      const err = solError("#CONV!", "IRR couldn't converge. The cash flows may have no internal rate of return, e.g. they never change sign.");
+      const err = solError("#CONV!", "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.");
       this.cachedResult = err;
       return { result: err };
     }
@@ -525,7 +525,7 @@ export class IrrNode extends ClassicPreset.Node {
     // Like RATE/IRR, the Newton solve can stall on cash flows with no real
     // rate of return — Excel returns #NUM!, we split that into #CONV!.
     if (!converged || !Number.isFinite(r)) {
-      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, e.g. they never change sign.");
+      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, for example they never change sign.");
       this.cachedResult = err;
       return { result: err };
     }
@@ -542,7 +542,7 @@ export const MIRR_META = {
 
 export class MirrNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    list: "A blank cell counts as zero; dropping it would shift every later flow.",
+    list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
 
   label: string;
@@ -606,7 +606,7 @@ export const FVSCHEDULE_META = {
 
 export class FvScheduleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    schedule: "Each rate compounds in order; a blank cell counts as zero interest for that period.",
+    schedule: "Each rate compounds in order. A blank cell counts as zero interest for that period.",
   };
 
   label: string;
@@ -646,7 +646,7 @@ export const ISPMT_META = {
 
 export class IspmtNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
   };
 
   label: string;
@@ -684,8 +684,8 @@ export class IspmtNode extends ClassicPreset.Node {
 export type DollarOp = "dollarde" | "dollarfr";
 
 export const DOLLAR_OP_META = {
-  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (e.g. 1.02 in 32nds → 1.0625). Excel: DOLLARDE." },
-  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (e.g. 1.0625 → 1.02 in 32nds). Excel: DOLLARFR." },
+  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (for example, 1.02 in 32nds → 1.0625). Excel: DOLLARDE." },
+  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (for example, 1.0625 → 1.02 in 32nds). Excel: DOLLARFR." },
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
 export class DollarNode extends ClassicPreset.Node {
@@ -742,7 +742,7 @@ export const CUM_PMT_OP_META = {
 
 export class CumPmtNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rate: "The rate for a single period; divide an annual rate by the number of periods per year.",
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
     end: "The sum includes both the start and end periods.",
   };
 
@@ -1054,7 +1054,7 @@ export class AccrintMNode extends ClassicPreset.Node {
 // ─── PRICEDISC / YIELDDISC ────────────────────────────────────────────────────
 
 export const PRICE_DISC_OP_META = {
-  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (e.g. T-bill). Excel: PRICEDISC." },
+  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (such as a T-bill). Excel: PRICEDISC." },
   yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: YIELDDISC." },
 } satisfies Record<PriceDiscOp, { label: string; description: string }>;
 

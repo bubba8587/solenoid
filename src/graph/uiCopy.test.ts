@@ -399,7 +399,7 @@ describe("UI copy", () => {
       "Dragging a cable into empty canvas opens the Add menu filtered to nodes that will actually connect.",
       "**Touch select** lassos with a finger, and **Insert ▸ Connection** wires two sockets by picking them from lists instead of dragging.",
       "- **Edits commit on Enter or click-away, never on each keystroke**, the way a spreadsheet cell does.",
-      "Cables always draw at full curved fidelity; the app never straightens or hides them mid-drag to buy frames.",
+      "Cables always draw at full curved fidelity. The app never straightens or hides them mid-drag to buy frames.",
       // Correct American words a sloppier -ise widening would flag: -ise is
       // native in these, "analyses" is the plural of analysis, "emphasis" is
       // the noun, "kilometers"/"parameters" merely contain letters near miss.

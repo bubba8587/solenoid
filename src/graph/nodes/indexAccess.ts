@@ -57,7 +57,7 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
   if (!Array.isArray(v)) {
     // A scalar is a 1×1 — row/col 1 (or [all]) returns it, anything else #REF!.
     const ok = (rowAll || r === 0) && (colAll || c === 0);
-    return ok ? v : solError("#REF!", "Index is outside a single value; only index 1 exists");
+    return ok ? v : solError("#REF!", "Index is outside a single value. Only index 1 exists");
   }
 
   if (Array.isArray((v as unknown[])[0])) {

@@ -1341,7 +1341,7 @@ registerInternal("MINVERSE", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;
   if (matRows(m) !== matCols(m)) return solError("#SHAPE!", "Matrix must be square");
-  return matInverse(m) ?? solError("#DIV/0!", "Matrix is singular; it has no inverse");
+  return matInverse(m) ?? solError("#DIV/0!", "Matrix is singular. It has no inverse");
 });
 // WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the D15 #N/A.
 const wrapPad = (padWith: unknown, what: string) => () =>

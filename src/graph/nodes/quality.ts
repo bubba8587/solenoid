@@ -18,10 +18,10 @@ export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 export class ExpectNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     out: "The value passes through unchanged even when a check fails. A failure badges the node and raises an alert.",
-    min: "A blank on the cable skips this bound's check instead of falling back to the card; the other bound still applies.",
-    max: "A blank on the cable skips this bound's check instead of falling back to the card; the other bound still applies.",
+    min: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
+    max: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     pattern: "The pattern is a regular expression and tests text cells only. An empty or invalid pattern skips the check.",
-    allowed: "Membership compares by text form, so the number 5 matches the text 5. Blank cells pass; the not-null check covers them.",
+    allowed: "Membership compares by text form, so the number 5 matches the text 5. Blank cells pass. The not-null check covers them.",
   };
   label: string;
   checkNotNull: boolean;

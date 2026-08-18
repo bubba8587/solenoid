@@ -1,18 +1,18 @@
 ## What connects, exactly
 
-The ladder above is the whole rule for *shape*; these are the edges of it.
+The ladder above is the whole rule for *shape*. These are the edges of it.
 
 - A **combo** (split square) is the one shape that narrows: it can *be* a single value, so it drops into its own family's scalar input. A plain list never does — pull a value out with INDEX instead.
-- A **Frame** output reaches only Frame and Cube inputs, or a hollow ring. Letting it into a plain matrix input would silently throw away the column names and types; **Get Column** or **Split Frame** take the pieces out on purpose.
+- A **Frame** output reaches only Frame and Cube inputs, or a hollow ring. Letting it into a plain matrix input would silently throw away the column names and types. **Get Column** or **Split Frame** take the pieces out on purpose.
 - A **Cube** output reaches only another Cube, or a hollow ring — anything narrower would drop its nesting, so **UNNEST** does that explicitly. Everything flows *in*: any data value widens into a Cube cell.
-- **Lambda, Chart and Document** are object values, outside the data lattice entirely: each connects only to its own kind, or a hollow ring. A chart isn't a table of numbers; a lambda isn't a value to add.
+- **Lambda, Chart and Document** are object values, outside the data lattice entirely: each connects only to its own kind, or a hollow ring. A chart isn't a table of numbers. A lambda isn't a value to add.
 - The gray **wildcards** keep the shape rules at their own rung — a gray square is still a list socket, so it still refuses a Frame. The **hollow ring** is the exception to everything: it takes any value whatsoever, object types included.
 
 ## What happens on arrival
 
 When a cable lands, the value is reshaped for the input — never mutated in place:
 
-- a single value entering a list input becomes a one-element list; entering a matrix, Frame or Cube input, a 1×1;
+- a single value entering a list input becomes a one-element list. Entering a matrix, Frame or Cube input, a 1×1;
 - a **list entering a 2-D input becomes one row** (transpose it first if you meant a column);
 - a one-element list entering a scalar or combo input collapses to the value inside — at a *numeric* scalar, a longer list is a `#SHAPE!`;
 - a matrix entering a Frame input gets generated column names (Col1, Col2, …);
@@ -22,11 +22,11 @@ When a cable lands, the value is reshaped for the input — never mutated in pla
 
 Text, date and Boolean **list** inputs are typeable in place: with no cable attached, text typed into the box is read as CSV, and a part that won't parse for the type becomes null and holds its position.
 
-The literal sources (List / Table / Frame Input) follow one rule: **the Source is never coerced.** What you typed stays verbatim in the source text — a stray `abc` in a number table, a blank row you left for later — and only the *derived* value coerces it: blank → null, unparseable → NaN. Retype nothing; fix it when you mean to.
+The literal sources (List / Table / Frame Input) follow one rule: **the Source is never coerced.** What you typed stays verbatim in the source text — a stray `abc` in a number table, a blank row you left for later — and only the *derived* value coerces it: blank → null, unparseable → NaN. Retype nothing. Fix it when you mean to.
 
 ## Sockets that change type
 
-Some ports **adopt**: the socket takes the type of the cable plugged in and reverts to its own when unplugged. A hollow ring adopts whatever arrives, verbatim. A gray list or grid port instead **keeps its rank** and adopts only the family — wire a number into one and it becomes a *numeric list* socket, not a numeric scalar, so it still draws as a list and still refuses a Frame. Adoption is never saved to a file; it is recomputed on load, paste and drill-in. A passthrough node (Display, IF, Conduit lanes, INDEX) types its output from the input it forwards.
+Some ports **adopt**: the socket takes the type of the cable plugged in and reverts to its own when unplugged. A hollow ring adopts whatever arrives, verbatim. A gray list or grid port instead **keeps its rank** and adopts only the family — wire a number into one and it becomes a *numeric list* socket, not a numeric scalar, so it still draws as a list and still refuses a Frame. Adoption is never saved to a file. It is recomputed on load, paste and drill-in. A passthrough node (Display, IF, Conduit lanes, INDEX) types its output from the input it forwards.
 
 Retyping a socket in place — switching a **Cast**'s target, a **Get Column** read-as, editing a Note's frontmatter — **drops any cable whose target no longer accepts the new type.**
 
@@ -36,7 +36,7 @@ A drag that won't drop has five causes: the canvas is **locked**; it's a **self-
 
 On a type mismatch:
 
-- **wrong family** (a date into a number, text into a number) — insert a **Cast**; the one pair that needs none is Boolean ⟷ number;
+- **wrong family** (a date into a number, text into a number) — insert a **Cast**. The one pair that needs none is Boolean ⟷ number;
 - **wrong direction on the ladder** (a list into a scalar, a matrix into a list) — the value is wider than the port, so reshape it explicitly: Get Column, TOCOL, INDEX;
 - **a container into something narrower** (a Cube into a Frame, a Frame into a matrix) — UNNEST or Get Column.
 
@@ -63,11 +63,11 @@ Where the unit *lives* depends on the container — it attaches at the level tha
 | Single value | the value | — |
 | List | **per element** | a list is the one shape with no uniformity guarantee — Get Row hands you a legitimate `[$120, 4 kg]` |
 | Matrix | **one unit for the whole grid** | a matrix is one element type by construction, so one quantity |
-| Frame | **per column** | each column is one homogeneous population; a `Speed (km/h)` header locks it |
+| Frame | **per column** | each column is one homogeneous population. A `Speed (km/h)` header locks it |
 | Cube | per cell, like a list | cube cells hold anything |
 
-A fold over mixed-unit elements (SUM over that `[$120, 4 kg]`) is a `#UNIT!` — aggregation demands one dimension. Structural reshapes carry a matrix's unit; stacking carries it only when every part agrees; linear algebra (MMULT, MINVERSE) deliberately drops it.
+A fold over mixed-unit elements (SUM over that `[$120, 4 kg]`) is a `#UNIT!` — aggregation demands one dimension. Structural reshapes carry a matrix's unit. Stacking carries it only when every part agrees. Linear algebra (MMULT, MINVERSE) deliberately drops it.
 
 Two special cases: **currencies** share one dimension but never cross codes — `$5 + 5€` is a `#UNIT!`, because there is no exchange rate in the model. And a **custom** unit typed into a Format Controller ("widgets") becomes its own dimension: `widgets ÷ s` reads `widgets/s`, and widgets never add to anything that isn't widgets.
 
-The number **format** — decimals, percent, thousands separators, `K/M/B` — is a different animal: display-only, never touching the stored value. It travels with the unit on the Format Controller but re-formats freely downstream; the unit is the part with physics.
+The number **format** — decimals, percent, thousands separators, `K/M/B` — is a different animal: display-only, never touching the stored value. It travels with the unit on the Format Controller but re-formats freely downstream. The unit is the part with physics.

@@ -122,7 +122,7 @@ export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean";
 export const TEXT_TRANSFORM_OP_META = {
   upper:  { label: "UPPER",  description: "Converts all characters to uppercase. Excel: UPPER." },
   lower:  { label: "LOWER",  description: "Converts all characters to lowercase. Excel: LOWER." },
-  trim:   { label: "TRIM",   description: "Removes leading/trailing spaces and collapse internal spaces. Excel: TRIM." },
+  trim:   { label: "TRIM",   description: "Removes leading and trailing spaces and collapses internal spaces. Excel: TRIM." },
   proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: PROPER." },
   clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: CLEAN." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
@@ -307,8 +307,8 @@ export class TextSliceNode extends ClassicPreset.Node {
 export type TextFindOp = "find" | "search";
 
 export const TEXT_FIND_OP_META = {
-  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive); #VALUE! if not found. Excel: FIND." },
-  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive); #VALUE! if not found. Excel: SEARCH." },
+  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive). #VALUE! if not found. Excel: FIND." },
+  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive). #VALUE! if not found. Excel: SEARCH." },
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
 export class TextFindNode extends ClassicPreset.Node {
@@ -359,7 +359,7 @@ export class TextFindNode extends ClassicPreset.Node {
 
 export class SubstituteNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    old_text: "Matches are case sensitive; every occurrence is replaced.",
+    old_text: "Matches are case sensitive. Every occurrence is replaced.",
   };
 
   label: string;
@@ -492,7 +492,7 @@ export type CharCodeOp = "char" | "code";
 
 export class CharCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    code: "Accepts the full Unicode range; Excel's CHAR stops at 255. An out-of-range value gives a blank.",
+    code: "Accepts the full Unicode range. Excel's CHAR stops at 255. An out-of-range value gives a blank.",
   };
 
   label: string;
@@ -597,8 +597,8 @@ export class TextSplitNode extends ClassicPreset.Node {
 // ─── TEXTAFTER / TEXTBEFORE ───────────────────────────────────────────────────
 
 export const TEXT_AFTER_BEFORE_OP_META = {
-  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter; null if not found. Excel: TEXTAFTER." },
-  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter; null if not found. Excel: TEXTBEFORE." },
+  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter. Null if not found. Excel: TEXTAFTER." },
+  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter. Null if not found. Excel: TEXTBEFORE." },
 } satisfies Record<TextAfterBeforeOp, { label: string; description: string }>;
 
 export class TextAfterBeforeNode extends ClassicPreset.Node {
@@ -665,8 +665,8 @@ export class ExactNode extends ClassicPreset.Node {
 export type { TextFilterOp } from "./textOps";
 
 export const TEXT_FILTER_OP_META = {
-  contains:     { label: "Contains",     description: "Keep strings that contain the pattern; not case sensitive" },
-  not_contains: { label: "Not contains", description: "Keep strings that do NOT contain the pattern" },
+  contains:     { label: "Contains",     description: "Keep strings that contain the pattern. Not case sensitive" },
+  not_contains: { label: "Not contains", description: "Keep strings that do not contain the pattern" },
   starts_with:  { label: "Starts with",  description: "Keep strings that begin with the pattern" },
   ends_with:    { label: "Ends with",    description: "Keep strings that end with the pattern" },
 } satisfies Record<TextFilterOp, { label: string; description: string }>;

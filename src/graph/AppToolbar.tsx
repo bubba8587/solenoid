@@ -62,7 +62,7 @@ export function AppToolbar() {
           type="button"
           className="solenoid-apptools__btn solenoid-apptools__theme"
           title={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-          aria-label="Toggle light/dark theme"
+          aria-label="Toggle light and dark theme"
           onClick={() => appThemeStore.toggleMode()}
         >
           <ThemeGlyph mode={mode} />

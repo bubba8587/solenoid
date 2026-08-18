@@ -14,10 +14,10 @@ import { solError, isSolError, type SolError } from "../errorValue";
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
 
 export const CAST_TARGET_META: Record<CastTarget, { label: string; title: string }> = {
-  number:  { label: "Number",  title: "Parse text, a logical's 1/0, or a complex value's real part; pass numbers through" },
+  number:  { label: "Number",  title: "Parse text, a logical's 1/0, or a complex value's real part. Pass numbers through" },
   text:    { label: "Text",    title: "Format numbers and dates (with the format pattern) or complex values as text" },
-  date:    { label: "Date",    title: "Parse date text to an Excel serial; numbers pass through as serials" },
-  complex: { label: "Complex", title: "Parse \"a+bi\" text; numbers become re+0i" },
+  date:    { label: "Date",    title: "Parse date text to an Excel serial. Numbers pass through as serials" },
+  complex: { label: "Complex", title: "Parse \"a+bi\" text. Numbers become re+0i" },
   logical: { label: "Boolean", title: "Parse TRUE/FALSE text (or a nonzero number) to a logical TRUE/FALSE" },
 };
 

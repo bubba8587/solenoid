@@ -27,7 +27,7 @@ export function asNumericMatrix(m: unknown[][]): NumMat | SolError {
   for (const row of m)
     for (const cell of row) {
       if (cell === null || cell === undefined || cell === "")
-        return solError("#VALUE!", "This matrix operation needs complete data; a cell is missing");
+        return solError("#VALUE!", "This matrix operation needs complete data. A cell is missing");
       if (typeof cell !== "number" || !Number.isFinite(cell))
         return solError("#TYPE!", "This matrix operation needs numbers, but got text");
     }

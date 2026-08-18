@@ -110,7 +110,7 @@ export const FLUIDS_PACK: Pack = {
       entry: {
         type: "fl-roughness",
         label: "Pipe Roughness",
-        description: "Absolute roughness ε for common pipe materials (textbook values, mm); give a diameter and it also emits ε/D, ready for the Friction Factor nodes",
+        description: "Absolute roughness ε for common pipe materials (textbook values, mm). Give a diameter and it also emits ε/D, ready for the Friction Factor nodes",
         keywords: "roughness epsilon material pipe moody colebrook relative",
         create: () => new PipeRoughnessNode(),
       },
@@ -121,7 +121,7 @@ export const FLUIDS_PACK: Pack = {
         type: "fl-colebrook",
         label: "Friction Factor (Colebrook)",
         fx: ["COLEBROOK"],
-        description: "Solves the implicit Colebrook–White equation for the Darcy friction factor from Reynolds number and relative roughness ε/D; laminar Re hands off to 64/Re",
+        description: "Solves the implicit Colebrook–White equation for the Darcy friction factor from Reynolds number and relative roughness ε/D. Laminar Re hands off to 64/Re",
         keywords: "moody implicit turbulent root",
         create: () => new ColebrookNode(),
       },

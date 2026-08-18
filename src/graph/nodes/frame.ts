@@ -273,7 +273,7 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
 
 export class HeadNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rows: "First, Last, and Skip read this as a row count; Rows N–To reads it as the 1-based start row.",
+    rows: "First, Last, and Skip read this as a row count. Rows N–To reads it as the 1-based start row.",
     to: "Only the Rows N–To operation reads this, as the last kept row.",
   };
 
@@ -533,7 +533,7 @@ function readColumnList(wired: string[][] | undefined): string[] | null {
 
 export class SelectColumnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    columns: "An empty list passes the frame through unchanged; a name the frame lacks is a #REF! error.",
+    columns: "An empty list passes the frame through unchanged. A name the frame lacks is a #REF! error.",
   };
 
   label: string;
@@ -667,7 +667,7 @@ function distinctKeys(values: readonly FrameCell[]): string[] {
 // RE-AGGREGATES the source rather than reshaping a grouped frame (see PivotSpec).
 export class PivotNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    filter: "One cell per source row, in order; only rows where the mask is TRUE feed the pivot.",
+    filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
   };
 
   label: string;
@@ -1096,7 +1096,7 @@ export type HeaderOp = "promote" | "demote";
 
 export const HEADER_OP_META: Record<HeaderOp, { label: string; description: string }> = {
   promote: { label: "Promote first row", description: "The first row becomes the column names. Power Query: Use First Row as Headers." },
-  demote:  { label: "Demote headers", description: "Column names drop into a first row of text; columns auto-name Col1, Col2…" },
+  demote:  { label: "Demote headers", description: "Column names drop into a first row of text. Columns auto-name Col1, Col2…" },
 };
 
 export class HeadersNode extends ClassicPreset.Node {
@@ -1466,7 +1466,7 @@ export function splitMatrixOutput(colType: SplitColType) {
 
 export class SplitFrameNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    matrix: "Under All, one text column blanks the whole matrix; date cells ride as serials and booleans as 1 and 0.",
+    matrix: "Under All, one text column blanks the whole matrix. Date cells ride as serials and booleans as 1 and 0.",
   };
 
   label: string;
@@ -1671,7 +1671,7 @@ export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
 export class ComputedColumnNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    after: "Empty appends the new column at the end; a column name inserts it just after that column. A replaced column keeps its place.",
+    after: "Empty appends the new column at the end. A column name inserts it immediately after that column. A replaced column keeps its place.",
   };
 
   label: string;

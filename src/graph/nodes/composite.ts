@@ -193,7 +193,7 @@ export class CompositeInputNode extends ClassicPreset.Node {
 
 export class CompositeOutputNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    value: "Whatever arrives here becomes the composite's matching outer output; a multi-run mode collects one entry per run.",
+    value: "Whatever arrives here becomes the composite's matching outer output. A multi-run mode collects one entry per run.",
   };
 
   label: string;

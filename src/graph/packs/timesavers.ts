@@ -17,7 +17,7 @@ export const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
 
 export const TIMESAVER_TEXT: FormulaPackEntry[] = [
   { type: "ts-ordinal", label: "Ordinal Suffix", expr: "ORDINAL(n)", resultAs: "text",
-    description: "1 → 1st, 23 → 23rd (with the 11th/12th/13th special case) — no Excel function; the usual formula is a CHOOSE and MOD monster",
+    description: "1 → 1st, 23 → 23rd (with the 11th/12th/13th special case) — no Excel function. The usual formula is a CHOOSE and MOD monster",
     keywords: "st nd rd th rank suffix" },
   { type: "ts-clean-whitespace", label: "Clean Whitespace", expr: "TRIM(CLEAN(SUBSTITUTE(t,CHAR(160),\" \")))", resultAs: "text",
     description: "TRIM + CLEAN + strip non-breaking spaces (CHAR(160)) — the web or PDF-paste fixer Excel needs three functions for",
@@ -49,7 +49,7 @@ export const TIMESAVER_FORMULAS: FormulaPackEntry[] = [
 export const TIMESAVERS_PACK: Pack = {
   id: "timesavers",
   name: "Common Excel Timesavers",
-  description: "Solenoid conveniences that aren't single Excel functions (rolling aggregates, weighted stats, list utilities, extended logic, percent change and CAGR, text cleanup, Reverse Text, Spell Number…). On by default; turn off to declutter.",
+  description: "Solenoid conveniences that aren't single Excel functions (rolling aggregates, weighted stats, list utilities, extended logic, percent change and CAGR, text cleanup, Reverse Text, Spell Number…). On by default. Turn off to declutter.",
   builtin: true,
   defaultActive: true,
   nodes: [

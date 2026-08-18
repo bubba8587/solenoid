@@ -56,7 +56,7 @@ export const HEALTH_ENERGY: FormulaPackEntry[] = [
 
 export const HEALTH_CARDIO: FormulaPackEntry[] = [
   { type: "hf-maxhr-classic", label: "Max Heart Rate (220 − age)", expr: "220-age",
-    description: "The traditional max-HR estimate — simple but drifts high for older ages; see the Tanaka preset" },
+    description: "The traditional max-HR estimate — quick but drifts high for older ages. See the Tanaka preset" },
   { type: "hf-maxhr-tanaka", label: "Max Heart Rate (Tanaka)", expr: "208-0.7*age",
     description: "Tanaka 2001 max-HR estimate (208 − 0.7·age) — the better-validated regression" },
   { type: "hf-karvonen", label: "Target Heart Rate (Karvonen)", expr: "(hrmax-hrrest)*intensity+hrrest",
@@ -100,7 +100,7 @@ export const HEALTH_PACK: Pack = {
   formulas: HEALTH_PACK_FORMULAS,
   id: "health",
   name: "Health & Fitness",
-  description: "Body and fitness formulas: BMI, body surface area, BMR/TDEE, body-fat estimates (Deurenberg, US Navy), the heart-rate zone table, VO₂max, ideal body weight, creatinine clearance. Metric inputs; estimates, not medical advice.",
+  description: "Body and fitness formulas: BMI, body surface area, BMR/TDEE, body-fat estimates (Deurenberg, US Navy), the heart-rate zone table, VO₂max, ideal body weight, creatinine clearance. Metric inputs. Estimates, not medical advice.",
   builtin: true,
   defaultActive: false,
   nodes: [

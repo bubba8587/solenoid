@@ -87,9 +87,9 @@ export const CHART_MATRIX_OPS = new Set<ChartOp>(["composed", "bubble"]);
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A plain list or single column plots by position; from two columns, the first supplies the axis labels and the second the values.",
-    series: "Only the Composed and Bubble types read it; the other types plot the Data input.",
-    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid; unknown keys are ignored.",
+    values: "A plain list or single column plots by position. From two columns, the first supplies the axis labels and the second the values.",
+    series: "Only the Composed and Bubble types read it. The other types plot the Data input.",
+    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 
   label: string;
@@ -577,7 +577,7 @@ export const SURFACE_VIEW_OP_META = {
 // Surface alone the yaw/pitch literals (the component's D-pad).
 export class SurfaceNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    grid: "The first row holds the X coordinates, the first column the Y coordinates, and the interior cells the heights; the corner cell is ignored.",
+    grid: "The first row holds the X coordinates, the first column the Y coordinates, and the interior cells the heights. The corner cell is ignored.",
   };
 
   label: string;
@@ -705,7 +705,7 @@ export class WaterfallNode extends ClassicPreset.Node {
 
 export class CandlestickNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "The date column is optional; with exactly four columns all four read as open, high, low, close and rows are numbered instead.",
+    frame: "The date column is optional. With exactly four columns all four read as open, high, low, close and rows are numbered instead.",
   };
 
   label: string;
@@ -778,7 +778,7 @@ export function boxplotStats(sample: (number | null)[]): { lo: number; q1: numbe
 
 export class BoxplotNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "Each numeric column draws as its own box and other columns are skipped; a plain list draws a single box.",
+    values: "Each numeric column draws as its own box and other columns are skipped. A plain list draws a single box.",
   };
 
   label: string;
@@ -1001,10 +1001,10 @@ export const RECORD_CARD_CAP = 60;
 
 export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    row: "Selects the 1-based record; blank or out of range shows the boxes empty.",
-    picked: "Echoes the 1-based row the card shows, so downstream follows the pager; blank when no record is picked.",
-    by: "Names the column whose values become the board's lanes; blank or unmatched draws nothing.",
-    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box; Photo*2 widens a box two columns; Qty: e.g. 40 gives an empty box muted placeholder text; a dot or an empty cell stays blank. Left empty, the columns stack.",
+    row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
+    picked: "Echoes the 1-based row the card shows, so downstream follows the pager. Blank when no record is picked.",
+    by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
+    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. A dot or an empty cell stays blank. Left empty, the columns stack.",
     options: "title=Parts;fontsize=12",
   };
 
@@ -1178,7 +1178,7 @@ const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha", "fontsize"] as cons
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "Feeds any figure's Options input; only the fields given a value are included.",
+    result: "Feeds any figure's Options input. Only the fields given a value are included.",
   };
 
   label: string;

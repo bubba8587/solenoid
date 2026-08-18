@@ -14,7 +14,7 @@ The five families:
 
 Outside the families:
 
-- **Frame** — a data table of named, typed columns. A column leaves it as a typed list with Get Column; a row leaves as a one-row Frame, since a row mixes types.
+- **Frame** — a data table of named, typed columns. A column leaves it as a typed list with Get Column. A row leaves as a one-row Frame, since a row mixes types.
 - **Cube** — a Frame whose cells hold whole Frames: each Customer holding its own table of Orders, without flattening to one wide sheet.
 - **Wildcards** — the gray sockets, for a family that isn't known.
 - **Lambda**, **Chart** and **Document** — not data. Each connects only to its own kind, or to a hollow ring.

@@ -96,7 +96,7 @@ export type ResultType = "number" | "text" | "date" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
 export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "Result is numeric, the default; matches Excel arithmetic" },
+  number: { label: "Number", title: "Result is numeric, the default. Matches Excel arithmetic" },
   text:   { label: "Text",   title: "Result is text: UPPER(x), TEXTJOIN(…), x & \" \" & y" },
   date:   { label: "Date",   title: "Result is a date (Excel serial): DATE(y,m,d), EDATE(x,1)" },
   auto:   { label: "Auto",   title: "Untyped: the wildcard socket accepts whatever the formula returns" },

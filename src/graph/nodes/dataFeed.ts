@@ -12,7 +12,7 @@ import { getProvider, type ProviderId, type ProviderPreset } from "../dataProvid
 
 export class DataFeedNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "The project file stores the series id, not the data; refresh to re-pull.",
+    frame: "The project file stores the series id, not the data. Refresh to re-pull.",
   };
   label: string;
   provider: ProviderId;
