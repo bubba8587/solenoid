@@ -91,7 +91,11 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   Airtable/Grist): shows ONE frame row as labeled boxes on a CSS grid, emitting a `ChartValue`
   (`op: "record"`, `RecordPayload`) out the chart socket — so the Report embed, chart popup,
   chip, and FC font scale all came free from `ChartFigure` (one new branch). View is
-  `RecordCardView` in `chartCards.tsx` (DOM, recharts-free); height is content-driven.
+  `RecordCardView` in `chartCards.tsx` (DOM, recharts-free); height is content-driven; boxes
+  TOUCH and are square (author call — gap 0, −1px margin overlaps the shared 1px borders
+  into one hairline, no radius). The CARD never draws the grid (squished at card width):
+  its hero box carries the [Chart] chip, and the drawn card lands wherever the chart
+  output goes — a resizable Display, the popup, a Report embed (author call).
 - **The layout is text** (the external prior art is CSS `grid-template-areas`, adapted): one
   line per grid row, cells split on `|` (column names contain spaces, so whitespace can't
   separate), `.`/empty = gap, repeating a name merges its cells. `parseRecordLayout` resolves
@@ -107,11 +111,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   or image-extension URL becomes the picture (`recordImageSrc`). The author's proposed
   Image FrameColType is evaluated in `deferrals.md` — display-layer detection delivers the
   outcome without touching the backends.
-- **Seed `record-cards`** (Record Cards, order 45): Parts frame (7 columns incl. date,
-  logical, and data-URI SVG photos), a layouted card with the Photo column spanning four
-  rows, a no-layout card driven by a wired Row, and a Report embedding the card via `=part`.
-- Verified in the live app via the Playwright loop (pager flip, wired-row card, report
+- **Seed `record-cards`** (Record Cards, order 45), ONE Record node by author order:
+  Parts frame (7 columns incl. date, logical, and data-URI SVG photos) → the layouted
+  card (Photo spans four rows), its Row driven by a search chain (Find Qty → Get
+  Column(Qty) → XMATCH — numeric only; the lattice keeps strings out of XMATCH), its
+  chart into a resizable Display and a Report `=part` embed.
+- Verified in the live app via the Playwright loop (pager flip, wired-row search, report
   embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
+- **Record-family follow-ups are queued in `deferrals.md`** (author: proposals "mostly
+  fine"; every view lands as an op/output on the ONE Record node, never a sibling node).
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
 (latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &

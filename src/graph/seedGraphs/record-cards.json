@@ -10,7 +10,7 @@
    "y": -300,
    "init": {
     "label": "Record cards",
-    "body": "# One row at a time\nThe **Record** node shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`, and repeating a name merges its cells (the `Photo` column spans all four rows). The card itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** here or the Spec sheet report. Flip records with the pager, wire **Row** directly, or compute it: below, an **XMATCH** searches the Qty column so the second card jumps to the matching part. A cell holding an image URL renders as the picture.",
+    "body": "# One row at a time\nThe **Record** node shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`, and repeating a name merges its cells (the `Photo` column spans all four rows). The card itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the Qty column and drives **Row**, so the card jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
     "color": "violet",
     "width": 360,
     "height": 272
@@ -39,18 +39,6 @@
    },
    "stringLiterals": {
     "layout": "Item | Item | Photo\nSKU | Qty | Photo\nPrice | Updated | Photo\nIn Stock | In Stock | Photo"
-   }
-  },
-  {
-   "id": "stacked",
-   "type": "RecordNode",
-   "x": 380,
-   "y": 330,
-   "init": {
-    "label": "No layout"
-   },
-   "literals": {
-    "row": 1
    }
   },
   {
@@ -118,12 +106,6 @@
    "targetInput": "frame"
   },
   {
-   "source": "parts",
-   "sourceOutput": "frame",
-   "target": "stacked",
-   "targetInput": "frame"
-  },
-  {
    "source": "card",
    "sourceOutput": "chart",
    "target": "report",
@@ -156,7 +138,7 @@
   {
    "source": "xmatch",
    "sourceOutput": "result",
-   "target": "stacked",
+   "target": "card",
    "targetInput": "row"
   }
  ]
