@@ -1,7 +1,9 @@
 // Structured-payload figures, so they render as plain CSS/SVG rather than going
 // through the lazy recharts chunk.
+import { useLayoutEffect, useRef, useState } from "react";
 import type { KpiPayload, BulletPayload, RecordPayload } from "../chartValue";
 import { formatScalar } from "./format";
+import { planColumns, packMasonry } from "./masonryLayout";
 import "./chartCards.css";
 
 // A semantic state color, deliberately NOT a palette slot: a KPI trend reads
@@ -63,6 +65,72 @@ function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; 
   );
 }
 
+const GALLERY_GAP = 6;
+// Track band: aim at `ideal`, compress to `min` before dropping a column, and
+// never stretch past `max` (a lone wide track reads as a stacked list).
+const GALLERY_TRACK = { ideal: 170, min: 140, max: 260 };
+
+// Masonry gallery (see masonryLayout.ts): tracks justified to the measured
+// container, each card packed into the shortest column. Card heights are
+// text-driven, so they are measured from the DOM; the ResizeObserver re-packs
+// on container resizes, wrap changes, and fscale changes. Tiles stay hidden
+// until the first measurement at the final track width, so the mount never
+// paints a mispacked frame.
+function RecordGallery({ payload }: { payload: RecordPayload }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const shownOnce = useRef(false);
+  const n = payload.cards.length;
+  const [box, setBox] = useState<{ w: number; heights: number[]; settled: boolean } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      const tiles = tileRefs.current.slice(0, n);
+      const heights = tiles.map((t) => (t ? t.offsetHeight : 0));
+      const want = Math.round(planColumns(w, GALLERY_GAP, { ...GALLERY_TRACK, items: n }).colWidth);
+      const settled = tiles.every((t) => !t || t.offsetWidth === want);
+      setBox((prev) =>
+        prev && prev.w === w && prev.settled === settled &&
+        prev.heights.length === heights.length && prev.heights.every((h, i) => h === heights[i])
+          ? prev
+          : { w, heights, settled },
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const t of tileRefs.current.slice(0, n)) if (t) ro.observe(t);
+    return () => ro.disconnect();
+  }, [n, payload]);
+
+  const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...GALLERY_TRACK, items: n });
+  const colWidth = Math.round(plan.colWidth);
+  if (box?.settled) shownOnce.current = true;
+  const show = box !== null && (box.settled || shownOnce.current);
+  const packed = box ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
+  return (
+    <div ref={ref} className="sol-record-gallery" style={show && packed ? { height: packed.height } : undefined}>
+      {payload.cards.map((c, i) => (
+        <div
+          key={i}
+          ref={(t) => { tileRefs.current[i] = t; }}
+          className="sol-record-tile"
+          style={
+            show && packed
+              ? { width: colWidth, transform: `translate(${packed.slots[i].col * (colWidth + GALLERY_GAP)}px, ${Math.round(packed.slots[i].y)}px)` }
+              : { width: colWidth, visibility: "hidden" }
+          }
+        >
+          <RecordGrid fields={c} cols={payload.cols} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // The record figure: the picked card, a gallery of cards, or board lanes.
 // Height is content-driven (layouts vary), so the passed figure height is ignored.
 export function RecordCardView({ payload, width, fscale }: { payload: RecordPayload; width?: number; fscale?: number }) {
@@ -71,9 +139,7 @@ export function RecordCardView({ payload, width, fscale }: { payload: RecordPayl
   if (payload.view === "gallery") {
     return (
       <div style={outer}>
-        <div className="sol-record-gallery">
-          {payload.cards.map((c, i) => <RecordGrid key={i} fields={c} cols={payload.cols} />)}
-        </div>
+        <RecordGallery payload={payload} />
         {moreLine}
       </div>
     );
