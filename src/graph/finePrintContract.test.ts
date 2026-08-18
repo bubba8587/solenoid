@@ -5,7 +5,7 @@ import { BaseConvertNode } from "./nodes/scalar";
 import { GetRowNode } from "./nodes/frame";
 import { sliceList } from "./nodes/listOps";
 import { dropBlankRows, mergeColumns } from "./frameVerbs";
-import { isNaError, solError } from "./errorValue";
+import { isNaError, isSolError, solError } from "./errorValue";
 import type { FrameValue } from "./frame";
 
 // Round 2 of the description fine-print sweep (2026-08-08): claims that lived
@@ -85,6 +85,22 @@ describe("XMATCH — the match-mode family (first match wins)", () => {
   });
   it("no candidate on a wired array is #N/A", () => {
     expect(isNaError(run(10, [5, 7], "next_larger"))).toBe(true);
+  });
+  // The sockets are wildcard because the kernel is type-agnostic: text was locked
+  // out only by the old numeric plugs while =XMATCH("a", …) already worked.
+  it("matches text, case-insensitively (Excel's lookup equality)", () => {
+    const node = new XMatchNode();
+    expect(node.data({ value: ["fw-403"], array: [["HB-401", "LN-402", "FW-403"]] }).result).toBe(3);
+  });
+  it("an unwired TEXT literal reads from the wildcard slot's string map", () => {
+    const node = new XMatchNode();
+    node.stringLiterals.value = "LN-402";
+    expect(node.data({ array: [["HB-401", "LN-402"]] }).result).toBe(2);
+  });
+  it("approximate match on a text lookup is the kernel's targeted #VALUE!", () => {
+    const node = new XMatchNode({ matchMode: "next_larger" });
+    const r = node.data({ value: ["x"], array: [["a", "b"]] }).result;
+    expect(isSolError(r) ? r.code : r).toBe("#VALUE!");
   });
 });
 

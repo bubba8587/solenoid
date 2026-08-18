@@ -10,7 +10,7 @@
    "y": -300,
    "init": {
     "label": "Record cards",
-    "body": "# One row at a time\nThe **Record** node shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`, and repeating a name merges its cells (the `Photo` column spans all four rows). The card itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the Qty column and drives **Row**, so the card jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
+    "body": "# One row at a time\nThe **Record** node shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`, and repeating a name merges its cells (the `Photo` column spans all four rows). The card itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the SKU column and drives **Row**, so the card jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
     "color": "violet",
     "width": 360,
     "height": 272
@@ -67,12 +67,12 @@
   },
   {
    "id": "find",
-   "type": "NumberInputNode",
+   "type": "TextInputNode",
    "x": -420,
    "y": 430,
    "init": {
-    "label": "Find Qty",
-    "value": 460
+    "label": "Find SKU",
+    "value": "FW-403"
    }
   },
   {
@@ -81,11 +81,11 @@
    "x": -160,
    "y": 400,
    "init": {
-    "label": "Qty column",
-    "readAs": "number"
+    "label": "SKU column",
+    "readAs": "text"
    },
    "stringLiterals": {
-    "name": "Qty"
+    "name": "SKU"
    }
   },
   {

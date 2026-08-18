@@ -6,7 +6,7 @@ import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
-import { pairIdsFromKeys } from "./logic";
+import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
@@ -1811,11 +1811,18 @@ export const XMATCH_SEARCH_MODE_META: Record<XMatchSearchMode, { label: string; 
 };
 
 export class XMatchNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Text matches ignore case, like Excel's lookups; the approximate modes compare numbers and dates only.",
+  };
+
   label: string;
   matchMode: XMatchMatchMode;
   searchMode: XMatchSearchMode;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { value: 0 };
+  stringLiterals: Record<string, string> = {};
+  // The lookup is a wildcard VALUE slot, so its typed literal may be number or text.
+  autoLiterals = true;
   width = 180; height = 232;
 
   constructor(init?: { label?: string; matchMode?: XMatchMatchMode; searchMode?: XMatchSearchMode }) {
@@ -1823,13 +1830,15 @@ export class XMatchNode extends ClassicPreset.Node {
     this.label      = init?.label      ?? "XMATCH";
     this.matchMode  = init?.matchMode  ?? "exact";
     this.searchMode = init?.searchMode ?? "first";
-    this.addInput("value",  numIn("Lookup value"));
-    this.addInput("array",  listIn("Array"));
+    // The kernel is type-agnostic (lookupEq), so the sockets are too: any-family
+    // lookup against any 1-D list. Approximate modes stay numeric IN the kernel.
+    this.addInput("value",  anyIn("Lookup value"));
+    this.addInput("array",  adoptiveListIn("Array"));
     this.addOutput("result", numOut("1-based position (#N/A when not found)"));
   }
 
-  data(inputs: { value?: number[]; array?: number[][] }): { result: number | SolError | null } {
-    const val = readInput(inputs.value, this.literals.value ?? 0);
+  data(inputs: { value?: unknown[]; array?: unknown[][] }): { result: number | SolError | null } {
+    const val = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "value");
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (val === null) { this.cachedResult = null; return { result: null }; }
     const wired = inputs.array?.[0] ?? null;

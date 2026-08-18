@@ -113,9 +113,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   outcome without touching the backends.
 - **Seed `record-cards`** (Record Cards, order 45), ONE Record node by author order:
   Parts frame (7 columns incl. date, logical, and data-URI SVG photos) → the layouted
-  card (Photo spans four rows), its Row driven by a search chain (Find Qty → Get
-  Column(Qty) → XMATCH — numeric only; the lattice keeps strings out of XMATCH), its
-  chart into a resizable Display and a Report `=part` embed.
+  card (Photo spans four rows), its Row driven by a search chain (Find SKU →
+  Get Column(SKU, text) → XMATCH), its chart into a resizable Display and a Report
+  `=part` embed.
+- **XMATCH's sockets went wildcard** (author challenged the numeric-only typing; it was
+  DRIFT, not a decision): the kernel (`xmatchIndex` + `lookupEq`) was always
+  type-agnostic for exact match — case-insensitive text, Excel's lookup equality — and
+  `=XMATCH("a", …)` already worked on the formula surface, so only the node's `numIn`/
+  `listIn` plugs locked text out. Now `anyIn` lookup (autoLiterals dual-map literal,
+  `pickSlot` exported from logic.ts as the one reader) + `adoptiveListIn` array; the
+  approximate modes still compare numbers IN the kernel (targeted `#VALUE!` for text).
+  Pinned in `finePrintContract.test.ts`.
 - Verified in the live app via the Playwright loop (pager flip, wired-row search, report
   embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
 - **Record-family follow-ups are queued in `deferrals.md`** (author: proposals "mostly

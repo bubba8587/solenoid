@@ -52,8 +52,9 @@ function typedLiteral(node: LiteralHost, key: string): number | string | undefin
 }
 
 /** Read a slot: a connected cable's value wins even when null, and only an UNWIRED slot
- *  falls back to its typed literal (`readInput`'s rule, over both literal maps). */
-function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
+ *  falls back to its typed literal (`readInput`'s rule, over both literal maps). The one
+ *  reader for every `autoLiterals` wildcard slot (value-semantics.md). */
+export function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
   if (inputs[key]?.length) return inputs[key]![0];
   return typedLiteral(node, key) ?? null;
 }
