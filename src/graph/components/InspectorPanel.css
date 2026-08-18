@@ -25,15 +25,23 @@ html.sol-inspector-docked:not(.is-mobile) .solenoid-hud-stack { right: calc(12px
 
 /* Mobile: a full-width sheet between the chrome envelopes — a 340px side dock
    has no room on a phone, and the canvas squeeze above stays off. The entry is
-   the node menu's (i); the top bar keeps no button there. */
+   the node menu's (i); the top bar keeps no button there. The sheet drops BELOW
+   the header band (z 5 < header 6): the app-bar popovers (the ⋯ sheet, the
+   palette dropdown) live inside the header's stacking context and are capped at
+   its z, so a 90 here painted the panel — and its shadow — over them and the
+   bar. Full width also needs no side shadow. */
 html.is-mobile .inspector-panel {
   left: 0;
   width: auto;
   border-left: none;
+  z-index: 5;
+  box-shadow: none;
 }
-/* The floating HUD would ride above the full-width sheet; yield while open. */
+/* The floating HUD would ride above the full-width sheet; yield while open.
+   The align pill sits at z 7 and would too — the canvas it acts on is covered. */
 html.is-mobile.sol-inspector-docked .solenoid-hud-stack { display: none; }
 html.is-mobile.sol-inspector-docked .solenoid-nav { display: none; }
+html.is-mobile.sol-inspector-docked .solenoid-selbar { display: none; }
 html.is-mobile .solenoid-apptools__inspector { display: none; }
 
 .inspector-head {
