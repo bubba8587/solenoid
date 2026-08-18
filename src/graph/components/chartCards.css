@@ -89,7 +89,6 @@
    signal stays on the sockets, so the boxes are neutral (Quiet Accent Rule). */
 .sol-record {
   display: grid;
-  gap: 6px;
   align-items: stretch;
 }
 .sol-record__box {
@@ -100,7 +99,9 @@
   padding: 4px 6px 5px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  /* Boxes touch, square (author call): overlap the shared 1px borders so
+     adjacent edges read as one hairline. */
+  margin: 0 -1px -1px 0;
 }
 .sol-record__label {
   font-size: calc(10px * var(--chart-fscale, 1));
@@ -125,5 +126,4 @@
   width: 100%;
   min-height: 40px;
   object-fit: cover;
-  border-radius: 3px;
 }
