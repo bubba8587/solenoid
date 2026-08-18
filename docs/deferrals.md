@@ -176,7 +176,14 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   stay display+entry sugar on string columns;
   (3) a timeline/Gantt figure from Task/Start/End columns — MAJORLY deferred
   (author 2026-08-18: loves Gantt, not now; Mermaid's gantt text remains the
-  interim route).
+  interim route). Author 2026-08-18b: probably a MUST eventually for the
+  all-in-one feel; deferred on sheer scope. Scope note for the review: what
+  makes competitor Gantts app-sized is the EDITOR half (drag-to-reschedule,
+  reflow, resource leveling) — excluded here by the figures-display-only
+  covenant. The Solenoid decomposition is (a) a display figure in the
+  Waterfall class, (b) a Schedule computation (forward pass over
+  Task/Duration/Depends; WORKDAY math already in `date.ts`) as a verb or
+  composite preset, (c) no bar-editing ever — edits happen in the table.
   Not doing: linked-record columns (Join/XLOOKUP carry the semantics); row
   tinting (that is author-gated D4).
 - **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
