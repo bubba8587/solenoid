@@ -976,7 +976,7 @@ export class RecordNode extends ClassicPreset.Node {
     picked: "Echoes the 1-based row the card shows, so downstream follows the pager; blank when no record is picked.",
     by: "Names the column whose values become the board's lanes; blank or unmatched draws nothing.",
     layout: "One line per grid row with column names separated by | marks. Repeating a name merges its cells into one box; a dot or an empty cell stays blank. Left empty, the columns stack in a single column of boxes.",
-    options: "Accepts key=value pairs separated by semicolons, using matplotlib names. A record figure reads title, which names the popup and the Report embed, and fontsize, which scales the card text from its normal size of 10; every other key is ignored.",
+    options: "title=Parts;fontsize=12",
   };
 
   label: string;
