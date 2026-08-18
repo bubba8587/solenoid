@@ -235,7 +235,7 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
     if (placeholdered.length > 0) {
       const types = [...new Set(placeholdered)].join(", ");
       pushNotice(
-        `${placeholdered.length} node${placeholdered.length === 1 ? "" : "s"} (type: ${types}) couldn't be loaded here; placeholders keep your wiring and data intact. Turn the matching pack on, or open the file in a build that has them, to restore.`,
+        `${placeholdered.length} node${placeholdered.length === 1 ? "" : "s"} (type: ${types}) couldn't be loaded here. Placeholders keep your wiring and data intact. Turn the matching pack on, or open the file in a build that has them, to restore.`,
         "warn",
       );
     }

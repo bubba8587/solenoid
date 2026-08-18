@@ -976,7 +976,7 @@ export function TablePopup() {
               type="button"
               aria-pressed={listVertical}
               onClick={() => setListVertical(true)}
-              title="Show the list down a column — one value per line (display only; the value is unchanged)"
+              title="Show the list down a column — one value per line (display only, the value is unchanged)"
             >Column</button>
           </div>
         )}

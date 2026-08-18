@@ -15,7 +15,7 @@ The things that don't fit in a tooltip — deliberate choices, honest gaps, and 
 
 What Solenoid doesn't do yet, said plainly:
 
-- **Formulas stop at data tables.** Expression and Lambda take scalars, lists, matrices, and complex numbers — frames and cubes stay node-wired on purpose (the table verbs are nodes, and a computed column's `@name` / bare-name references are the row door). The formula box is the quick path, not the whole engine.
+- **Formulas stop at data tables.** Expression and Lambda take scalars, lists, matrices, and complex numbers — frames and cubes stay node-wired on purpose (the table verbs are nodes, and a computed column's `@name` or bare-name references are the row door). The formula box is the quick path, not the whole engine.
 - **Lambdas don't recurse.**
 - **An attached image persists on the desktop app** — saved as a file beside the document — but in the browser it lasts only for the session. A pasted web-image URL persists either way.
 - The **desktop app is a work in progress** — it's where native files and the native table engine live.

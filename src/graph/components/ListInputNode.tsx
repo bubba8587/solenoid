@@ -13,7 +13,7 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: s
   { value: "number",  label: "Num",  title: "Number list" },
   { value: "string",  label: "Text", title: "Text list" },
   { value: "date",    label: "Date", title: "Date list" },
-  { value: "logical", label: "Bool", title: "TRUE / FALSE list" },
+  { value: "logical", label: "Bool", title: "TRUE or FALSE list" },
 ];
 
 /** Switch the list's element type in place — an in-place retype fires no connection

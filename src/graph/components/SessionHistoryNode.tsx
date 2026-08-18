@@ -18,7 +18,7 @@ const POLL_MS = 1000;
 function buildDigest(): string {
   const history = getHistoryPlugin();
   const editor = getEditor();
-  if (!history) return "History plugin not ready.";
+  if (!history) return "The history plugin isn't ready.";
   const records = history.getHistorySnapshot() as unknown as HistoryDigestRecord[];
   const names = editor ? nodeDisplayNames(editor.getNodes()) : new Map<string, string>();
   return digestHistory(records, { nodeName: (id) => names.get(id) });

@@ -22,7 +22,7 @@ export function EmSpectrumComponent({ data, emit }: NodeProps<EmSpectrumNodeType
         node={data}
         emit={emit}
         rows={[
-          { key: "band",       label: "BAND", value: data.cachedBand },
+          { key: "band",       label: "Band", value: data.cachedBand },
           { key: "freq",       label: "HZ",   value: data.cachedFreq },
           { key: "wavelength", label: "M",    value: data.cachedWavelength },
         ]}

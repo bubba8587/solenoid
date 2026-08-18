@@ -176,8 +176,8 @@ export function HeadComponent({ data, emit }: NodeProps<HeadNodeType>) {
 // ─── SORT FRAME ────────────────────────────────────────────────────────────────
 
 const SORT_DIR_OPTIONS: { value: FrameSortDir; label: string; title: string }[] = [
-  { value: "asc", label: "Asc", title: "Ascending (A→Z, low→high); blanks last" },
-  { value: "desc", label: "Desc", title: "Descending (Z→A, high→low); blanks last" },
+  { value: "asc", label: "Asc", title: "Ascending (A→Z, low→high). Blanks last." },
+  { value: "desc", label: "Desc", title: "Descending (Z→A, high→low). Blanks last." },
 ];
 
 export function SortFrameComponent({ data, emit }: NodeProps<SortFrameNodeType>) {
@@ -359,12 +359,12 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
 
 const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
   { value: "inner", label: "Inner", title: "Only rows that match in both" },
-  { value: "left", label: "Left", title: "All left rows; unmatched right side is blank" },
-  { value: "right", label: "Right", title: "All right rows; unmatched left side is blank" },
+  { value: "left", label: "Left", title: "All left rows. Unmatched right side is blank." },
+  { value: "right", label: "Right", title: "All right rows. Unmatched left side is blank." },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
   { value: "semi", label: "Semi", title: "Left rows whose key matches in right — left columns only" },
   { value: "anti", label: "Anti", title: "Left rows with no match in right — left columns only" },
-  { value: "asof", label: "As-of", title: "Nearest match on a sorted number/date key; no exact match required" },
+  { value: "asof", label: "As-of", title: "Nearest match on a sorted number or date key. No exact match required." },
 ];
 
 const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: string }[] = [
@@ -642,7 +642,7 @@ const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; t
   { value: "", label: "—", title: "Use the node's default normalize mode, set above" },
   { value: "none", label: "Raw", title: "This column: score the raw values as-is" },
   { value: "max", label: "÷Max", title: "This column: scale by its largest magnitude → [0,1]" },
-  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1] (DMBV Rank Raws); suits $-scale columns" },
+  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1] (DMBV Rank Raws). Suits $-scale columns." },
 ];
 
 const DECISION_CABLE_ONLY = new Set(["weights"]);
@@ -684,7 +684,7 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
             <div className="solenoid-node__dm-weight-row solenoid-node__dm-weights-head">
               <span className="solenoid-node__dm-col-crit">Criterion</span>
               {!wired && <span className="solenoid-node__dm-col-weight">Weight</span>}
-              <span className="solenoid-node__dm-col-norm" title={'Per-criterion normalize override; "—" uses the default above'}>Norm</span>
+              <span className="solenoid-node__dm-col-norm" title={'Per-criterion normalize override. "—" uses the default above.'}>Norm</span>
             </div>
             {wired && <div className="solenoid-node__dm-hint">Weights from the wired list; per-column Norm still applies.</div>}
             {criteria.map((name) => (
@@ -762,8 +762,8 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
 const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: string; title: string }[] = [
   { value: "all", label: "All", title: "Keep every column" },
   { value: "number", label: "Num", title: "Keep only number columns" },
-  { value: "date", label: "Date", title: "Keep only date columns; the Matrix carries serials" },
-  { value: "logical", label: "Bool", title: "Keep only logical columns; the Matrix carries 1/0" },
+  { value: "date", label: "Date", title: "Keep only date columns. The Matrix carries serials." },
+  { value: "logical", label: "Bool", title: "Keep only logical columns. The Matrix carries 1/0." },
   { value: "string", label: "Text", title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
 ];
 
@@ -804,7 +804,7 @@ const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: string; title: s
   { value: "number", label: "Number", title: "Read the column as numbers" },
   { value: "text", label: "Text", title: "Read the column as text" },
   { value: "date", label: "Date", title: "Read the column as dates, stored as Excel serials" },
-  { value: "logical", label: "Boolean", title: "Read the column as logicals (TRUE/FALSE); a 0/1 or true/false column coerces" },
+  { value: "logical", label: "Boolean", title: "Read the column as logicals (TRUE/FALSE). A 0/1 or true/false column coerces." },
 ];
 
 export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>) {
@@ -832,7 +832,7 @@ const ADD_COLUMN_OPTIONS: { value: AddColumnAddAs; label: string; title: string 
   { value: "number", label: "Number", title: "Add a numeric column" },
   { value: "text", label: "Text", title: "Add a text column" },
   { value: "date", label: "Date", title: "Add a date column of Excel serials" },
-  { value: "logical", label: "Boolean", title: "Add a logical column (TRUE/FALSE); a 0/1 list coerces" },
+  { value: "logical", label: "Boolean", title: "Add a logical column (TRUE/FALSE). A 0/1 list coerces." },
 ];
 
 export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>) {

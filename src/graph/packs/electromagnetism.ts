@@ -118,7 +118,7 @@ export const ELECTROMAGNETISM_PACK: Pack = {
       entry: {
         type: "em-spectrum-band",
         label: "EM Spectrum Band",
-        description: "Name the band for a frequency or wavelength: Radio, Microwave, Infrared, Visible (with its color), Ultraviolet, X-ray, Gamma. Also emits both quantities via c",
+        description: "Name the band for a frequency or wavelength: Radio, Microwave, Infrared, Visible (with its color), Ultraviolet, X-ray, Gamma. Also emits both quantities through c",
         keywords: "spectrum band radio microwave infrared visible ultraviolet xray gamma light classify",
         create: () => new EmSpectrumNode(),
       },

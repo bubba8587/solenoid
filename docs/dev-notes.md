@@ -110,8 +110,16 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   example URLs, third person for software behavior vs imperative for user commands.
   The guide is fetched (curl + browser UA; WebFetch fabricates) and kept as
   `docs/google-style/` — the ARBITER for word-level calls; a from-memory pass
-  missed the articles rule and cited a nonexistent error-message page. Sweep not
-  yet run — awaiting author go.
+  missed the articles rule and cited a nonexistent error-message page. SWEEP RUN
+  (author go; six Sonnet-medium workflow agents over disjoint file shards):
+  ~105 register-only edits in 45 files — semicolons→periods, slash alternatives→
+  or/and, articles onto fragments, caps-emphasis lowercased, e.g./via banned,
+  wire→connect; catalog/help got the constrained hard-rules pass only. Agent
+  skips honored names (multi-item slash chains, formula labels, muted micro-
+  labels); orchestrator reverted one agent overreach (Table Info ROWS/COLUMNS
+  labels ARE the Excel function names) and hand-swept the statusMessage strings
+  in nodes/sink+obsidian that no shard covered. Socket docs untouched (STE
+  register, dropped). tsc + full vitest green.
 - **Dev server starts through a launcher** (author ask): `scripts/dev-up.mjs` spawns
   vite detached, polls until :1420 answers, exits — `/startup` runs it in the
   foreground so the task actually finishes; stop advice is the self-match-proof

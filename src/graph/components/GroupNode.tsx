@@ -263,7 +263,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         <button
           type="button"
           className="solenoid-group__chevron"
-          title={collapsed ? "Expand group" : "Collapse group"}
+          title={collapsed ? "Expand the group" : "Collapse the group"}
           onClick={toggleCollapse}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
@@ -304,8 +304,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           <button
             type="button"
             className="solenoid-group__tidy"
-            title="Tidy group: auto-arrange members and fit the box"
-            aria-label="Tidy group"
+            title="Tidy the group: auto-arrange members and fit the box"
+            aria-label="Tidy the group"
             onClick={(e) => { e.stopPropagation(); void tidyThenAutofit(); }}
             onPointerDown={stop}
             onMouseDown={stop}

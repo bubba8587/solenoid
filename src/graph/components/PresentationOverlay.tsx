@@ -88,7 +88,7 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
           className="solenoid-present__btn"
           onClick={next}
           disabled={steps.length === 0 || idx === steps.length - 1}
-          title="Next (→ / Space)"
+          title="Next (→ or Space)"
         >›</button>
         <button
           type="button"

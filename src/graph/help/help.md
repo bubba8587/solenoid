@@ -31,7 +31,7 @@ A **Format Controller** docks beside a socket and sets how a value reads: decima
 
 ## Formulas
 
-When wiring a chain of arithmetic nodes is overkill, the **Expression** node takes a formula like `a * b + 1` and turns each variable into an input socket, with the Excel functions and list-broadcasting available and `pi`/`tau`/`e`/`phi` as constants. The **lambda** nodes run that same engine over a collection — MAP transforms every cell, BYROW / BYCOL reduce each row or column, REDUCE folds to one value — and **LAMBDA** packages a formula as a value to feed any of them.
+When wiring a chain of arithmetic nodes is overkill, the **Expression** node takes a formula like `a * b + 1` and turns each variable into an input socket, with the Excel functions and list-broadcasting available and `pi`/`tau`/`e`/`phi` as constants. The **lambda** nodes run that same engine over a collection — MAP transforms every cell, BYROW or BYCOL reduce each row or column, REDUCE folds to one value — and **LAMBDA** packages a formula as a value to feed any of them.
 
 ## Recalculation
 

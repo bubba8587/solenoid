@@ -291,8 +291,8 @@ export function DimensionalityFlow() {
       <p className="solenoid-dimflow__rule">
         <span className="solenoid-dimflow__badge solenoid-dimflow__badge--no">◂ Narrowing blocked</span>
         The reverse is refused at the socket: a 2-D table/frame output won't connect
-        into a 1-D or 0-D input; it would always be a shape error. Reshape first, e.g.
-        <em> Get Column</em> to pull one list out of a frame.
+        into a 1-D or 0-D input. It would always be a shape error. Reshape first, for example
+        with <em>Get Column</em> to pull one list out of a frame.
       </p>
       <p className="solenoid-dimflow__note">
         Split-square sockets (every family's <em>combo</em>) accept either

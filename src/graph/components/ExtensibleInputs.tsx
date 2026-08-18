@@ -210,7 +210,7 @@ export function ExtensibleInputs({
               <button
                 type="button"
                 className="solenoid-node__row-remove"
-                title="Remove input"
+                title="Remove this input"
                 onClick={(e) => { e.stopPropagation(); void removeRow(key); }}
               >
                 ×

@@ -178,7 +178,7 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
           <input
             className="solenoid-node__inline-input"
             defaultValue={valuesToCsv(node.dataTableValues[p.id])}
-            placeholder="e.g. 1, 2, 3"
+            placeholder="for example, 1, 2, 3"
             onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             onPointerDown={stopDragStart}

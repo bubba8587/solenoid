@@ -55,7 +55,7 @@ function FormulaBox({ node }: { node: FormulaNode }) {
       <>
         <div
           className="solenoid-expr__override"
-          title="Runs the wired lambda; parameters bind by name"
+          title="Runs the wired lambda. Parameters bind by name."
         >
           <span className="solenoid-expr__override-sig">{sig}</span>
           <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>

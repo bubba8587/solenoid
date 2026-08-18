@@ -110,7 +110,7 @@ export const HEALTH_PACK: Pack = {
         type: "hf-zones",
         label: "Heart-Rate Zones",
         fx: ["HEARTRATEZONES"],
-        description: "Five training zones as a table: age (or a wired max HR) → Z1–Z5 low/high BPM. Add a resting HR for the Karvonen method. Chart it or look a zone up",
+        description: "Five training zones as a table: age (or a wired max HR) → Z1–Z5 low and high BPM. Add a resting HR for the Karvonen method. Chart it or look a zone up",
         keywords: "heart rate zones training karvonen bpm z1 z2 z3 z4 z5",
         create: () => new HrZonesNode(),
       },

@@ -108,7 +108,7 @@ export const THERMO_PACK: Pack = {
   formulas: THERMO_PACK_FORMULAS,
   id: "thermo",
   name: "Thermodynamics & Air",
-  description: "Ideal gas, heat transfer (conduction/convection/radiation, R/U values), and humid-air psychrometrics (dew point, wet bulb, heat index, wind chill) — plus the 1976 standard atmosphere and Antoine vapor-pressure nodes.",
+  description: "Ideal gas, heat transfer (conduction/convection/radiation, R or U values), and humid-air psychrometrics (dew point, wet bulb, heat index, wind chill) — plus the 1976 standard atmosphere and Antoine vapor-pressure nodes.",
   builtin: true,
   defaultActive: false,
   nodes: [

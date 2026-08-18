@@ -10,7 +10,7 @@ type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
     title: "Real units",
-    body: "Values carry units now. SUM(5 km, 3) is 8 km, m × m is m², and meters plus seconds fails loud with #UNIT! instead of silently adding nonsense. Units ride through lists, frame columns, lookups and selectors; the Format Controller authors them, Convert changes them, and 10 m ÷ 2 m cancels to a pure 5:1 ratio.",
+    body: "Values carry units now. SUM(5 km, 3) is 8 km, m × m is m², and meters plus seconds fails loud with #UNIT! instead of silently adding nonsense. Units ride through lists, frame columns, lookups and selectors. The Format Controller authors them, Convert changes them, and 10 m ÷ 2 m cancels to a pure 5:1 ratio.",
   },
   {
     title: "Monte Carlo",
@@ -34,7 +34,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: "Table cleanup, the daily set",
-    body: "Fill Down un-merges report-shaped tables, Replace Values fixes cells in place, Merge Columns is the inverse of Split Column, Promote Headers lifts a first row into names, Drop Blank Rows clears the spacers, and Head slices first / last / skip / range.",
+    body: "Fill Down un-merges report-shaped tables, Replace Values fixes cells in place, Merge Columns is the inverse of Split Column, Promote Headers lifts a first row into names, Drop Blank Rows clears the spacers, and Head slices first, last, skip, or range.",
   },
   {
     title: "Scrub any number",

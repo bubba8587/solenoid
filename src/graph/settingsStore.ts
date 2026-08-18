@@ -89,7 +89,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "quickWire",
         label: "Quick-wire",
-        help: "Drop a cable on empty canvas to pick a compatible node and wire it in",
+        help: "Drop a cable on empty canvas to pick a compatible node and connect it",
       },
       {
         key: "semanticZoom",
@@ -120,13 +120,13 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "obsidianVault",
         label: "Vault folder",
-        help: "The Write to Obsidian / Import from Obsidian nodes read and write .md files under this folder",
+        help: "The Write to Obsidian and Import from Obsidian nodes read and write .md files under this folder",
         type: "folder",
       },
       {
         key: "obsidianAssetSubfolder",
         label: "Asset subfolder",
-        help: "Where chart / image assets go when writing a note, relative to the vault. Blank = beside the note",
+        help: "Where chart or image assets go when writing a note, relative to the vault. Blank = beside the note",
         type: "text",
         placeholder: "assets",
       },

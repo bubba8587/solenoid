@@ -1,6 +1,6 @@
 Two rules govern every cable, and neither one shows on the canvas.
 
-**Families stay separate.** A value reaches only sockets of its own family, or a gray family-agnostic one. Crossing families takes a **Cast**, element-wise on a list. There is exactly one built-in bridge: **Boolean ⟷ number**, both directions, at every shape. TRUE / FALSE arrives as 1 / 0, and a number arrives as TRUE (non-zero), FALSE (zero) or unknown (NaN).
+**Families stay separate.** A value reaches only sockets of its own family, or a gray family-agnostic one. Crossing families takes a **Cast**, element-wise on a list. There is exactly one built-in bridge: **Boolean ⟷ number**, both directions, at every shape. TRUE or FALSE arrives as 1 or 0, and a number arrives as TRUE (non-zero), FALSE (zero) or unknown (NaN).
 
 **Rank flows upward** — the ladder below. Its one exception is the split square: a **combo** may feed its own family's scalar, because a combo may in fact be holding a single value. A plain list may not.
 
@@ -10,7 +10,7 @@ The five families:
 - **Text**.
 - **Date** — calendar dates, held as serial numbers, the same as Excel. The socket type is the only signal that a serial should read as a date, which is why a date keeps a date socket at every shape.
 - **Complex** — a real part and an imaginary part.
-- **Boolean** — TRUE / FALSE. A comparison or an IS-check produces a real Boolean, not a 1 or 0, though it still adds as 1 / 0 when you want it to. Three-valued: an unknown input keeps the answer unknown only where it genuinely is (TRUE OR unknown is still TRUE).
+- **Boolean** — TRUE or FALSE. A comparison or an IS-check produces a real Boolean, not a 1 or 0, though it still adds as 1 or 0 when you want it to. Three-valued: an unknown input keeps the answer unknown only where it genuinely is (TRUE OR unknown is still TRUE).
 
 Outside the families:
 

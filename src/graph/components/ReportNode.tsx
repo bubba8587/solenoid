@@ -119,7 +119,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M2 3h5l1.5 2H14v8H2z" />
           </svg>
-          Open report
+          Open the report
         </button>
         {data.embeds.length > 0 && (
           <span className="solenoid-report__embed-count" title={`${data.embeds.length} embedded note${data.embeds.length === 1 ? "" : "s"}`}>

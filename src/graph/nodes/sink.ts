@@ -80,13 +80,13 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
    *  after the await, so two rapid clicks would race writes to the same file. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
-    if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled; arm it first"; return; }
+    if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (!isDesktop()) { this.status = "error"; this.statusMessage = "Desktop app only"; return; }
     const path = this.path.trim();
     if (path === "") { this.status = "error"; this.statusMessage = "Choose a file path"; return; }
     const f = this.cachedFrame;
     if (isSolError(f)) { this.status = "error"; this.statusMessage = f.code; return; }
-    if (!f) { this.status = "error"; this.statusMessage = "Nothing to write; connect a frame"; return; }
+    if (!f) { this.status = "error"; this.statusMessage = "Nothing to write. Connect a frame."; return; }
     this.status = "writing";
     try {
       await writeTextFilePath(path, this.serialize(f));

@@ -59,7 +59,7 @@ export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
   { type: "geo-cylinder-area", label: "Cylinder Surface Area", expr: "2*PI()*r*(r+h)",
     description: "Total surface of a closed cylinder from radius and height   (A = 2πr(r+h))" },
   { type: "geo-pyramid-vol", label: "Pyramid Volume", expr: "b*h/3",
-    description: "Volume of any pyramid or cone from base AREA b and height   (V = Bh/3)" },
+    description: "Volume of any pyramid or cone from base area b and height   (V = Bh/3)" },
   { type: "geo-tetra-vol", label: "Tetrahedron Volume", expr: "s^3/(6*SQRT(2))",
     description: "Volume of a regular tetrahedron with edge s   (V = s³/(6√2))" },
   { type: "geo-torus-vol", label: "Torus Volume", expr: "2*PI()^2*rr*r^2",
@@ -130,7 +130,7 @@ export const GEOMETRY_PACK: Pack = {
       entry: {
         type: "geo-triangle-solver",
         label: "Triangle Solver",
-        description: "Any three parts (sides a b c, angles A B C in degrees, at least one side) solve the rest, drawn to scale, plus area and perimeter. Valid answers TRUE/FALSE; extra parts are checked for agreement; a genuinely ambiguous SSA says so instead of guessing",
+        description: "Any three parts (sides a b c, angles A B C in degrees, at least one side) solve the rest, drawn to scale, plus area and perimeter. Valid answers TRUE or FALSE; extra parts are checked for agreement; a genuinely ambiguous SSA says so instead of guessing",
         keywords: "triangle solve sides angles law sines cosines sss sas asa aas ssa",
         create: () => new TriangleSolverNode(),
       },

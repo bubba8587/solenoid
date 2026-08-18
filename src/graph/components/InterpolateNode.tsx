@@ -55,7 +55,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
           <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--text-dim)" }}>Bilinear interpolation</div>
           <label
             style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text)", marginTop: 2, cursor: "pointer" }}
-            title="Fill EVERY remaining blank with a smooth surface (thin-plate spline) fitted through all the known points — the scattered gaps and beyond the data too, not just the bilinear-enclosed interior"
+            title="Fill every remaining blank with a smooth surface (thin-plate spline) fitted through all the known points — the scattered gaps and beyond the data too, not only the bilinear-enclosed interior"
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >

@@ -442,7 +442,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customPattern}
-              placeholder="pattern, e.g. YYYY-MM-DD"
+              placeholder="pattern, for example YYYY-MM-DD"
               onChange={(e) => onPatternChange(e.target.value)}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
@@ -593,7 +593,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customPattern}
-              placeholder='format, e.g. "0.00"'
+              placeholder='format, for example "0.00"'
               onChange={(e) => onPatternChange(e.target.value)}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
@@ -694,7 +694,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onChange={(e) => onUnitChange(e.target.value)}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title={node.unitLocked ? "Unit locked; set elsewhere in the chain" : "Unit label / cable constraint"}
+            title={node.unitLocked ? "Unit locked. Set elsewhere in the chain." : "Unit label or cable constraint"}
           >
             {unitGroupOrder.map((group) => {
               const items = unitGroups.get(group);
@@ -727,7 +727,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customUnit}
-              placeholder="unit, e.g. psi"
+              placeholder="unit, for example psi"
               onChange={(e) => onCustomUnitChange(e.target.value)}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}

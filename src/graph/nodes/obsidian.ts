@@ -64,7 +64,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   /** Call ONLY from the node's Run button; re-entrancy-guarded, desktop only. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
-    if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled; arm it first"; return; }
+    if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (!isDesktop()) { this.status = "error"; this.statusMessage = "Desktop app only"; return; }
     const vault = settingsStore.get("obsidianVault").trim();
     if (!vault) { this.status = "error"; this.statusMessage = "Set the vault folder in Settings"; return; }
@@ -72,7 +72,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     if (!name) { this.status = "error"; this.statusMessage = "Name the note"; return; }
     const doc = this.cachedDoc;
     if (isSolError(doc)) { this.status = "error"; this.statusMessage = doc.code; return; }
-    if (!isDocumentValue(doc)) { this.status = "error"; this.statusMessage = "Nothing to write; connect a Note or Report"; return; }
+    if (!isDocumentValue(doc)) { this.status = "error"; this.statusMessage = "Nothing to write. Connect a Note or Report."; return; }
     this.status = "writing";
     try {
       const { writeDocumentToVault } = await import("../obsidianWrite");

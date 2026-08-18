@@ -22,8 +22,8 @@ export function PopupPinButton({ nodeId }: { nodeId: string }) {
       type="button"
       className={`sol-popup__pin${pinned ? " sol-popup__pin--on" : ""}`}
       onClick={() => pinNodeValue(nodeId)}
-      title={pinned ? "Unpin value from the HUD" : "Pin value to the HUD"}
-      aria-label={pinned ? "Unpin value" : "Pin value"}
+      title={pinned ? "Unpin the value from the HUD" : "Pin the value to the HUD"}
+      aria-label={pinned ? "Unpin the value" : "Pin the value"}
       aria-pressed={pinned}
     >
       <PinGlyph />
@@ -56,7 +56,7 @@ export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: 
         flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
       }}
       title="Go to the value's source node"
-      aria-label="Go to source node"
+      aria-label="Go to the source node"
     >
       <LocateGlyph />
     </button>

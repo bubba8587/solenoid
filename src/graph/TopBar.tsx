@@ -97,7 +97,7 @@ export function TopBar() {
             <path d="M8 8 V11.6 H11.2" />
           </svg>
         </button>
-        <button className="solenoid-nav__btn" title="Cleanup: tidy, collapse & fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
+        <button className="solenoid-nav__btn" title="Cleanup: tidy, collapse, and fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
           {/* Lucide "brush" (ISC). */}
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="m11 10 3 3" />

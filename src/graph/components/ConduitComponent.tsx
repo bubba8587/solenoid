@@ -306,7 +306,7 @@ export function ConduitComponent({ data, emit }: Props) {
             type="button"
             className="solenoid-conduit-toolbar__extend"
             onClick={() => void extendToNewConduit()}
-            title="Extend the ribbon: add a new Conduit and wire every current lane into it"
+            title="Extend the ribbon: add a new Conduit and connect every current lane to it"
           >
             <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 5 H8 M2 8 H8 M2 11 H8" />

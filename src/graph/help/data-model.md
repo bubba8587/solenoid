@@ -13,7 +13,7 @@ The ladder above is the whole rule for *shape*; these are the edges of it.
 When a cable lands, the value is reshaped for the input — never mutated in place:
 
 - a single value entering a list input becomes a one-element list; entering a matrix, Frame or Cube input, a 1×1;
-- a **list entering a 2-D input becomes ONE ROW** (transpose it first if you meant a column);
+- a **list entering a 2-D input becomes one row** (transpose it first if you meant a column);
 - a one-element list entering a scalar or combo input collapses to the value inside — at a *numeric* scalar, a longer list is a `#SHAPE!`;
 - a matrix entering a Frame input gets generated column names (Col1, Col2, …);
 - **Boolean ⟷ number** converts here, in whichever direction the socket asks for;
@@ -46,7 +46,7 @@ With quick-wire on (Settings), dragging a cable into empty canvas opens the Add 
 
 **Display.** How a value renders is chosen from its socket type, not by reading its cells — a date list reads as dates because the socket says date, even if every cell is an integer. A chip takes its accent color from the same source.
 
-**Format Controller.** The FC offers the control set for its socket's family. A Frame, Cube, Document or gray list/combo socket has none.
+**Format Controller.** The FC offers the control set for its socket's family. A Frame, Cube, Document or gray list or combo socket has none.
 
 ## Units
 

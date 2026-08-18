@@ -176,7 +176,7 @@ export function ReportOverlay() {
               className="report-embed-btn"
               disabled={exporting}
               onClick={() => void doExport()}
-              title="Export as a self-contained webpage. Refs are frozen to today's values; charts and a canvas snapshot are inlined."
+              title="Export as a self-contained webpage. Refs are frozen to today's values. Charts and a canvas snapshot are inlined."
             >
               {exporting ? "Exporting…" : "Export as webpage"}
             </button>
@@ -228,7 +228,7 @@ export function ReportOverlay() {
             ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder="Write in markdown. `=name` shows a wired value; ![[Note]] embeds a note."
+            placeholder="Write in markdown. `=name` shows a wired value. ![[Note]] embeds a note."
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}

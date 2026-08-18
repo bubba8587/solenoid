@@ -115,7 +115,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
         <button
           type="button"
           className="solenoid-node__row-remove"
-          title="Remove input"
+          title="Remove this input"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
         >×</button>
       )}

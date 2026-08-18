@@ -244,7 +244,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
           type="button"
           className="solenoid-node__chevron"
           title={collapsed ? "Expand" : "Collapse"}
-          aria-label={collapsed ? "Expand node" : "Collapse node"}
+          aria-label={collapsed ? "Expand the node" : "Collapse the node"}
           // Let the pointerdown reach rete so a drag from the chevron moves the
           // node; toggle only on a stationary tap (< HEADER_TAP_SLOP).
           onPointerDown={(e) => { chevronDownPos.current = { x: e.clientX, y: e.clientY }; }}

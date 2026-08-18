@@ -49,7 +49,7 @@ function RefreshIntervalField({ minutes, onCommit }: { minutes: number; onCommit
     if (n !== minutes) onCommit(n);
   }
   return (
-    <label className="sol-conn__field" title="Automatically refresh on this cadence; 0 turns it off">
+    <label className="sol-conn__field" title="Automatically refreshes on this cadence. 0 turns it off.">
       Auto-refresh (min)
       <input
         className="sol-conn__num"
@@ -216,7 +216,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           className="sol-conn__url"
           type="text"
           value={query}
-          placeholder='XPath, e.g. //h2/a'
+          placeholder='XPath, for example //h2/a'
           spellCheck={false}
           onChange={(e) => setQuery(e.target.value)}
           onBlur={commit}
