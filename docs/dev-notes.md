@@ -114,6 +114,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **Record Options socket documented in the Inspector** (author ask, then cut down
   by author): the entry prints the syntax directly — `title=Parts;fontsize=12`,
   the only two keys a record figure reads.
+- **Competitor dive round 2 — Solenoid-wide** (author widened scope): surveyed the
+  Alteryx-pattern incumbents (KNIME/Alteryx, @RISK/Crystal Ball, Mathcad,
+  Quantrix/Causal, Stella/Vensim, Power Query) + canvas donors (n8n, Blender,
+  marimo/Observable) against `out-of-scope.md`, decisions, v2.0 bundles, and the
+  CODE. Nine verified-absent candidates parked in `deferrals.md` ▸ "Solenoid-wide
+  steal map" (top fits: column profiling in the table popup; pin-a-node's-output;
+  mute/bypass; distribution fitting + correlated MC; simulation trajectory
+  capture; constrained optimizer). Confirmed already ours: scenarios/data-table/
+  goal-seek/simulation run modes, unpivot, stale dots, isolate, Tornado.
+  Sources: KNIME/Alteryx docs+comparisons, Lumivero @RISK, PTC Mathcad, Quantrix
+  blog, n8n docs (pin data/partial exec), Blender manual (mute/viewer), marimo
+  dataflow docs, MS Power Query docs (profiling/folding indicators).
 - **Record-family competitor dive** (author ask): Airtable/Grist/Notion/Baserow/
   NocoDB/SeaTable/Coda card+gallery+board features surveyed; the steal list is
   parked in `deferrals.md` ▸ "Record family steals" (best fit: gallery-click →

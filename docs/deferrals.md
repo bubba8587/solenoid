@@ -11,6 +11,47 @@ duplicate them, just names them for the review).
 
 Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 
+- **Solenoid-wide steal map** (competitor dive round 2, 2026-08-18 — author widened
+  the scope past the Record family; sources in the session digest). Surveyed the
+  Alteryx-pattern incumbents (KNIME/Alteryx, @RISK/Crystal Ball, Mathcad,
+  Quantrix/Causal, Stella/Vensim, Power Query) plus canvas-UX donors (n8n,
+  Blender, marimo/Observable). Every candidate below was verified ABSENT from the
+  code and clear of `out-of-scope.md`, `decisions.md`, and the existing plan set.
+  Already ours, no action: scenario sets, data-table sweeps, goal-seek, and
+  simulation are composite RUN MODES; unpivot is a verb; stale dots, isolate,
+  Tornado, As-Of, Note annotations all shipped; provenance Tier 2 and the
+  compute cache are already parked entries.
+  - **Column profiling in the table popup** (Power Query quality bars +
+    distribution, Alteryx Browse): per-column valid/error/empty bar, mini
+    value-distribution, distinct/min/max/mean. Pure display over frame data;
+    the strongest trust-thesis fit in the set.
+  - **Pin a node's output** (n8n data pinning, KNIME caching): freeze a slow or
+    live branch as its last value, visibly marked, recompute passes it through.
+    Interacts with calc modes, the parked #23 compute cache, and the provenance
+    story (a pinned value is a labeled literal) — needs its own design pass.
+  - **Mute/bypass a node** (Blender M-mute, n8n deactivate): pass-through
+    without unwiring for what-if surgery. Socket-lattice pass-through rules for
+    multi-port nodes are the real design work.
+  - **Peek any socket** (Blender viewer pattern): one gesture wires a floating
+    preview to any output; today a peek needs a Display node or the right popup.
+  - **Distribution fitting** (@RISK/Crystal Ball): fit a Distribution node's
+    family + params to a data list with goodness-of-fit ranking. Absent — stats
+    has only regression fits (LINEST tier).
+  - **Correlated Monte Carlo inputs** (@RISK): rank-correlation between
+    Distribution draws inside the montecarlo run mode; independent-only today.
+  - **Simulation trajectory capture** (Stella/Vensim behavior-over-time): the
+    simulation run mode outputs only the settled state; a per-step frame output
+    would make behavior-over-time charts wireable. Stocks/flows composite
+    presets could follow as a pack.
+  - **Constrained optimizer** (Excel Solver, Mathcad solve blocks): min/max an
+    output subject to constraints — the Solver-parity gap; Equation (D14)
+    deliberately solves only `=`. Sibling-node-sized, its own author call.
+  - **Fusion indicator** (Power Query folding indicators): show which verb chain
+    fused into one Polars round trip vs materialized in JS — inspection surface
+    for the engine seam; pairs with the parked lazy-handle-on-cable item.
+  - **Dependency-cone hover brush** (marimo reactive highlighting): soft
+    highlight of a node's upstream/downstream cone on hover; isolate is the
+    heavy version, this is the glance version.
 - **Record family steals** (author-ordered research dive 2026-08-18 across
   Airtable / Grist / Notion / Baserow / NocoDB / SeaTable / Coda; session digest
   has the sources). Candidates, best fit first — all display-side, none make the
