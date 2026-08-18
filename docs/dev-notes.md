@@ -86,136 +86,33 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-17 — Architecture map: overlay → real seed document; the Inspector)
-- **The Architecture map is now a REAL DOCUMENT** (author-directed, after two overlay
-  rounds rated mid): View ▸ Architecture map opens the generated seed
-  `seedGraphs/architecture-map.json` via `documentStore.newFromTemplate` — one new
-  `SubsystemNode` per architecture.md module group on the main canvas, real violet
-  frame cables along the strong import edges, ELK positions, two Notes (what it is;
-  the rules enforcement summary + gaps). The Subsystem node (nodes/subsystem.ts,
-  kind=util, wide) persists its module table as `frameText` (no new persistence
-  fields) and outputs it as a frame (module, role, imports; rows degree-ordered);
-  its multi-connection `deps` frame input is data-inert BY DESIGN — the cables are
-  the information. The SpecMapView overlay, specMapStore, and the virtual:arch-deps
-  vite plugin are deleted.
-- **Derivation chain, every link machine-pinned**: `scripts/scan-arch-deps.mjs`
-  (relative-import scan, 603 files) → `specMap.ts` (docs parse; now incl.
-  Why/Origin/Exceptions + per-rule module refs) → `archGraph.ts` (file → group from
-  the doc's own tables/prose citations/dir headings; `archGraph.test.ts` pins
-  UNMAPPED AT ZERO, so a new file demands its architecture.md home in the same
-  commit) → `archSeed.ts` (drawn edges admitted heaviest-first and kept ACYCLIC —
-  textForm's topo order caught the cyclic first cut) → `archSeed.test.ts` diffs the
-  checked-in seed against a fresh derivation (`npm run gen:arch-seed` to refresh).
-  Both guards fired the same day they landed (the Inspector's new files).
-- **architecture.md reconciled to FULL source coverage** (73 unclaimed files given
-  real homes: new rows across five tables, App-chrome prose extended, new Packs +
-  Landing & showcase dir sections; `src/graph/`-prefixed citations now match).
-- **The node INSPECTOR ships** (author-requested): `InspectorPanel.tsx` +
-  `inspectorStore.ts`, the top bar's (i) button + View ▸ Inspector. A right dock on
-  the pinned Report's chrome pattern (`html.sol-inspector-docked`, same canvas
-  squeeze; the two right docks are mutually exclusive). Reads the ACTIVE surface's
-  selected node: catalog description (`describeNode`), the Function Reference's
-  generated rows READ by catalog type (`buildFunctionReference` — Excel syntax +
-  parity notes, Add-menu breadcrumb, pack tags; one derivation, never a copy),
-  and the node's socket roster: the REAL glyphs (`SocketComponent` reused — shape
-  encodes type; no invented dots), `SOCKET_TYPE_LABELS` names, opt-in per-socket
-  detail (`socketDocs.ts` static class map, Subsystem is the worked example), and
-  any declared frame-input example table (`FrameHintTable`, extracted from the
-  hover layer so both render one declaration). STATIC by author call, refined over three rounds: no live values (the
-  card and its popups are the value surface), no live connections (the Cable
-  inspector's job), and actions stay in the right-click menu — the Inspector is
-  the static reference for the selected node and its current configuration. Selection polls (no push store, same as SelectionActionsBar).
-  Recorded in layout-chrome + the alias table.
-  ENTRY refined once more (author): the node context menu's description blurb is
-  GONE in all modes, replaced by an (i) in the menu card's top-right that opens
-  the Inspector focused on that node (`inspectorStore.openFor`; explicit focus
-  outranks a stale selection until a new selection lands). On mobile that (i) is
-  the ONLY entry (no top-bar button): the panel renders as a full-width sheet
-  between the chrome envelopes, canvas squeeze off, HUD and nav pill yielding.
-- **The chrome envelopes publish FLOORED heights** (author-confirmed on device):
-  `top:`/`bottom: var(--chrome-*)` puts a panel's edge AT the published height,
-  so publishing above a bar's true fractional height opens a subpixel gap
-  (Chrome Android's 1px gap under the mobile Inspector sheet). Floor tucks the
-  edge beneath the opaque bar (bar z 100 over panel z 90). NOTE the first fix
-  shipped as ceil — the sign was INVERTED and ceil guarantees the gap; the
-  corrected geometry is written into layout-chrome.md's envelope section.
-- **Socket-docs sweep (author-directed fan-out, 7 parallel agents)**: 119 node
-  classes now carry `static socketDocs` — every sentence verified against the
-  `data()` code or shared kernel, DESIGN §7 voice, opt-in bar held (dynamic-key
-  sockets and label-sufficient sockets deliberately skipped; agents reported their
-  skip lists). Landed as slices 1-7 (one commit per completed agent). The sweep
-  also surfaced real drift: Text Filter's `contains` meta said case-sensitive
-  against the D12 case-insensitive kernel (FIXED), plus four divergence flags now
-  in the backlog (FACT's wired-blank k, finance basis codes, ISPMT sign,
-  FIXED/DOLLAR negative decimals).
-- **The Playwright eyeball loop is now standing practice** (author sanction recorded
-  in CLAUDE.md, superseding the screenshot ban). It caught, across the session: a
-  setPointerCapture-on-pointerdown click swallow, backwards cable semantics, ELK
-  scattered by weak edges, invisible rest cables, an empty-neighborhood dim, and the
-  seed's overlapping first layout (card heights underestimated the frame preview).
-
-### SESSION DIGEST (2026-08-17 — wrap styles: prose gets `pretty`, shaped blocks get `balance`)
-- **The Wrap Rule is now DESIGN.md §3.** `balance` for short blocks read as a shape (doc
-  headings, dialog messages, toasts, the sentence-length node-card empty states); `pretty` for
-  running prose (`.sol-md` paragraphs and list items, the socket-legend and Inspector
-  descriptions, the Reference catalog's expandable description row, What's New bodies,
-  Settings notes). Applied at each component's own rule, ~20 declarations.
-- **Only the `text-wrap-style` longhand ships.** The `text-wrap` shorthand also sets
-  `text-wrap-mode`, so it silently resets a `white-space: nowrap` on the same element into
-  wrapping text — `.solenoid-alert__msg` is one ellipsis-clipped line by design and was the
-  live example. `cssSyntax.test.ts` gained two guards (no shorthand anywhere; every
-  `text-wrap-style` is `balance`, `pretty` or the `auto` reset). The landing page's three
-  pre-existing shorthand uses were normalized to the longhand so there is one idiom.
-- **Note and Report bodies set `pretty` on the CONTAINER** (`.solenoid-note__rendered`,
-  `.report-preview`), by author request. The property inherits, so it reaches table cells and
-  whatever bare text `marked` emits rather than only the `<p>`s; embedded notes inherit it from
-  the preview. `.sol-md pre` resets to `auto` — code wraps greedily. Safe only because each
-  surface's editing textarea is a SIBLING of the rendered view (`.solenoid-note__body`,
-  `.report-source`), so prose never rebreaks under the caret.
-- Measured in the real app at a 300px card (playwright, live stylesheets), because two
-  plausible worries were both wrong. `overflow-wrap: anywhere` on the Note body does NOT
-  disable `pretty`: greedy `[260,275,35]` → pretty `[260,259,51]`, i.e. "its inputs." instead
-  of a stranded "inputs.". And a first probe that toggled the style on the CONTAINER showed no
-  change at all — `.sol-md p` declares its own `pretty`, which beats an inherited value, so the
-  comparison has to be made on the element that actually wraps.
-- **13 hard-wrapped lines swept out of seed Note bodies** (author spotted them in the
-  Architecture map). Every Note/Report surface parses with `breaks: true`, so a newline INSIDE
-  a paragraph is a literal `<br>`: the prose was frozen at the ~70-column wrap of whoever typed
-  it and could not reflow to the card at all, which is what made the `pretty` work above
-  invisible there. `arch-note` (6) and `arch-enforcement` (1) are GENERATED — fixed in
-  `archSeed.ts` (one string per paragraph, `join("\n\n")`) and regenerated, so the next
-  `gen:arch-seed` cannot reintroduce them; `sudoku-solver`'s note (6) was hand-edited.
-  Verified through `marked` with the real options: 13 `<br>` before, 0 after.
-- **`seeds.test.ts` now guards it** ("prose bodies have no hard-wrapped lines mid-paragraph"),
-  over every `NoteNode`/`ReportNode`/`ImportObsidianNode`/`PresentationNode` `body` in every
-  seed. Structure is exempt: blank line between paragraphs, list items, table rows, fenced
-  code, and a heading closing its own block.
-- The false positives that make a naive scan useless here: `frameText` newlines are CSV ROW
-  SEPARATORS (a naive sweep flagged 647 of them across the seeds, all of which must be left
-  alone), and `# Heading` followed by prose is two blocks, not a break. Only `body` on a prose
-  node type is in scope. `src/graph/help/*.md` is also NOT affected — `Markdown.tsx` parses
-  with `breaks: false`, so hard wraps there are ordinary markdown authoring and stay.
-- Not reachable: hover tooltips are native `title=` attributes, which the browser renders and
-  CSS cannot touch. Nothing to do there short of a custom tooltip component (feature work).
-
-### SESSION DIGEST (2026-08-17 — chrome fills went opaque; the frosted-glass layer is gone)
-- **`--panel-bg` / `--overlay-bg` are now `var(--surface)`** (`App.css`), so every bar, panel
-  and floating overlay is the raised surface rather than a 90–98% window onto the graph. The
-  light-theme overrides for both are gone (the alias follows `--surface`), and `palette.ts`
-  no longer derives them — a palette's own `surface` carries them, so they left
-  `DERIVED_CHROME_VARS`.
-- **Every `backdrop-filter: blur(8px)` is deleted** (top bar, status bar, Navigator ×2, zoom
-  pill, mobile bottom bar, web-demo banner, align bar, Conduit toolbar): behind an opaque fill
-  it painted nothing and still cost a re-rasterization per frame. Modal SCRIMS keep their
-  1–2px blur — there the translucency IS the effect. DESIGN.md §1 rejects glassmorphism
-  outright, so this is the system converging on its own rulebook.
-- Two consequences the blur used to own, re-pinned: TopBar's stacking context is now its
-  `position` + `z-index` (`MenuBar.css`, `docs/layout-chrome.md`), and the Navigator list's
-  layer promotion is plain scroll containment, not a blur-rerasterization dodge.
-- `mobile.css`'s opaque `.solenoid-topbar` override and the dead `rendererSpike.css` (nothing
-  imported it since the renderer spikes were deleted 2026-08-09) are both gone.
+### SESSION DIGEST (2026-08-18 — the Record node: one frame row as labeled boxes)
+- **New node `Record`** (Add ▸ Visuals, `nodes/visual.ts`, author proposal "form node" from
+  Airtable/Grist): shows ONE frame row as labeled boxes on a CSS grid, emitting a `ChartValue`
+  (`op: "record"`, `RecordPayload`) out the chart socket — so the Report embed, chart popup,
+  chip, and FC font scale all came free from `ChartFigure` (one new branch). View is
+  `RecordCardView` in `chartCards.tsx` (DOM, recharts-free); height is content-driven.
+- **The layout is text** (the external prior art is CSS `grid-template-areas`, adapted): one
+  line per grid row, cells split on `|` (column names contain spaces, so whitespace can't
+  separate), `.`/empty = gap, repeating a name merges its cells. `parseRecordLayout` resolves
+  each name to its bounding RECTANGLE and emits explicit grid placements — a sloppy repeat
+  degrades to its bounds instead of invalidating the whole grid the way real
+  `grid-template-areas` would. Empty layout → columns stack. Unmatched names keep their
+  (empty) boxes, so a layout can be drafted before the frame is wired. Layout is also a
+  wired `strIn` (a Note can author it); the card textarea is the Mermaid source pattern.
+- **Row is the record pick** (1-based): unwired → card literal + pager (clamped and
+  mirrored, the Histogram `bins` pattern); wired → the cable wins, blank or out-of-range
+  renders the boxes EMPTY per the figure-datum rule (never an error out `chart`).
+- **Images render in boxes with NO new column type**: a string cell that is a `data:image/`
+  or image-extension URL becomes the picture (`recordImageSrc`). The author's proposed
+  Image FrameColType is evaluated in `deferrals.md` — display-layer detection delivers the
+  outcome without touching the backends.
+- **Seed `record-cards`** (Record Cards, order 45): Parts frame (7 columns incl. date,
+  logical, and data-URI SVG photos), a layouted card with the Photo column spanning four
+  rows, a no-layout card driven by a wired Row, and a Report embedding the card via `=part`.
+- Verified in the live app via the Playwright loop (pager flip, wired-row card, report
+  embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
-(latest sweep 2026-08-17: through the 2026-08-16 window — the formula-surface,
-op-vs-arg, drill-in, value-selector and Save Times sessions). `git log` is the
-per-commit record.
+(latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &
+Inspector, wrap-style and opaque-chrome sessions). `git log` is the per-commit record.

@@ -49,6 +49,16 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   a 3×3 reads as a tidy block or as spaghetti is OUR router's business and needs
   eyeballing on a real canvas before any of this is worth shipping.
 
+- **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
+  evaluated and deferred). A first-class `image` column touches every layer that
+  switches on `FrameColType` — both FrameBackends and the cargo parity corpus, CSV
+  read/write, coercion, socket coloring, the popup editor — for a payload Polars
+  cannot compute on. What the proposal was FOR (a picture rendering inside a Record
+  box) shipped without it: `recordImageSrc` detects `data:image/` and
+  image-extension URLs in plain STRING cells at the display layer. Reopen only if
+  images need to behave differently from strings inside the ENGINE (e.g. an
+  attachment store bundling frame images the way the Image node bundles its file);
+  the next cheap slice would be the same detection in `TablePopup` cells.
 - **iFrame / embed node** — web-embed out the `chart` socket. Gate call: CSP
   `https:` vs domain allowlist. Non-negotiables when built: `sandbox` without
   allow-top-navigation, `referrerpolicy=no-referrer`, https-only, click-to-load,
