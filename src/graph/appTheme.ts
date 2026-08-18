@@ -1,4 +1,4 @@
-import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade, chromeCssVars, CHROME_VARS, DERIVED_CHROME_VARS } from "./palette";
+import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade, chromeCssVars, adaptChrome, CHROME_VARS, DERIVED_CHROME_VARS } from "./palette";
 import { createNotifier } from "./storeKit";
 import { syncNativeAccent } from "./nativeAccent";
 
@@ -55,8 +55,12 @@ function apply() {
   // doesn't must CLEAR every var, not skip it: an inline property beats App.css's
   // ramps, so leaving the last palette's behind would strand a cream workbench under
   // the Default palette. The hexes go through unshifted — themeAccent tunes an accent
-  // AGAINST the chrome, and the chrome is what it's tuned against.
-  const vars = chromeCssVars(paletteStore.chrome()[_mode], _mode);
+  // AGAINST the chrome, and the chrome is what it's tuned against. An adaptive ramp
+  // (CHROME_HOME) first follows the accent's hue, resolved through the live palette
+  // so the tint tracks what the accent dot actually shows.
+  const home = paletteStore.chromeHomeHex();
+  const ramp = paletteStore.chrome()[_mode];
+  const vars = chromeCssVars(home ? adaptChrome(ramp, home, hex) : ramp, _mode);
   for (const name of ALL_CHROME_VARS) {
     const v = vars[name];
     if (v) root.style.setProperty(name, v);

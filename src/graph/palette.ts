@@ -575,6 +575,73 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Blueprint": BLUEPRINT_CHROME,
 };
 
+// ── Accent-adaptive chrome (D35) ──────────────────────────────────────────────
+// A tinted ramp has a hue, and the accent is user-swappable — so the tinted ramps
+// declare the accent SLOT they were authored against, and appTheme rotates the whole
+// ramp by the hue delta to the live accent. At the home accent the ramp passes
+// through untouched (Orchard IS its authored cream at green, Blueprint its prussian
+// at blue). Adaptation is declared per palette, never universal: Solarized's base
+// ladder is the identity of a lifted system, Colorblind-safe and Equinox are
+// achromatic on purpose, Muted's brief is glare rather than hue, and Custom is
+// exactly what its author picked.
+export const CHROME_HOME: Partial<Record<PaletteName, PaletteSlot>> = {
+  Orchard: "green",
+  Blueprint: "blue",
+};
+
+/** WCAG relative luminance, 0..1. */
+function relLum(hex: string): number {
+  const t = parseHex(hex);
+  if (!t) return 0;
+  const lin = t.map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+
+// Below this HSL saturation an accent has no hue worth following (the gray slot, the
+// neutral cycle, Orchard's warm quiet) — the authored ramp stands.
+const ADAPT_MIN_SAT = 0.15;
+
+// Luminance is monotonic in HSL lightness at fixed hue/saturation, so bisecting L
+// hits the authored luminance at the new hue. Holding luminance is what keeps the
+// D35 ramp STRUCTURE — every contrast relationship the author eyeballed — true
+// under any accent; only chromaticity moves.
+function rotateHueKeepLum(hex: string, delta: number): string {
+  const t = parseHex(hex);
+  if (!t) return hex;
+  const [h, s] = rgbToHsl(...t);
+  const target = relLum(hex);
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 22; i++) {
+    const mid = (lo + hi) / 2;
+    if (relLum(hslToHex(h + delta, s, mid)) < target) lo = mid; else hi = mid;
+  }
+  return hslToHex(h + delta, s, (lo + hi) / 2);
+}
+
+/**
+ * The ramp re-tinted for the live accent: every key's hue rotated by
+ * (accent − home), luminance held. Returns `ramp` ITSELF when there is nothing to
+ * do — accent at home, or too gray to carry a hue — so the authored hexes pass
+ * through byte-identical rather than round-tripped.
+ */
+export function adaptChrome(ramp: ChromeRamp, homeHex: string, accentHex: string): ChromeRamp {
+  const home = parseHex(homeHex), acc = parseHex(accentHex);
+  if (!home || !acc) return ramp;
+  const [accHue, accSat] = rgbToHsl(...acc);
+  if (accSat < ADAPT_MIN_SAT) return ramp;
+  const delta = (((accHue - rgbToHsl(...home)[0]) % 360) + 360) % 360;
+  if (delta < 0.5 || delta > 359.5) return ramp;
+  const out: ChromeRamp = {};
+  for (const key of CHROME_KEYS) {
+    const v = ramp[key];
+    if (isHex(v)) out[key] = rotateHueKeepLum(v, delta);
+  }
+  return out;
+}
+
 // ── Chrome derivation ─────────────────────────────────────────────────────────
 // The neutral tokens App.css spells as literals rather than var() chains, rebuilt
 // from the authored ramp. Every one is a mix between two ramp colors at a fixed
@@ -755,6 +822,16 @@ export const paletteStore = {
   /** The active palette's chrome ramp — empty when it authors none, in which case
    *  appTheme clears the vars and App.css's neutral ramps answer. */
   chrome: (): PaletteChrome => ({ dark: { ..._effectiveChrome.dark }, light: { ..._effectiveChrome.light } }),
+  /** The effective base's adaptive-chrome home color — the accent hex its ramp was
+   *  authored against — or null when that base's ramp doesn't follow the accent.
+   *  Always the BUILT-IN's own slot hex: the ramp was tuned against the palette's
+   *  authored colors, while the live accent resolves through doc overrides too. */
+  chromeHomeHex(): string | null {
+    const base = _docBase ?? _appBase;
+    if (base === "Custom") return null;
+    const slot = CHROME_HOME[base];
+    return slot ? BUILTIN_PALETTES[base][slot] : null;
+  },
   /** The user's editable custom palette (F-1) — a full slot→hex map. */
   customMap: (): Record<PaletteSlot, string> => ({ ..._customMap }),
   /** The custom palette's chrome ramp — always complete (see _customChrome). */

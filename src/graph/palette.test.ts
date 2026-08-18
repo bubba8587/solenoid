@@ -1,5 +1,17 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_KEYS, type ChromeKey, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, chromeCssVars, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
+import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
+
+// WCAG luminance/contrast, shared by the structure checks below and the
+// accent-adaptive suite (which re-runs them on rotated ramps).
+const chan = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+const lum = (h: string) => [0.2126, 0.7152, 0.0722].reduce((a, w, i) => {
+  const s = chan(h, i);
+  return a + w * (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4);
+}, 0);
+const ratio = (a: string, b: string) => {
+  const [x, y] = [lum(a), lum(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+};
 
 describe("built-in palettes", () => {
   it("every palette defines all 12 slots as hex colors", () => {
@@ -112,16 +124,6 @@ describe("chrome ramp", () => {
 // workbench but not renege on its structure. The App.css baseline is held to the same
 // bar, so a rule that Default fails is a wrong rule, not a failing palette.
 describe("chrome ramp structure", () => {
-  const chan = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) / 255;
-  const lum = (h: string) => [0.2126, 0.7152, 0.0722].reduce((a, w, i) => {
-    const s = chan(h, i);
-    return a + w * (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4);
-  }, 0);
-  const ratio = (a: string, b: string) => {
-    const [x, y] = [lum(a), lum(b)];
-    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-  };
-
   // Every authored ramp, plus the App.css baseline they all descend from.
   const RAMPS: [string, "dark" | "light", Record<ChromeKey, string>][] = [
     ["(App.css)", "dark", DEFAULT_CHROME.dark],
@@ -187,6 +189,122 @@ describe("chrome ramp structure", () => {
   it("the AA-guaranteed palettes are all present in the checked set", () => {
     expect(AA_RAMPS.map(([n, m]) => `${n}/${m}`).sort())
       .toEqual(["(App.css)/dark", "(App.css)/light", "Colorblind-safe/dark", "Colorblind-safe/light"]);
+  });
+});
+
+// Accent-adaptive chrome: the tinted ramps (CHROME_HOME) follow the live accent's
+// hue — rotated by (accent − home) with every key's LUMINANCE held, so the D35
+// structure survives any accent and the authored ramp reappears untouched at home.
+describe("accent-adaptive chrome", () => {
+  const HOMES = Object.entries(CHROME_HOME) as [PaletteName, PaletteSlot][];
+  const MODES = ["dark", "light"] as const;
+  const homeHex = (name: PaletteName) => BUILTIN_PALETTES[name][CHROME_HOME[name]!];
+  const hueOf = (hex: string) => {
+    const [r, g, b] = [0, 1, 2].map((i) => chan(hex, i));
+    const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+    if (d === 0) return 0;
+    const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return h * 60;
+  };
+  const hueDist = (a: number, b: number) => {
+    const d = Math.abs(((a - b) % 360 + 360) % 360);
+    return Math.min(d, 360 - d);
+  };
+
+  afterEach(() => {
+    paletteStore.setActiveBase("Default");
+    paletteStore.setDocPalette(null);
+  });
+
+  it("declares a home only on a palette that authors chrome, naming one of its own slots", () => {
+    expect(HOMES.map(([n]) => n).sort()).toEqual(["Blueprint", "Orchard"]);
+    for (const [name, slot] of HOMES) {
+      expect(Object.keys(BUILTIN_CHROME[name].dark).length, name).toBeGreaterThan(0);
+      expect(COLOR_PALETTE).toContain(slot);
+    }
+  });
+
+  it("passes the ramp through UNTOUCHED at the home accent — the same object, never a round-trip", () => {
+    for (const [name] of HOMES) {
+      for (const mode of MODES) {
+        const ramp = BUILTIN_CHROME[name][mode];
+        expect(adaptChrome(ramp, homeHex(name), homeHex(name))).toBe(ramp);
+      }
+    }
+  });
+
+  it("an accent too gray to carry a hue leaves the ramp alone (neutral cycle; Orchard's warm quiet)", () => {
+    for (const [name] of HOMES) {
+      const ramp = BUILTIN_CHROME[name].dark;
+      expect(adaptChrome(ramp, homeHex(name), NEUTRAL_HEX[NEUTRAL_WHITE])).toBe(ramp);
+      expect(adaptChrome(ramp, homeHex(name), NEUTRAL_HEX[NEUTRAL_DARK])).toBe(ramp);
+    }
+    // Orchard's `gray` is Pear's quiet — warm-HUED but below the chroma floor, so
+    // picking the neutral accent never re-tints the cream toward rose.
+    const orchard = BUILTIN_CHROME.Orchard.light;
+    expect(adaptChrome(orchard, homeHex("Orchard"), BUILTIN_PALETTES.Orchard.gray)).toBe(orchard);
+  });
+
+  it("rotates every key by the accent's hue delta and holds its luminance", () => {
+    for (const [name] of HOMES) {
+      for (const mode of MODES) {
+        const ramp = BUILTIN_CHROME[name][mode] as Record<ChromeKey, string>;
+        const accent = BUILTIN_PALETTES[name].vermilion;
+        const delta = hueDist(hueOf(accent), hueOf(homeHex(name)));
+        const out = adaptChrome(ramp, homeHex(name), accent) as Record<ChromeKey, string>;
+        for (const key of CHROME_KEYS) {
+          // Tolerance is 8-bit hex quantization, worst near WHITE (~0.006/step on g)
+          // — where structure gaps are widest; near black a step costs ~0.0002.
+          expect(Math.abs(lum(out[key]) - lum(ramp[key])), `${name}/${mode}/${key} luminance`).toBeLessThan(0.01);
+          // Hue lands delta away — asserted only where the key carries enough chroma
+          // to have a stable hue, with tolerance scaled to that chroma (a 1/255
+          // rounding step swings hue by ~(step/chroma)·60°, so near-neutrals wobble).
+          const [r, g, b] = [0, 1, 2].map((i) => chan(ramp[key], i));
+          const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+          if (chroma > 0.08) {
+            const tol = 1 + (3 / 255 / chroma) * 60;
+            expect(Math.abs(hueDist(hueOf(out[key]), hueOf(ramp[key])) - delta), `${name}/${mode}/${key} hue`).toBeLessThan(tol);
+          }
+        }
+      }
+    }
+  });
+
+  // The load-bearing guarantee: rotation may retint but never relight. Every D35
+  // structure rule holds for every adaptive palette under every pickable accent.
+  const CASES = HOMES.flatMap(([name]) =>
+    MODES.flatMap((mode) => COLOR_PALETTE.map((accent) => [name, mode, accent] as [PaletteName, "dark" | "light", PaletteSlot])),
+  );
+  it.each(CASES)("%s/%s keeps the ramp structure under the %s accent", (name, mode, accentSlot) => {
+    const authored = BUILTIN_CHROME[name][mode] as Record<ChromeKey, string>;
+    const r = adaptChrome(authored, homeHex(name), BUILTIN_PALETTES[name][accentSlot]) as Record<ChromeKey, string>;
+    expect(lum(r.canvasBg)).toBeLessThan(lum(r.surface));
+    const dot = ratio(r.canvasDot, r.canvasBg);
+    expect(dot).toBeGreaterThan(1.1);
+    expect(dot).toBeLessThan(2.2);
+    expect(lum(r.surfaceSunken) > lum(r.surface)).toBe(mode === "light");
+    const toInk = Math.sign(lum(r.text) - lum(r.surface));
+    expect(Math.sign(lum(r.surfaceRaised) - lum(r.surface))).toBe(toInk);
+    const d = (k: ChromeKey) => Math.abs(lum(r[k]) - lum(r.surface));
+    expect(d("borderSubtle")).toBeLessThan(d("border"));
+    expect(d("border")).toBeLessThan(d("borderStrong"));
+    const c = (k: ChromeKey) => ratio(r[k], r.surface);
+    expect(c("textBright")).toBeGreaterThan(c("text"));
+    expect(c("text")).toBeGreaterThan(c("textDim"));
+    expect(c("textDim")).toBeGreaterThan(c("textMuted"));
+  });
+
+  it("chromeHomeHex follows the effective base — doc pin included — and Custom never adapts", () => {
+    expect(paletteStore.chromeHomeHex()).toBeNull(); // Default
+    paletteStore.setActiveBase("Orchard");
+    expect(paletteStore.chromeHomeHex()).toBe(BUILTIN_PALETTES.Orchard.green);
+    paletteStore.setDocPalette({ base: "Blueprint" });
+    expect(paletteStore.chromeHomeHex()).toBe(BUILTIN_PALETTES.Blueprint.blue);
+    paletteStore.setDocPalette({ base: "Solarized" });
+    expect(paletteStore.chromeHomeHex()).toBeNull(); // the pinned base doesn't adapt
+    paletteStore.setDocPalette(null);
+    paletteStore.setActiveBase("Custom");
+    expect(paletteStore.chromeHomeHex()).toBeNull();
   });
 });
 

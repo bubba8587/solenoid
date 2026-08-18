@@ -341,6 +341,17 @@ border tiers stepping outward; four ink tiers stepping down in contrast. They ar
 grammar of the ramp, not a taste, and they are what makes a swapped ramp still drive
 `chromeCssVars`'s derivations sensibly.
 
+**A TINTED ramp follows the live accent** (2026-08-18). Orchard and Blueprint declare
+the accent slot their ramp was authored against (`CHROME_HOME`: green / blue); appTheme
+rotates the whole ramp by the hue delta to the selected accent, holding every key's
+relative luminance (bisected HSL lightness), so the structure rules below survive any
+accent and the authored ramp reappears byte-identical at the home accent. Adaptation is
+per-palette by declaration, never universal: Solarized's base ladder is a lifted
+identity, Colorblind-safe and Equinox are achromatic on purpose, Muted's brief is glare
+rather than hue, and Custom is exactly what its author picked. An accent below the
+chroma floor (the gray slot, the neutral cycle) carries no hue and leaves the ramp
+authored.
+
 **CONTRAST is scoped to two palettes: `Default` and `Colorblind-safe`** (2026-08-09;
 this narrows the same decision's original all-palettes rule). Those two carry the AA
 promise — Default because it is the experience nobody chose, Colorblind-safe because
@@ -351,9 +362,10 @@ sits near 3:1 by design, and forcing AA meant a card on base02→base03 and an i
 muted tier, i.e. shipping something that was no longer Solarized. Fidelity wins there;
 a reader who needs contrast has two palettes that guarantee it. Structure still applies
 to all — an unordered ink ramp is a mistake in any palette, at any contrast.
-**Where:** `palette.ts` (`BUILTIN_CHROME` / `DEFAULT_CHROME` / `chromeCssVars`),
-`appTheme.ts` `apply`, `PaletteEditor.tsx`, `palette.test.ts` §§ chrome ramp, chrome
-ramp structure, chromeCssVars (`AA_PALETTES` is the scope). **Reopen if:** chrome
+**Where:** `palette.ts` (`BUILTIN_CHROME` / `DEFAULT_CHROME` / `chromeCssVars` /
+`CHROME_HOME` / `adaptChrome`), `appTheme.ts` `apply`, `PaletteEditor.tsx`,
+`palette.test.ts` §§ chrome ramp, chrome ramp structure, accent-adaptive chrome,
+chromeCssVars (`AA_PALETTES` is the scope). **Reopen if:** chrome
 outgrows flat colors (a texture, a vignette, a per-doc ramp) — that wants its own model,
 not more keys. On the contrast scope: if a palette other than these two ever becomes a
 default for anyone, it joins `AA_PALETTES` that day.
