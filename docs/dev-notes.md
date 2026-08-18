@@ -111,6 +111,9 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   ResizeObserver and holds first paint until tracks settle. Pinned by
   `masonryLayout.test.ts`; eyeballed in the Display, popup, and Report embed.
   Arch seed re-emitted (new module shifted an import count).
+- **Record Options socket documented in the Inspector** (author ask): the entry
+  states the shared syntax and exactly what a record figure reads (`title`,
+  `fontsize`/10); every other key is inert there, and the doc says so.
 - **Record-family competitor dive** (author ask): Airtable/Grist/Notion/Baserow/
   NocoDB/SeaTable/Coda card+gallery+board features surveyed; the steal list is
   parked in `deferrals.md` ▸ "Record family steals" (best fit: gallery-click →
