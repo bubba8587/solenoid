@@ -34,7 +34,7 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, onSaveFormLayout }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout }: {
   frame: FrameValue | SolError | null;
   label?: string;
   /** Whose persisted per-column formats to read; defaults to the host node. A Report
@@ -59,9 +59,8 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   scroll?: boolean;
   /** The host's λ input keys — forwarded so the popup can offer the source select. */
   lambdaOptions?: string[];
-  /** Form-view field placement (the Record layout text) + its persist hook. */
+  /** Form-view field placement (the Record layout text, authored on the card). */
   formLayout?: string;
-  onSaveFormLayout?: (text: string) => void;
 }) {
   // Subscribe so a format change in the popup re-renders this preview.
   const ctxNodeId = useHostNodeId();
@@ -132,7 +131,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
       </table>
       {!full && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} onSaveFormLayout={onSaveFormLayout} />
+          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
         </div>
       )}
     </div>

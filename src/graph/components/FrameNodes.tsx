@@ -109,24 +109,37 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       columnTypes: src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.type ?? "number") : c.type)),
     };
   }, [data]);
-  // The Form view's layout text lives on the node (stringLiterals.layout) so it
-  // persists with the document; an emptied layout deletes the key.
-  const onSaveFormLayout = useCallback((text: string) => {
-    if (text.trim()) data.stringLiterals.layout = text;
-    else delete data.stringLiterals.layout;
+  // The popup Form view's layout, authored HERE exactly like the Record card
+  // (blur commits — Enter must insert a newline); an emptied layout deletes the
+  // key so the form falls back to stacked.
+  const [layoutDraft, setLayoutDraft] = useState(data.stringLiterals.layout ?? "");
+  useEffect(() => { setLayoutDraft(data.stringLiterals.layout ?? ""); }, [data.stringLiterals.layout]);
+  function commitLayout() {
+    if (layoutDraft === (data.stringLiterals.layout ?? "")) return;
+    if (layoutDraft.trim()) data.stringLiterals.layout = layoutDraft;
+    else { delete data.stringLiterals.layout; setLayoutDraft(""); }
     scheduleAutosave();
-  }, [data]);
+  }
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Frame">
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} />
+      <textarea
+        className="solenoid-record-layout"
+        value={layoutDraft}
+        placeholder="Layout"
+        spellCheck={false}
+        onChange={(e) => setLayoutDraft(e.target.value)}
+        onBlur={commitLayout}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      />
       <FrameDisplay
         frame={data.cachedResult} label={data.label} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys}
         formLayout={data.stringLiterals.layout}
-        onSaveFormLayout={onSaveFormLayout}
       />
     </NodeShell>
   );

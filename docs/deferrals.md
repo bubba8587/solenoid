@@ -56,9 +56,16 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   entry) landed 2026-08-18; still queued:
   (1) per-column summary footer on the Table popup (sum/avg/min/max/count via
   `forAggregate`);
-  (2) select-value chips (consistent tinted chips for a string column's distinct
-  values) — author call under the Quiet Accent Rule; cleanest as an opt-in FC
-  display format so the color stays user-authored;
+  (2) select/categorical columns — author verdict 2026-08-18: "potential there for
+  sure but needs a larger 1.4 look; backlog with interest". Two halves when that
+  look happens: the DISPLAY half (per-value tinted chips for a string column's
+  distinct values — opt-in "Chip" entry in the popup's per-column format row so
+  the color stays user-authored under the Quiet Accent Rule; hues from the
+  categorical chart palette, assigned by first appearance) and the FUNCTIONAL
+  half (constrained entry: a datalist of the column's distinct values on grid
+  and Form-view string inputs — cheap, no color, arguably the better lift). The
+  larger question for 1.4: whether these become a real enum column semantic or
+  stay display+entry sugar on string columns;
   (3) a timeline/Gantt figure from Task/Start/End columns.
   Not doing: linked-record columns (Join/XLOOKUP carry the semantics); row
   tinting (that is author-gated D4).

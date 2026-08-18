@@ -148,13 +148,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   new touches persistence. Its cursor is a source row — it reaches rows past the
   grid's 1000-row render cap. Computed columns render read-only. Delete removes
   the CURRENT record (row order is untouched, so column sort keys stay valid).
-  Field placement is the SAME Record layout text (author follow-up): a layout
-  textarea in the view, parsed by `parseRecordLayout`, persisted on the node as
+  Field placement is the SAME Record layout text (author follow-up), and the form
+  IS the record-card look made editable (second author round: no layout text
+  visible in the popup): touching square boxes, label in-box, the input as the
+  box's value line; the focused box lifts its accent edge over the overlapped
+  hairlines. The layout is authored on the FRAME INPUT CARD exactly like the
+  Record card (same textarea, blur-commit), persisted as
   `FrameInputNode.stringLiterals.layout` (the declaration is the load gate) and
-  threaded FrameInputComponent → FrameDisplay → FrameChip → popup state. Empty =
-  stacked; unmatched names keep inert boxes; columns off the layout are hidden
-  from the form. The seed's Parts frame carries the Part card's layout.
-  Remaining lifts stay in `deferrals.md`.
+  threaded FrameInputComponent → FrameDisplay → FrameChip → popup state
+  read-only. Empty = stacked boxes; unmatched names keep inert boxes; columns off
+  the layout are hidden from the form. The seed's Parts frame carries the Part
+  card's layout. Remaining lifts stay in `deferrals.md` (select/categorical
+  columns upgraded to "backlog with interest, larger 1.4 look" — author).
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
 (latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &

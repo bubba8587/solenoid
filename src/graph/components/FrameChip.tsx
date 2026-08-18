@@ -25,7 +25,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
 
 /** A clickable `[R×C Frame]` chip opening the full grid in the popup; read-only
  *  unless `onSave` is given, but column types are passed either way. */
-export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, onSaveFormLayout }: {
+export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -43,9 +43,8 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   pinNodeId?: string;
   /** The host's λ input keys — enables the popup's per-column source select. */
   lambdaOptions?: string[];
-  /** Form-view field placement (the Record layout text) + its persist hook. */
+  /** Form-view field placement (the Record layout text, authored on the card). */
   formLayout?: string;
-  onSaveFormLayout?: (text: string) => void;
 }) {
   // Hook runs every render (Rules of Hooks); the explicit prop wins when given.
   const ctxHostId = useHostNodeId();
@@ -111,7 +110,6 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           // always passed for a literal source, so the source select exists pre-λ.
           ...(isSource ? {
             formLayout,
-            onSaveFormLayout,
             lambdaOptions: lambdaOptions ?? [],
             sourceLambdas: source!.map((c) => c.lambda),
             sourceExprs: source!.map((c) => c.expr),

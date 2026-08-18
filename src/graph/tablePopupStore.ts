@@ -74,10 +74,9 @@ export interface TablePopupState {
   /** Host node id — enables the header Pin action; absent for chips with no host. */
   pinNodeId?: string;
   /** The Form view's field placement (the Record layout text: one line per grid
-   *  row, names split on |, a repeated name merges). Empty/absent = stacked. */
+   *  row, names split on |, a repeated name merges; authored on the HOST CARD,
+   *  the Record pattern). Empty/absent = stacked. */
   formLayout?: string;
-  /** Persists an edited form layout on the host node as it commits. */
-  onSaveFormLayout?: (text: string) => void;
   /** The host's λ input keys — non-empty grows the per-column SOURCE select (D24/D25). */
   lambdaOptions?: string[];
   /** Per-column initial λ binding (aligned with columns; undefined = Data). */
