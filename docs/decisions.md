@@ -382,6 +382,26 @@ payment-breakdown 2×2, the absorptions (Text Filter, TREND, PHI/GAUSS), and
 the smaller pairs. **Reopen if:** a merged family needs per-op behavior the
 spec table can't express, or an op needs its own formula-name treatment.
 
+### D37 — The Record family: ONE figure node, and its views are ARGUMENTS
+**What stands:** Every record-shaped view — Card, Gallery, Board, and any future
+one — is an op on the one Record node, never a sibling node (author order,
+2026-08-18). The view selector is **argument-kind** in `NODE_OPS` even though it
+names the card: a view is a presentation parameter of one figure, not a thing
+called by name — contrast Chart, whose TYPES are operations. "gallery"/"kanban"
+ride the host leaf's keywords; no per-view search rows or formula names exist.
+The card itself never draws its grid (squished at card width): the hero chip
+carries it, and the drawn card lands wherever the chart output goes — Display,
+popup, Report embed. Record boxes TOUCH and are square. Record-at-a-time ENTRY
+is the Table popup's Form view on frame-source editors: the same record look
+made editable, placed by the same layout text, authored on the Frame Input CARD
+(never in the popup), with column-type entry widgets (logical → checkbox with an
+indeterminate blank; date → the native date input writing ISO text).
+**Where:** `nodes/visual.ts` (RecordNode, `RECORD_OP_META`, `parseRecordLayout`),
+`chartCards.tsx`/`.css` (`RecordCardView`), `nodeOps.ts` (argument-kind),
+TablePopup's Form view; pins in `visual.test.ts`.
+**Reopen if:** a record view needs behavior an op cannot express, or the formula
+surface ever needs a record-view name.
+
 ---
 
 ## Structural risks (standing conditions, not bugs)

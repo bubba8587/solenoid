@@ -126,46 +126,39 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   Pinned in `finePrintContract.test.ts`.
 - Verified in the live app via the Playwright loop (pager flip, wired-row search, report
   embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
-- **Record grew its three views + the linked-widget output** (author green-lit the
-  high-confidence set; maximal merge on the ONE node): op selector Card | Gallery |
-  Board (`RECORD_OP_META`). The view selector is **argument-kind** in `NODE_OPS`
-  (author correction — a view is a presentation parameter of the one figure, not
-  three things you'd call by name; the first cut shipped operation-kind and was
-  reverted same-day). The op owns the Row / Group-by sockets — `setOp` swaps them,
-  the component prunes departing cables first (SSOT-9, the ChartNode pattern).
-  Gallery tiles rows as capped-width cards packed from the left (a `1fr` stretch
-  read as a stacked list, not a gallery — author flagged it); Board lanes by a
-  named column (blanks last as `—`, the grouping column skipped in default stacked
-  cards); both cap at 60 cards with `+N more` in the payload. The `picked` output
-  echoes the card view's resolved 1-based pick (Grist widget linking: wire it
-  onward and downstream follows the pager). Verified live through the LazySelect
-  op picker (its options mount on focus — scripted pickers must focus first).
-- **The Table popup gained a FORM view** (record-at-a-time entry, the Airtable
-  form; frame-source editors only, gated on `onSaveSource`): Grid | Form | CSV.
-  One record as stacked labeled sunken fields with a pager and + Record /
-  − Record; it rides the SAME raw-text grid truth and edit-draft path as the grid
-  cells (blur/Enter commits, Escape reverts, Save persists as before), so nothing
-  new touches persistence. Its cursor is a source row — it reaches rows past the
-  grid's 1000-row render cap. Computed columns render read-only. Delete removes
-  the CURRENT record (row order is untouched, so column sort keys stay valid).
-  Field placement is the SAME Record layout text (author follow-up), and the form
-  IS the record-card look made editable (second author round: no layout text
-  visible in the popup): touching square boxes, label in-box, the input as the
-  box's value line; the focused box lifts its accent edge over the overlapped
-  hairlines. The layout is authored on the FRAME INPUT CARD exactly like the
-  Record card (same textarea, blur-commit), persisted as
+- **Record's three views + the linked-widget output (D37 holds the rulings)**:
+  op selector Card | Gallery | Board (`RECORD_OP_META`), argument-kind in
+  `NODE_OPS`. The op owns the Row / Group-by sockets — `setOp` swaps them, the
+  component prunes departing cables first (SSOT-9, the ChartNode pattern).
+  Gallery tiles rows as capped-width cards packed from the left (never a `1fr`
+  stretch); Board lanes by a named column (blanks last as `—`, the grouping
+  column skipped in default stacked cards); both cap at 60 cards with `+N more`
+  in the payload. The `picked` output echoes the card view's resolved 1-based
+  pick, so wiring it onward makes downstream follow the pager (Grist linking).
+  Gotcha for scripted UI checks: LazySelect mounts its options on focus —
+  focus before selecting.
+- **The Table popup's FORM view** (record-at-a-time entry; frame-source editors
+  only, gated on `onSaveSource`): Grid | Form | CSV. The form IS the record-card
+  look made editable — touching square boxes, label in-box, the input as the
+  box's value line, the focused box lifting its accent edge over the overlapped
+  hairlines — placed by the SAME Record layout text, authored on the Frame Input
+  CARD (the Record card's textarea pattern; never in the popup), persisted as
   `FrameInputNode.stringLiterals.layout` (the declaration is the load gate) and
-  threaded FrameInputComponent → FrameDisplay → FrameChip → popup state
-  read-only. Empty = stacked boxes; unmatched names keep inert boxes; columns off
-  the layout are hidden from the form. The seed's Parts frame carries the Part
-  card's layout. Entry widgets follow the COLUMN TYPE (author): a logical column
-  edits as a checkbox (indeterminate = blank; a pick writes TRUE/FALSE text, so
-  blank ≠ FALSE survives until first toggle), a date column as the native date
-  input (the Date Picker node's control — seeds from a serial or parseable text,
-  writes ISO text back, clearing writes blank); number/text keep the typed field.
-  Discrete picks apply immediately (setCell), Save persists as before. Remaining
-  lifts stay in `deferrals.md` (select/categorical columns upgraded to "backlog
-  with interest, larger 1.4 look" — author; Gantt majorly deferred — author).
+  threaded FrameInputComponent → FrameDisplay → FrameChip → popup read-only.
+  Empty = stacked boxes; unmatched names keep inert boxes; columns off the
+  layout are hidden. It rides the same raw-text grid truth and edit-draft path
+  as the grid cells (blur/Enter commits, Escape reverts, Save persists as
+  before), the cursor is a source row (reaches past the grid's 1000-row render
+  cap), computed columns render read-only, and delete removes the CURRENT
+  record (row order untouched, so column sort keys stay valid). Entry widgets
+  follow the COLUMN TYPE: logical → checkbox (indeterminate = blank, so blank ≠
+  FALSE until first toggle; a pick writes TRUE/FALSE text), date → the native
+  date input (seeds from serial or parseable text, writes ISO text, clearing
+  writes blank); number/text keep the typed field. Discrete picks apply
+  immediately; Save persists as before.
+- Remaining lifts in `deferrals.md`: table-popup summary footer;
+  select/categorical columns ("backlog with interest, larger 1.4 look" —
+  author); Gantt (majorly deferred — author).
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
 (latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &

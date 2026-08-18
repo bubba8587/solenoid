@@ -90,6 +90,8 @@
 .sol-record {
   display: grid;
   align-items: stretch;
+  /* Absorb the boxes' -1px overlap bleed past the last row/column. */
+  padding: 0 1px 1px 0;
 }
 .sol-record__box {
   display: flex;

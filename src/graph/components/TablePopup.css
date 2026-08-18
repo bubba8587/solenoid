@@ -553,6 +553,9 @@
 .table-popup__form-grid {
   display: grid;
   align-items: stretch;
+  /* The boxes' -1px overlap margins bleed 1px past the last row/column; this
+     padding absorbs it so the popup never grows a 1px scrollbar. */
+  padding: 0 1px 1px 0;
 }
 .table-popup__form-box {
   display: flex;
