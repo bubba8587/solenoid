@@ -3,14 +3,10 @@ import type { RecordNode as RecordNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";
-import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
-
-// Fills the wide card (240) minus body padding.
-const W = 218;
 
 function Chevron({ back }: { back?: boolean }) {
   return (
@@ -116,15 +112,13 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
           </button>
         </div>
       )}
-      {!collapsed && (hasBoxes && cv
-        ? <ChartFigure value={cv} width={W} height={0} />
-        : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>)}
-      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
-      {cv && (
-        <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}>
-          <ChartChip value={cv} />
-        </div>
-      )}
+      {/* The card never draws the grid — squished at card width it reads as
+          noise. The hero box holds the chip (opens the popup at full size);
+          the drawn card lives wherever the chart output lands: a resizable
+          Display, a Report embed, the popup. */}
+      {hasBoxes && cv
+        ? <div className="solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={cv} /></div>
+        : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
     </NodeShell>
   );
 }

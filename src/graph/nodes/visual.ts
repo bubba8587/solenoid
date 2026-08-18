@@ -970,7 +970,7 @@ export class RecordNode extends ClassicPreset.Node {
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   width = 240;
-  height = 300;
+  height = 220;
 
   static frameHints: Record<string, FrameHint> = {
     frame: { columns: [
