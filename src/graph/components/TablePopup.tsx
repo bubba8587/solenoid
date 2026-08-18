@@ -123,7 +123,7 @@ export function TablePopup() {
   const [headerNames, setHeaderNames] = useState<string[]>([]);
   const [columnTypes, setColumnTypes] = useState<CellType[]>([]);
   // CSV keeps its own text buffer so mid-typing isn't reshaped by cell coercion.
-  const [view, setView] = useState<"grid" | "csv">("grid");
+  const [view, setView] = useState<"grid" | "csv" | "form">("grid");
   const [csvText, setCsvText] = useState("");
   // SOURCE = raw text, FORMATTED = derived render; on a literal-source editor BOTH
   // modes edit the same raw truth (Formatted swaps to raw text while focused).
@@ -132,6 +132,8 @@ export function TablePopup() {
   // re-sort the row out from under the caret. The draft lives in a ref so Escape can
   // reset it and blur synchronously without committing a stale closure's text.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  // Form view's record cursor (a SOURCE row index, sort-independent).
+  const [formRow, setFormRow] = useState(0);
   const editDraft = useRef("");
   const [, bumpDraft] = useState(0);
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
@@ -190,6 +192,7 @@ export function TablePopup() {
     setView("grid");
     setDisplayMode("formatted");
     setEditCell(null);
+    setFormRow(0);
   }, [state]);
 
   if (!state) return null;
@@ -395,6 +398,22 @@ export function TablePopup() {
     setGrid((g) => g.map((row) => row.slice(0, -1)));
     setHeaderNames((h) => h.slice(0, -1));
     setColumnTypes((t) => t.slice(0, -1));
+  }
+  // ── Form view (frame-source editor): one record as stacked labeled fields ──
+  // Rides the same raw-text grid truth and edit-draft path as the grid cells;
+  // the cursor is a SOURCE row, so it reaches rows past the grid's render cap.
+  const formCapable = !!state.onSaveSource;
+  const fRow = Math.min(formRow, Math.max(0, rows - 1));
+  function addRecord() {
+    const at = rows;
+    setGrid((g) => (g.length === 0 ? [Array.from({ length: Math.max(1, cols) }, () => "")] : [...g, Array.from({ length: Math.max(1, cols) }, () => "")]));
+    setFormRow(at);
+  }
+  function removeRecord() {
+    if (rows <= 1) return;
+    // Row order is untouched, so column sort keys stay valid (order re-derives).
+    setGrid((g) => g.filter((_, i) => i !== fRow));
+    setFormRow(Math.max(0, Math.min(fRow, rows - 2)));
   }
 
   // Blank → null; a numeric column coerces each cell (invalid → NaN); text is verbatim.
@@ -799,6 +818,61 @@ export function TablePopup() {
             </tbody>
           </table>
         </div>
+      ) : view === "form" ? (
+        <div className="table-popup__form-scroll">
+          <div className="table-popup__form">
+            <div className="table-popup__form-nav">
+              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1l-4 4 4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              <span className="table-popup__form-count">{rows === 0 ? "0 / 0" : `${fRow + 1} / ${rows}`}</span>
+              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.min(rows - 1, fRow + 1))} disabled={fRow >= rows - 1} title="Next record">
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              <div className="table-popup__spacer" />
+              <button type="button" className="table-popup__btn" onClick={addRecord} title="Add a record">+ Record</button>
+              <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
+            </div>
+            {rows > 0 && Array.from({ length: cols }, (_, c) => {
+              const type = colTypeAt(c);
+              const computedHere = !!colLambdas[c] || colExprs[c] !== undefined;
+              const label = (headerNames[c] ?? "").trim() || colLabel(c);
+              const editingHere = !!editCell && editCell.r === fRow && editCell.c === c;
+              return (
+                <label className="table-popup__form-field" key={c}>
+                  <span className="table-popup__form-label">{label}</span>
+                  {computedHere ? (
+                    <input
+                      className="table-popup__form-input table-popup__input--computed"
+                      value={controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c)}
+                      readOnly
+                      tabIndex={-1}
+                      spellCheck={false}
+                    />
+                  ) : (
+                    <input
+                      className="table-popup__form-input"
+                      value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
+                      inputMode={isTextType(type) ? "text" : "decimal"}
+                      spellCheck={false}
+                      onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
+                      onChange={(e) => {
+                        editDraft.current = e.target.value;
+                        if (editingHere) bumpDraft((x) => x + 1);
+                        else setEditCell({ r: fRow, c });
+                      }}
+                      onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        else if (e.key === "Escape") { editDraft.current = grid[fRow]?.[c] ?? ""; e.currentTarget.blur(); }
+                      }}
+                    />
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        </div>
       ) : (
         <textarea
           className="table-popup__csv"
@@ -817,6 +891,13 @@ export function TablePopup() {
             aria-pressed={view === "grid"}
             onClick={() => setView("grid")}
           >Grid</button>
+          {formCapable && (
+            <button
+              type="button"
+              aria-pressed={view === "form"}
+              onClick={() => setView("form")}
+            >Form</button>
+          )}
           <button
             type="button"
             aria-pressed={view === "csv"}
@@ -839,7 +920,7 @@ export function TablePopup() {
             >Column</button>
           </div>
         )}
-        {showFmtToggle && (
+        {showFmtToggle && view !== "form" && (
           <label
             className="table-popup__source-check"
             title={literalSource

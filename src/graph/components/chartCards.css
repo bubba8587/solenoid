@@ -128,13 +128,16 @@
   object-fit: cover;
 }
 
-/* Gallery: cards tile by available width; board: one column per lane. */
+/* Gallery: fixed-ish tiles packed from the left — never a full-width stretch,
+   which reads as a stacked list, not a gallery. Board: one column per lane. */
 .sol-record-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 200px));
+  justify-content: start;
+  gap: 6px;
   align-items: start;
 }
+.sol-record-gallery > .sol-record { min-width: 0; }
 .sol-record-board {
   display: flex;
   gap: 8px;

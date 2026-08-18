@@ -128,16 +128,27 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
 - **Record grew its three views + the linked-widget output** (author green-lit the
   high-confidence set; maximal merge on the ONE node): op selector Card | Gallery |
-  Board (`RECORD_OP_META`, operation-kind in `NODE_OPS` — a view is a thing you
-  search by name, like a chart type; "Record: Gallery"/"Record: Board" search rows).
-  The op owns the Row / Group-by sockets — `setOp` swaps them, the component prunes
-  departing cables first (SSOT-9, the ChartNode pattern). Gallery tiles every row;
-  Board lanes by a named column (blanks last as `—`, the grouping column skipped in
-  default stacked cards); both cap at 60 cards with `+N more` in the payload. The
-  `picked` output echoes the card view's resolved 1-based pick (Grist widget
-  linking: wire it onward and downstream follows the pager). Verified live through
-  the LazySelect op picker (its options mount on focus — scripted pickers must
-  focus first). Remaining lifts stay in `deferrals.md`.
+  Board (`RECORD_OP_META`). The view selector is **argument-kind** in `NODE_OPS`
+  (author correction — a view is a presentation parameter of the one figure, not
+  three things you'd call by name; the first cut shipped operation-kind and was
+  reverted same-day). The op owns the Row / Group-by sockets — `setOp` swaps them,
+  the component prunes departing cables first (SSOT-9, the ChartNode pattern).
+  Gallery tiles rows as capped-width cards packed from the left (a `1fr` stretch
+  read as a stacked list, not a gallery — author flagged it); Board lanes by a
+  named column (blanks last as `—`, the grouping column skipped in default stacked
+  cards); both cap at 60 cards with `+N more` in the payload. The `picked` output
+  echoes the card view's resolved 1-based pick (Grist widget linking: wire it
+  onward and downstream follows the pager). Verified live through the LazySelect
+  op picker (its options mount on focus — scripted pickers must focus first).
+- **The Table popup gained a FORM view** (record-at-a-time entry, the Airtable
+  form; frame-source editors only, gated on `onSaveSource`): Grid | Form | CSV.
+  One record as stacked labeled sunken fields with a pager and + Record /
+  − Record; it rides the SAME raw-text grid truth and edit-draft path as the grid
+  cells (blur/Enter commits, Escape reverts, Save persists as before), so nothing
+  new touches persistence. Its cursor is a source row — it reaches rows past the
+  grid's 1000-row render cap. Computed columns render read-only. Delete removes
+  the CURRENT record (row order is untouched, so column sort keys stay valid).
+  Remaining lifts stay in `deferrals.md`.
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
 (latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &

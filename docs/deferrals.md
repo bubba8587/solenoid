@@ -52,15 +52,14 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 - **Record-family lifts, remaining set** (Airtable/Grist sweep proposed with the
   Record node, 2026-08-18; author: "mostly fine". Standing constraint: every view
   lands ON the one Record node — ops/outputs, never a sibling node. The `picked`
-  output and the Gallery/Board ops landed 2026-08-18; still queued:
-  (1) form ENTRY: the layout as an EDITOR on Frame Input's popup (one row at a
-  time, prev/next/new record) — a surface change, no engine work;
-  (2) per-column summary footer on the Table popup (sum/avg/min/max/count via
+  output, the Gallery/Board ops, and the Table-popup Form view (record-at-a-time
+  entry) landed 2026-08-18; still queued:
+  (1) per-column summary footer on the Table popup (sum/avg/min/max/count via
   `forAggregate`);
-  (3) select-value chips (consistent tinted chips for a string column's distinct
+  (2) select-value chips (consistent tinted chips for a string column's distinct
   values) — author call under the Quiet Accent Rule; cleanest as an opt-in FC
   display format so the color stays user-authored;
-  (4) a timeline/Gantt figure from Task/Start/End columns.
+  (3) a timeline/Gantt figure from Task/Start/End columns.
   Not doing: linked-record columns (Join/XLOOKUP carry the semantics); row
   tinting (that is author-gated D4).
 - **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;

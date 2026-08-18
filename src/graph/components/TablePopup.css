@@ -523,3 +523,57 @@
 @media (pointer: coarse) {
   .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
 }
+
+/* Form view: one record as stacked labeled fields (the record-entry editor). */
+.table-popup__form-scroll {
+  margin: 12px 14px;
+  max-height: 56vh;
+  max-height: 56dvh;
+  overflow: auto;
+}
+.table-popup__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+}
+.table-popup__form-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.table-popup__form-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.table-popup__form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.table-popup__form-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.table-popup__form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: left;
+  outline: none;
+}
+.table-popup__form-input:focus {
+  border-color: var(--node-accent, var(--accent));
+}
+.table-popup__form-input[readonly] {
+  color: var(--text);
+  cursor: default;
+}

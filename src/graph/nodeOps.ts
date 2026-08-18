@@ -5,7 +5,7 @@ import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode, SurfaceNode, RecordNode } from "./nodes/visual";
-import { CHART_OP_META, SPARKLINE_OP_META, RECORD_OP_META } from "./nodes/visual";
+import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
   FILL_OP_META, COND_AGG_OP_META,
@@ -137,9 +137,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, kind: "operation", ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
-  // A record VIEW is likewise a thing you search for by name (gallery, board).
-  { type: "record", ctor: RecordNode, kind: "operation", ops: fromMeta(RECORD_OP_META),
-    create: (op) => new RecordNode({ op: op as never }) },
+  // The record VIEW is a presentation parameter of the one figure, not three
+  // things you'd call by name (author call) — neutral picker, no op rows;
+  // "gallery"/"kanban" ride the host leaf's keywords.
+  { type: "record", ctor: RecordNode, kind: "argument" },
   // The 3-D surface and its flat contour twin: two views of one grid, one leaf each.
   { type: "surface", ctor: SurfaceNode, kind: "operation" },
   // A distribution is likewise a thing you search for by name; its ops' formula
