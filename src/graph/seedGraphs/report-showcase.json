@@ -1,6 +1,8 @@
 {
-  "v": 1,
-  "label": "Report Showcase",
+  "v": 2,
+  "order": 420,
+  "label": "Report showcase",
+  "group": "Charts & reports",
   "nodes": [
     {
       "id": "data",

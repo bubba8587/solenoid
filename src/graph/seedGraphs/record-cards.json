@@ -1,7 +1,8 @@
 {
- "v": 1,
- "label": "Record Cards",
- "order": 45,
+ "v": 2,
+ "order": 140,
+ "label": "Record cards",
+ "group": "Tables",
  "nodes": [
   {
    "id": "note0",

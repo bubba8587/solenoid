@@ -617,7 +617,7 @@ const standoffs = NOTE_TIES.map(([noteId, groupId]) => (
   { a: { nodeId: noteId, anchor: "s" }, b: { nodeId: groupId, anchor: "n" }, min: 30, max: 160 }
 ));
 
-const graph = { label: "Personal Finance", v: 2, nodes, connections: conns, standoffs, pins };
+const graph = { v: 2, order: 500, label: "Personal finance", group: "Worked examples", nodes, connections: conns, standoffs, pins };
 
 // Geometry is owned by the COMMITTED JSON, structure by this generator. The
 // seed-tune harness (scripts/tune-seeds.mjs) writes real tidy/autofit geometry

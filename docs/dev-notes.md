@@ -86,80 +86,20 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-18 — the Record node: one frame row as labeled boxes)
-- **New node `Record`** (Add ▸ Visuals, `nodes/visual.ts`, author proposal "form node" from
-  Airtable/Grist): shows ONE frame row as labeled boxes on a CSS grid, emitting a `ChartValue`
-  (`op: "record"`, `RecordPayload`) out the chart socket — so the Report embed, chart popup,
-  chip, and FC font scale all came free from `ChartFigure` (one new branch). View is
-  `RecordCardView` in `chartCards.tsx` (DOM, recharts-free); height is content-driven; boxes
-  TOUCH and are square (author call — gap 0, −1px margin overlaps the shared 1px borders
-  into one hairline, no radius). The CARD never draws the grid (squished at card width):
-  its hero box carries the [Chart] chip, and the drawn card lands wherever the chart
-  output goes — a resizable Display, the popup, a Report embed (author call).
-- **The layout is text** (the external prior art is CSS `grid-template-areas`, adapted): one
-  line per grid row, cells split on `|` (column names contain spaces, so whitespace can't
-  separate), `.`/empty = gap, repeating a name merges its cells. `parseRecordLayout` resolves
-  each name to its bounding RECTANGLE and emits explicit grid placements — a sloppy repeat
-  degrades to its bounds instead of invalidating the whole grid the way real
-  `grid-template-areas` would. Empty layout → columns stack. Unmatched names keep their
-  (empty) boxes, so a layout can be drafted before the frame is wired. Layout is also a
-  wired `strIn` (a Note can author it); the card textarea is the Mermaid source pattern.
-- **Row is the record pick** (1-based): unwired → card literal + pager (clamped and
-  mirrored, the Histogram `bins` pattern); wired → the cable wins, blank or out-of-range
-  renders the boxes EMPTY per the figure-datum rule (never an error out `chart`).
-- **Images render in boxes with NO new column type**: a string cell that is a `data:image/`
-  or image-extension URL becomes the picture (`recordImageSrc`). The author's proposed
-  Image FrameColType is evaluated in `deferrals.md` — display-layer detection delivers the
-  outcome without touching the backends.
-- **Seed `record-cards`** (Record Cards, order 45), ONE Record node by author order:
-  Parts frame (7 columns incl. date, logical, and data-URI SVG photos) → the layouted
-  card (Photo spans four rows), its Row driven by a search chain (Find SKU →
-  Get Column(SKU, text) → XMATCH), its chart into a resizable Display and a Report
-  `=part` embed.
-- **XMATCH's sockets went wildcard** (author challenged the numeric-only typing; it was
-  DRIFT, not a decision): the kernel (`xmatchIndex` + `lookupEq`) was always
-  type-agnostic for exact match — case-insensitive text, Excel's lookup equality — and
-  `=XMATCH("a", …)` already worked on the formula surface, so only the node's `numIn`/
-  `listIn` plugs locked text out. Now `anyIn` lookup (autoLiterals dual-map literal,
-  `pickSlot` exported from logic.ts as the one reader) + `adoptiveListIn` array; the
-  approximate modes still compare numbers IN the kernel (targeted `#VALUE!` for text).
-  Pinned in `finePrintContract.test.ts`.
-- Verified in the live app via the Playwright loop (pager flip, wired-row search, report
-  embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
-- **Record's three views + the linked-widget output (D37 holds the rulings)**:
-  op selector Card | Gallery | Board (`RECORD_OP_META`), argument-kind in
-  `NODE_OPS`. The op owns the Row / Group-by sockets — `setOp` swaps them, the
-  component prunes departing cables first (SSOT-9, the ChartNode pattern).
-  Gallery tiles rows as capped-width cards packed from the left (never a `1fr`
-  stretch); Board lanes by a named column (blanks last as `—`, the grouping
-  column skipped in default stacked cards); both cap at 60 cards with `+N more`
-  in the payload. The `picked` output echoes the card view's resolved 1-based
-  pick, so wiring it onward makes downstream follow the pager (Grist linking).
-  Gotcha for scripted UI checks: LazySelect mounts its options on focus —
-  focus before selecting.
-- **The Table popup's FORM view** (record-at-a-time entry; frame-source editors
-  only, gated on `onSaveSource`): Grid | Form | CSV. The form IS the record-card
-  look made editable — touching square boxes, label in-box, the input as the
-  box's value line, the focused box lifting its accent edge over the overlapped
-  hairlines — placed by the SAME Record layout text, authored on the Frame Input
-  CARD (the Record card's textarea pattern; never in the popup), persisted as
-  `FrameInputNode.stringLiterals.layout` (the declaration is the load gate) and
-  threaded FrameInputComponent → FrameDisplay → FrameChip → popup read-only.
-  Empty = stacked boxes; unmatched names keep inert boxes; columns off the
-  layout are hidden. It rides the same raw-text grid truth and edit-draft path
-  as the grid cells (blur/Enter commits, Escape reverts, Save persists as
-  before), the cursor is a source row (reaches past the grid's 1000-row render
-  cap), computed columns render read-only, and delete removes the CURRENT
-  record (row order untouched, so column sort keys stay valid). Entry widgets
-  follow the COLUMN TYPE: logical → checkbox (indeterminate = blank, so blank ≠
-  FALSE until first toggle; a pick writes TRUE/FALSE text), date → the native
-  date input (seeds from serial or parseable text, writes ISO text, clearing
-  writes blank); number/text keep the typed field. Discrete picks apply
-  immediately; Save persists as before.
-- Remaining lifts in `deferrals.md`: table-popup summary footer;
-  select/categorical columns ("backlog with interest, larger 1.4 look" —
-  author); Gantt (majorly deferred — author).
-
-Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
-(latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &
-Inspector, wrap-style and opaque-chrome sessions). `git log` is the per-commit record.
+### SESSION DIGEST (2026-08-18b — seed menu grouped; ONE save format)
+- **The example menu is grouped** (author ask): every seed JSON declares the three
+  menu-only fields — `order`, `label`, `group` — and the documents menu renders group
+  sub-heads (`.solenoid-doctitle__group-head`, one visual step under the section head).
+  Six groups in a learn-the-app arc: Start here → Tables → Values & units → Modeling →
+  Charts & reports → Worked examples; orders in clean per-group bands (0/10, 100s…500s).
+  Labels case-normalized to sentence case (LAMBDA keeps its caps). `SEED_GROUPS`
+  (`seeds.ts`) partitions the ordered list; `seeds.test.ts` pins label/group/unique-order
+  on every seed so nothing regresses into the old unlabeled alphabetical tail.
+- **ONE save format** (author order, no back compat): all 23 seeds stamped `v: 2`, and the
+  loader opens ONLY `CURRENT_SAVE_VERSION` — `validateSavedGraph` requires a numeric `v`,
+  `loadGraph` refuses older/missing (new notice) as well as newer (kept), `graphValidate`
+  flags any non-current `v`. The generated seeds' generators
+  (`gen-personal-finance-seed.cjs`, `archSeed.ts`) emit the menu fields too;
+  `seeds.test.ts` pins every seed at the current version.
+- Verified in the live app via Playwright (grouped menu renders with the two-level
+  hierarchy; a template click-through loads clean) plus the full vitest suite.

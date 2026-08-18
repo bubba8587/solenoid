@@ -1,6 +1,8 @@
 {
- "v": 1,
- "label": "Sudoku Solver",
+ "v": 2,
+ "order": 530,
+ "label": "Sudoku solver",
+ "group": "Worked examples",
  "nodes": [
   {
    "id": "note",

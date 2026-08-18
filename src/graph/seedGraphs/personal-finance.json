@@ -1,6 +1,8 @@
 {
-  "label": "Personal Finance",
   "v": 2,
+  "order": 500,
+  "label": "Personal finance",
+  "group": "Worked examples",
   "nodes": [
     {
       "id": "note-title",

@@ -163,8 +163,9 @@ One user (the author), who says: break old saves, old code, legacy names. Don't 
 shims, type aliases, migration maps, or deprecation paths — make the clean change and update the
 seed JSONs + tests. An old save referencing a removed node loads as a Placeholder (wiring + data
 kept; re-saves as the original type) — acceptable, no alias needed. When unsure whether to
-preserve something old, delete it. The save-format `v` field + the "refuse a newer file" guard
-stay (forward safety); there is no backward migration.
+preserve something old, delete it. The save-format `v` field stays, and the loader opens ONLY
+the current version — newer refused for forward safety, older refused because there is no
+migration in either direction.
 
 ### Doc maintenance — RECONCILE, don't append
 Forward-looking docs rot because sessions default to appending. When wrapping up (or asked to

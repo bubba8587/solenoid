@@ -1,7 +1,8 @@
 {
   "v": 2,
-  "label": "Units by Dimension",
-  "order": 60,
+  "order": 230,
+  "label": "Units by dimension",
+  "group": "Values & units",
   "nodes": [
     {
       "id": "hdr",

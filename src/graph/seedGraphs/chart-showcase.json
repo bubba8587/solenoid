@@ -1,7 +1,8 @@
 {
   "v": 2,
-  "label": "Charts & Visuals",
-  "order": 40,
+  "order": 400,
+  "label": "Charts & visuals",
+  "group": "Charts & reports",
   "nodes": [
     {
       "id": "cats",

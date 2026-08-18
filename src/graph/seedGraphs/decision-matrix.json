@@ -1,7 +1,8 @@
 {
-  "v": 1,
-  "label": "Decision Matrix: weighted scoring",
-  "order": 250,
+  "v": 2,
+  "order": 510,
+  "label": "Decision matrix: weighted scoring",
+  "group": "Worked examples",
   "nodes": [
     {
       "id": "noteIntro",

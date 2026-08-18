@@ -161,8 +161,9 @@ export async function buildArchSeed(
 
   return {
     v: 2,
-    label: "Architecture Map",
-    order: 950,
+    order: 540,
+    label: "Architecture map",
+    group: "Worked examples",
     nodes,
     connections: links.map((l) => ({
       source: slug(l.to),

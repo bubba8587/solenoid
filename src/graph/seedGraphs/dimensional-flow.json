@@ -1,6 +1,8 @@
 {
   "v": 2,
-  "label": "Types & Shapes",
+  "order": 200,
+  "label": "Types & shapes",
+  "group": "Values & units",
   "nodes": [
     {
       "id": "hdr",

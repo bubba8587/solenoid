@@ -1,7 +1,8 @@
 {
- "v": 1,
- "label": "Composite Workbench",
- "order": 12,
+ "v": 2,
+ "order": 310,
+ "label": "Composite workbench",
+ "group": "Modeling",
  "nodes": [
   {
    "id": "note0",

@@ -33,8 +33,14 @@ describe("validateSavedGraph", () => {
     expect(validateSavedGraph({ v: 2, nodes: [], connections: [] })).toEqual({ ok: true });
   });
 
-  it("accepts a graph with no optional fields (only nodes)", () => {
-    expect(validateSavedGraph({ nodes: [{ id: "a", type: "X" }] })).toEqual({ ok: true });
+  it("accepts a graph with no optional fields (version + nodes)", () => {
+    expect(validateSavedGraph({ v: 2, nodes: [{ id: "a", type: "X" }] })).toEqual({ ok: true });
+  });
+
+  it("rejects a missing version", () => {
+    const r = validateSavedGraph({ nodes: [], connections: [] });
+    expect(r).toMatchObject({ ok: false });
+    if (!r.ok) expect(r.reason).toMatch(/format version/);
   });
 
   it.each([
@@ -54,25 +60,26 @@ describe("validateSavedGraph", () => {
   });
 
   it("rejects a node without an id", () => {
-    const r = validateSavedGraph({ nodes: [{ type: "X", x: 0, y: 0 }] });
+    const r = validateSavedGraph({ v: 2, nodes: [{ type: "X", x: 0, y: 0 }] });
     expect(r).toMatchObject({ ok: false });
     if (!r.ok) expect(r.reason).toMatch(/id/);
   });
 
   it("rejects a node without a type", () => {
-    const r = validateSavedGraph({ nodes: [{ id: "a", x: 0, y: 0 }] });
+    const r = validateSavedGraph({ v: 2, nodes: [{ id: "a", x: 0, y: 0 }] });
     expect(r).toMatchObject({ ok: false });
     if (!r.ok) expect(r.reason).toMatch(/type/);
   });
 
   it("rejects a non-numeric coordinate", () => {
-    const r = validateSavedGraph({ nodes: [{ id: "a", type: "X", x: "10", y: 0 }] });
+    const r = validateSavedGraph({ v: 2, nodes: [{ id: "a", type: "X", x: "10", y: 0 }] });
     expect(r).toMatchObject({ ok: false });
     if (!r.ok) expect(r.reason).toMatch(/x/);
   });
 
   it("rejects a connection with a non-string endpoint", () => {
     const r = validateSavedGraph({
+      v: 2,
       nodes: [{ id: "a", type: "X" }],
       connections: [{ source: "a", sourceOutput: "o", target: 5, targetInput: "i" }],
     });
@@ -81,7 +88,7 @@ describe("validateSavedGraph", () => {
   });
 
   it("rejects a non-array connections field", () => {
-    const r = validateSavedGraph({ nodes: [], connections: {} });
+    const r = validateSavedGraph({ v: 2, nodes: [], connections: {} });
     expect(r).toMatchObject({ ok: false });
   });
 
@@ -91,7 +98,7 @@ describe("validateSavedGraph", () => {
   });
 
   it("rejects a non-array standoffs field", () => {
-    const r = validateSavedGraph({ nodes: [], standoffs: "none" });
+    const r = validateSavedGraph({ v: 2, nodes: [], standoffs: "none" });
     expect(r).toMatchObject({ ok: false });
   });
 });

@@ -135,9 +135,11 @@ describe("validateGraph — semantics", () => {
     expect(hardIssues(issues)).toEqual([]);
   });
 
-  it("flags a save version newer than this build", () => {
-    const { issues } = validateText(`A: NumberInputNode value=1\n---\n{ "v": 99 }`);
-    expect(issues.some((i) => i.message.includes("newer than this build"))).toBe(true);
+  it("flags a save version that is not this build's", () => {
+    for (const v of [99, 1]) {
+      const { issues } = validateText(`A: NumberInputNode value=1\n---\n{ "v": ${v} }`);
+      expect(issues.some((i) => i.message.includes("only opens the current format"))).toBe(true);
+    }
   });
 
   it("flags an op outside the class's vocabulary", () => {

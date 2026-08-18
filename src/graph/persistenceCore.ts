@@ -1,6 +1,8 @@
 // The load path's risky decisions as pure functions; keep it rete/DOM/storage-free.
 
-// Bump in lockstep with SavedGraph.v; a file claiming a HIGHER version is REFUSED on load.
+// Bump in lockstep with SavedGraph.v. Exactly ONE format exists at a time: the loader
+// refuses any other version — newer for forward safety, older because there is no
+// backward migration (pre-alpha).
 export const CURRENT_SAVE_VERSION = 2;
 
 export type ValidationResult = { ok: true } | { ok: false; reason: string };
@@ -13,7 +15,7 @@ export function validateSavedGraph(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null) return fail("not a graph object");
   const g = data as Record<string, unknown>;
 
-  if (g.v !== undefined && typeof g.v !== "number") return fail("`v` (format version) is not a number");
+  if (typeof g.v !== "number") return fail("missing `v` (format version)");
 
   if (!Array.isArray(g.nodes)) return fail("missing `nodes` array");
   for (let i = 0; i < g.nodes.length; i++) {

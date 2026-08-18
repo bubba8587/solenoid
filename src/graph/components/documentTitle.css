@@ -101,6 +101,18 @@
   padding: 6px 8px 4px;
 }
 
+/* Sub-head for a group of example templates: one step quieter than the
+   section head so the two-level hierarchy reads at a glance. */
+.solenoid-doctitle__group-head {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, var(--text));
+  opacity: 0.55;
+  padding: 8px 8px 3px;
+}
+
 .solenoid-doctitle__docs {
   display: flex;
   flex-direction: column;

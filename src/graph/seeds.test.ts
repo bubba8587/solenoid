@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import * as Nodes from "./rete-nodes";
 import { SolenoidSocket, canConnect } from "./sockets";
+import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 
 // Validates every seed graph against the REAL node classes: each saved type
 // resolves to a constructor, each connection lands on sockets that exist with
@@ -37,6 +38,40 @@ function dataTypeOf(port: Port | undefined): string | null {
   const s = port?.socket;
   return s instanceof SolenoidSocket ? s.dataType : null;
 }
+
+// The menu fields are mandatory: a seed without them falls into an unlabeled
+// alphabetical tail (the pre-grouping menu), and duplicate orders make the
+// listing depend on filename tiebreaks. The version pin keeps every seed on the
+// single live save format — the loader refuses any other (persistenceCore).
+describe("seed menu fields", () => {
+  type MenuFields = { v?: unknown; label?: unknown; order?: unknown; group?: unknown };
+  const entries = Object.entries(seedModules).map(([path, mod]) => ({
+    name: path.replace("./seedGraphs/", ""),
+    m: (mod.default ?? mod) as MenuFields,
+  }));
+
+  it("every seed is the current save format", () => {
+    const stale = entries.filter(({ m }) => m.v !== CURRENT_SAVE_VERSION).map(({ name }) => name);
+    expect(stale, `not v${CURRENT_SAVE_VERSION}: ${stale.join(", ")}`).toEqual([]);
+  });
+
+  it("every seed declares label, group, and a unique order", () => {
+    const problems: string[] = [];
+    const byOrder = new Map<number, string>();
+    for (const { name, m } of entries) {
+      if (typeof m.label !== "string" || !m.label) problems.push(`${name}: missing "label"`);
+      if (typeof m.group !== "string" || !m.group) problems.push(`${name}: missing "group"`);
+      if (typeof m.order !== "number") {
+        problems.push(`${name}: missing "order"`);
+      } else if (byOrder.has(m.order)) {
+        problems.push(`${name}: order ${m.order} collides with ${byOrder.get(m.order)}`);
+      } else {
+        byOrder.set(m.order, name);
+      }
+    }
+    expect(problems, problems.join("\n")).toEqual([]);
+  });
+});
 
 for (const [path, mod] of Object.entries(seedModules)) {
   const g = (mod.default ?? mod) as SavedGraph;

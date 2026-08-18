@@ -1,7 +1,8 @@
 {
   "v": 2,
-  "label": "Live Market Data",
-  "order": 45,
+  "order": 410,
+  "label": "Live market data",
+  "group": "Charts & reports",
   "nodes": [
     {
       "id": "feed-unrate",

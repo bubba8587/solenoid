@@ -1,7 +1,8 @@
 {
-  "v": 1,
+  "v": 2,
+  "order": 110,
   "label": "Table verbs",
-  "order": 65,
+  "group": "Tables",
   "nodes": [
     {
       "id": "note0",

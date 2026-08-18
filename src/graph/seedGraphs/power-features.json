@@ -1,6 +1,8 @@
 {
-  "label": "Power Features",
   "v": 2,
+  "order": 10,
+  "label": "Power features",
+  "group": "Start here",
   "nodes": [
     {
       "id": "n-start",

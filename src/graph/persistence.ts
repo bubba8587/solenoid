@@ -71,8 +71,8 @@ export interface SavedStandoff {
 }
 
 export interface SavedGraph {
-  // A file claiming a HIGHER version is refused rather than opened lossily; there
-  // is no backward migration (pre-alpha).
+  // Only the CURRENT version loads: newer is refused rather than opened lossily,
+  // older because there is no backward migration (pre-alpha).
   v: number;
   nodes: SavedNode[];
   connections: SavedConnection[];
@@ -211,11 +211,14 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
     return false;
   }
 
-  // Refuse a FUTURE format before touching anything: it would load with its new
-  // fields dropped, and the next autosave would overwrite the slot with the loss.
-  if ((g.v ?? 1) > CURRENT_SAVE_VERSION) {
+  // Exactly one format loads: refuse a FUTURE format before touching anything (it
+  // would load with its new fields dropped, and the next autosave would overwrite
+  // the slot with the loss), and an OLDER one because there is no backward migration.
+  if (g.v !== CURRENT_SAVE_VERSION) {
     pushNotice(
-      `This file was saved by a newer version of Solenoid (format v${g.v}) and can't be opened here. Update the app to load it.`,
+      g.v > CURRENT_SAVE_VERSION
+        ? `This file was saved by a newer version of Solenoid (format v${g.v}) and can't be opened here. Update the app to load it.`
+        : `This file uses an old save format (v${g.v}) that this build no longer opens.`,
       "error",
       0,
     );

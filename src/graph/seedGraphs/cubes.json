@@ -1,7 +1,8 @@
 {
   "v": 2,
+  "order": 150,
   "label": "Cubes: nested tables",
-  "order": 20,
+  "group": "Tables",
   "nodes": [
     {
       "id": "noteIntro",
