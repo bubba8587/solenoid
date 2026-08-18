@@ -100,6 +100,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   D35 amended; pinned in `palette.test.ts` § accent-adaptive (chroma-never-inflates
   + structure × all 12 accents); eyeballed via Playwright (redprint
   Blueprint@vermilion, blossom-whisper Orchard@pink, identity shots unchanged).
+- **UI-copy register experiment** (author ask; standards override §7 for this work):
+  sampled the string corpus twice (stratified `shuf` over catalog / help / socket
+  docs / tooltips / settings / dialogs / states) with rewrites shown in chat.
+  Verdicts: ASD-STE100 DROPPED (1.5–2× longer, kills catalog density); Google
+  developer style is a fit for the chrome register (tooltips, settings, dialogs,
+  placeholders, empty states) — biggest real findings: the articles rule ("Don't
+  skip articles for brevity") bites the house fragment tooltips, `example.com` for
+  example URLs, third person for software behavior vs imperative for user commands.
+  The guide is fetched (curl + browser UA; WebFetch fabricates) and kept as
+  `docs/google-style/` — the ARBITER for word-level calls; a from-memory pass
+  missed the articles rule and cited a nonexistent error-message page. Sweep not
+  yet run — awaiting author go.
 - **Dev server starts through a launcher** (author ask): `scripts/dev-up.mjs` spawns
   vite detached, polls until :1420 answers, exits — `/startup` runs it in the
   foreground so the task actually finishes; stop advice is the self-match-proof

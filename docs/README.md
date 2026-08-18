@@ -67,6 +67,9 @@ is parked there.
 - **`code-comments.md`** — the comment policy (D30): comments are the last-resort
   home for knowledge; the cut rules, compression rules, the blast-radius test, and
   the homes hierarchy. Read before writing (or reviewing) comment prose.
+- **`google-style/`** — fetched text of the Google developer style guide (2026-08-18),
+  the ARBITER for the UI-copy register experiment; overrides DESIGN.md §7 for that
+  work by author ruling. `word-list.txt` is the dictionary; see its README.
 
 ## Work queue (forward-looking — verify against code; these rot)
 
