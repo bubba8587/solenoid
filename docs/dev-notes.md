@@ -158,8 +158,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   threaded FrameInputComponent → FrameDisplay → FrameChip → popup state
   read-only. Empty = stacked boxes; unmatched names keep inert boxes; columns off
   the layout are hidden from the form. The seed's Parts frame carries the Part
-  card's layout. Remaining lifts stay in `deferrals.md` (select/categorical
-  columns upgraded to "backlog with interest, larger 1.4 look" — author).
+  card's layout. Entry widgets follow the COLUMN TYPE (author): a logical column
+  edits as a checkbox (indeterminate = blank; a pick writes TRUE/FALSE text, so
+  blank ≠ FALSE survives until first toggle), a date column as the native date
+  input (the Date Picker node's control — seeds from a serial or parseable text,
+  writes ISO text back, clearing writes blank); number/text keep the typed field.
+  Discrete picks apply immediately (setCell), Save persists as before. Remaining
+  lifts stay in `deferrals.md` (select/categorical columns upgraded to "backlog
+  with interest, larger 1.4 look" — author; Gantt majorly deferred — author).
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
 (latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &

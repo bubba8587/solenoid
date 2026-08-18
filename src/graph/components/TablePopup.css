@@ -594,3 +594,10 @@
   color: var(--text-dim);
   cursor: default;
 }
+.table-popup__form-box-check {
+  width: 14px;
+  height: 14px;
+  margin: 2px 0;
+  accent-color: var(--node-accent, var(--accent));
+}
+.table-popup__form-box-input[type="date"] { padding: 0; }

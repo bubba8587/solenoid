@@ -5,7 +5,7 @@ import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows } from "../csv";
 import { isSolError } from "../errorValue";
-import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
@@ -100,6 +100,16 @@ function toMarkdown(grid: string[][], cellType: CellType, columnTypes: CellType[
 // missing cells); only the final newline terminator's phantom row drops.
 function parseCSV(text: string): string[][] {
   return parseCsvRows(text, { keepBlankLines: true }).map((row) => row.map((c) => c.trim()));
+}
+
+// The form's date picker seeds from the raw cell — a serial or parseable date
+// text — and writes back ISO text (parseable source, readable in Source/CSV).
+function dateCellToISO(raw: string): string {
+  const t = raw.trim();
+  if (t === "") return "";
+  const n = Number(t);
+  const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
+  return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
 }
 
 // Spreadsheet column labels: A, B, … Z, AA, AB, …
@@ -863,6 +873,31 @@ export function TablePopup() {
                         readOnly
                         tabIndex={-1}
                         spellCheck={false}
+                      />
+                    ) : type === "logical" ? (
+                      // A discrete pick applies immediately; a blank cell shows as
+                      // the indeterminate state (blank ≠ FALSE) until first toggle.
+                      (() => {
+                        const raw = (grid[fRow]?.[c] ?? "").trim().toLowerCase();
+                        const val = raw === "true" || raw === "1" ? true : raw === "false" || raw === "0" ? false : null;
+                        return (
+                          <input
+                            type="checkbox"
+                            className="table-popup__form-box-check"
+                            checked={val === true}
+                            ref={(el) => { if (el) el.indeterminate = val === null; }}
+                            onChange={(e) => setCell(fRow, c, e.target.checked ? "TRUE" : "FALSE")}
+                          />
+                        );
+                      })()
+                    ) : type === "date" ? (
+                      // The native picker (the Date Picker node's control); clearing
+                      // writes a blank cell (missing), never a fabricated date.
+                      <input
+                        type="date"
+                        className="table-popup__form-box-input"
+                        value={dateCellToISO(grid[fRow]?.[c] ?? "")}
+                        onChange={(e) => setCell(fRow, c, e.target.value)}
                       />
                     ) : (
                       <input
