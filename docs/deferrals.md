@@ -66,7 +66,9 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   and Form-view string inputs — cheap, no color, arguably the better lift). The
   larger question for 1.4: whether these become a real enum column semantic or
   stay display+entry sugar on string columns;
-  (3) a timeline/Gantt figure from Task/Start/End columns.
+  (3) a timeline/Gantt figure from Task/Start/End columns — MAJORLY deferred
+  (author 2026-08-18: loves Gantt, not now; Mermaid's gantt text remains the
+  interim route).
   Not doing: linked-record columns (Join/XLOOKUP carry the semantics); row
   tinting (that is author-gated D4).
 - **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
