@@ -88,10 +88,13 @@ export function BubbleView(props: { matrix: (number | null)[][]; width: number; 
 
 /** The ONE place that maps a chart value to a figure (a report embed keeps its own
  *  width-measured wrapper); empty → the muted em-dash box. */
-export function ChartFigure({ value, width, height, axes = true, fontScale }: {
+export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
   /** Composes with the value's own options.fontsize (10 = the built-in sizes). */
   fontScale?: number;
+  /** Row stepper for a drawn record card; surfaces that can reach the Record
+   *  node (Display, the chart popup via recordNav.ts) provide it. */
+  recordNav?: (delta: number) => void;
 }) {
   // The payload/matrix figures don't read options, so fold both factors here.
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
@@ -122,7 +125,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
   if (value.op === "sevenseg" && value.payload?.kind === "sevenseg")
     return <SevenSegView text={value.payload.text} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
-    return <RecordCardView payload={value.payload} width={width} fscale={fscale} />;
+    return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
   // With no matrix wired the 2-D ops fall back to the single `values` series.
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;
   if (value.op === "composed") {

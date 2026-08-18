@@ -161,6 +161,49 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Figure title (the explicit options title), matching the series charts'
+   in-figure title: centered, 11px at fscale 1, single ellipsized line. */
+.sol-record-figtitle {
+  font-size: calc(11px * var(--chart-fscale, 1));
+  font-weight: 600;
+  line-height: calc(16px * var(--chart-fscale, 1));
+  text-align: center;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+/* Row pager under a drawn card (Display / popup); mirrors the node card's pager. */
+.sol-record-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.sol-record-nav__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.sol-record-nav__btn:hover:not(:disabled) { color: var(--text); background: var(--border-subtle); }
+.sol-record-nav__btn:disabled { opacity: 0.35; cursor: default; }
+.sol-record-nav__count {
+  font-size: calc(10px * var(--chart-fscale, 1));
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .sol-record__more {
   margin-top: 4px;
   font-size: calc(10px * var(--chart-fscale, 1));

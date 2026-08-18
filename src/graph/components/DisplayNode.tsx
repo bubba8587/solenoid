@@ -21,10 +21,11 @@ import { isSvgValue } from "../svgValue";
 import { isLambdaValue } from "../nodes/lambda";
 import { LambdaValueView } from "./LambdaView";
 import { isSolError } from "../errorValue";
+import { recordNavTarget, stepRecordRow } from "./recordNav";
 
 // Only for a Display with a DEFINITE size — measuring a content-driven card feeds
 // back (chart size → card size → …) and oscillates; overflow stays hidden for it.
-function MeasuredChart({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
+function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fontScale?: number; recordNav?: (delta: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 210, h: 130 });
   useLayoutEffect(() => {
@@ -42,7 +43,7 @@ function MeasuredChart({ value, fontScale }: { value: ChartValue; fontScale?: nu
   }, []);
   return (
     <div ref={ref} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} />
+      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} />
     </div>
   );
 }
@@ -78,6 +79,10 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
 
   const v = data.cachedValue;
   const isError = isSolError(v);
+  // The drawn record card carries its own pager when this Display can reach a
+  // steppable Record upstream (unwired Row, card view) — recordNav.ts.
+  const recordId = isChartValue(v) && v.op === "record" ? recordNavTarget(data.id) : null;
+  const recordStep = recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined;
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
   // Object-valued figures must NOT reach the number formatter (fmt calls .toFixed).
@@ -113,8 +118,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         <CubeDisplay cube={v} label={data.label} full={full} />
       ) : isChart ? (
         !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
-              : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} />
-              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} />
+              : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
+              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />
       ) : isMermaid ? (
         <MermaidView source={v.source} />
       ) : isSvg ? (

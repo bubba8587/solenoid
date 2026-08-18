@@ -154,7 +154,12 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
       {cardOp || width > 0
-        ? <ChartFigure value={value} width={width || 320} height={200} fontScale={fontScale} />
+        ? <ChartFigure
+            value={{ ...value, title: undefined, options: value.options ? { ...value.options, title: undefined } : value.options }}
+            width={width || 320}
+            height={200}
+            fontScale={fontScale}
+          />
         : null}
     </span>
   );

@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { KpiPayload, BulletPayload, RecordPayload } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
+import { stopDragStart } from "../coarse";
 import "./chartCards.css";
 
 // A semantic state color, deliberately NOT a palette slot: a KPI trend reads
@@ -131,14 +132,33 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
   );
 }
 
+function NavChevron({ back }: { back?: boolean }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path
+        d={back ? "M6.5 1l-4 4 4 4" : "M3.5 1l4 4-4 4"}
+        fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // The record figure: the picked card, a gallery of cards, or board lanes.
 // Height is content-driven (layouts vary), so the passed figure height is ignored.
-export function RecordCardView({ payload, width, fscale }: { payload: RecordPayload; width?: number; fscale?: number }) {
+// `title` is the explicit options title (the label fallback stays off the figure,
+// matching the series charts); popup/report surfaces strip it — their header
+// already carries it. `onStep` puts the row pager ON the drawn card (the node
+// card only chips the chart), provided by surfaces that can reach the node.
+export function RecordCardView({ payload, width, fscale, title, onStep }: {
+  payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
+}) {
   const outer = { ...(width ? { width } : undefined), ...fscaleStyle(fscale) };
+  const titleLine = title ? <div className="sol-record-figtitle">{title}</div> : null;
   const moreLine = payload.more ? <div className="sol-record__more">+{payload.more} more</div> : null;
   if (payload.view === "gallery") {
     return (
       <div style={outer}>
+        {titleLine}
         <RecordGallery payload={payload} />
         {moreLine}
       </div>
@@ -147,6 +167,7 @@ export function RecordCardView({ payload, width, fscale }: { payload: RecordPayl
   if (payload.view === "board") {
     return (
       <div style={outer}>
+        {titleLine}
         <div className="sol-record-board">
           {(payload.lanes ?? []).map((lane) => (
             <div key={lane.label} className="sol-record-lane">
@@ -161,7 +182,29 @@ export function RecordCardView({ payload, width, fscale }: { payload: RecordPayl
   }
   return (
     <div style={outer}>
+      {titleLine}
       <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} />
+      {onStep && payload.total > 1 && (
+        <div className="sol-record-nav">
+          <button
+            type="button" className="sol-record-nav__btn" title="Previous record"
+            disabled={payload.index <= 1}
+            onClick={(e) => { e.stopPropagation(); onStep(-1); }}
+            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+          >
+            <NavChevron back />
+          </button>
+          <span className="sol-record-nav__count">{payload.index > 0 ? payload.index : "–"} / {payload.total}</span>
+          <button
+            type="button" className="sol-record-nav__btn" title="Next record"
+            disabled={payload.index >= payload.total}
+            onClick={(e) => { e.stopPropagation(); onStep(1); }}
+            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+          >
+            <NavChevron />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
