@@ -6,7 +6,7 @@ import { toSeries } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
 import type { ChartValue } from "../chartValue";
-import { KpiCard, BulletBar } from "./chartCards";
+import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors } from "./chartCore";
 import {
@@ -121,6 +121,8 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <QuiverView payload={value.payload} width={width} height={height} />;
   if (value.op === "sevenseg" && value.payload?.kind === "sevenseg")
     return <SevenSegView text={value.payload.text} width={width} height={height} />;
+  if (value.op === "record" && value.payload?.kind === "record")
+    return <RecordCardView payload={value.payload} width={width} fscale={fscale} />;
   // With no matrix wired the 2-D ops fall back to the single `values` series.
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;
   if (value.op === "composed") {

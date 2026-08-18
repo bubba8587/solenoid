@@ -3,10 +3,11 @@ import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
   SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
+  RecordNode, parseRecordLayout, recordImageSrc,
 } from "./visual";
 import { CHART_BUILDER_FIELDS } from "./visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "./chartOptions";
-import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload } from "../chartValue";
+import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload, RecordPayload } from "../chartValue";
 import type { FrameValue, FrameColumn } from "../frame";
 import { DatePickerNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
@@ -395,5 +396,122 @@ describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
     const clone = new SurfaceNode(extractInit(n) as { op: "contour" });
     expect(clone.op).toBe("contour");
     expect(clone.literals.levels).toBe(12);
+  });
+});
+
+describe("Record node", () => {
+  it("parseRecordLayout: rows on lines, cells on |, gaps, merges, ragged rows", () => {
+    const placed = parseRecordLayout("Name | Name | Photo\nPrice | Qty | Photo\nNotes");
+    expect(placed).toEqual([
+      { name: "Name", row: 1, col: 1, rowSpan: 1, colSpan: 2 },
+      { name: "Photo", row: 1, col: 3, rowSpan: 2, colSpan: 1 },
+      { name: "Price", row: 2, col: 1, rowSpan: 1, colSpan: 1 },
+      { name: "Qty", row: 2, col: 2, rowSpan: 1, colSpan: 1 },
+      { name: "Notes", row: 3, col: 1, rowSpan: 1, colSpan: 1 },
+    ]);
+    // "." and empty cells are gaps; blank-only lines drop out entirely.
+    expect(parseRecordLayout("A | . | B\n\n . | C")).toEqual([
+      { name: "A", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
+      { name: "B", row: 1, col: 3, rowSpan: 1, colSpan: 1 },
+      { name: "C", row: 2, col: 2, rowSpan: 1, colSpan: 1 },
+    ]);
+    // Case-insensitive dedup keeps the first spelling; a non-rectangular repeat
+    // degrades to its bounding rectangle.
+    expect(parseRecordLayout("Qty | .\n. | QTY")).toEqual([
+      { name: "Qty", row: 1, col: 1, rowSpan: 2, colSpan: 2 },
+    ]);
+  });
+
+  it("recordImageSrc: data:image and image-extension URLs only", () => {
+    expect(recordImageSrc("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
+    expect(recordImageSrc(" https://x.test/a.JPG?w=2 ")).toBe("https://x.test/a.JPG?w=2");
+    expect(recordImageSrc("https://x.test/page.html")).toBeNull();
+    expect(recordImageSrc("Bolt M4")).toBeNull();
+  });
+
+  it("no layout → the columns stack; row 1 is the default record", async () => {
+    const n = new RecordNode();
+    const f = frame([
+      { name: "Item", type: "string", values: ["Bolt", "Nut"] },
+      { name: "Qty", type: "number", values: [40, 120] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ kind: "record", cols: 1, index: 1, total: 2 });
+    expect(p.fields).toEqual([
+      { label: "Item", value: "Bolt", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
+      { label: "Qty", value: 40, row: 2, col: 1, rowSpan: 1, colSpan: 1 },
+    ]);
+  });
+
+  it("a layout places boxes, matches columns case-insensitively, keeps unknown names", async () => {
+    const n = new RecordNode();
+    n.stringLiterals.layout = "item | item\nqty | Missing";
+    const f = frame([
+      { name: "Item", type: "string", values: ["Bolt"] },
+      { name: "Qty", type: "number", values: [40] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.cols).toBe(2);
+    // Matched names take the column's own spelling; an unknown name keeps its
+    // box (a draftable layout), just empty.
+    expect(p.fields).toEqual([
+      { label: "Item", value: "Bolt", row: 1, col: 1, rowSpan: 1, colSpan: 2 },
+      { label: "Qty", value: 40, row: 2, col: 1, rowSpan: 1, colSpan: 1 },
+      { label: "Missing", value: null, row: 2, col: 2, rowSpan: 1, colSpan: 1 },
+    ]);
+  });
+
+  it("cells format for display: dates as text, booleans as TRUE/FALSE, nulls empty, images detected", async () => {
+    const n = new RecordNode();
+    n.literals.row = 2;
+    const f = frame([
+      { name: "When", type: "date", values: [45000, 45001] },
+      { name: "Done", type: "logical", values: [false, true] },
+      { name: "Note", type: "string", values: ["x", null] },
+      { name: "Photo", type: "string", values: ["p", "https://x.test/b.png"] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.index).toBe(2);
+    const by = Object.fromEntries(p.fields.map((fl) => [fl.label, fl]));
+    expect(typeof by.When.value).toBe("string"); // serial formatted to date text
+    expect(by.Done.value).toBe("TRUE");
+    expect(by.Note.value).toBeNull();
+    expect(by.Photo.image).toBe("https://x.test/b.png");
+  });
+
+  it("Row is the record pick: a wired blank or out-of-range shows empty boxes; unwired clamps + mirrors", async () => {
+    const n = new RecordNode();
+    const f = frame([{ name: "A", type: "number", values: [1, 2, 3] }]);
+    // Wired blank → no record, boxes stay (labels visible), values empty.
+    let p = (await n.data({ frame: [f], row: [null as unknown as number] })).chart.payload as RecordPayload;
+    expect(p.index).toBe(0);
+    expect(p.fields[0]).toMatchObject({ label: "A", value: null });
+    // Wired out-of-range → empty too, never clamped to a record the cable didn't pick.
+    p = (await n.data({ frame: [f], row: [7] })).chart.payload as RecordPayload;
+    expect(p.index).toBe(0);
+    // Unwired → the card's literal clamps into range and mirrors back.
+    n.literals.row = 99;
+    p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.index).toBe(3);
+    expect(n.literals.row).toBe(3);
+  });
+
+  it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {
+    const n = new RecordNode();
+    n.stringLiterals.layout = "A | B";
+    const p = (await n.data({})).chart.payload as RecordPayload;
+    expect(p.total).toBe(0);
+    expect(p.fields.map((fl) => fl.label)).toEqual(["A", "B"]);
+    n.stringLiterals.layout = "";
+    const empty = (await n.data({})).chart.payload as RecordPayload;
+    expect(empty.fields).toEqual([]);
+  });
+
+  it("Options styles the figure; label round-trips through extractInit", async () => {
+    const n = new RecordNode({ label: "Part" });
+    const f = frame([{ name: "A", type: "number", values: [1] }]);
+    const out = await n.data({ frame: [f], options: ["title=Sheet"] });
+    expect(out.chart.title).toBe("Sheet");
+    expect(new RecordNode(extractInit(n)).label).toBe("Part");
   });
 });

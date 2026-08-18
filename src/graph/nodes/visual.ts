@@ -5,7 +5,9 @@ import { clamp, iterMin, iterMax } from "./mathUtils";
 import type {
   ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload, SevenSegPayload,
+  RecordPayload, RecordField,
 } from "../chartValue";
+import { columnUnitLabel } from "../unitColumn";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import type { FrameHint } from "../frameHint";
@@ -908,6 +910,129 @@ export class WaffleNode extends ClassicPreset.Node {
     const chart: ChartValue = {
       __chart: true, op: "waffle", values, payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Waffle",
+    };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Record card ──────────────────────────────────────────────────────────────
+
+/** A layout cell: one line per grid row, cells split on "|", "." or an empty
+ *  cell is a gap. Repeating a name claims its bounding rectangle (a lenient
+ *  grid-template-areas: a non-rectangular repeat degrades to its bounds instead
+ *  of invalidating the grid). Names keep first-occurrence spelling. */
+export function parseRecordLayout(text: string): Array<{ name: string; row: number; col: number; rowSpan: number; colSpan: number }> {
+  const rows = text
+    .split("\n")
+    .map((line) => line.split("|").map((c) => c.trim()))
+    .filter((cells) => cells.some((c) => c !== "" && c !== "."));
+  const rects = new Map<string, { name: string; r0: number; c0: number; r1: number; c1: number }>();
+  const order: string[] = [];
+  rows.forEach((cells, r) =>
+    cells.forEach((name, c) => {
+      if (name === "" || name === ".") return;
+      const key = name.toLowerCase();
+      const rect = rects.get(key);
+      if (!rect) {
+        rects.set(key, { name, r0: r, c0: c, r1: r, c1: c });
+        order.push(key);
+      } else {
+        rect.r0 = Math.min(rect.r0, r); rect.c0 = Math.min(rect.c0, c);
+        rect.r1 = Math.max(rect.r1, r); rect.c1 = Math.max(rect.c1, c);
+      }
+    }),
+  );
+  return order.map((key) => {
+    const t = rects.get(key)!;
+    return { name: t.name, row: t.r0 + 1, col: t.c0 + 1, rowSpan: t.r1 - t.r0 + 1, colSpan: t.c1 - t.c0 + 1 };
+  });
+}
+
+/** A string cell that points at an image: a data:image URL, or an http(s) URL
+ *  with an image extension. Anything else stays text. */
+export function recordImageSrc(text: string): string | null {
+  const t = text.trim();
+  if (/^data:image\//i.test(t)) return t;
+  if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|svg|avif|bmp)(\?\S*)?$/i.test(t)) return t;
+  return null;
+}
+
+export class RecordNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    row: "Selects the 1-based record; blank or out of range shows the boxes empty.",
+    layout: "One line per grid row with column names separated by | marks. Repeating a name merges its cells into one box; a dot or an empty cell stays blank. Left empty, the columns stack in a single column of boxes.",
+  };
+
+  label: string;
+  literals: Record<string, number> = { row: 1 };
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 240;
+  height = 300;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Item", type: "string", cells: ["Bolt M4", "Nut M4", "Washer"] },
+      { name: "Qty", type: "number", cells: [40, 120, 75] },
+      { name: "Price", type: "number", cells: [0.35, 0.12, 0.05] },
+    ] },
+  };
+
+  constructor(init?: { label?: string }) {
+    super("Record");
+    this.label = init?.label ?? "Record";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("row", numIn("Row"));
+    this.addInput("layout", strIn("Layout"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const fv = await readFrame(inputs.frame?.[0] ?? null);
+    const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
+    const total = cols[0]?.values.length ?? 0;
+    // Row is which record to draw — a figure's datum: a wired blank or an
+    // out-of-range pick renders the boxes EMPTY, never an error out `chart`.
+    const rowRaw = readInput(inputs.row, this.literals.row ?? 1);
+    let index = rowRaw === null ? 0 : Math.round(rowRaw);
+    if (inputs.row?.[0] === undefined && total > 0) {
+      // Mirror the clamped pick only when unwired, so the pager and card agree.
+      index = clamp(index, 1, total);
+      this.literals.row = index;
+    }
+    if (index < 1 || index > total) index = 0;
+    // Layout and Options are presentation: a wired blank means "none given" and
+    // must not reinstate the card's text (the ChartNode options contract).
+    const layIn = readInput(inputs.layout, this.stringLiterals.layout ?? null);
+    const layStr = typeof layIn === "string" ? layIn : null;
+    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null));
+
+    const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
+    const field = (name: string, col: FrameColumn | undefined, at: { row: number; col: number; rowSpan: number; colSpan: number }): RecordField => {
+      const label = col
+        ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
+        : name;
+      const raw = col && index >= 1 ? col.values[index - 1] ?? null : null;
+      const shown = raw === null ? null : formatFrameCell(col!.type, raw);
+      const image = typeof shown === "string" ? recordImageSrc(shown) : null;
+      return { label, value: shown, ...(image ? { image } : {}), ...at };
+    };
+    const placed = layStr && layStr.trim() !== "" ? parseRecordLayout(layStr) : [];
+    // No layout → every column stacks; a layout stands on its own, so it can be
+    // drafted before the frame is wired (unmatched names keep their boxes).
+    const fields: RecordField[] = placed.length > 0
+      ? placed.map((p) => field(p.name, byName.get(p.name.toLowerCase()), { row: p.row, col: p.col, rowSpan: p.rowSpan, colSpan: p.colSpan }))
+      : cols.map((c, i) => field(c.name, c, { row: i + 1, col: 1, rowSpan: 1, colSpan: 1 }));
+    const ncols = placed.length > 0 ? Math.max(...placed.map((p) => p.col + p.colSpan - 1)) : 1;
+
+    const payload: RecordPayload = { kind: "record", fields, cols: ncols, index, total };
+    const chart: ChartValue = {
+      __chart: true, op: "record", values: null, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Record",
     };
     this.cachedChart = chart;
     return { chart };

@@ -1,6 +1,6 @@
 // Structured-payload figures, so they render as plain CSS/SVG rather than going
 // through the lazy recharts chunk.
-import type { KpiPayload, BulletPayload } from "../chartValue";
+import type { KpiPayload, BulletPayload, RecordPayload } from "../chartValue";
 import { formatScalar } from "./format";
 import "./chartCards.css";
 
@@ -35,6 +35,38 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
           {pct !== null ? ` (${formatScalar(Math.abs(pct))}%)` : ""}
         </div>
       )}
+    </div>
+  );
+}
+
+// The record card: labeled boxes on a CSS grid, placements resolved in the node.
+// Height is content-driven (layouts vary), so the passed figure height is ignored.
+export function RecordCardView({ payload, width, fscale }: { payload: RecordPayload; width?: number; fscale?: number }) {
+  return (
+    <div
+      className="sol-record"
+      style={{
+        gridTemplateColumns: `repeat(${Math.max(1, payload.cols)}, minmax(0, 1fr))`,
+        ...(width ? { width } : undefined),
+        ...fscaleStyle(fscale),
+      }}
+    >
+      {payload.fields.map((f, i) => (
+        <div
+          key={i}
+          className="sol-record__box"
+          style={{ gridRow: `${f.row} / span ${f.rowSpan}`, gridColumn: `${f.col} / span ${f.colSpan}` }}
+        >
+          <div className="sol-record__label">{f.label}</div>
+          {f.image ? (
+            <img className="sol-record__img" src={f.image} alt={f.label} draggable={false} />
+          ) : (
+            <div className={`sol-record__value${f.value === null ? " sol-record__value--empty" : ""}`}>
+              {f.value === null ? "—" : typeof f.value === "number" ? formatScalar(f.value) : f.value}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

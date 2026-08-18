@@ -270,6 +270,7 @@ export {
   CalendarHeatmapComponent, WaffleComponent, QuiverComponent,
 } from "./FigureNodes";
 export { SevenSegComponent } from "./SevenSegNode";
+export { RecordComponent } from "./RecordNode";
 export { PointPlotterComponent } from "./PointPlotterNode";
 export { CurveComponent } from "./CurveNode";
 export { GridPainterComponent } from "./GridPainterNode";

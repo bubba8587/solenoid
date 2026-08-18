@@ -105,15 +105,40 @@ export interface SevenSegPayload {
   kind: "sevenseg";
   text: string;
 }
+// One labeled box of a record card, pre-placed on the grid (1-based CSS grid
+// lines, resolved from the layout text in the node so the view stays dumb).
+export interface RecordField {
+  label: string;
+  /** The cell for display: dates/booleans/errors arrive pre-formatted as text,
+   *  numbers stay numeric so the view applies the standard scalar format;
+   *  null = an empty cell. */
+  value: number | string | null;
+  /** An image source when the cell text points at one; the box shows the picture. */
+  image?: string;
+  row: number;
+  col: number;
+  rowSpan: number;
+  colSpan: number;
+}
+// A record card: one frame row as labeled boxes on a grid. `index`/`total` are
+// the 1-based record position and row count (index 0 = no record selected).
+export interface RecordPayload {
+  kind: "record";
+  fields: RecordField[];
+  /** Grid column count (the widest layout row). */
+  cols: number;
+  index: number;
+  total: number;
+}
 export type ChartPayload =
   | KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload;
+  | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload | RecordPayload;
 
 /** Every op the `chart` socket can carry. */
 export type ChartValueOp =
   | ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface"
-  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg";
+  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg" | "record";
 
 export interface ChartValue {
   __chart: true;
