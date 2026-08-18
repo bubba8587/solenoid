@@ -343,14 +343,22 @@ grammar of the ramp, not a taste, and they are what makes a swapped ramp still d
 
 **A TINTED ramp follows the live accent** (2026-08-18). Orchard and Blueprint declare
 the accent slot their ramp was authored against (`CHROME_HOME`: green / blue); appTheme
-rotates the whole ramp by the hue delta to the selected accent, holding every key's
-relative luminance (bisected HSL lightness), so the structure rules below survive any
-accent and the authored ramp reappears byte-identical at the home accent. Adaptation is
-per-palette by declaration, never universal: Solarized's base ladder is a lifted
+rotates the whole ramp by the hue delta to the selected accent — in OKLCh, holding
+every key's chroma AND its WCAG relative luminance (bisected OK lightness) — so the
+tint stays exactly as strong as authored, the structure rules below survive any accent,
+and the authored ramp reappears byte-identical at the home accent. The space is load-
+bearing, not taste: the first cut rotated in HSL, whose saturation is hue-anisotropic,
+and the workbench came out "washed in the color" (author) — up to 2× the authored
+perceived chroma on Orchard's dark ground. This does NOT reopen the socket-sibling
+HSV rule (DESIGN.md §Tertiary): that derivation takes fixed steps NEAR its own hue,
+where anisotropy never bites; a rotation always crosses hue regions, which is the one
+job HSV/HSL cannot do evenly. Chroma may only DROP in transit, where sRGB's gamut is
+tighter at the new hue (near-white creams carried to pink) — never inflate. Adaptation
+is per-palette by declaration, never universal: Solarized's base ladder is a lifted
 identity, Colorblind-safe and Equinox are achromatic on purpose, Muted's brief is glare
 rather than hue, and Custom is exactly what its author picked. An accent below the
-chroma floor (the gray slot, the neutral cycle) carries no hue and leaves the ramp
-authored.
+OKLCh chroma floor (the gray slot, the neutral cycle) carries no hue and leaves the
+ramp authored.
 
 **CONTRAST is scoped to two palettes: `Default` and `Colorblind-safe`** (2026-08-09;
 this narrows the same decision's original all-palettes rule). Those two carry the AA

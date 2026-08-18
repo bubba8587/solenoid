@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
+import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
 
 // WCAG luminance/contrast, shared by the structure checks below and the
 // accent-adaptive suite (which re-runs them on rotated ramps).
@@ -199,13 +199,6 @@ describe("accent-adaptive chrome", () => {
   const HOMES = Object.entries(CHROME_HOME) as [PaletteName, PaletteSlot][];
   const MODES = ["dark", "light"] as const;
   const homeHex = (name: PaletteName) => BUILTIN_PALETTES[name][CHROME_HOME[name]!];
-  const hueOf = (hex: string) => {
-    const [r, g, b] = [0, 1, 2].map((i) => chan(hex, i));
-    const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
-    if (d === 0) return 0;
-    const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return h * 60;
-  };
   const hueDist = (a: number, b: number) => {
     const d = Math.abs(((a - b) % 360 + 360) % 360);
     return Math.min(d, 360 - d);
@@ -233,37 +226,48 @@ describe("accent-adaptive chrome", () => {
     }
   });
 
-  it("an accent too gray to carry a hue leaves the ramp alone (neutral cycle; Orchard's warm quiet)", () => {
+  it("an accent too gray to carry a hue leaves the ramp alone (neutral cycle; each palette's gray)", () => {
     for (const [name] of HOMES) {
       const ramp = BUILTIN_CHROME[name].dark;
       expect(adaptChrome(ramp, homeHex(name), NEUTRAL_HEX[NEUTRAL_WHITE])).toBe(ramp);
       expect(adaptChrome(ramp, homeHex(name), NEUTRAL_HEX[NEUTRAL_DARK])).toBe(ramp);
+      // The palettes' own gray accents sit below the OKLCh chroma floor — Orchard's
+      // warm quiet included — so a neutral pick never re-tints the workbench.
+      expect(adaptChrome(ramp, homeHex(name), BUILTIN_PALETTES[name].gray)).toBe(ramp);
     }
-    // Orchard's `gray` is Pear's quiet — warm-HUED but below the chroma floor, so
-    // picking the neutral accent never re-tints the cream toward rose.
-    const orchard = BUILTIN_CHROME.Orchard.light;
-    expect(adaptChrome(orchard, homeHex("Orchard"), BUILTIN_PALETTES.Orchard.gray)).toBe(orchard);
   });
 
-  it("rotates every key by the accent's hue delta and holds its luminance", () => {
+  it("rotates every key by the accent's OK-hue delta, holding luminance and chroma, under every accent", () => {
     for (const [name] of HOMES) {
       for (const mode of MODES) {
         const ramp = BUILTIN_CHROME[name][mode] as Record<ChromeKey, string>;
-        const accent = BUILTIN_PALETTES[name].vermilion;
-        const delta = hueDist(hueOf(accent), hueOf(homeHex(name)));
-        const out = adaptChrome(ramp, homeHex(name), accent) as Record<ChromeKey, string>;
-        for (const key of CHROME_KEYS) {
-          // Tolerance is 8-bit hex quantization, worst near WHITE (~0.006/step on g)
-          // — where structure gaps are widest; near black a step costs ~0.0002.
-          expect(Math.abs(lum(out[key]) - lum(ramp[key])), `${name}/${mode}/${key} luminance`).toBeLessThan(0.01);
-          // Hue lands delta away — asserted only where the key carries enough chroma
-          // to have a stable hue, with tolerance scaled to that chroma (a 1/255
-          // rounding step swings hue by ~(step/chroma)·60°, so near-neutrals wobble).
-          const [r, g, b] = [0, 1, 2].map((i) => chan(ramp[key], i));
-          const chroma = Math.max(r, g, b) - Math.min(r, g, b);
-          if (chroma > 0.08) {
-            const tol = 1 + (3 / 255 / chroma) * 60;
-            expect(Math.abs(hueDist(hueOf(out[key]), hueOf(ramp[key])) - delta), `${name}/${mode}/${key} hue`).toBeLessThan(tol);
+        for (const slot of COLOR_PALETTE) {
+          const accent = BUILTIN_PALETTES[name][slot];
+          const out = adaptChrome(ramp, homeHex(name), accent) as Record<ChromeKey, string>;
+          if (out === ramp) continue; // home / below the chroma floor — covered above
+          const delta = hueDist(hexToOklch(accent)[2], hexToOklch(homeHex(name))[2]);
+          for (const key of CHROME_KEYS) {
+            const [, cIn, hIn] = hexToOklch(ramp[key]);
+            const [, cOut, hOut] = hexToOklch(out[key]);
+            const label = `${name}/${mode}/${key}@${slot}`;
+            // Luminance tolerance is 8-bit hex quantization, worst near WHITE
+            // (~0.006/step on g) — where structure gaps are widest.
+            expect(Math.abs(lum(out[key]) - lum(ramp[key])), `${label} luminance`).toBeLessThan(0.01);
+            // THE anti-wash pin (author, 2026-08-18): perceived chroma NEVER
+            // inflates in transit — the first cut rotated in HSL, whose saturation
+            // is hue-anisotropic, and the workbench came out "washed in the color".
+            // It may only DROP where the sRGB gamut is tighter at the new hue than
+            // at the authored one (near-white creams carried to pink, dark teals);
+            // measured worst is −0.0133.
+            expect(cOut - cIn, `${label} chroma inflation`).toBeLessThan(0.005);
+            expect(cOut - cIn, `${label} chroma collapse`).toBeGreaterThan(-0.02);
+            // Hue lands delta away where the key carries enough chroma for a stable
+            // hue; tolerance widens as 1/chroma (one hex step wobbles ab ~0.0025)
+            // plus the gamut clamp's own wobble at very low chroma.
+            if (cIn > 0.012 && cOut > 0.008) {
+              const tol = 2 + (0.0025 / Math.min(cIn, cOut)) * (180 / Math.PI);
+              expect(Math.abs(hueDist(hOut, hIn) - delta), `${label} hue`).toBeLessThan(tol);
+            }
           }
         }
       }

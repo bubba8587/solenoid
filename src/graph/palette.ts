@@ -600,39 +600,96 @@ function relLum(hex: string): number {
   return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
 }
 
-// Below this HSL saturation an accent has no hue worth following (the gray slot, the
-// neutral cycle, Orchard's warm quiet) — the authored ramp stands.
-const ADAPT_MIN_SAT = 0.15;
+// The rotation runs in OKLCh, NOT HSL/HSV: HSL saturation is hue-anisotropic — the
+// S that reads as barely-tinted paper in Orchard's yellow band reads as a heavy
+// wash carried to pink or blue (first attempt, 2026-08-18) — while OKLCh chroma is
+// perceptually even, so "the tint strength the author set" survives the trip around
+// the wheel. (The socket-shade siblings stay HSV by design — see DESIGN.md §Tertiary;
+// that derivation never crosses hue regions, this one always does.)
+function srgbToLinear(c: number): number {
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+function linearToSrgb(c: number): number {
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055;
+}
 
-// Luminance is monotonic in HSL lightness at fixed hue/saturation, so bisecting L
-// hits the authored luminance at the new hue. Holding luminance is what keeps the
-// D35 ramp STRUCTURE — every contrast relationship the author eyeballed — true
-// under any accent; only chromaticity moves.
-function rotateHueKeepLum(hex: string, delta: number): string {
+/** Hex → OKLCh [L, C, h°]; gray inputs give C≈0 with a meaningless hue. */
+export function hexToOklch(hex: string): [number, number, number] {
   const t = parseHex(hex);
-  if (!t) return hex;
-  const [h, s] = rgbToHsl(...t);
+  if (!t) return [0, 0, 0];
+  const [r, g, b] = t.map((c) => srgbToLinear(c / 255));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [L, Math.hypot(A, B), (Math.atan2(B, A) * 180) / Math.PI];
+}
+
+/** OKLCh → linear-sRGB triple, unclamped (callers gamut-check). */
+function oklchToLinear(L: number, C: number, h: number): [number, number, number] {
+  const A = C * Math.cos((h * Math.PI) / 180);
+  const B = C * Math.sin((h * Math.PI) / 180);
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+  ];
+}
+
+/** OKLCh → hex, mapping into gamut by walking C toward gray at fixed L and h. */
+function oklchToHex(L: number, C: number, h: number): string {
+  let rgb = oklchToLinear(L, C, h);
+  if (rgb.some((c) => c < -1e-4 || c > 1 + 1e-4)) {
+    let lo = 0, hi = C;
+    for (let i = 0; i < 16; i++) {
+      const mid = (lo + hi) / 2;
+      const cand = oklchToLinear(L, mid, h);
+      if (cand.some((c) => c < -1e-4 || c > 1 + 1e-4)) hi = mid; else lo = mid;
+    }
+    rgb = oklchToLinear(L, lo, h);
+  }
+  const to = (c: number) => Math.round(Math.min(1, Math.max(0, linearToSrgb(c))) * 255).toString(16).padStart(2, "0");
+  return `#${rgb.map(to).join("")}`;
+}
+
+// Below this OKLCh chroma an accent has no hue worth following (the gray slot in
+// every adaptive palette, the neutral cycle) — the authored ramp stands. Centered in
+// the measured gap: the grayest guard case is Orchard's quiet at C≈.038, the least
+// chromatic real accent Orchard's teal at C≈.072.
+const ADAPT_MIN_CHROMA = 0.05;
+
+// WCAG luminance is monotonic in OK lightness at fixed chroma/hue, so bisecting L
+// hits the authored luminance at the new hue. Chroma is HELD and luminance is
+// re-matched: the tint stays exactly as strong as authored, and the D35 ramp
+// STRUCTURE — every contrast relationship the author eyeballed — stays true under
+// any accent. Only hue moves.
+function rotateHueKeepLum(hex: string, delta: number): string {
+  const [, C, h] = hexToOklch(hex);
   const target = relLum(hex);
   let lo = 0, hi = 1;
   for (let i = 0; i < 22; i++) {
     const mid = (lo + hi) / 2;
-    if (relLum(hslToHex(h + delta, s, mid)) < target) lo = mid; else hi = mid;
+    if (relLum(oklchToHex(mid, C, h + delta)) < target) lo = mid; else hi = mid;
   }
-  return hslToHex(h + delta, s, (lo + hi) / 2);
+  return oklchToHex((lo + hi) / 2, C, h + delta);
 }
 
 /**
- * The ramp re-tinted for the live accent: every key's hue rotated by
- * (accent − home), luminance held. Returns `ramp` ITSELF when there is nothing to
- * do — accent at home, or too gray to carry a hue — so the authored hexes pass
- * through byte-identical rather than round-tripped.
+ * The ramp re-tinted for the live accent: every key's OKLCh hue rotated by
+ * (accent − home), chroma and luminance held. Returns `ramp` ITSELF when there is
+ * nothing to do — accent at home, or too gray to carry a hue — so the authored
+ * hexes pass through byte-identical rather than round-tripped.
  */
 export function adaptChrome(ramp: ChromeRamp, homeHex: string, accentHex: string): ChromeRamp {
-  const home = parseHex(homeHex), acc = parseHex(accentHex);
-  if (!home || !acc) return ramp;
-  const [accHue, accSat] = rgbToHsl(...acc);
-  if (accSat < ADAPT_MIN_SAT) return ramp;
-  const delta = (((accHue - rgbToHsl(...home)[0]) % 360) + 360) % 360;
+  if (!parseHex(homeHex) || !parseHex(accentHex)) return ramp;
+  const [, accChroma, accHue] = hexToOklch(accentHex);
+  if (accChroma < ADAPT_MIN_CHROMA) return ramp;
+  const delta = (((accHue - hexToOklch(homeHex)[2]) % 360) + 360) % 360;
   if (delta < 0.5 || delta > 359.5) return ramp;
   const out: ChromeRamp = {};
   for (const key of CHROME_KEYS) {

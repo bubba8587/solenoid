@@ -89,13 +89,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 ### SESSION DIGEST (2026-08-18b — seed menu grouped; ONE save format)
 - **Tinted chrome follows the accent** (author ask): Orchard and Blueprint declare
   the accent slot their ramp was authored against (`CHROME_HOME`: green / blue) and
-  `appTheme` rotates the whole ramp to the live accent's hue, luminance held by
-  bisection so the D35 structure survives any accent; byte-identical passthrough at
-  the home accent, achromatic accents (gray slot, neutral cycle) leave the ramp
-  authored, the other palettes hold still by brief. D35 amended; DESIGN.md §2 taught;
-  pinned in `palette.test.ts` § accent-adaptive (incl. structure × all 12 accents);
-  eyeballed via Playwright (redprint Blueprint@vermilion, blossom Orchard@pink,
-  identity shots unchanged).
+  `appTheme` rotates the whole ramp to the live accent's hue — in OKLCh, chroma and
+  WCAG luminance both held, so the tint stays exactly as strong as authored and the
+  D35 structure survives any accent; byte-identical passthrough at the home accent,
+  achromatic accents (gray slot, neutral cycle) leave the ramp authored, the other
+  palettes hold still by brief. The first cut rotated in HSL and the author called
+  it "washed in the color" — HSL saturation is hue-anisotropic (2× perceived chroma
+  on Orchard's dark ground); the socket-sibling HSV rule is untouched (fixed
+  near-hue steps vs a cross-hue rotation — boundary now written into DESIGN.md).
+  D35 amended; pinned in `palette.test.ts` § accent-adaptive (chroma-never-inflates
+  + structure × all 12 accents); eyeballed via Playwright (redprint
+  Blueprint@vermilion, blossom-whisper Orchard@pink, identity shots unchanged).
 - **Dev server starts through a launcher** (author ask): `scripts/dev-up.mjs` spawns
   vite detached, polls until :1420 answers, exits — `/startup` runs it in the
   foreground so the task actually finishes; stop advice is the self-match-proof
