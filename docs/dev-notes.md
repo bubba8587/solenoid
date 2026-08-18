@@ -126,8 +126,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   Pinned in `finePrintContract.test.ts`.
 - Verified in the live app via the Playwright loop (pager flip, wired-row search, report
   embed); `visual.test.ts` pins parser, image detection, formatting, and the row contract.
-- **Record-family follow-ups are queued in `deferrals.md`** (author: proposals "mostly
-  fine"; every view lands as an op/output on the ONE Record node, never a sibling node).
+- **Record grew its three views + the linked-widget output** (author green-lit the
+  high-confidence set; maximal merge on the ONE node): op selector Card | Gallery |
+  Board (`RECORD_OP_META`, operation-kind in `NODE_OPS` — a view is a thing you
+  search by name, like a chart type; "Record: Gallery"/"Record: Board" search rows).
+  The op owns the Row / Group-by sockets — `setOp` swaps them, the component prunes
+  departing cables first (SSOT-9, the ChartNode pattern). Gallery tiles every row;
+  Board lanes by a named column (blanks last as `—`, the grouping column skipped in
+  default stacked cards); both cap at 60 cards with `+N more` in the payload. The
+  `picked` output echoes the card view's resolved 1-based pick (Grist widget
+  linking: wire it onward and downstream follows the pager). Verified live through
+  the LazySelect op picker (its options mount on focus — scripted pickers must
+  focus first). Remaining lifts stay in `deferrals.md`.
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
 (latest sweep 2026-08-18: through the 2026-08-17 window — the architecture-map &

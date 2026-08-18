@@ -120,13 +120,21 @@ export interface RecordField {
   rowSpan: number;
   colSpan: number;
 }
-// A record card: one frame row as labeled boxes on a grid. `index`/`total` are
-// the 1-based record position and row count (index 0 = no record selected).
+// The record figure, three views of one layout: `card` draws the picked row,
+// `gallery` every row as a grid of cards, `board` every row in lanes keyed by a
+// grouping column. `index`/`total` are the card view's 1-based pick and the row
+// count (index 0 = no record selected).
 export interface RecordPayload {
   kind: "record";
-  fields: RecordField[];
-  /** Grid column count (the widest layout row). */
+  view: "card" | "gallery" | "board";
+  /** Grid column count within ONE card (the widest layout row). */
   cols: number;
+  /** One entry per drawn card; the card view has exactly one (the picked row). */
+  cards: RecordField[][];
+  /** Board lanes: label + indices into `cards`; absent for card/gallery. */
+  lanes?: Array<{ label: string; cards: number[] }>;
+  /** Rows beyond the drawing cap (gallery/board draw at most the cap). */
+  more?: number;
   index: number;
   total: number;
 }

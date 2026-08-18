@@ -39,19 +39,11 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-// The record card: labeled boxes on a CSS grid, placements resolved in the node.
-// Height is content-driven (layouts vary), so the passed figure height is ignored.
-export function RecordCardView({ payload, width, fscale }: { payload: RecordPayload; width?: number; fscale?: number }) {
+// One card of labeled boxes on a CSS grid, placements resolved in the node.
+function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
   return (
-    <div
-      className="sol-record"
-      style={{
-        gridTemplateColumns: `repeat(${Math.max(1, payload.cols)}, minmax(0, 1fr))`,
-        ...(width ? { width } : undefined),
-        ...fscaleStyle(fscale),
-      }}
-    >
-      {payload.fields.map((f, i) => (
+    <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
+      {fields.map((f, i) => (
         <div
           key={i}
           className="sol-record__box"
@@ -67,6 +59,43 @@ export function RecordCardView({ payload, width, fscale }: { payload: RecordPayl
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// The record figure: the picked card, a gallery of cards, or board lanes.
+// Height is content-driven (layouts vary), so the passed figure height is ignored.
+export function RecordCardView({ payload, width, fscale }: { payload: RecordPayload; width?: number; fscale?: number }) {
+  const outer = { ...(width ? { width } : undefined), ...fscaleStyle(fscale) };
+  const moreLine = payload.more ? <div className="sol-record__more">+{payload.more} more</div> : null;
+  if (payload.view === "gallery") {
+    return (
+      <div style={outer}>
+        <div className="sol-record-gallery">
+          {payload.cards.map((c, i) => <RecordGrid key={i} fields={c} cols={payload.cols} />)}
+        </div>
+        {moreLine}
+      </div>
+    );
+  }
+  if (payload.view === "board") {
+    return (
+      <div style={outer}>
+        <div className="sol-record-board">
+          {(payload.lanes ?? []).map((lane) => (
+            <div key={lane.label} className="sol-record-lane">
+              <div className="sol-record-lane__label">{lane.label}</div>
+              {lane.cards.map((ci) => <RecordGrid key={ci} fields={payload.cards[ci] ?? []} cols={payload.cols} />)}
+            </div>
+          ))}
+        </div>
+        {moreLine}
+      </div>
+    );
+  }
+  return (
+    <div style={outer}>
+      <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} />
     </div>
   );
 }

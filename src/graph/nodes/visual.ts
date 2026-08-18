@@ -958,13 +958,28 @@ export function recordImageSrc(text: string): string | null {
   return null;
 }
 
+export type RecordOp = "card" | "gallery" | "board";
+
+// The card dropdown DERIVES from this table (SSOT-1) — never hand-write a second list.
+export const RECORD_OP_META = {
+  card:    { label: "Card" },
+  gallery: { label: "Gallery" },
+  board:   { label: "Board" },
+} satisfies Record<RecordOp, { label: string }>;
+
+// Gallery/board draw at most this many cards; `payload.more` carries the rest.
+export const RECORD_CARD_CAP = 60;
+
 export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record; blank or out of range shows the boxes empty.",
+    picked: "Echoes the 1-based row the card shows, so downstream follows the pager; blank when no record is picked.",
+    by: "Names the column whose values become the board's lanes; blank or unmatched draws nothing.",
     layout: "One line per grid row with column names separated by | marks. Repeating a name merges its cells into one box; a dot or an empty cell stays blank. Left empty, the columns stack in a single column of boxes.",
   };
 
   label: string;
+  op: RecordOp;
   literals: Record<string, number> = { row: 1 };
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -980,30 +995,48 @@ export class RecordNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: RecordOp }) {
     super("Record");
     this.label = init?.label ?? "Record";
+    // Guard a stale op from an old save — fall back rather than crash.
+    this.op = init?.op && init.op in RECORD_OP_META ? init.op : "card";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("row", numIn("Row"));
+    if (this.op === "card") this.addInput("row", numIn("Row"));
+    if (this.op === "board") this.addInput("by", strIn("Group by"));
     this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
+    this.addOutput("picked", numOut("Row"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+  /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
+   *  departing keys' cables BEFORE switching (SSOT-9). */
+  setOp(next: RecordOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    if (next === "card") { if (!this.inputs.row) this.addInput("row", numIn("Row")); }
+    else if (this.inputs.row) this.removeInput("row");
+    if (next === "board") { if (!this.inputs.by) this.addInput("by", strIn("Group by")); }
+    else if (this.inputs.by) this.removeInput("by");
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue; picked: number | null }> {
     const fv = await readFrame(inputs.frame?.[0] ?? null);
     const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
     const total = cols[0]?.values.length ?? 0;
     // Row is which record to draw — a figure's datum: a wired blank or an
     // out-of-range pick renders the boxes EMPTY, never an error out `chart`.
-    const rowRaw = readInput(inputs.row, this.literals.row ?? 1);
-    let index = rowRaw === null ? 0 : Math.round(rowRaw);
-    if (inputs.row?.[0] === undefined && total > 0) {
-      // Mirror the clamped pick only when unwired, so the pager and card agree.
-      index = clamp(index, 1, total);
-      this.literals.row = index;
+    let index = 0;
+    if (this.op === "card") {
+      const rowRaw = readInput(inputs.row, this.literals.row ?? 1);
+      index = rowRaw === null ? 0 : Math.round(rowRaw);
+      if (inputs.row?.[0] === undefined && total > 0) {
+        // Mirror the clamped pick only when unwired, so the pager and card agree.
+        index = clamp(index, 1, total);
+        this.literals.row = index;
+      }
+      if (index < 1 || index > total) index = 0;
     }
-    if (index < 1 || index > total) index = 0;
     // Layout and Options are presentation: a wired blank means "none given" and
     // must not reinstate the card's text (the ChartNode options contract).
     const layIn = readInput(inputs.layout, this.stringLiterals.layout ?? null);
@@ -1011,31 +1044,71 @@ export class RecordNode extends ClassicPreset.Node {
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null));
 
+    // The board's grouping column: a column reference, so a wired blank or an
+    // unmatched name draws nothing (never "one lane of everything").
+    const byIn = this.op === "board" ? readInput(inputs.by, this.stringLiterals.by ?? "") : "";
+    const byKey = typeof byIn === "string" ? byIn.trim().toLowerCase() : "";
+    const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
+
     const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
-    const field = (name: string, col: FrameColumn | undefined, at: { row: number; col: number; rowSpan: number; colSpan: number }): RecordField => {
+    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number }): RecordField => {
       const label = col
         ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
         : name;
-      const raw = col && index >= 1 ? col.values[index - 1] ?? null : null;
+      const raw = col && rowIdx !== null ? col.values[rowIdx] ?? null : null;
       const shown = raw === null ? null : formatFrameCell(col!.type, raw);
       const image = typeof shown === "string" ? recordImageSrc(shown) : null;
       return { label, value: shown, ...(image ? { image } : {}), ...at };
     };
     const placed = layStr && layStr.trim() !== "" ? parseRecordLayout(layStr) : [];
-    // No layout → every column stacks; a layout stands on its own, so it can be
-    // drafted before the frame is wired (unmatched names keep their boxes).
-    const fields: RecordField[] = placed.length > 0
-      ? placed.map((p) => field(p.name, byName.get(p.name.toLowerCase()), { row: p.row, col: p.col, rowSpan: p.rowSpan, colSpan: p.colSpan }))
-      : cols.map((c, i) => field(c.name, c, { row: i + 1, col: 1, rowSpan: 1, colSpan: 1 }));
+    // No layout → every column stacks (the board skips its own grouping column
+    // there — every card in a lane would repeat the lane's label). A layout
+    // stands on its own, so it can be drafted before the frame is wired
+    // (unmatched names keep their boxes).
+    const stackCols = cols.filter((c) => !(this.op === "board" && c === byCol));
+    const cardAt = (rowIdx: number | null): RecordField[] =>
+      placed.length > 0
+        ? placed.map((p) => field(p.name, byName.get(p.name.toLowerCase()), rowIdx, { row: p.row, col: p.col, rowSpan: p.rowSpan, colSpan: p.colSpan }))
+        : stackCols.map((c, i) => field(c.name, c, rowIdx, { row: i + 1, col: 1, rowSpan: 1, colSpan: 1 }));
     const ncols = placed.length > 0 ? Math.max(...placed.map((p) => p.col + p.colSpan - 1)) : 1;
 
-    const payload: RecordPayload = { kind: "record", fields, cols: ncols, index, total };
+    let cards: RecordField[][] = [];
+    let lanes: RecordPayload["lanes"];
+    let more = 0;
+    if (this.op === "card") {
+      cards = [cardAt(index >= 1 ? index - 1 : null)];
+    } else if (this.op === "gallery") {
+      const drawn = Math.min(total, RECORD_CARD_CAP);
+      cards = Array.from({ length: drawn }, (_, r) => cardAt(r));
+      more = total - drawn;
+    } else if (byCol) {
+      const drawn = Math.min(total, RECORD_CARD_CAP);
+      const laneList: NonNullable<RecordPayload["lanes"]> = [];
+      const laneOf = new Map<string, number>();
+      for (let r = 0; r < drawn; r++) {
+        const cell = byCol.values[r] ?? null;
+        const shown = cell === null ? null : formatFrameCell(byCol.type, cell);
+        const label = shown === null ? "—" : String(shown);
+        let li = laneOf.get(label);
+        if (li === undefined) { li = laneList.length; laneOf.set(label, li); laneList.push({ label, cards: [] }); }
+        laneList[li].cards.push(cards.length);
+        cards.push(cardAt(r));
+      }
+      lanes = laneList;
+      more = total - drawn;
+    }
+
+    const payload: RecordPayload = {
+      kind: "record", view: this.op, cols: ncols, cards,
+      ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
+      index, total,
+    };
     const chart: ChartValue = {
       __chart: true, op: "record", values: null, payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Record",
     };
     this.cachedChart = chart;
-    return { chart };
+    return { chart, picked: index >= 1 ? index : null };
   }
 }
 

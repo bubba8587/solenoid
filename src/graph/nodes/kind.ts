@@ -226,9 +226,9 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
   if (
     node instanceof ChartNode || node instanceof HistogramNode ||
     node instanceof TreemapNode || node instanceof SankeyNode ||
-    node instanceof MermaidNode
+    node instanceof MermaidNode || node instanceof RecordNode
   ) return 10;
-  if (node instanceof HeatmapCellNode || node instanceof TornadoNode || node instanceof RecordNode) return 6;
+  if (node instanceof HeatmapCellNode || node instanceof TornadoNode) return 6;
   if (
     node instanceof SparklineNode || node instanceof GaugeNode ||
     node instanceof ChartBuilderNode

@@ -1,12 +1,33 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { RecordNode as RecordNodeType } from "../rete-nodes";
-import { NodeShell, type NodeProps } from "./nodeKit";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { RecordNode as RecordNodeType, RecordOp } from "../rete-nodes";
+import { RECORD_OP_META } from "../rete-nodes";
+import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
+import { getActiveArea } from "../activeGraph";
 import { stopDragStart } from "../coarse";
+import { dropInputCables } from "./cablePrune";
+
+// Derived from RECORD_OP_META so the dropdown can't drift from the Add-menu rows (SSOT-1).
+const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) as RecordOp[])
+  .map((value) => ({ value, label: RECORD_OP_META[value].label }));
+
+// The op owns the Row / Group-by sockets, so a switch must drop the departing
+// keys' cables BEFORE the sockets go (SSOT-9) — removed silently, a cable would
+// live on invisibly.
+async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
+  const departing: string[] = [];
+  if (node.op === "card" && next !== "card") departing.push("row");
+  if (node.op === "board" && next !== "board") departing.push("by");
+  if (departing.length) await dropInputCables(node.id, departing);
+  node.setOp(next);
+  const area = getActiveArea();
+  if (area) await area.update("node", node.id);
+  await processGraph();
+}
 
 function Chevron({ back }: { back?: boolean }) {
   return (
@@ -21,6 +42,8 @@ function Chevron({ back }: { back?: boolean }) {
 
 export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const [op, setOpState] = useState<RecordOp>(data.op);
+  const setOp = useCallback((v: RecordOp) => { setOpState(v); void applyRecordOp(data, v); }, [data]);
   const connected = useConnectedInputs(data.id);
   const layoutWired = connected.has("layout");
   const rowWired = connected.has("row");
@@ -59,7 +82,10 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   });
   const layoutPort = data.inputs.layout;
 
-  const hasBoxes = !!payload && payload.fields.length > 0;
+  const hasBoxes = !!payload && payload.cards.some((c) => c.length > 0);
+  // Per-op body rows; collapsed, the hand-rendered layout block is gone, so its
+  // socket folds into the row pills (the ChartNode `values` pattern).
+  const keys = ["frame", ...(op === "card" ? ["row"] : op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
 
   return (
     <NodeShell
@@ -69,9 +95,8 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
         ? <NodeSocket side="input" socketKey="layout" nodeId={data.id} emit={emit} payload={layoutPort.socket} top={layoutTop} />
         : null}
     >
-      {/* Collapsed, the hand-rendered layout block is gone, so fold its socket
-          into the row pills (the ChartNode `values` pattern). */}
-      <InlineInputs node={data} emit={emit} keys={collapsed ? ["frame", "row", "layout", "options"] : ["frame", "row", "options"]} />
+      <OpSelect value={op} onChange={setOp} options={OPTIONS} />
+      <InlineInputs node={data} emit={emit} keys={keys} />
       {!collapsed && (
         <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
           {layoutWired ? (
@@ -91,7 +116,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
         </div>
       )}
       <div className="solenoid-node__section-divider" />
-      {!collapsed && !rowWired && total > 0 && (
+      {!collapsed && op === "card" && !rowWired && total > 0 && (
         <div className="solenoid-record__pager">
           <button
             type="button" className="solenoid-record__pager-btn" title="Previous record"

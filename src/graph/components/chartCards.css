@@ -127,3 +127,36 @@
   min-height: 40px;
   object-fit: cover;
 }
+
+/* Gallery: cards tile by available width; board: one column per lane. */
+.sol-record-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+.sol-record-board {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.sol-record-lane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sol-record-lane__label {
+  font-size: calc(10px * var(--chart-fscale, 1));
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sol-record__more {
+  margin-top: 4px;
+  font-size: calc(10px * var(--chart-fscale, 1));
+  color: var(--text-muted, var(--text-dim));
+  text-align: right;
+}

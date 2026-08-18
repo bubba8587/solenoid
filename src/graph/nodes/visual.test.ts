@@ -436,8 +436,8 @@ describe("Record node", () => {
       { name: "Qty", type: "number", values: [40, 120] },
     ]);
     const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
-    expect(p).toMatchObject({ kind: "record", cols: 1, index: 1, total: 2 });
-    expect(p.fields).toEqual([
+    expect(p).toMatchObject({ kind: "record", view: "card", cols: 1, index: 1, total: 2 });
+    expect(p.cards[0]).toEqual([
       { label: "Item", value: "Bolt", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
       { label: "Qty", value: 40, row: 2, col: 1, rowSpan: 1, colSpan: 1 },
     ]);
@@ -454,7 +454,7 @@ describe("Record node", () => {
     expect(p.cols).toBe(2);
     // Matched names take the column's own spelling; an unknown name keeps its
     // box (a draftable layout), just empty.
-    expect(p.fields).toEqual([
+    expect(p.cards[0]).toEqual([
       { label: "Item", value: "Bolt", row: 1, col: 1, rowSpan: 1, colSpan: 2 },
       { label: "Qty", value: 40, row: 2, col: 1, rowSpan: 1, colSpan: 1 },
       { label: "Missing", value: null, row: 2, col: 2, rowSpan: 1, colSpan: 1 },
@@ -472,7 +472,7 @@ describe("Record node", () => {
     ]);
     const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
     expect(p.index).toBe(2);
-    const by = Object.fromEntries(p.fields.map((fl) => [fl.label, fl]));
+    const by = Object.fromEntries(p.cards[0].map((fl) => [fl.label, fl]));
     expect(typeof by.When.value).toBe("string"); // serial formatted to date text
     expect(by.Done.value).toBe("TRUE");
     expect(by.Note.value).toBeNull();
@@ -483,17 +483,22 @@ describe("Record node", () => {
     const n = new RecordNode();
     const f = frame([{ name: "A", type: "number", values: [1, 2, 3] }]);
     // Wired blank → no record, boxes stay (labels visible), values empty.
-    let p = (await n.data({ frame: [f], row: [null as unknown as number] })).chart.payload as RecordPayload;
+    let out = await n.data({ frame: [f], row: [null as unknown as number] });
+    let p = out.chart.payload as RecordPayload;
     expect(p.index).toBe(0);
-    expect(p.fields[0]).toMatchObject({ label: "A", value: null });
+    expect(out.picked).toBeNull();
+    expect(p.cards[0][0]).toMatchObject({ label: "A", value: null });
     // Wired out-of-range → empty too, never clamped to a record the cable didn't pick.
     p = (await n.data({ frame: [f], row: [7] })).chart.payload as RecordPayload;
     expect(p.index).toBe(0);
-    // Unwired → the card's literal clamps into range and mirrors back.
+    // Unwired → the card's literal clamps into range and mirrors back, and the
+    // resolved pick flows out `picked` (downstream follows the pager).
     n.literals.row = 99;
-    p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    out = await n.data({ frame: [f] });
+    p = out.chart.payload as RecordPayload;
     expect(p.index).toBe(3);
     expect(n.literals.row).toBe(3);
+    expect(out.picked).toBe(3);
   });
 
   it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {
@@ -501,17 +506,69 @@ describe("Record node", () => {
     n.stringLiterals.layout = "A | B";
     const p = (await n.data({})).chart.payload as RecordPayload;
     expect(p.total).toBe(0);
-    expect(p.fields.map((fl) => fl.label)).toEqual(["A", "B"]);
+    expect(p.cards[0].map((fl) => fl.label)).toEqual(["A", "B"]);
     n.stringLiterals.layout = "";
     const empty = (await n.data({})).chart.payload as RecordPayload;
-    expect(empty.fields).toEqual([]);
+    expect(empty.cards[0]).toEqual([]);
   });
 
-  it("Options styles the figure; label round-trips through extractInit", async () => {
-    const n = new RecordNode({ label: "Part" });
+  it("Options styles the figure; label + op round-trip through extractInit", async () => {
+    const n = new RecordNode({ label: "Part", op: "gallery" });
     const f = frame([{ name: "A", type: "number", values: [1] }]);
     const out = await n.data({ frame: [f], options: ["title=Sheet"] });
     expect(out.chart.title).toBe("Sheet");
-    expect(new RecordNode(extractInit(n)).label).toBe("Part");
+    const clone = new RecordNode(extractInit(n) as { op: "gallery" });
+    expect(clone.label).toBe("Part");
+    expect(clone.op).toBe("gallery");
+    // A stale op from an old save falls back rather than crashing.
+    expect(new RecordNode({ op: "kanban" as "board" }).op).toBe("card");
+  });
+
+  it("gallery draws every row as a card, capped with a `more` count", async () => {
+    const n = new RecordNode({ op: "gallery" });
+    const f = frame([{ name: "A", type: "number", values: Array.from({ length: 70 }, (_, i) => i + 1) }]);
+    const out = await n.data({ frame: [f] });
+    const p = out.chart.payload as RecordPayload;
+    expect(p.view).toBe("gallery");
+    expect(p.cards.length).toBe(60);
+    expect(p.more).toBe(10);
+    expect(p.cards[2][0]).toMatchObject({ label: "A", value: 3 });
+    // No pick in a gallery.
+    expect(p.index).toBe(0);
+    expect(out.picked).toBeNull();
+  });
+
+  it("board groups rows into lanes by the named column, blanks last as an em-dash lane", async () => {
+    const n = new RecordNode({ op: "board" });
+    n.stringLiterals.by = "status";
+    const f = frame([
+      { name: "Item", type: "string", values: ["a", "b", "c", "d"] },
+      { name: "Status", type: "string", values: ["Open", "Done", "Open", null] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.view).toBe("board");
+    expect(p.lanes).toEqual([
+      { label: "Open", cards: [0, 2] },
+      { label: "Done", cards: [1] },
+      { label: "—", cards: [3] },
+    ]);
+    // The default stacked card skips the grouping column (the lane already says it).
+    expect(p.cards[0].map((fl) => fl.label)).toEqual(["Item"]);
+    // A blank or unmatched grouping column draws nothing.
+    n.stringLiterals.by = "nope";
+    expect(((await n.data({ frame: [f] })).chart.payload as RecordPayload).cards).toEqual([]);
+    n.stringLiterals.by = "Status";
+    expect(((await n.data({ frame: [f], by: [null as unknown as string] })).chart.payload as RecordPayload).cards).toEqual([]);
+  });
+
+  it("setOp swaps the Row / Group-by sockets with the view", () => {
+    const n = new RecordNode();
+    expect(Object.keys(n.inputs)).toEqual(["frame", "row", "layout", "options"]);
+    n.setOp("gallery");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options"]);
+    n.setOp("board");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "by"]);
+    n.setOp("card");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "row"]);
   });
 });
