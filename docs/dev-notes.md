@@ -114,6 +114,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **Record Options socket documented in the Inspector** (author ask, then cut down
   by author): the entry prints the syntax directly — `title=Parts;fontsize=12`,
   the only two keys a record figure reads.
+- **Competitor dive round 3 — display surfaces around Record** (author steer: UI,
+  not data processing): verified patterns from Airtable (gallery grouping, grid
+  group summary bars, expanded-record prev/next, attachment preview) and Notion
+  (side/center peek, list view); nine UI candidates appended to the deferrals
+  steal entry (top fits: List as a fourth Record op per D37, grouped gallery
+  sections, lane summary line, image lightbox, popup pager, peek dock).
+  Calendar figure listed but flagged under the author's Gantt "not now" ruling.
 - **Competitor dive round 2 — Solenoid-wide** (author widened scope): surveyed the
   Alteryx-pattern incumbents (KNIME/Alteryx, @RISK/Crystal Ball, Mathcad,
   Quantrix/Causal, Stella/Vensim, Power Query) + canvas donors (n8n, Blender,

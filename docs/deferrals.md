@@ -52,10 +52,10 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   - **Dependency-cone hover brush** (marimo reactive highlighting): soft
     highlight of a node's upstream/downstream cone on hover; isolate is the
     heavy version, this is the glance version.
-- **Record family steals** (author-ordered research dive 2026-08-18 across
-  Airtable / Grist / Notion / Baserow / NocoDB / SeaTable / Coda; session digest
-  has the sources). Candidates, best fit first — all display-side, none make the
-  figure edit its frame:
+- **Record-family & adjacent display-surface steals** (author-ordered research
+  dive 2026-08-18, rounds 1 and 3, across Airtable / Grist / Notion / Baserow /
+  NocoDB / SeaTable / Coda; session digest has the sources). Candidates, best
+  fit first — all display-side, none make the figure edit its frame:
   - **Gallery tile click → picks the row**: drive the existing `picked` output
     (null in gallery today) and highlight the picked tile, so gallery → card
     master-detail wiring goes live (Grist's linked card-list pattern). Smallest,
@@ -81,10 +81,43 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   - **Two-axis board (swimlanes)**: Airtable kanban notably LACKS it (their
     timeline has it) — a differentiator if the board ever grows; biggest scope
     of the set.
+  Round 3 (author steer: UI surfaces around the record/gallery family):
+  - **List view as a fourth Record op** (Notion list / Airtable list): one line
+    per record, title field + trailing fields, dense browsing between card and
+    gallery. Fits D37 exactly — views are ARGUMENTS of the one Record node.
+  - **Grouped gallery sections** (Airtable gallery grouping): a group-by column
+    renders labeled sections inside the gallery, the masonry packing per
+    section — the board's lanes turned horizontal bands.
+  - **Lane / group summary line** (Airtable GRID group summary bars; their
+    kanban notably lacks it): per-lane or per-section count plus one aggregated
+    column (sum/avg of a named column) in the lane header. Display-only, and a
+    place to EXCEED the genre.
+  - **Image lightbox** (Airtable attachment preview): click an image box in any
+    record surface → full-size overlay with prev/next through the record's
+    images or the gallery's cards. Today images render inline and clicks do
+    nothing.
+  - **Record navigation in the popup** (Airtable expanded-record prev/next):
+    the card popup carries the pager so records flip without closing; keyboard
+    arrows included.
+  - **Peek dock** (Notion side peek): open value/figure popups docked to the
+    right instead of center-overlay, canvas stays interactive; the Inspector
+    dock (`sol-inspector-docked`) is the shipped precedent. Per-surface default
+    like Notion (gallery → center, table → side) if it lands.
+  - **Chip hover preview** (macOS Quick Look pattern): hovering a value chip
+    shows a transient mini-preview before committing to the popup.
+  - **Frozen header / first column in the table popup**: sticky header row and
+    optional first-column freeze while scrolling wide frames; no such
+    affordance exists in the popup grid today.
+  - **Calendar figure** (Airtable calendar view, as a pure display figure):
+    date-keyed records on a month grid, chips per day. SAME FAMILY as the
+    timeline/Gantt figure the author MAJORLY deferred (2026-08-18, "loves
+    Gantt, not now") — treat that ruling as covering this sibling until the
+    author says otherwise.
   Not steals: drag-and-drop card layout editing (our layout is TEXT by design —
   wireable, Note-authorable), in-view search/sort/filter (upstream verb nodes
   are the Solenoid answer), form entry (its own program; entry widgets already
-  landed 2026-08-18).
+  landed 2026-08-18), timeline/Gantt (already author-deferred above), row
+  tinting / color-by (author-gated D4).
 
 - **Tidy options — expose ELK's layout knobs on the Tidy call** (author direction
   2026-08-12; the trigger was "9 nodes → 1 node should be able to lay out 3×3
