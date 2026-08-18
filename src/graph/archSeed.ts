@@ -22,8 +22,9 @@ export type SeedNode = {
 export type SeedConnection = { source: string; sourceOutput: string; target: string; targetInput: string };
 export type ArchSeed = {
   v: number;
-  label: string;
   order: number;
+  label: string;
+  group: string;
   nodes: SeedNode[];
   connections: SeedConnection[];
   comments: never[];
