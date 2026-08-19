@@ -87,6 +87,9 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-19 — Record figure: a resized Display clipped the row pager away)
+- **Record's `picked` row output removed** — an unwanted addition that rode in with
+  the Gallery/Board ops (2026-08-18). Gone: the output, its socket doc, and the
+  `data()` return field. Record emits `chart` only.
 - **A resized Display clipped the drawn record card's row pager away** (author bug
   report): the card is content-driven and `MeasuredChart` clips a manually-sized
   Display's figure box, so the pager — last in the flow — lost its bottom edge, and
@@ -211,6 +214,6 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - **Record-family competitor dive** (author ask): Airtable/Grist/Notion/Baserow/
   NocoDB/SeaTable/Coda card+gallery+board features surveyed; the steal list is
   parked in `deferrals.md` ▸ "Record family steals" (best fit: gallery-click →
-  `picked`; cover image; title row; size presets; lane counts/collapse; color-by
+  row pick; cover image; title row; size presets; lane counts/collapse; color-by
   flagged D4-adjacent). Sources: Airtable gallery/kanban help, Grist widget-card +
   record-cards docs (raw GitHub), Notion gallery help, Baserow/NocoDB view docs.

@@ -1002,7 +1002,6 @@ export const RECORD_CARD_CAP = 60;
 export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
-    picked: "Echoes the 1-based row the card shows, so downstream follows the pager. Blank when no record is picked.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
     layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. A dot or an empty cell stays blank. Left empty, the columns stack.",
     options: "title=Parts;fontsize=12",
@@ -1036,7 +1035,6 @@ export class RecordNode extends ClassicPreset.Node {
     this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
-    this.addOutput("picked", numOut("Row"));
   }
 
   /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
@@ -1050,7 +1048,7 @@ export class RecordNode extends ClassicPreset.Node {
     else if (this.inputs.by) this.removeInput("by");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue; picked: number | null }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const fv = await readFrame(inputs.frame?.[0] ?? null);
     const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
     const total = cols[0]?.values.length ?? 0;
@@ -1140,7 +1138,7 @@ export class RecordNode extends ClassicPreset.Node {
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Record",
     };
     this.cachedChart = chart;
-    return { chart, picked: index >= 1 ? index : null };
+    return { chart };
   }
 }
 

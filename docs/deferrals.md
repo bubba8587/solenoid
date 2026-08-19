@@ -56,11 +56,12 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   dive 2026-08-18, rounds 1 and 3, across Airtable / Grist / Notion / Baserow /
   NocoDB / SeaTable / Coda; session digest has the sources). Candidates, best
   fit first — all display-side, none make the figure edit its frame:
-  - **Gallery tile click → picks the row**: drive the existing `picked` output
-    (null in gallery today) and highlight the picked tile, so gallery → card
-    master-detail wiring goes live (Grist's linked card-list pattern). Smallest,
-    most node-graph-native of the set; a figure gaining an input gesture is the
-    author call.
+  - **Gallery tile click → picks the row**: highlight the clicked tile and drive
+    the card view's row from it, so gallery → card master-detail goes live
+    (Grist's linked card-list pattern). The `picked` row output shipped with the
+    Gallery/Board ops and was removed 2026-08-19, so this needs a channel that
+    isn't a data output socket. A figure gaining an input gesture is an author
+    call.
   - **Cover image**: a designated image field drawn full-bleed at the card top,
     label-less, with Airtable's crop/fit distinction (`object-fit` cover/contain).
     Universal in the genre (Airtable/Notion/Baserow/SeaTable). Authoring surface:
@@ -159,9 +160,9 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 
 - **Record-family lifts, remaining set** (Airtable/Grist sweep proposed with the
   Record node, 2026-08-18; author: "mostly fine". Standing constraint: every view
-  lands ON the one Record node — ops/outputs, never a sibling node. The `picked`
-  output, the Gallery/Board ops, and the Table-popup Form view (record-at-a-time
-  entry) landed 2026-08-18; still queued:
+  lands ON the one Record node — ops, never a sibling node. The Gallery/Board ops
+  and the Table-popup Form view (record-at-a-time entry) landed 2026-08-18; the
+  `picked` row output landed with them and was removed 2026-08-19. Still queued:
   (1) per-column summary footer on the Table popup (sum/avg/min/max/count via
   `forAggregate`);
   (2) select/categorical columns — author verdict 2026-08-18: "potential there for

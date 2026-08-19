@@ -517,22 +517,17 @@ describe("Record node", () => {
     const n = new RecordNode();
     const f = frame([{ name: "A", type: "number", values: [1, 2, 3] }]);
     // Wired blank → no record, boxes stay (labels visible), values empty.
-    let out = await n.data({ frame: [f], row: [null as unknown as number] });
-    let p = out.chart.payload as RecordPayload;
+    let p = (await n.data({ frame: [f], row: [null as unknown as number] })).chart.payload as RecordPayload;
     expect(p.index).toBe(0);
-    expect(out.picked).toBeNull();
     expect(p.cards[0][0]).toMatchObject({ label: "A", value: null });
     // Wired out-of-range → empty too, never clamped to a record the cable didn't pick.
     p = (await n.data({ frame: [f], row: [7] })).chart.payload as RecordPayload;
     expect(p.index).toBe(0);
-    // Unwired → the card's literal clamps into range and mirrors back, and the
-    // resolved pick flows out `picked` (downstream follows the pager).
+    // Unwired → the card's literal clamps into range and mirrors back.
     n.literals.row = 99;
-    out = await n.data({ frame: [f] });
-    p = out.chart.payload as RecordPayload;
+    p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
     expect(p.index).toBe(3);
     expect(n.literals.row).toBe(3);
-    expect(out.picked).toBe(3);
   });
 
   it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {
@@ -569,7 +564,6 @@ describe("Record node", () => {
     expect(p.cards[2][0]).toMatchObject({ label: "A", value: 3 });
     // No pick in a gallery.
     expect(p.index).toBe(0);
-    expect(out.picked).toBeNull();
   });
 
   it("board groups rows into lanes by the named column, blanks last as an em-dash lane", async () => {
