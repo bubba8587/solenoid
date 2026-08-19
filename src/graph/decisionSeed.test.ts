@@ -3,6 +3,8 @@ import seed from "./seedGraphs/decision-matrix.json";
 import { decisionMatrix, decisionCriteria, decisionSensitivity } from "./frameVerbs";
 import { isCubeValue, type FrameValue, type FrameColumn } from "./frame";
 import type { DecisionNormalize } from "./frameVerbs";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
+import { extractInlineRefs } from "./noteInlineRefs";
 
 // Runtime check for the Decision Matrix seed: the notes state concrete outcomes
 // (who wins, where the winner flips, the dead tie), so run the seed's own data
@@ -12,9 +14,12 @@ import type { DecisionNormalize } from "./frameVerbs";
 type SeedNode = {
   id: string;
   init?: Record<string, unknown>;
+  literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
 };
+type SeedConn = { source: string; sourceOutput: string; target: string; targetInput: string };
 const nodes = (seed as { nodes: SeedNode[] }).nodes;
+const connections = (seed as unknown as { connections: SeedConn[] }).connections;
 const byId = (id: string): SeedNode => nodes.find((n) => n.id === id)!;
 
 const frameOf = (id: string): FrameValue => ({
@@ -22,7 +27,21 @@ const frameOf = (id: string): FrameValue => ({
   columns: JSON.parse(byId(id).init!.frameText as string) as FrameColumn[],
 });
 
-const scores = frameOf("scores");
+// The graph assembles the Scores frame: the Frame Input + the Note's frontmatter
+// `screen` list appended as the Screen column (Add Column pairs by row order).
+const screenField = parseNoteFrontmatter(byId("noteScreen").init!.body as string)
+  .fields.find((f) => f.key === "screen")!;
+const scores: FrameValue = (() => {
+  const base = frameOf("scores");
+  return {
+    __frame: true,
+    columns: [...base.columns, {
+      name: byId("addcol").stringLiterals!.name,
+      type: "number",
+      values: screenField.value as number[],
+    }],
+  };
+})();
 const scenarios = frameOf("scenarios");
 const dmInit = byId("dm").init as {
   normalize: DecisionNormalize;
@@ -32,6 +51,24 @@ const dmInit = byId("dm").init as {
 const weights = decisionCriteria(scores).map((name) => dmInit.weightMap[name] ?? 1);
 
 describe("decision-matrix seed", () => {
+  it("the Note's screen list is numeric and pairs with every score row", () => {
+    expect(screenField.guessed).toBe("list");
+    const rows = frameOf("scores").columns[0].values.length;
+    expect((screenField.value as number[]).length).toBe(rows);
+    for (const v of screenField.value as number[]) expect(typeof v).toBe("number");
+  });
+
+  it("every =ref in the report body is wired, and the winner INDEX reads row 1 col 1", () => {
+    const refs = extractInlineRefs(byId("report").init!.body as string);
+    expect(refs.length).toBeGreaterThan(0);
+    const wired = connections.filter((c) => c.target === "report").map((c) => c.targetInput);
+    expect([...refs].sort()).toEqual([...wired].sort());
+    expect(byId("winner").literals).toEqual({ index: 1, column: 1 });
+    // the ranking is best-first, so [1,1] IS the winner's name
+    const conn = connections.find((c) => c.target === "winner")!;
+    expect(conn.source).toBe("dm");
+  });
+
   it("the weightMap and normMap name real criteria, and every scenario column does too", () => {
     const criteria = decisionCriteria(scores);
     expect(Object.keys(dmInit.weightMap).sort()).toEqual([...criteria].sort());

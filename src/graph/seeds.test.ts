@@ -3,6 +3,7 @@ import { ClassicPreset } from "rete";
 import * as Nodes from "./rete-nodes";
 import { SolenoidSocket, canConnect } from "./sockets";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
 
 // Validates every seed graph against the REAL node classes: each saved type
 // resolves to a constructor, each connection lands on sockets that exist with
@@ -236,8 +237,11 @@ for (const [path, mod] of Object.entries(seedModules)) {
       const problems: string[] = [];
       for (const sn of g.nodes) {
         if (!PROSE_TYPES.has(sn.type)) continue;
-        const body = sn.init?.body;
-        if (typeof body !== "string" || !body.includes("\n")) continue;
+        const raw = sn.init?.body;
+        if (typeof raw !== "string" || !raw.includes("\n")) continue;
+        // A Note may open with a frontmatter block; only the RENDERED body below
+        // it is prose (the block's lines are data, one field per line).
+        const body = sn.type === "NoteNode" ? parseNoteFrontmatter(raw).body : raw;
         const lines = body.split("\n");
         let fenced = false;
         for (let i = 0; i < lines.length - 1; i++) {

@@ -11,26 +11,51 @@
       "y": -300,
       "init": {
         "label": "Decision Matrix",
-        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, the first text column names them, number columns are criteria) → the **Decision Matrix** node → `Option · Score · Rank`, best first.\n\nEach criterion gets a row on the node: a **weight** (default 1; negative = lower is better, like Price) and a **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
+        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, number columns are criteria) → **Decision Matrix** → `Option · Score · Rank`, best first. One criterion, Screen, arrives from a **Note**: frontmatter as data, prose as the reasoning. A **Report** at the end pulls the results into a live memo.\n\nEach criterion gets a row on the node: a **weight** (default 1; negative = lower is better, like Price) and a **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
         "color": "violet",
         "width": 400,
-        "height": 260
+        "height": 300
       }
     },
     {
       "id": "scores",
       "type": "FrameInputNode",
       "x": -60,
-      "y": 44,
+      "y": 60,
       "init": {
-        "label": "Raw scores",
-        "frameText": "[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Screen\",\"type\":\"number\",\"values\":[8,9,7,5]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"
+        "label": "Score table",
+        "frameText": "[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"
+      }
+    },
+    {
+      "id": "noteScreen",
+      "type": "NoteNode",
+      "x": -60,
+      "y": 620,
+      "init": {
+        "label": "Screen scores",
+        "body": "---\nscreen: [8, 9, 7, 5]\n---\n### Screen, scored by eye\nSubjective calls, written next to their numbers. ProBook 8: 4K with an anti-glare coat. UltraSlim 9: the brightest panel of the four. PowerLifter 7: sharp but glossy. Budget 5: a review flagged weak brightness.\n\nThe `screen` list in the frontmatter is a live output socket; it pairs with the score rows in order. The prose is the why, the list is the data.",
+        "color": "amber",
+        "width": 400,
+        "height": 260
+      }
+    },
+    {
+      "id": "addcol",
+      "type": "AddColumnNode",
+      "x": 420,
+      "y": 140,
+      "init": {
+        "label": "Add Screen column"
+      },
+      "stringLiterals": {
+        "name": "Screen"
       }
     },
     {
       "id": "dm",
       "type": "DecisionMatrixNode",
-      "x": 413,
+      "x": 720,
       "y": 36,
       "init": {
         "label": "Decision Matrix",
@@ -50,11 +75,11 @@
     {
       "id": "noteDM",
       "type": "NoteNode",
-      "x": 420,
-      "y": 600,
+      "x": 720,
+      "y": 620,
       "init": {
         "label": "Mixed scales, one range",
-        "body": "Price is in **dollars**; the rest are out of **10**. Scored raw, Price would swamp everything, so every criterion is normalized onto a common **0–1** range and the **weights**, not the raw scales, decide influence.\n\nThe default here is **÷Max**. Price alone overrides to **Rank** in its row: rank keeps only the order, so one runaway price can't dominate.\n\n**Breakdown** is on: each criterion column is its **signed contribution**, and the contributions sum to the Score. Price shows negative, the penalty it is.",
+        "body": "Price is in **dollars**; the rest are out of **10**. Scored raw, the dollar column would swamp everything, so each column is first squeezed onto the same footing; then only the **weights** decide influence.\n\n**÷Max** divides a column by its biggest value, so each tops out at 1. **Rank** keeps only the order: $2,200 counts as “most expensive”, not as 2,200 of anything. Price uses Rank; the rest follow the ÷Max default.\n\n**Breakdown** is on: each criterion column is its **signed contribution**, and the contributions sum to the Score. Price shows negative, the penalty it is.",
         "color": "green",
         "width": 370,
         "height": 280
@@ -63,7 +88,7 @@
     {
       "id": "select",
       "type": "SelectColumnsNode",
-      "x": 880,
+      "x": 1190,
       "y": -41,
       "init": {
         "label": "Keep Laptop · Score"
@@ -75,7 +100,7 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 1240,
+      "x": 1550,
       "y": -59,
       "init": {
         "label": "Podium",
@@ -88,8 +113,8 @@
     {
       "id": "noteChart",
       "type": "NoteNode",
-      "x": 1240,
-      "y": 260,
+      "x": 1550,
+      "y": 270,
       "init": {
         "label": "The podium is a chart",
         "body": "The ranking is already the table. For the podium, **Select Columns** keeps `Laptop · Score`, and a two-column frame into **Chart** draws labeled bars: the first column names them, the second sets the lengths.",
@@ -99,10 +124,46 @@
       }
     },
     {
+      "id": "winner",
+      "type": "ListIndexNode",
+      "x": 1190,
+      "y": 310,
+      "init": {
+        "label": "Winner"
+      },
+      "literals": {
+        "index": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "report",
+      "type": "ReportNode",
+      "x": 1980,
+      "y": -40,
+      "init": {
+        "label": "Decision memo",
+        "body": "# Laptop pick\n\nWith the weights on the canvas, the matrix picks `=winner!`.\n\n`=podium`\n\nBehind the bars, each criterion column is a signed contribution; the contributions sum to the Score, and Price counts against:\n\n`=ranking`\n\nEvery figure here is wired. Change a weight or a score upstream and the memo follows."
+      }
+    },
+    {
+      "id": "noteReport",
+      "type": "NoteNode",
+      "x": 1980,
+      "y": 140,
+      "init": {
+        "label": "A document with sockets",
+        "body": "**Report** is Note's opposite: a document that pulls values in. Each **=name** marker in its text mints an input socket; this one wires the winner, the podium and the ranking table. The memo re-renders whenever an upstream value changes.",
+        "color": "blue",
+        "width": 320,
+        "height": 180
+      }
+    },
+    {
       "id": "noteSens",
       "type": "NoteNode",
       "x": -60,
-      "y": 940,
+      "y": 990,
       "init": {
         "label": "Sensitivity",
         "body": "# Stress-test the weights\nThe winner depends on the weights picked above. **Sensitivity** re-scores the same options under several weight **scenarios**, one per row of the Scenarios frame, and returns a **Cube**: per scenario the **Winner**, the **Margin** (top score minus runner-up), and the full **Ranking** nested in the cell. Drill in.\n\nThe winner flips: **UltraSlim** under Balanced, **PowerLifter** when performance dominates. Under Budget the Winner cell reads **UltraSlim = Budget**, a dead tie at Margin 0. That pick is fragile; the first two hold.",
@@ -115,7 +176,7 @@
       "id": "scenarios",
       "type": "FrameInputNode",
       "x": -60,
-      "y": 1245,
+      "y": 1295,
       "init": {
         "label": "Weight scenarios",
         "frameText": "[{\"name\":\"Scenario\",\"type\":\"string\",\"values\":[\"Balanced\",\"Performance-first\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[3,5,1]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[2,1,1]},{\"name\":\"Screen\",\"type\":\"number\",\"values\":[1,1,1]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[-2,-1,-5]}]"
@@ -124,8 +185,8 @@
     {
       "id": "sens",
       "type": "DecisionSensitivityNode",
-      "x": 427,
-      "y": 1235,
+      "x": 500,
+      "y": 1285,
       "init": {
         "label": "Sensitivity",
         "normalize": "rank"
@@ -135,6 +196,18 @@
   "connections": [
     {
       "source": "scores",
+      "sourceOutput": "frame",
+      "target": "addcol",
+      "targetInput": "frame"
+    },
+    {
+      "source": "noteScreen",
+      "sourceOutput": "screen",
+      "target": "addcol",
+      "targetInput": "values"
+    },
+    {
+      "source": "addcol",
       "sourceOutput": "frame",
       "target": "dm",
       "targetInput": "frame"
@@ -152,7 +225,31 @@
       "targetInput": "values"
     },
     {
-      "source": "scores",
+      "source": "dm",
+      "sourceOutput": "frame",
+      "target": "winner",
+      "targetInput": "list"
+    },
+    {
+      "source": "winner",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "winner"
+    },
+    {
+      "source": "chart",
+      "sourceOutput": "chart",
+      "target": "report",
+      "targetInput": "podium"
+    },
+    {
+      "source": "dm",
+      "sourceOutput": "frame",
+      "target": "report",
+      "targetInput": "ranking"
+    },
+    {
+      "source": "addcol",
       "sourceOutput": "frame",
       "target": "sens",
       "targetInput": "scores"

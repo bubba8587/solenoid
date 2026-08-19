@@ -626,9 +626,9 @@ export function DropBlankRowsComponent({ data, emit }: NodeProps<DropBlankRowsNo
 // ─── DECISION MATRIX ───────────────────────────────────────────────────────────
 
 const DECISION_NORMALIZE_OPTIONS: { value: DecisionNormalize; label: string; title: string }[] = [
-  { value: "none", label: "Raw", title: "Score with the criteria values as-is" },
-  { value: "max", label: "÷ Max", title: "Scale each criterion by its largest magnitude (≈ [-1, 1]) so different ranges compare" },
-  { value: "rank", label: "Rank", title: "Replace each criterion's values with their within-column rank, so incompatible scales like $ vs out-of-10 compare" },
+  { value: "none", label: "Raw", title: "Use the numbers as they are. Right when every column shares one scale, like all out of 10." },
+  { value: "max", label: "÷ Max", title: "Divide each column by its biggest value so each tops out at 1. Puts dollars and out-of-10 scores on the same footing." },
+  { value: "rank", label: "Rank", title: "Keep only each column's order, worst 0 to best 1. An extreme value counts no more than its place in line." },
 ];
 
 const DECISION_DETAIL_OPTIONS: { value: DecisionDetail; label: string; title: string }[] = [
@@ -639,10 +639,10 @@ const DECISION_DETAIL_OPTIONS: { value: DecisionDetail; label: string; title: st
 // Per-criterion normalize override. "" = inherit the node's default mode (the
 // global SegToggle); the rest force this one column.
 const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; title: string }[] = [
-  { value: "", label: "—", title: "Use the node's default normalize mode, set above" },
-  { value: "none", label: "Raw", title: "This column: score the raw values as-is" },
-  { value: "max", label: "÷Max", title: "This column: scale by its largest magnitude → [0,1]" },
-  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1]. Suits $-scale columns." },
+  { value: "", label: "—", title: "Follow the Normalize default above" },
+  { value: "none", label: "Raw", title: "This column: use the numbers as they are" },
+  { value: "max", label: "÷Max", title: "This column: divide by its biggest value, top = 1" },
+  { value: "rank", label: "Rank", title: "This column: keep only the order, worst 0 to best 1. Suits dollar columns." },
 ];
 
 const DECISION_CABLE_ONLY = new Set(["weights"]);

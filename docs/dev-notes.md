@@ -104,6 +104,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   gutter fit index digits only, so EVERY labeled bar chart truncated labels to their
   tails ("UltraSlim" → "im"). Now sized to the widest label, capped at width/3.
   Found via the seed's podium; eyeballed via Playwright.
+- **Round 2 (author ask): the seed now runs Note-frontmatter → Add Column → matrix →
+  Report.** The Screen criterion arrives from a Note whose frontmatter list
+  (`screen: [8, 9, 7, 5]`) is the data and whose prose records the judgment behind
+  each number; an INDEX (1,1) of the ranking feeds `=winner` and the memo Report
+  renders winner + podium figure + contributions table live (verified in the
+  overlay via Playwright). Normalize copy rewritten in plain speech on the card and
+  catalog ("divide each column by its biggest value…", "keep only each column's
+  order, worst 0 to best 1"). `decisionSeed.test.ts` now assembles the frame the
+  way the graph does (frontmatter parsed, column appended) and pins the report
+  wiring (every `=ref` wired; INDEX literals 1,1). seeds.test.ts hard-wrap guard
+  now strips a Note's frontmatter block before checking prose (field lines are
+  data, one per line).
 
 ### SESSION DIGEST (2026-08-19 — Record figure: a resized Display clipped the row pager away)
 - **Record's `picked` row output removed** — an unwanted addition that rode in with
