@@ -117,6 +117,24 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   now strips a Note's frontmatter block before checking prose (field lines are
   data, one per line).
 
+### SESSION DIGEST (2026-08-19c — keyed seed feed; the copy-inventory tool)
+- **Decision seed round 3** (author: the single-list feed was fragile; the report
+  caption note was noise): the Note now exports `laptop` + `screen` lists that
+  build a keyed table (Frame from Lists) left-joined onto the score table by
+  laptop name — row order can no longer misalign a score. The Report caption
+  note is deleted. `decisionSeed.test.ts` assembles via the real `joinFrames`
+  and pins note↔table key-set equality.
+- **Copy-inventory tool** (author ask, for the planned hand rewrite of all
+  shipped copy): `npm run copy-inventory` extract/apply — every shipped string
+  in one flat file, edits written back mechanically (structured for seeds,
+  quoted-form for catalog, verbatim-unique for tsx; ambiguity skips, never
+  guesses). Collector shared with the voice lint via NEW `src/graph/copyCorpus.ts`
+  (lint corpus unchanged). FOUND: option-table strings (`label:`/`title:`/
+  `description:` object literals — 1,361 of them) were invisible to the lint
+  AND the old collector; they are in the inventory now, and folding them into
+  the lint corpus is a future sweep of its own. Corpus: 3,997 strings.
+  Pinned by `scripts/copy-inventory.test.ts`.
+
 ### SESSION DIGEST (2026-08-19 — Record figure: a resized Display clipped the row pager away)
 - **Record's `picked` row output removed** — an unwanted addition that rode in with
   the Gallery/Board ops (2026-08-18). Gone: the output, its socket doc, and the
