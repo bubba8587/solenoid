@@ -5,6 +5,7 @@ import { isCubeValue, type FrameValue, type FrameColumn } from "./frame";
 import type { DecisionNormalize } from "./frameVerbs";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineRefs } from "./noteInlineRefs";
+import { joinFrames } from "./frameVerbs";
 
 // Runtime check for the Decision Matrix seed: the notes state concrete outcomes
 // (who wins, where the winner flips, the dead tie), so run the seed's own data
@@ -27,21 +28,24 @@ const frameOf = (id: string): FrameValue => ({
   columns: JSON.parse(byId(id).init!.frameText as string) as FrameColumn[],
 });
 
-// The graph assembles the Scores frame: the Frame Input + the Note's frontmatter
-// `screen` list appended as the Screen column (Add Column pairs by row order).
-const screenField = parseNoteFrontmatter(byId("noteScreen").init!.body as string)
-  .fields.find((f) => f.key === "screen")!;
-const scores: FrameValue = (() => {
-  const base = frameOf("scores");
-  return {
-    __frame: true,
-    columns: [...base.columns, {
-      name: byId("addcol").stringLiterals!.name,
-      type: "number",
-      values: screenField.value as number[],
-    }],
-  };
-})();
+// The graph assembles the Scores frame the keyed way: the Note's two frontmatter
+// lists become a (Laptop, Screen) frame, left-joined onto the score table by
+// laptop name — row order in either table cannot misalign a score.
+const noteFields = parseNoteFrontmatter(byId("noteScreen").init!.body as string).fields;
+const laptopField = noteFields.find((f) => f.key === "laptop")!;
+const screenField = noteFields.find((f) => f.key === "screen")!;
+const screenFrame: FrameValue = {
+  __frame: true,
+  columns: [
+    { name: byId("screenframe").stringLiterals!.name0, type: "string", values: laptopField.value as string[] },
+    { name: byId("screenframe").stringLiterals!.name1, type: "number", values: screenField.value as number[] },
+  ],
+};
+const joinLits = byId("join").stringLiterals!;
+const scores: FrameValue = joinFrames(frameOf("scores"), screenFrame, {
+  leftKey: joinLits.leftKey, rightKey: joinLits.rightKey,
+  how: byId("join").init!.how as "left",
+});
 const scenarios = frameOf("scenarios");
 const dmInit = byId("dm").init as {
   normalize: DecisionNormalize;
@@ -51,11 +55,17 @@ const dmInit = byId("dm").init as {
 const weights = decisionCriteria(scores).map((name) => dmInit.weightMap[name] ?? 1);
 
 describe("decision-matrix seed", () => {
-  it("the Note's screen list is numeric and pairs with every score row", () => {
+  it("the Note's lists are keyed: every laptop in the score table gets a screen score", () => {
+    expect(laptopField.guessed).toBe("strlist");
     expect(screenField.guessed).toBe("list");
-    const rows = frameOf("scores").columns[0].values.length;
-    expect((screenField.value as number[]).length).toBe(rows);
+    expect((screenField.value as number[]).length).toBe((laptopField.value as string[]).length);
     for (const v of screenField.value as number[]) expect(typeof v).toBe("number");
+    // set equality with the score table's key column — the join must match every row
+    const tableNames = [...(frameOf("scores").columns[0].values as string[])].sort();
+    expect([...(laptopField.value as string[])].sort()).toEqual(tableNames);
+    // and the joined frame carries a complete numeric Screen column
+    const screenCol = scores.columns.find((c) => c.name === "Screen")!;
+    for (const v of screenCol.values) expect(typeof v).toBe("number");
   });
 
   it("every =ref in the report body is wired, and the winner INDEX reads row 1 col 1", () => {

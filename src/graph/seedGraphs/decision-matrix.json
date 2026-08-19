@@ -11,7 +11,7 @@
       "y": -300,
       "init": {
         "label": "Decision Matrix",
-        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, number columns are criteria) → **Decision Matrix** → `Option · Score · Rank`, best first. One criterion, Screen, arrives from a **Note**: frontmatter as data, prose as the reasoning. A **Report** at the end pulls the results into a live memo.\n\nEach criterion gets a row on the node: a **weight** (default 1; negative = lower is better, like Price) and a **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
+        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, number columns are criteria) → **Decision Matrix** → `Option · Score · Rank`, best first. The Screen column comes from a **Note**: its frontmatter lists carry the scores, joined in by laptop name, and its text records the reasoning. A **Report** at the end pulls the results into a live memo.\n\nEach criterion gets a row on the node: a **weight** (default 1; negative = lower is better, like Price) and a **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
         "color": "violet",
         "width": 400,
         "height": 300
@@ -34,22 +34,37 @@
       "y": 620,
       "init": {
         "label": "Screen scores",
-        "body": "---\nscreen: [8, 9, 7, 5]\n---\n### Screen, scored by eye\nSubjective calls, written next to their numbers. ProBook 8: 4K with an anti-glare coat. UltraSlim 9: the brightest panel of the four. PowerLifter 7: sharp but glossy. Budget 5: a review flagged weak brightness.\n\nThe `screen` list in the frontmatter is a live output socket; it pairs with the score rows in order. The prose is the why, the list is the data.",
+        "body": "---\nlaptop: [ProBook, UltraSlim, PowerLifter, Budget]\nscreen: [8, 9, 7, 5]\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. Budget 5: a review flagged weak brightness.\n\nEach frontmatter list is an output socket. The two lists build a keyed table, so a score stays attached to its laptop however the main table is sorted.",
         "color": "amber",
         "width": 400,
-        "height": 260
+        "height": 250
       }
     },
     {
-      "id": "addcol",
-      "type": "AddColumnNode",
+      "id": "screenframe",
+      "type": "FrameFromListsNode",
       "x": 420,
-      "y": 140,
+      "y": 620,
       "init": {
-        "label": "Add Screen column"
+        "label": "Screen table"
       },
       "stringLiterals": {
-        "name": "Screen"
+        "name0": "Laptop",
+        "name1": "Screen"
+      }
+    },
+    {
+      "id": "join",
+      "type": "JoinNode",
+      "x": 420,
+      "y": 100,
+      "init": {
+        "label": "Join on Laptop",
+        "how": "left"
+      },
+      "stringLiterals": {
+        "leftKey": "Laptop",
+        "rightKey": "Laptop"
       }
     },
     {
@@ -147,19 +162,6 @@
       }
     },
     {
-      "id": "noteReport",
-      "type": "NoteNode",
-      "x": 1980,
-      "y": 140,
-      "init": {
-        "label": "A document with sockets",
-        "body": "**Report** is Note's opposite: a document that pulls values in. Each **=name** marker in its text mints an input socket; this one wires the winner, the podium and the ranking table. The memo re-renders whenever an upstream value changes.",
-        "color": "blue",
-        "width": 320,
-        "height": 180
-      }
-    },
-    {
       "id": "noteSens",
       "type": "NoteNode",
       "x": -60,
@@ -197,20 +199,38 @@
     {
       "source": "scores",
       "sourceOutput": "frame",
-      "target": "addcol",
-      "targetInput": "frame"
+      "target": "join",
+      "targetInput": "left"
+    },
+    {
+      "source": "screenframe",
+      "sourceOutput": "frame",
+      "target": "join",
+      "targetInput": "right"
+    },
+    {
+      "source": "noteScreen",
+      "sourceOutput": "laptop",
+      "target": "screenframe",
+      "targetInput": "vals0"
     },
     {
       "source": "noteScreen",
       "sourceOutput": "screen",
-      "target": "addcol",
-      "targetInput": "values"
+      "target": "screenframe",
+      "targetInput": "vals1"
     },
     {
-      "source": "addcol",
+      "source": "join",
       "sourceOutput": "frame",
       "target": "dm",
       "targetInput": "frame"
+    },
+    {
+      "source": "join",
+      "sourceOutput": "frame",
+      "target": "sens",
+      "targetInput": "scores"
     },
     {
       "source": "dm",
@@ -247,12 +267,6 @@
       "sourceOutput": "frame",
       "target": "report",
       "targetInput": "ranking"
-    },
-    {
-      "source": "addcol",
-      "sourceOutput": "frame",
-      "target": "sens",
-      "targetInput": "scores"
     },
     {
       "source": "scenarios",
