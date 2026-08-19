@@ -19,6 +19,7 @@
   cursor: pointer;
   animation: solenoid-isolate-in 140ms ease-out;
 }
+:root[data-theme="light"] .solenoid-isolate-pill { box-shadow: 0 6px 22px rgba(20, 30, 50, 0.09); }
 .solenoid-isolate-pill:hover { border-color: var(--accent); filter: brightness(1.06); }
 
 @keyframes solenoid-isolate-in {

@@ -90,6 +90,7 @@
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
   padding: 6px;
 }
+:root[data-theme="light"] .solenoid-doctitle__menu { box-shadow: 0 12px 36px rgba(20, 30, 50, 0.1); }
 
 .solenoid-doctitle__section-head {
   font-size: 10.5px;

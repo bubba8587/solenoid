@@ -8,6 +8,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   min-width: 0;
 }
+:root[data-theme="light"] .solenoid-socket-ctx { box-shadow: 0 4px 16px rgba(20, 30, 50, 0.12); }
 
 .solenoid-socket-ctx__item {
   display: flex;

@@ -27,6 +27,7 @@
   cursor: pointer;
   animation: solenoid-notice-in 140ms ease-out;
 }
+:root[data-theme="light"] .solenoid-notice { box-shadow: 0 8px 28px rgba(20, 30, 50, 0.1); }
 
 @keyframes solenoid-notice-in {
   from { opacity: 0; transform: translateY(8px); }

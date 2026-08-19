@@ -135,6 +135,24 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   the lint corpus is a future sweep of its own. Corpus: 3,997 strings.
   Pinned by `scripts/copy-inventory.test.ts`.
 
+### SESSION DIGEST (2026-08-19e — floating-chrome shadows, two notches down)
+- **Soft-edged shadows on floating chrome softened**, a notch being 0.05 of alpha
+  on the dark ladder and 0.02 on the light one. The reach is `--shadow-pop`
+  (0.3→0.2) and `--overlay-shadow` (0.4/0.3→0.3/0.2) plus their light values, and
+  `palette.ts` takes the same step so non-Default palettes move with them. Six
+  hardcoded shadows that never routed through either token followed: the file-name
+  drop-down, isolate pill, toasts, socket context menu, confirm dialog,
+  presentation bar. Geometry untouched throughout.
+- **Those six had no light-theme rule at all**, so they cast dark-theme black onto
+  the near-white canvas — the visible pooling under the drop-down. Each now carries
+  a `:root[data-theme="light"]` override tinted `rgba(20, 30, 50, …)` at the same
+  0.30 light/dark ratio the tokens use, landing them at 0.09–0.12 beside the
+  token chrome's 0.05–0.09.
+- Fullscreen overlays (Report, Function Reference, the two docked drawers) left
+  heavy by author call — they cover the canvas rather than float over it.
+- DESIGN.md's Shadow Vocabulary now names both tokens and carries their light
+  values; its overlay-lift entry had drifted off the shipped value.
+
 ### SESSION DIGEST (2026-08-19d — architecture map removed)
 - **Architecture map killed** (author order): the seed, `SubsystemNode`, the
   generator chain (`scan-arch-deps` / `specMap` / `archGraph` / `archSeed` + their

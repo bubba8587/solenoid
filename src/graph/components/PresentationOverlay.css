@@ -38,6 +38,7 @@ html.solenoid-presenting .solenoid-hud-stack {
   cursor: default;
   max-width: calc(100vw - 32px);
 }
+:root[data-theme="light"] .solenoid-present__bar { box-shadow: 0 10px 34px rgba(20, 30, 50, 0.1); }
 
 .solenoid-present__btn {
   display: flex;
