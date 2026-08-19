@@ -86,6 +86,17 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-19 — Record figure: a resized Display clipped the row pager away)
+- **A resized Display clipped the drawn record card's row pager away** (author bug
+  report): the card is content-driven and `MeasuredChart` clips a manually-sized
+  Display's figure box, so the pager — last in the flow — lost its bottom edge, and
+  the whole control at the 230×150 resize floor. The card view is now a flex column
+  filling a definite host height (`.sol-record-card`, `chartCards.css`): the GRID
+  area is the only thing that shrinks, the pager never does. Auto-height hosts (the
+  unsized Display, the chart popup) resolve the `100%` to auto and measure
+  byte-identical. Verified live at unsized / short / floor / tall — the arrows still
+  step rows with the grid clipped hard.
+
 ### SESSION DIGEST (2026-08-18b — seed menu grouped; ONE save format)
 - **Tinted chrome follows the accent** (author ask): Orchard and Blueprint declare
   the accent slot their ramp was authored against (`CHROME_HOME`: green / blue) and

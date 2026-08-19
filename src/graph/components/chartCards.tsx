@@ -180,10 +180,16 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
       </div>
     );
   }
+  // Card view: the pager is a CONTROL, so a host box shorter than the card must
+  // never clip it away — the column fills a definite height and only the grid
+  // area gives. A host with no definite height (the unsized Display, the popup)
+  // resolves the 100% to auto and stays content-driven as before.
   return (
-    <div style={outer}>
+    <div className="sol-record-card" style={outer}>
       {titleLine}
-      <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} />
+      <div className="sol-record-card__grid">
+        <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} />
+      </div>
       {onStep && payload.total > 1 && (
         <div className="sol-record-nav">
           <button

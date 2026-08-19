@@ -177,6 +177,21 @@
   margin-bottom: 4px;
 }
 
+/* Card view as a column that fills a definite host box (a resized Display), so a
+   box too short for the card clips the GRID and never the pager. Nothing here
+   applies where the host height is auto — the 100% resolves to auto. */
+.sol-record-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.sol-record-card__grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.sol-record-card > .sol-record-figtitle,
+.sol-record-card > .sol-record-nav { flex: none; }
+
 /* Row pager under a drawn card (Display / popup); mirrors the node card's pager. */
 .sol-record-nav {
   display: flex;
