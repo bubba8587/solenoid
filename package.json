@@ -14,6 +14,7 @@
     "desktop:live": "tauri dev --config src-tauri/tauri.live.conf.json",
     "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-build.ps1",
     "run-graph": "tsx scripts/run-graph.ts",
+    "copy-inventory": "tsx scripts/copy-inventory.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",
     "ai-grounding": "tsx scripts/ai-grounding.ts",
     "ai-prompt": "tsx scripts/ai-prompt.ts",
