@@ -422,6 +422,24 @@ TablePopup's Form view; pins in `visual.test.ts`.
 **Reopen if:** a record view needs behavior an op cannot express, or the formula
 surface ever needs a record-view name.
 
+### D38 — Decision family: contributions breakdown, ÷Max default, ties surfaced
+**What stands:** The Decision Matrix's Breakdown columns are each criterion's SIGNED
+contribution (effective × weight / Σ|weight|), summing to the Score — never the bare
+post-normalize values, which read backwards under a negative weight (the priciest
+option showed Price 1.0 while taking the largest penalty). Ranking runs on the
+ROUNDED (4dp) score so display and rank cannot disagree, and round4 flattens −0.
+Both decision nodes default normalize to ÷Max: Raw silently degenerates the moment
+criteria mix scales, which is the node's whole reason to exist. Sensitivity lists
+every rank-1 option in Winner ("A = B") on an exact tie (Margin 0 ⟺ tie), and
+#VALUE!s when no Scenarios column names a criterion — otherwise every weight
+defaults to 1 and all scenarios come out identical (the renamed-criteria trap).
+**Where:** `frameVerbs.decisionMatrix`/`decisionSensitivity`, `nodes/frame.ts`;
+pins in `decisionMatrix.test.ts`; the seed's prose claims held to the engine by
+`decisionSeed.test.ts`.
+**Reopen if:** a raw-values breakdown is wanted back (add it as a third detail
+mode, not a redefinition), or a scenarios frame legitimately needs to run with
+zero matching columns.
+
 ---
 
 ## Structural risks (standing conditions, not bugs)

@@ -1156,6 +1156,7 @@ export type DecisionDetail = "summary" | "breakdown";
 
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
+    frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
     weights: "A wired list pairs with the criteria columns in order and overrides the weights typed on the card.",
   };
 
@@ -1169,6 +1170,9 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   normMap: Record<string, DecisionNormalize>;
   // Refreshed each compute, in the order the weights align to.
   criteria: string[] = [];
+  // The wired weights list as of the last compute (null when unwired) — the card
+  // shows these read-only in place of the typed weight boxes.
+  wiredWeights: number[] | null = null;
   cachedResult: FrameValue | SolError | null = null;
   width = 248; height = 235;
 
@@ -1184,7 +1188,7 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail; weightMap?: Record<string, number>; normMap?: Record<string, DecisionNormalize> }) {
     super("DecisionMatrix");
     this.label = init?.label ?? "Decision Matrix";
-    this.normalize = init?.normalize ?? "none";
+    this.normalize = init?.normalize ?? "max";
     this.detail = init?.detail ?? "summary";
     this.weightMap = init?.weightMap ? { ...init.weightMap } : {};
     this.normMap = init?.normMap ? { ...init.normMap } : {};
@@ -1195,10 +1199,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 
   data(inputs: { frame?: (FrameValue | null)[]; weights?: (number[] | number | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; this.criteria = []; return { frame: null }; }
+    if (!f) { this.cachedResult = null; this.criteria = []; this.wiredWeights = null; return { frame: null }; }
     this.criteria = decisionCriteria(f);
     const wRaw = inputs.weights?.[0];
     const wired = Array.isArray(wRaw) ? wRaw : typeof wRaw === "number" ? [wRaw] : null;
+    this.wiredWeights = wired;
     // Wired list wins (positional); otherwise the inline name-keyed weights, default 1.
     const weights = wired ?? this.criteria.map((name) => {
       const w = this.weightMap[name];
@@ -1212,6 +1217,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
 
 export class DecisionSensitivityNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
+    scenarios: "One row per scenario, named by the first text column. A number column named after a criterion carries that weight; a criterion with no column weighs 1.",
+  };
+
   label: string;
   normalize: DecisionNormalize;
   cachedResult: CubeValue | SolError | null = null;
@@ -1219,12 +1229,18 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 
   static frameHints: Record<string, FrameHint> = {
     scores: DecisionMatrixNode.frameHints.frame,
+    scenarios: { columns: [
+      { name: "Scenario", type: "string", cells: ["Balanced", "Cost-first", "Speed-first"] },
+      { name: "Cost", type: "number", cells: [-1, -3, -1] },
+      { name: "Speed", type: "number", cells: [1, 1, 3] },
+      { name: "Risk", type: "number", cells: [-1, -1, -1] },
+    ] },
   };
 
   constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
     super("DecisionSensitivity");
     this.label = init?.label ?? "Sensitivity";
-    this.normalize = init?.normalize ?? "none";
+    this.normalize = init?.normalize ?? "max";
     this.addInput("scores", frameIn("Scores"));
     this.addInput("scenarios", frameIn("Scenarios"));
     this.addOutput("cube", cubeOut("By scenario"));

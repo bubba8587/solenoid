@@ -633,16 +633,16 @@ const DECISION_NORMALIZE_OPTIONS: { value: DecisionNormalize; label: string; tit
 
 const DECISION_DETAIL_OPTIONS: { value: DecisionDetail; label: string; title: string }[] = [
   { value: "summary", label: "Summary", title: "Output just Option · Score · Rank" },
-  { value: "breakdown", label: "Breakdown", title: "Also show each criterion's effective post-normalize value per option: the contributions behind the score" },
+  { value: "breakdown", label: "Breakdown", title: "Add a signed column per criterion: its weighted contribution. The contributions sum to the Score." },
 ];
 
-// Per-criterion normalize override. "" = inherit the node's default mode (the global
-// SegToggle); the rest are the DMBV per-column "Rank Raws" / Normalize, set per column.
+// Per-criterion normalize override. "" = inherit the node's default mode (the
+// global SegToggle); the rest force this one column.
 const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; title: string }[] = [
   { value: "", label: "—", title: "Use the node's default normalize mode, set above" },
   { value: "none", label: "Raw", title: "This column: score the raw values as-is" },
   { value: "max", label: "÷Max", title: "This column: scale by its largest magnitude → [0,1]" },
-  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1] (DMBV Rank Raws). Suits $-scale columns." },
+  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1]. Suits $-scale columns." },
 ];
 
 const DECISION_CABLE_ONLY = new Set(["weights"]);
@@ -668,36 +668,40 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
     void processGraph(data.id);
   };
 
+  // Mirror weightOf in frameVerbs: a missing or non-finite wired entry weighs 1.
+  const wiredWeightAt = (i: number): number => {
+    const w = data.wiredWeights?.[i];
+    return typeof w === "number" && Number.isFinite(w) ? w : 1;
+  };
+
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={DECISION_CABLE_ONLY} />
-      {/* Global normalize is the DEFAULT each criterion inherits; the per-row "Norm"
-          column below overrides it ("—" = use this default). Caption + shared wording
-          ("Normalize") make that relationship explicit. */}
-      <div className="solenoid-node__dm-caption">Default normalize for every criterion; override per row below:</div>
+      <div className="solenoid-node__dm-caption" title="The default for every criterion. Norm on a row overrides it.">Normalize</div>
       <SegToggle arg value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <div className="solenoid-node__dm-weights">
         {criteria.length === 0 ? (
-          <div className="solenoid-node__dm-hint">Wire a Scores frame; a row appears per criterion.</div>
+          <div className="solenoid-node__dm-hint">— connect a Scores frame</div>
         ) : (
           <>
             <div className="solenoid-node__dm-weight-row solenoid-node__dm-weights-head">
               <span className="solenoid-node__dm-col-crit">Criterion</span>
-              {!wired && <span className="solenoid-node__dm-col-weight">Weight</span>}
+              <span className="solenoid-node__dm-col-weight">Weight</span>
               <span className="solenoid-node__dm-col-norm" title={'Per-criterion normalize override. "—" uses the default above.'}>Norm</span>
             </div>
-            {wired && <div className="solenoid-node__dm-hint">Weights from the wired list; per-column Norm still applies.</div>}
-            {criteria.map((name) => (
+            {criteria.map((name, i) => (
               <div className="solenoid-node__dm-weight-row" key={name}>
-                <span className="solenoid-node__io-label solenoid-node__dm-col-crit" title={`“${name}”: weight and per-column normalize. A negative weight means lower is better.`}>{name}</span>
-                {!wired && <InlineNumberField value={data.weightMap[name] ?? 1} onChange={(v) => setWeight(name, v)} />}
+                <span className="solenoid-node__io-label solenoid-node__dm-col-crit" title={`“${name}”: weight and normalize. A negative weight means lower is better.`}>{name}</span>
+                {wired
+                  ? <span className="solenoid-node__dm-col-weight solenoid-node__dm-weight-ro" title="From the wired Weights list">{wiredWeightAt(i)}</span>
+                  : <InlineNumberField value={data.weightMap[name] ?? 1} onChange={(v) => setWeight(name, v)} />}
                 <OpSelect arg value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
               </div>
             ))}
           </>
         )}
       </div>
-      <div className="solenoid-node__dm-caption">Output:</div>
+      <div className="solenoid-node__dm-caption">Output</div>
       <SegToggle arg value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
@@ -712,7 +716,7 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__dm-caption">Normalize (every criterion):</div>
+      <div className="solenoid-node__dm-caption" title="Applies to every criterion, in every scenario.">Normalize</div>
       <SegToggle arg value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <CubeDisplay cube={data.cachedResult} label={data.label} />
     </NodeShell>

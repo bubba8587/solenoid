@@ -86,6 +86,25 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
+- **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot
+  better") **→ D38.** Breakdown columns are now SIGNED contributions summing to the
+  Score (the old post-normalize values read backwards under a negative weight); rank
+  runs on the round4 score so display and rank agree (round4 also flattens −0); both
+  nodes default normalize ÷Max; Sensitivity lists a dead tie's every rank-1 option in
+  Winner ("UltraSlim = Budget"), #VALUE!s when no Scenarios column names a criterion,
+  and gained socketDocs + a scenarios frameHint. Card: wired weights render read-only
+  per row (`wiredWeights`, transient), captions cut to "Normalize"/"Output", DMBV
+  jargon out of shipped copy. Pins: `decisionMatrix.test.ts`; NEW `decisionSeed.test.ts`
+  holds the seed's prose claims to the engine (winner order, the flip, the exact tie).
+- **Seed rewritten** (`decision-matrix.json`): DMBV provenance dropped, notes state
+  verified outcomes, podium is now Select Columns [Laptop, Score] → Chart — the old
+  Get Column detour fed the chart a bare list and lost the option labels.
+- **Horizontal bar chart label gutter** (`chartRender.tsx`): the fixed 18px category
+  gutter fit index digits only, so EVERY labeled bar chart truncated labels to their
+  tails ("UltraSlim" → "im"). Now sized to the widest label, capped at width/3.
+  Found via the seed's podium; eyeballed via Playwright.
+
 ### SESSION DIGEST (2026-08-19 — Record figure: a resized Display clipped the row pager away)
 - **Record's `picked` row output removed** — an unwanted addition that rode in with
   the Gallery/Board ops (2026-08-18). Gone: the output, its socket doc, and the

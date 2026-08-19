@@ -1302,6 +1302,13 @@ body.solenoid-scrubbing * {
   text-transform: uppercase;
   color: var(--text-muted, #9aa0a6);
 }
+/* Read-only weight cell when the Weights socket is wired — the wired value shows
+   where the typed box would be. */
+.solenoid-node__dm-weight-ro {
+  font-size: 12px;
+  color: var(--text-muted, #9aa0a6);
+  font-variant-numeric: tabular-nums;
+}
 .solenoid-node__dm-caption {
   margin-top: 4px;
   font-size: 10px;

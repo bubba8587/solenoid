@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { decisionMatrix, decisionCriteria, decisionSensitivity } from "./frameVerbs";
-import { DecisionMatrixNode } from "./rete-nodes";
+import { DecisionMatrixNode, DecisionSensitivityNode } from "./rete-nodes";
 import { isSolError, solError } from "./errorValue";
 import { isFrameValue, isCubeValue, type FrameValue, type FrameColumn } from "./frame";
 
@@ -34,7 +34,7 @@ describe("decisionMatrix", () => {
     expect(col(out, "Score").values).toEqual([10, 8, 6]);
   });
 
-  it("a negative weight penalises a lower-is-better criterion", () => {
+  it("a negative weight penalizes a lower-is-better criterion", () => {
     // weights [1, -1]: score = (q - cost)/2 → A=(8-3)/2=2.5, B=(6-1)/2=2.5, C=(10-9)/2=0.5
     const out = decisionMatrix(f, [1, -1], "none") as FrameValue;
     // A and B tie at 2.5 (rank 1, shared), C at 0.5 (rank 3)
@@ -77,6 +77,19 @@ describe("decisionMatrix", () => {
     expect(scores.get("B")).toBe(0.6);
   });
 
+  it("ranks on the ROUNDED score, so options that display equal share a rank", () => {
+    const g: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "name", type: "string", values: ["A", "B"] },
+        { name: "x", type: "number", values: [1.00001, 1.00002] }, // both display 1
+      ],
+    };
+    const out = decisionMatrix(g, null, "none") as FrameValue;
+    expect(col(out, "Score").values).toEqual([1, 1]);
+    expect(col(out, "Rank").values).toEqual([1, 1]);
+  });
+
   it("synthesizes Option labels when there is no text column", () => {
     const g: FrameValue = {
       __frame: true,
@@ -106,21 +119,33 @@ describe("decisionMatrix", () => {
     expect(col(out, "Score").values).toEqual([2, 0.5]);
   });
 
-  it("breakdown shows each criterion's effective value between label and Score", () => {
+  it("breakdown inserts each criterion's signed contribution, and they sum to the Score", () => {
     const out = decisionMatrix(f, null, "none", true) as FrameValue;
     expect(out.columns.map((c) => c.name)).toEqual(["name", "quality", "cost", "Score", "Rank"]);
-    // best-first order is C, A, B; criterion values follow that row order
+    // best-first order is C, A, B; contribution = value × weight / Σ|w| (weights 1,1)
     expect(col(out, "name").values).toEqual(["C", "A", "B"]);
-    expect(col(out, "quality").values).toEqual([10, 8, 6]);
-    expect(col(out, "cost").values).toEqual([9, 3, 1]);
+    expect(col(out, "quality").values).toEqual([5, 4, 3]);
+    expect(col(out, "cost").values).toEqual([4.5, 1.5, 0.5]);
+    const score = col(out, "Score").values as number[];
+    (col(out, "quality").values as number[]).forEach((q, i) =>
+      expect(q + (col(out, "cost").values as number[])[i]).toBeCloseTo(score[i], 4));
   });
 
-  it("breakdown under 'rank' shows the normalized within-column rank in [0,1]", () => {
+  it("a negative-weight criterion's contribution reads as a penalty (negative)", () => {
+    // weights [1, -1]: cost contributes −cost/2 — the breakdown must NOT show the
+    // bare post-normalize value, which would read as a high score for the worst row
+    const out = decisionMatrix(f, [1, -1], "none", true) as FrameValue;
+    const c = new Map(col(out, "name").values.map((n, i) => [n, col(out, "cost").values[i]]));
+    expect(c.get("C")).toBe(-4.5); // costliest → the largest penalty
+    expect(c.get("B")).toBe(-0.5);
+  });
+
+  it("breakdown under 'rank' contributes the weighted within-column rank", () => {
     const out = decisionMatrix(f, null, "rank", true) as FrameValue;
-    // quality 8,6,10 → fraction-beaten in [0,1]: B(6)=0, A(8)=0.5, C(10)=1
+    // quality 8,6,10 → fraction-beaten B=0, A=0.5, C=1, then × w(1) / Σ|w|(2)
     const q = new Map(col(out, "name").values.map((n, i) => [n, col(out, "quality").values[i]]));
-    expect(q.get("C")).toBe(1);
-    expect(q.get("A")).toBe(0.5);
+    expect(q.get("C")).toBe(0.5);
+    expect(q.get("A")).toBe(0.25);
     expect(q.get("B")).toBe(0);
   });
 
@@ -148,25 +173,26 @@ describe("decisionMatrix", () => {
         { name: "price", type: "number", values: [100, 50, 900] },
       ],
     };
-    // default mode "none"; override price → rank → [0,1]: 50→0, 100→0.5, 900→1
+    // default mode "none"; override price → rank → [0,1]: 50→0, 100→0.5, 900→1;
+    // contributions then apply weight/Σ|w| = ±1/2
     const out = decisionMatrix(g, [1, -1], "none", true, { price: "rank" }) as FrameValue;
-    // quality stays raw in the breakdown; price shows its normalized rank, not dollars
+    // quality contributes raw/2; price contributes −rank/2, never dollars
     const byName = (c: string) => new Map(col(out, "name").values.map((n, i) => [n, col(out, c).values[i]]));
     const q = byName("quality"), p = byName("price");
-    expect(q.get("A")).toBe(8);    // raw, untouched
-    expect(q.get("C")).toBe(10);
-    expect(p.get("B")).toBe(0);    // cheapest → 0
-    expect(p.get("A")).toBe(0.5);
-    expect(p.get("C")).toBe(1);    // priciest → 1 (penalised by the -1 weight)
+    expect(q.get("A")).toBe(4);
+    expect(q.get("C")).toBe(5);
+    expect(p.get("B")).toBe(0);      // cheapest → no penalty
+    expect(p.get("A")).toBe(-0.25);
+    expect(p.get("C")).toBe(-0.5);   // priciest → the largest penalty
   });
 
   it("override falls back to the default mode for unlisted columns", () => {
-    // default rank, but force quality back to raw
+    // default rank, but force quality back to raw (contributions halve: Σ|w| = 2)
     const out = decisionMatrix(f, null, "rank", true, { quality: "none" }) as FrameValue;
     const q = new Map(col(out, "name").values.map((n, i) => [n, col(out, "quality").values[i]]));
-    expect(q.get("C")).toBe(10); // raw, not its normalized rank (1)
+    expect(q.get("C")).toBe(5);   // raw 10 × 1/2, not its normalized rank
     const c = new Map(col(out, "name").values.map((n, i) => [n, col(out, "cost").values[i]]));
-    expect(c.get("C")).toBe(1);  // cost still ranked (9 is the max → 1)
+    expect(c.get("C")).toBe(0.5); // cost still ranked (9 is the max → 1), × 1/2
   });
 
   it("does not treat a date column as a criterion", () => {
@@ -226,8 +252,13 @@ describe("decisionMatrix", () => {
 });
 
 describe("DecisionMatrixNode (inline named weights)", () => {
+  it("defaults normalize to ÷Max — Raw silently degenerates on mixed scales", () => {
+    expect(new DecisionMatrixNode().normalize).toBe("max");
+    expect(new DecisionSensitivityNode().normalize).toBe("max");
+  });
+
   it("scores from the per-criterion weightMap, defaulting missing to 1", () => {
-    const node = new DecisionMatrixNode({ weightMap: { quality: 3, cost: -1 } });
+    const node = new DecisionMatrixNode({ normalize: "none", weightMap: { quality: 3, cost: -1 } });
     const out = node.data({ frame: [f] }).frame as FrameValue;
     // detected criteria exposed for the component to render labeled boxes
     expect(node.criteria).toEqual(["quality", "cost"]);
@@ -239,11 +270,20 @@ describe("DecisionMatrixNode (inline named weights)", () => {
   });
 
   it("a wired weights list overrides the inline map positionally", () => {
-    const node = new DecisionMatrixNode({ weightMap: { quality: 99, cost: 99 } });
+    const node = new DecisionMatrixNode({ normalize: "none", weightMap: { quality: 99, cost: 99 } });
     // wired [1, 0] → only quality counts despite the map
     const out = node.data({ frame: [f], weights: [[1, 0]] }).frame as FrameValue;
     expect(col(out, "name").values).toEqual(["C", "A", "B"]);
     expect(col(out, "Score").values).toEqual([10, 8, 6]);
+    // the card renders the wired list read-only from this
+    expect(node.wiredWeights).toEqual([1, 0]);
+  });
+
+  it("clears the exposed wired weights when the socket is unwired again", () => {
+    const node = new DecisionMatrixNode({ normalize: "none" });
+    node.data({ frame: [f], weights: [[1, 0]] });
+    node.data({ frame: [f] });
+    expect(node.wiredWeights).toBeNull();
   });
 
   it("clears detected criteria when no frame is wired", () => {
@@ -254,13 +294,13 @@ describe("DecisionMatrixNode (inline named weights)", () => {
   });
 
   it("applies the per-column normMap override on top of the default mode", () => {
-    const node = new DecisionMatrixNode({ detail: "breakdown", normMap: { cost: "rank" } });
+    const node = new DecisionMatrixNode({ normalize: "none", detail: "breakdown", normMap: { cost: "rank" } });
     const out = node.data({ frame: [f] }).frame as FrameValue;
-    // quality untouched (default none), cost ranked → [0,1]: 1→0, 3→0.5, 9→1
+    // contributions at Σ|w|=2: quality raw/2, cost ranked ([0,1]: 1→0, 3→0.5, 9→1) /2
     const q = new Map(col(out, "name").values.map((n, i) => [n, col(out, "quality").values[i]]));
     const c = new Map(col(out, "name").values.map((n, i) => [n, col(out, "cost").values[i]]));
-    expect(q.get("C")).toBe(10);
-    expect(c.get("C")).toBe(1);
+    expect(q.get("C")).toBe(5);
+    expect(c.get("C")).toBe(0.5);
     expect(c.get("B")).toBe(0);
   });
 });
@@ -318,5 +358,42 @@ describe("decisionSensitivity (weight scenarios → cube)", () => {
     if (!isCubeValue(cube)) throw new Error("expected a cube");
     // Quality-first: C=9.75, then A=(8*3+3)/4=6.75 → margin 3.0
     expect(cube.columns[2].cells[0]).toBe(3);
+  });
+
+  it("a dead tie for first lists every tied option in Winner, Margin 0", () => {
+    const tie: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "name", type: "string", values: ["A", "B", "C"] },
+        { name: "quality", type: "number", values: [7, 7, 2] },
+      ],
+    };
+    const scen: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Scenario", type: "string", values: ["only"] },
+        { name: "quality", type: "number", values: [1] },
+      ],
+    };
+    const cube = decisionSensitivity(tie, scen, "none");
+    if (!isCubeValue(cube)) throw new Error("expected a cube");
+    expect(cube.columns[1].cells[0]).toBe("A = B");
+    expect(cube.columns[2].cells[0]).toBe(0);
+  });
+
+  it("#VALUE!s when no Scenarios column is named after a criterion", () => {
+    // every weight would default to 1 and all scenarios would come out identical —
+    // the renamed-criteria trap, not a sensitivity run
+    const scen: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Scenario", type: "string", values: ["typo"] },
+        { name: "qualty", type: "number", values: [3] },
+      ],
+    };
+    let err: unknown;
+    try { decisionSensitivity(f, scen, "none"); } catch (e) { err = e; }
+    if (!isSolError(err)) throw new Error("expected SolError");
+    expect(err.code).toBe("#VALUE!");
   });
 });

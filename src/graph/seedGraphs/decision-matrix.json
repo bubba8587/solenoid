@@ -11,10 +11,10 @@
       "y": -300,
       "init": {
         "label": "Decision Matrix",
-        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria, then ranks them. It is a port of the *Decision Matrix Bases View* Obsidian plugin.\n\n**Flow:** a Frame of scores (rows = options, first text column names them, number columns are criteria) → the Decision Matrix node → `Option · Score · Rank`, best first.\n\nEach criterion row on the node has a **weight** (default 1; negative = lower is better, like Price) and a **normalize** mode. Score = **Σ(score × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
+        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, the first text column names them, number columns are criteria) → the **Decision Matrix** node → `Option · Score · Rank`, best first.\n\nEach criterion gets a row on the node: a **weight** (default 1; negative = lower is better, like Price) and a **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
         "color": "violet",
         "width": 400,
-        "height": 300
+        "height": 260
       }
     },
     {
@@ -23,7 +23,7 @@
       "x": -60,
       "y": 44,
       "init": {
-        "label": "Raw scores (your own Frame)",
+        "label": "Raw scores",
         "frameText": "[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Screen\",\"type\":\"number\",\"values\":[8,9,7,5]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"
       }
     },
@@ -53,24 +53,23 @@
       "x": 420,
       "y": 600,
       "init": {
-        "label": "Per-column normalize: Rank Raws",
-        "body": "Price is in **dollars** and the others are out of **10**, so the scales differ. Every criterion is normalized to a common **0–1** range; now the **weights**, not the raw scale, decide influence.\n\nThe default mode here is **÷Max**, but **Price** overrides to **Rank** in its row dropdown: the DMBV per-column *Rank Raws*. Rank keeps only the order, so one runaway price can't dominate.\n\n**Breakdown** is on, so the table shows each criterion's effective 0–1 value behind the score.",
+        "label": "Mixed scales, one range",
+        "body": "Price is in **dollars**; the rest are out of **10**. Scored raw, Price would swamp everything, so every criterion is normalized onto a common **0–1** range and the **weights**, not the raw scales, decide influence.\n\nThe default here is **÷Max**. Price alone overrides to **Rank** in its row: rank keeps only the order, so one runaway price can't dominate.\n\n**Breakdown** is on: each criterion column is its **signed contribution**, and the contributions sum to the Score. Price shows negative, the penalty it is.",
         "color": "green",
         "width": 370,
-        "height": 260
+        "height": 280
       }
     },
     {
-      "id": "getScore",
-      "type": "GetColumnNode",
+      "id": "select",
+      "type": "SelectColumnsNode",
       "x": 880,
       "y": -41,
       "init": {
-        "label": "Get Column → Score",
-        "readAs": "number"
+        "label": "Keep Laptop · Score"
       },
       "stringLiterals": {
-        "name": "Score"
+        "columns": "Laptop,Score"
       }
     },
     {
@@ -79,7 +78,7 @@
       "x": 1240,
       "y": -59,
       "init": {
-        "label": "Podium (Score per option)",
+        "label": "Podium",
         "op": "bar"
       },
       "stringLiterals": {
@@ -93,7 +92,7 @@
       "y": 260,
       "init": {
         "label": "The podium is a chart",
-        "body": "DMBV drew a podium + ranking cards. In Solenoid that view is composed from nodes: **Get Column \"Score\" → Chart**, set to bar. The ranked frame on the Decision Matrix node is the table; the chart is the visual.",
+        "body": "The ranking is already the table. For the podium, **Select Columns** keeps `Laptop · Score`, and a two-column frame into **Chart** draws labeled bars: the first column names them, the second sets the lengths.",
         "color": "vermilion",
         "width": 320,
         "height": 160
@@ -106,10 +105,10 @@
       "y": 940,
       "init": {
         "label": "Sensitivity",
-        "body": "# Stress-test the weights\nThe winner above depends on the weights you picked. The **Sensitivity** node scores the same options under several weight **scenarios**; each row below is one. It returns a **Cube**: one row per scenario with the **Winner**, the **Margin** (how decisive), and the full **Ranking** nested in the cell, which **drills in**.\n\nHere the winner *flips*: UltraSlim when the weights are balanced, PowerLifter when performance dominates. The Budget scenario is a near-tie (Margin ≈ 0), so the choice is fragile there.",
+        "body": "# Stress-test the weights\nThe winner depends on the weights picked above. **Sensitivity** re-scores the same options under several weight **scenarios**, one per row of the Scenarios frame, and returns a **Cube**: per scenario the **Winner**, the **Margin** (top score minus runner-up), and the full **Ranking** nested in the cell. Drill in.\n\nThe winner flips: **UltraSlim** under Balanced, **PowerLifter** when performance dominates. Under Budget the Winner cell reads **UltraSlim = Budget**, a dead tie at Margin 0. That pick is fragile; the first two hold.",
         "color": "blue",
         "width": 380,
-        "height": 260
+        "height": 280
       }
     },
     {
@@ -118,7 +117,7 @@
       "x": -60,
       "y": 1245,
       "init": {
-        "label": "Weight scenarios (each row = one)",
+        "label": "Weight scenarios",
         "frameText": "[{\"name\":\"Scenario\",\"type\":\"string\",\"values\":[\"Balanced\",\"Performance-first\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[3,5,1]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[2,1,1]},{\"name\":\"Screen\",\"type\":\"number\",\"values\":[1,1,1]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[-2,-1,-5]}]"
       }
     },
@@ -143,12 +142,12 @@
     {
       "source": "dm",
       "sourceOutput": "frame",
-      "target": "getScore",
+      "target": "select",
       "targetInput": "frame"
     },
     {
-      "source": "getScore",
-      "sourceOutput": "values",
+      "source": "select",
+      "sourceOutput": "frame",
       "target": "chart",
       "targetInput": "values"
     },

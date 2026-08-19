@@ -1460,7 +1460,11 @@ function normalizeColumn(vals: number[], mode: DecisionNormalize): number[] {
   return vals.map((v) => vals.filter((o) => o < v).length / (n - 1));
 }
 
-const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
+// −0 flattens to 0 so a zero contribution under a negative weight can't print "-0".
+const round4 = (n: number): number => {
+  const r = Math.round(n * 1e4) / 1e4;
+  return r === 0 ? 0 : r;
+};
 
 // Date columns are deliberately NOT criteria — a date's serial is never a
 // meaningful "score". One definition, shared by the verb and the node (which needs
@@ -1514,10 +1518,12 @@ export function decisionMatrix(
   let sumAbsW = 0;
   for (let j = 0; j < criteriaCols.length; j++) sumAbsW += Math.abs(weightOf(j));
 
+  // Rounded on COMPUTE, not display, so rank and the shown Score can never
+  // disagree: two options that print the same score share a rank.
   const scores: number[] = Array.from({ length: rows }, (_, i) => {
     let sw = 0;
     for (let j = 0; j < criteriaCols.length; j++) sw += effective[j][i] * weightOf(j);
-    return sumAbsW > 0 ? sw / sumAbsW : 0;
+    return round4(sumAbsW > 0 ? sw / sumAbsW : 0);
   });
 
   // Competition rank: equal scores share a rank, the next distinct score skips the
@@ -1535,12 +1541,16 @@ export function decisionMatrix(
   const out: FrameColumn[] = [
     { name: labelCol?.name ?? "Option", type: "string", values: idx.map((i) => labels[i]) },
   ];
+  // Breakdown columns are SIGNED contributions — effective × weight / Σ|weight| —
+  // so they sum to the Score (within rounding) and a negative-weight criterion
+  // reads as the penalty it is, not as a high post-normalize value.
   if (breakdown) {
     criteriaCols.forEach((c, j) => {
-      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(effective[j][i])) });
+      const w = weightOf(j);
+      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(sumAbsW > 0 ? (effective[j][i] * w) / sumAbsW : 0)) });
     });
   }
-  out.push({ name: "Score", type: "number", values: idx.map((i) => round4(scores[i])) });
+  out.push({ name: "Score", type: "number", values: idx.map((i) => scores[i]) });
   out.push({ name: "Rank", type: "number", values: idx.map((i) => rankByRow[i]) });
 
   const names = makeHeaders(out.map((c) => c.name), out.length);
@@ -1565,6 +1575,11 @@ export function decisionSensitivity(
   const nScen = frameRowCount(scenarios);
   const scenLabelCol = scenarios.columns.find((c) => c.type === "string") ?? null;
   const weightColFor = (name: string) => scenarios.columns.find((c) => c.name === name) ?? null;
+  // With zero matching columns every weight defaults to 1 and all scenarios come out
+  // identical — a naming mismatch (renamed criteria), not a sensitivity run.
+  if (!criteria.some((name) => weightColFor(name))) {
+    throw solError("#VALUE!", "No Scenarios column is named after a criterion");
+  }
 
   const scenarioCells: CubeCell[] = [];
   const winnerCells: CubeCell[] = [];
@@ -1577,12 +1592,18 @@ export function decisionSensitivity(
       return typeof v === "number" && Number.isFinite(v) ? v : 1; // missing weight → 1
     });
     const ranking = decisionMatrix(scores, weights, normalize, false);
-    const scoreCol = ranking.columns.find((c) => c.name === "Score")!;
+    // Positional: breakdown=false fixes the shape to label · Score · Rank (a
+    // criterion NAMED "Score" would defeat a find-by-name here).
+    const scoreCol = ranking.columns[1];
+    const rankCol = ranking.columns[2];
     const top = typeof scoreCol.values[0] === "number" ? (scoreCol.values[0] as number) : null;
     const second = typeof scoreCol.values[1] === "number" ? (scoreCol.values[1] as number) : null;
 
     scenarioCells.push(scenLabelCol ? (scenLabelCol.values[i] ?? `Scenario ${i + 1}`) : `Scenario ${i + 1}`);
-    winnerCells.push(ranking.columns[0].values[0] ?? null); // rank-1 option (best-first)
+    // Every option tied at rank 1 (best-first, so they lead the frame) — a dead
+    // tie names them all rather than silently picking whichever sorted first.
+    const tied = ranking.columns[0].values.filter((_, k) => rankCol.values[k] === 1);
+    winnerCells.push(tied.length > 1 ? tied.map((v) => String(v ?? "")).join(" = ") : (tied[0] ?? null));
     marginCells.push(top !== null && second !== null ? round4(top - second) : null);
     rankingCells.push(ranking);
   }
