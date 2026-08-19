@@ -108,7 +108,6 @@ export function buildMenus(): Menu[] {
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
         { label: "Inspector", onClick: () => inspectorStore.toggle() },
-        { label: "Architecture map", onClick: () => void documentStore.newFromTemplate("architecture-map") },
         { label: "Settings…", shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
       ],
     },

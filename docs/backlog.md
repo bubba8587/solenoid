@@ -11,6 +11,10 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
 
+- [ ] **Architecture map v2 — WAIT FOR THE AUTHOR'S SPEC.** The old map (Subsystem
+  cards + import cables, generator chain, coverage guards) is deleted. The author
+  will describe the replacement precisely; build nothing toward it until then.
+
 - [ ] **Divergence flags from the socket-docs sweep (2026-08-17)** — surfaced while
   verifying Inspector docs against `data()`, each needs its own small investigation:
   (a) FACT/FACTDOUBLE ignore `k` yet a WIRED-BLANK k still blanks the result

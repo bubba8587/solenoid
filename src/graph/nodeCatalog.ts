@@ -52,7 +52,7 @@ import {
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
   WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
   WriteCsvNode, WriteJsonNode, WriteObsidianNode, ImportObsidianNode,
-  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode, SubsystemNode,
+  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp, type TableTakeDropOp,
@@ -316,7 +316,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output socket — a note doubling as a constants source. A Note only emits. To read live values into a document, use a Report.", create: () => new NoteNode(), parity: false },
         { type: "report", label: "Report", description: "A standalone markdown document, separate from the graph: prose with inline `=name` refs that render a wired value or chart formatted in the text, plus Notes embedded as placed objects. Opens from the small anchor card.", create: () => new ReportNode(), parity: false },
       ]},
-      { type: "subsystem", label: "Subsystem", description: "An architecture card: a named group of source files, output as a frame of module, role, and import-count columns. Cables into Imports draw dependency edges between groups. The Architecture Map seed draws this app's own map with these.", create: () => new SubsystemNode(), parity: false, keywords: "architecture module dependency import map group card codebase" },
       { type: "session-history", label: "Session History", description: "A live, dated log of this session's undo/redo actions (nodes added, removed, or moved; connections made or broken) with a copy button. No inputs or outputs. It doesn't persist. It autogenerates while it's on canvas.", create: () => new SessionHistoryNode(), parity: false },
       { type: "presentation", label: "Presentation", description: "Presenter mode: select nodes on canvas, Add step to capture them, then step through with Prev/Next. Each step flies the camera to fit its nodes. Pan/zoom only, no isolate/highlight.", create: () => new PresentationNode(), parity: false },
       { type: "pair", children: [

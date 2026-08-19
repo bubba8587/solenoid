@@ -171,7 +171,6 @@ export { ReportComponent } from "./ReportNode";
 
 // ─── Session History (live undo/redo digest readout) ───────────────────────────
 export { SessionHistoryComponent } from "./SessionHistoryNode";
-export { SubsystemComponent } from "./SubsystemNode";
 
 // ─── Presentation (step list + camera-only presenter mode) ─────────────────────
 export { PresentationComponent } from "./PresentationNode";

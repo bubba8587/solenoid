@@ -135,6 +135,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   the lint corpus is a future sweep of its own. Corpus: 3,997 strings.
   Pinned by `scripts/copy-inventory.test.ts`.
 
+### SESSION DIGEST (2026-08-19d — architecture map removed)
+- **Architecture map killed** (author order): the seed, `SubsystemNode`, the
+  generator chain (`scan-arch-deps` / `specMap` / `archGraph` / `archSeed` + their
+  tests, including the same-commit file-coverage guard), the View menu entry, and
+  the npm script. A precisely-specced replacement is coming from the author —
+  backlog holds the placeholder.
+
 ### SESSION DIGEST (2026-08-19 — Record figure: a resized Display clipped the row pager away)
 - **Record's `picked` row output removed** — an unwanted addition that rode in with
   the Gallery/Board ops (2026-08-18). Gone: the output, its socket doc, and the

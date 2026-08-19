@@ -129,9 +129,8 @@ export function optStrings(line: string): { key: "label" | "title" | "descriptio
 }
 
 /** Every non-test .ts/.tsx under `dir` that can carry option-table copy.
- *  nodeCatalog + packs are excluded (their labels/descriptions are the catalog
- *  records) and archSeed is a seed GENERATOR (its output is collected as the
- *  committed seed json). */
+ *  nodeCatalog + packs are excluded: their labels/descriptions are the catalog
+ *  records. */
 export function walkCode(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, name.name);
@@ -141,7 +140,7 @@ export function walkCode(dir: string, acc: string[] = []): string[] {
     } else if (
       /\.tsx?$/.test(name.name) &&
       !/\.test\.tsx?$|\.d\.ts$/.test(name.name) &&
-      !["nodeCatalog.ts", "archSeed.ts", "copyCorpus.ts"].includes(name.name)
+      !["nodeCatalog.ts", "copyCorpus.ts"].includes(name.name)
     ) {
       acc.push(p);
     }

@@ -25,7 +25,7 @@ Deep behavioral notes and gotchas live in `CLAUDE.md` (agent-facing) and
 │                             #     loop from a terminal, real key),
 │                             #     formula-node-parity.ts (SSOT-6 gap report), op-exposure.ts,
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
-│                             #     scan-arch-deps.mjs (the import scan behind virtual:arch-deps),
+│                             #     copy-inventory.ts (shipped-string extract/apply),
 │                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, parity.ts, release-build.ps1
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
@@ -274,19 +274,9 @@ exclusive) reading the active surface's selected node: STATIC reference only —
 Function Reference derivation, real socket glyphs with `SOCKET_TYPE_LABELS`, opt-in
 per-socket detail (`socketDocs.ts`, a static class map like `frameHints`), and each
 declared frame-input example table (`FrameHintTable`, shared with the hover layer).
-View ▸ Architecture map opens the GENERATED seed `seedGraphs/architecture-map.json`
-(via `documentStore.newFromTemplate`): the system as a real document — one Subsystem
-node per module group of THIS FILE, real cables along the strong import edges, ELK
-positions. The derivation chain: `scripts/scan-arch-deps.mjs` scans src/graph's
-relative imports; `specMap.ts` parses this doc + `docs/rules.md`; `archGraph.ts`
-assigns every file to its group (table rows, then prose citations, then directory
-headings — `archGraph.test.ts` pins unmapped at ZERO, enforcing this doc's same-commit
-rule) and aggregates the edges; `archSeed.ts` builds the seed (regenerate:
-`npm run gen:arch-seed`; `archSeed.test.ts` diffs the checked-in file against a fresh
-derivation, so the shipped document cannot drift from the docs or the code).
-`copyCorpus.ts` is the same idea for shipped copy: one collector for every UI string
-(help pages, catalog labels/descriptions, attribute and option-table strings, seed
-prose), shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
+`copyCorpus.ts` is the one collector for every shipped UI string (help pages,
+catalog labels/descriptions, attribute and option-table strings, seed prose),
+shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
 (`scripts/copy-inventory.ts`, extract/apply).
 
 ### External data
