@@ -41,7 +41,7 @@
   --text-muted: #80868e;
 
   --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.2);
 
   /* Node header accent-tint strength. (Selection draws from each item's own
      --node-accent via an outline — see nodeCard.css / GroupNode.css.) */
@@ -92,7 +92,7 @@
      thicker always-on border + a lighter, tighter shadow. Width is theme-agnostic,
      defined once here; the light ramp only re-softens the shadow tint. */
   --overlay-border-width: 2px;
-  --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
   --btn-bg: var(--surface-sunken);
   --btn-hover: #1f1f1f;
   --btn-border: var(--border);
@@ -122,7 +122,7 @@
   --text-muted: #6a717b;
 
   --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.08);
-  --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.1);
+  --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.06);
 
   /* Stronger header tint (pale-on-white needs more). */
   --header-tint: 52%;
@@ -142,7 +142,7 @@
   --canvas-bg: #eef1f5;
   --canvas-dot: #d3d9e1;
   --overlay-border: #aeb6c1;
-  --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.14), 0 1px 4px rgba(20, 30, 50, 0.08);
+  --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
   --btn-hover: #e9ecf0;
   --wordmark-color: #1b1e23;
 }

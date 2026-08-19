@@ -758,8 +758,8 @@ export function chromeCssVars(ramp: ChromeRamp, mode: "dark" | "light"): Record<
     // a warm shadow. Dark mode keeps App.css's black: on a dark ground the shadow is
     // absence of light, not a hue.
     out["--shadow-card"] = `0 1px 2px ${hexToRgba(text, 0.1)}`;
-    out["--shadow-pop"] = `0 4px 14px ${hexToRgba(text, 0.12)}`;
-    out["--overlay-shadow"] = `0 4px 14px ${hexToRgba(text, 0.16)}, 0 1px 4px ${hexToRgba(text, 0.1)}`;
+    out["--shadow-pop"] = `0 4px 14px ${hexToRgba(text, 0.07)}`;
+    out["--overlay-shadow"] = `0 4px 14px ${hexToRgba(text, 0.1)}, 0 1px 4px ${hexToRgba(text, 0.06)}`;
   }
   return out;
 }

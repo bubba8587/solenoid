@@ -11,7 +11,7 @@
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: 999px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
   color: var(--text);
   font-family: inherit;
   font-size: 12px;

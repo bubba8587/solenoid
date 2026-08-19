@@ -20,7 +20,7 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   color: var(--text);
   font-size: 12.5px;
   line-height: 1.4;

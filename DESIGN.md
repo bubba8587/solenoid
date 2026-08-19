@@ -213,8 +213,8 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 
 ### Shadow Vocabulary
 - **Card seam** (`box-shadow: 0 1px 0 rgba(0,0,0,0.4)`): The resting node shadow. A single dark hairline under the card, not a glow. Light theme softens to `0 1px 2px rgba(20,30,50,0.08)`.
-- **Popover lift** (`box-shadow: 0 4px 14px rgba(0,0,0,0.3)`): Menus and small popovers.
-- **Overlay lift** (`box-shadow: 0 8px 26px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.45)`): Floating chrome that sits above the graph (socket legend, minimap, pins, alerts). Deep and layered so it reads clearly over busy content.
+- **Popover lift** (`--shadow-pop`, `0 4px 14px rgba(0,0,0,0.2)`): Menus and small popovers. Light theme softens to `rgba(20,30,50,0.06)`.
+- **Overlay lift** (`--overlay-shadow`, `0 4px 14px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2)`): Floating chrome that sits above the graph (socket legend, minimap, pins, alerts). Layered so it reads over busy content without pooling under the element. Light theme softens to `rgba(20,30,50,0.09)` / `rgba(20,30,50,0.05)`.
 - **Selection glow** (`box-shadow: 0 4px 14px <node-accent>/28%`): An accent-tinted glow drawn from the selected node's own type color, not a neutral shadow.
 
 ### Named Rules
