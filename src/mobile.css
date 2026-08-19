@@ -132,7 +132,10 @@ html.is-mobile {
     display: block;
     flex: 0 0 auto;
     align-self: center;
-    height: 19px;
+    /* Sibling of __center, which sets the row's 30px — so this must stay UNDER
+       30px or Row A grows and the hand-keyed safe-area + 82px top envelope
+       (layout-chrome.md) is wrong everywhere it's spelled. */
+    height: 24px;
     aspect-ratio: 573 / 119; /* the wordmark SVG's viewBox */
     margin-right: 6px;
     background-color: currentColor;
