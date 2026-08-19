@@ -284,6 +284,10 @@ headings — `archGraph.test.ts` pins unmapped at ZERO, enforcing this doc's sam
 rule) and aggregates the edges; `archSeed.ts` builds the seed (regenerate:
 `npm run gen:arch-seed`; `archSeed.test.ts` diffs the checked-in file against a fresh
 derivation, so the shipped document cannot drift from the docs or the code).
+`copyCorpus.ts` is the same idea for shipped copy: one collector for every UI string
+(help pages, catalog labels/descriptions, attribute and option-table strings, seed
+prose), shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
+(`scripts/copy-inventory.ts`, extract/apply).
 
 ### External data
 
