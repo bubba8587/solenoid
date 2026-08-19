@@ -146,11 +146,16 @@ export function ChartView({
       </AreaChart>
     );
   } else if (op === "bar") {
+    // The 18px gutter fits index digits; real category labels need room for the
+    // WIDEST one (else "UltraSlim" prints as "im"), capped so bars keep the card.
+    const catW = labels
+      ? Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(Math.max(...series.map((d) => tickFmt(d.i).length)) * 5.2 * fs)))
+      : 18;
     chart = (
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 32 : 18} tickFormatter={tickFmt} label={yLabel} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? Math.max(32, catW) : catW} tickFormatter={tickFmt} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={fillAlpha < 1 && opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
       </BarChart>
