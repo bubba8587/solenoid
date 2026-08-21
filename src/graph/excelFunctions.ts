@@ -1,6 +1,6 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
+import { serialToJsDate, jsDateToSerial, parseDate } from "./nodes/dateSerial";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
@@ -951,10 +951,17 @@ registerInternal("INDEX", (list, row, col) => {
 // FX returns a LOCAL-midnight Date object, and `jsDateToSerial` reads UTC, so the serial
 // shifts by the machine's TZ offset; these four are DATE-ONLY, so rounding recovers it.
 const toSerialIfDate = (v: unknown): unknown => (v instanceof Date ? Math.round(jsDateToSerial(v)) : v);
-for (const fn of ["DATE", "EDATE", "DATEVALUE", "WORKDAY"]) {
+for (const fn of ["DATE", "EDATE", "WORKDAY"]) {
   const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
   if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
 }
+// DATEVALUE runs OUR shared parser (chrono-backed, #AMBIGUOUS-aware), not Formula.js — one
+// date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as.
+registerInternal("DATEVALUE", (x) => {
+  const r = parseDate(toStr(x));
+  if (isSolError(r)) return r;
+  return Number.isFinite(r) ? Math.floor(r) : solError("#VALUE!", "DATEVALUE couldn't read that as a date");
+});
 // WORKDAY.INTL is namespaced under WORKDAY (not a flat FX key), so the loop above missed
 // it — without the wrap it leaked FX's raw Date object (TZ-shifted), silently corrupting
 // any serial arithmetic downstream.

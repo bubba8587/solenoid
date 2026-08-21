@@ -1,5 +1,5 @@
 import { parseCsvRows } from "./csv";
-import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
@@ -250,7 +250,7 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   if (type === "logical") return coerceLogical(s);
   const n = cellToNumber(s);
   if (n !== null) return n;
-  if (type === "date") { const d = parseDateToSerial(s); return Number.isFinite(d) ? d : NaN; }
+  if (type === "date") { const r = parseDate(s); if (isSolError(r)) return r; return Number.isFinite(r) ? r : NaN; }
   return NaN;
 }
 

@@ -1,8 +1,8 @@
 import { ClassicPreset } from "rete";
 import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, type BroadcastResult } from "./shared";
-import { solError, type SolError } from "../errorValue";
-import { serialToJsDate, jsDateToSerial, parseDateToSerial } from "./dateSerial";
-export { serialToJsDate, jsDateToSerial, parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
+import { solError, isSolError, type SolError } from "../errorValue";
+import { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate } from "./dateSerial";
+export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 /** The whole-day key of a date serial, so a holiday matches regardless of
  *  time-of-day; `+1e-9` absorbs float drift from serial↔ms round-tripping. */
@@ -164,14 +164,15 @@ export class TimeConstructNode extends ClassicPreset.Node {
 export type DateTimeValueOp = "date" | "time";
 
 export const DATE_TIME_VALUE_OP_META = {
-  date: { label: "DATEVALUE", description: "Parses a date string such as \"2026-06-15\" into a date serial. Excel: DATEVALUE, parity: ISO format." },
+  date: { label: "DATEVALUE", description: "Parses a date string into a date serial: ISO, day-first numeric, ordinals and month names (15 March 1996, 3rd Apr 2026). A numeric date that could read as day/month or month/day gives #AMBIGUOUS! rather than a guess. Excel: DATEVALUE." },
   time: { label: "TIMEVALUE", description: "Parses a time string such as \"14:30:00\" into a fraction of a day, 0 to 1. Excel: TIMEVALUE." },
 } satisfies Record<DateTimeValueOp, { label: string; description: string }>;
 
 function parseDateOnly(text: string): number | SolError {
-  const serial = parseDateToSerial(text);
-  if (Number.isNaN(serial)) return solError("#VALUE!", `Cannot parse "${text}" as a date`);
-  return Math.floor(serial); // DATEVALUE is date-only (Excel)
+  const r = parseDate(text);
+  if (isSolError(r)) return r; // #AMBIGUOUS! surfaces (a numeric date that could be D/M or M/D)
+  if (Number.isNaN(r)) return solError("#VALUE!", `Cannot parse "${text}" as a date`);
+  return Math.floor(r); // DATEVALUE is date-only (Excel)
 }
 
 function parseTimeOfDay(text: string): number | SolError {
@@ -197,7 +198,7 @@ function parseTimeOfDay(text: string): number | SolError {
 
 export class DateTimeValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    text: "A date needs a four-digit year. Two-digit years do not parse.",
+    text: "A date needs a four-digit year (two-digit years don't parse). ISO, day-first numeric, ordinals and month names all work; a numeric date that could go either way (3/4/2026) is #AMBIGUOUS! — write the month as a name.",
   };
 
   label: string;

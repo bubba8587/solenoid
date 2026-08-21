@@ -296,8 +296,10 @@
       "x": 233,
       "y": 2210,
       "init": {
-        "label": "Date",
-        "value": 45658
+        "label": "Date"
+      },
+      "stringLiterals": {
+        "date": "01-Jan-2025"
       }
     },
     {

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateAddNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateDiffOp } from "./date";
+import { DateAddNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, parseDate, serialToJsDate, jsDateToSerial, type DateDiffOp } from "./date";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket } from "../sockets";
 
@@ -49,6 +49,42 @@ describe("DATE — numeric year is literal (no century guessing)", () => {
     expect(isSolError(zero) && zero.code).toBe("#DOMAIN!");
     const huge = new DateConstructNode().data({ year: [10000], month: [1], day: [1] }).result;
     expect(isSolError(huge) && huge.code).toBe("#DOMAIN!");
+  });
+});
+
+describe("parseDate — wider formats, day-first, and #AMBIGUOUS! (chrono-backed)", () => {
+  const iso = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
+  const ser = (s: string) => parseDate(s);
+  it("parses ordinals and natural month-name forms", () => {
+    expect(ser("march 15th, 1996")).toBe(iso(1996, 3, 15));
+    expect(ser("3rd Apr 2026")).toBe(iso(2026, 4, 3));
+    expect(ser("15 March 1996")).toBe(iso(1996, 3, 15));
+  });
+  it("accepts numeric day-first with -, /, or . separators", () => {
+    expect(ser("20-02-2026")).toBe(iso(2026, 2, 20)); // was rejected before
+    expect(ser("20/02/2026")).toBe(iso(2026, 2, 20));
+    expect(ser("20.02.2026")).toBe(iso(2026, 2, 20));
+    expect(ser("13/4/2026")).toBe(iso(2026, 4, 13)); // 13 can only be the day
+    expect(ser("1/15/2026")).toBe(iso(2026, 1, 15)); // 15 can only be the day (US)
+  });
+  it("refuses to GUESS a genuinely ambiguous numeric date — #AMBIGUOUS!", () => {
+    const r = ser("3/4/2026");
+    expect(isSolError(r) && r.code).toBe("#AMBIGUOUS!");
+    expect(isSolError(ser("04/03/2026")) && (ser("04/03/2026") as { code: string }).code).toBe("#AMBIGUOUS!");
+    // equal parts aren't ambiguous (same date either way)
+    expect(ser("4/4/2026")).toBe(iso(2026, 4, 4));
+    // the NaN-wrapper collapses an ambiguous date to NaN for its plain callers
+    expect(parseDateToSerial("3/4/2026")).toBeNaN();
+  });
+  it("rejects relative expressions (a stored date is a fixed day)", () => {
+    expect(ser("next tuesday")).toBeNaN();
+    expect(ser("yesterday")).toBeNaN();
+    expect(ser("in 3 days")).toBeNaN();
+  });
+  it("still rejects buried dates and pure garbage", () => {
+    expect(ser("call me on 15 March 1996")).toBeNaN();
+    expect(ser("garbage")).toBeNaN();
+    expect(ser("")).toBeNaN();
   });
 });
 

@@ -3,7 +3,8 @@ import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from
 import { frameIn, frameOut, dateOut, numOut, numListOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
-import { jsDateToSerial } from "./date";
+import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
+import { isSolError, type SolError } from "../errorValue";
 import { clamp } from "./mathUtils";
 import { compareStrings } from "../stringOrder";
 
@@ -142,19 +143,27 @@ export class AngleDialNode extends ClassicPreset.Node {
 
 export class DateInputNode extends ClassicPreset.Node {
   label: string;
-  value: number;   // Excel date serial; 0 = unset
+  // The raw source text is the truth (the Frame/Table date model): the card renders the
+  // coerced DD-MMM-YYYY but keeps exactly what was typed for editing, and never discards an
+  // unparseable entry. Round-trips via the generic stringLiterals spread.
+  stringLiterals: Record<string, string>;
   width  = 180;
   height = 110;
 
-  constructor(init?: { label?: string; value?: number }) {
+  constructor(init?: { label?: string; date?: string }) {
     super("DateInput");
     this.label = init?.label ?? "Date Input";
-    this.value = init?.value ?? Math.floor(jsDateToSerial(new Date()));
+    this.stringLiterals = {
+      date: init?.date ?? formatDateSerial(Math.floor(jsDateToSerial(new Date())), DEFAULT_DATE_FORMAT),
+    };
     this.addOutput("result", dateOut("Date serial"));
   }
 
-  data(): { result: number | null } {
-    return { result: this.value > 0 ? this.value : null };
+  data(): { result: number | SolError | null } {
+    // #AMBIGUOUS! surfaces downstream; unparseable text is a blank, a valid date its serial.
+    const r = parseDate((this.stringLiterals.date ?? "").trim());
+    if (isSolError(r)) return { result: r };
+    return { result: Number.isFinite(r) ? Math.floor(r) : null };
   }
 }
 

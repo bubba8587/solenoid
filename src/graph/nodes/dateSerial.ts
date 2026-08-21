@@ -1,5 +1,8 @@
 // Nothing here may import a module that reaches rete — the formula path stays
-// headless (rules.md FX-2, enforced by formulaPathIsReteFree.test.ts).
+// headless (rules.md FX-2, enforced by formulaPathIsReteFree.test.ts). chrono-node and
+// errorValue are both headless, so they're allowed.
+import * as chrono from "chrono-node";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 // Excel serial 1 = Jan 1, 1900; JS epoch (Jan 1, 1970) = serial 25569.
 
@@ -11,27 +14,59 @@ export function jsDateToSerial(d: Date): number {
   return d.getTime() / 86400000 + 25569;
 }
 
-// The ONE canonical text→date parser (DATEVALUE, Cast(date), Get Column read-as):
-// NaN when unparseable, and the time component is NOT floored — callers do that.
-export function parseDateToSerial(s: string): number {
+// A numeric date whose non-year parts are both ≤ 12 (year last): could be D/M or M/D.
+const NUMERIC_DMY = /^(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}$/;
+// Relative expressions chrono understands but a spreadsheet date value must NOT (they'd be
+// volatile): today/next friday/in 3 days/… — Excel's DATEVALUE refuses these too.
+const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d)\b/i;
+
+/** The ONE canonical text→date parser (DATEVALUE, Cast(date), Frame/Table date columns,
+ *  Date Input, Get Column read-as). Returns the Excel serial, a `#AMBIGUOUS!` SolError when
+ *  a numeric date could read as either D/M or M/D, or NaN when it isn't a date at all.
+ *  Widened via chrono-node (ordinals, month names, natural forms); day-first where a numeric
+ *  part forces it, never a silent guess on the ambiguous case. Time is NOT floored. */
+export function parseDate(s: string): number | SolError {
   const t = s.trim();
   if (!t) return NaN;
-  // Without a 4-digit run the year can only be guessed (JS reads bare "Mar 20" as
-  // 2001), so it is not a date — no 2-digit-year century pivot in any form.
+  // A year must be four explicit digits — no 2-digit-year century pivot in any form.
   if (!/\d{4}/.test(t)) return NaN;
-  const d = new Date(t);
-  if (Number.isNaN(d.getTime())) return NaN;
-  // Zone-less text must mean the same calendar date on every machine: new Date()
-  // reads ISO date-only as UTC but every other form as LOCAL, so rebuild the wall
-  // clock via Date.UTC. A zone designator counts only after a time component — a bare
-  // trailing "[+-]dddd" is indistinguishable from a "-2026" year.
-  const hasTime = /\d\s*:\s*\d/.test(t);
-  const hasZone = hasTime && /(?:Z|GMT|UTC|[+-]\d{2}:?\d{2})\s*$/i.test(t);
-  const isoDateOnly = /^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t);
-  const ms = hasZone || isoDateOnly
+  if (RELATIVE.test(t)) return NaN; // a stored date is a fixed calendar day, never relative
+  // ISO date-only is unambiguous, and new Date reads it as UTC with no 0–99 century pivot
+  // (chrono pivots "0026"). Time-bearing ISO keeps chrono's zone handling below.
+  if (/^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t)) {
+    const iso = new Date(t);
+    return Number.isNaN(iso.getTime()) ? NaN : iso.getTime() / 86400000 + 25569;
+  }
+  const num = NUMERIC_DMY.exec(t);
+  if (num) {
+    const a = +num[1], b = +num[2];
+    if (a <= 12 && b <= 12 && a !== b) {
+      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day — write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
+    }
+  }
+  const r = chrono.parse(t, undefined, { forwardDate: false })[0];
+  if (!r || r.index !== 0) return NaN;                       // no date, or date buried in noise
+  if (!/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN; // trailing non-date text
+  const c = r.start;
+  if (!c.isCertain("day") || !c.isCertain("month") || !c.isCertain("year")) return NaN; // incomplete/relative
+  const d = c.date();
+  // An explicit zone designator is an absolute instant (keep it). A zone-LESS value must mean
+  // the same calendar wall-clock on every machine, so rebuild it as UTC from chrono's local
+  // components — the timezone-independence the v1.0 audit pinned.
+  const ms = c.isCertain("timezoneOffset")
     ? d.getTime()
-    : Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+    : c.isCertain("hour")
+      ? Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds())
+      : Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
   return ms / 86400000 + 25569;
+}
+
+/** Back-compat wrapper for the many callers that only distinguish "date vs not": the serial,
+ *  or NaN for any failure (an ambiguous date included). Surfaces that should REPORT
+ *  `#AMBIGUOUS!` call `parseDate` directly. */
+export function parseDateToSerial(s: string): number {
+  const r = parseDate(s);
+  return isSolError(r) ? NaN : r;
 }
 
 

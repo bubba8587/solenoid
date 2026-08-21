@@ -34,6 +34,7 @@ export type SolErrorCode =
   | "#SYNTAX!" | "#VALUE!" | "#TYPE!" | "#SHAPE!" | "#UNIT!"
   | "#NAME?" | "#REF!" | "#CIRC!"
   | "#SOLVE!" // the Equation node found no root (equationSolve.ts)
+  | "#AMBIGUOUS!" // a date string could read as either D/M or M/D (dateSerial.ts)
   | "#ERROR!";
 
 const TAG = "__solError";
@@ -76,6 +77,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#REF!":   "A reference points at something that no longer exists, usually a deleted node or column.",
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
+  "#AMBIGUOUS!": "A date like 3/4/2026 could mean either 3 April or March 4 — Solenoid won't guess. Write the month as a name (3-Apr-2026), use an unambiguous day (13/4/2026), or the ISO form (2026-04-03).",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 

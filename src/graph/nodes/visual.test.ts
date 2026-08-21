@@ -11,7 +11,8 @@ import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, C
 import type { FrameValue, FrameColumn } from "../frame";
 import { DateInputNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
-import { jsDateToSerial } from "./date";
+import { jsDateToSerial, parseDate } from "./date";
+import { isSolError } from "../errorValue";
 import { isMermaidValue } from "../mermaidValue";
 
 describe("visual nodes", () => {
@@ -214,14 +215,18 @@ describe("histogramBins", () => {
 });
 
 describe("control nodes", () => {
-  it("Date Input emits its serial, null when unset", () => {
-    const d = new DateInputNode({ value: 46000 });
-    expect(d.data()).toEqual({ result: 46000 });
-    const empty = new DateInputNode({ value: 0 });
-    expect(empty.data()).toEqual({ result: null });
+  it("Date Input derives its serial from the raw source text", () => {
+    expect(new DateInputNode({ date: "20-Mar-2026" }).data().result).toBe(Math.floor(parseDate("20-Mar-2026") as number));
+    expect(new DateInputNode({ date: "" }).data()).toEqual({ result: null });
+    expect(new DateInputNode({ date: "not a date" }).data()).toEqual({ result: null });
     // default is today's serial
-    const today = new DateInputNode();
-    expect(today.value).toBe(Math.floor(jsDateToSerial(new Date())));
+    expect(new DateInputNode().data().result).toBe(Math.floor(jsDateToSerial(new Date())));
+  });
+  it("Date Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
+    const d = new DateInputNode({ date: "20-mar-2026" });
+    expect(d.stringLiterals.date).toBe("20-mar-2026"); // raw is the source of truth
+    const amb = new DateInputNode({ date: "3/4/2026" }).data().result;
+    expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
   });
 
   it("XY Pad outputs its two fractions and round-trips", () => {

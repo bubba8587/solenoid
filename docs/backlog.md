@@ -146,6 +146,15 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Small builds & calls (still 1.3-sized)
 
+- [ ] **Relative dates as an opt-in feature (author-requested 2026-08-21).** The shared
+  `parseDate` (chrono-backed) already CAN read "next friday"/"today"/"in 3 days" — currently
+  BLOCKED (the `RELATIVE` regex → NaN) so every date value stays a fixed calendar day.
+  Turning it on is feature-shaped: a Setting to allow relative parsing; the resolution is
+  VOLATILE (depends on "now"), so it must re-evaluate on recalc via `getRecalcGen` (VAL-17)
+  like TODAY/RandBetween; and the author wants the Alerts (or Problems) panel to flag when a
+  relative date's resolved value SHIFTS between calculations. Date Input needs a UI affordance
+  showing a value is relative. Keep DATEVALUE deterministic regardless (Excel purity) or gate
+  it too — decide. The current blocking is the safe default the feature builds on.
 - [ ] **AUTHOR CALL — mode-selector inputs on a wired blank**: `text.ts` / `date.ts`
   selector inputs fall back to the literal on a wired blank, diverging from
   value-semantics' "mode selector propagates" row. Decide; reconcile table or code.

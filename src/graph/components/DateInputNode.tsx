@@ -1,33 +1,31 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
-import { serialToJsDate, jsDateToSerial, parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { isSolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
-import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { processGraph } from "../process";
 
-const isoOf = (serial: number) => (serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "");
+const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOString().slice(0, 10);
 
-// A date value shown in the app's DD-MMM-YYYY convention (e.g. 20-Mar-2026). Typing is
-// free-form and coerced by the SAME parser the Frame/Table date columns use
-// (parseDateToSerial via coerceFrameCell): the raw text is left untouched while editing and
-// re-rendered in our format on commit (Enter/blur; Escape reverts). The calendar button
-// opens the browser's native picker, whose ISO value flows in underneath.
+// The raw source text is the truth (the Frame/Table date model). We render the app's
+// DD-MMM-YYYY convention when idle but show exactly what was typed while editing, and never
+// discard an entry: an ambiguous date (3/4/2026) or unparseable text stays put and flags red.
+// Parsing is the shared parseDate (chrono-backed, #AMBIGUOUS-aware). The calendar button opens
+// the browser's native picker; its ISO value flows in underneath.
 export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
   const nativeRef = useRef<HTMLInputElement>(null);
-  const commit = (v: number) => { data.value = v; void processGraph(data.id); };
+  const raw = data.stringLiterals.date ?? "";
+  const parsed = parseDate(raw.trim());
+  const serial = typeof parsed === "number" && Number.isFinite(parsed) ? Math.floor(parsed) : null;
+  const bad = isSolError(parsed) || (raw.trim() !== "" && serial === null);
+  const idleText = serial !== null ? formatDateSerial(serial, DEFAULT_DATE_FORMAT) : raw;
 
-  const { draft, setDraft, onBlur, onKeyDown } = useDraftCommit<number>(
-    data.value,
-    (v) => (v > 0 ? formatDateSerial(v, DEFAULT_DATE_FORMAT) : ""),
-    (text) => {
-      const t = text.trim();
-      if (t === "") return 0; // cleared → unset
-      const serial = parseDateToSerial(t);
-      return Number.isFinite(serial) ? Math.floor(serial) : INVALID_DRAFT;
-    },
-    commit,
-  );
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(raw);
+  // Resync the draft to the source when it changes underneath us (undo, native pick, load).
+  useEffect(() => { if (!editing) setDraft(raw); }, [raw, editing]);
 
+  const commit = (text: string) => { data.stringLiterals.date = text; void processGraph(data.id); };
   const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
   return (
@@ -36,15 +34,20 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
         <input
           type="text"
           className="solenoid-node__value-input"
-          value={draft}
+          value={editing ? draft : idleText}
           placeholder={DEFAULT_DATE_FORMAT}
           spellCheck={false}
+          title={isSolError(parsed) ? parsed.message : undefined}
+          style={{ flex: 1, minWidth: 0, color: bad ? "var(--error, #c0392b)" : undefined }}
+          onFocus={() => { setDraft(raw); setEditing(true); }}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={onBlur}
-          onKeyDown={onKeyDown}
+          onBlur={() => { commit(draft); setEditing(false); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+            else if (e.key === "Escape") { setDraft(raw); setEditing(false); e.currentTarget.blur(); }
+          }}
           onPointerDown={stop}
           onMouseDown={stop}
-          style={{ flex: 1, minWidth: 0 }}
         />
         <button
           type="button"
@@ -65,18 +68,17 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
             <path d="M1.5 5.5h11M4.5 1v2.5M9.5 1v2.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
         </button>
-        {/* The native picker: ISO underneath; positioned by the icon so its popup anchors there. */}
         <input
           ref={nativeRef}
           type="date"
-          value={isoOf(data.value)}
+          value={serial !== null ? isoOf(serial) : ""}
           tabIndex={-1}
           aria-hidden="true"
           onChange={(e) => {
-            const v = e.target.value;
-            if (!v) { commit(0); return; }
+            const v = e.target.value; // native picker → an unambiguous ISO date
+            if (!v) { commit(""); return; }
             const d = new Date(`${v}T00:00:00Z`);
-            commit(Number.isNaN(d.getTime()) ? 0 : Math.floor(jsDateToSerial(d)));
+            commit(Number.isNaN(d.getTime()) ? "" : formatDateSerial(Math.floor(jsDateToSerial(d)), DEFAULT_DATE_FORMAT));
           }}
           onPointerDown={stop}
           onMouseDown={stop}
