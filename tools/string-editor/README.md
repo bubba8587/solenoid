@@ -34,17 +34,22 @@ Started seed) — never the document you have open in your own browser, which li
 browser's autosave. When this happens the page shows a warning banner and the header omits
 "live tab".
 
-To edit what you *actually* see, let the editor attach to your real browser over the Chrome
-DevTools Protocol:
+To edit what you *actually* see, let the editor attach to a real browser over the Chrome
+DevTools Protocol. Chrome/Edge 136+ **ignore `--remote-debugging-port` on the default
+profile**, so a bare `chrome.exe --remote-debugging-port=9222` silently does nothing.
+Use the launcher instead:
 
-1. **Fully quit** the browser you use for the app (so the debug flag isn't ignored by an
-   already-running instance).
-2. Relaunch it **with your normal profile** and remote debugging on, e.g. on Windows:
-   `chrome.exe --remote-debugging-port=9222` (Edge: `msedge.exe --remote-debugging-port=9222`).
-   Your normal profile means autosave restores your document.
-3. Open **http://localhost:1420** in it and navigate to the doc you want.
-4. Back in the editor, click **Rescan**. It now attaches to that tab (header shows
-   "· live tab") and lists exactly what you see.
+```
+node tools/string-editor/debug-browser.mjs
+```
+
+It starts Chrome (or Edge) on a separate `solenoid-cdp-profile` with debugging on, seeded
+the first time from your real profile's `localhost:1420` local storage — so autosave
+restores the document you were working on. The profile persists, so later runs keep
+whatever you did in it; pass `--reseed` to re-copy from your real profile. Then click
+**Rescan** in the editor; the header should read "· live tab".
+
+Work done in the debug window lives in that debug profile, not your everyday one.
 
 The debug endpoint defaults to `http://localhost:9222` (override with `SOLENOID_CDP`). The
 editor only reads the tab — it never navigates or changes it — and disconnects cleanly after
