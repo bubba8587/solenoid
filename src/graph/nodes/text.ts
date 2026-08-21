@@ -10,7 +10,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops, shared verbatim with the formula surface; re-exported so the node
 // barrel keeps its shape.
-import { splitText, textAfterBefore, urlEncode, regexApply, safeRegex, reverseText, filterTextList } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList } from "./textOps";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp } from "./textOps";
 export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
@@ -899,10 +899,11 @@ export class FixedNode extends ClassicPreset.Node {
 // ─── REGEX (REGEXTEST / REGEXEXTRACT / REGEXREPLACE) ─────────────────────────
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
-  test:        { label: "REGEXTEST",         description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel 365: REGEXTEST." },
-  extract:     { label: "REGEXEXTRACT",      description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel 365: REGEXEXTRACT." },
-  extract_all: { label: "REGEXEXTRACT (all)", description: "Returns all matches found in a single string as a list. Excel 365: REGEXEXTRACT with return_all=TRUE." },
-  replace:     { label: "REGEXREPLACE",      description: "Replaces all regex matches with the replacement string. Wired list input broadcasts element-wise. Excel 365: REGEXREPLACE." },
+  test:           { label: "REGEXTEST",           description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel 365: REGEXTEST." },
+  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel 365: REGEXEXTRACT." },
+  extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel 365: REGEXEXTRACT with return_mode=1." },
+  extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel 365: REGEXEXTRACT with return_mode=2." },
+  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string — all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel 365: REGEXREPLACE." },
 };
 
 
@@ -910,13 +911,15 @@ export class RegexNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
     replacement: "Only the replace operation reads this input. $1 inserts the first capture group.",
+    occurrence: "Only REGEXREPLACE reads this. Blank or 0 replaces every match; n replaces only the nth.",
   };
 
   label: string;
   op: RegexOp;
   cachedResult: number | number[] | string | string[] | null = null;
   stringLiterals: Record<string, string> = { pattern: "", replacement: "", flags: "" };
-  width = 180; height = 225;
+  literals: Record<string, number> = { occurrence: 0 };
+  width = 180; height = 253;
 
   constructor(init?: { label?: string; op?: RegexOp }) {
     super("Regex");
@@ -925,6 +928,7 @@ export class RegexNode extends ClassicPreset.Node {
     this.addInput("text",        anyListIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));
+    this.addInput("occurrence",  numListIn("Occurrence"));
     this.addOutput("result", anyComboOut("Result"));
   }
 
@@ -932,15 +936,22 @@ export class RegexNode extends ClassicPreset.Node {
     text?: unknown[];
     pattern?: string[];
     replacement?: string[];
+    occurrence?: (number | number[])[];
   }): { result: number | number[] | string | string[] | null } {
     const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
-    // `replacement` is read by the "replace" op ALONE — guard scoped to the active
-    // op (value-semantics.md), so a wired blank Replace-with must not blank a TEST.
+    // `replacement`/`occurrence` are read by the "replace" op ALONE — guard scoped to the
+    // active op (value-semantics.md), so a wired blank must not blank a TEST.
     const replacement = this.op === "replace"
       ? readInput(inputs.replacement, this.stringLiterals.replacement ?? "")
       : "";
-    if (pattern === null || replacement === null) { this.cachedResult = null; return { result: null }; }
+    const occurrenceRaw = this.op === "replace"
+      ? readInput(inputs.occurrence, this.literals.occurrence ?? 0)
+      : 0;
+    if (pattern === null || replacement === null || occurrenceRaw === null) { this.cachedResult = null; return { result: null }; }
     const flags       = this.stringLiterals.flags ?? "";
+    // occ ≥ 1 replaces only the nth match; 0/blank replaces every match — the same
+    // composition the formula's REGEXREPLACE uses (regexApply vs replaceNth).
+    const occ = Math.max(0, Math.floor(Number(occurrenceRaw) || 0));
 
     if (!pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
 
@@ -951,12 +962,14 @@ export class RegexNode extends ClassicPreset.Node {
     const applyCell = (c: unknown): number | string | string[] | SolError | null =>
       c == null ? null
       : isSolError(c) ? c
-      : (regexApply(this.op, String(c), pattern, replacement, flags) as number | string | string[]);
+      : this.op === "replace" && occ >= 1
+        ? replaceNth(String(c), pattern, replacement, occ, flags)
+        : (regexApply(this.op, String(c), pattern, replacement, flags) as number | string | string[]);
 
     let result: number | number[] | string | string[] | null;
     if (rawText === null) {
       result = null;
-    } else if (this.op === "extract_all") {
+    } else if (this.op === "extract_all" || this.op === "extract_groups") {
       result = applyCell(Array.isArray(rawText) ? (rawText as unknown[])[0] : rawText) as string[];
     } else if (Array.isArray(rawText)) {
       result = (rawText as unknown[]).map(applyCell) as number[] | string[];

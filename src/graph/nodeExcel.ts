@@ -382,8 +382,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "regex": [
     { excel: "REGEXTEST", syntax: "=REGEXTEST(text, pattern)", parity: false, note: "Returns 1/0; use Regex node with REGEXTEST op" },
-    { excel: "REGEXEXTRACT", syntax: "=REGEXEXTRACT(text, pattern, [return_all])", parity: false, note: "First match or all matches; use Regex node with REGEXEXTRACT op" },
-    { excel: "REGEXREPLACE", syntax: "=REGEXREPLACE(text, pattern, replacement)", parity: false, note: "Global replace by default; use Regex node with REGEXREPLACE op" },
+    { excel: "REGEXEXTRACT", syntax: "=REGEXEXTRACT(text, pattern, [return_mode])", parity: false, note: "Regex node ops: REGEXEXTRACT (first), (all), (groups) — Excel's return_mode 0/1/2" },
+    { excel: "REGEXREPLACE", syntax: "=REGEXREPLACE(text, pattern, replacement, [occurrence])", parity: false, note: "Regex node REGEXREPLACE op; blank/0 Occurrence replaces all, n replaces only the nth" },
   ],
   "regression-steyx": [{ excel: "STEYX", syntax: "=STEYX(ys, xs)", parity: true }],
   "reshape-tocol": [{ excel: "TOCOL", syntax: "=TOCOL(array)", parity: false, note: "ignore_empty and scan_by_column flags not supported" }],

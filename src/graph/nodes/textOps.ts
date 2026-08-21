@@ -5,7 +5,7 @@ import { solError, type SolError } from "../errorValue";
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode";
-export type RegexOp = "test" | "extract" | "extract_all" | "replace";
+export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
 /** TEXTSPLIT over one string — a BLANK delimiter splits into characters. */
 export function splitText(text: string, delimiter: string): string[] {
@@ -47,10 +47,11 @@ export function regexApply(
   // leaves the caller's own `lastIndex` untouched.
   const global = () => new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
   switch (op) {
-    case "test":        return re.test(text) ? 1 : 0;
-    case "extract":     return text.match(re)?.[0] ?? "";
-    case "extract_all": return [...text.matchAll(global())].map((m) => m[0]);
-    case "replace":     return text.replace(global(), replacement);
+    case "test":           return re.test(text) ? 1 : 0;
+    case "extract":        return text.match(re)?.[0] ?? "";
+    case "extract_all":    return [...text.matchAll(global())].map((m) => m[0]);
+    case "extract_groups": return regexGroups(text, pattern, flags);
+    case "replace":        return text.replace(global(), replacement);
   }
 }
 

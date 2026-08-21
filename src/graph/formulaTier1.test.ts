@@ -94,8 +94,25 @@ describe("text functions: formula matches node", () => {
     expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(test.data({ text: ["abc123"], pattern: ["\\d+"] }).result);
     expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(1);
     expect(ev('REGEXEXTRACT("abc123def", "\\d+")')).toBe("123");
-    expect(ev('REGEXEXTRACT("a1b2", "\\d", TRUE)')).toEqual(["1", "2"]);
+    expect(ev('REGEXEXTRACT("a1b2", "\\d", 1)')).toEqual(["1", "2"]);
     expect(ev('REGEXREPLACE("a1b2", "\\d", "#")')).toBe("a#b#");
+  });
+
+  it("REGEXEXTRACT (groups) and REGEXREPLACE occurrence match the node", () => {
+    // return_mode 2 = the first match's capture groups (the node's REGEXEXTRACT (groups) op)
+    const groups = new RegexNode({ op: "extract_groups" });
+    const pat = "(\\d+)-(\\d+)-(\\d+)";
+    expect(ev(`REGEXEXTRACT("2026-08-21", "${pat}", 2)`))
+      .toEqual(groups.data({ text: ["2026-08-21"], pattern: [pat] }).result);
+    expect(ev(`REGEXEXTRACT("2026-08-21", "${pat}", 2)`)).toEqual(["2026", "08", "21"]);
+    // occurrence: replace ONLY the nth match (the node's Occurrence input)
+    const repl = new RegexNode({ op: "replace" });
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 2)'))
+      .toBe(repl.data({ text: ["a1b2c3"], pattern: ["\\d"], replacement: ["#"], occurrence: [2] }).result);
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 2)')).toBe("a1b#c3");
+    // occurrence 0 / unwired still replaces every match — node and formula agree.
+    expect(repl.data({ text: ["a1b2c3"], pattern: ["\\d"], replacement: ["#"] }).result)
+      .toBe(ev('REGEXREPLACE("a1b2c3", "\\d", "#")'));
   });
 });
 

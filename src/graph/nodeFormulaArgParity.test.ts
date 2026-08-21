@@ -11,8 +11,17 @@ import { EXCEL_IMPL_META } from "./excelFunctions";
 // regardless of how either compares to Excel (rules.md FX-11 / decisions D37). Excel /
 // Formula.js divergence is a judgement call; our OWN two surfaces disagreeing is not.
 //
-// This scan is the completeness half, in the sourceInvariants idiom — it reads the real
-// node source and classifies every `resolveExcelFunction(…)` call site:
+// SCOPE, stated honestly: this scan only catches the ONE mechanism where a node dispatches
+// THROUGH `resolveExcelFunction` and truncates the arg list. It CANNOT see a disparity when
+// the two surfaces have SEPARATE impls — a node with its own computation (RANDARRAY), a node
+// on a shared kernel poorer than the formula's registration (REGEXREPLACE/REGEXEXTRACT), or a
+// Formula.js fall-through with no arity in EXCEL_IMPL_META (DB's `month`). Those are the real,
+// common shape of the defect, and they are guarded by per-function BEHAVIOURAL node↔formula
+// agreement tests instead (finance.test.ts DB, auditFixes.test.ts RANDARRAY, formulaTier1.test.ts
+// REGEX*, text.test.ts SUBSTITUTE, rangeRouting.test.ts TREND, …). FX-11 in rules.md is the
+// normative rule; this file is one partial, greppable guard, not the whole enforcement.
+//
+// The scan reads the real node source and classifies every `resolveExcelFunction(…)` call site:
 //   • LITERAL + directly called — `resolveExcelFunction("NAME")(a, b, …)`: the arguments
 //     are counted (a `...spread` covers the variadic max) and must reach
 //     `EXCEL_IMPL_META[NAME].max`, else the name is a SANCTIONED shortfall with a reason.
@@ -111,14 +120,21 @@ describe("FX-11 — a node dispatching to a formula function must pass all its a
   };
 
   it("literal dispatches pass all the arguments the formula accepts", () => {
-    const offenders: string[] = [];
+    // A function may dispatch from several call sites (e.g. SUBSTITUTE's nth-vs-all
+    // branches pass 4 vs 3). If ANY site passes the full arg list, the node exposes the
+    // capability — so aggregate the MAX passed per function before judging.
+    const maxPassed = new Map<string, number>();
     for (const s of scanSites()) {
       if (!s.name || !s.direct) continue;
-      const meta = EXCEL_IMPL_META[s.name];
+      maxPassed.set(s.name, Math.max(maxPassed.get(s.name) ?? 0, s.passed));
+    }
+    const offenders: string[] = [];
+    for (const [name, passed] of maxPassed) {
+      const meta = EXCEL_IMPL_META[name];
       if (!meta) continue; // not in the arity table (a native-only pass-through)
       const max = meta.arity[1];
-      if (s.passed >= max || s.name in SANCTIONED) continue;
-      offenders.push(`${s.name} (${s.file}): passes ${s.passed} arg(s), formula accepts up to ${max}`);
+      if (passed >= max || name in SANCTIONED) continue;
+      offenders.push(`${name}: passes ${passed} arg(s), formula accepts up to ${max}`);
     }
     expect(offenders, `FX-11 argument disparity —\n${offenders.join("\n")}`).toEqual([]);
   });
