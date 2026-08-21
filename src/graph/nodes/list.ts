@@ -4,8 +4,7 @@ import { parseListLiteral } from "../coerceInputs";
 import { parseDateToSerial } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
-import { isTrue } from "../excelFunctions";
+import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -1708,29 +1707,31 @@ export class AggregateNode extends ClassicPreset.Node {
 export class RandArrayNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
-    integer: "On, the draws are rounded to whole numbers (Excel's integer flag). Off, they stay fractional.",
   };
 
   label: string;
+  /** Excel's integer flag: round every draw to a whole number. A card checkbox, not a
+   *  socket — it selects a MODE (like the date family's basis), authored on the node. */
+  integer = false;
   cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 }; // min/max ship unset → muted 0/1 placeholders
-  width = 180; height = 253;
+  width = 180; height = 250;
   // Volatile: the raw [0,1) rolls hold until a recalc, but min/max apply live so new
   // bounds rescale the SAME draws.
   private rolls: number[] = [];
   private lastGen = -1;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; integer?: boolean }) {
     super("RandArray");
     this.label = init?.label ?? "RANDARRAY";
-    this.addInput("count",   numIn("Count"));
-    this.addInput("min",     numIn("Min (default 0)"));
-    this.addInput("max",     numIn("Max (default 1)"));
-    this.addInput("integer", logicalIn("Integer"));
+    if (init?.integer != null) this.integer = init.integer;
+    this.addInput("count", numIn("Count"));
+    this.addInput("min",   numIn("Min (default 0)"));
+    this.addInput("max",   numIn("Max (default 1)"));
     this.addOutput("list", listOut("List"));
   }
 
-  data(inputs: { count?: number[]; min?: number[]; max?: number[]; integer?: (boolean | null)[] }): { list: number[] | SolError | null } {
+  data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
     const countRaw = readInput(inputs.count, this.literals.count ?? 10);
     const lo    = readInput(inputs.min, this.literals.min ?? 0);
     const hi    = readInput(inputs.max, this.literals.max ?? 1);
@@ -1751,10 +1752,9 @@ export class RandArrayNode extends ClassicPreset.Node {
       this.rolls = Array.from({ length: count }, () => Math.random());
       this.lastGen = gen;
     }
-    // integer rounds the rescaled draw (Excel's 5th arg), applied live like min/max —
-    // the SAME isTrue the formula's RANDARRAY uses, so both surfaces agree.
-    const wantInt = isTrue(inputs.integer?.[0] ?? null);
-    const list = this.rolls.map((r) => { const x = lo + r * range; return wantInt ? Math.round(x) : x; });
+    // integer rounds the rescaled draw (Excel's 5th arg), applied live like min/max, so
+    // both surfaces agree (the formula's RANDARRAY rounds the same lo + r*range).
+    const list = this.rolls.map((r) => { const x = lo + r * range; return this.integer ? Math.round(x) : x; });
     this.cachedList = list;
     return { list };
   }

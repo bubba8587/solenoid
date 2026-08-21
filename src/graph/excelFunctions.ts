@@ -832,7 +832,7 @@ num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
 // The distributions Formula.js lacks, on the same mathUtils the dist nodes use; invalid
 // params return null (a blank), never a fabricated number.
 const PI = Math.PI;
-export const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
+const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);
 function tCDF(x: number, df: number): number {
   const b = regularizedBeta(df / (df + x * x), df / 2, 0.5);

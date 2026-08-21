@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NpvNode } from "./rete-nodes";
+import { extractInit } from "./copyPaste";
 import { isSolError, solError } from "./errorValue";
 import type { FrameValue } from "./frame";
 
@@ -18,15 +19,16 @@ describe("generator element caps (#5)", () => {
     expect(out.list.code).toBe("#OVERFLOW!");
   });
 
-  it("RANDARRAY Integer flag rounds the draws (Excel's 5th arg, the formula's isTrue)", () => {
+  it("RANDARRAY Integer flag rounds the draws (Excel's 5th arg; a card checkbox)", () => {
     const cont = new RandArrayNode().data({ count: [50], min: [0], max: [100] }).list as number[];
     expect(cont.every((v) => v >= 0 && v <= 100)).toBe(true);
     expect(cont.some((v) => !Number.isInteger(v))).toBe(true); // fractional by default
-    const ints = new RandArrayNode().data({ count: [50], min: [0], max: [100], integer: [true] }).list as number[];
+    const ints = new RandArrayNode({ integer: true }).data({ count: [50], min: [0], max: [100] }).list as number[];
     expect(ints.every((v) => Number.isInteger(v) && v >= 0 && v <= 100)).toBe(true);
-    // An unwired or false flag stays fractional.
-    const off = new RandArrayNode().data({ count: [30], min: [0], max: [1], integer: [false] }).list as number[];
+    // integer:false (the default) stays fractional, and the flag round-trips via extractInit.
+    const off = new RandArrayNode({ integer: false }).data({ count: [30], min: [0], max: [1] }).list as number[];
     expect(off.some((v) => v > 0 && v < 1)).toBe(true);
+    expect(extractInit(new RandArrayNode({ integer: true }) as never).integer).toBe(true);
   });
 
   it("a normal SEQUENCE still produces the list", () => {
