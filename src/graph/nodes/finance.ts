@@ -87,7 +87,7 @@ export const DEPRECIATION_OP_META = {
   sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: SLN(cost, salvage, life)." },
   syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD(cost, salvage, life, per)." },
   ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: DDB(cost, salvage, life, period, [factor])." },
-  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Excel: DB(cost, salvage, life, period)." },
+  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Month sets the number of months in the first year (default 12). Excel: DB(cost, salvage, life, period, [month])." },
   vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
 
@@ -99,13 +99,14 @@ const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; l
   const life    = { key: "life",    label: "Life (periods)", def: 5 };
   const per     = { key: "per",     label: "Period",         def: 1 };
   const factor  = { key: "factor",  label: "Factor",         def: 2 };
+  const month   = { key: "month",   label: "Month (1st yr)", def: 12 };
   const start   = { key: "start",   label: "Start period",   def: 0 };
   const end     = { key: "end",     label: "End period",     def: 1 };
   return {
     sln: [cost, salvage, life],
     syd: [cost, salvage, life, per],
     ddb: [cost, salvage, life, per, factor],
-    db:  [cost, salvage, life, per],
+    db:  [cost, salvage, life, per, month],
     vdb: [cost, salvage, life, start, end, factor],
   };
 })();
@@ -161,7 +162,7 @@ export class DepreciationNode extends ClassicPreset.Node {
     this.height = this.heightFor();
   }
 
-  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; start?: number[]; end?: number[] }) {
+  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; month?: number[]; start?: number[]; end?: number[] }) {
     const cost    = readInput(inputs.cost, this.literals.cost ?? null);
     const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
     const life    = readInput(inputs.life, this.literals.life ?? null);
@@ -181,13 +182,19 @@ export class DepreciationNode extends ClassicPreset.Node {
       if (cost !== null && salvage !== null && life !== null && life > 0) {
         if (this.op === "sln") {
           result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;
-        } else if (per !== null && per >= 1 && per <= life) {
-          if (this.op === "syd") {
+        } else if (per !== null && per >= 1) {
+          if (this.op === "syd" && per <= life) {
             result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
-          } else if (this.op === "ddb") {
+          } else if (this.op === "ddb" && per <= life) {
             result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
           } else if (this.op === "db") {
-            result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
+            const month = readInput(inputs.month, this.literals.month ?? 12);
+            // Excel needs cost > 0 and salvage > 0. Period runs 1..life on this surface —
+            // Formula.js's DB #DOMAIN!s the life+1 partial-year period, so we don't offer
+            // it either (an equal Excel divergence, not a node↔formula gap).
+            if (month !== null && cost > 0 && salvage > 0 && per <= life) {
+              result = resolveExcelFunction("DB")!(cost, salvage, life, per, month) as number;
+            }
           }
         }
       }

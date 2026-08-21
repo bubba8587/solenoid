@@ -385,13 +385,15 @@ export class SubstituteNode extends ClassicPreset.Node {
     new_text?: (string | string[])[];
     instance?: (number | number[])[];
   }): { result: CellResult<string> } {
-    const fx = resolveExcelFunction("SUBSTITUTE")!;
     // instance ≥ 1 replaces only that occurrence; blank/0 replaces every occurrence
-    // (Excel's omitted-argument behavior).
+    // (Excel's omitted-argument behavior). Called directly (not via a hoisted alias)
+    // so the node↔formula arg-parity scan can see the 4th argument reach the impl.
     const result = broadcastCells(
       (text: string, oldText: string, newText: string, inst: number) => {
         const n = Math.floor(inst);
-        return (n >= 1 ? fx(text, oldText, newText, n) : fx(text, oldText, newText)) as string;
+        return (n >= 1
+          ? resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText, n)
+          : resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText)) as string;
       },
       strVal(inputs.text,     this, "text"),
       strVal(inputs.old_text, this, "old_text"),
