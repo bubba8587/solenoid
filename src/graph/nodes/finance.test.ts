@@ -2,11 +2,14 @@ import { describe, it, expect } from "vitest";
 import {
   TvmNode,
   IpmtPpmtNode,
+  IspmtNode,
   NpvNode,
   IrrNode,
   MirrNode,
   DepreciationNode,
 } from "./finance";
+import { securityDisc } from "./financeOps";
+import { parseDateToSerial } from "./date";
 import { EquationNode } from "./equation";
 
 // Reference values are what Excel's matching function returns. Excel cash-flow
@@ -133,6 +136,34 @@ describe("IPMT / PPMT", () => {
     const ppmt = new IpmtPpmtNode({ op: "ppmt" }).data(args).result!;
     const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
     expect(ipmt + ppmt).toBeCloseTo(pmt, 6);
+  });
+});
+
+describe("ISPMT", () => {
+  // Excel returns the interest as a signed cash flow: an outflow (negative) for a positive pv.
+  it("=ISPMT(0.1, 1, 3, 8000000) = -533,333.33 (Microsoft's own example)", () => {
+    expect(new IspmtNode().data({ rate: [0.1], per: [1], nper: [3], pv: [8000000] }).result)
+      .toBeCloseTo(-533333.33, 2);
+  });
+  it("first period pays the most interest, the last pays ~zero", () => {
+    const at = (per: number) => new IspmtNode().data({ rate: [0.05], per: [per], nper: [12], pv: [1000] }).result!;
+    expect(at(1)).toBeCloseTo(-45.833, 3);
+    expect(at(12)).toBeCloseTo(0, 9);
+  });
+});
+
+describe("securityDisc — DSM honors the day-count basis", () => {
+  const d = (s: string) => parseDateToSerial(s);
+  it("=DISC(2024-01-01, 2024-07-01, 97, 100, 0) = 0.06 (30/360, not actual days)", () => {
+    // Actual days over this half-year are 182, so ignoring basis 0 gave 0.05934.
+    expect(securityDisc("disc", d("2024-01-01"), d("2024-07-01"), 97, 100, 0)).toBeCloseTo(0.06, 10);
+  });
+  it("defaults to basis 0 when omitted", () => {
+    expect(securityDisc("disc", d("2024-01-01"), d("2024-07-01"), 97, 100)).toBeCloseTo(0.06, 10);
+  });
+  it("basis 2 (actual/360) still counts real days", () => {
+    // 182 actual days: ((100-97)/100)*(360/182).
+    expect(securityDisc("disc", d("2024-01-01"), d("2024-07-01"), 97, 100, 2)).toBeCloseTo(0.03 * 360 / 182, 10);
   });
 });
 

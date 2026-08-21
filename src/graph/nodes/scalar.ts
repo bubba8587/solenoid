@@ -693,11 +693,18 @@ export class CombinatoricsNode extends ClassicPreset.Node {
   data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
     // Excel TRUNCATES a non-integer argument and Formula.js floors, so floor keeps the
     // node agreeing with `=FACT(2.9)` across the non-negative domain.
+    // FACT/FACTDOUBLE are single-arg (Excel FACT(n)) — they never read k, so a wired-blank
+    // k must not blank the result (value-semantics.md, "Reading an input").
+    const usesK = this.op !== "fact" && this.op !== "factdouble";
     const nRaw = readInput(inputs.n, this.literals.n ?? 0);
-    const kRaw = readInput(inputs.k, this.literals.k ?? 0);
-    if (nRaw === null || kRaw === null) { this.cachedResult = null; return { result: null }; }
+    if (nRaw === null) { this.cachedResult = null; return { result: null }; }
     const n = Math.floor(nRaw);
-    const k = Math.floor(kRaw);
+    let k = 0;
+    if (usesK) {
+      const kRaw = readInput(inputs.k, this.literals.k ?? 0);
+      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
+      k = Math.floor(kRaw);
+    }
     let result: number | null = null;
     let domainOk = true;
     switch (this.op) {

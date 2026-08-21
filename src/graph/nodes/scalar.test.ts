@@ -167,6 +167,10 @@ describe("Combinatorics — Excel truncates non-integer args", () => {
     expect(run("combin", 6, 2)).toBe(15);
     expect(run("permut", 5, 2)).toBe(20);
   });
+  it("FACT/FACTDOUBLE ignore k, so a WIRED-BLANK k does not blank the result", () => {
+    expect(new CombinatoricsNode({ op: "fact" }).data({ n: [5], k: [null as unknown as number] }).result).toBe(120);
+    expect(new CombinatoricsNode({ op: "factdouble" }).data({ n: [6], k: [null as unknown as number] }).result).toBe(48);
+  });
 });
 
 describe("ATAN2 (Excel argument order)", () => {

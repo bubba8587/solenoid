@@ -398,9 +398,9 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "roundn-round": [{ excel: "ROUND", syntax: "=ROUND(x, digits)", parity: true }],
 
-  "secdesc-disc": [{ excel: "DISC", syntax: "=DISC(settle,maturity,pr,redemption)", parity: false, note: "Discount rate; not yet supported" }],
-  "secdesc-intrate": [{ excel: "INTRATE", syntax: "=INTRATE(settle,maturity,invest,redemption)", parity: false, note: "Interest rate for fully invested security; not yet supported" }],
-  "secdesc-received": [{ excel: "RECEIVED", syntax: "=RECEIVED(settle,maturity,invest,discount)", parity: false, note: "Amount received at maturity; not yet supported" }],
+  "secdesc-disc": [{ excel: "DISC", syntax: "=DISC(settle,maturity,pr,redemption,[basis])", parity: false, note: "basis 1 (actual/actual) is approximated as ÷365.25" }],
+  "secdesc-intrate": [{ excel: "INTRATE", syntax: "=INTRATE(settle,maturity,invest,redemption,[basis])", parity: false, note: "basis 1 (actual/actual) is approximated as ÷365.25" }],
+  "secdesc-received": [{ excel: "RECEIVED", syntax: "=RECEIVED(settle,maturity,invest,discount,[basis])", parity: false, note: "basis 1 (actual/actual) is approximated as ÷365.25" }],
   "seriessum": [{ excel: "SERIESSUM", syntax: "=SERIESSUM(x, n, m, coef)", parity: true }],
   "sp-sumproduct": [{ excel: "SUMPRODUCT", syntax: "=SUMPRODUCT(a, b)", parity: false, note: "Solenoid takes exactly two list inputs (no 3+ arrays)" }],
   "sp-sumx2my2": [{ excel: "SUMX2MY2", syntax: "=SUMX2MY2(x, y)", parity: true }],

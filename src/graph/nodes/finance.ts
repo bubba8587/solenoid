@@ -672,7 +672,9 @@ export class IspmtNode extends ClassicPreset.Node {
     if (rate === null || per === null || nper === null || pv === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (nper > 0) {
-      result = pv * rate * (1 - per / nper);
+      // Excel returns the interest as a signed cash flow: ISPMT(0.1,1,3,8000000) = -533,333.33,
+      // i.e. pv·rate·(per/nper − 1), an outflow for a positive pv (matches Formula.js).
+      result = pv * rate * (per / nper - 1);
       if (!Number.isFinite(result)) result = null;
     }
     this.cachedResult = result;

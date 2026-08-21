@@ -222,8 +222,11 @@ export function securityDisc(
 ): number | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
   if (maturitySerial <= settleSerial) return null;
-  const dsm = Math.round(maturitySerial - settleSerial);
-  const bd = basisDays(Math.round(basis));
+  const basisCode = Math.round(basis);
+  // DSM counts days per the basis — 30/360 for basis 0/4, actual otherwise. Using raw
+  // actual days ignored the DEFAULT basis 0, mispricing every call that didn't pass a basis.
+  const dsm = dayCount(basisCode, serialToJsDate(settleSerial), serialToJsDate(maturitySerial));
+  const bd = basisDays(basisCode);
   switch (op) {
     case "disc":    return ((b - a) / b) * (bd / dsm);
     case "intrate": return ((b - a) / a) * (bd / dsm);

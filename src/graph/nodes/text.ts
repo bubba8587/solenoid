@@ -864,8 +864,14 @@ export class FixedNode extends ClassicPreset.Node {
 
   data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
     const result = broadcastCells(
-      (n: number, d: number) => resolveExcelFunction("FIXED")!(
-        n, Math.max(0, Math.floor(d)), this.noCommas === "no_commas") as string,
+      (n: number, d: number) => {
+        // Excel truncates the decimals arg toward zero, and a NEGATIVE count rounds left of
+        // the point: FIXED(12345.678, -2) = "12,300". Pre-round for that, then format 0 places.
+        const dd = Math.trunc(d);
+        const rounded = dd < 0 ? Math.round(n * 10 ** dd) / 10 ** dd : n;
+        return resolveExcelFunction("FIXED")!(
+          rounded, Math.max(0, dd), this.noCommas === "no_commas") as string;
+      },
       readInput(inputs.number,   this.literals.number   ?? 0),
       readInput(inputs.decimals, this.literals.decimals ?? 2),
     );
@@ -965,7 +971,11 @@ export class FormatDollarNode extends ClassicPreset.Node {
 
   data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
     const result = broadcastCells((n: number, d: number) => {
-      const rounded = Math.abs(n).toFixed(Math.max(0, Math.round(d)));
+      // Like FIXED: truncate the decimals arg toward zero; a negative count rounds left of the
+      // point — DOLLAR(12345.678, -2) = "$12,300".
+      const dd = Math.trunc(d);
+      const mag = dd < 0 ? Math.round(Math.abs(n) * 10 ** dd) / 10 ** dd : Math.abs(n);
+      const rounded = mag.toFixed(Math.max(0, dd));
       const parts = rounded.split(".");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       return (n < 0 ? "-$" : "$") + parts.join(".");
