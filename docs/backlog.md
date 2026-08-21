@@ -90,15 +90,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `simpleNodesOrder` MOVES the picked node in the DOM tree (their own docstring),
   and re-parenting a subtree is a mechanism that WOULD kill an open `<select>` —
   see the `zIndexNodesOrder` item under Dependency updates.
-- [ ] **The other singular criteria-aggregates (small, follows SUMIF).** `SUMIF` is
-  now classed like `MATCH`: blocked to `SUMIFS`, claim removed from `NODE_EXCEL`,
-  `EXCEL_GAP` row `oos: "Superseded by SUMIFS"`. `COUNTIF` and `AVERAGEIF` are still
-  claimed by the `sumifs` node and still dispatch — neither is buggy (both handle a
-  numeric-string range correctly), so this is consistency, not a defect. Decide:
-  supersede them the same way, or keep them and give their `NODE_EXCEL` rows the
-  interface note their plural siblings carry (one frame, named columns, criteria
-  ROWS instead of `">10"` strings) — today the singular rows have none, and the
-  node's op set and description name only the plural five.
 - [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
   the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
   gate the rest — build nothing before those.

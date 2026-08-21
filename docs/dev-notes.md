@@ -137,6 +137,16 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   yet fixed): the Duration node exposes a `basis` input but `durationValue` ignores it
   (`_basis`) — the first-period fraction always uses actual days. Noted in the reference and
   backlogged; DURATION is dominated by the integer coupon count so the effect is second-order.
+- **Criteria-aggregate consistency (COUNTIF/AVERAGEIF).** Decided: KEEP them dispatching (unlike
+  the blocked SUMIF). SUMIF was blocked because Formula.js mis-summed a numeric-string range;
+  COUNTIF/AVERAGEIF do NOT share that bug — pinned with a numeric-string guard test
+  (`excelFormula.test.ts`), so a Formula.js bump can't regress them silently. Blocking correct
+  Excel functions for mere symmetry fights the zero-learning-curve mandate, and the SUMIF-only
+  block is a principled asymmetry (block the broken one). Data cleanup: deleted 7 DEAD `EXCEL_GAP`
+  rows (SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS + singular COUNTIF/AVERAGEIF) — all node-backed
+  by the sumifs node, so `functionReference`'s self-heal already suppressed them at render (never
+  visible; they only contradicted the gap docstring). Added the singular→one-criteria-row note to
+  the COUNTIF/AVERAGEIF `NODE_EXCEL` rows.
 
 ### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
 - **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot
