@@ -465,6 +465,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   EDATE:      { returns: "date", arity: [2, 2], family: "datetime" },
   DATEVALUE:  { returns: "date", arity: [1, 1], family: "datetime" },
   WORKDAY:    { returns: "date", arity: [2, 3], family: "datetime" },
+  "WORKDAY.INTL": { returns: "date", arity: [2, 4], family: "datetime" },
+  NETWORKDAYS: { returns: "number", arity: [2, 3], family: "datetime" },
+  "NETWORKDAYS.INTL": { returns: "number", arity: [2, 4], family: "datetime" },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPDAYSNC: { returns: "number", arity: [2, 4], family: "finance", native: true },
@@ -951,6 +954,25 @@ const toSerialIfDate = (v: unknown): unknown => (v instanceof Date ? Math.round(
 for (const fn of ["DATE", "EDATE", "DATEVALUE", "WORKDAY"]) {
   const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
   if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
+}
+// WORKDAY.INTL is namespaced under WORKDAY (not a flat FX key), so the loop above missed
+// it — without the wrap it leaked FX's raw Date object (TZ-shifted), silently corrupting
+// any serial arithmetic downstream.
+{
+  const f = (FX as unknown as { WORKDAY?: { INTL?: (...a: unknown[]) => unknown } }).WORKDAY?.INTL;
+  if (typeof f === "function") registerInternal("WORKDAY.INTL", (...a) => toSerialIfDate(f(...a)));
+}
+// FX's NETWORKDAYS miscounts a REVERSED (start > end) span, but Excel defines it as exactly
+// the negation of the forward count — so swap-and-negate and never touch FX's broken path.
+{
+  const flat = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>).NETWORKDAYS;
+  const intl = (FX as unknown as { NETWORKDAYS?: { INTL?: (...a: unknown[]) => unknown } }).NETWORKDAYS?.INTL;
+  const swapNeg = (f: (...a: unknown[]) => unknown) => (start: unknown, end: unknown, ...rest: unknown[]) => {
+    const s = toNum(start), e = toNum(end);
+    return !Number.isNaN(s) && !Number.isNaN(e) && s > e ? -(f(end, start, ...rest) as number) : f(start, end, ...rest);
+  };
+  if (typeof flat === "function") registerInternal("NETWORKDAYS", swapNeg(flat));
+  if (typeof intl === "function") registerInternal("NETWORKDAYS.INTL", swapNeg(intl));
 }
 // Serial versions matching the TodayNow node exactly — TODAY an integer (UTC
 // midnight), NOW keeping the time fraction (so it can't share toSerialIfDate's
