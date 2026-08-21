@@ -15,15 +15,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   cards + import cables, generator chain, coverage guards) is deleted. The author
   will describe the replacement precisely; build nothing toward it until then.
 
-- [ ] **Divergence flags from the socket-docs sweep (2026-08-17)** — surfaced while
-  verifying Inspector docs against `data()`, each needs its own small investigation:
-  (a) FACT/FACTDOUBLE ignore `k` yet a WIRED-BLANK k still blanks the result
-  (`scalar.ts` Combinatorics; looks unintentional); (b) finance `basis` codes
-  diverge from Excel (`securityDisc` uses actual days even for basis 0,
-  `basisDays(1)` is 365.25) — verify against Excel, then either fix or record in
-  `formulajs-divergences.md`; (c) ISPMT's sign convention may diverge from Excel's;
-  (d) FIXED/DOLLAR clamp negative `decimals` where Excel rounds left of the point.
-
 - [ ] **Node-by-node sweep** — walk the catalog one node at a time: null/error/empty
   inputs handled per `value-semantics.md`; collapsed card reads right; description
   matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings
@@ -31,14 +22,24 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **Fine-print residue (small, from the completed inventory).** The 45-claim
   sweep is DONE (2026-08-08; digest has the full record — every cluster verified
   agent-assisted, 1 false + 4 imprecise descriptions fixed, `caseContract` +
-  `finePrintContract` pin the risky set). Leftovers, all small: (a) **AUTHOR
-  SMELL — TEXTJOIN defaults disagree across surfaces**: the node defaults
-  include-empties, the formula registration defaults ignore-empties (D11
-  harmony; both explicit, but a bare call answers differently). (b) Expect's
+  `finePrintContract` pin the risky set). Leftovers, all small: (a) Expect's
   "fires once per new failure" edge-detects on the failing CHECK-NAME set, so a
   different cell failing the same check doesn't re-fire — verify intended,
-  then say so. (c) Unpinned-but-verified minor claims if their nodes come up in
+  then say so. (b) Unpinned-but-verified minor claims if their nodes come up in
   the sweep: add-column pad, build-frame ragged rows, MUNIT blanks-out-of-sums.
+
+- [ ] **Finance absolute-value verification (real Excel needed).** The bond/coupon
+  family has NO oracle — Formula.js implements almost none of it. `financeInvariants.test.ts`
+  now pins the round-trips/identities (PRICE↔YIELD, PRICEMAT↔YIELDMAT, ODD* pairs,
+  COUP* day-count, DURATION/MDURATION, VDB total/additivity), which catch structural
+  bugs but NOT a consistently-wrong absolute value. Want golden real-Excel values for:
+  PRICEMAT (new formula, confirm absolute), COUP*, DURATION, ODDF/ODDL, ACCRINT/ACCRINTM,
+  VDB. PRICE/YIELD already match Microsoft's documented examples.
+
+- [ ] **Stale "not yet supported" NODE_EXCEL notes on SHIPPED finance nodes** — several
+  reference notes claim a working node isn't implemented (accrint, accrintm, pricedisc,
+  oddcoupon still say it; securdisc fixed 2026-08-21). Each needs its real parity note
+  (basis handling, conventions) — a small node-by-node pass, per-node verification.
 
 ## Bugs & verifications
 
@@ -148,8 +149,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 - [ ] **AUTHOR CALL — mode-selector inputs on a wired blank**: `text.ts` / `date.ts`
   selector inputs fall back to the literal on a wired blank, diverging from
   value-semantics' "mode selector propagates" row. Decide; reconcile table or code.
-- [ ] **Matrix-null round-trip in Table Input** (`TableDisplay.tsx`): blanks should
-  round-trip as real null cells instead of collapsing the table.
 - [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
 - [ ] **Finish evicting live material from `docs/archive/`** — the routing table is
   clean and machine-checked now, but three archived docs are still cited as current
@@ -182,11 +181,14 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
 
 - [ ] **Orientation — a 1×N or N×1 matrix is `#SHAPE!`** on both `XMATCH` and
   `XLOOKUP`. A header ROW is a matrix in our model, so the common Excel shape is
-  refused, and `INDEX(grid, XMATCH(…), XMATCH(…))` only composes when the headers
-  are already 1-D lists (an `INDEX` whole-axis slice is, a raw grid row isn't).
-  SHALLOW: declare `matrixArgs`, flatten a single row/column to its vector, and
-  answer `#VALUE!` on a real grid — which is Excel's own answer, so this removes a
-  limit rather than inventing one. Kernel unchanged.
+  refused. The naive "declare `matrixArgs` + flatten a single row/column, `#VALUE!`
+  a grid" was TRIED and REVERTED (2026-08-21): `matrixArgs` is a blunt switch that
+  also lets a matrix into the LOOKUP-VALUE slot (regressing it from a loud `#SHAPE!`
+  to a quiet `#N/A` — the deferred spill item below) and past the return-array, so
+  XLOOKUP stopped validating that its return array matches the lookup array's
+  length/orientation. A scoped fix must guard the lookup value and the return array
+  itself, not just flip the gate — more Excel thought needed. NOTE: the XLOOKUP NODE
+  already accepts up to CUBE inputs; this is the FORMULA surface only.
 - [ ] **An ARRAY `lookup_value` answers `#N/A` instead of spilling** — Excel
   returns one position per element; we treat the array as a single needle and
   report "not found". A plausible wrong answer, not a refusal: the worst failure
@@ -195,16 +197,6 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   lookups: `broadcastCall` is all-or-nothing per FUNCTION (`RANGE_FUNCTIONS.has`),
   so "spill this argument, take that one whole" is not expressible — a
   per-ARGUMENT prep declaration is an FX-5/FX-6 design item serving a whole class.
-- [ ] **The XMATCH NODE is number-only** (`numIn` + `listIn`) while the formula
-  matches text case-insensitively — a live surface divergence. SHALLOW and
-  low-risk: `anyListIn` + `anyIn`, output invariant (a position is always a
-  number), so no adoption/passthrough work; `numlist` still connects below
-  `anylist` on the D17 ladder, so no graph breaks. This is D15's own rule
-  (position-only utilities ride element-agnostic sockets) and the `CONTAINS`
-  sibling is the precedent. Two wrinkles: approximate modes stay numeric (runtime
-  `#VALUE!`, mirroring the frame kernel's `isOrderableKey`), and a TYPED literal
-  needle stays impossible until the `stringLiterals` question is settled — shared
-  with CONTAINS, not XMATCH's to solve.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment

@@ -86,6 +86,40 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-21 — Excel-behavior sweep: finance/scalar/text, oracle + real Excel)
+- **Method, and its limit.** Cross-checked node values against `@formulajs/formulajs`
+  as an oracle — NOT a divergence catalogue, just a second implementation with its own
+  bugs. Where ours and FX agree → high confidence. Where they DIFFER, neither is
+  authoritative: real Excel from the author was the tiebreaker (twice), and FX reaches
+  only ~1/3 of the finance family anyway.
+- **Fixed + pinned (all verified):** FACT/FACTDOUBLE single-arg no longer read `k` (a
+  wired-blank k stopped blanking the result); ISPMT sign `pv·rate·(per/nper−1)` (was
+  positive); securityDisc DSM honors the basis (30/360 for basis 0/4 — the default was
+  mispriced; bases 0/2/3/4 now match FX exactly, basis 1 stays the ÷365.25 actual/actual
+  approx per YEARFRAC); FIXED/DOLLAR round left of the point on negative decimals;
+  TEXTJOIN node default → ignore-empties (D11 — matches the formula surface).
+- **TBILL, the recall trap.** A sub-agent oracle sweep concluded "ours matches Excel"
+  for TBILL; reading the code showed TBILLYIELD used 365 where Excel documents 360 —
+  the agent (and my own recall) had it backwards. Real Excel (0.050718512) settled it →
+  fixed to 360. TBILLEQ also lacked Excel's >182-day compounding branch (SIA closed
+  form) → added, verified 0.052539935.
+- **PRICEMAT/YIELDMAT were broken AND not inverses** — both used DSM for the coupon
+  term and dropped the accrued-interest deduction + the issue→maturity span, so YIELDMAT
+  of a PRICEMAT price returned ~26 not the input yield. Rewrote to Excel's documented
+  three-span formula. FOUND BY `financeInvariants.test.ts` (new): pins relationships
+  needing no oracle — PRICE/YIELD, PRICEMAT/YIELDMAT, ODD* round-trips; COUP* day-count
+  identities; DURATION=MDURATION·(1+y/f); VDB total/additivity. Absolute values for the
+  no-oracle functions still want real-Excel goldens (backlog).
+- **Table Input blank→null round-trip** was already correct — pinned it
+  (`tableInput.test.ts`); backlog item was stale.
+- **sourceInvariants was red on Windows only** — `rel()` returned `\`-separated paths but
+  every SANCTIONED map is `/`-keyed, so `r in SANCTIONED` never matched and 4 rules
+  (SOCK-7/VAL-10/VAL-17/SSOT) reported phantom violations against already-sanctioned
+  files. One-line normalize. No production code was ever wrong.
+- Reverted: the XMATCH/XLOOKUP formula-surface orientation change (matrixArgs was a
+  blunt switch — see backlog). Corrected the stale "not yet supported" DISC/INTRATE/
+  RECEIVED reference notes (the nodes ship). Full suite green (4332).
+
 ### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
 - **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot
   better") **→ D38.** Breakdown columns are now SIGNED contributions summing to the
