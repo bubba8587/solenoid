@@ -19,10 +19,10 @@ const frame = (cols: [string, "string" | "number", (string | number | null | Ret
 });
 
 describe("TEXTJOIN — the ignore-empty mode", () => {
-  it("ignore drops empty strings; include (the node default) keeps them", () => {
-    const ignore = new TextJoinNode({ ignoreEmpty: "ignore" });
+  it("ignore (the node default, matching the formula surface) drops empty strings; include keeps them", () => {
+    const ignore = new TextJoinNode();
     expect(ignore.data({ strings: [["a", "", "b"]], delimiter: [","] }).result).toBe("a,b");
-    const include = new TextJoinNode();
+    const include = new TextJoinNode({ ignoreEmpty: "include" });
     expect(include.data({ strings: [["a", "", "b"]], delimiter: [","] }).result).toBe("a,,b");
   });
 });
