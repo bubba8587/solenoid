@@ -119,6 +119,24 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 - Reverted: the XMATCH/XLOOKUP formula-surface orientation change (matrixArgs was a
   blunt switch — see backlog). Corrected the stale "not yet supported" DISC/INTRATE/
   RECEIVED reference notes (the nodes ship). Full suite green (4332).
+- **Shared date parser (chrono-node).** One `parseDate` (`dateSerial.ts`) backs DATEVALUE
+  (formula + node), Frame/Table date columns, Date Input, and every date caller. Wider than
+  the old hand-rolled numeric-only path (ISO, day-first numeric, ordinals, month names). New
+  `#AMBIGUOUS!` error (`errorValue.ts`) fires only when a numeric date could genuinely read
+  either way (`3/4/2026`) — symmetric ones (`02-02-2026`) parse. Relative dates ("next
+  friday") blocked → NaN for now; turning them on is a parked feature (backlog). Date Input
+  stores raw source text (Frame/Table model) and dual-displays (raw while editing,
+  `DD-MMM-YYYY` idle). Chevron desktop-tap regression fixed (`NodeCard.tsx`, stationary-tap
+  detect). Renamed Date Picker → Date Input (Inputs group); DATE → "DATE (Build)"; Save Times
+  → Date & Time.
+- **Stale "not yet supported" finance/text notes swept** (`nodeExcel.ts`): every shipped node
+  falsely claiming it isn't implemented now carries a real parity note — ACCRINT/ACCRINTM,
+  COUP* ×6, DURATION/MDURATION, PRICEDISC/YIELDDISC, PRICEMAT/YIELDMAT, TBILL* ×3, XNPV,
+  ENCODEURL. Basis coverage stated per family; TBILL/PRICEMAT/PRICE tagged real-Excel-confirmed;
+  ENCODEURL's `encodeURIComponent` vs Excel `! ' ( ) *` deviation documented. FINDING (not
+  yet fixed): the Duration node exposes a `basis` input but `durationValue` ignores it
+  (`_basis`) — the first-period fraction always uses actual days. Noted in the reference and
+  backlogged; DURATION is dominated by the integer coupon count so the effect is second-order.
 
 ### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
 - **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot

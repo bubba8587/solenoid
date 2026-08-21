@@ -36,10 +36,14 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   COUP*, DURATION, ODDF/ODDL, ACCRINT/ACCRINTM, VDB. Already confirmed absolute:
   PRICE/YIELD (Microsoft examples), TBILLYIELD/TBILLEQ + PRICEMAT (real Excel).
 
-- [ ] **Stale "not yet supported" NODE_EXCEL notes on SHIPPED finance nodes** — several
-  reference notes claim a working node isn't implemented (accrint, accrintm, pricedisc,
-  oddcoupon still say it; securdisc fixed 2026-08-21). Each needs its real parity note
-  (basis handling, conventions) — a small node-by-node pass, per-node verification.
+- [ ] **DURATION/MDURATION ignore the `basis` input** — the Duration node exposes a `basis`
+  socket and passes it to `durationValue`, but that function names the arg `_basis` and never
+  uses it: the first-period day fraction always counts actual days (`actualDays(settle,next) /
+  actualDays(prev,next)`). Excel day-counts that fraction per the basis, so basis 0 (30/360,
+  the default) diverges slightly. Second-order — DURATION is dominated by the integer coupon
+  count — and structurally pinned by `financeInvariants.test.ts`, but a real absolute would
+  want a real-Excel golden. Documented in the reference note (2026-08-21). Fix = thread `b`
+  through the first-period fraction; wants a golden to verify.
 
 ## Bugs & verifications
 
