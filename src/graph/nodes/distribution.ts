@@ -288,9 +288,14 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       const Mi = Math.floor(Mv); const Ni = Math.floor(Nv);
       if (form === "pmf") return hypgeomPmf(ki, ni, Mi, Ni);
       const lo = Math.max(0, ni + Mi - Ni);
+      const hi = Math.min(ni, Mi);
+      // Invalid parameters have no distribution at all (a genuine blank).
+      if (Ni <= 0 || Mi < 0 || ni < 0 || Mi > Ni || ni > Ni) return null;
       if (ki < lo) return 0;
       let sum = 0;
-      for (let j = lo; j <= ki; j++) {
+      // Support ends at hi = min(n, M); k beyond it adds no probability, so the cumulative
+      // is 1 there — the same convention BINOM/POISSON use above their support, not a blank.
+      for (let j = lo; j <= Math.min(ki, hi); j++) {
         const pmf = hypgeomPmf(j, ni, Mi, Ni);
         if (pmf === null) return null;
         sum += pmf;
