@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   BondPriceNode, PriceMatNode, DurationNode, OddCouponNode, CouponNode,
 } from "./finance";
-import { vdb } from "./financeOps";
+import { vdb, accrintM } from "./financeOps";
 import { parseDateToSerial } from "./date";
 
 // Formula.js implements almost none of the bond/coupon family, so these functions have
@@ -80,6 +80,21 @@ describe("DURATION / MDURATION relationship", () => {
     expect(mod).toBeLessThan(mac);
     expect(mac).toBeGreaterThan(0);
     expect(mac).toBeLessThan(5); // shorter than the 5-year maturity
+  });
+});
+
+describe("ACCRINTM = par·rate·A/D (Excel's documented closed form)", () => {
+  const issue = d("2023-07-15"), mat = d("2024-01-15");
+  it("30/360 accrues over A=180, D=360 → par·rate·½", () => {
+    expect(accrintM(issue, mat, 0.06, 1000, 0)).toBeCloseTo(1000 * 0.06 * 180 / 360, 9);
+  });
+  it("actual/360 (basis 2) counts real days (184)", () => {
+    expect(accrintM(issue, mat, 0.06, 1000, 2)).toBeCloseTo(1000 * 0.06 * 184 / 360, 9);
+  });
+  it("scales linearly with the accrual span", () => {
+    const half = accrintM(issue, mat, 0.06, 1000, 0)!;
+    const full = accrintM(issue, d("2024-07-15"), 0.06, 1000, 0)!; // a full 30/360 year
+    expect(full).toBeCloseTo(2 * half, 9);
   });
 });
 
