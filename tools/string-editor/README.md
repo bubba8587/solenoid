@@ -14,11 +14,17 @@ The Solenoid dev server must already be running on **http://localhost:1420**
 
 ```
 cd tools/string-editor
-npm install          # once, installs playwright-core (pinned to match the local Chromium)
-npm start            # -> serves http://localhost:5599
+npm install                 # once, installs playwright-core (pinned to match the local Chromium)
+node up.mjs                 # kills any old instance, starts fresh, opens the window
 ```
 
-Then open **http://localhost:5599** in a browser window. It auto-scans on load.
+`up.mjs` is the real launcher: it kills whatever is listening on port 5599 (so you always
+get the *current* code — no stale server serving an old UI), starts the server detached,
+waits until it answers, and opens **http://localhost:5599** in your browser automatically.
+The page auto-scans on load.
+
+`npm start` (plain `node server.mjs`) also works if you'd rather run it in the foreground
+and open the URL yourself.
 
 ## How it works
 
@@ -42,13 +48,25 @@ Then open **http://localhost:5599** in a browser window. It auto-scans on load.
    refuses if the position became ambiguous (e.g. the file changed under it) — so it never
    silently edits the wrong place.
 
+Editing a single-match string rewrites that one source literal, so **every** on-screen
+instance rendered from it changes together. Ambiguous strings offer per-file radios plus
+"edit all N".
+
+## Copy-edit log
+
+Every successful save appends one JSON line to **`copy-edits.jsonl`** (created lazily on the
+first real write; tracked in git). Each record is
+`{ ts, file, line, from, to, context?, status? }` — a durable trail of the author's copy/voice
+edits that a later session can read to learn their wording preferences. Failed or no-op saves
+are never logged, and a logging failure never blocks the source rewrite.
+
 ## Controls
 
 - **Rescan app** — re-reads the running app (re-launches Chromium).
 - **Filter box** — substring filter over the visible strings.
-- **editable / ambiguous / not found** chips — toggle which classes are listed.
+- **1 match / many matches / not in source** chips — toggle which classes are listed.
 - **Save** (or Enter in the field) — writes the change. For ambiguous strings, pick "edit
-  ALL occurrences" or a single file first.
+  all N" or a single file first.
 
 ## Limitations
 

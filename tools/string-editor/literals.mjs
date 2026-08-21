@@ -5,13 +5,15 @@
 // decode the body to compare against the on-screen text, and on save we re-encode
 // the new text into the SAME quote style so quoting/escaping never breaks.
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..', '..');
 const SRC_DIR = path.join(REPO_ROOT, 'src');
+// Durable, append-only record of successful copy/voice edits (tracked in git).
+const COPY_LOG = path.join(HERE, 'copy-edits.jsonl');
 
 // ---- escape decode / encode -------------------------------------------------
 
@@ -181,7 +183,7 @@ export function findMatches(index, s) {
 
 // Replace one match's content in its file. Verifies the region still holds the
 // expected raw; falls back to a unique search if offsets drifted (HMR edits).
-export async function applyEdit({ abs, start, end, quote, raw, kind, newText }) {
+export async function applyEdit({ abs, start, end, quote, raw, kind, newText, fromText, status, context }) {
   const text = await readFile(abs, 'utf8');
   const replacement = kind === 'md' ? newText : rebuildLiteral(newText, quote);
 
@@ -196,7 +198,32 @@ export async function applyEdit({ abs, start, end, quote, raw, kind, newText }) 
   }
   const next = text.slice(0, s) + replacement + text.slice(e);
   await writeFile(abs, next, 'utf8');
-  return { file: path.relative(REPO_ROOT, abs).replace(/\\/g, '/'), from: raw, to: replacement };
+
+  const relFile = path.relative(REPO_ROOT, abs).replace(/\\/g, '/');
+  const line = text.slice(0, s).split('\n').length;
+  // Durable record of the copy/voice edit. Best-effort: never fail the edit over it.
+  await logCopyEdit({
+    file: relFile,
+    line,
+    from: fromText ?? (kind === 'md' ? raw : decodeBody(raw.slice(1, -1))),
+    to: newText,
+    ...(context ? { context } : {}),
+    ...(status ? { status } : {}),
+  });
+
+  return { file: relFile, from: raw, to: replacement };
+}
+
+// Append one edit record to copy-edits.jsonl (created lazily on first write).
+async function logCopyEdit({ file, line, from, to, context, status }) {
+  try {
+    const rec = { ts: new Date().toISOString(), file, line, from, to };
+    if (context) rec.context = context;
+    if (status) rec.status = status;
+    await appendFile(COPY_LOG, JSON.stringify(rec) + '\n', 'utf8');
+  } catch {
+    // logging must never break a successful source rewrite
+  }
 }
 
 export { scanSource, decodeBody };

@@ -65,10 +65,10 @@ async function handleScan() {
 }
 
 async function handleSave(body) {
-  const { abs, start, end, quote, raw, kind, newText } = body;
+  const { abs, start, end, quote, raw, kind, newText, fromText, status, context } = body;
   if (typeof newText !== 'string') throw new Error('newText required');
   if (!abs || !abs.startsWith(SRC_DIR)) throw new Error('refusing to edit outside src/');
-  const result = await applyEdit({ abs, start, end, quote, raw, kind, newText });
+  const result = await applyEdit({ abs, start, end, quote, raw, kind, newText, fromText, status, context });
   return { ok: true, ...result };
 }
 
