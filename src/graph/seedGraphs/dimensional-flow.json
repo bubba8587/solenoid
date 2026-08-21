@@ -292,7 +292,7 @@
     },
     {
       "id": "dpE",
-      "type": "DatePickerNode",
+      "type": "DateInputNode",
       "x": 233,
       "y": 2210,
       "init": {

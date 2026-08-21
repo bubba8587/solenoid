@@ -891,7 +891,7 @@ export function TablePopup() {
                         );
                       })()
                     ) : type === "date" ? (
-                      // The native picker (the Date Picker node's control); clearing
+                      // The native picker (the Date Input node's control); clearing
                       // writes a blank cell (missing), never a fabricated date.
                       <input
                         type="date"

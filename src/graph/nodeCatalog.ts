@@ -1,5 +1,5 @@
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode,
@@ -180,6 +180,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "list-input",  label: "List Input",    description: "Builds a list from comma-separated values (for example 1, 2, 3) in each row. Every row concatenates into one output list. Element type: number, text, date, or TRUE or FALSE. Excel: selecting a range like A1:A8.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value, typed directly on the node.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
       { type: "boolean-input", label: "Boolean Input", description: "A TRUE or FALSE toggle that outputs a logical. It coerces to 1 or 0 where a number is needed.", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
+      { type: "date-input",    label: "Date Input",    description: "A date value from a calendar field.", create: () => new DateInputNode(), parity: false, keywords: "date calendar day picker serial input" },
       { type: "table-input",   label: "Table Input",   description: "A typed-in 2-D table, one row per line, comma-separated. One element type (Num/Text/Date/Bool — mixed columns belong in Frame Input). Typed text is the stored truth: an unparseable cell shows NaN and keeps its text in the editor's Source view.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
       { type: "frame-input",   label: "Frame Input", description: "A typed-in data table with named, typed columns and editable cells.", accent: NODE_KIND_ACCENTS.frame, create: () => new FrameInputNode(), parity: false },
       { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: COMPLEX.", accent: CX, create: () => new ComplexFromNode(), parity: false },
@@ -195,7 +196,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "slider",      label: "Slider",      description: "A slider value, with min, max, and step configured on the node.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
           { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
-          { type: "date-picker", label: "Date Picker", description: "A date value from a calendar field.", create: () => new DatePickerNode(), parity: false },
           { type: "date-range",  label: "Date Range",  description: "Picks a start and end date. It outputs both serials. Subtract them for a duration.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
           { type: "xy-pad",      label: "XY Pad",      description: "Two values at once, from a handle in a square pad. Each is 0–1. Scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
           { type: "point-plotter", label: "Point Plotter", description: "Hand-plotted dataset on a small plane (right-click deletes a point).", create: () => new PointPlotterNode(), parity: false, keywords: "point plotter scatter draw data by hand click plane pad dataset xy points" },

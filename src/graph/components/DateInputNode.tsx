@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { DatePickerNode as DatePickerNodeType } from "../rete-nodes";
+import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
 import { serialToJsDate, jsDateToSerial } from "../nodes/date";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { processGraph } from "../process";
@@ -15,7 +15,7 @@ function isoToSerial(iso: string): number {
   return Number.isNaN(d.getTime()) ? 0 : Math.floor(jsDateToSerial(d));
 }
 
-export function DatePickerComponent({ data, emit }: NodeProps<DatePickerNodeType>) {
+export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
   const [iso, setIso] = useState(serialToISO(data.value));
 
   // Keep the field in sync when the serial changes from elsewhere (load/paste).

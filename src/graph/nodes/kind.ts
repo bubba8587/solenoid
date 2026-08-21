@@ -44,7 +44,7 @@ import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
-import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
+import { SlicerNode, CableSwitchNode, DateInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
 import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, TreemapNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
@@ -153,7 +153,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DatePartNode ||
     node instanceof WeekInfoNode || node instanceof DateDiffNode ||
     node instanceof DateAddNode || node instanceof WorkdaysNode ||
-    node instanceof DatePickerNode || node instanceof SaveTimesNode
+    node instanceof DateInputNode || node instanceof SaveTimesNode
   ) return "date";
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||

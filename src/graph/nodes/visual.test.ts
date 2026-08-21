@@ -9,7 +9,7 @@ import { CHART_BUILDER_FIELDS } from "./visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "./chartOptions";
 import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload, RecordPayload } from "../chartValue";
 import type { FrameValue, FrameColumn } from "../frame";
-import { DatePickerNode, XYPadNode } from "./control";
+import { DateInputNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./date";
 import { isMermaidValue } from "../mermaidValue";
@@ -214,13 +214,13 @@ describe("histogramBins", () => {
 });
 
 describe("control nodes", () => {
-  it("Date Picker emits its serial, null when unset", () => {
-    const d = new DatePickerNode({ value: 46000 });
+  it("Date Input emits its serial, null when unset", () => {
+    const d = new DateInputNode({ value: 46000 });
     expect(d.data()).toEqual({ result: 46000 });
-    const empty = new DatePickerNode({ value: 0 });
+    const empty = new DateInputNode({ value: 0 });
     expect(empty.data()).toEqual({ result: null });
     // default is today's serial
-    const today = new DatePickerNode();
+    const today = new DateInputNode();
     expect(today.value).toBe(Math.floor(jsDateToSerial(new Date())));
   });
 

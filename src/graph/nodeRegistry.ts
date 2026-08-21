@@ -6,7 +6,7 @@ import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode,
@@ -82,7 +82,7 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
-  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, WaffleComponent, QuiverComponent, SevenSegComponent, RecordComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
@@ -211,7 +211,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [GaugeNode,       comp(GaugeComponent)],
   [HeatmapCellNode, comp(HeatmapCellComponent)],
   [ChartBuilderNode, comp(ChartBuilderComponent)],
-  [DatePickerNode,  comp(DatePickerComponent)],
+  [DateInputNode,  comp(DateInputComponent)],
   [DateRangeNode,   comp(DateRangeComponent)],
   [XYPadNode,       comp(XYPadComponent)],
   [NumberInputNode, comp(NumberInputComponent)],

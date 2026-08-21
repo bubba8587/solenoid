@@ -277,7 +277,7 @@ export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
-export { DatePickerComponent } from "./DatePickerNode";
+export { DateInputComponent } from "./DateInputNode";
 export { DateRangeComponent } from "./DateRangeNode";
 export { SaveTimesComponent } from "./SaveTimesNode";
 export { XYPadComponent } from "./XYPadNode";

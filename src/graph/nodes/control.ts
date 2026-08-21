@@ -140,15 +140,15 @@ export class AngleDialNode extends ClassicPreset.Node {
 
 // `value` is an Excel date serial (whitelisted in extractInit); 0 = no date selected yet.
 
-export class DatePickerNode extends ClassicPreset.Node {
+export class DateInputNode extends ClassicPreset.Node {
   label: string;
   value: number;   // Excel date serial; 0 = unset
   width  = 180;
   height = 110;
 
   constructor(init?: { label?: string; value?: number }) {
-    super("DatePicker");
-    this.label = init?.label ?? "Date Picker";
+    super("DateInput");
+    this.label = init?.label ?? "Date Input";
     this.value = init?.value ?? Math.floor(jsDateToSerial(new Date()));
     this.addOutput("result", dateOut("Date serial"));
   }
