@@ -388,8 +388,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "regression-steyx": [{ excel: "STEYX", syntax: "=STEYX(ys, xs)", parity: true }],
   "reshape-tocol": [{ excel: "TOCOL", syntax: "=TOCOL(array)", parity: false, note: "ignore_empty and scan_by_column flags not supported" }],
   "reshape-torow": [{ excel: "TOROW", syntax: "=TOROW(array)", parity: false, note: "ignore_empty flag not supported" }],
-  "reshape-wrapcols": [{ excel: "WRAPCOLS", syntax: "=WRAPCOLS(vector, rows)", parity: false, note: "Pads with #N/A (Excel's default); a custom pad_with is not supported" }],
-  "reshape-wraprows": [{ excel: "WRAPROWS", syntax: "=WRAPROWS(vector, cols)", parity: false, note: "Pads with #N/A (Excel's default); a custom pad_with is not supported" }],
+  "reshape-wrapcols": [{ excel: "WRAPCOLS", syntax: "=WRAPCOLS(vector, wrap_count, [pad_with])", parity: true, note: "Unwired Fill pads with #N/A (Excel's default); wire Fill for a custom pad_with" }],
+  "reshape-wraprows": [{ excel: "WRAPROWS", syntax: "=WRAPROWS(vector, wrap_count, [pad_with])", parity: true, note: "Unwired Fill pads with #N/A (Excel's default); wire Fill for a custom pad_with" }],
   "roman-arabic-arabic": [{ excel: "ARABIC", syntax: "=ARABIC(text)", parity: false, note: "Roman numeral string → integer" }],
   "roman-arabic-roman": [{ excel: "ROMAN", syntax: "=ROMAN(n)", parity: false, note: "Integer (1–3999) → Roman numeral string" }],
   "roundn-dir": [

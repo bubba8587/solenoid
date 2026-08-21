@@ -278,6 +278,13 @@ function padCell(what: string): Cell {
   return solError("#N/A", `Padded: this input is ${what} than the largest one`);
 }
 
+/** WRAPROWS/WRAPCOLS pad_with: a wired non-blank Fill overrides Excel's default #N/A
+ *  pad. Blank (null) or unwired keeps #N/A — matching the formula surface's wrapPad. */
+function wrapPadCell(fill: unknown[] | undefined, what: string): Cell {
+  const v = (fill?.[0] ?? null) as Cell;
+  return v != null ? v : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
+}
+
 /** A matrix carries ONE whole-grid unit tag, never per-cell `UnitCell`s (D20): reduce
  *  a widened LIST row to bare magnitudes plus the one unit its cells share (undefined
  *  when they disagree). An already-bare matrix comes back untouched. */
@@ -403,6 +410,10 @@ export const TABLE_RESHAPE_OP_META = {
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    fill: "Pads the leftover cells. Unwired or blank pads with #N/A, like Excel's default.",
+  };
+
   /** Keeps `UnitCell` tags on its LIST input — WRAPROWS/WRAPCOLS convert a
    *  uniform-unit list into a whole-grid matrix unit itself. */
   unitAware = true;
@@ -429,25 +440,29 @@ export class TableReshapeNode extends ClassicPreset.Node {
     if (wraps) {
       this.addInput("list",      anyListIn("List"));
       this.addInput("wrapCount", numIn("Wrap count"));
+      this.addInput("fill",      anyIn("Fill"));
       this.addOutput("result", adoptiveTableOut("Table"));
+      this.height = 235;
     } else {
       this.addInput("matrix", anyTableIn("Matrix"));
       this.addOutput("result", adoptiveListOut("List"));
     }
   }
 
-  data(inputs: { list?: unknown[]; wrapCount?: number[]; matrix?: unknown[] }) {
+  data(inputs: { list?: unknown[]; wrapCount?: number[]; fill?: unknown[]; matrix?: unknown[] }) {
     this.cachedList = null;
     this.cachedMatrix = null;
-    // Both wraps pad the leftover cells with #N/A — Excel's default pad_with.
+    // Leftover cells pad with the wired Fill; an unwired or blank Fill keeps Excel's
+    // default #N/A pad_with — the same rule as the formula surface's wrapPad, so the
+    // node and =WRAPROWS/=WRAPCOLS produce identical grids.
     if (this.op === "wraprows") {
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
       const w = wRaw === null ? 0 : Math.round(wRaw);
       if (!raw || w < 1) return { result: null };
       const { mags: list, unit } = matrixCellsFromList(raw);
-      const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last row");
-      const rows: CellMat = wrapCells(list as Cell[], w, "rows", () => na);
+      const pad = wrapPadCell(inputs.fill, "row");
+      const rows: CellMat = wrapCells(list as Cell[], w, "rows", () => pad);
       withMatrixUnit(rows, unit);
       this.cachedMatrix = rows;
       return { result: rows };
@@ -457,8 +472,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
       const w = wRaw === null ? 0 : Math.round(wRaw);
       if (!raw || w < 1) return { result: null };
       const { mags: list, unit } = matrixCellsFromList(raw);
-      const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last column");
-      const mat: CellMat = wrapCells(list as Cell[], w, "cols", () => na);
+      const pad = wrapPadCell(inputs.fill, "column");
+      const mat: CellMat = wrapCells(list as Cell[], w, "cols", () => pad);
       withMatrixUnit(mat, unit);
       this.cachedMatrix = mat;
       return { result: mat };

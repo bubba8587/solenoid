@@ -58,6 +58,20 @@ describe("reshapers are element-polymorphic", () => {
     expect(isSolError(cols[1][1])).toBe(true);
   });
 
+  it("WRAPROWS/WRAPCOLS: a wired Fill overrides the #N/A pad (=WRAPROWS(x,3,0))", () => {
+    // Matches the formula surface (formulaMatrix.test.ts: WRAPROWS(x,3,0) → [[1,2,3],[4,5,0]]).
+    expect(new TableReshapeNode({ op: "wraprows" })
+      .data({ list: [[1, 2, 3, 4, 5]], wrapCount: [3], fill: [0] }).result)
+      .toEqual([[1, 2, 3], [4, 5, 0]]);
+    expect(new TableReshapeNode({ op: "wrapcols" })
+      .data({ list: [[1, 2, 3]], wrapCount: [2], fill: [0] }).result)
+      .toEqual([[1, 3], [2, 0]]);
+    // A blank (null) Fill still falls back to the #N/A default, like the formula's wrapPad.
+    const naFallback = new TableReshapeNode({ op: "wraprows" })
+      .data({ list: [[1, 2, 3, 4, 5]], wrapCount: [3], fill: [null] }).result as unknown[][];
+    expect(isSolError(naFallback[1][2])).toBe(true);
+  });
+
   it("HSTACK stitches two text matrices side by side", () => {
     const n = new HStackTableNode();
     expect(n.data({ t0: [[["a"], ["b"]]], t1: [[["x"], ["y"]]] }).result).toEqual([
