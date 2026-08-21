@@ -808,6 +808,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 export class TrendNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+    new_xs: "The Xs to predict Ys for. Leave it unwired to get the fitted Ys at the Known Xs, like Excel's omitted new_x's.",
   };
 
   label: string;
@@ -830,7 +831,12 @@ export class TrendNode extends ClassicPreset.Node {
     const newXsRaw = inputs.new_xs?.[0] ?? null;
     const newXsErr = newXsRaw?.find(isSolError);
     if (newXsErr) { this.cachedList = newXsErr; return { result: newXsErr }; }
-    const newXs = (newXsRaw ?? []).filter((v): v is number => v !== null) as number[];
+    // Excel: an omitted New Xs defaults to the Known Xs, so TREND returns the fitted
+    // values at the known points. An unwired socket IS that omission — matches the
+    // formula-surface TREND registration.
+    const newXs = newXsRaw == null
+      ? xs
+      : (newXsRaw.filter((v): v is number => v !== null) as number[]);
     // Shared fitting kernel (mathUtils) — the TREND registration runs the same one.
     const fit = newXs.length > 0 ? linearFit(xs, ys) : null;
     const result: number[] = fit ? newXs.map((x) => fit.intercept + fit.slope * x) : [];

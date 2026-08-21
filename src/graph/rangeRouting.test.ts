@@ -116,6 +116,10 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     // new_xs omitted → predict at the known xs; xs omitted too → 1..n.
     expect(ev("TREND(y, x)", { y: YS, x: XS })).toEqual(YS);
     expect(ev("TREND(y)", { y: YS })).toEqual(YS);
+    // The NODE with New Xs UNWIRED now matches TREND(y, x): fitted at the known xs.
+    expect(new TrendNode().data({ ys: [YS], xs: [XS] }).result).toEqual(YS);
+    expect(new TrendNode().data({ ys: [YS], xs: [XS] }).result)
+      .toEqual(ev("TREND(y, x)", { y: YS, x: XS }));
   });
 
   it("GROWTH is TREND in log space", () => {

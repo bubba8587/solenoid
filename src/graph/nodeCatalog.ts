@@ -814,7 +814,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "pair", children: [textFindLeaf("find"), textFindLeaf("search")] },
           { type: "pair", children: [textAfterBeforeLeaf("after"), textAfterBeforeLeaf("before")] },
-          { type: "text-substitute", label: "SUBSTITUTE",  description: "Replaces all occurrences of old_text with new_text. Excel: SUBSTITUTE.", create: () => new SubstituteNode(),   parity: false },
+          { type: "text-substitute", label: "SUBSTITUTE",  description: "Replaces old_text with new_text: every occurrence, or only the nth when Instance is set. Excel: SUBSTITUTE.", create: () => new SubstituteNode(),   parity: true },
           { type: "text-replace",    label: "REPLACE",     description: "Replaces N characters starting at a position. Excel: REPLACE.",          create: () => new TextReplaceNode(), parity: false },
           { type: "regex",           label: "REGEX",       description: "Tests, extracts, or replaces text using a regular expression. Excel 365: REGEXTEST / REGEXEXTRACT / REGEXREPLACE.", create: () => new RegexNode(), parity: false },
         ],

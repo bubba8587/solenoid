@@ -161,6 +161,20 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
       .toEqual(["a+b", null]);
   });
 
+  it("SUBSTITUTE instance: blank/0 replaces all, n replaces only the nth (Excel)", () => {
+    const sub = new SubstituteNode();
+    // instance unwired → literal default 0 → every occurrence
+    expect(sub.data({ text: ["a-b-c"], old_text: ["-"], new_text: ["+"] }).result).toBe("a+b+c");
+    expect(sub.data({ text: ["a-b-c"], old_text: ["-"], new_text: ["+"], instance: [0] }).result).toBe("a+b+c");
+    // instance 2 → only the second dash
+    expect(sub.data({ text: ["a-b-c"], old_text: ["-"], new_text: ["+"], instance: [2] }).result).toBe("a-b+c");
+    // instance broadcasts element-wise over a text list; an instance past the last
+    // occurrence leaves the cell unchanged, like Excel
+    expect(sub.data({ text: [["a-b-c", "x-y-z"]], old_text: ["-"], new_text: ["+"], instance: [[1, 2]] }).result)
+      .toEqual(["a+b-c", "x-y+z"]);
+    expect(sub.data({ text: ["x-y-z"], old_text: ["-"], new_text: ["+"], instance: [3] }).result).toBe("x-y-z");
+  });
+
   it("declares combo sockets on the operands, scalar on the MODE inputs", () => {
     expect(dt(new TextTransformNode(), "in", "text")).toBe("strcombo");
     expect(dt(new TextTransformNode(), "out", "result")).toBe("strcombo");

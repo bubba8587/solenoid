@@ -147,6 +147,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   by the sumifs node, so `functionReference`'s self-heal already suppressed them at render (never
   visible; they only contradicted the gap docstring). Added the singular→one-criteria-row note to
   the COUNTIF/AVERAGEIF `NODE_EXCEL` rows.
+- **Easy "not supported" node gaps closed (formula already had them).** Two node-lags-formula
+  asymmetries where the formula surface already accepted the arg but the node didn't: (1)
+  SUBSTITUTE gained an `instance` input — blank/0 replaces every occurrence, n replaces only the
+  nth (Excel's optional 4th arg; formula was already arity [3,4]); node now parity:true. (2) TREND
+  New Xs made optional — an unwired socket defaults to the Known Xs (fitted values), matching the
+  formula registration's `newXs == null ? xs` and Excel's omitted new_x's. Both pinned with
+  node↔formula agreement tests. Skipped (not clean): WRAP `pad_with` (entangles the unit policy —
+  formula has it, node workaround exists), VDB `no_switch` / TOCOL·TOROW `ignore_empty` (need an
+  impl + arity change across both surfaces, not just a socket).
 
 ### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
 - **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot

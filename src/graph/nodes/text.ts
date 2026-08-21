@@ -359,13 +359,15 @@ export class TextFindNode extends ClassicPreset.Node {
 
 export class SubstituteNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    old_text: "Matches are case sensitive. Every occurrence is replaced.",
+    old_text: "Matches are case sensitive.",
+    instance: "Which occurrence to replace (1 = the first). Blank or 0 replaces every occurrence.",
   };
 
   label: string;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", old_text: "", new_text: "" };
-  width = 180; height = 225;
+  literals: Record<string, number> = { instance: 0 };
+  width = 180; height = 250;
 
   constructor(init?: { label?: string }) {
     super("Substitute");
@@ -373,6 +375,7 @@ export class SubstituteNode extends ClassicPreset.Node {
     this.addInput("text",     strComboIn("Text"));
     this.addInput("old_text", strComboIn("Old text"));
     this.addInput("new_text", strComboIn("New text"));
+    this.addInput("instance", numListIn("Instance"));
     this.addOutput("result", strComboOut("Result"));
   }
 
@@ -380,13 +383,20 @@ export class SubstituteNode extends ClassicPreset.Node {
     text?: (string | string[])[];
     old_text?: (string | string[])[];
     new_text?: (string | string[])[];
+    instance?: (number | number[])[];
   }): { result: CellResult<string> } {
+    const fx = resolveExcelFunction("SUBSTITUTE")!;
+    // instance ≥ 1 replaces only that occurrence; blank/0 replaces every occurrence
+    // (Excel's omitted-argument behavior).
     const result = broadcastCells(
-      (text: string, oldText: string, newText: string) =>
-        resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText) as string,
+      (text: string, oldText: string, newText: string, inst: number) => {
+        const n = Math.floor(inst);
+        return (n >= 1 ? fx(text, oldText, newText, n) : fx(text, oldText, newText)) as string;
+      },
       strVal(inputs.text,     this, "text"),
       strVal(inputs.old_text, this, "old_text"),
       strVal(inputs.new_text, this, "new_text"),
+      readInput(inputs.instance, this.literals.instance ?? 0),
     );
     this.cachedText = result;
     return { result };

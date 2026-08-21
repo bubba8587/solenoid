@@ -490,11 +490,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "Outputs a strlist; row/col delimiter pair not supported" },
     { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "Row/col delimiter pair not supported; outputs a strlist" },
   ],
-  "text-substitute": [{ excel: "SUBSTITUTE", syntax: "=SUBSTITUTE(text, old, new)", parity: false, note: "Instance number not supported; replaces all" }],
+  "text-substitute": [{ excel: "SUBSTITUTE", syntax: "=SUBSTITUTE(text, old, new, [instance])", parity: true }],
   "text-trim": [{ excel: "TRIM", syntax: "=TRIM(text)", parity: false }],
   "text-upper": [{ excel: "UPPER", syntax: "=UPPER(text)", parity: false }],
   "time-value": [{ excel: "TIMEVALUE", syntax: "=TIMEVALUE(time_text)", parity: false, note: "Parses HH:MM:SS format" }],
-  "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, new_xs)", parity: false, note: "Linear only; new_xs required (Excel makes it optional)" }],
+  "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, [new_xs])", parity: false, note: "Simple linear regression; an unwired New Xs defaults to the Known Xs (fitted values), like Excel. Excel's const (force-intercept) and multiple-regression forms aren't modeled." }],
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
   "sumifs": [
     { excel: "SUMIFS", syntax: "=SUMIFS(sum_range, criteria_range1, criteria1, ...)", parity: true, note: "Takes one frame: ranges are named columns; criteria are op + value rows instead of criteria strings (\">10\")" },
