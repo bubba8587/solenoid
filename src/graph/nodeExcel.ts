@@ -229,7 +229,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions live on the card (extensible AND/OR rows) instead of an include vector; filtering by a PARALLEL list is the SUMIFS node or Frame from Lists → Frame Filter" }],
   "list-groupby": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "1D parallel-list version: keys + values lists; 2D range grouping not supported" }],
   "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "Row or Column blank/0 = the whole axis, like Excel's INDEX(range, 0, col) whole-column / INDEX(range, row, 0) whole-row form" }],
-  "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY([rows],[cols],[min],[max],[integer])", parity: false, note: "1D list; re-rolls on recalc (F9)" }],
+  "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY(count,[min],[max],[integer])", parity: false, note: "1D list (Excel's rows×cols become a single Count); the Integer flag is supported; re-rolls on recalc (F9)" }],
   "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Solenoid's Range is 1D only; SEQUENCE can produce 2D arrays" }],
   "list-sort": [{ excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" }],
   "list-sortby": [{ excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Sorts a 1-D array of ANY element type (text/date/… — the reorder is position-only) by a parallel NUMERIC key list; text sort keys aren't supported yet" }],

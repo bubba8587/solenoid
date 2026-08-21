@@ -18,6 +18,17 @@ describe("generator element caps (#5)", () => {
     expect(out.list.code).toBe("#OVERFLOW!");
   });
 
+  it("RANDARRAY Integer flag rounds the draws (Excel's 5th arg, the formula's isTrue)", () => {
+    const cont = new RandArrayNode().data({ count: [50], min: [0], max: [100] }).list as number[];
+    expect(cont.every((v) => v >= 0 && v <= 100)).toBe(true);
+    expect(cont.some((v) => !Number.isInteger(v))).toBe(true); // fractional by default
+    const ints = new RandArrayNode().data({ count: [50], min: [0], max: [100], integer: [true] }).list as number[];
+    expect(ints.every((v) => Number.isInteger(v) && v >= 0 && v <= 100)).toBe(true);
+    // An unwired or false flag stays fractional.
+    const off = new RandArrayNode().data({ count: [30], min: [0], max: [1], integer: [false] }).list as number[];
+    expect(off.some((v) => v > 0 && v < 1)).toBe(true);
+  });
+
   it("a normal SEQUENCE still produces the list", () => {
     const out = new SeriesNode({ op: "sequence" }).data({ count: [4], start: [1], step: [2] });
     expect(out.list).toEqual([1, 3, 5, 7]);
