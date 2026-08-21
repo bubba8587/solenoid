@@ -13,6 +13,7 @@ import {
   HypothesisTestNode,
 } from "./stats";
 import { interpolateLinear, fillBorderedGrid } from "./mathUtils";
+import { compileEvaluator } from "../excelFormula";
 import { isSolError, solError } from "../errorValue";
 import { extractInit } from "../copyPaste";
 
@@ -66,6 +67,17 @@ describe("QUARTILE", () => {
     expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [1] }).result).toBe(2);
     expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [2] }).result).toBe(3);
     expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [4] }).result).toBe(5);
+  });
+  it("the FORMULA surface matches the node — quart 0/4 are MIN/MAX, not #NUM! (D11)", () => {
+    // Formula.js's QUARTILE.INC errors on 0 and 4; the formula must answer like the node.
+    const q = (fn: string, n: number) => compileEvaluator(`${fn}(x, ${n})`)!({ x: [1, 2, 3, 4, 5] });
+    for (const fn of ["QUARTILE", "QUARTILE.INC"]) {
+      expect(q(fn, 0)).toBe(1);
+      expect(q(fn, 4)).toBe(5);
+      expect(q(fn, 1)).toBe(2);
+      expect(q(fn, 2)).toBe(3);
+      expect(q(fn, 3)).toBe(4);
+    }
   });
   it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);

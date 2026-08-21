@@ -386,6 +386,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MODE:        { returns: "number", arity: [1, 255], family: "statistics" },
   PERCENTILE:  { returns: "number", arity: [2, 2], family: "statistics" },
   QUARTILE:    { returns: "number", arity: [2, 2], family: "statistics" },
+  "QUARTILE.INC": { returns: "number", arity: [2, 2], family: "statistics" },
   COVAR:       { returns: "number", arity: [2, 2], family: "statistics" },
   PERCENTRANK: { returns: "number", arity: [2, 3], family: "statistics" },
   RANK:        { returns: "number", arity: [2, 3], family: "statistics" },
@@ -706,6 +707,19 @@ export function excelPercentRank(
   return Math.trunc(rank * f) / f; // Excel truncates to `sig` digits
 }
 
+/** QUARTILE.INC — the inclusive quartile is PERCENTILE.INC at q/4, so quart 0 = MIN and
+ *  quart 4 = MAX (Excel). Matches RankPercentileNode's `percentileOf` interpolation so the
+ *  node and formula agree (D11); Formula.js's QUARTILE.INC errors on 0 and 4. */
+export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number | SolError {
+  const qi = Math.round(q);
+  if (nums.length === 0) return solError("#DOMAIN!", "QUARTILE needs at least one number");
+  if (qi < 0 || qi > 4) return solError("#DOMAIN!", "Quartile must be 0, 1, 2, 3, or 4");
+  const s = [...nums].sort((a, b) => a - b);
+  const idx = (qi / 4) * (s.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return s[lo] + (s[hi] - s[lo]) * (idx - lo);
+}
+
 registerInternal("ROUND", (x, d) => {
   const n = toNum(x), digits = toNum(d);
   return badNum(n, digits) ? VALUE("ROUND") : excelRound(n, digits);
@@ -774,7 +788,8 @@ registerInternal("STDEV",       (...a) => FXNS.STDEV.S(...a));
 registerInternal("VAR",         (...a) => FXNS.VAR.S(...a));
 registerInternal("MODE",        (...a) => FXNS.MODE.SNGL(...a));
 registerInternal("PERCENTILE",  (...a) => FXNS.PERCENTILE.INC(...a));
-registerInternal("QUARTILE",    (...a) => FXNS.QUARTILE.INC(...a));
+registerInternal("QUARTILE",     (arr, q) => excelQuartileInc((arr as number[]) ?? [], toNum(q)));
+registerInternal("QUARTILE.INC", (arr, q) => excelQuartileInc((arr as number[]) ?? [], toNum(q)));
 registerInternal("COVAR",       (...a) => FXNS.COVARIANCE.P(...a));
 
 // RANK / TRIMMEAN / PERCENTRANK run the single source the visual nodes also call.
