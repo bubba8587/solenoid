@@ -172,6 +172,11 @@ describe("TBILL — money-market day-count conventions", () => {
     expect(new TBillNode({ op: "tbilleq" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
       .toBeCloseTo((365 * 0.05) / (360 - 0.05 * 182), 9);
   });
+  it("TBILLEQ switches to the compounding form past 182 days (real Excel = 0.052539935)", () => {
+    // =TBILLEQ(DATE(2024,1,15), DATE(2024,12,15), 0.05); DSM = 335 > 182.
+    expect(new TBillNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
+      .toBeCloseTo(0.052539935, 9);
+  });
 });
 
 describe("securityDisc — DSM honors the day-count basis", () => {

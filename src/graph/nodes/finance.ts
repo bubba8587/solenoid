@@ -859,7 +859,17 @@ export class TBillNode extends ClassicPreset.Node {
       case "tbilleq": {
         const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
         if (d === null) { this.cachedResult = null; return { result: null }; }
-        result = (365 * d) / (360 - d * dsm);
+        if (dsm <= 182) {
+          result = (365 * d) / (360 - d * dsm);
+        } else {
+          // Over 182 days Excel switches to the bond-equivalent (coupon-equivalent)
+          // yield, solving the semiannual-compounding price equation in closed form
+          // (SIA). Verified against real Excel: =TBILLEQ(DATE(2024,1,15),
+          // DATE(2024,12,15),0.05) = 0.052539935.
+          const t = dsm / 365;
+          const price = 1 - d * dsm / 360; // TBILLPRICE per $1
+          result = (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
+        }
         break;
       }
       case "tbillprice": {
