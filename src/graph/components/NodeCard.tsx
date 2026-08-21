@@ -82,8 +82,6 @@ type Props = {
  *  native bubble listener fires before React's synthetic ones. */
 export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, frameless = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  // Pointer-down position on the chevron, to tell a tap (→ toggle) from a drag.
-  const chevronDownPos = useRef<{ x: number; y: number } | null>(null);
   const collapsed = useSyncExternalStore(
     collapseStore.subscribe,
     () => (node ? collapseStore.get(node.id) : false),
@@ -211,13 +209,36 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   }
   const styleProp = accent || groupColor || size ? style : undefined;
 
-  function toggleCollapse(e: React.MouseEvent) {
-    e.stopPropagation();
+  function doToggle() {
     if (node) {
       collapseStore.toggle(node.id);
       // Nudge the OWNING area (drill-in aware) so cable endpoints re-measure.
       void getOwningArea(node.id)?.update("node", node.id);
     }
+  }
+  function toggleCollapse(e: React.MouseEvent) {
+    e.stopPropagation();
+    doToggle();
+  }
+  // The chevron's pointerdown reaches rete on purpose (drag the node from the header),
+  // but that makes rete eat the synthesized `click` on a DESKTOP mouse — mousedown lands
+  // on the chevron, mouseup elsewhere, so `click` targets the card, not the button, and
+  // the toggle never fires (worked on touch, which drags differently — the regression that
+  // shipped mobile-tested). So detect a stationary tap on a WINDOW pointerup, which fires
+  // regardless of pointer capture, instead of relying on the button's own click.
+  function armChevronTap(e: React.PointerEvent) {
+    const sx = e.clientX, sy = e.clientY;
+    const onEnd = (ev: PointerEvent) => {
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onCancel, true);
+      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) <= HEADER_TAP_SLOP) doToggle();
+    };
+    const onCancel = () => {
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onCancel, true);
+    };
+    window.addEventListener("pointerup", onEnd, true);
+    window.addEventListener("pointercancel", onCancel, true);
   }
 
   return (
@@ -245,14 +266,10 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
           className="solenoid-node__chevron"
           title={collapsed ? "Expand" : "Collapse"}
           aria-label={collapsed ? "Expand the node" : "Collapse the node"}
-          // Let the pointerdown reach rete so a drag from the chevron moves the
-          // node; toggle only on a stationary tap (< HEADER_TAP_SLOP).
-          onPointerDown={(e) => { chevronDownPos.current = { x: e.clientX, y: e.clientY }; }}
-          onClick={(e) => {
-            const d = chevronDownPos.current;
-            if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HEADER_TAP_SLOP) return;
-            toggleCollapse(e);
-          }}
+          // Let the pointerdown reach rete so a drag from the chevron moves the node;
+          // arm a window-level tap detector that toggles only on a stationary release
+          // (robust to rete eating the click on a desktop mouse).
+          onPointerDown={armChevronTap}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
