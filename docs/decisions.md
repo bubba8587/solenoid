@@ -440,6 +440,23 @@ pins in `decisionMatrix.test.ts`; the seed's prose claims held to the engine by
 mode, not a redefinition), or a scenarios frame legitimately needs to run with
 zero matching columns.
 
+### D39 — Node↔formula CAPABILITY parity: the node exposes everything the formula can
+**What stands (author's standing order, 2026-08-21):** for a function on BOTH surfaces,
+the node must expose every argument, mode, and return shape the formula surface can reach —
+never less. Excel / Formula.js divergence is a judgement call (documented per `nodeExcel`
+note); our OWN two surfaces disagreeing is a defect that does not ship. This strengthens
+FX-1 from "one implementation" to "one implementation AND full node reach." The 2026-08-21
+sweep closed the open gaps: SUBSTITUTE `instance`, TREND optional New Xs, WRAP `pad_with`,
+DB `month`, RANDARRAY `integer`, REGEXEXTRACT capture-groups, REGEXREPLACE `occurrence` —
+each now parity-tested node↔formula.
+**Where:** rules.md FX-1 (extended); behavioural agreement tests per function (finance /
+auditFixes / formulaTier1 / text / rangeRouting / matrixReshape); `nodeFormulaArgParity.test.ts`
+is a PARTIAL greppable guard (dispatch-through-`resolveExcelFunction` only — it cannot see a
+separate-impl or Formula.js-fall-through gap, so the behavioural tests are the real line).
+**Reopen if:** never as a whole (standing order). A specific arg may be a SANCTIONED
+shortfall with a recorded reason (e.g. an Excel arg that is a cell-grid concept, or one the
+formula surface ALSO lacks — an equal Excel divergence, which is fine).
+
 ---
 
 ## Structural risks (standing conditions, not bugs)

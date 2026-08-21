@@ -594,9 +594,26 @@ implementation, in a rete-free module (`nodes/listOps.ts`, `textOps.ts`, `financ
 `mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`, `nodes/matrixOps.ts`,
 `nodes/indexAccess.ts`, `cxValue.ts`). Both callers delegate to it.
 
+**MUST (capability parity — the author's standing order, 2026-08-21):** the node must
+expose EVERYTHING the formula surface can do for that function. No argument, mode, or
+return shape reachable from the formula may be unreachable from the node — the node
+carries a socket, a dropdown op, or a control for each. Divergence from Excel or
+Formula.js is a judgement call (documented per `nodeExcel` note); our OWN two surfaces
+disagreeing is a defect, never shipped. A node that dispatches through `resolveExcelFunction`
+passes the function's FULL arg list; a node with its own computation covers every mode the
+registration does (prefer routing both surfaces through one shared kernel so they cannot
+drift — the REGEX ops compose `regexApply`/`replaceNth`/`regexGroups` on both sides).
+
 *Why:* the two surfaces drifted for exactly as long as they were two implementations.
 *Enforced by:* `formulaTier3.test.ts` → "every Tier 3 name computes what its node
-computes"; `formulaTier1.test.ts`.
+computes"; `formulaTier1.test.ts`. **Capability parity** is enforced BEHAVIOURALLY, per
+function, by node↔formula agreement tests (`finance.test.ts` DB, `auditFixes.test.ts`
+RANDARRAY, `formulaTier1.test.ts` REGEX*, `text.test.ts` SUBSTITUTE, `rangeRouting.test.ts`
+TREND, `matrixReshape.test.ts` WRAP) — the ONLY reliable guard, since a missing socket
+can't be exercised. `nodeFormulaArgParity.test.ts` is a PARTIAL greppable guard: it fails a
+node that dispatches through `resolveExcelFunction` with fewer args than the arity max, but
+cannot see a separate-impl or Formula.js-fall-through gap (that scan passed while DB/
+RANDARRAY/REGEX were all broken — which is why the behavioural tests are the real line).
 *Exceptions:* `SHUFFLE` cannot assert node-equals-formula because it is VOLATILE and the
 two surfaces run different volatility clocks deliberately — the node holds its sort keys
 until the next recalc, a formula redraws per evaluation. The PERMUTATION is still one

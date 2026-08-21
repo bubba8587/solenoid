@@ -3,12 +3,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 
-// ─── FX-11 — a node must not offer LESS than the formula surface it dispatches to ──
+// ─── FX-1 — a node must not offer LESS than the formula surface it dispatches to ──
 //
 // The two surfaces (a NODE's data() and a formula name) share one impl. A node that
 // calls `resolveExcelFunction("X")` but hands it FEWER arguments than X accepts ships a
 // capability the formula has and the node lacks — a node↔formula disparity, a defect
-// regardless of how either compares to Excel (rules.md FX-11 / decisions D37). Excel /
+// regardless of how either compares to Excel (rules.md FX-1 / decisions D39). Excel /
 // Formula.js divergence is a judgement call; our OWN two surfaces disagreeing is not.
 //
 // SCOPE, stated honestly: this scan only catches the ONE mechanism where a node dispatches
@@ -18,7 +18,7 @@ import { EXCEL_IMPL_META } from "./excelFunctions";
 // Formula.js fall-through with no arity in EXCEL_IMPL_META (DB's `month`). Those are the real,
 // common shape of the defect, and they are guarded by per-function BEHAVIOURAL node↔formula
 // agreement tests instead (finance.test.ts DB, auditFixes.test.ts RANDARRAY, formulaTier1.test.ts
-// REGEX*, text.test.ts SUBSTITUTE, rangeRouting.test.ts TREND, …). FX-11 in rules.md is the
+// REGEX*, text.test.ts SUBSTITUTE, rangeRouting.test.ts TREND, …). FX-1 in rules.md is the
 // normative rule; this file is one partial, greppable guard, not the whole enforcement.
 //
 // The scan reads the real node source and classifies every `resolveExcelFunction(…)` call site:
@@ -105,7 +105,7 @@ function scanSites(): Site[] {
   return sites;
 }
 
-describe("FX-11 — a node dispatching to a formula function must pass all its arguments", () => {
+describe("FX-1 — a node dispatching to a formula function must pass all its arguments", () => {
   // LITERAL-name dispatches that pass fewer args than the impl accepts ON PURPOSE, each
   // with the reason the shortfall is not a real capability gap. (Empty: none today.)
   const SANCTIONED: Record<string, string> = {};
@@ -136,7 +136,7 @@ describe("FX-11 — a node dispatching to a formula function must pass all its a
       if (passed >= max || name in SANCTIONED) continue;
       offenders.push(`${name}: passes ${passed} arg(s), formula accepts up to ${max}`);
     }
-    expect(offenders, `FX-11 argument disparity —\n${offenders.join("\n")}`).toEqual([]);
+    expect(offenders, `FX-1 argument disparity —\n${offenders.join("\n")}`).toEqual([]);
   });
 
   it("every dynamic/indirect dispatch is accounted for (the blind spot cannot grow silently)", () => {
@@ -147,6 +147,6 @@ describe("FX-11 — a node dispatching to a formula function must pass all its a
       if (key in MANUAL) continue;
       unaccounted.push(key);
     }
-    expect(unaccounted, `FX-11: a dynamic/indirect resolveExcelFunction dispatch with no MANUAL parity note —\n${unaccounted.join("\n")}`).toEqual([]);
+    expect(unaccounted, `FX-1: a dynamic/indirect resolveExcelFunction dispatch with no MANUAL parity note —\n${unaccounted.join("\n")}`).toEqual([]);
   });
 });

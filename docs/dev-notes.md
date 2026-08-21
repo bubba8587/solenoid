@@ -156,6 +156,22 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   node↔formula agreement tests. Skipped (not clean): WRAP `pad_with` (entangles the unit policy —
   formula has it, node workaround exists), VDB `no_switch` / TOCOL·TOROW `ignore_empty` (need an
   impl + arity change across both surfaces, not just a socket).
+- **Node↔formula CAPABILITY parity — made a standing rule (D39, FX-1 extended).** Author's
+  order: the node must expose everything the formula surface can; our own two surfaces
+  disagreeing is a defect (Excel/FX divergence stays a judgement call). An agent audit found
+  the call-site arg scan MISSES the real gaps — they come from SEPARATE impls, not truncated
+  dispatch: closed DB `month` (Formula.js fall-through, no meta arity), RANDARRAY `integer`
+  (node had its own draw; now shares the exported `isTrue`), REGEXEXTRACT capture-groups +
+  REGEXREPLACE `occurrence` (node ran the poorer `regexApply` path; the shared `regexGroups`/
+  `replaceNth` were already there, formula already composed them — just exposed on the node).
+  Enforcement is BEHAVIOURAL agreement tests per function (the only reliable guard — a missing
+  socket can't be exercised); `nodeFormulaArgParity.test.ts` is a partial greppable guard for
+  the dispatch-through-`resolveExcelFunction` subset ONLY, and its header says so.
+- **New tool: `tools/string-editor/`** (built by an agent) — a standalone local companion that
+  scrapes the running dev server, lists on-screen strings, maps each to its source literal, and
+  rewrites the file on edit (WYSIWYG copy editing). Launch: `cd tools/string-editor && npm
+  install && npm start` → localhost:5599. Write path re-escapes + drift-guards; node_modules
+  gitignored.
 
 ### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
 - **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot
