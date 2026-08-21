@@ -180,13 +180,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "list-input",  label: "List Input",    description: "Builds a list from comma-separated values (for example 1, 2, 3) in each row. Every row concatenates into one output list. Element type: number, text, date, or TRUE or FALSE. Excel: selecting a range like A1:A8.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value, typed directly on the node.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
       { type: "boolean-input", label: "Boolean Input", description: "A TRUE or FALSE toggle that outputs a logical. It coerces to 1 or 0 where a number is needed.", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
-      { type: "date-input",    label: "Date Input",    description: "A date value from a calendar field.", create: () => new DateInputNode(), parity: false, keywords: "date calendar day picker serial input" },
+      { type: "date-input",    label: "Date Input",    description: "A single date value, typed or picked.", accent: DT, create: () => new DateInputNode(), parity: false, keywords: "date calendar day picker serial input" },
       { type: "table-input",   label: "Table Input",   description: "A typed-in 2-D table, one row per line, comma-separated. One element type (Num/Text/Date/Bool — mixed columns belong in Frame Input). Typed text is the stored truth: an unparseable cell shows NaN and keeps its text in the editor's Source view.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
       { type: "frame-input",   label: "Frame Input", description: "A typed-in data table with named, typed columns and editable cells.", accent: NODE_KIND_ACCENTS.frame, create: () => new FrameInputNode(), parity: false },
       { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: COMPLEX.", accent: CX, create: () => new ComplexFromNode(), parity: false },
       { type: "lambda-make",   label: "LAMBDA",      description: "Defines a reusable formula as a value: parameters in the λ(…) row (bound positionally), other variables become captured inputs. Evaluates like Expression — standard Excel functions, separate from the visual nodes. Excel: LAMBDA.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
-      { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
       { type: "pair", children: [
         { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel RAND()). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false },
         { type: "na",          label: "NA",          description: "Outputs #N/A, which propagates through calculations like Excel. Catch it with IFERROR or IFNA.", create: () => new NaNode() },
@@ -736,8 +735,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Date & Time", description: "Date serial type (like Excel): sources, extract parts, arithmetic, and working-day calculations.",
     children: [
-      { type: "date-construct", label: "DATE",      description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: DATE.", create: () => new DateConstructNode(), parity: false, accent: DT },
+      { type: "date-construct", label: "DATE (Build)", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: DATE.", create: () => new DateConstructNode(), parity: false, accent: DT },
       { type: "pair", children: [todayNowLeaf("today"), todayNowLeaf("now")] },
+      { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
       { type: "date-time",     label: "TIME",      description: "Builds a time fraction 0–1 from Hour, Minute, Second. Add it to a date serial for date+time. Excel: TIME.", create: () => new TimeConstructNode(), parity: false },
       {
         type: "category", label: "Parse", description: "Convert text strings to date or time values.",
