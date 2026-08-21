@@ -268,11 +268,19 @@ export function priceMat(
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
   const issue = serialToJsDate(issueSerial);
+  // Excel's PRICEMAT/YIELDMAT span THREE periods: DIM (issue→maturity) for the total
+  // interest, DSM (settle→maturity) for discounting, A (issue→settle) for the accrued
+  // interest deducted from the price. The old code used DSM for all of it and dropped
+  // the accrual, so PRICEMAT/YIELDMAT weren't even inverses of each other.
+  const dim = dayCount(b, issue, maturity);
   const dsm = dayCount(b, settle, maturity);
+  const a = dayCount(b, issue, settle);
   const B = b === 3 ? 365 : b === 1 ? actualDays(issue, coupAddMonths(issue, 12)) : 360;
+  const totalInterest = 100 * (1 + dim / B * rate); // 100 + DIM/B·rate·100
+  const accrued = a / B * rate * 100;
   return op === "pricemat"
-    ? 100 * (1 + dsm * rate / B) / (1 + dsm * yldOrPrice / B)
-    : (100 * (1 + dsm * rate / B) / (yldOrPrice / 100) - 1) * B / dsm;
+    ? totalInterest / (1 + dsm / B * yldOrPrice) - accrued
+    : (totalInterest / (yldOrPrice + accrued) - 1) * B / dsm;
 }
 
 export type DurationOp = "duration" | "mduration";
