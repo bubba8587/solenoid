@@ -34,7 +34,10 @@ function codeLines(file: string): string[] {
   return fs.readFileSync(file, "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, ""));
 }
 
-const rel = (p: string) => path.relative(SRC, p);
+// Forward slashes always — path.relative uses "\" on Windows, but every SANCTIONED
+// map below is keyed with "/", so a native-separator path never matches the sanction
+// (the whole file passes only on a "/" OS otherwise).
+const rel = (p: string) => path.relative(SRC, p).replace(/\\/g, "/");
 
 describe("SOCK-7 — a file that retypes sockets in place must reconcile downstream", () => {
   // An in-place socket retype (swapping `port.socket` or calling
