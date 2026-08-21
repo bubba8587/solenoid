@@ -26,13 +26,39 @@ The page auto-scans on load.
 `npm start` (plain `node server.mjs`) also works if you'd rather run it in the foreground
 and open the URL yourself.
 
+## Reading YOUR live document (not the default seed)
+
+By default the editor launches its **own** headless browser and loads the app fresh. A fresh
+browser has empty storage, so it only ever sees the app's **default state** (the Getting
+Started seed) — never the document you have open in your own browser, which lives in *your*
+browser's autosave. When this happens the page shows a warning banner and the header omits
+"live tab".
+
+To edit what you *actually* see, let the editor attach to your real browser over the Chrome
+DevTools Protocol:
+
+1. **Fully quit** the browser you use for the app (so the debug flag isn't ignored by an
+   already-running instance).
+2. Relaunch it **with your normal profile** and remote debugging on, e.g. on Windows:
+   `chrome.exe --remote-debugging-port=9222` (Edge: `msedge.exe --remote-debugging-port=9222`).
+   Your normal profile means autosave restores your document.
+3. Open **http://localhost:1420** in it and navigate to the doc you want.
+4. Back in the editor, click **Rescan**. It now attaches to that tab (header shows
+   "· live tab") and lists exactly what you see.
+
+The debug endpoint defaults to `http://localhost:9222` (override with `SOLENOID_CDP`). The
+editor only reads the tab — it never navigates or changes it — and disconnects cleanly after
+each scan, leaving your browser running.
+
 ## How it works
 
-1. **Scrape** — launches the preinstalled Playwright Chromium
-   (`chromium-1223`), navigates to localhost:1420, waits for the app to render, and
-   collects every visible, human-readable text run (plus `title` / `placeholder` /
-   `aria-label` attribute strings). Pure numbers, single glyphs, whitespace and icons are
-   dropped. Each string keeps a light context (tag + short CSS path + any `data-*`).
+1. **Scrape** — first tries to **attach to your own browser** over CDP (see above) and read
+   the app tab as-is (`source: live`); if no debug browser is reachable it falls back to
+   launching the preinstalled Playwright Chromium (`chromium-1223`) and loading the app fresh
+   (`source: fresh`, the default state). Either way it collects every visible, human-readable
+   text run (plus `title` / `placeholder` / `aria-label` attribute strings); pure numbers,
+   single glyphs, whitespace and icons are dropped. Each string keeps a light context
+   (tag + short CSS path + any `data-*`).
 
 2. **Map to source** — scans `src/**/*.{ts,tsx,md}`, extracts every string literal
    (`"..."`, `'...'`, non-interpolated `` `...` ``) decoded through its escapes, and `.md`
@@ -62,7 +88,8 @@ are never logged, and a logging failure never blocks the source rewrite.
 
 ## Controls
 
-- **Rescan app** — re-reads the running app (re-launches Chromium).
+- **Rescan app** — re-reads the running app (attaches to your browser if it exposes a debug
+  port, otherwise launches its own Chromium).
 - **Filter box** — substring filter over the visible strings.
 - **1 match / many matches / not in source** chips — toggle which classes are listed.
 - **Save** (or Enter in the field) — writes the change. For ambiguous strings, pick "edit

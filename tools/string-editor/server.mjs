@@ -41,7 +41,7 @@ async function listSourceFiles() {
 // --- API handlers -------------------------------------------------------------
 async function handleScan() {
   const [scraped, index] = await Promise.all([scrapeStrings(), buildIndex(listSourceFiles)]);
-  const items = scraped.map((s) => {
+  const items = scraped.items.map((s) => {
     const matches = findMatches(index, s.text);
     let status;
     if (matches.length === 0) status = 'not-found';
@@ -61,7 +61,7 @@ async function handleScan() {
   // Editable (unique/ambiguous) first, then not-found; alpha within.
   const rank = { unique: 0, ambiguous: 1, 'not-found': 2 };
   items.sort((a, b) => (rank[a.status] - rank[b.status]) || a.text.localeCompare(b.text));
-  return { count: items.length, fileCount: index.fileCount, items };
+  return { count: items.length, fileCount: index.fileCount, source: scraped.source, items };
 }
 
 async function handleSave(body) {

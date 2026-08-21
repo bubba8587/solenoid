@@ -6,6 +6,10 @@ import { chromium } from 'playwright-core';
 const CHROME_EXEC = process.env.SOLENOID_CHROME
   || 'C:/Users/build/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe';
 const APP_URL = process.env.SOLENOID_APP_URL || 'http://localhost:1420';
+// The author's OWN browser, if launched with --remote-debugging-port. Attaching to it
+// reads the REAL tab (their live document from autosave); a fresh launch below only
+// ever sees the app's default state (empty storage → the Getting Started seed).
+const CDP_URL = process.env.SOLENOID_CDP || 'http://localhost:9222';
 
 // Runs inside the page. Collect visible text nodes with light context.
 function collectInPage() {
@@ -75,31 +79,73 @@ function keep(text) {
   return true;
 }
 
-export async function scrapeStrings() {
+// Dedupe raw text runs by text, merging occurrence contexts.
+function dedupe(raw) {
+  const map = new Map();
+  for (const r of raw) {
+    if (!keep(r.text)) continue;
+    const existing = map.get(r.text);
+    if (existing) {
+      existing.count++;
+      if (existing.contexts.length < 6) existing.contexts.push(context(r));
+    } else {
+      map.set(r.text, { text: r.text, count: 1, contexts: [context(r)] });
+    }
+  }
+  return [...map.values()];
+}
+
+// Attach to the author's already-open browser (launched with --remote-debugging-port)
+// and read the app tab AS-IS — their live document, not a fresh load. Returns the raw
+// text runs, or null if no debug browser / no app tab is reachable.
+async function scrapeViaCDP() {
+  let browser;
+  try {
+    browser = await chromium.connectOverCDP(CDP_URL, { timeout: 2000 });
+  } catch {
+    return null; // no browser is exposing a debug port
+  }
+  try {
+    const wantPort = new URL(APP_URL).port || '80';
+    let target = null;
+    for (const ctx of browser.contexts()) {
+      for (const p of ctx.pages()) {
+        let u = '';
+        try { u = p.url(); } catch { /* closing tab */ }
+        if (u.includes(`:${wantPort}`) && /^https?:\/\/(localhost|127\.0\.0\.1)/.test(u)) { target = p; break; }
+      }
+      if (target) break;
+    }
+    if (!target) return null; // debug browser is up, but the app isn't open in it
+    return await target.evaluate(collectInPage);
+  } catch {
+    return null;
+  } finally {
+    try { await browser.close(); } catch { /* disconnects the CDP session; leaves the browser running */ }
+  }
+}
+
+// Fallback: launch our OWN headless Chromium and load the app fresh. Empty storage,
+// so this shows the app's DEFAULT state, never the author's live document.
+async function scrapeViaLaunch() {
   const browser = await chromium.launch({ executablePath: CHROME_EXEC, headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 1680, height: 1050 } });
     await page.goto(APP_URL, { waitUntil: 'networkidle', timeout: 30000 });
     // Give Rete / React a moment to render node cards.
     await page.waitForTimeout(2500);
-    const raw = await page.evaluate(collectInPage);
-
-    // Dedupe by text, merging occurrence contexts.
-    const map = new Map();
-    for (const r of raw) {
-      if (!keep(r.text)) continue;
-      const existing = map.get(r.text);
-      if (existing) {
-        existing.count++;
-        if (existing.contexts.length < 6) existing.contexts.push(context(r));
-      } else {
-        map.set(r.text, { text: r.text, count: 1, contexts: [context(r)] });
-      }
-    }
-    return [...map.values()];
+    return await page.evaluate(collectInPage);
   } finally {
     await browser.close();
   }
+}
+
+// Prefer the author's real tab (source: 'live'); fall back to a fresh load
+// (source: 'fresh') so the tool still works, but the UI can warn it isn't live.
+export async function scrapeStrings() {
+  const viaCdp = await scrapeViaCDP();
+  if (viaCdp) return { items: dedupe(viaCdp), source: 'live' };
+  return { items: dedupe(await scrapeViaLaunch()), source: 'fresh' };
 }
 
 function context(r) {

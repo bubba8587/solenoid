@@ -21,3 +21,11 @@ It auto-scans on load; the Rescan button re-reads the app. Editing a string and
 Saving rewrites the source literal (Vite HMR reflects it live) and appends the
 change to `tools/string-editor/copy-edits.jsonl` — the running record of the
 author's copy/voice edits.
+
+By default the editor launches its OWN browser, which shows the app's DEFAULT
+state (a fresh load), not the author's live document — the page shows a warning
+banner ("default state") when that happens. To edit their LIVE tab, the author
+must relaunch their browser with `--remote-debugging-port=9222` (normal profile,
+so autosave restores their doc) and Rescan; the editor then attaches over CDP and
+the header shows "live tab". See `tools/string-editor/README.md` → "Reading YOUR
+live document". If the user reports seeing the wrong (default) content, this is why.
