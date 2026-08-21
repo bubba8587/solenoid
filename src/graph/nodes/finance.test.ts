@@ -3,6 +3,7 @@ import {
   TvmNode,
   IpmtPpmtNode,
   IspmtNode,
+  TBillNode,
   NpvNode,
   IrrNode,
   MirrNode,
@@ -149,6 +150,27 @@ describe("ISPMT", () => {
     const at = (per: number) => new IspmtNode().data({ rate: [0.05], per: [per], nper: [12], pv: [1000] }).result!;
     expect(at(1)).toBeCloseTo(-45.833, 3);
     expect(at(12)).toBeCloseTo(0, 9);
+  });
+});
+
+describe("TBILL — money-market day-count conventions", () => {
+  const d = (s: string) => parseDateToSerial(s);
+  const settle = d("2024-01-15"), maturity = d("2024-07-15"); // DSM = 182 actual days
+  it("TBILLYIELD is a 360-day yield (verified against real Excel = 0.050718512)", () => {
+    // NOT 365: that basis belongs to TBILLEQ. Formula.js also diverges here (it uses a
+    // 30/360 day count), so this value is ours-owned and must not drift toward either.
+    expect(new TBillNode({ op: "tbillyield" }).data({ settle: [settle], maturity: [maturity], price: [97.5] }).result)
+      .toBeCloseTo(0.050718512, 9);
+  });
+  it("TBILLPRICE discounts on a 360-day basis (Excel's documented formula)", () => {
+    // 100 × (1 − 0.05 × 182/360).
+    expect(new TBillNode({ op: "tbillprice" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
+      .toBeCloseTo(100 * (1 - 0.05 * 182 / 360), 9);
+  });
+  it("TBILLEQ is the bond-equivalent 365-day yield (Excel's documented formula, DSM ≤ 182)", () => {
+    // (365 × 0.05) / (360 − 0.05 × 182).
+    expect(new TBillNode({ op: "tbilleq" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
+      .toBeCloseTo((365 * 0.05) / (360 - 0.05 * 182), 9);
   });
 });
 

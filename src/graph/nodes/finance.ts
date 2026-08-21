@@ -871,7 +871,10 @@ export class TBillNode extends ClassicPreset.Node {
       case "tbillyield": {
         const pr = readInput(inputs.price, this.literals.price ?? 97.5);
         if (pr === null) { this.cachedResult = null; return { result: null }; }
-        result = ((100 - pr) / pr) * (365 / dsm);
+        // Excel's TBILLYIELD is a money-market yield on a 360-day basis (verified against
+        // real Excel: =TBILLYIELD(DATE(2024,1,15),DATE(2024,7,15),97.5) = 0.050718512).
+        // The 365 that was here is TBILLEQ's bond-equivalent basis, not this one.
+        result = ((100 - pr) / pr) * (360 / dsm);
         break;
       }
     }
