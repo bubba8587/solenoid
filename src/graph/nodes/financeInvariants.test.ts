@@ -24,8 +24,14 @@ describe("PRICE ↔ YIELD are inverses", () => {
 });
 
 describe("PRICEMAT ↔ YIELDMAT are inverses", () => {
+  const issue = d("2023-07-15");
+  it("PRICEMAT matches real Excel (absolute value, not just the round-trip)", () => {
+    // =PRICEMAT(DATE(2024,1,15), DATE(2029,1,15), DATE(2023,7,15), 0.06, 0.065) = 97.37735849.
+    expect(new PriceMatNode({ op: "pricemat" })
+      .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], yld: [0.065], basis: [0] }).result!)
+      .toBeCloseTo(97.37735849, 6);
+  });
   it("YIELDMAT recovers the yield that PRICEMAT was given", () => {
-    const issue = d("2023-07-15");
     const price = new PriceMatNode({ op: "pricemat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], yld: [0.065], basis: [0] }).result!;
     const yld = new PriceMatNode({ op: "yieldmat" })
