@@ -33,8 +33,8 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   now pins the round-trips/identities (PRICE↔YIELD, PRICEMAT↔YIELDMAT, ODD* pairs,
   COUP* day-count, DURATION/MDURATION, VDB total/additivity), which catch structural
   bugs but NOT a consistently-wrong absolute value. Want golden real-Excel values for:
-  PRICEMAT (new formula, confirm absolute), COUP*, DURATION, ODDF/ODDL, ACCRINT/ACCRINTM,
-  VDB. PRICE/YIELD already match Microsoft's documented examples.
+  COUP*, DURATION, ODDF/ODDL, ACCRINT/ACCRINTM, VDB. Already confirmed absolute:
+  PRICE/YIELD (Microsoft examples), TBILLYIELD/TBILLEQ + PRICEMAT (real Excel).
 
 - [ ] **Stale "not yet supported" NODE_EXCEL notes on SHIPPED finance nodes** — several
   reference notes claim a working node isn't implemented (accrint, accrintm, pricedisc,
