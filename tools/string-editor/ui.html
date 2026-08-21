@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Solenoid String Editor</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --panel2: #23272f; --line: #2e333d;
+    --ink: #e7eaf0; --muted: #9aa3b2; --accent: #6ea8fe;
+    --ok: #57c98a; --warn: #e6c15a; --bad: #e8836f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel);
+    border-bottom: 1px solid var(--line); padding: 12px 18px; }
+  h1 { font-size: 15px; margin: 0 0 8px; letter-spacing: .2px; }
+  h1 small { color: var(--muted); font-weight: 400; margin-left: 8px; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  button { background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  button:hover { border-color: #3c4350; }
+  button.primary { background: var(--accent); color: #0b1220; border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  input[type=text], input.edit { background: #0f1115; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: inherit; }
+  input.edit { width: 100%; }
+  .filter { margin-left: auto; }
+  .chips { display: flex; gap: 6px; }
+  .chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line);
+    color: var(--muted); cursor: pointer; user-select: none; }
+  .chip.on { color: var(--ink); border-color: #3c4350; background: var(--panel2); }
+  main { padding: 14px 18px 60px; max-width: 1100px; }
+  .row { background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
+    padding: 12px 14px; margin-bottom: 10px; }
+  .row.hidden { display: none; }
+  .top { display: flex; align-items: flex-start; gap: 10px; }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; margin-top: 2px; }
+  .badge.unique { color: var(--ok); border: 1px solid #2c5a41; background: #12251b; }
+  .badge.ambiguous { color: var(--warn); border: 1px solid #5a4f2c; background: #241f12; }
+  .badge.not-found { color: var(--muted); border: 1px solid var(--line); background: var(--panel2); }
+  .rendered { font-weight: 600; word-break: break-word; flex: 1; }
+  .rendered .cnt { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .ctx { color: var(--muted); font-size: 12px; margin-top: 4px; word-break: break-word; }
+  .ctx code { color: #b9c2d0; }
+  .loc { font-size: 12px; color: var(--muted); margin-top: 8px; font-family: ui-monospace, "Cascadia Code", monospace; }
+  .loc b { color: #cdd5e0; font-weight: 600; }
+  .editline { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .picker { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .picker label { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .msg { font-size: 12px; margin-top: 6px; min-height: 14px; }
+  .msg.ok { color: var(--ok); }
+  .msg.err { color: var(--bad); }
+  .empty { color: var(--muted); padding: 40px; text-align: center; }
+  .spin { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Solenoid String Editor <small id="sub">copy-edit visible app strings, write to source</small></h1>
+  <div class="bar">
+    <button class="primary" id="rescan">Rescan app</button>
+    <input type="text" id="search" placeholder="Filter strings…" />
+    <div class="chips filter">
+      <span class="chip on" data-f="unique">editable</span>
+      <span class="chip on" data-f="ambiguous">ambiguous</span>
+      <span class="chip on" data-f="not-found">not found</span>
+    </div>
+  </div>
+</header>
+<main id="list"><div class="empty" id="empty">Click <b>Rescan app</b> to read the running app on localhost:1420.</div></main>
+
+<script type="module">
+const listEl = document.getElementById('list');
+const rescanBtn = document.getElementById('rescan');
+const searchEl = document.getElementById('search');
+const subEl = document.getElementById('sub');
+const activeFilters = new Set(['unique', 'ambiguous', 'not-found']);
+let items = [];
+
+document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+  const f = c.dataset.f;
+  if (activeFilters.has(f)) { activeFilters.delete(f); c.classList.remove('on'); }
+  else { activeFilters.add(f); c.classList.add('on'); }
+  render();
+}));
+searchEl.addEventListener('input', render);
+
+rescanBtn.addEventListener('click', scan);
+
+async function scan() {
+  rescanBtn.disabled = true;
+  const prev = rescanBtn.textContent;
+  rescanBtn.textContent = 'Scanning…';
+  listEl.innerHTML = '<div class="empty spin">Launching Chromium and reading the app…</div>';
+  try {
+    const r = await fetch('/api/scan');
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    items = data.items;
+    subEl.textContent = `${data.count} visible strings · scanned ${data.fileCount} source files`;
+    render();
+  } catch (e) {
+    listEl.innerHTML = `<div class="empty">Scan failed: ${escapeHtml(String(e.message || e))}<br><br>Is the dev server running on localhost:1420?</div>`;
+  } finally {
+    rescanBtn.disabled = false;
+    rescanBtn.textContent = prev;
+  }
+}
+
+function render() {
+  const q = searchEl.value.trim().toLowerCase();
+  const shown = items.filter((it) => activeFilters.has(it.status) && (!q || it.text.toLowerCase().includes(q)));
+  if (!items.length) return;
+  if (!shown.length) { listEl.innerHTML = '<div class="empty">No strings match the current filter.</div>'; return; }
+  listEl.innerHTML = '';
+  for (const it of shown) listEl.appendChild(rowFor(it));
+}
+
+function rowFor(it) {
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const top = document.createElement('div');
+  top.className = 'top';
+  const badge = document.createElement('span');
+  badge.className = 'badge ' + it.status;
+  badge.textContent = it.status === 'not-found' ? 'not in source' : it.status;
+  const rendered = document.createElement('div');
+  rendered.className = 'rendered';
+  rendered.innerHTML = escapeHtml(it.text) + (it.count > 1 ? `<span class="cnt">×${it.count} on screen</span>` : '');
+  top.append(badge, rendered);
+  row.append(top);
+
+  if (it.contexts && it.contexts.length) {
+    const ctx = document.createElement('div');
+    ctx.className = 'ctx';
+    ctx.innerHTML = 'seen in: <code>' + it.contexts.map(escapeHtml).join('</code> · <code>') + '</code>';
+    row.append(ctx);
+  }
+
+  if (it.status === 'not-found') {
+    const m = document.createElement('div');
+    m.className = 'loc';
+    m.textContent = 'no matching source literal (dynamic, interpolated, or document content) — read-only';
+    row.append(m);
+    return row;
+  }
+
+  // location list
+  const loc = document.createElement('div');
+  loc.className = 'loc';
+  loc.innerHTML = it.matches.map((mm) => `<b>${escapeHtml(mm.file)}</b>:${mm.line}${mm.kind === 'md' ? ' (md text)' : ''}`).join('  ·  ');
+  row.append(loc);
+
+  // ambiguous: choose target(s)
+  let targets = it.matches; // default: all
+  let pickerState = 'all';
+  if (it.status === 'ambiguous') {
+    const picker = document.createElement('div');
+    picker.className = 'picker';
+    const mkRadio = (val, label) => {
+      const id = 'r' + Math.random().toString(36).slice(2);
+      const lab = document.createElement('label');
+      const rb = document.createElement('input');
+      rb.type = 'radio'; rb.name = 'pick' + Math.random(); rb.value = val; rb.id = id;
+      if (val === 'all') rb.checked = true;
+      rb.addEventListener('change', () => { pickerState = val; });
+      lab.append(rb, document.createTextNode(label));
+      return lab;
+    };
+    // shared radio group name
+    const gname = 'g' + Math.random().toString(36).slice(2);
+    const allLab = mkRadio('all', `edit ALL ${it.matches.length} occurrences`);
+    allLab.querySelector('input').name = gname;
+    picker.append(allLab);
+    it.matches.forEach((mm, i) => {
+      const lab = mkRadio(String(i), `only ${mm.file}:${mm.line}`);
+      lab.querySelector('input').name = gname;
+      picker.append(lab);
+    });
+    row.append(picker);
+    row._resolveTargets = () => pickerState === 'all' ? it.matches : [it.matches[Number(pickerState)]];
+  }
+
+  // edit line
+  const editRow = document.createElement('div');
+  editRow.className = 'editline';
+  const input = document.createElement('input');
+  input.className = 'edit';
+  input.type = 'text';
+  input.value = it.text;
+  const save = document.createElement('button');
+  save.className = 'primary';
+  save.textContent = 'Save';
+  editRow.append(input, save);
+  row.append(editRow);
+
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+  row.append(msg);
+
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save.click(); });
+  save.addEventListener('click', async () => {
+    const newText = input.value;
+    if (newText === it.text) { msg.className = 'msg'; msg.textContent = 'no change'; return; }
+    const tgts = row._resolveTargets ? row._resolveTargets() : it.matches;
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    try {
+      const done = [];
+      for (const mm of tgts) {
+        const r = await fetch('/api/save', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ abs: mm.abs, start: mm.start, end: mm.end, quote: mm.quote, raw: mm.raw, kind: mm.kind, newText }),
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        done.push(data.file);
+      }
+      it.text = newText; // reflect for further edits this session
+      msg.className = 'msg ok';
+      msg.textContent = 'saved to ' + [...new Set(done)].join(', ') + ' — HMR should update the app';
+    } catch (e) {
+      msg.className = 'msg err';
+      msg.textContent = 'save failed: ' + (e.message || e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  return row;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// auto-scan on open
+scan();
+</script>
+</body>
+</html>
