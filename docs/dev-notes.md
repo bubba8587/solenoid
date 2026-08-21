@@ -161,7 +161,8 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   disagreeing is a defect (Excel/FX divergence stays a judgement call). An agent audit found
   the call-site arg scan MISSES the real gaps — they come from SEPARATE impls, not truncated
   dispatch: closed DB `month` (Formula.js fall-through, no meta arity), RANDARRAY `integer`
-  (node had its own draw; now shares the exported `isTrue`), REGEXEXTRACT capture-groups +
+  (a card checkbox — a persisted boolean field in INIT_FIELD_ORDER, InterpolateNode's
+  forecast-checkbox pattern), REGEXEXTRACT capture-groups +
   REGEXREPLACE `occurrence` (node ran the poorer `regexApply` path; the shared `regexGroups`/
   `replaceNth` were already there, formula already composed them — just exposed on the node).
   Enforcement is BEHAVIOURAL agreement tests per function (the only reliable guard — a missing
