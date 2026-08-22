@@ -52,7 +52,12 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   fattened grouped cards. NEXT STEP IS DATA, NOT A HYPOTHESIS: the author's dpr and camera k are
   still unknown, and no surviving mechanism explains their two clues (same at many zoom levels;
   absent on mobile). Get a console dump of devicePixelRatio, k, and each card's edge phase from
-  their machine first. Full record in the 2026-08-22 digest.
+  their machine first. **DONE, and it clears the default doc:** headed on the author's hardware
+  (dpr 1.14, k 0.6023, ANGLE/D3D11) zero of 22 cards show a weak bottom edge and the overflow A/B
+  moves Frame Input by 0.0%. The catch: a fresh browser profile loads the `getting-started` seed,
+  so no measurement this session ever saw the author's own document. **Reproduce on THEIR document
+  first** (headed playwright against their real Chrome profile, or ask which doc/node). Full record
+  in the 2026-08-22 digest.
 
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,

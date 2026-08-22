@@ -119,12 +119,26 @@ cards (their 2px border became 2x the floored hairline, with a beveled inner cor
 radius went under the stroke width). Reverted whole. Keep the measurement, drop the conclusion:
 sub-pixel width is real but is evidently not what the author is looking at.
 
-**What is still unknown — get this before theorising again.** The author's dpr and zoom were never
-established, and every bench number here is from a headless dpr-1/dpr-1.5 harness at k=0.42, which
-may simply not be their case. Their reports that it is zoom-independent and absent on mobile are
-not yet explained by any mechanism that survived. Next step is ground truth from their machine
-(devicePixelRatio, camera k, and the per-node device-pixel phase of each edge), not another
-hypothesis.
+**THE METHOD WAS THE BUG. Two harness faults, both of which invalidate every bench number above.**
+1. **Headless rasterizes through SwiftShader, not the GPU.** Subpixel stroke coverage is exactly
+   what differs. The author's machine composites through ANGLE/D3D11 on a Radeon RX 6800 XT.
+2. **A fresh browser profile has empty localStorage, so the app loads the default `getting-started`
+   seed — NOT the author's autosaved document.** Every measurement in this session, headless and
+   headed alike, looked at a document the author was not looking at.
+
+Ground truth from the author's display, finally taken with headed playwright-core 1.60 (the binary
+is in the npx cache; `newContext({viewport:null})` is what surfaces the real dpr):
+`devicePixelRatio 1.14` (2246x1264 CSS on a 2560-wide panel), default camera `k 0.6023`, dark theme.
+Every card on the default doc is `--grouped`, so a 2px stroke = **1.37 device px** — comfortably
+above one, so the sub-device-pixel story cannot apply there at all. A headed sweep of all 22
+measurable cards found **zero** weak bottom edges (worst bottom/left ink ratio 0.85, median ~1.05),
+and a live A/B of the `overflow` clip on that hardware moved Frame Input's bottom ink by **0.0%**.
+
+So: the landed `overflow` fix is correct and helps at dpr 1, but it is a NO-OP for the author's
+case, and the reported defect does not reproduce on the default document at their settings. The
+next session must reproduce on the AUTHOR'S document first — launch against their real Chrome
+profile (`launchPersistentContext` with their user-data-dir) or have them name the doc and node —
+before touching any CSS.
 
 **Resizable text fields now wear the app's own grip.** The Layout field (Frame Input, Record) and
 the Mermaid source ran on `resize: vertical`. The native control's DRAG is fine — measured 1:1
