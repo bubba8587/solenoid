@@ -188,6 +188,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     // ── composite runtime (the CONFIG persists via extras; these are run state) ──
     goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key",
     solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
+    lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
     stale: "recomputed staleness", internalEditor: "the live internal rete stack",
     internalEngine: "the live internal rete stack", internalPositions: "runtime mirror; positions persist via snapshotInternal",
     internalEditSeq: "edit counter (session)",

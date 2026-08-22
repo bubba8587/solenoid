@@ -196,8 +196,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
   message). Same split as the divergence catalogue: live half out, finished record
   stays.
-- [ ] **By-Row cap: silent truncation → Problems-panel warning** (`composite.ts`
-  `BY_ROW_MAX_ROWS` = 500).
 - [ ] **Every Formula.js-only 2-D function is DEAD on the formula surface** — a
   matrix arg only survives dispatch through a declared `matrixArgs`
   (`excelFormula.ts` D23 containment), which no library-backed name has. So the

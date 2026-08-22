@@ -13,7 +13,8 @@ import {
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
 import { isFrameValue, frameRowCount, frameFromRows } from "../frame";
-import { loopMembers } from "../process";
+import { loopMembers, isGraphRebuilding } from "../process";
+import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
@@ -247,6 +248,10 @@ export class CompositeNode extends ClassicPreset.Node {
   /** By-Row mode: the exposed INPUT port to iterate — one pass per row of its value
    *  (see `byRowValues`), other ports fixed. `""` = not set, so a single pass. */
   byRowPortId: string;
+  /** By-Row edge-detect: the row total the last cap warning fired at, or null when the
+   *  last run wasn't capped — so a re-Solve of the same over-cap frame doesn't re-toast,
+   *  but a change in how much is dropped (or a fresh relapse) does. Not persisted. */
+  private lastByRowCapTotal: number | null = null;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
   /** Monte Carlo config (null until the mode is configured). */
@@ -978,7 +983,26 @@ export class CompositeNode extends ClassicPreset.Node {
       : (marker?.defaultValue ?? port.default ?? null);
     let rows = byRowValues(source);
     if (rows.length === 0) return this.runPass(inputs);
-    if (rows.length > BY_ROW_MAX_ROWS) rows = rows.slice(0, BY_ROW_MAX_ROWS);
+    // The only heavy mode whose pass COUNT comes from the data, not a typed number, so it
+    // caps to bound a runaway. Truncation drops rows off the tail — a plausible-but-partial
+    // series — so warn loudly (Alerts HUD + toast). Edge-detected on the total per the
+    // alertStore STATUS rule; a Solve runs outside the bulk-rebuild guard, so skip that.
+    if (rows.length > BY_ROW_MAX_ROWS) {
+      const total = rows.length;
+      if (total !== this.lastByRowCapTotal && !isGraphRebuilding()) {
+        const name = (this.label ?? "").trim() || "Composite";
+        fireAlert({
+          nodeId: this.id,
+          label: name,
+          kind: "warning",
+          message: `${name}: By-Row ran the first ${BY_ROW_MAX_ROWS} of ${total} rows (the rest were skipped)`,
+        });
+      }
+      this.lastByRowCapTotal = total;
+      rows = rows.slice(0, BY_ROW_MAX_ROWS);
+    } else {
+      this.lastByRowCapTotal = null;
+    }
     return this.collectMultiple(inputs, rows.map((r) => ({ [port.id]: r })));
   }
 

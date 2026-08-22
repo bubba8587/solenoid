@@ -6,6 +6,7 @@ import { FLAT_CATALOG } from "../catalogUtils";
 import { extractInit } from "../copyPaste";
 import { isSolError } from "../errorValue";
 import { loopMembers } from "../process";
+import { alertStore } from "../alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "./composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../frame";
 import { NumberInputNode } from "./input";
@@ -663,6 +664,37 @@ describe("CompositeNode By-Row run mode", () => {
     const big = Array.from({ length: BY_ROW_MAX_ROWS + 100 }, (_, i) => i);
     const out = await c.data({ [aId]: [big] });
     expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
+  });
+
+  it("warns (Alerts + toast) when it caps, and doesn't re-fire on an identical re-Solve", async () => {
+    // By-Row is a heavy mode, so it runs only on a Solve — requestSolve() before each run.
+    alertStore.clear();
+    const { c, aId, outId } = await makeDoubler();
+    const big = Array.from({ length: BY_ROW_MAX_ROWS + 100 }, (_, i) => i);
+    const solve = (input: unknown) => { c.requestSolve(); return c.data({ [aId]: [input] }); };
+    await solve(big);
+    const fired = alertStore.list().filter((e) => e.nodeId === c.id);
+    expect(fired.length).toBe(1);
+    expect(fired[0].kind).toBe("warning");
+    expect(fired[0].message).toContain(String(BY_ROW_MAX_ROWS + 100));
+    // Same over-cap total again → no second alert (STATUS edge-detect).
+    await solve(big);
+    expect(alertStore.list().filter((e) => e.nodeId === c.id).length).toBe(1);
+    // Under the cap → no warning, and the edge resets so a later relapse fires again.
+    await solve([1, 2, 3]);
+    await solve(big);
+    expect(alertStore.list().filter((e) => e.nodeId === c.id).length).toBe(2);
+    // The result still carries the first BY_ROW_MAX_ROWS rows, not an error.
+    const out = await solve(big);
+    expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
+  });
+
+  it("does not warn when the row count is within the cap", async () => {
+    alertStore.clear();
+    const { c, aId } = await makeDoubler();
+    c.requestSolve();
+    await c.data({ [aId]: [[1, 2, 3]] });
+    expect(alertStore.list().filter((e) => e.nodeId === c.id).length).toBe(0);
   });
 
   it("mirrors the collected series onto the output marker (the drill-in shows it too)", async () => {
