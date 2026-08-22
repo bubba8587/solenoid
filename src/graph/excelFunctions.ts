@@ -918,7 +918,14 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
     default: return solError("#VALUE!", "search_mode is 1 or -1");
   }
 };
+// An ARRAY lookup value would SPILL in Excel (one position per element); we don't
+// spill on the formula surface, and a whole array can never `===` a single key, so
+// without this guard it reads as one un-findable needle and lies quietly with #N/A.
+// Refuse loudly until the engine gains per-argument spill (backlog: wholeArrayArgs).
+const arrayNeedle = () =>
+  solError("#VALUE!", "Look up one value at a time — an array lookup value isn't supported");
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, searchMode) => {
+  if (Array.isArray(lookup)) return arrayNeedle();
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
@@ -931,6 +938,7 @@ registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, search
   return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
 });
 registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
+  if (Array.isArray(lookup)) return arrayNeedle();
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);

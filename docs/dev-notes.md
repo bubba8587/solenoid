@@ -86,6 +86,27 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23 — independent small fixes: array-needle lookup, dep-diff triage)
+
+**XLOOKUP/XMATCH: an array lookup value no longer lies quietly.** Excel spills one position
+per element of an array `lookup_value`; we don't spill on the formula surface, and a whole
+array can never `===` a single key, so `xmatchIndex` returned −1 → a quiet `#N/A` "No match
+found". Both formula registrations now refuse an array needle up front with a loud `#VALUE!`
+(`arrayNeedle`, `excelFunctions.ts`). NODE surface untouched (its lookup value is a scalar
+slot; the node is the deliberate container-lookup surface). Pinned in `excelFunctions.test.ts`
+and negative-controlled (comment the guard → the test fails with `#N/A`). Deep fix (actual
+spill via per-argument prep, `wholeArrayArgs`) stays backlogged; drop the guard when it lands.
+
+**Dependency-diff triage (read the diffs, not the version bumps):**
+- `@formulajs/formulajs` 4.6.0 → 4.6.1 **bumped.** The whole diff is a new `TAKE` (we already
+  own `TAKE` via `registerInternal`, so upstream's — which references undefined `value`/`calc`
+  — never runs) and a real `SUMIFS` fix coercing text-formatted sum-range numbers, which is
+  correct-and-inert against our typed columns. Full suite green on 4.6.1.
+- `rete-history-plugin` 2.1.1 → 2.2.0 **NOT bumped.** `dist/` is byte-identical; the only delta
+  is a new REQUIRED peer on `rete-comment-plugin@^2.2.0` (a plugin we don't use — our own
+  `commentStore`). Net negative (unmet-peer warning or an unused plugin dragged into the tree).
+  Recorded in the backlog so it isn't re-evaluated blind.
+
 ### SESSION DIGEST (2026-08-22 — card frame edges, the resizable-field grip, non-finite group keys)
 
 **Frame edges: one fix landed, one hypothesis TRIED AND REVERTED. Still OPEN.**

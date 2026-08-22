@@ -257,14 +257,17 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   length/orientation. A scoped fix must guard the lookup value and the return array
   itself, not just flip the gate — more Excel thought needed. NOTE: the XLOOKUP NODE
   already accepts up to CUBE inputs; this is the FORMULA surface only.
-- [ ] **An ARRAY `lookup_value` answers `#N/A` instead of spilling** — Excel
-  returns one position per element; we treat the array as a single needle and
-  report "not found". A plausible wrong answer, not a refusal: the worst failure
-  shape and the only one here that lies quietly. `XLOOKUP` identical. Interim fix
-  is a loud `#VALUE!`. The real fix is DEEP and belongs to the engine, not the
-  lookups: `broadcastCall` is all-or-nothing per FUNCTION (`RANGE_FUNCTIONS.has`),
-  so "spill this argument, take that one whole" is not expressible — a
-  per-ARGUMENT prep declaration is an wholeArrayArgs/prepByShape design item serving a whole class.
+- [ ] **An ARRAY `lookup_value` should SPILL, not answer once** — Excel returns one
+  position per element; we treat the array as a single needle. **Interim landed
+  (2026-08-23):** both `XLOOKUP`/`XMATCH` formula registrations now refuse an array
+  needle with a loud `#VALUE!` (`arrayNeedle`, `excelFunctions.ts`) instead of the quiet
+  `#N/A` "not found" — the worst shape, the only one here that lied. Pinned in
+  `excelFunctions.test.ts` + negative-controlled. The NODE surface is untouched (its
+  lookup value is a scalar slot). The real fix — actually spilling — is DEEP and belongs
+  to the engine, not the lookups: `broadcastCall` is all-or-nothing per FUNCTION
+  (`RANGE_FUNCTIONS.has`), so "spill this argument, take that one whole" is not
+  expressible — a per-ARGUMENT prep declaration is an wholeArrayArgs/prepByShape design
+  item serving a whole class. Drop the interim guard when that lands.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment
@@ -305,8 +308,12 @@ is blocked here for out-of-scope repos).
   the picked node landing at the DOM end, and the extension's own ladder (nodes ≥1,
   connections 0) has to be reconciled with ours (standoffs −3 < groups −2 <
   conduits −1 < nodes 0). Its own investigation.
-- [ ] **`rete-history-plugin` 2.1.1 → 2.2.0** — inert for us (comment-plugin undo
-  presets; we use our own `commentStore`, not rete's). Bump whenever.
+- [x] **`rete-history-plugin` 2.1.1 → 2.2.0 — DON'T bump (checked 2026-08-23).** The
+  `dist/` is byte-identical to 2.1.1; the only delta is a new REQUIRED peerDependency on
+  `rete-comment-plugin@^2.2.0` (all 2.2.0 features are comment-plugin undo presets, which
+  we don't use — our own `commentStore`). Bumping buys nothing and either adds a standing
+  unmet-peer warning or pulls a plugin we never import into the tree. Net negative; stay at
+  2.1.1.
 - [ ] **`vite` 7.3.6 → 8.2.1 WITH `@vitejs/plugin-react` 4.7.0 → 6.0.5** — hard
   coupled (plugin-react 6 declares `vite: ^8.0.0`, no `^7`). Highest-risk bump left,
   and BOTH risks are invisible to `tsc` and vitest, so gate it on a trial build that
@@ -348,10 +355,11 @@ is blocked here for out-of-scope repos).
   `third-party-licenses.txt`. Full option survey + the open cable-routing question:
   `deferrals.md` "Tidy options".
 - [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
-  `katex` 0.17→0.18. Plus ~17 in-range patches, incl.
-  `@formulajs/formulajs` 4.6.0→4.6.1 — read that diff rather than bumping blind,
-  given how much of the formula surface leans on it. Core `rete` 2.0.6 is already
-  current.
+  `katex` 0.17→0.18. Plus ~16 in-range patches. Core `rete` 2.0.6 is already current.
+  (`@formulajs/formulajs` 4.6.0→4.6.1 LANDED 2026-08-23: the diff is exactly a new `TAKE`
+  — which we already own via `registerInternal`, so upstream's buggy one never runs — and a
+  real `SUMIFS` fix that coerces text-formatted sum-range numbers, correct-and-inert against
+  our typed columns. Full suite green.)
 
 ## Architecture spec (`docs/rules.md`)
 

@@ -305,6 +305,16 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(isSolError(ev("XMATCH(99, ks)", env))).toBe(true);      // no match → #N/A
   });
 
+  it("an ARRAY lookup value is a LOUD #VALUE!, never a quiet #N/A (we don't spill)", () => {
+    // Excel would spill one position per element; a whole array can't `===` a key, so
+    // without the guard it reads as one un-findable needle. #VALUE! ≠ "not found".
+    const env = { ks: [10, 20, 30], vs: [100, 200, 300] };
+    const m = ev("XMATCH(ks, ks)", env);
+    expect(isSolError(m) && (m as SolError).code).toBe("#VALUE!");
+    const l = ev("XLOOKUP(ks, ks, vs)", env);
+    expect(isSolError(l) && (l as SolError).code).toBe("#VALUE!");
+  });
+
   it("DOTTED function names parse + resolve (the tokenizer + namespace walk)", () => {
     // Previously these THREW: the tokenizer split on '.', and Formula.js hides them
     // behind namespaced objects. Now both the parser and resolveExcelFunction handle dots.
