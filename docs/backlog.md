@@ -196,18 +196,16 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
   message). Same split as the divergence catalogue: live half out, finished record
   stays.
-- [ ] **Every Formula.js-only 2-D function is DEAD on the formula surface** — a
-  matrix arg only survives dispatch through a declared `matrixArgs`
-  (`excelFormula.ts` matricesInFormulas containment), which no library-backed name has. So the
-  matrix is broadcast element-wise BEFORE the function sees it and every call
-  returns a same-shape array of `#VALUE!` (`COLUMN` `ROW` `COLUMNS` `ROWS`
-  `CHOOSECOLS` `CHOOSEROWS`) or THROWS out of the evaluator (`HSTACK` `VSTACK`
-  `EXPAND` → "array.reduce is not a function"; the `D*` database family →
-  "Cannot read properties of undefined"). The declared natives (`TRANSPOSE`
-  `MDETERM` `TAKE` `INDEX`) work, which is the contrast that proves the mechanism.
-  A throw escaping as a throw rather than a SolError is the sharp end. Decide
-  per name: declare `matrixArgs` + own it, or eliminate per currentExcelParity. (`COLUMN`/`ROW`
-  are done — eliminated to `INDEX`; `INDEX` itself now owns rank 2.)
+- [ ] **Formula surface is open-by-default (the systemic follow-up).** The 2-D dead-name
+  set is resolved (COLUMNS/ROWS + HSTACK/VSTACK/CHOOSECOLS/CHOOSEROWS owned sharing their
+  node kernels; the D* family eliminated like VLOOKUP). What remains is the ROOT cause: the
+  formula surface is defined by SUBTRACTION from Formula.js's full export (~445 names
+  advertised via `FX_FUNCTION_NAMES`, ~232 with declared meta), so any undeclared FX name
+  that takes an array still broadcasts into a #VALUE! array or throws — correctness is a
+  treadmill of discovering breakage. The fix: an FX-backed name reaching the matrix gate
+  with an array arg and no declared handling should short-circuit to a clean SolError, never
+  broadcast/throw; longer term, flip the surface to an allowlist (a name exists iff declared)
+  and delete the fallthrough. Larger than 1.3 polish — raise with the author before starting.
 
 ### XMATCH / XLOOKUP are narrower than they advertise (2026-08-11 analysis)
 
