@@ -72,14 +72,42 @@ describe("COUP* day counts are internally consistent", () => {
 });
 
 describe("DURATION / MDURATION relationship", () => {
-  const dur = (op: "duration" | "mduration") =>
-    new DurationNode({ op }).data({ settle: [settle], maturity: [maturity], coupon: [0.06], yld: [0.065], frequency: [2], basis: [0] }).result!;
+  const dur = (op: "duration" | "mduration", basis = 0) =>
+    new DurationNode({ op }).data({ settle: [settle], maturity: [maturity], coupon: [0.06], yld: [0.065], frequency: [2], basis: [basis] }).result!;
   it("modified duration = Macaulay / (1 + y/freq), and is strictly smaller", () => {
     const mac = dur("duration"), mod = dur("mduration");
     expect(mod).toBeCloseTo(mac / (1 + 0.065 / 2), 6);
     expect(mod).toBeLessThan(mac);
     expect(mac).toBeGreaterThan(0);
     expect(mac).toBeLessThan(5); // shorter than the 5-year maturity
+  });
+  it("matches Microsoft's documented DURATION example", () => {
+    // =DURATION(DATE(2018,7,1), DATE(2048,1,1), 0.08, 0.09, 2, 1) = 10.9191453.
+    const v = new DurationNode({ op: "duration" }).data({
+      settle: [d("2018-07-01")], maturity: [d("2048-01-01")],
+      coupon: [0.08], yld: [0.09], frequency: [2], basis: [1],
+    }).result!;
+    expect(v).toBeCloseTo(10.9191453, 7);
+  });
+
+  // The first-period fraction is Excel's DSC/E and must be day-counted per the BASIS;
+  // it used to count actual days whatever the basis, so the DEFAULT basis 0 was wrong.
+  // One remaining coupon makes the whole cash-flow stream a single payment, so Macaulay
+  // duration collapses to DSC/E/freq exactly — an absolute pin that needs no oracle.
+  describe("the basis input is applied to the first-period fraction", () => {
+    const s = d("2023-02-15"), m = d("2023-07-01"); // mid-period settlement, one coupon left
+    const durB = (basis: number) => new DurationNode({ op: "duration" })
+      .data({ settle: [s], maturity: [m], coupon: [0.06], yld: [0.05], frequency: [2], basis: [basis] }).result!;
+    const coupB = (op: "coupdaysnc" | "coupdays", basis: number) => new CouponNode({ op })
+      .data({ settle: [s], maturity: [m], frequency: [2], basis: [basis] }).result!;
+    for (const basis of [0, 1, 2, 3, 4]) {
+      it(`basis ${basis}: duration = COUPDAYSNC / COUPDAYS / freq`, () => {
+        expect(durB(basis)).toBeCloseTo(coupB("coupdaysnc", basis) / coupB("coupdays", basis) / 2, 12);
+      });
+    }
+    it("30/360 (basis 0) and actual (basis 2) disagree, so the basis really reaches the math", () => {
+      expect(durB(0)).not.toBeCloseTo(durB(2), 6);
+    });
   });
 });
 

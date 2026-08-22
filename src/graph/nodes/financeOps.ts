@@ -41,6 +41,25 @@ export function basisDays(basis: number): number {
 const use30 = (basis: number) => basis === 0 || basis === 4;
 const dayCount = (basis: number, a: Date, b: Date) => (use30(basis) ? days30_360(a, b) : actualDays(a, b));
 
+/** The coupon period's day counts under a basis: `e` the whole period (Excel's
+ *  COUPDAYS), `dsc` settlement→next coupon (COUPDAYSNC), `dsbs` previous
+ *  coupon→settlement (COUPDAYBS). One definition — the COUP* family and DURATION's
+ *  first-period fraction both read it, so they cannot drift apart. */
+export function coupPeriodDays(
+  prev: Date, next: Date, settle: Date, freq: number, basis: number,
+): { e: number; dsc: number; dsbs: number } {
+  if (use30(basis)) {
+    const e = 360 / freq;
+    const dsbs = days30_360(prev, settle);
+    return { e, dsc: e - dsbs, dsbs };
+  }
+  return {
+    e: basis === 3 ? 365 / freq : actualDays(prev, next),
+    dsc: actualDays(settle, next),
+    dsbs: actualDays(prev, settle),
+  };
+}
+
 const VALID_FREQ = [1, 2, 4];
 
 /** Newton solve for the yield that prices a bond at `target`. Damped to a sane
@@ -188,10 +207,11 @@ export function couponValue(
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
   const { prev, next } = coupDates(settle, maturity, f);
+  const { e, dsc, dsbs } = coupPeriodDays(prev, next, settle, f, b);
   switch (op) {
-    case "coupdaybs":  return use30(b) ? days30_360(prev, settle) : actualDays(prev, settle);
-    case "coupdays":   return use30(b) ? 360 / f : b === 3 ? 365 / f : actualDays(prev, next);
-    case "coupdaysnc": return use30(b) ? 360 / f - days30_360(prev, settle) : actualDays(settle, next);
+    case "coupdaybs":  return dsbs;
+    case "coupdays":   return e;
+    case "coupdaysnc": return dsc;
     case "coupncd":    return jsDateToSerial(next);
     case "couppcd":    return jsDateToSerial(prev);
     case "coupnum": {
@@ -288,15 +308,18 @@ export type DurationOp = "duration" | "mduration";
 /** DURATION (Macaulay) / MDURATION (modified), in years. */
 export function durationValue(
   op: DurationOp, settleSerial: number, maturitySerial: number,
-  coupon: number, yld: number, freq = 2, _basis = 0,
+  coupon: number, yld: number, freq = 2, basis = 0,
 ): number | null {
-  const f = Math.round(freq);
+  const f = Math.round(freq), b = Math.round(basis);
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
   if (!VALID_FREQ.includes(f)) return null;
   const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
   const { prev, next } = coupDates(settle, maturity, f);
-  // Fraction of the first coupon period still to run.
-  const dsc = actualDays(settle, next) / actualDays(prev, next);
+  // Fraction of the first coupon period still to run — Excel's DSC/E, day-counted
+  // per the basis (30/360 on the default basis 0, not actual days).
+  const period = coupPeriodDays(prev, next, settle, f, b);
+  if (period.e === 0) return null;
+  const dsc = period.dsc / period.e;
   const N = bondCouponCount(next, maturity, f);
   const C = coupon / f * 100;
   const y = yld / f;
