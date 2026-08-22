@@ -258,17 +258,16 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   length/orientation. A scoped fix must guard the lookup value and the return array
   itself, not just flip the gate — more Excel thought needed. NOTE: the XLOOKUP NODE
   already accepts up to CUBE inputs; this is the FORMULA surface only.
-- [ ] **An ARRAY `lookup_value` should SPILL, not answer once** — Excel returns one
-  position per element; we treat the array as a single needle. **Interim landed
-  (2026-08-23):** both `XLOOKUP`/`XMATCH` formula registrations now refuse an array
-  needle with a loud `#VALUE!` (`arrayNeedle`, `excelFunctions.ts`) instead of the quiet
-  `#N/A` "not found" — the worst shape, the only one here that lied. Pinned in
-  `excelFunctions.test.ts` + negative-controlled. The NODE surface is untouched (its
-  lookup value is a scalar slot). The real fix — actually spilling — is DEEP and belongs
-  to the engine, not the lookups: `broadcastCall` is all-or-nothing per FUNCTION
-  (`RANGE_FUNCTIONS.has`), so "spill this argument, take that one whole" is not
-  expressible — a per-ARGUMENT prep declaration is an wholeArrayArgs/prepByShape design
-  item serving a whole class. Drop the interim guard when that lands.
+- [x] **An ARRAY `lookup_value` SPILLS — DONE (2026-08-23, author-approved).** Excel returns
+  one result per element; both `XLOOKUP`/`XMATCH` formula registrations now map the kernel over a
+  LIST needle and return a rank-1 result list (`pick`, `excelFunctions.ts`) — Excel parity,
+  replacing the day's earlier interim loud `#VALUE!`, which itself replaced the original quiet
+  `#N/A` lie. Stays within the rank cap (1-D in → 1-D out) and rides the existing RANGE_FUNCTIONS
+  as-is array return. Pinned in `excelFunctions.test.ts` "SPILLS". This is the SCOPED spill for the
+  lookup family only. Still deferred to the general mechanism: a 1×N/N×1 MATRIX lookup value (the
+  orientation item below — still `#SHAPE!`) and any per-argument spill for OTHER functions. That
+  general fix — a per-ARGUMENT prep declaration (wholeArrayArgs/prepByShape) — subsumes this scoped
+  `pick`; fold it in when it lands.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment

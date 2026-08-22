@@ -88,14 +88,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-23 — independent small fixes: array-needle lookup, dep-diff triage)
 
-**XLOOKUP/XMATCH: an array lookup value no longer lies quietly.** Excel spills one position
-per element of an array `lookup_value`; we don't spill on the formula surface, and a whole
-array can never `===` a single key, so `xmatchIndex` returned −1 → a quiet `#N/A` "No match
-found". Both formula registrations now refuse an array needle up front with a loud `#VALUE!`
-(`arrayNeedle`, `excelFunctions.ts`). NODE surface untouched (its lookup value is a scalar
-slot; the node is the deliberate container-lookup surface). Pinned in `excelFunctions.test.ts`
-and negative-controlled (comment the guard → the test fails with `#N/A`). Deep fix (actual
-spill via per-argument prep, `wholeArrayArgs`) stays backlogged; drop the guard when it lands.
+**XLOOKUP/XMATCH: an array lookup value now SPILLS (Excel parity).** Excel returns one result
+per element of an array `lookup_value`; we treated the whole array as one un-findable needle
+(quiet `#N/A`). Fixed in two steps the same day: first a loud `#VALUE!` interim (honest refusal
+over the quiet lie), then — after confirming the dispatch returns a RANGE_FUNCTIONS array result
+as-is and it stays within the rank cap (1-D in → 1-D out) — the actual spill: both registrations
+map the kernel over a list needle (`pick`, `excelFunctions.ts`) and return a result list. Author
+approved supporting it (it's parity, and the "deep engine" framing applied to the GENERAL
+per-argument spill, not to these two). NODE surface untouched (scalar lookup slot). Pinned in
+`excelFunctions.test.ts` "SPILLS". Scoped to the lookup family: a 1×N MATRIX lookup value is still
+`#SHAPE!` (the deferred orientation item), and the general per-argument mechanism
+(`wholeArrayArgs`/`prepByShape`) subsumes this `pick` when it lands.
 
 **Dependency-diff triage (read the diffs, not the version bumps):**
 - `@formulajs/formulajs` 4.6.0 → 4.6.1 **bumped.** The whole diff is a new `TAKE` (we already

@@ -305,14 +305,17 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(isSolError(ev("XMATCH(99, ks)", env))).toBe(true);      // no match → #N/A
   });
 
-  it("an ARRAY lookup value is a LOUD #VALUE!, never a quiet #N/A (we don't spill)", () => {
-    // Excel would spill one position per element; a whole array can't `===` a key, so
-    // without the guard it reads as one un-findable needle. #VALUE! ≠ "not found".
-    const env = { ks: [10, 20, 30], vs: [100, 200, 300] };
-    const m = ev("XMATCH(ks, ks)", env);
-    expect(isSolError(m) && (m as SolError).code).toBe("#VALUE!");
-    const l = ev("XLOOKUP(ks, ks, vs)", env);
-    expect(isSolError(l) && (l as SolError).code).toBe("#VALUE!");
+  it("an ARRAY lookup value SPILLS — one result per element (Excel parity)", () => {
+    // The scoped lookup-family spill: a rank-1 needle list gives a rank-1 result list.
+    // Regression guard against the old quiet #N/A, which treated the whole array as one
+    // un-findable needle.
+    const env = { qs: [30, 10, 99], ks: [10, 20, 30], vs: [100, 200, 300] };
+    const m = ev("XMATCH(qs, ks)", env) as unknown[];
+    expect(m.slice(0, 2)).toEqual([3, 1]);                              // hits keep their positions
+    expect(isSolError(m[2]) && (m[2] as SolError).code).toBe("#N/A");    // a miss spills #N/A in place
+    expect(ev("XLOOKUP(qs, ks, vs, -1)", env)).toEqual([300, 100, -1]);  // -1 = if-not-found, per element
+    // A scalar needle still answers a scalar (no spill).
+    expect(ev("XMATCH(20, ks)", env)).toBe(2);
   });
 
   it("DOTTED function names parse + resolve (the tokenizer + namespace walk)", () => {

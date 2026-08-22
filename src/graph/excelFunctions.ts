@@ -918,35 +918,40 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
     default: return solError("#VALUE!", "search_mode is 1 or -1");
   }
 };
-// An ARRAY lookup value would SPILL in Excel (one position per element); we don't
-// spill on the formula surface, and a whole array can never `===` a single key, so
-// without this guard it reads as one un-findable needle and lies quietly with #N/A.
-// Refuse loudly until the engine gains per-argument spill (backlog: wholeArrayArgs).
-const arrayNeedle = () =>
-  solError("#VALUE!", "Look up one value at a time — an array lookup value isn't supported");
+// An ARRAY lookup value SPILLS in Excel — one result per element — and we match that:
+// the result is a rank-1 list (still within the formula rank cap), and RANGE_FUNCTIONS
+// return a non-number as-is, so the array flows back cleanly. This is the SCOPED spill
+// for the lookup family only; the general per-argument spill (backlog wholeArrayArgs,
+// which also settles the deferred 1×N matrix orientation) stays deferred. Do NOT read
+// this as other RANGE functions spilling — a matrix lookup value is still #SHAPE!
+// upstream. `keys`/`values` are lists or scalars here (a matrix arg errors before us).
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, searchMode) => {
-  if (Array.isArray(lookup)) return arrayNeedle();
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
   const ks = Array.isArray(keys) ? keys : [keys];
   const vs = Array.isArray(values) ? values : [values];
-  const idx = xmatchIndex(lookup, ks, mm, sm);
-  if (isSolError(idx)) return idx;
-  if (idx >= 0 && idx < vs.length) return vs[idx];
-  return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
+  const pick = (l: unknown) => {
+    const idx = xmatchIndex(l, ks, mm, sm);
+    if (isSolError(idx)) return idx;
+    if (idx >= 0 && idx < vs.length) return vs[idx];
+    return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
+  };
+  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
 });
 registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
-  if (Array.isArray(lookup)) return arrayNeedle();
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
   const ks = Array.isArray(keys) ? keys : [keys];
-  const idx = xmatchIndex(lookup, ks, mm, sm);
-  if (isSolError(idx)) return idx;
-  return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
+  const pick = (l: unknown) => {
+    const idx = xmatchIndex(l, ks, mm, sm);
+    if (isSolError(idx)) return idx;
+    return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
+  };
+  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
 });
 // A blank branch (`IF(x,,y)`) arrives as null and STAYS null — a deliberate deviation;
 // real Excel's omitted arg is 0. IF(test, then) with a false test → FALSE.
