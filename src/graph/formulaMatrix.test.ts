@@ -95,8 +95,24 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     expect(ev("TRANSPOSE(TRANSPOSE(m))", { m: M })).toEqual(M);
   });
 
+  it("COLUMNS / ROWS count the shape instead of broadcasting into #VALUE!s", () => {
+    // Pre-ownership these fell through to Formula.js element-wise, answering a
+    // same-shape array of #VALUE! even on a 1-D list. A list is a ROW here, so
+    // COLUMNS counts it and ROWS is 1; a scalar is 1x1; a wired blank stays unknown.
+    const wide = [[1, 2, 3], [4, 5, 6]]; // 2 rows, 3 cols
+    expect(ev("COLUMNS(m)", { m: wide })).toBe(3);
+    expect(ev("ROWS(m)", { m: wide })).toBe(2);
+    expect(ev("COLUMNS(v)", { v: [1, 2, 3] })).toBe(3);
+    expect(ev("ROWS(v)", { v: [1, 2, 3] })).toBe(1);
+    expect(ev("COLUMNS(x)", { x: 9 })).toBe(1);
+    expect(ev("ROWS(x)", { x: 9 })).toBe(1);
+    expect(ev("COLUMNS(b)", { b: null })).toBeNull();
+    // Composes: the count feeds ordinary math, no array leak.
+    expect(ev("COLUMNS(m) * ROWS(m)", { m: wide })).toBe(6);
+  });
+
   it("every tranche registration declares the FX-9 gate", () => {
-    for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE"]) {
+    for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS"]) {
       expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
       expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
     }

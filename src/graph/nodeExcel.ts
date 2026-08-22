@@ -426,8 +426,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 2)", parity: false, note: "This leaf is type 2 (pooled variance); 2-tailed only, for 1-tailed divide result by 2" }],
   "t-test-unequal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 3)", parity: false, note: "This leaf is type 3 (Welch); 2-tailed only" }],
   "table-info": [
-    { excel: "COLUMNS", syntax: "=COLUMNS(array)", parity: false, note: "Works on table socket; use List → Length node for 1D lists" },
-    { excel: "ROWS", syntax: "=ROWS(array)", parity: false, note: "Works on table socket; use List → Length node for 1D lists" },
+    { excel: "COLUMNS", syntax: "=COLUMNS(array)", parity: true, note: "Counts a matrix's columns or a list's length (a list is one row)" },
+    { excel: "ROWS", syntax: "=ROWS(array)", parity: true, note: "Counts a matrix's rows; a list is one row, so ROWS of a list is 1" },
   ],
   "table-mult": [{ excel: "MMULT", syntax: "=MMULT(a, b)", parity: false, note: "A columns must equal B rows" }],
   "table-transpose": [{ excel: "TRANSPOSE", syntax: "=TRANSPOSE(array)", parity: false }],

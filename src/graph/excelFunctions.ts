@@ -561,6 +561,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  // COLUMNS/ROWS answer a shape COUNT (scalar), so they take their arg whole (matrix or
+  // list) rather than broadcasting; a list is a ROW here (SOCK-2), so COLUMNS counts it.
+  COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  ROWS:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   TOCOL:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
@@ -1365,6 +1369,16 @@ const numMatrix = (v: unknown): NumMat | SolError | null => {
 registerInternal("TRANSPOSE", (v) => {
   const m = toMatrix(v);
   return m === null ? null : matTranspose(m);
+});
+// COLUMNS/ROWS count the shape. A list is a ROW (toMatrix wraps it 1×N), so COLUMNS of a
+// list is its length and ROWS is 1; a scalar is 1×1. A wired blank stays unknown (VAL-1).
+registerInternal("COLUMNS", (v) => {
+  const m = toMatrix(v);
+  return m === null ? null : matCols(m);
+});
+registerInternal("ROWS", (v) => {
+  const m = toMatrix(v);
+  return m === null ? null : matRows(m);
 });
 registerInternal("MMULT", (a, b) => {
   const ma = numMatrix(a);
