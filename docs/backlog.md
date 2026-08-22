@@ -137,25 +137,44 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 ## Small builds & calls (still 1.3-sized)
 
 - [ ] **Virtualize the table/cube popups instead of truncating at 1,000 rows**
-  (author-raised 2026-08-22, pointing at `react-window`). Today `TablePopup.tsx` and
+  (author-raised 2026-08-22, pointing at `react-window`). `TablePopup.tsx` and
   `CubePopup.tsx` both hard-cap at `MAX_VISIBLE_ROWS = 1000` and label it "· first
   1,000"; every cell renders a controlled `<input>` (read-only ones included), so the
-  cap is really a DOM-node budget. **`react-window` (v2.3.0, MIT, zero deps, React 19
-  peer) does NOT drop in**: `Grid`/`List` lay their children out `position: absolute`
-  and want `columnWidth` declared up front. Absolute positioning takes a `<tr>`/`<td>`
-  out of the table formatting context, which is exactly what our sticky `<thead>`,
-  sticky row-number `<th>` column and auto-sized text columns stand on — adopting it
-  means rebuilding the grid as divs and owning column sizing anyway. **Do it ourselves:**
-  keep the `<table>`, render only the visible slice of `<tr>`s, and preserve scroll
-  height with one spacer `<tr>` above and one below (~60 lines, no dependency, sticky
-  chrome untouched). The usual blocker — widths jittering as rows scroll in and out —
-  is already half-solved: `colMinWidths` measures every NON-text column from the whole
-  dataset (`<input>` cells have no intrinsic width), so only text columns auto-size from
-  visible content and that same pass extends to them. Needs a real measurement first:
-  time a 50k-row frame at a few column counts to confirm windowing is what's wanted
-  rather than a cheaper fix (drop the `<input>` on read-only cells). Also check the
-  interactions — sort order, an open edit scrolling out of view, Copy CSV / Export
-  (must stay whole-dataset, not visible-slice), and the form view's record pager.
+  cap is really a DOM-node budget. **The open question is not the library, it's whether
+  the popup stays an HTML `<table>` or becomes a real data grid** — that choice picks
+  the tool, so answer it first. Decider: does anyone actually hit 1,000 rows in
+  practice? Needs a measurement (time a 50k-row frame at a few column counts) and the
+  author's read on how big real frames get.
+
+  - **Path A — keep the `<table>`, window it ourselves (~60 lines, no dependency).**
+    Render only the visible slice of `<tr>`s, preserve scroll height with one spacer
+    `<tr>` above and one below. Sticky `<thead>`, sticky row-number `<th>` and native
+    auto-sizing all keep working because the table formatting context is intact. The
+    usual blocker — widths jittering as rows scroll in and out — is half-solved:
+    `colMinWidths` already measures every NON-text column from the whole dataset
+    (`<input>` cells have no intrinsic width), so only text columns auto-size from
+    visible content and that same pass extends to them. Cheaper still if the
+    measurement says the `<input>` is the cost: drop it on read-only cells first.
+  - **Path B — rebuild the grid as divs and use `react-window` as its engine**
+    (v2.3.0, MIT, zero deps, React 19 peer). Buys what a `<table>` cannot: horizontal
+    virtualization for wide frames, resizable/reorderable columns, frozen columns, no
+    row cap at all. Costs a rewrite of the ~240-line grid render plus a sticky-chrome
+    layer — react-window does windowing ONLY, so the header and row-number column are
+    rendered outside the virtualized area with scroll synced off `onScroll` (header
+    scroll-sync jitter is the standard bug here), and all column sizing becomes ours.
+    Editing needs care: controlled `<input>`s unmount mid-edit when scrolled, and props
+    identity churn re-renders every cell (upstream names the prop `cellPropsUnstable`).
+
+  **Settled, so nobody retreads it: react-window cannot wrap the EXISTING `<table>`.**
+  Read the 2.3.0 dist — `Grid` builds each row as a hardcoded `se("div", {role:"row"})`
+  (`tagName` reaches only the outer element), both `Grid` and `List` hand children
+  `position:"absolute"` + `transform`, and `List`'s total-height spacer is a hardcoded
+  `<div>`. Any of the three alone ends the table's column model. Path B is a rewrite,
+  not an adoption.
+
+  Either path: sort order, an open edit scrolling out of view, Copy CSV / Export
+  (must stay whole-dataset, never the visible slice) and the form view's record pager
+  all need checking.
 
 - [ ] **Relative dates as an opt-in feature (author-requested 2026-08-21).** The shared
   `parseDate` (chrono-backed) already CAN read "next friday"/"today"/"in 3 days" — currently
