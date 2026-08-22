@@ -42,22 +42,12 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Bugs & verifications
 
-- [ ] **Node body/outer border clipped 1-2px on some nodes** (author-reported 2026-08-22).
-  Bottom edge on Frame Input, TextJoin, Expression; RIGHT edge on Display "at some resized
-  widths". List Input is clean. NOT the last body element (all end in the same `ValueDisplay`)
-  nor the wide tier (`--wide` is a flat `width:240px`). Two candidate mechanisms, OPPOSITE
-  fixes — DON'T fix blindly, measure first: (a) the `.solenoid-node__frame` SVG (position:
-  absolute, 100%) resolves against the rete holder, not the card — `.solenoid-node` is
-  `position:static` with a `border:1px solid transparent`, and the card sits in an inline
-  `<span>` inside the holder, so the frame can end up a hair SHORTER than the card box → the
-  edge stroke is drawn inside the true edge (fix: anchor the frame to the card box / small
-  `--frame-outset`); (b) the frame matches the card but the 1px stroke at a fractional camera
-  `scale()` (e.g. 0.799) rasterizes to ~0.8 device-px on a sub-pixel boundary and the edge
-  anti-aliases toward invisible (fix: robustify the stroke; would VANISH at 100% zoom).
-  Decisive check: compare `getBoundingClientRect().height` of `.solenoid-node` vs
-  `.solenoid-node__frame` — card > frame ⇒ (a); card ≈ frame ⇒ (b), confirm via 100% zoom.
-  Display's `width:max-content` (naturally fractional) fits (b) for its right-edge case.
-
+- [ ] **Frame chrome below one device pixel — the remaining surfaces.** The card frame is fixed
+  (`--frame-hairline`, `hairline.ts`; 2026-08-22 digest has the mechanism and the two dead-end
+  fixes). The same sub-device-pixel washout applies to every other canvas-scaled hairline that
+  was NOT touched: group borders, the section divider inside cards, the resize grip's 1.4px
+  glyph, cable strokes. None author-reported; check whether they read as thin/absent at dpr 1
+  zoomed out before widening anything, and reuse `--frame-hairline` rather than a second rule.
 
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,

@@ -86,6 +86,57 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-22 — card frame edges + the resizable-field grip)
+
+**Node body/outer border "clip" — DIAGNOSED and FIXED; it was never a clip.** The backlog's
+candidate (a) is REFUTED: `.solenoid-node` and `.solenoid-node__frame` have identical
+`getBoundingClientRect()`s on all 28 cards of the default doc, at every dpr — the frame is not
+short and nothing is cut off. The real mechanism is rasterization of a sub-device-pixel stroke.
+The frame is drawn in canvas user space, so a 1px stroke lands on `k * devicePixelRatio` device
+pixels; below one, where a card's FAR edge falls mid-pixel the ink splits across two rows and the
+edge reads as absent. Bottom-edge contrast tracks that phase exactly — equal to the left edge at
+phase 0 (k=0.75, k=1.0), a third of it mid-pixel.
+
+Why it looked zoom-independent and skipped mobile (the author's two observations, both correct
+and both diagnostic): every zoom below 100% is under one device pixel, so the whole zoomed-out
+range misbehaves; and weak-bottom cards at k=0.42 go 6/27 at dpr 1, 2/27 at 1.25, then 0/27 at
+1.5, 2 and 3 — a desktop monitor at 100% scaling is the worst case, a phone at dpr 2-3 is clean.
+Top edges are least affected because the accent cap is 2px. Left/top are consistent across cards
+(all node positions share the camera's subpixel phase) while bottom/right vary per card with its
+own height/width — which is why only SOME cards show it.
+
+FIX: `hairline.ts` publishes `--frame-hairline`, the stroke width that renders as at least one
+device pixel, and every frame geometry expression in `nodeCard.css` derives from it (body, accent
+cap, divider, grouped body). At dpr 1 / 100% zoom it is exactly 1px and each expression reduces to
+the literal it replaced — verified against resolved computed style, so the card is untouched
+there. Weak-bottom cards at dpr 1: 6/27 -> 1/27. Pinned by `hairline.test.ts`.
+
+**Dead ends, measured — do not retry.** `vector-effect: non-scaling-stroke` is a NO-OP for this:
+Chrome does not compensate for an HTML ancestor's CSS transform, and the measurements came back
+byte-identical to baseline. `shape-rendering: crispEdges` is WORSE — it snaps the edge away
+entirely (0 ink at k=0.45, 0.55, 0.799).
+
+**Publishing a custom property on every zoom frame is expensive** — it costs a document-wide
+style recalc: 11.8ms/frame against a 6.3ms baseline across 28 cards, and the cost is the WRITE,
+not the rule reading it (a var written but unused measured the same). Hence the 1/4px quantum plus
+a trailing throttle: 7 writes per 120 zoom frames, 6.55ms/frame. Relevant to the open choppy-zoom
+band — any future "publish the camera to CSS" idea carries this cost.
+
+**Resizable text fields now wear the app's own grip.** The Layout field (Frame Input, Record) and
+the Mermaid source ran on `resize: vertical`. The native control's DRAG is fine — measured 1:1
+against the pointer at k=0.42, correctly zoom-compensated, and no dead zone after an over-drag —
+but it paints a bright, heavy corner glyph nothing like the card grip, which the field's 4px radius
+clips. `::-webkit-resizer` CANNOT retire it: a background/mask there paints BEHIND the UA glyph
+(verified in Chrome 148). So the field sets `resize: none` and wears `FieldResizeGrip`, reusing the
+card grip's mark via the extracted `ResizeGripIcon`. The field also became `display: block` — as an
+inline-level child it added a line box's descender gap under itself, which hung the grip ~3px below
+the field's own border.
+
+**Display's resize grip is NOT clipped** (author asked). Measured ink extent reaches 11.7 of a
+12-unit viewBox and no ancestor clips it; at low zoom it only softens, like every other small
+stroke. If the author still reads it as cut off, it is the same sub-device-pixel rasterization as
+the border and the grip's 1.4px stroke would need the same floor.
+
 ### SESSION DIGEST (2026-08-21 — Excel-behavior sweep: finance/scalar/text, oracle + real Excel)
 - **Method, and its limit.** Cross-checked node values against `@formulajs/formulajs`
   as an oracle — NOT a divergence catalogue, just a second implementation with its own
