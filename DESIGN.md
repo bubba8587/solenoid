@@ -12,7 +12,7 @@ colors:
   text-bright: "#f3f4f5"
   text-dim: "#9aa0a6"
   text-muted: "#80868e"
-  canvas-bg: "#0e0e0e"
+  canvas-bg: "#0b0b0b"
   sock-number: "#f5b914"
   sock-string: "#c8e040"
   sock-date: "#d685b1"
@@ -114,7 +114,7 @@ A neutral near-black workbench carrying a typed, saturated socket palette and a 
 - **Workbench** (`#1e1e1e`): The raised chrome surface. Node bodies, menus, popovers. In light theme this becomes a near-white off-white (`#fbfcfd`).
 - **Recess** (`#141414`): Sunken fields. Inputs, value and result boxes, button backgrounds. The brightest layer in light theme (`#ffffff`), so fields read as familiar input boxes.
 - **Raised Fill** (`#262626`): Hover and selected fills inside chrome.
-- **Canvas Void** (`#0e0e0e`): The graph canvas, a shade darker than every card so nodes lift off it. Light theme uses `#eef1f5`.
+- **Canvas Void** (`#0b0b0b`): The graph canvas, a shade darker than every card so nodes lift off it. Light theme uses `#eef1f5`.
 - **Hairlines** (`#2d2d2d` border, `#3a3a3a` strong, `#2a2a2a` subtle): Borders and dividers. Thin and quiet.
 - **Ink** (`#e8e8e8` text, `#f3f4f5` bright, `#9aa0a6` dim, `#80868e` muted): The text ramp, brightest reserved for emphasis, muted for secondary labels. The muted tier clears WCAG AA 4.5:1 on the card/sunken surfaces. Light theme inverts to dark inks (`#1b1e23` down to `#6a717b`).
 

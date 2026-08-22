@@ -391,7 +391,7 @@ export const CHROME_KEYS: ChromeKey[] = CHROME_VARS.map((v) => v.key);
  *  read a stylesheet, so this pair is a hand-held mirror. */
 export const DEFAULT_CHROME: { dark: Record<ChromeKey, string>; light: Record<ChromeKey, string> } = {
   dark: {
-    appBg: "#141414", canvasBg: "#0e0e0e", canvasDot: "#2a2a2a",
+    appBg: "#141414", canvasBg: "#0b0b0b", canvasDot: "#2a2a2a",
     surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
     border: "#2d2d2d", borderStrong: "#3a3a3a", borderSubtle: "#2a2a2a",
     text: "#e8e8e8", textBright: "#f3f4f5", textDim: "#9aa0a6", textMuted: "#80868e",
@@ -414,7 +414,7 @@ export const DEFAULT_CHROME: { dark: Record<ChromeKey, string>; light: Record<Ch
 const ORCHARD_CHROME: PaletteChrome = {
   dark: {
     appBg: "#17160c",         // dark-surface-sunken (the frame, a step off the canvas)
-    canvasBg: "#141309",      // dark-bg
+    canvasBg: "#111007",      // dark-bg, a hair deeper
     canvasDot: "#363320",     // dark-border
     surface: "#1f1d12",       // dark-surface
     surfaceSunken: "#17160c", // dark-surface-sunken
@@ -449,7 +449,7 @@ const ORCHARD_CHROME: PaletteChrome = {
 // point is lower glare, not a hue.
 const MUTED_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#1b1c20", canvasBg: "#16171a", canvasDot: "#303338",
+    appBg: "#1b1c20", canvasBg: "#131417", canvasDot: "#303338",
     surface: "#232529", surfaceSunken: "#1a1b1f", surfaceRaised: "#2b2e33",
     border: "#34373d", borderStrong: "#43474e", borderSubtle: "#2d3035",
     text: "#dfe1e5", textBright: "#f0f1f3", textDim: "#a2a7ae", textMuted: "#8b9098",
@@ -468,7 +468,7 @@ const MUTED_CHROME: PaletteChrome = {
 // content.
 const CVD_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#131313", canvasBg: "#0a0a0a", canvasDot: "#2e2e2e",
+    appBg: "#131313", canvasBg: "#080808", canvasDot: "#2e2e2e",
     surface: "#1c1c1c", surfaceSunken: "#121212", surfaceRaised: "#292929",
     border: "#333333", borderStrong: "#4a4a4a", borderSubtle: "#272727",
     text: "#f2f2f2", textBright: "#ffffff", textDim: "#ababab", textMuted: "#949494",
@@ -498,7 +498,7 @@ const BASE = {
 const SOLARIZED_CHROME: PaletteChrome = {
   dark: {
     appBg: "#03303b",
-    canvasBg: BASE.b03,       // background
+    canvasBg: "#002833",      // base03, a hair deeper — the ground is ours, the ladder stays canonical
     canvasDot: BASE.b02,      // background highlight — the grid IS Solarized's own step
     surface: BASE.b02,        // background highlight — a card
     surfaceSunken: "#03303b",
@@ -528,7 +528,7 @@ const SOLARIZED_CHROME: PaletteChrome = {
 // fully achromatic.
 const EQUINOX_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#141414", canvasBg: "#0e0e0e", canvasDot: "#2a2a2a",
+    appBg: "#141414", canvasBg: "#0b0b0b", canvasDot: "#2a2a2a",
     surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
     border: "#2d2d2d", borderStrong: "#3a3a3a", borderSubtle: "#272727",
     text: "#e8e8e8", textBright: "#f4f4f4", textDim: "#a0a0a0", textMuted: "#878787",
@@ -547,7 +547,7 @@ const EQUINOX_CHROME: PaletteChrome = {
 // — that is what keeps Blueprint and Orchard from being the same idea twice.
 const BLUEPRINT_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#10273f", canvasBg: "#0d2137",
+    appBg: "#10273f", canvasBg: "#0a1e34",
     canvasDot: "#1e3f60",     // the grid line, a clear step off the ground
     surface: "#16304b", surfaceSunken: "#102843", surfaceRaised: "#1e3d5c",
     border: "#274a6d", borderStrong: "#375f85", borderSubtle: "#1f4062",

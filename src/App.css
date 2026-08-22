@@ -75,7 +75,7 @@
 
   /* ── Semantic aliases used by the app chrome ───────────────────────── */
   --app-bg: #141414;
-  --canvas-bg: #0e0e0e;
+  --canvas-bg: #0b0b0b;
   --canvas-dot: #2a2a2a;
   /* Chrome fills are OPAQUE — bars, panels and floating overlays are the raised
      surface, never a window onto the graph behind them. */
