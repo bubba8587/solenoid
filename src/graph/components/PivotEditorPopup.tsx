@@ -133,7 +133,8 @@ export function PivotEditorPopup() {
   }
   function valueLabel(field: string, key: string): string {
     if (key === "") return "(blank)";
-    if (typeOf(field) === "date") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
+    // A blank key must not read as serial 0 — `Number("")` is 0 (30-Dec-1899).
+    if (typeOf(field) === "date" && key.trim() !== "") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
     return key;
   }
   function applyDrop(toZone: Zone, insertIdx?: number) {

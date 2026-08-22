@@ -134,6 +134,17 @@
   color: var(--text);
   cursor: default;
 }
+/* An error VALUE in a cell wears the SHARED #CODE! treatment — `.sol-error-chip`
+   (errorChip.css) is the single source of truth for it, and the cell just adds the
+   class. This rule defines no new colour; it exists only to win specificity, since
+   the readonly rule above is [class][attr] and would repaint the code in body ink.
+   Font size stays the grid's 13px — the chip's 11.5px is calibrated for an inline
+   badge on a node card, not for a table cell. */
+.table-popup__input.sol-error-chip,
+.table-popup__input.sol-error-chip[readonly] {
+  color: var(--sol-error);
+  font-size: 13px;
+}
 /* Text cells (string lists) read left-to-right and want room to breathe. */
 .table-popup__input--text {
   text-align: left;

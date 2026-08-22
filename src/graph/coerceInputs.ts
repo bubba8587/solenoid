@@ -4,7 +4,7 @@ import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } 
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
-import { parseDateToSerial } from "./nodes/dateSerial";
+import { parseDate } from "./nodes/dateSerial";
 import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
@@ -57,7 +57,13 @@ export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   // An unparseable part is first-class `null` (MISSING): dropping would shift every
   // later position, and `?? false` would assert a FALSE the user never typed.
   if (dt === "numlist" || dt === "list") return parts.map((p) => (p !== "" && Number.isFinite(Number(p)) ? Number(p) : null));
-  if (dt === "datelist") return parts.map((p) => { const n = parseDateToSerial(p); return Number.isFinite(n) ? n : null; });
+  // #AMBIGUOUS! SURFACES here rather than collapsing to a blank (dateAmbiguitySurfaces):
+  // "02-03-2026" is a question, not a missing value, and a blank would answer it silently.
+  if (dt === "datelist") return parts.map((p) => {
+    const d = parseDate(p);
+    if (isSolError(d)) return d;
+    return Number.isFinite(d) ? d : null;
+  });
   if (dt === "logicallist") return parts.map(parseBoolText);
   return parts;
 }

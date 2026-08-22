@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { parseListLiteral } from "../coerceInputs";
-import { parseDateToSerial } from "./date";
+import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
@@ -50,7 +50,11 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
     case "date": {
       // Dates ARE serials, so a number passes through; a string takes the row's parser.
       if (typeof v === "number") return Number.isFinite(v) ? v : null;
-      if (typeof v === "string") { const n = parseDateToSerial(v); return Number.isFinite(n) ? n : null; }
+      if (typeof v === "string") {
+        const d = parseDate(v);           // #AMBIGUOUS! surfaces (dateAmbiguitySurfaces)
+        if (isSolError(d)) return d;
+        return Number.isFinite(d) ? d : null;
+      }
       return null;
     }
     case "string":

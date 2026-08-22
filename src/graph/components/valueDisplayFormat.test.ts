@@ -7,7 +7,7 @@ import { ExpectNode } from "../nodes/quality";
 import { dateSocket, numberSocket, SolenoidSocket, canConnect } from "../sockets";
 import { wrapNodeData } from "../coerceInputs";
 import { jsDateToSerial } from "../nodes/date";
-import { solError } from "../errorValue";
+import { solError, isSolError } from "../errorValue";
 import { setEditorRefs, getEditor } from "../process";
 import type { Schemes } from "../schemes";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../nodes/conduit";
@@ -50,6 +50,38 @@ describe("dateFormatDisplay", () => {
     expect(dateFormatDisplay("hello", true, false)).toBe("hello");
     expect(dateFormatDisplay(["a", "b"], true, false)).toEqual(["a", "b"]);
     expect(dateFormatDisplay(null, true, false)).toBeNull();
+  });
+
+  it("keeps an error cell's #CODE! — it must never render as an empty cell", () => {
+    // The list branch used to be gated on `typeof value[0] === "number"` and mapped
+    // every non-finite to "", so a VALID leading date is what turned the #AMBIGUOUS!
+    // after it into a blank: the cell that most needed to speak was the silent one.
+    const out = dateFormatDisplay(
+      [ser(2026, 1, 3), solError("#AMBIGUOUS!", "either way"), null], true, false,
+    ) as unknown[];
+    expect(out).toEqual(["03-Jan-2026", "#AMBIGUOUS!", ""]);
+  });
+
+  it("formats a date list whose FIRST cell is an error, not just one led by a number", () => {
+    const out = dateFormatDisplay(
+      [solError("#AMBIGUOUS!", "either way"), ser(2026, 1, 3)], true, false,
+    ) as unknown[];
+    expect(out).toEqual(["#AMBIGUOUS!", "03-Jan-2026"]);
+  });
+
+  it("end to end: a typed ambiguous date reaches the display as #AMBIGUOUS!", () => {
+    // The whole chain the author reported: text typed into a date row -> parseDate ->
+    // the node's list -> what the value box and popup grid render. Every link used to
+    // drop the error somewhere different, so pin the chain, not just the last hop.
+    const n = new ListInputNode({ dataType: "date" });
+    const [a, b] = [n.addValueInput(), n.addValueInput()];
+    n.stringLiterals[a] = "13-04-2026";  // day > 12, so it can only read one way
+    n.stringLiterals[b] = "02-03-2026";  // could be 2 Mar or 3 Feb
+    const list = n.data({}).list;
+    expect(list.filter((v) => isSolError(v)).map((v) => (v as { code: string }).code))
+      .toEqual(["#AMBIGUOUS!"]);
+    const shown = dateFormatDisplay(list as never, true, false) as unknown[];
+    expect(shown).toEqual(["13-Apr-2026", "#AMBIGUOUS!"]);
   });
 
   it("renders a non-finite serial in a list as blank, not NaN text", () => {

@@ -9,7 +9,7 @@ import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
-import { parseDateToSerial } from "./date";
+import { parseDate } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
@@ -1622,7 +1622,12 @@ export class GetColumnNode extends ClassicPreset.Node {
       if (typeof v === "boolean") return v ? 1 : 0; // a logical column coerces to 1/0
       if (isSolError(v)) return v; // a per-cell error propagates (array-semantics policy)
       if (typeof v === "string") {
-        const n = this.readAs === "date" ? parseDateToSerial(v) : Number(v.trim());
+        if (this.readAs === "date") {
+          const d = parseDate(v);         // #AMBIGUOUS! surfaces (dateAmbiguitySurfaces)
+          if (isSolError(d)) return d;
+          return colUnit ? (tagFrameCellUnit(d, colUnit) as number | UnitCell) : d;
+        }
+        const n = Number(v.trim());
         return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
       }
       return NaN;

@@ -4,7 +4,7 @@ import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePop
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows } from "../csv";
-import { isSolError } from "../errorValue";
+import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
@@ -20,6 +20,7 @@ import { parseRecordLayout } from "../nodes/visual";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
+import "./errorChip.css";
 import "./TablePopup.css";
 
 type CellType = "number" | "string" | "date" | "logical"; // "date" edits as its serial (number-ish); "logical" as TRUE/FALSE
@@ -255,6 +256,9 @@ export function TablePopup() {
           const type = colTypeAt(c);
           if (displayMode === "formatted") {
             if (type === "date") {
+              // toGrid renders a blank as "", and `Number("")` is 0 — a REAL serial
+              // (30-Dec-1899), so an unguarded parse prints a date for a missing cell.
+              if (cell.trim() === "") return cell;
               const n = Number(cell);
               return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : cell;
             }
@@ -776,6 +780,12 @@ export function TablePopup() {
                     const type = vertical ? cellType : colTypeAt(c);
                     // In a NUMERIC column a shown "NaN" can only be a real NaN (dirty data).
                     const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
+                    // A tagged error renders as its #CODE!. Membership in ERROR_EXPLANATIONS
+                    // (a total Record<SolErrorCode, string>) is the test, so a NEW code is
+                    // covered the day it is declared — a hand-kept list or a `#\w+!` regex
+                    // would not be (per noManualList).
+                    const errCode = (row[c] ?? "").trim();
+                    const isErrCell = errCode !== "" && Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, errCode);
                     // Formatted mode swaps the derived render for the RAW text on focus
                     // (the edit truth) and re-renders formatted on the commit.
                     const fmtEdit = formattedPreview && editable && !vertical;
@@ -807,10 +817,12 @@ export function TablePopup() {
                       key={c}
                       className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
-                      title={nan ? "Not a number: an undefined value in the data" : undefined}
+                      title={nan ? "Not a number: an undefined value in the data"
+                        : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
+                        : undefined}
                     >
                       <input
-                        className={isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
+                        className={`${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`}
                         value={editingHere ? editDraft.current : row[c] ?? ""}
                         readOnly={!editable || (formattedPreview && !fmtEdit)}
                         inputMode={isTextType(type) ? "text" : "decimal"}

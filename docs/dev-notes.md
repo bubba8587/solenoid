@@ -153,6 +153,36 @@ the field's own border.
 **Display's resize grip is NOT clipped** (author asked). Measured ink extent reaches 11.7 of a
 12-unit viewBox and no ancestor clips it.
 
+**#AMBIGUOUS! was being produced correctly and thrown away four times over** (author-reported:
+"02-03-2026" into List Input date mode rendered 30-Dec-1899, then a blank). `parseDate` flagged
+it every time; four separate layers discarded it, each for its own reason, which is why the
+symptom kept changing shape as each was fixed:
+1. `parseDateToSerial` — the back-compat wrapper whose own docstring admits it flattens the
+   error to NaN. Typed datelist literals (`parseListLiteral`), a wired string coerced to a date
+   row (`coerceElem`), and Get Column read-as-date all went through it. Now they call `parseDate`
+   and let the error through; the three-way split is right (serial / `#AMBIGUOUS!` / `null` for
+   genuine non-dates). Guarded by `dateAmbiguitySurfaces` in `sourceInvariants.test.ts` with a
+   SANCTIONED map — the remaining callers are ISO-gated or have no error channel, each saying
+   which. Cast is sanctioned but NOT silent (a failed date cast is already `#VALUE!`); the
+   `frameVerbs` lookup criterion and TablePopup's CSV import genuinely cannot report and are
+   backlogged.
+2. `dateFormatDisplay` mapped a date list with `Number.isFinite(v) ? fmt(v) : ""`, so every error
+   AND blank became an empty cell — and the branch was gated on `typeof value[0] === "number"`,
+   so a VALID leading date is precisely what silenced the error after it. Now per-cell, never
+   gated on cell 0.
+3. `TablePopup`'s date column ran `Number(cell)` on a grid where `toGrid` writes a blank as `""`
+   — and `Number("")` is 0, a real serial. That is the 30-Dec-1899: not a parse result at all,
+   just an empty cell formatted as the epoch. Same shape fixed in `PivotEditorPopup`.
+4. An error cell had no styling in the popup grid. `errorChip.css` already declares itself the
+   single source of truth for the `#CODE!` treatment and even lists "frame/table cell" among its
+   surfaces — the grid simply never applied it. The cell now adds `.sol-error-chip`; the one new
+   CSS rule defines no colour, it only wins specificity over `.table-popup__input[readonly]`
+   ([class][attr]) and holds the grid's own 13px. Detection is membership in `ERROR_EXPLANATIONS`
+   (a total `Record<SolErrorCode, string>`), so a new code is covered the day it is declared
+   rather than when someone remembers a regex (per noManualList).
+Pinned end to end in `valueDisplayFormat.test.ts` — typed text → node list → rendered cells —
+because every link dropped it somewhere different. Green: tsc, 4414 vitest.
+
 **XIRR/XNPV took their dates on a numeric list — the only two such ports in the app**
 (author-spotted). `dates` was `listIn("Date serials")` where every other date-valued port
 across the finance and date families (60-plus: settlement, maturity, issue, first coupon,

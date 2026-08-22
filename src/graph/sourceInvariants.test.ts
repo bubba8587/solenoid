@@ -90,6 +90,64 @@ describe("retypeReconciles — a file that retypes sockets in place must reconci
   });
 });
 
+describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keeps #AMBIGUOUS!", () => {
+  // `parseDate` answers three ways: a serial, `#AMBIGUOUS!` (a numeric date that could
+  // read D/M or M/D), or NaN (not a date). `parseDateToSerial` is the back-compat wrapper
+  // that FLATTENS the middle one into NaN — which every caller then renders as a blank.
+  // That is how "02-03-2026" typed into List Input became an empty cell instead of the
+  // question it is. A surface whose value can carry a SolError must call `parseDate`.
+  //
+  // Sanctioned callers are the ones that provably cannot see an ambiguous string (their
+  // input is ISO-gated upstream) or cannot carry an error at all (a boolean predicate, a
+  // UI seed). Each says which.
+  // A CALL, not the declaration and not the re-export — dateSerial.ts owns both and is
+  // not a caller. Plain string tests on purpose: the first two versions of this guard
+  // used a generated regex whose escape was mangled into a control character, so it
+  // matched nothing and passed forever. A guard that cannot fail is not a guard.
+  const callsWrapper = (l: string): boolean =>
+    l.includes("parseDateToSerial(")
+    && !l.includes("function parseDateToSerial")
+    && !l.trimStart().startsWith("import")
+    && !l.trimStart().startsWith("export {");
+
+  const SANCTIONED: Record<string, string> = {
+    "frame.ts": "isDateCell is ISO_DATE-gated and boolean; the typing pass runs only after every cell passed it",
+    "noteFrontmatter.ts": "DATE_ONLY is /^\d{4}-\d{2}-\d{2}$/ — ISO only, never ambiguous",
+    "nodes/annotation.ts": "returns number | null; an annotation date has no error channel",
+    "nodes/cast.ts": "already LOUD — a failed date cast is #VALUE!, never a silent blank (precision upgrade, backlogged)",
+    "nodes/date.ts": "TIMEVALUE's datetime fallback — already answers #VALUE! on failure",
+    "frameVerbs.ts": "keyMatches returns boolean; a lookup criterion has no error channel (backlogged)",
+    "components/TablePopup.tsx": "date-picker seed + CSV import, both best-effort UI with no error channel",
+  };
+
+  it("no new file flattens #AMBIGUOUS! away without a sanction", () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC)) {
+      const lines = codeLines(file);
+      if (!lines.some(callsWrapper)) continue;
+      const r = rel(file);
+      if (r in SANCTIONED) continue;
+      offenders.push(r);
+    }
+    expect(
+      offenders,
+      `These files call parseDateToSerial, which silently turns #AMBIGUOUS! into a blank ` +
+      `(dateAmbiguitySurfaces). Call parseDate and let the error through, or add the file ` +
+      `to SANCTIONED with the reason it cannot see (or cannot report) an ambiguous date: ` +
+      offenders.join("; "),
+    ).toEqual([]);
+  });
+
+  it("the sanctioned list stays honest — every entry still exists and still calls it", () => {
+    for (const [r, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, r);
+      expect(fs.existsSync(file), `${r} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      const calls = codeLines(file).some(callsWrapper);
+      expect(calls, `${r} no longer calls parseDateToSerial — drop the stale sanction`).toBe(true);
+    }
+  });
+});
+
 describe("perInputUnitBlind — a node file that runs the dimension algebra declares unitAware", () => {
   // The unit-blind boundary strips `UnitCell` tags from every input UNLESS the
   // node declares `unitAware = true` (coerceInputs). So a node that calls the
