@@ -374,6 +374,27 @@ fn row_key_is_byte_identical_to_js_json_stringify() {
 }
 
 #[test]
+fn row_key_keys_each_non_finite_apart() {
+    // JSON.stringify writes every non-finite as `null`, so the oracle's
+    // encodeCell names them instead — mirror it byte for byte or +∞, −∞ and
+    // NaN silently share a distinct/group bucket on one engine only.
+    let cells: Vec<Vec<Cell>> = vec![
+        vec![Cell::Num(f64::INFINITY)],
+        vec![Cell::Num(f64::NEG_INFINITY)],
+        vec![Cell::Num(f64::NAN)],
+        vec![Cell::Null],
+    ];
+    assert_eq!(
+        row_key_json(&cells, 0),
+        "[[\"#\",\"inf\"],[\"#\",\"-inf\"],[\"#\",\"nan\"],[\"n\"]]"
+    );
+    // The tokens live under the "#" tag, so a string cell spelling "inf"
+    // keys as ["s","inf"] and cannot collide.
+    let strs: Vec<Vec<Cell>> = vec![vec![Cell::Str("inf".into())]];
+    assert_eq!(row_key_json(&strs, 0), "[[\"s\",\"inf\"]]");
+}
+
+#[test]
 fn row_key_float_formatting_matches_js() {
     // Non-integral floats via shortest-round-trip; integral via the i64 branch.
     let cells: Vec<Vec<Cell>> = vec![vec![Cell::Num(1.5)], vec![Cell::Num(0.1)], vec![Cell::Num(-2.0)]];

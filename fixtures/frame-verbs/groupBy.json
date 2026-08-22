@@ -863,7 +863,7 @@
    }
   },
   {
-   "name": "all non-finite key values share ONE bucket, apart from null (B-1a)",
+   "name": "each non-finite key value owns a bucket, null its own (B-1a re-cut)",
    "frames": {
     "in": {
      "columns": [
@@ -920,7 +920,13 @@
        {
         "__nf": "inf"
        },
+       {
+        "__nf": "-inf"
+       },
        null,
+       {
+        "__nf": "nan"
+       },
        1
       ]
      },
@@ -928,8 +934,10 @@
       "name": "s",
       "type": "number",
       "values": [
-       7,
+       1,
+       2,
        3,
+       4,
        5
       ]
      }

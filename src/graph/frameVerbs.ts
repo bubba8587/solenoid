@@ -113,12 +113,19 @@ function comparatorFor(type: FrameColType): (a: FrameCell, b: FrameCell) => numb
 }
 
 /** A JSON-safe, type-distinguishing encoding of a cell, for distinct/group keys
- *  (so `1` ≠ `"1"`, `null` ≠ `0`, and an error keys by its code). */
+ *  (so `1` ≠ `"1"`, `null` ≠ `0`, and an error keys by its code).
+ *  Non-finites key by NAME because `JSON.stringify` writes all three as `null`,
+ *  which used to file +∞, −∞ and NaN into one shared bucket — sort orders ±∞ at
+ *  opposite ends and aggregation reads NaN as `#DOMAIN!` while passing ±∞
+ *  through, so one bucket was the odd surface out. */
 function encodeCell(v: FrameCell): unknown {
   if (isSolError(v)) return ["e", v.code];
   if (v === null) return ["n"];
   if (typeof v === "boolean") return ["b", v];
-  if (typeof v === "number") return ["#", v];
+  if (typeof v === "number") {
+    if (Number.isFinite(v)) return ["#", v];
+    return ["#", Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf"];
+  }
   return ["s", v];
 }
 
@@ -459,8 +466,9 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   const idx = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
     const cell = cellAt(col, i);
-    // NON-FINITE keys never join: encKey buckets every non-finite alike, which would
-    // match NaN to −∞ — fine for dedupe, garbage as an equality MATCH.
+    // NON-FINITE keys never join, even now that they key apart for dedupe: NaN
+    // does not equal itself, and ±∞ are overflow sentinels — two rows that both
+    // overflowed are not the same entity. verb_join masks them to null likewise.
     if (cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell))) continue;
     const k = encKey(cell);
     const bucket = idx.get(k);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortByColumn, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame } from "./frameVerbs";
+import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
 import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
 
@@ -39,15 +39,29 @@ describe("sort — error cells (oracle-only)", () => {
   });
 });
 
-describe("distinct — the cross-backend key contract (B-1a, 2026-07-05)", () => {
+describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)", () => {
   // Rust keys rows with serde_json of the SAME tagged tuples this oracle builds,
   // asserted byte-identical in engine/tests.rs `row_key_is_byte_identical_to_js_
   // json_stringify` against this exact literal. If encodeCell's encoding ever
-  // changes, update BOTH pins together. (Key BEHAVIOR — the non-finite bucket,
+  // changes, update BOTH pins together. (Key BEHAVIOR — a bucket per non-finite,
   // the \u0001 separator class, null bucketing — is corpus-pinned.)
   it("the tagged-tuple key literal both backends pin (incl. \\u0001 + -0)", () => {
     const literal = JSON.stringify([["s", "a\u0001b"], ["#", 1], ["#", -0], ["b", true], ["n"]]);
     expect(literal).toBe('[["s","a\\u0001b"],["#",1],["#",0],["b",true],["n"]]');
+  });
+  it("+∞, −∞ and NaN key apart from each other and from null", () => {
+    const nf: FrameValue = {
+      __frame: true,
+      columns: [{ name: "v", type: "number", values: [Infinity, -Infinity, NaN, null, Infinity, NaN, null, 1] }],
+    };
+    expect(distinctRows(nf).columns[0].values).toEqual([Infinity, -Infinity, NaN, null, 1]);
+  });
+  it("the non-finite tokens cannot collide with the strings that name them", () => {
+    const mixed: FrameValue = {
+      __frame: true,
+      columns: [{ name: "v", type: "string", values: ["inf", "-inf", "nan", "inf"] }],
+    };
+    expect(distinctRows(mixed).columns[0].values).toEqual(["inf", "-inf", "nan"]);
   });
 });
 describe("filter — error cells (oracle-only)", () => {

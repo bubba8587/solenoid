@@ -86,7 +86,7 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-22 — card frame edges + the resizable-field grip)
+### SESSION DIGEST (2026-08-22 — card frame edges, the resizable-field grip, non-finite group keys)
 
 **Frame edges: one fix landed, one hypothesis TRIED AND REVERTED. Still OPEN.**
 
@@ -152,6 +152,23 @@ the field's own border.
 
 **Display's resize grip is NOT clipped** (author asked). Measured ink extent reaches 11.7 of a
 12-unit viewBox and no ancestor clips it.
+
+**Non-finite distinct/group keys de-grouped — B-1a re-cut on both engines.** `distinct` and
+`groupBy` filed +∞, −∞ and NaN into ONE shared bucket, because `encodeCell` emitted `["#", v]`
+and `JSON.stringify` writes every non-finite as `null`; the Polars path deliberately mirrored the
+collapse with a masked-value + is-non-finite FLAG pair. Consistent web↔desktop, inconsistent with
+the rest of the app — sort puts ±∞ at opposite ends and tails NaN, aggregation reads NaN as
+`#DOMAIN!` while passing ±∞ through. Now each non-finite keys by NAME under the `"#"` tag
+(`["#","inf"]` / `"-inf"` / `"nan"`), so the type tag keeps them clear of a string cell spelling
+"inf"; null keeps its own bucket. Rust `key_num` mirrors the tokens (fixes `distinct`), and the
+group-key flag became a CLASS expr carrying the same three tokens — the null cell needs the
+explicit `otherwise(NULL)` arm or it lands in the −∞ bucket (a null predicate reads as false in
+every `when`). Pins updated together: the byte-identical key literal on both sides,
+`row_key_keys_each_non_finite_apart` (cargo), two oracle cases, and the two re-cut corpus
+fixtures. Negative-controlled: reverting the group expr alone fails `corpus_cases` with the old
+one-bucket sum. JOIN is unchanged — non-finite keys still never match (NaN ≠ itself; ±∞ are
+overflow sentinels), and its comment no longer claims the collapse as the reason. Green: tsc,
+4398 vitest, 29 cargo.
 
 ### SESSION DIGEST (2026-08-21 — Excel-behavior sweep: finance/scalar/text, oracle + real Excel)
 - **Method, and its limit.** Cross-checked node values against `@formulajs/formulajs`

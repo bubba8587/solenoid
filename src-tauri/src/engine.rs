@@ -106,14 +106,17 @@ impl Cell {
     }
 }
 
-/// Key-side number JSON, matching `JSON.stringify` exactly: non-finite → null
-/// (JS stringifies Infinity/NaN as null, so the oracle keys ALL non-finite into
-/// one `["#",null]` bucket — parity requires the same here, NOT the `__nf` wire
-/// sentinel); integral-in-safe-range prints as an integer (ryu would say "1.0",
+/// Key-side number JSON, matching the oracle's `encodeCell` exactly: a
+/// non-finite keys by NAME (`"nan"` / `"inf"` / `"-inf"`), because plain
+/// `JSON.stringify` writes all three as `null` and would file them into one
+/// bucket; integral-in-safe-range prints as an integer (ryu would say "1.0",
 /// JS says "1"; also keys `-0` as `0`); else shortest-round-trip float.
 fn key_num(n: f64) -> Json {
-    if !n.is_finite() {
-        return Json::Null;
+    if n.is_nan() {
+        return Json::String("nan".into());
+    }
+    if n.is_infinite() {
+        return Json::String(if n > 0.0 { "inf" } else { "-inf" }.into());
     }
     if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
         return Json::Number((n as i64).into());
@@ -1522,13 +1525,13 @@ fn group_by_lazy_plan(
     let out_names = make_headers(&proposed, proposed.len());
     let agg_names = &out_names[keys.len()..];
 
-    // Group on DERIVED key exprs, not the raw columns: a float key's
-    // non-finite values share ONE bucket, distinct from the null bucket — the
-    // oracle's B-1a key encoding (JSON keys every non-finite as the same
-    // token; corpus fuzz sweep). Per float key: (value masked to null when
-    // non-finite, an is-non-finite flag) — finite x → (x, false), any
-    // non-finite → (null, true), null → (null, null). The OUTPUT key value is
-    // the group's first-seen ORIGINAL cell, like the oracle's bucket walk.
+    // Group on DERIVED key exprs, not the raw columns, so a float key's
+    // non-finites bucket the way the oracle's `encodeCell` keys them: +∞, −∞
+    // and NaN each own a bucket and null keeps its own. Per float key: (value
+    // masked to null when non-finite, a non-finite CLASS carrying the same
+    // token the oracle writes) — finite x → (x, null), ±∞/NaN → (null,
+    // "inf"/"-inf"/"nan"), null → (null, null). The OUTPUT key value is the
+    // group's first-seen ORIGINAL cell, like the oracle's bucket walk.
     let mut group_exprs: Vec<Expr> = Vec::new();
     for (i, k) in keys.iter().enumerate() {
         let kt = type_of_in(names, types, k).unwrap();
@@ -1537,7 +1540,16 @@ fn group_by_lazy_plan(
             group_exprs.push(
                 when(c.clone().is_finite()).then(c.clone()).otherwise(lit(NULL)).alias(format!("__gk{i}v")),
             );
-            group_exprs.push(c.is_finite().not().alias(format!("__gk{i}nf")));
+            group_exprs.push(
+                when(c.clone().is_nan())
+                    .then(lit("nan"))
+                    .when(c.clone().eq(lit(f64::INFINITY)))
+                    .then(lit("inf"))
+                    .when(c.eq(lit(f64::NEG_INFINITY)))
+                    .then(lit("-inf"))
+                    .otherwise(lit(NULL))
+                    .alias(format!("__gk{i}nf")),
+            );
         } else {
             group_exprs.push(c.alias(format!("__gk{i}v")));
         }
