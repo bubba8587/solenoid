@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, wrapCells } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
@@ -274,10 +274,6 @@ export class TableTransposeNode extends ClassicPreset.Node {
 // the whole result with #SHAPE!.
 
 /** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine). */
-function padCell(what: string): Cell {
-  return solError("#N/A", `Padded: this input is ${what} than the largest one`);
-}
-
 /** WRAPROWS/WRAPCOLS pad_with: a wired non-blank Fill overrides Excel's default #N/A
  *  pad. Blank (null) or unwired keeps #N/A — matching the formula surface's wrapPad. */
 function wrapPadCell(fill: unknown[] | undefined, what: string): Cell {
@@ -359,15 +355,7 @@ export class HStackTableNode extends StackNodeBase {
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
     const mats = this.matsOf(inputs);
     if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
-    const height = Math.max(...mats.map(matRows));
-    const na = padCell("shorter");
-    const out: CellMat = Array.from({ length: height }, () => []);
-    for (const m of mats) {
-      const w = matCols(m);
-      for (let i = 0; i < height; i++) {
-        out[i].push(...(i < m.length ? m[i] : Array<Cell>(w).fill(na)));
-      }
-    }
+    const out = stackH(mats) as CellMat;
     withMatrixUnit(out, sharedMatrixUnit(mats));
     this.cachedResult = out;
     return { result: out };
@@ -384,14 +372,7 @@ export class VStackNode extends StackNodeBase {
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
     const mats = this.matsOf(inputs);
     if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
-    const width = Math.max(...mats.map(matCols));
-    const na = padCell("narrower");
-    const out: CellMat = [];
-    for (const m of mats) {
-      for (const r of m) {
-        out.push(r.length < width ? [...r, ...Array<Cell>(width - r.length).fill(na)] : [...r]);
-      }
-    }
+    const out = stackV(mats) as CellMat;
     withMatrixUnit(out, sharedMatrixUnit(mats));
     this.cachedResult = out;
     return { result: out };
@@ -524,27 +505,8 @@ export class TableSelectNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     const idx = inputs.indices?.[0] ?? null;
     if (!m || !idx) { this.cachedResult = null; return { result: null }; }
-    // Excel edge convention: 1-based (negative counts from the end), fractional
-    // truncates toward zero, any zero/out-of-range index errors the whole call.
-    const kind = this.op === "chooserows" ? "row" : "column";
-    const size = this.op === "chooserows" ? matRows(m) : matCols(m);
-    const resolved: number[] = [];
-    for (const i of idx) {
-      const t = Math.trunc(i);
-      const p = t < 0 ? size + t : t - 1;
-      if (!(p >= 0 && p < size)) {
-        const e = solError("#VALUE!", `${TABLE_SELECT_OP_META[this.op].label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
-        this.cachedResult = e;
-        return { result: e };
-      }
-      resolved.push(p);
-    }
-    this.cachedResult = carryMatrixUnit(
-      this.op === "chooserows"
-        ? resolved.map(r => [...m[r]])
-        : m.map(row => resolved.map(c => row[c])),
-      m,
-    );
+    const picked = chooseAxis(m, idx, this.op === "chooserows" ? "row" : "column");
+    this.cachedResult = isSolError(picked) ? picked : carryMatrixUnit(picked, m);
     return { result: this.cachedResult };
   }
 }
@@ -621,31 +583,15 @@ export class ExpandNode extends ClassicPreset.Node {
   data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const curR = matRows(m), curC = matCols(m);
     const reqRRaw = readInput(inputs.rows, this.literals.rows ?? 0);
     const reqCRaw = readInput(inputs.cols, this.literals.cols ?? 0);
     if (reqRRaw === null || reqCRaw === null) { this.cachedResult = null; return { result: null }; }
-    const reqR = Math.round(reqRRaw);
-    const reqC = Math.round(reqCRaw);
-    const R = reqR > 0 ? reqR : curR;
-    const C = reqC > 0 ? reqC : curC;
-    if (R < curR || C < curC) {
-      const e = solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
-      this.cachedResult = e;
-      return { result: e };
-    }
-    // Unwired Fill pads with `null`, NOT Excel's #N/A (wire the NA node for that).
+    // Unwired Fill pads with `null`, NOT Excel's #N/A (wire the NA node for that) —
+    // the author's deliberate override (value-semantics.md).
     const fill = (inputs.fill?.[0] ?? null) as Cell;
-    const result: CellMat = [];
-    for (let i = 0; i < R; i++) {
-      const src = i < curR ? m[i] : [];
-      const row: Cell[] = [];
-      for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
-      result.push(row);
-    }
-    carryMatrixUnit(result, m);
-    this.cachedResult = result;
-    return { result };
+    const result = expandMat(m, Math.round(reqRRaw), Math.round(reqCRaw), fill);
+    this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
+    return { result: this.cachedResult };
   }
 }
 

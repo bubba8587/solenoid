@@ -3,6 +3,7 @@ import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 import {
   MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableReshapeNode, TableInfoNode,
+  HStackTableNode, VStackNode, TableSelectNode, ExpandNode,
 } from "./nodes/matrix";
 import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
@@ -109,8 +110,35 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     expect(ev("COLUMNS(m) * ROWS(m)", { m: [[1, 2, 3], [4, 5, 6]] })).toBe(6);
   });
 
+  it("HSTACK / VSTACK / CHOOSECOLS / CHOOSEROWS / EXPAND compute what their nodes do (FX-1)", () => {
+    const a = [[1, 2], [3, 4]], b = [[5, 6], [7, 8]];
+    expect(ev("HSTACK(a, b)", { a, b })).toEqual(new HStackTableNode().data({ t0: [a], t1: [b] }).result);
+    expect(ev("VSTACK(a, b)", { a, b })).toEqual(new VStackNode().data({ t0: [a], t1: [b] }).result);
+    // A bare list is one ROW on both surfaces.
+    expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new VStackNode().data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
+    // Ragged inputs pad with #N/A (shape construction, D15) — identical to the node.
+    expect(ev("HSTACK(a, w)", { a, w: [[9], [8], [7]] })).toEqual(new HStackTableNode().data({ t0: [a], t1: [[[9], [8], [7]]] }).result);
+
+    expect(ev("CHOOSECOLS(a, 2)", { a })).toEqual(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[2]] }).result);
+    expect(ev("CHOOSEROWS(a, 1, 2)", { a })).toEqual(new TableSelectNode({ op: "chooserows" }).data({ matrix: [a], indices: [[1, 2]] }).result);
+    expect(code(ev("CHOOSECOLS(a, 5)", { a }))).toBe("#VALUE!"); // out of range, both surfaces
+    expect(code(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[5]] }).result)).toBe("#VALUE!");
+
+    // EXPAND pads with first-class null (the author override of Excel's #N/A), and the
+    // node agrees because both call expandMat with the same omitted-Fill default.
+    expect(ev("EXPAND(a, 3, 3)", { a })).toEqual(new ExpandNode().data({ matrix: [a], rows: [3], cols: [3] }).result);
+    expect((ev("EXPAND(a, 3, 3)", { a }) as unknown[][])[2][2]).toBeNull();
+    expect(code(ev("EXPAND(a, 1, 1)", { a }))).toBe("#VALUE!"); // shrink is refused, both surfaces
+  });
+
+  it("the D* database family is BLOCKED like VLOOKUP/MATCH (superseded by Frame Filter)", () => {
+    for (const name of ["DSUM", "DAVERAGE", "DCOUNT", "DGET", "DMAX", "DMIN", "DPRODUCT", "DSTDEV", "DVAR"]) {
+      expect(code(ev(`${name}(a, 1, a)`, { a: [[1, 2], [3, 4]] })), name).toBe("#NAME?");
+    }
+  });
+
   it("every tranche registration declares the FX-9 gate", () => {
-    for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS"]) {
+    for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
       expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
       expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
     }

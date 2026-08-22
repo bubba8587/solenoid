@@ -476,27 +476,16 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   TBILLEQ: "settlement, maturity, discount",
   TBILLPRICE: "settlement, maturity, discount",
   TBILLYIELD: "settlement, maturity, pr",
-  // database (D*) — one shape across the family
-  DAVERAGE: "database, field, criteria",
-  DCOUNT: "database, field, criteria",
-  DCOUNTA: "database, field, criteria",
-  DGET: "database, field, criteria",
-  DMAX: "database, field, criteria",
-  DMIN: "database, field, criteria",
-  DPRODUCT: "database, field, criteria",
-  DSTDEV: "database, field, criteria",
-  DSTDEVP: "database, field, criteria",
-  DSUM: "database, field, criteria",
-  DVAR: "database, field, criteria",
-  DVARP: "database, field, criteria",
+  // The D* database family is BLOCKED (LEGACY_ALIASES → aggregate + Frame Filter), so it
+  // carries no hint — a signature here would advertise a name the parser refuses.
   // lookup / arrays (COLUMN/ROW are blocked — LEGACY_ALIASES → INDEX)
   COLUMNS: "array",
   ROWS: "array",
-  CHOOSECOLS: "array, col1, col2, …",
-  CHOOSEROWS: "array, row1, row2, …",
+  CHOOSECOLS: "array, col1, …",
+  CHOOSEROWS: "array, row1, …",
   EXPAND: "array, rows, [columns], [pad_with]",
-  HSTACK: "array1, array2, …",
-  VSTACK: "array1, array2, …",
+  HSTACK: "array1, …",
+  VSTACK: "array1, …",
 };
 
 /** A named placeholder signature synthesized from an impl's [min, max] arity, so a

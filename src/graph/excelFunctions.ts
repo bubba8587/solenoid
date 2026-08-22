@@ -8,7 +8,7 @@ import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
@@ -266,6 +266,14 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
 // dropped from autocomplete. Block a name only once its replacement already dispatches.
 export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",
+
+  // The D* database family is superseded by composition — a Frame Filter feeding an
+  // aggregate — the same way VLOOKUP is superseded by XLOOKUP, so it's blocked, not left
+  // as a broken Formula.js fallthrough. Each redirects to the aggregate it wraps (DGET,
+  // a unique-match lookup, → XLOOKUP); filter the rows first with the Frame Filter node.
+  DSUM: "SUM", DAVERAGE: "AVERAGE", DCOUNT: "COUNT", DCOUNTA: "COUNTA",
+  DMAX: "MAX", DMIN: "MIN", DPRODUCT: "PRODUCT", DGET: "XLOOKUP",
+  DSTDEV: "STDEV.S", DSTDEVP: "STDEV.P", DVAR: "VAR.S", DVARP: "VAR.P",
 
   NORMDIST: "NORM.DIST", NORMINV: "NORM.INV", NORMSDIST: "NORM.S.DIST", NORMSINV: "NORM.S.INV",
   LOGNORMDIST: "LOGNORM.DIST", LOGINV: "LOGNORM.INV", LOGNORMINV: "LOGNORM.INV",
@@ -566,6 +574,13 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // list) rather than broadcasting; a list is a ROW here (SOCK-2), so COLUMNS counts it.
   COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   ROWS:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  // The append-ladder rungs + grid selection/grow, sharing their nodes' kernels. All
+  // element-preserving ("any"), all take grids whole (matrixArgs), a list is a row.
+  HSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
+  VSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
+  CHOOSECOLS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
+  CHOOSEROWS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
+  EXPAND:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
   WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   TOCOL:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
@@ -1375,6 +1390,31 @@ registerInternal("TRANSPOSE", (v) => {
 // ROW so COLUMNS counts it and ROWS is 1, a scalar is 1×1, a wired blank stays unknown.
 registerInternal("COLUMNS", (v) => matrixShape(v).cols);
 registerInternal("ROWS", (v) => matrixShape(v).rows);
+// HSTACK / VSTACK share the stacker nodes' kernels; a blank input is DROPPED (the node's
+// matsOf filters empties), no inputs → null. CHOOSECOLS/CHOOSEROWS share chooseAxis, the
+// trailing args being the index list. EXPAND shares expandMat — omitted Fill pads with
+// first-class null (the author override of Excel's #N/A), a wired-blank axis is unknown.
+registerInternal("HSTACK", (...args) => {
+  const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
+  return mats.length ? stackH(mats) : null;
+});
+registerInternal("VSTACK", (...args) => {
+  const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
+  return mats.length ? stackV(mats) : null;
+});
+registerInternal("CHOOSECOLS", (matrix, ...cols) => {
+  const m = toMatrix(matrix);
+  return m === null ? null : chooseAxis(m, cols.flat().map(Number), "column");
+});
+registerInternal("CHOOSEROWS", (matrix, ...rows) => {
+  const m = toMatrix(matrix);
+  return m === null ? null : chooseAxis(m, rows.flat().map(Number), "row");
+});
+registerInternal("EXPAND", (matrix, rows, cols, fill) => {
+  const m = toMatrix(matrix);
+  if (m === null || rows === null || cols === null) return null; // a wired-blank axis is unknown (VAL-1)
+  return expandMat(m, Math.round(Number(rows ?? 0)), Math.round(Number(cols ?? 0)), fill ?? null);
+});
 registerInternal("MMULT", (a, b) => {
   const ma = numMatrix(a);
   if (ma === null || isSolError(ma)) return ma;

@@ -113,3 +113,66 @@ export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols"
   for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i] as T;
   return mat;
 }
+
+// ── The append-ladder + selection + grow shape ops (D15). Shape CONSTRUCTION pads
+// #N/A (the exception is EXPAND's Fill, below). The nodes add unit tagging on top;
+// these are pure shape, so both surfaces share them (FX-1). ──
+
+/** HSTACK: glue matrices left-to-right, padding shorter ones DOWN with #N/A. */
+export function stackH(mats: readonly unknown[][][]): unknown[][] {
+  const height = Math.max(...mats.map(matRows));
+  const na = solError("#N/A", "Padded: this input is shorter than the largest one");
+  const out: unknown[][] = Array.from({ length: height }, () => []);
+  for (const m of mats) {
+    const w = matCols(m);
+    for (let i = 0; i < height; i++) out[i].push(...(i < m.length ? m[i] : Array<unknown>(w).fill(na)));
+  }
+  return out;
+}
+
+/** VSTACK: stack matrices top-to-bottom, padding narrower ones RIGHT with #N/A. A bare
+ *  list is one ROW upstream, so stacking two lists yields a 2×n grid. */
+export function stackV(mats: readonly unknown[][][]): unknown[][] {
+  const width = Math.max(...mats.map(matCols));
+  const na = solError("#N/A", "Padded: this input is narrower than the largest one");
+  const out: unknown[][] = [];
+  for (const m of mats)
+    for (const r of m) out.push(r.length < width ? [...r, ...Array<unknown>(width - r.length).fill(na)] : [...r]);
+  return out;
+}
+
+/** CHOOSEROWS / CHOOSECOLS: select rows/columns by 1-based index (negative counts from
+ *  the end, fractional truncates toward zero); any zero/out-of-range index errors the
+ *  whole call (#VALUE!). Element-preserving. */
+export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" | "column"): T[][] | SolError {
+  const size = kind === "row" ? matRows(m) : matCols(m);
+  const label = kind === "row" ? "CHOOSEROWS" : "CHOOSECOLS";
+  const resolved: number[] = [];
+  for (const i of indices) {
+    const p = i < 0 ? size + Math.trunc(i) : Math.trunc(i) - 1;
+    if (!(p >= 0 && p < size))
+      return solError("#VALUE!", `${label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
+    resolved.push(p);
+  }
+  return kind === "row" ? resolved.map((r) => [...m[r]]) : m.map((row) => resolved.map((c) => row[c]));
+}
+
+/** EXPAND: grow a matrix to R×C, filling new cells with `fill`. Shrinking is #VALUE!;
+ *  a 0 (Excel's omitted) target keeps that axis. Unlike WRAP, the omitted-Fill default
+ *  is the caller's choice — the node/formula pass first-class `null`, the author's
+ *  override of Excel's #N/A (value-semantics.md). */
+export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[][] | SolError {
+  const curR = matRows(m), curC = matCols(m);
+  const R = reqR > 0 ? reqR : curR;
+  const C = reqC > 0 ? reqC : curC;
+  if (R < curR || C < curC)
+    return solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
+  const out: T[][] = [];
+  for (let i = 0; i < R; i++) {
+    const src = i < curR ? m[i] : [];
+    const row: T[] = [];
+    for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
+    out.push(row);
+  }
+  return out;
+}
