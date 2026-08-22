@@ -3,7 +3,7 @@ import { matRows, matCols, matTranspose, matUnit, asNumericMatrix, matMul, matDe
 import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
-import { toAnyMatrix, type Cell } from "./coerce";
+import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -674,9 +674,9 @@ export class TableInfoNode extends ClassicPreset.Node {
       this.cachedCols = input.columns.length;
       return { rows: this.cachedRows, cols: this.cachedCols };
     }
-    const m = toAnyMatrix(input);
-    this.cachedRows = m ? matRows(m) : null;
-    this.cachedCols = m ? matCols(m) : null;
-    return { rows: this.cachedRows, cols: this.cachedCols };
+    const { rows, cols } = matrixShape(input);
+    this.cachedRows = rows;
+    this.cachedCols = cols;
+    return { rows, cols };
   }
 }

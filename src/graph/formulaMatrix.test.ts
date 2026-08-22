@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 import {
-  MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableReshapeNode,
+  MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableReshapeNode, TableInfoNode,
 } from "./nodes/matrix";
 import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
@@ -95,20 +95,18 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     expect(ev("TRANSPOSE(TRANSPOSE(m))", { m: M })).toEqual(M);
   });
 
-  it("COLUMNS / ROWS count the shape instead of broadcasting into #VALUE!s", () => {
+  it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math (FX-1)", () => {
     // Pre-ownership these fell through to Formula.js element-wise, answering a
-    // same-shape array of #VALUE! even on a 1-D list. A list is a ROW here, so
-    // COLUMNS counts it and ROWS is 1; a scalar is 1x1; a wired blank stays unknown.
-    const wide = [[1, 2, 3], [4, 5, 6]]; // 2 rows, 3 cols
-    expect(ev("COLUMNS(m)", { m: wide })).toBe(3);
-    expect(ev("ROWS(m)", { m: wide })).toBe(2);
-    expect(ev("COLUMNS(v)", { v: [1, 2, 3] })).toBe(3);
-    expect(ev("ROWS(v)", { v: [1, 2, 3] })).toBe(1);
-    expect(ev("COLUMNS(x)", { x: 9 })).toBe(1);
-    expect(ev("ROWS(x)", { x: 9 })).toBe(1);
-    expect(ev("COLUMNS(b)", { b: null })).toBeNull();
+    // same-shape array of #VALUE! even on a 1-D list. Now both surfaces call
+    // matrixShape: a list is a ROW here, so COLUMNS counts it and ROWS is 1; a
+    // scalar is 1x1; a wired blank stays unknown. Assert equality against the node.
+    const info = (v: unknown) => new TableInfoNode().data({ matrix: [v] });
+    for (const v of [[[1, 2, 3], [4, 5, 6]], [1, 2, 3], 9, [], null] as unknown[]) {
+      expect(ev("COLUMNS(v)", { v })).toBe(info(v).cols);
+      expect(ev("ROWS(v)", { v })).toBe(info(v).rows);
+    }
     // Composes: the count feeds ordinary math, no array leak.
-    expect(ev("COLUMNS(m) * ROWS(m)", { m: wide })).toBe(6);
+    expect(ev("COLUMNS(m) * ROWS(m)", { m: [[1, 2, 3], [4, 5, 6]] })).toBe(6);
   });
 
   it("every tranche registration declares the FX-9 gate", () => {

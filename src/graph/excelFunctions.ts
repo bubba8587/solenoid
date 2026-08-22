@@ -7,6 +7,7 @@ import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replace
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
+import { matrixShape } from "./nodes/coerce";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
@@ -1370,16 +1371,10 @@ registerInternal("TRANSPOSE", (v) => {
   const m = toMatrix(v);
   return m === null ? null : matTranspose(m);
 });
-// COLUMNS/ROWS count the shape. A list is a ROW (toMatrix wraps it 1×N), so COLUMNS of a
-// list is its length and ROWS is 1; a scalar is 1×1. A wired blank stays unknown (VAL-1).
-registerInternal("COLUMNS", (v) => {
-  const m = toMatrix(v);
-  return m === null ? null : matCols(m);
-});
-registerInternal("ROWS", (v) => {
-  const m = toMatrix(v);
-  return m === null ? null : matRows(m);
-});
+// COLUMNS/ROWS share the TableInfo node's shape math (matrixShape, FX-1): a list is a
+// ROW so COLUMNS counts it and ROWS is 1, a scalar is 1×1, a wired blank stays unknown.
+registerInternal("COLUMNS", (v) => matrixShape(v).cols);
+registerInternal("ROWS", (v) => matrixShape(v).rows);
 registerInternal("MMULT", (a, b) => {
   const ma = numMatrix(a);
   if (ma === null || isSolError(ma)) return ma;
