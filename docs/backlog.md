@@ -259,15 +259,19 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   itself, not just flip the gate — more Excel thought needed. NOTE: the XLOOKUP NODE
   already accepts up to CUBE inputs; this is the FORMULA surface only.
 - [x] **An ARRAY `lookup_value` SPILLS — DONE (2026-08-23, author-approved).** Excel returns
-  one result per element; both `XLOOKUP`/`XMATCH` formula registrations now map the kernel over a
-  LIST needle and return a rank-1 result list (`pick`, `excelFunctions.ts`) — Excel parity,
-  replacing the day's earlier interim loud `#VALUE!`, which itself replaced the original quiet
-  `#N/A` lie. Stays within the rank cap (1-D in → 1-D out) and rides the existing RANGE_FUNCTIONS
-  as-is array return. Pinned in `excelFunctions.test.ts` "SPILLS". This is the SCOPED spill for the
-  lookup family only. Still deferred to the general mechanism: a 1×N/N×1 MATRIX lookup value (the
-  orientation item below — still `#SHAPE!`) and any per-argument spill for OTHER functions. That
-  general fix — a per-ARGUMENT prep declaration (wholeArrayArgs/prepByShape) — subsumes this scoped
-  `pick`; fold it in when it lands.
+  one result per element. Both the `XLOOKUP`/`XMATCH` FORMULA registrations (`pick`,
+  `excelFunctions.ts`) AND the **XMATCH NODE** now spill a LIST needle to a rank-1 result list —
+  the node shares the same `xmatchIndex` kernel, so its sockets were swapped to match: `value`
+  `any`→`anycombo`, output `number`→`numlist` (the `combo→scalar` lattice exception keeps existing
+  downstream scalar wires legal; INDEX/`ListIndexNode` is the precedent). Pinned in
+  `excelFunctions.test.ts` "SPILLS" and `errorValue.test.ts` "XMATCH node SPILLS". Replaced the
+  day's interim loud `#VALUE!`, which replaced the original quiet `#N/A` lie. The XLOOKUP NODE is
+  deliberately a DIFFERENT shape (frame + column names, its own `lookupFrameCell` kernel — the
+  recorded "Build Frame first" decision below), so it shares no array-lookup slot with the formula;
+  list-lookup spilling there would be a separate feature (whole-row × list = 2-D). Still deferred to
+  the general mechanism: a 1×N/N×1 MATRIX lookup value (the orientation item — still `#SHAPE!`) and
+  per-argument spill for OTHER functions (wholeArrayArgs/prepByShape), which subsumes the scoped
+  `pick`.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment

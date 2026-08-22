@@ -95,10 +95,16 @@ over the quiet lie), then — after confirming the dispatch returns a RANGE_FUNC
 as-is and it stays within the rank cap (1-D in → 1-D out) — the actual spill: both registrations
 map the kernel over a list needle (`pick`, `excelFunctions.ts`) and return a result list. Author
 approved supporting it (it's parity, and the "deep engine" framing applied to the GENERAL
-per-argument spill, not to these two). NODE surface untouched (scalar lookup slot). Pinned in
-`excelFunctions.test.ts` "SPILLS". Scoped to the lookup family: a 1×N MATRIX lookup value is still
-`#SHAPE!` (the deferred orientation item), and the general per-argument mechanism
-(`wholeArrayArgs`/`prepByShape`) subsumes this `pick` when it lands.
+per-argument spill, not to these two). **The XMATCH NODE was swapped to match** — it shares the
+`xmatchIndex` kernel, so leaving it scalar would have drifted the two surfaces: `value` socket
+`any`→`anycombo`, output `number`→`numlist`, and `data()` mirrors the formula's `pick`. The
+`combo→scalar` lattice exception (`dimFlows`) keeps existing downstream scalar wires legal —
+INDEX/`ListIndexNode` is the precedent for a runtime-rank output. Pinned in `excelFunctions.test.ts`
+"SPILLS" and `errorValue.test.ts` "XMATCH node SPILLS". The XLOOKUP NODE is deliberately a different
+shape (frame + column names, its own `lookupFrameCell` kernel — the "Build Frame first" decision),
+so it shares no array-lookup slot; spilling there is a separate feature (whole-row × list = 2-D).
+Scoped to the lookup family: a 1×N MATRIX lookup value is still `#SHAPE!` (deferred orientation),
+and the general per-argument mechanism (`wholeArrayArgs`/`prepByShape`) subsumes this `pick`.
 
 **Dependency-diff triage (read the diffs, not the version bumps):**
 - `@formulajs/formulajs` 4.6.0 → 4.6.1 **bumped.** The whole diff is a new `TAKE` (we already

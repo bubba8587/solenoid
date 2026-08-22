@@ -298,6 +298,16 @@ describe("error producers", () => {
     expect(new XMatchNode().data({ value: [2], array: [[1, 2, 3]] }).result).toBe(2);
   });
 
+  it("XMATCH node SPILLS a list lookup value, matching the XMATCH formula", () => {
+    // Same kernel (xmatchIndex) as the formula's `pick`, so the surfaces can't drift:
+    // a list needle gives a list of positions; a miss spills #N/A in place.
+    const r = new XMatchNode().data({ value: [[30, 10, 99]], array: [[10, 20, 30]] }).result as unknown[];
+    expect(r.slice(0, 2)).toEqual([3, 1]);
+    expect(isSolError(r[2]) && (r[2] as SolError).code).toBe("#N/A");
+    // A scalar needle still answers a scalar — the common case is unchanged.
+    expect(new XMatchNode().data({ value: [20], array: [[10, 20, 30]] }).result).toBe(2);
+  });
+
   it("Filter (filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {
     // The 1-D Filter has no mask and takes no tables, so its old #SHAPE!
     // sources are gone; an error CELL fails the condition and exits Dropped.

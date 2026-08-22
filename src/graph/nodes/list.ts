@@ -4,7 +4,7 @@ import { parseListLiteral } from "../coerceInputs";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListOut, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -1828,7 +1828,7 @@ export class XMatchNode extends ClassicPreset.Node {
   label: string;
   matchMode: XMatchMatchMode;
   searchMode: XMatchSearchMode;
-  cachedResult: number | SolError | null = null;
+  cachedResult: XMatchResult = null;
   literals: Record<string, number> = { value: 0 };
   stringLiterals: Record<string, string> = {};
   // The lookup is a wildcard VALUE slot, so its typed literal may be number or text.
@@ -1842,26 +1842,34 @@ export class XMatchNode extends ClassicPreset.Node {
     this.searchMode = init?.searchMode ?? "first";
     // The kernel is type-agnostic (lookupEq), so the sockets are too: any-family
     // lookup against any 1-D list. Approximate modes stay numeric IN the kernel.
-    this.addInput("value",  anyIn("Lookup value"));
+    // `anycombo` value: a scalar lookup answers a scalar, a LIST lookup spills one
+    // position per element — matching the XMATCH formula, which shares this kernel.
+    this.addInput("value",  anyComboIn("Lookup value"));
     this.addInput("array",  adoptiveListIn("Array"));
-    this.addOutput("result", numOut("1-based position (#N/A when not found)"));
+    this.addOutput("result", numListOut("1-based position (#N/A when not found)"));
   }
 
-  data(inputs: { value?: unknown[]; array?: unknown[][] }): { result: number | SolError | null } {
+  data(inputs: { value?: unknown[]; array?: unknown[][] }): { result: XMatchResult } {
     const val = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "value");
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (val === null) { this.cachedResult = null; return { result: null }; }
-    const wired = inputs.array?.[0] ?? null;
-    const found = xmatchIndex(val, wired ?? [], this.matchMode, this.searchMode);
-    let result: number | SolError | null =
-      isSolError(found) ? found : found === -1 ? null : found + 1;
-    if (wired !== null && result === null) {
-      result = solError("#N/A", "No match found in the array");
-    }
+    const keys = inputs.array?.[0] ?? null;
+    const ks = keys ?? [];
+    // The XMATCH formula's `pick`, shared so the two surfaces can't drift: a hit → its
+    // 1-based position; a miss → #N/A when the array is wired, else null (unknown).
+    const pick = (l: unknown): number | SolError | null => {
+      const found = xmatchIndex(l, ks, this.matchMode, this.searchMode);
+      if (isSolError(found)) return found;
+      if (found >= 0) return found + 1;
+      return keys !== null ? solError("#N/A", "No match found in the array") : null;
+    };
+    const result = Array.isArray(val) ? val.map(pick) : pick(val);
     this.cachedResult = result;
     return { result };
   }
 }
+
+type XMatchResult = number | SolError | null | (number | SolError | null)[];
 
 // ─── GROUPBY ─────────────────────────────────────────────────────────────────
 
