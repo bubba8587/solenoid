@@ -97,7 +97,7 @@ export function matInverse(m: NumMat): NumMat | null {
 }
 
 /** Wrap a 1-D list into a matrix; leftover cells take the caller's `pad()`, which defaults
- *  to #N/A per D15 so a pad_with argument overrides cleanly. */
+ *  to #N/A per appendLadder so a pad_with argument overrides cleanly. */
 export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {
   if (dir === "rows") {
     const rows: T[][] = [];
@@ -114,7 +114,7 @@ export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols"
   return mat;
 }
 
-// ── The append-ladder + selection + grow shape ops (D15). Shape CONSTRUCTION pads
+// ── The append-ladder + selection + grow shape ops (appendLadder). Shape CONSTRUCTION pads
 // #N/A (the exception is EXPAND's Fill, below). The nodes add unit tagging on top;
 // these are pure shape, so both surfaces share them (shareImpl). ──
 

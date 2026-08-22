@@ -500,7 +500,7 @@ describe("Reduce — means and shape", () => {
   });
 });
 
-describe("Filter — condition rows over the list's own values (D16)", () => {
+describe("Filter — condition rows over the list's own values (filterOneJob)", () => {
   const mk = (
     conds: Array<{ op: import("../frameVerbs").FilterOp; value: string; matchCase?: boolean }>,
     combine: "and" | "or" = "and",
@@ -582,7 +582,7 @@ describe("Filter — condition rows over the list's own values (D16)", () => {
   });
 });
 
-describe("SUMIFS — conditional aggregation over one frame (D16, amended)", () => {
+describe("SUMIFS — conditional aggregation over one frame (filterOneJob, amended)", () => {
   const region = ["North", "South", "North", "East", "North", "South"];
   const sales = [120, 80, 200, 150, 90, 60];
   const frame = (vals: unknown[] = sales, regs: unknown[] = region) => ({

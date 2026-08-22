@@ -949,7 +949,7 @@ export class InterpolateNode extends ClassicPreset.Node {
     const grid: (number | null)[][] = gridRaw.map((row) =>
       (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
     );
-    // Carry the D20 grid unit: filling blanks keeps every cell in the input's unit
+    // Carry the unitGranularity grid unit: filling blanks keeps every cell in the input's unit
     // (structural reshape, matrixUnitPolicy "carry").
     const result = carryMatrixUnit(fillBorderedGrid(grid, this.forecast), gridRaw);
     this.cachedResult = result;

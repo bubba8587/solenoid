@@ -152,7 +152,7 @@ describe("Element picker — table geometry + search", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("ELEMENT reads by symbol or atomic number, any property", () => {
     expect(evalPackFormula('ELEMENT("Fe")')).toBeCloseTo(55.845, 3);
     expect(evalPackFormula('ELEMENT(26, "symbol")')).toBe("Fe");

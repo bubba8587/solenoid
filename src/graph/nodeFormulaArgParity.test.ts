@@ -8,7 +8,7 @@ import { EXCEL_IMPL_META } from "./excelFunctions";
 // The two surfaces (a NODE's data() and a formula name) share one impl. A node that
 // calls `resolveExcelFunction("X")` but hands it FEWER arguments than X accepts ships a
 // capability the formula has and the node lacks — a node↔formula disparity, a defect
-// regardless of how either compares to Excel (rules.md shareImpl / decisions D39). Excel /
+// regardless of how either compares to Excel (rules.md shareImpl / decisions capabilityParity). Excel /
 // Formula.js divergence is a judgement call; our OWN two surfaces disagreeing is not.
 //
 // SCOPE, stated honestly: this scan only catches the ONE mechanism where a node dispatches

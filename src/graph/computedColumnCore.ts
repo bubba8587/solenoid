@@ -191,7 +191,7 @@ export function computeColumnCells(
   const cells: FrameCell[] = [];
   for (let i = 0; i < rows; i++) {
     cursor = i;
-    // Frame cells are plain values — units live on the COLUMN (D20), so there is
+    // Frame cells are plain values — units live on the COLUMN (unitGranularity), so there is
     // nothing to unwrap per cell.
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)

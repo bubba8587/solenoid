@@ -87,7 +87,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | oneResolvePredicate | "Resolve past untyped passthroughs" goes through one predicate |
 | retypeReconciles | In-place retype must reconcile downstream |
 | socketBox12 | The socket box is a deterministic 12×12 |
-| anydataWildcard | `anydata`: the rank-≤2 element-agnostic wildcard (D23) |
+| anydataWildcard | `anydata`: the rank-≤2 element-agnostic wildcard (matricesInFormulas) |
 | portOwnsSocket | An adopting port owns its socket instance |
 | trueanyNeedsPassthrough | A `trueany` output implies a `passthrough()` declaration |
 | relaysTransparent | Relay nodes are transparent to every static derivation |
@@ -102,7 +102,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | prepByShape | Argument prep matches the function's shape, not its category |
 | blockedFailFast | Blocked spellings answer before their arguments are shaped |
 | matchNodeLimits | The formula boundary caps what a node's control already bounds |
-| hideMatrixFromVendor | Formula.js never sees a matrix, or a tagged Cx (D23 containment) |
+| hideMatrixFromVendor | Formula.js never sees a matrix, or a tagged Cx (matricesInFormulas containment) |
 | oneBroadcast | One broadcast engine, and the table is the test |
 | tripwireVendorDrift | A vendored-engine divergence is owned, and tripwired |
 | oneVerbCorpus | The verb pair computes from ONE fixture corpus |
@@ -241,7 +241,7 @@ as a parallel lookup map keyed by the same identity.
 that must be kept in step, and it is not next to the thing it modifies.
 *Enforced by:* `formulaTier3.test.ts` → "the prose-labelled families — names DECLARED, not
 despaced".
-*Origin:* D19 2(a) derives a formula name by despacing the node label, which works only
+*Origin:* formulaNaming 2(a) derives a formula name by despacing the node label, which works only
 while a label is a name. Three families label themselves in sentences for the dropdown
 ("Union: in A or B"). `fx` sits on `SET_OP_META` / `SET_RELATION_META` / `FILL_OP_META`.
 
@@ -444,7 +444,7 @@ on both axes, line-height 0), no INPUT_ROW_TOP-style constant anywhere, no trans
 positioning in the socket component. **The RENDERING half stays unenforced** — only a
 browser can verify rete measures the box it expects.
 
-### anydataWildcard — `anydata`: the rank-≤2 element-agnostic wildcard (D23) **[INFERRED]**
+### anydataWildcard — `anydata`: the rank-≤2 element-agnostic wildcard (matricesInFormulas) **[INFERRED]**
 **MUST:**
 - **As an input:** `anydata` accepts every FAMILY value of rank ≤ 2 (scalar / list /
   combo / matrix) plus the lower wildcards (`any`, `anylist`, `anycombo`,
@@ -455,7 +455,7 @@ browser can verify rete measures the box it expects.
 - Its membership edges are DERIVED additions to `accepts()` per `derivedSocketTypes`, swept by
   the full lattice test.
 - A formula surface's variable/side sockets are `anydata`: Expression VARIABLES (the
-  D23 lift) and Computed Column SIDE INPUTS (a side value can be a whole list —
+  matricesInFormulas lift) and Computed Column SIDE INPUTS (a side value can be a whole list —
   `SUM(list)` — or a row-aligned list read by `@name`). The RESULT socket keeps
   its family instead: the `resultAs` combo socket stays for rank-≤1 results, and
   when a computed result is a MATRIX the node swaps its result socket to the same
@@ -463,7 +463,7 @@ browser can verify rete measures the box it expects.
   value-driven, but through the same machinery every in-place retype uses. Family
   typing for downstream FCs survives; the socket never lies about rank.
 
-*Why:* the D23 endpoint is matrices-ONLY. A `trueany` variable would admit frames
+*Why:* the matricesInFormulas endpoint is matrices-ONLY. A `trueany` variable would admit frames
 and cubes into formulas (out of scope, permanently); `anycombo` refuses the
 matrices the decision admits. The lattice needed the one rung between them. The
 result is NOT `anydata` because that would trade away the family (`familyOf` =
@@ -662,7 +662,7 @@ now names the create-a-sibling moment and what not to extract.
 entry (`noManualList`); it is never declared twice.
 
 *Enforced by:* `excelFunctions.test.ts` → "every registered internal declares its meta
-(declareContract, the registered→declared direction)" — the D10 redirect stubs are out of scope (they
+(declareContract, the registered→declared direction)" — the currentExcelParity redirect stubs are out of scope (they
 are the gate, not implementations); `formulaTier3.test.ts` → "the declarations stay
 honest", "a list-RETURNING function also takes its args whole" (the declared→dispatches
 direction).
@@ -671,7 +671,7 @@ direction).
 would reroute them. **Removed by:** unifying the two routing declarations.
 
 ### uniqueNameMap — A derived name function is TOTAL and INJECTIVE **[INFERRED]**
-**MUST:** any rule that derives a name (D19 2(a): the node label despaced) must be defined
+**MUST:** any rule that derives a name (formulaNaming 2(a): the node label despaced) must be defined
 for every input AND must never map two different things to one name. Both properties are
 machine-checked.
 
@@ -704,7 +704,7 @@ A function whose arguments are all scalars but whose RESULT is a list is also ma
 never-broadcast.
 
 *Why:* without it the evaluator maps the call element-wise and returns N answers to a
-question that has one; with a list-returning function it builds a 2-D value behind the D2
+question that has one; with a list-returning function it builds a 2-D value behind the noFramesInFormulas
 cap's back.
 *Enforced by:* `formulaTier3.test.ts` → "the whole-list routing"; `rangeRouting.test.ts`.
 (The list-returning sweep iterates `rank === "list"` registrations only — a
@@ -734,11 +734,11 @@ such call. **Removed by:** per-`type` routing, if the evaluator ever dispatches 
 argument value.
 
 ### blockedFailFast — Blocked spellings answer before their arguments are shaped **[INFERRED]**
-**MUST:** an eliminated Excel name (D10) resolves to a `#NAME?` redirect naming the
+**MUST:** an eliminated Excel name (currentExcelParity) resolves to a `#NAME?` redirect naming the
 current function, is dropped from autocomplete and highlighting, and gets no range
 routing. The blocklist is DERIVED from `LEGACY_ALIASES`, not hand-pruned.
 
-*Enforced by:* `formulaTier1.test.ts` → "the D10 gate covers the WHOLE blocklist, on
+*Enforced by:* `formulaTier1.test.ts` → "the currentExcelParity gate covers the WHOLE blocklist, on
 every surface (blockedFailFast)" — every blocked spelling answers `#NAME?` naming its replacement,
 none is advertised, none is range-routed; `formulaNodeParity.test.ts` → "never advertises
 Formula.js internals as formula functions".
@@ -751,7 +751,7 @@ Formula.js internals as formula functions".
 for ten million elements with nothing visible to stop it.
 *Enforced by:* `formulaTier3.test.ts` → "a generator is capped at the formula boundary".
 
-### hideMatrixFromVendor — Formula.js never sees a matrix, or a tagged Cx (D23 containment) **[INFERRED]**
+### hideMatrixFromVendor — Formula.js never sees a matrix, or a tagged Cx (matricesInFormulas containment) **[INFERRED]**
 **MUST:** a rank-2 value reaches a dispatch WHOLE only through a registration
 declaring `matrixArgs`. Otherwise: a range aggregate FLATTENS row-major before its
 1-D prep; a positional lookup or 1-D whole-list native answers `#SHAPE!`; an
@@ -772,8 +772,8 @@ unvetted quirks, and it has been caught mutating its arguments in place
 permanent even though the cap itself lifted. The Cx half has the same shape:
 before the gate, `cx + 1` concatenated to `"[object Object]1"` and Formula.js's
 IM* worked on TEXT complexes while refusing the graph's own tagged values (the
-D23-amendment finding, 2026-07-28).
-*Enforced by:* `broadcastRules.test.ts` → "the D23 containment rule";
+matricesInFormulas-amendment finding, 2026-07-28).
+*Enforced by:* `broadcastRules.test.ts` → "the matricesInFormulas containment rule";
 `formulaComplex.test.ts` → "containment — a Cx reaches a dispatch only through
 cxArgs" (plus the operator table there).
 
@@ -842,7 +842,7 @@ oracle-side in `frameVerbs.test.ts`, marked as such.
 ### rowFormulaRefs — In a row formula, a bare name is the WHOLE column; `@` is this row **[INFERRED]**
 **MUST:** inside a computed column's inline expression, a bare identifier (or
 `[Name]`) resolves to the WHOLE column as a list; `@name` / `@[Name]` / `[@Name]`
-resolves to THIS row's cell — Excel's table-reference semantics exactly (D24). λ
+resolves to THIS row's cell — Excel's table-reference semantics exactly (tableRefSemantics). λ
 PARAMS stay row-bound (the λ is the per-row interface); bare names and @names in a λ
 body become capture sockets. The resolution order is fixed: column → `row`/`rows`
 builtins → the definition's own env (λ captures) → the surface's side value. A bare
@@ -858,9 +858,9 @@ filter-A-by-this-row's-B) are impossible to spell if one spelling owns both read
 column — @revenue-style share-of-total works unwired", "a bare column in scalar
 position is a LOUD per-row #SHAPE!, pointing at @", "@[Name] is this row, [Name] the
 whole column — for names a variable cannot spell", "a bound variable reads its
-picked column — whole for expr vars, this-row for λ params (D24)", "a ZERO-param λ
+picked column — whole for expr vars, this-row for λ params (tableRefSemantics)", "a ZERO-param λ
 reads the row via @ — capture sockets grow, columns win over them".
-*Origin:* D24 (2026-07-30) — the author's Excel-mixing case ruled out the row-bound
+*Origin:* tableRefSemantics (2026-07-30) — the author's Excel-mixing case ruled out the row-bound
 default the first cut shipped.
 
 ---
@@ -965,7 +965,7 @@ spec or the popup's unit picker → `ColumnUnit`, riding onto a computed column 
 like a Data column). It rides through passthroughs and selectors and BREAKS at any
 transform. DOWNSTREAM, an inherited unit is never re-authored: an FC fed a
 unit-carrying value MIRRORS it and LOCKS (`unitLocked = lockedByConvert || forwarding`,
-D26 — a unit is first-class like the magnitude; a unit change IS a magnitude change,
+firstClassUnits — a unit is first-class like the magnitude; a unit change IS a magnitude change,
 so it takes Convert, not a dropdown). There is no graph unit-walk for PROPAGATION;
 the one sanctioned graph read is Convert-primacy dictation (`refreshAnnotation`),
 which sets the FC's own dropdown and never re-tags a value. The Number node is a
@@ -992,16 +992,16 @@ declares unitAware = true" — a source scan over `nodes/` + `packs/` for the pe
 algebra identifiers (isUnitCell / dimOf / magnitudeOf / arithmeticCell /
 compareUnits / forAggregateUnits / broadcastUnit / anyDimensioned), with a
 sanctioned-list honesty check. The matrix-unit family
-(matrixUnitOf / carryMatrixUnit / …) is deliberately outside the consuming set: a D20
+(matrixUnitOf / carryMatrixUnit / …) is deliberately outside the consuming set: a unitGranularity
 matrix unit tags the outer array of a bare-number grid and survives the unit-blind
 strip, so a unit-blind reshape carrying it is correct.
 
 ### unitByGranularity — Units attach at the granularity of homogeneity **[INFERRED]**
 **MUST:** per-element `UnitCell` for a list, per-column `ColumnUnit` for a frame, one
-homogeneous unit for a matrix (D20).
+homogeneous unit for a matrix (unitGranularity).
 
 *Enforced by:* `unitValue.test.ts` → "per-column frame unit", "homogeneous matrix
-unit (D20) — one tag on the array, cells stay bare"; `unitColumn.test.ts` (the
+unit (unitGranularity) — one tag on the array, cells stay bare"; `unitColumn.test.ts` (the
 frame-column mechanics end to end); `nodes/computedColumn.test.ts` → "a computed
 column's UNIT tag rides onto the derived column, like a Data column's", "a computed
 column's unit rides through INDEX and LOCKS a downstream FC" (a DERIVED column
@@ -1094,7 +1094,7 @@ the value model and the sole reason "a cell may be an array" was ever true.
 surfaces that meet one answer `#SHAPE!`. `Array.isArray` at two depths is therefore
 the COMPLETE rank test, and no code may carry a private shape-sniffing scheme.
 
-*Why:* this is the invariant that made D23 buildable without a branded-value
+*Why:* this is the invariant that made matricesInFormulas buildable without a branded-value
 wrapper; every new nesting scheme would re-open the ambiguity tagSpecialScalars closed.
 (Recursion beyond rank 2 is what CUBES are for — a container, not a value shape.)
 *Enforced by:* `broadcastRules.test.ts` → "anything deeper than a matrix is

@@ -13,7 +13,7 @@ export function formatLambda(v: LambdaValue): string {
 }
 
 /** A consumer's call signature; the first `required` vars are mandatory. A by-name
- *  consumer's params must be drawn from these names, order-free (D18). */
+ *  consumer's params must be drawn from these names, order-free (lambdaBindsByName). */
 export interface LambdaSig { vars: string[]; required: number }
 
 /** Human signature for the advisory, optional slots in brackets: `acc, x, [i]`. */

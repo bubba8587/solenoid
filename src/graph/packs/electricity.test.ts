@@ -10,7 +10,7 @@ const num = (type: string, inputs: Record<string, number>): number => {
   return r as number;
 };
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("PARALLELCOMBINE takes scalars or a whole list", () => {
     expect(evalPackFormula("PARALLELCOMBINE(100, 100)")).toBe(50);
     expect(evalPackFormula("PARALLELCOMBINE(v)", { v: [10, 10, 10] })).toBeCloseTo(10 / 3, 12);

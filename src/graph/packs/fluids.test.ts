@@ -113,7 +113,7 @@ describe("Pipe Roughness", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("COLEBROOK matches the node core, laminar hand-off included", () => {
     expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(colebrookF(100000, 0.0001));
     expect(evalPackFormula("COLEBROOK(1000, 0)")).toBeCloseTo(0.064, 12);

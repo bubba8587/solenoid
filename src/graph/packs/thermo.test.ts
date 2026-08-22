@@ -120,7 +120,7 @@ describe("Antoine vapor pressure", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("STANDARDATMOSPHERE reads sea level by property (pressure default)", () => {
     expect(evalPackFormula("STANDARDATMOSPHERE(0)")).toBeCloseTo(101325, 0);
     expect(evalPackFormula('STANDARDATMOSPHERE(0, "temp")')).toBeCloseTo(288.15, 6);

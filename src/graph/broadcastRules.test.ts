@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 
-// ─── D23: the broadcast-rules table, transcribed ──────────────────────────────
+// ─── matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
 // v2.0/17-matrix-formulas.md Part 2, row by row. The table IS this test (oneMetricImpl):
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls
-// (D15) and never route through the broadcaster.
+// (appendLadder) and never route through the broadcaster.
 //
 // Rank grammar (post-tagSpecialScalars): no scalar is an array, so Array.isArray at two
 // depths is the complete test — a matrix is an array of ROW arrays.
@@ -107,7 +107,7 @@ describe("aggregates flatten row-major; their 1-D prep applies unchanged", () =>
   });
 });
 
-describe("the D23 containment rule", () => {
+describe("the matricesInFormulas containment rule", () => {
   it("a 1-D whole-list native refuses a matrix honestly (#SHAPE!)", () => {
     const r = ev("REVERSE(x)", { x: M22 });
     expect((r as { code: string }).code).toBe("#SHAPE!");

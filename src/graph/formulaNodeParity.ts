@@ -22,7 +22,7 @@ export interface ParityRow {
   excelCovered: boolean;
 }
 
-/** The D19 2(a) formula name for a node label: despaced and uppercased; the Tier 3
+/** The formulaNaming 2(a) formula name for a node label: despaced and uppercased; the Tier 3
  *  registrations derive their names the same way. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 

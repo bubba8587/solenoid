@@ -174,7 +174,7 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
     case "bool":
     case "str":
     case "blank": // an omitted argument is a bare missing value
-    case "atcol": // a this-row cell is a plain value — frame units live on the COLUMN (D20)
+    case "atcol": // a this-row cell is a plain value — frame units live on the COLUMN (unitGranularity)
     case "wholecol": // likewise the whole column (a list of plain values)
       return { dim: DIMENSIONLESS };
     case "name":

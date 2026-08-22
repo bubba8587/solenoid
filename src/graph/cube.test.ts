@@ -154,7 +154,7 @@ describe("frameToCube", () => {
   });
 });
 
-describe("cube units — per-cell, like a list (D20)", () => {
+describe("cube units — per-cell, like a list (unitGranularity)", () => {
   it("a unit-locked frame column flattens to per-cell UnitCells", () => {
     // "d (km)" locks the column to km; cells are as-typed (5, 10). frameToCube tags
     // each cell as a base-SI UnitCell carrying the display id — the unit rides the

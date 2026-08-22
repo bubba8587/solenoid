@@ -97,7 +97,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   positive); securityDisc DSM honors the basis (30/360 for basis 0/4 — the default was
   mispriced; bases 0/2/3/4 now match FX exactly, basis 1 stays the ÷365.25 actual/actual
   approx per YEARFRAC); FIXED/DOLLAR round left of the point on negative decimals;
-  TEXTJOIN node default → ignore-empties (D11 — matches the formula surface).
+  TEXTJOIN node default → ignore-empties (oneAnswerOneDivergence — matches the formula surface).
 - **TBILL, the recall trap.** A sub-agent oracle sweep concluded "ours matches Excel"
   for TBILL; reading the code showed TBILLYIELD used 365 where Excel documents 360 —
   the agent (and my own recall) had it backwards. Real Excel (0.050718512) settled it →
@@ -156,7 +156,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   node↔formula agreement tests. Skipped (not clean): WRAP `pad_with` (entangles the unit policy —
   formula has it, node workaround exists), VDB `no_switch` / TOCOL·TOROW `ignore_empty` (need an
   impl + arity change across both surfaces, not just a socket).
-- **Node↔formula CAPABILITY parity — made a standing rule (D39, shareImpl extended).** Author's
+- **Node↔formula CAPABILITY parity — made a standing rule (capabilityParity, shareImpl extended).** Author's
   order: the node must expose everything the formula surface can; our own two surfaces
   disagreeing is a defect (Excel/FX divergence stays a judgement call). An agent audit found
   the call-site arg scan MISSES the real gaps — they come from SEPARATE impls, not truncated
@@ -176,7 +176,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-19b — Decision family sweep: contributions, ties, seed)
 - **Decision family sweep** (author: "the Decision matrix Node and seed could be a lot
-  better") **→ D38.** Breakdown columns are now SIGNED contributions summing to the
+  better") **→ decisionMatrixFamily.** Breakdown columns are now SIGNED contributions summing to the
   Score (the old post-normalize values read backwards under a negative weight); rank
   runs on the round4 score so display and rank agree (round4 also flattens −0); both
   nodes default normalize ÷Max; Sensitivity lists a dead tie's every rank-1 option in
@@ -267,13 +267,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   the accent slot their ramp was authored against (`CHROME_HOME`: green / blue) and
   `appTheme` rotates the whole ramp to the live accent's hue — in OKLCh, chroma and
   WCAG luminance both held, so the tint stays exactly as strong as authored and the
-  D35 structure survives any accent; byte-identical passthrough at the home accent,
+  paletteAllOrNone structure survives any accent; byte-identical passthrough at the home accent,
   achromatic accents (gray slot, neutral cycle) leave the ramp authored, the other
   palettes hold still by brief. The first cut rotated in HSL and the author called
   it "washed in the color" — HSL saturation is hue-anisotropic (2× perceived chroma
   on Orchard's dark ground); the socket-sibling HSV rule is untouched (fixed
   near-hue steps vs a cross-hue rotation — boundary now written into DESIGN.md).
-  D35 amended; pinned in `palette.test.ts` § accent-adaptive (chroma-never-inflates
+  paletteAllOrNone amended; pinned in `palette.test.ts` § accent-adaptive (chroma-never-inflates
   + structure × all 12 accents); eyeballed via Playwright (redprint
   Blueprint@vermilion, blossom-whisper Orchard@pink, identity shots unchanged).
 - **UI-copy register experiment** (author ask; standards override §7 for this work):
@@ -358,7 +358,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   not data processing): verified patterns from Airtable (gallery grouping, grid
   group summary bars, expanded-record prev/next, attachment preview) and Notion
   (side/center peek, list view); nine UI candidates appended to the deferrals
-  steal entry (top fits: List as a fourth Record op per D37, grouped gallery
+  steal entry (top fits: List as a fourth Record op per oneRecordNode, grouped gallery
   sections, lane summary line, image lightbox, popup pager, peek dock).
   Calendar figure listed but flagged under the author's Gantt "not now" ruling.
 - **Competitor dive round 2 — Solenoid-wide** (author widened scope): surveyed the
@@ -377,5 +377,5 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   NocoDB/SeaTable/Coda card+gallery+board features surveyed; the steal list is
   parked in `deferrals.md` ▸ "Record family steals" (best fit: gallery-click →
   row pick; cover image; title row; size presets; lane counts/collapse; color-by
-  flagged D4-adjacent). Sources: Airtable gallery/kanban help, Grist widget-card +
+  flagged conditionalFormatting-adjacent). Sources: Airtable gallery/kanban help, Grist widget-card +
   record-cards docs (raw GitHub), Notion gallery help, Baserow/NocoDB view docs.

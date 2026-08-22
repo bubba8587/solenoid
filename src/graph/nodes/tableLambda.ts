@@ -31,7 +31,7 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
 }
 
 /** A wired LAMBDA wins over the inline text. Its params bind by POSITION (`provided` =
- *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, D18).
+ *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, lambdaBindsByName).
  *  `err` is the inline node message; `code` tags the propagating SolError. */
 function resolveFn(
   lam: unknown, inline: string | undefined,
@@ -40,7 +40,7 @@ function resolveFn(
 ): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
   if (isLambdaValue(lam)) {
     if (byName) {
-      // By NAME, not position (D18), so a param named `acc` always gets the accumulator
+      // By NAME, not position (lambdaBindsByName), so a param named `acc` always gets the accumulator
       // and the names can't silently lie; an unknown param can't be supplied → error.
       const unknown = lam.params.filter((p) => !varNames.includes(p));
       if (unknown.length) {
@@ -163,7 +163,7 @@ export class MapTableNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name (D18); `value` is the primary, the rest optional.
+  // A wired lambda binds by name (lambdaBindsByName); `value` is the primary, the rest optional.
   readonly lambdaSig = { vars: ["value", "value2", "value3", "row", "col"], required: 1 };
   width = 210;
   height = 270;
@@ -227,7 +227,7 @@ export class ByAxisNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name (D18); `values` is the row/column as a list.
+  // A wired lambda binds by name (lambdaBindsByName); `values` is the row/column as a list.
   readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
   height = 218;
@@ -290,7 +290,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | UnitCell | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind to (acc, value, step) by name (D18) — the card advises it.
+  // Wired lambdas bind to (acc, value, step) by name (lambdaBindsByName) — the card advises it.
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -359,7 +359,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind to (acc, value, step) by name (D18) — the card advises it.
+  // Wired lambdas bind to (acc, value, step) by name (lambdaBindsByName) — the card advises it.
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -414,7 +414,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name (D18); `row`,`col` are the 1-based indices.
+  // A wired lambda binds by name (lambdaBindsByName); `row`,`col` are the 1-based indices.
   readonly lambdaSig = { vars: ["row", "col"], required: 2 };
   width = 210;
   height = 246;

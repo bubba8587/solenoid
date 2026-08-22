@@ -35,7 +35,7 @@ for us. A divergence is owned and tripwired (rules.md tripwireVendorDrift), neve
   is the ELIMINATED approach (double-shifted the day on any non-UTC machine: "green in
   UTC CI, red locally").
 - **Array-returning names**: FX writes them against 2-D ranges with unvetted quirks
-  and has been caught mutating arguments in place (a reason for the D23
+  and has been caught mutating arguments in place (a reason for the matricesInFormulas
   matrix-containment rule). Before internal registration, UNIQUE/SORT/MODE.MULT/
   FREQUENCY dispatched through FX and BROADCAST element-wise (`UNIQUE([3,1,3,2])`
   answered a column of singletons); TREND/GROWTH/LINEST/LOGEST were the last

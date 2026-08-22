@@ -75,7 +75,7 @@ product sells — purity, typing, provenance, auditability, safety of shared fil
 is the sharpest-edged NO on the list because it will be the most requested: it's the
 universal escape hatch, and the whole point of Solenoid is that the escape hatch is
 where trust goes to die. The author already made this call once at smaller scale (the
-Expression cap: rank ≤ 2, frames/cubes permanently out — D2/D23); this is that decision
+Expression cap: rank ≤ 2, frames/cubes permanently out — noFramesInFormulas/matricesInFormulas); this is that decision
 at product scale.
 **The line:** extensibility is *more node types* (packs, composites/subgraphs — typed,
 inspectable) — never *arbitrary evaluation*. The report projection is a view of the
@@ -122,7 +122,7 @@ forms-that-append-rows as a lifestyle.
 "AutoML inside a spreadsheet" is a gimmick against free notebooks.
 **The line:** *Excel parity* stats (regression à la LINEST, distributions, the
 Analysis-ToolPak tier) are in scope as nodes. The AI story (scope #19, in scope since
-D27) is Solenoid as
+aiInScope) is Solenoid as
 the **audit surface for AI-produced computation** — the cage, not the beast. An
 LLM-as-column-transform node may someday pass the tests (typed in/out, inspectable,
 validated by expectations); an ML *pipeline* never does.

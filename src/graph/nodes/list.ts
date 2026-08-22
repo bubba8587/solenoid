@@ -433,7 +433,7 @@ export class SortNode extends ClassicPreset.Node {
   }
 }
 
-// Position-only utilities ride element-agnostic `anylist` sockets (D15); ops needing
+// Position-only utilities ride element-agnostic `anylist` sockets (appendLadder); ops needing
 // comparison or arithmetic semantics (Sort, Cumulative) stay typed.
 export class ReverseNode extends ClassicPreset.Node {
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -495,7 +495,7 @@ export class SliceNode extends ClassicPreset.Node {
 }
 
 // ─── Filter ────────────────────────────────────────────────────────────────────
-// A list tested against ITS OWN values (D16) — deliberately no table input and no
+// A list tested against ITS OWN values (filterOneJob) — deliberately no table input and no
 // "Keep if" mask. Kept ∪ Dropped stays the exhaustive complement.
 
 /** Re-export so the barrel keeps one FilterCombine (the frame Filter's). */
@@ -649,7 +649,7 @@ export class FilterNode extends ClassicPreset.Node {
 
 // ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
 // Conditional aggregation over ONE FRAME, AND-only like Excel's *IFS: position-
-// aligned columns arrive as a frame, never as parallel list sockets (D16).
+// aligned columns arrive as a frame, never as parallel list sockets (filterOneJob).
 
 export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
 
@@ -811,7 +811,7 @@ export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 // objects by REFERENCE, so two equal complexes would never match.
 
 // label / tex / plain = dropdown text, KaTeX notation, Unicode fallback. `fx` is
-// declared per op because D19's "label despaced" rule only works on NAMES.
+// declared per op because formulaNaming's "label despaced" rule only works on NAMES.
 export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string; plain: string }> = {
   union:      { label: "Union: in A or B",             fx: "SETUNION",      tex: "A \\cup B",                plain: "A ∪ B" },
   intersect:  { label: "Intersection: in both",        fx: "SETINTERSECT",  tex: "A \\cap B",                plain: "A ∩ B" },
@@ -1032,7 +1032,7 @@ export class ListTakeDropNode extends ClassicPreset.Node {
   }
 }
 
-// The 1-D rung of the append ladder (D15): stays 1-D, VSTACK is the table stacker.
+// The 1-D rung of the append ladder (appendLadder): stays 1-D, VSTACK is the table stacker.
 // Rows are wire-only — a typed literal list belongs to List Input.
 export class ConcatListsNode extends ClassicPreset.Node {
   /** Element-preserving: the output adopts the agreed row type. */
@@ -1083,7 +1083,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
 export type { RunningOp } from "./listOps";
 export type RunningMode = "all" | "window";
 
-// No `fx`: the aggregator is an ARGUMENT of the windowed scan (D29), so it claims no
+// No `fx`: the aggregator is an ARGUMENT of the windowed scan (aggregatorsAreArguments), so it claims no
 // formula name. The labels are the dropdown's own words.
 export const RUNNING_OP_META = {
   sum:     { label: "SUM",     description: "The running total: each element is the sum of its window." },

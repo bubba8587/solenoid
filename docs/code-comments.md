@@ -1,4 +1,4 @@
-# Code comments — the policy (D30)
+# Code comments — the policy (commentMinimalism)
 
 Spec-driven development: knowledge lives in specs, decisions, dev-notes, tests, and
 commit history — not in comment prose. Comments are the LAST-RESORT home, and the

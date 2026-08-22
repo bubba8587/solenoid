@@ -9,7 +9,7 @@ CLI-grade spike needs neither 01 nor 02. **Sequence:** late per the author's own
 **`src/graph/excelFormula.ts` exports** (the parser to run each cell formula
 through; find by symbol — line numbers rot, and the module has since grown
 `lambda`/`apply`/`blank`/`atcol`/`wholecol` AST nodes and `colref`/`rowref`
-tokens for the D24 structured references):
+tokens for the tableRefSemantics structured references):
 - `Ast` type: tagged union incl. `num/str/bool/name/call/unary/percent/bin`,
   e.g. `{t:"call"; name:string; args:Ast[]}`.
 - `Tok` type + `tokenize(src): Tok[]|null`.
@@ -38,7 +38,7 @@ invoked as `await arrangeFn({skipConfirm: true})` (e.g. `Canvas.tsx:2031`). **Th
 transpiler's layout step should call the same accessor** (`process.ts`'s
 `getAutoArrange()`/equivalent), not reimplement layout invocation.
 
-**D10 enforcement mechanism:** the redirect rule (eliminated functions like VLOOKUP
+**currentExcelParity enforcement mechanism:** the redirect rule (eliminated functions like VLOOKUP
 never come back, they redirect to Frame Lookup/XLOOKUP) is enforced by simply NOT
 adding an entry back to `NODE_EXCEL`/the catalog for an eliminated function — `EXCEL_GAP`
 already tracks what's deliberately unimplemented. The transpiler's redirect table is a
@@ -69,7 +69,7 @@ the original text even if inert."
    the "already has a direct node" case.
 4. Fallback path: any formula whose function isn't in `NODE_EXCEL` and isn't in the
    redirect table becomes an Expression node carrying the original formula text verbatim
-   (formulas compute at rank ≤ 2 since D23 — frames/cubes stay out — so a fallback can
+   (formulas compute at rank ≤ 2 since matricesInFormulas — frames/cubes stay out — so a fallback can
    still be inert; that's fine, same as any Placeholder).
 5. Layout: call the same `arrangeFn({skipConfirm: true})` accessor Canvas.tsx uses
    (`process.ts:64`) on the emitted graph.

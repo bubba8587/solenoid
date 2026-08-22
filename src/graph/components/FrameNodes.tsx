@@ -81,7 +81,7 @@ import { dropInputCables } from "./cablePrune";
 
 export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType>) {
   // The RAW source is stored verbatim and the typed frame derived in data(), so a "1"
-  // typed into a Boolean column stays "1" (D31).
+  // typed into a Boolean column stays "1" (tableInputRawText).
   const source = useMemo(() => parseFrameSource(data.frameText), [data.frameText]);
   const onSaveSource = useCallback((columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);

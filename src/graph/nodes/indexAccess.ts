@@ -63,7 +63,7 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
   if (Array.isArray((v as unknown[])[0])) {
     // A genuine 2-D matrix.
     const grid = v as unknown[][];
-    // A homogeneous matrix unit (D20) must ride out into the extraction, so each
+    // A homogeneous matrix unit (unitGranularity) must ride out into the extraction, so each
     // extracted number is tagged; `tag` is identity for a plain matrix.
     const mUnit = matrixUnitOf(v);
     const tag = (x: unknown): unknown => (mUnit && tagUnit ? tagUnit(x, mUnit) : x);

@@ -47,7 +47,7 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
 
 export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_EQUILIBRIA];
 
-// The pack's custom-logic nodes exposed as formula functions (D19 decision 4).
+// The pack's custom-logic nodes exposed as formula functions (formulaNaming decision 4).
 const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "ELEMENT",

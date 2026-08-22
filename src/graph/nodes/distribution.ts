@@ -13,7 +13,7 @@ import {
 const { PI, exp, log, sqrt, abs } = Math;
 
 // ─── The one Distribution node ────────────────────────────────────────────────
-// Every probability distribution behind ONE card (D34): the `op` selector picks
+// Every probability distribution behind ONE card (oneDistributionNode): the `op` selector picks
 // the distribution, the `form` selector picks the curve (CDF / PDF / PMF / the
 // tails) or the inverse (quantile). An inverse form trades the x-style first
 // input for a probability; the parameter inputs are the distribution's own.

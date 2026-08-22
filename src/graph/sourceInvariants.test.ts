@@ -100,7 +100,7 @@ describe("perInputUnitBlind — a node file that runs the dimension algebra decl
   // node whose file forgets the flag fails here by name.
   //
   // Deliberately EXCLUDED from the consuming set: the matrix-unit family
-  // (matrixUnitOf / withMatrixUnit / carryMatrixUnit / sharedMatrixUnit). A D20
+  // (matrixUnitOf / withMatrixUnit / carryMatrixUnit / sharedMatrixUnit). A unitGranularity
   // matrix unit tags the OUTER array of a bare-number grid, so it survives the
   // unit-blind strip (stripUnitCells returns the same reference when no CELL is
   // tagged) — a unit-blind node carrying it through a reshape is correct, not a

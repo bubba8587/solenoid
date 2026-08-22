@@ -69,7 +69,7 @@ export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
   ...FLUIDS_BASE, ...FLUIDS_PIPE, ...FLUIDS_PUMPS, ...FLUIDS_AERO,
 ];
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4).
+// The pack's custom-logic nodes as formula functions (formulaNaming decision 4).
 const FLUIDS_PACK_FORMULAS: PackFormula[] = [
   {
     name: "COLEBROOK",

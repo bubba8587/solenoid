@@ -69,7 +69,7 @@ export const THERMO_FORMULAS: FormulaPackEntry[] = [
   ...THERMO_GAS, ...THERMO_HEAT, ...THERMO_AIR,
 ];
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4).
+// The pack's custom-logic nodes as formula functions (formulaNaming decision 4).
 const THERMO_PACK_FORMULAS: PackFormula[] = [
   {
     name: "STANDARDATMOSPHERE",

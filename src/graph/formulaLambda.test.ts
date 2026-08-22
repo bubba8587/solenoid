@@ -5,7 +5,7 @@ import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNo
 import { GroupByNode, RunningNode } from "./nodes/list";
 import { isSolError, type SolError } from "./errorValue";
 
-// ─── D23 lambda tranche: the language feature, node-equals-formula ────────────
+// ─── matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
 // LAMBDA is the evaluator's one SPECIAL FORM; the hosts are registrations that
 // receive the SAME tagged LambdaValue the LAMBDA node emits. The parity target:
 // a host NODE with an inline formula and the formula host with an inline

@@ -81,7 +81,7 @@ describe("Heart-Rate Zones", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("HEARTRATEZONES is the zone table as five [low, high] rows", () => {
     expect(evalPackFormula("HEARTRATEZONES(200)")).toEqual(
       [[100, 120], [120, 140], [140, 160], [160, 180], [180, 200]]);

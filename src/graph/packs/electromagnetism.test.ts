@@ -136,7 +136,7 @@ describe("EM Spectrum Band", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("EMSPECTRUMBAND classifies by frequency, or by wavelength via an elided first arg", () => {
     expect(String(evalPackFormula("EMSPECTRUMBAND(5e14)"))).toMatch(/^Visible/);
     expect(evalPackFormula("EMSPECTRUMBAND(, 0.05)")).toBe("Microwave");

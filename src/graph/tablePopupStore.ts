@@ -68,7 +68,7 @@ export interface TablePopupState {
   /** A unit-TAGGABLE source: the unit choice is written back on Save and rides the
    *  value downstream. Derived frames leave this off (display-only formats). */
   unitTaggable?: boolean;
-  /** Persists the homogeneous matrix unit (D20) on the node; frames use the
+  /** Persists the homogeneous matrix unit (unitGranularity) on the node; frames use the
    *  per-column `unit` on onSaveSource instead. */
   onSaveMatrixUnit?: (unitId: string) => void;
   /** Host node id — enables the header Pin action; absent for chips with no host. */
@@ -77,7 +77,7 @@ export interface TablePopupState {
    *  row, names split on |, a repeated name merges; authored on the HOST CARD,
    *  the Record pattern). Empty/absent = stacked. */
   formLayout?: string;
-  /** The host's λ input keys — non-empty grows the per-column SOURCE select (D24/D25). */
+  /** The host's λ input keys — non-empty grows the per-column SOURCE select (tableRefSemantics/noPerCellFormulas). */
   lambdaOptions?: string[];
   /** Per-column initial λ binding (aligned with columns; undefined = Data). */
   sourceLambdas?: (string | undefined)[];

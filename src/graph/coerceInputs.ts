@@ -131,7 +131,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   if (hasUnitCell(v)) return coerceUnitCellValue(dataType, v);
   switch (dataType) {
     case "table":
-      // Preserve a homogeneous matrix unit (D20): toMatrix rebuilds the outer array
+      // Preserve a homogeneous matrix unit (unitGranularity): toMatrix rebuilds the outer array
       // and would drop the non-enumerable tag. A no-op when v isn't tagged.
       return carryMatrixUnit(toMatrix(boolsToNums(v) as Numeric), v);
     case "list":

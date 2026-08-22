@@ -57,7 +57,7 @@ import {
  *  deliberately, so `collapsed` is the default. */
 export type OpExposure = "collapsed" | "leaves";
 
-/** Whether an op is its own operation or a parameter of its host (D19 2(a)). */
+/** Whether an op is its own operation or a parameter of its host (formulaNaming 2(a)). */
 export type OpKind = "operation" | "argument";
 
 interface NodeOpsBase {
@@ -86,7 +86,7 @@ export type NodeOpsDecl = NodeOpsBase & (
   | { ops?: undefined; create?: undefined }
 );
 
-/** One op of a family; `fx` is the FORMULA name (D19 Tier 3), declared where
+/** One op of a family; `fx` is the FORMULA name (formulaNaming Tier 3), declared where
  *  despacing the label would not yield it: a prose label (despacing a sentence
  *  collides — Coalesce/Fill's FILLINTERPOLATE) or a bare label whose family
  *  word lives in the card title (Running's SUM → RUNNINGSUM). */
@@ -150,9 +150,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
 
   // Promote/demote are argument VALUES, not functions — no formula name, so no op rows.
   // The host leaf's `keywords` already carry "promote demote first row", which is where
-  // an argument's searched words belong (D29's reopen clause: aliases on the host).
+  // an argument's searched words belong (aggregatorsAreArguments's reopen clause: aliases on the host).
   { type: "headers", ctor: HeadersNode, kind: "argument" },
-  // Aggregators are arguments of Group By, not searchable ops (D29).
+  // Aggregators are arguments of Group By, not searchable ops (aggregatorsAreArguments).
   { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles are parameters of ONE operation.
   { type: "list-sort", ctor: SortNode, kind: "argument" },
@@ -187,7 +187,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // formula names they can't own ("Contains" despaces onto CONTAINS).
   // Contains / starts with / ends with are the predicate ARGUMENT, not four functions.
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
-  // exactly the collision D29 warns an argument's op rows cause.) Searched words moved
+  // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
   { type: "text-filter", ctor: TextFilterNode, kind: "argument" },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
@@ -203,7 +203,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // The aggregator is an ARGUMENT of the windowed scan, like Group By's and Cube
   // Rollup's: neutral picker, no op rows (searched words ride the host leaf's
   // keywords), and on the formula surface it is a PARAMETER of the family's one
-  // function — RUNNING(op, list, [window]); the per-op RUNNING* names are dead (D29).
+  // function — RUNNING(op, list, [window]); the per-op RUNNING* names are dead (aggregatorsAreArguments).
   { type: "list-running", ctor: RunningNode, kind: "argument" },
   // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
   { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),

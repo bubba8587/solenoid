@@ -86,7 +86,7 @@ formatting (dates render `DD-MMM-YYYY` anywhere, no FC needed) → the FC layer.
 An FC's UNIT is not display — it MUTATES the value (`applyFcUnit`, base-SI
 `UnitCell`); units are authored only at value origins (FC, Convert, Table Input,
 the column-unit surfaces), and an FC downstream of a united value locks to
-mirror it (D26). An FC's number FORMAT is a display annotation,
+mirror it (firstClassUnits). An FC's number FORMAT is a display annotation,
 resolved by walking passthroughs both directions (`makeAnnotationResolver`).
 Errors render as the red `#CODE!` badge; a scalar null renders as the muted
 em-dash (the word `null` appears only for list/frame CELLS); NaN is quiet

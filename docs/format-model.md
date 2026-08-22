@@ -35,13 +35,13 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    branches are: a dimensionless number is authored (`5` + km → 5000 m base,
    display km), a commensurable dimensioned value is re-displayed, an
    incommensurable one is a `#UNIT!`. But the FC as a user-facing tool can only
-   REACH the authoring branch (D26): the re-display branch serves the mirror of
+   REACH the authoring branch (firstClassUnits): the re-display branch serves the mirror of
    an inherited unit, never a dropdown pick — re-displaying a dimensioned value
    is Convert's job. Because the unit rides the VALUE (`unitValue.ts`, base-SI +
    `display`), it carries downstream through passthroughs/selectors and DROPS at a
    transform on its own — there is no graph unit-walk.
 
-   **Unit lock states (D26 — a unit is first-class like the magnitude).** Who
+   **Unit lock states (firstClassUnits — a unit is first-class like the magnitude).** Who
    owns the FC's unit dropdown (`formatController.ts` `data()` lock block):
    - **authored** (`← →`) — the incoming value carries no unit; the FC's pick
      authors it. The only editable state.

@@ -60,7 +60,7 @@ describe("Lambda wired into consumers", () => {
   const lambdaOf = (params: string, expr: string, inputs = {}) =>
     new LambdaNode({ params, expr }).data(inputs).result!;
 
-  // Every consumer now binds a wired lambda by NAME (D18): its params must be the
+  // Every consumer now binds a wired lambda by NAME (lambdaBindsByName): its params must be the
   // node's own variables — MAP value/value2…, BYROW values, REDUCE acc/value/step.
   it("MAP binds a wired lambda by name (value, value2)", () => {
     const map = new MapTableNode({ expr: "value + 1000" });
@@ -225,7 +225,7 @@ describe("ScanLambda (SCAN)", () => {
     expect(new ReduceLambdaNode().inputs.initial!.socket.name).toBe("any");
   });
 
-  // A wired lambda binds to (acc, value, step) BY NAME (D18): declaration ORDER is
+  // A wired lambda binds to (acc, value, step) BY NAME (lambdaBindsByName): declaration ORDER is
   // free, the names can't lie, captured constants pass through, and a param that
   // isn't one of the node's variables is a hard error.
   const lval = (params: string, expr: string, wired: Record<string, unknown[]> = {}) =>

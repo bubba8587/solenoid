@@ -138,7 +138,7 @@ describe("Frame Append — N-ary, by column name", () => {
   });
 });
 
-describe("the D16 table-filter route: a MATRIX widens into the frame Filter", () => {
+describe("the filterOneJob table-filter route: a MATRIX widens into the frame Filter", () => {
   it("filters a bare matrix's rows by Col2 — no Build Frame needed", async () => {
     const n = new FilterFrameNode({
       valueKeys: ["column0", "value0"],

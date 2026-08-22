@@ -44,7 +44,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
     would make behavior-over-time charts wireable. Stocks/flows composite
     presets could follow as a pack.
   - **Constrained optimizer** (Excel Solver, Mathcad solve blocks): min/max an
-    output subject to constraints — the Solver-parity gap; Equation (D14)
+    output subject to constraints — the Solver-parity gap; Equation (equationNode)
     deliberately solves only `=`. Sibling-node-sized, its own author call.
   - **Fusion indicator** (Power Query folding indicators): show which verb chain
     fused into one Polars round trip vs materialized in JS — inspection surface
@@ -77,7 +77,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
     (dense-card practice across the genre); the card view keeps its fixed layout.
   - **Wrap/clamp option**: line-clamp long values on tiles (Notion's wrap toggle
     inverted); the popup already shows the full card.
-  - **Color-by field** (Airtable "color records"): D4-ADJACENT — conditional
+  - **Color-by field** (Airtable "color records"): conditionalFormatting-ADJACENT — conditional
     color is author-gated; goes nowhere without that session.
   - **Two-axis board (swimlanes)**: Airtable kanban notably LACKS it (their
     timeline has it) — a differentiator if the board ever grows; biggest scope
@@ -85,7 +85,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   Round 3 (author steer: UI surfaces around the record/gallery family):
   - **List view as a fourth Record op** (Notion list / Airtable list): one line
     per record, title field + trailing fields, dense browsing between card and
-    gallery. Fits D37 exactly — views are ARGUMENTS of the one Record node.
+    gallery. Fits oneRecordNode exactly — views are ARGUMENTS of the one Record node.
   - **Grouped gallery sections** (Airtable gallery grouping): a group-by column
     renders labeled sections inside the gallery, the masonry packing per
     section — the board's lanes turned horizontal bands.
@@ -118,7 +118,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   wireable, Note-authorable), in-view search/sort/filter (upstream verb nodes
   are the Solenoid answer), form entry (its own program; entry widgets already
   landed 2026-08-18), timeline/Gantt (already author-deferred above), row
-  tinting / color-by (author-gated D4).
+  tinting / color-by (author-gated conditionalFormatting).
 
 - **Tidy options — expose ELK's layout knobs on the Tidy call** (author direction
   2026-08-12; the trigger was "9 nodes → 1 node should be able to lay out 3×3
@@ -186,7 +186,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   Task/Duration/Depends; WORKDAY math already in `date.ts`) as a verb or
   composite preset, (c) no bar-editing ever — edits happen in the table.
   Not doing: linked-record columns (Join/XLOOKUP carry the semantics); row
-  tinting (that is author-gated D4).
+  tinting (that is author-gated conditionalFormatting).
 - **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
   evaluated and deferred). A first-class `image` column touches every layer that
   switches on `FrameColType` — both FrameBackends and the cargo parity corpus, CSV
@@ -246,7 +246,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
     changed-output signal like the main pass's `changedOut`/`sinks`).
   - Still out at every phase, unchanged: (a) Group/Cleanup/Autofit/Expand inside a
     drill-in (needs group-drag reconcile + push/standoffs/GroupNode taught the
-    active area); (b) Navigator + lasso while drilled in. The toolbar reroute (D2
+    active area); (b) Navigator + lasso while drilled in. The toolbar reroute (compositeToolbarReroute
     proper) stays in its own author-present entry below.
 - **Document-level FC defaults** (default places / number format) — a
   format-pipeline integration, author-present.
@@ -304,9 +304,9 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 
 ## Author-present build sessions (2.0 flagships — see `2.0-plan.md`)
 
-- **D2 proper — composite toolbar reroute** (top toolbar / mobile bar drive the
+- **compositeToolbarReroute — composite toolbar reroute** (top toolbar / mobile bar drive the
   active subgraph). Wants live eyeballing.
-- **D4 — conditional formatting for tables** — own design pass; must clear Excel's
+- **conditionalFormatting — conditional formatting for tables** — own design pass; must clear Excel's
   version by a lot; Display-node-only; must not step on FC format/units territory.
 - **Excel `.xlsx` transpiler** (`v2.0/08`) — deliberately sequenced late.
 - **v2.0/10 decision sensitivity** — buildable (its Monte Carlo hook shipped);
@@ -343,7 +343,7 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   unneeded; the frame + cube lookup paths could collapse to one.
   Behavior-touching refactor of a covered node; only if it pulls weight.
 - **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever
-  appears; documented-strip is the deliberate stance (D20).
+  appears; documented-strip is the deliberate stance (unitGranularity).
 - **Provenance Tier 2 — on-demand "why is this?" walk** — backward-derivation
   trace for any value (Tier 1, error origin + fly-to-source, shipped in
   `errorValue.ts`). Idea salvaged from the archived provenance bundle.

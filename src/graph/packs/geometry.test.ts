@@ -12,7 +12,7 @@ const num = (type: string, inputs: Record<string, number>): number => {
   return r as number;
 };
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("TRIANGLESOLVER solves 3-4-C=90 through elided arguments", () => {
     const r = evalPackFormula("TRIANGLESOLVER(3, 4, , , , 90)") as number[];
     expect(r[2]).toBeCloseTo(5, 9);            // c

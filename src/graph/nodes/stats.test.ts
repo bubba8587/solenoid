@@ -68,7 +68,7 @@ describe("QUARTILE", () => {
     expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [2] }).result).toBe(3);
     expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [4] }).result).toBe(5);
   });
-  it("the FORMULA surface matches the node — quart 0/4 are MIN/MAX, not #NUM! (D11)", () => {
+  it("the FORMULA surface matches the node — quart 0/4 are MIN/MAX, not #NUM! (oneAnswerOneDivergence)", () => {
     // Formula.js's QUARTILE.INC errors on 0 and 4; the formula must answer like the node.
     const q = (fn: string, n: number) => compileEvaluator(`${fn}(x, ${n})`)!({ x: [1, 2, 3, 4, 5] });
     for (const fn of ["QUARTILE", "QUARTILE.INC"]) {

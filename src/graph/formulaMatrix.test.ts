@@ -9,7 +9,7 @@ import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
 import { isSolError, type SolError } from "./errorValue";
 
-// ─── D23 tranche 1: the matrix core, node-equals-formula (shareImpl) ───────────────
+// ─── matricesInFormulas tranche 1: the matrix core, node-equals-formula (shareImpl) ───────────────
 // Every matrix registration delegates to the same kernels the nodes run, so the
 // test that matters is equality against the NODE, not correctness in isolation —
 // the Tier 1/Tier 3 discipline at rank 2. Error CODES are part of the contract
@@ -52,7 +52,7 @@ describe("each matrix name computes what its node computes", () => {
     expect(ev("MUNIT(3)")).toEqual(new TableUnitNode().data({ n: [3] }).result);
   });
 
-  it("WRAPROWS / WRAPCOLS — #N/A pads (D15), pad_with overrides", () => {
+  it("WRAPROWS / WRAPCOLS — #N/A pads (appendLadder), pad_with overrides", () => {
     const x = [1, 2, 3, 4, 5];
     const nodeRows = new TableReshapeNode({ op: "wraprows" }).data({ list: [x], wrapCount: [3] }).result as unknown[][];
     const fxRows = ev("WRAPROWS(x, 3)", { x }) as unknown[][];
@@ -116,7 +116,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
     expect(ev("VSTACK(a, b)", { a, b })).toEqual(new VStackNode().data({ t0: [a], t1: [b] }).result);
     // A bare list is one ROW on both surfaces.
     expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new VStackNode().data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
-    // Ragged inputs pad with #N/A (shape construction, D15) — identical to the node.
+    // Ragged inputs pad with #N/A (shape construction, appendLadder) — identical to the node.
     expect(ev("HSTACK(a, w)", { a, w: [[9], [8], [7]] })).toEqual(new HStackTableNode().data({ t0: [a], t1: [[[9], [8], [7]]] }).result);
 
     expect(ev("CHOOSECOLS(a, 2)", { a })).toEqual(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[2]] }).result);
@@ -145,7 +145,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
   });
 });
 
-describe("D23 tranche 2 — the array-returning core, node-equals-formula", () => {
+describe("matricesInFormulas tranche 2 — the array-returning core, node-equals-formula", () => {
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
     const { UniqueNode, SortNode, SortByNode } = await import("./nodes/list");
     const x = [3, 1, 3, null, 2];
@@ -216,10 +216,10 @@ describe("D23 tranche 2 — the array-returning core, node-equals-formula", () =
   });
 });
 
-// ─── INTERPOLATE grid mode: the last name D23 unblocked (shareImpl) ────────────────
+// ─── INTERPOLATE grid mode: the last name matricesInFormulas unblocked (shareImpl) ────────────────
 // The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
 // the arm is chosen by the first argument's RANK, not by a second registration
-// (uniqueNameMap injectivity). Grid mode was parked behind the D2 cap; D23 lifted it.
+// (uniqueNameMap injectivity). Grid mode was parked behind the noFramesInFormulas cap; matricesInFormulas lifted it.
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   const grid = [
     [null, 0,    10],

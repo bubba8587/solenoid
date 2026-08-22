@@ -263,7 +263,7 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
   });
 });
 
-describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () => {
+describe("structural reshapes carry the homogeneous matrix unit (unitGranularity, S3)", () => {
   // A numeric matrix tagged with one whole-grid unit; the tag rides through a
   // structural reshape (same cells, rearranged) but the output is a fresh array,
   // so the op must re-carry it. km, dim {length:1}.
@@ -303,7 +303,7 @@ describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () =
   it("Table Input tags its NUMBER output with its authored unit; cells stay as-typed", () => {
     const n = new TableInputNode({ tableText: "1, 2\n3, 4", dataType: "number", unit: "km" });
     const out = n.data().table;
-    expect(out).toEqual([[1, 2], [3, 4]]);          // cells bare, as typed (D20)
+    expect(out).toEqual([[1, 2], [3, 4]]);          // cells bare, as typed (unitGranularity)
     expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
   });
 

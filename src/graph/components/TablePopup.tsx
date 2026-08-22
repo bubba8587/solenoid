@@ -210,7 +210,7 @@ export function TablePopup() {
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";
   const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource || !!state.onSaveRaw;
-  // Literal-source editor: the grid holds RAW text, never coerced (D31).
+  // Literal-source editor: the grid holds RAW text, never coerced (tableInputRawText).
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
   const formattedPreview = literalSource && displayMode === "formatted";
   const editableHeaders = editable && !!state.editableHeaders;
@@ -672,7 +672,7 @@ export function TablePopup() {
                         </select>
                         {colExprs[c] !== undefined && !colLambdas[c] && (
                           // One formula per column: @name reads this row, a bare name
-                          // the whole column (D24).
+                          // the whole column (tableRefSemantics).
                           <div className="table-popup__exprrow">
                             <span className="table-popup__exprprefix">=</span>
                             <input

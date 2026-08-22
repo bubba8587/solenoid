@@ -23,7 +23,7 @@ Covers everything on `develop` since the v1.2.0 tag.
   Column node does the same over any frame — with side inputs, bracket references
   (`@[Unit Price]`) for unspellable names, and per-variable column-binding pickers. The
   "Computed Columns & @" example canvas tours it.
-- **[slide] Matrix formulas & LAMBDA.** Expression now takes matrices (D23):
+- **[slide] Matrix formulas & LAMBDA.** Expression now takes matrices (matricesInFormulas):
   TRANSPOSE/MMULT/SEQUENCE/WRAPROWS and the array-returning core, LAMBDA as a first-
   class value — including eta-lambdas, higher-order `f(x)`, and reusable λs wired
   across the graph — plus complex numbers (IM* over a true complex type). Every
@@ -31,10 +31,10 @@ Covers everything on `develop` since the v1.2.0 tag.
   function** (SUNRISE, AWG, PIPE…) works in a formula the moment its pack is active.
 - **[slide] Query.** A Power Query-style transform node: drop a Query, drill in,
   chain the table verbs, and Refresh on demand — upstream changes only mark it
-  stale, never silently recompute (D22: a pre-seeded manual-mode Composite).
+  stale, never silently recompute (queryIsCompositePreset: a pre-seeded manual-mode Composite).
 - **[slide] AI palette.** Type a prompt in the command palette: a question gets an
   answer about *your* document; a build request gets a validated whole-document
-  rewrite shown as a diff you approve or cancel — never a blind edit (D27/D28).
+  rewrite shown as a diff you approve or cancel — never a blind edit (aiInScope/aiWholeDocRewrite).
   Bring your own Anthropic key (Settings ▸ AI), or type `demo` for the offline
   staged demo. Applied additions animate in.
 

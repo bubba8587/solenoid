@@ -74,7 +74,7 @@ describe("passthrough declarations", () => {
   it("the append ladder declares `agree` over its extensible rows (1-D and 2-D rungs)", () => {
     // Concat Lists (1-D) and VSTACK/HSTACK (2-D) are the same shape: element-preserving
     // combiners whose value branches are ALL their rows, so the row keys must track the
-    // extensible set rather than a fixed pair (D15).
+    // extensible set rather than a fixed pair (appendLadder).
     for (const n of [new ConcatListsNode(), new VStackNode(), new HStackTableNode()]) {
       const spec = getPassthrough(n)[0];
       expect(spec).toMatchObject({ output: "result", combine: "agree" });

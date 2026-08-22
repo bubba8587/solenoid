@@ -87,7 +87,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20).
+  // A homogeneous numeric matrix carries ONE unit for the whole grid (unitGranularity).
   const matUnit = table ? matrixUnitOf(value) : undefined;
   const chipLabel = table ? `${rows}×${cols} Table` : "List";
   const verb = onSave ? "Edit" : "View";

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { TableInputNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 
-// Table Input is a raw-text literal source (D31): the grid editor round-trips through
+// Table Input is a raw-text literal source (tableInputRawText): the grid editor round-trips through
 // rawCellsToText -> tableText -> tableRawCells. Blanks must survive that trip as real
 // null cells, never silently dropping a row/column and reshaping the table. (The one
 // deliberate drop is a TRAILING all-empty column — a typing artifact, not data.)

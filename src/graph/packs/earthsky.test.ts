@@ -120,7 +120,7 @@ describe("moon phase", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("SUNRISE / SUNSET / DAYLENGTH agree with the node core at the equator", () => {
     const t = sunTimes(46000, 0, 0);
     expect(evalPackFormula("SUNRISE(46000, 0, 0)")).toBe(t.sunrise);

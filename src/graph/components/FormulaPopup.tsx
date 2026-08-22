@@ -266,7 +266,7 @@ export function FormulaPopup() {
 
         {/* Engine note: the formula path resolves through the same registry as the
             visual nodes, so they match wherever they overlap. The load-bearing thing
-            to tell the user is the SHAPE boundary as of D23/D24: scalars, lists and
+            to tell the user is the SHAPE boundary as of matricesInFormulas/tableRefSemantics: scalars, lists and
             MATRICES are in (with complex); frames/cubes stay out — the verb nodes
             are their surface, and a computed column's references are the row door. */}
         {host.equation ? (

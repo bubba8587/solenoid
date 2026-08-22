@@ -458,7 +458,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const droppedF = filterRowsMulti(mat, this.combine, conditions, true);
       return { ...(await emitFrame(this, gen, keptF)), dropped: this.publishDropped(gen, droppedF) };
     }
-    // Null-predicate rows land in Dropped, not lost (D15).
+    // Null-predicate rows land in Dropped, not lost (appendLadder).
     const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
     const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
     return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };

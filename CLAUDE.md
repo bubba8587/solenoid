@@ -81,12 +81,12 @@ Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs
 - **`docs/subsystem-invariants.md`** — full mechanics + invariants for the tricky subsystems
   (indexed below).
 - **`docs/decisions.md`** — the decision log (what stands / where / what would reopen it).
-  Check it so a change doesn't RELAPSE on a recorded decision — D10 is the standing example:
+  Check it so a change doesn't RELAPSE on a recorded decision — currentExcelParity is the standing example:
   an eliminated function (VLOOKUP/MATCH…) stays eliminated on every surface. It is a
   relapse-guard, NOT a caution brake: no cross-cutting change needs a design pass or author
   sign-off (that reflex is obliterated by author order). Decide on merits, do it, record it.
-  The ONLY author-gated work: never push `main`/releases; D2 (composite toolbar reroute) and
-  D4 (conditional formatting), both deferred author-present.
+  The ONLY author-gated work: never push `main`/releases; compositeToolbarReroute and
+  conditionalFormatting, both deferred author-present.
 - **`docs/layout-chrome.md`** — the on-screen chrome map. READ BEFORE ADDING/MOVING ANY BAR OR
   FLOATING OVERLAY. Vertical envelopes are measured (`--chrome-top`/`--chrome-bottom` — derive,
   never hand-key); the rest of the offsets/z-index are the sync map (the source of the
@@ -110,7 +110,7 @@ Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs
   program record, cube scoping, and toolbar-parity verdicts, archived 2026-08-07).
   **Nothing live is parked in `archive/`** — if it's routed or still load-bearing it
   lives in the working set (machine-checked: `docsPointers.test.ts`).
-- **`docs/code-comments.md` (D30) — the comment policy: comments are the LAST-RESORT home;
+- **`docs/code-comments.md` (commentMinimalism) — the comment policy: comments are the LAST-RESORT home;
   default outcome for an existing comment is deletion.** History → commits; rulings →
   decisions/specs; investigations → dev-notes. Before editing a file, grep it in the
   "Code → spec routing" table in `docs/README.md` — routed files carry zero comment
@@ -274,9 +274,9 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - **Unit flow** (`unitFlow.ts`, `unitBridge.ts`): the unit is a property of the VALUE,
   authored only by FC/Convert/Table Input/column-unit surfaces; a transform re-derives the
   dimension through the algebra (display carries when the result's dim matches an operand —
-  noMixCurrencies); an FC downstream of a united value LOCKS (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
+  noMixCurrencies); an FC downstream of a united value LOCKS (firstClassUnits). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
   unwraps unless `unitAware = true` (every new algebra node sets it) or a `passthrough()` spec
-  names the input. Granularity per D20: list per-cell, frame per-column, matrix one unit.
+  names the input. Granularity per unitGranularity: list per-cell, frame per-column, matrix one unit.
 - **Alerts** (`alertStore.ts`): edge-detect on STATUS, not a boolean (range LOW↔HIGH re-fires).
 - **Addressable model** (`textForm.ts`): stable user-editable `name` ≠ rete `id`; text form is
   a pure round-trip and the JSON save derives from it.
@@ -290,7 +290,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   views are per-OPEN (close unmounts, open backfills idempotently).
 - **Socket lattice** (`sockets.ts`): TYPE separation (families never auto-cross; Cast required;
   sole bridge logical↔number), DIMENSIONAL flow up (a list widens into 2-D as a ROW). Wildcard
-  ladder (D17): `any` → `anycombo` → `anylist`/`anytable` → `anydata` (rank ≤ 2) → `trueany`
+  ladder (wildcardLadder): `any` → `anycombo` → `anylist`/`anytable` → `anydata` (rank ≤ 2) → `trueany`
   (adoptive supremum; adoption never drops cables, never persists). "Resolve past untyped
   passthroughs" routes through `isWildcardType()`; FAMILY resolution (the FC) uses
   `isWildcardRung()`. The full sweep in `socketConnect.test.ts` machine-checks `accepts()`.
@@ -323,7 +323,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   (`ExtensibleInputs` / `PairedExtensibleInputs`) when each input plays a distinct role; a
   single list socket only when elements are interchangeable (SUM). Aligned parallel columns →
   ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs).
-- **Node combining (recurring author program — Running D33, Distribution D34 are the models).**
+- **Node combining (recurring author program — Running oneRunningNode, Distribution oneDistributionNode are the models).**
   "These could be one node" means the MAXIMAL merge: one card, selectors for what varied
   (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
   Mechanics that were gotten wrong once, don't repeat: an op's formula name is `fx ??
@@ -339,7 +339,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
   lasso, undo/copy/paste, single-key shortcuts (F9 calculate), command palette, presenter
   mode, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (D27/D28:
+  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (aiInScope/aiWholeDocRewrite:
   validator-gated whole-doc rewrite with diff approval; Anthropic key in Settings ▸ AI).
 - **Value model**: frames / cubes (recursive) / matrices / lists / scalars; first-class
   null/logical/SolError; units by dimensionality with `#UNIT!` algebra; the FC (unit author
@@ -348,16 +348,16 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   trip on desktop, identical JS oracle on web (`frameVerbs.ts`, cargo parity tests); calc
   modes; headless runner (`npm run run-graph`); Write CSV/JSON/Obsidian sinks; live
   connections (Web Source, CSV, Data Feed).
-- **Nodes**: current-Excel function parity (rank ≤ 2 per D23), Equation (acausal), composites
-  (drill-in; run modes incl. Monte Carlo/by-row; Query = manual-mode preset, D22), charts,
+- **Nodes**: current-Excel function parity (rank ≤ 2 per matricesInFormulas), Equation (acausal), composites
+  (drill-in; run modes incl. Monte Carlo/by-row; Query = manual-mode preset, queryIsCompositePreset), charts,
   Note (pure SOURCE) / Report (pure SINK — deliberate opposites) / Mermaid, ~10 domain packs,
   Placeholder for unknown types.
 - **Desktop**: Tauri shell (Windows portable exe), native Polars + CSV reader, F12 devtools,
   accent window border, image bundling beside the doc.
 
 ### Standing constraints (quick list — details in decisions.md / backlog.md)
-- Author-gated: `main`/releases; D2 composite toolbar reroute; D4 conditional formatting.
-- Formulas compute at rank ≤ 2 (D23 lifted the old 1-D cap; matrices + tagged complex are in);
+- Author-gated: `main`/releases; compositeToolbarReroute; conditionalFormatting.
+- Formulas compute at rank ≤ 2 (matricesInFormulas lifted the old 1-D cap; matrices + tagged complex are in);
   frames/cubes stay OUT of formulas by design — the verb engine is their surface. Containment:
   Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md hideMatrixFromVendor).
 - Units are authored ONLY by the FC / Convert — the Number node is a plain literal source.

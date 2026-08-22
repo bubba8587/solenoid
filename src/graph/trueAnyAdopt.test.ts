@@ -34,7 +34,7 @@ function strSource(): ClassicPreset.Node {
   return n;
 }
 
-describe("trueany adoption — placeholder sockets take the wired cable's type (D17)", () => {
+describe("trueany adoption — placeholder sockets take the wired cable's type (wildcardLadder)", () => {
   it("a Display adopts on both sides and REVERTS on disconnect", () => {
     const src = numSource();
     const disp = new DisplayNode();

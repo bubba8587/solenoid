@@ -43,7 +43,7 @@ function tagResult(v: unknown): unknown {
 function stripUnits(v: unknown): unknown {
   if (isUnitCell(v)) return v.value;
   if (Array.isArray(v)) {
-    // A matrix carries ONE homogeneous unit (D20) but tags cells individually (D23).
+    // A matrix carries ONE homogeneous unit (unitGranularity) but tags cells individually (matricesInFormulas).
     return v.map((c) =>
       Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
       : isUnitCell(c) ? (c as UnitCell).value : c);
@@ -66,7 +66,7 @@ function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
 }
 
 /** A scalar's dim, or a container's shared cell dim (dimensionless if none/mixed);
- *  rank 2 flattens, since a matrix carries ONE homogeneous unit (D20). */
+ *  rank 2 flattens, since a matrix carries ONE homogeneous unit (unitGranularity). */
 function envDim(v: unknown): Dim {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) {

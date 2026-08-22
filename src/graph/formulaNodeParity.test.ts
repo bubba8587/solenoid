@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "./formulaNodeParity";
 import { initPackFormulas } from "./formulaExtensions";
 
-// ─── The parity RATCHET (D19) ─────────────────────────────────────────────────
+// ─── The parity RATCHET (formulaNaming) ─────────────────────────────────────────────────
 // The node set and the formula language drifted apart because NOTHING checked one
 // against the other — a node could ship with an Excel name that no formula could
 // call, and Formula.js could drag in a legacy name nobody decided to support. See
@@ -21,10 +21,10 @@ import { initPackFormulas } from "./formulaExtensions";
 // GAP A — a node carries an Excel name, but typing that name in an Expression
 // gives #NAME?. The sharpest gap: the node is right there in the Add menu.
 //
-// D23 opened this list: the cap lifted, and the matrix tranche closed the
+// matricesInFormulas opened this list: the cap lifted, and the matrix tranche closed the
 // 2-D-shaped registrations (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/
 // SEQUENCE — `formulaMatrix.test.ts`). What remains splits in two:
-// EMPTY — and keep it that way. The D23 lambda tranche (2026-07-28) closed the
+// EMPTY — and keep it that way. The matricesInFormulas lambda tranche (2026-07-28) closed the
 // last eight: LAMBDA became the evaluator's one special form and the hosts
 // (MAP/BYROW/BYCOL/REDUCE/SCAN/MAKEARRAY/GROUPBY) registered against the same
 // LambdaValue currency the nodes use (formulaLambda.test.ts). Every Excel name a
@@ -34,7 +34,7 @@ const EXCEL_NAMED_GAP: string[] = [];
 
 // GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a
 // deliberately registered native: names Formula.js drags in that nobody decided to
-// support. D19 decision 1 blocks the legacy/superseded ones outright (see
+// support. formulaNaming decision 1 blocks the legacy/superseded ones outright (see
 // LEGACY_ALIASES in excelFunctions.ts), so what stays here is only what survived
 // curation. An empty list is the goal, not a bug.
 const UNTRACKED_DISPATCHABLE: string[] = [];
@@ -57,7 +57,7 @@ describe("formula ↔ node parity ratchet", () => {
         `These Excel names have a node but are NOT callable in a formula:${fmt(added)}\n` +
           `Register a native impl for each (excelFunctions.ts \`registerInternal\`), sharing the\n` +
           `node's compute — see docs/archive/formula-node-parity.md "Tier 1". If a name genuinely cannot\n` +
-          `be registered (2-D shape under the D2 cap, or a lambda meta-function), add it to\n` +
+          `be registered (2-D shape under the noFramesInFormulas cap, or a lambda meta-function), add it to\n` +
           `EXCEL_NAMED_GAP here WITH a reason in the comment above.`,
       ).toEqual([]);
     });
@@ -82,7 +82,7 @@ describe("formula ↔ node parity ratchet", () => {
         `These names dispatch in a formula with no node and no recorded decision:${fmt(added)}\n` +
           `Curate each one: block it (LEGACY_ALIASES in excelFunctions.ts) if it is a legacy or\n` +
           `superseded spelling, give it a node, or record it as a deliberate gap in EXCEL_GAP\n` +
-          `(nodeExcel.ts). D10 applies to the formula surface too — see decisions.md D19.`,
+          `(nodeExcel.ts). currentExcelParity applies to the formula surface too — see decisions.md formulaNaming.`,
       ).toEqual([]);
     });
 

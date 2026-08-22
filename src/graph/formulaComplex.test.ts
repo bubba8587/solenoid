@@ -9,7 +9,7 @@ import {
 } from "./nodes/complex";
 import { isSolError, type SolError } from "./errorValue";
 
-// ─── D23 amendment tranche: complex numbers in formulas (2026-07-28) ──────────
+// ─── matricesInFormulas amendment tranche: complex numbers in formulas (2026-07-28) ──────────
 // The IM* family owned over tagged Cx (tagSpecialScalars) — before this, complex ALREADY
 // flowed into formulas (complexcombo → anydata connects) and every surface
 // handled it as garbage: operators concatenated "[object Object]", the IM* names

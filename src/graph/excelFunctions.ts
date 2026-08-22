@@ -238,7 +238,7 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
   return names;
 })();
 
-// Verb names recognized but REFUSED on the formula surface (D23): each short-circuits
+// Verb names recognized but REFUSED on the formula surface (matricesInFormulas): each short-circuits
 // dispatch with a #TYPE! naming the node to use. Value = that node label.
 export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Frames (named columns)
@@ -262,7 +262,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   CUBEROLLUP: "Cube Rollup",
 };
 
-// D10 on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and
+// currentExcelParity on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and
 // dropped from autocomplete. Block a name only once its replacement already dispatches.
 export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",
@@ -353,7 +353,7 @@ export interface ExcelImplMeta {
    *  position-preserving and carry cell errors in place, so dropping nulls or hoisting
    *  an error would be wrong. */
   listArgs?: boolean;
-  /** The ONLY gate through which a rank-2 value reaches a dispatch whole (D23): an
+  /** The ONLY gate through which a rank-2 value reaches a dispatch whole (matricesInFormulas): an
    *  undeclared impl answers #SHAPE!, and Formula.js NEVER sees a matrix. */
   matrixArgs?: boolean;
   /** The only gate through which a tagged Cx reaches a dispatch; everywhere else a Cx
@@ -508,7 +508,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   DIFF:            { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   NORMALIZE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
-  // argument (D29), like SORT's direction. The per-op RUNNING* family stays eliminated.
+  // argument (aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
@@ -518,7 +518,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   WVAR:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
   WSTDEV:          { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
   // `listArgs` on a scalars-in/list-out builder says "never broadcast me": without
-  // it LINSPACE(list, 1, 5) would map element-wise into a 2-D result, which D2 bans.
+  // it LINSPACE(list, 1, 5) would map element-wise into a 2-D result, which noFramesInFormulas bans.
   LINSPACE:        { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
   REPEAT:          { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   GEOMETRIC:       { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
@@ -732,7 +732,7 @@ export function excelPercentRank(
 
 /** QUARTILE.INC — the inclusive quartile is PERCENTILE.INC at q/4, so quart 0 = MIN and
  *  quart 4 = MAX (Excel). Matches RankPercentileNode's `percentileOf` interpolation so the
- *  node and formula agree (D11); Formula.js's QUARTILE.INC errors on 0 and 4. */
+ *  node and formula agree (oneAnswerOneDivergence); Formula.js's QUARTILE.INC errors on 0 and 4. */
 export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number | SolError {
   const qi = Math.round(q);
   if (nums.length === 0) return solError("#DOMAIN!", "QUARTILE needs at least one number");
@@ -1178,7 +1178,7 @@ registerInternal("BETWEEN", (x, lo, hi) => {
 });
 
 // Delegates to the SAME `nodes/listOps.ts` function the node's `data()` calls. NAMING
-// (D19): the formula name is the node's LABEL despaced, read from its OP_META table.
+// (formulaNaming): the formula name is the node's LABEL despaced, read from its OP_META table.
 
 /** A bare scalar widens to a 1-element list — the same widening the socket lattice does
  *  on a cable, so `REVERSE(5)` behaves like wiring a Number into a list input. */
@@ -1205,7 +1205,7 @@ registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n
 registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
-// ONE Running function, aggregator as a string ARGUMENT (D29): a parameter inside a
+// ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below
 // carrying its direction. Window omitted = cumulative; a BLANK window is unknown and
@@ -1368,7 +1368,7 @@ registerInternal("SHUFFLE", (list) => {
 });
 
 // Every registration below MUST declare `matrixArgs` (hideMatrixFromVendor). Shape CONSTRUCTION pads
-// #N/A per D15 — the element-wise broadcaster's null pad (P3) never applies here.
+// #N/A per appendLadder — the element-wise broadcaster's null pad (P3) never applies here.
 
 /** A formula argument as a MATRIX: a matrix stays itself, a list is a ROW
  *  (widenNeverNarrow's orientation convention), a scalar is 1×1, null stays null. */
@@ -1436,7 +1436,7 @@ registerInternal("MINVERSE", (v) => {
   if (matRows(m) !== matCols(m)) return solError("#SHAPE!", "Matrix must be square");
   return matInverse(m) ?? solError("#DIV/0!", "Matrix is singular. It has no inverse");
 });
-// WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the D15 #N/A.
+// WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the appendLadder #N/A.
 const wrapPad = (padWith: unknown, what: string) => () =>
   padWith !== undefined && padWith !== null
     ? padWith

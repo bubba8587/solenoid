@@ -842,7 +842,7 @@ combo — what `numlist` is to `number`.
 **Dot:** two-tone split square, gray over gray's own border shade.
 **Ports:** 1 output — Regex's `result`, whose rank follows its operation. No
 input declares it today (`anyComboIn` exists as a factory; Expression's
-variables moved UP a rung to `anydata` with D23 — this rung refuses the
+variables moved UP a rung to `anydata` with matricesInFormulas — this rung refuses the
 matrices formulas now accept).
 
 **Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
@@ -864,12 +864,12 @@ this rung exists. There is no element conversion, because the family is unknown.
 #### `anydata` — "Any value, list or matrix"
 
 **Holds:** one value, a list, **or** a 2-D matrix, of an unknown family — the
-rank-≤2 wildcard (anydataWildcard), added by D23 so a formula variable can take a matrix.
+rank-≤2 wildcard (anydataWildcard), added by matricesInFormulas so a formula variable can take a matrix.
 What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
 **Dot:** the anycombo split square with a small rank-2 cross in its lower half
 (author call 2026-07-29 — the old full-square cross read as noise).
-**Ports:** Expression's formula variables (the D23 lift). The result output is
+**Ports:** Expression's formula variables (the matricesInFormulas lift). The result output is
 NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
 computed value (combo rung for a scalar/list result, the family's matrix rung
 for a matrix result).
@@ -1163,7 +1163,7 @@ socket's family:
 **Units.** A unit is a property of the value, authored by the Format Controller
 at the value's origin (or by a frame column's unit spec), and changed only by
 Convert; it rides through passthroughs and selectors. A DOWNSTREAM FC mirrors an
-inherited unit and is locked against re-authoring it (D26) — only the unit
+inherited unit and is locked against re-authoring it (firstClassUnits) — only the unit
 algebra changes a unit. It attaches per element on a list, per column on a frame,
 and once for a whole matrix. Only a node that runs the unit algebra receives the
 tagged cells; the socket is what decides whether the tag survives the boundary.

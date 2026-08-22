@@ -27,7 +27,7 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   await processGraph();
 }
 
-// A LITERAL source (D31): the popup edits the RAW text cells, so a bad cell is
+// A LITERAL source (tableInputRawText): the popup edits the RAW text cells, so a bad cell is
 // never coerced away — it derives to NaN and Source still shows what was typed.
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {
   const [dt, setDt] = useState<TableElemType>(data.dataType);
@@ -57,7 +57,7 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
             data.tableText = rawCellsToText(cells);
             void processGraph(data.id);
           },
-          // A NUMBER table is a unit-taggable source (D20): the unit dropdown
+          // A NUMBER table is a unit-taggable source (unitGranularity): the unit dropdown
           // writes the homogeneous unit onto the node so it rides the value.
           ...(dt === "number"
             ? {

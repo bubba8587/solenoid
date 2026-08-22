@@ -55,7 +55,7 @@ area. When you coin a new load-bearing term, add it here.
   coercing ↔ 1/0. The one cross-family socket bridge. (`sockets.ts`, `nodes/logic.ts`)
 - **Socket lattice** — the ruleset for what can connect to what: type families never
   auto-cross (Cast required); dimensionality flows upward freely. (`sockets.ts`,
-  `socketConnect.test.ts`; see decisions.md D7)
+  `socketConnect.test.ts`; see decisions.md socketLattice)
 - **Cast** — the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Coalesce / Fill** — the opt-in node to treat `null` as a real value.
@@ -66,11 +66,11 @@ area. When you coin a new load-bearing term, add it here.
 - **Format Controller (FC)** — a node that LOCKS a value's number format, and authors a
   unit ONLY onto a unit-less value; both ride the value through passthroughs and
   selectors. A transform drops the FORMAT; the unit's dimension re-derives through the
-  algebra and keeps its display when the dimension survives (unitOnValue / D26).
+  algebra and keeps its display when the dimension survives (unitOnValue / firstClassUnits).
   (`nodes/formatController.ts`, `fcReconcile.ts`)
 - **FC lock states** — who owns the FC's unit dropdown: *authored* (the FC set it),
   **forwarding** (an inherited upstream unit — the FC MIRRORS it, locked, because a
-  unit is first-class like the magnitude; D26), **lockedByConvert** (a downstream
+  unit is first-class like the magnitude; firstClassUnits), **lockedByConvert** (a downstream
   Convert's `fromUnit` dictates it). `unitLocked = lockedByConvert || forwarding`.
   (`nodes/formatController.ts`)
 - **Unit flow** — the machinery that carries an FC's unit/format lock along the value both
@@ -94,7 +94,7 @@ area. When you coin a new load-bearing term, add it here.
   `nodeCatalog.ts`)
 - **FrameBackend** — the seam with two implementations: `JsFrameBackend` (web/dev, eager)
   and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
-  (`frameBackend.ts`; see decisions.md D1)
+  (`frameBackend.ts`; see decisions.md polarsEngine)
 - **Frame verbs (`frameVerbs.ts`)** — the pure JS reference implementation ("the oracle")
   of every verb; the correctness standard the Rust engine is tested against.
 - **Materialization boundary** — the point where a lazy `FrameRef` is collected into a
@@ -108,9 +108,9 @@ area. When you coin a new load-bearing term, add it here.
   `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)
 - **Computed column** — a frame column whose cells come from a per-row computation
   (an inline formula or a wired λ) instead of typed data. ONE definition per column,
-  never per cell (D25). Two surfaces, one core: the Frame Input popup's per-column
+  never per cell (noPerCellFormulas). Two surfaces, one core: the Frame Input popup's per-column
   source picker (**Data | Formula | λ**) and the Computed Column verb node.
-  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; decisions D24/D25)
+  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; decisions tableRefSemantics/noPerCellFormulas)
 - **Side value** — a non-column value wired into a computed column's definition (a
   scalar or a row-aligned list); surfaces grow/prune side sockets from the expression's
   free names (`sideVars`). `@list` reads a side list's this-row element after a length
@@ -119,15 +119,15 @@ area. When you coin a new load-bearing term, add it here.
 ## Formula layer
 
 - **Expression node** — the in-cell formula node; computes at rank ≤ 2 — scalars, lists,
-  matrices, complex (D23 lifted the old 1-D cap). Frames/cubes stay out permanently: the
-  verb engine is their surface. (`nodes/expression.ts`; see decisions.md D2 → D23)
+  matrices, complex (matricesInFormulas lifted the old 1-D cap). Frames/cubes stay out permanently: the
+  verb engine is their surface. (`nodes/expression.ts`; see decisions.md noFramesInFormulas → matricesInFormulas)
 - **LAMBDA** — a reusable formula value with named params, plus the 2-D LAMBDA family
   (MAP/BYROW/REDUCE…). In a computed column its PARAMS are row-bound; free names and
   @names in the body become **capture** sockets on the Lambda card. (`nodes/lambda.ts`
   `captured`, `nodes/tableLambda.ts`)
 - **`@` / this-row reference** — inside a computed column, `@name` reads THIS row's cell
   of a column (or a side list's element, length-checked). A bare name is the WHOLE
-  column as a list — Excel's table semantics exactly (D24). (`computedColumnCore.ts`
+  column as a list — Excel's table semantics exactly (tableRefSemantics). (`computedColumnCore.ts`
   `readRowCell`/`readWholeColumn`, `excelFormula.ts` `atcol`/`wholecol`)
 - **Structured (bracket) reference** — the spelling for unspellable column names:
   `[Unit Price]` whole column, `@[Unit Price]` / `[@Unit Price]` this row. Replaced the
@@ -158,11 +158,11 @@ area. When you coin a new load-bearing term, add it here.
 - **DataflowEngine** — rete's PULL-based execution engine (inputs resolve recursively
   before `data()` runs; async ones awaited). (`rete-engine`, `process.ts`)
 - **Calc mode** — manual vs. automatic recompute; F9 forces a recompute in manual mode.
-  (`calcModeStore.ts`; see decisions.md D8)
+  (`calcModeStore.ts`; see decisions.md calcModes)
 - **Compute overlay** — the deferred "Computing…" curtain that blocks interaction during a
   heavy pass. (`computeOverlayStore.ts`, `ComputeOverlay.tsx`)
 - **Render mode** — `dom` (default/fallback) vs. `html` (HTML-in-canvas). (`renderMode.ts`;
-  see decisions.md D6)
+  see decisions.md htmlInCanvasRenderer)
 - **HTML-in-Canvas renderer** — draws the real DOM cards into a canvas via a mip-pyramid of
   bitmaps; crisp at any zoom. (`htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx`)
 - **perfProbe** — the runtime instrumentation (`window.__solenoidPerf` / `__solenoidStats`)

@@ -192,7 +192,7 @@ describe("CompositeNode shell", () => {
   });
 });
 
-describe("CompositeNode boundary output-type adoption (D17)", () => {
+describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
   it("an output port adopts the concrete type feeding its internal marker", async () => {
     const c = new CompositeNode();
     const num = new NumberInputNode({ value: 7 }); // number-typed "value" output

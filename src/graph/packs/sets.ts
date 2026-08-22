@@ -3,7 +3,7 @@ import type { Pack, PackFormula } from "./packShared";
 
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
-// The pack's nodes as formula functions (D19 decision 4); TALLY returns only the
+// The pack's nodes as formula functions (formulaNaming decision 4); TALLY returns only the
 // COUNTS, since the node's frame can't cross the formula surface.
 const SETS_PACK_FORMULAS: PackFormula[] = [
   {

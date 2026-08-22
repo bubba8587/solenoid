@@ -220,10 +220,10 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
     expect(isSolError(clash) && clash.code).toBe("#UNIT!");
   });
 
-  it("`none` / text pass through; a list tags per cell; a NUMERIC matrix takes ONE whole-grid unit (D20)", () => {
+  it("`none` / text pass through; a list tags per cell; a NUMERIC matrix takes ONE whole-grid unit (unitGranularity)", () => {
     expect(applyFcUnit(5, "none")).toBe(5);
     expect(applyFcUnit("hello", "km")).toBe("hello");
-    // A numeric matrix keeps its cells bare but carries one unit on the array (D20).
+    // A numeric matrix keeps its cells bare but carries one unit on the array (unitGranularity).
     // The tag lands on a COPY, never the input — the DataflowEngine shares a node's
     // cached array with every consumer, so mutating the source would leak this FC's
     // unit onto the upstream value and race a second consumer.

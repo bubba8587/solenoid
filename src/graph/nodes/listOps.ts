@@ -508,7 +508,7 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
     .map((p) => p.v);
 }
 
-// ─── D23 tranche 2: the array-returning core ──────────────────────────────────
+// ─── matricesInFormulas tranche 2: the array-returning core ──────────────────────────────────
 
 /** UNIQUE: first-seen dedupe by VALUE (setKey, keyByValue); every ERROR cell survives, so the
  *  count of errors to fix is deterministic. */

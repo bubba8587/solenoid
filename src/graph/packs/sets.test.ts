@@ -40,7 +40,7 @@ describe("TallyNode", () => {
   });
 });
 
-describe("pack formula functions (D19 decision 4)", () => {
+describe("pack formula functions (formulaNaming decision 4)", () => {
   it("ISIN masks membership aligned to the values list", () => {
     expect(evalPackFormula("ISIN(v, s)", { v: [1, 2, 3, 4], s: [2, 4, 9] }))
       .toEqual([false, true, false, true]);

@@ -4,7 +4,7 @@ import { wrapNodeData } from "./coerceInputs";
 import { canConnect, SolenoidSocket } from "./sockets";
 import { isSolError } from "./errorValue";
 
-// ─── D23: the Expression lift (anydataWildcard) ────────────────────────────────────────
+// ─── matricesInFormulas: the Expression lift (anydataWildcard) ────────────────────────────────────────
 // The connect-time half of the matrix decision: variables are `anydata`, matrices
 // flow in, the formula computes by the broadcast table (oneBroadcast — semantics pinned
 // in broadcastRules.test.ts; THIS file pins the node-boundary lift), and the

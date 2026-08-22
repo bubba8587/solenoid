@@ -3,7 +3,7 @@ import { compileEvaluator } from "./excelFormula";
 import { isSolError } from "./errorValue";
 import { tTestP, fTestP } from "./nodes/mathUtils";
 
-// ─── Pins from the 2026-07-28 adversarial review of the D19 formula work ─────
+// ─── Pins from the 2026-07-28 adversarial review of the formulaNaming formula work ─────
 // Each block pins a defect the review confirmed live. The common theme: the
 // formula surface fabricating an answer (or corrupting its inputs) in cases
 // where the NODE under the same name behaves.

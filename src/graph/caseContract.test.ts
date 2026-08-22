@@ -6,7 +6,7 @@ import {
 } from "./frameVerbs";
 import type { FrameValue } from "./frame";
 
-// D12 pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;
+// excelComparisons pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;
 // "Match case" / EXACT is the escape hatch), every IDENTITY op (join, group,
 // distinct keys) is case-SENSITIVE. These semantics previously lived only in
 // catalog description strings — the 2026-08-08 fine-print sweep's finding was

@@ -353,7 +353,7 @@ export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
 // the inline property for every var it isn't given, so the cascade answers instead of
 // the last palette's value sticking. Authoring a ramp is opt-in and rare: recoloring
 // the graph is what a palette does, recoloring the workbench is a separate claim, and
-// only Orchard makes it (D35).
+// only Orchard makes it (paletteAllOrNone).
 //
 // The 13 keys are the ones a warm palette actually has to move. The rest of the neutral
 // chrome DERIVES from them (see chromeCssVars) — either through App.css's own var()
@@ -487,7 +487,7 @@ const CVD_CHROME: PaletteChrome = {
 // background highlight, then the content tones in Solarized's own order. Border tiers
 // are blends up the base02→base01 gap, the one place Solarized leaves open.
 //
-// Solarized's body pairings sit near 3:1 — that low contrast IS the design, and D35
+// Solarized's body pairings sit near 3:1 — that low contrast IS the design, and paletteAllOrNone
 // scopes the AA requirement to Default and Colorblind-safe precisely so a lifted
 // system can be itself here. Do not "fix" these tones upward; a Solarized that clears
 // 4.5:1 everywhere is a different palette wearing the name.
@@ -575,7 +575,7 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Blueprint": BLUEPRINT_CHROME,
 };
 
-// ── Accent-adaptive chrome (D35) ──────────────────────────────────────────────
+// ── Accent-adaptive chrome (paletteAllOrNone) ──────────────────────────────────────────────
 // A tinted ramp has a hue, and the accent is user-swappable — so the tinted ramps
 // declare the accent SLOT they were authored against, and appTheme rotates the whole
 // ramp by the hue delta to the live accent. At the home accent the ramp passes
@@ -665,7 +665,7 @@ const ADAPT_MIN_CHROMA = 0.05;
 
 // WCAG luminance is monotonic in OK lightness at fixed chroma/hue, so bisecting L
 // hits the authored luminance at the new hue. Chroma is HELD and luminance is
-// re-matched: the tint stays exactly as strong as authored, and the D35 ramp
+// re-matched: the tint stays exactly as strong as authored, and the paletteAllOrNone ramp
 // STRUCTURE — every contrast relationship the author eyeballed — stays true under
 // any accent. Only hue moves.
 function rotateHueKeepLum(hex: string, delta: number): string {

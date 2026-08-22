@@ -78,7 +78,7 @@ describe("formulaSyntaxHint (why a formula fails to parse)", () => {
     expect(formulaSyntaxHint("=SUM(a, b)")).toMatch(/leading =/);
     expect(formulaSyntaxHint("SUM(a; b)")).toMatch(/commas/);
     expect(formulaSyntaxHint("SUM([Unit Price")).toMatch(/Unclosed \[/);
-    // Balanced brackets are legal D24 structured references — the hint must NOT
+    // Balanced brackets are legal tableRefSemantics structured references — the hint must NOT
     // blame them; the real problem here is the parenthesis.
     expect(formulaSyntaxHint("SUM([Unit Price]")).toMatch(/Missing 1 closing/);
     expect(formulaSyntaxHint("SUM(a, MAX(b")).toMatch(/Missing 2 closing/);

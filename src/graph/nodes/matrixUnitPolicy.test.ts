@@ -9,7 +9,7 @@ import { MutableSocket, SolenoidSocket, AdoptiveSocket } from "../sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 
-// ─── The matrix-unit POLICY guard (D20) ──────────────────────────────────────
+// ─── The matrix-unit POLICY guard (unitGranularity) ──────────────────────────────────────
 // A matrix carries ONE whole-grid unit as a non-enumerable Symbol tag (unitValue.ts).
 // That tag is dropped by any array rebuild, so EVERY node that transforms a matrix
 // must make a deliberate choice about the unit. This file is the machine-checked
@@ -45,7 +45,7 @@ const POLICY: Record<string, Policy> = {
   ReduceLambdaNode: "strip",
   ScanLambdaNode: "strip",
   BuildFrameNode: "strip",        // matrix → frame crosses into the per-COLUMN unit model;
-                                  // lifting a D20 grid unit into column units is future work
+                                  // lifting a unitGranularity grid unit into column units is future work
   TableInfoNode: "na",            // ROWS / COLUMNS → plain numbers
   TableUnitNode: "na",            // MUNIT → a freshly generated identity matrix
   ChartNode: "na",                // visuals: a chart value out, no dimensioned matrix output
@@ -55,7 +55,7 @@ const POLICY: Record<string, Policy> = {
   TableInputNode: "author",       // a literal source that tags its own output
 };
 
-// A km-tagged 2×2 grid (dim length, display "km"), cells as-typed per D20.
+// A km-tagged 2×2 grid (dim length, display "km"), cells as-typed per unitGranularity.
 const kmGrid = () => withMatrixUnit([[1, 2], [3, 4]], { dim: { length: 1 }, display: "km" });
 const plainGrid = () => [[1, 2], [3, 4]];
 
@@ -88,7 +88,7 @@ describe("matrix-unit policy — completeness (a new matrix op must declare a po
       if (!(node.constructor.name in POLICY)) missing.add(node.constructor.name);
     }
     // If this fails: a new matrix-transforming node shipped without deciding what
-    // happens to a D20 unit tag. Add it to POLICY (and a case below) — carry / strip /
+    // happens to a unitGranularity unit tag. Add it to POLICY (and a case below) — carry / strip /
     // convert — don't let it silently drop the unit.
     expect([...missing]).toEqual([]);
     // Non-vacuous: the sweep must actually be finding matrix-taking nodes (guards
@@ -126,7 +126,7 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
 
   it("carry-if-uniform: a dimensioned LIST row lifts to the grid unit (through the real boundary)", () => {
     // A list widened into an `anytable` stack row arrives with PER-ELEMENT tags; the
-    // stackers are unitAware, so they reach data() intact and get reduced to the D20
+    // stackers are unitAware, so they reach data() intact and get reduced to the unitGranularity
     // shape (bare magnitudes + one grid tag) exactly like WRAPROWS. Before this, the
     // boundary stripped them and a km list stacked into a plain, unitless grid.
     const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;

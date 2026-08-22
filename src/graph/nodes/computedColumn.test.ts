@@ -7,7 +7,7 @@ import { solError, isSolError } from "../errorValue";
 import { extractInit } from "../copyPaste";
 
 // ─── Computed Column — the row-wise formula verb ─────────────────────────────
-// The node that keeps frames OUT of formulas (D23): the row iteration lives
+// The node that keeps frames OUT of formulas (matricesInFormulas): the row iteration lives
 // here, the formula only ever sees scalars. Variables are column names; a
 // wired λ takes over with its params bound the same way.
 
@@ -29,7 +29,7 @@ const named = (expr: string, name = "computed") => {
   return n;
 };
 
-describe("ComputedColumnNode — inline formula (D24: bare = whole column, @ = this row)", () => {
+describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole column, @ = this row)", () => {
   it("computes row by row via @ reads; type is inferred", () => {
     expect(run(named("@qty * @price", "revenue"), null)).toBeNull(); // no frame → null
     const r = run(named("@qty * @price", "revenue"), sales) as FrameValue;
@@ -41,7 +41,7 @@ describe("ComputedColumnNode — inline formula (D24: bare = whole column, @ = t
   });
 
   it("a bare column name is the WHOLE column — @revenue-style share-of-total works unwired", () => {
-    // The D24 headline: mixing this-row and whole-column references, Excel's
+    // The tableRefSemantics headline: mixing this-row and whole-column references, Excel's
     // [@Amount] / [Amount] — the case v1 semantics could not spell at all.
     const r = run(named("@price / SUM(price)", "share"), sales) as FrameValue;
     expect(getColumn(r, "share")!.values.map((v) => (v as number).toFixed(4)))
@@ -226,7 +226,7 @@ describe("ComputedColumnNode — bracket references, rows, and placement", () =>
     // and [@[Name]] spellings parse too.
     const bare = run(named("[@2024] + [@[2024]]", "dbl"), awkward) as FrameValue;
     expect(getColumn(bare, "dbl")!.values).toEqual([200, 400]);
-    // [Name] is the WHOLE column — the spelled-out bare name (D24).
+    // [Name] is the WHOLE column — the spelled-out bare name (tableRefSemantics).
     const whole = run(named("@[Unit Price] / SUM([Unit Price])", "shr"), awkward) as FrameValue;
     expect(getColumn(whole, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
   });
@@ -664,7 +664,7 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
 });
 
 describe("binding pickers — explicit variable → column bindings", () => {
-  it("a bound variable reads its picked column — whole for expr vars, this-row for λ params (D24)", () => {
+  it("a bound variable reads its picked column — whole for expr vars, this-row for λ params (tableRefSemantics)", () => {
     const n = named("SUM(a)", "total");
     n.bindings = { a: "price" };
     const r = run(n, sales) as FrameValue;

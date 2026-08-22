@@ -165,7 +165,7 @@ describe("chrome ramp structure", () => {
     expect(c("textDim")).toBeGreaterThan(c("textMuted"));
   });
 
-  // D35: contrast is scoped to the two palettes that PROMISE it — Default, the
+  // paletteAllOrNone: contrast is scoped to the two palettes that PROMISE it — Default, the
   // experience nobody chose, and Colorblind-safe, whose brief is legibility. The rest
   // are aesthetic opt-ins where fidelity to a look wins; Solarized sits near 3:1 by
   // design and forcing AA meant shipping something that was no longer Solarized.
@@ -193,7 +193,7 @@ describe("chrome ramp structure", () => {
 });
 
 // Accent-adaptive chrome: the tinted ramps (CHROME_HOME) follow the live accent's
-// hue — rotated by (accent − home) with every key's LUMINANCE held, so the D35
+// hue — rotated by (accent − home) with every key's LUMINANCE held, so the paletteAllOrNone
 // structure survives any accent and the authored ramp reappears untouched at home.
 describe("accent-adaptive chrome", () => {
   const HOMES = Object.entries(CHROME_HOME) as [PaletteName, PaletteSlot][];
@@ -274,7 +274,7 @@ describe("accent-adaptive chrome", () => {
     }
   });
 
-  // The load-bearing guarantee: rotation may retint but never relight. Every D35
+  // The load-bearing guarantee: rotation may retint but never relight. Every paletteAllOrNone
   // structure rule holds for every adaptive palette under every pickable accent.
   const CASES = HOMES.flatMap(([name]) =>
     MODES.flatMap((mode) => COLOR_PALETTE.map((accent) => [name, mode, accent] as [PaletteName, "dark" | "light", PaletteSlot])),

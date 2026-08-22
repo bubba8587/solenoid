@@ -141,7 +141,7 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
   // Regression: a scalar into Expression's variable input was widened to `[scalar]`
   // (the `anylist` Set/position rule above), so `a+b` of two scalars broadcast to a
   // 1-element LIST. That was patched with a `noWidenInputs` side-channel until
-  // 2026-07-25; the variables now declare `anydata` (anydataWildcard, since D23) — the
+  // 2026-07-25; the variables now declare `anydata` (anydataWildcard, since matricesInFormulas) — the
   // rank-≤2 wildcard — so the SOCKET says "scalar, list or matrix" and the
   // coercion follows from the type.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
@@ -166,13 +166,13 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
     // The node no longer carries a coercion side-channel — the socket is the truth.
     expect("noWidenInputs" in node).toBe(false);
   });
-  it("the D23 acceptance: scalars, lists AND matrices connect; frames/cubes do not", () => {
+  it("the matricesInFormulas acceptance: scalars, lists AND matrices connect; frames/cubes do not", () => {
     expect(canConnect("list", "anydata")).toBe(true);
     expect(canConnect("date", "anydata")).toBe(true);
     expect(canConnect("strlist", "anydata")).toBe(true);
     expect(canConnect("table", "anydata")).toBe(true);   // the lift
     expect(canConnect("anytable", "anydata")).toBe(true);
-    expect(canConnect("frame", "anydata")).toBe(false);  // matrices-ONLY (D23)
+    expect(canConnect("frame", "anydata")).toBe(false);  // matrices-ONLY (matricesInFormulas)
     expect(canConnect("cube", "anydata")).toBe(false);
     expect(canConnect("lambda", "anydata")).toBe(false);
     // anycombo itself is unchanged — the old rung still refuses rank 2.

@@ -266,7 +266,7 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
   if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // `anydata` (anydataWildcard, D23): only `anylist`/`anytable` outputs need naming —
+  // `anydata` (anydataWildcard, matricesInFormulas): only `anylist`/`anytable` outputs need naming —
   // `anycombo`/`any` outputs already reached every non-object input above.
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";

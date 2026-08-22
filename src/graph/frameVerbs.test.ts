@@ -67,7 +67,7 @@ describe("filter — error cells (oracle-only)", () => {
     expect(blank.columns[1].values).toEqual(["Oslo"]);
     const present = filterRows(t, "qty", "notblank", null);
     expect(present.columns[1].values).toEqual(["Oslo", "Bergen", "Tromso", "Oslo"]);
-    // Kept + Dropped stays an exhaustive complement (D16).
+    // Kept + Dropped stays an exhaustive complement (filterOneJob).
     expect(blank.columns[0].values.length + present.columns[0].values.length).toBe(5);
   });
   it("an error cell in a NON-filtered column rides along untouched", () => {

@@ -14,14 +14,14 @@ import { NODE_OPS } from "./nodeOps";
 import { TextFilterNode } from "./nodes/text";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
-// ─── D19 Tier 3: the node surface and the formula surface agree ───────────────
+// ─── formulaNaming Tier 3: the node surface and the formula surface agree ───────────────
 // Tier 3 makes the Solenoid-native list core callable from a formula. The whole point
 // is that the two surfaces STOP being separate implementations, so the test that
 // matters is not "does REVERSE work" but "does REVERSE answer what a REVERSE node
 // answers". Both sides call `nodes/listOps.ts`; this is what stops someone reverting
 // that by hand-inlining one of them again.
 //
-// Naming is D19 decision 2(a): the formula name is the node's LABEL despaced, taken
+// Naming is formulaNaming decision 2(a): the formula name is the node's LABEL despaced, taken
 // from the family's OP_META table. The name assertions below read the table rather
 // than repeating the string, so renaming an op in one place fails here.
 
@@ -69,7 +69,7 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  // The D29 contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
+  // The aggregatorsAreArguments contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
   // Both halves matter. The family gets exactly ONE name — RUNNING(op, list, [window]),
   // like SORT carrying its direction — and the per-op names stay dead. The 2026-08-10
   // relapse to guard: "argument" was first misread as "no formula surface at all" and
@@ -185,7 +185,7 @@ describe("the declarations stay honest", () => {
   it("a list-RETURNING function also takes its args whole", () => {
     // The converse isn't true (LENGTH takes a list, returns a scalar), but a function
     // returning a list must never be broadcast — that is how a 2-D result gets built
-    // behind D2's back.
+    // behind noFramesInFormulas's back.
     for (const name of listReturningNames()) {
       expect(EXCEL_IMPL_META[name].listArgs, `${name} returns a list but would be broadcast`).toBe(true);
     }
@@ -203,7 +203,7 @@ describe("the declarations stay honest", () => {
 });
 
 describe("the prose-labelled families — names DECLARED, not despaced", () => {
-  // D19 2(a) despaces the label, which works only while the label is a NAME. These
+  // formulaNaming 2(a) despaces the label, which works only while the label is a NAME. These
   // three families label themselves in sentences ("Union: in A or B"), so each op
   // carries an `fx` beside its label. Same one-table principle, explicit instead of
   // derived — and the test reads the table, so a rename in one place fails here.
@@ -270,7 +270,7 @@ describe("the prose-labelled families — names DECLARED, not despaced", () => {
 });
 
 describe("the formula namespace stays unambiguous", () => {
-  // D19 2(a) is not INJECTIVE, and nothing checked that until it bit: Fill's
+  // formulaNaming 2(a) is not INJECTIVE, and nothing checked that until it bit: Fill's
   // "Interpolate" op and the INTERPOLATE node in stats.ts both despace to the same
   // name. Fill's op now declares FILLINTERPOLATE instead. This is the guard — two
   // different things must never claim one formula name.

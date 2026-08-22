@@ -69,7 +69,7 @@ export class TableInputNode extends ClassicPreset.Node {
   cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
   dataType: TableElemType;
-  /** The homogeneous unit AUTHORED on this literal source (D20) — an FC unit id;
+  /** The homogeneous unit AUTHORED on this literal source (unitGranularity) — an FC unit id;
    *  NUMBER tables only. Persisted (whitelisted). */
   unit: string = "none";
   width = 220; height = 250;
@@ -262,14 +262,14 @@ export class TableTransposeNode extends ClassicPreset.Node {
 
   data(inputs: { matrix?: unknown[] }) {
     const m = toAnyMatrix(inputs.matrix?.[0]);
-    // A structural reshape preserves the homogeneous matrix unit (D20) — carry the
+    // A structural reshape preserves the homogeneous matrix unit (unitGranularity) — carry the
     // tag onto the fresh output array.
     this.cachedResult = m ? carryMatrixUnit(matTranspose(m), m) : null;
     return { result: this.cachedResult };
   }
 }
 
-// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (D15) ───────────────
+// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (appendLadder) ───────────────
 // Ragged inputs pad with #N/A cells (recoverable via IFNA/Fill) rather than failing
 // the whole result with #SHAPE!.
 
@@ -281,7 +281,7 @@ function wrapPadCell(fill: unknown[] | undefined, what: string): Cell {
   return v != null ? v : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
 }
 
-/** A matrix carries ONE whole-grid unit tag, never per-cell `UnitCell`s (D20): reduce
+/** A matrix carries ONE whole-grid unit tag, never per-cell `UnitCell`s (unitGranularity): reduce
  *  a widened LIST row to bare magnitudes plus the one unit its cells share (undefined
  *  when they disagree). An already-bare matrix comes back untouched. */
 function demoteUnitCells(m: CellMat): CellMat {
@@ -296,7 +296,7 @@ function demoteUnitCells(m: CellMat): CellMat {
 /** Shared extensible-row plumbing for the two stackers. */
 abstract class StackNodeBase extends ClassicPreset.Node {
   /** Rows keep their `UnitCell` tags at the boundary so `demoteUnitCells` can lift a
-   *  dimensioned LIST row to a grid unit — tags riding INTO the matrix break D20. */
+   *  dimensioned LIST row to a grid unit — tags riding INTO the matrix break unitGranularity. */
   unitAware = true;
   label: string;
   cachedResult: CellMat | SolError | null = null;
@@ -338,7 +338,7 @@ abstract class StackNodeBase extends ClassicPreset.Node {
   }
 
   /** Wired inputs as matrices in row order (empties drop out), each reduced to the
-   *  D20 matrix shape on the way in. */
+   *  unitGranularity matrix shape on the way in. */
   protected matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
     return this.valueInputKeys()
       .map((k) => toAnyMatrix(inputs[k]?.[0]))

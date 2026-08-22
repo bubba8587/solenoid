@@ -2,15 +2,15 @@
 
 The one-stop spec for the value model's special kinds: what each one MEANS, what
 produces it, how it propagates through each computation context, and how it renders.
-Consolidates the 2026-06-22 array-semantics build (decision D5) and the 2026-07-02
-step-by-step rulings (decisions D10–D13), all shipped by the 2026-07-04/05 tail
+Consolidates the 2026-06-22 array-semantics build (decision arraySemantics) and the 2026-07-02
+step-by-step rulings (decisions currentExcelParity–consistencyOverQuirks), all shipped by the 2026-07-04/05 tail
 pass. Mechanics/invariants live in `subsystem-invariants.md` "Error values"; this
 doc is the SEMANTICS reference.
 
 **Status honesty:** every rule below is **[shipped]** — the core set as of the
 2026-07-04/05 1.0-tail build pass (broadcaster contract, guardFinite/#OVERFLOW!,
 NaN affordance, readInput, IFS/SWITCH #N/A), the computed-column rules as of the
-2026-07-30/31 D24–D26 run. If a new rule is decided-but-unbuilt, tag it
+2026-07-30/31 tableRefSemantics–firstClassUnits run. If a new rule is decided-but-unbuilt, tag it
 `[decided <date>]` and carry the build item in the backlog.
 
 ## The kinds
@@ -26,7 +26,7 @@ NaN affordance, readInput, IFS/SWITCH #N/A), the computed-column rules as of the
 A **complex** value is the tagged object `{ __cx: true, re, im }` (tagSpecialScalars) — never a
 bare `[re, im]` array. `Array.isArray` therefore never means "a complex number": an
 array is a 1-D list, or a matrix when its own elements are arrays (rank 2 is live
-since D23); `isCx` (`nodes/complex.ts`) is the one complex test.
+since matricesInFormulas); `isCx` (`nodes/complex.ts`) is the one complex test.
 
 The load-bearing distinctions:
 
@@ -48,7 +48,7 @@ The load-bearing distinctions:
   `#DOMAIN!` at sqrt/log/pow domain failures, `#N/A` at not-found/no-match, `#SHAPE!`
   at coercion and per row in a computed column (a list-shaped cell result, or an
   `@`-read of a mis-sized list — the DESIGNED loud failure for a bare column name in
-  scalar position, D24), `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at
+  scalar position, tableRefSemantics), `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at
   representation overflow [decided]. Never a raw NaN as a failure signal.
 - **Fill's unwired pad is `null`** (first-class missing — author 2026-07-16), NOT
   Excel's `#N/A` for EXPAND's omitted `pad_with`: wire the NA node into Fill to get
@@ -79,9 +79,9 @@ Which rule applies is decided by the CONTEXT, not the function's name. The conte
 | **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls STAY PUT (dropping would shift indices) | `RANGE_POSITIONAL` [shipped] |
 | **COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` [shipped] |
 | **Ragged element-wise zip** | — | pad-to-longest with null; a padded position is missing | all broadcasters [shipped 2026-07-02] |
-| **Computed column (per row)** | a ROW-bound error cell (λ param / `@`-read) fails THAT row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | `computedColumnCore.ts` `tagComputedCell` (D24; one definition per column, D25) [shipped] |
+| **Computed column (per row)** | a ROW-bound error cell (λ param / `@`-read) fails THAT row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | `computedColumnCore.ts` `tagComputedCell` (tableRefSemantics; one definition per column, noPerCellFormulas) [shipped] |
 
-The sanctioned divergence (decision D11): formula `AND(x)` is a *reduction* (nulls
+The sanctioned divergence (decision oneAnswerOneDivergence): formula `AND(x)` is a *reduction* (nulls
 skipped → Excel behavior); the BooleanOp node is *element-wise* (Kleene). Same word,
 two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 
@@ -111,7 +111,7 @@ The table above says how a missing value behaves once it is inside a computation
 says how it gets there, which is a separate decision every node makes and got wrong for
 a long time. **Target this section when writing a new node.**
 
-(There is a SECOND way a value enters a computation since D24 — a formula-level
+(There is a SECOND way a value enters a computation since tableRefSemantics — a formula-level
 reference resolved against a computed column's row context, not a socket. Its rules
 live with the core: precedence is column → `row`/`rows` builtins → the definition's
 own env (λ captures) → the surface's side value (`computedColumnCore.ts`); a
@@ -308,7 +308,7 @@ guarded once, up top.
   (SUM of ∞ is ∞; ±Inf from all-finite → `#OVERFLOW!` — engine-side classified
   at the materialization boundary via a base-column scan; JS oracle inside
   `aggregateGroup`, covering pivot totals too).
-- **List ops vs relational verbs** (D12's line, second instance): list UNIQUE never
+- **List ops vs relational verbs** (excelComparisons's line, second instance): list UNIQUE never
   dedupes error cells (each is an independent problem — the sanity-check reading)
   [shipped 2026-07-04]; frame Distinct dedupes by error CODE (errors as values, SQL
   identity semantics).
@@ -330,9 +330,9 @@ guarded once, up top.
 
 ## Pointers
 
-Decisions: D5 (the value model), D10 (current-Excel-only parity), D11 (surface
-harmony + the reduction/element-wise line), D12 (comparisons vs identity; list vs
-relational), D13 (engine consistency over Excel quirks) in `decisions.md`.
+Decisions: arraySemantics (the value model), currentExcelParity (current-Excel-only parity), oneAnswerOneDivergence (surface
+harmony + the reduction/element-wise line), excelComparisons (comparisons vs identity; list vs
+relational), consistencyOverQuirks (engine consistency over Excel quirks) in `decisions.md`.
 Mechanics: `subsystem-invariants.md` "Error values". Known open divergence: the
 mode-selector-on-a-wired-blank AUTHOR CALL in `backlog.md` (text.ts/date.ts
 literal fallback vs this doc's propagate row).

@@ -111,7 +111,7 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   Rust formatter); (c) app-format strings (rejected-by-default). Verdict lands as a
   VAL rule + corpus cases.
 
-## Node-combining parked (round 1 LANDED 2026-08-09, D36 — review these with the author)
+## Node-combining parked (round 1 LANDED 2026-08-09, nodeCombiningRound1 — review these with the author)
 
 - **Paired-list aggregate** (SUMPRODUCT + SUMX2MY2/SUMX2PY2/SUMXMY2 + CORREL +
   COVARIANCE.P/.S + WAVG/WSTDEV/WVAR — 4 classes, 10 ops, all two parallel
@@ -198,7 +198,7 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   stays.
 - [ ] **Every Formula.js-only 2-D function is DEAD on the formula surface** — a
   matrix arg only survives dispatch through a declared `matrixArgs`
-  (`excelFormula.ts` D23 containment), which no library-backed name has. So the
+  (`excelFormula.ts` matricesInFormulas containment), which no library-backed name has. So the
   matrix is broadcast element-wise BEFORE the function sees it and every call
   returns a same-shape array of `#VALUE!` (`COLUMN` `ROW` `COLUMNS` `ROWS`
   `CHOOSECOLS` `CHOOSEROWS`) or THROWS out of the evaluator (`HSTACK` `VSTACK`
@@ -206,7 +206,7 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   "Cannot read properties of undefined"). The declared natives (`TRANSPOSE`
   `MDETERM` `TAKE` `INDEX`) work, which is the contrast that proves the mechanism.
   A throw escaping as a throw rather than a SolError is the sharp end. Decide
-  per name: declare `matrixArgs` + own it, or eliminate per D10. (`COLUMN`/`ROW`
+  per name: declare `matrixArgs` + own it, or eliminate per currentExcelParity. (`COLUMN`/`ROW`
   are done — eliminated to `INDEX`; `INDEX` itself now owns rank 2.)
 
 ### XMATCH / XLOOKUP are narrower than they advertise (2026-08-11 analysis)

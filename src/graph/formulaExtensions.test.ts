@@ -6,7 +6,7 @@ import { compileEvaluator } from "./excelFormula";
 import { signatureFor } from "./formulaSignatures";
 import type { Pack } from "./packs/packShared";
 
-// ─── The pack → formula seam (D19 decision 4) ─────────────────────────────────
+// ─── The pack → formula seam (formulaNaming decision 4) ─────────────────────────────────
 // The load-bearing asymmetry, and the reason this isn't just "hide the names":
 // RESOLUTION is global, ADVERTISING is active-only. A formula pack node
 // serializes as a plain ExpressionNode and reloads with its pack switched off
@@ -81,7 +81,7 @@ describe("name collisions fail loudly at startup", () => {
   });
 
   it("rejects a pack claiming a name the core already dispatches", () => {
-    // Silently shadowing SUM is exactly the drift D19 exists to stop.
+    // Silently shadowing SUM is exactly the drift formulaNaming exists to stop.
     add({ ...FIXTURE, id: "test-collide-core",
       formulas: [{ name: "SUM", impl: () => 0, returns: "number", arity: [1, 1] }] });
     expect(() => initPackFormulas()).toThrow(/already exists in the core/);

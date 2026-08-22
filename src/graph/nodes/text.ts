@@ -559,7 +559,7 @@ export class TextJoinNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; ignoreEmpty?: TextJoinIgnoreEmpty }) {
     super("TextJoin");
     this.label       = init?.label       ?? "TEXTJOIN";
-    // Default matches the formula surface's ignore_empty=TRUE fallback (D11: one
+    // Default matches the formula surface's ignore_empty=TRUE fallback (oneAnswerOneDivergence: one
     // computation, one answer — a bare TEXTJOIN must not differ node vs formula), and
     // skipping empties is TEXTJOIN's whole point over CONCAT.
     this.ignoreEmpty = init?.ignoreEmpty ?? "ignore";

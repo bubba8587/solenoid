@@ -880,7 +880,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   /** Each exposed output port adopts the type feeding its internal Output marker
-   *  (`trueany` when unwired). Adoption NEVER drops an outer cable (D17). Returns true
+   *  (`trueany` when unwired). Adoption NEVER drops an outer cable (wildcardLadder). Returns true
    *  if a type changed, so the caller re-renders the card + its cables. */
   adoptBoundaryTypes(): boolean {
     const conns = this.internalEditor.getConnections();

@@ -214,7 +214,7 @@ describe("per-column frame unit", () => {
   });
 });
 
-describe("homogeneous matrix unit (D20) — one tag on the array, cells stay bare", () => {
+describe("homogeneous matrix unit (unitGranularity) — one tag on the array, cells stay bare", () => {
   it("attaches / reads / carries the tag without touching cells or structural detection", () => {
     const m = [[1, 2], [3, 4]];
     expect(matrixUnitOf(m)).toBeUndefined();
