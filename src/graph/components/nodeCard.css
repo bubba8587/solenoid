@@ -1363,8 +1363,15 @@ body.solenoid-scrubbing * {
 .solenoid-mermaid-source,
 .solenoid-record-layout {
   width: 100%;
+  /* Block, not the inline-block default: as an inline-level child the field
+     would add a line box's descender gap under itself, and the grip — anchored
+     to the wrapper — would hang below the field's own border. */
+  display: block;
   min-height: 64px;
-  resize: vertical;
+  /* The UA resizer drags correctly but paints a bright, heavy corner glyph that
+     no CSS retires (::-webkit-resizer paints BEHIND it, not over it) and that the
+     4px radius clips. FieldResizeGrip wears the app's own grip mark instead. */
+  resize: none;
   box-sizing: border-box;
   padding: 5px 7px;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -1377,6 +1384,29 @@ body.solenoid-scrubbing * {
   white-space: pre;
   overflow: auto;
 }
+/* Positioning context for FieldResizeGrip, which sits in the field's corner
+   where the UA resizer used to. */
+.solenoid-field-resizable {
+  position: relative;
+}
+.solenoid-field-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  opacity: 0.5;
+  cursor: ns-resize;
+}
+.solenoid-field-resize:hover {
+  opacity: 0.9;
+  color: var(--node-accent, var(--accent));
+}
+
 .solenoid-mermaid-template {
   width: 100%;
   margin-bottom: 6px;

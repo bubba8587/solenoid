@@ -6,6 +6,7 @@ import { NodeSocket } from "./NodeSocket";
 import { useConnectedInputs } from "./inlineInput";
 import { MermaidView } from "./MermaidView";
 import { processGraph } from "../process";
+import { FieldResizeGrip } from "./FieldResizeGrip";
 
 const MERMAID_TEMPLATES: ReadonlyArray<{ label: string; source: string }> = [
   { label: "Flowchart", source: "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]" },
@@ -42,6 +43,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
 
   // Measured against the card so the socket lines up with the textarea / preview block.
   const feedRef = useRef<HTMLDivElement>(null);
+  const sourceRef = useRef<HTMLTextAreaElement>(null);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
     const el = feedRef.current;
@@ -77,15 +79,19 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
         {sourceWired ? (
           <div className="solenoid-mermaid-source solenoid-mermaid-source--wired">connected</div>
         ) : (
-          <textarea
-            className="solenoid-mermaid-source"
-            value={draft}
-            spellCheck={false}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          />
+          <div className="solenoid-field-resizable">
+            <textarea
+              ref={sourceRef}
+              className="solenoid-mermaid-source"
+              value={draft}
+              spellCheck={false}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+            <FieldResizeGrip targetRef={sourceRef} />
+          </div>
         )}
       </div>
       <div className="solenoid-node__section-divider" />
