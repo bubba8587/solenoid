@@ -48,7 +48,12 @@
   left: calc(-1 * var(--frame-outset, 0px));
   width: calc(100% + 2 * var(--frame-outset, 0px));
   height: calc(100% + 2 * var(--frame-outset, 0px));
-  overflow: hidden;
+  /* Visible, NOT hidden: the body rect cannot leave its own viewport, so a clip
+     here only shaves the outer half of a stroke that sits exactly ON the viewport
+     edge — measured as the bottom border washing out and the right border reading
+     a subpixel inside the card background. The HEAD viewport below still clips:
+     that is what ends the cap and divider at the header/body seam. */
+  overflow: visible;
   z-index: 1; /* over the header's tinted bg; under chevron 2 / ring 6 / badges 7 */
   pointer-events: none;
 }
@@ -56,42 +61,40 @@
    clip is what ends the accent rails and divider at the header/body seam. */
 .solenoid-node__frame-head {
   height: var(--header-h, 0px);
+  overflow: hidden;
 }
 /* Body border: stroke centered half a width inside the card edge, so the
    stroke's OUTER edge is the card's outer edge — same as the old real border. */
 .solenoid-node__frame-body {
-  x: calc(var(--frame-hairline, 1px) / 2);
-  y: calc(var(--frame-hairline, 1px) / 2);
-  width: calc(100% - var(--frame-hairline, 1px));
-  height: calc(100% - var(--frame-hairline, 1px));
-  rx: calc(6px - var(--frame-hairline, 1px) / 2);
+  x: 0.5px;
+  y: 0.5px;
+  width: calc(100% - 1px);
+  height: calc(100% - 1px);
+  rx: 5.5px;
   fill: none;
   stroke: var(--border);
-  /* Floored at one device pixel by --frame-hairline (see hairline.ts) — 1px at
-     100% zoom and above, wider in user space below it so the edge never falls
-     under a whole device pixel and vanishes. */
-  stroke-width: var(--frame-hairline, 1px);
+  stroke-width: 1px;
   transition: stroke 80ms ease;
 }
 /* Accent cap: 2px stroke sharing the card's outer edge; the rect runs taller
    than the header viewport so its bottom stroke and arcs never show. */
 .solenoid-node__frame-cap {
-  x: var(--frame-hairline, 1px);
-  y: var(--frame-hairline, 1px);
-  width: calc(100% - 2 * var(--frame-hairline, 1px));
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
   height: calc(100% + 24px);
-  rx: calc(6px - var(--frame-hairline, 1px));
+  rx: 5px;
   fill: none;
   stroke: var(--node-accent, transparent);
-  stroke-width: calc(2 * var(--frame-hairline, 1px));
+  stroke-width: 2px;
 }
 /* Header/body divider (was an inset shadow on the header): a 1px strip in the
    header's last pixel, spanning between the cap's inner rails. */
 .solenoid-node__frame-divider {
-  x: calc(2 * var(--frame-hairline, 1px));
-  y: calc(100% - var(--frame-hairline, 1px));
-  width: calc(100% - 4 * var(--frame-hairline, 1px));
-  height: var(--frame-hairline, 1px);
+  x: 2px;
+  y: calc(100% - 1px);
+  width: calc(100% - 4px);
+  height: 1px;
   fill: var(--border);
 }
 /* Light mode frames the card in its accent-dark; a gray divider read as an
@@ -235,12 +238,12 @@
 }
 /* The frame's body stroke follows the 2px layout border. */
 .solenoid-node--grouped .solenoid-node__frame-body {
-  x: var(--frame-hairline, 1px);
-  y: var(--frame-hairline, 1px);
-  width: calc(100% - 2 * var(--frame-hairline, 1px));
-  height: calc(100% - 2 * var(--frame-hairline, 1px));
-  rx: calc(6px - var(--frame-hairline, 1px));
-  stroke-width: calc(2 * var(--frame-hairline, 1px));
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  rx: 5px;
+  stroke-width: 2px;
 }
 .solenoid-node--grouped:not(.solenoid-node--selected),
 .solenoid-node--grouped:not(.solenoid-node--selected):hover {

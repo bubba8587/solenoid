@@ -42,12 +42,17 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Bugs & verifications
 
-- [ ] **Frame chrome below one device pixel — the remaining surfaces.** The card frame is fixed
-  (`--frame-hairline`, `hairline.ts`; 2026-08-22 digest has the mechanism and the two dead-end
-  fixes). The same sub-device-pixel washout applies to every other canvas-scaled hairline that
-  was NOT touched: group borders, the section divider inside cards, the resize grip's 1.4px
-  glyph, cable strokes. None author-reported; check whether they read as thin/absent at dpr 1
-  zoomed out before widening anything, and reuse `--frame-hairline` rather than a second rule.
+- [ ] **Node body/outer border still reads clipped (author, 2026-08-22) — STILL OPEN.**
+  Partly fixed: the body frame SVG's `overflow: hidden` was shaving the stroke it could never
+  contain (weak-bottom 6/27 -> 3/27 at dpr 1, k=0.42). The author still sees the Frame Input
+  bottom edge unchanged. **Refuted, do not retest:** candidate (a) (card and frame rects are
+  identical on every card at every dpr); `vector-effect: non-scaling-stroke` (no-op under an HTML
+  ancestor transform); `shape-rendering: crispEdges` (worse). **Tried and reverted:** flooring the
+  stroke at one device pixel (`--frame-hairline`) — benched well, did nothing for the author, and
+  fattened grouped cards. NEXT STEP IS DATA, NOT A HYPOTHESIS: the author's dpr and camera k are
+  still unknown, and no surviving mechanism explains their two clues (same at many zoom levels;
+  absent on mobile). Get a console dump of devicePixelRatio, k, and each card's edge phase from
+  their machine first. Full record in the 2026-08-22 digest.
 
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
