@@ -33,17 +33,12 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   now pins the round-trips/identities (PRICE↔YIELD, PRICEMAT↔YIELDMAT, ODD* pairs,
   COUP* day-count, DURATION/MDURATION, VDB total/additivity), which catch structural
   bugs but NOT a consistently-wrong absolute value. Want golden real-Excel values for:
-  COUP*, DURATION, ODDF/ODDL, ACCRINT/ACCRINTM, VDB. Already confirmed absolute:
-  PRICE/YIELD (Microsoft examples), TBILLYIELD/TBILLEQ + PRICEMAT (real Excel).
-
-- [ ] **DURATION/MDURATION ignore the `basis` input** — the Duration node exposes a `basis`
-  socket and passes it to `durationValue`, but that function names the arg `_basis` and never
-  uses it: the first-period day fraction always counts actual days (`actualDays(settle,next) /
-  actualDays(prev,next)`). Excel day-counts that fraction per the basis, so basis 0 (30/360,
-  the default) diverges slightly. Second-order — DURATION is dominated by the integer coupon
-  count — and structurally pinned by `financeInvariants.test.ts`, but a real absolute would
-  want a real-Excel golden. Documented in the reference note (2026-08-21). Fix = thread `b`
-  through the first-period fraction; wants a golden to verify.
+  COUP*, ODDF/ODDL, ACCRINT/ACCRINTM, VDB. Already confirmed absolute: PRICE/YIELD
+  + DURATION (Microsoft examples), TBILLYIELD/TBILLEQ + PRICEMAT (real Excel). Worth
+  one real-Excel check: Microsoft's MDURATION example (1-Jan-2008 → 1-Jan-2016, 8%,
+  9%, semiannual, basis 1) publishes 5.7355689 where we and a hand-worked textbook
+  Macaulay both give 5.7356698 — and our DURATION matches Microsoft's own DURATION
+  example to 8 digits, so the doc value looks like a typo.
 
 ## Bugs & verifications
 
