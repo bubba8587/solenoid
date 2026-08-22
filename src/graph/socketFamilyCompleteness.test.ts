@@ -102,7 +102,7 @@ describe("every element family is complete at the five sites the compiler can't 
   it("every family's list, combo and matrix rung has a glyph branch", () => {
     const listTypes = /const LIST_TYPES = new Set\(\[(.*?)\]\)/s.exec(SOCKET_COMPONENT)![1];
     const comboKeys = /const COMBO_COLORS[^{]*\{(.*?)\n\};/s.exec(SOCKET_COMPONENT)![1];
-    const tableTypes = /const isTable =\s*(.*?);/s.exec(SOCKET_COMPONENT)![1];
+    const tableTypes = /const TABLE_TYPES = new Set\(\[(.*?)\]\)/s.exec(SOCKET_COMPONENT)![1];
 
     for (const fam of FAMILIES) {
       const rungs = rungsOf(fam);

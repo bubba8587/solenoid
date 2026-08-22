@@ -7,6 +7,7 @@ import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
 import { getActiveEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
+import { LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
 
 // Hover-intent delay before the example hint pops (tooltip-like; a cable drag
 // crossing sockets must not flash tables).
@@ -19,7 +20,12 @@ function hintFor(side: Side, nodeId: string, socketKey: string): FrameHint | und
   return node ? frameHintFor(node, socketKey) : undefined;
 }
 
-const SQUARE_TYPES = new Set(["list", "strlist", "datelist", "numlist", "table", "frame", "chart", "document"]);
+// Every dataType SocketComponent draws as a rounded SQUARE (so the hover/lit highlight and
+// the ::before hit area mirror the dot instead of defaulting to a circle). Derived from the
+// SAME sets SocketComponent renders from — a combo/list/table can't drift into a round halo.
+const SQUARE_TYPES = new Set<string>([
+  ...LIST_TYPES, ...TABLE_TYPES, ...Object.keys(COMBO_COLORS), "frame", "chart", "document",
+]);
 
 const { RefSocket } = Presets.classic;
 

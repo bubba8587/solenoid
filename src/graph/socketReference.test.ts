@@ -123,7 +123,7 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
   it("the square/split/grid glyph rows match SocketComponent's branches", () => {
     const listTypes = quoted(/const LIST_TYPES = new Set\(\[(.*?)\]\)/s.exec(SRC)![1]);
     const comboKeys = [...(/const COMBO_COLORS[^{]*\{(.*?)\n\};/s.exec(SRC)![1].matchAll(/^ {2}([a-z]+):/gm))].map((m) => m[1]).sort();
-    const tableTypes = quoted(/const isTable =\s*(.*?);/s.exec(SRC)![1]);
+    const tableTypes = quoted(/const TABLE_TYPES = new Set\(\[(.*?)\]\)/s.exec(SRC)![1]);
 
     expect(glyphRow("Filled rounded square").sort()).toEqual(listTypes);
     expect(glyphRow("Two-tone split square").sort()).toEqual(comboKeys);

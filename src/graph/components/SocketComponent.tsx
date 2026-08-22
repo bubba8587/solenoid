@@ -8,10 +8,13 @@ import "./socket.css";
 /** Socket dot as an SVG <circle>, never a `border-radius` div — a div this small
  *  renders as a faint oval on a non-integer pixel. The outer size comes from
  *  `--socket-size`; the viewBox stays 0 0 12 12 so proportions hold at any size. */
-const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist", "anylist"]);
+export const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist", "anylist"]);
+// Typed 2-D grids — all drawn as a rounded square (the grid-cross glyph). Exported so
+// NodeSocket's hover/lit shape can't drift from what's rendered here.
+export const TABLE_TYPES = new Set(["table", "strtable", "datetable", "complextable", "logicaltable", "anytable"]);
 
 // Combo types → their [scalar, list] pair for the bicolor split square.
-const COMBO_COLORS: Record<string, [string, string]> = {
+export const COMBO_COLORS: Record<string, [string, string]> = {
   numlist:      [SOCKET_COLORS.number, SOCKET_COLORS.list],
   strcombo:     [SOCKET_COLORS.string, SOCKET_COLORS.strlist],
   datecombo:    [SOCKET_COLORS.date, SOCKET_COLORS.datelist],
@@ -40,10 +43,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const isList = dataType !== undefined && LIST_TYPES.has(dataType);
   // Typed matrices share the 2×2-grid glyph by color; the FRAME needs its own
   // letterform, since every element family has a matrix.
-  const isTable =
-    dataType === "table" ||
-    dataType === "strtable" || dataType === "datetable" ||
-    dataType === "complextable" || dataType === "logicaltable" || dataType === "anytable";
+  const isTable = dataType !== undefined && TABLE_TYPES.has(dataType);
   const isFrame = dataType === "frame";
   const isCube = dataType === "cube";
   const isLambda = dataType === "lambda";
