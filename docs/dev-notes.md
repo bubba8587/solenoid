@@ -107,6 +107,13 @@ spill via per-argument prep, `wholeArrayArgs`) stays backlogged; drop the guard 
   `commentStore`). Net negative (unmet-peer warning or an unused plugin dragged into the tree).
   Recorded in the backlog so it isn't re-evaluated blind.
 
+**Expect alert edge-detect — verified intended + pinned (backlog fine-print (a)).** The Expect
+node alerts on the SET of failing CHECK KINDS (`violations.join(",")`), not on which cells or how
+many failed — a coarse "failure signature". A different cell failing the same check does NOT
+re-fire; a new check joining the set does; recovery re-arms. This matches the alertStore invariant
+(edge-detect on STATUS, not a boolean). Pinned in `quality.test.ts` "alert edge-detect" and
+negative-controlled (drop the `key !== lastStatusKey` guard → the same-check step fires twice).
+
 ### SESSION DIGEST (2026-08-22 — card frame edges, the resizable-field grip, non-finite group keys)
 
 **Frame edges: one fix landed, one hypothesis TRIED AND REVERTED. Still OPEN.**

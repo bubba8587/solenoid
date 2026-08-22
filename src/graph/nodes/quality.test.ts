@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "./quality";
+import { alertStore } from "../alertStore";
 import { solError } from "../errorValue";
 import type { FrameValue, FrameCell, FrameColType } from "../frame";
 
@@ -109,5 +110,48 @@ describe("Expect over lists/scalars (unchanged behavior)", () => {
     const n = new ExpectNode({ checkNotNull: true });
     expect(run(n, null)).toEqual(["notNull"]);
     expect(run(n, 5)).toEqual([]);
+  });
+});
+
+// The alert edge-detects on the SET of failing CHECK KINDS (violations.join),
+// NOT on which cells failed or how many — a "failure signature". So a different
+// cell failing the SAME check does not re-fire; a new check joining the set does;
+// recovery re-arms the edge. This is the intended coarse-grained design (quality.ts
+// comments; the alertStore "edge-detect on STATUS, not a boolean" invariant), pinned
+// here so a future change to the firing rule is a conscious one.
+describe("Expect alert edge-detect (fires on a NEW failure signature, not per bad cell)", () => {
+  const alertsFor = (id: string) => alertStore.list().filter((e) => e.nodeId === id).length;
+
+  it("re-fires only when the set of failing checks changes", () => {
+    alertStore.clear();
+    const n = new ExpectNode({ checkNotNull: false, checkRange: true, checkRegex: true, label: "Q" });
+    n.literals.min = 0;
+    n.literals.max = 10;
+    n.stringLiterals.pattern = "^[a-z]+$";
+
+    // First failure — range only → one alert.
+    n.data({ in: [[99, "ok"]] });
+    expect(n.violations).toEqual(["range"]);
+    expect(alertsFor(n.id)).toBe(1);
+
+    // A DIFFERENT cell fails the SAME check → same signature → no new alert.
+    n.data({ in: [[20, "ok"]] });
+    expect(n.violations).toEqual(["range"]);
+    expect(alertsFor(n.id)).toBe(1);
+
+    // A NEW check joins the failing set → signature changed → fires.
+    n.data({ in: [[20, "BAD"]] });
+    expect(n.violations).toEqual(["range", "regex"]);
+    expect(alertsFor(n.id)).toBe(2);
+
+    // Recovery — no failure fires nothing, and re-arms the edge.
+    n.data({ in: [[5, "ok"]] });
+    expect(n.violations).toEqual([]);
+    expect(alertsFor(n.id)).toBe(2);
+
+    // Failing again after recovery fires (the edge re-armed on recovery).
+    n.data({ in: [[99, "ok"]] });
+    expect(n.violations).toEqual(["range"]);
+    expect(alertsFor(n.id)).toBe(3);
   });
 });
