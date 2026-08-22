@@ -43,6 +43,13 @@
   font-family: inherit;
   color: var(--text);
 }
+/* Light mode frames an ungrouped node card's body in its darkened accent (not gray) —
+   the popup body border mirrors that so it matches the card it came from. Dark mode's
+   body border is already the neutral --border on both. Grouped popups keep the
+   group-color-dark rule below. */
+:root[data-theme="light"] .sol-popup:not(.sol-popup--grouped) {
+  border-color: var(--node-accent-dark, var(--border));
+}
 
 /* Form controls don't inherit font-family from the UA stylesheet — a <button>
    falls back to the platform default. Force every popup button/select to the app
