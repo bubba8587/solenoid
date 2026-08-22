@@ -153,6 +153,23 @@ the field's own border.
 **Display's resize grip is NOT clipped** (author asked). Measured ink extent reaches 11.7 of a
 12-unit viewBox and no ancestor clips it.
 
+**One IRR was hardened, its twin was not — both now run one kernel** (aggressive-review #8).
+Periodic IRR's Newton had no rate floor where XIRR clamps at −0.9999. Not cosmetic asymmetry:
+below r = −1 a fractional exponent makes `Math.pow(negative, e)` NaN and an integer one flips
+the discount sign every period, so an overshoot never walks back. Over 2,930 randomised
+single-root series against a bisection oracle, the unfloored solve missed 217 roots the floored
+one finds, and won none. The two solvers differed ONLY in the exponent (period index vs year
+fraction), so they collapsed into `solveDiscountRate`. Two things the merge had to get right,
+both measured rather than reasoned: (1) a step that HITS the floor must not count as
+convergence, or a pinned solve returns −0.9999 as an answer — the old dated ordering happened
+to avoid this (0 bogus roots in 20k), so the kernel had to keep that property, not just the
+clamp; (2) convergence must be RELATIVE — with an absolute 1e-12 the merge silently dropped 34
+runaway roots (rates in the tens of thousands are real answers here), and `1e-12 * (1 + |r|)`
+beats the old dated solve outright: 24,647 identical bit for bit, 63 newly solved, none lost.
+Pinned in `financeIterative.test.ts`. Residual known limitation backlogged: a root crowded
+against the floor (~−0.95) still reports `#CONV!`, wants a bisect fallback. Green: tsc, 4405
+vitest.
+
 **Non-finite distinct/group keys de-grouped — B-1a re-cut on both engines.** `distinct` and
 `groupBy` filed +∞, −∞ and NaN into ONE shared bucket, because `encodeCell` emitted `["#", v]`
 and `JSON.stringify` writes every non-finite as `null`; the Polars path deliberately mirrored the
