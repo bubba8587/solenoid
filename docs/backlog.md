@@ -265,13 +265,16 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   `any`→`anycombo`, output `number`→`numlist` (the `combo→scalar` lattice exception keeps existing
   downstream scalar wires legal; INDEX/`ListIndexNode` is the precedent). Pinned in
   `excelFunctions.test.ts` "SPILLS" and `errorValue.test.ts` "XMATCH node SPILLS". Replaced the
-  day's interim loud `#VALUE!`, which replaced the original quiet `#N/A` lie. The XLOOKUP NODE is
-  deliberately a DIFFERENT shape (frame + column names, its own `lookupFrameCell` kernel — the
-  recorded "Build Frame first" decision below), so it shares no array-lookup slot with the formula;
-  list-lookup spilling there would be a separate feature (whole-row × list = 2-D). Still deferred to
-  the general mechanism: a 1×N/N×1 MATRIX lookup value (the orientation item — still `#SHAPE!`) and
-  per-argument spill for OTHER functions (wholeArrayArgs/prepByShape), which subsumes the scoped
-  `pick`.
+  day's interim loud `#VALUE!`, which replaced the original quiet `#N/A` lie. **The XLOOKUP NODE
+  spills too** (author-asked, 2026-08-23): its `lookup` socket `string`→`strcombo`, and `data()`
+  maps a matched cell over a LIST of lookup values (`matchOne`) — one match each, `#N/A`/if-not-found
+  per element. Its frame kernel (`lookupFrameCell`) and shape (frame + column names) stay as the
+  recorded "Build Frame first" decision; only the lookup-value axis gained rank. Pinned in
+  `errorValue.test.ts` "XLOOKUP node SPILLS". One surface nuance (the app-wide combo convention, not
+  a lookup drift): a SINGLETON lookup list collapses to a scalar on the node (`collapseSingleton`),
+  where the formula keeps a 1-element array. Still deferred to the general mechanism: a 1×N/N×1
+  MATRIX lookup value (the orientation item — still `#SHAPE!`) and per-argument spill for OTHER
+  functions (wholeArrayArgs/prepByShape), which subsumes the scoped `pick`.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment

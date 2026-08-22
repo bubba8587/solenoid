@@ -100,9 +100,13 @@ per-argument spill, not to these two). **The XMATCH NODE was swapped to match** 
 `any`→`anycombo`, output `number`→`numlist`, and `data()` mirrors the formula's `pick`. The
 `combo→scalar` lattice exception (`dimFlows`) keeps existing downstream scalar wires legal —
 INDEX/`ListIndexNode` is the precedent for a runtime-rank output. Pinned in `excelFunctions.test.ts`
-"SPILLS" and `errorValue.test.ts` "XMATCH node SPILLS". The XLOOKUP NODE is deliberately a different
-shape (frame + column names, its own `lookupFrameCell` kernel — the "Build Frame first" decision),
-so it shares no array-lookup slot; spilling there is a separate feature (whole-row × list = 2-D).
+"SPILLS" and `errorValue.test.ts` "XMATCH node SPILLS". **The XLOOKUP NODE spills too** (author
+asked to carry it across): `lookup` socket `string`→`strcombo`, and `data()` maps `matchOne` over a
+list of lookup values — one matched cell each, `#N/A`/if-not-found per element. Its frame kernel
+(`lookupFrameCell`) and frame+column-names shape stay (the "Build Frame first" decision); only the
+lookup-value axis gained rank. Pinned in `errorValue.test.ts` "XLOOKUP node SPILLS". Surface nuance
+(app-wide combo convention, not a lookup drift): a SINGLETON lookup list collapses to a scalar on a
+node (`collapseSingleton`) while the formula keeps a 1-element array. Node descriptions updated.
 Scoped to the lookup family: a 1×N MATRIX lookup value is still `#SHAPE!` (deferred orientation),
 and the general per-argument mechanism (`wholeArrayArgs`/`prepByShape`) subsumes this `pick`.
 

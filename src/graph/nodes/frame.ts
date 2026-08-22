@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
@@ -1900,7 +1900,9 @@ export class XLookupNode extends ClassicPreset.Node {
     // `cube` is the lattice supremum: accepts a Frame OR a Cube, rejects the lambdas and
     // charts a bare `any` would let through.
     this.addInput("frame", cubeIn("Table / Cube"));
-    this.addInput("lookup", strIn("Lookup"));
+    // `strcombo`: a single lookup value answers a single cell; a LIST of lookup values
+    // spills one result each, matching the XLOOKUP formula's list-needle spill.
+    this.addInput("lookup", strComboIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
     this.addInput("ifNotFound", strIn("If not found"));
@@ -1908,7 +1910,7 @@ export class XLookupNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    frame?: unknown[]; lookup?: string[];
+    frame?: unknown[]; lookup?: (string | string[])[];
     inColumn?: string[]; returnColumn?: string[]; ifNotFound?: string[];
   }) {
     const raw = inputs.frame?.[0] ?? null;
@@ -1920,10 +1922,12 @@ export class XLookupNode extends ClassicPreset.Node {
     if (lookupRaw === null || inColRaw === null || retColRaw === null || fallbackRaw === null) {
       this.cachedResult = null; return { value: null };
     }
-    const lookup = lookupRaw.trim();
     const inCol = inColRaw.trim();
     const retCol = retColRaw.trim();
-    if (raw == null || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
+    // A blank SCALAR lookup is unknown → null (an empty ELEMENT of a list is handled per-cell
+    // in matchOne, so only the scalar case short-circuits the whole node here).
+    const scalarLookupBlank = !Array.isArray(lookupRaw) && lookupRaw.trim() === "";
+    if (raw == null || inCol === "" || retCol === "" || scalarLookupBlank) { this.cachedResult = null; return { value: null }; }
     // The uncoerced source needs a runtime shape guard: a scalar or bare 1-D list must be
     // rejected, not silently widened to a useless 1-row frame.
     const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
@@ -1933,7 +1937,13 @@ export class XLookupNode extends ClassicPreset.Node {
     }
     const src = asLookupSource(raw)!;
     const wholeRow = retCol === "*"; // return the matched row intact, not one cell
-    const result = runVerb<CubeCell>(() => {
+    const fb = fallbackRaw.trim();
+    // One matched cell for one lookup value, shared by the scalar and list-spill paths so
+    // they can't drift. A blank element is unknown → null; the frame/cube kernels parse the
+    // lookup text against the In column's type (text ignores case).
+    const matchOne = (lookupValue: unknown): CubeCell | null => {
+      const lookup = lookupValue == null ? "" : String(lookupValue).trim();
+      if (lookup === "") return null;
       let cell: CubeCell | undefined;
       if (isCubeValue(src)) {
         if (wholeRow) {
@@ -1949,11 +1959,14 @@ export class XLookupNode extends ClassicPreset.Node {
         cell = lookupFrameCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
       }
       if (cell !== undefined) return cell;
-      const fb = fallbackRaw.trim();
       if (fb === "") return solError("#N/A", "No row matched the lookup value");
       const num = Number(fb);
       return Number.isNaN(num) ? fb : num; // a numeric If-not-found flows as a number
-    });
+    };
+    // A LIST of lookup values spills one result per element (matching the XLOOKUP formula).
+    const result = runVerb<CubeCell | null>(() =>
+      Array.isArray(lookupRaw) ? lookupRaw.map(matchOne) : matchOne(lookupRaw),
+    );
     this.cachedResult = result;
     return { value: result };
   }

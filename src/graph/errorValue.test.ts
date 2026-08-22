@@ -291,6 +291,28 @@ describe("error producers", () => {
     expect(lookup("2")).toBe(20);
   });
 
+  it("XLOOKUP node SPILLS a list of lookup values, matching the formula", () => {
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "k", type: "number", values: [1, 2, 3] },
+      { name: "v", type: "number", values: [10, 20, 30] },
+    ] };
+    // A wired LIST of lookup values → one matched cell each; a miss spills #N/A in place.
+    const n = new XLookupNode();
+    n.stringLiterals = { lookup: "", inColumn: "k", returnColumn: "v", ifNotFound: "" };
+    const r = n.data({ frame: [f], lookup: [["3", "99", "1"]] }).value as unknown[];
+    expect(r[0]).toBe(30);
+    expect(isSolError(r[1]) && (r[1] as SolError).code).toBe("#N/A");
+    expect(r[2]).toBe(10);
+    // If-not-found applies per element.
+    const n2 = new XLookupNode();
+    n2.stringLiterals = { lookup: "", inColumn: "k", returnColumn: "v", ifNotFound: "0" };
+    expect(n2.data({ frame: [f], lookup: [["2", "99"]] }).value).toEqual([20, 0]);
+    // A single lookup value still answers a single cell — the common case is unchanged.
+    const n3 = new XLookupNode();
+    n3.stringLiterals = { lookup: "2", inColumn: "k", returnColumn: "v", ifNotFound: "" };
+    expect(n3.data({ frame: [f] }).value).toBe(20);
+  });
+
   it("XMATCH miss on a wired array is #N/A; unwired stays blank", () => {
     const miss = new XMatchNode().data({ value: [99], array: [[1, 2, 3]] });
     expect(isSolError(miss.result)).toBe(true);
