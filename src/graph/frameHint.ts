@@ -4,7 +4,7 @@
 // the CLASS (static `frameHints`, keyed by input key) — the same
 // declare-on-the-class shape as `literals`/`stringLiterals` — so the sample sits
 // next to the socket it documents and survives minification (no name lookups).
-// SOCK-14 gives the input its terse role LABEL; the hint is the worked example.
+// frameLabelGrammar gives the input its terse role LABEL; the hint is the worked example.
 
 import type { FrameColType } from "./frame";
 import { createValueStore } from "./storeKit";

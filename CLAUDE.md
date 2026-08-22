@@ -74,7 +74,7 @@ Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs
   read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
 - **`docs/rules.md` — the NORMATIVE architecture spec. Read before changing sockets, the
   formula surface, naming, or value handling.** Numbered MUST-rules (`SSOT-n`, `SOCK-n`,
-  `FX-n`, `VAL-n`, `PERSIST-n`, `ENGINE-n`, `EFFECT-n`, `STORE-n`, `PROV-1`), each naming
+  `FX-n`, `VAL-n`, `PERSIST-n`, `ENGINE-n`, `EFFECT-n`, `STORE-n`, `authorRuled`), each naming
   the test that enforces it or marked UNENFORCED. Covers the invariants that CANNOT be
   caught by looking at the app — a broken socket rule or a mishandled null yields a
   plausible answer, not a visible defect. Cite rule IDs in comments and commits.
@@ -274,7 +274,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - **Unit flow** (`unitFlow.ts`, `unitBridge.ts`): the unit is a property of the VALUE,
   authored only by FC/Convert/Table Input/column-unit surfaces; a transform re-derives the
   dimension through the algebra (display carries when the result's dim matches an operand —
-  VAL-19); an FC downstream of a united value LOCKS (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
+  noMixCurrencies); an FC downstream of a united value LOCKS (D26). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
   unwraps unless `unitAware = true` (every new algebra node sets it) or a `passthrough()` spec
   names the input. Granularity per D20: list per-cell, frame per-column, matrix one unit.
 - **Alerts** (`alertStore.ts`): edge-detect on STATUS, not a boolean (range LOW↔HIGH re-fires).
@@ -328,11 +328,11 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
   Mechanics that were gotten wrong once, don't repeat: an op's formula name is `fx ??
   despace(label)` — when the real name is an Excel spelling or the label went bare, DECLARE
-  `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge an FX-4
+  `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge an uniqueNameMap
   collision by reclassifying the family argument-kind or inventing a parallel presentation
   flag — `kind: "operation"` whenever the selector names the card, and the accent follows.
   Selector-driven socket swaps: prune departing keys via `dropInputCables` BEFORE
-  `removeInput` (SSOT-9), spec-table the per-op shape (`DIST_SPECS` pattern), carry state
+  `removeInput` (onePrunePath), spec-table the per-op shape (`DIST_SPECS` pattern), carry state
   across switches by meaning (PDF↔PMF, inverse variants → Inverse).
 
 ### Capability map (orientation only — verify in code/docs before relying on detail)
@@ -359,7 +359,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - Author-gated: `main`/releases; D2 composite toolbar reroute; D4 conditional formatting.
 - Formulas compute at rank ≤ 2 (D23 lifted the old 1-D cap; matrices + tagged complex are in);
   frames/cubes stay OUT of formulas by design — the verb engine is their surface. Containment:
-  Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md FX-9).
+  Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md hideMatrixFromVendor).
 - Units are authored ONLY by the FC / Convert — the Number node is a plain literal source.
 - Node card frames (body border + header accent cap + divider) paint as ONE SVG overlay
   (`CardFrame`, `NodeCard.tsx`) so the strokes can't subpixel-crack under zoom. Never

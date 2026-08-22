@@ -26,7 +26,7 @@ export interface ParityRow {
  *  registrations derive their names the same way. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
-/** SSOT-8: a node claiming Excel names is covered only when EVERY one dispatches;
+/** useEveryNotSome: a node claiming Excel names is covered only when EVERY one dispatches;
  *  empty claims are never covered (vacuous ≠ complete). */
 export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
   return excel.length > 0 && excel.every(dispatches);
@@ -39,7 +39,7 @@ const LANGUAGE_LEAVES = new Set([
 ]);
 
 /** A PRESET-FORMULA leaf (a locked ExpressionNode): its formula equivalent is its
- *  own expr, so it counts as covered. Detected mechanically, never listed (SSOT-3). */
+ *  own expr, so it counts as covered. Detected mechanically, never listed (noManualList). */
 function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   try {
     const inst = leaf.create() as { expr?: unknown; locked?: unknown };

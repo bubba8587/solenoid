@@ -446,7 +446,7 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    // SUMIF is absent on purpose — D10 blocks it, and FX-7 strips a blocked
+    // SUMIF is absent on purpose — D10 blocks it, and blockedFailFast strips a blocked
     // spelling from RANGE_FUNCTIONS so it answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE"]) {

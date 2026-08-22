@@ -97,7 +97,7 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
   });
 });
 
-// ─── PERSIST-1's file half: everything extractInit captures is JSON-plain ─────
+// ─── plainJsonInit's file half: everything extractInit captures is JSON-plain ─────
 // The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
 // config field passes it perfectly ({} equals {} on both sides) while the FILE
 // silently empties it: the save path stringifies each init field
@@ -121,7 +121,7 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
-// ─── PERSIST-9: the catalog-wide transient-field triage ───────────────────────
+// ─── everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This
 // triage closes that blindness: every OWN field of every catalog node is either
@@ -135,7 +135,7 @@ describe("everything extractInit captures survives a JSON round trip", () => {
 // captured, silently resetting to "backward" on every reload. Now whitelisted,
 // pinned below.
 
-describe("PERSIST-9 — every own field is persisted or deliberately transient", () => {
+describe("everyFieldClassified — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
@@ -165,17 +165,17 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     shapeError: "per-pass validation state", seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
-    solvedKeys: "per-pass solve marker", lastResultRank: "SOCK-9 runtime rank tracker",
+    solvedKeys: "per-pass solve marker", lastResultRank: "anydataWildcard runtime rank tracker",
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
-    // ── VAL-17 volatile roll state (freezes per recalc generation, never saved) ──
-    rolls: "VAL-17 frozen rolls", rawRoll: "VAL-17 frozen roll", keys: "VAL-17 frozen shuffle keys",
-    lastGen: "VAL-17 generation marker", lastRollGen: "VAL-17 generation marker",
+    // ── freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
+    rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
+    lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
     idx: "promo rotation index (session flavor)",
-    // ── EFFECT-1: sinks always load disarmed ──
-    enabled: "EFFECT-1 arm flag — every load starts disarmed by design",
+    // ── sinkRunButtonOnly: sinks always load disarmed ──
+    enabled: "sinkRunButtonOnly arm flag — every load starts disarmed by design",
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
     // ── async fetch/session state ──
     inflight: "in-flight fetch handle", inflightKey: "fetch dedupe key", lastKey: "fetch dedupe key",
@@ -197,10 +197,10 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     outSocket: "socket instance", valueSocket: "socket instance",
     passthrough: "the passthrough() declaration (a class-field function)",
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
-    unitAware: "class-constant declaration (VAL-10)",
+    unitAware: "class-constant declaration (perInputUnitBlind)",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
-    // ── runtime edge-detection (EFFECT-2) ──
-    lastStatusKey: "EFFECT-2 edge state", lastEvalOp: "EFFECT-2 edge state",
+    // ── runtime edge-detection (effectsEdgeTriggered) ──
+    lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
     step: "AngleDial snap increment — constructor-only, no UI control",
   };
@@ -225,7 +225,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields (PERSIST-9): each must either persist (whitelist / ` +
+      `Unclassified node fields (everyFieldClassified): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);
@@ -252,7 +252,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
   });
 });
 
-// ─── PERSIST-10: width/height dual-use ownership ──────────────────────────────
+// ─── observerOwnsSize: width/height dual-use ownership ──────────────────────────────
 // `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
 // runtime (it overwrites both with measured pixels every layout — the minimap
 // silhouette and cable geometry read them), and the persistence whitelist
@@ -269,7 +269,7 @@ describe("PERSIST-9 — every own field is persisted or deliberately transient",
 // fails here and must update the list, which is where the "does the user's
 // drag survive reload?" question gets asked.
 
-describe("PERSIST-10 — the size-owner set is exactly the declared list", () => {
+describe("observerOwnsSize — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "query",                        // the composite card (query = its preset)
@@ -293,7 +293,7 @@ describe("PERSIST-10 — the size-owner set is exactly the declared list", () =>
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS (PERSIST-10) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS (observerOwnsSize) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

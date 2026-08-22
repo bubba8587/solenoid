@@ -3,9 +3,9 @@
 // Pure — no React/Rete.
 //
 // SCOPE: scalar / list / matrix — everything both surfaces can hold. Frame and
-// cube slicing stays in the node (FX-9: neither reaches a formula), because
+// cube slicing stays in the node (hideMatrixFromVendor: neither reaches a formula), because
 // `frame.ts` imports the socket lattice and the formula path must not load it
-// (FX-2, formulaPathIsReteFree.test.ts). Same reason `tagFrameCellUnit` arrives
+// (implReteFree, formulaPathIsReteFree.test.ts). Same reason `tagFrameCellUnit` arrives
 // as an argument instead of an import — `unitColumn.ts` reaches rete through
 // unitBridge.
 

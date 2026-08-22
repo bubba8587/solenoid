@@ -1,4 +1,4 @@
-// Rete-free by design (FX-2), so the formula surface can convert without pulling rete,
+// Rete-free by design (implReteFree), so the formula surface can convert without pulling rete,
 // the socket lattice and the display stores into the headless evaluator.
 
 import { convert as dimConvert, type Dim, type Unit } from "../dimension";

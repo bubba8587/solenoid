@@ -252,7 +252,7 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 }
 
 // ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
-// Node and formula both call these (FX-1): Formula.js's T.TEST ignores
+// Node and formula both call these (shareImpl): Formula.js's T.TEST ignores
 // `tails`/`type` and its F.TEST returns the variance RATIO, not the p-value.
 import { isSolError, type SolError as StatSolError } from "../errorValue";
 
@@ -360,7 +360,7 @@ export function probBetween(
 
 
 // ─── Bilinear lookup-table fill (INTERPOLATE grid mode) ──────────────────────
-// Lives here, not nodes/stats.ts, because the formula path must stay rete-free (FX-2).
+// Lives here, not nodes/stats.ts, because the formula path must stay rete-free (implReteFree).
 import { fitSurface, type FitPoint } from "./surfaceFit";
 
 // Fill a coordinate-BORDERED grid's blank interior by bilinear interpolation over

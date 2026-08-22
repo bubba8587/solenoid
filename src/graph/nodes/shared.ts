@@ -41,7 +41,7 @@ export const anyListIn  = (label: string) => new ClassicPreset.Input(new Adoptiv
 // `anycombo` accepts what `anyListIn` does, but a scalar reaches data() as a SCALAR
 // instead of widening to a singleton — for a producer whose rank follows its input.
 export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
-/** The rank-≤2 element-agnostic input (SOCK-9), adoptive like anyComboIn. */
+/** The rank-≤2 element-agnostic input (anydataWildcard), adoptive like anyComboIn. */
 export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
 export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);

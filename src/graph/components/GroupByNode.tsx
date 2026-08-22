@@ -4,7 +4,7 @@ import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps, ty
 import type { GroupByOp } from "../rete-nodes";
 import { GROUP_BY_OP_META } from "../rete-nodes";
 
-// Derived from GROUP_BY_OP_META (SSOT-1) — the table the search rows read too.
+// Derived from GROUP_BY_OP_META (declareOnce) — the table the search rows read too.
 const GROUP_BY_OPTIONS: ReadonlyArray<OpOption<GroupByOp>> = (Object.keys(GROUP_BY_OP_META) as GroupByOp[])
   .map((value) => ({ value, label: GROUP_BY_OP_META[value].label }));
 

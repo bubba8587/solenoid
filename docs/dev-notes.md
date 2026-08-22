@@ -114,7 +114,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   (`tableInput.test.ts`); backlog item was stale.
 - **sourceInvariants was red on Windows only** — `rel()` returned `\`-separated paths but
   every SANCTIONED map is `/`-keyed, so `r in SANCTIONED` never matched and 4 rules
-  (SOCK-7/VAL-10/VAL-17/SSOT) reported phantom violations against already-sanctioned
+  (retypeReconciles/perInputUnitBlind/freezeVolatilePerCalc/SSOT) reported phantom violations against already-sanctioned
   files. One-line normalize. No production code was ever wrong.
 - Reverted: the XMATCH/XLOOKUP formula-surface orientation change (matrixArgs was a
   blunt switch — see backlog). Corrected the stale "not yet supported" DISC/INTRATE/
@@ -156,7 +156,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   node↔formula agreement tests. Skipped (not clean): WRAP `pad_with` (entangles the unit policy —
   formula has it, node workaround exists), VDB `no_switch` / TOCOL·TOROW `ignore_empty` (need an
   impl + arity change across both surfaces, not just a socket).
-- **Node↔formula CAPABILITY parity — made a standing rule (D39, FX-1 extended).** Author's
+- **Node↔formula CAPABILITY parity — made a standing rule (D39, shareImpl extended).** Author's
   order: the node must expose everything the formula surface can; our own two surfaces
   disagreeing is a defect (Excel/FX divergence stays a judgement call). An agent audit found
   the call-site arg scan MISSES the real gaps — they come from SEPARATE impls, not truncated

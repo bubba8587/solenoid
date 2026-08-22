@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 
-// The complex (IM*) family is internal — tagged Cx values (VAL-15). These invariants hold
+// The complex (IM*) family is internal — tagged Cx values (tagSpecialScalars). These invariants hold
 // by the algebra of complex numbers, so they need no oracle: inverses round-trip, Euler's
 // identity holds, sin²+cos²=1. Two complex results are equal iff |a−b| = 0, so `same`
 // asserts the magnitude of their difference is ~0.

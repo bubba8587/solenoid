@@ -864,7 +864,7 @@ this rung exists. There is no element conversion, because the family is unknown.
 #### `anydata` — "Any value, list or matrix"
 
 **Holds:** one value, a list, **or** a 2-D matrix, of an unknown family — the
-rank-≤2 wildcard (SOCK-9), added by D23 so a formula variable can take a matrix.
+rank-≤2 wildcard (anydataWildcard), added by D23 so a formula variable can take a matrix.
 What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
 **Dot:** the anycombo split square with a small rank-2 cross in its lower half
@@ -888,7 +888,7 @@ for a matrix result).
 
 **On arrival:** a one-element list collapses to the value it contains; everything
 else passes through at its natural rank — a matrix flows WHOLE, and the formula
-evaluator owns the rank semantics from there (the broadcast table, FX-10).
+evaluator owns the rank semantics from there (the broadcast table, oneBroadcast).
 
 #### `anylist` — "List (any)"
 

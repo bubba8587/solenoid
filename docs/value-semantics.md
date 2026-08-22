@@ -23,7 +23,7 @@ NaN affordance, readInput, IFS/SWITCH #N/A), the computed-column rules as of the
 | `NaN` | **undefined number that leaked** — not an error, not missing | residue; computation may not produce it (guardFinite) [shipped] |
 | `Infinity` | **definable infinity** — deliberately declared (Constant node) or derived from an infinite input | a first-class value [shipped] |
 
-A **complex** value is the tagged object `{ __cx: true, re, im }` (VAL-15) — never a
+A **complex** value is the tagged object `{ __cx: true, re, im }` (tagSpecialScalars) — never a
 bare `[re, im]` array. `Array.isArray` therefore never means "a complex number": an
 array is a 1-D list, or a matrix when its own elements are arrays (rank 2 is live
 since D23); `isCx` (`nodes/complex.ts`) is the one complex test.

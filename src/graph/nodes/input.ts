@@ -101,7 +101,7 @@ export const BLEND_MODE_META: Record<BlendMode, { label: string; blend: (a: numb
 
 export class ColorBlendNode extends ClassicPreset.Node {
   label: string;
-  /** The blend-op selector — named `op` per VAL-12 so the family can declare. */
+  /** The blend-op selector — named `op` per selectorNamedOp so the family can declare. */
   op: BlendMode;
   // Defaults are two palette colors so the node shows a result cold.
   stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };

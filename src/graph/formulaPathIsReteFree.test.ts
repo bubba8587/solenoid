@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── FX-2: the formula path must not pull in rete or the socket lattice ──────
+// ─── implReteFree: the formula path must not pull in rete or the socket lattice ──────
 // The headless evaluator (run-graph, the Expression host) loads excelFormula →
 // excelFunctions → the shared op modules. None of that may reach rete or
 // sockets.ts: the shared-impl modules exist precisely so both surfaces call one
-// implementation WITHOUT the formula surface loading the editor (rules.md FX-2 —
+// implementation WITHOUT the formula surface loading the editor (rules.md implReteFree —
 // previously UNENFORCED, and violated twice: excelFunctions reached rete through
 // nodes/date.ts and nodes/convert.ts until the serial layer and the unit table
 // were extracted to dateSerial.ts / convertUnits.ts).
@@ -42,7 +42,7 @@ function resolveLocal(fromFile: string, spec: string): string | null {
   return null;
 }
 
-describe("FX-2 — the formula path is rete-free", () => {
+describe("implReteFree — the formula path is rete-free", () => {
   it("no module reachable from excelFormula/excelFunctions imports rete or sockets", () => {
     const offenders: string[] = [];
     const seen = new Set<string>();

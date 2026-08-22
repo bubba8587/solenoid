@@ -59,7 +59,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
   // broadcastCall has always classified its results; the RANGE branch returned
   // dispatch results raw, so every degenerate whole-sample call leaked a bare
   // NaN into the graph — where it renders as an empty cell and poisons nothing
-  // visibly (the exact silent class VAL-20 exists for). The 2026-07-28 producer
+  // visibly (the exact silent class classifyNonFinite exists for). The 2026-07-28 producer
   // sweep probed the kernels (clean — they carry their own conventions: quiet
   // null, tagged errors, IMDIV's cx(NaN,NaN)) and found the leak HERE.
   const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -95,7 +95,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
 describe("the regression quartet — owned, not routed (the last DEFERRED closed)", () => {
   // The former DEFERRED list. Like UNIQUE/SORT/TRANSPOSE before them, the fix
   // shape is OWNERSHIP (a listArgs registration over the nodes' fitting kernels,
-  // FX-9), not RANGE_FUNCTIONS routing — so membership there stays false, and the
+  // hideMatrixFromVendor), not RANGE_FUNCTIONS routing — so membership there stays false, and the
   // shape checks below are what "fixed" means: one fitted answer, never a
   // broadcast echo of the input.
   const QUARTET = ["TREND", "GROWTH", "LINEST", "LOGEST"];

@@ -6,7 +6,7 @@ import * as path from "node:path";
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
 // failed when a NEW file forgot them, which rules.md flags as precisely the shape
 // of every Origin incident. These scans close the completeness half the same way
-// formulaPathIsReteFree.test.ts closes FX-2: statically, over the real source, so
+// formulaPathIsReteFree.test.ts closes implReteFree: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
 //
 // The scans are LINE-BASED with `//` comments stripped — crude but exactly as
@@ -39,7 +39,7 @@ function codeLines(file: string): string[] {
 // (the whole file passes only on a "/" OS otherwise).
 const rel = (p: string) => path.relative(SRC, p).replace(/\\/g, "/");
 
-describe("SOCK-7 — a file that retypes sockets in place must reconcile downstream", () => {
+describe("retypeReconciles — a file that retypes sockets in place must reconcile downstream", () => {
   // An in-place socket retype (swapping `port.socket` or calling
   // `MutableSocket.setType`) fires no connection event, so downstream Format
   // Controllers keep stale formats unless the file also drives
@@ -73,7 +73,7 @@ describe("SOCK-7 — a file that retypes sockets in place must reconcile downstr
     expect(
       offenders,
       `These files retype sockets in place but never reference retypeOutputCables/` +
-      `reconcileFcTypes (SOCK-7): downstream FCs will keep stale formats. Call the ` +
+      `reconcileFcTypes (retypeReconciles): downstream FCs will keep stale formats. Call the ` +
       `reconciler, or add the file to SANCTIONED with the reason it is safe:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -90,7 +90,7 @@ describe("SOCK-7 — a file that retypes sockets in place must reconcile downstr
   });
 });
 
-describe("VAL-10 — a node file that runs the dimension algebra declares unitAware", () => {
+describe("perInputUnitBlind — a node file that runs the dimension algebra declares unitAware", () => {
   // The unit-blind boundary strips `UnitCell` tags from every input UNLESS the
   // node declares `unitAware = true` (coerceInputs). So a node that calls the
   // per-cell algebra — isUnitCell / dimOf / magnitudeOf / the *Units combinators
@@ -126,7 +126,7 @@ describe("VAL-10 — a node file that runs the dimension algebra declares unitAw
     expect(
       offenders,
       `These node files call the per-cell unit algebra but never declare ` +
-      `unitAware = true (VAL-10): the unit-blind boundary strips the tags before ` +
+      `unitAware = true (perInputUnitBlind): the unit-blind boundary strips the tags before ` +
       `data() runs, so the algebra silently no-ops. Declare the flag on the ` +
       `algebra-running class, or add the file to SANCTIONED with the reason:\n  ` +
       offenders.join("\n  "),
@@ -144,7 +144,7 @@ describe("VAL-10 — a node file that runs the dimension algebra declares unitAw
   });
 });
 
-describe("VAL-12 — a card's family op selector binds a field named `op`", () => {
+describe("selectorNamedOp — a card's family op selector binds a field named `op`", () => {
   // The declaration machinery resolves a live node's current op by reading
   // `inst.op` (nodeOps.opKindForNode), so a family whose selector field is named
   // otherwise cannot declare its ops AT ALL — they become unsearchable and
@@ -235,7 +235,7 @@ describe("VAL-12 — a card's family op selector binds a field named `op`", () =
     expect(
       offenders,
       `These op pickers neither bind a field named \`op\` nor carry the \`arg\` prop ` +
-      `(VAL-12). If it IS the family's op selector, the node must store it as \`op\` ` +
+      `(selectorNamedOp). If it IS the family's op selector, the node must store it as \`op\` ` +
       `(not mode/dir/kind) so NODE_OPS declarations can attach; if it is an ` +
       `argument/config/data pick, mark it \`arg\`:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -280,7 +280,7 @@ describe("VAL-12 — a card's family op selector binds a field named `op`", () =
   });
 });
 
-describe("PERSIST-2 — the text form carries every SavedGraph field, both directions", () => {
+describe("saveViaTextForm — the text form carries every SavedGraph field, both directions", () => {
   // serializeGraph() returns readTextForm(writeTextForm(raw)) — the text form is
   // the NARROW WAIST of the save path, so a SavedGraph field that either
   // direction omits is deleted from EVERY save, and autosave then writes the
@@ -320,14 +320,14 @@ describe("PERSIST-2 — the text form carries every SavedGraph field, both direc
     }
     expect(
       missing,
-      `SavedGraph fields the text-form narrow waist drops (PERSIST-2) — the field ` +
+      `SavedGraph fields the text-form narrow waist drops (saveViaTextForm) — the field ` +
       `will silently vanish from every save until both directions carry it:\n  ` +
       missing.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("PERSIST-6 — class names are load-bearing: keepNames stays in both bundler configs", () => {
+describe("classNameIsType — class names are load-bearing: keepNames stays in both bundler configs", () => {
   // `constructor.name` is not a label here — it is the TYPE written into every
   // save (persistence.ts), the ctor-registry key that loads resolve through, and
   // a dispatch key (SEES_ERRORS, groupCollapse, pinStore…). A build without
@@ -342,7 +342,7 @@ describe("PERSIST-6 — class names are load-bearing: keepNames stays in both bu
   });
 });
 
-describe("VAL-17 — a volatile data() freezes its roll on getRecalcGen()", () => {
+describe("freezeVolatilePerCalc — a volatile data() freezes its roll on getRecalcGen()", () => {
   // Math.random() called bare in data() re-rolls on EVERY recompute pass — any
   // unrelated edit anywhere silently changes the value, F9 stops being the
   // thing that controls re-rolling, and a Monte Carlo built on it is
@@ -365,7 +365,7 @@ describe("VAL-17 — a volatile data() freezes its roll on getRecalcGen()", () =
     expect(
       offenders,
       `These node files call Math.random() without freezing on getRecalcGen() ` +
-      `(VAL-17): the value silently re-rolls on every recompute pass. Cache the ` +
+      `(freezeVolatilePerCalc): the value silently re-rolls on every recompute pass. Cache the ` +
       `draw against the recalc generation, or add to SANCTIONED with the reason:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -380,11 +380,11 @@ describe("VAL-17 — a volatile data() freezes its roll on getRecalcGen()", () =
   });
 });
 
-describe("EFFECT-1 — data() never touches disk", () => {
+describe("sinkRunButtonOnly — data() never touches disk", () => {
   // A sink's data() caches for preview ONLY; the write lives in run(), fired by
   // the node's Run button. The two existing sink families are pinned by their
   // own suites, but a NEW sink whose data() writes was uncaught until its own
-  // test existed (EFFECT-1's closed gap): this brace-matches
+  // test existed (sinkRunButtonOnly's closed gap): this brace-matches
   // every data() body in nodes/ + packs/ and refuses the write APIs — and
   // `this.run(`, the indirect spelling of the same mistake.
   const WRITE_APIS = ["writeTextFilePath", "pickSaveFilePath", "writeDocumentToVault", "obsidianWrite"];
@@ -474,7 +474,7 @@ describe("EFFECT-1 — data() never touches disk", () => {
     expect(bodies).toBeGreaterThan(250);
     expect(
       offenders,
-      `These data() bodies touch a write API (EFFECT-1): data() caches for ` +
+      `These data() bodies touch a write API (sinkRunButtonOnly): data() caches for ` +
       `preview only — the effect belongs in run(), behind the Run button:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -489,7 +489,7 @@ describe("EFFECT-1 — data() never touches disk", () => {
   });
 });
 
-describe("EFFECT-2 — an outward effect from data() gates on isGraphRebuilding()", () => {
+describe("effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every
   // document open, doc switch and rollback (the audit-2026-07-05 class: a
@@ -506,13 +506,13 @@ describe("EFFECT-2 — an outward effect from data() gates on isGraphRebuilding(
     expect(
       offenders,
       `These node files fire alerts without the isGraphRebuilding() gate ` +
-      `(EFFECT-2): every document load will replay the alert backlog:\n  ` +
+      `(effectsEdgeTriggered): every document load will replay the alert backlog:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("PERSIST-8 — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
+describe("captureBeforeSwap — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
   // A verb that switches which document is on screen without captureCurrent()
   // discards up to AUTOSAVE_DELAY of edits to the outgoing doc; without the
   // isGraphRebuilding() guard it races a load and can serialize a half-built
@@ -550,7 +550,7 @@ describe("PERSIST-8 — every documentStore verb that swaps the canvas captures 
     }
     expect(
       offenders,
-      `documentStore verbs that swap the canvas without the discipline (PERSIST-8):\n  ` +
+      `documentStore verbs that swap the canvas without the discipline (captureBeforeSwap):\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -563,7 +563,7 @@ describe("PERSIST-8 — every documentStore verb that swaps the canvas captures 
   });
 });
 
-describe("VAL-13 — components never call node.data()", () => {
+describe("noDataInComponents — components never call node.data()", () => {
   // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
   // nodes, installErrorGuards) has run; a component calling it raw gets
   // un-coerced inputs and can throw during render (the NoteNode/CurveNode
@@ -579,7 +579,7 @@ describe("VAL-13 — components never call node.data()", () => {
     }
     expect(
       offenders,
-      `Components must not call node.data() (VAL-13) — extract a pure helper ` +
+      `Components must not call node.data() (noDataInComponents) — extract a pure helper ` +
       `(the coerceInputs wrapper assumes engine-driven calls):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -606,7 +606,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     // nodes/ and packs/ are in scope too: Computed Column's side-socket
     // reconcile moved a "these sockets are going away" moment into a node
     // class, which was exactly where the components-only scan couldn't see
-    // (the twelfth hand-rolled copy, SSOT-9).
+    // (the twelfth hand-rolled copy, onePrunePath).
     const offenders: string[] = [];
     const roots = ["components", "nodes", "packs"].map((d) => path.join(SRC, d));
     for (const root of roots) {
@@ -641,7 +641,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
   });
 });
 
-describe("STORE-1 — every node-keyed store registers with nodeStoreRegistry", () => {
+describe("storesRegisterForget — every node-keyed store registers with nodeStoreRegistry", () => {
   // Per-node state lives in module-level stores (rete's separate React root —
   // no shared context), and the registry is the ONE answer to "what happens on
   // node delete / graph rebuild". A store that skips it leaks dead-id entries
@@ -700,7 +700,7 @@ describe("STORE-1 — every node-keyed store registers with nodeStoreRegistry", 
     expect(
       offenders,
       `These stores hold state but never register with nodeStoreRegistry ` +
-      `(STORE-1): a deleted node's entries linger and a rebuild misses them. ` +
+      `(storesRegisterForget): a deleted node's entries linger and a rebuild misses them. ` +
       `registerNodeForget(+All), or add the store to SANCTIONED with the reason ` +
       `it is not node-keyed:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -720,7 +720,7 @@ describe("STORE-1 — every node-keyed store registers with nodeStoreRegistry", 
     }
     expect(
       offenders,
-      `These stores register forget but not forgetAll (STORE-1) — the rebuild ` +
+      `These stores register forget but not forgetAll (storesRegisterForget) — the rebuild ` +
       `bulk reset misses them:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -736,7 +736,7 @@ describe("STORE-1 — every node-keyed store registers with nodeStoreRegistry", 
   });
 });
 
-describe("SOCK-8 — the socket box's greppable half", () => {
+describe("socketBox12 — the socket box's greppable half", () => {
   // The full rule is a rendering invariant (rete-render-utils measures the
   // span's offset box; offsetTop ignores transforms) that only a browser can
   // verify end to end. But its known REGRESSION VECTORS are all textual, and
@@ -766,7 +766,7 @@ describe("SOCK-8 — the socket box's greppable half", () => {
   });
 });
 
-describe("SOCK-14 — frame-input labels follow the column-role grammar", () => {
+describe("frameLabelGrammar — frame-input labels follow the column-role grammar", () => {
   // A frame input's label is the ONE place the expected columns can be read
   // before wiring (aligned columns arrive as one frame input by design). Roles
   // join with " + " in Title case; a no-expectation input is a plain noun; shape
@@ -803,6 +803,6 @@ describe("SOCK-14 — frame-input labels follow the column-role grammar", () => 
         }
       }
     }
-    expect(offenders, "labels violating the SOCK-14 grammar (rules.md)").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar (rules.md)").toEqual([]);
   });
 });

@@ -9,7 +9,7 @@ import {
   cxSech, cxCsch, quadraticRoots,
 } from "../cxValue";
 
-// The tagged Cx (VAL-15) and its kernels live in ../cxValue, RETE-FREE so the
+// The tagged Cx (tagSpecialScalars) and its kernels live in ../cxValue, RETE-FREE so the
 // formula path and the display layer need not load the editor; re-exported here.
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
@@ -20,7 +20,7 @@ export { cx, isCx, formatCx, type Cx } from "../cxValue";
 /** One tagged operand: `list` is null when the value is a scalar. */
 type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
 
-/** Tag a COMPLEX operand. A scalar is a tagged Cx (VAL-15) — no structural sniff. */
+/** Tag a COMPLEX operand. A scalar is a tagged Cx (tagSpecialScalars) — no structural sniff. */
 function cxOp(v: Cx | (Cx | SolError | null)[] | SolError | null): Operand<Cx> {
   if (v === null || isSolError(v)) return { scalar: v, list: null };
   return isCx(v)

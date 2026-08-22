@@ -20,7 +20,7 @@ const COMBO_COLORS: Record<string, [string, string]> = {
   // The gray wildcard rungs differ by SHAPE, not shade, so the lower half takes the
   // fill's systematic ring shade rather than inventing a hue (DESIGN.md).
   anycombo:     [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
-  // `anydata` (SOCK-9) shares anycombo's split square; the legend carries the rank.
+  // `anydata` (anydataWildcard) shares anycombo's split square; the legend carries the rank.
   anydata:      [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
 };
 

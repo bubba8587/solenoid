@@ -67,7 +67,7 @@ export type ChartOp =
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
   | "composed" | "bubble";
 
-// The card dropdown DERIVES from this table (SSOT-1) — never hand-write a second list.
+// The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
   bar:       { label: "Bar",      group: "Cartesian" },
@@ -605,7 +605,7 @@ export class SurfaceNode extends ClassicPreset.Node {
   }
 
   /** The op owns the Levels socket. Callers on a live graph prune its cables
-   *  BEFORE switching to the 3-D view (SSOT-9). */
+   *  BEFORE switching to the 3-D view (onePrunePath). */
   setOp(next: SurfaceViewOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -989,7 +989,7 @@ export function recordImageSrc(text: string): string | null {
 
 export type RecordOp = "card" | "gallery" | "board";
 
-// The card dropdown DERIVES from this table (SSOT-1) — never hand-write a second list.
+// The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
@@ -1038,7 +1038,7 @@ export class RecordNode extends ClassicPreset.Node {
   }
 
   /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
-   *  departing keys' cables BEFORE switching (SSOT-9). */
+   *  departing keys' cables BEFORE switching (onePrunePath). */
   setOp(next: RecordOp): void {
     if (next === this.op) return;
     this.op = next;

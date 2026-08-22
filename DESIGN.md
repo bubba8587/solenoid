@@ -242,7 +242,7 @@ A card's OPERATION picker is the single body control that spends the accent: a 2
 So a control's treatment reads as:
 
 1. **Not the family's picker** — a criterion comparator, a digit pick. It carries `arg`, stays neutral, never hoists.
-2. **The family's picker** — it binds a field named `op` (VAL-12, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Fourteen families bind `op` and are declared `argument`, rendering neutral: Group By, Cube Rollup, Group By (frame), Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count among them.
+2. **The family's picker** — it binds a field named `op` (selectorNamedOp, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Fourteen families bind `op` and are declared `argument`, rendering neutral: Group By, Cube Rollup, Group By (frame), Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count among them.
 
 The family's picker hoists to the top of the body either way. Reading before the inputs it shapes is about being the picker, not about spending the accent. Adding a third picker component means teaching the scan about it; nothing else will notice.
 

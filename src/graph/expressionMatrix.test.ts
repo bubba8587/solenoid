@@ -4,9 +4,9 @@ import { wrapNodeData } from "./coerceInputs";
 import { canConnect, SolenoidSocket } from "./sockets";
 import { isSolError } from "./errorValue";
 
-// ─── D23: the Expression lift (SOCK-9) ────────────────────────────────────────
+// ─── D23: the Expression lift (anydataWildcard) ────────────────────────────────────────
 // The connect-time half of the matrix decision: variables are `anydata`, matrices
-// flow in, the formula computes by the broadcast table (FX-10 — semantics pinned
+// flow in, the formula computes by the broadcast table (oneBroadcast — semantics pinned
 // in broadcastRules.test.ts; THIS file pins the node-boundary lift), and the
 // result socket reconciles its RANK to the value while keeping its FAMILY.
 
@@ -31,7 +31,7 @@ describe("matrices flow into a formula (the lift itself)", () => {
     expect(run("SUM(m)", { m: [M] })).toBe(10);
   });
 
-  it("per-cell null and error ride through a matrix formula (VAL-5/VAL-6)", () => {
+  it("per-cell null and error ride through a matrix formula (nullSkippedNotZero/errorBeatsMissing)", () => {
     const out = run("a + 1", { a: [[[1, null], [3, 4]]] }) as unknown[][];
     expect(out[0]).toEqual([2, null]);
     expect(out[1]).toEqual([4, 5]);
@@ -43,7 +43,7 @@ describe("matrices flow into a formula (the lift itself)", () => {
   });
 });
 
-describe("the connect-time gate (SOCK-9 acceptance)", () => {
+describe("the connect-time gate (anydataWildcard acceptance)", () => {
   it("a fresh Expression declares anydata variables", () => {
     const n = new ExpressionNode({ expr: "a + b" });
     for (const v of n.varNames) {
@@ -62,7 +62,7 @@ describe("the connect-time gate (SOCK-9 acceptance)", () => {
   });
 });
 
-describe("the result socket reconciles RANK, keeps FAMILY (SOCK-9 + SOCK-7)", () => {
+describe("the result socket reconciles RANK, keeps FAMILY (anydataWildcard + retypeReconciles)", () => {
   it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
     const node = new ExpressionNode({ expr: "a * 2" });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);

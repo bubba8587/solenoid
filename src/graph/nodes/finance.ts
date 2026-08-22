@@ -137,7 +137,7 @@ export class DepreciationNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: DepreciationOp): string[] {
     const keep = new Set(DEPRECIATION_INPUTS[next].map((i) => i.key));
     return DEPRECIATION_INPUTS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -391,7 +391,7 @@ export class NpvNode extends ClassicPreset.Node {
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
-   *  BEFORE switching to Periodic (SSOT-9). */
+   *  BEFORE switching to Periodic (onePrunePath). */
   setMode(next: CashflowMode): void {
     if (next === this.mode) return;
     this.mode = next;
@@ -453,7 +453,7 @@ export class IrrNode extends ClassicPreset.Node {
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
-   *  BEFORE switching to Periodic (SSOT-9). */
+   *  BEFORE switching to Periodic (onePrunePath). */
   setMode(next: CashflowMode): void {
     if (next === this.mode) return;
     this.mode = next;

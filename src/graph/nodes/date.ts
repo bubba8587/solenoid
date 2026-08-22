@@ -562,7 +562,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
   }
 
   /** The key a switch to `next` would remove. Callers on a live graph prune its
-   *  cables BEFORE calling setOp (SSOT-9). */
+   *  cables BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: WorkdaysOp): string[] {
     if (next === this.op) return [];
     return next === "workday" ? ["end"] : ["days"];

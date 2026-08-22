@@ -75,7 +75,7 @@ describe("every element family is complete at the five sites the compiler can't 
   // them — which is what section 5 documents as "the value passes as-is".)
   it("every strict-list rung widens a lone value, and every combo rung collapses a singleton", () => {
     // One probe per family, chosen so the family's own element coercion is a
-    // no-op — a boolean for logical, a tagged cx for complex (VAL-15) — leaving the
+    // no-op — a boolean for logical, a tagged cx for complex (tagSpecialScalars) — leaving the
     // RANK change as the only thing the assertion can be measuring.
     // `ElementFamily` is `keyof typeof FAMILIES` over a string-indexed record, so
     // it widens to `string` — this map gets NO exhaustiveness check from tsc. Fall

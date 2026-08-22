@@ -29,7 +29,7 @@ import { initPackFormulas } from "./formulaExtensions";
 // (MAP/BYROW/BYCOL/REDUCE/SCAN/MAKEARRAY/GROUPBY) registered against the same
 // LambdaValue currency the nodes use (formulaLambda.test.ts). Every Excel name a
 // node carries now dispatches. A name appearing here again is a NEW node shipped
-// without its registration — close it the FX-1 way before pinning it.
+// without its registration — close it the shareImpl way before pinning it.
 const EXCEL_NAMED_GAP: string[] = [];
 
 // GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a
@@ -123,7 +123,7 @@ describe("formula ↔ node parity ratchet", () => {
   // The live catalog can't pin this: gap A is empty, so every excel-named row is
   // FULLY covered and `some` vs `every` agree on all of them. The synthetic
   // partial case is the only input that distinguishes the quantifiers.
-  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node (SSOT-8)", () => {
+  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node (useEveryNotSome)", () => {
     const only = (avail: string[]) => (n: string) => avail.includes(n);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING", "CEILING.MATH"]))).toBe(true);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING"]))).toBe(false);

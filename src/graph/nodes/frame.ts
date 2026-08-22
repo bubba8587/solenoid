@@ -580,7 +580,7 @@ export class DropColumnsNode extends ClassicPreset.Node {
 
 // ─── GROUP BY (FRAME) ──────────────────────────────────────────────────────────
 
-// The ONE AggOp table (SSOT-1) every agg surface derives from; `pivotOnly` marks the op
+// The ONE AggOp table (declareOnce) every agg surface derives from; `pivotOnly` marks the op
 // only the pivot assembly can run, excluded from the card dropdowns and search rows.
 export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> = {
   sum: { label: "SUM" },
@@ -1743,7 +1743,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       void (async () => {
         // anydata (rank ≤ 2) so a side value can be a whole list, not just a scalar.
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
-        await dropInputCables(this.id, removed); // SSOT-9: prune before removeInput
+        await dropInputCables(this.id, removed); // onePrunePath: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
         await getActiveArea()?.update("node", this.id);
       })();

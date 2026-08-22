@@ -76,7 +76,7 @@ export class AlertNode extends ClassicPreset.Node {
     result: "The status is 0 when calm and 1 when triggered. Out of range instead emits 1 below Low and 2 above High.",
   };
   label: string;
-  // The op selector, named `op` per VAL-12 so the family can declare it.
+  // The op selector, named `op` per selectorNamedOp so the family can declare it.
   op: AlertMode;
   cachedResult: number | number[] | null = null;
   literals: Record<string, number> = { value: 50, low: 0, high: 100, target: 0 };
@@ -206,7 +206,7 @@ export class AlertNode extends ClassicPreset.Node {
 }
 
 // A CONNECTED cable wins even when blank — the status is then unknown and never
-// fires; only an UNWIRED slot falls back to the card's literal (VAL-1).
+// fires; only an UNWIRED slot falls back to the card's literal (unwiredNotBlank).
 function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
   return readInput(got, lit ?? null);
 }

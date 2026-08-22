@@ -242,7 +242,7 @@ describe("CompositeNode boundary output-type adoption (D17)", () => {
     await connect(c.internalEditor, num, "value", disp, "in");
     expect(sockOf("inputs")).toBe("number");
     expect(sockOf("outputs")).toBe("number");
-    // Unwiring reverts the rings (derived state, never persisted — SOCK-5).
+    // Unwiring reverts the rings (derived state, never persisted — adoptKeepsCables).
     const conn = c.internalEditor.getConnections()[0]!;
     await c.internalEditor.removeConnection(conn.id);
     expect(sockOf("inputs")).toBe("trueany");

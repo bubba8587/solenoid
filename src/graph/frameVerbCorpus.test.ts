@@ -136,7 +136,7 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
 });
 
 describe("corpus completeness — every verb has a fixture file", () => {
-  // The closed ratchet (bundle 18 step 3, promoted as FX-12): the migration
+  // The closed ratchet (bundle 18 step 3, promoted as oneVerbCorpus): the migration
   // whitelist emptied and died — every verb both engines speak computes from
   // this ONE fixture corpus. Adding a NEW FrameOp kind fails compile
   // (FRAME_OP_KINDS) and then fails here until it ships with corpus cases; a

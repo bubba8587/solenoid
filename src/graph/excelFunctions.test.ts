@@ -37,7 +37,7 @@ describe("numberToText — 15 significant digits, trailing zeros stripped", () =
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   it("keeps the families a difference-that-matters dictates internal", () => {
     // "complex" flipped verify → internal with the D23-amendment tranche: the
-    // tagged Cx (VAL-15) IS the difference that matters — Formula.js's IM* speak
+    // tagged Cx (tagSpecialScalars) IS the difference that matters — Formula.js's IM* speak
     // text complexes, a different currency.
     for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative", "complex"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("internal");
@@ -190,7 +190,7 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
       expect(["number", "string", "logical", "date", "complex", "any"]).toContain(m.returns);
     }
   });
-  it("every registered internal declares its meta (FX-3, the registered→declared direction)", () => {
+  it("every registered internal declares its meta (declareContract, the registered→declared direction)", () => {
     // The reverse direction (declared→dispatches) lives in formulaTier3; without
     // THIS one, 28 registrations had no entry and the rule was fiction.
     const meta = new Set(Object.keys(EXCEL_IMPL_META));
@@ -323,7 +323,7 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
   });
 });
 
-describe("the duplicate-registration guard (FX-4's registry half)", () => {
+describe("the duplicate-registration guard (uniqueNameMap's registry half)", () => {
   it("a second claim on a live name throws instead of silently overwriting", () => {
     registerInternal("GUARDTESTNAME", () => 1);
     expect(() => registerInternal("GUARDTESTNAME", () => 2)).toThrow(/Duplicate formula registration/);

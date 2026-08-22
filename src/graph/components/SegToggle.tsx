@@ -11,7 +11,7 @@ export function SegToggle<T extends string>({ value, onChange, options, classNam
    *  and with the same narrow meaning (see its doc: `arg` never says "my ops are
    *  arguments"; that lives once, in `kind`). A segmented toggle is the OTHER way a
    *  card carries an op picker — Sparkline's chart type, Surface's view, the resistor's
-   *  band count all bind `op` here — so without this flag VAL-12's source scan could
+   *  band count all bind `op` here — so without this flag selectorNamedOp's source scan could
    *  not tell a legitimate argument binding `mode`/`dir` from a family that misnamed
    *  its op field: the PadNode.dir defect, through the door the OpSelect-only scan did
    *  not watch. `data-op-arg` rides into the DOM for symmetry with OpSelect; the

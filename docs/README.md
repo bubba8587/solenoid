@@ -138,8 +138,8 @@ relapse.
 | `CompositeEditorOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; D17 |
 | `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; `rules.md` FX rules; D24 |
-| `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` FX-1 (one impl, two surfaces), FX-2 (rete-free; what not to extract) |
-| `computedColumnCore.ts` | D24, D25; `rules.md` FX-13 |
+| `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` shareImpl (one impl, two surfaces), implReteFree (rete-free; what not to extract) |
+| `computedColumnCore.ts` | D24, D25; `rules.md` rowFormulaRefs |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); D1, D5; cargo parity tests |
 | `nodeOps.ts` (op declarations) | D29 (aggregators are arguments); `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; D10 (eliminated functions stay eliminated) |

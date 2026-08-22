@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── docs/rules.md keeps itself honest (SSOT-5 applied to the spec itself) ──
+// ─── docs/rules.md keeps itself honest (labelUnenforced applied to the spec itself) ──
 // The spec's whole value is the enforcement column; a rule ID that names a test
 // file that doesn't exist — or a test deleted without the rule noticing — turns
 // the column back into folklore. This asserts the document's own claims:
@@ -15,43 +15,43 @@ import * as path from "node:path";
 const DOC = fs.readFileSync(path.resolve(__dirname, "../../docs/rules.md"), "utf8");
 
 describe("docs/rules.md", () => {
-  const ids = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+)/gm)].map((m) => m[1]);
+  const ids = [...DOC.matchAll(/^### ([a-z][A-Za-z0-9]*)/gm)].map((m) => m[1]);
 
-  it("every rule labels its enforcement (SSOT-5 made mechanical)", () => {
-    // SSOT-5: a rule not enforced by a test is DEBT, and is labelled. The label
+  it("every rule labels its enforcement (labelUnenforced made mechanical)", () => {
+    // labelUnenforced: a rule not enforced by a test is DEBT, and is labelled. The label
     // is the *Enforced by:* line — either citing tests or saying UNENFORCED.
     // A new rule without the line is unlabelled debt and fails here by ID.
     const bodies = DOC.split(/^### /m).slice(1);
     const missing: string[] = [];
     for (const body of bodies) {
-      const id = body.match(/^((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+)/)?.[1];
+      const id = body.match(/^([a-z][A-Za-z0-9]*)/)?.[1];
       if (!id) continue;
       if (!/\*Enforced by:\*/.test(body)) missing.push(id);
     }
     expect(missing, "rules with no *Enforced by:* line (label the enforcement or the debt)").toEqual([]);
   });
 
-  // ─── The ARR-uniqueness guard (PROV-1, the one author-ruled rule) ───────────
+  // ─── The ARR-uniqueness guard (authorRuled, the one author-ruled rule) ───────────
   // ARR is conferred ONLY by the author reading this document in a session and
   // marking a rule themselves. This guard makes that mechanically binding on the
-  // agent: exactly one [ARR] mark may exist, and it must sit on PROV-1. Promoting
+  // agent: exactly one [ARR] mark may exist, and it must sit on authorRuled. Promoting
   // any other rule requires the author to edit this file AND move the expected
   // set below in the same author-marked change — the agent doing it alone fails
   // here. (If you are an agent reading this while tempted: don't. The count is
   // the author's, not yours.)
-  it("exactly one rule is author-ruled, and it is PROV-1", () => {
-    const AUTHOR_MARKED_ARR: string[] = ["PROV-1"]; // author-maintained; agents must not edit
-    const marks = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+)[^\n]*\[ARR\]/gm)].map((m) => m[1]);
+  it("exactly one rule is author-ruled, and it is authorRuled", () => {
+    const AUTHOR_MARKED_ARR: string[] = ["authorRuled"]; // author-maintained; agents must not edit
+    const marks = [...DOC.matchAll(/^### ([a-z][A-Za-z0-9]*)[^\n]*\[ARR\]/gm)].map((m) => m[1]);
     expect(marks.sort()).toEqual([...AUTHOR_MARKED_ARR].sort());
     // And [ARR] can't hide in prose: beyond rule headings, the literal may
     // appear only where the PROV section NAMES the mark (its grade table and
-    // PROV-1's own body text).
+    // authorRuled's own body text).
     const all = [...DOC.matchAll(/\[ARR\]/g)].length;
     expect(all - marks.length).toBeLessThanOrEqual(2);
   });
 
-  it("every rule heading carries exactly one provenance grade (PROV-1's axis)", () => {
-    const headings = [...DOC.matchAll(/^### (?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+[^\n]*/gm)].map((m) => m[0]);
+  it("every rule heading carries exactly one provenance grade (authorRuled's axis)", () => {
+    const headings = [...DOC.matchAll(/^### [a-z][A-Za-z0-9]*[^\n]*/gm)].map((m) => m[0]);
     const ungraded = headings.filter((h) => !/\[(ARR|INFERRED|DEFAULT)\]/.test(h));
     expect(ungraded, `rules missing a provenance grade:\n${ungraded.join("\n")}`).toEqual([]);
     const doubly = headings.filter((h) => (h.match(/\[(ARR|INFERRED|DEFAULT)\]/g) ?? []).length > 1);
@@ -67,11 +67,11 @@ describe("docs/rules.md", () => {
 
   it("the rule index matches the headings exactly (id, title, order)", () => {
     // The index is the author's authorization checklist — a hand-kept table, so
-    // it is shape-guarded (SSOT-4): every row must be a real rule with the real
+    // it is shape-guarded (shapeGuardManualSets): every row must be a real rule with the real
     // title, in document order, with none missing.
-    const headings = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+) — (.+?) \*\*\[/gm)]
+    const headings = [...DOC.matchAll(/^### ([a-z][A-Za-z0-9]*) — (.+?) \*\*\[/gm)]
       .map((m) => `${m[1]} | ${m[2]}`);
-    const rows = [...DOC.matchAll(/^\| ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+) \| (.+?) \|$/gm)]
+    const rows = [...DOC.matchAll(/^\| ([a-z][A-Za-z0-9]*) \| (.+?) \|$/gm)]
       .map((m) => `${m[1]} | ${m[2]}`);
     expect(rows, "the index table (add the row when adding a rule)").toEqual(headings);
   });

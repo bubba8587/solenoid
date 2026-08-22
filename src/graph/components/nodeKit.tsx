@@ -413,7 +413,7 @@ export function OpSelect<T extends string>({
    *  are declared `argument` there (Group By, Running, the resistor) and render
    *  neutral. Saying it here too would let a card assert it twice and drift, so a
    *  control bound to the node's own `op` may not carry `arg` (sourceInvariants).
-   *  Two consumers: the accent edge skips arg selects, and VAL-12's source scan
+   *  Two consumers: the accent edge skips arg selects, and selectorNamedOp's source scan
    *  requires every NON-arg picker to bind a field named `op`. */
   arg?: boolean;
 }) {

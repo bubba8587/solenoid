@@ -380,7 +380,7 @@ export class DistributionNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: DistKey): string[] {
     const keep = new Set(inputKeysFor(next, formAfterSwitch(this.form, next)));
     return inputKeysFor(this.op, this.form).filter((k) => !keep.has(k));

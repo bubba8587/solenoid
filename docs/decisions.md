@@ -7,7 +7,7 @@ never renumber. A reversed decision keeps its entry with a dated REVERSED line. 
 old ADR-style histories (when/why/cost narratives, amendment chains) live in git and
 `archive/dev-notes-history.md` — this file records outcomes only.
 
-**Provenance (PROV-1, rules.md):** nothing here is author-ruled — a quoted author line
+**Provenance (authorRuled, rules.md):** nothing here is author-ruled — a quoted author line
 is evidence for the reasoning, not a standing order. ARR exists only in `rules.md`.
 
 ---
@@ -175,8 +175,8 @@ per-step preview/caching needs, or boundary typing adoption can't express.
 Matrices with Excel dynamic-array semantics; tagged Cx through the owned IM*
 family. Frames/cubes rejected on record: no Excel semantics to copy, competes
 with the verb engine, breaks lazy-FrameRef economics. **Containment:** Formula.js
-never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates — rules.md FX-9); the
-broadcast table is `broadcastRules.test.ts` (SSOT-6); element-wise ragged pads
+never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates — rules.md hideMatrixFromVendor); the
+broadcast table is `broadcastRules.test.ts` (oneMetricImpl); element-wise ragged pads
 null, shape construction pads `#N/A` (D15); a list is a ROW. **Reopen if:** the
 broadcast semantics diverge from Excel in ways users hit — a re-cap would be a
 new decision, not a silent revert.
@@ -186,7 +186,7 @@ Bare column name = the WHOLE column; `@name` = this row's cell; brackets for
 unspellable names (`[Unit Price]`, `@[Unit Price]`). λ params stay row-bound
 (the λ's explicit per-row interface). Per-row math without `@` fails LOUD
 (`#SHAPE!`), exactly as modern Excel resolved the same tension. **Where:**
-`computedColumnCore.ts`; normative rules.md FX-13. **Reopen if:** nothing —
+`computedColumnCore.ts`; normative rules.md rowFormulaRefs. **Reopen if:** nothing —
 this IS the model the surface exists to mirror.
 
 ### D25 — No per-cell formulas, ever
@@ -244,7 +244,7 @@ it is a consequence to add or remove once the classification is made.
 
 The Add menu shows the verb once; the aggregator is picked on the card. The
 operation-vs-argument framework (weigh, don't let the last signal win): would the
-user PICK it or could it arrive computed; does it have its own NAME (FX-4 can
+user PICK it or could it arrive computed; does it have its own NAME (uniqueNameMap can
 overrule — ops sharing a name cannot be operations); would the user SEARCH for
 it; is it meaningless without its host; is it an Excel function (corroborating
 only). An argument's searched words live as `keywords` on the HOST leaf, never as op
@@ -305,7 +305,7 @@ way). The `op` selector picks the distribution (14: normal through negative
 binomial), the arg-tagged `form` field picks CDF / PDF / PMF / a tail / the
 inverse; an inverse form swaps the first input to Probability, and a
 distribution switch swaps the parameter inputs (cables on departing sockets
-prune first, SSOT-9). The forms carry across switches by meaning (PDF↔PMF over
+prune first, onePrunePath). The forms carry across switches by meaning (PDF↔PMF over
 the continuous/discrete line, inverse variants collapse to plain Inverse).
 Binomial Range stays its own node: its range form has a two-input shape the
 first-input swap cannot describe. **Where:** `nodes/distribution.ts`
@@ -392,7 +392,7 @@ retypes the output in place, so the switch calls `retypeOutputCables`),
 per-op spec table), **ListTakeDrop** (matching the table sibling), and
 **Surface absorbs Contour** (a 3-D/Flat view toggle; payload kinds unchanged).
 Every merge keeps its old Add-menu leaf types (nodeExcel/Reference untouched),
-prunes departing sockets' cables first (SSOT-9), and lets old saves load as
+prunes departing sockets' cables first (onePrunePath), and lets old saves load as
 Placeholders (D3). Flat ops were preferred over a second axis wherever the
 combo count is small — per-op hover descriptions keep working and no new
 persisted field is needed. **Where:** the merged classes sit in their family
@@ -445,11 +445,11 @@ zero matching columns.
 the node must expose every argument, mode, and return shape the formula surface can reach —
 never less. Excel / Formula.js divergence is a judgement call (documented per `nodeExcel`
 note); our OWN two surfaces disagreeing is a defect that does not ship. This strengthens
-FX-1 from "one implementation" to "one implementation AND full node reach." The 2026-08-21
+shareImpl from "one implementation" to "one implementation AND full node reach." The 2026-08-21
 sweep closed the open gaps: SUBSTITUTE `instance`, TREND optional New Xs, WRAP `pad_with`,
 DB `month`, RANDARRAY `integer`, REGEXEXTRACT capture-groups, REGEXREPLACE `occurrence` —
 each now parity-tested node↔formula.
-**Where:** rules.md FX-1 (extended); behavioural agreement tests per function (finance /
+**Where:** rules.md shareImpl (extended); behavioural agreement tests per function (finance /
 auditFixes / formulaTier1 / text / rangeRouting / matrixReshape); `nodeFormulaArgParity.test.ts`
 is a PARTIAL greppable guard (dispatch-through-`resolveExcelFunction` only — it cannot see a
 separate-impl or Formula.js-fall-through gap, so the behavioural tests are the real line).

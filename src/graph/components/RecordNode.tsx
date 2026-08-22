@@ -12,12 +12,12 @@ import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { RecordLayoutField } from "./RecordLayoutField";
 
-// Derived from RECORD_OP_META so the dropdown can't drift from the Add-menu rows (SSOT-1).
+// Derived from RECORD_OP_META so the dropdown can't drift from the Add-menu rows (declareOnce).
 const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) as RecordOp[])
   .map((value) => ({ value, label: RECORD_OP_META[value].label }));
 
 // The op owns the Row / Group-by sockets, so a switch must drop the departing
-// keys' cables BEFORE the sockets go (SSOT-9) — removed silently, a cable would
+// keys' cables BEFORE the sockets go (onePrunePath) — removed silently, a cable would
 // live on invisibly.
 async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
   const departing: string[] = [];

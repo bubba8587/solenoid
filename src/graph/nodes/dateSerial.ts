@@ -1,5 +1,5 @@
 // Nothing here may import a module that reaches rete — the formula path stays
-// headless (rules.md FX-2, enforced by formulaPathIsReteFree.test.ts). chrono-node and
+// headless (rules.md implReteFree, enforced by formulaPathIsReteFree.test.ts). chrono-node and
 // errorValue are both headless, so they're allowed.
 import * as chrono from "chrono-node";
 import { solError, isSolError, type SolError } from "../errorValue";

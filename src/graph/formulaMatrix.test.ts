@@ -9,7 +9,7 @@ import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
 import { isSolError, type SolError } from "./errorValue";
 
-// ─── D23 tranche 1: the matrix core, node-equals-formula (FX-1) ───────────────
+// ─── D23 tranche 1: the matrix core, node-equals-formula (shareImpl) ───────────────
 // Every matrix registration delegates to the same kernels the nodes run, so the
 // test that matters is equality against the NODE, not correctness in isolation —
 // the Tier 1/Tier 3 discipline at rank 2. Error CODES are part of the contract
@@ -80,7 +80,7 @@ describe("each matrix name computes what its node computes", () => {
   });
 });
 
-describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
+describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's point)", () => {
   it("MMULT is a matrix product, not the element-wise Hadamard the fallthrough gave", () => {
     // Pre-tranche this answered [[{},{}],[{},{}]] — Formula.js MMULT mapped
     // cell-wise. If this test ever sees a 2×2 of objects again, the meta lost
@@ -96,7 +96,7 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     expect(ev("TRANSPOSE(TRANSPOSE(m))", { m: M })).toEqual(M);
   });
 
-  it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math (FX-1)", () => {
+  it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math (shareImpl)", () => {
     // Pre-ownership these fell through to Formula.js element-wise, answering a
     // same-shape array of #VALUE! even on a 1-D list. Now both surfaces call
     // matrixShape: a list is a ROW here, so COLUMNS counts it and ROWS is 1; a
@@ -110,7 +110,7 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     expect(ev("COLUMNS(m) * ROWS(m)", { m: [[1, 2, 3], [4, 5, 6]] })).toBe(6);
   });
 
-  it("HSTACK / VSTACK / CHOOSECOLS / CHOOSEROWS / EXPAND compute what their nodes do (FX-1)", () => {
+  it("HSTACK / VSTACK / CHOOSECOLS / CHOOSEROWS / EXPAND compute what their nodes do (shareImpl)", () => {
     const a = [[1, 2], [3, 4]], b = [[5, 6], [7, 8]];
     expect(ev("HSTACK(a, b)", { a, b })).toEqual(new HStackTableNode().data({ t0: [a], t1: [b] }).result);
     expect(ev("VSTACK(a, b)", { a, b })).toEqual(new VStackNode().data({ t0: [a], t1: [b] }).result);
@@ -137,7 +137,7 @@ describe("ownership displaced the broadcast garbage (FX-9's point)", () => {
     }
   });
 
-  it("every tranche registration declares the FX-9 gate", () => {
+  it("every tranche registration declares the hideMatrixFromVendor gate", () => {
     for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
       expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
       expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
@@ -189,7 +189,7 @@ describe("D23 tranche 2 — the array-returning core, node-equals-formula", () =
   it("FILTER by mask — Excel's include-array form", () => {
     // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
     // with wired comparison values) — a different mechanism from Excel's computed
-    // boolean mask, so FX-1's node-equality doesn't apply term-for-term here; the
+    // boolean mask, so shareImpl's node-equality doesn't apply term-for-term here; the
     // shared ground is filterByMask (listOps), which this pins directly.
     const x = [1, 5, 2, 9];
     expect(ev("FILTER(x, x > 2)", { x })).toEqual([5, 9]);
@@ -216,10 +216,10 @@ describe("D23 tranche 2 — the array-returning core, node-equals-formula", () =
   });
 });
 
-// ─── INTERPOLATE grid mode: the last name D23 unblocked (FX-1) ────────────────
+// ─── INTERPOLATE grid mode: the last name D23 unblocked (shareImpl) ────────────────
 // The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
 // the arm is chosen by the first argument's RANK, not by a second registration
-// (FX-4 injectivity). Grid mode was parked behind the D2 cap; D23 lifted it.
+// (uniqueNameMap injectivity). Grid mode was parked behind the D2 cap; D23 lifted it.
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   const grid = [
     [null, 0,    10],

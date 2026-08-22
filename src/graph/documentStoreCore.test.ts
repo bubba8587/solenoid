@@ -184,7 +184,7 @@ describe("validateLibrary", () => {
   });
 });
 
-// ─── PERSIST-3 — transforms are structurally immutable ─────────────────────────
+// ─── immutableDocStore — transforms are structurally immutable ─────────────────────────
 // documentStore.persist() decides what to WRITE by object identity
 // (`_lastPersisted.get(id) === doc` skips the write), so a transform that
 // mutates a SolDoc in place still updates the screen but is silently NEVER
@@ -202,7 +202,7 @@ function deepFreeze<T>(o: T): T {
   return o;
 }
 
-describe("PERSIST-3 — every transform returns new objects, never mutates (identity is the persist signal)", () => {
+describe("immutableDocStore — every transform returns new objects, never mutates (identity is the persist signal)", () => {
   const frozenLib = (): DocLibrary =>
     deepFreeze(addDocument(addDocument(emptyLibrary(), doc("a", "A")), doc("b", "B")));
 
@@ -225,7 +225,7 @@ describe("PERSIST-3 — every transform returns new objects, never mutates (iden
     const fns = Object.entries(core).filter(([, v]) => typeof v === "function").map(([k]) => k);
     const covered = new Set([...calls.map(([n]) => n), "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary"]);
     const missing = fns.filter((f) => !covered.has(f));
-    expect(missing, `new documentStoreCore export(s) not covered by the PERSIST-3 freeze walk: ${missing.join(", ")}`).toEqual([]);
+    expect(missing, `new documentStoreCore export(s) not covered by the immutableDocStore freeze walk: ${missing.join(", ")}`).toEqual([]);
   });
 
   it("a changed doc is a NEW object; untouched docs keep identity", () => {

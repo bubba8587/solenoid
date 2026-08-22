@@ -52,7 +52,7 @@ function stripUnits(v: unknown): unknown {
 }
 
 /** The shared display id of a pure-currency input's cells — the currency's real unit
- *  identity (VAL-19) — or undefined when uncoded, mixed, or not currency. */
+ *  identity (noMixCurrencies) — or undefined when uncoded, mixed, or not currency. */
 function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
   const cells = Array.isArray(v) ? v.flat() : [v];
@@ -156,7 +156,7 @@ export class ExpressionNode extends ClassicPreset.Node {
     return { added, removed };
   }
 
-  /** Reconciles the result socket's RANK to the computed VALUE (SOCK-9). Value-driven,
+  /** Reconciles the result socket's RANK to the computed VALUE (anydataWildcard). Value-driven,
    *  so it must run OUTSIDE data() via a microtask; headless runs skip the swap. */
   private lastResultRank: 1 | 2 = 1;
   private reconcileResultRank(result: unknown): void {
@@ -214,7 +214,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
           dimEnv[v] = envDim(rawEnv[v]);
-          // The currency code rides along so the dim pass can refuse `$a + €b` (VAL-19).
+          // The currency code rides along so the dim pass can refuse `$a + €b` (noMixCurrencies).
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }

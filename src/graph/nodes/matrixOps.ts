@@ -1,7 +1,7 @@
 import { solError, type SolError } from "../errorValue";
 
 // ONE implementation per matrix op, called by both the nodes' `data()` and the formula
-// registrations (FX-1); RETE-FREE per FX-2, so the formula path never loads the editor.
+// registrations (shareImpl); RETE-FREE per implReteFree, so the formula path never loads the editor.
 
 export type NumMat = number[][];
 
@@ -116,7 +116,7 @@ export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols"
 
 // ── The append-ladder + selection + grow shape ops (D15). Shape CONSTRUCTION pads
 // #N/A (the exception is EXPAND's Fill, below). The nodes add unit tagging on top;
-// these are pure shape, so both surfaces share them (FX-1). ──
+// these are pure shape, so both surfaces share them (shareImpl). ──
 
 /** HSTACK: glue matrices left-to-right, padding shorter ones DOWN with #N/A. */
 export function stackH(mats: readonly unknown[][][]): unknown[][] {

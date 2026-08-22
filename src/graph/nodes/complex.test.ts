@@ -7,7 +7,7 @@ import { wrapNodeData } from "../coerceInputs";
 import { isSolError, solError } from "../errorValue";
 import { SolenoidSocket, canConnect } from "../sockets";
 
-// ─── The complex family: element-wise, and TAGGED (VAL-15) ────────────────────
+// ─── The complex family: element-wise, and TAGGED (tagSpecialScalars) ────────────────────
 // A complex is `{ __cx, re, im }`, never a bare `[re, im]` array — so
 // `Array.isArray` means "list" here like everywhere else, and the family's
 // broadcaster no longer needs the exact-shape sniff the old tuple forced. These
@@ -23,7 +23,7 @@ const dt = (
   return s instanceof SolenoidSocket ? s.dataType : undefined;
 };
 
-describe("the tagged representation (VAL-15)", () => {
+describe("the tagged representation (tagSpecialScalars)", () => {
   it("a complex is a tagged object, and isCx is the one test", () => {
     const z = cx(1, 2);
     expect(isCx(z)).toBe(true);
@@ -36,7 +36,7 @@ describe("the tagged representation (VAL-15)", () => {
     expect(isCx(null)).toBe(false);
   });
 
-  it("two equal complexes from different sources are distinct objects — membership goes through setKey (VAL-8)", () => {
+  it("two equal complexes from different sources are distinct objects — membership goes through setKey (keyByValue)", () => {
     expect(cx(1, 2)).not.toBe(cx(1, 2));
     expect(cx(1, 2)).toEqual(cx(1, 2));
   });

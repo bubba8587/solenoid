@@ -100,7 +100,7 @@ export class RankPercentileNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: RankPercentileOp): string[] {
     const keep = new Set(RANK_PERCENTILE_SPECS[RANK_PERCENTILE_FAMILY[next]].inputs.map((i) => i.key));
     return RANK_PERCENTILE_SPECS[this.family].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -742,7 +742,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: HypothesisTestOp): string[] {
     const keep = new Set(HYPOTHESIS_TEST_SPECS[next].inputs.map((i) => i.key));
     return HYPOTHESIS_TEST_SPECS[this.op].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -794,7 +794,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
         }
       }
     } else {
-      // ONE implementation with the formula surface (mathUtils.tTestP / fTestP — FX-1).
+      // ONE implementation with the formula surface (mathUtils.tTestP / fTestP — shareImpl).
       const b = inputs.b?.[0] ?? null;
       if (a && b) result = this.op === "f" ? fTestP(a, b) : tTestP(T_KERNEL_OP[this.op], a, b);
     }
@@ -1094,7 +1094,7 @@ export class ProbNode extends ClassicPreset.Node {
     const lo    = readInput(inputs.lo, this.literals.lo ?? 0);
     const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
     if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
-    // ONE implementation with the formula surface (mathUtils.probBetween — FX-1).
+    // ONE implementation with the formula surface (mathUtils.probBetween — shareImpl).
     const result = probBetween(range, probs, lo, hi);
     this.cachedResult = result;
     return { result };

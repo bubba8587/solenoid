@@ -155,7 +155,7 @@ function constNum(node: Ast): number | null {
   }
 }
 
-// Currency's IDENTITY is the display CODE (VAL-19), so dims can agree while values
+// Currency's IDENTITY is the display CODE (noMixCurrencies), so dims can agree while values
 // are incommensurable; the numeric evaluator can't see codes, so they ride here.
 export type CodeEnv = Record<string, string>;
 

@@ -158,7 +158,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "complexcombo":
     // `anycombo`/`anydata`: no element coercion and no rank widening — a scalar STAYS
     // a scalar (contrast `anylist` below, which widens one in); for `anydata` a matrix
-    // flows whole, the formula evaluator owning the rank semantics (FX-10).
+    // flows whole, the formula evaluator owning the rank semantics (oneBroadcast).
     case "anydata":
     case "anycombo":
       return collapseSingleton(v);

@@ -328,7 +328,7 @@ describe("the formula namespace stays unambiguous", () => {
     expect((bad as { code?: string }).code).toBe("#VALUE!");
   });
 
-  it("FX-4 full sweep — every operation-kind op name is unique across families and leaves", () => {
+  it("uniqueNameMap full sweep — every operation-kind op name is unique across families and leaves", () => {
     // The complete naming-side check (closes rules.md known-violation 3): every
     // OPERATION-kind op in NODE_OPS claims a formula name (`fx` ?? despaced
     // label). Those names must be injective — across families, and against the
@@ -373,6 +373,6 @@ describe("the formula namespace stays unambiguous", () => {
         }
       }
     }
-    expect(clashes, `Two different things claim one formula name (FX-4):\n  ${clashes.join("\n  ")}`).toEqual([]);
+    expect(clashes, `Two different things claim one formula name (uniqueNameMap):\n  ${clashes.join("\n  ")}`).toEqual([]);
   });
 });

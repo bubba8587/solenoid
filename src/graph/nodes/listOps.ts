@@ -219,7 +219,7 @@ export function xmatchIndex(
 }
 
 /** 1 / 0 rather than a logical, matching the node's numeric output socket. Membership keys
-*  by VALUE (setKey, VAL-8); blank and error cells are not members. */
+*  by VALUE (setKey, keyByValue); blank and error cells are not members. */
 export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
   return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
@@ -300,8 +300,8 @@ export function fibonacci(count: number): number[] {
 }
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// Membership is by VALUE (VAL-8), but JS Sets key OBJECTS by reference, so only a tagged
-// complex (VAL-15) canonicalizes to a string; primitives stay themselves.
+// Membership is by VALUE (keyByValue), but JS Sets key OBJECTS by reference, so only a tagged
+// complex (tagSpecialScalars) canonicalizes to a string; primitives stay themselves.
 export function setKey(v: unknown): unknown {
   return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }
@@ -510,7 +510,7 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
 
 // ─── D23 tranche 2: the array-returning core ──────────────────────────────────
 
-/** UNIQUE: first-seen dedupe by VALUE (setKey, VAL-8); every ERROR cell survives, so the
+/** UNIQUE: first-seen dedupe by VALUE (setKey, keyByValue); every ERROR cell survives, so the
  *  count of errors to fix is deterministic. */
 export function uniqueList(arr: readonly unknown[]): unknown[] {
   const seen = new Set<unknown>();

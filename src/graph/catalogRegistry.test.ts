@@ -43,7 +43,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(dead).toEqual([]);
   });
 
-  // PERSIST-6, the uniqueness half. The save format stores
+  // classNameIsType, the uniqueness half. The save format stores
   // `type: n.constructor.name` and the ctor registry maps name → class
   // FIRST-WINS (nodeCtorRegistry) — so two classes sharing a name means every
   // saved instance of the loser reconstructs as the WRONG class: the init
@@ -51,7 +51,7 @@ describe("catalog ↔ registry consistency", () => {
   // still fit re-attach, and the graph opens looking mostly right while
   // computing something else. No placeholder fires — that path needs an ABSENT
   // type, and a collision is indistinguishable from a hit.
-  it("no two catalog classes share a constructor name (PERSIST-6)", () => {
+  it("no two catalog classes share a constructor name (classNameIsType)", () => {
     const byName = new Map<string, Set<unknown>>();
     for (const entry of FLAT_CATALOG.values()) {
       let inst: object;
@@ -64,13 +64,13 @@ describe("catalog ↔ registry consistency", () => {
     expect(collisions, `class-name collisions — saves of the losing class reload as the winner: ${collisions.join(", ")}`).toEqual([]);
   });
 
-  // EFFECT-1's persistence half: an external-effect arm flag must never
+  // sinkRunButtonOnly's persistence half: an external-effect arm flag must never
   // round-trip — every load (save reopen, paste, placeholder restore) starts
   // disarmed, so opening a shared file can never write to YOUR disk. The two
   // sink families pin this per-class (sink.test.ts / obsidian.test.ts); this is
   // the catalog-wide quantifier, so a FUTURE sink whose author whitelists the
   // flag (or names it `enabled` on a new node) fails here by name.
-  it("no catalog class persists an `enabled` arm flag, and none constructs armed (EFFECT-1)", () => {
+  it("no catalog class persists an `enabled` arm flag, and none constructs armed (sinkRunButtonOnly)", () => {
     const offenders: string[] = [];
     for (const entry of FLAT_CATALOG.values()) {
       let inst: Record<string, unknown> & object;
@@ -82,14 +82,14 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, offenders.join("\n  ")).toEqual([]);
   });
 
-  // SOCK-10: an adopting port OWNS its socket instance — the class doc says it
+  // portOwnsSocket: an adopting port OWNS its socket instance — the class doc says it
   // outright ("One instance per port, never shared — a retype must not leak
   // across cards"). A module-level shared MutableSocket means wiring a date into
   // one card retypes ANOTHER card's port; that card then coerces under the wrong
   // type and answers a plausible number (the Input Switch's old shared
   // valueSocket). Two instances of every class: no MutableSocket may appear in
   // both.
-  it("no two instances of a class share a mutable socket (SOCK-10)", () => {
+  it("no two instances of a class share a mutable socket (portOwnsSocket)", () => {
     const offenders: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
       let a: object, b: object;
@@ -104,7 +104,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, `classes sharing a MutableSocket across instances — adoption leaks between cards:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
 
-  // SOCK-11: a class with a `trueany` OUTPUT either declares passthrough() (so
+  // trueanyNeedsPassthrough: a class with a `trueany` OUTPUT either declares passthrough() (so
   // the four derived-type consumers — adoption, unit flow, the display walk,
   // coerceInputs' keep-tags boundary — can resolve it) or is sanctioned with the
   // reason its type resolves another way. An undeclared forwarder's output stays
@@ -119,7 +119,7 @@ describe("catalog ↔ registry consistency", () => {
     CompositeInputNode: "a composite boundary marker — typed by the composite's sync pass",
     XLookupNode: "a genuinely unknowable producer — the result type depends on the looked-up data",
   };
-  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) (SOCK-11)", () => {
+  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) (trueanyNeedsPassthrough)", () => {
     const offenders: string[] = [];
     const sanctionedSeen = new Set<string>();
     for (const [type, entry] of FLAT_CATALOG.entries()) {
@@ -134,7 +134,7 @@ describe("catalog ↔ registry consistency", () => {
     }
     expect(
       offenders,
-      `trueany outputs with no passthrough() declaration (SOCK-11) — the port stays ` +
+      `trueany outputs with no passthrough() declaration (trueanyNeedsPassthrough) — the port stays ` +
       `untyped forever and downstream FCs silently format wrong. Declare the spec, or ` +
       `add the class to TRUEANY_OUT_SANCTIONED with the reason:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -144,7 +144,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(stale, `sanctioned classes that no longer have an undeclared trueany output — drop:\n  ${stale.join("\n  ")}`).toEqual([]);
   });
 
-  // VAL-14, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is
+  // literalsIffEditable, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is
   // the class's statement that its card edits those values inline, and the
   // persistence load gate trusts it: a save's maps are restored onto any
   // declaring class. A class that declares a map its card never edits therefore
@@ -157,7 +157,7 @@ describe("catalog ↔ registry consistency", () => {
   // (`data.literals[...]` / `data.stringLiterals[...]` — the bespoke draw-your-
   // data and toggle cards). Crude, but exactly as crude as the failure mode: an
   // editing surface is a reference to the map or the editor by name.
-  it("no class declares a literal map its component never edits (VAL-14 only-if)", () => {
+  it("no class declares a literal map its component never edits (literalsIffEditable only-if)", () => {
     const offenders: string[] = [];
     const seen = new Set<unknown>();
     for (const entry of FLAT_CATALOG.values()) {
@@ -177,7 +177,7 @@ describe("catalog ↔ registry consistency", () => {
     }
     expect(
       offenders,
-      `These classes declare a literal map their component never edits (VAL-14): ` +
+      `These classes declare a literal map their component never edits (literalsIffEditable): ` +
       `the load gate will restore saved values onto them that the card cannot show. ` +
       `Drop the declaration, or give the card an editing surface:\n  ` +
       offenders.join("\n  "),

@@ -49,11 +49,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
   });
 
-  it("adoption never PERSISTS: a save/paste init carries no adopted type (SOCK-5)", () => {
+  it("adoption never PERSISTS: a save/paste init carries no adopted type (adoptKeepsCables)", () => {
     // The save records a node's init fields (extractInit — persistence and paste
     // share it), never its sockets, so an adopted type must not appear there and
     // a reconstructed node must start hollow. This is the "never persists" half
-    // of SOCK-5, previously unpinned: if Display ever grows a whitelisted field
+    // of adoptKeepsCables, previously unpinned: if Display ever grows a whitelisted field
     // holding the adopted type, this fails.
     const src = numSource();
     const disp = new DisplayNode();

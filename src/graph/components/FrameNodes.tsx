@@ -408,7 +408,7 @@ export function DropColumnsComponent({ data, emit }: NodeProps<DropColumnsNodeTy
 
 // ─── GROUP BY / PIVOT (shared aggregate-op selector) ─────────────────────────
 
-// Derived from AGG_OP_META (SSOT-1); `pivotOnly` ops stay off these cards because only
+// Derived from AGG_OP_META (declareOnce); `pivotOnly` ops stay off these cards because only
 // the pivot assembly can run them.
 export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] =
   (Object.keys(AGG_OP_META) as AggOp[])

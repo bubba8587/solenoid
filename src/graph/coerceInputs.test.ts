@@ -141,7 +141,7 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
   // Regression: a scalar into Expression's variable input was widened to `[scalar]`
   // (the `anylist` Set/position rule above), so `a+b` of two scalars broadcast to a
   // 1-element LIST. That was patched with a `noWidenInputs` side-channel until
-  // 2026-07-25; the variables now declare `anydata` (SOCK-9, since D23) — the
+  // 2026-07-25; the variables now declare `anydata` (anydataWildcard, since D23) — the
   // rank-≤2 wildcard — so the SOCKET says "scalar, list or matrix" and the
   // coercion follows from the type.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
@@ -219,7 +219,7 @@ describe("coerceInputs — a one-element list collapses at a combo / scalar sock
   });
 
   // A complex value is ITSELF a `[re, im]` array, so the collapse tests the OUTER
-  // A tagged complex (VAL-15) is not an array, so the singleton collapse treats it
+  // A tagged complex (tagSpecialScalars) is not an array, so the singleton collapse treats it
   // like any other scalar — no outer-length special case left to protect.
   it("does NOT tear a complex scalar apart", () => {
     expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [cx(1, 2)] })).toEqual(cx(1, -2));      // one complex

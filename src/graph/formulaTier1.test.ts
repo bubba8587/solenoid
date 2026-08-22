@@ -181,7 +181,7 @@ describe("FORECAST.LINEAR", () => {
   });
 });
 
-describe("the D10 gate covers the WHOLE blocklist, on every surface (FX-7)", () => {
+describe("the D10 gate covers the WHOLE blocklist, on every surface (blockedFailFast)", () => {
   it("every blocked spelling answers #NAME? naming its replacement", () => {
     for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
       const r = ev(`${name}(1)`);

@@ -63,7 +63,7 @@ dimensionality flows up. On top of that, derived types re-resolve after every
 wiring/config change: `settleWildcardTypes` alternates TWO systems — trueany
 adoption (a hollow-ring port adopts the wired type) and Conduit lane tracing —
 to a joint fixpoint, and FC adaptation then runs ONCE downstream against the
-settled result (SOCK-13: consumers run only after the settle). Derived types are never
+settled result (waitForTypeSettle: consumers run only after the settle). Derived types are never
 persisted — they re-derive on load. A node that retypes a socket IN PLACE
 (Cast target, read-as, Note frontmatter) must call
 `reconcileFcTypes`/`retypeOutputCables` because no connection event fires.
@@ -99,7 +99,7 @@ are random and REGENERATED on load — never persist or compare ids across loads
 The text form (`textForm.ts`, one node per line, name-addressed, topological
 order, byte-stable writes) is the canonical projection; the JSON save derives
 from it. Load (`rebuildGraph`) constructs, remaps ids, restores state, then runs
-the ORDERED tail: hydrate → settle wildcard types → dock FCs (SOCK-13). The
+the ORDERED tail: hydrate → settle wildcard types → dock FCs (waitForTypeSettle). The
 strict validator (`graphValidate.ts`) is a separate gate used by the AI palette
 and CLI — the interactive loader stays permissive (unknown type → Placeholder,
 lossless).

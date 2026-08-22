@@ -177,7 +177,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new SetOpNode({ op: op as never }) },
   { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: SET_RELATION_OPS,
     create: (op) => new SetRelationNode({ op: op as never }) },
-  // The meta labels are dropdown prose, so search names are declared here (SSOT-2).
+  // The meta labels are dropdown prose, so search names are declared here (overrideInPlace).
   { type: "iferror", ctor: IFErrorNode, kind: "operation",
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }) },
@@ -260,7 +260,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
-  // labels are family words, so the search names are declared here (SSOT-2).
+  // labels are family words, so the search names are declared here (overrideInPlace).
   { type: "stat-percentile", ctor: RankPercentileNode, kind: "operation",
     ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,

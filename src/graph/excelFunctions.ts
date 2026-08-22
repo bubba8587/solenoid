@@ -81,7 +81,7 @@ export const FAMILY_BACKING: Record<FuncFamily, { backing: Backing; why: string 
   "text":              { backing: "formulajs", why: "Excel parity IS the spec here; least reason to hand-roll." },
   "datetime":          { backing: "internal",  why: "Single serial model + UTC/timezone care differs from Excel's Date/1900 conventions." },
   "lookup":            { backing: "internal",  why: "XLOOKUP/XMATCH already richer than Formula.js; CONVERT is unit-aware (the flagship)." },
-  "complex":           { backing: "internal",  why: "Tagged Cx (VAL-15) is the family currency; Formula.js IM* speak text complexes only — owned over Cx, accepting Excel's text form on the way in." },
+  "complex":           { backing: "internal",  why: "Tagged Cx (tagSpecialScalars) is the family currency; Formula.js IM* speak text complexes only — owned over Cx, accepting Excel's text form on the way in." },
   "matrix":            { backing: "internal",  why: "Shape / Frame semantics are Solenoid's own." },
   "units":             { backing: "internal",  why: "The flagship — Formula.js has no unit system; nothing to consolidate." },
 };
@@ -176,12 +176,12 @@ export function registryGeneration(): number {
   return registryGen;
 }
 
-/** UPPERCASE-keyed. A DUPLICATE registration throws (FX-4's registry half); a REVOCABLE
+/** UPPERCASE-keyed. A DUPLICATE registration throws (uniqueNameMap's registry half); a REVOCABLE
  *  name (one that went through unregisterInternal) may return, a live one may not. */
 export function registerInternal(name: string, fn: (...a: unknown[]) => unknown): void {
   const key = name.toUpperCase();
   if (INTERNAL_IMPLS.has(key)) {
-    throw new Error(`Duplicate formula registration: ${key} — two impls claim one name (FX-4)`);
+    throw new Error(`Duplicate formula registration: ${key} — two impls claim one name (uniqueNameMap)`);
   }
   INTERNAL_IMPLS.set(key, fn);
   registryGen++;
@@ -338,7 +338,7 @@ export function internalFunctionNames(): string[] {
  *  future result-type inference, not yet wired to the result socket. */
 // "any" = type-neutral: the function returns whichever type its arguments carry
 // (XLOOKUP/IF/INDEX pass values through) — a forced concrete type here would lie.
-// "complex" = a tagged Cx (VAL-15) — the IM* family's currency.
+// "complex" = a tagged Cx (tagSpecialScalars) — the IM* family's currency.
 export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
@@ -563,7 +563,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   INTERPOLATE:     { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 3], family: "statistics", native: true },
   SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 
-  // Matrix core: `matrixArgs` is FX-9's gate; `listArgs` routes the rank-≤1 case
+  // Matrix core: `matrixArgs` is hideMatrixFromVendor's gate; `listArgs` routes the rank-≤1 case
   // whole too (TRANSPOSE of a list is a column, not an element-wise map).
   TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
@@ -571,7 +571,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   // COLUMNS/ROWS answer a shape COUNT (scalar), so they take their arg whole (matrix or
-  // list) rather than broadcasting; a list is a ROW here (SOCK-2), so COLUMNS counts it.
+  // list) rather than broadcasting; a list is a ROW here (widenNeverNarrow), so COLUMNS counts it.
   COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   ROWS:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   // The append-ladder rungs + grid selection/grow, sharing their nodes' kernels. All
@@ -617,7 +617,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOR:         { returns: "logical", arity: [1, 255], native: true },
   XNOR:        { returns: "logical", arity: [1, 255], native: true },
 
-  // The IM* family over tagged Cx (VAL-15): arguments accept a Cx, a real number,
+  // The IM* family over tagged Cx (tagSpecialScalars): arguments accept a Cx, a real number,
   // or Excel's "a+bi" text; results are tagged Cx, not Excel's text complexes.
   // `cxArgs` is the containment gate. COMPLEX and QUADRATICROOTS take REAL
   // arguments, deliberately no cxArgs.
@@ -1305,7 +1305,7 @@ registerInternal("COUNTDISTINCT", (list) => {
   return seen.size;
 });
 
-// INTERPOLATE covers BOTH of the node's modes under ONE name (FX-4 injectivity),
+// INTERPOLATE covers BOTH of the node's modes under ONE name (uniqueNameMap injectivity),
 // dispatched on the first argument's RANK:
 //   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)  — 3 args, rank ≤ 1.
 //   Grid mode:  INTERPOLATE(bordered_table [, forecast]) — a MATRIX first arg.
@@ -1367,11 +1367,11 @@ registerInternal("SHUFFLE", (list) => {
   return shuffleList(arr, arr.map(() => Math.random()));
 });
 
-// Every registration below MUST declare `matrixArgs` (FX-9). Shape CONSTRUCTION pads
+// Every registration below MUST declare `matrixArgs` (hideMatrixFromVendor). Shape CONSTRUCTION pads
 // #N/A per D15 — the element-wise broadcaster's null pad (P3) never applies here.
 
 /** A formula argument as a MATRIX: a matrix stays itself, a list is a ROW
- *  (SOCK-2's orientation convention), a scalar is 1×1, null stays null. */
+ *  (widenNeverNarrow's orientation convention), a scalar is 1×1, null stays null. */
 function toMatrix(v: unknown): unknown[][] | null {
   if (v == null) return null;
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
@@ -1379,14 +1379,14 @@ function toMatrix(v: unknown): unknown[][] | null {
 }
 const numMatrix = (v: unknown): NumMat | SolError | null => {
   const m = toMatrix(v);
-  return m === null ? null : asNumericMatrix(m); // a wired blank stays unknown (VAL-1)
+  return m === null ? null : asNumericMatrix(m); // a wired blank stays unknown (unwiredNotBlank)
 };
 
 registerInternal("TRANSPOSE", (v) => {
   const m = toMatrix(v);
   return m === null ? null : matTranspose(m);
 });
-// COLUMNS/ROWS share the TableInfo node's shape math (matrixShape, FX-1): a list is a
+// COLUMNS/ROWS share the TableInfo node's shape math (matrixShape, shareImpl): a list is a
 // ROW so COLUMNS counts it and ROWS is 1, a scalar is 1×1, a wired blank stays unknown.
 registerInternal("COLUMNS", (v) => matrixShape(v).cols);
 registerInternal("ROWS", (v) => matrixShape(v).rows);
@@ -1412,7 +1412,7 @@ registerInternal("CHOOSEROWS", (matrix, ...rows) => {
 });
 registerInternal("EXPAND", (matrix, rows, cols, fill) => {
   const m = toMatrix(matrix);
-  if (m === null || rows === null || cols === null) return null; // a wired-blank axis is unknown (VAL-1)
+  if (m === null || rows === null || cols === null) return null; // a wired-blank axis is unknown (unwiredNotBlank)
   return expandMat(m, Math.round(Number(rows ?? 0)), Math.round(Number(cols ?? 0)), fill ?? null);
 });
 registerInternal("MMULT", (a, b) => {
@@ -1442,7 +1442,7 @@ const wrapPad = (padWith: unknown, what: string) => () =>
     ? padWith
     : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
 registerInternal("WRAPROWS", (list, w, padWith) => {
-  if (list == null || w == null) return null; // a wired blank stays unknown (VAL-1; the node answers blank too)
+  if (list == null || w == null) return null; // a wired blank stays unknown (unwiredNotBlank; the node answers blank too)
   const width = Math.round(Number(w));
   if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPROWS needs a wrap count of 1 or more");
   return wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
@@ -1559,7 +1559,7 @@ const needLambda = (v: unknown, host: string): LambdaValue | SolError =>
  *  MEANINGFUL arity only — never the trailing row/col indices. */
 const etaFn = (lam: LambdaValue, meaningful: number): ((...args: unknown[]) => unknown) =>
   lam.eta ? (...args: unknown[]) => lam.fn(...args.slice(0, meaningful)) : lam.fn;
-/** Rank-preserving cell walk: a list is one ROW (SOCK-2's convention). */
+/** Rank-preserving cell walk: a list is one ROW (widenNeverNarrow's convention). */
 const asRows = (v: unknown): unknown[][] | null => {
   if (v == null) return null;
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];

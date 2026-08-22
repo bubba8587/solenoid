@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 
 // ─── D23: the broadcast-rules table, transcribed ──────────────────────────────
-// v2.0/17-matrix-formulas.md Part 2, row by row. The table IS this test (SSOT-6):
+// v2.0/17-matrix-formulas.md Part 2, row by row. The table IS this test (oneMetricImpl):
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls
 // (D15) and never route through the broadcaster.
 //
-// Rank grammar (post-VAL-15): no scalar is an array, so Array.isArray at two
+// Rank grammar (post-tagSpecialScalars): no scalar is an array, so Array.isArray at two
 // depths is the complete test — a matrix is an array of ROW arrays.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -72,7 +72,7 @@ describe("the eleven rows", () => {
 });
 
 describe("the per-cell value model rides through rank 2 unchanged", () => {
-  it("a cell error propagates in place (VAL-6)", () => {
+  it("a cell error propagates in place (errorBeatsMissing)", () => {
     const err = { __solError: true, code: "#DIV/0!", message: "x" };
     const out = ev("x + 1", { x: [[1, err], [3, 4]] }) as unknown[][];
     expect(out[0][0]).toBe(2);
@@ -80,7 +80,7 @@ describe("the per-cell value model rides through rank 2 unchanged", () => {
     expect(out[1]).toEqual([4, 5]);
   });
 
-  it("a cell null propagates as null, not 0 (VAL-5)", () => {
+  it("a cell null propagates as null, not 0 (nullSkippedNotZero)", () => {
     expect(ev("x + 1", { x: [[1, null], [3, 4]] })).toEqual([[2, null], [4, 5]]);
   });
 

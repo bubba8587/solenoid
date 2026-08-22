@@ -180,7 +180,7 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `parseDate` (chrono-backed) already CAN read "next friday"/"today"/"in 3 days" — currently
   BLOCKED (the `RELATIVE` regex → NaN) so every date value stays a fixed calendar day.
   Turning it on is feature-shaped: a Setting to allow relative parsing; the resolution is
-  VOLATILE (depends on "now"), so it must re-evaluate on recalc via `getRecalcGen` (VAL-17)
+  VOLATILE (depends on "now"), so it must re-evaluate on recalc via `getRecalcGen` (freezeVolatilePerCalc)
   like TODAY/RandBetween; and the author wants the Alerts (or Problems) panel to flag when a
   relative date's resolved value SHIFTS between calculations. Date Input needs a UI affordance
   showing a value is relative. Keep DATEVALUE deterministic regardless (Excel purity) or gate
@@ -233,7 +233,7 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   is a loud `#VALUE!`. The real fix is DEEP and belongs to the engine, not the
   lookups: `broadcastCall` is all-or-nothing per FUNCTION (`RANGE_FUNCTIONS.has`),
   so "spill this argument, take that one whole" is not expressible — a
-  per-ARGUMENT prep declaration is an FX-5/FX-6 design item serving a whole class.
+  per-ARGUMENT prep declaration is an wholeArrayArgs/prepByShape design item serving a whole class.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment
@@ -328,8 +328,8 @@ is blocked here for out-of-scope repos).
   authorize as permanent; the rule index + marking procedure are in place.
 - [ ] **Spec-promotion remainder** — read-as is coercion-not-assertion
   (`applyGetColumnReadAs` pins it); promote if config-driven coercions grow.
-- [ ] **Enforcement tail (low value)** — SOCK-8 partial (un-greppable visual half),
-  SOCK-6 unenforced (recorded un-greppable).
+- [ ] **Enforcement tail (low value)** — socketBox12 partial (un-greppable visual half),
+  oneResolvePredicate unenforced (recorded un-greppable).
 
 ## Release tail (author-run)
 

@@ -195,7 +195,7 @@ export class SeriesNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: SeriesOp): string[] {
     const keep = new Set(SERIES_SPECS[next].map((i) => i.key));
     return SERIES_SPECS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -360,8 +360,8 @@ export class ListIndexNode extends ClassicPreset.Node {
 type IndexResult = number | SolError | null | CubeCell | FrameValue | CubeValue;
 
 /** INDEX over a frame or cube. Only the NODE can reach this — a formula holds
- *  neither (FX-9) — so it rides here rather than in the shared accessor, which the
- *  formula path loads and must keep clear of the socket lattice (FX-2). */
+ *  neither (hideMatrixFromVendor) — so it rides here rather than in the shared accessor, which the
+ *  formula path loads and must keep clear of the socket lattice (implReteFree). */
 function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexResult {
   if (v === null || v === undefined) return null;
   if (!isFrameValue(v) && !isCubeValue(v)) {

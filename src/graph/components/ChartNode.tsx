@@ -29,7 +29,7 @@ async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> 
   await processGraph();
 }
 
-// Derived from CHART_OP_META so the dropdown can't drift from the Add-menu rows (SSOT-1).
+// Derived from CHART_OP_META so the dropdown can't drift from the Add-menu rows (declareOnce).
 const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = (Object.keys(CHART_OP_META) as ChartOp[])
   .map((value) => ({ value, label: CHART_OP_META[value].label, group: CHART_OP_META[value].group }));
 
