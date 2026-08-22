@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useKatexRender } from "./katexLoader";
-import { formulaToLatex } from "../excelFormula";
-import { useFormulaFit } from "./formulaFit";
+import { highlightFormula } from "../formulaSyntax";
 import "./ExpressionNode.css";
 import { stopDragStart } from "../coarse";
 
@@ -35,17 +33,10 @@ export function FormulaField({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const renderRef = useRef<HTMLDivElement>(null);
 
-  const render = useKatexRender();
-  const katexHtml = useMemo(() => {
-    if (!render) return null;
-    const latex = formulaToLatex(value);
-    if (latex == null) return null;
-    try {
-      return render(latex, { throwOnError: false, displayMode: false });
-    } catch {
-      return null;
-    }
-  }, [value, render]);
+  // The in-node preview is SYNTAX-HIGHLIGHTED text, not typeset math: it matches
+  // Excel's formula bar (and the edit textarea), stays width-stable in a small card,
+  // and makes the idle→edit swap seamless. The typeset KaTeX view lives in the popup.
+  const highlightHtml = useMemo(() => (value.trim() ? highlightFormula(value) : null), [value]);
 
   // Auto-grow the textarea to its content, capped at ~3 lines.
   useEffect(() => {
@@ -62,8 +53,6 @@ export function FormulaField({
   useEffect(() => {
     if (!editable && editing) setEditing(false);
   }, [editable, editing]);
-
-  useFormulaFit(renderRef, [katexHtml, value, editing, disabled], { useHeight: true, max: 1.9 });
 
   return (
     <div
@@ -97,10 +86,8 @@ export function FormulaField({
             onClick={onOpen ? () => onOpen() : editable ? () => setEditing(true) : undefined}
             style={onOpen ? { cursor: "pointer" } : locked ? { cursor: "default" } : undefined}
           >
-            {katexHtml != null ? (
-              <span dangerouslySetInnerHTML={{ __html: katexHtml }} />
-            ) : value.trim() ? (
-              <span className="solenoid-expr__raw">{value}</span>
+            {highlightHtml != null ? (
+              <span className="fx-tokens solenoid-expr__raw" dangerouslySetInnerHTML={{ __html: highlightHtml }} />
             ) : (
               <span className="solenoid-expr__placeholder">{placeholder}</span>
             )}
