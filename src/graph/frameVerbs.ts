@@ -11,6 +11,7 @@ import { isSolError, solError } from "./errorValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
+import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 /** Group-aggregation ops (the GroupBy / PivotBy core). count = non-null cells
@@ -1190,16 +1191,25 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue {
  *  "apple"); logical → 0/1 identity (so "1"/"true" both match
  *  TRUE); date → the lookup parsed as a serial (digits) or an ISO date;
  *  number → numeric. */
-function keyMatches(cell: FrameCell, lookup: string, type: FrameColType): boolean {
-  if (type === "string") return String(cell).toLowerCase() === lookup.toLowerCase();
-  if (type === "logical") return (cell ? 1 : 0) === (coerceLogical(lookup) ? 1 : 0);
+// The node's lookup arrives as a STRING (its lookup socket is string-typed — the
+// Expression-node socket guard is what keeps frames off the formula surface, not a
+// separate impl). Parse it into a needle typed by the key column, then hand the actual
+// MATCH to the shared `xmatchIndex` — the SAME kernel the XMATCH/XLOOKUP formulas use,
+// so the node and formula surfaces cannot drift. This parse is the node's only extra
+// step; the formula's caller already holds a typed value.
+function lookupNeedle(lookup: string, type: FrameColType): FrameCell {
+  if (type === "logical") return !!coerceLogical(lookup);
   if (type === "date") {
     const t = lookup.trim();
-    const serial = /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t);
-    return Number(cell) === serial;
+    return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t);
   }
-  return Number(cell) === Number(lookup); // number
+  if (type === "number") return Number(lookup);
+  return lookup; // string — lookupEq folds case
 }
+
+const NODE_TO_XMATCH_MODE: Record<LookupMatchMode, XMatchMatchMode> = {
+  exact: "exact", nextSmaller: "next_smaller", nextLarger: "next_larger",
+};
 
 /** XLOOKUP's `match_mode`: "exact" (default) requires an equal cell; "nextSmaller"/
  *  "nextLarger" fall back to the closest ≤/≥ row ONLY when no exact match exists
@@ -1214,7 +1224,7 @@ export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
 export type LookupSearchMode = "first" | "last";
 
 /** XLOOKUP over a Frame: the FIRST row whose `lookupColumn` cell equals `lookup`
- *  (type-aware via keyMatches), returning that row's `returnColumn` cell.
+ *  (type-aware via lookupNeedle + the shared xmatchIndex), returning that row's `returnColumn` cell.
  *  `undefined` when no row matches (the node turns that into If-not-found / #N/A);
  *  a missing column is a #REF! (thrown, surfaced by the caller's guard). A `null`
  *  or error key cell never matches — same rule as a join key. `matchMode` (default
@@ -1238,41 +1248,14 @@ export function lookupFrameRowIndex(
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): number {
   const key = requireColumn(f, lookupColumn);
-  const n = frameRowCount(f);
-  if (matchMode === "exact") {
-    if (searchMode === "last") {
-      for (let i = n - 1; i >= 0; i--) {
-        const cell = cellAt(key, i);
-        if (cell === null || isSolError(cell)) continue;
-        if (keyMatches(cell, lookup, key.type)) return i;
-      }
-    } else {
-      for (let i = 0; i < n; i++) {
-        const cell = cellAt(key, i);
-        if (cell === null || isSolError(cell)) continue;
-        if (keyMatches(cell, lookup, key.type)) return i;
-      }
-    }
-    return -1;
-  }
-  if (!isOrderableKey(key.type)) {
+  if (matchMode !== "exact" && !isOrderableKey(key.type)) {
     throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
   }
-  const t = lookup.trim();
-  const target = key.type === "date"
-    ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
-    : Number(t);
-  if (!Number.isFinite(target)) return -1;
-  let bestIdx = -1, bestKey = NaN;
-  for (let i = 0; i < n; i++) {
-    const cell = cellAt(key, i);
-    if (cell === null || isSolError(cell)) continue;
-    const k = Number(cell);
-    if (k === target) return i; // exact match always wins, first-seen
-    if (matchMode === "nextSmaller" && k < target && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
-    if (matchMode === "nextLarger" && k > target && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
-  }
-  return bestIdx;
+  const needle = lookupNeedle(lookup, key.type);
+  // An unparseable approximate needle can't order against numeric keys — a miss, not a throw.
+  if (matchMode !== "exact" && !(typeof needle === "number" && Number.isFinite(needle))) return -1;
+  const idx = xmatchIndex(needle, key.values, NODE_TO_XMATCH_MODE[matchMode], searchMode);
+  return isSolError(idx) ? -1 : idx; // dead-safe: the guards above bar the only error path
 }
 
 /** A cube's top-level column by name, or a #REF! (thrown; the caller's guard
@@ -1323,50 +1306,19 @@ export function lookupCubeRowIndex(
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): number {
   const key = requireCubeColumn(c, lookupColumn);
-  const n = cubeRowCount(c);
   // Prefer the column's CARRIED type so a date-keyed cube column matches an ISO-date
   // lookup; fall back to inference only for a hand-built (untyped) cube.
   const keyType = key.type ?? inferCubeKeyType(key);
-  // A key cell usable for matching: a flat scalar only (a nested frame/cube/list is
-  // never a key). Returns undefined for a non-key cell (null/error/container).
-  const scalarAt = (i: number): FrameCell | undefined => {
-    const cell = i < key.cells.length ? key.cells[i] : null;
-    if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return cell;
-    return undefined;
-  };
-  if (matchMode === "exact") {
-    if (searchMode === "last") {
-      for (let i = n - 1; i >= 0; i--) {
-        const cell = scalarAt(i);
-        if (cell === undefined) continue;
-        if (keyMatches(cell, lookup, keyType)) return i;
-      }
-    } else {
-      for (let i = 0; i < n; i++) {
-        const cell = scalarAt(i);
-        if (cell === undefined) continue;
-        if (keyMatches(cell, lookup, keyType)) return i;
-      }
-    }
-    return -1;
-  }
-  if (keyType !== "number" && keyType !== "date") {
+  if (matchMode !== "exact" && keyType !== "number" && keyType !== "date") {
     throw solError("#VALUE!", "Approximate lookup requires a numeric or date key column");
   }
-  const t = lookup.trim();
-  const target = keyType === "date"
-    ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
-    : Number(t);
-  if (!Number.isFinite(target)) return -1;
-  let bestIdx = -1, bestKey = NaN;
-  for (let i = 0; i < n; i++) {
-    const cell = scalarAt(i);
-    if (typeof cell !== "number") continue;
-    if (cell === target) return i; // an exact match always wins first
-    if (matchMode === "nextSmaller" && cell < target && (bestIdx === -1 || cell > bestKey)) { bestIdx = i; bestKey = cell; }
-    if (matchMode === "nextLarger" && cell > target && (bestIdx === -1 || cell < bestKey)) { bestIdx = i; bestKey = cell; }
-  }
-  return bestIdx;
+  const needle = lookupNeedle(lookup, keyType);
+  if (matchMode !== "exact" && !(typeof needle === "number" && Number.isFinite(needle))) return -1;
+  // Same shared kernel as the frame path; a nested frame/cube/list key cell is never
+  // `===` a scalar and never numeric, so xmatchIndex excludes it as a key on its own.
+  const keys = key.cells.slice(0, cubeRowCount(c));
+  const idx = xmatchIndex(needle, keys, NODE_TO_XMATCH_MODE[matchMode], searchMode);
+  return isSolError(idx) ? -1 : idx;
 }
 
 /** XLOOKUP's whole-row return (`Return = *`): the matched row as a single-row Frame

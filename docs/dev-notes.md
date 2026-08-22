@@ -102,13 +102,25 @@ per-argument spill, not to these two). **The XMATCH NODE was swapped to match** 
 INDEX/`ListIndexNode` is the precedent for a runtime-rank output. Pinned in `excelFunctions.test.ts`
 "SPILLS" and `errorValue.test.ts` "XMATCH node SPILLS". **The XLOOKUP NODE spills too** (author
 asked to carry it across): `lookup` socket `string`→`strcombo`, and `data()` maps `matchOne` over a
-list of lookup values — one matched cell each, `#N/A`/if-not-found per element. Its frame kernel
-(`lookupFrameCell`) and frame+column-names shape stay (the "Build Frame first" decision); only the
-lookup-value axis gained rank. Pinned in `errorValue.test.ts` "XLOOKUP node SPILLS". Surface nuance
-(app-wide combo convention, not a lookup drift): a SINGLETON lookup list collapses to a scalar on a
-node (`collapseSingleton`) while the formula keeps a 1-element array. Node descriptions updated.
+list of lookup values — one matched cell each, `#N/A`/if-not-found per element. Its frame+column-names
+shape stays (the "Build Frame first" decision); only the lookup-value axis gained rank. Pinned in
+`errorValue.test.ts` "XLOOKUP node SPILLS". Surface nuance (app-wide combo convention, not a lookup
+drift): a SINGLETON lookup list collapses to a scalar on a node (`collapseSingleton`) while the
+formula keeps a 1-element array. Node descriptions updated.
+
+**Then the matching KERNEL was unified (author: node and formula must not diverge; the socket guard
+is the only sanctioned boundary).** My earlier "different kernel by design" was wrong — the node's
+`lookupFrameRowIndex`/`lookupCubeRowIndex` were re-implementing the exact/approximate + first/last
+scan a THIRD and FOURTH time alongside the formula's `xmatchIndex`. Now both delegate: they parse the
+lookup STRING into a typed needle (`lookupNeedle`, the node's only extra step — its lookup socket is
+string-typed, which is why the value arrives as text) and hand the match to `xmatchIndex`. Behavior-
+preserving for well-typed columns (the full lookup corpus + `frameLookup`/`frameVerbCorpus` stay
+green); the agreement is now a TEST (`frameLookup.test.ts` "shares the XMATCH formula kernel"), not a
+comment. No Rust mirror exists for the lookup, so nothing to keep in sync there. `keyMatches` became
+`lookupNeedle`; the `dateAmbiguitySurfaces` sanction updated to match.
+
 Scoped to the lookup family: a 1×N MATRIX lookup value is still `#SHAPE!` (deferred orientation),
-and the general per-argument mechanism (`wholeArrayArgs`/`prepByShape`) subsumes this `pick`.
+and the general per-argument mechanism (`wholeArrayArgs`/`prepByShape`) subsumes the formula `pick`.
 
 **Dependency-diff triage (read the diffs, not the version bumps):**
 - `@formulajs/formulajs` 4.6.0 → 4.6.1 **bumped.** The whole diff is a new `TAKE` (we already

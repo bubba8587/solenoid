@@ -268,13 +268,17 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
   day's interim loud `#VALUE!`, which replaced the original quiet `#N/A` lie. **The XLOOKUP NODE
   spills too** (author-asked, 2026-08-23): its `lookup` socket `string`→`strcombo`, and `data()`
   maps a matched cell over a LIST of lookup values (`matchOne`) — one match each, `#N/A`/if-not-found
-  per element. Its frame kernel (`lookupFrameCell`) and shape (frame + column names) stay as the
-  recorded "Build Frame first" decision; only the lookup-value axis gained rank. Pinned in
-  `errorValue.test.ts` "XLOOKUP node SPILLS". One surface nuance (the app-wide combo convention, not
-  a lookup drift): a SINGLETON lookup list collapses to a scalar on the node (`collapseSingleton`),
-  where the formula keeps a 1-element array. Still deferred to the general mechanism: a 1×N/N×1
-  MATRIX lookup value (the orientation item — still `#SHAPE!`) and per-argument spill for OTHER
-  functions (wholeArrayArgs/prepByShape), which subsumes the scoped `pick`.
+  per element. Its frame+column-names SHAPE stays (the recorded "Build Frame first" decision); only
+  the lookup-value axis gained rank. Pinned in `errorValue.test.ts` "XLOOKUP node SPILLS". One
+  surface nuance (the app-wide combo convention, not a lookup drift): a SINGLETON lookup list
+  collapses to a scalar on the node (`collapseSingleton`), where the formula keeps a 1-element array.
+  **And the matching KERNEL is now shared (2026-08-23):** `lookupFrameRowIndex`/`lookupCubeRowIndex`
+  no longer re-implement the scan — they parse the lookup string to a typed needle (`lookupNeedle`)
+  and delegate to the formula's `xmatchIndex`, so node and formula can't drift. Agreement pinned in
+  `frameLookup.test.ts` "shares the XMATCH formula kernel"; behavior-preserving (full lookup corpus
+  green); no Rust mirror to sync. Still deferred to the general mechanism: a 1×N/N×1 MATRIX lookup
+  value (the orientation item — still `#SHAPE!`) and per-argument spill for OTHER functions
+  (wholeArrayArgs/prepByShape), which subsumes the formula `pick`.
 - **NOT a frame/cube input** (asked + declined 2026-08-11). XLOOKUP needs a
   container to guarantee its TWO columns line up ("Build Frame two aligned lists
   first"); XMATCH reads one column and returns a position, so it has no alignment

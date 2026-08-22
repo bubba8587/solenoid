@@ -116,7 +116,7 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
     "nodes/annotation.ts": "returns number | null; an annotation date has no error channel",
     "nodes/cast.ts": "already LOUD — a failed date cast is #VALUE!, never a silent blank (precision upgrade, backlogged)",
     "nodes/date.ts": "TIMEVALUE's datetime fallback — already answers #VALUE! on failure",
-    "frameVerbs.ts": "keyMatches returns boolean; a lookup criterion has no error channel (backlogged)",
+    "frameVerbs.ts": "lookupNeedle parses a lookup value; a bad date lookup just fails to match — no error channel (backlogged)",
     "components/TablePopup.tsx": "date-picker seed + CSV import, both best-effort UI with no error channel",
   };
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex, frameRowAt, cubeRowAt } from "./frameVerbs";
+import { xmatchIndex } from "./nodes/listOps";
 import { isCubeValue } from "./frame";
 import { isSolError } from "./errorValue";
 import { cubeFromColumns, isFrameValue } from "./frame";
@@ -15,6 +16,23 @@ const people: FrameValue = {
     { name: "active", type: "logical", values: [true, false, true] },
   ],
 };
+
+describe("frame/cube XLOOKUP shares the XMATCH formula kernel (no surface drift)", () => {
+  // The node parses its lookup STRING into a typed needle, then delegates the actual
+  // match to xmatchIndex — the SAME kernel the XMATCH/XLOOKUP formulas call. Pinning
+  // equality here is what makes "the two surfaces can't drift" a test, not a comment.
+  const names = people.columns[1].values;   // ["Ann", "Bob", "Cy"]  (string)
+  const ids = people.columns[0].values;      // [1, 2, 3]             (number)
+  const joined = people.columns[2].values;   // [46000, 46010, 46020] (date serials)
+  it("the frame node matcher equals xmatchIndex on the parsed needle", () => {
+    expect(lookupFrameRowIndex(people, "name", "bob")).toBe(xmatchIndex("bob", names));   // case-insensitive
+    expect(lookupFrameRowIndex(people, "id", "2")).toBe(xmatchIndex(2, ids));             // number exact
+    expect(lookupFrameRowIndex(people, "name", "Zed")).toBe(xmatchIndex("Zed", names));   // miss → -1 both
+    expect(lookupFrameRowIndex(people, "joined", "46010")).toBe(xmatchIndex(46010, joined)); // date parsed to serial
+    expect(lookupFrameRowIndex(people, "id", "2.5", "nextSmaller"))
+      .toBe(xmatchIndex(2.5, ids, "next_smaller"));                                        // approximate
+  });
+});
 
 describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
   it("looks up by a string key, returns another column's cell", () => {
