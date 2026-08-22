@@ -315,13 +315,42 @@ describe("the one Distribution node is reachable by search without growing the m
   it("the natural queries surface the right distribution near the top", () => {
     // The Distribution LEAF carries every Excel name (nodeExcel), so it may
     // outrank its own rows; the guard is that the specific distribution's row
-    // is right there with it, presetting the op.
-    const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.label).join(" | ");
-    expect(top3("weibull")).toMatch(/Weibull \(WEIBULL\.DIST\)/);
-    expect(top3("poisson")).toMatch(/Poisson \(POISSON\.DIST\)/);
-    expect(top3("hypergeometric")).toMatch(/Hypergeometric/);
-    expect(top3("norm.inv")).toMatch(/NORM\.INV/);
-    expect(top3("t.inv.2t")).toMatch(/T\.INV\.2T/);
-    expect(top3("critbinom")).toMatch(/Binomial|Distribution/);
+    // is right there with it, presetting the op. Asserted on the op TYPE rather
+    // than the label: the Excel spellings live in `keywords` now, so a dotted
+    // query has to reach the row WITHOUT the names being in what renders.
+    const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.type);
+    expect(top3("weibull")).toContain("distribution__op-weibull");
+    expect(top3("poisson")).toContain("distribution__op-poisson");
+    expect(top3("hypergeometric")).toContain("distribution__op-hypgeom");
+    expect(top3("t.inv.2t")).toContain("distribution__op-t");
+    expect(top3("chisq.inv.rt")).toContain("distribution__op-chisq");
+    // `normal` is the family's PRIMARY op, so it has no row of its own — the leaf
+    // itself is the right landing.
+    expect(top3("norm.inv")).toContain("distribution");
+    expect(top3("critbinom").join(" ")).toMatch(/distribution/);
+  });
+
+  it("no Add-menu label carries a parenthesised list of Excel names", () => {
+    // A label is what RENDERS; Excel spellings belong in `keywords`, which scores
+    // at full weight and never shows. Four dotted names in one Distribution label
+    // made that row 630px against a 94px median, and the panel's columns size to
+    // their widest item — so one row stretched the whole menu to 3× the moment
+    // anything was typed. Parentheses themselves are fine ("T.TEST (equal var)"),
+    // and so is a bare acronym that IS the name people know ("Growth Rate (CAGR)").
+    // What must not come back is an Excel FUNCTION spelling: dotted, or several
+    // slash-separated.
+    const CAPS = /^[A-Z][A-Z0-9]*$/;
+    const isExcelNameList = (inner: string) => {
+      const parts = inner.split(" / ").map((t) => t.trim());
+      if (parts.length > 1 && parts.every((t) => /^[A-Z][A-Z0-9._]*$/.test(t))) return true;
+      return parts.some((t) => t.includes(".") && t.split(".").every((seg) => CAPS.test(seg)));
+    };
+    const offenders = leaves
+      .map((l) => l.leaf.label)
+      .filter((label) => {
+        const m = label.match(/\(([^)]*)\)/);
+        return !!m && isExcelNameList(m[1]);
+      });
+    expect(offenders).toEqual([]);
   });
 });

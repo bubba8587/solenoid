@@ -90,7 +90,7 @@ export type NodeOpsDecl = NodeOpsBase & (
  *  despacing the label would not yield it: a prose label (despacing a sentence
  *  collides — Coalesce/Fill's FILLINTERPOLATE) or a bare label whose family
  *  word lives in the card title (Running's SUM → RUNNINGSUM). */
-export interface OpEntryDecl { op: string; label: string; fx?: string }
+export interface OpEntryDecl { op: string; label: string; fx?: string; keywords?: string }
 
 /** Read an OP_META table into an op list — every table carries `label`, and `fx`
  *  rides along when declared. */
@@ -99,14 +99,18 @@ function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntry
 }
 
 /** The Distribution node's op axis is the DISTRIBUTION; the curve/inverse pick
- *  is the arg-tagged `form` field. Search rows carry the Excel names so typing
- *  "norm.inv" or "weibull" lands on the right pick, and each op's formula name
- *  (fx) is its primary Excel spelling — dotted, so despacing "Gamma" onto the
- *  GAMMA function can never happen. */
+ *  is the arg-tagged `form` field. Typing "norm.inv" or "weibull" still lands on
+ *  the right pick — the Excel names ride in `keywords`, which scores at full
+ *  weight and never renders. They used to sit in the LABEL, where four dotted
+ *  spellings made one row 630px against a 94px median and, since the panel's
+ *  columns size to their widest item, stretched the whole menu to 3× on the first
+ *  keystroke. Each op's formula name (fx) is its primary Excel spelling — dotted,
+ *  so despacing "Gamma" onto the GAMMA function can never happen. */
 const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({
   op,
-  label: `${DIST_SPECS[op].label} (${DIST_SPECS[op].excel})`,
+  label: DIST_SPECS[op].label,
   fx: DIST_SPECS[op].excel.split(" / ")[0],
+  keywords: DIST_SPECS[op].excel,
 }));
 
 /** Menu/search names for ops whose OP_META `label` is dropdown PROSE, which would
@@ -355,7 +359,7 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
 export function opEntry(
   decl: NodeOpsDecl & { create: (op: string) => unknown },
   host: NodeCatalogEntry,
-  op: { op: string; label: string },
+  op: OpEntryDecl,
 ): NodeCatalogEntry {
   return {
     ...host,
@@ -363,8 +367,10 @@ export function opEntry(
     label: opSearchLabel(host.label, op.label),
     create: () => decl.create(op.op),
     // NOT the host's keywords: those describe the FAMILY, so inheriting them makes
-    // every sibling row match identically and the ops stop discriminating.
-    keywords: undefined,
+    // every sibling row match identically and the ops stop discriminating. The op's
+    // OWN keywords do ride along — that is where a family puts the per-op Excel
+    // spellings that must stay findable without bloating the visible label.
+    keywords: op.keywords,
     // NOT the host's ops-mark either — a row that IS one op has nothing folded up.
     hiddenOps: undefined,
     hideOpsMark: undefined,

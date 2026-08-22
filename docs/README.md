@@ -108,6 +108,7 @@ relapse.
 |---|---|
 | `zoomSettle.ts`, `Canvas.tsx` gesture/layer handling | `renderer-performance.md`; `dev-notes.md` § choppy zoom BAND (open) |
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
+| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; `rules.md` searchWiderThanLabel, opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
 | `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
 | `domSync.ts` | `renderer-performance.md` § DOM↔canvas transform sync |

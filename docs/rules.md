@@ -73,6 +73,8 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | declareOnce | One declaration per fact |
 | overrideInPlace | Where a derivation can't be total, the override lives in the same table |
 | noManualList | No hand-kept list of a derivable property |
+| searchWiderThanLabel | The search index is wider than the label |
+| opRowDerivesFromHost | An op's search row derives from its host leaf |
 | shapeGuardManualSets | An irreducibly hand-kept set is guarded by SHAPE |
 | labelUnenforced | A rule not enforced by a test is debt, and is labelled |
 | oneMetricImpl | A gating metric has exactly one implementation |
@@ -262,6 +264,51 @@ argument shape from a signature table, if one is ever authored.
 `SUMX2PY2`, `SUMXMY2`, `MODE.SNGL`, `PROB`, `SERIESSUM` — were missing from
 `RANGE_FUNCTIONS` and had been silently broadcast element-wise, each returning a
 plausible-looking wrong value.
+
+### searchWiderThanLabel — The search index is wider than the label **[INFERRED]**
+**MUST:** a catalog entry's rendered `label` carries only what a reader needs to identify
+and pick it. Every ALTERNATE spelling a user might type — Excel function names first
+among them — is declared in a searched-but-not-rendered field (`keywords`, or
+`CATALOG_TO_EXCEL` for a whole leaf), never appended to the label to make it findable.
+
+*Why:* findability and legibility are separate jobs and the search layer already
+separates them — `scoreLeaf` scores `keywords` at full field weight, so moving a name out
+of the label costs nothing and can improve its rank. Stuffing the label instead pays
+twice: the name is duplicated against the declaration it came from (`per declareOnce`),
+and the Add menu's panel sizes every row to the widest one, so a single overlong label is
+a defect in the whole menu rather than in its own row. The mechanism is in
+`subsystem-invariants.md` → "Add menu".
+*Enforced by:* `nodeOps.test.ts` → "no Add-menu label carries a parenthesised list of
+Excel names" (the shape guard, `per shapeGuardManualSets`) and "the natural queries
+surface the right distribution near the top" (the behaviour — asserted on op TYPE, so it
+cannot pass merely because the names are visible).
+*Exception:* a parenthetical that DISAMBIGUATES two entries sharing a name stays in the
+label — "T.TEST (equal var)" vs "T.TEST (Welch)", "TAKE (table)", "DATE (Build)" — as
+does a bare acronym that IS the name people know ("Growth Rate (CAGR)"). What is barred
+is an Excel FUNCTION spelling: dotted, or several slash-separated. Removed when the menu
+gains per-row truncation, at which point the length pressure disappears and only
+`declareOnce` still argues.
+*Origin:* the Distribution family's op labels each carried their full dotted Excel list;
+one row measured 630px against a 94px median and stretched the panel from 174px to 525px
+on the first keystroke. Author-reported 2026-08-22.
+
+### opRowDerivesFromHost — An op's search row derives from its host leaf **[INFERRED]**
+**MUST:** the synthetic Add-menu row for a hidden op is built from the host leaf plus the
+op's own declaration (`opEntry` spreading `...host`), never as a second hand-written
+catalog entry. What it must NOT inherit is named at the call site with the reason: the
+host's `keywords` (family words make every sibling match identically, and the ops stop
+discriminating), its `hiddenOps` and its ops-mark (a row that IS one op has nothing
+folded up).
+
+*Why:* an op row is a VIEW of a leaf, so every property the leaf owns — label stem, pack,
+accent, description — has to track it automatically or the menu and the card drift
+(`per declareOnce`). The non-inherited set is the exception list, and it belongs in the
+same function rather than in a parallel table (`per overrideInPlace`).
+*Enforced by:* `nodeOps.test.ts` → "every distribution has a search row carrying its Excel
+names", "the ops list is derived, not transcribed".
+*Origin:* `opEntry` was written with `keywords: undefined` to block family-word bleed;
+when per-op Excel spellings later needed a home, the blanket `undefined` is what pushed
+them into the visible label instead.
 
 ### shapeGuardManualSets — An irreducibly hand-kept set is guarded by SHAPE **[INFERRED]**
 **MUST:** where `noManualList` grants an exception, a test asserts the *observable consequence*
@@ -1447,11 +1494,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-74 rules.
+76 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 72 | every rule except the two below |
+| Enforced | 74 | every rule except the two below |
 | Partially enforced | 1 | socketBox12 |
 | Unenforced | 1 | oneResolvePredicate |
 

@@ -122,6 +122,49 @@ The tap-to-select model is keyed on **pointer type, not device class** (`tapTouc
 
 A third group — native-popup controls (`<select>`/`LazySelect`, `<input>` of type color/date/file) — also keeps the hard swallow, but **on precaution, not on a verified mechanism**. The stated reason is CLAUDE.md's OS-dropdown rule (node pointerdown → selection → re-render → the open dropdown closes mid-pick). That rule is cited around the codebase but no originating incident is recorded, and on the mobile path it looks like it may not apply: `nodeAndControl` already excludes form controls from tap-to-select, `patchDragGuard` returns false for an unselected node before any pick happens, and mobile browsers open the native picker on tap-completion rather than on pointerdown — so there may be no open dropdown for a pointerdown-time re-render to interrupt. **Unverified either way** (needs a real device or a mobile-emulated CDP run; the vitest env is node). Left as-is because the delta is worth almost nothing — it only decides whether a one-finger pan can *start* on top of a small tap target — while a broken pick would be a real regression. Pinch is unaffected regardless: the capture-phase count doesn't care what these swallow. If someone wants to settle it, that's a browser-automation task, not a reading task.
 
+## Add menu — catalog, search rows, and what a label may carry (`AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts`)
+
+**The pipeline.** `NODE_CATALOG` is a TREE of categories, pairs and leaves — that tree is
+what the menu renders when the search box is empty. `flattenLeaves` flattens it for
+SEARCH and appends one synthetic row per hidden op (`opEntry`, type
+`` `${host}__op-${op}` ``), so folding a family onto one card never makes an op
+unfindable. Those op rows are generated at search time and never inserted into the tree,
+so catalog walkers don't count them as extra nodes. `scoreLeaf` then ranks against a
+haystack that is deliberately WIDER than what renders: label, description, Excel names
+(`CATALOG_TO_EXCEL`), category path, kebab type, and `keywords`.
+
+**Two search surfaces, different weights.** `keywords` scores as a full-weight FIELD
+alongside the label; Excel names from `CATALOG_TO_EXCEL` score at `-10` so an exact label
+still wins a tie. An op row deliberately does NOT inherit its host's `keywords` (the
+family's words would make every sibling match identically and the ops would stop
+discriminating) — but it DOES carry its own, which is where a family declares per-op
+alternate spellings.
+
+**Why a long label is a whole-menu defect, not a cosmetic one.** `.solenoid-add-menu__scroll`
+is a two-column grid (`auto auto`) so paired rows share column tracks. Every non-`--half`
+child spans `1 / -1`, and a spanning item's max-content contribution is split across both
+auto tracks — so the panel's width is the widest SINGLE row, and rows are
+`white-space: nowrap`. There is no `max-width`. The tree view hides this because it only
+ever renders one category at a time; search renders the whole catalog, so the global
+widest row sets the width the moment anything is typed.
+
+**Invariants.**
+- A rendered LABEL carries only what a reader needs to pick the row. Alternate spellings
+  — Excel function names above all — go in `keywords`, which scores at full weight and
+  never renders (rules.md `searchWiderThanLabel`).
+- An op row's label is `` `${hostLabel}: ${opLabel}` `` (`opSearchLabel`) and nothing else,
+  so renaming a card renames its ops.
+- `fx` (the formula name) is independent of the label and stays declared where despacing
+  the label would not yield it (rules.md `overrideInPlace`, `uniqueNameMap`).
+- Reachability: every op either has a row of its own or IS the family's primary op
+  (`primaryOpOf`, derived by constructing the leaf — never declared).
+
+*Origin:* the Distribution family put all four dotted Excel spellings in each op's visible
+label ("Distribution: Chi-squared (CHISQ.DIST / CHISQ.DIST.RT / CHISQ.INV / CHISQ.INV.RT)").
+That row measured 630px against a 94px median and, through the grid sizing above,
+stretched the whole panel from 174px to 525px on the first keystroke — reported by the
+author as "typing anything into the search box makes it get real wide" (2026-08-22).
+
 ## Socket lattice (`sockets.ts`)
 
 **GOVERNING RULE (author, 2026-06-22): enforce TYPE separation, allow DIMENSIONAL flow.** Element families (number / string / date / complex / logical) NEVER auto-cross — crossing requires an explicit **Cast** (so a `date` won't wire into a `number` socket even though a date IS a serial; same for complex/string). The ONE deliberate exception is `logical ↔ number` (0/1 ⟷ TRUE/FALSE, the spreadsheet multiply-by-a-condition idiom; `coerceInputs` does the runtime bool↔number conversion). A value flows freely UP in dimensionality within the lattice: scalar → list/combo → matrix → frame → cube (the lattice supremum — a frame widens into a cube input).
