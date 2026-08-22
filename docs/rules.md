@@ -82,6 +82,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | useEveryNotSome | Completeness quantifiers are `every`, not `some` |
 | onePrunePath | Input-cable pruning is ONE loop (`dropInputCables`) |
 | noAutoCross | Type separation: element families never auto-cross |
+| dateValuedPortIsDateTyped | A port that carries a date is typed date |
 | widenNeverNarrow | Dimensional flow: values widen up, never narrow down |
 | derivedSocketTypes | Adding a socket type is a derived edit |
 | wildcardsKeepRank | The wildcard ladder keeps rank |
@@ -410,6 +411,30 @@ logical↔number (dim-mirrored)".
 *Exceptions:* `logical ↔ number` is the ONE bridge (boolean ↔ 0/1), mirrored at every
 rank. **Removed by:** nothing — it is the deliberate consequence of Excel treating
 TRUE/FALSE as 1/0. Any *second* exception is a lattice design change, not a patch.
+
+### dateValuedPortIsDateTyped — A port that carries a date is typed date **[INFERRED]**
+**MUST:** a socket whose value IS a date uses the date family (`date` / `datecombo` /
+`datelist` / `datetable`), never `number` / `numlist` on the grounds that a date serial
+is numerically a number. A WILDCARD rung is not a violation — it has committed to no
+family at all.
+
+*Why:* the socket type is the only witness that survives the value. A date serial and a
+plain number are the same `number` at runtime, so once a date rides a numeric port
+nothing downstream can tell them apart — `Cast`'s date-aware text conversion, the FC's
+date styles and type-default display all read the SOCKET, not the number
+(`nodes/cast.ts` says so at the coercion boundary). Typing it correctly also enables the
+typeable-datelist editor for free, which is why this rule pulls `stringLiterals` in with
+it (see the inline-literal convention in `subsystem-invariants.md`).
+*Enforced by:* `catalogRegistry.test.ts` → "no catalog port whose label names a date sits
+on a non-date socket", swept over the whole catalog.
+*Exception:* a port whose label merely MENTIONS time while holding a count or an index
+("Start period", "Days", "Coupon rate") is a number and stays one — the guard anchors on
+a label ENDING in date/dates for exactly this reason. Removed if port semantics ever get
+declared directly instead of inferred from the label.
+*Origin:* XIRR and XNPV took their `dates` on a `numlist` labelled "Date serials" — the
+only two such ports in the app, against 60-plus correctly typed date ports across the
+finance and date families. Author-spotted 2026-08-23; the surrounding correctness is
+what made them invisible.
 
 ### widenNeverNarrow — Dimensional flow: values widen up, never narrow down **[INFERRED]**
 **MUST:** scalar → list → matrix → frame is permitted within a family; the reverse is
@@ -1494,11 +1519,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-76 rules.
+77 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 74 | every rule except the two below |
+| Enforced | 75 | every rule except the two below |
 | Partially enforced | 1 | socketBox12 |
 | Unenforced | 1 | oneResolvePredicate |
 

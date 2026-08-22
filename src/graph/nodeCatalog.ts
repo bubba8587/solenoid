@@ -664,7 +664,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "npv",  label: "NPV",  description: "Net present value of cash flows discounted at a given rate. The first flow is period 1. Excel: NPV(rate, values).", create: () => new NpvNode() },
           { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which NPV = 0. Excel: IRR(values).", create: () => new IrrNode() },
           { type: "mirr", label: "MIRR", description: "Modified IRR accounting for reinvestment rate and cost of capital. Excel: MIRR(values, finance_rate, reinvest_rate).", create: () => new MirrNode() },
-          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of date serials. Excel: XIRR.", create: () => new IrrNode({ mode: "dates" }), parity: false },
+          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: XIRR.", create: () => new IrrNode({ mode: "dates" }), parity: false },
           { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: XNPV.", create: () => new NpvNode({ mode: "dates" }), parity: false },
         ],
       },

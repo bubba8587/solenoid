@@ -153,6 +153,27 @@ the field's own border.
 **Display's resize grip is NOT clipped** (author asked). Measured ink extent reaches 11.7 of a
 12-unit viewBox and no ancestor clips it.
 
+**XIRR/XNPV took their dates on a numeric list — the only two such ports in the app**
+(author-spotted). `dates` was `listIn("Date serials")` where every other date-valued port
+across the finance and date families (60-plus: settlement, maturity, issue, first coupon,
+NETWORKDAYS holidays, Get Column read-as-date) already used `date`/`datecombo`/`datelist`.
+Swept the whole catalog by CONSTRUCTING every node and comparing each port's socket
+dataType against its label rather than grepping — that is what showed the convention was
+total and these two were the outliers. Now `dateListIn("Dates")`. Two consequences worth
+knowing: the type is the only witness that survives the value (a date serial and a number
+are the same `number` at runtime, so Cast's date-aware text conversion and the FC's date
+styles read the SOCKET), and a `datelist` is TYPEABLE — `coerceInputs` parses and injects
+the CSV a user types, but only onto a class DECLARING `stringLiterals`, which
+`coerceInputs.test.ts` caught immediately when the socket changed. Both classes now
+declare it, so XIRR/XNPV gained direct date entry. Pinned catalog-wide as
+`dateValuedPortIsDateTyped` (`catalogRegistry.test.ts`), wildcard rungs exempt — a
+formula-preset node names its free variables as ports, so `date` in "ROUNDUP(MONTH(date)/3,0)"
+is an expression variable on the generic socket, not a mistyped date port.
+GOTCHA for whoever writes the next guard this way: the first version of that pin silently
+never matched, because a `` written through a Python heredoc landed in the file as a
+literal backspace byte and read as `/dates?$/i` in every editor. It passed with the bug
+deliberately reintroduced. Negative-control a new guard by breaking the thing it watches.
+
 **One IRR was hardened, its twin was not — both now run one kernel** (aggressive-review #8).
 Periodic IRR's Newton had no rate floor where XIRR clamps at −0.9999. Not cosmetic asymmetry:
 below r = −1 a fractional exponent makes `Math.pow(negative, e)` NaN and an integer one flips

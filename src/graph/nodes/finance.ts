@@ -1,5 +1,5 @@
 ﻿import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, dateIn, readInput } from "./shared";
+import { numIn, numOut, listIn, dateIn, dateListIn, readInput } from "./shared";
 import { serialToJsDate } from "./date";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
@@ -377,6 +377,9 @@ export class NpvNode extends ClassicPreset.Node {
   mode: CashflowMode;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.1 };
+  // `dates` is a typeable datelist: the CSV the user types is parsed and injected by
+  // coerceInputs, and persistence restores it only onto a class that DECLARES the map.
+  stringLiterals: Record<string, string> = {};
   width = 180; height = 203;
 
   constructor(init?: { label?: string; mode?: CashflowMode }) {
@@ -385,7 +388,7 @@ export class NpvNode extends ClassicPreset.Node {
     this.mode = init?.mode ?? "periods";
     this.addInput("rate", numIn("Rate"));
     this.addInput("list", listIn("Cash flows"));
-    if (this.mode === "dates") this.addInput("dates", listIn("Date serials"));
+    if (this.mode === "dates") this.addInput("dates", dateListIn("Dates"));
     this.addOutput("result", numOut("Result"));
     this.height = this.mode === "dates" ? 231 : 203;
   }
@@ -395,7 +398,7 @@ export class NpvNode extends ClassicPreset.Node {
   setMode(next: CashflowMode): void {
     if (next === this.mode) return;
     this.mode = next;
-    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", listIn("Date serials")); }
+    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", dateListIn("Dates")); }
     else if (this.inputs.dates) this.removeInput("dates");
     this.height = next === "dates" ? 231 : 203;
   }
@@ -482,6 +485,9 @@ export class IrrNode extends ClassicPreset.Node {
   label: string;
   mode: CashflowMode;
   cachedResult: number | SolError | null = null;
+  // `dates` is a typeable datelist: the CSV the user types is parsed and injected by
+  // coerceInputs, and persistence restores it only onto a class that DECLARES the map.
+  stringLiterals: Record<string, string> = {};
   width = 180; height = 163;
 
   constructor(init?: { label?: string; mode?: CashflowMode }) {
@@ -489,7 +495,7 @@ export class IrrNode extends ClassicPreset.Node {
     this.label = init?.label ?? "IRR";
     this.mode = init?.mode ?? "periods";
     this.addInput("list", listIn("Cash flows"));
-    if (this.mode === "dates") this.addInput("dates", listIn("Date serials"));
+    if (this.mode === "dates") this.addInput("dates", dateListIn("Dates"));
     this.addOutput("result", numOut("Result"));
     this.height = this.mode === "dates" ? 191 : 163;
   }
@@ -499,7 +505,7 @@ export class IrrNode extends ClassicPreset.Node {
   setMode(next: CashflowMode): void {
     if (next === this.mode) return;
     this.mode = next;
-    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", listIn("Date serials")); }
+    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", dateListIn("Dates")); }
     else if (this.inputs.dates) this.removeInput("dates");
     this.height = next === "dates" ? 191 : 163;
   }

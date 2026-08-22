@@ -3,7 +3,7 @@ import { NODE_EXCEL } from "./nodeExcel";
 import { FLAT_CATALOG } from "./catalogUtils";
 import { NODE_COMPONENTS, componentForNode } from "./nodeRegistry";
 import { extractInit } from "./copyPaste";
-import { MutableSocket } from "./sockets";
+import { MutableSocket, SolenoidSocket, isDateType, isWildcardRung } from "./sockets";
 import { getPassthrough } from "./nodes/passthrough";
 
 // HARD version of the dev-only catalogValidator console warnings (v1.0 audit,
@@ -205,5 +205,42 @@ describe("catalog ↔ registry consistency", () => {
       .filter(([ctor, component]) => componentForNode(Object.create(ctor.prototype) as object) !== component)
       .map(([ctor]) => ctor.name);
     expect(wrong).toEqual([]);
+  });
+});
+
+// A port that HOLDS a date is typed as one — per dateValuedPortIsDateTyped. Swept over
+// the whole catalog because the convention is only worth anything if it is total: it
+// already held on all 60-odd date ports in the finance and date families, and the two
+// that broke it (XIRR/XNPV `dates`, typed numlist and labelled "Date serials") were
+// invisible precisely because everything around them was right.
+describe("date-valued ports are typed date", () => {
+  it("no catalog port whose label names a date sits on a non-date socket", () => {
+    // Anchored to the END of the label so a numeric port that merely mentions time
+    // ("Start period", "Coupon rate", "Days") is not swept in. A port whose label ends
+    // in "date"/"dates" is claiming to carry one.
+    //
+    // WILDCARD rungs are exempt, and the exemption is the point of the rule rather
+    // than a hole in it: the defect is a port that COMMITS to a concrete non-date type
+    // while carrying a date. A wildcard has committed to nothing — a formula-preset
+    // node ("ROUNDUP(MONTH(date)/3,0)") names its free variables as ports, so `date`
+    // there is an expression variable on the generic socket, not a mistyped date port.
+    const CLAIMS_DATE = /\bdates?$/i;
+    const broken: string[] = [];
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let n: unknown;
+      try { n = entry.create(); } catch { continue; }
+      const node = n as Record<string, Record<string, { label?: string; socket?: unknown }> | undefined>;
+      for (const dir of ["inputs", "outputs"] as const) {
+        for (const [key, port] of Object.entries(node[dir] ?? {})) {
+          const label = port?.label ?? "";
+          if (!CLAIMS_DATE.test(label.trim())) continue;
+          const sock = port?.socket;
+          if (!(sock instanceof SolenoidSocket)) continue;
+          if (isDateType(sock.dataType) || isWildcardRung(sock.dataType)) continue;
+          broken.push(`${type}.${dir}.${key} "${label}" is ${sock.dataType}`);
+        }
+      }
+    }
+    expect(broken, broken.join("; ")).toEqual([]);
   });
 });
