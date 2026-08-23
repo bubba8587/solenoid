@@ -1829,3 +1829,169 @@ export function correlationMatrix(f: FrameValue, method: CorrMethod): FrameValue
   cols.forEach((cj, j) => out.push({ name: cj.name, type: "number", values: cols.map((_, i) => cell(i, j)) }));
   return { __frame: true, columns: out };
 }
+
+// ─── Window functions by group (pandas groupby().transform / .over(), dplyr group_by %>%
+// mutate, SQL OVER (PARTITION BY … ORDER BY …)) ────────────────────────────────────────
+export type WindowFn =
+  | "row_number" | "rank" | "dense_rank" | "percent_rank" | "ntile"
+  | "cumsum" | "cumavg" | "cummin" | "cummax" | "cumcount"
+  | "lag" | "lead" | "diff" | "pct_change"
+  | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
+  | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last";
+
+export interface WindowSpec {
+  /** Partition columns; empty = the whole frame is one group. */
+  partitionBy: string[];
+  /** Order within the partition; omitted = input row order. */
+  orderBy?: string;
+  orderDir?: "asc" | "desc";
+  fn: WindowFn;
+  /** The value column (ranks / row_number rank by `orderBy` and need no value column). */
+  column?: string;
+  /** Output column name. */
+  as: string;
+  /** lag/lead offset, rolling window size, or ntile buckets. */
+  n?: number;
+}
+
+/** Which functions need the value column. */
+export const WINDOW_FN_NEEDS_COLUMN: ReadonlySet<WindowFn> = new Set([
+  "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff", "pct_change",
+  "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
+]);
+/** Which functions read `n`. */
+export const WINDOW_FN_NEEDS_N: ReadonlySet<WindowFn> = new Set(["lag", "lead", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max", "ntile"]);
+
+/** Append ONE computed column to the frame, evaluated per partition in the partition's
+ *  order, then written back in the ORIGINAL row order (pandas transform semantics — the
+ *  frame keeps its shape). Blanks: a blank value cell contributes nothing to sums/means
+ *  and answers blank for its own row; ranks skip blank order keys (blank rank). Errors in
+ *  the value column poison their partition's aggregate cells (#ERROR propagates). */
+export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
+  const n = frameRowCount(f);
+  const keyCols = spec.partitionBy.map((k) => requireColumn(f, k));
+  const orderCol = spec.orderBy ? requireColumn(f, spec.orderBy) : null;
+  const valCol = WINDOW_FN_NEEDS_COLUMN.has(spec.fn) ? requireColumn(f, spec.column ?? "") : null;
+  const N = Math.max(1, Math.round(spec.n ?? 1));
+  // Partition: first-seen key order, rows in input order within a partition.
+  const parts = new Map<string, number[]>();
+  for (let i = 0; i < n; i++) {
+    const k = JSON.stringify(keyCols.map((c) => encodeCell(cellAt(c, i))));
+    const arr = parts.get(k); if (arr) arr.push(i); else parts.set(k, [i]);
+  }
+  const out: FrameCell[] = new Array<FrameCell>(n).fill(null);
+  const cmp = (a: FrameCell, b: FrameCell): number => {
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (typeof a === "string" && typeof b === "string") return compareStrings(a, b);
+    if (typeof a === "boolean" && typeof b === "boolean") return Number(a) - Number(b);
+    return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+  };
+  for (const rows of parts.values()) {
+    // Order within the partition (stable; blank order keys sort LAST, both directions).
+    let ordered = rows;
+    if (orderCol) {
+      const dir = spec.orderDir === "desc" ? -1 : 1;
+      ordered = [...rows].sort((i, j) => {
+        const a = cellAt(orderCol, i), b = cellAt(orderCol, j);
+        const aBlank = a == null || isSolError(a), bBlank = b == null || isSolError(b);
+        if (aBlank || bBlank) return aBlank === bBlank ? i - j : aBlank ? 1 : -1;
+        const c = cmp(a, b) * dir;
+        return c !== 0 ? c : i - j;
+      });
+    }
+    const vals = valCol ? ordered.map((i) => cellAt(valCol, i)) : [];
+    const err = vals.find(isSolError);
+    const nums = vals.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+    const present = nums.filter((v): v is number => v !== null);
+    const orderVals = orderCol ? ordered.map((i) => cellAt(orderCol, i)) : [];
+    const m = ordered.length;
+    const groupAgg = (): FrameCell => {
+      if (err) return err;
+      if (present.length === 0) return spec.fn === "group_count" ? 0 : null;
+      switch (spec.fn) {
+        case "group_sum":   return present.reduce((a, b) => a + b, 0);
+        case "group_avg":   return present.reduce((a, b) => a + b, 0) / present.length;
+        case "group_min":   return Math.min(...present);
+        case "group_max":   return Math.max(...present);
+        case "group_count": return present.length;
+        default: return null;
+      }
+    };
+    for (let p = 0; p < m; p++) {
+      const row = ordered[p];
+      let v: FrameCell = null;
+      switch (spec.fn) {
+        case "row_number": v = p + 1; break;
+        case "rank": case "dense_rank": case "percent_rank": {
+          // Competition rank on the ORDER column (or position when none): ties share the
+          // best rank; dense packs; percent = (rank − 1)/(m − 1) like dplyr / SQL.
+          if (!orderCol) { v = spec.fn === "percent_rank" ? (m > 1 ? p / (m - 1) : 0) : p + 1; break; }
+          const key = orderVals[p];
+          if (key == null || isSolError(key)) { v = null; break; }
+          if (spec.fn === "dense_rank") {
+            // Same key as the previous row → its rank; else one more than the distinct keys before.
+            if (p > 0 && cmp(orderVals[p], orderVals[p - 1]) === 0) v = out[ordered[p - 1]];
+            else {
+              let distinctBefore = 0;
+              for (let q = 0; q < p; q++) if (q === 0 || cmp(orderVals[q], orderVals[q - 1]) !== 0) distinctBefore++;
+              v = distinctBefore + 1;
+            }
+          } else {
+            let first = p;
+            while (first > 0 && cmp(orderVals[first - 1], key) === 0) first--;
+            // percent_rank's denominator counts the RANKED rows (blank keys excluded — pandas rank(pct=True)).
+            const ranked = orderVals.filter((k) => k != null && !isSolError(k)).length;
+            v = spec.fn === "rank" ? first + 1 : (ranked > 1 ? first / (ranked - 1) : 0);
+          }
+          break;
+        }
+        case "ntile": v = Math.floor((p * N) / m) + 1; break;
+        case "cumcount": v = p + 1; break;
+        case "cumsum": case "cumavg": case "cummin": case "cummax": {
+          if (err) { v = err; break; }
+          const prefix = nums.slice(0, p + 1).filter((x): x is number => x !== null);
+          if (nums[p] === null) { v = null; break; }
+          if (prefix.length === 0) { v = null; break; }
+          v = spec.fn === "cumsum" ? prefix.reduce((a, b) => a + b, 0)
+            : spec.fn === "cumavg" ? prefix.reduce((a, b) => a + b, 0) / prefix.length
+            : spec.fn === "cummin" ? Math.min(...prefix) : Math.max(...prefix);
+          break;
+        }
+        case "lag": v = p - N >= 0 ? vals[p - N] : null; break;
+        case "lead": v = p + N < m ? vals[p + N] : null; break;
+        case "diff": case "pct_change": {
+          const cur = nums[p], prev = p >= 1 ? nums[p - 1] : null;
+          if (err) { v = err; break; }
+          if (cur === null || prev === null) { v = null; break; }
+          v = spec.fn === "diff" ? cur - prev : prev === 0 ? solError("#DIV/0!", "Percent change from zero is undefined") : (cur - prev) / prev;
+          break;
+        }
+        case "rolling_sum": case "rolling_avg": case "rolling_min": case "rolling_max": {
+          if (err) { v = err; break; }
+          if (p < N - 1 || nums[p] === null) { v = null; break; }
+          const win = nums.slice(p - N + 1, p + 1).filter((x): x is number => x !== null);
+          if (win.length === 0) { v = null; break; }
+          v = spec.fn === "rolling_sum" ? win.reduce((a, b) => a + b, 0)
+            : spec.fn === "rolling_avg" ? win.reduce((a, b) => a + b, 0) / win.length
+            : spec.fn === "rolling_min" ? Math.min(...win) : Math.max(...win);
+          break;
+        }
+        case "group_sum": case "group_avg": case "group_min": case "group_max": case "group_count": v = groupAgg(); break;
+        case "share": {
+          if (err) { v = err; break; }
+          const total = present.reduce((a, b) => a + b, 0);
+          v = nums[p] === null ? null : total === 0 ? solError("#DIV/0!", "The group total is 0") : nums[p]! / total;
+          break;
+        }
+        case "first": v = err ?? (vals.length ? vals[0] : null); break;
+        case "last":  v = err ?? (vals.length ? vals[m - 1] : null); break;
+      }
+      out[row] = v;
+    }
+  }
+  const outType: FrameColType =
+    (spec.fn === "lag" || spec.fn === "lead" || spec.fn === "first" || spec.fn === "last") && valCol ? valCol.type : "number";
+  const name = spec.as.trim() || spec.fn;
+  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, values: out }] };
+}

@@ -36,7 +36,7 @@ import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
 import { DistributionNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode } from "./frame";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode } from "./frame";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
@@ -199,7 +199,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof MergeColumnsNode ||
     node instanceof HeadersNode ||
     node instanceof DropBlankRowsNode ||
-    node instanceof DescribeNode || node instanceof CorrMatrixNode ||
+    node instanceof DescribeNode || node instanceof CorrMatrixNode || node instanceof WindowNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
     node instanceof ReconcileNode ||

@@ -6,7 +6,8 @@ import { ntileList, outlierFlags } from "./listOps";
 import { epochToSerial, serialToEpoch, dateTrunc } from "./dateOps";
 import { parseDateToSerial } from "./dateSerial";
 import { isSolError } from "../errorValue";
-import { describeFrame, correlationMatrix } from "../frameVerbs";
+import { describeFrame, correlationMatrix, windowFrame } from "../frameVerbs";
+import { WindowNode } from "./frame";
 import { amortizationSchedule } from "./financeOps";
 import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
 import { HypothesisTestNode } from "./stats";
@@ -361,5 +362,52 @@ describe("Forecast (ETS) — Holt–Winters", () => {
     expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: 45000 + 36, v: y, tl: timeline })).toBeCloseTo(out.interval![0], 10);
     expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: [3, 5, 7, 9, 11, 13, 15, 17] })).toBe(0);
     expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: 45000, v: y, tl: timeline }))).toBe(true); // target not past the end
+  });
+});
+
+describe("Window — per-group columns in original row order (pandas groupby().transform / SQL OVER)", () => {
+  const f: FrameValue = { __frame: true, columns: [
+    { name: "g", type: "string", values: ["a", "b", "a", "b", "a", "b"] },
+    { name: "t", type: "number", values: [3, 1, 1, 2, 2, 3] },
+    { name: "v", type: "number", values: [10, 20, 30, null, 50, 60] },
+  ] };
+  const col = (out: FrameValue, name: string) => out.columns.find((c) => c.name === name)!.values;
+  const run = (fn: string, extra: Record<string, unknown> = {}) =>
+    col(windowFrame(f, { partitionBy: ["g"], orderBy: "t", fn: fn as never, column: "v", as: "out", ...extra }), "out");
+  it("running sum / row number / lag / diff / pct_change follow the Order column within each group", () => {
+    expect(run("cumsum")).toEqual([90, 20, 30, null, 80, 80]);
+    expect(run("row_number")).toEqual([3, 1, 1, 2, 2, 3]);
+    expect(run("lag", { n: 1 })).toEqual([50, null, null, 20, 30, null]);
+    expect(run("lead", { n: 1 })).toEqual([null, null, 50, 60, 10, null]);
+    expect(run("diff")).toEqual([-40, null, null, null, 20, null]);
+    const pc = run("pct_change") as (number | null)[];
+    expect(pc[4]).toBeCloseTo(2 / 3, 12); expect(pc[0]).toBeCloseTo(-0.8, 12); expect(pc[2]).toBeNull();
+    expect(run("rolling_sum", { n: 2 })).toEqual([60, null, null, null, 80, 60]);
+  });
+  it("ranks: competition, dense, percent; ntile; blanks rank blank", () => {
+    const byV = (fn: string) => col(windowFrame(f, { partitionBy: ["g"], orderBy: "v", fn: fn as never, as: "r" }), "r");
+    expect(byV("rank")).toEqual([1, 1, 2, null, 3, 2]);
+    expect(run("dense_rank")).toEqual([3, 1, 1, 2, 2, 3]);           // dense rank by t
+    expect(byV("percent_rank")).toEqual([0, 0, 0.5, null, 1, 1]);
+    expect(run("ntile", { n: 3 })).toEqual([3, 1, 1, 2, 2, 3]);
+    const tied: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [5, 5, 7, 9] }] };
+    expect(col(windowFrame(tied, { partitionBy: [], orderBy: "k", fn: "rank", as: "r" }), "r")).toEqual([1, 1, 3, 4]);
+    expect(col(windowFrame(tied, { partitionBy: [], orderBy: "k", fn: "dense_rank", as: "r" }), "r")).toEqual([1, 1, 2, 3]);
+  });
+  it("group aggregates repeat per row; share divides by the group total; first/last honor the order", () => {
+    expect(run("group_sum")).toEqual([90, 80, 90, 80, 90, 80]);
+    expect(run("group_count")).toEqual([3, 2, 3, 2, 3, 2]);
+    const sh = run("share") as (number | null)[];
+    expect(sh[1]).toBeCloseTo(0.25, 12); expect(sh[5]).toBeCloseTo(0.75, 12); expect(sh[3]).toBeNull();
+    expect(run("first")).toEqual([30, 20, 30, 20, 30, 20]);
+    expect(run("last")).toEqual([10, 60, 10, 60, 10, 60]);
+  });
+  it("no partition = the whole frame; no order = input order; a missing column is #REF!", () => {
+    expect(col(windowFrame(f, { partitionBy: [], fn: "cumsum", column: "v", as: "c" }), "c")).toEqual([10, 30, 60, null, 110, 170]);
+    expect(() => windowFrame(f, { partitionBy: ["nope"], fn: "row_number", as: "r" })).toThrow();
+    const node = new WindowNode({ op: "cumsum" }); node.stringLiterals = { orderBy: "t", column: "v", name: "" };
+    const out = node.data({ frame: [f], keys: [["g"]] }).frame as FrameValue;
+    expect(out.columns.map((c) => c.name)).toEqual(["g", "t", "v", "running_sum_v"]);
+    expect(col(out, "running_sum_v")).toEqual([90, 20, 30, null, 80, 80]);
   });
 });

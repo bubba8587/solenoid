@@ -1320,6 +1320,104 @@
    "init": {
     "label": "season used"
    }
+  },
+  {
+   "id": "src_win",
+   "type": "FrameInputNode",
+   "x": 3000,
+   "y": 2300,
+   "init": {
+    "label": "Sales by region/month",
+    "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"N\", \"S\", \"N\", \"S\"]}, {\"name\": \"Month\", \"type\": \"number\", \"values\": [1, 1, 2, 2, 3, 3]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, 110]}]"
+   }
+  },
+  {
+   "id": "win_cumsum",
+   "type": "WindowNode",
+   "x": 3360,
+   "y": 2300,
+   "init": {
+    "label": "Window: running sum",
+    "op": "cumsum"
+   },
+   "stringLiterals": {
+    "orderBy": "Month",
+    "column": "Sales",
+    "name": "YTD"
+   }
+  },
+  {
+   "id": "src_win_keys",
+   "type": "ListInputNode",
+   "x": 3000,
+   "y": 2560,
+   "init": {
+    "label": "Partition keys",
+    "valueKeys": [
+     "v0"
+    ],
+    "dataType": "string"
+   },
+   "stringLiterals": {
+    "v0": "Region"
+   }
+  },
+  {
+   "id": "d_win_cumsum",
+   "type": "DisplayNode",
+   "x": 3760,
+   "y": 2300,
+   "init": {
+    "label": "YTD per region"
+   }
+  },
+  {
+   "id": "win_share",
+   "type": "WindowNode",
+   "x": 3360,
+   "y": 2620,
+   "init": {
+    "label": "Window: share of group",
+    "op": "share"
+   },
+   "stringLiterals": {
+    "orderBy": "",
+    "column": "Sales",
+    "name": "Share"
+   }
+  },
+  {
+   "id": "d_win_share",
+   "type": "DisplayNode",
+   "x": 3760,
+   "y": 2620,
+   "init": {
+    "label": "share of region"
+   }
+  },
+  {
+   "id": "win_rank",
+   "type": "WindowNode",
+   "x": 3360,
+   "y": 2940,
+   "init": {
+    "label": "Window: rank by Sales",
+    "op": "rank"
+   },
+   "stringLiterals": {
+    "orderBy": "Sales",
+    "column": "",
+    "name": "Rank"
+   }
+  },
+  {
+   "id": "d_win_rank",
+   "type": "DisplayNode",
+   "x": 3760,
+   "y": 2940,
+   "init": {
+    "label": "rank within region"
+   }
   }
  ],
  "connections": [
@@ -1957,6 +2055,60 @@
    "source": "ets",
    "sourceOutput": "detected",
    "target": "d_ets_s",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_win",
+   "sourceOutput": "frame",
+   "target": "win_cumsum",
+   "targetInput": "frame"
+  },
+  {
+   "source": "src_win_keys",
+   "sourceOutput": "list",
+   "target": "win_cumsum",
+   "targetInput": "keys"
+  },
+  {
+   "source": "win_cumsum",
+   "sourceOutput": "frame",
+   "target": "d_win_cumsum",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_win",
+   "sourceOutput": "frame",
+   "target": "win_share",
+   "targetInput": "frame"
+  },
+  {
+   "source": "src_win_keys",
+   "sourceOutput": "list",
+   "target": "win_share",
+   "targetInput": "keys"
+  },
+  {
+   "source": "win_share",
+   "sourceOutput": "frame",
+   "target": "d_win_share",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_win",
+   "sourceOutput": "frame",
+   "target": "win_rank",
+   "targetInput": "frame"
+  },
+  {
+   "source": "src_win_keys",
+   "sourceOutput": "list",
+   "target": "win_rank",
+   "targetInput": "keys"
+  },
+  {
+   "source": "win_rank",
+   "sourceOutput": "frame",
+   "target": "d_win_rank",
    "targetInput": "in"
   }
  ]

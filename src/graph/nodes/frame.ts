@@ -31,7 +31,8 @@ import {
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
-import { describeFrame, correlationMatrix, type CorrMethod } from "../frameVerbs";
+import { describeFrame, correlationMatrix, windowFrame, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
+export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
@@ -2027,6 +2028,83 @@ export class CorrMatrixNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
     this.cachedResult = runVerb(() => correlationMatrix(f, this.method));
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── WINDOW (per-group running / rank / lag / share columns) ─────────────────
+export const WINDOW_FN_META = {
+  row_number:   { label: "Row number",        description: "1, 2, 3… within each group in the chosen order. SQL ROW_NUMBER, pandas cumcount()+1." },
+  rank:         { label: "Rank",              description: "Competition rank by the Order column within the group (ties share the best rank, then skip). SQL RANK, dplyr min_rank." },
+  dense_rank:   { label: "Dense rank",        description: "Rank without gaps after ties. SQL DENSE_RANK, dplyr dense_rank." },
+  percent_rank: { label: "Percent rank",      description: "(rank − 1) ÷ (group size − 1): 0 for the first, 1 for the last. SQL PERCENT_RANK." },
+  ntile:        { label: "N-tile",            description: "Bucket 1..N by position within the group. SQL NTILE(n), dplyr ntile." },
+  cumsum:       { label: "Running sum",       description: "Cumulative sum of the Value column within the group. pandas groupby().cumsum(), SQL SUM() OVER." },
+  cumavg:       { label: "Running average",   description: "Cumulative mean within the group. SQL AVG() OVER (… ROWS UNBOUNDED PRECEDING)." },
+  cummin:       { label: "Running min",       description: "Cumulative minimum within the group. pandas cummin." },
+  cummax:       { label: "Running max",       description: "Cumulative maximum within the group. pandas cummax." },
+  cumcount:     { label: "Running count",     description: "How many rows so far in the group, this one included." },
+  lag:          { label: "Lag (previous)",    description: "The Value N rows earlier in the group (blank at the start). SQL LAG, pandas shift(n), dplyr lag." },
+  lead:         { label: "Lead (next)",       description: "The Value N rows later in the group (blank at the end). SQL LEAD, pandas shift(−n), dplyr lead." },
+  diff:         { label: "Difference",        description: "Value minus the previous row's Value in the group. pandas groupby().diff()." },
+  pct_change:   { label: "Percent change",    description: "(Value − previous) ÷ previous within the group. pandas groupby().pct_change()." },
+  rolling_sum:  { label: "Rolling sum (N)",   description: "Sum of the last N rows in the group, blank until N rows exist. pandas groupby().rolling(N).sum()." },
+  rolling_avg:  { label: "Rolling average (N)", description: "Mean of the last N rows in the group. pandas groupby().rolling(N).mean()." },
+  rolling_min:  { label: "Rolling min (N)",   description: "Minimum of the last N rows in the group." },
+  rolling_max:  { label: "Rolling max (N)",   description: "Maximum of the last N rows in the group." },
+  group_sum:    { label: "Group total",       description: "The group's sum of the Value, repeated on every row (a denominator without a join). pandas transform('sum'), SQL SUM() OVER (PARTITION BY)." },
+  group_avg:    { label: "Group average",     description: "The group's mean of the Value on every row. transform('mean')." },
+  group_min:    { label: "Group min",         description: "The group's minimum on every row." },
+  group_max:    { label: "Group max",         description: "The group's maximum on every row." },
+  group_count:  { label: "Group count",       description: "How many non-blank Values the group holds, on every row. transform('count')." },
+  share:        { label: "Share of group",    description: "Value ÷ the group's total: each row's fraction of its group. pandas x / x.groupby(k).transform('sum')." },
+  first:        { label: "First in group",    description: "The group's first Value (in the chosen order) on every row. SQL FIRST_VALUE." },
+  last:         { label: "Last in group",     description: "The group's last Value on every row. SQL LAST_VALUE." },
+} satisfies Record<WindowFn, { label: string; description: string }>;
+
+export class WindowNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    keys: "The partition: rows sharing these keys form a group. Leave it empty to treat the whole frame as one group.",
+    orderBy: "The column that orders rows WITHIN each group before running / ranking / lagging. Leave it blank to keep the frame's row order.",
+    column: "The Value column the function reads. Ranks and row numbers don't need one.",
+    n: "Lag / lead offset, rolling window length, or N-tile bucket count.",
+    name: "The new column's name; an existing column of that name is replaced.",
+    frame: "The input frame with the new column appended — rows stay in their original order (pandas transform).",
+  };
+  label: string;
+  op: WindowFn = "cumsum";
+  literals: Record<string, number> = { n: 3 };
+  stringLiterals: Record<string, string> = { orderBy: "", column: "", name: "" };
+  cachedResult: FrameValue | SolError | null = null;
+  width = 210; height = 300;
+
+  constructor(init?: { label?: string; op?: WindowFn }) {
+    super("Window");
+    this.label = init?.label ?? "Window";
+    if (init?.op) this.op = init.op;
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("keys", strListIn("Partition by"));
+    this.addInput("orderBy", strIn("Order by"));
+    this.addInput("column", strIn("Value"));
+    this.addInput("n", numIn("N"));
+    this.addInput("name", strIn("New column"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const keys = readColumnList(inputs.keys);
+    const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
+    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
+    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
+    const n = readInput(inputs.n, this.literals.n ?? 3);
+    if (!f || keys === null || orderBy === null || column === null || name === null || n === null) { this.cachedResult = null; return { frame: null }; }
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.op) && !column.trim()) { this.cachedResult = f; return { frame: f }; }
+    const as = name.trim() || `${WINDOW_FN_META[this.op].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+    this.cachedResult = runVerb(() => windowFrame(f, {
+      partitionBy: keys, orderBy: orderBy.trim() || undefined, fn: this.op,
+      column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.op) ? n : undefined,
+    }));
     return { frame: this.cachedResult };
   }
 }

@@ -153,7 +153,7 @@ export {
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
   ReconcileComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
-  DescribeComponent, CorrMatrixComponent,
+  DescribeComponent, CorrMatrixComponent, WindowComponent,
 } from "./FrameNodes";
 
 // ─── Trust & data quality ───────────────────────────────────────────────────────

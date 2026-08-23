@@ -43,8 +43,8 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../rete-nodes";
-import { AGG_OP_META, CORR_METHOD_META } from "../rete-nodes";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, CorrMethod } from "../rete-nodes";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
@@ -994,6 +994,22 @@ export function CorrMatrixComponent({ data, emit }: NodeProps<CorrMatrixNodeType
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect arg value={method} onChange={setMethod} options={CORR_METHOD_OPTIONS} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── WINDOW ───────────────────────────────────────────────────────────────────
+const WINDOW_FN_OPTIONS = (Object.keys(WINDOW_FN_META) as WindowFn[]).map((f) => ({
+  value: f, label: WINDOW_FN_META[f].label, title: WINDOW_FN_META[f].description,
+}));
+
+export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <OpSelect value={op} onChange={setOp} options={WINDOW_FN_OPTIONS} />
+      <InlineInputs node={data} emit={emit} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
