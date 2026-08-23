@@ -49,7 +49,7 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 # for date columns too, not just numeric/string ones. `product` (the group-by
 # PRODUCT aggregate — gated off by default, panics at runtime without it:
 # "activate 'product' feature").
-polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "asof_join", "semi_anti_join", "csv", "parquet", "dtype-date", "dtype-datetime", "product"] }
+polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "asof_join", "semi_anti_join", "csv", "parquet", "dtype-date", "dtype-datetime", "product", "cum_agg", "rank", "rolling_window", "diff"] }
 # `FunctionOptions`/`ApplyOptions`/`FunctionFlags` (the custom per-group-scalar
 # GROUP-BY UDF for MODE, `engine.rs`'s `mode_expr`) aren't re-exported through
 # `polars::prelude` — Cargo unifies this to the SAME 0.46.x already pulled in by

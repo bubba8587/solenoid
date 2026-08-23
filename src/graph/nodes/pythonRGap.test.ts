@@ -8,6 +8,7 @@ import { parseDateToSerial } from "./dateSerial";
 import { isSolError } from "../errorValue";
 import { describeFrame, correlationMatrix, windowFrame } from "../frameVerbs";
 import { WindowNode } from "./frame";
+import { readFrame } from "../frameBackend";
 import { amortizationSchedule } from "./financeOps";
 import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
 import { HypothesisTestNode } from "./stats";
@@ -402,11 +403,11 @@ describe("Window — per-group columns in original row order (pandas groupby().t
     expect(run("first")).toEqual([30, 20, 30, 20, 30, 20]);
     expect(run("last")).toEqual([10, 60, 10, 60, 10, 60]);
   });
-  it("no partition = the whole frame; no order = input order; a missing column is #REF!", () => {
+  it("no partition = the whole frame; no order = input order; a missing column is #REF!", async () => {
     expect(col(windowFrame(f, { partitionBy: [], fn: "cumsum", column: "v", as: "c" }), "c")).toEqual([10, 30, 60, null, 110, 170]);
     expect(() => windowFrame(f, { partitionBy: ["nope"], fn: "row_number", as: "r" })).toThrow();
     const node = new WindowNode({ op: "cumsum" }); node.stringLiterals = { orderBy: "t", column: "v", name: "" };
-    const out = node.data({ frame: [f], keys: [["g"]] }).frame as FrameValue;
+    const out = await readFrame((await node.data({ frame: [f], keys: [["g"]] })).frame as never) as FrameValue; // lazy node → collect
     expect(out.columns.map((c) => c.name)).toEqual(["g", "t", "v", "running_sum_v"]);
     expect(col(out, "running_sum_v")).toEqual([90, 20, 30, null, 80, 80]);
   });

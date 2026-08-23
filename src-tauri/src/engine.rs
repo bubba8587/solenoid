@@ -495,6 +495,26 @@ pub enum WireOp {
     },
     #[serde(rename = "groupBy")]
     GroupBy { keys: Vec<String>, aggs: Vec<WireAgg> },
+    // The per-group window column (the oracle's `windowFrame`, frameVerbs.ts):
+    // partition, order within the partition, one function, written back in the
+    // ORIGINAL row order as a new column.
+    #[serde(rename = "window")]
+    Window {
+        #[serde(rename = "partitionBy")]
+        partition_by: Vec<String>,
+        #[serde(rename = "orderBy", default)]
+        order_by: Option<String>,
+        #[serde(rename = "orderDir", default)]
+        order_dir: Option<String>,
+        #[serde(rename = "fn")]
+        func: String,
+        #[serde(default)]
+        column: Option<String>,
+        #[serde(rename = "as")]
+        as_name: String,
+        #[serde(default)]
+        n: Option<f64>,
+    },
     #[serde(rename = "unpivot")]
     Unpivot {
         #[serde(rename = "idColumns")]
@@ -942,6 +962,141 @@ fn lazy_sort(plan: Plan, by: &str, dir: &str) -> Result<Plan, IpcError> {
 fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
     let take = n.trunc().max(0.0) as IdxSize;
     Ok(Plan { lf: plan.lf.limit(take), ..plan })
+}
+
+// ─── Window (the oracle's windowFrame — per-group column, original row order) ────
+// Polars' `.over(partition)` evaluates an expression per group in the frame's CURRENT
+// row order, so the plan is: stamp a row index, sort by the order key (nulls last,
+// index as the tiebreak — the oracle's stable within-group order), apply the
+// expression `.over(keys)`, sort back by the index and drop it. An existing column of
+// the output name is dropped first so the new one lands LAST (the oracle's
+// filter-then-append). Value nulls: Polars' cum_* / shift / first / last / rolling
+// already carry and skip nulls the way the oracle does; the few places they differ
+// (an all-null group's sum is 0 here, null there; a zero denominator is an error
+// there) are masked explicitly below.
+const WINDOW_IDX: &str = "__solenoid_window_idx__";
+fn lazy_window(
+    plan: Plan,
+    partition_by: &[String],
+    order_by: Option<&str>,
+    order_dir: Option<&str>,
+    func: &str,
+    column: Option<&str>,
+    as_name: &str,
+    n: Option<f64>,
+) -> Result<Plan, IpcError> {
+    require_in(&plan.names, partition_by)?;
+    if let Some(o) = order_by { require_in(&plan.names, std::slice::from_ref(&o.to_string()))?; }
+    let needs_column = matches!(func,
+        "cumsum" | "cumavg" | "cummin" | "cummax" | "lag" | "lead" | "diff" | "pct_change"
+        | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
+        | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last");
+    let col_name = match (needs_column, column) {
+        (true, Some(c)) => { require_in(&plan.names, std::slice::from_ref(&c.to_string()))?; Some(c) }
+        (true, None) => return Err(IpcError::new("#REF!", "column \"\" not found")),
+        (false, _) => None,
+    };
+    let nn = n.unwrap_or(1.0).round().max(1.0) as i64;
+    let keys: Vec<Expr> = if partition_by.is_empty() { vec![lit(1)] } else { partition_by.iter().map(|k| col(k.as_str())).collect() };
+    let over = |e: Expr| e.over(keys.clone());
+    // The value column as f64 (logical 0/1, the rest already numeric) for the arithmetic
+    // functions; the ORIGINAL column for lag/lead/first/last so text/dates pass through.
+    let col_ty = col_name.and_then(|c| type_of_in(&plan.names, &plan.types, c));
+    let vnum = || {
+        let c = col(col_name.unwrap());
+        match col_ty { Some(SolType::Logical) => c.cast(DataType::Float64), _ => c }
+    };
+    let vraw = || col(col_name.unwrap());
+    // The order key expr (the sort key lazy_sort uses: logical → 0/1, NaN → null).
+    let order_key = order_by.map(|o| {
+        let ty = type_of_in(&plan.names, &plan.types, o).unwrap_or(SolType::Str);
+        match ty {
+            SolType::Logical => col(o).cast(DataType::Float64),
+            SolType::Number | SolType::Date => { let c = col(o); when(c.clone().is_nan()).then(lit(NULL)).otherwise(c).cast(DataType::Float64) }
+            SolType::Str => col(o),
+        }
+    });
+    let desc = order_dir == Some("desc");
+    let rownum = || over(col(WINDOW_IDX).cum_count(false)).cast(DataType::Float64); // 1..m within the group
+    let group_len = || over(col(WINDOW_IDX).count()).cast(DataType::Float64);
+    let rank_expr = |method: RankMethod| -> Expr {
+        match &order_key {
+            Some(k) => over(k.clone().rank(RankOptions { method, descending: desc }, None)).cast(DataType::Float64),
+            None => rownum(),
+        }
+    };
+    let nonnull_present = || over(vnum().count()).cast(DataType::Float64); // non-null values in the group
+    let expr: Expr = match func {
+        "row_number" | "cumcount" => rownum(),
+        "rank" => rank_expr(RankMethod::Min),
+        "dense_rank" => rank_expr(RankMethod::Dense),
+        "percent_rank" => {
+            let ranked = match &order_key { Some(k) => over(k.clone().count()).cast(DataType::Float64), None => group_len() };
+            let r = rank_expr(RankMethod::Min);
+            when(ranked.clone().gt(lit(1.0)))
+                .then((r.clone() - lit(1.0)) / (ranked - lit(1.0)))
+                .otherwise(r * lit(0.0))
+        }
+        // floor via an Int64 cast (non-negative operand; `floor` needs a feature this build doesn't pull)
+        "ntile" => ((rownum() - lit(1.0)) * lit(nn as f64) / group_len()).cast(DataType::Int64).cast(DataType::Float64) + lit(1.0),
+        "cumsum" => over(vnum().cum_sum(false)),
+        "cumavg" => over(vnum().cum_sum(false)) / over(vnum().cum_count(false)).cast(DataType::Float64),
+        "cummin" => over(vnum().cum_min(false)),
+        "cummax" => over(vnum().cum_max(false)),
+        "lag" => over(vraw().shift(lit(nn))),
+        "lead" => over(vraw().shift(lit(-nn))),
+        "diff" => over(vnum().clone() - vnum().shift(lit(1))),
+        "pct_change" => {
+            let prev = over(vnum().shift(lit(1)));
+            let cur = vnum();
+            when(prev.clone().eq(lit(0.0))).then(lit(NULL)).otherwise((cur - prev.clone()) / prev)
+        }
+        "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
+            let opts = RollingOptionsFixedWindow { window_size: nn as usize, min_periods: 1, ..Default::default() };
+            let rolled = match func {
+                "rolling_sum" => vnum().rolling_sum(opts),
+                "rolling_avg" => vnum().rolling_mean(opts),
+                "rolling_min" => vnum().rolling_min(opts),
+                _ => vnum().rolling_max(opts),
+            };
+            // Blank until N rows exist in the group and when the row's own value is blank.
+            when(rownum().gt_eq(lit(nn as f64)).and(vnum().is_not_null())).then(over(rolled)).otherwise(lit(NULL))
+        }
+        "group_sum" => when(nonnull_present().gt(lit(0.0))).then(over(vnum().sum())).otherwise(lit(NULL)),
+        "group_avg" => over(vnum().mean()),
+        "group_min" => over(vnum().min()),
+        "group_max" => over(vnum().max()),
+        "group_count" => nonnull_present(),
+        "share" => {
+            let total = over(vnum().sum());
+            when(total.clone().eq(lit(0.0))).then(lit(NULL)).otherwise(vnum() / total)
+        }
+        "first" => over(vraw().first()),
+        "last" => over(vraw().last()),
+        other => return Err(IpcError::new("#VALUE!", format!("unknown window function \"{other}\""))),
+    };
+    let out_ty = match func {
+        "lag" | "lead" | "first" | "last" => col_ty.unwrap_or(SolType::Number),
+        _ => SolType::Number,
+    };
+    let name = if as_name.trim().is_empty() { func } else { as_name.trim() };
+    let mut lf = plan.lf.with_row_index(WINDOW_IDX, None);
+    if let Some(k) = &order_key {
+        let opts = SortMultipleOptions::default().with_order_descending_multi([desc, false]).with_nulls_last(true);
+        lf = lf.sort_by_exprs([k.clone(), col(WINDOW_IDX)], opts);
+    }
+    let existed = plan.names.iter().position(|c| c == name);
+    if existed.is_some() { lf = lf.drop([name]); }
+    let lf = lf
+        .with_column(expr.alias(name))
+        .sort([WINDOW_IDX], SortMultipleOptions::default())
+        .drop([WINDOW_IDX]);
+    let mut names = plan.names.clone();
+    let mut types = plan.types.clone();
+    if let Some(i) = existed { names.remove(i); types.remove(i); }
+    names.push(name.to_string());
+    types.push(out_ty);
+    Ok(Plan { lf, names, types })
 }
 
 // Re-materialize a frame from a row-index list (the basis for distinct).
@@ -2129,6 +2284,9 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
         WireOp::GroupBy { keys, aggs } => {
             let (lf, names, types) = group_by_lazy_plan(plan.lf, &plan.names, &plan.types, keys, aggs)?;
             Ok(Plan { lf, names, types })
+        }
+        WireOp::Window { partition_by, order_by, order_dir, func, column, as_name, n } => {
+            lazy_window(plan, partition_by, order_by.as_deref(), order_dir.as_deref(), func, column.as_deref(), as_name, *n)
         }
         WireOp::Filter { column, op: fop, value, match_case } => {
             require_in(&plan.names, std::slice::from_ref(column))?;

@@ -101,8 +101,7 @@ Aggregate ops, Spearman/Kendall as Correl ops, the tests as Hypothesis-Test ops 
 `table` sockets), trace/rank/norm on the MDETERM card (which gained a real `setOp` output retype),
 quantiles as a Bin mode. New cards: Outliers, Epoch ↔ Date, Truncate Date, Describe,
 Correlation Matrix, Amortization, Solve, Eigen, Spectrum, Text Similarity, Fuzzy Match,
-Forecast (ETS), Window. **Window is JS-eager** (like Split Column); its Polars `.over()` mirror
-is the open follow-up. Reference overlay gained numpy/pandas/scipy/R/SQL/Excel chips
+Forecast (ETS), Window. **Window is a LAZY FrameOp** — Polars `.over()` in `engine.rs` (`lazy_window`: row-index stamp → sort by order key nulls-last with the index as tiebreak → expr `.over(keys)` → sort back → drop), JS oracle on web, 20-case `window.json` in the parity corpus (cargo `corpus_cases` verified to catch a wrong expectation). Cargo features gained cum_agg / rank / rolling_window / diff. Reference overlay gained numpy/pandas/scipy/R/SQL/Excel chips
 (`libraryTags`, derived from prose + keywords). The scratch seed wires every new node through
 Displays (verified headless via `run-graph`). Excel-parity side-effect: FORECAST.ETS family
 exists now (parity:false, same model family, own parameter search).

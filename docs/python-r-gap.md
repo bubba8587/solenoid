@@ -19,8 +19,8 @@ Matrix, Amortization Schedule; the eight Hypothesis-Test ops (ANOVA, Kruskal–W
 Mann–Whitney, Wilcoxon, Fisher exact, KS exact, two-proportion z, binomial); TRACE /
 MATRIXRANK / NORM + Solve + Eigen (symmetric); Spectrum (FFT, Bluestein); Text Similarity +
 Fuzzy Match; Forecast (ETS) = Holt–Winters + FORECAST.ETS family; **Window** (per-group
-running / rank / lag / share columns — JS-eager; the Polars `.over()` mirror is the open
-follow-up in backlog B5). Reference overlay chips (numpy / pandas / scipy / R / SQL / Excel)
+running / rank / lag / share columns — a lazy FrameOp: Polars `.over()` on desktop, the JS
+oracle on web, `window.json` in the parity corpus). Reference overlay chips (numpy / pandas / scipy / R / SQL / Excel)
 let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParity.test.ts`,
 `distributionFormula.test.ts`, `dateParity.test.ts`, `functionReferenceLibs.test.ts`.
 

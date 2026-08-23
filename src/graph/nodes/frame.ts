@@ -31,7 +31,7 @@ import {
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
-import { describeFrame, correlationMatrix, windowFrame, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
+import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
@@ -2091,20 +2091,21 @@ export class WindowNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const keys = readColumnList(inputs.keys);
     const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
     const n = readInput(inputs.n, this.literals.n ?? 3);
-    if (!f || keys === null || orderBy === null || column === null || name === null || n === null) { this.cachedResult = null; return { frame: null }; }
-    if (WINDOW_FN_NEEDS_COLUMN.has(this.op) && !column.trim()) { this.cachedResult = f; return { frame: f }; }
+    if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
+    // A value-reading function with no Value column yet is a passthrough, not an error.
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.op) && !column.trim()) return emitFrame(this, beginPass(this), await readFrame(f));
     const as = name.trim() || `${WINDOW_FN_META[this.op].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
-    this.cachedResult = runVerb(() => windowFrame(f, {
-      partitionBy: keys, orderBy: orderBy.trim() || undefined, fn: this.op,
+    // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, {
+      kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.op,
       column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.op) ? n : undefined,
     }));
-    return { frame: this.cachedResult };
   }
 }

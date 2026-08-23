@@ -63,13 +63,14 @@ export type FrameOp =
   | { kind: "filterMulti"; combine: FilterCombine; conditions: FilterCond[]; complement?: boolean } // keep rows passing ALL ("and") / ANY ("or") predicates; complement keeps the REST
   | { kind: "groupBy"; keys: string[]; aggs: AggSpec[] } // one row per key combo + aggregates
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
-  | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
+  | ({ kind: "pivot" } & PivotSpec)  // long → wide cross-tab (Excel PIVOTBY)
+  | ({ kind: "window" } & WindowSpec); // one per-group window column, original row order
 
 /** Pinned to the TYPE below, so a `FrameOp` kind missing here fails `tsc` and the
  *  parity corpus then demands its fixture file. */
 export const FRAME_OP_KINDS = [
   "select", "drop", "rename", "sort", "distinct", "head",
-  "filter", "filterMulti", "groupBy", "unpivot", "pivot",
+  "filter", "filterMulti", "groupBy", "unpivot", "pivot", "window",
 ] as const satisfies readonly FrameOp["kind"][];
 // Exhaustiveness: a FrameOp kind missing from FRAME_OP_KINDS makes this `never`
 // assignment fail to compile.
@@ -1389,6 +1390,7 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "groupBy":  return groupByFrame(f, op.keys, op.aggs);
     case "unpivot":  return unpivotFrame(f, op.idColumns, op.valueColumns, { variableName: op.variableName, valueName: op.valueName });
     case "pivot":    return pivotFrame(f, op);
+    case "window":   return windowFrame(f, op);
   }
 }
 

@@ -40,8 +40,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   LOWESS / find_peaks, drawdown/Sharpe/log-returns, seasonal decomposition, logistic
   regression, k-means / PCA (Eigen landed — PCA = eigh of the corr matrix), ODE (RK4),
   polynomial roots, cross join, bind-cols, histogram2d, hash/uuid.
-- [ ] **Window verb's Polars mirror** (`.over()` in engine.rs + `window.json` parity fixture)
-  so a big-frame Window fuses instead of materializing — the B5 pattern.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
 - [ ] **B1 Relative dates opt-in** (author-requested 2026-08-21; spec below under Small builds).
