@@ -11,11 +11,11 @@ import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
-  gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod,
+  gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
@@ -446,6 +446,13 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RMS:         { returns: "number", arity: [1, 255], native: true },
   SPEARMAN:    { returns: "number", arity: [2, 2], native: true },
   KENDALL:     { returns: "number", arity: [2, 2], native: true },
+  TRACE:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  MATRIXRANK:  { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  NORM:        { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  SOLVE:       { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
+  EIGENVALUES: { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  EIGENVECTORS:{ returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  SPECTRUM:    { returns: "number", rank: "matrix", listArgs: true, arity: [1, 2], native: true },
   ANOVA:       { returns: "number", arity: [2, 255], native: true },
   KRUSKAL:     { returns: "number", arity: [2, 255], native: true },
   MANNWHITNEY: { returns: "number", arity: [2, 2], native: true },
@@ -1719,6 +1726,24 @@ registerInternal("OUTER", (a, b) => {
   const B = numList(b).map((c) => (typeof c === "number" ? c : null));
   return A.length === 0 || B.length === 0 ? null : outerProduct(A, B);
 });
+// The linear-algebra set numpy/R users expect beside MDETERM/MINVERSE, on the MatDet /
+// Solve / Eigen nodes' matrixOps kernels. SPECTRUM is the FFT node's one-sided spectrum.
+const numMat = (m: unknown): NumMat | SolError => {
+  const rows = Array.isArray(m) ? (Array.isArray(m[0]) ? (m as unknown[][]) : [m as unknown[]]) : [[m]];
+  return asNumericMatrix(rows);
+};
+registerInternal("TRACE", (m) => { const a = numMat(m); return isSolError(a) ? a : matRows(a) !== matCols(a) ? solError("#SHAPE!", "TRACE needs a square matrix") : matTrace(a); });
+registerInternal("MATRIXRANK", (m) => { const a = numMat(m); return isSolError(a) ? a : matRank(a); });
+registerInternal("NORM", (m) => { const a = numMat(m); return isSolError(a) ? a : matNorm(a); });
+registerInternal("SOLVE", (m, b) => {
+  const a = numMat(m); if (isSolError(a)) return a;
+  const bs = numsOf(b);
+  if (matRows(a) !== matCols(a) || bs.length !== matRows(a)) return solError("#SHAPE!", "SOLVE needs a square A with one b per row");
+  return matSolve(a, bs) ?? solError("#DIV/0!", "A is singular — the system has no unique solution");
+});
+registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
+registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
+registerInternal("SPECTRUM", (list, rate) => spectrum(numList(list), rate == null ? 1 : Number(rate)).map((r) => [r.frequency, r.magnitude, r.phase]));
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;

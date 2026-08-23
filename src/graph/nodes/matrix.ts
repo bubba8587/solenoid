@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, numListIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
+import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
@@ -110,12 +110,16 @@ export class TableInputNode extends ClassicPreset.Node {
 
 // ─── MDETERM / MINVERSE ───────────────────────────────────────────────────────
 
-export type MatDetOp = "mdeterm" | "minverse";
+export type MatDetOp = "mdeterm" | "minverse" | "trace" | "rank" | "norm";
 
 export const MAT_DET_OP_META = {
   mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: MDETERM." },
   minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: MINVERSE." },
+  trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy trace, R sum(diag(m)). No Excel equivalent." },
+  rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy matrix_rank, R qr(m)$rank. No Excel equivalent." },
+  norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (numpy.linalg.norm default, R norm(m, \"F\")). No Excel equivalent — SQRT(SUMSQ(range))." },
 } satisfies Record<MatDetOp, { label: string; description: string }>;
+const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank", "norm"]);
 
 export class MatDetNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -133,11 +137,19 @@ export class MatDetNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "mdeterm";
     this.label = init?.label ?? MAT_DET_OP_META[this.op].label;
     this.addInput("matrix", tableIn("Matrix"));
-    if (this.op === "mdeterm") {
-      this.addOutput("result", numOut("Determinant"));
-    } else {
-      this.addOutput("result", tableOut("Inverse"));
-    }
+    this.addOutput("result", MAT_DET_SCALAR.has(this.op) ? numOut(MAT_DET_OP_META[this.op].label) : tableOut("Inverse"));
+  }
+
+  /** Retypes the output in place (number ↔ table) — the component must call
+   *  retypeOutputCables afterwards (no connection event fires on an in-place swap). */
+  setOp(next: MatDetOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    const out = this.outputs.result;
+    if (!out) return;
+    const spec = MAT_DET_SCALAR.has(next) ? numOut(MAT_DET_OP_META[next].label) : tableOut("Inverse");
+    out.socket = spec.socket;
+    out.label = spec.label;
   }
 
   data(inputs: { matrix?: CellMat[] }): { result: number | Mat | SolError | null } {
@@ -147,16 +159,21 @@ export class MatDetNode extends ClassicPreset.Node {
     if (!raw) return { result: null };
     // An anytable could carry text — reject non-numeric matrices up front.
     const m = asNumericMatrix(raw);
+    const scalar = MAT_DET_SCALAR.has(this.op);
     if (isSolError(m)) {
-      if (this.op === "mdeterm") this.cachedScalar = m; else this.cachedMatrix = m;
+      if (scalar) this.cachedScalar = m; else this.cachedMatrix = m;
       return { result: m };
     }
+    // rank and norm take any shape; the rest need a square matrix.
+    if (this.op === "rank")  { const r = matRank(m);  this.cachedScalar = r; return { result: r }; }
+    if (this.op === "norm")  { const r = matNorm(m);  this.cachedScalar = r; return { result: r }; }
     // Non-square is a dimension problem (#SHAPE!); a rejected square one is singular.
     if (matRows(m) !== matCols(m)) {
       const err = solError("#SHAPE!", "Matrix must be square");
-      if (this.op === "mdeterm") this.cachedScalar = err; else this.cachedMatrix = err;
+      if (scalar) this.cachedScalar = err; else this.cachedMatrix = err;
       return { result: err };
     }
+    if (this.op === "trace") { const r = matTrace(m); this.cachedScalar = r; return { result: r }; }
     if (this.op === "mdeterm") {
       const d = matDet(m);
       if (d === null) {
@@ -675,5 +692,75 @@ export class TableInfoNode extends ClassicPreset.Node {
     this.cachedRows = rows;
     this.cachedCols = cols;
     return { rows, cols };
+  }
+}
+
+// ─── SOLVE (A·x = b) ──────────────────────────────────────────────────────────
+export class MatSolveNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    matrix: "Square, every cell filled; singular is #DIV/0!.",
+    b: "One value per row of A.",
+  };
+  label: string;
+  cachedResult: number[] | SolError | null = null;
+  width = 180; height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("MatSolve");
+    this.label = init?.label ?? "Solve A·x = b";
+    this.addInput("matrix", tableIn("A"));
+    this.addInput("b", numListIn("b"));
+    this.addOutput("result", numListOut("x"));
+  }
+
+  data(inputs: { matrix?: CellMat[]; b?: (number | null)[][] }): { result: number[] | SolError | null } {
+    const raw = inputs.matrix?.[0] ?? null, b = inputs.b?.[0] ?? null;
+    if (!raw || !b) { this.cachedResult = null; return { result: null }; }
+    const m = asNumericMatrix(raw);
+    if (isSolError(m)) { this.cachedResult = m; return { result: m }; }
+    if (b.some((v) => typeof v !== "number")) { this.cachedResult = null; return { result: null }; }
+    if (matRows(m) !== matCols(m) || b.length !== matRows(m)) {
+      const err = solError("#SHAPE!", "A must be square with one b per row");
+      this.cachedResult = err; return { result: err };
+    }
+    const x = matSolve(m, b as number[]);
+    const result = x ?? solError("#DIV/0!", "A is singular — the system has no unique solution");
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── EIGEN (symmetric) ────────────────────────────────────────────────────────
+export class MatEigenNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    matrix: "Square and SYMMETRIC (a covariance or correlation matrix, a Laplacian…); a non-symmetric matrix is #SHAPE!.",
+    values: "Eigenvalues, largest first.",
+    vectors: "Unit eigenvectors as COLUMNS, in the same order; the largest-magnitude entry of each is made positive.",
+  };
+  label: string;
+  cachedValues: number[] | SolError | null = null;
+  cachedVectors: Mat | SolError | null = null;
+  width = 190; height = 175;
+
+  constructor(init?: { label?: string }) {
+    super("MatEigen");
+    this.label = init?.label ?? "Eigen (symmetric)";
+    this.addInput("matrix", tableIn("Matrix"));
+    this.addOutput("values", numListOut("Eigenvalues"));
+    this.addOutput("vectors", tableOut("Eigenvectors"));
+  }
+
+  data(inputs: { matrix?: CellMat[] }): { values: number[] | SolError | null; vectors: Mat | SolError | null } {
+    const raw = inputs.matrix?.[0] ?? null;
+    if (!raw) { this.cachedValues = null; this.cachedVectors = null; return { values: null, vectors: null }; }
+    const m = asNumericMatrix(raw);
+    if (isSolError(m)) { this.cachedValues = m; this.cachedVectors = m; return { values: m, vectors: m }; }
+    const e = matEigh(m);
+    if (!e) {
+      const err = solError("#SHAPE!", "Eigen needs a square, symmetric matrix");
+      this.cachedValues = err; this.cachedVectors = err; return { values: err, vectors: err };
+    }
+    this.cachedValues = e.values; this.cachedVectors = e.vectors;
+    return { values: e.values, vectors: e.vectors };
   }
 }

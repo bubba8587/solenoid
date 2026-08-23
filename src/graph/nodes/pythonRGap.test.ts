@@ -10,6 +10,10 @@ import { describeFrame, correlationMatrix } from "../frameVerbs";
 import { amortizationSchedule } from "./financeOps";
 import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
 import { HypothesisTestNode } from "./stats";
+import { matTrace, matRank, matNorm, matSolve, matEigh } from "./matrixOps";
+import { fftReal, spectrum } from "./listOps";
+import { MatDetNode, MatSolveNode, MatEigenNode } from "./matrix";
+import { SpectrumNode } from "./list";
 import { DescribeNode, CorrMatrixNode } from "./frame";
 import { AmortizationNode } from "./finance";
 import type { FrameValue } from "../frame";
@@ -229,5 +233,65 @@ describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {
     expect(n.data({ groups: [[[6.9, 8.3, 8.0], [5.4, 6.8, 10.5], [5.8, 7.8, 8.1], [4.6, 9.2, 6.9], [4.0, 6.5, 9.3]]] }).result).toBeCloseTo(0.0032482226008593, 10);
     n.setOp("proptest");
     expect(n.inputs.x1).toBeDefined(); expect(n.inputs.groups).toBeUndefined();
+  });
+});
+
+describe("linear algebra set (numpy.linalg reference values)", () => {
+  const A = [[4, 1, 2], [1, 3, 0], [2, 0, 5]];
+  it("trace / rank / Frobenius norm", () => {
+    expect(matTrace(A)).toBe(12);
+    expect(matRank([[1, 2, 3], [2, 4, 6], [1, 1, 1]])).toBe(2);
+    expect(matNorm(A)).toBeCloseTo(7.745966692414834, 12);
+    expect(ev("TRACE(m)", { m: A })).toBe(12);
+    expect(ev("MATRIXRANK(m)", { m: [[1, 2, 3], [2, 4, 6], [1, 1, 1]] })).toBe(2);
+    expect(ev("NORM(m)", { m: A })).toBeCloseTo(7.745966692414834, 12);
+    expect(new MatDetNode({ op: "trace" }).data({ matrix: [A] }).result).toBe(12);
+    expect(new MatDetNode({ op: "rank" }).data({ matrix: [[[1, 2], [2, 4]]] }).result).toBe(1);
+  });
+  it("SOLVE: numpy.linalg.solve; singular is #DIV/0!", () => {
+    const x = matSolve(A, [7, 5, 9])!;
+    [0.6046511627906977, 1.4651162790697674, 1.5581395348837208].forEach((v, i) => expect(x[i]).toBeCloseTo(v, 12));
+    expect(matSolve([[1, 2], [2, 4]], [1, 2])).toBeNull();
+    const viaFormula = ev("SOLVE(m, b)", { m: A, b: [7, 5, 9] }) as number[];
+    viaFormula.forEach((v, i) => expect(v).toBeCloseTo(x[i], 12));
+    expect(isSolError(new MatSolveNode().data({ matrix: [[[1, 2], [2, 4]]], b: [[1, 2]] }).result)).toBe(true);
+  });
+  it("EIGEN (symmetric): numpy.linalg.eigh values descending, unit eigenvectors as columns, A·v = λ·v", () => {
+    const e = matEigh(A)!;
+    [6.669079088282288, 3.476023602918134, 1.854897308799577].forEach((v, i) => expect(e.values[i]).toBeCloseTo(v, 10));
+    for (let c = 0; c < 3; c++) {
+      const v = e.vectors.map((r) => r[c]);
+      const Av = A.map((r) => r.reduce((a, x, k) => a + x * v[k], 0));
+      Av.forEach((val, k) => expect(val).toBeCloseTo(e.values[c] * v[k], 9));
+      expect(Math.hypot(...v)).toBeCloseTo(1, 12);
+    }
+    expect(matEigh([[1, 2], [3, 4]])).toBeNull(); // not symmetric
+    const node = new MatEigenNode().data({ matrix: [A] });
+    expect(node.values).toEqual(e.values);
+    expect(ev("EIGENVALUES(m)", { m: A })).toEqual(e.values);
+  });
+});
+
+describe("Spectrum (FFT) — numpy.fft reference", () => {
+  it("fftReal matches numpy.fft.fft on a non-power-of-two length (Bluestein)", () => {
+    const { re, im } = fftReal([1, 2, 3, 4, 5, 6, 7]);
+    const wantRe = [28, -3.5, -3.5, -3.5, -3.5, -3.5, -3.5];
+    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251, -0.7988521603655251, -2.7911568610884143, -7.267824888003178];
+    re.forEach((v, i) => expect(v).toBeCloseTo(wantRe[i], 10));
+    im.forEach((v, i) => expect(v).toBeCloseTo(wantIm[i], 10));
+  });
+  it("a 5 Hz sine of amplitude 3 on a 1 V offset, sampled 64/s: bin 5 reads 3 at 5 Hz, DC reads 1", () => {
+    const sig = Array.from({ length: 64 }, (_, i) => 3 * Math.sin((2 * Math.PI * 5 * i) / 64) + 1);
+    const rows = spectrum(sig, 64);
+    expect(rows).toHaveLength(33);
+    expect(rows[5].frequency).toBe(5);
+    expect(rows[5].magnitude).toBeCloseTo(3, 10);
+    expect(rows[0].magnitude).toBeCloseTo(1, 10);
+    expect(rows[7].magnitude).toBeCloseTo(0, 10);
+    const node = new SpectrumNode(); node.literals.rate = 64;
+    const out = node.data({ list: [sig] }).result!;
+    expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
+    const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
+    expect(viaFormula[5][1]).toBeCloseTo(3, 10);
   });
 });

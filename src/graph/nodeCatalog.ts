@@ -15,7 +15,7 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, BinNode, OutliersNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
+  AlertNode, NormalizeNode, BinNode, OutliersNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -42,7 +42,7 @@ import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode,
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
-  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
+  TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
   HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
@@ -534,6 +534,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-rle",       label: "Run Lengths",   description: "Compresses consecutive equal values into rows of value and run-length. R rle / run-length encoding.", create: () => new RleNode(), parity: false, keywords: "rle run length encoding compress consecutive runs streak count repeats groups" },
           ]},
           { type: "list-trapz",     label: "Integrate",     description: "Area under the curve through the points by the trapezoidal rule, at uniform spacing dx. The integral counterpart to DIFF's gradient. numpy.trapz.", create: () => new TrapzNode(), parity: false, keywords: "integrate integral trapz trapezoidal area under curve auc cumulative numpy calculus" },
+            { type: "list-spectrum", label: "Spectrum (FFT)", description: "The frequency content of a signal: one row per bin with frequency (in the sample-rate's units), magnitude (a pure sine of amplitude A reads A) and phase. Any length — Bluestein's FFT. numpy.fft.rfft, R fft, MATLAB fft.", create: () => new SpectrumNode(), parity: false, keywords: "fft fourier spectrum frequency dft periodogram harmonics signal vibration rfft" },
         ],
       },
       {
@@ -886,6 +887,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "table-mult",      label: "MMULT",     description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: MMULT.",                                    create: () => new TableMultNode(),                   parity: false },
           { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
+          { type: "pair", children: [matDetLeaf("trace"), matDetLeaf("rank")] },
+          matDetLeaf("norm"),
+          { type: "mat-solve", label: "Solve A·x = b", description: "Solves a square linear system: the x with A·x = b (Gaussian elimination with pivoting). numpy.linalg.solve, R solve(A, b). In Excel: MMULT(MINVERSE(A), b).", create: () => new MatSolveNode(), parity: false, keywords: "solve linear system equations gaussian elimination ax=b simultaneous" },
+          { type: "mat-eigen", label: "Eigen (symmetric)", description: "Eigenvalues (largest first) and unit eigenvectors (as columns) of a symmetric matrix — a covariance or correlation matrix for PCA, a Laplacian. Jacobi rotations. numpy.linalg.eigh, R eigen(symmetric=TRUE). No Excel equivalent.", create: () => new MatEigenNode(), parity: false, keywords: "eigen eigenvalues eigenvectors pca principal components symmetric jacobi spectral" },
           { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s, or blanks (nulls) so the off-diagonal stays out of sums. Excel: MUNIT.",                                             create: () => new TableUnitNode(),                   parity: false },
           { type: "table-diag",      label: "DIAGONAL",  description: "Turns a list into a square matrix's diagonal, the rest 0s or blanks (nulls, out of sums). numpy.diag.",                                              create: () => new TableDiagNode(),                   parity: false },
           { type: "pair", children: [

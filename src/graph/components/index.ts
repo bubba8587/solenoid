@@ -137,7 +137,7 @@ export { IsEvenOddComponent } from "./IsEvenOddNode";
 // ─── 2D Tables / Matrix ───────────────────────────────────────────────────────
 export { TableInputComponent } from "./TableInputNode";
 export {
-  MatDetComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
+  MatDetComponent, MatSolveComponent, MatEigenComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
   TableTransposeComponent, HStackTableComponent,
   TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
@@ -357,3 +357,4 @@ export { OutliersComponent } from "./OutliersNode";
 export { EpochComponent } from "./EpochNode";
 export { DateTruncComponent } from "./DateTruncNode";
 export { AmortizationComponent } from "./AmortizationNode";
+export { SpectrumComponent } from "./SpectrumNode";

@@ -16,7 +16,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -2290,5 +2290,34 @@ export class FillNode extends ClassicPreset.Node {
     const out = fillList(this.op, arr, { constant, fallbacks });
     this.cachedList = out;
     return { result: out };
+  }
+}
+
+// ─── SPECTRUM (FFT) ──────────────────────────────────────────────────────────
+export class SpectrumNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "Samples per unit time (Hz if per second); the frequency column is in those units. Leave at 1 for frequency in cycles per sample.",
+    result: "One row per frequency bin 0..n/2: frequency, magnitude (a pure sine of amplitude A reads A), phase in radians.",
+  };
+  label: string;
+  literals: Record<string, number> = { rate: 1 };
+  cachedResult: ListCell[][] | null = null;
+  width = 200; height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("Spectrum");
+    this.label = init?.label ?? "Spectrum (FFT)";
+    this.addInput("list", listIn("Signal"));
+    this.addInput("rate", numIn("Sample rate"));
+    this.addOutput("result", tableOut("frequency, magnitude, phase"));
+  }
+
+  data(inputs: { list?: ListCell[][]; rate?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const rate = readInput(inputs.rate, this.literals.rate ?? 1);
+    if (rate === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
+    const rows = spectrum(arr, rate);
+    this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
+    return { result: this.cachedResult };
   }
 }

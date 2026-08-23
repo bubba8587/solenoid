@@ -21,7 +21,7 @@ import {
   UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, BinNode, OutliersNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, RepeatNode,
+  NormalizeNode, BinNode, OutliersNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
   FillNode,
@@ -50,7 +50,7 @@ import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, Char
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
-  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
+  TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
   HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
@@ -104,7 +104,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
-    node instanceof BinNode || node instanceof OutliersNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
+    node instanceof BinNode || node instanceof OutliersNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
     node instanceof EwmaNode || node instanceof ConvolveNode || node instanceof CrossNode ||
     node instanceof PolyfitNode || node instanceof TrapzNode || node instanceof RleNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
@@ -160,7 +160,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DateInputNode || node instanceof SaveTimesNode
   ) return "date";
   if (
-    node instanceof TableInputNode || node instanceof MatDetNode ||
+    node instanceof TableInputNode || node instanceof MatDetNode || node instanceof MatSolveNode || node instanceof MatEigenNode ||
     node instanceof TableMultNode || node instanceof TableUnitNode || node instanceof TableDiagNode ||
     node instanceof TableOuterNode ||
     node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||

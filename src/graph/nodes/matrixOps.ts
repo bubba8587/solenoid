@@ -191,3 +191,107 @@ export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[]
   }
   return out;
 }
+
+/** Sum of the main diagonal (numpy trace). */
+export function matTrace(m: NumMat): number {
+  const n = Math.min(matRows(m), matCols(m));
+  let t = 0;
+  for (let i = 0; i < n; i++) t += m[i][i];
+  return t;
+}
+
+/** Rank by Gaussian elimination with partial pivoting and a relative tolerance
+ *  (numpy.linalg.matrix_rank's spirit: tiny pivots count as zero). */
+export function matRank(m: NumMat, tol = 1e-10): number {
+  const rows = matRows(m), cols = matCols(m);
+  const a = m.map((r) => [...r]);
+  const scale = Math.max(1e-300, ...a.flat().map(Math.abs));
+  let rank = 0;
+  for (let c = 0; c < cols && rank < rows; c++) {
+    let piv = rank;
+    for (let r = rank + 1; r < rows; r++) if (Math.abs(a[r][c]) > Math.abs(a[piv][c])) piv = r;
+    if (Math.abs(a[piv][c]) <= tol * scale) continue;
+    [a[rank], a[piv]] = [a[piv], a[rank]];
+    for (let r = rank + 1; r < rows; r++) {
+      const f = a[r][c] / a[rank][c];
+      for (let k = c; k < cols; k++) a[r][k] -= f * a[rank][k];
+    }
+    rank++;
+  }
+  return rank;
+}
+
+export type MatNormKind = "fro" | "1" | "inf" | "max";
+/** Matrix norms: Frobenius (numpy default), 1-norm (max column sum), ∞-norm (max row
+ *  sum), max absolute entry. */
+export function matNorm(m: NumMat, kind: MatNormKind = "fro"): number {
+  if (kind === "fro") return Math.sqrt(m.reduce((a, r) => a + r.reduce((x, y) => x + y * y, 0), 0));
+  if (kind === "max") return Math.max(0, ...m.flat().map(Math.abs));
+  if (kind === "1") { let best = 0; for (let c = 0; c < matCols(m); c++) best = Math.max(best, m.reduce((a, r) => a + Math.abs(r[c]), 0)); return best; }
+  return Math.max(0, ...m.map((r) => r.reduce((a, v) => a + Math.abs(v), 0)));
+}
+
+/** Solve A·x = b by Gaussian elimination with partial pivoting (numpy.linalg.solve, R
+ *  solve). `null` when A is singular (or not square / b mismatched). */
+export function matSolve(A: NumMat, b: readonly number[]): number[] | null {
+  const n = matRows(A);
+  if (n === 0 || matCols(A) !== n || b.length !== n) return null;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    if (Math.abs(M[piv][col]) < 1e-12) return null;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+/** Eigen-decomposition of a SYMMETRIC matrix by cyclic Jacobi rotations (numpy.linalg.eigh,
+ *  R eigen(symmetric=TRUE)): eigenvalues descending, eigenvectors as the COLUMNS of `vectors`
+ *  in the same order (unit length). `null` when not square or not symmetric. */
+export function matEigh(m: NumMat, tol = 1e-12): { values: number[]; vectors: NumMat } | null {
+  const n = matRows(m);
+  if (n === 0 || matCols(m) !== n) return null;
+  const scale = Math.max(1e-300, ...m.flat().map(Math.abs));
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (Math.abs(m[i][j] - m[j][i]) > 1e-9 * scale) return null;
+  const a = m.map((r) => [...r]);
+  const v: NumMat = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  for (let sweep = 0; sweep < 100; sweep++) {
+    let off = 0;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) off += a[i][j] * a[i][j];
+    if (off < tol * tol * scale * scale) break;
+    for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+      if (Math.abs(a[p][q]) < 1e-300) continue;
+      const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < n; k++) {
+        const akp = a[k][p], akq = a[k][q];
+        a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq;
+      }
+      for (let k = 0; k < n; k++) {
+        const apk = a[p][k], aqk = a[q][k];
+        a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk;
+      }
+      for (let k = 0; k < n; k++) {
+        const vkp = v[k][p], vkq = v[k][q];
+        v[k][p] = c * vkp - s * vkq; v[k][q] = s * vkp + c * vkq;
+      }
+    }
+  }
+  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[j][j] - a[i][i]);
+  const values = order.map((i) => a[i][i]);
+  const vectors: NumMat = Array.from({ length: n }, (_, r) => order.map((i) => v[r][i]));
+  // Deterministic sign: the largest-magnitude component of each eigenvector is positive.
+  for (let c = 0; c < n; c++) {
+    let big = 0;
+    for (let r = 1; r < n; r++) if (Math.abs(vectors[r][c]) > Math.abs(vectors[big][c])) big = r;
+    if (vectors[big][c] < 0) for (let r = 0; r < n; r++) vectors[r][c] = -vectors[r][c];
+  }
+  return { values, vectors };
+}

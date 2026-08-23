@@ -39,7 +39,9 @@ const POLICY: Record<string, Policy> = {
   VStackNode: "carry-if-uniform",
   TableReshapeNode: "convert-to-matrix", // WRAPROWS/WRAPCOLS lift; TOCOL/TOROW drop (both checked below)
   TableMultNode: "strip",         // MMULT — dimensioned matrix products are out of scope (documented-strip)
-  MatDetNode: "strip",            // MDETERM (unitⁿ) / MINVERSE (unit⁻¹) — documented-strip
+  MatDetNode: "strip",            // MDETERM (unitⁿ) / MINVERSE (unit⁻¹) / TRACE / RANK / NORM — documented-strip
+  MatSolveNode: "strip",          // A·x = b: x carries b's unit ÷ A's — dimensioned linear algebra is out of scope (same stance)
+  MatEigenNode: "strip",          // eigenvalues carry A's unit, eigenvectors none — documented-strip
   MapTableNode: "strip",          // an arbitrary per-cell lambda breaks the unit, by design
   ByAxisNode: "strip",            // arbitrary per-row/col lambda reduction — same
   ReduceLambdaNode: "strip",
@@ -179,6 +181,9 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     const id = [[1, 0], [0, 1]];
     expect(matrixUnitOf(new M.TableMultNode().data({ a: [kmGrid()], b: [id] }).result)).toBeUndefined();
     expect(matrixUnitOf(new M.MatDetNode({ op: "minverse" }).data({ matrix: [kmGrid()] }).result)).toBeUndefined();
+    expect(matrixUnitOf(new M.MatEigenNode().data({ matrix: [kmGrid().map((r, i) => r.map((_, j) => (i === j ? 2 : 1)))] }).vectors)).toBeUndefined();
+    const x = new M.MatSolveNode().data({ matrix: [kmGrid()], b: [[1, 1]] }).result;
+    expect(Array.isArray(x) && x.every((v) => typeof v === "number")).toBe(true);
   });
 
   it("na: dimension info / a generated matrix carry no unit", () => {

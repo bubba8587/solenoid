@@ -38,7 +38,7 @@ import {
   ESeriesNode, ElementNode, 
   FisherNode, GroupByFrameNode,
   IpmtPpmtNode, MRoundNode,
-  MatDetNode, MathFnNode, 
+  MatDetNode, MatSolveNode, MatEigenNode, SpectrumNode, MathFnNode, 
   OddCouponNode,
   PhysicsConstantNode, PipeRoughnessNode, PivotNode,
   PriceDiscNode, PriceMatNode,
@@ -264,6 +264,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "ipmt-ipmt", ctor: IpmtPpmtNode, kind: "operation" },
   { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
   { type: "matdet-mdeterm", ctor: MatDetNode, kind: "operation" },
+  { type: "mat-solve", ctor: MatSolveNode, kind: "argument" },
+  { type: "mat-eigen", ctor: MatEigenNode, kind: "argument" },
+  { type: "list-spectrum", ctor: SpectrumNode, kind: "argument" },
   { type: "math-abs", ctor: MathFnNode, kind: "operation" },
   { type: "oddcoupon-oddfprice", ctor: OddCouponNode, kind: "operation" },
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms

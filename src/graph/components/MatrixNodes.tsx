@@ -4,6 +4,8 @@ import type {
   TableUnitNode as TableUnitNodeType,
   TableDiagNode as TableDiagNodeType,
   TableOuterNode as TableOuterNodeType,
+  MatSolveNode as MatSolveNodeType,
+  MatEigenNode as MatEigenNodeType,
   TableTransposeNode as TableTransposeNodeType,
   HStackTableNode as HStackTableNodeType,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
@@ -19,21 +21,63 @@ import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 
 const MAT_DET_OPS = (Object.keys(MAT_DET_OP_META) as MatDetOp[]).map(op => ({
   value: op, label: MAT_DET_OP_META[op].label,
 }));
 
 export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: MatDetOp) {
+    if (next === data.op) return;
+    data.setOp(next);
+    // The output retyped in place (number ↔ table): drop cables the new type can't feed
+    // and let docked FCs re-resolve — no connection event fires.
+    const editor = getActiveEditor();
+    const area = getActiveArea();
+    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
+    if (area) await area.update("node", data.id);
+    setOpField(next);
+  }
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={MAT_DET_OPS} />
-      {op === "mdeterm"
-        ? <ValueDisplay value={data.cachedScalar} />
-        : <TableDisplay table={data.cachedMatrix} label={data.label} />}
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={MAT_DET_OPS} />
+      {op === "minverse"
+        ? <TableDisplay table={data.cachedMatrix} label={data.label} />
+        : <ValueDisplay value={data.cachedScalar} />}
+    </NodeShell>
+  );
+}
+
+export function MatSolveComponent({ data, emit }: NodeProps<MatSolveNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <ValueDisplay value={data.cachedResult} />
+    </NodeShell>
+  );
+}
+
+export function MatEigenComponent({ data, emit }: NodeProps<MatEigenNodeType>) {
+  const valuesOut = data.outputs.values, vectorsOut = data.outputs.vectors;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      {valuesOut && (
+        <MeasuredSocketRow hero side="output" socketKey="values" nodeId={data.id} emit={emit} payload={valuesOut.socket}>
+          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedValues} /></div>
+        </MeasuredSocketRow>
+      )}
+      {vectorsOut && (
+        <MeasuredSocketRow hero side="output" socketKey="vectors" nodeId={data.id} emit={emit} payload={vectorsOut.socket}>
+          <div style={{ width: "100%" }}><TableDisplay table={data.cachedVectors} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }

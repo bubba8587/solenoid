@@ -1016,6 +1016,169 @@
    "init": {
     "label": "p-value"
    }
+  },
+  {
+   "id": "src_A",
+   "type": "TableInputNode",
+   "x": 4100,
+   "y": 40,
+   "init": {
+    "label": "A (symmetric 3×3)",
+    "tableText": "4, 1, 2\n1, 3, 0\n2, 0, 5"
+   }
+  },
+  {
+   "id": "src_b",
+   "type": "ListInputNode",
+   "x": 4100,
+   "y": 260,
+   "init": {
+    "label": "b",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "7, 5, 9"
+   }
+  },
+  {
+   "id": "src_sig",
+   "type": "ListInputNode",
+   "x": 4100,
+   "y": 460,
+   "init": {
+    "label": "Signal (5 Hz sine + 1)",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1.0, 2.4142, 3.4944, 3.9856, 3.7716, 2.9032, 1.5853, 0.1291, -1.1213, -1.8708, -1.9424, -1.319, -0.1481, 1.2941, 2.6667, 3.6458, 4.0, 3.6458, 2.6667, 1.2941, -0.1481, -1.319, -1.9424, -1.8708, -1.1213, 0.1291, 1.5853, 2.9032, 3.7716, 3.9856, 3.4944, 2.4142, 1.0, -0.4142, -1.4944, -1.9856, -1.7716, -0.9032, 0.4147, 1.8709, 3.1213, 3.8708, 3.9424, 3.319, 2.1481, 0.7059, -0.6667, -1.6458, -2.0, -1.6458, -0.6667, 0.7059, 2.1481, 3.319, 3.9424, 3.8708, 3.1213, 1.8709, 0.4147, -0.9032, -1.7716, -1.9856, -1.4944, -0.4142"
+   }
+  },
+  {
+   "id": "md_trace",
+   "type": "MatDetNode",
+   "x": 4460,
+   "y": 0,
+   "init": {
+    "label": "TRACE",
+    "op": "trace"
+   }
+  },
+  {
+   "id": "d_trace",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 0,
+   "init": {
+    "label": "TRACE"
+   }
+  },
+  {
+   "id": "md_rank",
+   "type": "MatDetNode",
+   "x": 4460,
+   "y": 170,
+   "init": {
+    "label": "MATRIXRANK",
+    "op": "rank"
+   }
+  },
+  {
+   "id": "d_rank",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 170,
+   "init": {
+    "label": "MATRIXRANK"
+   }
+  },
+  {
+   "id": "md_norm",
+   "type": "MatDetNode",
+   "x": 4460,
+   "y": 340,
+   "init": {
+    "label": "NORM",
+    "op": "norm"
+   }
+  },
+  {
+   "id": "d_norm",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 340,
+   "init": {
+    "label": "NORM"
+   }
+  },
+  {
+   "id": "solve",
+   "type": "MatSolveNode",
+   "x": 4460,
+   "y": 510,
+   "init": {
+    "label": "Solve A·x = b"
+   }
+  },
+  {
+   "id": "d_solve",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 510,
+   "init": {
+    "label": "x"
+   }
+  },
+  {
+   "id": "eigen",
+   "type": "MatEigenNode",
+   "x": 4460,
+   "y": 700,
+   "init": {
+    "label": "Eigen (symmetric)"
+   }
+  },
+  {
+   "id": "d_eigv",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 700,
+   "init": {
+    "label": "eigenvalues"
+   }
+  },
+  {
+   "id": "d_eigvec",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 820,
+   "init": {
+    "label": "eigenvectors"
+   }
+  },
+  {
+   "id": "spec",
+   "type": "SpectrumNode",
+   "x": 4460,
+   "y": 1000,
+   "init": {
+    "label": "Spectrum (FFT)"
+   },
+   "literals": {
+    "rate": 64
+   }
+  },
+  {
+   "id": "d_spec",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 1000,
+   "init": {
+    "label": "bin 5 → 3 at 5 Hz"
+   }
   }
  ],
  "connections": [
@@ -1515,6 +1678,90 @@
    "source": "ht_binom",
    "sourceOutput": "result",
    "target": "d_binom",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_A",
+   "sourceOutput": "table",
+   "target": "md_trace",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "md_trace",
+   "sourceOutput": "result",
+   "target": "d_trace",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_A",
+   "sourceOutput": "table",
+   "target": "md_rank",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "md_rank",
+   "sourceOutput": "result",
+   "target": "d_rank",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_A",
+   "sourceOutput": "table",
+   "target": "md_norm",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "md_norm",
+   "sourceOutput": "result",
+   "target": "d_norm",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_A",
+   "sourceOutput": "table",
+   "target": "solve",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "src_b",
+   "sourceOutput": "list",
+   "target": "solve",
+   "targetInput": "b"
+  },
+  {
+   "source": "solve",
+   "sourceOutput": "result",
+   "target": "d_solve",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_A",
+   "sourceOutput": "table",
+   "target": "eigen",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "eigen",
+   "sourceOutput": "values",
+   "target": "d_eigv",
+   "targetInput": "in"
+  },
+  {
+   "source": "eigen",
+   "sourceOutput": "vectors",
+   "target": "d_eigvec",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_sig",
+   "sourceOutput": "list",
+   "target": "spec",
+   "targetInput": "list"
+  },
+  {
+   "source": "spec",
+   "sourceOutput": "result",
+   "target": "d_spec",
    "targetInput": "in"
   }
  ]
