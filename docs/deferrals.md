@@ -9,7 +9,12 @@ duplicate them, just names them for the review).
 
 ## Pushed to 1.4 / 2.0 (the 2026-08-07 pivot — 1.3 ships as-is)
 
-Feature-shaped backlog items moved here wholesale; none are 1.3 work.
+Feature-shaped backlog items moved here wholesale. **2026-08-23: the author reopened the
+scope** — the engine/logic entries that were never really parked (distribution fitting,
+correlated MC, trajectory capture, column profiling + summary footer, Tidy options, the
+editing-surface kernel, lazy handles, value-popup gaps, eager-verb Polars mirrors, cube
+Unnest, the XLOOKUP bypass) moved to `backlog.md`'s Execution queue; what stays here is
+design-gated, author-present, or UI-eyeball work.
 
 - **Solenoid-wide steal map** (competitor dive round 2, 2026-08-18 — author widened
   the scope past the Record family; sources in the session digest). Surveyed the
@@ -21,10 +26,6 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   simulation are composite RUN MODES; unpivot is a verb; stale dots, isolate,
   Tornado, As-Of, Note annotations all shipped; provenance Tier 2 and the
   compute cache are already parked entries.
-  - **Column profiling in the table popup** (Power Query quality bars +
-    distribution, Alteryx Browse): per-column valid/error/empty bar, mini
-    value-distribution, distinct/min/max/mean. Pure display over frame data;
-    the strongest trust-thesis fit in the set.
   - **Pin a node's output** (n8n data pinning, KNIME caching): freeze a slow or
     live branch as its last value, visibly marked, recompute passes it through.
     Interacts with calc modes, the parked #23 compute cache, and the provenance
@@ -34,15 +35,6 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
     multi-port nodes are the real design work.
   - **Peek any socket** (Blender viewer pattern): one gesture wires a floating
     preview to any output; today a peek needs a Display node or the right popup.
-  - **Distribution fitting** (@RISK/Crystal Ball): fit a Distribution node's
-    family + params to a data list with goodness-of-fit ranking. Absent — stats
-    has only regression fits (LINEST tier).
-  - **Correlated Monte Carlo inputs** (@RISK): rank-correlation between
-    Distribution draws inside the montecarlo run mode; independent-only today.
-  - **Simulation trajectory capture** (Stella/Vensim behavior-over-time): the
-    simulation run mode outputs only the settled state; a per-step frame output
-    would make behavior-over-time charts wireable. Stocks/flows composite
-    presets could follow as a pack.
   - **Constrained optimizer** (Excel Solver, Mathcad solve blocks): min/max an
     output subject to constraints — the Solver-parity gap; Equation (equationNode)
     deliberately solves only `=`. Sibling-node-sized, its own author call.
@@ -120,51 +112,11 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   landed 2026-08-18), timeline/Gantt (already author-deferred above), row
   tinting / color-by (author-gated conditionalFormatting).
 
-- **Tidy options — expose ELK's layout knobs on the Tidy call** (author direction
-  2026-08-12; the trigger was "9 nodes → 1 node should be able to lay out 3×3
-  instead of one 9-high column"). Today `arrangeFn` hardcodes four options
-  (`layered`, `RIGHT`, `nodeNodeBetweenLayers 55`, `nodeNode 38`); everything below
-  is an ELK option we already pay for and don't offer. Measured on a 9→1 fan
-  (uniform 180×120 cards, baseline 459×1408):
-  - **Width cap / "wrap a wide fan"** — `layering.strategy: COFFMAN_GRAHAM` +
-    `layering.coffmanGraham.layerBound: 3` → a clean 3×3 at 929×987, **on 0.8.2,
-    no upgrade**. `MIN_WIDTH` + `minWidth.upperBoundOnWidth` also exists but
-    layered raggedly (2/4/3). `elk.aspectRatio` has no effect on `layered`.
-    elkjs 0.12's `layerUnzipping` does the same job better (929×**710**) and more
-    surgically — normal layering, then ONE over-wide layer split into sublayers
-    preserving crossing-minimized order, vs Coffman-Graham replacing the layering
-    algorithm for the whole graph. See the elkjs item in `backlog.md`.
-  - **Direction** — `elk.direction` RIGHT/DOWN/LEFT/UP. We hardcode RIGHT; a
-    left-to-right vs top-to-bottom toggle is the most obvious control of the set.
-  - **Density** — the two spacings as one Compact/Normal/Airy dial.
-  - **"Don't scramble my arrangement"** — `layered.considerModelOrder.*`
-    (`strategy`, `components`, `longEdgeStrategy`, `noModelOrder`, the crossing-
-    counter influences). Available today; 0.12 adds `groupModelOrder.*` (8 options)
-    and `portModelOrder` for much finer control.
-  - **Straight cables vs compact** — `nodePlacement.strategy` (NETWORK_SIMPLEX /
-    BRANDES_KOEPF / LINEAR_SEGMENTS / SIMPLE) + `favorStraightEdges`,
-    `bk.fixedAlignment`, `bk.edgeStraightening`.
-  - **Per-node pins** (a canvas affordance, not a panel row): `layering.
-    layerConstraint` FIRST/LAST pins a node to the first/last layer;
-    `layering.layerChoiceConstraint` / `layerId` assign an explicit layer. 0.12
-    adds `crossingMinimization.inLayerPredOf` / `inLayerSuccOf` for "keep this one
-    above that one" WITHIN a layer.
-  - **Also there, unexplored**: `separateConnectedComponents`,
-    `compaction.postCompaction.strategy`, `layering.nodePromotion.strategy`,
-    `thoroughness`.
-  OPEN QUESTION no ELK option answers: with a fan split across 3 sublayers, the
-  first sublayer's cables must route PAST the later ones. ELK's edge routing is
-  unused — `cablePaths.ts` routes with LENGTH as the primary sort key — so whether
-  a 3×3 reads as a tidy block or as spaghetti is OUR router's business and needs
-  eyeballing on a real canvas before any of this is worth shipping.
-
 - **Record-family lifts, remaining set** (Airtable/Grist sweep proposed with the
   Record node, 2026-08-18; author: "mostly fine". Standing constraint: every view
   lands ON the one Record node — ops, never a sibling node. The Gallery/Board ops
   and the Table-popup Form view (record-at-a-time entry) landed 2026-08-18; the
-  `picked` row output landed with them and was removed 2026-08-19. Still queued:
-  (1) per-column summary footer on the Table popup (sum/avg/min/max/count via
-  `forAggregate`);
+  `picked` row output landed with them and was removed 2026-08-19. Still queued ((1) the summary footer → backlog B6):
   (2) select/categorical columns — author verdict 2026-08-18: "potential there for
   sure but needs a larger 1.4 look; backlog with interest". Two halves when that
   look happens: the DISPLAY half (per-value tinted chips for a string column's
@@ -204,73 +156,22 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 - **Data Feed widening** — real symbol-search picker + more providers (shipped
   baseline: FRED keyless / Alpha Vantage keyed). Stays Excel STOCKHISTORY scope —
   no crypto/FX/real-time/options/fundamentals.
-- **Editing-surface kernel — make the canvas installable, and the drill-in a
-  second instance of it** (author direction 2026-08-13, "why do we not just spawn
-  a second canvas?"). The drill-in already IS a second rete stack (`getDrillMount`
-  builds its own Area/Connection/React/History/Minimap plugins over the composite's
-  `internalEditor`); what can't be spawned twice is `Canvas.tsx`, whose behavior
-  set lives as closures inside one `init()` effect married to module singletons
-  (`setEditorRefs`, `documentStore.restore()`, and ~10 one-slot callbacks —
-  `setAutoArrange`/`setDeleteSelected`/`setBulkSettle`/`setStandoffSettle`/…). A
-  second mount would fight over every slot and restore the document into the
-  subgraph. `activeGraph.ts` was the answer for chrome OUTSIDE the canvas (and it
-  works); nothing rescues the behaviors INSIDE the init closure, which is the whole
-  of the drift below.
-  - **Phase A — extract the kernel.** Grow `areaPresets.ts` into
-    `installEditingSurface({ editor, area, container, history, selector, hooks })`,
-    moving Canvas's closures out one at a time, parameterized rather than ref-bound:
-    gesture/tap record + selection semantics (click-collapse, deferred Ctrl-toggle,
-    right-click-preserves); **drag-guard patching — now a scheduled 1.3 BUG with a
-    measured repro, see `backlog.md` "A finger pan is DEAD inside a drill-in"; it lands
-    first and drags the tap-to-select companions with it**; the connectionpick/drop
-    pipe; the `connectioncreate` enforcement pipe
-    (duplicate / self-loop / socket-type / FC-unit conflict / collapsed-extensible
-    reroute); semantic zoom + zoom-settle promotion; minimap rAF coalescing; grid
-    snap, Shift axis-lock, Ctrl align-snap; cable-deselect-on-background. Canvas
-    consumes each extraction immediately, so every step DELETES main-canvas code
-    instead of adding a drill-side copy. Main-only layers stay behind: engine +
-    `setEditorRefs` + document restore, groups/standoffs/FC-docking/conduits/isolate
-    snapshot.
-  - **Phase B — swap the drill mount onto it**, then delete the hand-copied
-    connectionpick mirror and most of the keyboard fork; `canvasKeyboard.ts` flips
-    from "bail while drilled" to "act on the active graph" behind a capability mask
-    for what a subgraph genuinely lacks (G/groups, standoffs, pins).
-  - **Phase C — pin it**: kernel unit tests (the behaviors are functions by then) +
-    extend `surfaceParity.test.ts`'s drift pin from three installers to the full set;
-    extend `activeGraph.test.ts`'s lock.
-  - **Phase D — the parity tail**, each trivial once the kernel exists: quick-wire
-    in the drill-in; socket/cable context menus scoped to what applies inside the
-    `any` boundary (conduit insert, attach-FC); command palette while drilled;
-    PER-NODE re-render on a pass instead of the whole-level sweep (the run-gate
-    landed 2026-08-13 — this is the finer cutoff, needing a per-internal-node
-    changed-output signal like the main pass's `changedOut`/`sinks`).
-  - Still out at every phase, unchanged: (a) Group/Cleanup/Autofit/Expand inside a
-    drill-in (needs group-drag reconcile + push/standoffs/GroupNode taught the
-    active area); (b) Navigator + lasso while drilled in. The toolbar reroute (compositeToolbarReroute
-    proper) stays in its own author-present entry below.
 - **Document-level FC defaults** (default places / number format) — a
   format-pipeline integration, author-present.
 - **Top-bar decorative art slot** — `TopBar.tsx` holds the empty middle-gap div;
   needs author art.
 - **Moveable / resizable / hideable toolbar chrome** — customisation slice.
-- **Lazy-handle-on-cable** (`frameBackend.ts`) — retire the `collect()` bridge so
-  handles flow and materialization happens only at `preview`/`column`.
 - **Computed Column UX tail** — shared column-picker component (Sort/Get Column/
   Join name columns as free text today), output-column format/unit controls on
   the CC node's card (popup half shipped), λ view-as on the card.
 - **Aliasing / hidden-port promotion UI** (composites) — the data model has
   `hidden`/`advanced` per port; no UI to flip exposure or edit baked defaults.
   Includes the pack-shell "many ports → one shell parameter" aliasing.
-- **Value-popup gaps** (author parked all, 2026-07-27): sort only covers the
-  loaded 1,000-row window (the one that can quietly mislead); Copy/CSV/Export
-  emit source order under a visual sort; `− Row`/`− Col` remove the last DATA
-  row; the grid has no keyboard path (largest gap vs "zero learning curve").
 - **AI palette later-if-wanted** — streamed reply rendering; OAuth-style connect
   instead of a pasted key.
 - **Packs (the whole program)** — Materials & Mechanical (INTERPOLATE gate
   cleared; domain content remains — `pack-composite-plans.md`); Timesavers
-  remainder (config-carrying date idioms, duration trio, Split Name, list
-  reducers); composite pack-node shape (packs can't ship subgraphs yet); pack
+  remainder → backlog B8 (config-carrying date idioms stay an author call, below); composite pack-node shape (packs can't ship subgraphs yet); pack
   distribution + dependency system (saves don't record required packs; owns the
   ABSENT-pack formula diagnosis + `initPackFormulas()` re-run on folder reload).
 - **Distribution accuracy widening** — representative-point validation only
@@ -334,14 +235,8 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
   SvgPicker precedent (raster at rest, live on hover; KaTeX re-rasters on zoom).
   Quality gate: pixel-crisp at any zoom, hover indistinguishable. Only when a
   real workload demands.
-- **Native Polars mirrors for the eager cleanup verbs** (fillBlanks /
-  replaceValues / sliceRows are trivially lazy; today they materialize like
-  Split Column). Only if a real workload demands.
 - **#23 persistent compute cache** · **#35 MCP port** — verdict pending a fresh
   author call (`v2.0/README.md`).
-- **XLOOKUP `rawInputs` bypass retirement** — with typed frame→cube the bypass is
-  unneeded; the frame + cube lookup paths could collapse to one.
-  Behavior-touching refactor of a covered node; only if it pulls weight.
 - **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever
   appears; documented-strip is the deliberate stance (unitGranularity).
 - **Provenance Tier 2 — on-demand "why is this?" walk** — backward-derivation
@@ -357,9 +252,6 @@ Feature-shaped backlog items moved here wholesale; none are 1.3 work.
 - **Obsidian follow-ups (if wanted)**: auto-reload an imported note on file
   change; write config for `![[Note]]` transclusion vs inlining an embedded
   note's body.
-- **Cube-aware Unnest (peel ONE level)** — the inverse of cube-aware Nest Join;
-  needs an `any`/cube output (a peeled depth-2 cube is a depth-1 cube), so a
-  socket-shape change, not just an engine tweak (`archive/cube-node-scope.md`).
 - **Group-by-into-nesting / a top-edge "grid" Build Cube** — considered-and-dropped
   ideas the cube doc keeps on the table; add only on demand.
 

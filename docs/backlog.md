@@ -9,6 +9,58 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ---
 
+## Execution queue (2026-08-23, ordered — author opened the scope past 1.3 polish)
+
+Author direction 2026-08-23: plan and run the next tranche autonomously; NOTHING that
+needs the author watching browser devtools / a device (those items stay below, untouched).
+Promoted from `deferrals.md` where an entry was engine/logic work that was never really
+parked. Each item: build, pin with tests, one digest line, delete the line here.
+
+**A — correctness & parity (engine/formula, fully test-pinnable)**
+- [ ] **A1 FAMILY_BACKING flip, family by family.** ~55 names declared `internal` still run
+  Formula.js (statistics reducers, distributions, TIME/WEEKDAY/YEARFRAC/DATEDIF, RATE, MIRR,
+  CHOOSE). Per family: register on the NODE's kernel (the IRR pattern), pin formula == node,
+  then pin "backing internal ⇒ `internalFunctionNames()` has it" so the table can't lie again.
+- [ ] **A2 Formula-surface containment, safe slice.** An FX-backed name with NO declared meta
+  that receives an array arg → one clean `SolError` (never broadcast into a #VALUE! array,
+  never throw). The allowlist FLIP itself (a name exists iff declared; delete the fallthrough)
+  is the follow-on — do it right after A2 unless the author objects (it was "raise first").
+- [ ] **A3 Value-popup quiet-mislead gaps** (from deferrals "Value-popup gaps"): sort covers
+  only the loaded 1,000-row window; Copy/CSV/Export emit source order under a visual sort;
+  `− Row`/`− Col` remove the LAST data row. Logic fixes in `TablePopup`/`CubePopup` — extract
+  the sort/export helpers, pin them; keyboard path stays deferred.
+- [ ] **A4 XLOOKUP/XMATCH formula orientation** (the open item below): a 1×N / N×1 matrix
+  lookup array flattens, a grid is #VALUE!, WITHOUT `matrixArgs` letting a matrix into the
+  lookup-value or return-array slots. Then retire the XLOOKUP `rawInputs` bypass (deferrals).
+- [ ] **A5 Node-by-node sweep**, per family, value-semantics + description truth (below).
+- [ ] **A6 Editing-surface kernel, bug slice first**: `installNodeDragGuard` from
+  `areaPresets.ts` into BOTH `nodecreated` pipes (the dead drill-in finger pan, below) with its
+  tap-to-select companions; pinned in `surfaceParity.test.ts`; verified by headless CDP touch
+  emulation (agent-run, not author-watched). Phases A–C of the kernel follow as pure refactor.
+
+**B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
+- [ ] **B1 Relative dates opt-in** (author-requested 2026-08-21; spec below under Small builds).
+- [ ] **B2 Distribution fitting**: fit a Distribution node's family + params to a data list,
+  rank by goodness of fit (MLE/method-of-moments per family, KS/AIC ranking); node + FITDIST
+  formula on the shared `mathUtils` kernels.
+- [ ] **B3 Correlated Monte Carlo inputs**: rank correlation between Distribution draws inside
+  the montecarlo run mode (Iman–Conover over the existing draw vectors).
+- [ ] **B4 Simulation trajectory capture**: the simulation run mode emits a per-step FRAME
+  output beside the settled state (behavior-over-time charts become wireable).
+- [ ] **B5 Native Polars mirrors for fillBlanks / replaceValues / sliceRows** (cargo parity
+  corpus), so they fuse instead of materializing.
+- [ ] **B6 Table-popup per-column summary footer** (sum/avg/min/max/count via `forAggregate`)
+  + **column profiling** (valid/error/empty bar, distinct/min/max/mean) — display over frame
+  data; small UI, no devtools loop.
+- [ ] **B7 Tidy options**: expose direction / density / width-cap (Coffman-Graham layerBound)
+  on the Tidy call as a small options pill; ELK runs headless so layout is unit-testable;
+  the cable-readability question stays for the author's eye.
+- [ ] **B8 Cube-aware Unnest (peel one level)**; **Timesavers remainder** (Split Name,
+  duration trio, list reducers); **XLOOKUP frame+cube path collapse** once A4 lands.
+- [ ] **B9 Lazy-handle-on-cable** (retire the `collect()` bridge) — last, biggest.
+
+**C — hygiene**: evict the three archived docs still cited by code (below); deferral review.
+
 ## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
 
 - [ ] **Architecture map v2 — WAIT FOR THE AUTHOR'S SPEC.** The old map (Subsystem
