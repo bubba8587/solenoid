@@ -31,6 +31,8 @@ import {
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
+import { describeFrame, correlationMatrix, type CorrMethod } from "../frameVerbs";
+export type { CorrMethod } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
@@ -1969,5 +1971,62 @@ export class XLookupNode extends ClassicPreset.Node {
     );
     this.cachedResult = result;
     return { value: result };
+  }
+}
+
+// ─── DESCRIBE (pandas describe / R summary) ───────────────────────────────────
+export class DescribeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "One output row per column: count / blank / distinct for every column; mean, std, min, quartiles, max for the number columns (min and max for dates).",
+  };
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 190; height = 140;
+
+  constructor(init?: { label?: string }) {
+    super("Describe");
+    this.label = init?.label ?? "Describe";
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("frame", frameOut("Summary"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    this.cachedResult = runVerb(() => describeFrame(f));
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── CORRELATION MATRIX (df.corr / cor) ──────────────────────────────────────
+export const CORR_METHOD_META = {
+  pearson:    { label: "Pearson",    description: "Linear correlation r between every pair of number columns." },
+  spearman:   { label: "Spearman",   description: "Rank correlation ρ: any monotone relation, robust to outliers." },
+  kendall:    { label: "Kendall",    description: "Kendall's τ-b from concordant / discordant pairs." },
+  covariance: { label: "Covariance", description: "Sample covariance between every pair of number columns (df.cov, R cov)." },
+} satisfies Record<CorrMethod, { label: string; description: string }>;
+
+export class CorrMatrixNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Each pair uses the rows where BOTH columns are present (pairwise complete), so a patchy frame still answers; a pair with no variance is a blank cell.",
+  };
+  label: string;
+  method: CorrMethod = "pearson";
+  cachedResult: FrameValue | SolError | null = null;
+  width = 190; height = 170;
+
+  constructor(init?: { label?: string; method?: CorrMethod }) {
+    super("CorrMatrix");
+    this.label = init?.label ?? "Correlation Matrix";
+    if (init?.method) this.method = init.method;
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("frame", frameOut("Matrix"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    this.cachedResult = runVerb(() => correlationMatrix(f, this.method));
+    return { frame: this.cachedResult };
   }
 }

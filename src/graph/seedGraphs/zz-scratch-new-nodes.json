@@ -732,6 +732,77 @@
    "init": {
     "label": "≈343.5 km"
    }
+  },
+  {
+   "id": "src_frame",
+   "type": "FrameInputNode",
+   "x": 3000,
+   "y": 40,
+   "init": {
+    "label": "Sales table",
+    "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"E\", \"W\", \"N\", \"S\", \"E\", \"W\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, null, 150, 90]}, {\"name\": \"Ads\", \"type\": \"number\", \"values\": [10, 8, 12, 6, 11, 7, 13, 7]}, {\"name\": \"Returns\", \"type\": \"number\", \"values\": [5, 9, 3, 12, 4, 10, 2, 11]}]"
+   }
+  },
+  {
+   "id": "desc",
+   "type": "DescribeNode",
+   "x": 3360,
+   "y": 0,
+   "init": {
+    "label": "Describe"
+   }
+  },
+  {
+   "id": "d_desc",
+   "type": "DisplayNode",
+   "x": 3760,
+   "y": 0,
+   "init": {
+    "label": "describe"
+   }
+  },
+  {
+   "id": "corrm",
+   "type": "CorrMatrixNode",
+   "x": 3360,
+   "y": 220,
+   "init": {
+    "label": "Correlation Matrix",
+    "method": "pearson"
+   }
+  },
+  {
+   "id": "d_corrm",
+   "type": "DisplayNode",
+   "x": 3760,
+   "y": 220,
+   "init": {
+    "label": "corr matrix"
+   }
+  },
+  {
+   "id": "amort",
+   "type": "AmortizationNode",
+   "x": 3360,
+   "y": 460,
+   "init": {
+    "label": "Amortization (12 × 0.5%)"
+   },
+   "literals": {
+    "rate": 0.005,
+    "nper": 12,
+    "pv": 10000,
+    "fv": 0
+   }
+  },
+  {
+   "id": "d_amort",
+   "type": "DisplayNode",
+   "x": 3760,
+   "y": 460,
+   "init": {
+    "label": "schedule"
+   }
   }
  ],
  "connections": [
@@ -1099,6 +1170,36 @@
    "source": "hav",
    "sourceOutput": "result",
    "target": "d_hav",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_frame",
+   "sourceOutput": "frame",
+   "target": "desc",
+   "targetInput": "frame"
+  },
+  {
+   "source": "desc",
+   "sourceOutput": "frame",
+   "target": "d_desc",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_frame",
+   "sourceOutput": "frame",
+   "target": "corrm",
+   "targetInput": "frame"
+  },
+  {
+   "source": "corrm",
+   "sourceOutput": "frame",
+   "target": "d_corrm",
+   "targetInput": "in"
+  },
+  {
+   "source": "amort",
+   "sourceOutput": "frame",
+   "target": "d_amort",
    "targetInput": "in"
   }
  ]

@@ -507,3 +507,34 @@ export function mirr(cashflows: readonly number[], finrate: number, reinrate: nu
   const r = Math.pow(-fvPos / pvNeg, 1 / (n - 1)) - 1;
   return Number.isFinite(r) ? r : solError("#OVERFLOW!", "MIRR overflowed: the cash flows or rates are extreme");
 }
+
+export interface AmortizationRow { period: number; payment: number; interest: number; principal: number; balance: number }
+
+/** The level-payment amortization table (Excel's PMT / IPMT / PPMT per period, R
+ *  amort.table): payment is the constant PMT (sign convention: a positive pv is a loan
+ *  received, so payment/interest/principal come back NEGATIVE like Excel), balance is the
+ *  remaining principal after each period (→ −fv at the end). `type` 1 = payment at the
+ *  start of the period. Empty for nper < 1 or a non-finite input. */
+export function amortizationSchedule(rate: number, nper: number, pv: number, fv = 0, type: 0 | 1 = 0): AmortizationRow[] {
+  const n = Math.floor(nper);
+  if (!Number.isFinite(rate) || !Number.isFinite(pv) || !Number.isFinite(fv) || !(n >= 1)) return [];
+  let pmt: number;
+  if (Math.abs(rate) < 1e-12) pmt = -(pv + fv) / n;
+  else { const rN = Math.pow(1 + rate, n); pmt = -(pv * rN + fv) * rate / ((1 + rate * type) * (rN - 1)); }
+  // Excel's IPMT (numpy_financial's too): interest on the balance outstanding after k−1
+  // payments; with type 1 the payment lands first, so period 1 bears no interest and
+  // later periods' interest is discounted one period.
+  const rbl = (k: number): number => Math.abs(rate) < 1e-12
+    ? -(pv + pmt * (k - 1))
+    : -(pv * Math.pow(1 + rate, k - 1) + pmt * (1 + rate * type) * (Math.pow(1 + rate, k - 1) - 1) / rate);
+  const rows: AmortizationRow[] = [];
+  let balance = pv;
+  for (let k = 1; k <= n; k++) {
+    const interest = type === 1 ? (k === 1 ? 0 : (rbl(k) * rate) / (1 + rate)) : rbl(k) * rate;
+    const principal = pmt - interest;
+    balance = balance + principal;
+    if (Math.abs(balance) < 1e-9) balance = 0;
+    rows.push({ period: k, payment: pmt, interest, principal, balance });
+  }
+  return rows;
+}

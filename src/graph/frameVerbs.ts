@@ -12,6 +12,7 @@ import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
+import { aggregate, percentile, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 /** Group-aggregation ops (the GroupBy / PivotBy core). count = non-null cells
@@ -1758,4 +1759,73 @@ export function borderedGridFromFrame(f: FrameValue, start = 1): (number | null)
     })]);
   }
   return out;
+}
+
+// ─── Describe (pandas describe / R summary) — one row per column ──────────────
+const presentNums = (c: FrameColumn): number[] =>
+  c.values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+
+/** One row per input column: count (present), blank, distinct, and for NUMBER columns
+ *  mean / std (sample) / min / 25% / 50% / 75% / max (PERCENTILE.INC, pandas' linear).
+ *  Text, date and logical columns carry the three counts and leave the numeric stats
+ *  blank; a date column's min/max are dates (serials). Errors count as present. */
+export function describeFrame(f: FrameValue): FrameValue {
+  const names: string[] = [], types: string[] = [], count: number[] = [], blank: number[] = [], distinct: number[] = [];
+  const mean: (number | null)[] = [], std: (number | null)[] = [], min: (number | null)[] = [], q25: (number | null)[] = [],
+    q50: (number | null)[] = [], q75: (number | null)[] = [], max: (number | null)[] = [];
+  for (const c of f.columns) {
+    names.push(c.name); types.push(c.type);
+    const present = c.values.filter((v) => v != null);
+    count.push(present.length); blank.push(c.values.length - present.length);
+    distinct.push(new Set(present.filter((v) => !isSolError(v)).map((v) => (typeof v === "number" ? `#${v}` : typeof v === "boolean" ? `b${v}` : `s${v}`))).size);
+    if (c.type === "number" || c.type === "date") {
+      const nums = presentNums(c);
+      const stat = (op: "avg" | "stdev" | "min" | "max"): number | null => { const r = aggregate(op, nums); return typeof r === "number" ? r : null; };
+      const pct = (p: number): number | null => { const r = percentile(nums, p, false); return typeof r === "number" ? r : null; };
+      mean.push(c.type === "number" ? stat("avg") : null); std.push(c.type === "number" ? stat("stdev") : null);
+      min.push(stat("min")); q25.push(c.type === "number" ? pct(0.25) : null); q50.push(c.type === "number" ? pct(0.5) : null);
+      q75.push(c.type === "number" ? pct(0.75) : null); max.push(stat("max"));
+    } else {
+      mean.push(null); std.push(null); min.push(null); q25.push(null); q50.push(null); q75.push(null); max.push(null);
+    }
+  }
+  return { __frame: true, columns: [
+    { name: "column", type: "string", values: names },
+    { name: "type", type: "string", values: types },
+    { name: "count", type: "number", values: count },
+    { name: "blank", type: "number", values: blank },
+    { name: "distinct", type: "number", values: distinct },
+    { name: "mean", type: "number", values: mean },
+    { name: "std", type: "number", values: std },
+    { name: "min", type: "number", values: min },
+    { name: "25%", type: "number", values: q25 },
+    { name: "50%", type: "number", values: q50 },
+    { name: "75%", type: "number", values: q75 },
+    { name: "max", type: "number", values: max },
+  ] };
+}
+
+export type CorrMethod = "pearson" | "spearman" | "kendall" | "covariance";
+
+/** The pairwise correlation (or covariance) matrix of a frame's NUMBER columns as a
+ *  frame: a leading `column` name column, then one column per variable (pandas df.corr /
+ *  df.cov, R cor / cov with use="pairwise.complete.obs"): each pair drops the rows where
+ *  either side is blank, so a patchy frame still answers; a pair with too little data or
+ *  zero variance is a blank cell. Covariance is the SAMPLE covariance (pandas / R). */
+export function correlationMatrix(f: FrameValue, method: CorrMethod): FrameValue {
+  const cols = f.columns.filter((c) => c.type === "number");
+  const vals = cols.map((c) => c.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)));
+  const cell = (i: number, j: number): number | null => {
+    const xs: number[] = [], ys: number[] = [];
+    const n = Math.min(vals[i].length, vals[j].length);
+    for (let r = 0; r < n; r++) { const a = vals[i][r], b = vals[j][r]; if (a !== null && b !== null) { xs.push(a); ys.push(b); } }
+    const v = method === "pearson" ? pearson(xs, ys)
+      : method === "spearman" ? spearman(xs, ys)
+      : method === "kendall" ? kendallTau(xs, ys)
+      : covariance(xs, ys, true);
+    return typeof v === "number" ? v : null;
+  };
+  const out: FrameColumn[] = [{ name: "column", type: "string", values: cols.map((c) => c.name) }];
+  cols.forEach((cj, j) => out.push({ name: cj.name, type: "number", values: cols.map((_, i) => cell(i, j)) }));
+  return { __frame: true, columns: out };
 }

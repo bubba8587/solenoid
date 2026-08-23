@@ -43,7 +43,8 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../rete-nodes";
-import { AGG_OP_META } from "../rete-nodes";
+import { AGG_OP_META, CORR_METHOD_META } from "../rete-nodes";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, CorrMethod } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
@@ -969,6 +970,31 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
           cell — ResultDisplay routes Frame → FrameDisplay, Cube → CubeDisplay, else
           ValueDisplay (scalar). */}
       <ResultDisplay value={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── DESCRIBE / CORRELATION MATRIX ───────────────────────────────────────────
+export function DescribeComponent({ data, emit }: NodeProps<DescribeNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+const CORR_METHOD_OPTIONS = (Object.keys(CORR_METHOD_META) as CorrMethod[]).map((m) => ({
+  value: m, label: CORR_METHOD_META[m].label, title: CORR_METHOD_META[m].description,
+}));
+
+export function CorrMatrixComponent({ data, emit }: NodeProps<CorrMatrixNodeType>) {
+  const [method, setMethod] = useNodeField(data, "method");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <OpSelect arg value={method} onChange={setMethod} options={CORR_METHOD_OPTIONS} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
 }

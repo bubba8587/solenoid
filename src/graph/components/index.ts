@@ -153,6 +153,7 @@ export {
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
   ReconcileComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
+  DescribeComponent, CorrMatrixComponent,
 } from "./FrameNodes";
 
 // ─── Trust & data quality ───────────────────────────────────────────────────────
@@ -355,3 +356,4 @@ export { PromoComponent } from "./PromoNode";
 export { OutliersComponent } from "./OutliersNode";
 export { EpochComponent } from "./EpochNode";
 export { DateTruncComponent } from "./DateTruncNode";
+export { AmortizationComponent } from "./AmortizationNode";

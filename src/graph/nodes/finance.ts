@@ -1,5 +1,6 @@
 ﻿import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, dateIn, dateListIn, readInput } from "./shared";
+import { numIn, numOut, listIn, dateIn, dateListIn, frameOut, readInput } from "./shared";
+import type { FrameValue } from "../frame";
 import { serialToJsDate } from "./date";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
@@ -9,7 +10,7 @@ import { EquationNode } from "./equation";
 import {
   coupAddMonths, days30_360, actualDays,
   couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr,
+  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
 } from "./financeOps";
 import type {
   CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
@@ -1246,3 +1247,44 @@ export class OddCouponNode extends ClassicPreset.Node {
   }
 }
 
+// ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
+export class AmortizationNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate PER PERIOD — a 6% annual loan paid monthly is 0.005 here, with nper in months.",
+    frame: "Period · Payment · Interest · Principal · Balance. Payment, interest and principal carry Excel's sign (negative for a loan received).",
+  };
+  label: string;
+  paymentTiming: PaymentTiming = "end";
+  literals: Record<string, number> = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
+  cachedResult: FrameValue | null = null;
+  width = 200; height = 230;
+
+  constructor(init?: { label?: string; paymentTiming?: PaymentTiming }) {
+    super("Amortization");
+    this.label = init?.label ?? "Amortization Schedule";
+    if (init?.paymentTiming) this.paymentTiming = init.paymentTiming;
+    this.addInput("rate", numIn("Rate per period"));
+    this.addInput("nper", numIn("Periods"));
+    this.addInput("pv",   numIn("Present value"));
+    this.addInput("fv",   numIn("Future value"));
+    this.addOutput("frame", frameOut("Schedule"));
+  }
+
+  data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {
+    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
+    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
+    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
+    const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
+    if (rate === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { frame: null }; }
+    const rows = amortizationSchedule(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
+    const frame: FrameValue | null = rows.length === 0 ? null : { __frame: true, columns: [
+      { name: "Period",    type: "number", values: rows.map((r) => r.period) },
+      { name: "Payment",   type: "number", values: rows.map((r) => r.payment) },
+      { name: "Interest",  type: "number", values: rows.map((r) => r.interest) },
+      { name: "Principal", type: "number", values: rows.map((r) => r.principal) },
+      { name: "Balance",   type: "number", values: rows.map((r) => r.balance) },
+    ] };
+    this.cachedResult = frame;
+    return { frame };
+  }
+}

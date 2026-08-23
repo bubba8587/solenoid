@@ -33,7 +33,7 @@ import {
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, CorrMatrixNode, AmortizationNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, ElementNode, 
   FisherNode, GroupByFrameNode,
@@ -246,6 +246,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "cumpmt-cumipmt", ctor: CumPmtNode, kind: "operation" },
   { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
   { type: "date-epoch-from", ctor: EpochNode, kind: "operation" },
+  { type: "corr-matrix", ctor: CorrMatrixNode, kind: "argument" },
+  { type: "amortization", ctor: AmortizationNode, kind: "argument" },
   { type: "date-trunc", ctor: DateTruncNode, kind: "argument" },
   { type: "list-outliers", ctor: OutliersNode, kind: "argument" },
   // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on

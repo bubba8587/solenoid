@@ -6,6 +6,11 @@ import { ntileList, outlierFlags } from "./listOps";
 import { epochToSerial, serialToEpoch, dateTrunc } from "./dateOps";
 import { parseDateToSerial } from "./dateSerial";
 import { isSolError } from "../errorValue";
+import { describeFrame, correlationMatrix } from "../frameVerbs";
+import { amortizationSchedule } from "./financeOps";
+import { DescribeNode, CorrMatrixNode } from "./frame";
+import { AmortizationNode } from "./finance";
+import type { FrameValue } from "../frame";
 
 // python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
@@ -99,5 +104,72 @@ describe("Haversine (geometry pack)", () => {
     const km = ev("2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
       { lat1: 51.5074, lon1: -0.1278, lat2: 48.8566, lon2: 2.3522 });
     expect(km).toBeCloseTo(343.5, 0);
+  });
+});
+
+describe("Describe (pandas describe / R summary)", () => {
+  const f: FrameValue = { __frame: true, columns: [
+    { name: "x", type: "number", values: [1, 2, 3, 4, null] },
+    { name: "s", type: "string", values: ["a", "b", "a", null, "c"] },
+    { name: "d", type: "date", values: [45000, 45001, null, 45003, 45004] },
+  ] };
+  it("one row per column; numeric stats on number columns, counts everywhere", () => {
+    const out = describeFrame(f);
+    const col = (n: string) => out.columns.find((c) => c.name === n)!.values;
+    expect(col("column")).toEqual(["x", "s", "d"]);
+    expect(col("count")).toEqual([4, 4, 4]);
+    expect(col("blank")).toEqual([1, 1, 1]);
+    expect(col("distinct")).toEqual([4, 3, 4]);
+    expect(col("mean")).toEqual([2.5, null, null]);
+    expect(col("std")![0]).toBeCloseTo(1.2909944487358056, 12); // pandas ddof=1
+    expect(col("25%")).toEqual([1.75, null, null]);
+    expect(col("50%")).toEqual([2.5, null, null]);
+    expect(col("max")).toEqual([4, null, 45004]);
+    expect(new DescribeNode().data({ frame: [f] }).frame).toEqual(out);
+  });
+});
+
+describe("Correlation Matrix (df.corr / cor)", () => {
+  const f: FrameValue = { __frame: true, columns: [
+    { name: "a", type: "number", values: [1, 2, 3, 4, 5] },
+    { name: "b", type: "number", values: [2, 4, 6, 8, 10] },
+    { name: "c", type: "number", values: [5, 3, null, 1, 0] },
+    { name: "label", type: "string", values: ["p", "q", "r", "s", "t"] },
+  ] };
+  it("pairwise-complete Pearson, symmetric, ones on the diagonal; text columns skipped", () => {
+    const out = correlationMatrix(f, "pearson");
+    expect(out.columns.map((c) => c.name)).toEqual(["column", "a", "b", "c"]);
+    const row = (i: number) => out.columns.slice(1).map((c) => c.values[i]);
+    expect(row(0)[0]).toBe(1);
+    expect(row(0)[1]).toBeCloseTo(1, 12);
+    expect(row(0)[2]).toBeCloseTo(-0.9880643635111419, 10); // a vs c over the 4 complete rows: [1,2,4,5] vs [5,3,1,0]
+    expect(row(2)[0]).toBeCloseTo(row(0)[2] as number, 12);   // symmetric
+    const cov = correlationMatrix(f, "covariance");
+    expect(cov.columns[1].values[0]).toBeCloseTo(2.5, 12);    // var(a) sample
+    expect(new CorrMatrixNode({ method: "spearman" }).data({ frame: [f] }).frame).toEqual(correlationMatrix(f, "spearman"));
+  });
+});
+
+describe("Amortization schedule", () => {
+  it("balance amortizes to 0; interest + principal = payment each period; totals match CUMIPMT", () => {
+    const rows = amortizationSchedule(0.005, 12, 10000);
+    expect(rows).toHaveLength(12);
+    expect(rows[0].payment).toBeCloseTo(-860.664, 3); // PMT(0.5%, 12, 10000)
+    expect(rows[0].interest).toBeCloseTo(-50, 12);
+    for (const r of rows) expect(r.interest + r.principal).toBeCloseTo(r.payment, 9);
+    expect(rows[11].balance).toBeCloseTo(0, 6);
+    const totalInterest = rows.reduce((a, r) => a + r.interest, 0);
+    expect(totalInterest).toBeCloseTo(-327.97, 1); // Excel CUMIPMT(0.005,12,10000,1,12,0)
+    expect(amortizationSchedule(0, 4, 1000)[0].payment).toBe(-250);
+    expect(amortizationSchedule(0.01, 0, 1000)).toEqual([]);
+  });
+  it("payment at the start of the period bears no first-period interest", () => {
+    const rows = amortizationSchedule(0.005, 12, 10000, 0, 1);
+    expect(rows[0].interest).toBe(0);
+    expect(rows[11].balance).toBeCloseTo(0, 6);
+    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
+    const f = node.data({}).frame!;
+    expect(f.columns.map((c) => c.name)).toEqual(["Period", "Payment", "Interest", "Principal", "Balance"]);
+    expect(f.columns[4].values[11] as number).toBeCloseTo(0, 6);
   });
 });

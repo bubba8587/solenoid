@@ -261,7 +261,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Table verbs › Clean
   FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
   // Table verbs › Analyze
-  DECISIONMATRIX: "Decision Matrix", SENSITIVITY: "Sensitivity", RECONCILE: "Reconcile",
+  DECISIONMATRIX: "Decision Matrix", SENSITIVITY: "Sensitivity", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix",
   // Cubes (nested tables)
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",
