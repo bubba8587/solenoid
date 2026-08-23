@@ -44,7 +44,7 @@ import type {
   BlankRowMode,
 } from "../rete-nodes";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
@@ -1054,6 +1054,25 @@ export function PcaComponent({ data, emit }: NodeProps<PcaNodeType>) {
       {explainedOut && (
         <MeasuredSocketRow hero side="output" socketKey="explained" nodeId={data.id} emit={emit} payload={explainedOut.socket}>
           <div style={{ width: "100%" }}><ValueDisplay value={data.cachedExplained} /></div>
+        </MeasuredSocketRow>
+      )}
+    </NodeShell>
+  );
+}
+
+export function LogisticComponent({ data, emit }: NodeProps<LogisticNodeType>) {
+  const coefOut = data.outputs.coefficients, probOut = data.outputs.probabilities;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      {coefOut && (
+        <MeasuredSocketRow hero side="output" socketKey="coefficients" nodeId={data.id} emit={emit} payload={coefOut.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedCoefficients} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
+      {probOut && (
+        <MeasuredSocketRow hero side="output" socketKey="probabilities" nodeId={data.id} emit={emit} payload={probOut.socket}>
+          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedProbabilities} /></div>
         </MeasuredSocketRow>
       )}
     </NodeShell>

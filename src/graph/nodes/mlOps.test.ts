@@ -38,3 +38,32 @@ describe("PCA (numpy eigh of the covariance; sklearn / prcomp sign convention)",
     expect(pca([[1, 2]])).toBeNull();
   });
 });
+
+describe("logistic regression (IRLS; references from a numpy IRLS transcription + scipy norm)", () => {
+  const x = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
+  const y = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
+  it("the hours-studied example: coefficients, Wald SE / z / p, probabilities, log-likelihood", async () => {
+    const { logisticFit } = await import("./mlOps");
+    const f = logisticFit(x.map((v) => [v]), y)!;
+    expect(f.converged).toBe(true);
+    expect(f.coefficients[0]).toBeCloseTo(-4.077713431087625, 6);
+    expect(f.coefficients[1]).toBeCloseTo(1.5046454283733315, 6);
+    expect(f.stdErrors[0]).toBeCloseTo(1.7609943141564697, 6);
+    expect(f.stdErrors[1]).toBeCloseTo(0.6287208459453852, 6);
+    expect(f.z[1]).toBeCloseTo(2.393185207833931, 6);
+    expect(f.pValues[0]).toBeCloseTo(0.02058151551245868, 8);
+    expect(f.pValues[1]).toBeCloseTo(0.016702807340367887, 8);
+    expect(f.probabilities[0]).toBeCloseTo(0.034710335976879586, 8);
+    expect(f.logLikelihood).toBeCloseTo(-8.029878464344675, 8);
+  });
+  it("two features; degenerate designs are null", async () => {
+    const { logisticFit } = await import("./mlOps");
+    const x2 = [1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1];
+    const f = logisticFit(x.map((v, i) => [v, x2[i]]), y)!;
+    expect(f.coefficients[0]).toBeCloseTo(-4.434292614310739, 6);
+    expect(f.coefficients[1]).toBeCloseTo(1.5277346065203303, 6);
+    expect(f.coefficients[2]).toBeCloseTo(0.5691081986876356, 6);
+    expect(logisticFit(x.map((v) => [v]), y.map(() => 1))).toBeNull();
+    expect(logisticFit([[1], [2]], [0, 1])).toBeNull();
+  });
+});

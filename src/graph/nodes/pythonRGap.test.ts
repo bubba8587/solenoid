@@ -30,7 +30,7 @@ import { seasonalDecompose } from "./forecastOps";
 import { polyRoots } from "./mathUtils";
 import { PolyRootsNode } from "./complex";
 import { fitDistribution, fitAll } from "./fitOps";
-import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode } from "./frame";
+import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "./frame";
 import { AmortizationNode, ReturnsNode } from "./finance";
 import { periodReturns, cumulativeReturns, drawdowns, maxDrawdown, cagr, volatility, sharpeRatio, sortinoRatio } from "./financeOps";
 import type { FrameValue } from "../frame";
@@ -769,5 +769,29 @@ describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
     expect(ld.columns[1].values[0]).toBeCloseTo(0.677873, 5);
     n.standardize = true;
     expect(n.data({ frame: [f] }).explained![0]).toBeCloseTo(0.962965, 5);
+  });
+});
+
+describe("Logistic Regression card (IRLS kernel pinned in mlOps.test.ts)", () => {
+  it("coefficient frame + per-row probabilities; a logical target works; blank rows skipped", () => {
+    const hours = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
+    const pass = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "hours", type: "number", values: [...hours, null] },
+      { name: "pass", type: "logical", values: [...pass.map((v) => v === 1), true] },
+    ] };
+    const n = new LogisticNode();
+    n.stringLiterals.target = "pass";
+    const out = n.data({ frame: [f] });
+    const c = out.coefficients as FrameValue;
+    expect(c.columns[0].values).toEqual(["(Intercept)", "hours"]);
+    expect(c.columns[1].values[0]).toBeCloseTo(-4.0777, 3);
+    expect(c.columns[1].values[1]).toBeCloseTo(1.5046, 3);
+    expect(c.columns[4].values[1]).toBeCloseTo(0.0167, 3);
+    expect(out.probabilities!.length).toBe(21);
+    expect(out.probabilities![0]).toBeCloseTo(0.03471, 4);
+    expect(out.probabilities![20]).toBeNull();
+    n.stringLiterals.target = "nope";
+    expect((n.data({ frame: [f] }).coefficients as { code?: string }).code).toBe("#REF!");
   });
 });

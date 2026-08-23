@@ -2288,6 +2288,46 @@
    "init": {
     "label": "explained variance"
    }
+  },
+  {
+   "id": "src_study",
+   "type": "FrameInputNode",
+   "x": 5800,
+   "y": 2680,
+   "init": {
+    "label": "Hours studied → pass",
+    "frameText": "[{\"name\": \"hours\", \"type\": \"number\", \"values\": [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5]}, {\"name\": \"pass\", \"type\": \"number\", \"values\": [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1]}]"
+   }
+  },
+  {
+   "id": "logit",
+   "type": "LogisticNode",
+   "x": 6200,
+   "y": 2680,
+   "init": {
+    "label": "Logistic Regression"
+   },
+   "stringLiterals": {
+    "target": "pass"
+   }
+  },
+  {
+   "id": "d_logit_c",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 2680,
+   "init": {
+    "label": "intercept −4.08, slope 1.50"
+   }
+  },
+  {
+   "id": "d_logit_p",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 2860,
+   "init": {
+    "label": "P(pass) per row"
+   }
   }
  ],
  "connections": [
@@ -3363,6 +3403,24 @@
    "source": "pca1",
    "sourceOutput": "explained",
    "target": "d_pca_e",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_study",
+   "sourceOutput": "frame",
+   "target": "logit",
+   "targetInput": "frame"
+  },
+  {
+   "source": "logit",
+   "sourceOutput": "coefficients",
+   "target": "d_logit_c",
+   "targetInput": "in"
+  },
+  {
+   "source": "logit",
+   "sourceOutput": "probabilities",
+   "target": "d_logit_p",
    "targetInput": "in"
   }
  ]

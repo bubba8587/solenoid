@@ -47,8 +47,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
     residual, additive or multiplicative, the classical 2×MA filter; DECOMPOSE(list, period,
     component, [model]) formula). STL (loess-based) stays open.
 24. **Distribution fitting** — LANDED 2026-08-23 (Fit Distribution node + FITDIST; MLE for normal / lognormal / exponential / gamma / Weibull / uniform / Poisson, moments for beta; AIC ranking + KS).
-25. **Logistic regression** (`LogisticRegression`, `glm(binomial)`): IRLS on the existing
-    linear-algebra kernels; the LINEST sibling. Moderate.
+25. **Logistic regression** — LANDED 2026-08-23 (Logistic Regression card: 0/1 or logical
+    target + the other number columns → coefficient frame with Wald SE / z / p and fitted
+    probabilities; unregularized IRLS like glm(binomial), references transcribed and pinned).
 26. **K-means and PCA** — LANDED 2026-08-23 (K-Means card: k-means++ seeded restarts, a
     cluster per row + a centers frame; PCA card: scores / loadings / explained, centered or
     standardized; both over a frame's number columns, numpy-pinned).

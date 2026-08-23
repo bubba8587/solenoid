@@ -1,8 +1,9 @@
 // The two unsupervised staples, rete-free: k-means (sklearn KMeans / R kmeans) and PCA
 // (sklearn PCA / R prcomp). Both take rows × features numbers; the frame cards pick the
 // numeric columns and drop rows with a blank.
-import { matEigh } from "./matrixOps";
+import { matEigh, matSolve } from "./matrixOps";
 import { mulberry32 } from "../monteCarlo";
+import { stdNormCDF } from "./mathUtils";
 
 export interface KMeansResult { labels: number[]; centers: number[][]; inertia: number; iterations: number }
 
@@ -95,4 +96,63 @@ export function pca(points: readonly (readonly number[])[], opts: { standardize?
   const total = variance.reduce((a, b) => a + b, 0);
   const scores = Z.map((z) => eig.vectors[0].map((_, c) => z.reduce((s, v, j) => s + v * eig.vectors[j][c], 0)));
   return { scores, loadings: eig.vectors, variance, ratio: variance.map((v) => (total > 0 ? v / total : 0)), means, scales };
+}
+
+// ─── Logistic regression (R glm(binomial) / statsmodels Logit: unregularized MLE by IRLS) ───
+export interface LogisticFit {
+  /** Intercept first, then one per feature column. */
+  coefficients: number[];
+  stdErrors: number[];
+  z: number[];
+  pValues: number[];
+  /** Fitted P(y = 1) per row, in input order. */
+  probabilities: number[];
+  logLikelihood: number;
+  iterations: number;
+  converged: boolean;
+}
+
+/** Iteratively reweighted least squares on [1 | X] against a 0/1 target; Wald standard
+ *  errors from the final information matrix. `null` for a degenerate design (a constant
+ *  target, no rows, more columns than rows) — perfectly separable data reaches the
+ *  iteration cap with huge coefficients and `converged: false`, like glm's warning. */
+export function logisticFit(X: readonly (readonly number[])[], y: readonly number[], opts: { maxIter?: number; tol?: number } = {}): LogisticFit | null {
+  const n = X.length;
+  if (n === 0 || y.length !== n) return null;
+  const p = X[0].length + 1;
+  if (n <= p) return null;
+  if (y.every((v) => v === y[0])) return null;
+  const D = X.map((row) => [1, ...row]);
+  let beta = new Array<number>(p).fill(0);
+  const maxIter = opts.maxIter ?? 100, tol = opts.tol ?? 1e-10;
+  const sigmoid = (t: number) => 1 / (1 + Math.exp(-t));
+  let converged = false, it = 0;
+  let H: number[][] = [];
+  for (; it < maxIter; it++) {
+    const eta = D.map((row) => row.reduce((s, v, j) => s + v * beta[j], 0));
+    const mu = eta.map(sigmoid);
+    const w = mu.map((m) => Math.max(m * (1 - m), 1e-12));
+    const z = eta.map((e, i) => e + (y[i] - mu[i]) / w[i]);
+    H = Array.from({ length: p }, (_, a) => Array.from({ length: p }, (_, b) => D.reduce((s, row, i) => s + w[i] * row[a] * row[b], 0)));
+    const g = Array.from({ length: p }, (_, a) => D.reduce((s, row, i) => s + w[i] * row[a] * z[i], 0));
+    const next = matSolve(H, g);
+    if (!next) return null;
+    const delta = Math.max(...next.map((v, j) => Math.abs(v - beta[j])));
+    beta = next;
+    if (delta < tol) { converged = true; it++; break; }
+  }
+  const eta = D.map((row) => row.reduce((s, v, j) => s + v * beta[j], 0));
+  const mu = eta.map(sigmoid);
+  const w = mu.map((m) => Math.max(m * (1 - m), 1e-12));
+  H = Array.from({ length: p }, (_, a) => Array.from({ length: p }, (_, b) => D.reduce((s, row, i) => s + w[i] * row[a] * row[b], 0)));
+  // diag of H⁻¹ by solving for each unit vector
+  const stdErrors = Array.from({ length: p }, (_, j) => {
+    const e = new Array<number>(p).fill(0); e[j] = 1;
+    const col = matSolve(H, e);
+    return col ? Math.sqrt(Math.max(0, col[j])) : NaN;
+  });
+  const z = beta.map((b, j) => b / stdErrors[j]);
+  const pValues = z.map((v) => 2 * (1 - stdNormCDF(Math.abs(v))));
+  const logLikelihood = mu.reduce((s, m, i) => s + (y[i] ? Math.log(Math.max(m, 1e-300)) : Math.log(Math.max(1 - m, 1e-300))), 0);
+  return { coefficients: beta, stdErrors, z, pValues, probabilities: mu, logLikelihood, iterations: it, converged };
 }

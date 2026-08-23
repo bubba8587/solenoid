@@ -2084,7 +2084,7 @@ export class CorrMatrixNode extends ClassicPreset.Node {
 }
 
 // ─── K-MEANS / PCA (the numeric columns of a frame; rows with a blank are left out) ──
-import { kmeans, pca } from "./mlOps";
+import { kmeans, pca, logisticFit } from "./mlOps";
 
 /** The numeric feature matrix of a frame: which columns, which rows survived. */
 function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
@@ -2187,6 +2187,65 @@ export class PcaNode extends ClassicPreset.Node {
     ] };
     this.cachedExplained = r.ratio;
     return { scores, loadings: this.cachedLoadings, explained: this.cachedExplained };
+  }
+}
+
+export class LogisticNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The target column is 0/1 (or TRUE/FALSE); every other number column is a feature. Rows with a blank are left out.",
+    target: "Name of the 0/1 column to predict.",
+    coefficients: "Intercept first, then one row per feature: the log-odds coefficient, its standard error, z and p (Wald).",
+    probabilities: "Fitted P(target = 1) per row of the frame; blank for a skipped row.",
+  };
+  label: string;
+  stringLiterals: Record<string, string> = { target: "" };
+  cachedCoefficients: FrameValue | SolError | null = null;
+  cachedProbabilities: (number | null)[] | null = null;
+  width = 210; height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("Logistic");
+    this.label = init?.label ?? "Logistic Regression";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("target", strIn("Target"));
+    this.addOutput("coefficients", frameOut("Coefficients"));
+    this.addOutput("probabilities", numListOut("Probabilities"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; target?: string[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const target = readInput(inputs.target, this.stringLiterals.target ?? "");
+    const blank = (err: SolError | null = null) => { this.cachedCoefficients = err; this.cachedProbabilities = null; return { coefficients: err, probabilities: null }; };
+    if (!f || target === null) return blank();
+    const t = target.trim();
+    if (t === "") return blank();
+    const tcol = f.columns.find((c) => c.name === t);
+    if (!tcol) return blank(solError("#REF!", `Logistic Regression: no column "${t}"`));
+    const features = f.columns.filter((c) => c !== tcol && c.type === "number");
+    if (features.length === 0) return blank(solError("#VALUE!", "Logistic Regression needs at least one number column besides the target"));
+    const total = frameRowCount(f);
+    const X: number[][] = [], y: number[] = [], kept: number[] = [];
+    for (let r = 0; r < total; r++) {
+      const tv = tcol.values[r];
+      const yv = tv === true ? 1 : tv === false ? 0 : typeof tv === "number" && (tv === 0 || tv === 1) ? tv : null;
+      const row = features.map((c) => c.values[r]);
+      if (yv === null || !row.every((v) => typeof v === "number" && Number.isFinite(v))) continue;
+      X.push(row as number[]); y.push(yv); kept.push(r);
+    }
+    const fit = logisticFit(X, y);
+    if (!fit) return blank(solError("#DOMAIN!", "Logistic Regression: the target must take both values and there must be more rows than columns"));
+    const terms = ["(Intercept)", ...features.map((c) => c.name)];
+    this.cachedCoefficients = { __frame: true, columns: [
+      { name: "Term", type: "string", values: terms },
+      { name: "Coefficient", type: "number", values: fit.coefficients },
+      { name: "Std Error", type: "number", values: fit.stdErrors },
+      { name: "z", type: "number", values: fit.z },
+      { name: "p", type: "number", values: fit.pValues },
+    ] };
+    const probs: (number | null)[] = new Array(total).fill(null);
+    kept.forEach((row, i) => { probs[row] = fit.probabilities[i]; });
+    this.cachedProbabilities = probs;
+    return { coefficients: this.cachedCoefficients, probabilities: probs };
   }
 }
 
