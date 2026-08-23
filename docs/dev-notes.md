@@ -86,6 +86,32 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23g — the Python/R gap, Tier 2 landed; Formula.js upstream list)
+
+**Tier 2 of `docs/python-r-gap.md` built end to end (13 new cards, 4 widened, ~25 formulas),
+same discipline as Tier 1: rete-free kernel shared by node + formula, references computed
+locally, every card in the scratch seed (`run-graph` verified).** Kernel homes added:
+`hashOps` (MD5 / SHA-1 / SHA-256 / CRC-32 / FNV-1a / Base64 / UUID, hashlib-pinned),
+`signalOps` (Savitzky–Golay, Gaussian, Cleveland LOWESS, find_peaks — scipy-pinned),
+`mlOps` (k-means++, PCA via `matEigh`, logistic IRLS — numpy-pinned), `financeOps.returnsOp`,
+`forecastOps.seasonalDecompose`, `mathUtils.polyRoots` (Durand–Kerner + Newton polish),
+`textOps` (unaccent / slugify / pad / truncate / template). Cards: Pad Text, Truncate Text,
+Returns, Bind Columns, Hash, UUID, Template, Smooth, Find Peaks, Decompose, Polynomial Roots,
+K-Means, PCA, Logistic Regression. Widened: Text Transform (+UNACCENT/SLUGIFY), ARGMAX
+(+ARGSORT / ARGSORT DESC / WHICH — `setOp` retypes BOTH sockets in place: WHICH takes a logical
+list, the list ops emit a number list; the component prunes input cables before the swap and
+`retypeOutputCables` after), Join (+`how = cross`, Polars `cross_join`, corpus-pinned),
+url-encode (+Base64). **Bind Columns is a new n-ary backend verb** (`FrameBackend.bindColumns`,
+`engine_bind_columns`, `BINARY_VERBS` + cargo-runner dispatch, `bindColumns.json`; cargo verified
+to run it via an injected failure). Op-kind cards whose op owns extra sockets (Returns rf /
+periods, Smooth window / order / frac / sigma) follow one shape: `setOp` adds/removes the
+sockets, the component `dropInputCables` the departing keys first. The Template node grows an
+`anydata` socket per `{name}` from data() via a microtask (`sideVars` persisted like Computed
+Column); `TEMPLATE()` is positional `{0}` and a named placeholder there is `#NAME?`.
+`docs/upstream-formulajs.md` lists the ten Formula.js 4.6.1 bugs behind our overrides as
+ready-to-paste issues (verified, scipy-checked values) — the author submits. Open in the gap:
+ODE integrate, 2-D histogram, `str_wrap`, STL.
+
 ### SESSION DIGEST (2026-08-23f — the Python/R gap, Tier 1 landed)
 
 **`docs/python-r-gap.md` (author: "a node existing may retain a user") — surveyed, ranked,

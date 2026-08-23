@@ -35,12 +35,10 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   tap-to-select companions; pinned in `surfaceParity.test.ts`; verified by headless CDP touch
   emulation (agent-run, not author-watched). Phases A–C of the kernel follow as pure refactor.
 
-**B0 — the Python/R gap (author ask 2026-08-23) — Tier 1 LANDED; what remains**
-- [ ] `python-r-gap.md` Tier 2 top-down: text template/glue, str_pad/trunc/wrap/unaccent,
-  positions-where + argsort, weighted random choice / Distribution sample op, Savitzky–Golay /
-  LOWESS / find_peaks, drawdown/Sharpe/log-returns, seasonal decomposition, logistic
-  regression, k-means / PCA (Eigen landed — PCA = eigh of the corr matrix), ODE (RK4),
-  polynomial roots, cross join, bind-cols, histogram2d, hash/uuid.
+**B0 — the Python/R gap (author ask 2026-08-23) — Tiers 1 + 2 LANDED; what remains**
+- [ ] `python-r-gap.md` open items: ODE integrate (RK4 over an Expression), 2-D histogram for
+  the Heatmap, `str_wrap` (text → lines), STL (loess decomposition). Tier 3 stays recorded as
+  out of character.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
 - [ ] **B6 Table-popup per-column summary footer** (sum/avg/min/max/count via `forAggregate`)

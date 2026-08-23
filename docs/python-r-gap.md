@@ -24,7 +24,7 @@ oracle on web, `window.json` in the parity corpus). Reference overlay chips (num
 let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParity.test.ts`,
 `distributionFormula.test.ts`, `dateParity.test.ts`, `functionReferenceLibs.test.ts`.
 
-## Tier 2 — valuable, moderate cost or narrower audience
+## Tier 2 — LANDED 2026-08-23 except the items marked open (#20's weighted pick, #27, #31, str_wrap, STL)
 
 17. **Text template / glue** — LANDED 2026-08-23 (Template node: {name} / {name:spec} grow a
     socket per name, lists broadcast, date-typed inputs format as dates; TEMPLATE(text, v0, …)
@@ -34,12 +34,12 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
     `str_wrap` (text → lines) still open: its output is a list, so it is not a Transform op.
 19. **Positions where** — LANDED 2026-08-23 (ARGSORT / ARGSORT DESC / WHICH ops on the ARGMAX
     card, sockets retyping with the op; ARGSORT(list, [desc]) + WHICH(flags) formulas).
-20. **Weighted random choice / sample** (`np.random.choice(p=)`, `sample(prob=)`, `rnorm` N
-    draws): a "Sample" op on the Distribution node (N draws, seeded per recalc like RAND) and
-    a weighted pick on Shuffle/Take. Cheap; the Monte Carlo run mode has its own sampler.
-21. **Savitzky–Golay / LOWESS smoothing, peak finding** (`savgol_filter`, `lowess`,
-    `find_peaks`): signal users; SG is a convolution with computed coefficients (cheap),
-    LOWESS moderate, find_peaks (prominence/distance) cheap.
+20. **Weighted random choice / sample** — LANDED 2026-08-23 (Distribution node `Sample` form:
+    N draws by inverse CDF, seeded per recalculation; RANDDIST formula). A weighted pick on
+    Shuffle / Take (`np.random.choice(p=)`) stays open.
+21. **Savitzky–Golay / LOWESS / Gaussian smoothing, peak finding** — LANDED 2026-08-23 (Smooth
+    card with per-op parameter sockets; Find Peaks card with height / distance / prominence;
+    SAVGOL / LOWESS / GAUSSIANSMOOTH / FINDPEAKS; scipy-pinned).
 22. **Drawdown / Sharpe / volatility / log returns** — LANDED 2026-08-23 (Returns card: log /
     simple / cumulative returns, drawdown, max drawdown, CAGR, volatility, Sharpe, Sortino —
     op swaps the rf / periods sockets and the output rank; LOGRETURNS … SORTINO formulas).
