@@ -25,7 +25,8 @@ import { argsortList, whichPositions } from "./listOps";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "./list";
 import { numListOut, numOut, listIn, logicalListIn } from "./shared";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
-import { EtsForecastNode, FitDistributionNode } from "./stats";
+import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "./stats";
+import { seasonalDecompose } from "./forecastOps";
 import { fitDistribution, fitAll } from "./fitOps";
 import { DescribeNode, CorrMatrixNode } from "./frame";
 import { AmortizationNode, ReturnsNode } from "./finance";
@@ -676,5 +677,42 @@ describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.t
     n.literals.prominence = 2;
     expect(n.data({ list: [Y] }).positions).toEqual([4, 6, 8, 10]);
     expect(n.data({ list: [Y], distance: [3] }).positions).toEqual([6, 10]);
+  });
+});
+
+describe("Decompose — classical seasonal decomposition (statsmodels seasonal_decompose algorithm, references transcribed locally)", () => {
+  const Y = [10, 14, 8, 12, 11, 15, 9, 13, 12, 16, 10, 14];
+  const close = (got: unknown, want: (number | null)[]) => {
+    const g = got as (number | null)[];
+    expect(g.length).toBe(want.length);
+    g.forEach((v, i) => (want[i] === null ? expect(v).toBeNull() : expect(v).toBeCloseTo(want[i] as number, 5)));
+  };
+  it("even period: 2×MA trend with half-period blanks; seasonal centred to 0; residual", () => {
+    const d = seasonalDecompose(Y, 4)!;
+    close(d.trend, [null, null, 11.125, 11.375, 11.625, 11.875, 12.125, 12.375, 12.625, 12.875, null, null]);
+    close(d.seasonal, [-0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625]);
+    close(d.residual, [null, null, 0, 0, 0, 0, 0, 0, 0, 0, null, null]);
+  });
+  it("multiplicative centres the season to 1", () => {
+    const d = seasonalDecompose(Y, 4, "multiplicative")!;
+    close(d.seasonal.slice(0, 4), [0.952004, 1.257745, 0.733488, 1.056764]);
+    close(d.residual.slice(2, 6), [0.980386, 0.998279, 0.993942, 1.004304]);
+  });
+  it("odd period uses a plain centred MA; too-short input is null", () => {
+    const d = seasonalDecompose([5, 7, 9, 6, 8, 10, 7, 9, 11, 8], 3)!;
+    close(d.trend, [null, 7, 7.333333, 7.666667, 8, 8.333333, 8.666667, 9, 9.333333, null]);
+    close(d.seasonal.slice(0, 3), [-1.666667, 0, 1.666667]);
+    expect(seasonalDecompose([1, 2, 3], 4)).toBeNull();
+  });
+  it("the card emits all three; DECOMPOSE() picks one component", () => {
+    const n = new DecomposeNode();
+    n.literals.period = 4;
+    const out = n.data({ values: [Y] });
+    close(out.trend, [null, null, 11.125, 11.375, 11.625, 11.875, 12.125, 12.375, 12.625, 12.875, null, null]);
+    close(out.seasonal!.slice(0, 2), [-0.625, 3.125]);
+    const ev = (e: string) => compileEvaluator(e)!({ y: Y });
+    close(ev('DECOMPOSE(y, 4, "seasonal")'), [-0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625]);
+    close((ev('DECOMPOSE(y, 4, "trend", "multiplicative")') as number[]).slice(2, 4), [11.125, 11.375]);
+    expect((ev('DECOMPOSE(y, 4, "noise")') as { code?: string }).code).toBe("#DOMAIN!");
   });
 });

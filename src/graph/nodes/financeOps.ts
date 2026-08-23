@@ -552,7 +552,7 @@ export const RETURNS_OP_META: Record<ReturnsOp, { label: string; fx: string; tak
   cagr:        { label: "CAGR",              fx: "CAGR",        takes: "prices",  scalar: true,  needs: ["periods"],      description: "Compound growth rate per year: (p_last / p_first)^(periods per year / periods elapsed) − 1." },
   volatility:  { label: "Volatility",        fx: "VOLATILITY",  takes: "returns", scalar: true,  needs: ["periods"],      description: "Sample standard deviation of the returns × √(periods per year). pandas std() × sqrt(252)." },
   sharpe:      { label: "Sharpe ratio",      fx: "SHARPE",      takes: "returns", scalar: true,  needs: ["rf", "periods"], description: "mean(r − rf) / stdev(r − rf) × √(periods per year); rf is the risk-free rate PER PERIOD. PerformanceAnalytics SharpeRatio." },
-  sortino:     { label: "Sortino ratio",     fx: "SORTINO",     takes: "returns", scalar: true,  needs: ["rf", "periods"], description: "mean(r − rf) / downside deviation × √(periods per year), penalising only the below-target returns. PerformanceAnalytics SortinoRatio." },
+  sortino:     { label: "Sortino ratio",     fx: "SORTINO",     takes: "returns", scalar: true,  needs: ["rf", "periods"], description: "mean(r − rf) / downside deviation × √(periods per year), penalizing only the below-target returns. PerformanceAnalytics SortinoRatio." },
 };
 
 type RCell = number | null | SolError;

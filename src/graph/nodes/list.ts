@@ -2393,9 +2393,9 @@ export class SmoothNode extends ClassicPreset.Node {
     return removed;
   }
 
-  data(inputs: { list?: ListCell[][] } & Record<string, number[] | undefined>) {
+  data(inputs: { list?: ListCell[][]; window?: number[]; order?: number[]; frac?: number[]; sigma?: number[] }) {
     const arr = inputs.list?.[0] ?? null;
-    const prm = (k: string, def: number) => readInput(inputs[k] as number[] | undefined, this.literals[k] ?? def);
+    const prm = (k: "window" | "order" | "frac" | "sigma", def: number) => readInput(inputs[k], this.literals[k] ?? def);
     let out: ListCell[] | null;
     if (arr === null) out = null;
     else if (this.op === "savgol") { const w = prm("window", 5), o = prm("order", 2); out = w === null || o === null ? null : savgol(arr, w, o); }

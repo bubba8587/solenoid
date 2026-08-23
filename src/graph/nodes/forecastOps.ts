@@ -126,3 +126,39 @@ export function detectSeason(y: readonly number[]): number {
 
 /** Two-sided normal tail helper exported for the confidence argument validation. */
 export const confidenceOk = (c: number): boolean => c > 0 && c < 1 && Number.isFinite(stdNormCDF(c));
+
+// ─── Classical seasonal decomposition (statsmodels seasonal_decompose, R decompose) ───
+export type DecomposeModel = "additive" | "multiplicative";
+export interface Decomposition { trend: (number | null)[]; seasonal: (number | null)[]; residual: (number | null)[] }
+
+/** Trend = centred moving average over `period` (a 2×MA when the period is even — the
+ *  classical filter), blank for the half-window at each end; seasonal = the per-position
+ *  mean of the detrended series, centred to zero (additive) or to one (multiplicative) and
+ *  tiled; residual = what is left. Blanks in the input leave blanks where they touch. */
+export function seasonalDecompose(y: readonly (number | null)[], period: number, model: DecomposeModel = "additive"): Decomposition | null {
+  const n = y.length;
+  const m = Math.round(period);
+  if (m < 2 || n < 2 * m) return null;
+  const even = m % 2 === 0;
+  const filt = even ? [0.5, ...new Array<number>(m - 1).fill(1), 0.5].map((w) => w / m) : new Array<number>(m).fill(1 / m);
+  const trim = (filt.length - 1) >> 1;
+  const trend: (number | null)[] = new Array(n).fill(null);
+  for (let i = trim; i < n - trim; i++) {
+    let acc = 0, ok = true;
+    for (let k = 0; k < filt.length; k++) { const v = y[i - trim + k]; if (v === null || !Number.isFinite(v)) { ok = false; break; } acc += v * filt[k]; }
+    trend[i] = ok ? acc : null;
+  }
+  const det = y.map((v, i) => (v === null || trend[i] === null ? null : model === "additive" ? v - trend[i]! : trend[i] === 0 ? null : v / trend[i]!));
+  const pa: number[] = [];
+  for (let r = 0; r < m; r++) {
+    let s = 0, c = 0;
+    for (let i = r; i < n; i += m) { const v = det[i]; if (v !== null) { s += v; c++; } }
+    pa.push(c ? s / c : NaN);
+  }
+  if (pa.some((v) => Number.isNaN(v))) return null;
+  const mean = pa.reduce((a, b) => a + b, 0) / m;
+  const centred = model === "additive" ? pa.map((v) => v - mean) : pa.map((v) => (mean === 0 ? NaN : v / mean));
+  const seasonal = Array.from({ length: n }, (_, i) => centred[i % m]);
+  const residual = det.map((v, i) => (v === null ? null : model === "additive" ? v - seasonal[i] : seasonal[i] === 0 ? null : v / seasonal[i]));
+  return { trend, seasonal, residual };
+}

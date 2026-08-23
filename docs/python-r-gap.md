@@ -43,8 +43,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 22. **Drawdown / Sharpe / volatility / log returns** — LANDED 2026-08-23 (Returns card: log /
     simple / cumulative returns, drawdown, max drawdown, CAGR, volatility, Sharpe, Sortino —
     op swaps the rf / periods sockets and the output rank; LOGRETURNS … SORTINO formulas).
-23. **Seasonal decomposition** (`seasonal_decompose`, R `decompose`/`stl`): trend (moving
-    average) / seasonal / residual frames. Moderate; pairs with Holt-Winters.
+23. **Seasonal decomposition** — LANDED 2026-08-23 (Decompose card: trend / seasonal /
+    residual, additive or multiplicative, the classical 2×MA filter; DECOMPOSE(list, period,
+    component, [model]) formula). STL (loess-based) stays open.
 24. **Distribution fitting** — LANDED 2026-08-23 (Fit Distribution node + FITDIST; MLE for normal / lognormal / exponential / gamma / Weibull / uniform / Poisson, moments for beta; AIC ranking + KS).
 25. **Logistic regression** (`LogisticRegression`, `glm(binomial)`): IRLS on the existing
     linear-algebra kernels; the LINEST sibling. Moderate.

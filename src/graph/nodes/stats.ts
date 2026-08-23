@@ -4,7 +4,8 @@ import { fillBorderedGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
-import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
+import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, type DecomposeModel } from "./forecastOps";
+export type { DecomposeModel } from "./forecastOps";
 import { fitAll, FIT_FAMILIES, type DistFit, type FitFamily } from "./fitOps";
 import type { FrameValue } from "../frame";
 import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
@@ -1175,3 +1176,50 @@ export class FitDistributionNode extends ClassicPreset.Node {
   }
 }
 export { FIT_FAMILIES };
+
+// ─── DECOMPOSE (classical seasonal decomposition) ────────────────────────────
+export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; description: string }> = {
+  additive:       { label: "Additive",       description: "y = trend + seasonal + residual; the seasonal swing is a fixed amount." },
+  multiplicative: { label: "Multiplicative", description: "y = trend × seasonal × residual; the seasonal swing scales with the level (positive data)." },
+};
+
+export class DecomposeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "An equally spaced series, oldest first; needs at least two full periods.",
+    period: "Season length in steps — 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
+    trend: "Centered moving average; blank for half a period at each end (the classical filter).",
+    seasonal: "One repeating pattern per period, centered to 0 (additive) or 1 (multiplicative).",
+    residual: "What the trend and season leave unexplained.",
+  };
+  label: string;
+  model: DecomposeModel = "additive";
+  literals: Record<string, number> = { period: 12 };
+  cachedTrend: (number | null)[] | SolError | null = null;
+  cachedSeasonal: (number | null)[] | null = null;
+  cachedResidual: (number | null)[] | null = null;
+  width = 200; height = 225;
+
+  constructor(init?: { label?: string; model?: DecomposeModel }) {
+    super("Decompose");
+    this.label = init?.label ?? "Decompose";
+    if (init?.model) this.model = init.model;
+    this.addInput("values", listIn("Values"));
+    this.addInput("period", numIn("Period"));
+    this.addOutput("trend", numListOut("Trend"));
+    this.addOutput("seasonal", numListOut("Seasonal"));
+    this.addOutput("residual", numListOut("Residual"));
+  }
+
+  data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }) {
+    const blank = (err: SolError | null = null) => { this.cachedTrend = err; this.cachedSeasonal = null; this.cachedResidual = null; return { trend: err, seasonal: null, residual: null }; };
+    const raw = inputs.values?.[0] ?? null;
+    const period = readInput(inputs.period, this.literals.period ?? 12);
+    if (raw === null || period === null) return blank();
+    const err = raw.find((v): v is SolError => isSolError(v));
+    if (err) return blank(err);
+    const d = seasonalDecompose(raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)), period, this.model);
+    if (!d) return blank();
+    this.cachedTrend = d.trend; this.cachedSeasonal = d.seasonal; this.cachedResidual = d.residual;
+    return { trend: d.trend, seasonal: d.seasonal, residual: d.residual };
+  }
+}

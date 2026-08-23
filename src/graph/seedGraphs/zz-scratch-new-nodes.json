@@ -2100,6 +2100,61 @@
    "init": {
     "label": "peak heights"
    }
+  },
+  {
+   "id": "src_season",
+   "type": "ListInputNode",
+   "x": 5800,
+   "y": 1000,
+   "init": {
+    "label": "Quarterly sales (3 yrs)",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "10, 14, 8, 12, 11, 15, 9, 13, 12, 16, 10, 14"
+   }
+  },
+  {
+   "id": "decomp",
+   "type": "DecomposeNode",
+   "x": 6200,
+   "y": 1000,
+   "init": {
+    "label": "Decompose",
+    "model": "additive"
+   },
+   "literals": {
+    "period": 4
+   }
+  },
+  {
+   "id": "d_dc_t",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 1000,
+   "init": {
+    "label": "trend"
+   }
+  },
+  {
+   "id": "d_dc_s",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 1140,
+   "init": {
+    "label": "seasonal"
+   }
+  },
+  {
+   "id": "d_dc_r",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 1280,
+   "init": {
+    "label": "residual"
+   }
   }
  ],
  "connections": [
@@ -3091,6 +3146,30 @@
    "source": "pk",
    "sourceOutput": "values",
    "target": "d_pk_val",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_season",
+   "sourceOutput": "list",
+   "target": "decomp",
+   "targetInput": "values"
+  },
+  {
+   "source": "decomp",
+   "sourceOutput": "trend",
+   "target": "d_dc_t",
+   "targetInput": "in"
+  },
+  {
+   "source": "decomp",
+   "sourceOutput": "seasonal",
+   "target": "d_dc_s",
+   "targetInput": "in"
+  },
+  {
+   "source": "decomp",
+   "sourceOutput": "residual",
+   "target": "d_dc_r",
    "targetInput": "in"
   }
  ]

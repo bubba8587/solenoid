@@ -237,6 +237,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   TRUNCATETEXT: "text, width, [ellipsis]",
   ARGSORT: "list, [descending]",
   SAVGOL: "list, window, order",
+  DECOMPOSE: "list, period, component, [model]",
   LOWESS: "list, [fraction]",
   GAUSSIANSMOOTH: "list, sigma",
   FINDPEAKS: "list, [min_height], [min_distance], [min_prominence]",

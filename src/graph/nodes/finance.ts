@@ -1297,7 +1297,7 @@ export class ReturnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "Prices for the price-based ops (log / simple returns, drawdown, CAGR); per-period returns for the rest.",
     rf: "Risk-free rate PER PERIOD (an annual 4% on daily data is 0.04 / 252); 0 when unwired.",
-    periods: "Periods per year for annualising — 252 trading days, 12 months, 1 for none.",
+    periods: "Periods per year for annualizing — 252 trading days, 12 months, 1 for none.",
   };
   label: string;
   op: ReturnsOp;

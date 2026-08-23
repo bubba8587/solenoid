@@ -10,6 +10,7 @@ import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/f
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
+import { seasonalDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -636,6 +637,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGSORT:         { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
   SAVGOL:          { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
+  DECOMPOSE:       { returns: "number", rank: "list", listArgs: true, arity: [3, 4], native: true },
   LOWESS:          { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
   GAUSSIANSMOOTH:  { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   FINDPEAKS:       { returns: "number", rank: "list", listArgs: true, arity: [1, 4], native: true },
@@ -1627,6 +1629,17 @@ registerInternal("LENGTH",   (list) => toList(list).length);
 registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
 registerInternal("ARGSORT",  (list, desc) => argsortList(numList(list), isTrue(desc)));
 // The Returns card's ops (financeOps.returnsOp): [rf] is per period, [periods] per year.
+// DECOMPOSE(list, period, component, [model]): one component of the classical decomposition
+// (the node emits all three) — component = trend | seasonal | residual, model = additive | multiplicative.
+registerInternal("DECOMPOSE", (list, period, component, model) => {
+  const comp = String(component ?? "").trim().toLowerCase();
+  if (comp !== "trend" && comp !== "seasonal" && comp !== "residual") return solError("#DOMAIN!", "DECOMPOSE component must be trend, seasonal or residual");
+  const mdl = model == null ? "additive" : String(model).trim().toLowerCase();
+  if (mdl !== "additive" && mdl !== "multiplicative") return solError("#DOMAIN!", "DECOMPOSE model must be additive or multiplicative");
+  const y = numList(list).map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+  const d = seasonalDecompose(y, toNum(period), mdl);
+  return d ? d[comp] : null;
+});
 registerInternal("SAVGOL",      (list, window, order) => savgol(numList(list), toNum(window), toNum(order)));
 registerInternal("LOWESS",      (list, frac) => lowess(numList(list), optNum(frac, 2 / 3)));
 registerInternal("GAUSSIANSMOOTH", (list, sigma) => gaussianSmooth(numList(list), toNum(sigma)));
