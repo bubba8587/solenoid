@@ -1,97 +1,1105 @@
 {
-  "v": 2,
-  "order": 9999,
-  "label": "Scratch: new nodes",
-  "group": "More",
-  "nodes": [
-    { "id": "src_a", "type": "ListInputNode", "x": -40, "y": 40,
-      "init": { "label": "Data A", "valueKeys": ["v0"] },
-      "stringLiterals": { "v0": "10, 12, 9, 20, 8, 15, 22, 11" } },
-    { "id": "src_breaks", "type": "ListInputNode", "x": -40, "y": 300,
-      "init": { "label": "Breaks", "valueKeys": ["v0"] },
-      "stringLiterals": { "v0": "10, 15, 20" } },
-    { "id": "src_va", "type": "ListInputNode", "x": -40, "y": 520,
-      "init": { "label": "Vector A", "valueKeys": ["v0"] },
-      "stringLiterals": { "v0": "1, 2, 3" } },
-    { "id": "src_vb", "type": "ListInputNode", "x": -40, "y": 720,
-      "init": { "label": "Vector B", "valueKeys": ["v0"] },
-      "stringLiterals": { "v0": "10, 20" } },
-
-    { "id": "n_shift", "type": "ShiftNode", "x": 320, "y": 0,
-      "init": { "label": "Shift", "wrap": "wrap" }, "literals": { "by": 2 } },
-    { "id": "n_pct", "type": "DiffNode", "x": 320, "y": 190,
-      "init": { "label": "DIFF (% mode)", "mode": "percent" } },
-    { "id": "n_z", "type": "NormalizeNode", "x": 320, "y": 350,
-      "init": { "label": "Normalize (z mode)", "mode": "zscore" } },
-    { "id": "n_bin", "type": "BinNode", "x": 320, "y": 510,
-      "init": { "label": "Bin" } },
-    { "id": "n_comb", "type": "CombinationsNode", "x": 320, "y": 690,
-      "init": { "label": "Combinations", "mode": "combinations" }, "literals": { "k": 2 } },
-    { "id": "n_outer", "type": "TableOuterNode", "x": 320, "y": 900,
-      "init": { "label": "Outer" } },
-
-    { "id": "d_shift", "type": "DisplayNode", "x": 620, "y": 20, "init": { "label": "Shifted" } },
-    { "id": "d_pct", "type": "DisplayNode", "x": 620, "y": 200, "init": { "label": "% change" } },
-    { "id": "d_z", "type": "DisplayNode", "x": 620, "y": 360, "init": { "label": "z-scores" } },
-    { "id": "d_bin", "type": "DisplayNode", "x": 620, "y": 520, "init": { "label": "bins" } },
-    { "id": "d_comb", "type": "DisplayNode", "x": 620, "y": 690, "init": { "label": "combinations" } },
-    { "id": "d_outer", "type": "DisplayNode", "x": 620, "y": 900, "init": { "label": "outer product" } },
-
-    { "id": "src_vc", "type": "ListInputNode", "x": 900, "y": 40, "init": { "label": "Vector C", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "0, 1, 0" } },
-    { "id": "src_px", "type": "ListInputNode", "x": 900, "y": 240, "init": { "label": "x", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "0, 1, 2, 3, 4" } },
-    { "id": "src_py", "type": "ListInputNode", "x": 900, "y": 440, "init": { "label": "y (x^2)", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "0, 1, 4, 9, 16" } },
-    { "id": "src_rle", "type": "ListInputNode", "x": 900, "y": 640, "init": { "label": "Repeats", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "1, 1, 2, 2, 2, 3" } },
-
-    { "id": "n_ewma", "type": "EwmaNode", "x": 1220, "y": 0, "init": { "label": "EWMA" }, "literals": { "alpha": 0.3 } },
-    { "id": "n_conv", "type": "ConvolveNode", "x": 1220, "y": 180, "init": { "label": "Convolve" } },
-    { "id": "n_cross", "type": "CrossNode", "x": 1220, "y": 340, "init": { "label": "Cross Product" } },
-    { "id": "n_poly", "type": "PolyfitNode", "x": 1220, "y": 500, "init": { "label": "Poly Fit" }, "literals": { "degree": 2 } },
-    { "id": "n_trapz", "type": "TrapzNode", "x": 1220, "y": 700, "init": { "label": "Integrate" }, "literals": { "dx": 1 } },
-    { "id": "n_rle", "type": "RleNode", "x": 1220, "y": 860, "init": { "label": "Run Lengths" } },
-    { "id": "n_between", "type": "BetweenNode", "x": 1220, "y": 1020, "init": { "label": "Between" }, "literals": { "value": 5, "lo": 1, "hi": 10 } },
-    { "id": "n_isclose", "type": "IsCloseNode", "x": 1220, "y": 1250, "init": { "label": "Is Close" }, "literals": { "a": 1, "b": 1.0000001, "tol": 0.001 } },
-
-    { "id": "d_ewma", "type": "DisplayNode", "x": 1520, "y": 20, "init": { "label": "ewma" } },
-    { "id": "d_conv", "type": "DisplayNode", "x": 1520, "y": 190, "init": { "label": "convolution" } },
-    { "id": "d_cross", "type": "DisplayNode", "x": 1520, "y": 350, "init": { "label": "cross" } },
-    { "id": "d_poly", "type": "DisplayNode", "x": 1520, "y": 510, "init": { "label": "fitted y" } },
-    { "id": "d_trapz", "type": "DisplayNode", "x": 1520, "y": 710, "init": { "label": "integral" } },
-    { "id": "d_rle", "type": "DisplayNode", "x": 1520, "y": 860, "init": { "label": "run lengths" } },
-    { "id": "d_between", "type": "DisplayNode", "x": 1520, "y": 1030, "init": { "label": "5 in [1,10]?" } },
-    { "id": "d_isclose", "type": "DisplayNode", "x": 1520, "y": 1260, "init": { "label": "close?" } }
-  ],
-  "connections": [
-    { "source": "src_a", "sourceOutput": "list", "target": "n_shift", "targetInput": "list" },
-    { "source": "src_a", "sourceOutput": "list", "target": "n_pct", "targetInput": "list" },
-    { "source": "src_a", "sourceOutput": "list", "target": "n_z", "targetInput": "list" },
-    { "source": "src_a", "sourceOutput": "list", "target": "n_bin", "targetInput": "list" },
-    { "source": "src_breaks", "sourceOutput": "list", "target": "n_bin", "targetInput": "breaks" },
-    { "source": "src_va", "sourceOutput": "list", "target": "n_outer", "targetInput": "a" },
-    { "source": "src_vb", "sourceOutput": "list", "target": "n_outer", "targetInput": "b" },
-    { "source": "src_va", "sourceOutput": "list", "target": "n_comb", "targetInput": "list" },
-    { "source": "n_shift", "sourceOutput": "result", "target": "d_shift", "targetInput": "in" },
-    { "source": "n_pct", "sourceOutput": "result", "target": "d_pct", "targetInput": "in" },
-    { "source": "n_z", "sourceOutput": "result", "target": "d_z", "targetInput": "in" },
-    { "source": "n_bin", "sourceOutput": "result", "target": "d_bin", "targetInput": "in" },
-    { "source": "n_comb", "sourceOutput": "result", "target": "d_comb", "targetInput": "in" },
-    { "source": "n_outer", "sourceOutput": "result", "target": "d_outer", "targetInput": "in" },
-
-    { "source": "src_a", "sourceOutput": "list", "target": "n_ewma", "targetInput": "list" },
-    { "source": "src_va", "sourceOutput": "list", "target": "n_conv", "targetInput": "a" },
-    { "source": "src_vb", "sourceOutput": "list", "target": "n_conv", "targetInput": "b" },
-    { "source": "src_va", "sourceOutput": "list", "target": "n_cross", "targetInput": "a" },
-    { "source": "src_vc", "sourceOutput": "list", "target": "n_cross", "targetInput": "b" },
-    { "source": "src_px", "sourceOutput": "list", "target": "n_poly", "targetInput": "x" },
-    { "source": "src_py", "sourceOutput": "list", "target": "n_poly", "targetInput": "y" },
-    { "source": "src_py", "sourceOutput": "list", "target": "n_trapz", "targetInput": "list" },
-    { "source": "src_rle", "sourceOutput": "list", "target": "n_rle", "targetInput": "list" },
-    { "source": "n_ewma", "sourceOutput": "result", "target": "d_ewma", "targetInput": "in" },
-    { "source": "n_conv", "sourceOutput": "result", "target": "d_conv", "targetInput": "in" },
-    { "source": "n_cross", "sourceOutput": "result", "target": "d_cross", "targetInput": "in" },
-    { "source": "n_poly", "sourceOutput": "result", "target": "d_poly", "targetInput": "in" },
-    { "source": "n_trapz", "sourceOutput": "result", "target": "d_trapz", "targetInput": "in" },
-    { "source": "n_rle", "sourceOutput": "result", "target": "d_rle", "targetInput": "in" },
-    { "source": "n_between", "sourceOutput": "result", "target": "d_between", "targetInput": "in" },
-    { "source": "n_isclose", "sourceOutput": "result", "target": "d_isclose", "targetInput": "in" }
-  ]
+ "v": 2,
+ "order": 9999,
+ "label": "Scratch: new nodes",
+ "group": "More",
+ "nodes": [
+  {
+   "id": "src_a",
+   "type": "ListInputNode",
+   "x": -40,
+   "y": 40,
+   "init": {
+    "label": "Data A",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "10, 12, 9, 20, 8, 15, 22, 11"
+   }
+  },
+  {
+   "id": "src_breaks",
+   "type": "ListInputNode",
+   "x": -40,
+   "y": 300,
+   "init": {
+    "label": "Breaks",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "10, 15, 20"
+   }
+  },
+  {
+   "id": "src_va",
+   "type": "ListInputNode",
+   "x": -40,
+   "y": 520,
+   "init": {
+    "label": "Vector A",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, 2, 3"
+   }
+  },
+  {
+   "id": "src_vb",
+   "type": "ListInputNode",
+   "x": -40,
+   "y": 720,
+   "init": {
+    "label": "Vector B",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "10, 20"
+   }
+  },
+  {
+   "id": "n_shift",
+   "type": "ShiftNode",
+   "x": 320,
+   "y": 0,
+   "init": {
+    "label": "Shift",
+    "wrap": "wrap"
+   },
+   "literals": {
+    "by": 2
+   }
+  },
+  {
+   "id": "n_pct",
+   "type": "DiffNode",
+   "x": 320,
+   "y": 190,
+   "init": {
+    "label": "DIFF (% mode)",
+    "mode": "percent"
+   }
+  },
+  {
+   "id": "n_z",
+   "type": "NormalizeNode",
+   "x": 320,
+   "y": 350,
+   "init": {
+    "label": "Normalize (z mode)",
+    "mode": "zscore"
+   }
+  },
+  {
+   "id": "n_bin",
+   "type": "BinNode",
+   "x": 320,
+   "y": 510,
+   "init": {
+    "label": "Bin"
+   }
+  },
+  {
+   "id": "n_comb",
+   "type": "CombinationsNode",
+   "x": 320,
+   "y": 690,
+   "init": {
+    "label": "Combinations",
+    "mode": "combinations"
+   },
+   "literals": {
+    "k": 2
+   }
+  },
+  {
+   "id": "n_outer",
+   "type": "TableOuterNode",
+   "x": 320,
+   "y": 900,
+   "init": {
+    "label": "Outer"
+   }
+  },
+  {
+   "id": "d_shift",
+   "type": "DisplayNode",
+   "x": 620,
+   "y": 20,
+   "init": {
+    "label": "Shifted"
+   }
+  },
+  {
+   "id": "d_pct",
+   "type": "DisplayNode",
+   "x": 620,
+   "y": 200,
+   "init": {
+    "label": "% change"
+   }
+  },
+  {
+   "id": "d_z",
+   "type": "DisplayNode",
+   "x": 620,
+   "y": 360,
+   "init": {
+    "label": "z-scores"
+   }
+  },
+  {
+   "id": "d_bin",
+   "type": "DisplayNode",
+   "x": 620,
+   "y": 520,
+   "init": {
+    "label": "bins"
+   }
+  },
+  {
+   "id": "d_comb",
+   "type": "DisplayNode",
+   "x": 620,
+   "y": 690,
+   "init": {
+    "label": "combinations"
+   }
+  },
+  {
+   "id": "d_outer",
+   "type": "DisplayNode",
+   "x": 620,
+   "y": 900,
+   "init": {
+    "label": "outer product"
+   }
+  },
+  {
+   "id": "src_vc",
+   "type": "ListInputNode",
+   "x": 900,
+   "y": 40,
+   "init": {
+    "label": "Vector C",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "0, 1, 0"
+   }
+  },
+  {
+   "id": "src_px",
+   "type": "ListInputNode",
+   "x": 900,
+   "y": 240,
+   "init": {
+    "label": "x",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "0, 1, 2, 3, 4"
+   }
+  },
+  {
+   "id": "src_py",
+   "type": "ListInputNode",
+   "x": 900,
+   "y": 440,
+   "init": {
+    "label": "y (x^2)",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "0, 1, 4, 9, 16"
+   }
+  },
+  {
+   "id": "src_rle",
+   "type": "ListInputNode",
+   "x": 900,
+   "y": 640,
+   "init": {
+    "label": "Repeats",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, 1, 2, 2, 2, 3"
+   }
+  },
+  {
+   "id": "n_ewma",
+   "type": "EwmaNode",
+   "x": 1220,
+   "y": 0,
+   "init": {
+    "label": "EWMA"
+   },
+   "literals": {
+    "alpha": 0.3
+   }
+  },
+  {
+   "id": "n_conv",
+   "type": "ConvolveNode",
+   "x": 1220,
+   "y": 180,
+   "init": {
+    "label": "Convolve"
+   }
+  },
+  {
+   "id": "n_cross",
+   "type": "CrossNode",
+   "x": 1220,
+   "y": 340,
+   "init": {
+    "label": "Cross Product"
+   }
+  },
+  {
+   "id": "n_poly",
+   "type": "PolyfitNode",
+   "x": 1220,
+   "y": 500,
+   "init": {
+    "label": "Poly Fit"
+   },
+   "literals": {
+    "degree": 2
+   }
+  },
+  {
+   "id": "n_trapz",
+   "type": "TrapzNode",
+   "x": 1220,
+   "y": 700,
+   "init": {
+    "label": "Integrate"
+   },
+   "literals": {
+    "dx": 1
+   }
+  },
+  {
+   "id": "n_rle",
+   "type": "RleNode",
+   "x": 1220,
+   "y": 860,
+   "init": {
+    "label": "Run Lengths"
+   }
+  },
+  {
+   "id": "n_between",
+   "type": "BetweenNode",
+   "x": 1220,
+   "y": 1020,
+   "init": {
+    "label": "Between"
+   },
+   "literals": {
+    "value": 5,
+    "lo": 1,
+    "hi": 10
+   }
+  },
+  {
+   "id": "n_isclose",
+   "type": "IsCloseNode",
+   "x": 1220,
+   "y": 1250,
+   "init": {
+    "label": "Is Close"
+   },
+   "literals": {
+    "a": 1,
+    "b": 1.0000001,
+    "tol": 0.001
+   }
+  },
+  {
+   "id": "d_ewma",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 20,
+   "init": {
+    "label": "ewma"
+   }
+  },
+  {
+   "id": "d_conv",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 190,
+   "init": {
+    "label": "convolution"
+   }
+  },
+  {
+   "id": "d_cross",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 350,
+   "init": {
+    "label": "cross"
+   }
+  },
+  {
+   "id": "d_poly",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 510,
+   "init": {
+    "label": "fitted y"
+   }
+  },
+  {
+   "id": "d_trapz",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 710,
+   "init": {
+    "label": "integral"
+   }
+  },
+  {
+   "id": "d_rle",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 860,
+   "init": {
+    "label": "run lengths"
+   }
+  },
+  {
+   "id": "d_between",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 1030,
+   "init": {
+    "label": "5 in [1,10]?"
+   }
+  },
+  {
+   "id": "d_isclose",
+   "type": "DisplayNode",
+   "x": 1520,
+   "y": 1260,
+   "init": {
+    "label": "close?"
+   }
+  },
+  {
+   "id": "src_c",
+   "type": "ListInputNode",
+   "x": 1900,
+   "y": 40,
+   "init": {
+    "label": "Data C (one outlier)",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "10, 11, 9, 10, 12, 10, 11, 100"
+   }
+  },
+  {
+   "id": "src_rank",
+   "type": "ListInputNode",
+   "x": 1900,
+   "y": 260,
+   "init": {
+    "label": "Rank B",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "5, 6, 7, 8, 7, 9, 12, 10"
+   }
+  },
+  {
+   "id": "src_epoch",
+   "type": "NumberInputNode",
+   "x": 1900,
+   "y": 480,
+   "init": {
+    "label": "Unix seconds",
+    "value": 1700000000,
+    "width": 180,
+    "height": 76
+   }
+  },
+  {
+   "id": "agg_ptp",
+   "type": "AggregateNode",
+   "x": 2260,
+   "y": 0,
+   "init": {
+    "label": "PTP (max−min)",
+    "op": "ptp"
+   }
+  },
+  {
+   "id": "d_ptp",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 0,
+   "init": {
+    "label": "PTP (max−min)"
+   }
+  },
+  {
+   "id": "agg_iqr",
+   "type": "AggregateNode",
+   "x": 2260,
+   "y": 150,
+   "init": {
+    "label": "IQR",
+    "op": "iqr"
+   }
+  },
+  {
+   "id": "d_iqr",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 150,
+   "init": {
+    "label": "IQR"
+   }
+  },
+  {
+   "id": "agg_mad",
+   "type": "AggregateNode",
+   "x": 2260,
+   "y": 300,
+   "init": {
+    "label": "MAD",
+    "op": "mad"
+   }
+  },
+  {
+   "id": "d_mad",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 300,
+   "init": {
+    "label": "MAD"
+   }
+  },
+  {
+   "id": "agg_sem",
+   "type": "AggregateNode",
+   "x": 2260,
+   "y": 450,
+   "init": {
+    "label": "SEM",
+    "op": "sem"
+   }
+  },
+  {
+   "id": "d_sem",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 450,
+   "init": {
+    "label": "SEM"
+   }
+  },
+  {
+   "id": "agg_cv",
+   "type": "AggregateNode",
+   "x": 2260,
+   "y": 600,
+   "init": {
+    "label": "CV",
+    "op": "cv"
+   }
+  },
+  {
+   "id": "d_cv",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 600,
+   "init": {
+    "label": "CV"
+   }
+  },
+  {
+   "id": "agg_rms",
+   "type": "AggregateNode",
+   "x": 2260,
+   "y": 750,
+   "init": {
+    "label": "RMS",
+    "op": "rms"
+   }
+  },
+  {
+   "id": "d_rms",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 750,
+   "init": {
+    "label": "RMS"
+   }
+  },
+  {
+   "id": "cor_spearman",
+   "type": "CorrelNode",
+   "x": 2260,
+   "y": 900,
+   "init": {
+    "label": "SPEARMAN",
+    "op": "spearman"
+   }
+  },
+  {
+   "id": "d_spearman",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 900,
+   "init": {
+    "label": "spearman"
+   }
+  },
+  {
+   "id": "cor_kendall",
+   "type": "CorrelNode",
+   "x": 2260,
+   "y": 1070,
+   "init": {
+    "label": "KENDALL",
+    "op": "kendall"
+   }
+  },
+  {
+   "id": "d_kendall",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 1070,
+   "init": {
+    "label": "kendall"
+   }
+  },
+  {
+   "id": "bin_q",
+   "type": "BinNode",
+   "x": 2260,
+   "y": 1240,
+   "init": {
+    "label": "Bin (quartiles)",
+    "mode": "quantiles"
+   },
+   "literals": {
+    "n": 4
+   }
+  },
+  {
+   "id": "d_binq",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 1240,
+   "init": {
+    "label": "bucket 1..4"
+   }
+  },
+  {
+   "id": "outl",
+   "type": "OutliersNode",
+   "x": 2260,
+   "y": 1420,
+   "init": {
+    "label": "Outliers (IQR)",
+    "method": "iqr"
+   }
+  },
+  {
+   "id": "d_outl_flags",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 1420,
+   "init": {
+    "label": "flags"
+   }
+  },
+  {
+   "id": "d_outl_clean",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 1530,
+   "init": {
+    "label": "cleaned"
+   }
+  },
+  {
+   "id": "ep_from",
+   "type": "EpochNode",
+   "x": 2260,
+   "y": 1670,
+   "init": {
+    "label": "Epoch → Date",
+    "op": "from",
+    "unit": "s"
+   }
+  },
+  {
+   "id": "d_epfrom",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 1670,
+   "init": {
+    "label": "date"
+   }
+  },
+  {
+   "id": "trunc",
+   "type": "DateTruncNode",
+   "x": 2260,
+   "y": 1840,
+   "init": {
+    "label": "Truncate (month)",
+    "unit": "month"
+   }
+  },
+  {
+   "id": "d_trunc",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 1840,
+   "init": {
+    "label": "month start"
+   }
+  },
+  {
+   "id": "ep_to",
+   "type": "EpochNode",
+   "x": 2260,
+   "y": 2030,
+   "init": {
+    "label": "Date → Epoch (ms)",
+    "op": "to",
+    "unit": "ms"
+   }
+  },
+  {
+   "id": "d_epto",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 2030,
+   "init": {
+    "label": "epoch ms"
+   }
+  },
+  {
+   "id": "hav",
+   "type": "ExpressionNode",
+   "x": 2260,
+   "y": 2200,
+   "init": {
+    "label": "Haversine London→Paris km",
+    "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))"
+   },
+   "literals": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522
+   }
+  },
+  {
+   "id": "d_hav",
+   "type": "DisplayNode",
+   "x": 2640,
+   "y": 2200,
+   "init": {
+    "label": "≈343.5 km"
+   }
+  }
+ ],
+ "connections": [
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "n_shift",
+   "targetInput": "list"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "n_pct",
+   "targetInput": "list"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "n_z",
+   "targetInput": "list"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "n_bin",
+   "targetInput": "list"
+  },
+  {
+   "source": "src_breaks",
+   "sourceOutput": "list",
+   "target": "n_bin",
+   "targetInput": "breaks"
+  },
+  {
+   "source": "src_va",
+   "sourceOutput": "list",
+   "target": "n_outer",
+   "targetInput": "a"
+  },
+  {
+   "source": "src_vb",
+   "sourceOutput": "list",
+   "target": "n_outer",
+   "targetInput": "b"
+  },
+  {
+   "source": "src_va",
+   "sourceOutput": "list",
+   "target": "n_comb",
+   "targetInput": "list"
+  },
+  {
+   "source": "n_shift",
+   "sourceOutput": "result",
+   "target": "d_shift",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_pct",
+   "sourceOutput": "result",
+   "target": "d_pct",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_z",
+   "sourceOutput": "result",
+   "target": "d_z",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_bin",
+   "sourceOutput": "result",
+   "target": "d_bin",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_comb",
+   "sourceOutput": "result",
+   "target": "d_comb",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_outer",
+   "sourceOutput": "result",
+   "target": "d_outer",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "n_ewma",
+   "targetInput": "list"
+  },
+  {
+   "source": "src_va",
+   "sourceOutput": "list",
+   "target": "n_conv",
+   "targetInput": "a"
+  },
+  {
+   "source": "src_vb",
+   "sourceOutput": "list",
+   "target": "n_conv",
+   "targetInput": "b"
+  },
+  {
+   "source": "src_va",
+   "sourceOutput": "list",
+   "target": "n_cross",
+   "targetInput": "a"
+  },
+  {
+   "source": "src_vc",
+   "sourceOutput": "list",
+   "target": "n_cross",
+   "targetInput": "b"
+  },
+  {
+   "source": "src_px",
+   "sourceOutput": "list",
+   "target": "n_poly",
+   "targetInput": "x"
+  },
+  {
+   "source": "src_py",
+   "sourceOutput": "list",
+   "target": "n_poly",
+   "targetInput": "y"
+  },
+  {
+   "source": "src_py",
+   "sourceOutput": "list",
+   "target": "n_trapz",
+   "targetInput": "list"
+  },
+  {
+   "source": "src_rle",
+   "sourceOutput": "list",
+   "target": "n_rle",
+   "targetInput": "list"
+  },
+  {
+   "source": "n_ewma",
+   "sourceOutput": "result",
+   "target": "d_ewma",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_conv",
+   "sourceOutput": "result",
+   "target": "d_conv",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_cross",
+   "sourceOutput": "result",
+   "target": "d_cross",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_poly",
+   "sourceOutput": "result",
+   "target": "d_poly",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_trapz",
+   "sourceOutput": "result",
+   "target": "d_trapz",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_rle",
+   "sourceOutput": "result",
+   "target": "d_rle",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_between",
+   "sourceOutput": "result",
+   "target": "d_between",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_isclose",
+   "sourceOutput": "result",
+   "target": "d_isclose",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "agg_ptp",
+   "targetInput": "list"
+  },
+  {
+   "source": "agg_ptp",
+   "sourceOutput": "result",
+   "target": "d_ptp",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "agg_iqr",
+   "targetInput": "list"
+  },
+  {
+   "source": "agg_iqr",
+   "sourceOutput": "result",
+   "target": "d_iqr",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "agg_mad",
+   "targetInput": "list"
+  },
+  {
+   "source": "agg_mad",
+   "sourceOutput": "result",
+   "target": "d_mad",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "agg_sem",
+   "targetInput": "list"
+  },
+  {
+   "source": "agg_sem",
+   "sourceOutput": "result",
+   "target": "d_sem",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "agg_cv",
+   "targetInput": "list"
+  },
+  {
+   "source": "agg_cv",
+   "sourceOutput": "result",
+   "target": "d_cv",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "agg_rms",
+   "targetInput": "list"
+  },
+  {
+   "source": "agg_rms",
+   "sourceOutput": "result",
+   "target": "d_rms",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "cor_spearman",
+   "targetInput": "x"
+  },
+  {
+   "source": "src_rank",
+   "sourceOutput": "list",
+   "target": "cor_spearman",
+   "targetInput": "y"
+  },
+  {
+   "source": "cor_spearman",
+   "sourceOutput": "result",
+   "target": "d_spearman",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "cor_kendall",
+   "targetInput": "x"
+  },
+  {
+   "source": "src_rank",
+   "sourceOutput": "list",
+   "target": "cor_kendall",
+   "targetInput": "y"
+  },
+  {
+   "source": "cor_kendall",
+   "sourceOutput": "result",
+   "target": "d_kendall",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "bin_q",
+   "targetInput": "list"
+  },
+  {
+   "source": "bin_q",
+   "sourceOutput": "result",
+   "target": "d_binq",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_c",
+   "sourceOutput": "list",
+   "target": "outl",
+   "targetInput": "list"
+  },
+  {
+   "source": "outl",
+   "sourceOutput": "flags",
+   "target": "d_outl_flags",
+   "targetInput": "in"
+  },
+  {
+   "source": "outl",
+   "sourceOutput": "clean",
+   "target": "d_outl_clean",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_epoch",
+   "sourceOutput": "value",
+   "target": "ep_from",
+   "targetInput": "value"
+  },
+  {
+   "source": "ep_from",
+   "sourceOutput": "result",
+   "target": "d_epfrom",
+   "targetInput": "in"
+  },
+  {
+   "source": "ep_from",
+   "sourceOutput": "result",
+   "target": "trunc",
+   "targetInput": "date"
+  },
+  {
+   "source": "trunc",
+   "sourceOutput": "result",
+   "target": "d_trunc",
+   "targetInput": "in"
+  },
+  {
+   "source": "ep_from",
+   "sourceOutput": "result",
+   "target": "ep_to",
+   "targetInput": "value"
+  },
+  {
+   "source": "ep_to",
+   "sourceOutput": "result",
+   "target": "d_epto",
+   "targetInput": "in"
+  },
+  {
+   "source": "hav",
+   "sourceOutput": "result",
+   "target": "d_hav",
+   "targetInput": "in"
+  }
+ ]
 }
