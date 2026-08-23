@@ -6,7 +6,7 @@ import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, type TextFilterOp, type SimilarityMethod } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
@@ -446,6 +446,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RMS:         { returns: "number", arity: [1, 255], native: true },
   SPEARMAN:    { returns: "number", arity: [2, 2], native: true },
   KENDALL:     { returns: "number", arity: [2, 2], native: true },
+  LEVENSHTEIN: { returns: "number", arity: [2, 2], native: true },
+  SIMILARITY:  { returns: "number", arity: [2, 3], native: true },
+  FUZZYMATCH:  { returns: "string", listArgs: true, arity: [2, 4], native: true },
   TRACE:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MATRIXRANK:  { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   NORM:        { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
@@ -1386,6 +1389,20 @@ registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
 
 // Modern-Excel TEXT functions, registered against the NODE'S OWN compute — imported,
 // not re-written — so the two surfaces cannot drift by construction.
+// String distance / fuzzy matching on the Text Similarity / Fuzzy Match nodes' kernels.
+const simMethod = (m: unknown): SimilarityMethod | null => {
+  const k = m == null ? "ratio" : String(m).trim().toLowerCase().replace(/[-\s]/g, "_");
+  return k === "ratio" || k === "damerau" || k === "jaro_winkler" || k === "levenshtein" ? k : k === "jaro" ? "jaro_winkler" : null;
+};
+registerInternal("LEVENSHTEIN", (a, b) => textSimilarity(toStr(a), toStr(b), "levenshtein"));
+registerInternal("SIMILARITY", (a, b, method) => { const m = simMethod(method); return m === null ? solError("#DOMAIN!", "SIMILARITY method must be ratio, damerau, jaro_winkler or levenshtein") : textSimilarity(toStr(a), toStr(b), m); });
+registerInternal("FUZZYMATCH", (text, candidates, threshold, method) => {
+  const m = simMethod(method);
+  if (m === null) return solError("#DOMAIN!", "FUZZYMATCH method must be ratio, damerau or jaro_winkler");
+  const cands = toList(candidates).filter((v): v is string => typeof v === "string");
+  const best = fuzzyBest(toStr(text), cands, m, threshold == null ? 0.6 : Number(threshold));
+  return best ? best.text : solError("#N/A", "No candidate is similar enough");
+});
 registerInternal("TEXTSPLIT",  (text, delim) => splitText(toStr(text), toStr(delim)));
 registerInternal("TEXTAFTER",  (text, delim) => textAfterBefore("after",  toStr(text), toStr(delim)));
 registerInternal("TEXTBEFORE", (text, delim) => textAfterBefore("before", toStr(text), toStr(delim)));

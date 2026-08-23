@@ -1179,6 +1179,92 @@
    "init": {
     "label": "bin 5 → 3 at 5 Hz"
    }
+  },
+  {
+   "id": "src_typos",
+   "type": "ListInputNode",
+   "x": 4100,
+   "y": 1200,
+   "init": {
+    "label": "Typos",
+    "valueKeys": [
+     "v0"
+    ],
+    "dataType": "string"
+   },
+   "stringLiterals": {
+    "v0": "Chicgo, Houstin, New Yrok, Zurich"
+   }
+  },
+  {
+   "id": "src_cities",
+   "type": "ListInputNode",
+   "x": 4100,
+   "y": 1420,
+   "init": {
+    "label": "Cities",
+    "valueKeys": [
+     "v0"
+    ],
+    "dataType": "string"
+   },
+   "stringLiterals": {
+    "v0": "New York, Los Angeles, Chicago, Houston"
+   }
+  },
+  {
+   "id": "sim",
+   "type": "TextSimilarityNode",
+   "x": 4460,
+   "y": 1200,
+   "init": {
+    "label": "Text Similarity (ratio)",
+    "method": "ratio"
+   },
+   "stringLiterals": {
+    "a": "kitten",
+    "b": "sitting"
+   }
+  },
+  {
+   "id": "d_sim",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 1200,
+   "init": {
+    "label": "1 − 3/7"
+   }
+  },
+  {
+   "id": "fuzzy",
+   "type": "FuzzyMatchNode",
+   "x": 4460,
+   "y": 1430,
+   "init": {
+    "label": "Fuzzy Match",
+    "method": "ratio"
+   },
+   "literals": {
+    "threshold": 0.6
+   }
+  },
+  {
+   "id": "d_fuzzy_m",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 1430,
+   "init": {
+    "label": "best match"
+   }
+  },
+  {
+   "id": "d_fuzzy_s",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 1550,
+   "init": {
+    "label": "score"
+   }
   }
  ],
  "connections": [
@@ -1762,6 +1848,36 @@
    "source": "spec",
    "sourceOutput": "result",
    "target": "d_spec",
+   "targetInput": "in"
+  },
+  {
+   "source": "sim",
+   "sourceOutput": "result",
+   "target": "d_sim",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_typos",
+   "sourceOutput": "list",
+   "target": "fuzzy",
+   "targetInput": "needle"
+  },
+  {
+   "source": "src_cities",
+   "sourceOutput": "list",
+   "target": "fuzzy",
+   "targetInput": "candidates"
+  },
+  {
+   "source": "fuzzy",
+   "sourceOutput": "match",
+   "target": "d_fuzzy_m",
+   "targetInput": "in"
+  },
+  {
+   "source": "fuzzy",
+   "sourceOutput": "score",
+   "target": "d_fuzzy_s",
    "targetInput": "in"
   }
  ]

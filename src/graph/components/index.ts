@@ -358,3 +358,4 @@ export { EpochComponent } from "./EpochNode";
 export { DateTruncComponent } from "./DateTruncNode";
 export { AmortizationComponent } from "./AmortizationNode";
 export { SpectrumComponent } from "./SpectrumNode";
+export { TextSimilarityComponent, FuzzyMatchComponent } from "./TextSimilarityNode";

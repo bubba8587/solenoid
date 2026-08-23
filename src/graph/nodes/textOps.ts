@@ -162,3 +162,87 @@ export function filterTextList(strings: readonly string[], pattern: string, op: 
     case "ends_with":    return strings.filter((s) => s.toLowerCase().endsWith(p));
   }
 }
+
+// ─── String distance / similarity (rapidfuzz, R stringdist, Excel's Fuzzy Lookup) ────
+export type SimilarityMethod = "ratio" | "levenshtein" | "damerau" | "jaro_winkler";
+
+/** Levenshtein edit distance (insert / delete / substitute), by code point. */
+export function levenshtein(a: string, b: string): number {
+  const s = [...a], t = [...b];
+  if (s.length === 0) return t.length;
+  if (t.length === 0) return s.length;
+  let prev = Array.from({ length: t.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= s.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= t.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (s[i - 1] === t[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[t.length];
+}
+
+/** Damerau–Levenshtein (optimal string alignment): Levenshtein plus adjacent transposition. */
+export function damerauLevenshtein(a: string, b: string): number {
+  const s = [...a], t = [...b];
+  const d: number[][] = Array.from({ length: s.length + 1 }, (_, i) => [i, ...new Array<number>(t.length).fill(0)]);
+  for (let j = 0; j <= t.length; j++) d[0][j] = j;
+  for (let i = 1; i <= s.length; i++) for (let j = 1; j <= t.length; j++) {
+    const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+    if (i > 1 && j > 1 && s[i - 1] === t[j - 2] && s[i - 2] === t[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[s.length][t.length];
+}
+
+/** Jaro–Winkler similarity 0–1 (prefix scale 0.1, up to 4 chars) — the record-linkage standard. */
+export function jaroWinkler(a: string, b: string): number {
+  const s = [...a], t = [...b];
+  if (s.length === 0 && t.length === 0) return 1;
+  if (s.length === 0 || t.length === 0) return 0;
+  const range = Math.max(0, Math.floor(Math.max(s.length, t.length) / 2) - 1);
+  const sm = new Array<boolean>(s.length).fill(false), tm = new Array<boolean>(t.length).fill(false);
+  let matches = 0;
+  for (let i = 0; i < s.length; i++) {
+    for (let j = Math.max(0, i - range); j < Math.min(t.length, i + range + 1); j++) {
+      if (!tm[j] && s[i] === t[j]) { sm[i] = tm[j] = true; matches++; break; }
+    }
+  }
+  if (matches === 0) return 0;
+  let trans = 0, k = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (!sm[i]) continue;
+    while (!tm[k]) k++;
+    if (s[i] !== t[k]) trans++;
+    k++;
+  }
+  const jaro = (matches / s.length + matches / t.length + (matches - trans / 2) / matches) / 3;
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, s.length, t.length) && s[i] === t[i]; i++) prefix++;
+  return jaro + prefix * 0.1 * (1 - jaro);
+}
+
+/** Similarity 0–1 by method: `ratio` = 1 − Levenshtein/maxlen (rapidfuzz's normalized
+ *  Levenshtein; R stringsim), `damerau` the same with transpositions, `jaro_winkler` as is;
+ *  `levenshtein` answers the raw DISTANCE (an integer, not 0–1). Case-sensitive; trim and
+ *  lower-case upstream (Clean Whitespace / LOWER) when that is the intent. */
+export function textSimilarity(a: string, b: string, method: SimilarityMethod = "ratio"): number {
+  if (method === "levenshtein") return levenshtein(a, b);
+  if (method === "jaro_winkler") return jaroWinkler(a, b);
+  const maxLen = Math.max([...a].length, [...b].length);
+  if (maxLen === 0) return 1;
+  const dist = method === "damerau" ? damerauLevenshtein(a, b) : levenshtein(a, b);
+  return 1 - dist / maxLen;
+}
+
+/** The best-matching candidate for `needle` (highest similarity, first on ties) with its
+ *  score; `null` when nothing clears the threshold or there are no candidates. */
+export function fuzzyBest(needle: string, candidates: readonly string[], method: SimilarityMethod = "ratio", threshold = 0):
+  { index: number; text: string; score: number } | null {
+  let best: { index: number; text: string; score: number } | null = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const score = textSimilarity(needle, candidates[i], method === "levenshtein" ? "ratio" : method);
+    if (score >= threshold && (best === null || score > best.score)) best = { index: i, text: candidates[i], score };
+  }
+  return best;
+}

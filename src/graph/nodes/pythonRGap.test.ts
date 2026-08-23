@@ -14,6 +14,8 @@ import { matTrace, matRank, matNorm, matSolve, matEigh } from "./matrixOps";
 import { fftReal, spectrum } from "./listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "./matrix";
 import { SpectrumNode } from "./list";
+import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "./textOps";
+import { TextSimilarityNode, FuzzyMatchNode } from "./text";
 import { DescribeNode, CorrMatrixNode } from "./frame";
 import { AmortizationNode } from "./finance";
 import type { FrameValue } from "../frame";
@@ -293,5 +295,35 @@ describe("Spectrum (FFT) — numpy.fft reference", () => {
     expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
     const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
     expect(viaFormula[5][1]).toBeCloseTo(3, 10);
+  });
+});
+
+describe("string distance / fuzzy match (textbook values; rapidfuzz / stringdist conventions)", () => {
+  it("Levenshtein, Damerau, Jaro–Winkler, ratio", () => {
+    expect(levenshtein("kitten", "sitting")).toBe(3);
+    expect(levenshtein("", "abc")).toBe(3);
+    expect(damerauLevenshtein("teh", "the")).toBe(1);
+    expect(levenshtein("teh", "the")).toBe(2);
+    expect(jaroWinkler("MARTHA", "MARHTA")).toBeCloseTo(0.9611111111111111, 10);
+    expect(jaroWinkler("DWAYNE", "DUANE")).toBeCloseTo(0.84, 10);
+    expect(jaroWinkler("abc", "xyz")).toBe(0);
+    expect(textSimilarity("kitten", "sitting", "ratio")).toBeCloseTo(1 - 3 / 7, 12);
+    expect(textSimilarity("", "", "ratio")).toBe(1);
+    expect(ev("LEVENSHTEIN(\"kitten\", \"sitting\")")).toBe(3);
+    expect(ev("SIMILARITY(\"MARTHA\", \"MARHTA\", \"jaro_winkler\")")).toBeCloseTo(0.9611111111111111, 10);
+    expect(new TextSimilarityNode({ method: "damerau" }).data({ a: ["teh"], b: ["the"] }).result).toBeCloseTo(1 - 1 / 3, 12);
+  });
+  it("Fuzzy Match picks the closest candidate above the threshold, #N/A below it; a list of needles spills", () => {
+    const cands = ["New York", "Los Angeles", "Chicago", "Houston"];
+    expect(fuzzyBest("Chicgo", cands, "ratio", 0.6)).toMatchObject({ text: "Chicago", index: 2 });
+    expect(fuzzyBest("Zurich", cands, "ratio", 0.6)).toBeNull();
+    expect(ev("FUZZYMATCH(\"New Yrok\", c)", { c: cands })).toBe("New York");
+    expect(isSolError(ev("FUZZYMATCH(\"Zurich\", c)", { c: cands }))).toBe(true);
+    const n = new FuzzyMatchNode(); n.literals.threshold = 0.6;
+    const out = n.data({ needle: [["Chicgo", "Houstin", "Zurich"]], candidates: [cands] });
+    expect((out.match as unknown[])[0]).toBe("Chicago");
+    expect((out.match as unknown[])[1]).toBe("Houston");
+    expect(isSolError((out.match as unknown[])[2])).toBe(true);
+    expect((out.score as number[])[0]).toBeCloseTo(1 - 1 / 7, 12);
   });
 });

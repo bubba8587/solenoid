@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
-  strComboIn, strComboOut, numListIn, numListOut, logicalComboOut,
+  strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
   broadcastCells, readInput, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
@@ -1049,7 +1049,8 @@ export class ReverseTextNode extends ClassicPreset.Node {
 // negatives prefixed. The kernel lives in textOps.ts so the SPELLNUMBER registration
 // never loads rete.
 export { spellNumber } from "./textOps";
-import { spellNumber, ordinalText } from "./textOps";
+import { spellNumber, ordinalText, textSimilarity, fuzzyBest, type SimilarityMethod } from "./textOps";
+export type { SimilarityMethod } from "./textOps";
 
 
 export class SpellNumberNode extends ClassicPreset.Node {
@@ -1082,5 +1083,81 @@ export class SpellNumberNode extends ClassicPreset.Node {
     const result = broadcastCells((v: number) => (this.mode === "ordinal" ? ordinalText(v) : spellNumber(v)), value);
     this.cachedText = result;
     return { result };
+  }
+}
+
+// ─── TEXT SIMILARITY / FUZZY MATCH (rapidfuzz, stringdist, Excel's Fuzzy Lookup add-in) ──
+export const SIMILARITY_METHOD_META = {
+  ratio:        { label: "Ratio (Levenshtein)", description: "1 − edit distance ÷ longer length: 0 = nothing shared, 1 = identical. rapidfuzz ratio, R stringsim." },
+  damerau:      { label: "Ratio (Damerau)",     description: "The same ratio counting an adjacent swap (teh → the) as one edit." },
+  jaro_winkler: { label: "Jaro–Winkler",        description: "0–1 similarity that rewards a shared prefix — the record-linkage standard for names." },
+  levenshtein:  { label: "Edit distance",       description: "The raw Levenshtein distance: how many inserts, deletes or substitutions turn one into the other." },
+} satisfies Record<SimilarityMethod, { label: string; description: string }>;
+
+export class TextSimilarityNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Case-sensitive. Run both sides through LOWER / Clean Whitespace first when case and spacing shouldn't count.",
+  };
+  label: string;
+  method: SimilarityMethod = "ratio";
+  cachedResult: BroadcastResult = null;
+  stringLiterals: Record<string, string> = { a: "", b: "" };
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; method?: SimilarityMethod }) {
+    super("TextSimilarity");
+    this.label = init?.label ?? "Text Similarity";
+    if (init?.method) this.method = init.method;
+    this.addInput("a", strComboIn("Text 1"));
+    this.addInput("b", strComboIn("Text 2"));
+    this.addOutput("result", numListOut("Similarity"));
+  }
+
+  data(inputs: { a?: (string | string[])[]; b?: (string | string[])[] }): { result: BroadcastResult } {
+    const result = broadcastCells((a: string, b: string) => textSimilarity(a, b, this.method), strVal(inputs.a, this, "a"), strVal(inputs.b, this, "b"));
+    this.cachedResult = result as BroadcastResult;
+    return { result: this.cachedResult };
+  }
+}
+
+export class FuzzyMatchNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    threshold: "0–1. A needle whose best candidate scores below it answers #N/A instead of a bad guess; 0 always picks the closest.",
+    match: "The closest candidate per needle (first on ties) — feed it to XLOOKUP for an exact join.",
+    score: "That candidate's similarity, 0–1.",
+  };
+  label: string;
+  method: SimilarityMethod = "ratio";
+  literals: Record<string, number> = { threshold: 0.6 };
+  stringLiterals: Record<string, string> = { needle: "" };
+  cachedMatch: CellResult<string> = null;
+  cachedScore: BroadcastResult = null;
+  width = 200; height = 225;
+
+  constructor(init?: { label?: string; method?: SimilarityMethod }) {
+    super("FuzzyMatch");
+    this.label = init?.label ?? "Fuzzy Match";
+    if (init?.method) this.method = init.method;
+    this.addInput("needle", strComboIn("Text"));
+    this.addInput("candidates", strListIn("Candidates"));
+    this.addInput("threshold", numIn("Threshold"));
+    this.addOutput("match", strComboOut("Best match"));
+    this.addOutput("score", numListOut("Score"));
+  }
+
+  data(inputs: { needle?: (string | string[])[]; candidates?: (string | null)[][]; threshold?: number[] }): { match: CellResult<string>; score: BroadcastResult } {
+    const needle = strVal(inputs.needle, this, "needle");
+    const cands = (inputs.candidates?.[0] ?? []).filter((v): v is string => typeof v === "string");
+    const threshold = readInput(inputs.threshold, this.literals.threshold ?? 0.6);
+    if (needle === null || threshold === null) { this.cachedMatch = null; this.cachedScore = null; return { match: null, score: null }; }
+    const pick = (n: string) => fuzzyBest(n, cands, this.method, threshold);
+    const na = () => solError("#N/A", "No candidate is similar enough");
+    const one = (n: string) => { const b = pick(n); return b ? b.text : na(); };
+    const sc = (n: string) => { const b = pick(n); return b ? b.score : na(); };
+    const match = Array.isArray(needle) ? needle.map(one) : one(needle);
+    const score = Array.isArray(needle) ? needle.map(sc) : sc(needle);
+    this.cachedMatch = match as CellResult<string>;
+    this.cachedScore = score as BroadcastResult;
+    return { match: this.cachedMatch, score: this.cachedScore };
   }
 }

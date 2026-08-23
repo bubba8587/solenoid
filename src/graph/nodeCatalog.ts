@@ -24,7 +24,7 @@ import {
   WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
-  ReptNode, ExactNode,
+  ReptNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
   TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode,
   PromoNode,
@@ -867,6 +867,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "text-len",   label: "LEN",   description: "Number of characters in the string. Excel: LEN.",                          create: () => new TextLenNode(), parity: false },
           { type: "text-exact", label: "EXACT", description: "1 if two strings are identical (case-sensitive), else 0. Excel: EXACT.", create: () => new ExactNode(),   parity: false },
+          { type: "pair", children: [
+            { type: "text-similarity", label: "Text Similarity", description: "How alike two strings are: Levenshtein ratio, Damerau ratio, Jaro–Winkler (0–1), or the raw edit distance. rapidfuzz, R stringdist / stringsim. No Excel equivalent (the Fuzzy Lookup add-in).", create: () => new TextSimilarityNode(), parity: false, keywords: "similarity fuzzy levenshtein edit distance jaro winkler damerau stringdist rapidfuzz typo match" },
+            { type: "fuzzy-match",     label: "Fuzzy Match",     description: "The closest candidate to a text (and its score) above a threshold — typo-tolerant matching of names, SKUs, cities before an exact XLOOKUP. rapidfuzz process.extractOne, R stringdist amatch, Excel's Fuzzy Lookup add-in.", create: () => new FuzzyMatchNode(), parity: false, keywords: "fuzzy match lookup approximate nearest string typo dedupe reconcile names extractOne amatch" },
+          ]},
           { type: "pair", children: [charCodeLeaf("char"), charCodeLeaf("code")] },
           { type: "pair", children: [
             { type: "url-encode", label: "ENCODEURL", description: "Percent-encode a string for use in a URL. Spaces become %20. Excel: ENCODEURL.", create: () => new UrlEncodeNode({ op: "encode" }), parity: false },
