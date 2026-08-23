@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, numListIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
@@ -2080,6 +2080,113 @@ export class CorrMatrixNode extends ClassicPreset.Node {
     if (!f) { this.cachedResult = null; return { frame: null }; }
     this.cachedResult = runVerb(() => correlationMatrix(f, this.method));
     return { frame: this.cachedResult };
+  }
+}
+
+// ─── K-MEANS / PCA (the numeric columns of a frame; rows with a blank are left out) ──
+import { kmeans, pca } from "./mlOps";
+
+/** The numeric feature matrix of a frame: which columns, which rows survived. */
+function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
+  const cols = f.columns.filter((c) => c.type === "number");
+  const total = frameRowCount(f);
+  const rows: number[][] = [], kept: number[] = [];
+  for (let r = 0; r < total; r++) {
+    const row = cols.map((c) => c.values[r]);
+    if (row.every((v) => typeof v === "number" && Number.isFinite(v))) { rows.push(row as number[]); kept.push(r); }
+  }
+  return { names: cols.map((c) => c.name), rows, kept, total };
+}
+
+export class KMeansNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ (Normalize).",
+    k: "How many clusters.",
+    labels: "Cluster 1…k per row of the frame, in first-appearance order; blank for a skipped row.",
+    centers: "One row per cluster: its centre on every feature and its size.",
+  };
+  label: string;
+  literals: Record<string, number> = { k: 3 };
+  cachedLabels: (number | null)[] | SolError | null = null;
+  cachedCenters: FrameValue | null = null;
+  width = 200; height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("KMeans");
+    this.label = init?.label ?? "K-Means";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("k", numIn("Clusters"));
+    this.addOutput("labels", numListOut("Cluster"));
+    this.addOutput("centers", frameOut("Centers"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; k?: number[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const k = readInput(inputs.k, this.literals.k ?? 3);
+    const blank = () => { this.cachedLabels = null; this.cachedCenters = null; return { labels: null, centers: null }; };
+    if (!f || k === null) return blank();
+    const { names, rows, kept, total } = numericRows(f);
+    if (names.length === 0) { const e = solError("#VALUE!", "K-Means needs at least one number column"); this.cachedLabels = e; this.cachedCenters = null; return { labels: e, centers: null }; }
+    const r = kmeans(rows, k);
+    if (!r) return blank();
+    const labels: (number | null)[] = new Array(total).fill(null);
+    kept.forEach((row, i) => { labels[row] = r.labels[i]; });
+    const counts = r.centers.map((_, c) => r.labels.filter((l) => l === c + 1).length);
+    this.cachedLabels = labels;
+    this.cachedCenters = { __frame: true, columns: [
+      { name: "Cluster", type: "number", values: r.centers.map((_, c) => c + 1) },
+      ...names.map((nm, j) => ({ name: nm, type: "number" as const, values: r.centers.map((c) => c[j]) })),
+      { name: "Count", type: "number", values: counts },
+    ] };
+    return { labels, centers: this.cachedCenters };
+  }
+}
+
+export class PcaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
+    scores: "The rows in the new axes: PC1, PC2, … (one column per feature, highest variance first).",
+    loadings: "How much each feature contributes to each axis — a row per feature.",
+    explained: "Share of the total variance per component; the first few usually carry almost all of it.",
+  };
+  label: string;
+  standardize = false;
+  cachedScores: FrameValue | SolError | null = null;
+  cachedLoadings: FrameValue | null = null;
+  cachedExplained: number[] | null = null;
+  width = 200; height = 215;
+
+  constructor(init?: { label?: string; standardize?: boolean }) {
+    super("Pca");
+    this.label = init?.label ?? "PCA";
+    if (init?.standardize) this.standardize = true;
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("scores", frameOut("Scores"));
+    this.addOutput("loadings", frameOut("Loadings"));
+    this.addOutput("explained", numListOut("Explained"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const blank = () => { this.cachedScores = null; this.cachedLoadings = null; this.cachedExplained = null; return { scores: null, loadings: null, explained: null }; };
+    if (!f) return blank();
+    const { names, rows, kept, total } = numericRows(f);
+    if (names.length === 0) { const e = solError("#VALUE!", "PCA needs at least one number column"); this.cachedScores = e; this.cachedLoadings = null; this.cachedExplained = null; return { scores: e, loadings: null, explained: null }; }
+    const r = pca(rows, { standardize: this.standardize });
+    if (!r) return blank();
+    const pcNames = names.map((_, c) => `PC${c + 1}`);
+    const scores: FrameValue = { __frame: true, columns: pcNames.map((nm, c) => {
+      const values: (number | null)[] = new Array(total).fill(null);
+      kept.forEach((row, i) => { values[row] = r.scores[i][c]; });
+      return { name: nm, type: "number" as const, values };
+    }) };
+    this.cachedScores = scores;
+    this.cachedLoadings = { __frame: true, columns: [
+      { name: "Feature", type: "string", values: names },
+      ...pcNames.map((nm, c) => ({ name: nm, type: "number" as const, values: names.map((_, j) => r.loadings[j][c]) })),
+    ] };
+    this.cachedExplained = r.ratio;
+    return { scores, loadings: this.cachedLoadings, explained: this.cachedExplained };
   }
 }
 

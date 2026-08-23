@@ -44,7 +44,7 @@ import type {
   BlankRowMode,
 } from "../rete-nodes";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
@@ -1005,6 +1005,57 @@ export function CorrMatrixComponent({ data, emit }: NodeProps<CorrMatrixNodeType
       <InlineInputs node={data} emit={emit} />
       <OpSelect arg value={method} onChange={setMethod} options={CORR_METHOD_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+export function KMeansComponent({ data, emit }: NodeProps<KMeansNodeType>) {
+  const labelsOut = data.outputs.labels, centersOut = data.outputs.centers;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      {labelsOut && (
+        <MeasuredSocketRow hero side="output" socketKey="labels" nodeId={data.id} emit={emit} payload={labelsOut.socket}>
+          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedLabels} /></div>
+        </MeasuredSocketRow>
+      )}
+      {centersOut && (
+        <MeasuredSocketRow hero side="output" socketKey="centers" nodeId={data.id} emit={emit} payload={centersOut.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedCenters} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
+    </NodeShell>
+  );
+}
+
+const PCA_SCALE_OPTIONS: { value: "cov" | "corr"; label: string; title: string }[] = [
+  { value: "cov", label: "Centered", title: "Covariance PCA — features keep their scale (prcomp default)" },
+  { value: "corr", label: "Standardized", title: "Correlation PCA — each feature scaled to unit variance first (prcomp scale. = TRUE)" },
+];
+
+export function PcaComponent({ data, emit }: NodeProps<PcaNodeType>) {
+  const [std, setStd] = useState<"cov" | "corr">(data.standardize ? "corr" : "cov");
+  useEffect(() => { setStd(data.standardize ? "corr" : "cov"); }, [data.standardize]);
+  const scoresOut = data.outputs.scores, loadingsOut = data.outputs.loadings, explainedOut = data.outputs.explained;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      <SegToggle arg value={std} options={PCA_SCALE_OPTIONS} onChange={(v) => { setStd(v); data.standardize = v === "corr"; void processGraph(data.id); }} />
+      {scoresOut && (
+        <MeasuredSocketRow hero side="output" socketKey="scores" nodeId={data.id} emit={emit} payload={scoresOut.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedScores} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
+      {loadingsOut && (
+        <MeasuredSocketRow hero side="output" socketKey="loadings" nodeId={data.id} emit={emit} payload={loadingsOut.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedLoadings} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
+      {explainedOut && (
+        <MeasuredSocketRow hero side="output" socketKey="explained" nodeId={data.id} emit={emit} payload={explainedOut.socket}>
+          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedExplained} /></div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }

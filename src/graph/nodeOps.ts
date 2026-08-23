@@ -33,7 +33,7 @@ import {
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, FindPeaksNode, CorrMatrixNode, AmortizationNode, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, FindPeaksNode, CorrMatrixNode, KMeansNode, PcaNode, AmortizationNode, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, ElementNode, 
   FisherNode, GroupByFrameNode,
@@ -249,6 +249,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
   { type: "date-epoch-from", ctor: EpochNode, kind: "operation" },
   { type: "corr-matrix", ctor: CorrMatrixNode, kind: "argument" },
+  { type: "kmeans", ctor: KMeansNode, kind: "argument" },
+  { type: "pca", ctor: PcaNode, kind: "argument" },
   { type: "window", ctor: WindowNode, kind: "argument" },
   { type: "amortization", ctor: AmortizationNode, kind: "argument" },
   // Each op is the operation (Sharpe IS the card); fx rides in RETURNS_OP_META.

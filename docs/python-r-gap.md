@@ -49,8 +49,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 24. **Distribution fitting** — LANDED 2026-08-23 (Fit Distribution node + FITDIST; MLE for normal / lognormal / exponential / gamma / Weibull / uniform / Poisson, moments for beta; AIC ranking + KS).
 25. **Logistic regression** (`LogisticRegression`, `glm(binomial)`): IRLS on the existing
     linear-algebra kernels; the LINEST sibling. Moderate.
-26. **K-means (1-D/2-D) and PCA** (`KMeans`, `prcomp`): k-means trivial; PCA = eigh of the
-    covariance matrix (item 14). Moderate; "data science" edge of the audience.
+26. **K-means and PCA** — LANDED 2026-08-23 (K-Means card: k-means++ seeded restarts, a
+    cluster per row + a centers frame; PCA card: scores / loadings / explained, centered or
+    standardized; both over a frame's number columns, numpy-pinned).
 27. **ODE integrate** (`solve_ivp`, `deSolve`): dy/dt = Expression(t, y) → RK4 frame over a
     range. The simulation run mode is the discrete sibling. Moderate.
 28. **Roots of a polynomial** — LANDED 2026-08-23 (Polynomial Roots card: coefficient list →

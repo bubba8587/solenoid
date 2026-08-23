@@ -2221,6 +2221,73 @@
    "init": {
     "label": "1 and a conjugate pair"
    }
+  },
+  {
+   "id": "src_pts",
+   "type": "FrameInputNode",
+   "x": 5800,
+   "y": 1960,
+   "init": {
+    "label": "Points (3 blobs)",
+    "frameText": "[{\"name\": \"x\", \"type\": \"number\", \"values\": [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, 4.9, 9, 9.3, 8.8]}, {\"name\": \"y\", \"type\": \"number\", \"values\": [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 5.3, 2, 2.2, 1.9]}]"
+   }
+  },
+  {
+   "id": "km",
+   "type": "KMeansNode",
+   "x": 6200,
+   "y": 1960,
+   "init": {
+    "label": "K-Means"
+   },
+   "literals": {
+    "k": 3
+   }
+  },
+  {
+   "id": "d_km_l",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 1960,
+   "init": {
+    "label": "cluster per row"
+   }
+  },
+  {
+   "id": "d_km_c",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 2100,
+   "init": {
+    "label": "centers"
+   }
+  },
+  {
+   "id": "pca1",
+   "type": "PcaNode",
+   "x": 6200,
+   "y": 2300,
+   "init": {
+    "label": "PCA"
+   }
+  },
+  {
+   "id": "d_pca_s",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 2300,
+   "init": {
+    "label": "scores"
+   }
+  },
+  {
+   "id": "d_pca_e",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 2440,
+   "init": {
+    "label": "explained variance"
+   }
   }
  ],
  "connections": [
@@ -3260,6 +3327,42 @@
    "source": "proots2",
    "sourceOutput": "roots",
    "target": "d_proots2",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_pts",
+   "sourceOutput": "frame",
+   "target": "km",
+   "targetInput": "frame"
+  },
+  {
+   "source": "km",
+   "sourceOutput": "labels",
+   "target": "d_km_l",
+   "targetInput": "in"
+  },
+  {
+   "source": "km",
+   "sourceOutput": "centers",
+   "target": "d_km_c",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_pts",
+   "sourceOutput": "frame",
+   "target": "pca1",
+   "targetInput": "frame"
+  },
+  {
+   "source": "pca1",
+   "sourceOutput": "scores",
+   "target": "d_pca_s",
+   "targetInput": "in"
+  },
+  {
+   "source": "pca1",
+   "sourceOutput": "explained",
+   "target": "d_pca_e",
    "targetInput": "in"
   }
  ]

@@ -30,7 +30,7 @@ import { seasonalDecompose } from "./forecastOps";
 import { polyRoots } from "./mathUtils";
 import { PolyRootsNode } from "./complex";
 import { fitDistribution, fitAll } from "./fitOps";
-import { DescribeNode, CorrMatrixNode } from "./frame";
+import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode } from "./frame";
 import { AmortizationNode, ReturnsNode } from "./finance";
 import { periodReturns, cumulativeReturns, drawdowns, maxDrawdown, cagr, volatility, sharpeRatio, sortinoRatio } from "./financeOps";
 import type { FrameValue } from "../frame";
@@ -740,5 +740,34 @@ describe("Polynomial Roots — numpy.roots references", () => {
     const rs = ev("POLYROOTS(c)") as { re: number; im: number }[];
     expect(rs.map((z) => Number(z.re.toFixed(6))).sort((a, b) => a - b)).toEqual([1, 2, 3]);
     expect(rs.every((z) => Math.abs(z.im) < 1e-9)).toBe(true);
+  });
+});
+
+describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
+  const frame = (cols: [string, (number | null)[]][]): FrameValue => ({ __frame: true, columns: cols.map(([name, values]) => ({ name, type: "number", values })) });
+  it("K-Means: a cluster per row (blank rows skipped), a centers frame with counts", () => {
+    const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, null]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 2]]]);
+    const n = new KMeansNode();
+    n.literals.k = 2;
+    const out = n.data({ frame: [f] });
+    expect(out.labels).toEqual([1, 1, 1, 2, 2, 2, 1, null]);
+    const c = out.centers as FrameValue;
+    expect(c.columns.map((col) => col.name)).toEqual(["Cluster", "x", "y", "Count"]);
+    expect(c.columns[3].values).toEqual([4, 3]);
+    expect(c.columns[1].values[1]).toBe(5);
+  });
+  it("PCA: scores per row (blank rows blank), loadings per feature, explained ratios", () => {
+    const f = frame([["a", [2.5, 0.5, 2.2, 1.9, 3.1, 2.3, 2, 1, 1.5, 1.1]], ["b", [2.4, 0.7, 2.9, 2.2, 3.0, 2.7, 1.6, 1.1, 1.6, 0.9]]]);
+    const n = new PcaNode();
+    const out = n.data({ frame: [f] });
+    const sc = out.scores as FrameValue;
+    expect(sc.columns.map((c) => c.name)).toEqual(["PC1", "PC2"]);
+    expect(sc.columns[0].values[0]).toBeCloseTo(0.82797, 5);
+    expect(out.explained![0]).toBeCloseTo(0.963181, 5);
+    const ld = out.loadings as FrameValue;
+    expect(ld.columns[0].values).toEqual(["a", "b"]);
+    expect(ld.columns[1].values[0]).toBeCloseTo(0.677873, 5);
+    n.standardize = true;
+    expect(n.data({ frame: [f] }).explained![0]).toBeCloseTo(0.962965, 5);
   });
 });
