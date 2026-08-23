@@ -16,6 +16,8 @@ import { MatDetNode, MatSolveNode, MatEigenNode } from "./matrix";
 import { SpectrumNode } from "./list";
 import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "./textOps";
 import { TextSimilarityNode, FuzzyMatchNode } from "./text";
+import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
+import { EtsForecastNode } from "./stats";
 import { DescribeNode, CorrMatrixNode } from "./frame";
 import { AmortizationNode } from "./finance";
 import type { FrameValue } from "../frame";
@@ -325,5 +327,39 @@ describe("string distance / fuzzy match (textbook values; rapidfuzz / stringdist
     expect((out.match as unknown[])[1]).toBe("Houston");
     expect(isSolError((out.match as unknown[])[2])).toBe(true);
     expect((out.score as number[])[0]).toBeCloseTo(1 - 1 / 7, 12);
+  });
+});
+
+describe("Forecast (ETS) — Holt–Winters", () => {
+  // A clean series: level 100, slope 2 per step, additive season of length 12 and amplitude 10.
+  const y = Array.from({ length: 36 }, (_, t) => 100 + 2 * t + 10 * Math.sin((2 * Math.PI * t) / 12));
+  it("detects the 12-step season and forecasts the continuation of trend + season", () => {
+    expect(detectSeason(y)).toBe(12);
+    const fit = fitEts(y, 12)!;
+    expect(fit.season).toBe(12);
+    const fc = etsForecast(fit, 12);
+    for (let k = 1; k <= 12; k++) {
+      const t = 35 + k;
+      expect(fc[k - 1]).toBeCloseTo(100 + 2 * t + 10 * Math.sin((2 * Math.PI * t) / 12), 0); // within ±0.5 on a noiseless series
+    }
+    expect(etsInterval(fit, 4)).toBeGreaterThan(etsInterval(fit, 1)); // the band grows with √h
+  });
+  it("trend-only (Holt) on a straight line extrapolates it; too short is blank", () => {
+    const line = [3, 5, 7, 9, 11, 13, 15, 17];
+    const fit = fitEts(line, 1)!;
+    expect(etsForecast(fit, 3).map((v) => Math.round(v * 1000) / 1000)).toEqual([19, 21, 23]);
+    expect(fitEts([1, 2], 1)).toBeNull();
+    expect(fitEts(line, 12)).toBeNull(); // fewer than two seasons
+  });
+  it("node and FORECAST.ETS family agree; the formula reads Excel's timeline / target convention", () => {
+    const node = new EtsForecastNode(); node.literals = { horizon: 3, season: 1 };
+    const out = node.data({ values: [y] });
+    expect(out.detected).toBe(12);
+    const timeline = y.map((_, i) => 45000 + i); // daily serials, equally spaced
+    expect(ev("FORECAST.ETS(t, v, tl)", { t: 45000 + 36 + 2, v: y, tl: timeline })).toBeCloseTo((out.forecast as number[])[2], 10);
+    expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: y })).toBe(12);
+    expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: 45000 + 36, v: y, tl: timeline })).toBeCloseTo(out.interval![0], 10);
+    expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: [3, 5, 7, 9, 11, 13, 15, 17] })).toBe(0);
+    expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: 45000, v: y, tl: timeline }))).toBe(true); // target not past the end
   });
 });

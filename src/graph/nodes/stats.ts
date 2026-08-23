@@ -4,6 +4,7 @@ import { fillBorderedGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
+import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
 import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
@@ -1073,3 +1074,49 @@ export class ProbNode extends ClassicPreset.Node {
   }
 }
 
+// ─── FORECAST (ETS) — Holt–Winters ────────────────────────────────────────────
+export class EtsForecastNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "An equally spaced series, oldest first — monthly sales, daily visits. Blanks are dropped.",
+    horizon: "How many steps ahead to forecast.",
+    season: "Season length in steps: 1 = detect it, 0 = none, 12 = yearly on monthly data. Needs two full seasons of history.",
+    forecast: "One value per step ahead.",
+    interval: "The 95% prediction half-width per step (forecast ± this), growing with √h.",
+    detected: "The season length used — what detection found, or what you set.",
+  };
+  label: string;
+  literals: Record<string, number> = { horizon: 6, season: 1 };
+  cachedForecast: number[] | SolError | null = null;
+  cachedInterval: number[] | null = null;
+  cachedSeason: number | null = null;
+  width = 200; height = 225;
+
+  constructor(init?: { label?: string }) {
+    super("EtsForecast");
+    this.label = init?.label ?? "Forecast (ETS)";
+    this.addInput("values",  listIn("Values"));
+    this.addInput("horizon", numIn("Steps ahead"));
+    this.addInput("season",  numIn("Season length"));
+    this.addOutput("forecast", numListOut("Forecast"));
+    this.addOutput("interval", numListOut("± 95%"));
+    this.addOutput("detected", numOut("Season used"));
+  }
+
+  data(inputs: { values?: (number | null | SolError)[][]; horizon?: number[]; season?: number[] }) {
+    const blank = () => { this.cachedForecast = null; this.cachedInterval = null; this.cachedSeason = null; return { forecast: null, interval: null, detected: null }; };
+    const prep = forAggregate(inputs.values?.[0] ?? []);
+    if (prep.error) { this.cachedForecast = prep.error; this.cachedInterval = null; this.cachedSeason = null; return { forecast: prep.error, interval: null, detected: null }; }
+    const y = prep.nums;
+    const horizon = readInput(inputs.horizon, this.literals.horizon ?? 6);
+    const seasonArg = readInput(inputs.season, this.literals.season ?? 1);
+    if (horizon === null || seasonArg === null || y.length < 3) return blank();
+    const h = Math.max(1, Math.round(horizon));
+    const m = seasonArg === 1 ? detectSeason(y) : Math.max(1, Math.round(seasonArg));
+    const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null); // too short for the season → trend-only
+    if (!fit) return blank();
+    this.cachedForecast = etsForecast(fit, h);
+    this.cachedInterval = Array.from({ length: h }, (_, i) => etsInterval(fit, i + 1));
+    this.cachedSeason = fit.season > 1 ? fit.season : 0;
+    return { forecast: this.cachedForecast, interval: this.cachedInterval, detected: this.cachedSeason };
+  }
+}

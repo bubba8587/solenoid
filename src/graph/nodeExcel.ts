@@ -183,6 +183,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "fisher-fisher": [{ excel: "FISHER", syntax: "=FISHER(x)", parity: true }],
   "fisher-fisherinv": [{ excel: "FISHERINV", syntax: "=FISHERINV(y)", parity: true }],
   "forecast": [{ excel: "FORECAST.LINEAR", syntax: "=FORECAST.LINEAR(x, ys, xs)", parity: true }],
+  "ets-forecast": [
+    { excel: "FORECAST.ETS", syntax: "=FORECAST.ETS(target_date, values, timeline, [seasonality])", parity: false, note: "Same additive Holt–Winters model; Solenoid fits α/β/γ by its own SSE search, so values are close to Excel's, not identical. Timeline must be equally spaced." },
+    { excel: "FORECAST.ETS.CONFINT", syntax: "=FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level])", parity: false, note: "z·σ·√h band" },
+    { excel: "FORECAST.ETS.SEASONALITY", syntax: "=FORECAST.ETS.SEASONALITY(values, timeline)", parity: false, note: "Autocorrelation-peak detection; 0 when none" },
+  ],
   "frequency": [{ excel: "FREQUENCY", syntax: "=FREQUENCY(data, bins)", parity: true }],
   "fvschedule": [{ excel: "FVSCHEDULE", syntax: "=FVSCHEDULE(pv, schedule)" }],
   "gcd-lcm": [

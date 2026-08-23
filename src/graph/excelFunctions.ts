@@ -5,6 +5,7 @@ import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
+import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, type TextFilterOp, type SimilarityMethod } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
@@ -574,6 +575,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NETWORKDAYS: { returns: "number", arity: [2, 3], family: "datetime" },
   "NETWORKDAYS.INTL": { returns: "number", arity: [2, 4], family: "datetime" },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
+  "FORECAST.ETS": { returns: "number", listArgs: true, arity: [3, 6], family: "statistics" },
+  "FORECAST.ETS.CONFINT": { returns: "number", listArgs: true, arity: [3, 7], family: "statistics" },
+  "FORECAST.ETS.SEASONALITY": { returns: "number", listArgs: true, arity: [1, 4], family: "statistics" },
   COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPDAYSNC: { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPNUM:    { returns: "number", arity: [2, 4], family: "finance", native: true },
@@ -1378,6 +1382,35 @@ registerInternal("ODDLPRICE", (settle, maturity, lastInterest, rate, yld, redemp
 registerInternal("ODDLYIELD", (settle, maturity, lastInterest, rate, pr, redemption, freq) =>
   oddCoupon("oddlyield", toNum(settle), toNum(maturity), NaN, toNum(lastInterest), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
 
+// FORECAST.ETS family on the Forecast (ETS) node's Holt–Winters kernel. Excel's timeline
+// argument must be equally spaced; the target's step count beyond the last point is the
+// horizon. seasonality: 1 = detect (default), 0 = none, n = period. Excel's data_completion
+// / aggregation arguments are accepted and ignored (blanks are dropped; one value per step).
+const etsPrep = (values: unknown, timeline: unknown, target: unknown, seasonality: unknown) => {
+  const y = numsOf(values);
+  const t = numsOf(timeline);
+  if (y.length < 3 || t.length < 2) return null;
+  const step = (t[t.length - 1] - t[0]) / (t.length - 1);
+  const tgt = toNum(target);
+  if (!(step > 0) || Number.isNaN(tgt)) return null;
+  const h = Math.round((tgt - t[t.length - 1]) / step);
+  if (h < 1) return null;
+  const sArg = seasonality == null ? 1 : Math.round(toNum(seasonality));
+  const m = sArg === 1 ? detectSeason(y) : Math.max(1, sArg);
+  const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null);
+  return fit ? { fit, h } : null;
+};
+registerInternal("FORECAST.ETS", (target, values, timeline, seasonality) => {
+  const p = etsPrep(values, timeline, target, seasonality);
+  return p ? etsForecast(p.fit, p.h)[p.h - 1] : solError("#VALUE!", "FORECAST.ETS needs 3+ values on an equally spaced timeline and a target past its end");
+});
+registerInternal("FORECAST.ETS.CONFINT", (target, values, timeline, confidence, seasonality) => {
+  const p = etsPrep(values, timeline, target, seasonality);
+  const c = confidence == null ? 0.95 : toNum(confidence);
+  if (!(c > 0 && c < 1)) return solError("#DOMAIN!", "Confidence must be between 0 and 1");
+  return p ? etsInterval(p.fit, p.h, c) : solError("#VALUE!", "FORECAST.ETS.CONFINT needs 3+ values on an equally spaced timeline and a target past its end");
+});
+registerInternal("FORECAST.ETS.SEASONALITY", (values) => { const y = numsOf(values); const m = detectSeason(y); return m > 1 ? m : 0; });
 // FORECAST.LINEAR runs the NODE'S fit; the superseded FORECAST redirects
 // (LEGACY_ALIASES). A range function — both known-value args arrive whole.
 registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
