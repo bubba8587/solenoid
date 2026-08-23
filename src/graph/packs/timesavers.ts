@@ -72,8 +72,8 @@ export const TIMESAVERS_PACK: Pack = {
       entry: {
         type: "ts-spell-number",
         label: "Spell Number",
-        description: "Number → English words (\"one hundred twenty-three\"), up to the trillions, decimals read digit-by-digit — Excel's answer is a VBA macro",
-        keywords: "words written amount cheque check",
+        description: "Number → English words (\"one hundred twenty-three\", up to the trillions) or ordinal (\"123rd\"). Pick on the node. Excel's words need a VBA macro.",
+        keywords: "words written amount cheque check ordinal 1st 2nd 3rd nth suffix rank position",
         create: () => new SpellNumberNode(),
       },
     },

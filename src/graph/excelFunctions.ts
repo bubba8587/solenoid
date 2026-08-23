@@ -3,7 +3,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, parseDate } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
@@ -1189,9 +1189,7 @@ registerInternal("CLAMP", (x, lo, hi) => {
 registerInternal("ORDINAL", (x) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("ORDINAL");
-  const i = Math.trunc(n), v = Math.abs(i) % 100;
-  const suffix = ["th", "st", "nd", "rd"];
-  return `${i}${suffix[(v - 20) % 10] || suffix[v] || suffix[0]}`;
+  return ordinalText(n);
 });
 registerInternal("BETWEEN", (x, lo, hi) => {
   const n = toNum(x), a = toNum(lo), b = toNum(hi);

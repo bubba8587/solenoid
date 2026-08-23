@@ -812,13 +812,16 @@ export class TrendNode extends ClassicPreset.Node {
   };
 
   label: string;
+  /** Linear fit (TREND) or exponential fit y = b·mˣ (GROWTH). */
+  mode: "linear" | "exponential" = "linear";
   cachedList: number[] | SolError = [];
   literals: Record<string, number> = {};
-  width = 180; height = 215;
+  width = 180; height = 245;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: "linear" | "exponential" }) {
     super("Trend");
     this.label = init?.label ?? "TREND";
+    if (init?.mode) this.mode = init.mode;
     this.addInput("ys",     listIn("Known Ys"));
     this.addInput("xs",     listIn("Known Xs"));
     this.addInput("new_xs", listIn("New Xs"));
@@ -837,9 +840,17 @@ export class TrendNode extends ClassicPreset.Node {
     const newXs = newXsRaw == null
       ? xs
       : (newXsRaw.filter((v): v is number => v !== null) as number[]);
-    // Shared fitting kernel (mathUtils) — the TREND registration runs the same one.
-    const fit = newXs.length > 0 ? linearFit(xs, ys) : null;
-    const result: number[] = fit ? newXs.map((x) => fit.intercept + fit.slope * x) : [];
+    // Shared fitting kernels (mathUtils) — the TREND / GROWTH registrations run the same ones.
+    let result: number[] = [];
+    if (newXs.length > 0) {
+      if (this.mode === "exponential") {
+        const fit = expFit(xs, ys);
+        result = fit ? newXs.map((x) => fit.b * Math.pow(fit.m, x)) : [];
+      } else {
+        const fit = linearFit(xs, ys);
+        result = fit ? newXs.map((x) => fit.intercept + fit.slope * x) : [];
+      }
+    }
     this.cachedList = result;
     return { result };
   }

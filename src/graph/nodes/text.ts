@@ -1049,20 +1049,23 @@ export class ReverseTextNode extends ClassicPreset.Node {
 // negatives prefixed. The kernel lives in textOps.ts so the SPELLNUMBER registration
 // never loads rete.
 export { spellNumber } from "./textOps";
-import { spellNumber } from "./textOps";
+import { spellNumber, ordinalText } from "./textOps";
 
 
 export class SpellNumberNode extends ClassicPreset.Node {
   label: string;
+  /** Spell out in words (forty-two) or as an ordinal (42nd). */
+  mode: "words" | "ordinal" = "words";
   cachedText: CellResult<string> = null;
   literals: Record<string, number> = { value: 0 };
-  width = 210; height = 135;
+  width = 210; height = 165;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: "words" | "ordinal" }) {
     super("SpellNumber");
     this.label = init?.label ?? "Spell Number";
+    if (init?.mode) this.mode = init.mode;
     this.addInput("value", numListIn("Number"));
-    this.addOutput("result", strComboOut("Words"));
+    this.addOutput("result", strComboOut(this.mode === "ordinal" ? "Ordinal" : "Words"));
   }
 
   data(inputs: { value?: (number | number[] | null)[] }): { result: CellResult<string> } {
@@ -1070,7 +1073,7 @@ export class SpellNumberNode extends ClassicPreset.Node {
     const value = inputs.value === undefined || inputs.value.length === 0
       ? this.literals.value
       : inputs.value[0] ?? null;
-    const result = broadcastCells((v: number) => spellNumber(v), value);
+    const result = broadcastCells((v: number) => (this.mode === "ordinal" ? ordinalText(v) : spellNumber(v)), value);
     this.cachedText = result;
     return { result };
   }

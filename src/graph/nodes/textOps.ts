@@ -104,6 +104,13 @@ function spellUnder1000(n: number): string {
 }
 
 /** English cardinal words for any |n| < 10^15. Exported for tests. */
+/** A whole number with its ordinal suffix: 1 → "1st", 22 → "22nd", 113 → "113th". */
+export function ordinalText(n: number): string {
+  const i = Math.trunc(n), v = Math.abs(i) % 100;
+  const suffix = ["th", "st", "nd", "rd"];
+  return `${i}${suffix[(v - 20) % 10] || suffix[v] || suffix[0]}`;
+}
+
 export function spellNumber(n: number): string | SolError {
   if (!Number.isFinite(n)) return solError("#DOMAIN!", "Not a finite number");
   if (Math.abs(n) >= 1e15) return solError("#DOMAIN!", "Spell Number goes up to the trillions");

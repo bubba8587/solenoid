@@ -119,6 +119,19 @@ describe("Between / Is-Close predicates", () => {
   });
 });
 
+describe("closed formula-only gaps — GROWTH and ORDINAL now have nodes", () => {
+  it("GROWTH is TREND's exponential mode; ORDINAL is Spell Number's ordinal mode", async () => {
+    const { TrendNode } = await import("./stats");
+    const { SpellNumberNode } = await import("./text");
+    const growth = new TrendNode({ mode: "exponential" }).data({ ys: [[2, 4, 8]], xs: [[1, 2, 3]], new_xs: [[4]] }).result as number[];
+    expect(growth[0]).toBeCloseTo(16, 5);
+    expect(new SpellNumberNode({ mode: "ordinal" }).data({ value: [22] }).result).toBe("22nd");
+    // and the formulas still dispatch to the same result
+    expect((ev("GROWTH(y, x, nx)", { y: [2, 4, 8], x: [1, 2, 3], nx: [4] }) as number[])[0]).toBeCloseTo(16, 5);
+    expect(ev("ORDINAL(113)")).toBe("113th");
+  });
+});
+
 describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
   it("PCTCHANGE / ZSCORE / BIN / SHIFT / COMBINATIONS / PERMUTATIONS", () => {
     expect(ev("PCTCHANGE(x)", { x: [10, 20, 30] })).toEqual([1, 0.5]);

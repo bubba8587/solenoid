@@ -600,7 +600,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           regressionLeaf("steyx"),
           { type: "logest",  label: "LOGEST",  description: "Exponential regression: [m, b] where y = b·mˣ. Requires all Ys > 0. Excel: LOGEST.", create: () => new LogestNode(), parity: false },
           { type: "polyfit", label: "Poly Fit", description: "Least-squares polynomial fit of the chosen degree, evaluated back over the data — degree 1 is a line, 2 a parabola, and so on. numpy.polyfit + polyval.", create: () => new PolyfitNode(), parity: false, keywords: "polynomial fit polyfit polyval regression curve degree quadratic cubic least squares numpy trendline" },
-          { type: "trend",   label: "TREND",   description: "Predict Y values for new Xs using a fitted linear regression. Excel: TREND.", create: () => new TrendNode(), parity: false },
+          { type: "trend",   label: "TREND",   description: "Predict Y values for new Xs from a fitted regression — linear (TREND) or exponential y = b·mˣ (GROWTH). Pick on the node. Excel: TREND / GROWTH.", create: () => new TrendNode(), parity: false, keywords: "trend growth predict forecast linear exponential regression fit extrapolate" },
           { type: "interpolate", label: "INTERPOLATE", description: "Interpolates between known points (not a regression fit). List mode: 1-D, y for a query x. Grid mode: 2-D bilinear over a bordered table — first row X coordinates, first column Y; Forecast (default on) extrapolates beyond the range. For lookup tables: hardness conversions, pump curves, steam tables. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
         ],
       },
