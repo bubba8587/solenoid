@@ -344,6 +344,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "COUNT", syntax: "=COUNT(range)", parity: true },
     { excel: "COUNTA", syntax: "=COUNTA(range)", parity: false, note: "COUNTA counts non-empty cells; Solenoid is numbers-only" },
   ],
+  "reduce-countblank": [{ excel: "COUNTBLANK", syntax: "=COUNTBLANK(range)", parity: true }],
   "reduce-devsq": [{ excel: "DEVSQ", syntax: "=DEVSQ(range)", parity: true }],
   "reduce-geomean": [{ excel: "GEOMEAN", syntax: "=GEOMEAN(range)", parity: true }],
   "reduce-harmean": [{ excel: "HARMEAN", syntax: "=HARMEAN(range)", parity: true }],
@@ -546,7 +547,6 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   // The *IFS family + singular COUNTIF/AVERAGEIF are node-backed (sumifs node) → NODE_EXCEL.
   // Only SUMIF stays a gap: it is blocked (Formula.js mis-summed a numeric-string range).
   { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", oos: true, note: "Superseded by SUMIFS" },
-  { excel: "COUNTBLANK", syntax: "=COUNTBLANK(range)", category: "Statistics", oos: true, note: "Counts empty cells; not applicable in node graph" },
   { excel: "GROWTH", syntax: "=GROWTH(ys, xs, new_xs)", category: "Statistics", note: "Exponential counterpart of TREND (which has a node); no node yet" },
   { excel: "ADDRESS", syntax: "=ADDRESS(row, col)", category: "Lookup & Reference", oos: true, note: "Returns a cell reference as text; out of scope" },
   { excel: "AREAS", syntax: "=AREAS(reference)", category: "Lookup & Reference", oos: true, note: "Count areas in reference; out of scope" },
