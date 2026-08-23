@@ -2155,6 +2155,72 @@
    "init": {
     "label": "residual"
    }
+  },
+  {
+   "id": "src_coef",
+   "type": "ListInputNode",
+   "x": 5800,
+   "y": 1500,
+   "init": {
+    "label": "x³ − 6x² + 11x − 6",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, -6, 11, -6"
+   }
+  },
+  {
+   "id": "proots",
+   "type": "PolyRootsNode",
+   "x": 6200,
+   "y": 1500,
+   "init": {
+    "label": "Polynomial Roots"
+   }
+  },
+  {
+   "id": "d_proots",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 1500,
+   "init": {
+    "label": "roots 1, 2, 3"
+   }
+  },
+  {
+   "id": "src_coef2",
+   "type": "ListInputNode",
+   "x": 5800,
+   "y": 1720,
+   "init": {
+    "label": "x³ − 1",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, 0, 0, -1"
+   }
+  },
+  {
+   "id": "proots2",
+   "type": "PolyRootsNode",
+   "x": 6200,
+   "y": 1720,
+   "init": {
+    "label": "Polynomial Roots"
+   }
+  },
+  {
+   "id": "d_proots2",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 1720,
+   "init": {
+    "label": "1 and a conjugate pair"
+   }
   }
  ],
  "connections": [
@@ -3170,6 +3236,30 @@
    "source": "decomp",
    "sourceOutput": "residual",
    "target": "d_dc_r",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_coef",
+   "sourceOutput": "list",
+   "target": "proots",
+   "targetInput": "coeffs"
+  },
+  {
+   "source": "proots",
+   "sourceOutput": "real",
+   "target": "d_proots",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_coef2",
+   "sourceOutput": "list",
+   "target": "proots2",
+   "targetInput": "coeffs"
+  },
+  {
+   "source": "proots2",
+   "sourceOutput": "roots",
+   "target": "d_proots2",
    "targetInput": "in"
   }
  ]

@@ -53,9 +53,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
     covariance matrix (item 14). Moderate; "data science" edge of the audience.
 27. **ODE integrate** (`solve_ivp`, `deSolve`): dy/dt = Expression(t, y) → RK4 frame over a
     range. The simulation run mode is the discrete sibling. Moderate.
-28. **Roots of a polynomial / general root find** (`np.roots`, `uniroot`, `fsolve`):
-    Quadratic Roots exists; a Durand–Kerner polynomial roots node is cheap; `uniroot` is the
-    Equation node.
+28. **Roots of a polynomial** — LANDED 2026-08-23 (Polynomial Roots card: coefficient list →
+    complex roots + the real ones, Durand–Kerner, numpy.roots-pinned; POLYROOTS formula).
+    General root-finding on an Expression (`uniroot` / `fsolve`) stays with the Equation node.
 29. **Cross join** — LANDED 2026-08-23 (Join `how = cross`: no keys, all columns, left-major;
     oracle + Polars cross_join, corpus-pinned).
 30. **Bind columns** — LANDED 2026-08-23 (Bind Columns node, Append's sibling for the other

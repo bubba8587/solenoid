@@ -1,7 +1,7 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
-import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
+import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -799,6 +799,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // listArgs like the other generators (SEQUENCE/LINSPACE): scalar coefficients
   // in, whole [x₁, x₂] out — a list-returner must never be broadcast.
   QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, arity: [3, 3], family: "complex", native: true },
+  POLYROOTS:      { returns: "complex", rank: "list", listArgs: true, arity: [1, 1], family: "complex", native: true },
 
   // The regression quartet: Excel's optional trailing const/stats arguments are
   // not taken.
@@ -2294,6 +2295,10 @@ registerInternal("COMPLEX", (re, im, suffix) => {
 
 // Both roots as the 2-element list [x₁, x₂] — the Quadratic Roots node's two outputs
 // side by side.
+registerInternal("POLYROOTS", (coeffs) => {
+  const rs = polyRoots(numList(coeffs).filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
+  return rs === null ? solError("#DOMAIN!", "POLYROOTS needs at least one non-zero coefficient") : rs.map(([re, im]) => cx(re, im));
+});
 registerInternal("QUADRATICROOTS", (a, b, c) => {
   const na = Number(a), nb = Number(b), nc = Number(c);
   if ([na, nb, nc].some(Number.isNaN)) return solError("#VALUE!", "QUADRATICROOTS takes numeric coefficients a, b, c");

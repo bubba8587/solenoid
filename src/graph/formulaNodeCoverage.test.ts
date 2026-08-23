@@ -43,6 +43,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   DATETRUNC: "Truncate Date node",
   LEVENSHTEIN: "Text Similarity node (edit distance)", SIMILARITY: "Text Similarity node",
   FITDIST: "Fit Distribution node", RANDDIST: "Distribution node (sample form)",
+  POLYROOTS: "Polynomial Roots node",
   SAVGOL: "Smooth node (Savitzky–Golay op)", LOWESS: "Smooth node (LOWESS op)", GAUSSIANSMOOTH: "Smooth node (Gaussian op)",
   LOGRETURNS: "Returns node (log op)", CUMRETURNS: "Returns node (cumulative op)", DRAWDOWN: "Returns node (drawdown op)",
   MAXDRAWDOWN: "Returns node (max drawdown op)", CAGR: "Returns node (CAGR op)", VOLATILITY: "Returns node (volatility op)",

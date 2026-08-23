@@ -536,3 +536,70 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
   }
   return out;
 }
+
+/** All complex roots of a polynomial given HIGHEST-degree-first coefficients
+ *  (numpy.roots / R polyroot order), by Durand–Kerner iteration with a Newton polish.
+ *  Leading zeros are dropped; a constant (degree 0) has no roots → []. Returns
+ *  [re, im] pairs in no particular order, or null when the input is degenerate. */
+export function polyRoots(coeffs: readonly number[]): [number, number][] | null {
+  let c = [...coeffs];
+  while (c.length && c[0] === 0) c.shift();
+  if (c.length === 0 || c.some((v) => !Number.isFinite(v))) return null;
+  const n = c.length - 1;
+  if (n === 0) return [];
+  const a = c.map((v) => v / c[0]); // monic
+  // evaluate p(z) and p'(z) at complex z by Horner
+  const evalP = (zr: number, zi: number): [number, number] => {
+    let pr = 1, pi = 0;
+    for (let k = 1; k <= n; k++) { const nr = pr * zr - pi * zi + a[k]; const ni = pr * zi + pi * zr; pr = nr; pi = ni; }
+    return [pr, pi];
+  };
+  // initial guesses on a circle (Aberth's), radius from the coefficient bound
+  const radius = 1 + Math.max(...a.slice(1).map(Math.abs));
+  const roots: [number, number][] = Array.from({ length: n }, (_, k) => {
+    const th = (2 * Math.PI * k) / n + 0.4;
+    return [radius * Math.cos(th), radius * Math.sin(th)];
+  });
+  for (let it = 0; it < 500; it++) {
+    let maxStep = 0;
+    for (let i = 0; i < n; i++) {
+      const [zr, zi] = roots[i];
+      const [pr, pi] = evalP(zr, zi);
+      // denominator Π_{j≠i} (z_i − z_j)
+      let dr = 1, di = 0;
+      for (let j = 0; j < n; j++) {
+        if (j === i) continue;
+        const wr = zr - roots[j][0], wi = zi - roots[j][1];
+        const nr = dr * wr - di * wi, ni = dr * wi + di * wr; dr = nr; di = ni;
+      }
+      const den = dr * dr + di * di;
+      if (den === 0) { roots[i] = [zr + 1e-6, zi + 1e-6]; continue; }
+      const qr = (pr * dr + pi * di) / den, qi = (pi * dr - pr * di) / den;
+      roots[i] = [zr - qr, zi - qi];
+      maxStep = Math.max(maxStep, Math.hypot(qr, qi));
+    }
+    if (maxStep < 1e-15) break;
+  }
+  // Newton polish (p / p′ by Horner) — DK converges linearly near multiple roots
+  for (let i = 0; i < n; i++) {
+    let [zr, zi] = roots[i];
+    for (let k = 0; k < 4; k++) {
+      let pr = 1, pi = 0, dr = 0, di = 0;
+      for (let j = 1; j <= n; j++) {
+        const ndr = dr * zr - di * zi + pr, ndi = dr * zi + di * zr + pi; dr = ndr; di = ndi;
+        const npr = pr * zr - pi * zi + a[j], npi = pr * zi + pi * zr; pr = npr; pi = npi;
+      }
+      const den = dr * dr + di * di;
+      if (den === 0) break;
+      const qr = (pr * dr + pi * di) / den, qi = (pi * dr - pr * di) / den;
+      if (!Number.isFinite(qr) || !Number.isFinite(qi) || Math.hypot(qr, qi) > 1e-3 * Math.max(1, Math.hypot(zr, zi))) break; // only polish, never wander
+      zr -= qr; zi -= qi;
+    }
+    roots[i] = [zr, zi];
+  }
+  // clean: snap tiny imaginary parts / components relative to the root's size
+  return roots.map(([r, i]) => {
+    const scale = Math.max(1, Math.hypot(r, i));
+    return [Math.abs(r) < 1e-12 * scale ? 0 : r, Math.abs(i) < 1e-10 * scale ? 0 : i];
+  });
+}

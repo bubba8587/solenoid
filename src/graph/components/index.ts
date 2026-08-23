@@ -352,6 +352,7 @@ export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";
+export { PolyRootsComponent } from "./PolyRootsNode";
 
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";

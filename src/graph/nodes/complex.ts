@@ -1,6 +1,7 @@
+import { polyRoots } from "./mathUtils";
 import { ClassicPreset } from "rete";
-import { numListIn, numListOut, complexComboIn, complexComboOut, readInput, type CellResult, type BroadcastResult } from "./shared";
-import { isSolError, type SolError } from "../errorValue";
+import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, readInput, type CellResult, type BroadcastResult } from "./shared";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 import {
   cx, isCx, type Cx,
@@ -271,6 +272,39 @@ export class ComplexPowerNode extends ClassicPreset.Node {
 // Equation node's quadratic solve, which stays in the real domain (its numeric
 // sockets can't morph to complex; a negative discriminant there is #SOLVE!).
 // Here the conjugate pair comes out the complex sockets like any other Cx.
+
+/** Every root of a polynomial from its coefficient LIST (highest degree first, the
+ *  numpy.roots / R polyroot convention): the complex list, plus the real ones alone. */
+export class PolyRootsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    coeffs: "Highest degree first: 1, −6, 11, −6 is x³ − 6x² + 11x − 6. Leading zeros are ignored.",
+    roots: "All roots as complex numbers, conjugate pairs included.",
+    real: "Only the roots with no imaginary part, ascending.",
+  };
+  label: string;
+  cachedRoots: Cx[] | SolError | null = null;
+  cachedReal: number[] | null = null;
+  width = 210; height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("PolyRoots");
+    this.label = init?.label ?? "Polynomial Roots";
+    this.addInput("coeffs", listIn("Coefficients"));
+    this.addOutput("roots", complexListOut("Roots"));
+    this.addOutput("real", numListOut("Real roots"));
+  }
+
+  data(inputs: { coeffs?: (number | null | SolError)[][] }): { roots: Cx[] | SolError | null; real: number[] | null } {
+    const list = inputs.coeffs?.[0] ?? null;
+    if (list === null) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
+    const nums = list.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    const rs = polyRoots(nums);
+    if (rs === null) { const e = solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"); this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null }; }
+    this.cachedRoots = rs.map(([re, im]) => cx(re, im));
+    this.cachedReal = rs.filter(([, im]) => im === 0).map(([re]) => re).sort((x, y) => x - y);
+    return { roots: this.cachedRoots, real: this.cachedReal };
+  }
+}
 
 export class QuadraticRootsNode extends ClassicPreset.Node {
   label: string;

@@ -27,6 +27,8 @@ import { numListOut, numOut, listIn, logicalListIn } from "./shared";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
 import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "./stats";
 import { seasonalDecompose } from "./forecastOps";
+import { polyRoots } from "./mathUtils";
+import { PolyRootsNode } from "./complex";
 import { fitDistribution, fitAll } from "./fitOps";
 import { DescribeNode, CorrMatrixNode } from "./frame";
 import { AmortizationNode, ReturnsNode } from "./finance";
@@ -714,5 +716,29 @@ describe("Decompose — classical seasonal decomposition (statsmodels seasonal_d
     close(ev('DECOMPOSE(y, 4, "seasonal")'), [-0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625]);
     close((ev('DECOMPOSE(y, 4, "trend", "multiplicative")') as number[]).slice(2, 4), [11.125, 11.375]);
     expect((ev('DECOMPOSE(y, 4, "noise")') as { code?: string }).code).toBe("#DOMAIN!");
+  });
+});
+
+describe("Polynomial Roots — numpy.roots references", () => {
+  const sortedRoots = (rs: [number, number][] | null) => rs!.map(([r, i]) => [Number(r.toFixed(6)) + 0, Number(i.toFixed(6)) + 0]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  it("real, complex-conjugate and mixed roots; leading zeros dropped; degenerate is null", () => {
+    expect(sortedRoots(polyRoots([1, -6, 11, -6]))).toEqual([[1, 0], [2, 0], [3, 0]]);
+    expect(sortedRoots(polyRoots([1, 0, 1]))).toEqual([[0, -1], [0, 1]]);
+    expect(sortedRoots(polyRoots([2, -3, 1]))).toEqual([[0.5, 0], [1, 0]]);
+    expect(sortedRoots(polyRoots([1, 0, 0, -1]))).toEqual([[-0.5, -0.866025], [-0.5, 0.866025], [1, 0]]);
+    expect(sortedRoots(polyRoots([0, 1, -10, 35, -50, 24]))).toEqual([[1, 0], [2, 0], [3, 0], [4, 0]]);
+    expect(sortedRoots(polyRoots([3, 5]))).toEqual([[-1.666667, 0]]);
+    expect(polyRoots([7])).toEqual([]);
+    expect(polyRoots([0, 0])).toBeNull();
+  });
+  it("the card emits the complex list and the real roots ascending; POLYROOTS agrees", () => {
+    const n = new PolyRootsNode();
+    const out = n.data({ coeffs: [[1, 0, 0, -1]] });
+    expect(out.real!.map((v) => Number(v.toFixed(6)))).toEqual([1]);
+    expect((out.roots as { re: number; im: number }[]).length).toBe(3);
+    const ev = (e: string) => compileEvaluator(e)!({ c: [1, -6, 11, -6] });
+    const rs = ev("POLYROOTS(c)") as { re: number; im: number }[];
+    expect(rs.map((z) => Number(z.re.toFixed(6))).sort((a, b) => a - b)).toEqual([1, 2, 3]);
+    expect(rs.every((z) => Math.abs(z.im) < 1e-9)).toBe(true);
   });
 });

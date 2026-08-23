@@ -13,7 +13,7 @@ import { EquationNode } from "./equation";
 import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, BetweenNode, IsCloseNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
-import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode } from "./complex";
+import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode, PolyRootsNode } from "./complex";
 import {
   ListInputNode, SeriesNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
@@ -84,7 +84,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
     node instanceof ComplexUnaryNode || node instanceof ComplexBinaryNode ||
-    node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode
+    node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode || node instanceof PolyRootsNode
   ) return "complex";
   // Nodes that EMIT the logical type read as logic, matching their output color.
   if (

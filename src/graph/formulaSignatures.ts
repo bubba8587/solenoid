@@ -301,6 +301,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   IMDIV: "inumber1, inumber2",
   IMPOWER: "inumber, power",
   QUADRATICROOTS: "a, b, c",
+  POLYROOTS: "coefficients",
   // ── matrix / dynamic arrays ──
   TRANSPOSE: "array",
   MMULT: "array1, array2",
