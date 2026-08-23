@@ -25,7 +25,7 @@ const { PI, exp, log, sqrt, abs } = Math;
 // tails) or the inverse (quantile). An inverse form trades the x-style first
 // input for a probability; the parameter inputs are the distribution's own.
 
-export type DistForm = "cdf" | "pdf" | "pmf" | "2t" | "rt" | "inv" | "inv2t" | "invrt";
+export type DistForm = "cdf" | "pdf" | "pmf" | "2t" | "rt" | "inv" | "inv2t" | "invrt" | "sample";
 
 /** An inverse (quantile) form reads a probability; every other form reads an x. */
 export const isInverseForm = (form: string): boolean => form.startsWith("inv");
@@ -39,6 +39,7 @@ export const DIST_FORM_META = {
   inv:   { label: "Inverse",    description: "The value at cumulative probability p (the quantile)" },
   inv2t: { label: "Inverse 2T", description: "The positive value with two-tailed probability p" },
   invrt: { label: "Inverse RT", description: "The value at right-tail probability p" },
+  sample: { label: "Sample",    description: "N random draws from the distribution, re-rolled on each recalculation (numpy.random / R rnorm, rgamma, …)" },
 } satisfies Record<DistForm, { label: string; description: string }>;
 
 export type DistKey =
@@ -95,7 +96,7 @@ const probGuard = (v: number): boolean => v > 0 && v < 1;
 export const DIST_SPECS: Record<DistKey, DistSpec> = {
   normal: {
     label: "Normal", group: "Continuous", excel: "NORM.DIST / NORM.INV",
-    forms: ["cdf", "pdf", "inv"], xKey: "x", xLabel: "X", xDefault: 0,
+    forms: ["cdf", "pdf", "inv", "sample"], xKey: "x", xLabel: "X", xDefault: 0,
     params: [{ key: "mean", label: "Mean", def: 0 }, { key: "stdev", label: "Stdev", def: 1 }],
     compute: (form, v, [mv, sv]) => {
       if (sv <= 0) return null;
@@ -106,7 +107,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   "normal-s": {
     label: "Standard Normal", group: "Continuous", excel: "NORM.S.DIST / NORM.S.INV",
-    forms: ["cdf", "pdf", "inv"], xKey: "z", xLabel: "Z", xDefault: 0,
+    forms: ["cdf", "pdf", "inv", "sample"], xKey: "z", xLabel: "Z", xDefault: 0,
     params: [],
     compute: (form, v) => {
       if (form === "inv") return probGuard(v) ? normSInv(v) : null;
@@ -115,7 +116,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   t: {
     label: "Student's t", group: "Continuous", excel: "T.DIST / T.DIST.2T / T.DIST.RT / T.INV / T.INV.2T",
-    forms: ["cdf", "pdf", "2t", "rt", "inv", "inv2t"], xKey: "x", xLabel: "X", xDefault: 0,
+    forms: ["cdf", "pdf", "2t", "rt", "inv", "inv2t", "sample"], xKey: "x", xLabel: "X", xDefault: 0,
     params: [{ key: "df", label: "Degrees of freedom", def: 10 }],
     compute: (form, v, [dfv]) => {
       if (dfv <= 0) return null;
@@ -132,7 +133,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   chisq: {
     label: "Chi-squared", group: "Continuous", excel: "CHISQ.DIST / CHISQ.DIST.RT / CHISQ.INV / CHISQ.INV.RT",
-    forms: ["cdf", "pdf", "rt", "inv", "invrt"], xKey: "x", xLabel: "X", xDefault: 1,
+    forms: ["cdf", "pdf", "rt", "inv", "invrt", "sample"], xKey: "x", xLabel: "X", xDefault: 1,
     params: [{ key: "df", label: "Degrees of freedom", def: 5 }],
     compute: (form, v, [dfv]) => {
       if (dfv <= 0) return null;
@@ -150,7 +151,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   f: {
     label: "F-distribution", group: "Continuous", excel: "F.DIST / F.DIST.RT / F.INV / F.INV.RT",
-    forms: ["cdf", "pdf", "rt", "inv", "invrt"], xKey: "x", xLabel: "x", xDefault: 1,
+    forms: ["cdf", "pdf", "rt", "inv", "invrt", "sample"], xKey: "x", xLabel: "x", xDefault: 1,
     params: [{ key: "df1", label: "df1", def: 5 }, { key: "df2", label: "df2", def: 10 }],
     compute: (form, v, [d1, d2]) => {
       if (d1 <= 0 || d2 <= 0) return null;
@@ -171,7 +172,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   beta: {
     label: "Beta", group: "Continuous", excel: "BETA.DIST / BETA.INV",
-    forms: ["cdf", "pdf", "inv"], xKey: "x", xLabel: "x", xDefault: 0.5,
+    forms: ["cdf", "pdf", "inv", "sample"], xKey: "x", xLabel: "x", xDefault: 0.5,
     params: [{ key: "alpha", label: "alpha", def: 2 }, { key: "beta", label: "beta", def: 5 }],
     compute: (form, v, [av, bv]) => {
       if (av <= 0 || bv <= 0) return null;
@@ -192,7 +193,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   gamma: {
     label: "Gamma", group: "Continuous", excel: "GAMMA.DIST / GAMMA.INV",
-    forms: ["cdf", "pdf", "inv"], xKey: "x", xLabel: "x", xDefault: 1,
+    forms: ["cdf", "pdf", "inv", "sample"], xKey: "x", xLabel: "x", xDefault: 1,
     params: [{ key: "alpha", label: "alpha", def: 2 }, { key: "beta", label: "beta (scale)", def: 2 }],
     compute: (form, v, [av, bv]) => {
       if (av <= 0 || bv <= 0) return null;
@@ -205,7 +206,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   lognorm: {
     label: "Lognormal", group: "Continuous", excel: "LOGNORM.DIST / LOGNORM.INV",
-    forms: ["cdf", "pdf", "inv"], xKey: "x", xLabel: "x", xDefault: 1,
+    forms: ["cdf", "pdf", "inv", "sample"], xKey: "x", xLabel: "x", xDefault: 1,
     params: [{ key: "mean", label: "mean (ln)", def: 0 }, { key: "stdev", label: "stdev (ln)", def: 1 }],
     compute: (form, v, [mv, sv]) => {
       if (sv <= 0) return null;
@@ -217,7 +218,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   weibull: {
     label: "Weibull", group: "Continuous", excel: "WEIBULL.DIST",
-    forms: ["cdf", "pdf"], xKey: "x", xLabel: "x", xDefault: 1,
+    forms: ["cdf", "pdf", "sample"], xKey: "x", xLabel: "x", xDefault: 1,
     params: [{ key: "alpha", label: "alpha (shape)", def: 2 }, { key: "beta", label: "beta (scale)", def: 2 }],
     compute: (form, v, [av, bv]) => {
       if (av <= 0 || bv <= 0 || v < 0) return null;
@@ -227,7 +228,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   expon: {
     label: "Exponential", group: "Continuous", excel: "EXPON.DIST",
-    forms: ["cdf", "pdf"], xKey: "x", xLabel: "x", xDefault: 1,
+    forms: ["cdf", "pdf", "sample"], xKey: "x", xLabel: "x", xDefault: 1,
     params: [{ key: "lambda", label: "lambda (rate)", def: 1 }],
     compute: (form, v, [lv]) => {
       if (lv <= 0 || v < 0) return null;
@@ -236,7 +237,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   binom: {
     label: "Binomial", group: "Discrete", excel: "BINOM.DIST / BINOM.INV",
-    forms: ["pmf", "cdf", "inv"], xKey: "k", xLabel: "k (successes)", xDefault: 3, probLabel: "alpha",
+    forms: ["pmf", "cdf", "inv", "sample"], xKey: "k", xLabel: "k (successes)", xDefault: 3, probLabel: "alpha",
     params: [{ key: "n", label: "n (trials)", def: 10 }, { key: "p", label: "p (probability)", def: 0.5 }],
     compute: (form, v, [nv, pv]) => {
       if (form === "inv") {
@@ -256,7 +257,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   poisson: {
     label: "Poisson", group: "Discrete", excel: "POISSON.DIST",
-    forms: ["pmf", "cdf"], xKey: "k", xLabel: "k", xDefault: 3,
+    forms: ["pmf", "cdf", "sample"], xKey: "k", xLabel: "k", xDefault: 3,
     params: [{ key: "lambda", label: "λ (mean)", def: 2 }],
     compute: (form, v, [lv]) => {
       const ki = Math.floor(v);
@@ -272,7 +273,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   hypgeom: {
     label: "Hypergeometric", group: "Discrete", excel: "HYPGEOM.DIST",
-    forms: ["pmf", "cdf"], xKey: "k", xLabel: "k (sample successes)", xDefault: 2,
+    forms: ["pmf", "cdf", "sample"], xKey: "k", xLabel: "k (sample successes)", xDefault: 2,
     params: [
       { key: "n", label: "n (sample size)", def: 5 },
       { key: "M", label: "M (pop. successes)", def: 10 },
@@ -300,7 +301,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
   negbinom: {
     label: "Negative Binomial", group: "Discrete", excel: "NEGBINOM.DIST",
-    forms: ["pmf", "cdf"], xKey: "k", xLabel: "k (failures)", xDefault: 3,
+    forms: ["pmf", "cdf", "sample"], xKey: "k", xLabel: "k (failures)", xDefault: 3,
     params: [{ key: "r", label: "r (successes)", def: 5 }, { key: "p", label: "p (probability)", def: 0.5 }],
     compute: (form, v, [rv, pv]) => {
       const ki = Math.floor(v); const ri = Math.floor(rv);
@@ -322,4 +323,26 @@ export function formAfterSwitch(form: DistForm, next: DistKey): DistForm {
   if (form === "pmf" && forms.includes("pdf")) return "pdf";
   if (isInverseForm(form) && forms.includes("inv")) return "inv";
   return forms[0];
+}
+
+/** The sampler behind the `sample` form: one draw by inverse-CDF from a uniform `u` in
+ *  (0, 1). Distributions with a closed inverse use it; a continuous one without (Weibull,
+ *  exponential) is inverted by bisection on its CDF; a discrete one (Poisson,
+ *  hypergeometric, negative binomial) walks k upward until the CDF clears `u`. `null` for
+ *  invalid parameters. */
+export function sampleQuantile(key: DistKey, u: number, params: number[]): number | null {
+  const spec = DIST_SPECS[key];
+  const uu = Math.min(1 - 1e-12, Math.max(1e-12, u));
+  if (spec.forms.includes("inv")) return spec.compute("inv", uu, params);
+  const cdf = (x: number): number | null => spec.compute("cdf", x, params);
+  if (spec.group === "Continuous") {
+    if (cdf(1) === null && cdf(0) === null) return null;
+    return bisectionInv((x) => cdf(x) ?? 0, uu, 0, 1e6);
+  }
+  for (let k = 0; k < 1_000_000; k++) {
+    const F = cdf(k);
+    if (F === null) return null;
+    if (F >= uu) return k;
+  }
+  return null;
 }

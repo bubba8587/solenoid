@@ -6,6 +6,8 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 import { DistributionNode } from "./nodes/distribution";
+import { sampleQuantile } from "./nodes/distributionOps";
+import { requestRecalc } from "./process";
 
 const dist = (op: string, form: string) =>
   new DistributionNode({ op: op as never, form: form as never });
@@ -90,5 +92,44 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
     expect(ev("NORM.DIST(1, 0, -1, TRUE)")).toBeNull();
     expect(dist("normal", "cdf").data({x:[1],mean:[0],stdev:[-1]}).result).toBeNull();
     expect(ev("BINOM.DIST(11, 10, 0.5, FALSE)")).toBeNull();
+  });
+});
+
+describe("the `sample` form — N draws by inverse CDF, seeded per recalculation", () => {
+  const ev = (e: string) => compileEvaluator(e)!({});
+  const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+  it("sampleQuantile inverts every family (closed inverse, bisection, or a discrete walk)", () => {
+    expect(sampleQuantile("normal", 0.5, [10, 2])).toBeCloseTo(10, 9);
+    expect(sampleQuantile("expon", 1 - Math.exp(-1), [1])).toBeCloseTo(1, 6);     // F(1) = 1 − e⁻¹ → 1
+    expect(sampleQuantile("weibull", 1 - Math.exp(-1), [2, 3])).toBeCloseTo(3, 6); // scale 3 at F = 1 − e⁻¹
+    expect(sampleQuantile("poisson", 0.5, [3])).toBe(3);                          // median of Poisson(3)
+    expect(sampleQuantile("binom", 0.5, [10, 0.5])).toBe(5);
+    expect(sampleQuantile("normal", 0.5, [10, -1])).toBeNull();                   // invalid sd
+  });
+  it("the node draws N values whose marginal matches; the same pass is stable, a recalc re-rolls", async () => {
+    const n = dist("normal", "sample");
+    expect(n.inputs.count).toBeDefined(); expect(n.inputs.x).toBeUndefined();
+    n.literals.count = 4000; n.literals.mean = 50; n.literals.stdev = 5;
+    const a = n.data({}).result as number[];
+    expect(a).toHaveLength(4000);
+    expect(mean(a)).toBeCloseTo(50, 0);
+    expect(Math.sqrt(mean(a.map((v) => (v - 50) ** 2)))).toBeCloseTo(5, 0);
+    const b = n.data({}).result as number[];
+    expect(b).toEqual(a);                      // same recalculation → the same draws
+    await requestRecalc();
+    const c = n.data({}).result as number[];
+    expect(c).not.toEqual(a);                  // F9 → a fresh stream
+    // switching form back swaps the first socket to x again
+    n.setForm("cdf");
+    expect(n.inputs.x).toBeDefined(); expect(n.inputs.count).toBeUndefined();
+  });
+  it("RANDDIST(family, n, params…) draws the same family; a bad family is #DOMAIN!", () => {
+    const p = ev("RANDDIST(\"poisson\", 500, 3)") as number[];
+    expect(p).toHaveLength(500);
+    expect(p.every((v) => Number.isInteger(v) && v >= 0)).toBe(true);
+    expect(mean(p)).toBeCloseTo(3, 0);
+    const u = ev("RANDDIST(\"normal\", 2000)") as number[]; // defaults: mean 0, sd 1
+    expect(Math.abs(mean(u))).toBeLessThan(0.1);
+    expect((ev("RANDDIST(\"cauchy\", 5)") as { code?: string }).code).toBe("#DOMAIN!");
   });
 });

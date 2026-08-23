@@ -1469,6 +1469,49 @@
    "init": {
     "label": "params"
    }
+  },
+  {
+   "id": "dsample",
+   "type": "DistributionNode",
+   "x": 4460,
+   "y": 2450,
+   "init": {
+    "label": "Distribution: sample",
+    "op": "gamma",
+    "form": "sample"
+   },
+   "literals": {
+    "count": 200,
+    "alpha": 2,
+    "beta": 2
+   }
+  },
+  {
+   "id": "d_dsample",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 2450,
+   "init": {
+    "label": "200 gamma draws"
+   }
+  },
+  {
+   "id": "fit2",
+   "type": "FitDistributionNode",
+   "x": 4460,
+   "y": 2690,
+   "init": {
+    "label": "Fit the draws"
+   }
+  },
+  {
+   "id": "d_fit2",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 2690,
+   "init": {
+    "label": "best family of the draws"
+   }
   }
  ],
  "connections": [
@@ -2184,6 +2227,24 @@
    "source": "fitd",
    "sourceOutput": "params",
    "target": "d_fit_params",
+   "targetInput": "in"
+  },
+  {
+   "source": "dsample",
+   "sourceOutput": "result",
+   "target": "d_dsample",
+   "targetInput": "in"
+  },
+  {
+   "source": "dsample",
+   "sourceOutput": "result",
+   "target": "fit2",
+   "targetInput": "list"
+  },
+  {
+   "source": "fit2",
+   "sourceOutput": "best",
+   "target": "d_fit2",
    "targetInput": "in"
   }
  ]

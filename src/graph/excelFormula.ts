@@ -451,7 +451,7 @@ const NULLABLE_SCALARS_OK = new Set([
   // decides blank-by-blank, which the generic blank guard would pre-empt.
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
   // Tranche 2, same contract.
-  "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY",
+  "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY", "RANDDIST",
   // The append ladder + grid selection/grow: blanks are dropped (stackers) or mean an
   // omitted arg (EXPAND's Fill/cols), so each registration decides blank-by-blank.
   "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND",

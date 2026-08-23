@@ -4,7 +4,7 @@ import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
-import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
+import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
@@ -578,6 +578,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   "FORECAST.ETS": { returns: "number", listArgs: true, arity: [3, 6], family: "statistics" },
   FITDIST:     { returns: "any", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  RANDDIST:    { returns: "number", rank: "list", listArgs: true, arity: [2, 5], native: true },
   "FORECAST.ETS.CONFINT": { returns: "number", listArgs: true, arity: [3, 7], family: "statistics" },
   "FORECAST.ETS.SEASONALITY": { returns: "number", listArgs: true, arity: [1, 4], family: "statistics" },
   COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
@@ -1047,6 +1048,21 @@ registerInternal("CHISQ.DIST",   (x, df, cum) => dist("chisq", cdfOrPdf(cum), x,
 registerInternal("CHISQ.INV",    (p, df) => dist("chisq", "inv", p, df));
 registerInternal("F.DIST",       (x, d1, d2, cum) => dist("f", cdfOrPdf(cum), x, d1, d2));
 registerInternal("F.INV",        (p, d1, d2) => dist("f", "inv", p, d1, d2));
+// RANDDIST(family, n, params…): n draws from a Distribution-node family by inverse CDF —
+// the node's `sample` form as a formula (numpy.random.<dist>, R rnorm/rgamma/…). Volatile
+// like RAND (a fresh stream each evaluation; the node's form is seeded per recalc).
+registerInternal("RANDDIST", (family, n, ...params) => {
+  const key = String(family ?? "").trim().toLowerCase().replace(/\s+/g, "-") as DistKey;
+  if (!(key in DIST_SPECS)) return solError("#DOMAIN!", `RANDDIST family must be one of ${Object.keys(DIST_SPECS).join(", ")}`);
+  const count = Math.min(100_000, Math.max(0, Math.round(toNum(n))));
+  if (!Number.isFinite(count)) return VALUE("RANDDIST");
+  const spec = DIST_SPECS[key];
+  const ps = spec.params.map((p, i) => (params[i] == null ? p.def : toNum(params[i])));
+  if (ps.some((v) => Number.isNaN(v))) return VALUE("RANDDIST");
+  const out: (number | null)[] = [];
+  for (let i = 0; i < count; i++) { const v = sampleQuantile(key, Math.random(), ps); out.push(v !== null && Number.isFinite(v) ? v : null); }
+  return out;
+});
 // BETA.DIST / BETA.INV carry Excel's optional [A, B] support bounds: x maps onto the
 // standard beta as (x − A)/(B − A); the density scales by 1/(B − A), the quantile maps back.
 registerInternal("BETA.DIST", (x, a, b, cum, A, B) => {
