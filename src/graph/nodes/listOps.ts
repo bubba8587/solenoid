@@ -166,6 +166,131 @@ export function combinationsOf(arr: readonly Cell[], k: number, kind: "combinati
   return out;
 }
 
+/** Central-difference gradient (numpy.gradient): interior points use both neighbours,
+ *  the ends a one-sided difference. Same length as the input; a missing neighbour blanks
+ *  that entry. `dx` is the uniform spacing. */
+export function gradientList(arr: readonly Cell[], dx = 1): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const n = arr.length;
+  const num = (i: number): number | null => { const v = arr[i]; return typeof v === "number" && Number.isFinite(v) ? v : null; };
+  if (n < 2) return arr.map(() => null);
+  const out: Cell[] = [];
+  for (let i = 0; i < n; i++) {
+    let a: number | null, b: number | null, h: number;
+    if (i === 0) { a = num(0); b = num(1); h = dx; }
+    else if (i === n - 1) { a = num(n - 2); b = num(n - 1); h = dx; }
+    else { a = num(i - 1); b = num(i + 1); h = 2 * dx; }
+    out.push(a !== null && b !== null ? (b - a) / h : null);
+  }
+  return out;
+}
+
+/** Exponentially weighted moving average: y[0] = x[0], y[i] = α·x[i] + (1−α)·y[i−1].
+ *  A blank carries the previous value forward. pandas ewm. */
+export function ewmaList(arr: readonly Cell[], alpha: number): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const a = Math.min(1, Math.max(0, alpha));
+  let prev: number | null = null;
+  return arr.map((v) => {
+    if (!(typeof v === "number" && Number.isFinite(v))) return prev;
+    prev = prev === null ? v : a * v + (1 - a) * prev;
+    return prev;
+  });
+}
+
+/** Trapezoidal integral of sampled points with uniform spacing `dx` (numpy.trapz) — the
+ *  area under the piecewise-linear curve through them. A gap makes the area undefined. */
+export function trapzList(arr: readonly Cell[], dx = 1): Cell | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const nums: number[] = [];
+  for (const v of arr) {
+    if (typeof v === "number" && Number.isFinite(v)) nums.push(v);
+    else return solError("#VALUE!", "Trapezoidal integration needs a gap-free numeric list");
+  }
+  if (nums.length < 2) return 0;
+  let s = 0;
+  for (let i = 1; i < nums.length; i++) s += ((nums[i] + nums[i - 1]) / 2) * dx;
+  return s;
+}
+
+/** Discrete linear convolution (numpy.convolve 'full'): length a+b−1, out[k] = Σ a[i]·b[k−i].
+ *  A blank counts as zero. */
+export function convolveList(a: readonly Cell[], b: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(a) ?? firstError(b);
+  if (err) return err;
+  const A = a.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
+  const B = b.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
+  if (A.length === 0 || B.length === 0) return [];
+  const out = new Array<number>(A.length + B.length - 1).fill(0);
+  for (let i = 0; i < A.length; i++) for (let j = 0; j < B.length; j++) out[i + j] += A[i] * B[j];
+  return out;
+}
+
+/** Run-length encode: each run of consecutive equal values → a row [value, count]. R rle. */
+export function rleEncode(arr: readonly Cell[]): Cell[][] {
+  const out: Cell[][] = [];
+  for (let i = 0; i < arr.length; ) {
+    let j = i + 1;
+    while (j < arr.length && setKey(arr[j]) === setKey(arr[i])) j++;
+    out.push([arr[i], j - i]);
+    i = j;
+  }
+  return out;
+}
+
+/** 3-D vector cross product a × b (numpy.cross). Both operands must have three numbers. */
+export function crossProduct(a: readonly Cell[], b: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(a) ?? firstError(b);
+  if (err) return err;
+  const A = presentNumbers(a), B = presentNumbers(b);
+  if (A.length !== 3 || B.length !== 3) return solError("#SHAPE!", "Cross product needs two 3-element vectors");
+  return [A[1] * B[2] - A[2] * B[1], A[2] * B[0] - A[0] * B[2], A[0] * B[1] - A[1] * B[0]];
+}
+
+/** Gaussian elimination with partial pivoting; null when the matrix is singular. */
+function solveLinear(A: number[][], b: number[]): number[] | null {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    if (Math.abs(M[piv][col]) < 1e-12) return null;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+/** Least-squares polynomial fit of degree d through (x, y), evaluated back at each x —
+ *  numpy.polyfit + polyval in one. Solves the normal equations (VᵀV)c = Vᵀy. */
+export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: number): Cell[] | SolError {
+  const err = firstError(xs) ?? firstError(ys);
+  if (err) return err;
+  const X = presentNumbers(xs), Y = presentNumbers(ys);
+  const n = Math.min(X.length, Y.length);
+  const d = Math.max(0, Math.round(degree));
+  if (n === 0) return [];
+  if (n < d + 1) return solError("#VALUE!", `A degree-${d} fit needs at least ${d + 1} points`);
+  const m = d + 1;
+  const ATA: number[][] = Array.from({ length: m }, () => new Array<number>(m).fill(0));
+  const ATy: number[] = new Array<number>(m).fill(0);
+  for (let k = 0; k < n; k++) {
+    const powers: number[] = []; let p = 1;
+    for (let j = 0; j < m; j++) { powers.push(p); p *= X[k]; }
+    for (let r = 0; r < m; r++) { for (let c = 0; c < m; c++) ATA[r][c] += powers[r] * powers[c]; ATy[r] += powers[r] * Y[k]; }
+  }
+  const coeffs = solveLinear(ATA, ATy);
+  if (!coeffs) return solError("#SOLVE!", "Polynomial fit is singular — the points may be collinear for this degree");
+  return X.map((xv) => { let acc = 0; for (let j = m - 1; j >= 0; j--) acc = acc * xv + coeffs[j]; return acc; });
+}
+
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
 
 /** One aggregate per element over the window ending there: every element so far

@@ -15,7 +15,7 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, BinNode, ShiftNode, CombinationsNode, RepeatNode,
+  AlertNode, NormalizeNode, BinNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -521,7 +521,15 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-normalize",  label: "Normalize",  description: "Rescale a list: to the 0–1 range (min→0, max→1), or to z-scores (distance from the mean in stdevs). Pick on the node. numpy/R scale.", create: () => new NormalizeNode(), keywords: "normalize rescale scale 0-1 minmax z-score zscore standardize mean stdev standard deviation feature scaling" },
             { type: "list-bin",       label: "Bin",           description: "Places each value into a bin by counting how many breakpoints it clears (0 below the first). R findInterval / numpy digitize.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile" },
           ]},
-          { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
+          { type: "pair", children: [
+            { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
+            { type: "list-ewma",      label: "EWMA",          description: "Exponentially weighted moving average: recent values weigh more, controlled by Alpha (0–1). Smoother than a flat window. pandas ewm.", create: () => new EwmaNode(), parity: false, keywords: "ewma exponential weighted moving average smoothing ema alpha decay pandas ewm smooth" },
+          ]},
+          { type: "pair", children: [
+            { type: "list-convolve",  label: "Convolve",      description: "Sliding dot-product of two lists (full convolution): smoothing kernels, moving sums, signal filtering. numpy.convolve.", create: () => new ConvolveNode(), parity: false, keywords: "convolve convolution kernel filter signal smooth moving weighted numpy fir" },
+            { type: "list-rle",       label: "Run Lengths",   description: "Compresses consecutive equal values into rows of value and run-length. R rle / run-length encoding.", create: () => new RleNode(), parity: false, keywords: "rle run length encoding compress consecutive runs streak count repeats groups" },
+          ]},
+          { type: "list-trapz",     label: "Integrate",     description: "Area under the curve through the points by the trapezoidal rule, at uniform spacing dx. The integral counterpart to DIFF's gradient. numpy.trapz.", create: () => new TrapzNode(), parity: false, keywords: "integrate integral trapz trapezoidal area under curve auc cumulative numpy calculus" },
         ],
       },
       {
@@ -591,6 +599,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "forecast", label: "FORECAST.LINEAR", description: "Predict y for new x using linear regression through known data. Excel: FORECAST.LINEAR.", create: () => new ForecastNode() },
           regressionLeaf("steyx"),
           { type: "logest",  label: "LOGEST",  description: "Exponential regression: [m, b] where y = b·mˣ. Requires all Ys > 0. Excel: LOGEST.", create: () => new LogestNode(), parity: false },
+          { type: "polyfit", label: "Poly Fit", description: "Least-squares polynomial fit of the chosen degree, evaluated back over the data — degree 1 is a line, 2 a parabola, and so on. numpy.polyfit + polyval.", create: () => new PolyfitNode(), parity: false, keywords: "polynomial fit polyfit polyval regression curve degree quadratic cubic least squares numpy trendline" },
           { type: "trend",   label: "TREND",   description: "Predict Y values for new Xs using a fitted linear regression. Excel: TREND.", create: () => new TrendNode(), parity: false },
           { type: "interpolate", label: "INTERPOLATE", description: "Interpolates between known points (not a regression fit). List mode: 1-D, y for a query x. Grid mode: 2-D bilinear over a bordered table — first row X coordinates, first column Y; Forecast (default on) extrapolates beyond the range. For lookup tables: hardness conversions, pump curves, steam tables. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
         ],
@@ -632,6 +641,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "is-test", label: "IS.TEST",    description: "Tests whether a value is a number, blank, error, N/A, boolean, text, or non-text. Excel: ISNUMBER / ISBLANK / ISERROR / ISNA / ISLOGICAL / ISTEXT / ISNONTEXT.", create: () => new IsTestNode() },
       { type: "iseven-isodd", label: "ISEVEN / ISODD", description: "TRUE if a number's integer part is even or odd. Pick which in the node. Emits a logical and broadcasts over a list. Excel: ISEVEN / ISODD.", create: () => new IsEvenOddNode() },
       { type: "comparison", label: "Comparison",  description: "Compares two values (=, ≠, <, >, ≤, ≥) and emits a logical TRUE or FALSE. Broadcasts over a list.", create: () => new ComparisonNode() },
+      { type: "pair", children: [
+        { type: "between", label: "Between", description: "TRUE when Low ≤ Value ≤ High (inclusive). R between / pandas Series.between.", create: () => new BetweenNode(), parity: false, keywords: "between range within inclusive bounds interval clamp test low high" },
+        { type: "isclose", label: "Is Close", description: "TRUE when |A − B| ≤ tolerance — approximate equality for floats. math.isclose / numpy.isclose.", create: () => new IsCloseNode(), parity: false, keywords: "is close approximately equal tolerance almost float rounding epsilon isclose numpy" },
+      ]},
       {
         type: "category", label: "Boolean", description: "Combine 0/1 signals. Any non-zero input counts as true.",
         children: [
@@ -856,7 +869,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
           { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s, or blanks (nulls) so the off-diagonal stays out of sums. Excel: MUNIT.",                                             create: () => new TableUnitNode(),                   parity: false },
           { type: "table-diag",      label: "DIAGONAL",  description: "Turns a list into a square matrix's diagonal, the rest 0s or blanks (nulls, out of sums). numpy.diag.",                                              create: () => new TableDiagNode(),                   parity: false },
-          { type: "table-outer",     label: "OUTER",     description: "Outer product of two lists: the matrix of every product a×b. numpy.outer.",                                                                          create: () => new TableOuterNode(),                  parity: false },
+          { type: "pair", children: [
+            { type: "table-outer",     label: "OUTER",     description: "Outer product of two lists: the matrix of every product a×b. numpy.outer.",                                                                          create: () => new TableOuterNode(),                  parity: false },
+            { type: "vector-cross",    label: "Cross Product", description: "Cross product of two 3-D vectors — the vector perpendicular to both. numpy.cross.",                                                          create: () => new CrossNode(),                       parity: false, keywords: "cross product vector perpendicular normal 3d numpy physics torque" },
+          ]},
           { type: "table-transpose", label: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: TRANSPOSE.",                                                    create: () => new TableTransposeNode(),              parity: false },
         ],
       },

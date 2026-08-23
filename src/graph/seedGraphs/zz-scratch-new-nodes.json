@@ -35,7 +35,30 @@
     { "id": "d_z", "type": "DisplayNode", "x": 620, "y": 360, "init": { "label": "z-scores" } },
     { "id": "d_bin", "type": "DisplayNode", "x": 620, "y": 520, "init": { "label": "bins" } },
     { "id": "d_comb", "type": "DisplayNode", "x": 620, "y": 690, "init": { "label": "combinations" } },
-    { "id": "d_outer", "type": "DisplayNode", "x": 620, "y": 900, "init": { "label": "outer product" } }
+    { "id": "d_outer", "type": "DisplayNode", "x": 620, "y": 900, "init": { "label": "outer product" } },
+
+    { "id": "src_vc", "type": "ListInputNode", "x": 900, "y": 40, "init": { "label": "Vector C", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "0, 1, 0" } },
+    { "id": "src_px", "type": "ListInputNode", "x": 900, "y": 240, "init": { "label": "x", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "0, 1, 2, 3, 4" } },
+    { "id": "src_py", "type": "ListInputNode", "x": 900, "y": 440, "init": { "label": "y (x^2)", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "0, 1, 4, 9, 16" } },
+    { "id": "src_rle", "type": "ListInputNode", "x": 900, "y": 640, "init": { "label": "Repeats", "valueKeys": ["v0"] }, "stringLiterals": { "v0": "1, 1, 2, 2, 2, 3" } },
+
+    { "id": "n_ewma", "type": "EwmaNode", "x": 1220, "y": 0, "init": { "label": "EWMA" }, "literals": { "alpha": 0.3 } },
+    { "id": "n_conv", "type": "ConvolveNode", "x": 1220, "y": 180, "init": { "label": "Convolve" } },
+    { "id": "n_cross", "type": "CrossNode", "x": 1220, "y": 340, "init": { "label": "Cross Product" } },
+    { "id": "n_poly", "type": "PolyfitNode", "x": 1220, "y": 500, "init": { "label": "Poly Fit" }, "literals": { "degree": 2 } },
+    { "id": "n_trapz", "type": "TrapzNode", "x": 1220, "y": 700, "init": { "label": "Integrate" }, "literals": { "dx": 1 } },
+    { "id": "n_rle", "type": "RleNode", "x": 1220, "y": 860, "init": { "label": "Run Lengths" } },
+    { "id": "n_between", "type": "BetweenNode", "x": 1220, "y": 1020, "init": { "label": "Between" }, "literals": { "value": 5, "lo": 1, "hi": 10 } },
+    { "id": "n_isclose", "type": "IsCloseNode", "x": 1220, "y": 1250, "init": { "label": "Is Close" }, "literals": { "a": 1, "b": 1.0000001, "tol": 0.001 } },
+
+    { "id": "d_ewma", "type": "DisplayNode", "x": 1520, "y": 20, "init": { "label": "ewma" } },
+    { "id": "d_conv", "type": "DisplayNode", "x": 1520, "y": 190, "init": { "label": "convolution" } },
+    { "id": "d_cross", "type": "DisplayNode", "x": 1520, "y": 350, "init": { "label": "cross" } },
+    { "id": "d_poly", "type": "DisplayNode", "x": 1520, "y": 510, "init": { "label": "fitted y" } },
+    { "id": "d_trapz", "type": "DisplayNode", "x": 1520, "y": 710, "init": { "label": "integral" } },
+    { "id": "d_rle", "type": "DisplayNode", "x": 1520, "y": 860, "init": { "label": "run lengths" } },
+    { "id": "d_between", "type": "DisplayNode", "x": 1520, "y": 1030, "init": { "label": "5 in [1,10]?" } },
+    { "id": "d_isclose", "type": "DisplayNode", "x": 1520, "y": 1260, "init": { "label": "close?" } }
   ],
   "connections": [
     { "source": "src_a", "sourceOutput": "list", "target": "n_shift", "targetInput": "list" },
@@ -51,6 +74,24 @@
     { "source": "n_z", "sourceOutput": "result", "target": "d_z", "targetInput": "in" },
     { "source": "n_bin", "sourceOutput": "result", "target": "d_bin", "targetInput": "in" },
     { "source": "n_comb", "sourceOutput": "result", "target": "d_comb", "targetInput": "in" },
-    { "source": "n_outer", "sourceOutput": "result", "target": "d_outer", "targetInput": "in" }
+    { "source": "n_outer", "sourceOutput": "result", "target": "d_outer", "targetInput": "in" },
+
+    { "source": "src_a", "sourceOutput": "list", "target": "n_ewma", "targetInput": "list" },
+    { "source": "src_va", "sourceOutput": "list", "target": "n_conv", "targetInput": "a" },
+    { "source": "src_vb", "sourceOutput": "list", "target": "n_conv", "targetInput": "b" },
+    { "source": "src_va", "sourceOutput": "list", "target": "n_cross", "targetInput": "a" },
+    { "source": "src_vc", "sourceOutput": "list", "target": "n_cross", "targetInput": "b" },
+    { "source": "src_px", "sourceOutput": "list", "target": "n_poly", "targetInput": "x" },
+    { "source": "src_py", "sourceOutput": "list", "target": "n_poly", "targetInput": "y" },
+    { "source": "src_py", "sourceOutput": "list", "target": "n_trapz", "targetInput": "list" },
+    { "source": "src_rle", "sourceOutput": "list", "target": "n_rle", "targetInput": "list" },
+    { "source": "n_ewma", "sourceOutput": "result", "target": "d_ewma", "targetInput": "in" },
+    { "source": "n_conv", "sourceOutput": "result", "target": "d_conv", "targetInput": "in" },
+    { "source": "n_cross", "sourceOutput": "result", "target": "d_cross", "targetInput": "in" },
+    { "source": "n_poly", "sourceOutput": "result", "target": "d_poly", "targetInput": "in" },
+    { "source": "n_trapz", "sourceOutput": "result", "target": "d_trapz", "targetInput": "in" },
+    { "source": "n_rle", "sourceOutput": "result", "target": "d_rle", "targetInput": "in" },
+    { "source": "n_between", "sourceOutput": "result", "target": "d_between", "targetInput": "in" },
+    { "source": "n_isclose", "sourceOutput": "result", "target": "d_isclose", "targetInput": "in" }
   ]
 }

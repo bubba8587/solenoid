@@ -12,7 +12,7 @@ import { ExpressionNode } from "./expression";
 import { EquationNode } from "./equation";
 import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
-import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
+import { ComparisonNode, BooleanOpNode, NotNode, BetweenNode, IsCloseNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
 import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode } from "./complex";
 import {
   ListInputNode, SeriesNode, AggregateNode,
@@ -21,7 +21,7 @@ import {
   UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, BinNode, ShiftNode, CombinationsNode, RepeatNode,
+  NormalizeNode, BinNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
   FillNode,
@@ -89,7 +89,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // Nodes that EMIT the logical type read as logic, matching their output color.
   if (
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
-    node instanceof NotNode ||
+    node instanceof NotNode || node instanceof BetweenNode || node instanceof IsCloseNode ||
     node instanceof BooleanInputNode || node instanceof IsTestNode ||
     node instanceof IsEvenOddNode || node instanceof SetRelationNode ||
     node instanceof IsInNode
@@ -105,6 +105,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
     node instanceof BinNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
+    node instanceof EwmaNode || node instanceof ConvolveNode || node instanceof CrossNode ||
+    node instanceof PolyfitNode || node instanceof TrapzNode || node instanceof RleNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
     node instanceof PadNode || node instanceof GeometricNode || node instanceof FibonacciNode ||
     node instanceof FillNode

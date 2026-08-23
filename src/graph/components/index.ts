@@ -48,6 +48,8 @@ export { IsTestComponent } from "./IsTestNode";
 export { ChooseComponent } from "./ChooseNode";
 export { SwitchComponent } from "./SwitchNode";
 export { IfsComponent } from "./IfsNode";
+export { BetweenComponent } from "./BetweenNode";
+export { IsCloseComponent } from "./IsCloseNode";
 
 // ─── Lists — build ────────────────────────────────────────────────────────────
 export { ListInputComponent } from "./ListInputNode";
@@ -74,6 +76,12 @@ export { NormalizeComponent } from "./NormalizeNode";
 export { BinComponent } from "./BinNode";
 export { ShiftComponent } from "./ShiftNode";
 export { CombinationsComponent } from "./CombinationsNode";
+export { EwmaComponent } from "./EwmaNode";
+export { ConvolveComponent } from "./ConvolveNode";
+export { CrossComponent } from "./CrossNode";
+export { PolyfitComponent } from "./PolyfitNode";
+export { TrapzComponent } from "./TrapzNode";
+export { RleComponent } from "./RleNode";
 export { ShuffleComponent } from "./ShuffleNode";
 export { InterleaveComponent } from "./InterleaveNode";
 export { NthElementComponent } from "./NthElementNode";

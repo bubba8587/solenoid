@@ -158,6 +158,65 @@ function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
   return compareOp(op, cmp.l, cmp.r);
 }
 
+// ─── BETWEEN / IS-CLOSE — range and tolerance predicates ─────────────────────
+export class BetweenNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "TRUE when Low ≤ Value ≤ High (inclusive). R between / pandas Series.between.",
+  };
+  label: string;
+  cachedResult: Tri = null;
+  literals: Record<string, number> = { value: 0, lo: 0, hi: 1 };
+  width = 180;
+  height = 235;
+
+  constructor(init?: { label?: string }) {
+    super("Between");
+    this.label = init?.label ?? "Between";
+    this.addInput("value", numIn("Value"));
+    this.addInput("lo", numIn("Low"));
+    this.addInput("hi", numIn("High"));
+    this.addOutput("result", logicalComboOut("Result"));
+  }
+
+  data(inputs: { value?: number[]; lo?: number[]; hi?: number[] }) {
+    const v = readInput(inputs.value, this.literals.value ?? 0);
+    const lo = readInput(inputs.lo, this.literals.lo ?? 0);
+    const hi = readInput(inputs.hi, this.literals.hi ?? 0);
+    const result: Tri = v === null || lo === null || hi === null ? null : v >= lo && v <= hi;
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+export class IsCloseNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "TRUE when |A − B| ≤ tolerance — approximate equality for floats. math.isclose.",
+  };
+  label: string;
+  cachedResult: Tri = null;
+  literals: Record<string, number> = { a: 0, b: 0, tol: 1e-9 };
+  width = 180;
+  height = 235;
+
+  constructor(init?: { label?: string }) {
+    super("IsClose");
+    this.label = init?.label ?? "Is Close";
+    this.addInput("a", numIn("A"));
+    this.addInput("b", numIn("B"));
+    this.addInput("tol", numIn("Tolerance"));
+    this.addOutput("result", logicalComboOut("Result"));
+  }
+
+  data(inputs: { a?: number[]; b?: number[]; tol?: number[] }) {
+    const a = readInput(inputs.a, this.literals.a ?? 0);
+    const b = readInput(inputs.b, this.literals.b ?? 0);
+    const tol = readInput(inputs.tol, this.literals.tol ?? 1e-9);
+    const result: Tri = a === null || b === null || tol === null ? null : Math.abs(a - b) <= tol;
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
 // ─── IF (value passthrough) ──────────────────────────────────────────────────
 // Returns whichever branch, NOT a logical — boolean combining lives in BooleanOpNode.
 

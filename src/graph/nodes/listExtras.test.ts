@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { shiftList, pctChangeList, zscoreList, binIndex } from "./listOps";
-import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode } from "./list";
-import { combinationsOf } from "./listOps";
+import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode } from "./list";
+import { BetweenNode, IsCloseNode } from "./logic";
+import { combinationsOf, gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval } from "./listOps";
 import { compileEvaluator } from "../excelFormula";
 import { isSolError } from "../errorValue";
 
@@ -69,6 +70,51 @@ describe("combinationsOf (itertools combinations / permutations)", () => {
   });
 });
 
+describe("Tier-2/3 kernels (gradient / ewma / trapz / convolve / cross / rle / polyfit)", () => {
+  it("gradient is central-difference interior, one-sided at the ends", () => {
+    expect(gradientList([1, 2, 4, 7])).toEqual([1, 1.5, 2.5, 3]);
+    // and it merged into the DIFF node as a 3rd mode
+    expect(new DiffNode({ mode: "gradient" }).data({ list: [[1, 2, 4, 7]] }).result).toEqual([1, 1.5, 2.5, 3]);
+  });
+  it("ewma weights recent values by alpha; blanks carry forward", () => {
+    expect(ewmaList([1, 2, 3], 0.5)).toEqual([1, 1.5, 2.25]);
+    expect(new EwmaNode().data({ list: [[1, 2, 3]], alpha: [0.5] }).result).toEqual([1, 1.5, 2.25]);
+  });
+  it("trapz integrates by the trapezoidal rule", () => {
+    expect(trapzList([0, 1, 2, 3], 1)).toBe(4.5);
+    expect(new TrapzNode().data({ list: [[0, 1, 2, 3]], dx: [1] }).result).toBe(4.5);
+  });
+  it("convolve is the full sliding dot-product", () => {
+    expect(convolveList([1, 2], [1, 1])).toEqual([1, 3, 2]);
+    expect(new ConvolveNode().data({ a: [[1, 2]], b: [[1, 1]] }).result).toEqual([1, 3, 2]);
+  });
+  it("cross product of two 3-vectors; wrong length is #SHAPE!", () => {
+    expect(crossProduct([1, 0, 0], [0, 1, 0])).toEqual([0, 0, 1]);
+    expect(new CrossNode().data({ a: [[1, 0, 0]], b: [[0, 1, 0]] }).result).toEqual([0, 0, 1]);
+    const bad = crossProduct([1, 2], [3, 4]);
+    expect(isSolError(bad) && (bad as { code: string }).code).toBe("#SHAPE!");
+  });
+  it("rle compresses runs into value/count rows", () => {
+    expect(rleEncode([1, 1, 2, 2, 2, 3])).toEqual([[1, 2], [2, 3], [3, 1]]);
+    expect(new RleNode().data({ list: [[1, 1, 2, 2, 2, 3]] }).result).toEqual([[1, 2], [2, 3], [3, 1]]);
+  });
+  it("polyfit fits exactly through points that lie on a degree-d curve", () => {
+    const fitted = polyfitEval([0, 1, 2], [0, 1, 4], 2) as number[]; // y = x^2
+    fitted.forEach((v, i) => expect(v).toBeCloseTo([0, 1, 4][i], 8));
+    const node = new PolyfitNode(); node.literals.degree = 2;
+    (node.data({ x: [[0, 1, 2]], y: [[0, 1, 4]] }).result as number[]).forEach((v, i) => expect(v).toBeCloseTo([0, 1, 4][i], 8));
+  });
+});
+
+describe("Between / Is-Close predicates", () => {
+  it("Between is inclusive; Is-Close compares within a tolerance", () => {
+    expect(new BetweenNode().data({ value: [5], lo: [1], hi: [10] }).result).toBe(true);
+    expect(new BetweenNode().data({ value: [11], lo: [1], hi: [10] }).result).toBe(false);
+    expect(new IsCloseNode().data({ a: [1], b: [1.0000001], tol: [1e-3] }).result).toBe(true);
+    expect(new IsCloseNode().data({ a: [1], b: [2], tol: [1e-3] }).result).toBe(false);
+  });
+});
+
 describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
   it("PCTCHANGE / ZSCORE / BIN / SHIFT / COMBINATIONS / PERMUTATIONS", () => {
     expect(ev("PCTCHANGE(x)", { x: [10, 20, 30] })).toEqual([1, 0.5]);
@@ -77,5 +123,14 @@ describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
     expect(ev("SHIFT(x, 1)", { x: [1, 2, 3] })).toEqual([null, 1, 2]);
     expect(ev("COMBINATIONS(x, 2)", { x: [1, 2, 3] })).toEqual([[1, 2], [1, 3], [2, 3]]);
     expect(ev("PERMUTATIONS(x, 2)", { x: [1, 2] })).toEqual([[1, 2], [2, 1]]);
+  });
+  it("GRADIENT / EWMA / TRAPZ / CONVOLVE / CROSSPRODUCT / RLE / POLYFIT / ISCLOSE", () => {
+    expect(ev("GRADIENT(x)", { x: [1, 2, 4, 7] })).toEqual([1, 1.5, 2.5, 3]);
+    expect(ev("EWMA(x, 0.5)", { x: [1, 2, 3] })).toEqual([1, 1.5, 2.25]);
+    expect(ev("TRAPZ(x)", { x: [0, 1, 2, 3] })).toBe(4.5);
+    expect(ev("CONVOLVE(a, b)", { a: [1, 2], b: [1, 1] })).toEqual([1, 3, 2]);
+    expect(ev("CROSSPRODUCT(a, b)", { a: [1, 0, 0], b: [0, 1, 0] })).toEqual([0, 0, 1]);
+    expect(ev("RLE(x)", { x: [1, 1, 2] })).toEqual([[1, 2], [2, 1]]);
+    expect(ev("ISCLOSE(1, 1.0000001, 0.001)")).toBe(true);
   });
 });

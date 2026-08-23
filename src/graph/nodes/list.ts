@@ -15,7 +15,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, combinationsOf, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -532,11 +532,151 @@ export class CombinationsNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Rows"));
   }
 
-  data(inputs: { list?: ListCell[][]; k?: number[] }) {
-    const arr = inputs.list?.[0] ?? [];
+  data(inputs: { list?: unknown[][]; k?: number[] }) {
+    const arr = (inputs.list?.[0] ?? []) as ListCell[];
     const k = readInput(inputs.k, this.literals.k ?? 2);
     if (k === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = combinationsOf(arr, k, this.mode);
+    return { result: this.cachedResult };
+  }
+}
+
+export class EwmaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    alpha: "Smoothing factor 0–1: higher tracks recent values closely, lower smooths harder.",
+  };
+  label: string;
+  literals: Record<string, number> = { alpha: 0.3 };
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Ewma");
+    this.label = init?.label ?? "EWMA";
+    this.addInput("list", listIn("List"));
+    this.addInput("alpha", numIn("Alpha"));
+    this.addOutput("result", listOut("Smoothed"));
+  }
+
+  data(inputs: { list?: ListCell[][]; alpha?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const alpha = readInput(inputs.alpha, this.literals.alpha ?? 0.3);
+    if (alpha === null) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = ewmaList(arr, alpha);
+    return { result: this.cachedList };
+  }
+}
+
+export class ConvolveNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Convolve");
+    this.label = init?.label ?? "Convolve";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", listOut("A ∗ B"));
+  }
+
+  data(inputs: { a?: ListCell[][]; b?: ListCell[][] }) {
+    this.cachedList = convolveList(inputs.a?.[0] ?? [], inputs.b?.[0] ?? []);
+    return { result: this.cachedList };
+  }
+}
+
+export class CrossNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The vector perpendicular to both inputs. Each operand must be three numbers.",
+  };
+  label: string;
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Cross");
+    this.label = init?.label ?? "Cross Product";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", listOut("A × B"));
+  }
+
+  data(inputs: { a?: ListCell[][]; b?: ListCell[][] }) {
+    this.cachedList = crossProduct(inputs.a?.[0] ?? [], inputs.b?.[0] ?? []);
+    return { result: this.cachedList };
+  }
+}
+
+export class PolyfitNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The fitted y value at each input x — the least-squares polynomial of the chosen degree, evaluated back over the data.",
+  };
+  label: string;
+  literals: Record<string, number> = { degree: 2 };
+  cachedList: ListCell[] | SolError = [];
+  width = 200; height = 180;
+
+  constructor(init?: { label?: string }) {
+    super("Polyfit");
+    this.label = init?.label ?? "Poly Fit";
+    this.addInput("x", listIn("x"));
+    this.addInput("y", listIn("y"));
+    this.addInput("degree", numIn("Degree"));
+    this.addOutput("result", listOut("Fitted y"));
+  }
+
+  data(inputs: { x?: ListCell[][]; y?: ListCell[][]; degree?: number[] }) {
+    const degree = readInput(inputs.degree, this.literals.degree ?? 2);
+    if (degree === null) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = polyfitEval(inputs.x?.[0] ?? [], inputs.y?.[0] ?? [], degree);
+    return { result: this.cachedList };
+  }
+}
+
+export class TrapzNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The area under the piecewise-linear curve through the points, at uniform spacing dx.",
+  };
+  label: string;
+  literals: Record<string, number> = { dx: 1 };
+  cachedResult: number | ListCell | null = null;
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Trapz");
+    this.label = init?.label ?? "Integrate";
+    this.addInput("list", listIn("List"));
+    this.addInput("dx", numIn("dx"));
+    this.addOutput("result", numOut("Area"));
+  }
+
+  data(inputs: { list?: ListCell[][]; dx?: number[] }) {
+    const dx = readInput(inputs.dx, this.literals.dx ?? 1);
+    if (dx === null) { this.cachedResult = null; return { result: null }; }
+    this.cachedResult = trapzList(inputs.list?.[0] ?? [], dx);
+    return { result: this.cachedResult };
+  }
+}
+
+export class RleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Two columns — each consecutive run's value and its length. R rle.",
+  };
+  label: string;
+  cachedResult: ListCell[][] | null = null;
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Rle");
+    this.label = init?.label ?? "Run Lengths";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", tableOut("value, count"));
+  }
+
+  data(inputs: { list?: ListCell[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    this.cachedResult = arr.length === 0 ? null : rleEncode(arr);
     return { result: this.cachedResult };
   }
 }
@@ -1236,17 +1376,18 @@ export class RunningNode extends ClassicPreset.Node {
   }
 }
 
-export type DiffMode = "delta" | "percent";
+export type DiffMode = "delta" | "percent" | "gradient";
 
 export class DiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "The output is one element shorter than the input. Each entry is the change from the element before.",
+    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length (central-difference slope at each point).",
   };
 
   label: string;
-  /** Absolute difference (Δ) or consecutive percent change (pandas pct_change). */
+  /** Absolute difference (Δ), consecutive percent change (pandas pct_change), or the
+   *  central-difference gradient (numpy.gradient — same length). */
   mode: DiffMode = "delta";
-  cachedList: ListCell[] = [];
+  cachedList: ListCell[] | SolError = [];
   width = 180;
   height = 150;
 
@@ -1255,12 +1396,12 @@ export class DiffNode extends ClassicPreset.Node {
     this.label = init?.label ?? "DIFF";
     if (init?.mode) this.mode = init.mode;
     this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut(this.mode === "percent" ? "Change" : "Differences"));
+    this.addOutput("result", listOut(this.mode === "percent" ? "Change" : this.mode === "gradient" ? "Gradient" : "Differences"));
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = this.mode === "percent" ? pctChangeList(arr) : diffList(arr);
+    this.cachedList = this.mode === "percent" ? pctChangeList(arr) : this.mode === "gradient" ? gradientList(arr) : diffList(arr);
     return { result: this.cachedList };
   }
 }

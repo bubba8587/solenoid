@@ -12,6 +12,7 @@ import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, 
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
+  gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
@@ -514,6 +515,14 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   SHIFT:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
   COMBINATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
   PERMUTATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
+  GRADIENT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
+  EWMA:            { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
+  TRAPZ:           { returns: "number", listArgs: true, arity: [1, 2] },
+  CONVOLVE:        { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
+  CROSSPRODUCT:    { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
+  RLE:             { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
+  POLYFIT:         { returns: "number", rank: "list", listArgs: true, arity: [3, 3] },
+  ISCLOSE:         { returns: "logical", arity: [2, 3] },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
   // argument (aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
@@ -1223,6 +1232,14 @@ registerInternal("BIN",        (list, breaks) => binIndex(numList(list), numList
 registerInternal("SHIFT",      (list, by) => shiftList(numList(list), Number(by), false));
 registerInternal("COMBINATIONS", (list, k) => combinationsOf(numList(list), Number(k), "combinations"));
 registerInternal("PERMUTATIONS", (list, k) => combinationsOf(numList(list), Number(k), "permutations"));
+registerInternal("GRADIENT",   (list) => gradientList(numList(list)));
+registerInternal("EWMA",       (list, alpha) => ewmaList(numList(list), Number(alpha)));
+registerInternal("TRAPZ",      (list, dx) => trapzList(numList(list), dx == null ? 1 : Number(dx)));
+registerInternal("CONVOLVE",   (a, b) => convolveList(numList(a), numList(b)));
+registerInternal("CROSSPRODUCT", (a, b) => crossProduct(numList(a), numList(b)));
+registerInternal("RLE",        (list) => rleEncode(numList(list)));
+registerInternal("POLYFIT",    (x, y, deg) => polyfitEval(numList(x), numList(y), Number(deg)));
+registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : Math.abs(Number(a) - Number(b)) <= (tol == null ? 1e-9 : Number(tol))));
 // ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below
