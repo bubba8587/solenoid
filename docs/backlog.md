@@ -176,6 +176,13 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
   message). Same split as the divergence catalogue: live half out, finished record
   stays.
+- [ ] **`FAMILY_BACKING` "internal" ≠ registered internal for ~55 names** (audit 2026-08-23e):
+  the statistics reducers (AVERAGE/MEDIAN/STDEV.S/VAR.P/…), the distributions, TIME/WEEKDAY/
+  YEARFRAC/DATEDIF, RATE, MIRR, CHOOSE still dispatch to Formula.js while their family's
+  backing reads `internal`. The table is the consolidation DECISION, not the live state, and
+  nothing pins the gap; IRR/XIRR were in that set and answered a bogus 1000 until closed. Either
+  flip each (share the node kernel, the IRR pattern) or split the table into decided/done and
+  pin "done ⇒ registered" (`internalFunctionNames()`).
 - [ ] **Formula surface is open-by-default (the systemic follow-up).** The 2-D dead-name
   set is resolved (COLUMNS/ROWS + HSTACK/VSTACK/CHOOSECOLS/CHOOSEROWS owned sharing their
   node kernels; the D* family eliminated like VLOOKUP). What remains is the ROOT cause: the
