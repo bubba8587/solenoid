@@ -5,7 +5,7 @@ import { isSolError } from "../errorValue";
 import { formatScalar } from "./format";
 import { isUncertain } from "../valueKinds";
 import { histogram, type DistributionKind } from "../monteCarlo";
-import { InlineInputs, InlineNumberField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
+import { InlineInputs, InlineNumberField, InlineTextField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -384,6 +384,12 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
           <InlineNumberField value={mc?.samples ?? 500} onChange={(v) => { node.setMonteCarlo({ samples: v && v >= 1 ? Math.round(v) : 500 }); recompute(); }} />
           <span className="solenoid-node__io-label">Seed</span>
           <InlineNumberField value={mc?.seed ?? 1} onChange={(v) => { node.setMonteCarlo({ seed: v != null ? Math.round(v) : 1 }); recompute(); }} />
+          <span className="solenoid-node__io-label" title="Correlate inputs (Gaussian copula): label ~ label = ρ, several separated by ; — each input keeps its own ± and shape, only the dependence changes">Correlations</span>
+          <InlineTextField
+            value={mc?.correlations ?? ""}
+            onChange={(v) => { node.setMonteCarlo({ correlations: v }); recompute(); }}
+            placeholder={exposed.length >= 2 ? `${exposed[0].label} ~ ${exposed[1].label} = 0.7` : "a ~ b = 0.7"}
+          />
         </div>
       </AdvancedFoot>
     </div>

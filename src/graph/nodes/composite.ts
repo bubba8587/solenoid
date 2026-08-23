@@ -8,7 +8,7 @@ import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
-  mulberry32, sampleUncertain, summarizeSamples,
+  mulberry32, sampleUncertain, summarizeSamples, parseCorrelations, correlationCholesky, sampleCorrelated,
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
@@ -89,6 +89,9 @@ export interface CompositeGoalSeek {
 export interface CompositeMonteCarlo {
   samples: number;
   seed: number;
+  /** `a ~ b = 0.7; c ~ d = -0.3` over exposed-input labels or ids — the Gaussian-copula
+   *  correlation between draws (monteCarlo.ts). Absent / empty = independent. */
+  correlations?: string;
 }
 
 /** Simulation "Stop when" comparator, over the chosen output's numeric value
@@ -1029,10 +1032,27 @@ export class CompositeNode extends ClassicPreset.Node {
       return { port, marker, mean: meanOf(port, marker), spread: marker.uncertainty as number, kind: marker.distribution };
     });
 
+    // Correlated inputs: resolve the card's pairs (labels or ids) onto the uncertain
+    // ports, Cholesky once, then one copula draw per iteration; independent otherwise.
+    const corrText = cfg.correlations?.trim() ?? "";
+    const resolvePort = (name: string): string | undefined =>
+      specs.find((s) => s.port.id === name || s.port.label.trim() === name)?.port.id;
+    const pairs = corrText
+      ? parseCorrelations(corrText).pairs
+          .map((p) => ({ a: resolvePort(p.a), b: resolvePort(p.b), rho: p.rho }))
+          .filter((p): p is { a: string; b: string; rho: number } => !!p.a && !!p.b && p.a !== p.b)
+      : [];
+    const chol = pairs.length ? correlationCholesky(specs.map((s) => s.port.id), pairs) : null;
+
     const rows: Record<string, unknown>[] = [];
     for (let i = 0; i < draws; i++) {
       const overrides: Record<string, unknown> = {};
-      for (const s of specs) overrides[s.port.id] = sampleUncertain(s.mean, { kind: s.kind, spread: s.spread }, rng);
+      if (chol) {
+        const vals = sampleCorrelated(specs.map((s) => ({ mean: s.mean, spec: { kind: s.kind, spread: s.spread } })), chol, rng);
+        specs.forEach((s, k) => { overrides[s.port.id] = vals[k]; });
+      } else {
+        for (const s of specs) overrides[s.port.id] = sampleUncertain(s.mean, { kind: s.kind, spread: s.spread }, rng);
+      }
       rows.push(await this.runPass(inputs, overrides));
     }
 

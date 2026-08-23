@@ -44,8 +44,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
 - [ ] **B1 Relative dates opt-in** (author-requested 2026-08-21; spec below under Small builds).
-- [ ] **B3 Correlated Monte Carlo inputs**: rank correlation between Distribution draws inside
-  the montecarlo run mode (Iman–Conover over the existing draw vectors).
 - [ ] **B4 Simulation trajectory capture**: the simulation run mode emits a per-step FRAME
   output beside the settled state (behavior-over-time charts become wireable).
 - [ ] **B5 Native Polars mirrors for fillBlanks / replaceValues / sliceRows** (cargo parity

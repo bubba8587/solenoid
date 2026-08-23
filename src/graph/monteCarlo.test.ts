@@ -105,3 +105,36 @@ describe("histogram", () => {
     expect(counts).toEqual([3]);
   });
 });
+
+describe("correlated inputs (Gaussian copula) — each marginal kept, only the dependence changes", () => {
+  it("parses `a ~ b = 0.7; c ~ d = -0.3`, rejects malformed / out-of-range / self pairs", async () => {
+    const { parseCorrelations } = await import("./monteCarlo");
+    const r = parseCorrelations("price ~ volume = 0.7; cost ~ price = -0.3, x ~ x = 0.5, y ~ z = 1.5, junk");
+    expect(r.pairs).toEqual([{ a: "price", b: "volume", rho: 0.7 }, { a: "cost", b: "price", rho: -0.3 }]);
+    expect(r.rejected).toEqual(["x ~ x = 0.5", "y ~ z = 1.5", "junk"]);
+  });
+  it("induces the requested correlation between two normal inputs and keeps their mean / sd", async () => {
+    const { mulberry32, parseCorrelations, correlationCholesky, sampleCorrelated } = await import("./monteCarlo");
+    const rng = mulberry32(11);
+    const L = correlationCholesky(["a", "b"], parseCorrelations("a ~ b = 0.8").pairs);
+    const specs = [{ mean: 100, spec: { kind: "normal" as const, spread: 10 } }, { mean: 5, spec: { kind: "uniform" as const, spread: 2 } }];
+    const xs: number[] = [], ys: number[] = [];
+    for (let i = 0; i < 6000; i++) { const [x, y] = sampleCorrelated(specs, L, rng); xs.push(x); ys.push(y); }
+    const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+    const mx = mean(xs), my = mean(ys);
+    const sx = Math.sqrt(mean(xs.map((v) => (v - mx) ** 2))), sy = Math.sqrt(mean(ys.map((v) => (v - my) ** 2)));
+    expect(mx).toBeCloseTo(100, 0); expect(sx).toBeCloseTo(10, 0);       // normal marginal kept
+    expect(my).toBeCloseTo(5, 0); expect(sy).toBeCloseTo(2 / Math.sqrt(3), 1); // uniform(3, 7) marginal kept
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(3); expect(Math.max(...ys)).toBeLessThanOrEqual(7);
+    const r = mean(xs.map((v, i) => ((v - mx) / sx) * ((ys[i] - my) / sy)));
+    expect(r).toBeGreaterThan(0.7); expect(r).toBeLessThan(0.85);          // ≈ 0.8 on the normal scores, slightly less after the uniform map
+  });
+  it("an inconsistent correlation set is softened to the nearest feasible one, never refused", async () => {
+    const { correlationCholesky } = await import("./monteCarlo");
+    // a~b = 0.9, b~c = 0.9, a~c = -0.9 cannot all hold; the factor still exists.
+    const L = correlationCholesky(["a", "b", "c"], [{ a: "a", b: "b", rho: 0.9 }, { a: "b", b: "c", rho: 0.9 }, { a: "a", b: "c", rho: -0.9 }]);
+    expect(L).toHaveLength(3);
+    expect(L.every((row) => row.every(Number.isFinite))).toBe(true);
+    expect(L[1][0]).toBeLessThan(0.9); // shrunk
+  });
+});
