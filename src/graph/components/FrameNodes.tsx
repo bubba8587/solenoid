@@ -117,13 +117,26 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     else delete data.stringLiterals.layout;
     scheduleAutosave();
   }
+  // The Form-view layout is opt-in: an unauthored one stays hidden behind a button so the
+  // card isn't carrying an empty textarea most Frame Inputs never fill.
+  const [showLayout, setShowLayout] = useState(false);
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Frame">
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
-      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} />
-      <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="+ Add lambda" />
+      {data.stringLiterals.layout || showLayout ? (
+        <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+      ) : (
+        <button
+          type="button"
+          className="solenoid-node__add-input"
+          onClick={(e) => { e.stopPropagation(); setShowLayout(true); }}
+        >
+          + Add Form layout
+        </button>
+      )}
       <FrameDisplay
         frame={data.cachedResult} label={data.label} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys}
