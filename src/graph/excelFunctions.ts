@@ -8,6 +8,7 @@ import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
+import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -747,6 +748,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TRUNCATETEXT: { returns: "string", arity: [2, 3], family: "text", native: true },
   SPELLNUMBER: { returns: "string", arity: [1, 1], family: "text", native: true },
   DECODEURL:   { returns: "string", arity: [1, 1], family: "text", native: true },
+  ENCODEBASE64: { returns: "string", arity: [1, 1], family: "text", native: true },
+  DECODEBASE64: { returns: "string", arity: [1, 1], family: "text", native: true },
+  HASH:        { returns: "string", arity: [1, 2], family: "text", native: true },
+  UUID:        { returns: "string", arity: [0, 0], family: "text", native: true },
   LOG2:        { returns: "number", arity: [1, 1], native: true },
   HYPOTENUSE:  { returns: "number", arity: [2, 2], native: true },
   NAND:        { returns: "logical", arity: [1, 255], native: true },
@@ -2125,6 +2130,15 @@ registerInternal("PADTEXT", (t, width, side, fill) => {
 registerInternal("TRUNCATETEXT", (t, width, ellipsis) => (t == null ? null : truncateText(toStr(t), toNum(width), ellipsis == null ? "…" : toStr(ellipsis))));
 registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
 registerInternal("DECODEURL", (t) => (t == null ? null : urlEncode("decode", toStr(t))));
+registerInternal("ENCODEBASE64", (t) => (t == null ? null : urlEncode("base64", toStr(t))));
+registerInternal("DECODEBASE64", (t) => (t == null ? null : urlEncode("unbase64", toStr(t))));
+registerInternal("HASH", (t, algorithm) => {
+  if (t == null) return null;
+  const a = (algorithm == null ? "sha256" : String(algorithm).trim().toLowerCase().replace(/[-_\s]/g, "")) as HashAlgorithm;
+  if (!(a in HASH_ALGORITHM_META)) return solError("#DOMAIN!", `HASH algorithm must be one of ${Object.keys(HASH_ALGORITHM_META).join(", ")}`);
+  return hashText(toStr(t), a);
+});
+registerInternal("UUID", () => uuidV4());
 // LOG2's node answers null for x ≤ 0 (its family's quiet-null convention), not a
 // #DOMAIN! the card never shows.
 registerInternal("LOG2", (x) => {

@@ -46,7 +46,7 @@ import {
   SumProductNode, TBillNode, 
   HypothesisTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode, PadTextNode, TruncateTextNode,
-  TodayNowNode, UrlEncodeNode, WeekInfoNode, 
+  TodayNowNode, UrlEncodeNode, HashNode, WeekInfoNode, 
   WeightedNode,
   ResistorCodeNode,
   AlertNode, ColorBlendNode,
@@ -311,6 +311,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "text-upper", ctor: TextTransformNode, kind: "operation" },
   { type: "date-today", ctor: TodayNowNode, kind: "operation" },
   { type: "url-encode", ctor: UrlEncodeNode, kind: "operation" },
+  { type: "hash", ctor: HashNode, kind: "argument" },
   { type: "date-week-weekday", ctor: WeekInfoNode, kind: "operation" },
   { type: "weighted-wavg", ctor: WeightedNode, kind: "operation" },
 

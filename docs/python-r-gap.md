@@ -62,8 +62,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
     engines, corpus-pinned).
 31. **Histogram 2-D / heatmap binning** (`histogram2d`, `hexbin`): scatter → counts grid for
     the Heatmap figure. Cheap.
-32. **Hash / UUID / anonymize** (`hashlib`, `uuid`, `digest`): hash a column for joins
-    without PII. Sync hash needs a small lib (or FNV/xxhash inline). Cheap, niche-but-sticky.
+32. **Hash / UUID / Base64** — LANDED 2026-08-23 (Hash card: SHA-256 / SHA-1 / MD5 / CRC-32 /
+    FNV-1a, pure sync implementations pinned against hashlib; UUID source node (volatile);
+    ENCODEBASE64 / DECODEBASE64 on the url-encode card; HASH / UUID formulas).
 
 ## Tier 3 — out of character or already covered by composition (recorded so nobody re-asks)
 

@@ -17,7 +17,8 @@ import { fftReal, spectrum } from "./listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "./matrix";
 import { SpectrumNode } from "./list";
 import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "./textOps";
-import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode } from "./text";
+import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode } from "./text";
+import { requestRecalc } from "../process";
 import { unaccent, slugify, padText, truncateText } from "./textOps";
 import { argsortList, whichPositions } from "./listOps";
 import { ArgMinMaxNode } from "./list";
@@ -583,5 +584,36 @@ describe("Returns card — pandas pct_change / cumprod, PerformanceAnalytics (re
     close(ev("CUMRETURNS(r)"), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
     close(ev("DRAWDOWN(p)"), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
     close(ev("LOGRETURNS(p)"), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
+  });
+});
+
+describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in hashOps.test.ts)", () => {
+  const ev = (e: string) => compileEvaluator(e)!({});
+  it("the Hash card broadcasts and follows its algorithm; HASH(text, [algorithm]) agrees", () => {
+    const n = new HashNode({ op: "md5" });
+    expect(n.data({ text: [["abc", "hello world"]] }).result).toEqual(["900150983cd24fb0d6963f7d28e17f72", "5eb63bbbe01eeed093cb22bb8f5acdc3"]);
+    n.op = "crc32";
+    expect(n.data({ text: ["abc"] }).result).toBe("352441c2");
+    expect(ev('HASH("abc")')).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    expect(ev('HASH("abc", "SHA-1")')).toBe("a9993e364706816aba3e25717850c26c9cd0d89d");
+    expect(ev('HASH("abc", "fnv1a64")')).toBe("e71fa2190541574b");
+    expect((ev('HASH("abc", "blake")') as { code?: string }).code).toBe("#DOMAIN!");
+  });
+  it("UUID is stable within a recalculation and fresh after one; the formula is volatile", async () => {
+    const n = new UuidNode();
+    const a = n.data().result;
+    expect(a).toMatch(/^[0-9a-f-]{36}$/);
+    expect(n.data().result).toBe(a);
+    await requestRecalc();
+    expect(n.data().result).not.toBe(a);
+    expect(ev("UUID()")).not.toBe(ev("UUID()"));
+  });
+  it("ENCODEBASE64 / DECODEBASE64 ride the url-encode card; bad base64 passes through", () => {
+    expect(new UrlEncodeNode({ op: "base64" }).data({ text: ["hello world"] }).result).toBe("aGVsbG8gd29ybGQ=");
+    expect(new UrlEncodeNode({ op: "unbase64" }).data({ text: ["aGVsbG8gd29ybGQ="] }).result).toBe("hello world");
+    expect(new UrlEncodeNode({ op: "unbase64" }).label).toBe("DECODEBASE64");
+    expect(ev('ENCODEBASE64("abc")')).toBe("YWJj");
+    expect(ev('DECODEBASE64("YWJj")')).toBe("abc");
+    expect(ev('DECODEBASE64("not base64!")')).toBe("not base64!");
   });
 });

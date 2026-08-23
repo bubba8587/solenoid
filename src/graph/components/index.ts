@@ -248,6 +248,8 @@ export { TextFilterComponent } from "./TextFilterNode";
 export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";
+export { HashComponent } from "./HashNode";
+export { UuidComponent } from "./UuidNode";
 
 // ─── Date & Time ──────────────────────────────────────────────────────────────
 export {

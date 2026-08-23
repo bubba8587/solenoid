@@ -6,6 +6,9 @@ import {
   broadcastCells, readInput, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
+import { hashText, uuidV4, type HashAlgorithm } from "./hashOps";
+export { HASH_ALGORITHM_META } from "./hashOps";
+export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops, shared verbatim with the formula surface; re-exported so the node
@@ -848,6 +851,8 @@ export class NumberValueNode extends ClassicPreset.Node {
 
 // ─── ENCODEURL / DECODEURL ────────────────────────────────────────────────────
 
+export const URL_ENCODE_LABEL: Record<UrlEncodeOp, string> = { encode: "ENCODEURL", decode: "DECODEURL", base64: "ENCODEBASE64", unbase64: "DECODEBASE64" };
+
 export class UrlEncodeNode extends ClassicPreset.Node {
   label: string;
   op: UrlEncodeOp;
@@ -858,7 +863,7 @@ export class UrlEncodeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: UrlEncodeOp }) {
     super("UrlEncode");
     this.op    = init?.op ?? "encode";
-    this.label = init?.label ?? (this.op === "encode" ? "ENCODEURL" : "DECODEURL");
+    this.label = init?.label ?? URL_ENCODE_LABEL[this.op];
     this.addInput("text", strComboIn("Text"));
     this.addOutput("result", strComboOut("Result"));
   }
@@ -867,6 +872,55 @@ export class UrlEncodeNode extends ClassicPreset.Node {
     const result = broadcastCells((text: string) => urlEncode(this.op, text), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
+  }
+}
+
+// ─── HASH / UUID ─────────────────────────────────────────────────────────────
+
+export class HashNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Lowercase hex of the UTF-8 text; the same text always hashes the same, so hashed keys still join.",
+  };
+  label: string;
+  op: HashAlgorithm;
+  cachedText: CellResult<string> = null;
+  stringLiterals: Record<string, string> = { text: "" };
+  width = 190; height = 170;
+
+  constructor(init?: { label?: string; op?: HashAlgorithm }) {
+    super("Hash");
+    this.label = init?.label ?? "Hash";
+    this.op = init?.op ?? "sha256";
+    this.addInput("text", strComboIn("Text"));
+    this.addOutput("result", strComboOut("Digest"));
+  }
+
+  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells((t: string) => hashText(t, this.op), strVal(inputs.text, this, "text"));
+    this.cachedText = result;
+    return { result };
+  }
+}
+
+/** A fresh random v4 UUID per recalculation (F9) — a volatile source like RAND. */
+export class UuidNode extends ClassicPreset.Node {
+  label: string;
+  cachedText: string | null = null;
+  private lastGen = -1;
+  private value = "";
+  width = 260; height = 104;
+
+  constructor(init?: { label?: string }) {
+    super("Uuid");
+    this.label = init?.label ?? "UUID";
+    this.addOutput("result", strOut("UUID"));
+  }
+
+  data(): { result: string } {
+    const gen = getRecalcGen();
+    if (this.lastGen !== gen) { this.value = uuidV4(); this.lastGen = gen; }
+    this.cachedText = this.value;
+    return { result: this.value };
   }
 }
 

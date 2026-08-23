@@ -247,6 +247,10 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   WHICH: "flags",
   SPELLNUMBER: "number",
   DECODEURL: "text",
+  ENCODEBASE64: "text",
+  DECODEBASE64: "text",
+  HASH: "text, [algorithm]",
+  UUID: "",
   DOLLAR: "number, [decimals]",
   // ── statistics ──
   "RANK.EQ": "value, array, [order]",

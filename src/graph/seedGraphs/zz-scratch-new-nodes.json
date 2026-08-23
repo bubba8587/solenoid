@@ -1853,6 +1853,100 @@
    "init": {
     "label": "Week | Size (side by side)"
    }
+  },
+  {
+   "id": "h_sha",
+   "type": "HashNode",
+   "x": 5200,
+   "y": 3120,
+   "init": {
+    "label": "Hash (SHA-256)",
+    "op": "sha256"
+   },
+   "stringLiterals": {
+    "text": "customer-0042"
+   }
+  },
+  {
+   "id": "d_hsha",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 3120,
+   "init": {
+    "label": "sha256 hex"
+   }
+  },
+  {
+   "id": "h_md5",
+   "type": "HashNode",
+   "x": 5200,
+   "y": 3320,
+   "init": {
+    "label": "Hash (MD5)",
+    "op": "md5"
+   },
+   "stringLiterals": {
+    "text": "abc"
+   }
+  },
+  {
+   "id": "d_hmd5",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 3320,
+   "init": {
+    "label": "900150983cd24fb0d6963f7d28e17f72"
+   }
+  },
+  {
+   "id": "b64e",
+   "type": "UrlEncodeNode",
+   "x": 5200,
+   "y": 3520,
+   "init": {
+    "label": "ENCODEBASE64",
+    "op": "base64"
+   },
+   "stringLiterals": {
+    "text": "hello world"
+   }
+  },
+  {
+   "id": "b64d",
+   "type": "UrlEncodeNode",
+   "x": 5600,
+   "y": 3520,
+   "init": {
+    "label": "DECODEBASE64",
+    "op": "unbase64"
+   }
+  },
+  {
+   "id": "d_b64",
+   "type": "DisplayNode",
+   "x": 6000,
+   "y": 3520,
+   "init": {
+    "label": "round trip"
+   }
+  },
+  {
+   "id": "uuid1",
+   "type": "UuidNode",
+   "x": 5200,
+   "y": 3700,
+   "init": {
+    "label": "UUID"
+   }
+  },
+  {
+   "id": "d_uuid",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 3700,
+   "init": {
+    "label": "new on F9"
+   }
   }
  ],
  "connections": [
@@ -2742,6 +2836,36 @@
    "source": "bind_cols",
    "sourceOutput": "frame",
    "target": "d_bind",
+   "targetInput": "in"
+  },
+  {
+   "source": "h_sha",
+   "sourceOutput": "result",
+   "target": "d_hsha",
+   "targetInput": "in"
+  },
+  {
+   "source": "h_md5",
+   "sourceOutput": "result",
+   "target": "d_hmd5",
+   "targetInput": "in"
+  },
+  {
+   "source": "b64e",
+   "sourceOutput": "result",
+   "target": "b64d",
+   "targetInput": "text"
+  },
+  {
+   "source": "b64d",
+   "sourceOutput": "result",
+   "target": "d_b64",
+   "targetInput": "in"
+  },
+  {
+   "source": "uuid1",
+   "sourceOutput": "result",
+   "target": "d_uuid",
    "targetInput": "in"
   }
  ]

@@ -1,10 +1,11 @@
+import { base64Encode, base64Decode } from "./hashOps";
 import { solError, type SolError } from "../errorValue";
 // The ONE implementation behind both the visual node and the formula registration.
 // Separate from `text.ts` because that imports `excelFunctions` — the other
 // direction would cycle and drag rete into the headless formula path.
 
 export type TextAfterBeforeOp = "after" | "before";
-export type UrlEncodeOp = "encode" | "decode";
+export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
 /** TEXTSPLIT over one string — a BLANK delimiter splits into characters. */
@@ -21,11 +22,16 @@ export function textAfterBefore(op: TextAfterBeforeOp, text: string, delimiter: 
   return op === "after" ? text.slice(idx + delimiter.length) : text.slice(0, idx);
 }
 
-/** ENCODEURL / DECODEURL over one string — a malformed escape (which makes
- *  `decodeURIComponent` throw) passes the text through unchanged. */
+/** ENCODEURL / DECODEURL / ENCODEBASE64 / DECODEBASE64 over one string — a malformed
+ *  escape or non-base64 text passes through unchanged. */
 export function urlEncode(op: UrlEncodeOp, text: string): string {
   try {
-    return op === "encode" ? encodeURIComponent(text) : decodeURIComponent(text);
+    switch (op) {
+      case "encode":   return encodeURIComponent(text);
+      case "decode":   return decodeURIComponent(text);
+      case "base64":   return base64Encode(text);
+      case "unbase64": return base64Decode(text) ?? text;
+    }
   } catch {
     return text;
   }

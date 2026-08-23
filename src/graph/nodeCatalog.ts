@@ -26,7 +26,7 @@ import {
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
-  TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode,
+  TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode,
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
@@ -884,6 +884,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [
             { type: "url-encode", label: "ENCODEURL", description: "Percent-encode a string for use in a URL. Spaces become %20. Excel: ENCODEURL.", create: () => new UrlEncodeNode({ op: "encode" }), parity: false },
             { type: "url-decode", label: "DECODEURL", description: "Decode a percent-encoded URL string; %20 becomes a space.", create: () => new UrlEncodeNode({ op: "decode" }), parity: false },
+          ]},
+          { type: "pair", children: [
+            { type: "base64-encode", label: "ENCODEBASE64", description: "Base64 of the UTF-8 text, standard alphabet with padding. Python base64.b64encode, R base64enc. No Excel equivalent.", create: () => new UrlEncodeNode({ op: "base64" }), parity: false, keywords: "base64 encode b64encode" },
+            { type: "base64-decode", label: "DECODEBASE64", description: "Text back from base64; non-base64 input passes through unchanged. No Excel equivalent.", create: () => new UrlEncodeNode({ op: "unbase64" }), parity: false, keywords: "base64 decode b64decode" },
+          ]},
+          { type: "pair", children: [
+            { type: "hash", label: "Hash", description: "Digest of a text: SHA-256, SHA-1, MD5, CRC-32 or FNV-1a, as lowercase hex. Hash an ID column to join on it without carrying the raw key. Python hashlib / zlib.crc32, R digest. No Excel equivalent.", create: () => new HashNode(), parity: false, keywords: "hash digest sha256 sha1 md5 crc32 fnv checksum anonymize anonymise pseudonymize fingerprint hashlib" },
+            { type: "uuid", label: "UUID", description: "A random v4 UUID, new on every recalculation (F9). Python uuid.uuid4, R uuid::UUIDgenerate. No Excel equivalent.", create: () => new UuidNode(), parity: false, keywords: "uuid guid unique id identifier random key uuid4" },
           ]},
         ],
       },
