@@ -53,6 +53,8 @@ is parked there.
   override instead of falling through to Formula.js. Read before deleting an
   override or widening the fallthrough; the library being wrong is the whole
   reason the override exists.
+- **`upstream-formulajs.md`** — the subset of those divergences that are genuine
+  Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
 - **`pack-architecture.md`** — the lean-core + packs design (framework BUILT;
   this is the authoring guide + rationale).
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes (parked —
