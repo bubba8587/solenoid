@@ -95,6 +95,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   RSQ: "known_ys, known_xs",
   "FORECAST.LINEAR": "x, known_ys, known_xs",
   "FORECAST.ETS": "target_date, values, timeline, [seasonality], [data_completion], [aggregation]",
+  FITDIST: "sample, [family]",
   "FORECAST.ETS.CONFINT": "target_date, values, timeline, [confidence_level], [seasonality], [data_completion], [aggregation]",
   "FORECAST.ETS.SEASONALITY": "values, [timeline], [data_completion], [aggregation]",
   STANDARDIZE: "x, mean, sd",

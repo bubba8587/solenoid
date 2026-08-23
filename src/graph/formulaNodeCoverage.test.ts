@@ -42,6 +42,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   NTILE: "Bin node (quantiles mode)", ISOUTLIER: "Outliers node", FROMEPOCH: "Epoch → Date node", TOEPOCH: "Date → Epoch node",
   DATETRUNC: "Truncate Date node",
   LEVENSHTEIN: "Text Similarity node (edit distance)", SIMILARITY: "Text Similarity node",
+  FITDIST: "Fit Distribution node",
   SOLVE: "Solve A·x = b node", EIGENVALUES: "Eigen (symmetric) node", EIGENVECTORS: "Eigen (symmetric) node", SPECTRUM: "Spectrum (FFT) node",
   // the Hypothesis Test card's non-Excel ops
   KRUSKAL: "Hypothesis Test (Kruskal–Wallis op)", MANNWHITNEY: "Hypothesis Test (Mann–Whitney op)",

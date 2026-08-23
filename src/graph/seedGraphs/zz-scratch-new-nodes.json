@@ -1418,6 +1418,57 @@
    "init": {
     "label": "rank within region"
    }
+  },
+  {
+   "id": "src_gamma",
+   "type": "ListInputNode",
+   "x": 4100,
+   "y": 2100,
+   "init": {
+    "label": "Sample (gamma-ish)",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "7.4389, 7.0784, 4.2628, 11.3314, 2.2322, 9.7956, 4.6617, 13.7808, 5.1595, 5.4566, 4.7872, 8.1846, 5.6672, 6.4493, 13.129, 6.394, 5.1117, 6.4762, 2.3036, 5.246, 7.2517, 3.4755, 7.4499, 5.7517, 10.1216, 2.9205, 6.6571, 7.7163, 11.8068, 6.9024, 5.9902, 2.6746, 0.9033, 3.4356, 7.0956, 13.7236, 6.2137, 5.8193, 12.6582, 6.2766, 4.1088, 13.7812, 11.7664, 3.8905, 4.3267, 15.2916, 5.2635, 3.5484, 3.9636, 8.1063, 1.9613, 4.0894, 10.3154, 6.8206, 8.7222, 5.8892, 2.473, 4.508, 6.3519, 4.505"
+   }
+  },
+  {
+   "id": "fitd",
+   "type": "FitDistributionNode",
+   "x": 4460,
+   "y": 2100,
+   "init": {
+    "label": "Fit Distribution"
+   }
+  },
+  {
+   "id": "d_fit_rank",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 2100,
+   "init": {
+    "label": "ranking"
+   }
+  },
+  {
+   "id": "d_fit_best",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 2240,
+   "init": {
+    "label": "best"
+   }
+  },
+  {
+   "id": "d_fit_params",
+   "type": "DisplayNode",
+   "x": 4860,
+   "y": 2360,
+   "init": {
+    "label": "params"
+   }
   }
  ],
  "connections": [
@@ -2109,6 +2160,30 @@
    "source": "win_rank",
    "sourceOutput": "frame",
    "target": "d_win_rank",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_gamma",
+   "sourceOutput": "list",
+   "target": "fitd",
+   "targetInput": "list"
+  },
+  {
+   "source": "fitd",
+   "sourceOutput": "ranking",
+   "target": "d_fit_rank",
+   "targetInput": "in"
+  },
+  {
+   "source": "fitd",
+   "sourceOutput": "best",
+   "target": "d_fit_best",
+   "targetInput": "in"
+  },
+  {
+   "source": "fitd",
+   "sourceOutput": "params",
+   "target": "d_fit_params",
    "targetInput": "in"
   }
  ]

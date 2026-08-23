@@ -1,10 +1,12 @@
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { fillBorderedGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
+import { fitAll, FIT_FAMILIES, type DistFit, type FitFamily } from "./fitOps";
+import type { FrameValue } from "../frame";
 import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
@@ -1120,3 +1122,56 @@ export class EtsForecastNode extends ClassicPreset.Node {
     return { forecast: this.cachedForecast, interval: this.cachedInterval, detected: this.cachedSeason };
   }
 }
+
+// ─── FIT DISTRIBUTION (scipy .fit / fitdistrplus / @RISK fit) ─────────────────
+export const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
+  normal: "Normal", lognorm: "Lognormal", expon: "Exponential", gamma: "Gamma", weibull: "Weibull",
+  uniform: "Uniform", beta: "Beta", poisson: "Poisson",
+};
+
+export class FitDistributionNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A sample of values. Families whose support the data leaves (a negative value for Lognormal, a non-integer for Poisson) are skipped, not errors.",
+    ranking: "Every family the data supports, best AIC first: family, parameters (the Distribution node's own), log-likelihood, AIC, KS distance.",
+    best: "The family with the lowest AIC.",
+    params: "That family's parameters, in the Distribution node's order — wire them straight into it.",
+  };
+  label: string;
+  cachedRanking: FrameValue | SolError | null = null;
+  cachedBest: string | null = null;
+  cachedParams: number[] | null = null;
+  width = 200; height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("FitDistribution");
+    this.label = init?.label ?? "Fit Distribution";
+    this.addInput("list", listIn("Sample"));
+    this.addOutput("ranking", frameOut("Ranking"));
+    this.addOutput("best", strOut("Best family"));
+    this.addOutput("params", numListOut("Parameters"));
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][] }) {
+    const prep = forAggregate(inputs.list?.[0] ?? []);
+    if (prep.error) { this.cachedRanking = prep.error; this.cachedBest = null; this.cachedParams = null; return { ranking: prep.error, best: null, params: null }; }
+    const fits = fitAll(prep.nums);
+    if (fits.length === 0) { this.cachedRanking = null; this.cachedBest = null; this.cachedParams = null; return { ranking: null, best: null, params: null }; }
+    const pname = (f: DistFit, i: number) => f.paramNames[i] ?? "";
+    const pval = (f: DistFit, i: number) => (i < f.params.length ? f.params[i] : null);
+    const ranking: FrameValue = { __frame: true, columns: [
+      { name: "family", type: "string", values: fits.map((f) => FIT_FAMILY_LABEL[f.family]) },
+      { name: "parameter 1", type: "string", values: fits.map((f) => pname(f, 0)) },
+      { name: "value 1", type: "number", values: fits.map((f) => pval(f, 0)) },
+      { name: "parameter 2", type: "string", values: fits.map((f) => pname(f, 1)) },
+      { name: "value 2", type: "number", values: fits.map((f) => pval(f, 1)) },
+      { name: "log-likelihood", type: "number", values: fits.map((f) => f.logLik) },
+      { name: "AIC", type: "number", values: fits.map((f) => f.aic) },
+      { name: "KS", type: "number", values: fits.map((f) => f.ks) },
+    ] };
+    this.cachedRanking = ranking;
+    this.cachedBest = FIT_FAMILY_LABEL[fits[0].family];
+    this.cachedParams = fits[0].params;
+    return { ranking, best: this.cachedBest, params: this.cachedParams };
+  }
+}
+export { FIT_FAMILIES };

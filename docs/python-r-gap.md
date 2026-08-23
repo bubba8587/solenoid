@@ -45,7 +45,7 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
     "Returns" node; all compose today from Running + LN but nobody knows the recipe. Cheap.
 23. **Seasonal decomposition** (`seasonal_decompose`, R `decompose`/`stl`): trend (moving
     average) / seasonal / residual frames. Moderate; pairs with Holt-Winters.
-24. **Distribution fitting** (`scipy.stats.fit`, `fitdistrplus`) — already queued (backlog B2).
+24. **Distribution fitting** — LANDED 2026-08-23 (Fit Distribution node + FITDIST; MLE for normal / lognormal / exponential / gamma / Weibull / uniform / Poisson, moments for beta; AIC ranking + KS).
 25. **Logistic regression** (`LogisticRegression`, `glm(binomial)`): IRLS on the existing
     linear-algebra kernels; the LINEST sibling. Moderate.
 26. **K-means (1-D/2-D) and PCA** (`KMeans`, `prcomp`): k-means trivial; PCA = eigh of the

@@ -6,6 +6,7 @@ import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
+import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, type TextFilterOp, type SimilarityMethod } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
@@ -576,6 +577,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "NETWORKDAYS.INTL": { returns: "number", arity: [2, 4], family: "datetime" },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   "FORECAST.ETS": { returns: "number", listArgs: true, arity: [3, 6], family: "statistics" },
+  FITDIST:     { returns: "any", rank: "list", listArgs: true, arity: [1, 2], native: true },
   "FORECAST.ETS.CONFINT": { returns: "number", listArgs: true, arity: [3, 7], family: "statistics" },
   "FORECAST.ETS.SEASONALITY": { returns: "number", listArgs: true, arity: [1, 4], family: "statistics" },
   COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
@@ -1429,6 +1431,16 @@ registerInternal("FORECAST.ETS.CONFINT", (target, values, timeline, confidence, 
   return p ? etsInterval(p.fit, p.h, c) : solError("#VALUE!", "FORECAST.ETS.CONFINT needs 3+ values on an equally spaced timeline and a target past its end");
 });
 registerInternal("FORECAST.ETS.SEASONALITY", (values) => { const y = numsOf(values); const m = detectSeason(y); return m > 1 ? m : 0; });
+// FITDIST on the Fit Distribution node's kernel: FITDIST(sample) → the best family's name;
+// FITDIST(sample, family) → that family's parameters (the Distribution node's order).
+registerInternal("FITDIST", (sample, family) => {
+  const y = numsOf(sample);
+  if (family == null) { const fits = fitAll(y); return fits.length ? fits[0].family : solError("#VALUE!", "FITDIST needs 3+ values a family can fit"); }
+  const key = String(family).trim().toLowerCase().replace(/^lognormal$/, "lognorm").replace(/^exponential$/, "expon") as FitFamily;
+  if (!FIT_FAMILIES.includes(key)) return solError("#DOMAIN!", `FITDIST family must be one of ${FIT_FAMILIES.join(", ")}`);
+  const fit = fitDistribution(y, key);
+  return fit ? fit.params : solError("#VALUE!", `The sample can't be fitted as ${key} (support or size)`);
+});
 // FORECAST.LINEAR runs the NODE'S fit; the superseded FORECAST redirects
 // (LEGACY_ALIASES). A range function — both known-value args arrive whole.
 registerInternal("FORECAST.LINEAR", (x, ys, xs) => {

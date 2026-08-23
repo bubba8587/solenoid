@@ -360,3 +360,4 @@ export { AmortizationComponent } from "./AmortizationNode";
 export { SpectrumComponent } from "./SpectrumNode";
 export { TextSimilarityComponent, FuzzyMatchComponent } from "./TextSimilarityNode";
 export { EtsForecastComponent } from "./EtsForecastNode";
+export { FitDistributionComponent } from "./FitDistributionNode";
