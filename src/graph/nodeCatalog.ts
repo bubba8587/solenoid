@@ -517,7 +517,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Transform", description: "Element-wise transforms: differences, rolling aggregates, rescaling, binning, shifting.",
         children: [
           { type: "pair", children: [
-            { type: "list-diff",       label: "DIFF",       description: "Change between consecutive values: absolute difference (Δ) or percent change (pandas pct_change). Pick on the node.", create: () => new DiffNode(), keywords: "difference diff delta change percent pct_change growth rate return consecutive derivative" },
+            { type: "list-diff",       label: "DIFF",       description: "Change between consecutive values: absolute difference (Δ, numpy diff), percent change (pandas pct_change), or the central-difference gradient (∇, numpy gradient — same length). Pick on the node.", create: () => new DiffNode(), keywords: "difference diff delta change percent pct_change growth rate return consecutive derivative gradient slope numpy" },
             { type: "list-running", label: "Running", description: "One aggregate per element over a window: SUM / AVERAGE / MIN / MAX / MEDIAN / PRODUCT / STDEV of everything so far (the running total) or of the last N (the moving average).", create: () => new RunningNode(), keywords: "running total cumulative rolling moving average sliding window prefix sum accumulate expanding cumsum min max median product stdev" },
           ]},
           { type: "pair", children: [

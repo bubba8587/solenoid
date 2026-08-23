@@ -146,6 +146,7 @@
 /* Content-filter pills (To-do only / Out of scope) — grouped, pushed right. */
 .fr-filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
   margin-left: auto;
 }
@@ -431,3 +432,6 @@
   white-space: normal;
   text-wrap-style: pretty;
 }
+
+/* A hairline between the scope pills and the library chips. */
+.fr-filters__sep { width: 1px; align-self: stretch; margin: 2px 4px; box-shadow: inset 1px 0 0 var(--border); }
