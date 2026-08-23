@@ -235,42 +235,48 @@ export function TablePopup() {
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
     return isSolError(v) ? v.code : String(v);
   };
-  const shownBase = rowsTruncated ? grid.slice(0, MAX_VISIBLE_ROWS) : grid;
-  const shownGrid = hasComputed
-    ? shownBase.map((_, r) => Array.from({ length: cols }, (_c, c) => rawAt(r, c)))
-    : shownBase;
+  // The grid is addressed ROW BY ROW from here on, over the FULL dataset: the sort ranks
+  // every row, Copy/CSV/Export emit every row, and only the RENDER takes the first
+  // MAX_VISIBLE_ROWS of the sorted order (the DOM budget). Nothing pre-slices.
+  const rawRow = (r: number): string[] =>
+    hasComputed ? Array.from({ length: cols }, (_c, c) => rawAt(r, c)) : (grid[r] ?? []);
 
   const hasDateCols = state.columnTypes?.some(t => t === "date") || state.cellType === "date";
   // A frame popup carries per-column types; a plain Table/list does not.
   const isFramePopup = !!state.columnTypes;
   const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols));
   // Display-only: `grid` (raw text) is ALWAYS the edit/save truth.
-  const displayGrid = formattedPreview
-    ? shownGrid.map((row) => row.map((raw, c) => {
+  const displayRowAt = (r: number): string[] => {
+    const row = rawRow(r);
+    if (formattedPreview) {
+      return row.map((raw, c) => {
         const type = colTypeAt(c);
         const f = formatFrameCell(type, coerceFrameCell(type, raw ?? ""));
         return f == null ? "" : String(f);
-      }))
-    : (!editable && (isFramePopup || hasDateCols))
-      ? shownGrid.map((row, r) => row.map((cell, c) => {
-          const type = colTypeAt(c);
-          if (displayMode === "formatted") {
-            if (type === "date") {
-              // toGrid renders a blank as "", and `Number("")` is 0 — a REAL serial
-              // (30-Dec-1899), so an unguarded parse prints a date for a missing cell.
-              if (cell.trim() === "") return cell;
-              const n = Number(cell);
-              return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : cell;
-            }
-            return cell;
+      });
+    }
+    if (!editable && (isFramePopup || hasDateCols)) {
+      return row.map((cell, c) => {
+        const type = colTypeAt(c);
+        if (displayMode === "formatted") {
+          if (type === "date") {
+            // toGrid renders a blank as "", and `Number("")` is 0 — a REAL serial
+            // (30-Dec-1899), so an unguarded parse prints a date for a missing cell.
+            if (cell.trim() === "") return cell;
+            const n = Number(cell);
+            return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : cell;
           }
-          // Source: the inputted text verbatim if we have it, else the underlying form.
-          const src = state.sourceCells?.[r]?.[c];
-          if (src != null) return src;
-          if (type === "logical") return cell === "TRUE" ? "1" : cell === "FALSE" ? "0" : cell;
           return cell;
-        }))
-      : shownGrid;
+        }
+        // Source: the inputted text verbatim if we have it, else the underlying form.
+        const src = state.sourceCells?.[r]?.[c];
+        if (src != null) return src;
+        if (type === "logical") return cell === "TRUE" ? "1" : cell === "FALSE" ? "0" : cell;
+        return cell;
+      });
+    }
+    return row;
+  };
 
   // The format+unit row re-renders the ON-SCREEN grid only — Copy/CSV stay raw.
   const showFmtControls = !!state.formatControls && view === "grid" && !state.list;
@@ -335,27 +341,33 @@ export function TablePopup() {
     return String(v);
   }
 
-  // A pure render transpose — `grid`/`displayGrid` stay the 1×N truth, and lists are
-  // read-only here so no edit-index remap is needed.
+  // A pure render transpose — `grid` stays the 1×N truth, and lists are read-only here
+  // so no edit-index remap is needed.
   const vertical = !!state.list && listVertical;
-  const listLen = displayGrid[0]?.length ?? 0;
+  const listLen = grid[0]?.length ?? 0;
   const listTruncated = vertical && listLen > MAX_VISIBLE_ROWS; // cap rows like a tall table
   // formatRenderActive ⇒ not a list, so `vertical` is false here.
-  const controlledSrc: CellValue[][] = editable ? shownGrid : state.data;
-  const onScreenGrid: string[][] = formatRenderActive
-    ? controlledSrc.slice(0, MAX_VISIBLE_ROWS).map((row) =>
-        Array.from({ length: cols }, (_, c) => controlledCell(row[c], c)))
-    : displayGrid;
-  const viewGrid = vertical
-    ? (displayGrid[0] ?? []).slice(0, MAX_VISIBLE_ROWS).map((v) => [v])
-    : onScreenGrid;
+  const controlledRowAt = (r: number): CellValue[] => (editable ? rawRow(r) : (state.data[r] ?? []));
+  // The on-screen text of one SOURCE row (or, for a vertical list, of list element r).
+  const viewRowAt = (r: number): string[] => {
+    if (vertical) return [displayRowAt(0)[r] ?? ""];
+    if (formatRenderActive) { const row = controlledRowAt(r); return Array.from({ length: cols }, (_, c) => controlledCell(row[c], c)); }
+    return displayRowAt(r);
+  };
   const viewCols = vertical ? 1 : cols;
+  const viewRows = vertical ? listLen : rows;
 
-  // `sortOrder` holds SOURCE row indices, so every index it hands on stays the source
-  // row and `grid` is never touched. The key must come from the RAW grid, never the
-  // on-screen text — a date renders "20-Mar-2026" but sorts by its serial.
-  const sortOrder = sortedOrder(viewGrid.length, sort, (r, c) =>
+  // `sortOrder` holds SOURCE row indices over the WHOLE dataset, so every index it hands
+  // on stays the source row and `grid` is never touched; the render shows the first
+  // MAX_VISIBLE_ROWS of it, so a sort on a 50k-row frame shows the true top of the order.
+  // The key must come from the RAW grid, never the on-screen text — a date renders
+  // "20-Mar-2026" but sorts by its serial.
+  const sortOrder = sortedOrder(viewRows, sort, (r, c) =>
     sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c)));
+  const visibleOrder = sortOrder.length > MAX_VISIBLE_ROWS ? sortOrder.slice(0, MAX_VISIBLE_ROWS) : sortOrder;
+  // The visible rows' on-screen text, built once per render (the only rows that render).
+  const viewRowCache = new Map<number, string[]>();
+  const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
   // A row-oriented list is one row of N columns — sorting a column would sort one cell.
   const sortable = !(state.list && !vertical);
 
@@ -368,7 +380,7 @@ export function TablePopup() {
     const colType = vertical ? cellType : typeAt(c, cellType, state.columnTypes);
     if (isTextType(colType)) { colMinWidths.push(undefined); continue; }
     let m = 0;
-    for (const row of viewGrid) m = Math.max(m, (row[c] ?? "").length);
+    for (const r of visibleOrder) m = Math.max(m, (viewRow(r)[c] ?? "").length);
     const px = Math.ceil(m * MONO_CH_PX) + 16;
     colMinWidths.push(px > 72 ? Math.min(px, 200) : undefined);
   }
@@ -467,19 +479,27 @@ export function TablePopup() {
   }
 
   const headers = editableHeaders ? headerNames : state.headers;
-  // Read-only popups neutralize formula-injection prefixes on export; editable
-  // ones must round-trip the typed text exactly.
-  const bodyCSV = toCSV(displayGrid, cellType, columnTypes, !editable);
   // A frame's CSV view prepends a header line (below); a plain table/list doesn't.
   const hasHeaderLine = !state.list && !!(headers && headers.length);
-  const asText = state.list
-    ? listToText(displayGrid, cellType)
-    : hasHeaderLine
-      ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${bodyCSV}`
-      : bodyCSV;
+  // The WHOLE dataset as text — never the rendered slice. `inSortOrder` follows the
+  // visual sort (the read paths: Copy, Export, a read-only CSV view); the EDITABLE CSV
+  // view stays in source order because its text parses straight back into `grid`.
+  // Read-only popups neutralize formula-injection prefixes on export; editable ones
+  // must round-trip the typed text exactly.
+  function buildText(inSortOrder: boolean): string {
+    const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
+    if (state!.list) {
+      const line = displayRowAt(0);
+      return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType);
+    }
+    const body = toCSV(order.map((r) => displayRowAt(r)), cellType, columnTypes, !editable);
+    return hasHeaderLine
+      ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
+      : body;
+  }
 
   function showCSV() {
-    setCsvText(asText);
+    setCsvText(buildText(!editable));
     setView("csv");
   }
   function onCsvChange(v: string) {
@@ -499,15 +519,16 @@ export function TablePopup() {
   }
 
   function copy() {
-    const text = view === "csv" ? csvText : asText;
+    const text = view === "csv" ? csvText : buildText(true);
     void copyText(text);
   }
   function copyMarkdown() {
-    void copyText(toMarkdown(displayGrid, cellType, columnTypes, headers, !!state?.list));
+    const gridForMd = state?.list ? [displayRowAt(0)] : sortOrder.map((r) => displayRowAt(r));
+    void copyText(toMarkdown(gridForMd, cellType, columnTypes, headers, !!state?.list));
   }
   function exportCsv() {
     const base = (state?.title || "table").replace(/[^\w.-]+/g, "_") || "table";
-    void saveCsvFileDialog(`${base}.csv`, asText);
+    void saveCsvFileDialog(`${base}.csv`, buildText(true));
   }
   // Cells stay verbatim — coercion to typed values happens downstream in deriveFrame.
   function buildSourceColumns(overrides?: {
@@ -772,7 +793,7 @@ export function TablePopup() {
             <tbody>
               {/* Rows render in SORT order but carry their SOURCE index `r`, so the row
                   number and every edit below address the real row. */}
-              {sortOrder.map((r) => { const row = viewGrid[r] ?? []; return (
+              {visibleOrder.map((r) => { const row = viewRow(r); return (
                 <tr key={r}>
                   <th className="table-popup__rowhead">{r + 1}</th>
                   {Array.from({ length: viewCols }, (_, c) => {

@@ -21,10 +21,12 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   that receives an array arg → one clean `SolError` (never broadcast into a #VALUE! array,
   never throw). The allowlist FLIP itself (a name exists iff declared; delete the fallthrough)
   is the follow-on — do it right after A2 unless the author objects (it was "raise first").
-- [ ] **A3 Value-popup quiet-mislead gaps** (from deferrals "Value-popup gaps"): sort covers
-  only the loaded 1,000-row window; Copy/CSV/Export emit source order under a visual sort;
-  `− Row`/`− Col` remove the LAST data row. Logic fixes in `TablePopup`/`CubePopup` — extract
-  the sort/export helpers, pin them; keyboard path stays deferred.
+- [ ] **A3 (remainder) — the popup grid's keyboard path** (the largest "zero learning
+  curve" gap; the sort / export / `− Row` items landed 2026-08-23: sort ranks the WHOLE
+  dataset and renders its top 1,000; Copy / Export / read-only CSV view emit every row in the
+  visual order; the editable CSV view stays source-order because it parses back into the
+  grid). AUTHOR EYEBALL: open a >1,000-row frame popup, sort a column, confirm the top rows
+  and that Copy CSV carries all rows.
 - [ ] **A4 XLOOKUP/XMATCH formula orientation** (the open item below): a 1×N / N×1 matrix
   lookup array flattens, a grid is #VALUE!, WITHOUT `matrixArgs` letting a matrix into the
   lookup-value or return-array slots. Then retire the XLOOKUP `rawInputs` bypass (deferrals).
