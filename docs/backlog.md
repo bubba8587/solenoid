@@ -248,20 +248,21 @@ Changelogs ship INSIDE the rete packages — `npm pack <pkg>@<old>` and `@<new>`
 untar, diff the bundled changelog. Read those, not the GitHub releases (that API
 is blocked here for out-of-scope repos).
 
-- [x] **`rete-react-plugin` 2.1.0 → 2.1.2 — DON'T bump as-is (measured 2026-08-23).**
-  2.1.2 is exactly `root.render(el)` → `flushSync(() => root.render(el))` in the plugin's
-  `mount` (2.1.1 only colors rete's stock `<input>`, which we never render — inert). The
-  synchronous flush BREAKS a big-doc load: rete reuses the cached root, so every
-  `_area.update("node", id)` in `runGraphPass`'s `Promise.all` now commits synchronously
-  mid-rebuild, and a mounted component's mount effect fires DURING the rebuild instead of
-  after it settles. `ConduitComponent.tsx:209` (`useEffect(processGraph, [realLanes])`) then
-  runs `processGraph()` while other nodes aren't yet registered in the Dataflow engine →
-  `Dataflow2.fetch` throws `node is not initialized`, repeatedly, on Personal Finance (171
-  nodes, has Conduits). Perf regressed too (`render=` 428→601ms). To ever land it: guard
-  every mount-effect `processGraph()` call behind `isGraphRebuilding()` (Conduit is one such;
-  audit for others) AND re-measure the load — and even then the flush's win (layout-ready DOM
-  at mount, plausibly fewer first-paint wrong-endpoint cables) has to beat the N-sync-flush
-  cost. Not worth it for 1.3; stay at 2.1.0.
+- [x] **`rete-react-plugin` 2.1.0 → 2.1.2 — LANDED 2026-08-23 (author call: on latest + working
+  = fine).** 2.1.2 is exactly `root.render(el)` → `flushSync(() => root.render(el))` in the
+  plugin's `mount`, so a node's root is layout-ready when the mount returns (2.1.1 only colors
+  rete's stock `<input>`, which we never render — inert). The synchronous flush surfaced a latent
+  bug: it runs a mounting component's effects mid-rebuild, and the ONE mount effect that recomputes
+  — `ConduitComponent.tsx:209` `useEffect(processGraph, [realLanes])` (audited: every other of the
+  ~60 `processGraph` call sites is a user-action handler, never a mount effect) — fired
+  `processGraph()` during `addNode`, before the graph was built → `Dataflow2.fetch` threw
+  `node is not initialized`. Fixed with a TWO-layer guard, both kept regardless of the plugin:
+  (1) `processGraph` single-flight (`_passActive`/`_rerunQueued`, `processReentrancy.test.ts`) —
+  a recompute fired mid-pass coalesces into one trailing pass instead of nesting; (2) the Conduit
+  mount effect early-returns while `isGraphRebuilding()` (the terminal pass recomputes anyway).
+  Clean re-measure: crash gone, cascade collapsed to one pass + a cheap rerun. Costs ~100ms more
+  on the first 171-node render (the `flushSync` synchronous-commit tax) — a one-time load cost the
+  author accepted for being on latest.
 - [ ] **`rete-area-plugin` 2.1.5 → 2.3.2** — own change, needs a selection-test
   pass + a trackpad check. Two behaviour changes reach us: 2.3.1 makes
   `Selector.add` unselect everything EXCEPT the re-picked entity instead of

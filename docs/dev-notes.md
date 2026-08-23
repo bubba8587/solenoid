@@ -114,17 +114,21 @@ render dep can't re-queue). Inert on the current async render (no re-entrancy th
 call site. Pinned in `processReentrancy.test.ts` (drives the real singleton with a stub area whose
 render re-enters; verified to FAIL without the guard). Full suite green (4428).
 
-**`rete-react-plugin` 2.1.2 bump REJECTED — it crashes a big-doc load (measured 2026-08-23).**
-The 2.1.2 fix wraps the plugin's `mount` in `flushSync(root.render)`. Because rete reuses the
-cached root, every `_area.update` in `runGraphPass`'s `Promise.all` commits synchronously
-mid-rebuild, so a node's mount effect runs DURING the rebuild instead of after it settles —
-`ConduitComponent.tsx:209`'s `useEffect(processGraph, [realLanes])` then fires `processGraph()`
-before the other nodes are registered in the Dataflow engine → `Dataflow2.fetch` throws
-`node is not initialized`, repeatedly, on Personal Finance. Render also regressed (428→601ms).
-Reverted to 2.1.0, tree clean. Backlog item flipped to DON'T-bump with the landing conditions
-(guard mount-effect `processGraph()` behind `isGraphRebuilding()`, then re-measure). Note the
-`render=` numbers here (428/444/601ms on 171 nodes) also mark the first real big-doc load
-measurement — useful baseline context for the choppy-zoom/perf work.
+**`rete-react-plugin` bumped to 2.1.2 (2026-08-23) — layout-ready DOM at mount, with a two-layer
+guard.** 2.1.2 wraps the plugin's `mount` in `flushSync(root.render)`, so a node's root is
+laid out when the mount returns. That synchronous flush exposed a latent bug: it runs a mounting
+component's passive effects mid-rebuild, and the sole mount effect that recomputes —
+`ConduitComponent.tsx:209` `useEffect(processGraph, [realLanes])` (audited: all ~60 other
+`processGraph` call sites are user-action handlers, never mount effects) — fired `processGraph()`
+during `addNode`, before the graph was built → `Dataflow2.fetch` threw `node is not initialized`
+on Personal Finance. Fixed at two layers (both kept independent of the plugin): the `processGraph`
+single-flight guard above, and the Conduit effect early-returning while `isGraphRebuilding()` (the
+rebuild's terminal pass recomputes downstream anyway). Clean re-measure: crash gone, the earlier
+pass cascade collapsed to one full pass + a cheap coalesced rerun. Cost is ~100ms on the first
+171-node render (the `flushSync` synchronous-commit tax) — accepted for being on latest. Process
+lesson worth keeping: the first three "2.1.0 vs 2.1.2" numbers were all a BROKEN 2.1.2 compared
+against itself; there was never a clean 2.1.0 baseline, so the initial "no perf win, reject"
+verdict was unearned — the bump was fine once the crash was actually fixed.
 
 **Drill-in work is considered as ONE unit or not at all (author 2026-08-23).** The scheduled
 "finger pan is DEAD in a drill-in" bug is no longer to be cherry-picked as an isolated fix — it is

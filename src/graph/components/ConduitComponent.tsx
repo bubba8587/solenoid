@@ -24,6 +24,7 @@ import {
   conduitAngleStore,
   bumpConduitAngle,
   processGraph,
+  isGraphRebuilding,
 } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { AngleDial } from "../AngleDial";
@@ -205,8 +206,11 @@ export function ConduitComponent({ data, emit }: Props) {
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
 
-  // Downstream nodes pick up newly routed lanes only on a recompute.
-  useEffect(() => { void processGraph(); }, [realLanes]);
+  // Downstream nodes pick up newly routed lanes only on a recompute. NOT during a load:
+  // this mount effect fires as the Conduit's view mounts, which under a synchronous render
+  // is mid-`addNode` — before the graph is fully built — so a recompute there hits a
+  // half-initialized engine. The rebuild's own terminal pass recomputes everything anyway.
+  useEffect(() => { if (isGraphRebuilding()) return; void processGraph(); }, [realLanes]);
 
   const extendToNewConduit = async () => {
     // A Conduit inside a drill-in must spawn the new block in the SAME subgraph.
