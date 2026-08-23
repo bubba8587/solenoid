@@ -22,7 +22,7 @@ import {
 } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
-  durationValue, bondPriceYield, oddCoupon, vdb,
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep,
 } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
@@ -418,6 +418,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // Formula.js's T.TEST ignores tails/type and its F.TEST returns the variance
   // ratio instead of the p-value — these run the nodes' own impls (mathUtils).
   "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
+  IRR:         { returns: "number", listArgs: true, arity: [1, 2], family: "finance-iterative" },
+  XIRR:        { returns: "number", listArgs: true, arity: [2, 3], family: "finance-iterative" },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
   PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
 
@@ -1120,6 +1122,28 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
+// IRR / XIRR run the IRR node's solver (financeOps.solveDiscountRate: Newton, then a
+// bracket-and-bisect fallback; #CONV! only when no root exists above the rate floor) — ONE
+// kernel for both surfaces (capabilityParity). Excel's `guess` only seeds its Newton; this
+// solver needs none, so the argument is accepted and ignored. Same cell policy as the node:
+// a blank cash flow is 0 (dropping it would shift every later period), a blank DATE makes
+// the schedule unknown → blank.
+const IRR_CONV = (fn: string) => solError("#CONV!", `${fn} couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.`);
+registerInternal("IRR", (values) => {
+  const { error, nums } = cashPrep(numList(values) as (number | null | SolError)[]);
+  if (error) return error;
+  if (nums.length <= 1) return null;
+  return solveDiscountRate(nums, nums.map((_, t) => t)) ?? IRR_CONV("IRR");
+});
+registerInternal("XIRR", (values, dates) => {
+  const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
+  if (prep.error) return prep.error;
+  if (prep.blank) return null;
+  const n = Math.min(prep.values.length, prep.dates.length);
+  if (n < 2) return null;
+  const d0 = prep.dates[0];
+  return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
+});
 // Excel's VDB carries a trailing no_switch flag; ours always switches to
 // straight-line when that is the larger charge, which is Excel's DEFAULT.
 registerInternal("VDB", (cost, salvage, life, start, end, factor) =>

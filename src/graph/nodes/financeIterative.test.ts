@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { NpvNode, IrrNode, MirrNode } from "./finance";
 import { parseDateToSerial } from "./date";
+import { compileEvaluator } from "../excelFormula";
+import { isSolError } from "../errorValue";
+
+const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
 // IRR/XIRR/MIRR are the finance-iterative family (own root-finder, no Formula.js). The
 // defining invariant needs no oracle: IRR is the rate that zeroes NPV, XIRR the rate that
@@ -104,5 +108,47 @@ describe("MIRR matches an independent build of Excel's documented formula", () =
     const expected = (-fvPos / pvNeg) ** (1 / (n - 1)) - 1;
     const mirr = new MirrNode().data({ list: [flows], finrate: [finrate], reinrate: [reinrate] }).result as number;
     expect(mirr).toBeCloseTo(expected, 9);
+  });
+});
+
+// capabilityParity / shareImpl: the IRR and XIRR FORMULAS run the node's solver
+// (financeOps.solveDiscountRate) — they used to fall through to Formula.js, whose
+// Newton answered 1000 (!) on the near-floor series the node solves. And the cash-flow
+// blank policy must match across surfaces: a blank period is a ZERO flow (dropping it
+// would shift every later period), a blank date makes the schedule unknown.
+describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
+  const d = (s: string) => parseDateToSerial(s);
+  const dates = [d("2020-01-01"), d("2020-06-01"), d("2021-01-01"), d("2021-06-01"), d("2022-01-01")];
+
+  it.each([
+    [[-4943, -2458, 285]],
+    [[45, 4730, -325]],
+    [[-1688, -3813, 432]],
+    [flows],
+  ])("IRR(%j) is the node's root", (cf) => {
+    const node = new IrrNode().data({ list: [cf as number[]] }).result as number;
+    expect(ev("IRR(c)", { c: cf })).toBeCloseTo(node, 12);
+    expect(ev("IRR(c, 0.2)", { c: cf })).toBeCloseTo(node, 12); // guess accepted, ignored
+  });
+  it("XIRR formula is the node's dated root", () => {
+    const node = new IrrNode({ mode: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
+    expect(ev("XIRR(c, d)", { c: flows, d: dates })).toBeCloseTo(node, 12);
+  });
+  it("a same-sign series is #CONV! on both surfaces; too few points is blank", () => {
+    const r = ev("IRR(c)", { c: [100, 200, 300] });
+    expect(isSolError(r) && r.code).toBe("#CONV!");
+    expect(ev("IRR(c)", { c: [100] })).toBeNull();
+  });
+  it("a blank cash flow is a ZERO period on both surfaces, never a dropped one", () => {
+    const cf = [-100, null, 60, 60];
+    expect(ev("IRR(c)", { c: cf })).toBeCloseTo(new IrrNode().data({ list: [cf] }).result as number, 12);
+    expect(ev("NPV(0.1, c)", { c: cf })).toBeCloseTo(new NpvNode().data({ list: [cf], rate: [0.1] }).result as number, 12);
+    expect(ev("MIRR(c, 0.1, 0.12)", { c: cf })).toBeCloseTo(
+      new MirrNode().data({ list: [cf], finrate: [0.1], reinrate: [0.12] }).result as number, 12);
+  });
+  it("a blank DATE makes XIRR blank on both surfaces (the schedule is unknown)", () => {
+    const ds = [dates[0], null, dates[2], dates[3], dates[4]];
+    expect(ev("XIRR(c, d)", { c: flows, d: ds })).toBeNull();
+    expect(new IrrNode({ mode: "dates" }).data({ list: [flows], dates: [ds as number[]] }).result).toBeNull();
   });
 });

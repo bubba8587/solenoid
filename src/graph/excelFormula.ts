@@ -396,8 +396,9 @@ export const RANGE_FUNCTIONS = new Set<string>([
   // criteria + meta aggregators: range (+ criteria/selector) in, scalar out.
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE",
-  // cashflow functions take a whole list of cash flows; broadcast would be garbage.
-  "NPV", "IRR", "MIRR", "XIRR", "XNPV",
+  // cashflow functions take a whole list of cash flows; broadcast would be garbage
+  // (IRR / XIRR are whole-arg natives now — `listArgs` routes them before this set).
+  "NPV", "MIRR", "XNPV",
   // Lookup functions take whole lookup + return lists (registered 1-D impls).
   "XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX",
   // Statistical TESTS and the pairwise sums — whole samples in, ONE number out.
@@ -418,7 +419,7 @@ const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
 // ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR", "XIRR", "XNPV",
+  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR", "XNPV",
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS",
   // term-by-term / cell-for-cell definitions: these must stay index-aligned.
@@ -428,9 +429,10 @@ const RANGE_PAIRED = new Set([
 // POSITIONAL lookups answer in indices, so nulls stay put (a drop would shift
 // every match); errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
-// SERIESSUM's coefficients are positional, so a null-drop would shift every later
-// one onto a lower power; a blank contributes 0·x^k in place.
-const RANGE_ZERO_FILL = new Set(["SERIESSUM"]);
+// POSITIONAL-by-period lists: SERIESSUM's coefficients sit on powers, NPV / MIRR's cash
+// flows on periods — a null-drop would shift every later one, so a blank contributes 0
+// in place (the same policy the NPV / MIRR nodes apply via cashPrep).
+const RANGE_ZERO_FILL = new Set(["SERIESSUM", "NPV", "MIRR"]);
 
 // Whole-list natives (formulaNaming Tier 3) take their 1-D args RAW: they are
 // position-preserving, so a null-drop would change the answer

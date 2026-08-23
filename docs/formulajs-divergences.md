@@ -42,6 +42,14 @@ for us. A divergence is owned and tripwired (rules.md tripwireVendorDrift), neve
   array-returning names still broadcast (plausible-looking garbage, the class
   `rangeRouting.test.ts` pins). FX's text-complex IM* was the split-brain: string
   args worked while the graph's own tagged complex values answered `#VALUE!`.
+- **IRR / XIRR** run the IRR node's solver (`financeOps.solveDiscountRate`: Newton with
+  a rate floor, then bracket-and-bisect; `#CONV!` only when no root exists). FX's IRR
+  Newton returns a fabricated 1000 (100 000 %) on a root crowded against the floor
+  (`IRR([-4943, -2458, 285])` is −0.903). The `guess` argument is accepted and ignored —
+  the solver needs none, and the node takes none (capabilityParity). Pinned cross-surface
+  in `financeIterative.test.ts`. NPV / MIRR stay FX but are RANGE_ZERO_FILL: a blank
+  period is a zero flow, as the nodes' `cashPrep` treats it — a null-DROP would shift
+  every later period.
 - **The dispatch/name-walk parity class**: a Formula.js FUNCTION is a walkable
   container (`FX.CEILING` is the CEILING function AND the home of CEILING.MATH). An
   object-only walk advertised ten current-Excel names (CEILING.MATH, FLOOR.PRECISE,
