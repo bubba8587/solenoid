@@ -158,7 +158,7 @@ export function CubePopup() {
               label: "Export CSV…",
               onClick: () => {
                 const base = (view.label || "cube").replace(/[^\w.-]+/g, "_") || "cube";
-                void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, rows, cols, "csv"));
+                void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, sortOrder, cols, "csv"));
               },
             },
           ]}
