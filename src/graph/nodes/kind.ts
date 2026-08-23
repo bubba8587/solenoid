@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
+import { themeAccent, socketVarHex } from "../palette";
 import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
@@ -220,12 +221,16 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
 const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
   node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode;
 
-export function nodeAccent(node: ClassicPreset.Node): string {
-  const kindAccent = NODE_KIND_ACCENTS[nodeKindOf(node)];
+/** The final, theme-resolved accent hex for a node. Socket colors are CSS vars a
+ *  `<canvas>` can't read, so this resolves them (via socketVarHex) to the same concrete
+ *  color appTheme bakes into the var — letting the minimap and the html-canvas snapshot
+ *  paint the SAME accent the DOM card shows. */
+export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): string {
+  const kindAccent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(node)], mode);
   if (!SOCKET_DRIVEN_ACCENT(node)) return kindAccent;
   for (const port of Object.values(node.outputs ?? {})) {
     const socket = (port as { socket?: unknown } | undefined)?.socket;
-    if (socket instanceof SolenoidSocket) return SOCKET_COLORS[socket.dataType] ?? kindAccent;
+    if (socket instanceof SolenoidSocket) return socketVarHex(SOCKET_COLORS[socket.dataType], mode);
   }
   return kindAccent;
 }

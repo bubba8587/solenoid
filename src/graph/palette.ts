@@ -207,6 +207,24 @@ function isPaletteSlot(s: string): s is PaletteSlot {
   return Object.prototype.hasOwnProperty.call(PALETTE, s);
 }
 
+const SOCKET_VAR_BY_NAME = new Map(SOCKET_VARS.map((s) => [s.var, s]));
+
+/** The concrete hex a `--sock-*` var (or a `var(--sock-*)` expression) resolves to —
+ *  the SAME derivation appTheme writes to the CSS custom property (palette slot →
+ *  theme mode → array/matrix shade), but DOM-free. Canvas consumers (the minimap, the
+ *  html-canvas snapshot) can't read a CSS var, so they resolve through this instead.
+ *  A bare hex passes through; an unknown expr falls back to neutral gray. */
+export function socketVarHex(expr: string, mode: "dark" | "light"): string {
+  if (expr.startsWith("#")) return expr;
+  const m = /--[a-z0-9-]+/i.exec(expr);
+  const spec = m ? SOCKET_VAR_BY_NAME.get(m[0]) : undefined;
+  if (!spec) return resolveColor("gray");
+  const base = themeAccent(resolveColor(spec.slot), mode);
+  return spec.kind === "array" ? socketArrayShade(base)
+    : spec.kind === "matrix" ? socketMatrixShade(base)
+    : base;
+}
+
 // ── Built-in palettes (the app switcher picks among these) ────────────────────
 export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard" | "Blueprint";
 

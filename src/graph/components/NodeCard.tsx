@@ -174,10 +174,11 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // Re-render on theme change so the accent shift (light vs dark) is live.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
-  const rawAccent = accentOverride ?? (node
-    ? nodeAccent(node as unknown as ClassicPreset.Node)
-    : undefined);
-  const accent = rawAccent ? themeAccent(rawAccent, mode) : undefined;
+  // An explicit override (the FC's mismatch orange / its own socket color) still gets
+  // theme-adjusted here; nodeAccent already returns a final theme-resolved hex.
+  const accent = accentOverride
+    ? themeAccent(accentOverride, mode)
+    : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;
   // The "inside a group" indicator: the color is published as a CSS var and the
   // grouped class applies the treatment (yielding to selection).
   useSyncExternalStore(groupMembershipStore.subscribe, groupMembershipStore.version);
@@ -198,7 +199,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;
   // Darker shade for the light-mode outside border (matches the group framing).
-  if (rawAccent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(rawAccent);
+  if (accent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(accent);
   if (groupColor) (style as Record<string, string>)["--group-color"] = themeAccent(groupColor, mode);
   if (groupColor) (style as Record<string, string>)["--group-color-dark"] = darkenAccent(groupColor);
   // Width sizes the card; height is published as a var the value box consumes —

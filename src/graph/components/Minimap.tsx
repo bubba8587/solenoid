@@ -77,7 +77,7 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
       const c = themeAccent(resolveColor(n.color), mode);
       return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
     }
-    const accent = themeAccent(nodeAccent(n) ?? "#8a8f98", mode);
+    const accent = nodeAccent(n, mode);
     return { background: hexToRgba(accent, 0.85), borderColor: hexToRgba(accent, 0.95) };
   });
 }

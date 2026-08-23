@@ -10,6 +10,7 @@ import { ListInputNode } from "./list";
 import { TableInputNode } from "./matrix";
 import { NODE_KIND_ACCENTS } from "./shared";
 import { SOCKET_COLORS } from "../sockets";
+import { themeAccent, socketVarHex } from "../palette";
 
 // nodeDomWeight feeds the HTML-in-Canvas engage gate: a chart / inlined-SVG /
 // frame-grid card weighs more than a scalar card because it is far more DOM. The
@@ -64,28 +65,34 @@ describe("nodeDomWeight", () => {
 });
 
 // The card, the minimap and the html-canvas snapshot ALL read nodeAccent — a divergence
-// here is a minimap that stays one color while the card recolors. This pins that the
-// type-switchable literals track their SOCKET color (so a retype recolors) while a plain
-// node keeps its fixed KIND color.
+// here is a minimap that stays one color while the card recolors. It returns a CONCRETE
+// theme-resolved hex (never a CSS var, which a <canvas> can't paint), the type-switchable
+// literals track their SOCKET color (so a retype recolors), and a plain node keeps its
+// fixed KIND color.
 describe("nodeAccent", () => {
-  it("gives a plain node its kind color", () => {
+  it("gives a plain node its theme-resolved kind color", () => {
     const n = new NumberInputNode();
-    expect(nodeAccent(n)).toBe(NODE_KIND_ACCENTS[nodeKindOf(n)]);
+    expect(nodeAccent(n, "dark")).toBe(themeAccent(NODE_KIND_ACCENTS[nodeKindOf(n)], "dark"));
+  });
+
+  it("always resolves to a concrete hex, never a raw CSS var", () => {
+    expect(nodeAccent(new ListInputNode(), "dark")).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(nodeAccent(new ListInputNode(), "light")).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
   it("tracks the element-socket color across a List Input retype", () => {
     const n = new ListInputNode();
-    expect(nodeAccent(n)).toBe(SOCKET_COLORS[n.valueSocket.dataType]);
-    const before = nodeAccent(n);
+    expect(nodeAccent(n, "dark")).toBe(socketVarHex(SOCKET_COLORS[n.valueSocket.dataType], "dark"));
+    const before = nodeAccent(n, "dark");
     n.setDataType("string");
-    expect(nodeAccent(n)).toBe(SOCKET_COLORS[n.valueSocket.dataType]);
-    expect(nodeAccent(n)).not.toBe(before); // the whole point: it recolored
+    expect(nodeAccent(n, "dark")).toBe(socketVarHex(SOCKET_COLORS[n.valueSocket.dataType], "dark"));
+    expect(nodeAccent(n, "dark")).not.toBe(before); // the whole point: it recolored
   });
 
   it("tracks the element-socket color across a Table Input retype", () => {
     const n = new TableInputNode();
-    const before = nodeAccent(n);
+    const before = nodeAccent(n, "dark");
     n.setDataType("string");
-    expect(nodeAccent(n)).not.toBe(before);
+    expect(nodeAccent(n, "dark")).not.toBe(before);
   });
 });

@@ -7,6 +7,7 @@
 
 import { getArea, getEditor } from "./process";
 import { nodeAccent } from "./nodes/kind";
+import { appThemeStore } from "./appTheme";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
 import { cableAngleStore } from "./cableAngleStore";
 import { pickTextColor } from "./hicColors";
@@ -401,7 +402,7 @@ export function snapshotGraph(): GraphSnapshot | null {
       // The header composites over the card body, not the canvas.
       const headerColor = headerRGBA ? flatten(headerRGBA, ownRGBA ?? canvasRGBA) : ownBg;
 
-      const accent = hexToNum(nodeAccent(node) ?? "#7a8296");
+      const accent = hexToNum(nodeAccent(node, appThemeStore.getMode()));
 
       // Real card border — grouped nodes adopt the group hue at ~0.78 alpha, so it
       // is NOT the kind accent. Capture color AND alpha (a hard outline reads heavy).
