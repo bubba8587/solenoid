@@ -55,10 +55,11 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 28. **Roots of a polynomial / general root find** (`np.roots`, `uniroot`, `fsolve`):
     Quadratic Roots exists; a Durand–Kerner polynomial roots node is cheap; `uniroot` is the
     Equation node.
-29. **Cross join / cartesian product** (`merge(how="cross")`, `expand.grid`): a Join `how`.
-    Trivial once the engine exposes it (Polars has it).
-30. **Bind columns / zip frames side by side** (`bind_cols`, `pd.concat(axis=1)`): HSTACK is
-    matrices; a frame-level column bind by position. Cheap.
+29. **Cross join** — LANDED 2026-08-23 (Join `how = cross`: no keys, all columns, left-major;
+    oracle + Polars cross_join, corpus-pinned).
+30. **Bind columns** — LANDED 2026-08-23 (Bind Columns node, Append's sibling for the other
+    axis: positional, headers deduped, ragged pads; backend seam `bindColumns` on both
+    engines, corpus-pinned).
 31. **Histogram 2-D / heatmap binning** (`histogram2d`, `hexbin`): scatter → counts grid for
     the Heatmap figure. Cheap.
 32. **Hash / UUID / anonymize** (`hashlib`, `uuid`, `digest`): hash a column for joins

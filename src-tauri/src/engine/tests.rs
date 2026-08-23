@@ -629,6 +629,28 @@ fn corpus_cases() {
                         }
                     }
                 }
+                "bindColumns" => {
+                    #[derive(serde::Deserialize)]
+                    struct BindOp { frames: Vec<String> }
+                    match serde_json::from_value::<BindOp>(case.op) {
+                        Err(e) => { failures.push(format!("{label}: op does not parse as a bindColumns op: {e}")); continue; }
+                        Ok(op) => {
+                            let mut handles: Vec<String> = Vec::new();
+                            let mut missing = false;
+                            for n in &op.frames {
+                                match take(&mut frames, n) {
+                                    Some(f) => handles.push(register(f)),
+                                    None => { failures.push(format!("{label}: bindColumns names an absent frame \"{n}\"")); missing = true; }
+                                }
+                            }
+                            let r = if missing { continue } else { bind_columns(&handles) };
+                            let mut s = store().lock().unwrap();
+                            for h in handles { s.frames.remove(&h); }
+                            drop(s);
+                            r
+                        }
+                    }
+                }
                 "pipeline" => {
                     // The fusion cases: the oracle ran these ops SEQUENTIALLY;
                     // here the whole list goes to apply_ops in one call, so

@@ -1786,6 +1786,73 @@
    "init": {
     "label": "CAGR (252/yr)"
    }
+  },
+  {
+   "id": "src_sizes",
+   "type": "FrameInputNode",
+   "x": 4800,
+   "y": 2420,
+   "init": {
+    "label": "Sizes",
+    "frameText": "[{\"name\": \"Size\", \"type\": \"string\", \"values\": [\"S\", \"M\", \"L\"]}]"
+   }
+  },
+  {
+   "id": "src_colors",
+   "type": "FrameInputNode",
+   "x": 4800,
+   "y": 2640,
+   "init": {
+    "label": "Colors",
+    "frameText": "[{\"name\": \"Color\", \"type\": \"string\", \"values\": [\"red\", \"blue\"]}, {\"name\": \"Code\", \"type\": \"number\", \"values\": [1, 2]}]"
+   }
+  },
+  {
+   "id": "j_cross",
+   "type": "JoinNode",
+   "x": 5200,
+   "y": 2420,
+   "init": {
+    "label": "Cross join",
+    "how": "cross"
+   }
+  },
+  {
+   "id": "d_crossjoin",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 2420,
+   "init": {
+    "label": "every size x every color (6 rows)"
+   }
+  },
+  {
+   "id": "src_week",
+   "type": "FrameInputNode",
+   "x": 4800,
+   "y": 2880,
+   "init": {
+    "label": "Week index",
+    "frameText": "[{\"name\": \"Week\", \"type\": \"number\", \"values\": [1, 2, 3]}]"
+   }
+  },
+  {
+   "id": "bind_cols",
+   "type": "BindColumnsNode",
+   "x": 5200,
+   "y": 2880,
+   "init": {
+    "label": "Bind Columns"
+   }
+  },
+  {
+   "id": "d_bind",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 2880,
+   "init": {
+    "label": "Week | Size (side by side)"
+   }
   }
  ],
  "connections": [
@@ -2639,6 +2706,42 @@
    "source": "ret_cagr",
    "sourceOutput": "result",
    "target": "d_ret_cagr",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_sizes",
+   "sourceOutput": "frame",
+   "target": "j_cross",
+   "targetInput": "left"
+  },
+  {
+   "source": "src_colors",
+   "sourceOutput": "frame",
+   "target": "j_cross",
+   "targetInput": "right"
+  },
+  {
+   "source": "j_cross",
+   "sourceOutput": "frame",
+   "target": "d_crossjoin",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_week",
+   "sourceOutput": "frame",
+   "target": "bind_cols",
+   "targetInput": "f0"
+  },
+  {
+   "source": "src_sizes",
+   "sourceOutput": "frame",
+   "target": "bind_cols",
+   "targetInput": "f1"
+  },
+  {
+   "source": "bind_cols",
+   "sourceOutput": "frame",
+   "target": "d_bind",
    "targetInput": "in"
   }
  ]

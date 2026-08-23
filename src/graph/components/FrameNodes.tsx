@@ -20,7 +20,7 @@ import type {
   UnpivotNode as UnpivotNodeType,
   NestNode as NestNodeType,
   UnnestNode as UnnestNodeType,
-  AppendNode as AppendNodeType,
+  AppendNode as AppendNodeType, BindColumnsNode as BindColumnsNodeType,
   RenameNode as RenameNodeType,
   SplitColumnNode as SplitColumnNodeType,
   AddIndexNode as AddIndexNodeType,
@@ -379,6 +379,7 @@ const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
   { value: "semi", label: "Semi", title: "Left rows whose key matches in right — left columns only" },
   { value: "anti", label: "Anti", title: "Left rows with no match in right — left columns only" },
   { value: "asof", label: "As-of", title: "Nearest match on a sorted number or date key. No exact match required." },
+  { value: "cross", label: "Cross", title: "Every left row paired with every right row — all columns, no keys" },
 ];
 
 const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: string }[] = [
@@ -525,6 +526,15 @@ export function UnnestComponent({ data, emit }: NodeProps<UnnestNodeType>) {
 // ─── APPEND / RENAME ─────────────────────────────────────────────────────────
 
 export function AppendComponent({ data, emit }: NodeProps<AppendNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <ExtensibleInputs node={data} emit={emit} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+export function BindColumnsComponent({ data, emit }: NodeProps<BindColumnsNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <ExtensibleInputs node={data} emit={emit} />

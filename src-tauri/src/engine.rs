@@ -1956,6 +1956,17 @@ fn assemble_join_layout(
 }
 
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
+    // Cross: the Cartesian product, left-major, ALL columns of both sides — no keys.
+    // Polars suffixes a colliding right column "_right", the layout pass renames by
+    // position like the oracle's makeHeaders (an empty right_key matches no column).
+    if opts.how.as_str() == "cross" {
+        let joined = left
+            .df
+            .cross_join(&right.df, Some("_right".into()), None)
+            .map_err(|e| IpcError::internal(format!("cross join failed: {e}")))?;
+        let no_key = WireJoinOpts { right_key: String::new(), how: "cross".into(), ..Default::default() };
+        return assemble_join_layout(left, right, &no_key, &joined);
+    }
     require_columns(left, std::slice::from_ref(&opts.left_key))?;
     require_columns(right, std::slice::from_ref(&opts.right_key))?;
     // Keys of two different types can never match (SOCK-1's discipline at the
@@ -2297,6 +2308,40 @@ fn append_frames(handles: &[String]) -> Result<SolFrame, IpcError> {
     Ok(SolFrame { df, types })
 }
 
+/// Side-by-side by POSITION (the oracle's bindColumns): every column of every
+/// frame in order, headers deduped by make_headers, a shorter frame padded
+/// down with nulls.
+fn bind_columns(handles: &[String]) -> Result<SolFrame, IpcError> {
+    let frames: Vec<SolFrame> = {
+        let s = lock_store();
+        handles
+            .iter()
+            .map(|h| {
+                s.frames
+                    .get(h)
+                    .cloned()
+                    .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {h} not found")))
+            })
+            .collect::<Result<_, _>>()?
+    };
+    let rows = frames.iter().map(|f| f.df.height()).max().unwrap_or(0);
+    let mut proposed: Vec<String> = Vec::new();
+    let mut types: Vec<SolType> = Vec::new();
+    let mut out_cols: Vec<Vec<Cell>> = Vec::new();
+    for f in &frames {
+        for (i, n) in f.names().iter().enumerate() {
+            proposed.push(n.clone());
+            types.push(f.types[i]);
+            let mut cells = f.column_cells(n).map(|(_, c)| c).unwrap_or_default();
+            cells.resize(rows, Cell::Null);
+            out_cols.push(cells);
+        }
+    }
+    let names = make_headers(&proposed, proposed.len());
+    let df = build_df(&names, &types, &out_cols)?;
+    Ok(SolFrame { df, types })
+}
+
 // ─── Preview / column extraction ────────────────────────────────────────────────
 fn preview_of(frame: &SolFrame, n: usize) -> OutPreview {
     let row_count = frame.df.height();
@@ -2542,6 +2587,11 @@ pub fn engine_join(left: String, right: String, opts: WireJoinOpts) -> Result<St
 #[tauri::command]
 pub fn engine_append(handles: Vec<String>) -> Result<String, IpcError> {
     Ok(register(append_frames(&handles)?))
+}
+
+#[tauri::command]
+pub fn engine_bind_columns(handles: Vec<String>) -> Result<String, IpcError> {
+    Ok(register(bind_columns(&handles)?))
 }
 
 #[tauri::command]

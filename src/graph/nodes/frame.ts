@@ -34,7 +34,7 @@ import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
@@ -517,7 +517,8 @@ export class JoinNode extends ClassicPreset.Node {
     }
     const lk = lkRaw.trim();
     const rk = rkRaw.trim() || lk;
-    if (left == null || right == null || lk === "") return emitFrame(this, beginPass(this), null);
+    // A cross join pairs every row with every row: no keys to require.
+    if (left == null || right == null || (lk === "" && this.how !== "cross")) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), await runFrameJoin(left, right, {
       leftKey: lk, rightKey: rk, how: this.how,
       asofDirection: this.asofDirection, asofTolerance: tolerance,
@@ -904,6 +905,58 @@ export class AppendNode extends ClassicPreset.Node {
       .filter((f): f is FrameInput => f != null);
     if (frames.length === 0) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
+  }
+}
+
+// ─── BIND COLUMNS ──────────────────────────────────────────────────────────────
+
+/** Frames side by side by POSITION (pandas concat(axis=1), R bind_cols, dplyr
+ *  bind_cols): Append's sibling for the other axis — same extensible rows. */
+export class BindColumnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Every column of every frame, left to right; a repeated name gets a 2, 3… suffix; a shorter frame pads down with blanks.",
+  };
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  nextInputId = 0;
+  width = 190; height = 215;
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("BindColumns");
+    this.label = init?.label ?? "Bind Columns";
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("f"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
+    this.addOutput("frame", frameOut("Bound"));
+  }
+
+  private addInputWithKey(key: string): void {
+    this.addInput(key, frameIn("Frame"));
+    const n = parseInt(key.replace(/^f/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered frame-row keys (insertion order = left-to-right order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("f"));
+  }
+
+  addValueInput(): string {
+    const key = `f${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
+    const frames = this.valueInputKeys()
+      .map((k) => inputs[k]?.[0] ?? null)
+      .filter((f): f is FrameInput => f != null);
+    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameBindColumns(frames));
   }
 }
 

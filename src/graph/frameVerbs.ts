@@ -454,7 +454,7 @@ export function addIndexColumn(f: FrameValue, name: string, start: number): Fram
 }
 
 // ─── Join (binary) ─────────────────────────────────────────────────────────────
-export type JoinHow = "inner" | "left" | "right" | "outer" | "semi" | "anti" | "asof";
+export type JoinHow = "inner" | "left" | "right" | "outer" | "semi" | "anti" | "asof" | "cross";
 // backward = latest right key ≤ left key (Polars' default strategy); forward =
 // earliest right key ≥ left key; nearest = whichever is closer (ties → backward).
 export type AsofDirection = "backward" | "forward" | "nearest";
@@ -589,7 +589,31 @@ function asofPairs(
  *  only; left/right keep all rows of that side (other side null); outer keeps all
  *  of both; asof = nearest-match (see `asofPairs`). The unmatched side's cells
  *  are `null`. */
+/** Cartesian product, left-major: every left row paired with every right row; ALL
+ *  columns of both sides, colliding names deduped (pandas merge(how="cross"), R
+ *  expand.grid / tidyr crossing, SQL CROSS JOIN). No keys. */
+export function crossJoinFrames(left: FrameValue, right: FrameValue): FrameValue {
+  const ln = frameRowCount(left), rn = frameRowCount(right);
+  const names = makeHeaders(
+    [...left.columns.map((c) => c.name), ...right.columns.map((c) => c.name)],
+    left.columns.length + right.columns.length,
+  );
+  const out: FrameColumn[] = [];
+  left.columns.forEach((c, ci) => {
+    const values: FrameCell[] = [];
+    for (let i = 0; i < ln; i++) { const v = cellAt(c, i); for (let j = 0; j < rn; j++) values.push(v); }
+    out.push({ name: names[ci], type: c.type, values });
+  });
+  right.columns.forEach((c, ri) => {
+    const values: FrameCell[] = [];
+    for (let i = 0; i < ln; i++) for (let j = 0; j < rn; j++) values.push(cellAt(c, j));
+    out.push({ name: names[left.columns.length + ri], type: c.type, values });
+  });
+  return frame(out);
+}
+
 export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
+  if (opts.how === "cross") return crossJoinFrames(left, right);
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
   // Keys of two different types can never match (families never auto-cross) —
@@ -1379,7 +1403,21 @@ export function appendFrames(frames: readonly FrameValue[]): FrameValue {
   }));
 }
 
-/** Dispatch a unary verb. Binary verbs (join/append) are separate entry points. */
+/** Side-by-side by POSITION: every column of every frame, in order, colliding names
+ *  deduped; a shorter frame pads down with blanks (pandas concat(axis=1), R bind_cols
+ *  — which errors on ragged input; we pad, like HSTACK). */
+export function bindColumns(frames: readonly FrameValue[]): FrameValue {
+  const rows = Math.max(0, ...frames.map(frameRowCount));
+  const all = frames.flatMap((f) => f.columns);
+  const names = makeHeaders(all.map((c) => c.name), all.length);
+  return frame(all.map((c, i) => {
+    const values: FrameCell[] = [];
+    for (let r = 0; r < rows; r++) values.push(cellAt(c, r));
+    return { name: names[i], type: c.type, values };
+  }));
+}
+
+/** Dispatch a unary verb. Binary verbs (join/append/bindColumns) are separate entry points. */
 export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
   switch (op.kind) {
     case "select":   return selectColumns(f, op.columns);

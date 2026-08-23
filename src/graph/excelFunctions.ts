@@ -251,7 +251,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   GETCOLUMN: "Get Column", GETROW: "Get Row", ADDCOLUMN: "Add Column",
   // Table verbs
   FRAMEFILTER: "Frame Filter", FRAMESORT: "Frame Sort", DISTINCT: "Distinct", HEAD: "Head",
-  JOIN: "Join", APPEND: "Append", COMPUTEDCOLUMN: "Computed Column",
+  JOIN: "Join", APPEND: "Append", BINDCOLUMNS: "Bind Columns", COMPUTEDCOLUMN: "Computed Column",
   // Table verbs › Columns
   SELECTCOLUMNS: "Select Columns", DROPCOLUMNS: "Drop Columns", RENAME: "Rename",
   SPLITCOLUMN: "Split Column", ADDINDEX: "Add Index", MERGECOLUMNS: "Merge Columns",

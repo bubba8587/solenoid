@@ -47,7 +47,7 @@ import {
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
-  SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
+  SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
   WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
@@ -964,6 +964,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "window", label: "Window", description: "A per-group column that keeps every row: running sum / average / min / max, rank / dense rank / percent rank / row number, lag / lead / difference / percent change, rolling (N), the group's total / average / count repeated per row, share of group, first / last — partitioned by key columns and ordered within each group. pandas groupby().transform / cumsum / shift / rank, dplyr group_by %>% mutate, SQL OVER (PARTITION BY … ORDER BY …). No Excel equivalent (SUMIF / COUNTIF tricks).", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
           { type: "group-by-frame", label: "Group By", description: "Groups rows by key columns and aggregates one column (sum / average / min / max / count). Optional grand-total / subtotal rows re-aggregate the source (GROUPBY's total_depth). Keys group case-sensitively — no silent case-merge. Excel: GROUPBY.", create: () => new GroupByFrameNode(), parity: false },
           { type: "append",      label: "Append",      description: "Stacks Frames vertically in row order — add rows for more Frames. Columns match by name, a missing column fills blank. A type clash on a shared column is #TYPE!. Excel: VSTACK.", create: () => new AppendNode(), parity: false },
+          { type: "bind-columns", label: "Bind Columns", description: "Frames side by side by position — add rows for more Frames. Every column rides through, a repeated name gets a suffix, a shorter Frame pads down with blanks. pandas concat(axis = 1), R bind_cols. Excel: HSTACK.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
           {
             type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
             children: [

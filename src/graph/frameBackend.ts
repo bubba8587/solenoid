@@ -2,7 +2,7 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, joinFrames, appendFrames, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -169,6 +169,8 @@ export interface FrameBackend {
   join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle>;
   /** Stacks vertically, union by column NAME. */
   append(handles: readonly FrameHandle[]): Promise<FrameHandle>;
+  /** Binds side by side by POSITION; ragged pads with blanks. */
+  bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle>;
   preview(handle: FrameHandle, n: number): Promise<FramePreview>;
   collect(handle: FrameHandle): Promise<FrameValue>;
   /** `null` when the column name isn't in the frame. */
@@ -225,6 +227,10 @@ class JsFrameBackend implements FrameBackend {
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     return this.register(appendFrames(handles.map((h) => this.get(h))));
+  }
+
+  async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
+    return this.register(bindColumns(handles.map((h) => this.get(h))));
   }
 
   private register(frame: FrameValue): FrameHandle {
@@ -314,6 +320,10 @@ class PolarsBackend implements FrameBackend {
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     return ipcInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>;
+  }
+
+  async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
+    return ipcInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>;
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
@@ -511,6 +521,20 @@ export async function runFrameJoin(left: FrameInput, right: FrameInput, opts: Jo
 }
 
 /** Union by column NAME. */
+export async function runFrameBindColumns(frames: readonly FrameInput[]): Promise<FrameRef | SolError> {
+  const be = frameBackend();
+  const temps: FrameHandle[] = [];
+  try {
+    const handles: FrameHandle[] = [];
+    for (const f of frames) { const r = await inputHandle(f); if (r.temp) temps.push(r.h); handles.push(r.h); }
+    return wrapRef(await be.bindColumns(handles));
+  } catch (e) {
+    return asErrorValue(e);
+  } finally {
+    for (const h of temps) be.drop(h);
+  }
+}
+
 export async function runFrameAppend(frames: readonly FrameInput[]): Promise<FrameRef | SolError> {
   const be = frameBackend();
   const temps: FrameHandle[] = [];

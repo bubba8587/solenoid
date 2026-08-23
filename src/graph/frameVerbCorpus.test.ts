@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { applyVerb, joinFrames, appendFrames, FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "./frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "./frameVerbs";
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import { isSolError } from "./errorValue";
 
@@ -34,7 +34,7 @@ interface CorpusFile { verb: string; cases: CorpusCase[] }
  *  a fixture file for each. (XLOOKUP's lookupFrameCell is oracle-only on every
  *  platform — no engine command — so it has no corpus entry, like pivot's
  *  richer half.) */
-const BINARY_VERBS = ["join", "append"] as const;
+const BINARY_VERBS = ["join", "append", "bindColumns"] as const;
 
 /** The fusion corpus verb: `op: { kind: "pipeline", ops: [FrameOp…] }` over the
  *  "in" frame. The oracle applies the ops SEQUENTIALLY (each materialized); the
@@ -112,6 +112,8 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
         out = joinFrames(inputs.left, inputs.right, opts as unknown as JoinOpts);
       } else if (kase.op.kind === "append") {
         out = appendFrames((kase.op.frames as string[]).map((n) => inputs[n]));
+      } else if (kase.op.kind === "bindColumns") {
+        out = bindColumns((kase.op.frames as string[]).map((n) => inputs[n]));
       } else if (kase.op.kind === "pipeline") {
         // Sequential application IS the oracle semantics — each op fully
         // materializes before the next; the cargo side fuses the same list.
