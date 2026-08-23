@@ -161,10 +161,10 @@ function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
 // ─── BETWEEN / IS-CLOSE — range and tolerance predicates ─────────────────────
 export class BetweenNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "TRUE when Low ≤ Value ≤ High (inclusive). R between / pandas Series.between.",
+    result: "TRUE when Low ≤ Value ≤ High (inclusive). Broadcasts over a list of Values. R between / pandas Series.between.",
   };
   label: string;
-  cachedResult: Tri = null;
+  cachedResult: Tri | Tri[] = null;
   literals: Record<string, number> = { value: 0, lo: 0, hi: 1 };
   width = 180;
   height = 235;
@@ -172,17 +172,18 @@ export class BetweenNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Between");
     this.label = init?.label ?? "Between";
-    this.addInput("value", numIn("Value"));
+    this.addInput("value", numListIn("Value"));
     this.addInput("lo", numIn("Low"));
     this.addInput("hi", numIn("High"));
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { value?: number[]; lo?: number[]; hi?: number[] }) {
-    const v = readInput(inputs.value, this.literals.value ?? 0);
+  data(inputs: { value?: unknown[]; lo?: number[]; hi?: number[] }) {
+    const value = (inputs.value?.length ? inputs.value[0] : this.literals.value) ?? null;
     const lo = readInput(inputs.lo, this.literals.lo ?? 0);
     const hi = readInput(inputs.hi, this.literals.hi ?? 0);
-    const result: Tri = v === null || lo === null || hi === null ? null : v >= lo && v <= hi;
+    const result: Tri | Tri[] = lo === null || hi === null ? null
+      : broadcastEl<unknown, Tri>((x) => (typeof x === "number" ? x >= lo && x <= hi : null), value);
     this.cachedResult = result;
     return { result };
   }
@@ -190,10 +191,10 @@ export class BetweenNode extends ClassicPreset.Node {
 
 export class IsCloseNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "TRUE when |A − B| ≤ tolerance — approximate equality for floats. math.isclose.",
+    result: "TRUE when |A − B| ≤ tolerance — approximate equality for floats. Broadcasts element-wise. math.isclose.",
   };
   label: string;
-  cachedResult: Tri = null;
+  cachedResult: Tri | Tri[] = null;
   literals: Record<string, number> = { a: 0, b: 0, tol: 1e-9 };
   width = 180;
   height = 235;
@@ -201,17 +202,18 @@ export class IsCloseNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("IsClose");
     this.label = init?.label ?? "Is Close";
-    this.addInput("a", numIn("A"));
-    this.addInput("b", numIn("B"));
+    this.addInput("a", numListIn("A"));
+    this.addInput("b", numListIn("B"));
     this.addInput("tol", numIn("Tolerance"));
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: number[]; b?: number[]; tol?: number[] }) {
-    const a = readInput(inputs.a, this.literals.a ?? 0);
-    const b = readInput(inputs.b, this.literals.b ?? 0);
+  data(inputs: { a?: unknown[]; b?: unknown[]; tol?: number[] }) {
+    const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
+    const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
     const tol = readInput(inputs.tol, this.literals.tol ?? 1e-9);
-    const result: Tri = a === null || b === null || tol === null ? null : Math.abs(a - b) <= tol;
+    const result: Tri | Tri[] = tol === null ? null
+      : broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? Math.abs(x - y) <= tol : null), a, b);
     this.cachedResult = result;
     return { result };
   }

@@ -113,6 +113,10 @@ describe("Between / Is-Close predicates", () => {
     expect(new IsCloseNode().data({ a: [1], b: [1.0000001], tol: [1e-3] }).result).toBe(true);
     expect(new IsCloseNode().data({ a: [1], b: [2], tol: [1e-3] }).result).toBe(false);
   });
+  it("both broadcast over a list (input rank matches the boolean-list output)", () => {
+    expect(new BetweenNode().data({ value: [[0, 5, 11]], lo: [1], hi: [10] }).result).toEqual([false, true, false]);
+    expect(new IsCloseNode().data({ a: [[1, 2]], b: [[1.0001, 5]], tol: [1e-2] }).result).toEqual([true, false]);
+  });
 });
 
 describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
