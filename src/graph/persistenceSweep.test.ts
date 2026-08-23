@@ -189,6 +189,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key",
     solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
+    lastRelativeSerial: "relative Date Input shift-alert edge-detect state (session)",
     stale: "recomputed staleness", internalEditor: "the live internal rete stack",
     internalEngine: "the live internal rete stack", internalPositions: "runtime mirror; positions persist via snapshotInternal",
     internalEditSeq: "edit counter (session)",

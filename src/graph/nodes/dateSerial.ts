@@ -18,19 +18,44 @@ export function jsDateToSerial(d: Date): number {
 const NUMERIC_DMY = /^(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}$/;
 // Relative expressions chrono understands but a spreadsheet date value must NOT (they'd be
 // volatile): today/next friday/in 3 days/… — Excel's DATEVALUE refuses these too.
-const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d)\b/i;
+const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i;
+
+/** True when the text names a date RELATIVE to now (today / next friday / in 3 days / a
+ *  bare weekday) — the phrases `parseDate` refuses unless asked to resolve them. A text
+ *  carrying a four-digit year is never relative ("Monday, 16 March 2026" is absolute). */
+export function isRelativeDateText(s: string): boolean {
+  const t = s.trim();
+  return !/\d{4}/.test(t) && RELATIVE.test(t);
+}
+
+export interface ParseDateOptions {
+  /** Resolve relative phrases against `now` (default: the wall clock). OFF by default —
+   *  a stored date is a fixed calendar day; only an opted-in Date Input turns this on
+   *  (Settings ▸ Data ▸ Relative dates), and it re-resolves on every recalculation. */
+  relative?: boolean;
+  now?: Date;
+}
 
 /** The ONE canonical text→date parser (DATEVALUE, Cast(date), Frame/Table date columns,
  *  Date Input, Get Column read-as). Returns the Excel serial, a `#AMBIGUOUS!` SolError when
  *  a numeric date could read as either D/M or M/D, or NaN when it isn't a date at all.
  *  Widened via chrono-node (ordinals, month names, natural forms); day-first where a numeric
  *  part forces it, never a silent guess on the ambiguous case. Time is NOT floored. */
-export function parseDate(s: string): number | SolError {
+export function parseDate(s: string, opts?: ParseDateOptions): number | SolError {
   const t = s.trim();
   if (!t) return NaN;
+  if (isRelativeDateText(t)) {
+    if (!opts?.relative) return NaN; // a stored date is a fixed calendar day, never relative
+    // Opted in: chrono resolves the phrase against `now`, forward-looking ("friday" = the
+    // coming one); the answer is the calendar DAY in the local wall-clock, as a UTC serial.
+    const ref = opts.now ?? new Date();
+    const r = chrono.parse(t, ref, { forwardDate: true })[0];
+    if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
+    const d = r.start.date();
+    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
+  }
   // A year must be four explicit digits — no 2-digit-year century pivot in any form.
   if (!/\d{4}/.test(t)) return NaN;
-  if (RELATIVE.test(t)) return NaN; // a stored date is a fixed calendar day, never relative
   // ISO date-only is unambiguous, and new Date reads it as UTC with no 0–99 century pivot
   // (chrono pivots "0026"). Time-bearing ISO keeps chrono's zone handling below.
   if (/^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t)) {

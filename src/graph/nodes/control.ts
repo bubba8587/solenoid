@@ -4,6 +4,10 @@ import { frameIn, frameOut, dateOut, numOut, numListOut, tableOut } from "./shar
 import type { PassthroughSpec } from "./passthrough";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
+import { isRelativeDateText } from "./dateSerial";
+import { settingsStore } from "../settingsStore";
+import { fireAlert } from "../alertStore";
+import { isGraphRebuilding } from "../process";
 import { isSolError, type SolError } from "../errorValue";
 import { clamp } from "./mathUtils";
 import { compareStrings } from "../stringOrder";
@@ -159,11 +163,36 @@ export class DateInputNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date serial"));
   }
 
+  /** The last day a RELATIVE phrase resolved to — the edge for the "it moved" Alert. Not persisted. */
+  private lastRelativeSerial: number | null = null;
+
+  /** A relative phrase (today / next friday / in 3 days) is honoured only under the
+   *  Settings ▸ Data ▸ Relative dates opt-in — else it's unparseable like before. */
+  static relativeAllowed(): boolean { return settingsStore.get("relativeDates"); }
+
   data(): { result: number | SolError | null } {
+    const text = (this.stringLiterals.date ?? "").trim();
+    const relative = isRelativeDateText(text) && DateInputNode.relativeAllowed();
     // #AMBIGUOUS! surfaces downstream; unparseable text is a blank, a valid date its serial.
-    const r = parseDate((this.stringLiterals.date ?? "").trim());
+    const r = parseDate(text, relative ? { relative: true } : undefined);
     if (isSolError(r)) return { result: r };
-    return { result: Number.isFinite(r) ? Math.floor(r) : null };
+    const serial = Number.isFinite(r) ? Math.floor(r) : null;
+    if (relative && serial !== null) {
+      // Re-resolved on every pass (the value depends on "now"); when the DAY it lands on
+      // changes between calculations, say so — a moved date silently shifting a model is
+      // exactly what the opt-in warns about. Edge-detected on the resolved serial.
+      if (this.lastRelativeSerial !== null && this.lastRelativeSerial !== serial && !isGraphRebuilding()) {
+        const name = (this.label ?? "").trim() || "Date Input";
+        fireAlert({
+          nodeId: this.id, label: name, kind: "warning",
+          message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(this.lastRelativeSerial, DEFAULT_DATE_FORMAT)})`,
+        });
+      }
+      this.lastRelativeSerial = serial;
+    } else {
+      this.lastRelativeSerial = null;
+    }
+    return { result: serial };
   }
 }
 

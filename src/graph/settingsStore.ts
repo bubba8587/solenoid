@@ -32,6 +32,9 @@ export interface Settings {
   semanticZoom: boolean;
   /** Keep the command palette docked instead of opening on Enter; desktop only. */
   commandPaletteAlwaysOn: boolean;
+  /** Date Input reads relative phrases (today / next friday / in 3 days), re-resolved on every
+   *  recalculation, with an Alert when the resolved day shifts. Off = every date is a fixed day. */
+  relativeDates: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -46,6 +49,7 @@ const DEFAULTS: Settings = {
   quickWire: false,
   semanticZoom: false,
   commandPaletteAlwaysOn: false,
+  relativeDates: false,
 };
 
 export interface SettingField {
@@ -111,6 +115,11 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "Documents folder",
         help: "Where you keep saved graphs — File ▸ Open documents folder reveals it",
         type: "folder",
+      },
+      {
+        key: "relativeDates",
+        label: "Relative dates",
+        help: "Date Input understands today, next Friday, in 3 days — resolved again on every recalculation, with an Alert when the day moves",
       },
     ],
   },

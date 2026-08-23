@@ -474,3 +474,16 @@ formula surface ALSO lacks — an equal Excel divergence, which is fine).
   is the shield.
 - **R6 — Doc rot.** The project's named failure mode. Mitigation: reconcile-don't-
   append; the README index; verify claims against code.
+
+### relativeDatesOptIn — relative dates resolve ONLY on an opted-in Date Input (2026-08-23)
+**Stands:** `parseDate` refuses relative phrases (today / next friday / in 3 days / a bare
+weekday with no year) unless called with `{ relative: true }`; the ONLY caller that does is
+the Date Input node, and only under Settings ▸ Data ▸ Relative dates (default off). It
+re-resolves on every pass and fires a warning Alert when the resolved DAY moves between
+calculations (edge on the serial). DATEVALUE, Cast, Frame/Table columns and every other
+date surface stay deterministic — Excel purity and "a stored date is a fixed calendar day".
+A text with a four-digit year is never relative ("Monday, 16 March 2026" is absolute).
+**Where:** `dateSerial.ts` (`isRelativeDateText`, `ParseDateOptions`), `control.ts`
+DateInputNode, `settingsStore.ts` relativeDates; pinned in `relativeDates.test.ts`.
+**Reopens if:** the author wants DATEVALUE (or a frame column) to follow the setting — then
+the opt-in moves from the node to the parser call sites, the alert story with it.
