@@ -110,8 +110,6 @@ describe("FAMILY_BACKING 'internal' ⇒ registered internally (the flip ratchet)
   const STILL_ON_FORMULAJS = new Set<string>([
     // finance-iterative: RATE has no shared kernel yet (the TVM node is an Equation); MIRR is closed-form FX
     "RATE", "MIRR",
-    // datetime stragglers
-    "TIME", "DATEDIF", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "TIMEVALUE", "YEARFRAC",
     // lookup
     "CHOOSE",
   ]);

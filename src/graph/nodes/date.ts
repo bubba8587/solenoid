@@ -1,7 +1,9 @@
 import { ClassicPreset } from "rete";
 import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, type BroadcastResult } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate } from "./dateSerial";
+import { type SolError } from "../errorValue";
+import { serialToJsDate, jsDateToSerial } from "./dateSerial";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp } from "./dateOps";
+export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 /** The whole-day key of a date serial, so a holiday matches regardless of
@@ -38,20 +40,6 @@ function weekendSet(code: number): Set<number> {
   }
 }
 
-function isoWeek(d: Date): number {
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const weekStart = new Date(jan4);
-  weekStart.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7));
-  const week = Math.floor((d.getTime() - weekStart.getTime()) / (7 * 86400000)) + 1;
-  if (week < 1) return isoWeek(new Date(Date.UTC(d.getUTCFullYear() - 1, 11, 28)));
-  if (week > 52) {
-    const nextJan4 = new Date(Date.UTC(d.getUTCFullYear() + 1, 0, 4));
-    const nextStart = new Date(nextJan4);
-    nextStart.setUTCDate(nextJan4.getUTCDate() - ((nextJan4.getUTCDay() + 6) % 7));
-    if (d.getTime() >= nextStart.getTime()) return 1;
-  }
-  return week;
-}
 
 // ─── TODAY / NOW ──────────────────────────────────────────────────────────────
 
@@ -108,19 +96,7 @@ export class DateConstructNode extends ClassicPreset.Node {
 
   data(inputs: { year?: (number | number[])[]; month?: (number | number[])[]; day?: (number | number[])[] }): { result: BroadcastResult } {
     // broadcastErr (not broadcast): an out-of-range year is a per-cell #DOMAIN!.
-    const result = broadcastErr((rawY, rawM, rawD) => {
-    const year  = Math.floor(rawY);
-    const month = Math.floor(rawM);
-    const day   = Math.floor(rawD);
-    // A numeric year is LITERAL — no century guessing: DATE(26) is 26 AD. Range
-    // 1–9999, else #DOMAIN!. Pre-1900 works via negative serials.
-    if (year < 1 || year > 9999) return solError("#DOMAIN!", "Year must be between 1 and 9999");
-    // Date.UTC handles month/day overflow BUT remaps a 0–99 year to 1900–1999;
-    // shift that back (setUTCFullYear doesn't remap), keeping the overflow carry.
-    const d = new Date(Date.UTC(year, month - 1, day));
-    if (year <= 99) d.setUTCFullYear(d.getUTCFullYear() - 1900);
-    return jsDateToSerial(d);
-    },
+    const result = broadcastErr(dateFromParts, // shared with the DATE formula
       readInput(inputs.year,  this.literals.year  ?? 2024),
       readInput(inputs.month, this.literals.month ?? 1),
       readInput(inputs.day,   this.literals.day   ?? 1));
@@ -147,7 +123,7 @@ export class TimeConstructNode extends ClassicPreset.Node {
   }
 
   data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((h, m, s) => ((h * 3600 + m * 60 + s) % 86400) / 86400,
+    const result = broadcast(timeFraction, // shared with the TIME formula
       readInput(inputs.hour,   this.literals.hour   ?? 0),
       readInput(inputs.minute, this.literals.minute ?? 0),
       readInput(inputs.second, this.literals.second ?? 0));
@@ -167,34 +143,6 @@ export const DATE_TIME_VALUE_OP_META = {
   date: { label: "DATEVALUE", description: "Parses a date string into a date serial: ISO, day-first numeric, ordinals and month names (15 March 1996, 3rd Apr 2026). A numeric date that could read as day/month or month/day gives #AMBIGUOUS! rather than a guess. Excel: DATEVALUE." },
   time: { label: "TIMEVALUE", description: "Parses a time string such as \"14:30:00\" into a fraction of a day, 0 to 1. Excel: TIMEVALUE." },
 } satisfies Record<DateTimeValueOp, { label: string; description: string }>;
-
-function parseDateOnly(text: string): number | SolError {
-  const r = parseDate(text);
-  if (isSolError(r)) return r; // #AMBIGUOUS! surfaces (a numeric date that could be D/M or M/D)
-  if (Number.isNaN(r)) return solError("#VALUE!", `Cannot parse "${text}" as a date`);
-  return Math.floor(r); // DATEVALUE is date-only (Excel)
-}
-
-function parseTimeOfDay(text: string): number | SolError {
-  // Do NOT route this through `new Date("1970-01-01T…")`: that reads zone-less
-  // text as LOCAL time while the getters read UTC, so the fraction varies by machine.
-  const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
-  if (m) {
-    let h = Number(m[1]);
-    const min = Number(m[2]);
-    const sec = m[3] ? Number(m[3]) : 0;
-    const meridiem = m[4]?.toUpperCase();
-    const hourOk = meridiem ? h >= 1 && h <= 12 : h <= 23;
-    if (!hourOk || min > 59 || sec >= 60) return solError("#VALUE!", `Cannot parse "${text}" as a time`);
-    if (meridiem) h = (h % 12) + (meridiem === "P" ? 12 : 0);
-    return (h * 3600 + min * 60 + sec) / 86400;
-  }
-  // Excel TIMEVALUE also accepts a full datetime text and keeps the fraction.
-  const serial = parseDateToSerial(text);
-  return Number.isNaN(serial)
-    ? solError("#VALUE!", `Cannot parse "${text}" as a time`)
-    : serial - Math.floor(serial);
-}
 
 export class DateTimeValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -283,8 +231,6 @@ export class DatePartNode extends ClassicPreset.Node {
 
 // ─── Week info (WEEKDAY / WEEKNUM / ISOWEEKNUM) ──────────────────────────────
 
-export type WeekInfoOp = "weekday" | "weeknum" | "isoweeknum";
-
 export const WEEK_INFO_OP_META = {
   weekday:    { label: "WEEKDAY",    description: "Day of week. return_type 1: 1=Sun…7=Sat | 2: 1=Mon…7=Sun | 3: 0=Mon…6=Sun. Excel: WEEKDAY." },
   weeknum:    { label: "WEEKNUM",    description: "Week of year. return_type 1: Sun start | 2: Mon start. Excel: WEEKNUM." },
@@ -313,25 +259,7 @@ export class WeekInfoNode extends ClassicPreset.Node {
     const rtRaw = readInput(inputs.return_type, this.literals.return_type ?? 1);
     if (rtRaw === null) { this.cachedResult = null; return { result: null }; }
     const rt = Math.floor(rtRaw);
-    const result = broadcast((serial) => {
-      const d = serialToJsDate(serial);
-      switch (this.op) {
-        case "weekday": {
-          const dow = d.getUTCDay(); // 0=Sun
-          if (rt === 2)      return ((dow + 6) % 7) + 1; // 1=Mon..7=Sun
-          if (rt === 3)      return (dow + 6) % 7;       // 0=Mon..6=Sun
-          return dow + 1;                                 // 1=Sun..7=Sat
-        }
-        case "weeknum": {
-          const jan1      = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-          const startOff  = rt === 2 ? (jan1.getUTCDay() + 6) % 7 : jan1.getUTCDay();
-          const dayOfYear = Math.floor((d.getTime() - jan1.getTime()) / 86400000);
-          return Math.floor((dayOfYear + startOff) / 7) + 1;
-        }
-        case "isoweeknum":
-          return isoWeek(d);
-      }
-    }, inputs.date?.[0] ?? null);
+    const result = broadcast((serial) => weekInfo(this.op, serial, rt), inputs.date?.[0] ?? null); // shared with the formulas
     this.cachedResult = result;
     return { result };
   }
@@ -340,10 +268,6 @@ export class WeekInfoNode extends ClassicPreset.Node {
 // ─── Date difference (DAYS / DAYS360 / YEARFRAC + the DATEDIF units) ──────────
 // DATEDIF "D" is deliberately not an op (it duplicates DAYS), though the formula
 // surface still dispatches all six unit strings.
-
-export type DateDiffOp =
-  | "days" | "days360" | "yearfrac"          // day-count functions (basis input)
-  | "years" | "months" | "ym" | "md" | "yd"; // DATEDIF calendar components
 
 export const DATE_DIFF_OP_META = {
   days:     { label: "DAYS",     description: "Days between dates: end − start, signed. Excel: DAYS(end, start)." },
@@ -355,11 +279,6 @@ export const DATE_DIFF_OP_META = {
   md:       { label: "Days ignoring months",  description: "Days past the last whole month, borrowing from the month before the end month. Excel: DATEDIF \"MD\"." },
   yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: DATEDIF \"YD\"." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
-
-/** The day-count ops take Excel's basis argument; the DATEDIF units don't. */
-export function dateDiffNeedsBasis(op: DateDiffOp): boolean {
-  return op === "days360" || op === "yearfrac";
-}
 
 export class DateDiffNode extends ClassicPreset.Node {
   label: string;
@@ -397,76 +316,8 @@ export class DateDiffNode extends ClassicPreset.Node {
       if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
       basis = Math.floor(basisRaw);
     }
-    const result = broadcast((s, e) => {
-    // The DATEDIF ops are undefined for a reversed range — null (MISSING) per cell.
-    // DAYS stays signed.
-    if (s > e && !dateDiffNeedsBasis(this.op) && this.op !== "days") return null;
-    const sd    = serialToJsDate(s);
-    const ed    = serialToJsDate(e);
-    const sy    = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
-    const ey    = ed.getUTCFullYear(), em = ed.getUTCMonth(), eday = ed.getUTCDate();
-    let result: number;
-    switch (this.op) {
-      case "days":
-        result = Math.round((ed.getTime() - sd.getTime()) / 86400000);
-        break;
-      case "years":
-        result = ey - sy - (em < sm || (em === sm && eday < sday) ? 1 : 0);
-        break;
-      case "months":
-        result = (ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0);
-        break;
-      case "ym":
-        result = ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
-        break;
-      case "md": {
-        // Excel's MD is documented unreliable when the borrow goes negative
-        // (Jan 31 → Mar 1); we return the consistent borrow result.
-        if (eday >= sday) {
-          result = eday - sday;
-        } else {
-          // Day 0 of (ey, em) = last day of the previous month.
-          const daysInPrevMonth = new Date(Date.UTC(ey, em, 0)).getUTCDate();
-          result = eday - sday + daysInPrevMonth;
-        }
-        break;
-      }
-      case "yd": {
-        const base = new Date(Date.UTC(ey, sm, sday));
-        if (base > ed) base.setUTCFullYear(ey - 1);
-        result = Math.round((ed.getTime() - base.getTime()) / 86400000);
-        break;
-      }
-      case "days360": {
-        let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
-        let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
-        if (basis === 0) { if (d1 === 31) d1 = 30; if (d2 === 31 && d1 === 30) d2 = 30; }
-        else             { if (d1 === 31) d1 = 30; if (d2 === 31) d2 = 30; }
-        result = (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
-        break;
-      }
-      case "yearfrac": {
-        const days = (ed.getTime() - sd.getTime()) / 86400000;
-        if (basis === 0) {
-          let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
-          let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
-          if (d1 === 31) d1 = 30; if (d2 === 31 && d1 === 30) d2 = 30;
-          result = ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
-        } else if (basis === 2) result = days / 360;
-        else if (basis === 3)   result = days / 365;
-        else if (basis === 4) {
-          let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
-          let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
-          if (d1 === 31) d1 = 30; if (d2 === 31) d2 = 30;
-          result = ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
-        } else {
-          result = days / 365.25; // basis 1: actual/actual (approximation)
-        }
-        break;
-      }
-    }
-    return result;
-    }, inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+    // Shared with the DAYS / DAYS360 / YEARFRAC / DATEDIF formulas.
+    const result = broadcast((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }

@@ -1,10 +1,11 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { serialToJsDate, jsDateToSerial, parseDate } from "./nodes/dateSerial";
+import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit } from "./nodes/dateOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -436,6 +437,16 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   STEYX:       { returns: "number", arity: [2, 2], family: "statistics" },
   FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
   FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
+  // The date family on the date nodes' dateOps kernels (A1 backing flip, 2026-08-23).
+  TIME:        { returns: "number", arity: [3, 3], family: "datetime" },
+  TIMEVALUE:   { returns: "number", arity: [1, 1], family: "datetime" },
+  WEEKDAY:     { returns: "number", arity: [1, 2], family: "datetime" },
+  WEEKNUM:     { returns: "number", arity: [1, 2], family: "datetime" },
+  ISOWEEKNUM:  { returns: "number", arity: [1, 1], family: "datetime" },
+  DAYS:        { returns: "number", arity: [2, 2], family: "datetime" },
+  DAYS360:     { returns: "number", arity: [2, 3], family: "datetime" },
+  YEARFRAC:    { returns: "number", arity: [2, 3], family: "datetime" },
+  DATEDIF:     { returns: "number", arity: [3, 3], family: "datetime" },
   // The distribution family on the Distribution node's DIST_SPECS (A1 backing flip, 2026-08-23).
   "NORM.DIST":    { returns: "number", arity: [4, 4], family: "distributions" },
   "NORM.INV":     { returns: "number", arity: [3, 3], family: "distributions" },
@@ -1117,16 +1128,37 @@ registerInternal("INDEX", (list, row, col) => {
 // FX returns a LOCAL-midnight Date object, and `jsDateToSerial` reads UTC, so the serial
 // shifts by the machine's TZ offset; these four are DATE-ONLY, so rounding recovers it.
 const toSerialIfDate = (v: unknown): unknown => (v instanceof Date ? Math.round(jsDateToSerial(v)) : v);
-for (const fn of ["DATE", "EDATE", "WORKDAY"]) {
+for (const fn of ["EDATE", "WORKDAY"]) {
   const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
   if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
 }
-// DATEVALUE runs OUR shared parser (chrono-backed, #AMBIGUOUS-aware), not Formula.js — one
-// date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as.
-registerInternal("DATEVALUE", (x) => {
-  const r = parseDate(toStr(x));
-  if (isSolError(r)) return r;
-  return Number.isFinite(r) ? Math.floor(r) : solError("#VALUE!", "DATEVALUE couldn't read that as a date");
+// The date family runs the date NODES' kernels (dateOps.ts — capabilityParity / shareImpl):
+// DATE with the literal-year rule (26 is the year 26, the documented Excel deviation),
+// TIME, DATEVALUE / TIMEVALUE on OUR shared parser (chrono-backed, #AMBIGUOUS-aware — one
+// date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as),
+// the week-info trio and the DAYS / DAYS360 / YEARFRAC / DATEDIF family.
+registerInternal("DATE", (y, m, d) => {
+  const yn = toNum(y), mn = toNum(m), dn = toNum(d);
+  return badNum(yn, mn, dn) ? VALUE("DATE") : dateFromParts(yn, mn, dn);
+});
+registerInternal("TIME", (h, m, s) => {
+  const hn = toNum(h), mn = toNum(m), sn = toNum(s);
+  return badNum(hn, mn, sn) ? VALUE("TIME") : timeFraction(hn, mn, sn);
+});
+registerInternal("DATEVALUE", (x) => parseDateOnly(toStr(x).trim()));
+registerInternal("TIMEVALUE", (x) => parseTimeOfDay(toStr(x).trim()));
+registerInternal("WEEKDAY",    (d, rt) => { const n = toNum(d); return Number.isNaN(n) ? VALUE("WEEKDAY") : weekInfo("weekday", n, Math.floor(optNum(rt, 1))); });
+registerInternal("WEEKNUM",    (d, rt) => { const n = toNum(d); return Number.isNaN(n) ? VALUE("WEEKNUM") : weekInfo("weeknum", n, Math.floor(optNum(rt, 1))); });
+registerInternal("ISOWEEKNUM", (d) => { const n = toNum(d); return Number.isNaN(n) ? VALUE("ISOWEEKNUM") : weekInfo("isoweeknum", n); });
+registerInternal("DAYS",     (end, start) => { const e = toNum(end), s = toNum(start); return badNum(e, s) ? VALUE("DAYS") : dateDiff("days", s, e); });
+registerInternal("DAYS360",  (start, end, method) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("DAYS360") : dateDiff("days360", s, e, isTrue(method) ? 1 : 0); });
+registerInternal("YEARFRAC", (start, end, basis) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("YEARFRAC") : dateDiff("yearfrac", s, e, Math.floor(optNum(basis, 0))); });
+registerInternal("DATEDIF",  (start, end, unit) => {
+  const s = toNum(start), e = toNum(end);
+  if (badNum(s, e)) return VALUE("DATEDIF");
+  const op = dateDiffOpForUnit(toStr(unit));
+  if (op === null) return solError("#DOMAIN!", "DATEDIF unit must be Y, M, D, YM, MD or YD");
+  return dateDiff(op, s, e) ?? solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
 });
 // WORKDAY.INTL is namespaced under WORKDAY (not a flat FX key), so the loop above missed
 // it — without the wrap it leaked FX's raw Date object (TZ-shifted), silently corrupting
