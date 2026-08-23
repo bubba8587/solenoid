@@ -274,6 +274,33 @@ describe("addColumn", () => {
   });
 });
 
+// The AddColumnNode pads a values list SHORTER than the frame to the row count with
+// blanks (the catalog says "Shorter lists pad with blanks"); the pad is the node's own
+// Math.max logic, not addColumn's, so it needs a node-level pin.
+describe("Add Column pads a short list with blanks", () => {
+  it("a values list shorter than the frame's rows fills the rest with null", async () => {
+    const { AddColumnNode } = await import("./nodes/frame");
+    const f = frameFromCells(["a"], [[1], [2], [3]]); // three rows
+    const node = new AddColumnNode({ addAs: "number" });
+    node.stringLiterals.name = "b";
+    const out = node.data({ frame: [f], values: [[10]] }).frame!; // one value
+    expect(getColumn(out, "b")!.values).toEqual([10, null, null]);
+  });
+});
+
+// A ragged numeric matrix (rows of unequal length) pads each short row's missing trailing
+// cells to the widest row with blanks. typedColumn's ragged path is pinned above; this is
+// the NUMERIC buildFrame path, which fills undefined → null itself.
+describe("buildFrame — ragged rows pad to the widest row with blanks", () => {
+  it("short rows fill missing trailing cells with null; headers auto-fill", () => {
+    const f = buildFrame([[1, 2, 3], [4]]);
+    expect(f.columns.map((c) => c.name)).toEqual(["Col1", "Col2", "Col3"]);
+    expect(f.columns[0].values).toEqual([1, 4]);
+    expect(f.columns[1].values).toEqual([2, null]);
+    expect(f.columns[2].values).toEqual([3, null]);
+  });
+});
+
 // ─── frameHasTextColumns ─────────────────────────────────────────────────────
 
 describe("frameHasTextColumns", () => {

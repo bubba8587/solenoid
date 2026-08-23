@@ -19,16 +19,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   inputs handled per `value-semantics.md`; collapsed card reads right; description
   matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings
   in the session digest; fix small, file anything big.
-- [ ] **Fine-print residue (small, from the completed inventory).** The 45-claim
-  sweep is DONE (2026-08-08; digest has the full record — every cluster verified
-  agent-assisted, 1 false + 4 imprecise descriptions fixed, `caseContract` +
-  `finePrintContract` pin the risky set). Leftovers, all small: (b) Unpinned-but-verified
-  minor claims if their nodes come up in the sweep: add-column pad, build-frame ragged rows,
-  MUNIT blanks-out-of-sums. [(a) DONE 2026-08-23 — Expect's alert edge-detects on the SET of
-  failing check kinds (`violations.join`), so a different cell failing the same check doesn't
-  re-fire; confirmed intended (matches the alertStore STATUS-edge invariant) and pinned in
-  `quality.test.ts` "alert edge-detect".]
-
 - [ ] **Finance absolute-value verification (real Excel needed).** The bond/coupon
   family has NO oracle — Formula.js implements almost none of it. `financeInvariants.test.ts`
   now pins the round-trips/identities (PRICE↔YIELD, PRICEMAT↔YIELDMAT, ODD* pairs,

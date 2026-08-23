@@ -88,6 +88,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-23c — IRR near-floor root fallback; Solarized ground; two parks)
 
+**Fine-print residue CLOSED — the three unpinned claims are now pinned (2026-08-23).** All three
+verified true against the code and given regression tests: Add Column pads a values list shorter
+than the frame with `null` to the row count (node-level `Math.max`, not `addColumn`'s helper —
+`frame.test.ts` "Add Column pads a short list"); the NUMERIC `buildFrame` path pads ragged rows to
+the widest row with `null` (`typedColumn`'s ragged path was already pinned; this is the number path
+— `frame.test.ts` "buildFrame — ragged rows pad"); MUNIT's blank off-diagonal fills `null` (absent,
+skipped by aggregates) vs zero's `0` (present) — `formulaMatrix.test.ts` "MUNIT off-diagonal blank".
+With (a) already done, the whole "Fine-print residue" backlog item is deleted.
+
 **Solarized dark canvas returns to canonical base03 (author call 2026-08-23).** The dark
 `canvasBg` had been deepened off-canon to `#002833` to force cards to lift; the author ruled
 Solarized should carry no such invariant on its ground — make it match the ladder or leave it.
