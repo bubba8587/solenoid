@@ -3,7 +3,7 @@
 // Entry points take Solenoid DATE SERIALS; INVALID INPUT is `null`, never a throw
 // or a fabricated number — each surface tags its own failure from that.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
-import { isSolError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 export function coupAddMonths(d: Date, months: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, d.getUTCDate()));
@@ -490,4 +490,20 @@ function bracketDiscountRate(values: readonly number[], exponents: readonly numb
 export function solveDiscountRate(values: readonly number[], exponents: readonly number[]): number | null {
   const newton = newtonDiscountRate(values, exponents);
   return newton !== null ? newton : bracketDiscountRate(values, exponents);
+}
+
+/** MIRR over PERIODIC flows (blanks already zeroed by cashPrep): negatives discounted at
+ *  the finance rate, positives compounded at the reinvest rate. Needs one of each sign
+ *  (else #DIV/0!, Excel's code); an extreme series overflows to #OVERFLOW!. */
+export function mirr(cashflows: readonly number[], finrate: number, reinrate: number): number | SolError {
+  const n = cashflows.length;
+  let pvNeg = 0, fvPos = 0;
+  for (let i = 0; i < n; i++) {
+    const cf = cashflows[i];
+    if (cf < 0) pvNeg += cf / Math.pow(1 + finrate, i);
+    else fvPos += cf * Math.pow(1 + reinrate, n - 1 - i);
+  }
+  if (pvNeg === 0 || fvPos === 0) return solError("#DIV/0!", "MIRR needs both a negative (investment) and a positive (return) cash flow");
+  const r = Math.pow(-fvPos / pvNeg, 1 / (n - 1)) - 1;
+  return Number.isFinite(r) ? r : solError("#OVERFLOW!", "MIRR overflowed: the cash flows or rates are extreme");
 }

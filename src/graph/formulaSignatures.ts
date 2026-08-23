@@ -10,7 +10,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   IFERROR: "value, fallback",
   IFNA: "value, fallback",
   SWITCH: "value, case1, result1, …, [default]",
-  CHOOSE: "index, value1, value2, …",
+  CHOOSE: "index, value1, [value2], …",
   AND: "logical1, logical2, …",
   OR: "logical1, logical2, …",
   XOR: "logical1, logical2, …",

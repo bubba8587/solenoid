@@ -9,7 +9,7 @@ import { EquationNode } from "./equation";
 import {
   coupAddMonths, days30_360, actualDays,
   couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep,
+  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr,
 } from "./financeOps";
 import type {
   CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
@@ -529,32 +529,9 @@ export class MirrNode extends ClassicPreset.Node {
       this.cachedResult = null;
       return { result: null }; // not wired / too few points — a blank, not an error
     }
-    const n = cashflows.length;
-    let pvNeg = 0;
-    let fvPos = 0;
-    for (let i = 0; i < n; i++) {
-      const cf = cashflows[i];
-      if (cf < 0) {
-        pvNeg += cf / Math.pow(1 + finrate, i);
-      } else {
-        fvPos += cf * Math.pow(1 + reinrate, n - 1 - i);
-      }
-    }
-    // MIRR needs one negative AND one positive flow, or the outflow/inflow ratio
-    // divides by zero (Excel returns #DIV/0! for an all-same-sign series).
-    if (pvNeg === 0 || fvPos === 0) {
-      const err = solError("#DIV/0!", "MIRR needs both a negative (investment) and a positive (return) cash flow");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const mirr = Math.pow(-fvPos / pvNeg, 1 / (n - 1)) - 1;
-    if (!Number.isFinite(mirr)) {
-      const err = solError("#OVERFLOW!", "MIRR overflowed: the cash flows or rates are extreme");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = mirr;
-    return { result: mirr };
+    const result = mirr(cashflows, finrate, reinrate); // shared with the MIRR formula
+    this.cachedResult = result;
+    return { result };
   }
 }
 

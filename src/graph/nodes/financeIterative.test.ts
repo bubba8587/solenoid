@@ -146,6 +146,13 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
     expect(ev("MIRR(c, 0.1, 0.12)", { c: cf })).toBeCloseTo(
       new MirrNode().data({ list: [cf], finrate: [0.1], reinrate: [0.12] }).result as number, 12);
   });
+  it("MIRR formula == node, incl. the same-sign #DIV/0!", () => {
+    const cf = [-120000, 39000, 30000, 21000, 37000, 46000];
+    expect(ev("MIRR(c, 0.1, 0.12)", { c: cf })).toBeCloseTo(new MirrNode().data({ list: [cf], finrate: [0.1], reinrate: [0.12] }).result as number, 12);
+    expect(ev("MIRR(c, 0.1, 0.12)", { c: cf })).toBeCloseTo(0.1260941303659051, 10); // Excel's documented example
+    const r = ev("MIRR(c, 0.1, 0.12)", { c: [100, 200] });
+    expect(isSolError(r) && r.code).toBe("#DIV/0!");
+  });
   it("a blank DATE makes XIRR blank on both surfaces (the schedule is unknown)", () => {
     const ds = [dates[0], null, dates[2], dates[3], dates[4]];
     expect(ev("XIRR(c, d)", { c: flows, d: ds })).toBeNull();

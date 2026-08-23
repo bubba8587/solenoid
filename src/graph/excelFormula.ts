@@ -397,8 +397,8 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE",
   // cashflow functions take a whole list of cash flows; broadcast would be garbage
-  // (IRR / XIRR are whole-arg natives now — `listArgs` routes them before this set).
-  "NPV", "MIRR", "XNPV",
+  // (IRR / XIRR / MIRR are whole-arg natives now — `listArgs` routes them before this set).
+  "NPV", "XNPV",
   // Lookup functions take whole lookup + return lists (registered 1-D impls).
   "XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX",
   // Statistical TESTS and the pairwise sums — whole samples in, ONE number out.
@@ -429,10 +429,10 @@ const RANGE_PAIRED = new Set([
 // POSITIONAL lookups answer in indices, so nulls stay put (a drop would shift
 // every match); errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
-// POSITIONAL-by-period lists: SERIESSUM's coefficients sit on powers, NPV / MIRR's cash
-// flows on periods — a null-drop would shift every later one, so a blank contributes 0
-// in place (the same policy the NPV / MIRR nodes apply via cashPrep).
-const RANGE_ZERO_FILL = new Set(["SERIESSUM", "NPV", "MIRR"]);
+// POSITIONAL-by-period lists: SERIESSUM's coefficients sit on powers, NPV's cash flows
+// on periods — a null-drop would shift every later one, so a blank contributes 0 in
+// place (the same policy the NPV node applies via cashPrep).
+const RANGE_ZERO_FILL = new Set(["SERIESSUM", "NPV"]);
 
 // Whole-list natives (formulaNaming Tier 3) take their 1-D args RAW: they are
 // position-preserving, so a null-drop would change the answer
@@ -718,7 +718,7 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
 // Functions whose result DEPENDS ON a blank operand: `null` flows INTO them
 // (ISBLANK(null) is TRUE) while every other function propagates missing; errors
 // still short-circuit, and IF is listed so an `IF(x,,y)` branch can flow.
-const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE", "IF"]);
+const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE", "IF", "CHOOSE"]);
 
 /** Broadcast a non-range function element-wise (scalars repeat, ragged args zip to
  *  the LONGEST and pad with `null`): per cell an error propagates first, else a

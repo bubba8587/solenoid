@@ -102,16 +102,29 @@ describe("MODE / FISHER", () => {
   });
 });
 
+describe("CHOOSE formula == Choose node", () => {
+  it("picks by 1-based index; a blank index is blank, an out-of-range one is #VALUE!, a chosen blank passes through", () => {
+    expect(ev("CHOOSE(2, 10, 20, 30)")).toBe(20);
+    expect(ev("CHOOSE(2, \"a\", \"b\")")).toBe("b");
+    expect(ev("CHOOSE(i, 10, 20)", { i: null })).toBeNull();
+    expect(ev("CHOOSE(1, 10, x)", { x: null })).toBe(10); // an UNCHOSEN blank doesn't poison the pick
+    expect(ev("CHOOSE(2, 10, x)", { x: null })).toBeNull();
+    const r = ev("CHOOSE(4, 10, 20)");
+    expect(isSolError(r) && r.code).toBe("#VALUE!");
+    // a list index spills one pick per element (the evaluator's broadcast)
+    expect(ev("CHOOSE(i, 10, 20, 30)", { i: [1, 3, 2] })).toEqual([10, 30, 20]);
+  });
+});
+
 // The backing table is a DECISION; this pins the live STATE against it. A family whose
 // backing reads `internal` must register every overlap name internally — or name the
 // stragglers here, and that list must stay honest (an entry that got registered is
 // deleted, so the gap ratchets shut rather than being quietly carried).
 describe("FAMILY_BACKING 'internal' ⇒ registered internally (the flip ratchet)", () => {
   const STILL_ON_FORMULAJS = new Set<string>([
-    // finance-iterative: RATE has no shared kernel yet (the TVM node is an Equation); MIRR is closed-form FX
-    "RATE", "MIRR",
-    // lookup
-    "CHOOSE",
+    // finance-iterative: RATE has no shared kernel — the TVM node solves it as an Equation
+    // (acausal), so there is no node-side function to register; FX's Newton stands.
+    "RATE",
   ]);
   const internal = new Set(internalFunctionNames());
   it("every internal-backed overlap name is registered, or is a listed straggler", () => {

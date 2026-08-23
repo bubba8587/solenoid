@@ -25,7 +25,7 @@ import {
 } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep,
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr,
 } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
@@ -482,6 +482,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // ratio instead of the p-value — these run the nodes' own impls (mathUtils).
   "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
   IRR:         { returns: "number", listArgs: true, arity: [1, 2], family: "finance-iterative" },
+  MIRR:        { returns: "number", listArgs: true, arity: [3, 3], family: "finance-iterative" },
+  CHOOSE:      { returns: "any", arity: [2, 255], family: "lookup" },
   XIRR:        { returns: "number", listArgs: true, arity: [2, 3], family: "finance-iterative" },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
   PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
@@ -1290,6 +1292,13 @@ registerInternal("IRR", (values) => {
   if (nums.length <= 1) return null;
   return solveDiscountRate(nums, nums.map((_, t) => t)) ?? IRR_CONV("IRR");
 });
+registerInternal("MIRR", (values, finrate, reinrate) => {
+  const { error, nums } = cashPrep(numList(values) as (number | null | SolError)[]);
+  if (error) return error;
+  const fr = toNum(finrate), rr = toNum(reinrate);
+  if (badNum(fr, rr)) return VALUE("MIRR");
+  return nums.length <= 1 ? null : mirr(nums, fr, rr);
+});
 registerInternal("XIRR", (values, dates) => {
   const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
   if (prep.error) return prep.error;
@@ -1298,6 +1307,16 @@ registerInternal("XIRR", (values, dates) => {
   if (n < 2) return null;
   const d0 = prep.dates[0];
   return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
+});
+// CHOOSE runs the Choose node's rule: a blank index is unknown (null), a known index
+// outside 1..n is #VALUE!, and the chosen value passes through as-is (a blank included —
+// CHOOSE is NULL_INSPECTING on the evaluator side so an unchosen blank can't poison it).
+registerInternal("CHOOSE", (index, ...values) => {
+  if (index == null) return null;
+  const idx = Math.round(toNum(index));
+  if (Number.isNaN(idx)) return VALUE("CHOOSE");
+  if (idx < 1 || idx > values.length) return solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${values.length}`);
+  return values[idx - 1] ?? null;
 });
 // Excel's VDB carries a trailing no_switch flag; ours always switches to
 // straight-line when that is the larger charge, which is Excel's DEFAULT.
