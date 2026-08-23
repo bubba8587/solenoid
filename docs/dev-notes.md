@@ -86,7 +86,7 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-23 — independent small fixes: array-needle lookup, dep-diff triage)
+### SESSION DIGEST (2026-08-23 — lookup array-spill + shared-kernel unification, dep-diff triage)
 
 **XLOOKUP/XMATCH: an array lookup value now SPILLS (Excel parity).** Excel returns one result
 per element of an array `lookup_value`; we treated the whole array as one un-findable needle
@@ -121,6 +121,20 @@ comment. No Rust mirror exists for the lookup, so nothing to keep in sync there.
 
 Scoped to the lookup family: a 1×N MATRIX lookup value is still `#SHAPE!` (deferred orientation),
 and the general per-argument mechanism (`wholeArrayArgs`/`prepByShape`) subsumes the formula `pick`.
+
+**Then swept for OTHER formula/node kernel divergences (same bug class) and fixed the one real
+hit: the distribution family.** The Student-t CDF was written THREE times (`mathUtils.tCDF`, a
+local `tCDF` in `excelFunctions.ts`, and `tDistCDF` in `distribution.ts`), and the t/chisq/F/gamma
+CDF+PDF bodies were inlined separately on the formula and node surfaces. Extracted one shared set to
+`mathUtils` (`tCDF` existed; added `tPDF`/`chiSqCDF`/`fCDF`/`gammaCDF`/`gammaPDF`); both the
+`registerInternal` bodies and the node's `DIST_SPECS.compute` now call them — the inverses already
+shared `bisectionInv`, so sharing the CDFs unified them for free. Byte-for-byte identical to the
+copies replaced (verified each form); full suite + the pre-existing cross-surface pin
+(`distributionFormula.test.ts`, which the audit wrongly reported absent) stay green, and that pin now
+guards a STRUCTURALLY shared kernel. The rest of the audit came back clean — finance/matrix/list/
+regression/stats families already share kernels; the only softer note is vendor-vs-node cases
+(STDEV/VAR/COVAR/PERCENTILE/MODE) where the formula delegates to Formula.js and the node computes
+inline — not intra-repo duplication, left as-is.
 
 **Dependency-diff triage (read the diffs, not the version bumps):**
 - `@formulajs/formulajs` 4.6.0 → 4.6.1 **bumped.** The whole diff is a new `TAKE` (we already

@@ -267,11 +267,44 @@ export function arrSampleVar(arr: readonly number[]): number {
   return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
 }
 
+// ─── Continuous-distribution kernels (shareImpl) ──────────────────────────────
+// ONE home for the t / chi-squared / F / gamma CDFs and PDFs that Formula.js lacks.
+// The in-formula registrations (excelFunctions.ts) AND the Distribution node
+// (distribution.ts) both call these, so the two surfaces cannot drift — the CDFs also
+// back every inverse form via `bisectionInv`. Kept numerically identical to the three
+// hand-rolled copies they replaced (t/chisq/F/gamma parity is pinned cross-surface).
+
 /** Student-t CDF via the regularized incomplete beta. */
 export function tCDF(x: number, df: number): number {
   const z = df / (df + x * x);
   const betaCDF = regularizedBeta(z, df / 2, 0.5);
   return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
+}
+
+/** Student-t PDF. */
+export function tPDF(x: number, df: number): number {
+  return Math.exp(lnGamma((df + 1) / 2) - lnGamma(df / 2)) /
+    (Math.sqrt(df * Math.PI) * Math.pow(1 + (x * x) / df, (df + 1) / 2));
+}
+
+/** Chi-squared CDF (0 at or below the origin). */
+export function chiSqCDF(x: number, df: number): number {
+  return x <= 0 ? 0 : regularizedGamma(df / 2, x / 2);
+}
+
+/** F-distribution CDF (0 at or below the origin). */
+export function fCDF(x: number, df1: number, df2: number): number {
+  return x <= 0 ? 0 : regularizedBeta((x * df1) / (x * df1 + df2), df1 / 2, df2 / 2);
+}
+
+/** Gamma CDF with a SCALE parameter (Excel's β), 0 at or below the origin. */
+export function gammaCDF(x: number, alpha: number, beta: number): number {
+  return x <= 0 ? 0 : regularizedGamma(alpha, x / beta);
+}
+
+/** Gamma PDF with a SCALE parameter (Excel's β), 0 at or below the origin. */
+export function gammaPDF(x: number, alpha: number, beta: number): number {
+  return x <= 0 ? 0 : Math.exp((alpha - 1) * Math.log(x) - x / beta - alpha * Math.log(beta) - lnGamma(alpha));
 }
 
 /** Index-aligned pairs with the pairwise policy: first cell error propagates,

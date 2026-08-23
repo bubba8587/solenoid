@@ -1,7 +1,7 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial, parseDate } from "./nodes/dateSerial";
-import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
+import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
@@ -849,41 +849,31 @@ num1("ACOS",   (x) => (x < -1 || x > 1 ? domErr() : Math.acos(x)));
 num1("ACOSH",  (x) => (x < 1 ? domErr() : Math.acosh(x)));
 num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
 
-// The distributions Formula.js lacks, on the same mathUtils the dist nodes use; invalid
-// params return null (a blank), never a fabricated number.
-const PI = Math.PI;
+// The distributions Formula.js lacks, on the SAME mathUtils kernels the Distribution
+// NODE uses (shareImpl — the two surfaces are pinned equal by distributionSurfaceParity
+// so they cannot drift). Invalid params return null (a blank), never a fabricated number.
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);
-function tCDF(x: number, df: number): number {
-  const b = regularizedBeta(df / (df + x * x), df / 2, 0.5);
-  return x >= 0 ? 1 - b / 2 : b / 2;
-}
-const fCDF = (v: number, df1: number, df2: number) => (v <= 0 ? 0 : regularizedBeta((v * df1) / (v * df1 + df2), df1 / 2, df2 / 2));
-const chiCDF = (x: number, df: number) => (x <= 0 ? 0 : regularizedGamma(df / 2, x / 2));
 
 registerInternal("T.DIST", (x, df, cum) => {
   const xn = toNum(x), d = toNum(df);
   if (badNum(xn, d) || d <= 0) return null;
-  return ok(isTrue(cum)
-    ? tCDF(xn, d)
-    : Math.exp(lnGamma((d + 1) / 2) - lnGamma(d / 2)) / (Math.sqrt(d * PI) * Math.pow(1 + (xn * xn) / d, (d + 1) / 2)));
+  return ok(isTrue(cum) ? tCDF(xn, d) : tPDF(xn, d));
 });
 registerInternal("T.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - tCDF(xn, d)); });
 registerInternal("T.DIST.2T", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(2 * (1 - tCDF(Math.abs(xn), d))); });
 registerInternal("T.INV", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), pn, -1e6, 1e6)); });
 registerInternal("T.INV.2T", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), 1 - pn / 2, -1e6, 1e6)); });
-registerInternal("CHISQ.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - chiCDF(xn, d)); });
-registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => chiCDF(x, d), 1 - pn, 0, 1e6)); });
+registerInternal("CHISQ.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - chiSqCDF(xn, d)); });
+registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => chiSqCDF(x, d), 1 - pn, 0, 1e6)); });
 registerInternal("F.DIST.RT", (x, a, b) => { const xn = toNum(x), d1 = toNum(a), d2 = toNum(b); return badNum(xn, d1, d2) || d1 <= 0 || d2 <= 0 ? null : ok(1 - fCDF(xn, d1, d2)); });
 registerInternal("F.INV.RT", (p, a, b) => { const pn = toNum(p), d1 = toNum(a), d2 = toNum(b); return badNum(pn, d1, d2) || d1 <= 0 || d2 <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => fCDF(x, d1, d2), 1 - pn, 0, 1e6)); });
 registerInternal("GAMMA.DIST", (x, a, b, cum) => {
   const xn = toNum(x), al = toNum(a), be = toNum(b);
   if (badNum(xn, al, be) || al <= 0 || be <= 0) return null;
-  return ok(isTrue(cum)
-    ? (xn <= 0 ? 0 : regularizedGamma(al, xn / be))
-    : (xn <= 0 ? 0 : Math.exp((al - 1) * Math.log(xn) - xn / be - al * Math.log(be) - lnGamma(al))));
+  return ok(isTrue(cum) ? gammaCDF(xn, al, be) : gammaPDF(xn, al, be));
 });
-registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => (x <= 0 ? 0 : regularizedGamma(al, x / be)), pn, 0, 1e6)); });
+registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
 
 // CONVERT runs OUR unit system on the SAME unit keys as the ConvertNode dropdown.
 // Unknown / cross-category units are #N/A (Excel).

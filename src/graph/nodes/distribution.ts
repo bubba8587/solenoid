@@ -8,6 +8,12 @@ import {
   lnGamma,
   lnCombin,
   bisectionInv,
+  tCDF,
+  tPDF,
+  chiSqCDF,
+  fCDF,
+  gammaCDF,
+  gammaPDF,
 } from "./mathUtils";
 
 const { PI, exp, log, sqrt, abs } = Math;
@@ -52,13 +58,6 @@ interface DistSpec {
   /** The kernel: form + first value + params in declared order. `broadcast`
    *  guards finiteness centrally; return null for a domain refusal. */
   compute: (form: DistForm, v: number, p: number[]) => number | null;
-}
-
-function tDistCDF(x: number, df: number): number {
-  const t2 = x * x;
-  const z = df / (df + t2);
-  const betaCDF = regularizedBeta(z, df / 2, 0.5);
-  return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
 }
 
 function binomPmf(k: number, n: number, p: number): number | null {
@@ -122,13 +121,12 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       if (form === "inv" || form === "inv2t") {
         if (!probGuard(v)) return null;
         const target = form === "inv" ? v : 1 - v / 2;
-        return bisectionInv((t) => tDistCDF(t, dfv), target, -1e6, 1e6);
+        return bisectionInv((t) => tCDF(t, dfv), target, -1e6, 1e6);
       }
-      if (form === "cdf") return tDistCDF(v, dfv);
-      if (form === "2t") return 2 * (1 - tDistCDF(abs(v), dfv));
-      if (form === "rt") return 1 - tDistCDF(v, dfv);
-      return exp(lnGamma((dfv + 1) / 2) - lnGamma(dfv / 2)) /
-        (sqrt(dfv * PI) * Math.pow(1 + v * v / dfv, (dfv + 1) / 2));
+      if (form === "cdf") return tCDF(v, dfv);
+      if (form === "2t") return 2 * (1 - tCDF(abs(v), dfv));
+      if (form === "rt") return 1 - tCDF(v, dfv);
+      return tPDF(v, dfv);
     },
   },
   chisq: {
@@ -140,12 +138,12 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       if (form === "inv" || form === "invrt") {
         if (!probGuard(v)) return null;
         const target = form === "inv" ? v : 1 - v;
-        return bisectionInv((x) => regularizedGamma(dfv / 2, x / 2), target, 0, 1e6);
+        return bisectionInv((x) => chiSqCDF(x, dfv), target, 0, 1e6);
       }
       if (form === "pdf") {
         return v <= 0 ? 0 : exp(-v / 2 + (dfv / 2 - 1) * log(v) - (dfv / 2) * log(2) - lnGamma(dfv / 2));
       }
-      const cdfVal = v <= 0 ? 0 : regularizedGamma(dfv / 2, v / 2);
+      const cdfVal = chiSqCDF(v, dfv);
       return form === "cdf" ? cdfVal : 1 - cdfVal;
     },
   },
@@ -155,15 +153,13 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
     params: [{ key: "df1", label: "df1", def: 5 }, { key: "df2", label: "df2", def: 10 }],
     compute: (form, v, [d1, d2]) => {
       if (d1 <= 0 || d2 <= 0) return null;
-      const fCdf = (t: number) =>
-        t <= 0 ? 0 : regularizedBeta((t * d1) / (t * d1 + d2), d1 / 2, d2 / 2);
       if (form === "inv" || form === "invrt") {
         if (!probGuard(v)) return null;
         const target = form === "inv" ? v : 1 - v;
-        return bisectionInv(fCdf, target, 0, 1e6);
+        return bisectionInv((x) => fCDF(x, d1, d2), target, 0, 1e6);
       }
-      if (form === "cdf") return fCdf(v);
-      if (form === "rt") return 1 - fCdf(v);
+      if (form === "cdf") return fCDF(v, d1, d2);
+      if (form === "rt") return 1 - fCDF(v, d1, d2);
       if (v <= 0) return 0;
       return exp(
         (d1 / 2) * log(d1) + (d2 / 2) * log(d2) + (d1 / 2 - 1) * log(v) -
@@ -200,12 +196,10 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
     compute: (form, v, [av, bv]) => {
       if (av <= 0 || bv <= 0) return null;
       if (form === "inv") {
-        return probGuard(v)
-          ? bisectionInv((x) => (x <= 0 ? 0 : regularizedGamma(av, x / bv)), v, 0, 1e6)
-          : null;
+        return probGuard(v) ? bisectionInv((x) => gammaCDF(x, av, bv), v, 0, 1e6) : null;
       }
-      if (form === "cdf") return v <= 0 ? 0 : regularizedGamma(av, v / bv);
-      return v <= 0 ? 0 : exp((av - 1) * log(v) - v / bv - av * log(bv) - lnGamma(av));
+      if (form === "cdf") return gammaCDF(v, av, bv);
+      return gammaPDF(v, av, bv);
     },
   },
   lognorm: {
