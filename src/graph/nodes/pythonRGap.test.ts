@@ -8,6 +8,8 @@ import { parseDateToSerial } from "./dateSerial";
 import { isSolError } from "../errorValue";
 import { describeFrame, correlationMatrix } from "../frameVerbs";
 import { amortizationSchedule } from "./financeOps";
+import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
+import { HypothesisTestNode } from "./stats";
 import { DescribeNode, CorrMatrixNode } from "./frame";
 import { AmortizationNode } from "./finance";
 import type { FrameValue } from "../frame";
@@ -171,5 +173,61 @@ describe("Amortization schedule", () => {
     const f = node.data({}).frame!;
     expect(f.columns.map((c) => c.name)).toEqual(["Period", "Payment", "Interest", "Principal", "Balance"]);
     expect(f.columns[4].values[11] as number).toBeCloseTo(0, 6);
+  });
+});
+
+describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {
+  const g1 = [6.9, 5.4, 5.8, 4.6, 4.0], g2 = [8.3, 6.8, 7.8, 9.2, 6.5], g3 = [8.0, 10.5, 8.1, 6.9, 9.3];
+  it("ANOVA: scipy.stats.f_oneway(g1, g2, g3).pvalue = 0.0032482226", () => {
+    expect(anovaP([g1, g2, g3])).toBeCloseTo(0.0032482226008593, 10);
+    expect(ev("ANOVA(a, b, c)", { a: g1, b: g2, c: g3 })).toBeCloseTo(0.0032482226008593, 10);
+    expect(anovaP([g1])).toBeNull();
+  });
+  it("Kruskal–Wallis: scipy.stats.kruskal(g1, g2, g3).pvalue = 0.0150708773", () => {
+    expect(kruskalP([g1, g2, g3])).toBeCloseTo(0.015070877263608444, 10);
+    expect(ev("KRUSKAL(a, b, c)", { a: g1, b: g2, c: g3 })).toBeCloseTo(0.015070877263608444, 10);
+  });
+  it("Mann–Whitney U, asymptotic with continuity + ties: scipy mannwhitneyu(method=asymptotic) p = 0.13291946", () => {
+    const x = [1.83, 0.50, 1.62, 2.48, 1.68, 1.88, 1.55, 3.06, 1.30], y = [0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29];
+    expect(mannWhitneyP(x, y)).toBeCloseTo(0.13291945818531892, 10); // R's depression data (unpaired); ties → asymptotic on both
+    expect(ev("MANNWHITNEY(x, y)", { x, y })).toBeCloseTo(0.13291945818531892, 10);
+  });
+  it("Wilcoxon signed-rank (paired, continuity): scipy wilcoxon(mode=approx, correction=True) p = 0.04401098", () => {
+    const x = [1.83, 0.50, 1.62, 2.48, 1.68, 1.88, 1.55, 3.06, 1.30], y = [0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29];
+    expect(wilcoxonSignedRankP(x, y)).toBeCloseTo(0.04401098401295143, 10); // R's exact answers 0.03906; this is the continuity-corrected normal form
+    expect(ev("WILCOXON(x, y)", { x, y })).toBeCloseTo(0.04401098401295143, 10);
+    expect(wilcoxonSignedRankP([1, 2], [1, 2])).toBeNull(); // all zero differences
+  });
+  it("Fisher exact on the tea-tasting table [[3,1],[1,3]]: p = 0.4857; a 2×2 formula == node", () => {
+    expect(fisherExactP(3, 1, 1, 3)).toBeCloseTo(0.4857142857142857, 10);
+    expect(fisherExactP(10, 0, 0, 10)).toBeCloseTo(1.0825088224469026e-5, 12); // scipy fisher_exact
+    expect(ev("FISHEREXACT(3, 1, 1, 3)")).toBeCloseTo(0.4857142857142857, 10);
+    expect(new HypothesisTestNode({ op: "fisher" }).data({ table: [[[3, 1], [1, 3]]] }).result).toBeCloseTo(0.4857142857142857, 10);
+  });
+  it("KS two-sample EXACT: scipy ks_2samp(method=exact) — 0.16782134 on 10 vs 10, 0.05949591 on 40 vs 35", () => {
+    const a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], b = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    expect(ksTwoSampleP(a, b)).toBeCloseTo(0.16782134274394334, 10);
+    expect(ev("KSTEST(a, b)", { a, b })).toBeCloseTo(0.16782134274394334, 10);
+    const big1 = [0.346, 0.822, 0.33, -1.303, 0.905, 0.446, -0.537, 0.581, 0.365, 0.294, 0.028, 0.547, -0.736, -0.163, -0.482, 0.599, 0.04, -0.292, -0.782, -0.257, 0.008, -0.276, 1.294, 1.007, -2.711, -1.889, -0.175, -0.422, 0.214, 0.217, 2.118, -1.112, -0.378, 2.043, 0.647, 0.663, -0.514, -1.648, 0.167, 0.109];
+    const big2 = [-0.627, -0.083, 0.528, -0.345, 0.502, 0.695, 0.636, 0.094, 1.194, 1.491, 0.921, -0.218, 1.332, 0.099, 1.479, -0.472, 1.514, 0.58, -0.649, 0.286, 0.654, 0.873, -0.382, -0.507, 0.8, 0.133, 0.836, 1.36, -1.049, 0.854, 1.825, 0.302, -0.211, 1.352, 0.853];
+    expect(ksTwoSampleP(big1, big2)).toBeCloseTo(0.059495912884303954, 9);
+    expect(ksTwoSampleP(a, a)).toBe(1);
+  });
+  it("two-proportion z (pooled, no correction): z = 0.15/sqrt(0.375·0.625·0.02) = 2.1909 → p = 0.0284597", () => {
+    expect(twoProportionP(45, 100, 30, 100)).toBeCloseTo(0.02845973691631065, 10);
+    expect(ev("PROPTEST(45, 100, 30, 100)")).toBeCloseTo(twoProportionP(45, 100, 30, 100) as number, 12);
+  });
+  it("binomial test two-sided exact: scipy binomtest(7, 20, 0.5).pvalue = 0.2632", () => {
+    expect(binomTestP(7, 20, 0.5)).toBeCloseTo(0.2631759643554688, 10);
+    expect(binomTestP(9, 10, 0.5)).toBeCloseTo(0.021484375, 12);
+    expect(ev("BINOMTEST(7, 20, 0.5)")).toBeCloseTo(0.2631759643554688, 10);
+  });
+  it("the card's op switch swaps to a table socket for ANOVA and back to lists", () => {
+    const n = new HypothesisTestNode({ op: "t-welch" });
+    n.setOp("anova");
+    expect(n.inputs.groups).toBeDefined(); expect(n.inputs.a).toBeUndefined();
+    expect(n.data({ groups: [[[6.9, 8.3, 8.0], [5.4, 6.8, 10.5], [5.8, 7.8, 8.1], [4.6, 9.2, 6.9], [4.0, 6.5, 9.3]]] }).result).toBeCloseTo(0.0032482226008593, 10);
+    n.setOp("proptest");
+    expect(n.inputs.x1).toBeDefined(); expect(n.inputs.groups).toBeUndefined();
   });
 });

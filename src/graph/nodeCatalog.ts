@@ -115,7 +115,10 @@ const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${o
 const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     create: () => new RegressionNode({ op })    });
 // One Hypothesis Test node; the leaf types keep their historical spellings (nodeExcel keys).
-const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = { z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test" };
+const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
+  z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test",
+  anova: "anova-test", mannwhitney: "mannwhitney-test", wilcoxon: "wilcoxon-test", kruskal: "kruskal-test", fisher: "fisher-exact-test", ks: "ks-test", proptest: "proportion-test", binomtest: "binomial-test",
+};
 const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: TEST_LEAF_TYPE[op], label: HYPOTHESIS_TEST_OP_META[op].label, description: HYPOTHESIS_TEST_OP_META[op].description, create: () => new HypothesisTestNode({ op }), ...overrides });
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
@@ -617,6 +620,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [testLeaf("t-paired", { parity: false }), testLeaf("t-equal", { parity: false })] },
           testLeaf("t-welch"),
           { type: "pair", children: [testLeaf("f"), testLeaf("chisq")] },
+          { type: "pair", children: [testLeaf("anova", { parity: false, keywords: "anova f_oneway aov one-way groups means" }), testLeaf("kruskal", { parity: false, keywords: "kruskal wallis nonparametric anova ranks" })] },
+          { type: "pair", children: [testLeaf("mannwhitney", { parity: false, keywords: "mann whitney wilcoxon rank sum nonparametric u test" }), testLeaf("wilcoxon", { parity: false, keywords: "wilcoxon signed rank paired nonparametric" })] },
+          { type: "pair", children: [testLeaf("fisher", { parity: false, keywords: "fisher exact 2x2 contingency small sample" }), testLeaf("ks", { parity: false, keywords: "kolmogorov smirnov ks distribution two sample" })] },
+          { type: "pair", children: [testLeaf("proptest", { parity: false, keywords: "proportion z test rates conversion a/b ab test" }), testLeaf("binomtest", { parity: false, keywords: "binomial exact test successes trials" })] },
         ],
       },
       {

@@ -3,7 +3,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
-import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
+import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
@@ -446,6 +446,14 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RMS:         { returns: "number", arity: [1, 255], native: true },
   SPEARMAN:    { returns: "number", arity: [2, 2], native: true },
   KENDALL:     { returns: "number", arity: [2, 2], native: true },
+  ANOVA:       { returns: "number", arity: [2, 255], native: true },
+  KRUSKAL:     { returns: "number", arity: [2, 255], native: true },
+  MANNWHITNEY: { returns: "number", arity: [2, 2], native: true },
+  WILCOXON:    { returns: "number", arity: [2, 2], native: true },
+  KSTEST:      { returns: "number", arity: [2, 2], native: true },
+  FISHEREXACT: { returns: "number", arity: [4, 4], native: true },
+  PROPTEST:    { returns: "number", arity: [4, 4], native: true },
+  BINOMTEST:   { returns: "number", arity: [3, 3], native: true },
   // The date family on the date nodes' dateOps kernels (A1 backing flip, 2026-08-23).
   TIME:        { returns: "number", arity: [3, 3], family: "datetime" },
   TIMEVALUE:   { returns: "number", arity: [1, 1], family: "datetime" },
@@ -1616,6 +1624,17 @@ registerInternal("T.TEST", (a, b, tails, type) => {
   return p2 === null ? null : t === 2 ? p2 : p2 / 2;
 });
 registerInternal("F.TEST", (a, b) => fTestP((a as number[]) ?? [], (b as number[]) ?? []));
+// The tests beyond Excel's four, on the Hypothesis Test node's statsOps kernels. ANOVA /
+// KRUSKAL take their groups as separate list arguments (a matrix's columns on the node).
+const groupArgs = (args: unknown[]): number[][] => args.map((g) => numsOf(g)).filter((g) => g.length > 0);
+registerInternal("ANOVA",       (...groups) => anovaP(groupArgs(groups)));
+registerInternal("KRUSKAL",     (...groups) => kruskalP(groupArgs(groups)));
+registerInternal("MANNWHITNEY", (a, b) => mannWhitneyP(numsOf(a), numsOf(b)));
+registerInternal("WILCOXON",    (a, b) => wilcoxonSignedRankP(numsOf(a), numsOf(b)));
+registerInternal("KSTEST",      (a, b) => ksTwoSampleP(numsOf(a), numsOf(b)));
+registerInternal("FISHEREXACT", (a, b, c, d) => { const v = [a, b, c, d].map(toNum); return badNum(...v) ? VALUE("FISHEREXACT") : fisherExactP(v[0], v[1], v[2], v[3]); });
+registerInternal("PROPTEST",    (x1, n1, x2, n2) => { const v = [x1, n1, x2, n2].map(toNum); return badNum(...v) ? VALUE("PROPTEST") : twoProportionP(v[0], v[1], v[2], v[3]); });
+registerInternal("BINOMTEST",   (k, n, p) => { const v = [k, n, p].map(toNum); return badNum(...v) ? VALUE("BINOMTEST") : binomTestP(v[0], v[1], v[2]); });
 // Excel PROB: an omitted upper limit means "exactly lower".
 registerInternal("PROB", (range, probs, lo, hi) => {
   const l = toNum(lo);

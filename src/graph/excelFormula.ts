@@ -387,6 +387,7 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "VAR", "VARA", "VARPA", "VAR.S", "VAR.P",
   "SKEW", "SKEW.P", "KURT", "LARGE", "SMALL",
   "PTP", "IQR", "MAD", "SEM", "CV", "RMS", "SPEARMAN", "KENDALL",
+  "ANOVA", "KRUSKAL", "MANNWHITNEY", "WILCOXON", "KSTEST",
   "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC",
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
   "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK",
@@ -419,7 +420,7 @@ const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
 // range, since per-array dropping would shear the pairing; the min-length zip on
 // ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
-  "SUMPRODUCT", "CORREL", "SPEARMAN", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
+  "SUMPRODUCT", "CORREL", "SPEARMAN", "KENDALL", "WILCOXON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR", "XNPV",
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS",

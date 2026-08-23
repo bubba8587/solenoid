@@ -41,6 +41,10 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   GROWTH: "TREND node (exponential mode)", ORDINAL: "Spell Number node (ordinal mode)",
   NTILE: "Bin node (quantiles mode)", ISOUTLIER: "Outliers node", FROMEPOCH: "Epoch → Date node", TOEPOCH: "Date → Epoch node",
   DATETRUNC: "Truncate Date node",
+  // the Hypothesis Test card's non-Excel ops
+  KRUSKAL: "Hypothesis Test (Kruskal–Wallis op)", MANNWHITNEY: "Hypothesis Test (Mann–Whitney op)",
+  WILCOXON: "Hypothesis Test (Wilcoxon op)", KSTEST: "Hypothesis Test (KS op)",
+  PROPTEST: "Hypothesis Test (two-proportion op)", BINOMTEST: "Hypothesis Test (binomial op)",
 };
 
 function nodeNames(): Set<string> {

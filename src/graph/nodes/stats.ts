@@ -4,7 +4,7 @@ import { fillBorderedGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
-import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression } from "./statsOps";
+import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
@@ -569,7 +569,9 @@ function binomPmfLocal(k: number, n: number, p: number): number | null {
 // The sample keys are shared (`a`/`b`) so a switch between two-sample tests
 // keeps the cables and only the row labels change.
 
-export type HypothesisTestOp = "z" | "t-paired" | "t-equal" | "t-welch" | "f" | "chisq";
+export type HypothesisTestOp =
+  | "z" | "t-paired" | "t-equal" | "t-welch" | "f" | "chisq"
+  | "anova" | "mannwhitney" | "wilcoxon" | "kruskal" | "fisher" | "ks" | "proptest" | "binomtest";
 
 export const HYPOTHESIS_TEST_OP_META = {
   z:          { label: "Z.TEST",             description: "One-tailed z-test: P(mean > μ₀) given a population or sample. Excel: Z.TEST." },
@@ -578,10 +580,19 @@ export const HYPOTHESIS_TEST_OP_META = {
   "t-welch":  { label: "T.TEST (Welch)",     description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: T.TEST type 3." },
   f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: F.TEST." },
   chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: CHISQ.TEST." },
+  anova:      { label: "ANOVA",              description: "One-way ANOVA: do k groups share a mean? Each table column is a group (blanks skipped); the upper-tail F p-value. scipy f_oneway, R aov. No Excel function (the Data Analysis add-in only)." },
+  mannwhitney:{ label: "Mann–Whitney U",     description: "Rank-sum test for two independent samples, two-sided (the nonparametric t-test). Normal approximation with tie and continuity corrections — R wilcox.test, scipy mannwhitneyu. No Excel equivalent." },
+  wilcoxon:   { label: "Wilcoxon signed-rank", description: "Paired nonparametric test: ranks of the paired differences, zeros dropped, two-sided with continuity correction — R wilcox.test(paired=TRUE). No Excel equivalent." },
+  kruskal:    { label: "Kruskal–Wallis",     description: "Nonparametric one-way ANOVA over k groups (table columns), tie-corrected H against χ². scipy kruskal, R kruskal.test. No Excel equivalent." },
+  fisher:     { label: "Fisher exact",       description: "Fisher's exact test on a 2×2 table of counts, two-sided — the small-sample answer where CHISQ.TEST is unreliable. R fisher.test, scipy fisher_exact. No Excel equivalent." },
+  ks:         { label: "KS (2-sample)",      description: "Two-sample Kolmogorov–Smirnov: are two samples from the same distribution? Asymptotic two-sided p. scipy ks_2samp, R ks.test. No Excel equivalent." },
+  proptest:   { label: "Two-proportion z",   description: "Are two success rates different? x₁ of n₁ vs x₂ of n₂, pooled z, two-sided, no continuity correction (statsmodels proportions_ztest; R prop.test(correct=FALSE)). No Excel equivalent." },
+  binomtest:  { label: "Binomial test",      description: "Exact test of k successes in n against a hypothesised rate p₀, two-sided. scipy binomtest, R binom.test. No Excel equivalent." },
 } satisfies Record<HypothesisTestOp, { label: string; description: string }>;
 
 interface HypothesisTestSpec {
-  inputs: ReadonlyArray<{ key: string; label: string; num?: boolean }>;
+  /** `num` → a scalar number socket, `table` → a matrix (each column a group), else a list. */
+  inputs: ReadonlyArray<{ key: string; label: string; num?: boolean; table?: boolean }>;
   outLabel: string;
 }
 
@@ -607,6 +618,26 @@ export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec>
     inputs: [{ key: "a", label: "Observed" }, { key: "b", label: "Expected" }],
     outLabel: "p-value",
   },
+  anova:   { inputs: [{ key: "groups", label: "Groups (columns)", table: true }], outLabel: "p-value (F)" },
+  kruskal: { inputs: [{ key: "groups", label: "Groups (columns)", table: true }], outLabel: "p-value (H)" },
+  mannwhitney: { inputs: [{ key: "a", label: "Sample 1" }, { key: "b", label: "Sample 2" }], outLabel: "p-value (2-tail)" },
+  wilcoxon:    { inputs: [{ key: "a", label: "Before" }, { key: "b", label: "After" }], outLabel: "p-value (2-tail)" },
+  ks:          { inputs: [{ key: "a", label: "Sample 1" }, { key: "b", label: "Sample 2" }], outLabel: "p-value (2-tail)" },
+  fisher:   { inputs: [{ key: "table", label: "2×2 counts", table: true }], outLabel: "p-value (2-tail)" },
+  proptest: {
+    inputs: [
+      { key: "x1", label: "Successes 1", num: true }, { key: "n1", label: "Trials 1", num: true },
+      { key: "x2", label: "Successes 2", num: true }, { key: "n2", label: "Trials 2", num: true },
+    ],
+    outLabel: "p-value (2-tail)",
+  },
+  binomtest: {
+    inputs: [
+      { key: "k", label: "Successes", num: true }, { key: "n", label: "Trials", num: true },
+      { key: "p0", label: "p₀", num: true },
+    ],
+    outLabel: "p-value (2-tail)",
+  },
 };
 
 const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "unequal-var" } as const;
@@ -628,7 +659,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Hypothesis Test";
     this.op = init?.op ?? "z";
     for (const i of HYPOTHESIS_TEST_SPECS[this.op].inputs) {
-      this.addInput(i.key, i.num ? numIn(i.label) : listIn(i.label));
+      this.addInput(i.key, i.num ? numIn(i.label) : i.table ? tableIn(i.label) : listIn(i.label));
     }
     this.addOutput("result", numOut(HYPOTHESIS_TEST_SPECS[this.op].outLabel));
     this.seedLiterals();
@@ -641,6 +672,8 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 
   private seedLiterals(): void {
     if (this.op === "z") this.literals.x ??= 0;
+    if (this.op === "proptest") { this.literals.x1 ??= 0; this.literals.n1 ??= 1; this.literals.x2 ??= 0; this.literals.n2 ??= 1; }
+    if (this.op === "binomtest") { this.literals.k ??= 0; this.literals.n ??= 1; this.literals.p0 ??= 0.5; }
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
@@ -658,7 +691,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
     for (const i of after) {
       const live = this.inputs[i.key];
-      if (!live) this.addInput(i.key, i.num ? numIn(i.label) : listIn(i.label));
+      if (!live) this.addInput(i.key, i.num ? numIn(i.label) : i.table ? tableIn(i.label) : listIn(i.label));
       else live.label = i.label; // a kept key keeps its cable; the role name follows the op
     }
     const out = this.outputs.result;
@@ -667,10 +700,36 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     this.height = this.heightFor();
   }
 
-  data(inputs: { a?: number[][]; b?: number[][]; x?: number[]; sigma?: number[] }) {
+  data(inputs: { a?: number[][]; b?: number[][]; x?: number[]; sigma?: number[]; groups?: (number | null)[][][]; table?: (number | null)[][][]; x1?: number[]; n1?: number[]; x2?: number[]; n2?: number[]; k?: number[]; n?: number[]; p0?: number[] }) {
     const a = inputs.a?.[0] ?? null;
     let result: number | null = null;
-    if (this.op === "z") {
+    // The non-Excel tests (statsOps) — every formula of the same name runs the same kernel.
+    const groupsOf = (m: (number | null)[][] | null): number[][] | null => {
+      if (!m || m.length === 0) return null;
+      const cols = m[0].length;
+      const out: number[][] = [];
+      for (let c = 0; c < cols; c++) out.push(m.map((row) => row[c]).filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
+      return out;
+    };
+    if (this.op === "anova" || this.op === "kruskal") {
+      const g = groupsOf(inputs.groups?.[0] ?? null);
+      result = g ? (this.op === "anova" ? anovaP(g) : kruskalP(g)) : null;
+    } else if (this.op === "mannwhitney" || this.op === "wilcoxon" || this.op === "ks") {
+      const b = inputs.b?.[0] ?? null;
+      if (a && b) result = this.op === "mannwhitney" ? mannWhitneyP(a, b) : this.op === "wilcoxon" ? wilcoxonSignedRankP(a, b) : ksTwoSampleP(a, b);
+    } else if (this.op === "fisher") {
+      const t = inputs.table?.[0] ?? null;
+      const cell = (r: number, c: number): number | null => { const v = t?.[r]?.[c]; return typeof v === "number" ? v : null; };
+      const A = cell(0, 0), B = cell(0, 1), C = cell(1, 0), D = cell(1, 1);
+      result = A === null || B === null || C === null || D === null ? null : fisherExactP(A, B, C, D);
+    } else if (this.op === "proptest") {
+      const x1 = readInput(inputs.x1, this.literals.x1 ?? 0), n1 = readInput(inputs.n1, this.literals.n1 ?? 1);
+      const x2 = readInput(inputs.x2, this.literals.x2 ?? 0), n2 = readInput(inputs.n2, this.literals.n2 ?? 1);
+      result = x1 === null || n1 === null || x2 === null || n2 === null ? null : twoProportionP(x1, n1, x2, n2);
+    } else if (this.op === "binomtest") {
+      const k = readInput(inputs.k, this.literals.k ?? 0), n = readInput(inputs.n, this.literals.n ?? 1), p0 = readInput(inputs.p0, this.literals.p0 ?? 0.5);
+      result = k === null || n === null || p0 === null ? null : binomTestP(k, n, p0);
+    } else if (this.op === "z") {
       const x = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
       // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
       // unknown and propagates (value-semantics.md, "Reading an input").
