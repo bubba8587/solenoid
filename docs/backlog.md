@@ -248,15 +248,20 @@ Changelogs ship INSIDE the rete packages — `npm pack <pkg>@<old>` and `@<new>`
 untar, diff the bundled changelog. Read those, not the GitHub releases (that API
 is blocked here for out-of-scope repos).
 
-- [ ] **`rete-react-plugin` 2.1.0 → 2.1.2, and measure a big-doc load.** 2.1.2 is
-  literally `root.render(el)` → `flushSync(() => root.render(el))`, so a node's
-  root is layout-ready when the mount returns — directly upstream of
-  `MeasuredSocketRow`, `getDOMSocketPosition` and `guardedSocketPosition.ts`, and
-  plausibly retires a class of first-paint wrong-endpoint cable bugs. The mirror
-  risk is the reason to measure: `rebuildGraph` batches with `Promise.all`
-  precisely to avoid ~2N sequential layout hops, and N synchronous flushes could
-  make a large load SLOWER. (2.1.1 only colors rete's stock `<input>`; we render
-  none, so it can't reach us.)
+- [x] **`rete-react-plugin` 2.1.0 → 2.1.2 — DON'T bump as-is (measured 2026-08-23).**
+  2.1.2 is exactly `root.render(el)` → `flushSync(() => root.render(el))` in the plugin's
+  `mount` (2.1.1 only colors rete's stock `<input>`, which we never render — inert). The
+  synchronous flush BREAKS a big-doc load: rete reuses the cached root, so every
+  `_area.update("node", id)` in `runGraphPass`'s `Promise.all` now commits synchronously
+  mid-rebuild, and a mounted component's mount effect fires DURING the rebuild instead of
+  after it settles. `ConduitComponent.tsx:209` (`useEffect(processGraph, [realLanes])`) then
+  runs `processGraph()` while other nodes aren't yet registered in the Dataflow engine →
+  `Dataflow2.fetch` throws `node is not initialized`, repeatedly, on Personal Finance (171
+  nodes, has Conduits). Perf regressed too (`render=` 428→601ms). To ever land it: guard
+  every mount-effect `processGraph()` call behind `isGraphRebuilding()` (Conduit is one such;
+  audit for others) AND re-measure the load — and even then the flush's win (layout-ready DOM
+  at mount, plausibly fewer first-paint wrong-endpoint cables) has to beat the N-sync-flush
+  cost. Not worth it for 1.3; stay at 2.1.0.
 - [ ] **`rete-area-plugin` 2.1.5 → 2.3.2** — own change, needs a selection-test
   pass + a trackpad check. Two behaviour changes reach us: 2.3.1 makes
   `Selector.add` unselect everything EXCEPT the re-picked entity instead of

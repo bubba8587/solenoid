@@ -101,6 +101,18 @@ reads clipped" item is postponed with no scheduled follow-up; the full investiga
 (refuted mechanisms, the headed-on-author-hardware clear, "reproduce on THEIR document first")
 lives in the 2026-08-22 digest if it ever reopens. Removed from the active backlog.
 
+**`rete-react-plugin` 2.1.2 bump REJECTED — it crashes a big-doc load (measured 2026-08-23).**
+The 2.1.2 fix wraps the plugin's `mount` in `flushSync(root.render)`. Because rete reuses the
+cached root, every `_area.update` in `runGraphPass`'s `Promise.all` commits synchronously
+mid-rebuild, so a node's mount effect runs DURING the rebuild instead of after it settles —
+`ConduitComponent.tsx:209`'s `useEffect(processGraph, [realLanes])` then fires `processGraph()`
+before the other nodes are registered in the Dataflow engine → `Dataflow2.fetch` throws
+`node is not initialized`, repeatedly, on Personal Finance. Render also regressed (428→601ms).
+Reverted to 2.1.0, tree clean. Backlog item flipped to DON'T-bump with the landing conditions
+(guard mount-effect `processGraph()` behind `isGraphRebuilding()`, then re-measure). Note the
+`render=` numbers here (428/444/601ms on 171 nodes) also mark the first real big-doc load
+measurement — useful baseline context for the choppy-zoom/perf work.
+
 **Drill-in work is considered as ONE unit or not at all (author 2026-08-23).** The scheduled
 "finger pan is DEAD in a drill-in" bug is no longer to be cherry-picked as an isolated fix — it is
 Phase A of the editing-surface kernel (`deferrals.md`), and the author wants every drill-in item
