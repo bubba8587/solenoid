@@ -86,6 +86,27 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23b — zoom clamp + minimap accent)
+
+**Zoom now clamps to a floor/ceiling (0.05–2.5).** Added a `zoom` guard pipe in the shared
+`installSurfacePointer` (`areaPresets.ts`): rete recomputes the origin-pan factor from the
+CLAMPED target, so pinning at a limit leaves no drift, and one guard covers wheel, pinch,
+double-tap AND programmatic `zoomAt`. `clampZoom`/`MIN_ZOOM`/`MAX_ZOOM` exported; pinned in
+`surfaceParity.test.ts` (both surfaces already call the installer).
+
+**The minimap now paints a node's REAL accent, so a retyped literal recolors.** Root cause was
+two bugs stacked: (1) the minimap/html-canvas coloured by `nodeKindOf` (fixed per class), so a
+List/Table Input showed its kind colour while the card recoloured with the element type; (2) the
+first fix returned `SOCKET_COLORS`, but those are `var(--sock-*)` expressions and a `<canvas>`
+can't paint a CSS var → it drew GRAY. Factored the accent-override rule the cards carried inline
+into one `nodeAccent(node, mode)` (`nodes/kind.ts`): kind colour by default, output-socket colour
+for the type-switchable literals + the FC, always a FINAL theme-resolved hex. New DOM-free
+`socketVarHex` (`palette.ts`) resolves a socket var exactly as `appTheme` bakes it into the CSS
+property (slot → mode → array/matrix shade), so the DOM card, the minimap and the html-canvas
+snapshot all read one source and agree. The retype already fires `area.update("node")` (which
+repaints the minimap) — it was only ever reading the wrong colour. Pinned in `kind.test.ts`
+"nodeAccent". FC mismatch-orange stays a card-only state (minimap shows its base type colour).
+
 ### SESSION DIGEST (2026-08-23 — lookup array-spill + shared-kernel unification, dep-diff triage)
 
 **XLOOKUP/XMATCH: an array lookup value now SPILLS (Excel parity).** Excel returns one result
