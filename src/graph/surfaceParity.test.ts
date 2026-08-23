@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { syncSurfaceBackground } from "./areaPresets";
+import { syncSurfaceBackground, clampZoom, MIN_ZOOM, MAX_ZOOM } from "./areaPresets";
 import { DOT_SPACING } from "./gridSnapStore";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
@@ -92,6 +92,16 @@ describe("editing-surface parity", () => {
     const css = read("src/graph/components/compositeEditor.css");
     expect(css).toMatch(/html\.sol-drilled-in\s+\.solenoid-canvas-wrapper\s*\{\s*visibility:\s*hidden/);
     expect(css).not.toMatch(/html\.sol-drilled-in\s+\.solenoid-canvas-wrapper\s*\{\s*display:\s*none/);
+  });
+
+  it("clamps the zoom scale to a fixed floor and ceiling", () => {
+    expect(clampZoom(0.0001)).toBe(MIN_ZOOM);
+    expect(clampZoom(1000)).toBe(MAX_ZOOM);
+    expect(clampZoom(1)).toBe(1);
+    expect(MIN_ZOOM).toBeLessThan(MAX_ZOOM);
+    // Installed in the shared installSurfacePointer, so every surface (already pinned
+    // above to call it) gets the same limits — via the area's pre-apply `zoom` guard.
+    expect(read("src/graph/areaPresets.ts")).toMatch(/type === "zoom"[\s\S]*clampZoom/);
   });
 
   it("vetoes node translation while pinching on every surface", () => {

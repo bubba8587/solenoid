@@ -24,6 +24,13 @@ const ZOOM_STEP_CAP = 0.24;
 const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
 const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
 
+// The scale floor/ceiling. Clamped in the area's `zoom` guard (below) so wheel, pinch,
+// double-tap AND programmatic zoomAt all land inside the range — past the floor the dot
+// grid is long gone and cards are specks; past the ceiling a card fills the viewport.
+export const MIN_ZOOM = 0.05;
+export const MAX_ZOOM = 2.5;
+export const clampZoom = (k: number): number => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, k));
+
 /** THE PINCH-PRIORITY RULE: the finger count registers in CAPTURE phase so nothing below the
  * container can break a pinch, while pan and node-drag stay in BUBBLE so a control CAN veto
  * them — never move either. */
@@ -96,6 +103,12 @@ export function installSurfacePointer(
   container: HTMLElement,
 ): () => void {
   area.area.setZoomHandler(new CappedZoom(0.1));
+  // Clamp the TARGET scale in the guard, before the area applies it: rete recomputes the
+  // origin-pan factor from the (clamped) result, so pinning at a limit leaves no drift.
+  area.addPipe((ctx) => {
+    if (ctx?.type === "zoom") ctx.data.zoom = clampZoom(ctx.data.zoom);
+    return ctx;
+  });
   const swallowDblClick = (e: Event) => { e.stopImmediatePropagation(); };
   container.addEventListener("dblclick", swallowDblClick, true);
   const unseat = seatAreaPointerInCapture(area, container);
