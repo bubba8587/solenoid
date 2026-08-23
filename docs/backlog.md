@@ -34,6 +34,15 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   tap-to-select companions; pinned in `surfaceParity.test.ts`; verified by headless CDP touch
   emulation (agent-run, not author-watched). Phases A–C of the kernel follow as pure refactor.
 
+**B0 — the Python/R gap (author ask 2026-08-23: "a node existing may retain a user")**
+- [ ] Work `python-r-gap.md` Tier 1 top-down: window functions by group (Polars `.over` +
+  JS oracle + cargo corpus), Describe, corr/cov matrix + Spearman/Kendall, the Aggregate
+  one-liners (IQR/MAD/sem/cv/range/rms), quantile Bin, Outliers, fuzzy match + string
+  distance, Epoch convert, date truncate/complete, Holt-Winters (= FORECAST.ETS parity),
+  Amortization schedule, FFT, linear solve/eigh/trace/rank/norm, Haversine, the
+  nonparametric/ANOVA/Fisher tests on the Hypothesis Test card. Each: kernel in a rete-free
+  `*Ops.ts`, node + formula, parity pin, catalog keywords with the numpy/pandas/R names.
+
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
 - [ ] **B1 Relative dates opt-in** (author-requested 2026-08-21; spec below under Small builds).
 - [ ] **B2 Distribution fitting**: fit a Distribution node's family + params to a data list,
