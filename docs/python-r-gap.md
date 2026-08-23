@@ -29,12 +29,11 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 17. **Text template / glue** (`str_glue`, f-strings, `sprintf`): "Hello {name}, total {total:0.00}"
     over a frame → a text column / list. Report does documents; there's no per-row string
     builder. Cheap.
-18. **Text pad / truncate / wrap / unaccent / slugify** (`str_pad`, `str_trunc`, `str_wrap`,
-    `unidecode`, `janitor::make_clean_names`): a few Transform leaves; unaccent is the
-    join-key cleaner people need. Trivial.
-19. **Positions where** (`np.flatnonzero`, `which`, `argsort`/`order`): List Filter keeps
-    values, not positions; ARGMAX is a single index. A "positions" output on List Filter and
-    an "order (argsort)" op on List Sort. Cheap.
+18. **Text pad / truncate / unaccent / slugify** — LANDED 2026-08-23 (UNACCENT + SLUGIFY ops
+    on Text Transform; Pad Text + Truncate Text nodes; PADTEXT / TRUNCATETEXT formulas).
+    `str_wrap` (text → lines) still open: its output is a list, so it is not a Transform op.
+19. **Positions where** — LANDED 2026-08-23 (ARGSORT / ARGSORT DESC / WHICH ops on the ARGMAX
+    card, sockets retyping with the op; ARGSORT(list, [desc]) + WHICH(flags) formulas).
 20. **Weighted random choice / sample** (`np.random.choice(p=)`, `sample(prob=)`, `rnorm` N
     draws): a "Sample" op on the Distribution node (N draws, seeded per recalc like RAND) and
     a weighted pick on Shuffle/Take. Cheap; the Monte Carlo run mode has its own sampler.

@@ -246,3 +246,51 @@ export function fuzzyBest(needle: string, candidates: readonly string[], method:
   }
   return best;
 }
+
+// Letters NFD can't decompose (no combining mark) get an ASCII spelling — the
+// unidecode / iconv TRANSLIT convention.
+const TRANSLIT: Record<string, string> = {
+  "ß": "ss", "æ": "ae", "Æ": "AE", "ø": "o", "Ø": "O", "œ": "oe", "Œ": "OE", "đ": "d", "Đ": "D",
+  "ł": "l", "Ł": "L", "ð": "d", "Ð": "D", "þ": "th", "Þ": "TH", "ı": "i", "ŋ": "ng", "Ŋ": "NG",
+};
+/** Strip diacritics: "Crème Brûlée" → "Creme Brulee". unidecode, R stringi::stri_trans_general(…, "Latin-ASCII"), iconv TRANSLIT. */
+export function unaccent(t: string): string {
+  return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[ßæÆøØœŒđĐłŁðÐþÞıŋŊ]/g, (c) => TRANSLIT[c] ?? c);
+}
+
+/** URL/filename slug: unaccent, lowercase, every non-alphanumeric run → `sep`, trimmed.
+ *  python-slugify, R janitor::make_clean_names. */
+export function slugify(t: string, sep = "-"): string {
+  const body = unaccent(t).toLowerCase().replace(/[^a-z0-9]+/g, sep);
+  if (!sep) return body;
+  const esc = sep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return body.replace(new RegExp(`^(?:${esc})+|(?:${esc})+$`, "g"), "");
+}
+
+export type PadSide = "left" | "right" | "center";
+/** Pad to `width` code points; `side` is where the padding GOES (R str_pad, pandas
+ *  str.pad; Python rjust = left, ljust = right). `fill` cycles; text already at least
+ *  `width` long is unchanged. */
+export function padText(t: string, width: number, side: PadSide, fill = " "): string {
+  const chars = [...t];
+  const w = Math.max(0, Math.floor(width));
+  const f = [...(fill === "" ? " " : fill)];
+  if (chars.length >= w) return t;
+  const need = w - chars.length;
+  const run = (n: number) => Array.from({ length: n }, (_, i) => f[i % f.length]).join("");
+  if (side === "left") return run(need) + t;
+  if (side === "right") return t + run(need);
+  const left = Math.floor(need / 2);
+  return run(left) + t + run(need - left);
+}
+
+/** Cut to at most `width` code points, ending in `ellipsis` when anything was cut
+ *  (R str_trunc, textwrap.shorten). */
+export function truncateText(t: string, width: number, ellipsis = "…"): string {
+  const chars = [...t];
+  const w = Math.max(0, Math.floor(width));
+  if (chars.length <= w) return t;
+  const e = [...ellipsis];
+  const keep = Math.max(0, w - e.length);
+  return chars.slice(0, keep).join("") + (keep === 0 ? e.slice(0, w).join("") : ellipsis);
+}

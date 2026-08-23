@@ -378,7 +378,34 @@ export function running(op: RunningOp, arr: readonly Cell[], window: number | nu
 
 // ─── Find: list in, scalar out ────────────────────────────────────────────────
 
-export type ArgMinMaxOp = "argmax" | "argmin";
+export type ArgMinMaxOp = "argmax" | "argmin" | "argsort" | "argsort_desc" | "which";
+/** The ops whose answer is a LIST of positions (the card's output retypes number ↔ list). */
+export const ARG_LIST_OPS: ReadonlySet<ArgMinMaxOp> = new Set(["argsort", "argsort_desc", "which"]);
+
+/** 1-based positions that would sort the list (numpy.argsort, R order): numbers by value,
+ *  stable on ties; blank and error cells go to the end in either direction. */
+export function argsortList(arr: readonly Cell[], desc = false): number[] {
+  const isTail = (v: unknown) => isMissing(v) || isSolError(v) || typeof v !== "number" || !Number.isFinite(v);
+  const idx = arr.map((_, i) => i);
+  idx.sort((i, j) => {
+    const ti = isTail(arr[i]), tj = isTail(arr[j]);
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
+    const c = (arr[i] as number) - (arr[j] as number);
+    return c !== 0 ? (desc ? -c : c) : i - j;
+  });
+  return idx.map((i) => i + 1);
+}
+
+/** 1-based positions of the TRUE cells (R which, numpy.flatnonzero). A number counts
+ *  when non-zero, text when non-empty; blanks and errors never do. */
+export function whichPositions(arr: readonly unknown[]): number[] {
+  const out: number[] = [];
+  arr.forEach((v, i) => {
+    const hit = v === true || (typeof v === "number" && Number.isFinite(v) && v !== 0) || (typeof v === "string" && v !== "");
+    if (hit) out.push(i + 1);
+  });
+  return out;
+}
 
 /** 1-based position of the extreme value; null for an empty or all-missing list, with the
 *  usual reducer policy (error propagates, null skipped). */

@@ -8,7 +8,7 @@ import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, type TextFilterOp, type SimilarityMethod } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
@@ -23,8 +23,7 @@ import {
   shuffleList,
   firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
   takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
-  concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell,
-} from "./nodes/listOps";
+  concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr,
@@ -634,6 +633,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
+  ARGSORT:         { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  WHICH:           { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   CONTAINS:        { returns: "logical", listArgs: true, arity: [2, 2], native: true },
   WAVG:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
@@ -733,6 +734,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   GROUPBY:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
 
   REVERSETEXT: { returns: "string", arity: [1, 1], family: "text", native: true },
+  UNACCENT:    { returns: "string", arity: [1, 1], family: "text", native: true },
+  SLUGIFY:     { returns: "string", arity: [1, 2], family: "text", native: true },
+  PADTEXT:     { returns: "string", arity: [2, 4], family: "text", native: true },
+  TRUNCATETEXT: { returns: "string", arity: [2, 3], family: "text", native: true },
   SPELLNUMBER: { returns: "string", arity: [1, 1], family: "text", native: true },
   DECODEURL:   { returns: "string", arity: [1, 1], family: "text", native: true },
   LOG2:        { returns: "number", arity: [1, 1], native: true },
@@ -1602,6 +1607,8 @@ registerInternal("RUNNING", (op, list, w) => {
 // need the raw whole-list routing.
 registerInternal("LENGTH",   (list) => toList(list).length);
 registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
+registerInternal("ARGSORT",  (list, desc) => argsortList(numList(list), isTrue(desc)));
+registerInternal("WHICH",    (list) => whichPositions(toList(list)));
 registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list)));
 registerInternal("CONTAINS", (list, v) => containsValue(toList(list), v));
 registerInternal("WAVG",     (x, w) => weighted("wavg",   numList(x), numList(w)));
@@ -2090,6 +2097,16 @@ registerInternal("GROUPBY", (keys, values, fn) => {
 registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
 
 registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
+registerInternal("UNACCENT", (t) => (t == null ? null : unaccent(toStr(t))));
+registerInternal("SLUGIFY", (t, sep) => (t == null ? null : slugify(toStr(t), sep == null ? "-" : toStr(sep))));
+// PADTEXT side = where the padding goes (R str_pad): left | right | center (both).
+registerInternal("PADTEXT", (t, width, side, fill) => {
+  if (t == null) return null;
+  const sd = side == null ? "right" : String(side).trim().toLowerCase().replace("both", "center");
+  if (sd !== "left" && sd !== "right" && sd !== "center") return solError("#DOMAIN!", "PADTEXT side must be left, right or center");
+  return padText(toStr(t), toNum(width), sd as PadSide, fill == null ? " " : toStr(fill));
+});
+registerInternal("TRUNCATETEXT", (t, width, ellipsis) => (t == null ? null : truncateText(toStr(t), toNum(width), ellipsis == null ? "…" : toStr(ellipsis))));
 registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
 registerInternal("DECODEURL", (t) => (t == null ? null : urlEncode("decode", toStr(t))));
 // LOG2's node answers null for x ≤ 0 (its family's quiet-null convention), not a

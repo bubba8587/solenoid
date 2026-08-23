@@ -236,6 +236,8 @@ export { SubstituteComponent } from "./SubstituteNode";
 export { TextReplaceComponent } from "./TextReplaceNode";
 export { CastComponent } from "./CastNode";
 export { ReptComponent } from "./ReptNode";
+export { PadTextComponent } from "./PadTextNode";
+export { TruncateTextComponent } from "./TruncateTextNode";
 export { ExactComponent } from "./ExactNode";
 export { CharCodeComponent } from "./CharCodeNode";
 export { TextJoinComponent } from "./TextJoinNode";

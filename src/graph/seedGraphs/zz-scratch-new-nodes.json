@@ -1512,6 +1512,152 @@
    "init": {
     "label": "best family of the draws"
    }
+  },
+  {
+   "id": "t_unaccent",
+   "type": "TextTransformNode",
+   "x": 5200,
+   "y": 0,
+   "init": {
+    "label": "UNACCENT",
+    "op": "unaccent"
+   },
+   "stringLiterals": {
+    "text": "Crème Brûlée à Zürich"
+   }
+  },
+  {
+   "id": "d_unaccent",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 0,
+   "init": {
+    "label": "Creme Brulee a Zurich"
+   }
+  },
+  {
+   "id": "t_slug",
+   "type": "TextTransformNode",
+   "x": 5200,
+   "y": 180,
+   "init": {
+    "label": "SLUGIFY",
+    "op": "slugify"
+   },
+   "stringLiterals": {
+    "text": "  Hello, World! Été 2026 "
+   }
+  },
+  {
+   "id": "d_slug",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 180,
+   "init": {
+    "label": "hello-world-ete-2026"
+   }
+  },
+  {
+   "id": "t_pad",
+   "type": "PadTextNode",
+   "x": 5200,
+   "y": 360,
+   "init": {
+    "label": "Pad Text (left, zeros)",
+    "op": "left"
+   },
+   "stringLiterals": {
+    "text": "42",
+    "fill": "0"
+   },
+   "literals": {
+    "width": 6
+   }
+  },
+  {
+   "id": "d_pad",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 360,
+   "init": {
+    "label": "000042"
+   }
+  },
+  {
+   "id": "t_trunc",
+   "type": "TruncateTextNode",
+   "x": 5200,
+   "y": 580,
+   "init": {
+    "label": "Truncate Text"
+   },
+   "stringLiterals": {
+    "text": "The quick brown fox jumps over the lazy dog",
+    "ellipsis": "…"
+   },
+   "literals": {
+    "width": 16
+   }
+  },
+  {
+   "id": "d_trunc_t",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 580,
+   "init": {
+    "label": "The quick brown…"
+   }
+  },
+  {
+   "id": "a_argsort",
+   "type": "ArgMinMaxNode",
+   "x": 5200,
+   "y": 800,
+   "init": {
+    "label": "ARGSORT",
+    "op": "argsort"
+   }
+  },
+  {
+   "id": "d_argsort",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 800,
+   "init": {
+    "label": "positions that sort Data A"
+   }
+  },
+  {
+   "id": "a_between",
+   "type": "BetweenNode",
+   "x": 4800,
+   "y": 1000,
+   "init": {
+    "label": "Between 10 and 15"
+   },
+   "literals": {
+    "lo": 10,
+    "hi": 15
+   }
+  },
+  {
+   "id": "a_which",
+   "type": "ArgMinMaxNode",
+   "x": 5200,
+   "y": 1000,
+   "init": {
+    "label": "WHICH",
+    "op": "which"
+   }
+  },
+  {
+   "id": "d_which",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 1000,
+   "init": {
+    "label": "positions in [10,15]"
+   }
   }
  ],
  "connections": [
@@ -2245,6 +2391,60 @@
    "source": "fit2",
    "sourceOutput": "best",
    "target": "d_fit2",
+   "targetInput": "in"
+  },
+  {
+   "source": "t_unaccent",
+   "sourceOutput": "result",
+   "target": "d_unaccent",
+   "targetInput": "in"
+  },
+  {
+   "source": "t_slug",
+   "sourceOutput": "result",
+   "target": "d_slug",
+   "targetInput": "in"
+  },
+  {
+   "source": "t_pad",
+   "sourceOutput": "result",
+   "target": "d_pad",
+   "targetInput": "in"
+  },
+  {
+   "source": "t_trunc",
+   "sourceOutput": "result",
+   "target": "d_trunc_t",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "a_argsort",
+   "targetInput": "list"
+  },
+  {
+   "source": "a_argsort",
+   "sourceOutput": "result",
+   "target": "d_argsort",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_a",
+   "sourceOutput": "list",
+   "target": "a_between",
+   "targetInput": "value"
+  },
+  {
+   "source": "a_between",
+   "sourceOutput": "result",
+   "target": "a_which",
+   "targetInput": "list"
+  },
+  {
+   "source": "a_which",
+   "sourceOutput": "result",
+   "target": "d_which",
    "targetInput": "in"
   }
  ]

@@ -4,7 +4,7 @@ import { parseListLiteral } from "../coerceInputs";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, numListOut, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -16,7 +16,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -1484,17 +1484,26 @@ export class DiffNode extends ClassicPreset.Node {
   }
 }
 
-export type ArgMinMaxOp = "argmax" | "argmin";
+import type { ArgMinMaxOp } from "./listOps";
+export type { ArgMinMaxOp } from "./listOps";
 
 export const ARG_MIN_MAX_OP_META = {
   argmax: { label: "ARGMAX", description: "1-based position of the maximum value" },
   argmin: { label: "ARGMIN", description: "1-based position of the minimum value" },
+  argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending — reorder a parallel list by them. numpy.argsort, R order." },
+  argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. numpy.argsort(-x), R order(decreasing = TRUE)." },
+  which:        { label: "WHICH",        description: "1-based positions of the TRUE cells of a logical list. R which, numpy.flatnonzero. Excel 365: FILTER(SEQUENCE(n), cond)." },
 } satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
 
 export class ArgMinMaxNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "1-based, like MATCH. Blank and error cells never win and sort to the end.",
+  };
   label: string;
   op: ArgMinMaxOp;
-  cachedResult: number | SolError | null = null;
+  cachedResult: number | number[] | SolError | null = null;
+  /** WHICH's logical-list input is typeable (the CSV editor stores its text here). */
+  stringLiterals: Record<string, string> = {};
   width = 180;
   height = 160;
 
@@ -1502,13 +1511,34 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
     super("ArgMinMax");
     this.label = init?.label ?? "ARGMAX";
     this.op = init?.op ?? "argmax";
-    this.addInput("list",   listIn("List"));
-    this.addOutput("result", numOut("Position"));
+    this.addInput("list", ArgMinMaxNode.inputFor(this.op));
+    this.addOutput("result", ArgMinMaxNode.outputFor(this.op));
+  }
+
+  /** WHICH reads a LOGICAL list; every other op a number list. */
+  static inputFor(op: ArgMinMaxOp) { return op === "which" ? logicalListIn("Flags") : listIn("List"); }
+  static outputFor(op: ArgMinMaxOp) { return ARG_LIST_OPS.has(op) ? numListOut("Positions") : numOut("Position"); }
+
+  /** Re-types the sockets IN PLACE when the op crosses a family/rank boundary — no
+   *  connection event fires, so the component prunes: dropInputCables on the input
+   *  BEFORE the swap, retypeOutputCables on the output after. */
+  setOp(next: ArgMinMaxOp): { inputChanged: boolean; outputChanged: boolean } {
+    const inputChanged = (next === "which") !== (this.op === "which");
+    const outputChanged = ARG_LIST_OPS.has(next) !== ARG_LIST_OPS.has(this.op);
+    if (next === this.op) return { inputChanged: false, outputChanged: false };
+    this.op = next;
+    if (inputChanged) { const spec = ArgMinMaxNode.inputFor(next); this.inputs.list!.socket = spec.socket; this.inputs.list!.label = spec.label; }
+    if (outputChanged) { const spec = ArgMinMaxNode.outputFor(next); this.outputs.result!.socket = spec.socket; this.outputs.result!.label = spec.label; }
+    return { inputChanged, outputChanged };
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? null;
-    const result = arr === null ? null : argMinMax(this.op, arr);
+    let result: number | number[] | SolError | null;
+    if (arr === null) result = null;
+    else if (this.op === "which") result = whichPositions(arr);
+    else if (this.op === "argsort" || this.op === "argsort_desc") result = argsortList(arr, this.op === "argsort_desc");
+    else result = argMinMax(this.op, arr);
     this.cachedResult = result;
     return { result };
   }

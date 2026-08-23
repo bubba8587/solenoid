@@ -103,10 +103,12 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("LENGTH(x)", { x: WITH_GAP })).toEqual(new ListLengthNode().data({ list: [WITH_GAP] }).result);
   });
 
-  it("ARGMAX / ARGMIN", () => {
+  it("ARGMAX / ARGMIN / ARGSORT / WHICH", () => {
+    // The descending op is ARGSORT's second argument on the formula side.
+    const call: Record<string, string> = { argsort_desc: "ARGSORT(x, TRUE)" };
     for (const [op, meta] of Object.entries(ARG_MIN_MAX_OP_META)) {
       const node = new ArgMinMaxNode({ op: op as "argmax" });
-      expect(ev(`${meta.label}(x)`, { x: LIST }), meta.label).toEqual(node.data({ list: [LIST] }).result);
+      expect(ev(call[op] ?? `${despace(meta.label)}(x)`, { x: LIST }), meta.label).toEqual(node.data({ list: [LIST] }).result);
     }
   });
 

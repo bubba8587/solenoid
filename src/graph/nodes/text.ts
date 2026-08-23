@@ -10,8 +10,9 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops, shared verbatim with the formula surface; re-exported so the node
 // barrel keeps its shape.
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList } from "./textOps";
-import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList, unaccent, slugify, padText, truncateText } from "./textOps";
+import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp, PadSide } from "./textOps";
+export type { PadSide } from "./textOps";
 export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
@@ -117,7 +118,7 @@ export class PromoNode extends ClassicPreset.Node {
 
 // ─── Text Transform (UPPER / LOWER / TRIM / PROPER / CLEAN) ──────────────────
 
-export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean";
+export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean" | "unaccent" | "slugify";
 
 export const TEXT_TRANSFORM_OP_META = {
   upper:  { label: "UPPER",  description: "Converts all characters to uppercase. Excel: UPPER." },
@@ -125,6 +126,8 @@ export const TEXT_TRANSFORM_OP_META = {
   trim:   { label: "TRIM",   description: "Removes leading and trailing spaces and collapses internal spaces. Excel: TRIM." },
   proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: PROPER." },
   clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: CLEAN." },
+  unaccent: { label: "UNACCENT", description: "Strips accents and diacritics: Crème Brûlée → Creme Brulee. unidecode, R stri_trans_general Latin-ASCII. No Excel equivalent." },
+  slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. python-slugify, R make_clean_names. No Excel equivalent." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
 // PROPER stays hand-rolled: FX capitalizes only after certain separators, not Excel's
@@ -136,6 +139,8 @@ function applyTextTransform(op: TextTransformOp, text: string): string {
     case "trim":  return resolveExcelFunction("TRIM")!(text) as string;
     case "proper": return text.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
     case "clean":  return text.replace(/[\x00-\x1F\x7F]/g, "");
+    case "unaccent": return unaccent(text);
+    case "slugify":  return slugify(text);
   }
 }
 
@@ -159,6 +164,76 @@ export class TextTransformNode extends ClassicPreset.Node {
       (t: string) => applyTextTransform(this.op, t),
       strVal(inputs.text, this, "text"),
     );
+    this.cachedText = result;
+    return { result };
+  }
+}
+
+// ─── Pad Text / Truncate Text (no Excel equivalent; Python ljust/rjust/center, R str_pad / str_trunc) ───
+
+export const PAD_SIDE_META = {
+  left:   { label: "Left",   description: "Padding goes on the left — right-justified text. Python rjust, R str_pad side = left." },
+  right:  { label: "Right",  description: "Padding goes on the right — left-justified text. Python ljust, R str_pad side = right." },
+  center: { label: "Center", description: "Padding splits both sides, the odd character on the right. Python center, R str_pad side = both." },
+} satisfies Record<PadSide, { label: string; description: string }>;
+
+export class PadTextNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    width: "Target length in characters; text already that long passes through unchanged.",
+    fill:  "Repeated to fill the gap; blank means a space.",
+  };
+  label: string;
+  op: PadSide;
+  cachedText: CellResult<string> = null;
+  stringLiterals: Record<string, string> = { text: "", fill: "" };
+  literals: Record<string, number> = { width: 10 };
+  width = 190; height = 210;
+
+  constructor(init?: { label?: string; op?: PadSide }) {
+    super("PadText");
+    this.label = init?.label ?? "Pad Text";
+    this.op = init?.op ?? "right";
+    this.addInput("text",  strComboIn("Text"));
+    this.addInput("width", numIn("Width"));
+    this.addInput("fill",  strIn("Fill"));
+    this.addOutput("result", strComboOut("Result"));
+  }
+
+  data(inputs: { text?: (string | string[])[]; width?: number[]; fill?: string[] }): { result: CellResult<string> } {
+    const w = readInput(inputs.width, this.literals.width ?? 10);
+    const fill = strScalar(inputs.fill, this, "fill");
+    if (w === null || fill === null) { this.cachedText = null; return { result: null }; }
+    const result = broadcastCells((t: string) => padText(t, w, this.op, fill), strVal(inputs.text, this, "text"));
+    this.cachedText = result;
+    return { result };
+  }
+}
+
+export class TruncateTextNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    width:    "Maximum length in characters, the ellipsis included.",
+    ellipsis: "Appended when anything was cut; blank for a plain cut.",
+  };
+  label: string;
+  cachedText: CellResult<string> = null;
+  stringLiterals: Record<string, string> = { text: "", ellipsis: "…" };
+  literals: Record<string, number> = { width: 20 };
+  width = 190; height = 210;
+
+  constructor(init?: { label?: string }) {
+    super("TruncateText");
+    this.label = init?.label ?? "Truncate Text";
+    this.addInput("text",     strComboIn("Text"));
+    this.addInput("width",    numIn("Width"));
+    this.addInput("ellipsis", strIn("Ellipsis"));
+    this.addOutput("result", strComboOut("Result"));
+  }
+
+  data(inputs: { text?: (string | string[])[]; width?: number[]; ellipsis?: string[] }): { result: CellResult<string> } {
+    const w = readInput(inputs.width, this.literals.width ?? 20);
+    const e = strScalar(inputs.ellipsis, this, "ellipsis", "…");
+    if (w === null || e === null) { this.cachedText = null; return { result: null }; }
+    const result = broadcastCells((t: string) => truncateText(t, w, e), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
   }

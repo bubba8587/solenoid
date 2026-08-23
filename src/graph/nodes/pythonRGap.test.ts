@@ -17,7 +17,11 @@ import { fftReal, spectrum } from "./listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "./matrix";
 import { SpectrumNode } from "./list";
 import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "./textOps";
-import { TextSimilarityNode, FuzzyMatchNode } from "./text";
+import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode } from "./text";
+import { unaccent, slugify, padText, truncateText } from "./textOps";
+import { argsortList, whichPositions } from "./listOps";
+import { ArgMinMaxNode } from "./list";
+import { numListOut, numOut, listIn, logicalListIn } from "./shared";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
 import { EtsForecastNode, FitDistributionNode } from "./stats";
 import { fitDistribution, fitAll } from "./fitOps";
@@ -445,5 +449,87 @@ describe("Fit Distribution (scipy.stats.<dist>.fit with loc fixed at 0; referenc
     expect(ev("FITDIST(x)", { x: normal })).toBe("normal");
     expect((ev("FITDIST(x, \"gamma\")", { x: gamma }) as number[])[0]).toBeCloseTo(3.9158925878647577, 6);
     expect(isSolError(ev("FITDIST(x, \"cauchy\")", { x: gamma }))).toBe(true);
+  });
+});
+
+describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
+  const ev = (e: string) => compileEvaluator(e)!({});
+  it("unaccent strips diacritics and transliterates the undecomposable letters", () => {
+    expect(unaccent("Crème Brûlée")).toBe("Creme Brulee");
+    expect(unaccent("Straße Øresund Łódź")).toBe("Strasse Oresund Lodz");
+    expect(unaccent("plain")).toBe("plain");
+  });
+  it("slugify: lowercase, runs of non-alphanumerics collapse to one separator, ends trimmed", () => {
+    expect(slugify("  Hello, World! Été 2026 ")).toBe("hello-world-ete-2026");
+    expect(slugify("a__b--c", "_")).toBe("a_b_c");
+    expect(slugify("***")).toBe("");
+  });
+  it("padText: side is where the padding goes; fill cycles; never shortens; center puts the odd one right", () => {
+    expect(padText("ab", 5, "left")).toBe("   ab");
+    expect(padText("ab", 5, "right", "-")).toBe("ab---");
+    expect(padText("ab", 5, "center", "*")).toBe("*ab**");
+    expect(padText("7", 3, "left", "0")).toBe("007");
+    expect(padText("abc", 6, "right", "xy")).toBe("abcxyx");
+    expect(padText("toolong", 3, "left")).toBe("toolong");
+    expect(padText("éa", 4, "left", "é")).toBe("éééa"); // code points, not UTF-16 units
+  });
+  it("truncateText: at most width, ellipsis counts toward it, untouched when it fits", () => {
+    expect(truncateText("The quick brown fox", 10)).toBe("The quick…");
+    expect(truncateText("The quick brown fox", 10, "...")).toBe("The qui...");
+    expect(truncateText("short", 10)).toBe("short");
+    expect(truncateText("abcdef", 2, "...")).toBe("..");
+    expect(truncateText("abcdef", 3, "")).toBe("abc");
+  });
+  it("the nodes broadcast over a strcombo list; the formulas agree", () => {
+    const x = new TextTransformNode({ op: "slugify" });
+    expect(x.data({ text: [["Café Noir", "B&B Inn"]] }).result).toEqual(["cafe-noir", "b-b-inn"]);
+    expect(new TextTransformNode({ op: "unaccent" }).data({ text: ["naïve"] }).result).toBe("naive");
+    const pad = new PadTextNode({ op: "left" });
+    pad.literals.width = 4; pad.stringLiterals.fill = "0";
+    expect(pad.data({ text: [["7", "42"]] }).result).toEqual(["0007", "0042"]);
+    const tr = new TruncateTextNode();
+    tr.literals.width = 5;
+    expect(tr.data({ text: ["abcdefgh"] }).result).toBe("abcd…");
+    expect(ev('UNACCENT("über")')).toBe("uber");
+    expect(ev('SLUGIFY("Hello World", "_")')).toBe("hello_world");
+    expect(ev('PADTEXT("7", 3, "left", "0")')).toBe("007");
+    expect(ev('PADTEXT("ab", 4)')).toBe("ab  ");
+    expect((ev('PADTEXT("ab", 4, "middle")') as { code?: string }).code).toBe("#DOMAIN!");
+    expect(ev('TRUNCATETEXT("abcdefgh", 5, "..")')).toBe("abc..");
+  });
+});
+
+describe("positions: ARGSORT / WHICH on the ARGMAX card (numpy.argsort, R order / which)", () => {
+  const ev = (e: string) => compileEvaluator(e)!({});
+  it("argsort is 1-based and stable; blanks and errors sort last either way", () => {
+    expect(argsortList([30, 10, 20])).toEqual([2, 3, 1]);
+    expect(argsortList([30, 10, 20], true)).toEqual([1, 3, 2]);
+    expect(argsortList([2, 1, 2, null, 1])).toEqual([2, 5, 1, 3, 4]);
+    expect(argsortList([2, null, 1], true)).toEqual([1, 3, 2]);
+  });
+  it("which returns the TRUE positions; numbers count when non-zero, text when non-empty", () => {
+    expect(whichPositions([false, true, true, false, true])).toEqual([2, 3, 5]);
+    expect(whichPositions([0, 3, null, -1, ""])).toEqual([2, 4]);
+    expect(whichPositions([])).toEqual([]);
+  });
+  it("the card retypes its sockets across ops and computes each", () => {
+    const n = new ArgMinMaxNode({ op: "argmax" });
+    expect(n.data({ list: [[3, 9, 4]] }).result).toBe(2);
+    expect(n.setOp("argsort")).toEqual({ inputChanged: false, outputChanged: true });
+    expect(n.outputs.result!.socket).toBe(numListOut("x").socket);
+    expect(n.data({ list: [[3, 9, 4]] }).result).toEqual([1, 3, 2]);
+    expect(n.setOp("which")).toEqual({ inputChanged: true, outputChanged: false });
+    expect(n.inputs.list!.socket).toBe(logicalListIn("x").socket);
+    expect(n.data({ list: [[true, false, true] as unknown as number[]] }).result).toEqual([1, 3]);
+    expect(n.setOp("argmin")).toEqual({ inputChanged: true, outputChanged: true });
+    expect(n.inputs.list!.socket).toBe(listIn("x").socket);
+    expect(n.outputs.result!.socket).toBe(numOut("x").socket);
+    expect(n.data({ list: [[3, 9, 4]] }).result).toBe(1);
+  });
+  it("formulas: ARGSORT(list, [desc]) and WHICH(flags)", () => {
+    const evx = (e: string) => compileEvaluator(e)!({ x: [30, 10, 20] });
+    expect(evx("ARGSORT(x)")).toEqual([2, 3, 1]);
+    expect(evx("ARGSORT(x, TRUE)")).toEqual([1, 3, 2]);
+    expect(evx("WHICH(x > 15)")).toEqual([1, 3]);
   });
 });

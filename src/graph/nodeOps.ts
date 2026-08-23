@@ -45,7 +45,7 @@ import {
   RankPercentileNode, RomanArabicNode, SecurityDiscNode,
   SumProductNode, TBillNode, 
   HypothesisTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
-  TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
+  TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode, PadTextNode, TruncateTextNode,
   TodayNowNode, UrlEncodeNode, WeekInfoNode, 
   WeightedNode,
   ResistorCodeNode,
@@ -194,6 +194,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
   { type: "text-filter", ctor: TextFilterNode, kind: "argument" },
+  { type: "text-pad", ctor: PadTextNode, kind: "argument" },
+  { type: "text-truncate", ctor: TruncateTextNode, kind: "argument" },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
   { type: "regression-steyx", ctor: RegressionNode, kind: "operation", ops: fromMeta(REGRESSION_OP_META),
