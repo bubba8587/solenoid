@@ -11,63 +11,18 @@ shared rete-free kernel, per capabilityParity, is assumed for everything numeric
 Ranking = (how often the function appears in real notebooks / Excel-refugee workflows) ×
 (how painful the current workaround is) ÷ cost. Tier 1 is the "build next" list.
 
-## Tier 1 — common, no honest composition today, cheap-to-moderate
+## Tier 1 — LANDED 2026-08-23 (all sixteen; each a node + formula on a rete-free kernel, pinned)
 
-1. **Window functions by group** (`groupby().transform` / `cumsum`-`lag`-`rank`-`row_number`
-   `.over(partition)` / dplyr `group_by %>% mutate`, SQL `OVER (PARTITION BY … ORDER BY …)`).
-   A frame verb: partition columns, order column, function (running sum/avg/min/max/count,
-   lag/lead, rank/dense rank/row number, percent of group, cumulative share). Polars `.over`
-   natively; JS oracle in `frameVerbs.ts`; cargo parity corpus. THE pandas staple with no
-   Solenoid answer — Group By collapses rows, Running is list-only. Moderate.
-2. **Describe / Summary** (`df.describe()`, R `summary()`): per numeric column count / mean /
-   std / min / 25 / 50 / 75 / max (+ null count, distinct); text columns count / distinct /
-   top. One verb → a frame. Composable only by a dozen Group-By-less aggregates. Cheap.
-3. **Correlation / covariance MATRIX** (`df.corr()`, `cor(df)`): frame → symmetric matrix
-   (Pearson; Spearman as a mode). Pairwise CORREL exists only. Cheap on `statsOps.pearson`.
-4. **Spearman & Kendall correlation** (`spearmanr`, `cor(method=)`): rank both + pearson;
-   Kendall τ-b O(n²). Add as ops on the Correl node (CORREL / RSQ / SPEARMAN / KENDALL). Cheap.
-5. **More one-liners on Aggregate** (pandas/R basics missing from the 21 ops): `range`, `IQR`,
-   `MAD` (median absolute deviation), `sem` (std error), `cv` (coefficient of variation),
-   `rms`, `mode` (the Mode node exists; an op is the discoverable place), `nunique` exists
-   (countdistinct), `first`/`last`. Trivial each; every one a `statsOps.aggregate` case.
-6. **Quantile bins** (`pd.qcut`, `dplyr::ntile`): Bin has breakpoints only; a "by quantiles
-   (n)" mode returns the n-tile index. Cheap.
-7. **Outliers** (`scipy.stats.zscore > 3`, IQR 1.5 rule, `boxplot.stats$out`): one node,
-   method toggle (z / IQR / MAD), output = flags or the cleaned list. Data-quality magnet,
-   sits beside Expect. Cheap.
-8. **Fuzzy match / string distance** (`rapidfuzz`, `stringdist`, R `agrep`, Excel's Fuzzy
-   Lookup add-in): Levenshtein / Damerau / Jaro-Winkler similarity node, and a **fuzzy
-   XLOOKUP mode** (best match above a threshold). Data-cleaning users live on this; no
-   composition exists. Cheap kernel, moderate node wiring (lookup mode).
-9. **Unix epoch ↔ date serial** (`pd.to_datetime(unit="s")`, `as.POSIXct(origin=)`): every
-   API/CSV import carries epoch seconds/ms; today it's hand arithmetic with a magic constant.
-   A Convert-like "Epoch" node (s / ms, both directions). Trivial.
-10. **Date truncation / period bucketing** (`floor_date`, `dt.to_period`, `resample("M")`):
-    truncate a date to day/week(Mon|Sun)/month/quarter/year (+ ceiling), and its twin "date
-    sequence / complete" (`seq.Date`, `asfreq`, tidyr `complete`) to fill missing periods so
-    a Group By becomes a resample. Cheap; Add-Months family is the home.
-11. **Holt-Winters / ETS forecasting** (`statsmodels ExponentialSmoothing`, R `HoltWinters`/
-    `forecast::ets`, AND Excel's `FORECAST.ETS` family — an Excel-parity gap too):
-    additive trend + seasonality, seasonality detection (ETS.SEASONALITY), prediction
-    interval (ETS.CONFINT). Moderate (~200 lines incl. a small grid/Nelder-Mead on α/β/γ).
-12. **Amortization schedule** (numpy_financial loop / R `amort.table`): period, payment,
-    interest, principal, balance → a frame, from the IPMT/PPMT kernels already here. Every
-    loan spreadsheet rebuilds it. Cheap.
-13. **FFT / spectrum** (`numpy.fft.rfft`, R `fft`, `spectrum`): list → frame of frequency /
-    magnitude / phase (+ inverse). Mixed-radix or Bluestein so length is free. The
-    engineering users' single biggest "can't do that here". Moderate (~150 lines).
-14. **Solve linear system / eigen (symmetric) / trace / rank / norm** (`np.linalg.solve`,
-    `eigh`, `trace`, `matrix_rank`, `norm`): solve = the Gaussian kernel already in listOps;
-    eigh = Jacobi rotation (~60 lines); trace/rank/norm trivial. One "Matrix" op node or
-    four small leaves beside MINVERSE. Cheap–moderate.
-15. **Haversine distance** (`geopy`, R `geosphere::distHaversine`): lat/lon pairs → km/mi,
-    broadcasting; with the Geometry pack's Distance nodes. Trivial; very common in business data.
-16. **Cohort-style tests users actually reach for**: one-way **ANOVA** (F p-value — `fCDF`
-    is here), **Mann-Whitney U / Wilcoxon signed-rank / Kruskal-Wallis** (rank sums +
-    normal/chisq approximations — kernels here), **Fisher exact** (hypgeom PMF is here),
-    **proportion z-test / binomial test**, **KS** (one/two sample), **Shapiro-Wilk** (skip;
-    D'Agostino-Pearson instead). All as ops on the ONE Hypothesis Test node (nodeCombiningRound1
-    precedent). Cheap each.
+Shipped in the order built: Aggregate one-liners (PTP/IQR/MAD/SEM/CV/RMS) + SPEARMAN/KENDALL;
+quantile Bin (NTILE), Outliers, Epoch ↔ Date, Truncate Date, Haversine; Describe, Correlation
+Matrix, Amortization Schedule; the eight Hypothesis-Test ops (ANOVA, Kruskal–Wallis,
+Mann–Whitney, Wilcoxon, Fisher exact, KS exact, two-proportion z, binomial); TRACE /
+MATRIXRANK / NORM + Solve + Eigen (symmetric); Spectrum (FFT, Bluestein); Text Similarity +
+Fuzzy Match; Forecast (ETS) = Holt–Winters + FORECAST.ETS family; **Window** (per-group
+running / rank / lag / share columns — JS-eager; the Polars `.over()` mirror is the open
+follow-up in backlog B5). Reference overlay chips (numpy / pandas / scipy / R / SQL / Excel)
+let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParity.test.ts`,
+`distributionFormula.test.ts`, `dateParity.test.ts`, `functionReferenceLibs.test.ts`.
 
 ## Tier 2 — valuable, moderate cost or narrower audience
 

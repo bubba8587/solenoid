@@ -86,6 +86,27 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23f — the Python/R gap, Tier 1 landed)
+
+**`docs/python-r-gap.md` (author: "a node existing may retain a user") — surveyed, ranked,
+Tier 1 built end to end: ~45 new ops/nodes, every one a node + formula on a rete-free kernel
+with its numpy / pandas / scipy / R name in the catalog keywords**, pinned against scipy 1.9 /
+numpy values computed LOCALLY (not recalled — the first Mann–Whitney/KS references from memory
+were wrong; `pythonRGap.test.ts` carries the real ones). Kernel homes: `statsOps` (one-liners,
+Spearman/Kendall, the eight tests), `listOps` (ntile, outliers, FFT via Bluestein), `dateOps`
+(epoch, truncate), `matrixOps` (trace/rank/norm/solve/eigh), `textOps` (Levenshtein/Damerau/
+Jaro–Winkler, fuzzy best), `forecastOps` (Holt–Winters), `financeOps` (amortization),
+`frameVerbs` (describeFrame, correlationMatrix, windowFrame). Node-combining held: one-liners as
+Aggregate ops, Spearman/Kendall as Correl ops, the tests as Hypothesis-Test ops (specs gained
+`table` sockets), trace/rank/norm on the MDETERM card (which gained a real `setOp` output retype),
+quantiles as a Bin mode. New cards: Outliers, Epoch ↔ Date, Truncate Date, Describe,
+Correlation Matrix, Amortization, Solve, Eigen, Spectrum, Text Similarity, Fuzzy Match,
+Forecast (ETS), Window. **Window is JS-eager** (like Split Column); its Polars `.over()` mirror
+is the open follow-up. Reference overlay gained numpy/pandas/scipy/R/SQL/Excel chips
+(`libraryTags`, derived from prose + keywords). The scratch seed wires every new node through
+Displays (verified headless via `run-graph`). Excel-parity side-effect: FORECAST.ETS family
+exists now (parity:false, same model family, own parameter search).
+
 ### SESSION DIGEST (2026-08-23e — backward audit of the day's commits)
 
 **Audit walk (newest→oldest) of the 2026-08-23 commits; fixes landed, each pinned.**
