@@ -556,6 +556,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [reduceLeaf("avg"), reduceLeaf("median")] },
           { type: "pair", children: [reduceLeaf("min"), reduceLeaf("max")] },
           { type: "pair", children: [reduceLeaf("count"), reduceLeaf("countdistinct")] },
+          reduceLeaf("countblank"),
           { type: "pair", children: [reduceLeaf("geomean"), reduceLeaf("harmean")] },
           { type: "pair", children: [weightedLeaf("wavg"), weightedLeaf("wstdev")] },
           weightedLeaf("wvar"),

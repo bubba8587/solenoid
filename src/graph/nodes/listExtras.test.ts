@@ -119,6 +119,15 @@ describe("Between / Is-Close predicates", () => {
   });
 });
 
+describe("COUNTBLANK — Aggregate op that counts missing cells", () => {
+  it("counts blanks from the raw list, even when every cell is blank", async () => {
+    const { AggregateNode } = await import("./list");
+    expect(new AggregateNode({ op: "countblank" }).data({ list: [[1, null, 3, null, null]] }).result).toBe(3);
+    expect(new AggregateNode({ op: "countblank" }).data({ list: [[null, null]] }).result).toBe(2);
+    expect(new AggregateNode({ op: "count" }).data({ list: [[1, null, 3]] }).result).toBe(2); // count still skips blanks
+  });
+});
+
 describe("closed formula-only gaps — GROWTH and ORDINAL now have nodes", () => {
   it("GROWTH is TREND's exponential mode; ORDINAL is Spell Number's ordinal mode", async () => {
     const { TrendNode } = await import("./stats");

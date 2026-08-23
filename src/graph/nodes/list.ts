@@ -1747,7 +1747,7 @@ export class WeightedNode extends ClassicPreset.Node {
 // ─── Reduce ───────────────────────────────────────────────────────────────────
 
 export type ReduceOp =
-  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
+  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "countblank" | "median" | "product" | "stdev"
   | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
 
 export const REDUCE_OP_META = {
@@ -1757,6 +1757,7 @@ export const REDUCE_OP_META = {
   max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
   count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
   countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. In Excel you'd write COUNTA(UNIQUE(range))." },
+  countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: COUNTBLANK." },
   median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
   product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
   stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1). Excel: STDEV.S." },
@@ -1816,6 +1817,13 @@ export class AggregateNode extends ClassicPreset.Node {
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
+    // COUNTBLANK counts the MISSING cells, so it reads the raw list before the aggregation
+    // below strips blanks away — and it answers even when every cell is blank.
+    if (this.op === "countblank") {
+      const result = (inputs.list?.[0] ?? []).filter((v) => isMissing(v)).length;
+      this.cachedResult = result;
+      return { result };
+    }
     // Aggregator policy: a SolError PROPAGATES, `null` is SKIPPED, a dimensionless
     // cell ADOPTS the list's real unit (SUM($5, $2, 3) = $10), and only two genuinely
     // different dimensions are #UNIT! (base-SI storage already unifies km + m).

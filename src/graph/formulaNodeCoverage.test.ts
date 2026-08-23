@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import { buildCatalog } from "./catalogUtils";
 import { despace } from "./formulaNodeParity";
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
-import type { CatalogEntry } from "./AddNodeMenu";
+import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
+
+const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
+const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
 // formulaNodeParity (the invariant the author demanded: node and formula surfaces MUST
 // carry the same CAPABILITY). Every CURATED formula function — one with declared meta in
@@ -42,9 +45,11 @@ function nodeNames(): Set<string> {
   const names = new Set<string>();
   const walk = (es: CatalogEntry[]): void => {
     for (const e of es) {
-      if (e.type === "category" || e.type === "pair") { walk(e.children); continue; }
-      names.add(despace(e.label).toUpperCase());
-      for (const x of e.excel ?? []) names.add(x.excel.toUpperCase());
+      if (isCategory(e)) { walk(e.children); continue; }
+      if (isPair(e)) { walk(e.children); continue; }
+      const leaf: NodeCatalogEntry = e;
+      names.add(despace(leaf.label).toUpperCase());
+      for (const x of leaf.excel ?? []) names.add(x.excel.toUpperCase());
     }
   };
   walk(buildCatalog(false));
