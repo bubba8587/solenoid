@@ -105,6 +105,21 @@ nodes do — the aggregator null-drop shifted every later period). Cross-surface
 consolidation DECISION, not the live state — ~55 "internal" names still dispatch to Formula.js
 (statistics/distributions/datetime/RATE/MIRR); the backing-flip backlog item covers them.
 
+**A1 backing flip — DONE (statistics, distributions, datetime, MIRR, CHOOSE; RATE declared).**
+New rete-free kernel homes: `statsOps.ts` (Aggregate's 20 reducers, percentile/quartile/
+nthExtreme, pearson/covariance/regression, modes/modeSingle, fisher), `distributionOps.ts`
+(DIST_SPECS moved out of the rete-bound node file), `dateOps.ts` (DATE/TIME builders, the
+parsers, weekInfo, dateDiff), `financeOps.mirr`. ~60 formula names that dispatched to
+Formula.js while their family read `internal` now register on those kernels; node ↔ formula
+pinned per family (`statsParity`, `distributionFormula`, `dateParity`, `financeIterative`),
+plus the RATCHET in statsParity: every internal-backed overlap name is registered or named in
+an honest straggler list (now: RATE — the TVM node is an Equation, no node function to share).
+Unified degenerate answers: not-enough-data is a BLANK on both surfaces (the formula's
+#DOMAIN! there was guardFinite catching NaN), zero variance under a division #DIV/0!,
+GEOMEAN/HARMEAN ≤ 0 #DOMAIN! on both. Φ (stdNormCDF) was A&S 1.5e-7 → Cody TOMS 715 (double
+precision; Φ(0) exactly 0.5) and normSInv gets one Halley step → full precision. Formula
+DATE(26,…) now reads the year literally like the node (documented deviation, one answer).
+
 ### SESSION DIGEST (2026-08-23d — new data nodes, node merges, formula↔node parity)
 
 **A big batch of numpy/pandas/R data nodes (author-directed), each a node AND a formula.** New:

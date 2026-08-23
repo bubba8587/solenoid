@@ -17,10 +17,6 @@ Promoted from `deferrals.md` where an entry was engine/logic work that was never
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 **A — correctness & parity (engine/formula, fully test-pinnable)**
-- [ ] **A1 FAMILY_BACKING flip, family by family.** ~55 names declared `internal` still run
-  Formula.js (statistics reducers, distributions, TIME/WEEKDAY/YEARFRAC/DATEDIF, RATE, MIRR,
-  CHOOSE). Per family: register on the NODE's kernel (the IRR pattern), pin formula == node,
-  then pin "backing internal ⇒ `internalFunctionNames()` has it" so the table can't lie again.
 - [ ] **A2 Formula-surface containment, safe slice.** An FX-backed name with NO declared meta
   that receives an array arg → one clean `SolError` (never broadcast into a #VALUE! array,
   never throw). The allowlist FLIP itself (a name exists iff declared; delete the fallthrough)
@@ -228,13 +224,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
   message). Same split as the divergence catalogue: live half out, finished record
   stays.
-- [ ] **`FAMILY_BACKING` "internal" ≠ registered internal for ~55 names** (audit 2026-08-23e):
-  the statistics reducers (AVERAGE/MEDIAN/STDEV.S/VAR.P/…), the distributions, TIME/WEEKDAY/
-  YEARFRAC/DATEDIF, RATE, MIRR, CHOOSE still dispatch to Formula.js while their family's
-  backing reads `internal`. The table is the consolidation DECISION, not the live state, and
-  nothing pins the gap; IRR/XIRR were in that set and answered a bogus 1000 until closed. Either
-  flip each (share the node kernel, the IRR pattern) or split the table into decided/done and
-  pin "done ⇒ registered" (`internalFunctionNames()`).
 - [ ] **Formula surface is open-by-default (the systemic follow-up).** The 2-D dead-name
   set is resolved (COLUMNS/ROWS + HSTACK/VSTACK/CHOOSECOLS/CHOOSEROWS owned sharing their
   node kernels; the D* family eliminated like VLOOKUP). What remains is the ROOT cause: the
