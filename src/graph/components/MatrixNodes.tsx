@@ -3,6 +3,7 @@ import type {
   TableMultNode as TableMultNodeType,
   TableUnitNode as TableUnitNodeType,
   TableDiagNode as TableDiagNodeType,
+  TableOuterNode as TableOuterNodeType,
   TableTransposeNode as TableTransposeNodeType,
   HStackTableNode as HStackTableNodeType,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
@@ -80,6 +81,15 @@ export function TableDiagComponent({ data, emit }: NodeProps<TableDiagNodeType>)
         ]}
         onChange={(next) => { setOffDiag(next); data.offDiag = next; void processGraph(data.id); }}
       />
+      <InlineInputs node={data} emit={emit} />
+      <TableDisplay table={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+export function TableOuterComponent({ data, emit }: NodeProps<TableOuterNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={data.label} />
     </NodeShell>

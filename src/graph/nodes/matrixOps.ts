@@ -30,6 +30,12 @@ export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | 
     Array.from({ length: n }, (_, j) => (i === j ? values[i] : offDiag)));
 }
 
+/** numpy.outer: rows × cols matrix of products a[i]·b[j]. A null in either operand
+ *  makes its whole row/column blank. */
+export function outerProduct(a: ReadonlyArray<number | null>, b: ReadonlyArray<number | null>): (number | null)[][] {
+  return a.map((ai) => b.map((bj) => (ai == null || bj == null ? null : ai * bj)));
+}
+
 /** The numeric gate for linear algebra: a missing cell is #VALUE! (complete data needed),
  *  a non-number is #TYPE! (an anytable can deliver text into a homogeneous matrix). */
 export function asNumericMatrix(m: unknown[][]): NumMat | SolError {

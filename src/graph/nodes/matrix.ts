@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, matDiag, asNumericMatrix, matMul, matDet, matInverse, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, numListIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
@@ -268,6 +268,30 @@ export class TableDiagNode extends ClassicPreset.Node {
     // No list means an unknown diagonal, not a 0×0 matrix.
     if (!values || values.length === 0) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = matDiag(values, this.offDiag === "blank" ? null : 0);
+    return { result: this.cachedResult };
+  }
+}
+
+// ─── OUTER ────────────────────────────────────────────────────────────────────
+// numpy.outer: two lists → the matrix of their products a[i]·b[j].
+export class TableOuterNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: Mat | null = null;
+  width = 180; height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("TableOuter");
+    this.label = init?.label ?? "OUTER";
+    this.addInput("a", numListIn("A"));
+    this.addInput("b", numListIn("B"));
+    this.addOutput("result", tableOut("Outer product"));
+  }
+
+  data(inputs: { a?: (number | null)[][]; b?: (number | null)[][] }) {
+    const a = inputs.a?.[0] ?? null;
+    const b = inputs.b?.[0] ?? null;
+    if (!a || !b || a.length === 0 || b.length === 0) { this.cachedResult = null; return { result: null }; }
+    this.cachedResult = outerProduct(a, b);
     return { result: this.cachedResult };
   }
 }

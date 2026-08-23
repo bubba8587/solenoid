@@ -1,0 +1,40 @@
+{
+  "v": 2,
+  "order": 9999,
+  "label": "Scratch: new nodes",
+  "group": "More",
+  "nodes": [
+    { "id": "src_a", "type": "ListInputNode", "x": -40, "y": 40,
+      "init": { "label": "Data A", "valueKeys": ["v0"] },
+      "stringLiterals": { "v0": "10, 12, 9, 20, 8, 15, 22, 11" } },
+    { "id": "src_breaks", "type": "ListInputNode", "x": -40, "y": 300,
+      "init": { "label": "Breaks", "valueKeys": ["v0"] },
+      "stringLiterals": { "v0": "10, 15, 20" } },
+    { "id": "src_va", "type": "ListInputNode", "x": -40, "y": 520,
+      "init": { "label": "Vector A", "valueKeys": ["v0"] },
+      "stringLiterals": { "v0": "1, 2, 3" } },
+    { "id": "src_vb", "type": "ListInputNode", "x": -40, "y": 720,
+      "init": { "label": "Vector B", "valueKeys": ["v0"] },
+      "stringLiterals": { "v0": "10, 20" } },
+
+    { "id": "n_shift", "type": "ShiftNode", "x": 320, "y": 0,
+      "init": { "label": "Shift", "wrap": "wrap" }, "literals": { "by": 2 } },
+    { "id": "n_pct", "type": "PctChangeNode", "x": 320, "y": 190,
+      "init": { "label": "Percent Change" } },
+    { "id": "n_z", "type": "ZScoreNode", "x": 320, "y": 350,
+      "init": { "label": "Z-Score" } },
+    { "id": "n_bin", "type": "BinNode", "x": 320, "y": 510,
+      "init": { "label": "Bin" } },
+    { "id": "n_outer", "type": "TableOuterNode", "x": 320, "y": 700,
+      "init": { "label": "Outer" } }
+  ],
+  "connections": [
+    { "source": "src_a", "sourceOutput": "list", "target": "n_shift", "targetInput": "list" },
+    { "source": "src_a", "sourceOutput": "list", "target": "n_pct", "targetInput": "list" },
+    { "source": "src_a", "sourceOutput": "list", "target": "n_z", "targetInput": "list" },
+    { "source": "src_a", "sourceOutput": "list", "target": "n_bin", "targetInput": "list" },
+    { "source": "src_breaks", "sourceOutput": "list", "target": "n_bin", "targetInput": "breaks" },
+    { "source": "src_va", "sourceOutput": "list", "target": "n_outer", "targetInput": "a" },
+    { "source": "src_vb", "sourceOutput": "list", "target": "n_outer", "targetInput": "b" }
+  ]
+}

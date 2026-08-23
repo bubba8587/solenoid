@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 import {
-  MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableDiagNode, TableReshapeNode, TableInfoNode,
+  MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableDiagNode, TableOuterNode, TableReshapeNode, TableInfoNode,
   HStackTableNode, VStackNode, TableSelectNode, ExpandNode,
 } from "./nodes/matrix";
 import { SeriesNode } from "./nodes/list";
@@ -72,6 +72,13 @@ describe("each matrix name computes what its node computes", () => {
     expect(new TableDiagNode().data({}).result).toBeNull();
     // The DIAGONAL formula (off-diagonal 0; the blank toggle is node-only).
     expect(ev("DIAGONAL(x)", { x: [2, 5, 7] })).toEqual([[2, 0, 0], [0, 5, 0], [0, 0, 7]]);
+  });
+
+  it("OUTER node + formula — the matrix of products a[i]·b[j] (numpy.outer)", () => {
+    const out = new TableOuterNode().data({ a: [[1, 2, 3]], b: [[10, 20]] }).result;
+    expect(out).toEqual([[10, 20], [20, 40], [30, 60]]);
+    expect(new TableOuterNode().data({ a: [[]], b: [[1]] }).result).toBeNull();
+    expect(ev("OUTER(a, b)", { a: [1, 2], b: [3, 4, 5] })).toEqual([[3, 4, 5], [6, 8, 10]]);
   });
 
   it("WRAPROWS / WRAPCOLS — #N/A pads (appendLadder), pad_with overrides", () => {

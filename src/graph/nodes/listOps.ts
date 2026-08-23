@@ -77,6 +77,61 @@ export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
 }
 
 
+/** Slide every element k places (k > 0 = later, toward the end). Vacated slots are
+ *  blank; `wrap` fills them from the elements that fell off the other end (numpy.roll). */
+export function shiftList(arr: readonly Cell[], k: number, wrap: boolean): Cell[] {
+  const n = arr.length;
+  if (n === 0) return [];
+  const s = Math.round(k);
+  if (wrap) {
+    const m = ((s % n) + n) % n;
+    return arr.map((_, i) => arr[(i - m + n) % n]);
+  }
+  return arr.map((_, i) => {
+    const j = i - s;
+    return j >= 0 && j < n ? arr[j] : null;
+  });
+}
+
+/** Consecutive percent change (x[i] − x[i−1]) / x[i−1], one shorter than the input; a
+ *  missing neighbour makes that entry blank, a zero base is #DIV/0!, an error propagates. */
+export function pctChangeList(arr: readonly Cell[]): Cell[] {
+  return arr.slice(1).map((v, i) => {
+    const prev = arr[i];
+    if (isSolError(v)) return v;
+    if (isSolError(prev)) return prev;
+    if (isMissing(v) || isMissing(prev)) return null;
+    if ((prev as number) === 0) return solError("#DIV/0!", "Percent change from zero is undefined");
+    return ((v as number) - (prev as number)) / (prev as number);
+  });
+}
+
+/** Standardize to z-scores (x − mean) / stdev, population stdev; a flat list → all
+ *  zeros. Like normalizeList, the reduction poisons on any error and skips nulls. */
+export function zscoreList(arr: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return arr.map(() => null);
+  const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+  const sd = Math.sqrt(nums.reduce((a, b) => a + (b - mean) ** 2, 0) / nums.length);
+  return arr.map((v) =>
+    typeof v === "number" && Number.isFinite(v) ? (sd === 0 ? 0 : (v - mean) / sd) : null);
+}
+
+/** Which half-open bin each value falls in: the count of breakpoints ≤ the value
+ *  (0 = below the first break, so n breaks give bins 0..n). R findInterval / numpy.digitize. */
+export function binIndex(arr: readonly Cell[], breaks: readonly Cell[]): Cell[] {
+  const edges = presentNumbers(breaks).slice().sort((a, b) => a - b);
+  return arr.map((v) => {
+    if (isSolError(v)) return v;
+    if (!(typeof v === "number" && Number.isFinite(v))) return null;
+    let lo = 0, hi = edges.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (edges[m] <= v) lo = m + 1; else hi = m; }
+    return lo;
+  });
+}
+
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
 
 /** One aggregate per element over the window ending there: every element so far

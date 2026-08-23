@@ -15,7 +15,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -459,6 +459,98 @@ export class ReverseNode extends ClassicPreset.Node {
     const reversed = reverseList(arr);
     this.cachedList = reversed;
     return { result: reversed };
+  }
+}
+
+export class ShiftNode extends ClassicPreset.Node {
+  /** Element-preserving: the output adopts the input's type. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
+  label: string;
+  literals: Record<string, number> = { by: 1 };
+  /** Vacated slots: blank (drop off the end) or wrap around (numpy.roll). */
+  wrap: "blank" | "wrap" = "blank";
+  cachedList: unknown[] = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string; wrap?: "blank" | "wrap" }) {
+    super("Shift");
+    this.label = init?.label ?? "Shift";
+    if (init?.wrap) this.wrap = init.wrap;
+    this.addInput("list", adoptiveListIn("List"));
+    this.addInput("by", numIn("By"));
+    this.addOutput("result", adoptiveListOut("Shifted"));
+  }
+
+  data(inputs: { list?: unknown[][]; by?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const by = readInput(inputs.by, this.literals.by ?? 1);
+    if (by === null) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = shiftList(arr as ListCell[], by, this.wrap === "wrap");
+    return { result: this.cachedList };
+  }
+}
+
+export class PctChangeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "One element shorter than the input. Each entry is the fractional change from the element before (0.1 = up 10%).",
+  };
+  label: string;
+  cachedList: ListCell[] = [];
+  width = 180; height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("PctChange");
+    this.label = init?.label ?? "Percent Change";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", listOut("Change"));
+  }
+
+  data(inputs: { list?: ListCell[][] }) {
+    this.cachedList = pctChangeList(inputs.list?.[0] ?? []);
+    return { result: this.cachedList };
+  }
+}
+
+export class ZScoreNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Each value as a z-score: how many standard deviations it sits from the list's mean.",
+  };
+  label: string;
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("ZScore");
+    this.label = init?.label ?? "Z-Score";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", listOut("z-scores"));
+  }
+
+  data(inputs: { list?: ListCell[][] }) {
+    this.cachedList = zscoreList(inputs.list?.[0] ?? []);
+    return { result: this.cachedList };
+  }
+}
+
+export class BinNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    breaks: "The bin edges. A value is placed by how many edges it clears: 0 below the first edge, up to n above the last.",
+  };
+  label: string;
+  cachedList: ListCell[] = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Bin");
+    this.label = init?.label ?? "Bin";
+    this.addInput("list",   listIn("List"));
+    this.addInput("breaks", listIn("Breaks"));
+    this.addOutput("result", listOut("Bin index"));
+  }
+
+  data(inputs: { list?: ListCell[][]; breaks?: ListCell[][] }) {
+    this.cachedList = binIndex(inputs.list?.[0] ?? [], inputs.breaks?.[0] ?? []);
+    return { result: this.cachedList };
   }
 }
 

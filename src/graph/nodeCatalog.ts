@@ -15,7 +15,7 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, RepeatNode,
+  AlertNode, NormalizeNode, ZScoreNode, PctChangeNode, BinNode, ShiftNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -42,7 +42,7 @@ import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode,
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
-  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableTransposeNode,
+  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
   HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
@@ -505,6 +505,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
           { type: "pair", children: [
             { type: "list-normalize",  label: "Normalize",  description: "Scales a list to the 0–1 range: min maps to 0, max maps to 1", create: () => new NormalizeNode() },
+            { type: "list-zscore", label: "Z-Score", description: "Z-scores: each value as its distance from the mean in standard deviations. numpy/R scale.", create: () => new ZScoreNode(), parity: false, keywords: "z-score zscore standardize scale normalize mean stdev standard deviation" },
+          ]},
+          { type: "pair", children: [
+            { type: "list-pctchange", label: "Percent Change", description: "Consecutive percent change: (list[i] − list[i−1]) / list[i−1]. pandas pct_change.", create: () => new PctChangeNode(), parity: false, keywords: "percent change pct_change growth rate return delta ratio consecutive" },
+            { type: "list-bin",       label: "Bin",           description: "Places each value into a bin by counting how many breakpoints it clears (0 below the first). R findInterval / numpy digitize.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile" },
+          ]},
+          { type: "pair", children: [
+            { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
             { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle.", create: () => new ShuffleNode() },
           ]},
           { type: "pair", children: [
@@ -846,6 +854,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
           { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s, or blanks (nulls) so the off-diagonal stays out of sums. Excel: MUNIT.",                                             create: () => new TableUnitNode(),                   parity: false },
           { type: "table-diag",      label: "DIAGONAL",  description: "Turns a list into a square matrix's diagonal, the rest 0s or blanks (nulls, out of sums). numpy.diag.",                                              create: () => new TableDiagNode(),                   parity: false },
+          { type: "table-outer",     label: "OUTER",     description: "Outer product of two lists: the matrix of every product a×b. numpy.outer.",                                                                          create: () => new TableOuterNode(),                  parity: false },
           { type: "table-transpose", label: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: TRANSPOSE.",                                                    create: () => new TableTransposeNode(),              parity: false },
         ],
       },

@@ -21,7 +21,7 @@ import {
   UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, RepeatNode,
+  NormalizeNode, ZScoreNode, PctChangeNode, BinNode, ShiftNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
   FillNode,
@@ -50,7 +50,7 @@ import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, Char
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
-  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableTransposeNode,
+  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
   HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
@@ -103,7 +103,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SetOpNode || node instanceof TallyNode ||
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
-    node instanceof NormalizeNode || node instanceof RepeatNode ||
+    node instanceof NormalizeNode || node instanceof ZScoreNode || node instanceof PctChangeNode ||
+    node instanceof BinNode || node instanceof ShiftNode || node instanceof RepeatNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
     node instanceof PadNode || node instanceof GeometricNode || node instanceof FibonacciNode ||
     node instanceof FillNode
@@ -159,6 +160,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||
     node instanceof TableMultNode || node instanceof TableUnitNode || node instanceof TableDiagNode ||
+    node instanceof TableOuterNode ||
     node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
     node instanceof TableTakeDropNode || node instanceof ExpandNode ||

@@ -69,8 +69,12 @@ export { FilterComponent } from "./FilterNode";
 export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
+export { PctChangeComponent } from "./PctChangeNode";
 export { RunningComponent } from "./RunningNode";
 export { NormalizeComponent } from "./NormalizeNode";
+export { ZScoreComponent } from "./ZScoreNode";
+export { BinComponent } from "./BinNode";
+export { ShiftComponent } from "./ShiftNode";
 export { ShuffleComponent } from "./ShuffleNode";
 export { InterleaveComponent } from "./InterleaveNode";
 export { NthElementComponent } from "./NthElementNode";
@@ -126,7 +130,7 @@ export { IsEvenOddComponent } from "./IsEvenOddNode";
 // ─── 2D Tables / Matrix ───────────────────────────────────────────────────────
 export { TableInputComponent } from "./TableInputNode";
 export {
-  MatDetComponent, TableMultComponent, TableUnitComponent, TableDiagComponent,
+  MatDetComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
   TableTransposeComponent, HStackTableComponent,
   TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";

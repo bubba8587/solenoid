@@ -8,9 +8,10 @@ import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, matDiag, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
+  shiftList, pctChangeList, zscoreList, binIndex,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
@@ -507,6 +508,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PADLEFT:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   DIFF:            { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   NORMALIZE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  PCTCHANGE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
+  ZSCORE:          { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
+  BIN:             { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
+  SHIFT:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
   // argument (aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
@@ -569,6 +574,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
   MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   DIAGONAL:   { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
+  OUTER:      { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
   MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   // COLUMNS/ROWS answer a shape COUNT (scalar), so they take their arg whole (matrix or
@@ -1209,6 +1215,10 @@ registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n
 registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
+registerInternal("PCTCHANGE",  (list) => pctChangeList(numList(list)));
+registerInternal("ZSCORE",     (list) => zscoreList(numList(list)));
+registerInternal("BIN",        (list, breaks) => binIndex(numList(list), numList(breaks)));
+registerInternal("SHIFT",      (list, by) => shiftList(numList(list), Number(by), false));
 // ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below
@@ -1433,6 +1443,12 @@ registerInternal("MUNIT", (n) => (n == null ? null : matUnit(Number(n), 0)));
 registerInternal("DIAGONAL", (list) => {
   const vs = numList(list).map((c) => (c == null ? null : Number(c)));
   return vs.length === 0 ? null : matDiag(vs, 0);
+});
+// numpy.outer: two lists → the matrix of their products.
+registerInternal("OUTER", (a, b) => {
+  const A = numList(a).map((c) => (typeof c === "number" ? c : null));
+  const B = numList(b).map((c) => (typeof c === "number" ? c : null));
+  return A.length === 0 || B.length === 0 ? null : outerProduct(A, B);
 });
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
