@@ -3,6 +3,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, parseDate } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
+import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -404,6 +405,36 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "RANK.EQ":   { returns: "number", arity: [2, 3], family: "statistics" },
   "RANK.AVG":  { returns: "number", arity: [2, 3], family: "statistics" },
   TRIMMEAN:    { returns: "number", arity: [2, 2], family: "statistics" },
+  // The statistics family on the nodes' statsOps kernels (A1 backing flip, 2026-08-23).
+  AVERAGE:     { returns: "number", arity: [1, 255], family: "statistics" },
+  AVERAGEA:    { returns: "number", arity: [1, 255], family: "statistics" },
+  AVEDEV:      { returns: "number", arity: [1, 255], family: "statistics" },
+  MEDIAN:      { returns: "number", arity: [1, 255], family: "statistics" },
+  GEOMEAN:     { returns: "number", arity: [1, 255], family: "statistics" },
+  HARMEAN:     { returns: "number", arity: [1, 255], family: "statistics" },
+  DEVSQ:       { returns: "number", arity: [1, 255], family: "statistics" },
+  "STDEV.S":   { returns: "number", arity: [1, 255], family: "statistics" },
+  "STDEV.P":   { returns: "number", arity: [1, 255], family: "statistics" },
+  "VAR.S":     { returns: "number", arity: [1, 255], family: "statistics" },
+  "VAR.P":     { returns: "number", arity: [1, 255], family: "statistics" },
+  SKEW:        { returns: "number", arity: [1, 255], family: "statistics" },
+  "SKEW.P":    { returns: "number", arity: [1, 255], family: "statistics" },
+  KURT:        { returns: "number", arity: [1, 255], family: "statistics" },
+  LARGE:       { returns: "number", arity: [2, 2], family: "statistics" },
+  SMALL:       { returns: "number", arity: [2, 2], family: "statistics" },
+  "PERCENTILE.INC": { returns: "number", arity: [2, 2], family: "statistics" },
+  "PERCENTILE.EXC": { returns: "number", arity: [2, 2], family: "statistics" },
+  "QUARTILE.EXC":   { returns: "number", arity: [2, 2], family: "statistics" },
+  "MODE.SNGL": { returns: "number", arity: [1, 255], family: "statistics" },
+  CORREL:      { returns: "number", arity: [2, 2], family: "statistics" },
+  RSQ:         { returns: "number", arity: [2, 2], family: "statistics" },
+  "COVARIANCE.P": { returns: "number", arity: [2, 2], family: "statistics" },
+  "COVARIANCE.S": { returns: "number", arity: [2, 2], family: "statistics" },
+  SLOPE:       { returns: "number", arity: [2, 2], family: "statistics" },
+  INTERCEPT:   { returns: "number", arity: [2, 2], family: "statistics" },
+  STEYX:       { returns: "number", arity: [2, 2], family: "statistics" },
+  FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
+  FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
   CLAMP:       { returns: "number",  arity: [3, 3], native: true },
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
@@ -754,13 +785,7 @@ export function excelPercentRank(
  *  quart 4 = MAX (Excel). Matches RankPercentileNode's `percentileOf` interpolation so the
  *  node and formula agree (oneAnswerOneDivergence); Formula.js's QUARTILE.INC errors on 0 and 4. */
 export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number | SolError {
-  const qi = Math.round(q);
-  if (nums.length === 0) return solError("#DOMAIN!", "QUARTILE needs at least one number");
-  if (qi < 0 || qi > 4) return solError("#DOMAIN!", "Quartile must be 0, 1, 2, 3, or 4");
-  const s = [...nums].sort((a, b) => a - b);
-  const idx = (qi / 4) * (s.length - 1);
-  const lo = Math.floor(idx), hi = Math.ceil(idx);
-  return s[lo] + (s[hi] - s[lo]) * (idx - lo);
+  return quartile(nums, q, false) ?? solError("#DOMAIN!", "QUARTILE needs at least one number");
 }
 
 registerInternal("ROUND", (x, d) => {
@@ -823,17 +848,48 @@ registerInternal("HOUR",   (x) => { const n = toNum(x); return Number.isNaN(n) ?
 registerInternal("MINUTE", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("MINUTE") : serialToJsDate(n).getUTCMinutes(); });
 registerInternal("SECOND", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("SECOND") : serialToJsDate(n).getUTCSeconds(); });
 
-// Flat Excel names bound to FX's namespaced impls, with Excel's flat-name default
-// (STDEV/VAR = sample, PERCENTILE/QUARTILE = inclusive, MODE = single, COVAR =
-// population, PERCENTRANK = inclusive).
-const FXNS = FX as unknown as Record<string, Record<string, (...a: unknown[]) => unknown>>;
-registerInternal("STDEV",       (...a) => FXNS.STDEV.S(...a));
-registerInternal("VAR",         (...a) => FXNS.VAR.S(...a));
-registerInternal("MODE",        (...a) => FXNS.MODE.SNGL(...a));
-registerInternal("PERCENTILE",  (...a) => FXNS.PERCENTILE.INC(...a));
-registerInternal("QUARTILE",     (arr, q) => excelQuartileInc((arr as number[]) ?? [], toNum(q)));
-registerInternal("QUARTILE.INC", (arr, q) => excelQuartileInc((arr as number[]) ?? [], toNum(q)));
-registerInternal("COVAR",       (...a) => FXNS.COVARIANCE.P(...a));
+// The statistics family runs the NODES' kernels (statsOps.ts — Aggregate, Rank &
+// Percentile, Correl, Covariance, Mode, Fisher call the same functions), so the two
+// surfaces cannot drift (capabilityParity / shareImpl). Range args arrive PREPPED
+// (prepRangeArgs: an error already propagated, blanks dropped, paired ranges
+// row-aligned); a registration just gathers the numbers. The flat Excel names carry
+// Excel's flat-name default (STDEV/VAR = sample, PERCENTILE/QUARTILE = inclusive,
+// MODE = single, COVAR = population).
+const numsOf = (...args: unknown[]): number[] =>
+  args.flatMap((a) => (Array.isArray(a) ? a : [a])).map(toNum).filter((n) => Number.isFinite(n));
+const AGG_FORMULAS: Array<[string, AggregateOp]> = [
+  ["AVERAGE", "avg"], ["AVEDEV", "avedev"], ["MEDIAN", "median"], ["GEOMEAN", "geomean"],
+  ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
+  ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
+  ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
+];
+for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
+// AVERAGEA: Excel counts text as 0 and logicals as 1/0 — every non-blank cell is a value.
+registerInternal("AVERAGEA", (...a) => {
+  const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
+  return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isFinite(n) ? n : 0; }));
+});
+registerInternal("LARGE",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), true));
+registerInternal("SMALL",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), false));
+registerInternal("PERCENTILE",     (arr, p) => percentile(numsOf(arr), toNum(p), false));
+registerInternal("PERCENTILE.INC", (arr, p) => percentile(numsOf(arr), toNum(p), false));
+registerInternal("PERCENTILE.EXC", (arr, p) => percentile(numsOf(arr), toNum(p), true));
+registerInternal("QUARTILE",     (arr, q) => quartile(numsOf(arr), toNum(q), false));
+registerInternal("QUARTILE.INC", (arr, q) => quartile(numsOf(arr), toNum(q), false));
+registerInternal("QUARTILE.EXC", (arr, q) => quartile(numsOf(arr), toNum(q), true));
+registerInternal("MODE",      (...a) => modeSingle(numsOf(...a)));
+registerInternal("MODE.SNGL", (...a) => modeSingle(numsOf(...a)));
+registerInternal("CORREL",       (x, y) => pearson(numsOf(x), numsOf(y)));
+registerInternal("RSQ",          (y, x) => pearson(numsOf(x), numsOf(y), true));
+registerInternal("COVAR",        (x, y) => covariance(numsOf(x), numsOf(y), false));
+registerInternal("COVARIANCE.P", (x, y) => covariance(numsOf(x), numsOf(y), false));
+registerInternal("COVARIANCE.S", (x, y) => covariance(numsOf(x), numsOf(y), true));
+// Excel's argument order is (known_ys, known_xs).
+registerInternal("SLOPE",     (y, x) => regression(numsOf(x), numsOf(y), "slope"));
+registerInternal("INTERCEPT", (y, x) => regression(numsOf(x), numsOf(y), "intercept"));
+registerInternal("STEYX",     (y, x) => regression(numsOf(x), numsOf(y), "steyx"));
+registerInternal("FISHER",    (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHER") : fisher(n, false); });
+registerInternal("FISHERINV", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHERINV") : fisher(n, true); });
 
 // RANK / TRIMMEAN / PERCENTRANK run the single source the visual nodes also call.
 // PERCENTRANK takes the inclusive (n−1) basis with default 3 digits here.

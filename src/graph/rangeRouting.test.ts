@@ -66,22 +66,26 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
   const codeOf = (v: unknown) => (v as { code?: string })?.code;
 
   /** The probe battery: whole-sample calls whose degenerate input made
-   *  Formula.js / the internal stats answer bare NaN. Each is #DOMAIN! now. */
-  const DEGENERATE: Array<[string, string, Record<string, unknown>]> = [
-    ["STDEV of one value", "STDEV(x)", { x: [5] }],
-    ["VAR of one value", "VAR(x)", { x: [5] }],
-    ["CORREL of a constant", "CORREL(a, b)", { a: [1, 1, 1], b: [1, 2, 3] }],
-    ["SLOPE of constant xs", "SLOPE(y, x)", { y: [1, 2], x: [3, 3] }],
-    ["RSQ of constants", "RSQ(y, x)", { y: [1, 1], x: [1, 1] }],
-    ["SKEW below n=3", "SKEW(x)", { x: [1, 2] }],
-    ["KURT below n=4", "KURT(x)", { x: [1, 2, 3] }],
-    ["GEOMEAN of a negative", "GEOMEAN(x)", { x: [-4, 9] }],
-    ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }],
+   *  Formula.js / the internal stats answer bare NaN. Each now answers what its NODE
+   *  answers (statsOps is the one kernel): "not enough data" is a BLANK (the
+   *  Aggregate/Running rule), zero variance under a division is #DIV/0!, a log-domain
+   *  failure is #DOMAIN! — and never a bare NaN. */
+  const DEGENERATE: Array<[string, string, Record<string, unknown>, string | null]> = [
+    ["STDEV of one value", "STDEV(x)", { x: [5] }, null],
+    ["VAR of one value", "VAR(x)", { x: [5] }, null],
+    ["CORREL of a constant", "CORREL(a, b)", { a: [1, 1, 1], b: [1, 2, 3] }, "#DIV/0!"],
+    ["SLOPE of constant xs", "SLOPE(y, x)", { y: [1, 2], x: [3, 3] }, "#DIV/0!"],
+    ["RSQ of constants", "RSQ(y, x)", { y: [1, 1], x: [1, 1] }, "#DIV/0!"],
+    ["SKEW below n=3", "SKEW(x)", { x: [1, 2] }, null],
+    ["KURT below n=4", "KURT(x)", { x: [1, 2, 3] }, null],
+    ["GEOMEAN of a negative", "GEOMEAN(x)", { x: [-4, 9] }, "#DOMAIN!"],
+    ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }, "#DOMAIN!"],
   ];
-  it.each(DEGENERATE)("%s → #DOMAIN!, never bare NaN", (_label, expr, env) => {
+  it.each(DEGENERATE)("%s → the node's answer, never bare NaN", (_label, expr, env, code) => {
     const r = ev(expr, env);
     expect(typeof r === "number" && Number.isNaN(r), "bare NaN leaked").toBe(false);
-    expect(codeOf(r)).toBe("#DOMAIN!");
+    if (code === null) expect(r).toBeNull();
+    else expect(codeOf(r)).toBe(code);
   });
 
   it("a first-class ∞ INPUT still passes through (the Constant node's ∞)", () => {

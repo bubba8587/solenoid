@@ -390,7 +390,7 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
   "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK",
   "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR",
+  "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR",
   "AND", "OR", "XOR",
   "TEXTJOIN", "CONCAT",
   // criteria + meta aggregators: range (+ criteria/selector) in, scalar out.
@@ -419,7 +419,7 @@ const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
 // ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR", "XNPV",
+  "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR", "XNPV",
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS",
   // term-by-term / cell-for-cell definitions: these must stay index-aligned.

@@ -1,9 +1,10 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
 import { fillBorderedGrid } from "./mathUtils";
-import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
+import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
+import { percentile, quartile, nthExtreme, pearson, covariance, modes, fisher, regression } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
@@ -61,14 +62,6 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
   quartile:    { inputs: [{ key: "q", label: "Quartile (0–4)", def: 2 }],                                       outLabel: "Value",      height: 185 },
   percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
 };
-
-/** The shared interpolating percentile kernel; `exc` uses Excel's exclusive rank. */
-function percentileOf(sorted: number[], p: number, exc: boolean): number {
-  const n = sorted.length;
-  const i = exc ? p * (n + 1) - 1 : p * (n - 1);
-  const lo = Math.floor(i), hi = exc ? Math.min(n - 1, Math.ceil(i)) : Math.ceil(i);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
-}
 
 export class RankPercentileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -148,46 +141,22 @@ export class RankPercentileNode extends ClassicPreset.Node {
     const arr = prep.nums;
     let result: number | SolError | null = null;
 
+    // The shared statsOps kernels — the LARGE/SMALL/PERCENTILE.*/QUARTILE.* formulas run
+    // the same ones, so the two surfaces can't drift.
     if (family === "nth") {
       const kRaw = readInput(inputs.k, this.literals.k ?? 1);
       if (kRaw === null) { this.cachedResult = null; return { result: null }; }
-      const k = Math.round(kRaw);
-      if (arr.length > 0 && k >= 1 && k <= arr.length) {
-        const sorted = [...arr].sort((a, b) => a - b);
-        result = this.op === "large" ? sorted[arr.length - k] : sorted[k - 1];
-      }
+      result = nthExtreme(arr, kRaw, this.op === "large");
     } else if (family === "percentile") {
       const p = readInput(inputs.p, this.literals.p ?? 0.5);
       if (p === null) { this.cachedResult = null; return { result: null }; }
-      if (arr.length > 0) {
-        const n = arr.length;
-        if (!exc && (p < 0 || p > 1)) {
-          result = solError("#DOMAIN!", "Percentile must be between 0 and 1");
-        } else if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
-          // Excel PERCENTILE.EXC: p must lie strictly inside (1/(n+1), n/(n+1)) —
-          // outside it Excel returns #NUM!.
-          result = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
-        } else {
-          result = percentileOf([...arr].sort((a, b) => a - b), p, exc);
-        }
-      }
+      result = percentile(arr, p, exc);
     } else {
       const qRaw = readInput(inputs.q, this.literals.q ?? 2);
       if (qRaw === null) { this.cachedResult = null; return { result: null }; }
-      const q = Math.round(qRaw);
-      if (arr.length > 0 && q >= 0 && q <= 4) {
-        const n = arr.length;
-        const p = q / 4;
-        if (exc && (q === 0 || q === 4)) {
-          result = solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");
-        } else if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
-          // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): an interior q can still fall
-          // outside the EXC domain at small n.
-          result = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
-        } else {
-          result = percentileOf([...arr].sort((a, b) => a - b), p, exc);
-        }
-      }
+      // An out-of-range INC quartile is a blank on the node (a mis-set dial), the
+      // formula's #DOMAIN! — the one deliberate surface difference, kept from before.
+      result = !exc && (Math.round(qRaw) < 0 || Math.round(qRaw) > 4) ? null : quartile(arr, qRaw, exc);
     }
     this.cachedResult = result;
     return { result };
@@ -224,25 +193,7 @@ export class CorrelNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }): { result: number | SolError | null } {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    let result: number | null = null;
-    if (xs.length >= 2 && ys.length >= 2) {
-      const n = Math.min(xs.length, ys.length);
-      const mx = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const my = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let num = 0, dx2 = 0, dy2 = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = xs[i] - mx, dy = ys[i] - my;
-        num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
-      }
-      const den = Math.sqrt(dx2 * dy2);
-      // Zero variance in either list — correlation is undefined (#DIV/0!).
-      if (den === 0) {
-        const err = solError("#DIV/0!", "One of the lists has zero variance");
-        this.cachedResult = err; return { result: err };
-      }
-      const r = num / den;
-      result = this.op === "rsq" ? r * r : r;
-    }
+    const result = pearson(xs, ys, this.op === "rsq"); // shared with the CORREL / RSQ formulas
     this.cachedResult = result;
     return { result };
   }
@@ -310,14 +261,7 @@ export class CovarianceNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }) {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    let result: number | null = null;
-    if (xs.length >= 2 && ys.length >= 2) {
-      const n = Math.min(xs.length, ys.length);
-      const mx = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const my = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const cov = xs.slice(0, n).reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0);
-      result = this.op === "pop" ? cov / n : cov / (n - 1);
-    }
+    const result = covariance(xs, ys, this.op !== "pop"); // shared with the COVARIANCE.P/.S formulas
     this.cachedResult = result;
     return { result };
   }
@@ -349,15 +293,8 @@ export class FisherNode extends ClassicPreset.Node {
   data(inputs: { value?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
     const v = readInput(inputs.value, this.literals.value ?? null);
     // Defined only on (−1, 1); #DOMAIN! is tagged per-cell in a LIST, not whole-list.
-    const domainErr = () => solError("#DOMAIN!", "FISHER requires −1 < x < 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
-    if (v !== null) {
-      result = broadcastErr((x) => {
-        if (this.op === "fisher")    return (x <= -1 || x >= 1) ? domainErr() : Math.atanh(x);
-        if (this.op === "fisherinv") return Math.tanh(x);
-        return null;
-      }, v);
-    }
+    if (v !== null) result = broadcastErr((x) => fisher(x, this.op === "fisherinv"), v);
     this.cachedResult = result;
     return { result };
   }
@@ -395,38 +332,9 @@ export class RegressionNode extends ClassicPreset.Node {
   }
 
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { result: number | SolError | null } {
-    const { error, xs: xsP, ys: ysP } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
+    const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const ys = ysP, xs = xsP;
-    let result: number | null = null;
-    if (ys.length >= 2 && xs.length >= 2) {
-      const n = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0, SSyy = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = xs[i] - xMean, dy = ys[i] - yMean;
-        SSxy += dx * dy;
-        SSxx += dx * dx;
-        SSyy += dy * dy;
-      }
-      // Zero X variance means dividing by SSxx — the regression is undefined.
-      if (SSxx === 0) {
-        const err = solError("#DIV/0!", "Known Xs have zero variance");
-        this.cachedResult = err;
-        return { result: err };
-      }
-      const slope = SSxy / SSxx;
-      const intercept = yMean - slope * xMean;
-      if (this.op === "slope") {
-        result = slope;
-      } else if (this.op === "intercept") {
-        result = intercept;
-      } else {
-        // The (n−2) denominator needs 3+ points; fewer is a blank, not an error.
-        result = n >= 3 ? Math.sqrt((SSyy - slope * SSxy) / (n - 2)) : null;
-      }
-    }
+    const result = regression(xs, ys, this.op); // shared with the SLOPE / INTERCEPT / STEYX formulas
     this.cachedResult = result;
     return { result };
   }
@@ -501,18 +409,7 @@ export class ModeNode extends ClassicPreset.Node {
     // SolError propagates; null (missing) is skipped so it isn't counted as a mode.
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    let result: number | number[] | null = null;
-    if (arr.length > 0) {
-      const counts = new Map<number, number>();
-      for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
-      const maxCount = iterMax(counts.values());
-      const modes = [...counts.entries()]
-        .filter(([, c]) => c === maxCount)
-        .map(([v]) => v)
-        .sort((a, b) => a - b);
-      result = modes.length === 1 ? modes[0] : modes; // one mode → scalar; a tie → the full list
-    }
+    const result = modes(prep.nums); // shared with the MODE / MODE.SNGL formulas
     this.cachedResult = result;
     return { result };
   }

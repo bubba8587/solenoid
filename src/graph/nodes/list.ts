@@ -15,6 +15,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
+import { aggregate, type AggregateOp } from "./statsOps";
 import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -1760,9 +1761,7 @@ export class WeightedNode extends ClassicPreset.Node {
 
 // ─── Reduce ───────────────────────────────────────────────────────────────────
 
-export type ReduceOp =
-  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "countblank" | "median" | "product" | "stdev"
-  | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
+export type ReduceOp = AggregateOp | "countblank";
 
 export const REDUCE_OP_META = {
   sum:     { label: "SUM",     description: "Sums all values. Excel: SUM." },
@@ -1845,104 +1844,8 @@ export class AggregateNode extends ClassicPreset.Node {
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
     const dim = prep.dim;
-    let result: number | null = null;
-    if (arr.length > 0) {
-      switch (this.op) {
-        case "sum":     result = arr.reduce((a, b) => a + b, 0); break;
-        case "avg":     result = arr.reduce((a, b) => a + b, 0) / arr.length; break;
-        case "min":     result = iterMin(arr); break;
-        case "max":     result = iterMax(arr); break;
-        case "count":   result = arr.length; break;
-        case "countdistinct": result = new Set(arr).size; break;
-        case "product": result = arr.reduce((a, b) => a * b, 1); break;
-        case "median": {
-          const s = [...arr].sort((a, b) => a - b);
-          const m = Math.floor(s.length / 2);
-          result = s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
-          break;
-        }
-        case "stdev": {
-          if (arr.length < 2) break; // sample stdev undefined under 2 points — blank, like var_s
-          const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-          const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (arr.length - 1);
-          result = Math.sqrt(variance);
-          break;
-        }
-        case "geomean": {
-          if (arr.some((v) => v <= 0)) break;
-          result = Math.exp(arr.reduce((a, b) => a + Math.log(b), 0) / arr.length);
-          break;
-        }
-        case "harmean": {
-          if (arr.some((v) => v <= 0)) break;
-          result = arr.length / arr.reduce((a, b) => a + 1 / b, 0);
-          break;
-        }
-        case "sumsq":   result = arr.reduce((a, b) => a + b * b, 0); break;
-        case "var_s": {
-          if (arr.length < 2) break;
-          const meanVs = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + (b - meanVs) ** 2, 0) / (arr.length - 1);
-          break;
-        }
-        case "var_p": {
-          const meanVp = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + (b - meanVp) ** 2, 0) / arr.length;
-          break;
-        }
-        case "stdev_p": {
-          const meanSp = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = Math.sqrt(arr.reduce((a, b) => a + (b - meanSp) ** 2, 0) / arr.length);
-          break;
-        }
-        case "devsq": {
-          const meanDq = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + (b - meanDq) ** 2, 0);
-          break;
-        }
-        case "avedev": {
-          const meanAd = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + Math.abs(b - meanAd), 0) / arr.length;
-          break;
-        }
-        case "skew": {
-          const nSk = arr.length;
-          if (nSk < 3) break;
-          const meanSk = arr.reduce((a, b) => a + b, 0) / nSk;
-          const sSk = Math.sqrt(arr.reduce((a, b) => a + (b - meanSk) ** 2, 0) / (nSk - 1));
-          if (sSk === 0) break;
-          const sum3 = arr.reduce((a, b) => a + ((b - meanSk) / sSk) ** 3, 0);
-          result = (nSk / ((nSk - 1) * (nSk - 2))) * sum3;
-          break;
-        }
-        case "skew_p": {
-          const nSp = arr.length;
-          if (nSp < 2) break;
-          const meanSp = arr.reduce((a, b) => a + b, 0) / nSp;
-          const sSp = Math.sqrt(arr.reduce((a, b) => a + (b - meanSp) ** 2, 0) / nSp);
-          if (sSp === 0) break;
-          result = arr.reduce((a, b) => a + ((b - meanSp) / sSp) ** 3, 0) / nSp;
-          break;
-        }
-        case "kurt": {
-          const nKu = arr.length;
-          if (nKu < 4) break;
-          const meanKu = arr.reduce((a, b) => a + b, 0) / nKu;
-          const sKu = Math.sqrt(arr.reduce((a, b) => a + (b - meanKu) ** 2, 0) / (nKu - 1));
-          if (sKu === 0) break;
-          const sum4 = arr.reduce((a, b) => a + ((b - meanKu) / sKu) ** 4, 0);
-          result =
-            ((nKu * (nKu + 1)) / ((nKu - 1) * (nKu - 2) * (nKu - 3))) * sum4 -
-            (3 * (nKu - 1) ** 2) / ((nKu - 2) * (nKu - 3));
-          break;
-        }
-      }
-    } else if (this.op === "count" || this.op === "sum") {
-      // Empty/all-null: SUM is 0, PRODUCT is 1 — the identities, matching the formula path.
-      result = 0;
-    } else if (this.op === "product") {
-      result = 1;
-    }
+    const result = aggregate(this.op, arr);
+    if (isSolError(result)) { this.cachedResult = result; return { result }; }
     // Keep the display unit only where the op PRESERVES the dimension; PRODUCT/SUMSQ/
     // VAR derive a new one.
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
