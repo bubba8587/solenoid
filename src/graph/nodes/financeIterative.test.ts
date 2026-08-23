@@ -56,6 +56,21 @@ describe("the discount-rate solver holds its floor and scales its tolerance", ()
     expect(npvAt(cf as number[], r as number)).toBeCloseTo(0, 6);
   });
 
+  // A root crowded against the floor (near r = −0.9), where the discount curve is
+  // near-vertical: Newton from its fixed 0.1 guess overshoots the floor and reports
+  // #CONV!, so a bracket-and-bisect fallback catches it. Each has a SINGLE real root
+  // above the floor, so the fallback isn't choosing among ambiguous multiple roots.
+  it.each([
+    [[-4943, -2458, 285], -0.9029808860688493],
+    [[45, 4730, -325], -0.9313344974219845],
+    [[-1688, -3813, 432], -0.891878604425277],
+  ])("finds a near-floor root Newton overshoots (%j)", (cf, root) => {
+    const r = new IrrNode().data({ list: [cf as number[]] }).result;
+    expect(typeof r).toBe("number");
+    expect(r as number).toBeCloseTo(root as number, 9);
+    expect(npvAt(cf as number[], r as number)).toBeCloseTo(0, 6);
+  });
+
   it("never answers with the floor itself — a pinned solve is #CONV!", () => {
     // Same-sign flows have no root at all; the floor must not read as a settled one.
     const r = new IrrNode().data({ list: [[100, 200, 300]] }).result;

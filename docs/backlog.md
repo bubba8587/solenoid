@@ -72,21 +72,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
   author reads that one as flat too before treating low ratio as the whole story;
   Solarized's may be as much about the two tones sharing a hue as about luminance.
 
-- [ ] **IRR misses a root crowded against the rate floor** (found while factoring the
-  solver, 2026-08-22). `solveDiscountRate` is pure Newton from a fixed 0.1 guess, so a
-  series whose only real rate sits near −0.95 — just above the −0.9999 floor, where the
-  discount curve is near-vertical — reports `#CONV!` even though the root is real
-  (residual ~1e-12). Measured ~19 in 2,000 randomised dated series; the periodic mode
-  has the same shape. This is PRE-EXISTING and the floor made it strictly rarer, not
-  worse. Fix is a bracket-and-bisect fallback when Newton returns null: scan
-  (−0.9999, hi] for a sign change and bisect, which cannot report a root that is not
-  one. Decide the upper bound first — runaway rates in the tens of thousands are real
-  answers here (see the relative-tolerance pin in `financeIterative.test.ts`), so a
-  cheap scan to 10 would quietly re-lose them.
-  NOT a defect, do not "fix": a series with MULTIPLE real IRRs where the solver returns
-  a different one than a narrow scan expects (~27 in 2,000). Multiple roots are genuinely
-  ambiguous — Excel takes a `guess` argument for exactly this reason and we do not.
-
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
   5 seeds, clean). The app now has error boundaries (app + per node) — next

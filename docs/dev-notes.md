@@ -86,6 +86,20 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23c — IRR near-floor root fallback)
+
+**IRR/XIRR now find a root crowded against the rate floor.** `solveDiscountRate` was pure Newton
+from a fixed 0.1 guess, so a series whose only real rate sits near −0.9 (where the discount curve
+is near-vertical) overshot the −0.9999 floor and reported `#CONV!` on a real root. Split the kernel:
+`newtonDiscountRate` stays the fast path; on its `null`, `solveDiscountRate` falls back to
+`bracketDiscountRate` — a LOG-grid scan of 1+r from the floor out to r≈1e7 (dense near the floor,
+still bracketing the tens-of-thousands runaway rates a linear scan to 10 would lose), returning the
+first sign-change bracket bisected. Fallback runs ONLY on Newton failure, so it never overrides
+which of several roots Newton already picked (the ambiguous multiple-root case stays as-is). A
+genuinely rate-less same-sign series has no sign change → still `#CONV!`. Pinned in
+`financeIterative.test.ts` "finds a near-floor root Newton overshoots" (3 single-root series Newton
+missed).
+
 ### SESSION DIGEST (2026-08-23b — zoom clamp + minimap accent)
 
 **Zoom now clamps to a floor/ceiling (0.05–2.5).** Added a `zoom` guard pipe in the shared
