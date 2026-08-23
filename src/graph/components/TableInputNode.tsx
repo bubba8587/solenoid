@@ -3,8 +3,7 @@ import type { TableInputNode as TableInputNodeType, TableElemType } from "../ret
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
-import { rawCellsToText, TABLE_ELEM_SOCKET } from "../nodes/matrix";
-import { SOCKET_COLORS } from "../sockets";
+import { rawCellsToText } from "../nodes/matrix";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -38,7 +37,6 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
       node={data}
       emit={emit}
       labelPlaceholder="Table"
-      accentOverride={SOCKET_COLORS[TABLE_ELEM_SOCKET[dt].dataType]}
     >
       <SegToggle arg
         value={dt}

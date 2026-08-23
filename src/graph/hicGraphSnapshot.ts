@@ -6,8 +6,7 @@
 // throw (the Pixi overlay must never crash the app beneath it).
 
 import { getArea, getEditor } from "./process";
-import { nodeKindOf } from "./nodes/kind";
-import { NODE_KIND_ACCENTS } from "./nodes/shared";
+import { nodeAccent } from "./nodes/kind";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
 import { cableAngleStore } from "./cableAngleStore";
 import { pickTextColor } from "./hicColors";
@@ -402,7 +401,7 @@ export function snapshotGraph(): GraphSnapshot | null {
       // The header composites over the card body, not the canvas.
       const headerColor = headerRGBA ? flatten(headerRGBA, ownRGBA ?? canvasRGBA) : ownBg;
 
-      const accent = hexToNum(NODE_KIND_ACCENTS[nodeKindOf(node)] ?? "#7a8296");
+      const accent = hexToNum(nodeAccent(node) ?? "#7a8296");
 
       // Real card border — grouped nodes adopt the group hue at ~0.78 alpha, so it
       // is NOT the kind accent. Capture color AND alpha (a hard outline reads heavy).

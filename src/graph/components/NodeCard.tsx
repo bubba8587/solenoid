@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNod
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../process";
 import { getOwningArea } from "../activeGraph";
-import { nodeKindOf, nodeResizable, nodeWide, NODE_KIND_ACCENTS } from "../rete-nodes";
+import { nodeAccent, nodeResizable, nodeWide } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
@@ -61,10 +61,10 @@ export function useHeaderHeightVar(headerRef: RefObject<HTMLElement | null>) {
 type Props = {
   selected?: boolean;
   // The live node instance: the card reports its measured DOM size back here so
-  // minimap silhouettes match the real cards, and derives the accent via nodeKindOf.
+  // minimap silhouettes match the real cards, and derives the accent via nodeAccent.
   node?: { id: string; width: number; height: number };
   className?: string;
-  /** Override the accent color derived from nodeKindOf. */
+  /** Override the accent color derived from nodeAccent. */
   accentOverride?: string;
   /** When false, the node can't collapse and no chevron is shown. */
   collapsible?: boolean;
@@ -170,12 +170,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   }, [node]);
 
   // `node` is typed minimally here but is the live instance at runtime, so
-  // instanceof inside nodeKindOf works.
+  // instanceof inside nodeAccent works.
   // Re-render on theme change so the accent shift (light vs dark) is live.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
   const rawAccent = accentOverride ?? (node
-    ? NODE_KIND_ACCENTS[nodeKindOf(node as unknown as ClassicPreset.Node)]
+    ? nodeAccent(node as unknown as ClassicPreset.Node)
     : undefined);
   const accent = rawAccent ? themeAccent(rawAccent, mode) : undefined;
   // The "inside a group" indicator: the color is published as a CSS var and the

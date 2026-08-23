@@ -1,11 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { nodeDomWeight } from "./kind";
+import { nodeDomWeight, nodeAccent, nodeKindOf } from "./kind";
 import { NumberInputNode, BooleanInputNode } from "./input";
 import { ChartNode, HistogramNode, TreemapNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode } from "./visual";
 import { TornadoNode } from "./tornado";
 import { SvgPickerNode } from "./annotation";
 import { BuildFrameNode } from "./frame";
 import { ComparisonNode } from "./logic";
+import { ListInputNode } from "./list";
+import { TableInputNode } from "./matrix";
+import { NODE_KIND_ACCENTS } from "./shared";
+import { SOCKET_COLORS } from "../sockets";
 
 // nodeDomWeight feeds the HTML-in-Canvas engage gate: a chart / inlined-SVG /
 // frame-grid card weighs more than a scalar card because it is far more DOM. The
@@ -56,5 +60,32 @@ describe("nodeDomWeight", () => {
 
   it("calibrates ~10 full charts to the default 100 engage threshold", () => {
     expect(nodeDomWeight(new ChartNode()) * 10).toBeGreaterThanOrEqual(100);
+  });
+});
+
+// The card, the minimap and the html-canvas snapshot ALL read nodeAccent — a divergence
+// here is a minimap that stays one color while the card recolors. This pins that the
+// type-switchable literals track their SOCKET color (so a retype recolors) while a plain
+// node keeps its fixed KIND color.
+describe("nodeAccent", () => {
+  it("gives a plain node its kind color", () => {
+    const n = new NumberInputNode();
+    expect(nodeAccent(n)).toBe(NODE_KIND_ACCENTS[nodeKindOf(n)]);
+  });
+
+  it("tracks the element-socket color across a List Input retype", () => {
+    const n = new ListInputNode();
+    expect(nodeAccent(n)).toBe(SOCKET_COLORS[n.valueSocket.dataType]);
+    const before = nodeAccent(n);
+    n.setDataType("string");
+    expect(nodeAccent(n)).toBe(SOCKET_COLORS[n.valueSocket.dataType]);
+    expect(nodeAccent(n)).not.toBe(before); // the whole point: it recolored
+  });
+
+  it("tracks the element-socket color across a Table Input retype", () => {
+    const n = new TableInputNode();
+    const before = nodeAccent(n);
+    n.setDataType("string");
+    expect(nodeAccent(n)).not.toBe(before);
   });
 });

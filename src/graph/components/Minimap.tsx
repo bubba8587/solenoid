@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import { getActiveArea, getActiveEditor } from "../activeGraph";
 import type { Schemes } from "../schemes";
-import { GroupNode, NoteNode, nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
+import { GroupNode, NoteNode, nodeAccent } from "../rete-nodes";
 import { groupCollapseStore } from "../groupCollapse";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, resolveColor } from "../palette";
@@ -77,7 +77,7 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
       const c = themeAccent(resolveColor(n.color), mode);
       return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
     }
-    const accent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(n)] ?? "#8a8f98", mode);
+    const accent = themeAccent(nodeAccent(n) ?? "#8a8f98", mode);
     return { background: hexToRgba(accent, 0.85), borderColor: hexToRgba(accent, 0.95) };
   });
 }

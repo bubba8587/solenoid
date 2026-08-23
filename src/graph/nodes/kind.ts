@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
-import type { NodeKind } from "./shared";
-import { SolenoidSocket } from "../sockets";
+import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
+import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
@@ -211,6 +211,23 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof GroupByNode) return "list";
   // Arithmetic, MathFn, Clamp, MRound, RoundN
   return "math";
+}
+
+// The type-switchable literals and the FC recolor with their element type, so their
+// accent tracks the OUTPUT socket color, not the fixed kind color. Every accent
+// consumer (the card, the minimap, the html-canvas snapshot) MUST read this — reading
+// nodeKindOf directly freezes them on the kind color while the card recolors.
+const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
+  node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode;
+
+export function nodeAccent(node: ClassicPreset.Node): string {
+  const kindAccent = NODE_KIND_ACCENTS[nodeKindOf(node)];
+  if (!SOCKET_DRIVEN_ACCENT(node)) return kindAccent;
+  for (const port of Object.values(node.outputs ?? {})) {
+    const socket = (port as { socket?: unknown } | undefined)?.socket;
+    if (socket instanceof SolenoidSocket) return SOCKET_COLORS[socket.dataType] ?? kindAccent;
+  }
+  return kindAccent;
 }
 
 // COARSE weights summed off HtmlCanvasLayer's existing nodecreated/noderemoved

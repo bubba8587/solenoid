@@ -3,7 +3,7 @@ import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-n
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
-import { SolenoidSocket, canConnect, SOCKET_COLORS } from "../sockets";
+import { SolenoidSocket, canConnect } from "../sockets";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -44,7 +44,7 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
 
   return (
-    <NodeShell node={data} emit={emit} accentOverride={SOCKET_COLORS[data.valueSocket.dataType]}>
+    <NodeShell node={data} emit={emit}>
       <SegToggle arg
         value={dt}
         options={TYPE_OPTIONS}
