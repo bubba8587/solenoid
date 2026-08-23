@@ -8,7 +8,7 @@ import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, matDiag, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
@@ -568,6 +568,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
   MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
+  DIAGONAL:   { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
   MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   // COLUMNS/ROWS answer a shape COUNT (scalar), so they take their arg whole (matrix or
@@ -1427,6 +1428,12 @@ registerInternal("MMULT", (a, b) => {
   return product ?? solError("#SHAPE!", "A's column count must equal B's row count");
 });
 registerInternal("MUNIT", (n) => (n == null ? null : matUnit(Number(n), 0)));
+// numpy.diag: a list becomes a square matrix's diagonal (off-diagonal 0). The blank/null
+// off-diagonal is a NODE-only affordance (there's no toggle in a formula).
+registerInternal("DIAGONAL", (list) => {
+  const vs = numList(list).map((c) => (c == null ? null : Number(c)));
+  return vs.length === 0 ? null : matDiag(vs, 0);
+});
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;

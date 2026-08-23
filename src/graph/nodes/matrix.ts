@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, matDiag, asNumericMatrix, matMul, matDet, matInverse, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
+import { numIn, numOut, listIn, numListIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
@@ -241,6 +241,33 @@ export class TableUnitNode extends ClassicPreset.Node {
     const n = readInput(inputs.n, this.literals.n ?? 3);
     if (n === null) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = matUnit(n, this.offDiag === "blank" ? null : 0);
+    return { result: this.cachedResult };
+  }
+}
+
+// ─── DIAGONAL ───────────────────────────────────────────────────────────────
+// numpy.diag: a list becomes the diagonal of a square matrix. Off-diagonal fill is
+// MUNIT's toggle — 0, or blank (null) so it stays out of sums/counts.
+export class TableDiagNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: Mat | null = null;
+  /** Off-diagonal fill: 0 (numpy.diag) or blank (null — out of sums/counts). Shares MUNIT's toggle. */
+  offDiag: "zero" | "blank" = "zero";
+  width = 180; height = 190;
+
+  constructor(init?: { label?: string; offDiag?: "zero" | "blank" }) {
+    super("TableDiag");
+    this.label = init?.label ?? "DIAGONAL";
+    if (init?.offDiag) this.offDiag = init.offDiag;
+    this.addInput("diag", numListIn("Diagonal"));
+    this.addOutput("result", tableOut("Diagonal matrix"));
+  }
+
+  data(inputs: { diag?: (number | null)[][] }) {
+    const values = inputs.diag?.[0] ?? null;
+    // No list means an unknown diagonal, not a 0×0 matrix.
+    if (!values || values.length === 0) { this.cachedResult = null; return { result: null }; }
+    this.cachedResult = matDiag(values, this.offDiag === "blank" ? null : 0);
     return { result: this.cachedResult };
   }
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 import {
-  MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableReshapeNode, TableInfoNode,
+  MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableDiagNode, TableReshapeNode, TableInfoNode,
   HStackTableNode, VStackNode, TableSelectNode, ExpandNode,
 } from "./nodes/matrix";
 import { SeriesNode } from "./nodes/list";
@@ -61,6 +61,17 @@ describe("each matrix name computes what its node computes", () => {
     const present = (m: (number | null)[][]) => m.flat().filter((c) => c !== null).length;
     expect(present(zero)).toBe(9);  // every cell is a value
     expect(present(blank)).toBe(3); // only the three diagonal 1s count
+  });
+
+  it("DIAGONAL node — a list becomes a square matrix's diagonal (numpy.diag); off-diagonal 0 or blank", () => {
+    const zero = new TableDiagNode({ offDiag: "zero" }).data({ diag: [[2, 5, 7]] }).result as (number | null)[][];
+    expect(zero).toEqual([[2, 0, 0], [0, 5, 0], [0, 0, 7]]);
+    const blank = new TableDiagNode({ offDiag: "blank" }).data({ diag: [[2, 5, 7]] }).result as (number | null)[][];
+    expect(blank).toEqual([[2, null, null], [null, 5, null], [null, null, 7]]);
+    // No list is an unknown diagonal, not a 0×0 matrix.
+    expect(new TableDiagNode().data({}).result).toBeNull();
+    // The DIAGONAL formula (off-diagonal 0; the blank toggle is node-only).
+    expect(ev("DIAGONAL(x)", { x: [2, 5, 7] })).toEqual([[2, 0, 0], [0, 5, 0], [0, 0, 7]]);
   });
 
   it("WRAPROWS / WRAPCOLS — #N/A pads (appendLadder), pad_with overrides", () => {

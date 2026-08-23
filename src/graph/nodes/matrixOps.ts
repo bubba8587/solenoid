@@ -21,6 +21,15 @@ export function matUnit(n: number, offDiag: number | null = 0): (number | null)[
     Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
 }
 
+/** numpy.diag: a length-n list becomes the diagonal of an n×n matrix; the off-diagonal
+ *  is `offDiag` (0 like MUNIT, or null = blank so it stays out of sums). A null in the
+ *  list is a blank diagonal cell. */
+export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | null = 0): (number | null)[][] {
+  const n = values.length;
+  return Array.from({ length: n }, (_, i) =>
+    Array.from({ length: n }, (_, j) => (i === j ? values[i] : offDiag)));
+}
+
 /** The numeric gate for linear algebra: a missing cell is #VALUE! (complete data needed),
  *  a non-number is #TYPE! (an anytable can deliver text into a homogeneous matrix). */
 export function asNumericMatrix(m: unknown[][]): NumMat | SolError {

@@ -2,6 +2,7 @@ import type {
   MatDetNode as MatDetNodeType, MatDetOp,
   TableMultNode as TableMultNodeType,
   TableUnitNode as TableUnitNodeType,
+  TableDiagNode as TableDiagNodeType,
   TableTransposeNode as TableTransposeNodeType,
   HStackTableNode as HStackTableNodeType,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
@@ -56,6 +57,25 @@ export function TableUnitComponent({ data, emit }: NodeProps<TableUnitNodeType>)
         value={offDiag}
         options={[
           { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (Excel MUNIT)" },
+          { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
+        ]}
+        onChange={(next) => { setOffDiag(next); data.offDiag = next; void processGraph(data.id); }}
+      />
+      <InlineInputs node={data} emit={emit} />
+      <TableDisplay table={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+export function TableDiagComponent({ data, emit }: NodeProps<TableDiagNodeType>) {
+  const [offDiag, setOffDiag] = useState(data.offDiag);
+  useEffect(() => { setOffDiag(data.offDiag); }, [data.offDiag]);
+  return (
+    <NodeShell node={data} emit={emit}>
+      <SegToggle arg
+        value={offDiag}
+        options={[
+          { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (numpy.diag)" },
           { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
         ]}
         onChange={(next) => { setOffDiag(next); data.offDiag = next; void processGraph(data.id); }}

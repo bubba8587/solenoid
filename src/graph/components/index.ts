@@ -126,7 +126,7 @@ export { IsEvenOddComponent } from "./IsEvenOddNode";
 // ─── 2D Tables / Matrix ───────────────────────────────────────────────────────
 export { TableInputComponent } from "./TableInputNode";
 export {
-  MatDetComponent, TableMultComponent, TableUnitComponent,
+  MatDetComponent, TableMultComponent, TableUnitComponent, TableDiagComponent,
   TableTransposeComponent, HStackTableComponent,
   TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";

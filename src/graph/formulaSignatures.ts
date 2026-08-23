@@ -276,6 +276,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   TRANSPOSE: "array",
   MMULT: "array1, array2",
   MUNIT: "dimension",
+  DIAGONAL: "values",
   MDETERM: "array",
   MINVERSE: "array",
   WRAPROWS: "vector, wrap_count, [pad_with]",

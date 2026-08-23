@@ -50,7 +50,7 @@ import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, Char
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
-  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
+  TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableDiagNode, TableTransposeNode,
   HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
@@ -158,7 +158,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   ) return "date";
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||
-    node instanceof TableMultNode || node instanceof TableUnitNode ||
+    node instanceof TableMultNode || node instanceof TableUnitNode || node instanceof TableDiagNode ||
     node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
     node instanceof TableTakeDropNode || node instanceof ExpandNode ||
