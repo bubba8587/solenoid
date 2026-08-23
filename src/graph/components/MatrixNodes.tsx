@@ -15,13 +15,11 @@ import type {
 import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
 } from "../rete-nodes";
-import { useEffect, useState } from "react";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
-import { SegToggle } from "./SegToggle";
-import { processGraph } from "../process";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { makeToggleNodeComponent } from "./standardNode";
 
 const MAT_DET_OPS = (Object.keys(MAT_DET_OP_META) as MatDetOp[]).map(op => ({
   value: op, label: MAT_DET_OP_META[op].label,
@@ -49,43 +47,22 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
   );
 }
 
-export function TableUnitComponent({ data, emit }: NodeProps<TableUnitNodeType>) {
-  const [offDiag, setOffDiag] = useState(data.offDiag);
-  useEffect(() => { setOffDiag(data.offDiag); }, [data.offDiag]);
-  return (
-    <NodeShell node={data} emit={emit}>
-      <SegToggle arg
-        value={offDiag}
-        options={[
-          { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (Excel MUNIT)" },
-          { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
-        ]}
-        onChange={(next) => { setOffDiag(next); data.offDiag = next; void processGraph(data.id); }}
-      />
-      <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
-    </NodeShell>
-  );
-}
+const offDiagOptions = (zeroTitle: string) => [
+  { value: "zero" as const, label: "0", title: zeroTitle },
+  { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
+];
 
-export function TableDiagComponent({ data, emit }: NodeProps<TableDiagNodeType>) {
-  const [offDiag, setOffDiag] = useState(data.offDiag);
-  useEffect(() => { setOffDiag(data.offDiag); }, [data.offDiag]);
-  return (
-    <NodeShell node={data} emit={emit}>
-      <SegToggle arg
-        value={offDiag}
-        options={[
-          { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (numpy.diag)" },
-          { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
-        ]}
-        onChange={(next) => { setOffDiag(next); data.offDiag = next; void processGraph(data.id); }}
-      />
-      <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
-    </NodeShell>
-  );
-}
+export const TableUnitComponent = makeToggleNodeComponent<TableUnitNodeType, TableUnitNodeType["offDiag"]>(
+  { read: (n) => n.offDiag, write: (n, v) => { n.offDiag = v; }, options: offDiagOptions("Off-diagonal cells are 0 (Excel MUNIT)") },
+  (n) => n.cachedResult,
+  { table: true },
+);
+
+export const TableDiagComponent = makeToggleNodeComponent<TableDiagNodeType, TableDiagNodeType["offDiag"]>(
+  { read: (n) => n.offDiag, write: (n, v) => { n.offDiag = v; }, options: offDiagOptions("Off-diagonal cells are 0 (numpy.diag)") },
+  (n) => n.cachedResult,
+  { table: true },
+);
 
 export function TableOuterComponent({ data, emit }: NodeProps<TableOuterNodeType>) {
   return (
