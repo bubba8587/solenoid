@@ -32,3 +32,63 @@ describe("registered gap distributions match the NODES", () => {
     close(ev("GAMMA.INV(0.5, 2, 3)"), dist("gamma", "inv").data({prob:[0.5],alpha:[2],beta:[3]}).result);
   });
 });
+
+// A1 backing flip (2026-08-23): the names Formula.js DOES have now run the node's spec
+// table too (distributionOps.DIST_SPECS), in Excel's argument order. Pinned exact (same
+// kernel, same call) plus a few absolute anchors so a kernel regression can't hide
+// behind a shared mistake.
+describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
+  const ev = (e: string) => compileEvaluator(e)!({});
+  const eq = (a: unknown, b: unknown) => expect(a).toBe(b);
+  it("NORM / NORM.S / LOGNORM", () => {
+    eq(ev("NORM.DIST(1.5, 1, 2, TRUE)"), dist("normal", "cdf").data({x:[1.5],mean:[1],stdev:[2]}).result);
+    eq(ev("NORM.DIST(1.5, 1, 2, FALSE)"), dist("normal", "pdf").data({x:[1.5],mean:[1],stdev:[2]}).result);
+    eq(ev("NORM.INV(0.9, 1, 2)"), dist("normal", "inv").data({prob:[0.9],mean:[1],stdev:[2]}).result);
+    eq(ev("NORM.S.DIST(1.96, TRUE)"), dist("normal-s", "cdf").data({z:[1.96]}).result);
+    eq(ev("NORM.S.INV(0.975)"), dist("normal-s", "inv").data({prob:[0.975]}).result);
+    eq(ev("LOGNORM.DIST(4, 3.5, 1.2, TRUE)"), dist("lognorm", "cdf").data({x:[4],mean:[3.5],stdev:[1.2]}).result);
+    eq(ev("LOGNORM.INV(0.039084, 3.5, 1.2)"), dist("lognorm", "inv").data({prob:[0.039084],mean:[3.5],stdev:[1.2]}).result);
+    // absolute anchors (Excel's documented examples / double-precision Φ)
+    expect(ev("NORM.DIST(0, 0, 1, TRUE)")).toBe(0.5);
+    expect(ev("NORM.S.DIST(1.96, TRUE)")).toBeCloseTo(0.9750021048517795, 14);
+    expect(ev("NORM.S.INV(0.975)")).toBeCloseTo(1.959963984540054, 12);
+    expect(ev("NORM.DIST(42, 40, 1.5, TRUE)")).toBeCloseTo(0.9087887802741321, 12);
+    expect(ev("LOGNORM.DIST(4, 3.5, 1.2, TRUE)")).toBeCloseTo(0.0390835557068, 9);
+  });
+  it("CHISQ / F / BETA / WEIBULL / EXPON", () => {
+    eq(ev("CHISQ.DIST(3, 4, TRUE)"), dist("chisq", "cdf").data({x:[3],df:[4]}).result);
+    eq(ev("CHISQ.DIST(3, 4, FALSE)"), dist("chisq", "pdf").data({x:[3],df:[4]}).result);
+    eq(ev("CHISQ.INV(0.93, 4)"), dist("chisq", "inv").data({prob:[0.93],df:[4]}).result);
+    eq(ev("F.DIST(15.2, 6, 4, TRUE)"), dist("f", "cdf").data({x:[15.2],df1:[6],df2:[4]}).result);
+    eq(ev("F.INV(0.01, 6, 4)"), dist("f", "inv").data({prob:[0.01],df1:[6],df2:[4]}).result);
+    eq(ev("BETA.DIST(0.4, 8, 10, TRUE)"), dist("beta", "cdf").data({x:[0.4],alpha:[8],beta:[10]}).result);
+    eq(ev("BETA.INV(0.685, 8, 10)"), dist("beta", "inv").data({prob:[0.685],alpha:[8],beta:[10]}).result);
+    eq(ev("WEIBULL.DIST(105, 20, 100, TRUE)"), dist("weibull", "cdf").data({x:[105],alpha:[20],beta:[100]}).result);
+    eq(ev("EXPON.DIST(0.2, 10, TRUE)"), dist("expon", "cdf").data({x:[0.2],lambda:[10]}).result);
+    // Excel's optional [A, B] bounds on BETA: x rescales onto [0,1], the density by 1/(B−A)
+    expect(ev("BETA.DIST(2, 8, 10, TRUE, 1, 3)")).toBeCloseTo(0.6854705810117458, 10);
+    expect(ev("BETA.DIST(2, 8, 10, FALSE, 1, 3)")).toBeCloseTo(1.4837646, 6);
+    expect(ev("BETA.INV(0.685470581, 8, 10, 1, 3)")).toBeCloseTo(2, 8);
+    expect(ev("EXPON.DIST(0.2, 10, TRUE)")).toBeCloseTo(0.8646647167633873, 12);
+    expect(ev("WEIBULL.DIST(105, 20, 100, TRUE)")).toBeCloseTo(0.9295813900692769, 12);
+  });
+  it("BINOM / POISSON / HYPGEOM / NEGBINOM (discrete: FALSE = PMF)", () => {
+    eq(ev("BINOM.DIST(6, 10, 0.5, FALSE)"), dist("binom", "pmf").data({k:[6],n:[10],p:[0.5]}).result);
+    eq(ev("BINOM.DIST(6, 10, 0.5, TRUE)"), dist("binom", "cdf").data({k:[6],n:[10],p:[0.5]}).result);
+    eq(ev("BINOM.INV(6, 0.5, 0.75)"), dist("binom", "inv").data({prob:[0.75],n:[6],p:[0.5]}).result);
+    eq(ev("POISSON.DIST(2, 5, TRUE)"), dist("poisson", "cdf").data({k:[2],lambda:[5]}).result);
+    eq(ev("HYPGEOM.DIST(1, 4, 8, 20, FALSE)"), dist("hypgeom", "pmf").data({k:[1],n:[4],M:[8],N:[20]}).result);
+    eq(ev("NEGBINOM.DIST(10, 5, 0.25, FALSE)"), dist("negbinom", "pmf").data({k:[10],r:[5],p:[0.25]}).result);
+    expect(ev("BINOM.DIST(6, 10, 0.5, FALSE)")).toBeCloseTo(0.205078125, 12);
+    expect(ev("BINOM.DIST(6, 10, 0.5, TRUE)")).toBeCloseTo(0.828125, 12);
+    expect(ev("BINOM.INV(6, 0.5, 0.75)")).toBe(4);
+    expect(ev("POISSON.DIST(2, 5, TRUE)")).toBeCloseTo(0.124652019, 8);
+    expect(ev("HYPGEOM.DIST(1, 4, 8, 20, FALSE)")).toBeCloseTo(0.363261094, 8);
+    expect(ev("NEGBINOM.DIST(10, 5, 0.25, FALSE)")).toBeCloseTo(0.0550486603, 8);
+  });
+  it("a domain refusal is a blank on both surfaces, never a number", () => {
+    expect(ev("NORM.DIST(1, 0, -1, TRUE)")).toBeNull();
+    expect(dist("normal", "cdf").data({x:[1],mean:[0],stdev:[-1]}).result).toBeNull();
+    expect(ev("BINOM.DIST(11, 10, 0.5, FALSE)")).toBeNull();
+  });
+});

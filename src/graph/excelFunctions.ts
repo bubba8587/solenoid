@@ -4,6 +4,7 @@ import { serialToJsDate, jsDateToSerial, parseDate } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
+import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -435,6 +436,26 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   STEYX:       { returns: "number", arity: [2, 2], family: "statistics" },
   FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
   FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
+  // The distribution family on the Distribution node's DIST_SPECS (A1 backing flip, 2026-08-23).
+  "NORM.DIST":    { returns: "number", arity: [4, 4], family: "distributions" },
+  "NORM.INV":     { returns: "number", arity: [3, 3], family: "distributions" },
+  "NORM.S.DIST":  { returns: "number", arity: [2, 2], family: "distributions" },
+  "NORM.S.INV":   { returns: "number", arity: [1, 1], family: "distributions" },
+  "CHISQ.DIST":   { returns: "number", arity: [3, 3], family: "distributions" },
+  "CHISQ.INV":    { returns: "number", arity: [2, 2], family: "distributions" },
+  "F.DIST":       { returns: "number", arity: [4, 4], family: "distributions" },
+  "F.INV":        { returns: "number", arity: [3, 3], family: "distributions" },
+  "BETA.DIST":    { returns: "number", arity: [4, 6], family: "distributions" },
+  "BETA.INV":     { returns: "number", arity: [3, 5], family: "distributions" },
+  "LOGNORM.DIST": { returns: "number", arity: [4, 4], family: "distributions" },
+  "LOGNORM.INV":  { returns: "number", arity: [3, 3], family: "distributions" },
+  "WEIBULL.DIST": { returns: "number", arity: [4, 4], family: "distributions" },
+  "EXPON.DIST":   { returns: "number", arity: [3, 3], family: "distributions" },
+  "BINOM.DIST":   { returns: "number", arity: [4, 4], family: "distributions" },
+  "BINOM.INV":    { returns: "number", arity: [3, 3], family: "distributions" },
+  "POISSON.DIST": { returns: "number", arity: [3, 3], family: "distributions" },
+  "HYPGEOM.DIST": { returns: "number", arity: [5, 5], family: "distributions" },
+  "NEGBINOM.DIST":{ returns: "number", arity: [4, 4], family: "distributions" },
   CLAMP:       { returns: "number",  arity: [3, 3], native: true },
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
@@ -950,6 +971,52 @@ registerInternal("GAMMA.DIST", (x, a, b, cum) => {
   return ok(isTrue(cum) ? gammaCDF(xn, al, be) : gammaPDF(xn, al, be));
 });
 registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
+
+// The rest of the distribution family runs the Distribution NODE's own spec table
+// (distributionOps.DIST_SPECS — one compute per distribution, form-selected), so a
+// formula and the card answer identically by construction. Excel's argument orders
+// are mapped onto the spec's (x | p, ...params) shape here; a domain refusal is a
+// blank (the node's rule), never a fabricated number.
+const dist = (key: DistKey, form: DistForm, v: unknown, ...params: unknown[]): number | null => {
+  const vn = toNum(v), ps = params.map(toNum);
+  if (badNum(vn, ...ps)) return null;
+  const r = DIST_SPECS[key].compute(form, vn, ps);
+  return r === null ? null : ok(r);
+};
+const cdfOrPdf = (cum: unknown, discrete = false): DistForm => (isTrue(cum) ? "cdf" : discrete ? "pmf" : "pdf");
+registerInternal("NORM.DIST",    (x, mean, sd, cum) => dist("normal", cdfOrPdf(cum), x, mean, sd));
+registerInternal("NORM.INV",     (p, mean, sd) => dist("normal", "inv", p, mean, sd));
+registerInternal("NORM.S.DIST",  (z, cum) => dist("normal-s", cdfOrPdf(cum), z));
+registerInternal("NORM.S.INV",   (p) => dist("normal-s", "inv", p));
+registerInternal("CHISQ.DIST",   (x, df, cum) => dist("chisq", cdfOrPdf(cum), x, df));
+registerInternal("CHISQ.INV",    (p, df) => dist("chisq", "inv", p, df));
+registerInternal("F.DIST",       (x, d1, d2, cum) => dist("f", cdfOrPdf(cum), x, d1, d2));
+registerInternal("F.INV",        (p, d1, d2) => dist("f", "inv", p, d1, d2));
+// BETA.DIST / BETA.INV carry Excel's optional [A, B] support bounds: x maps onto the
+// standard beta as (x − A)/(B − A); the density scales by 1/(B − A), the quantile maps back.
+registerInternal("BETA.DIST", (x, a, b, cum, A, B) => {
+  const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);
+  if (badNum(lo, hi) || hi <= lo) return null;
+  const xn = toNum(x);
+  if (Number.isNaN(xn)) return null;
+  const r = dist("beta", cdfOrPdf(cum), (xn - lo) / (hi - lo), a, b);
+  return r === null || isTrue(cum) ? r : ok(r / (hi - lo));
+});
+registerInternal("BETA.INV", (p, a, b, A, B) => {
+  const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);
+  if (badNum(lo, hi) || hi <= lo) return null;
+  const r = dist("beta", "inv", p, a, b);
+  return r === null ? null : ok(lo + r * (hi - lo));
+});
+registerInternal("LOGNORM.DIST", (x, mean, sd, cum) => dist("lognorm", cdfOrPdf(cum), x, mean, sd));
+registerInternal("LOGNORM.INV",  (p, mean, sd) => dist("lognorm", "inv", p, mean, sd));
+registerInternal("WEIBULL.DIST", (x, alpha, beta, cum) => dist("weibull", cdfOrPdf(cum), x, alpha, beta));
+registerInternal("EXPON.DIST",   (x, lambda, cum) => dist("expon", cdfOrPdf(cum), x, lambda));
+registerInternal("BINOM.DIST",   (k, n, p, cum) => dist("binom", cdfOrPdf(cum, true), k, n, p));
+registerInternal("BINOM.INV",    (n, p, alpha) => dist("binom", "inv", alpha, n, p));
+registerInternal("POISSON.DIST", (k, mean, cum) => dist("poisson", cdfOrPdf(cum, true), k, mean));
+registerInternal("HYPGEOM.DIST", (k, sample, popS, popN, cum) => dist("hypgeom", cdfOrPdf(cum, true), k, sample, popS, popN));
+registerInternal("NEGBINOM.DIST",(f, r, p, cum) => dist("negbinom", cdfOrPdf(cum, true), f, r, p));
 
 // CONVERT runs OUR unit system on the SAME unit keys as the ConvertNode dropdown.
 // Unknown / cross-category units are #N/A (Excel).

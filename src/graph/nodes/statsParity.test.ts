@@ -108,10 +108,6 @@ describe("MODE / FISHER", () => {
 // deleted, so the gap ratchets shut rather than being quietly carried).
 describe("FAMILY_BACKING 'internal' ⇒ registered internally (the flip ratchet)", () => {
   const STILL_ON_FORMULAJS = new Set<string>([
-    // distributions — the next flip (nodes share mathUtils kernels; registrations pending)
-    "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "F.DIST", "F.INV",
-    "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST",
-    "BINOM.DIST", "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
     // finance-iterative: RATE has no shared kernel yet (the TVM node is an Equation); MIRR is closed-form FX
     "RATE", "MIRR",
     // datetime stragglers
