@@ -1,5 +1,5 @@
 import { base64Encode, base64Decode } from "./hashOps";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 // The ONE implementation behind both the visual node and the formula registration.
 // Separate from `text.ts` because that imports `excelFunctions` — the other
 // direction would cycle and drag rete into the headless formula path.
@@ -299,4 +299,50 @@ export function truncateText(t: string, width: number, ellipsis = "…"): string
   const e = [...ellipsis];
   const keep = Math.max(0, w - e.length);
   return chars.slice(0, keep).join("") + (keep === 0 ? e.slice(0, w).join("") : ellipsis);
+}
+
+// ─── Template: "Hello {name}, total {total:0.00}" (str_glue, f-strings, str.format) ───
+// `{{` / `}}` are literal braces; a placeholder is `{name}` or `{name:spec}` where
+// spec is an Excel TEXT format code (or a date format) handed to the caller's `fmt`.
+const TEMPLATE_TOKEN = /\{\{|\}\}|\{\s*([A-Za-z_][\w .-]*?|\d+)\s*(?::([^{}]*))?\}/g;
+
+/** Distinct placeholder names, in first-appearance order. */
+export function templatePlaceholders(template: string): string[] {
+  const out: string[] = [];
+  for (const m of template.matchAll(TEMPLATE_TOKEN)) {
+    const name = m[1];
+    if (name !== undefined && !out.includes(name)) out.push(name);
+  }
+  return out;
+}
+
+/** Substitute every placeholder through `lookup` + `fmt` (which decides how a number,
+ *  date, logical or blank prints, with the optional spec). */
+export function renderTemplate(
+  template: string,
+  lookup: (name: string) => unknown,
+  fmt: (value: unknown, name: string, spec: string | undefined) => string,
+): string {
+  return template.replace(TEMPLATE_TOKEN, (tok, name: string | undefined, spec: string | undefined) => {
+    if (tok === "{{") return "{";
+    if (tok === "}}") return "}";
+    return fmt(lookup(name!), name!, spec === undefined ? undefined : spec.trim() || undefined);
+  });
+}
+
+export interface TemplateFormatters {
+  /** A number with an optional TEXT-style spec (General when absent). */
+  number: (v: number, spec: string | undefined) => string;
+  /** A date serial with an optional date format. */
+  date?: (v: number, spec: string | undefined) => string;
+}
+/** The value a placeholder prints as: numbers via the injected formatter, a date-typed
+ *  input via the date one, logicals as TRUE/FALSE, a blank as "", an error as its code. */
+export function templateFormat(value: unknown, spec: string | undefined, f: TemplateFormatters, isDate = false): string {
+  if (value === null || value === undefined) return "";
+  if (isSolError(value)) return value.code;
+  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (typeof value === "number") return isDate && f.date ? f.date(value, spec) : f.number(value, spec);
+  if (Array.isArray(value)) return value.map((v) => templateFormat(v, spec, f, isDate)).join(", ");
+  return String(value);
 }

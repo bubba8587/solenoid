@@ -250,6 +250,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   ENCODEBASE64: "text",
   DECODEBASE64: "text",
   HASH: "text, [algorithm]",
+  TEMPLATE: "text, [value0], [value1], …",
   UUID: "",
   DOLLAR: "number, [decimals]",
   // ── statistics ──

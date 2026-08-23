@@ -26,9 +26,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 
 ## Tier 2 — valuable, moderate cost or narrower audience
 
-17. **Text template / glue** (`str_glue`, f-strings, `sprintf`): "Hello {name}, total {total:0.00}"
-    over a frame → a text column / list. Report does documents; there's no per-row string
-    builder. Cheap.
+17. **Text template / glue** — LANDED 2026-08-23 (Template node: {name} / {name:spec} grow a
+    socket per name, lists broadcast, date-typed inputs format as dates; TEMPLATE(text, v0, …)
+    positional formula).
 18. **Text pad / truncate / unaccent / slugify** — LANDED 2026-08-23 (UNACCENT + SLUGIFY ops
     on Text Transform; Pad Text + Truncate Text nodes; PADTEXT / TRUNCATETEXT formulas).
     `str_wrap` (text → lines) still open: its output is a list, so it is not a Transform op.

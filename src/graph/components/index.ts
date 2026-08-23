@@ -249,6 +249,7 @@ export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";
 export { HashComponent } from "./HashNode";
+export { TemplateComponent } from "./TemplateNode";
 export { UuidComponent } from "./UuidNode";
 
 // ─── Date & Time ──────────────────────────────────────────────────────────────

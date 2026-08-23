@@ -1947,6 +1947,47 @@
    "init": {
     "label": "new on F9"
    }
+  },
+  {
+   "id": "src_names",
+   "type": "ListInputNode",
+   "x": 4800,
+   "y": 3900,
+   "init": {
+    "label": "Names",
+    "valueKeys": [
+     "v0"
+    ],
+    "dataType": "string"
+   },
+   "stringLiterals": {
+    "v0": "Ada, Bob, Cy"
+   }
+  },
+  {
+   "id": "tmpl",
+   "type": "TemplateNode",
+   "x": 5200,
+   "y": 3900,
+   "init": {
+    "label": "Template",
+    "sideVars": [
+     "name",
+     "total"
+    ]
+   },
+   "stringLiterals": {
+    "template": "Hello {name}, you owe {total:$#,##0.00}"
+   }
+  },
+  {
+   "id": "d_tmpl",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 3900,
+   "init": {
+    "label": "one line per name"
+   }
   }
  ],
  "connections": [
@@ -2866,6 +2907,24 @@
    "source": "uuid1",
    "sourceOutput": "result",
    "target": "d_uuid",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_names",
+   "sourceOutput": "list",
+   "target": "tmpl",
+   "targetInput": "name"
+  },
+  {
+   "source": "src_prices",
+   "sourceOutput": "list",
+   "target": "tmpl",
+   "targetInput": "total"
+  },
+  {
+   "source": "tmpl",
+   "sourceOutput": "result",
+   "target": "d_tmpl",
    "targetInput": "in"
   }
  ]

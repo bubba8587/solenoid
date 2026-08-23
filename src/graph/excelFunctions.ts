@@ -9,7 +9,7 @@ import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecast
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
@@ -751,6 +751,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ENCODEBASE64: { returns: "string", arity: [1, 1], family: "text", native: true },
   DECODEBASE64: { returns: "string", arity: [1, 1], family: "text", native: true },
   HASH:        { returns: "string", arity: [1, 2], family: "text", native: true },
+  TEMPLATE:    { returns: "string", arity: [1, 10], family: "text", native: true },
   UUID:        { returns: "string", arity: [0, 0], family: "text", native: true },
   LOG2:        { returns: "number", arity: [1, 1], native: true },
   HYPOTENUSE:  { returns: "number", arity: [2, 2], native: true },
@@ -2139,6 +2140,16 @@ registerInternal("HASH", (t, algorithm) => {
   return hashText(toStr(t), a);
 });
 registerInternal("UUID", () => uuidV4());
+// TEMPLATE(text, v0, v1, …): positional {0} {1} (or {0:0.00}); a named placeholder is the
+// node's affair (it grows sockets) — here it is a #NAME? so the mistake is loud.
+registerInternal("TEMPLATE", (text, ...values) => {
+  if (text == null) return null;
+  const t = toStr(text);
+  const bad = templatePlaceholders(t).find((n) => !/^\d+$/.test(n));
+  if (bad) return solError("#NAME?", `TEMPLATE placeholders are positional here: {0}, {1}… (got {${bad}}); the Template node takes names`);
+  const fmt: TemplateFormatters = { number: (v, spec) => String(resolveExcelFunction("TEXT")!(v, spec ?? "@")) };
+  return renderTemplate(t, (n) => values[Number(n)] ?? null, (v, _n, spec) => templateFormat(v, spec, fmt));
+});
 // LOG2's node answers null for x ≤ 0 (its family's quiet-null convention), not a
 // #DOMAIN! the card never shows.
 registerInternal("LOG2", (x) => {

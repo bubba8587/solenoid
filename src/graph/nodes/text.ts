@@ -13,7 +13,12 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops, shared verbatim with the formula surface; re-exported so the node
 // barrel keeps its shape.
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList, unaccent, slugify, padText, truncateText } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList, unaccent, slugify, padText, truncateText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
+import { anyDataIn } from "./shared";
+import { dropInputCables } from "../components/cablePrune";
+import { getActiveArea } from "../activeGraph";
+import { SolenoidSocket } from "../sockets";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp, PadSide } from "./textOps";
 export type { PadSide } from "./textOps";
 export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
@@ -870,6 +875,74 @@ export class UrlEncodeNode extends ClassicPreset.Node {
 
   data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
     const result = broadcastCells((text: string) => urlEncode(this.op, text), strVal(inputs.text, this, "text"));
+    this.cachedText = result;
+    return { result };
+  }
+}
+
+// ─── TEMPLATE ────────────────────────────────────────────────────────────────
+
+/** The node's formatters: numbers through TEXT (General without a spec), a date-typed
+ *  input through the date format. */
+const TEMPLATE_FORMATTERS: TemplateFormatters = {
+  number: (v, spec) => String(resolveExcelFunction("TEXT")!(v, spec ?? "@")),
+  date: (v, spec) => formatDateSerial(v, spec ?? DEFAULT_DATE_FORMAT),
+};
+
+export class TemplateNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    template: "{name} inserts an input of that name, {name:0.00} formats it with an Excel TEXT code; {{ and }} print braces. Each new name grows a socket.",
+    result: "One string, or a list when any placeholder is fed a list (the rest repeat).",
+  };
+  label: string;
+  cachedText: CellResult<string> = null;
+  stringLiterals: Record<string, string> = { template: "" };
+  /** The placeholder sockets currently grown — PERSISTED so a saved cable finds its socket at load. */
+  sideVars: string[] = [];
+  width = 240; height = 200;
+
+  constructor(init?: { label?: string; sideVars?: string[] }) {
+    super("Template");
+    this.label = init?.label ?? "Template";
+    this.addInput("template", strIn("Template"));
+    if (Array.isArray(init?.sideVars)) {
+      this.sideVars = init.sideVars.filter((v) => typeof v === "string");
+      for (const v of this.sideVars) this.addInput(v, anyDataIn(v));
+    }
+    this.addOutput("result", strComboOut("Text"));
+  }
+
+  /** Grow/shrink the placeholder sockets to match the template text — driven by data(), so it
+   *  reconciles via a microtask; cables on a removed socket drop first (onePrunePath). */
+  private _reconcile(needed: string[]): void {
+    const added = needed.filter((v) => !this.sideVars.includes(v));
+    const removed = this.sideVars.filter((v) => !needed.includes(v));
+    if (added.length === 0 && removed.length === 0) return;
+    this.sideVars = needed;
+    queueMicrotask(() => {
+      void (async () => {
+        for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
+        await dropInputCables(this.id, removed);
+        for (const v of removed) if (this.inputs[v]) this.removeInput(v);
+        await getActiveArea()?.update("node", this.id);
+      })();
+    });
+  }
+
+  data(inputs: { template?: string[] } & Record<string, unknown[] | undefined>): { result: CellResult<string> } {
+    const template = strScalar(inputs.template, this, "template");
+    if (template === null) { this.cachedText = null; return { result: null }; }
+    const names = templatePlaceholders(template);
+    this._reconcile(names);
+    const isDate = (name: string) => {
+      const sock = this.inputs[name]?.socket;
+      return sock instanceof SolenoidSocket && sock.dataType.startsWith("date");
+    };
+    const value = (name: string): unknown => (this.sideVars.includes(name) || this.inputs[name] ? inputs[name]?.[0] ?? null : null);
+    // A list on any placeholder broadcasts: the result is a list, scalars repeat.
+    const lens = names.map((n) => { const v = value(n); return Array.isArray(v) ? v.length : -1; }).filter((l) => l >= 0);
+    const render = (at: number | null) => renderTemplate(template, (n) => { const v = value(n); return at !== null && Array.isArray(v) ? v[at] ?? null : v; }, (v, n, spec) => templateFormat(v, spec, TEMPLATE_FORMATTERS, isDate(n)));
+    const result: CellResult<string> = lens.length === 0 ? render(null) : Array.from({ length: Math.max(...lens) }, (_, i) => render(i));
     this.cachedText = result;
     return { result };
   }

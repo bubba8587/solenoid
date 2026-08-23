@@ -62,7 +62,7 @@ import {
 import {
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
-  ReptNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, ExactNode, CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
+  ReptNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, TemplateNode, ExactNode, CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
   ReverseTextNode, SpellNumberNode, TextSimilarityNode, FuzzyMatchNode,
 } from "./text";
 import {
@@ -145,7 +145,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof TextLenNode || node instanceof ConcatNode ||
     node instanceof TextSliceNode || node instanceof TextFindNode ||
     node instanceof SubstituteNode || node instanceof TextReplaceNode ||
-    node instanceof ReptNode || node instanceof PadTextNode || node instanceof TruncateTextNode || node instanceof HashNode || node instanceof UuidNode || node instanceof ExactNode || node instanceof TextSimilarityNode || node instanceof FuzzyMatchNode ||
+    node instanceof ReptNode || node instanceof PadTextNode || node instanceof TruncateTextNode || node instanceof HashNode || node instanceof UuidNode || node instanceof TemplateNode || node instanceof ExactNode || node instanceof TextSimilarityNode || node instanceof FuzzyMatchNode ||
     node instanceof CharCodeNode || node instanceof TextJoinNode ||
     node instanceof TextSplitNode || node instanceof TextAfterBeforeNode ||
     node instanceof ReverseTextNode || node instanceof SpellNumberNode ||

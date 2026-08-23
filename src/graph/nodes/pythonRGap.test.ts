@@ -17,7 +17,8 @@ import { fftReal, spectrum } from "./listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "./matrix";
 import { SpectrumNode } from "./list";
 import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "./textOps";
-import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode } from "./text";
+import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "./text";
+import { templatePlaceholders, renderTemplate } from "./textOps";
 import { requestRecalc } from "../process";
 import { unaccent, slugify, padText, truncateText } from "./textOps";
 import { argsortList, whichPositions } from "./listOps";
@@ -615,5 +616,36 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect(ev('ENCODEBASE64("abc")')).toBe("YWJj");
     expect(ev('DECODEBASE64("YWJj")')).toBe("abc");
     expect(ev('DECODEBASE64("not base64!")')).toBe("not base64!");
+  });
+});
+
+describe("Template — str_glue / f-string placeholders", () => {
+  const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
+  it("the kernel finds distinct names in order, honours {{ }} and a :spec", () => {
+    expect(templatePlaceholders("Hi {name}, {total:0.00} for {name} — {{literal}} {0}")).toEqual(["name", "total", "0"]);
+    const out = renderTemplate("{a}+{b:x}={{}}", (n) => ({ a: 1, b: 2 } as Record<string, number>)[n], (v, _n, spec) => `${v}${spec ? "[" + spec + "]" : ""}`);
+    expect(out).toBe("1+2[x]={}");
+  });
+  it("the node grows a socket per name, formats numbers through TEXT, broadcasts a list", async () => {
+    const n = new TemplateNode();
+    n.stringLiterals.template = "Hello {name}, total {total:0.00}";
+    expect(n.data({}).result).toBe("Hello , total "); // a blank prints as nothing, even with a spec
+    await Promise.resolve(); // the microtask that grows the sockets
+    expect(Object.keys(n.inputs)).toEqual(["template", "name", "total"]);
+    expect(n.data({ name: ["Ada"], total: [1234.5] }).result).toBe("Hello Ada, total 1234.50");
+    expect(n.data({ name: [["Ada", "Bob"]], total: [7] }).result).toEqual(["Hello Ada, total 7.00", "Hello Bob, total 7.00"]);
+    n.stringLiterals.template = "{name} only";
+    n.data({});
+    await Promise.resolve(); await Promise.resolve();
+    expect(Object.keys(n.inputs)).toEqual(["template", "name"]);
+    expect(n.sideVars).toEqual(["name"]);
+    // a save restores the sockets before any cable lands
+    expect(Object.keys(new TemplateNode({ sideVars: ["x", "y"] }).inputs)).toEqual(["template", "x", "y"]);
+  });
+  it("TEMPLATE(text, v0, v1…) is positional; a named placeholder is #NAME?", () => {
+    expect(ev('TEMPLATE("{0} owes {1:0.00}", "Ada", 12.5)')).toBe("Ada owes 12.50");
+    expect(ev('TEMPLATE("{{x}} = {0}", TRUE)')).toBe("{x} = TRUE");
+    expect(ev('TEMPLATE("{0} and {1}", "a")')).toBe("a and ");
+    expect((ev('TEMPLATE("Hi {name}", "Ada")') as { code?: string }).code).toBe("#NAME?");
   });
 });

@@ -26,7 +26,7 @@ import {
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
-  TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode,
+  TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
@@ -854,6 +854,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Build & Slice", description: "Concatenate, split, and extract substrings.",
         children: [
           { type: "text-concat", label: "CONCAT",    description: "Joins up to 4 strings together (A + B + C + D). Excel: CONCAT.",                            accent: STR, create: () => new ConcatNode(),    parity: false },
+          { type: "template", label: "Template", description: "Fills a text with named values: {name} inserts the input of that name, {total:0.00} formats it with an Excel TEXT code, {{ }} print braces. Every new name grows a socket; a list on any name spills a list. R str_glue / glue, Python f-strings and str.format. Excel: TEXT & \"…\" chains.", create: () => new TemplateNode(), parity: false, keywords: "template glue format f-string interpolate placeholder string.format sprintf mail merge message label" },
           { type: "text-join",   label: "TEXTJOIN",  description: "Joins a list of strings with a delimiter, optionally ignoring empty strings. Excel: TEXTJOIN.",             create: () => new TextJoinNode(),  parity: false },
           { type: "text-split",  label: "TEXTSPLIT", description: "Splits text at a delimiter into a list of strings. Excel: TEXTSPLIT.",                                      create: () => new TextSplitNode(), parity: false },
           { type: "pair", children: [textSliceLeaf("left"), textSliceLeaf("right")] },
