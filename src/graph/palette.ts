@@ -516,7 +516,7 @@ const BASE = {
 const SOLARIZED_CHROME: PaletteChrome = {
   dark: {
     appBg: "#03303b",
-    canvasBg: "#002833",      // base03, a hair deeper — the ground is ours, the ladder stays canonical
+    canvasBg: BASE.b03,       // base03 — Solarized's own ground, no off-canon deepening to force card lift
     canvasDot: BASE.b02,      // background highlight — the grid IS Solarized's own step
     surface: BASE.b02,        // background highlight — a card
     surfaceSunken: "#03303b",

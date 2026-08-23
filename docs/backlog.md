@@ -43,35 +43,6 @@ small-scope polish sweeps ONLY. Everything feature-shaped moved to `deferrals.md
 
 ## Bugs & verifications
 
-- [ ] **Node body/outer border still reads clipped (author, 2026-08-22) — STILL OPEN.**
-  Partly fixed: the body frame SVG's `overflow: hidden` was shaving the stroke it could never
-  contain (weak-bottom 6/27 -> 3/27 at dpr 1, k=0.42). The author still sees the Frame Input
-  bottom edge unchanged. **Refuted, do not retest:** candidate (a) (card and frame rects are
-  identical on every card at every dpr); `vector-effect: non-scaling-stroke` (no-op under an HTML
-  ancestor transform); `shape-rendering: crispEdges` (worse). **Tried and reverted:** flooring the
-  stroke at one device pixel (`--frame-hairline`) — benched well, did nothing for the author, and
-  fattened grouped cards. NEXT STEP IS DATA, NOT A HYPOTHESIS: the author's dpr and camera k are
-  still unknown, and no surviving mechanism explains their two clues (same at many zoom levels;
-  absent on mobile). Get a console dump of devicePixelRatio, k, and each card's edge phase from
-  their machine first. **DONE, and it clears the default doc:** headed on the author's hardware
-  (dpr 1.14, k 0.6023, ANGLE/D3D11) zero of 22 cards show a weak bottom edge and the overflow A/B
-  moves Frame Input by 0.0%. The catch: a fresh browser profile loads the `getting-started` seed,
-  so no measurement this session ever saw the author's own document. **Reproduce on THEIR document
-  first** (headed playwright against their real Chrome profile, or ask which doc/node). Full record
-  in the 2026-08-22 digest.
-
-- [ ] **Solarized dark reads too flat: cards barely lift off the canvas** (author,
-  2026-08-22). The −0.012 OKLCH canvas step helped every dark ramp and is enough
-  elsewhere, but Solarized is the worst case BY CONSTRUCTION — its ground and its card
-  are adjacent rungs of the canonical ladder (`base03` → `base02`), so canvas:card sits
-  at 1.195 where Blueprint gets 1.249 off two authored tones. Separating them means
-  authoring off-canon values for one or both, which the palette's whole identity claim
-  resists (DESIGN.md § palettes; `paletteAllOrNone` already scopes the AA rule out of
-  Solarized precisely so it can be itself). Decide which gives: the canon or the lift.
-  NOTE the lowest ratio in the set is actually Orchard at 1.129 — check whether the
-  author reads that one as flat too before treating low ratio as the whole story;
-  Solarized's may be as much about the two tones sharing a hue as about luminance.
-
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
   5 seeds, clean). The app now has error boundaries (app + per node) — next

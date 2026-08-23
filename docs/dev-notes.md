@@ -86,7 +86,25 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
-### SESSION DIGEST (2026-08-23c — IRR near-floor root fallback)
+### SESSION DIGEST (2026-08-23c — IRR near-floor root fallback; Solarized ground; two parks)
+
+**Solarized dark canvas returns to canonical base03 (author call 2026-08-23).** The dark
+`canvasBg` had been deepened off-canon to `#002833` to force cards to lift; the author ruled
+Solarized should carry no such invariant on its ground — make it match the ladder or leave it.
+Set `canvasBg: BASE.b03` (`#002b36`), Solarized's own base03. Cards (base02) lift a hair less,
+which is Solarized being itself (the same stance `paletteAllOrNone` already takes on its ~3:1 body
+pairings). The structural `canvasBg` < `surface` invariant still holds (base03 < base02); full
+palette suite green. Backlog "Solarized dark reads too flat" CLOSED.
+
+**Card-frame clipping — PARKED indefinitely (author 2026-08-23).** The "node body/outer border
+reads clipped" item is postponed with no scheduled follow-up; the full investigation record
+(refuted mechanisms, the headed-on-author-hardware clear, "reproduce on THEIR document first")
+lives in the 2026-08-22 digest if it ever reopens. Removed from the active backlog.
+
+**Drill-in work is considered as ONE unit or not at all (author 2026-08-23).** The scheduled
+"finger pan is DEAD in a drill-in" bug is no longer to be cherry-picked as an isolated fix — it is
+Phase A of the editing-surface kernel (`deferrals.md`), and the author wants every drill-in item
+looked at together before any of it lands. No code change this session; direction recorded.
 
 **IRR/XIRR now find a root crowded against the rate floor.** `solveDiscountRate` was pure Newton
 from a fixed 0.1 guess, so a series whose only real rate sits near −0.9 (where the discount curve
