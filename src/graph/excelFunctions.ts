@@ -512,7 +512,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PCTCHANGE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
   ZSCORE:          { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
   BIN:             { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
-  SHIFT:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
+  SHIFT:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3] },
   COMBINATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
   PERMUTATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
   GRADIENT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
@@ -1227,7 +1227,7 @@ registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
 registerInternal("PCTCHANGE",  (list) => pctChangeList(numList(list)));
 registerInternal("ZSCORE",     (list) => zscoreList(numList(list)));
 registerInternal("BIN",        (list, breaks) => binIndex(numList(list), numList(breaks)));
-registerInternal("SHIFT",      (list, by) => shiftList(numList(list), Number(by), false));
+registerInternal("SHIFT",      (list, by, wrap) => shiftList(numList(list), Number(by), isTrue(wrap)));
 registerInternal("COMBINATIONS", (list, k) => combinationsOf(numList(list), Number(k), "combinations"));
 registerInternal("PERMUTATIONS", (list, k) => combinationsOf(numList(list), Number(k), "permutations"));
 registerInternal("GRADIENT",   (list) => gradientList(numList(list)));

@@ -4,6 +4,7 @@ import { DataflowEngine } from "rete-engine";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { processGraph, setEditorRefs } from "./process";
+import { calcModeStore } from "./calcModeStore";
 
 // Single-flight invariant (the fix for the flushSync-mount crash): a processGraph call made
 // WHILE a pass is running must coalesce into one trailing full pass, never nest a pass inside
@@ -54,5 +55,33 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     expect(resetSeenByReentrantCall).toBe(0);
     // Exactly two passes total: the initial one + one coalesced trailing rerun (not a storm).
     expect(resetCount).toBe(2);
+  });
+
+  it("a coalesced FORCED call (F9 during a pass) stays forced — manual mode's gate must not swallow the rerun", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
+    let resetCount = 0;
+    const origReset = engine.reset.bind(engine);
+    (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
+    let reentered = false;
+    const area = {
+      update: async () => {
+        if (reentered) return;
+        reentered = true;
+        await processGraph(undefined, undefined, { force: true }); // a second F9 mid-pass
+      },
+    } as unknown as AreaPlugin<Schemes, AreaExtra>;
+    setEditorRefs(editor, engine, area);
+    calcModeStore.setMode("manual");
+    try {
+      await processGraph(undefined, undefined, { force: true });
+      // Without the carried flag the rerun would be an unforced call → markDirty + return: one pass.
+      expect(resetCount).toBe(2);
+      expect(calcModeStore.dirty()).toBe(false);
+    } finally {
+      calcModeStore.setMode("auto");
+    }
   });
 });

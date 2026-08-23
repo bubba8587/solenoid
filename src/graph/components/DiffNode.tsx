@@ -1,26 +1,15 @@
-import { useEffect, useState } from "react";
-import type { DiffNode } from "../rete-nodes";
-import { NodeShell, type NodeProps } from "./nodeKit";
-import { InlineInputs } from "./inlineInput";
-import { ResultDisplay } from "./ResultDisplay";
-import { SegToggle } from "./SegToggle";
-import { processGraph } from "../process";
+import type { DiffNode, DiffMode } from "../rete-nodes";
+import { makeToggleNodeComponent } from "./standardNode";
 
-export function DiffComponent({ data, emit }: NodeProps<DiffNode>) {
-  const [mode, setMode] = useState(data.mode);
-  useEffect(() => { setMode(data.mode); }, [data.mode]);
-  return (
-    <NodeShell node={data} emit={emit}>
-      <SegToggle arg
-        value={mode}
-        options={[
-          { value: "delta" as const, label: "Δ", title: "Absolute difference: list[i] − list[i−1]" },
-          { value: "percent" as const, label: "%", title: "Percent change: (list[i] − list[i−1]) / list[i−1] (pandas pct_change)" },
-        ]}
-        onChange={(next) => { setMode(next); data.mode = next; void processGraph(data.id); }}
-      />
-      <InlineInputs node={data} emit={emit} />
-      <ResultDisplay value={data.cachedList} label={data.label} />
-    </NodeShell>
-  );
-}
+export const DiffComponent = makeToggleNodeComponent<DiffNode, DiffMode>(
+  {
+    read: (n) => n.mode,
+    write: (n, m) => n.setMode(m),
+    options: [
+      { value: "delta", label: "Δ", title: "Absolute difference: list[i] − list[i−1]" },
+      { value: "percent", label: "%", title: "Percent change: (list[i] − list[i−1]) / list[i−1] (pandas pct_change)" },
+      { value: "gradient", label: "∇", title: "Gradient: central-difference slope at each point, same length as the input (numpy.gradient)" },
+    ],
+  },
+  (n) => n.cachedList,
+);

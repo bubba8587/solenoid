@@ -269,14 +269,22 @@ function solveLinear(A: number[][], b: number[]): number[] | null {
 }
 
 /** Least-squares polynomial fit of degree d through (x, y), evaluated back at each x —
- *  numpy.polyfit + polyval in one. Solves the normal equations (VᵀV)c = Vᵀy. */
+ *  numpy.polyfit + polyval in one. Solves the normal equations (VᵀV)c = Vᵀy. The fit uses
+ *  the PAIRS where both x and y are present (a blank on either side drops that pair, it
+ *  never shifts the pairing); the result is position-preserving over x — every present
+ *  x gets its fitted value, a missing x stays blank. */
 export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: number): Cell[] | SolError {
   const err = firstError(xs) ?? firstError(ys);
   if (err) return err;
-  const X = presentNumbers(xs), Y = presentNumbers(ys);
-  const n = Math.min(X.length, Y.length);
+  const isNum = (v: Cell): v is number => typeof v === "number" && Number.isFinite(v);
+  const X: number[] = [], Y: number[] = [];
+  for (let i = 0; i < Math.min(xs.length, ys.length); i++) {
+    const a = xs[i], b = ys[i];
+    if (isNum(a) && isNum(b)) { X.push(a); Y.push(b); }
+  }
+  const n = X.length;
   const d = Math.max(0, Math.round(degree));
-  if (n === 0) return [];
+  if (n === 0) return xs.map(() => null);
   if (n < d + 1) return solError("#VALUE!", `A degree-${d} fit needs at least ${d + 1} points`);
   const m = d + 1;
   const ATA: number[][] = Array.from({ length: m }, () => new Array<number>(m).fill(0));
@@ -288,7 +296,8 @@ export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: nu
   }
   const coeffs = solveLinear(ATA, ATy);
   if (!coeffs) return solError("#SOLVE!", "Polynomial fit is singular — the points may be collinear for this degree");
-  return X.map((xv) => { let acc = 0; for (let j = m - 1; j >= 0; j--) acc = acc * xv + coeffs[j]; return acc; });
+  const evalAt = (xv: number): number => { let acc = 0; for (let j = m - 1; j >= 0; j--) acc = acc * xv + coeffs[j]; return acc; };
+  return xs.map((xv) => (isNum(xv) ? evalAt(xv) : null));
 }
 
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";

@@ -104,6 +104,16 @@ describe("Tier-2/3 kernels (gradient / ewma / trapz / convolve / cross / rle / p
     const node = new PolyfitNode(); node.literals.degree = 2;
     (node.data({ x: [[0, 1, 2]], y: [[0, 1, 4]] }).result as number[]).forEach((v, i) => expect(v).toBeCloseTo([0, 1, 4][i], 8));
   });
+  it("polyfit pairs x with y BY POSITION — a blank on one side drops that pair, never shifts it — and the result stays position-aligned with x", () => {
+    // y = 2x; a blank x at slot 1 must NOT pair x=3 with y=2 (the old present-numbers compaction did).
+    const fitted = polyfitEval([1, null, 3, 4], [2, 4, 6, 8], 1) as (number | null)[];
+    expect(fitted).toHaveLength(4);
+    expect(fitted[1]).toBeNull();
+    [0, 2, 3].forEach((i) => expect(fitted[i]).toBeCloseTo([2, 4, 6, 8][i], 8));
+    // A blank y drops the pair from the fit but its x still gets a fitted value.
+    const fitted2 = polyfitEval([1, 2, 3], [2, null, 6], 1) as (number | null)[];
+    expect(fitted2[1]).toBeCloseTo(4, 8);
+  });
 });
 
 describe("Between / Is-Close predicates", () => {
@@ -147,6 +157,7 @@ describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
     expect(ev("ZSCORE(x)", { x: [2, 4] })).toEqual([-1, 1]);
     expect(ev("BIN(x, b)", { x: [3, 7, 12], b: [5, 10] })).toEqual([0, 1, 2]);
     expect(ev("SHIFT(x, 1)", { x: [1, 2, 3] })).toEqual([null, 1, 2]);
+    expect(ev("SHIFT(x, 1, TRUE)", { x: [1, 2, 3] })).toEqual([3, 1, 2]); // the node's wrap mode, same capability
     expect(ev("COMBINATIONS(x, 2)", { x: [1, 2, 3] })).toEqual([[1, 2], [1, 3], [2, 3]]);
     expect(ev("PERMUTATIONS(x, 2)", { x: [1, 2] })).toEqual([[1, 2], [2, 1]]);
   });

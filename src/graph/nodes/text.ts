@@ -1068,6 +1068,12 @@ export class SpellNumberNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut(this.mode === "ordinal" ? "Ordinal" : "Words"));
   }
 
+  setMode(next: "words" | "ordinal"): void {
+    this.mode = next;
+    const out = this.outputs.result;
+    if (out) out.label = next === "ordinal" ? "Ordinal" : "Words";
+  }
+
   data(inputs: { value?: (number | number[] | null)[] }): { result: CellResult<string> } {
     // A CONNECTED cable wins even carrying null; only an unwired slot falls back.
     const value = inputs.value === undefined || inputs.value.length === 0

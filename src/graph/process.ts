@@ -404,6 +404,8 @@ export function downstreamClosure(editor: NodeEditor<Schemes>, startId: string):
 // the request and run exactly one full follow-up pass once the active one settles.
 let _passActive = false;
 let _rerunQueued = false;
+// A coalesced F9 (force) must stay forced, or manual mode's gate would swallow the rerun.
+let _rerunForce = false;
 
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   // Manual calculation mode: skip the pass and flag dirty (F9 passes force). A load /
@@ -412,7 +414,7 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
     calcModeStore.markDirty();
     return;
   }
-  if (_passActive) { _rerunQueued = true; return; }
+  if (_passActive) { _rerunQueued = true; _rerunForce ||= opts?.force === true; return; }
   _passActive = true;
   // The `finally` balances the compute-overlay counter and clears the in-flight flag.
   beginCompute();
@@ -427,7 +429,11 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   // Drain a coalesced request as ONE full pass on the now-settled graph — never re-entrant
   // (the flag is clear), so it can't corrupt per-pass state, and a full pass supersets any
   // targeted call that was coalesced. A stable render dep fires no effect, so it can't re-queue.
-  if (_rerunQueued) { _rerunQueued = false; await processGraph(); }
+  if (_rerunQueued) {
+    const force = _rerunForce;
+    _rerunQueued = false; _rerunForce = false;
+    await processGraph(undefined, undefined, force ? { force } : undefined);
+  }
 }
 
 // The OUTERMOST composite card whose (possibly nested) internal editor holds `innerId`.

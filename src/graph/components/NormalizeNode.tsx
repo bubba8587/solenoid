@@ -1,26 +1,14 @@
-import { useEffect, useState } from "react";
-import type { NormalizeNode } from "../rete-nodes";
-import { NodeShell, type NodeProps } from "./nodeKit";
-import { InlineInputs } from "./inlineInput";
-import { ResultDisplay } from "./ResultDisplay";
-import { SegToggle } from "./SegToggle";
-import { processGraph } from "../process";
+import type { NormalizeNode, NormalizeMode } from "../rete-nodes";
+import { makeToggleNodeComponent } from "./standardNode";
 
-export function NormalizeComponent({ data, emit }: NodeProps<NormalizeNode>) {
-  const [mode, setMode] = useState(data.mode);
-  useEffect(() => { setMode(data.mode); }, [data.mode]);
-  return (
-    <NodeShell node={data} emit={emit}>
-      <SegToggle arg
-        value={mode}
-        options={[
-          { value: "minmax" as const, label: "0–1", title: "Rescale to 0–1: min maps to 0, max to 1" },
-          { value: "zscore" as const, label: "z", title: "Z-scores: distance from the mean in standard deviations (numpy/R scale)" },
-        ]}
-        onChange={(next) => { setMode(next); data.mode = next; void processGraph(data.id); }}
-      />
-      <InlineInputs node={data} emit={emit} />
-      <ResultDisplay value={data.cachedList} label={data.label} />
-    </NodeShell>
-  );
-}
+export const NormalizeComponent = makeToggleNodeComponent<NormalizeNode, NormalizeMode>(
+  {
+    read: (n) => n.mode,
+    write: (n, m) => n.setMode(m),
+    options: [
+      { value: "minmax", label: "0–1", title: "Rescale to 0–1: min maps to 0, max to 1" },
+      { value: "zscore", label: "z", title: "Z-scores: distance from the mean in standard deviations (numpy/R scale)" },
+    ],
+  },
+  (n) => n.cachedList,
+);

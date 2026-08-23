@@ -1377,6 +1377,7 @@ export class RunningNode extends ClassicPreset.Node {
 }
 
 export type DiffMode = "delta" | "percent" | "gradient";
+const DIFF_OUTPUT_LABEL: Record<DiffMode, string> = { delta: "Differences", percent: "Change", gradient: "Gradient" };
 
 export class DiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1396,7 +1397,13 @@ export class DiffNode extends ClassicPreset.Node {
     this.label = init?.label ?? "DIFF";
     if (init?.mode) this.mode = init.mode;
     this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut(this.mode === "percent" ? "Change" : this.mode === "gradient" ? "Gradient" : "Differences"));
+    this.addOutput("result", listOut(DIFF_OUTPUT_LABEL[this.mode]));
+  }
+
+  setMode(next: DiffMode): void {
+    this.mode = next;
+    const out = this.outputs.result;
+    if (out) out.label = DIFF_OUTPUT_LABEL[next];
   }
 
   data(inputs: { list?: ListCell[][] }) {
@@ -1466,6 +1473,7 @@ export class ContainsNode extends ClassicPreset.Node {
 
 // ─── Normalize ────────────────────────────────────────────────────────────────
 export type NormalizeMode = "minmax" | "zscore";
+const NORMALIZE_OUTPUT_LABEL: Record<NormalizeMode, string> = { minmax: "0–1", zscore: "z-scores" };
 
 export class NormalizeNode extends ClassicPreset.Node {
   label: string;
@@ -1479,7 +1487,13 @@ export class NormalizeNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Normalize";
     if (init?.mode) this.mode = init.mode;
     this.addInput("list",    listIn("List"));
-    this.addOutput("result", listOut(this.mode === "zscore" ? "z-scores" : "0–1"));
+    this.addOutput("result", listOut(NORMALIZE_OUTPUT_LABEL[this.mode]));
+  }
+
+  setMode(next: NormalizeMode): void {
+    this.mode = next;
+    const out = this.outputs.result;
+    if (out) out.label = NORMALIZE_OUTPUT_LABEL[next];
   }
 
   data(inputs: { list?: ListCell[][] }) {

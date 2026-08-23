@@ -313,7 +313,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   PCTCHANGE: "list",
   ZSCORE: "list",
   BIN: "list, breaks",
-  SHIFT: "list, by",
+  SHIFT: "list, by, [wrap]",
   COMBINATIONS: "list, k",
   PERMUTATIONS: "list, k",
   GRADIENT: "list",
