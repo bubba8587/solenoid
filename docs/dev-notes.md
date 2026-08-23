@@ -86,6 +86,25 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23e — backward audit of the day's commits)
+
+**Audit walk (newest→oldest) of the 2026-08-23 commits; fixes landed, each pinned.**
+`polyfitEval` paired x/y AFTER compacting each list separately (a blank on one side shifted every
+later pair) — now pairs by position, result position-preserving over x. DIFF's ∇ mode was on the
+class + in the alias table but NOT in the component's toggle (unreachable). Six new toggle
+components were the same 26 lines → `makeToggleNodeComponent` (standardNode.tsx; read/write
+accessors); DIFF/Normalize/Spell Number gained `setMode` so the output-socket label follows the
+toggle. `processGraph`'s coalesced rerun dropped `force` (an F9 arriving mid-pass in manual mode
+drained as an unforced call the manual gate swallowed) — carried now. SHIFT formula gained the
+node's `[wrap]` arg. **The IRR / XIRR FORMULAS were Formula.js** (the digest's "finance already
+shares kernels" was false for them): `IRR([-4943,-2458,285])` answered 1000 where the node answers
+−0.903. Solver + cash-flow preps moved to the rete-free `financeOps.ts`, IRR/XIRR registered on it
+(`listArgs`, guess ignored); NPV/MIRR joined RANGE_ZERO_FILL (a blank period is a zero flow, as the
+nodes do — the aggregator null-drop shifted every later period). Cross-surface pins in
+`financeIterative.test.ts`; recorded in formulajs-divergences.md. NB `FAMILY_BACKING` is the
+consolidation DECISION, not the live state — ~55 "internal" names still dispatch to Formula.js
+(statistics/distributions/datetime/RATE/MIRR); the backing-flip backlog item covers them.
+
 ### SESSION DIGEST (2026-08-23d — new data nodes, node merges, formula↔node parity)
 
 **A big batch of numpy/pandas/R data nodes (author-directed), each a node AND a formula.** New:
