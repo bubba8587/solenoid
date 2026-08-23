@@ -48,6 +48,14 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
     case "head":
     case "filter":
     case "filterMulti":
+    case "sliceRows":
+      return input;
+    // Cell-rewriting ops keep the column set and types; an unknown target column is #REF!.
+    case "fillBlanks":
+      for (const c of op.columns) requireCol(input, c);
+      return input;
+    case "replaceValues":
+      if (op.column.trim()) requireCol(input, op.column.trim());
       return input;
     case "groupBy": {
       const keyCols = op.keys.map((n) => requireCol(input, n));

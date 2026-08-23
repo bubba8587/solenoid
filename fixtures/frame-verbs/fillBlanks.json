@@ -1,0 +1,225 @@
+{
+ "verb": "fillBlanks",
+ "cases": [
+  {
+   "name": "fill down every column",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        null,
+        null,
+        "b",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null,
+        3,
+        null,
+        5
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "fillBlanks",
+    "columns": [],
+    "dir": "down"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a",
+       "b",
+       "b"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       3,
+       3,
+       5
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       true,
+       false,
+       false,
+       false
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "fill up one column only",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        null,
+        null,
+        "b",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null,
+        3,
+        null,
+        5
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "fillBlanks",
+    "columns": [
+     "k"
+    ],
+    "dir": "up"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "b",
+       "b",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       3,
+       null,
+       5
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown column is #REF!",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        null,
+        null,
+        "b",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null,
+        3,
+        null,
+        5
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "fillBlanks",
+    "columns": [
+     "nope"
+    ],
+    "dir": "down"
+   },
+   "expectError": "#REF!"
+  }
+ ]
+}

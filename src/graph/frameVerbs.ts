@@ -64,13 +64,16 @@ export type FrameOp =
   | { kind: "groupBy"; keys: string[]; aggs: AggSpec[] } // one row per key combo + aggregates
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
   | ({ kind: "pivot" } & PivotSpec)  // long → wide cross-tab (Excel PIVOTBY)
-  | ({ kind: "window" } & WindowSpec); // one per-group window column, original row order
+  | ({ kind: "window" } & WindowSpec) // one per-group window column, original row order
+  | { kind: "fillBlanks"; columns: string[]; dir: "down" | "up" }   // carry the last value into blanks
+  | { kind: "replaceValues"; column: string; find: string; replaceWith: string; mode: "cell" | "substring" }
+  | { kind: "sliceRows"; mode: "first" | "last" | "skip" | "range"; n: number; to?: number };
 
 /** Pinned to the TYPE below, so a `FrameOp` kind missing here fails `tsc` and the
  *  parity corpus then demands its fixture file. */
 export const FRAME_OP_KINDS = [
   "select", "drop", "rename", "sort", "distinct", "head",
-  "filter", "filterMulti", "groupBy", "unpivot", "pivot", "window",
+  "filter", "filterMulti", "groupBy", "unpivot", "pivot", "window", "fillBlanks", "replaceValues", "sliceRows",
 ] as const satisfies readonly FrameOp["kind"][];
 // Exhaustiveness: a FrameOp kind missing from FRAME_OP_KINDS makes this `never`
 // assignment fail to compile.
@@ -1391,6 +1394,9 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "unpivot":  return unpivotFrame(f, op.idColumns, op.valueColumns, { variableName: op.variableName, valueName: op.valueName });
     case "pivot":    return pivotFrame(f, op);
     case "window":   return windowFrame(f, op);
+    case "fillBlanks": return fillBlanks(f, op.columns, op.dir);
+    case "replaceValues": return replaceValues(f, op.column, op.find, op.replaceWith, op.mode);
+    case "sliceRows": return sliceRows(f, op.mode, op.n, op.to);
   }
 }
 

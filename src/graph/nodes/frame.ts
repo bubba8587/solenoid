@@ -23,7 +23,7 @@ import {
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
-  fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame,
+  mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, borderedGridFromFrame,
   lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS,
@@ -304,10 +304,10 @@ export class HeadNode extends ClassicPreset.Node {
     const gen = beginPass(this);
     // A wired blank row count leaves the slice unknown (value-semantics.md, "Reading an input").
     if (f == null || n === null || to === null) return emitFrame(this, gen, null);
-    // First-N stays a LAZY verb (the head-of-a-huge-chain case); the other slices are eager.
+    // Every slice is a LAZY verb now — First-N as `head`, the rest as `sliceRows`
+    // (Polars tail / slice on desktop, the oracle on web).
     if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
-    const fv = await readFrame(f);
-    return emitFrame(this, gen, fv == null || isSolError(fv) ? fv ?? null : runVerb(() => sliceRows(fv, this.op, n, to)));
+    return emitFrame(this, gen, await runFrameUnary(f, { kind: "sliceRows", mode: this.op, n, to: this.op === "range" ? to : undefined }));
   }
 }
 
@@ -1019,15 +1019,14 @@ export class FillBlanksNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const colsRaw = readColumnList(inputs.columns);
     // A wired blank column list is unknown (value-semantics.md, "Reading an input").
-    if (colsRaw === null) { this.cachedResult = null; return { frame: null }; }
+    if (f == null || colsRaw === null) return emitFrame(this, beginPass(this), null);
     const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    this.cachedResult = runVerb(() => fillBlanks(f, columns, this.dir));
-    return { frame: this.cachedResult };
+    // Lazy: Polars forward_fill / backward_fill on desktop, the oracle on web.
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "fillBlanks", columns, dir: this.dir }));
   }
 }
 
@@ -1051,16 +1050,15 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; find?: string[]; replace?: string[] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: string[]; replace?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
     const find = readInput(inputs.find, this.stringLiterals.find ?? "");
     const replace = readInput(inputs.replace, this.stringLiterals.replace ?? "");
     // A wired blank is unknown, NOT the empty literal's "all columns" / "match nothing".
-    if (column === null || find === null || replace === null) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => replaceValues(f, column, find, replace, this.mode));
-    return { frame: this.cachedResult };
+    if (f == null || column === null || find === null || replace === null) return emitFrame(this, beginPass(this), null);
+    // Lazy: a Polars when/then (or str.replace_all) on desktop, the oracle on web.
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "replaceValues", column, find, replaceWith: replace, mode: this.mode }));
   }
 }
 

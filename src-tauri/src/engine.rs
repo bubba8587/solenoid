@@ -515,6 +515,20 @@ pub enum WireOp {
         #[serde(default)]
         n: Option<f64>,
     },
+    // The three cleanup verbs that used to materialize (deferrals → backlog B5): the
+    // oracle's fillBlanks / replaceValues / sliceRows, each a plain Polars expression.
+    #[serde(rename = "fillBlanks")]
+    FillBlanks { columns: Vec<String>, dir: String },
+    #[serde(rename = "replaceValues")]
+    ReplaceValues {
+        column: String,
+        find: String,
+        #[serde(rename = "replaceWith")]
+        replace_with: String,
+        mode: String,
+    },
+    #[serde(rename = "sliceRows")]
+    SliceRows { mode: String, n: f64, #[serde(default)] to: Option<f64> },
     #[serde(rename = "unpivot")]
     Unpivot {
         #[serde(rename = "idColumns")]
@@ -1097,6 +1111,88 @@ fn lazy_window(
     names.push(name.to_string());
     types.push(out_ty);
     Ok(Plan { lf, names, types })
+}
+
+// ─── Fill Down / Replace Values / row slices (the oracle's fillBlanks / replaceValues /
+// sliceRows, frameVerbs.ts) ──────────────────────────────────────────────────────────
+fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, IpcError> {
+    require_in(&plan.names, columns)?;
+    let targets: HashSet<&str> = if columns.is_empty() { plan.names.iter().map(|s| s.as_str()).collect() } else { columns.iter().map(|s| s.as_str()).collect() };
+    let exprs: Vec<Expr> = plan.names.iter().map(|n| {
+        let c = col(n.as_str());
+        if !targets.contains(n.as_str()) { return c; }
+        if dir == "up" { c.backward_fill(None).alias(n.as_str()) } else { c.forward_fill(None).alias(n.as_str()) }
+    }).collect();
+    Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
+}
+
+/// The oracle's `coerceReplacement`: blank → null, an unparseable number → NaN, an
+/// unparseable date / logical → null, text verbatim.
+fn replacement_lit(ty: SolType, text: &str) -> Expr {
+    let t = text.trim();
+    match ty {
+        SolType::Str => lit(text.to_string()),
+        SolType::Number => {
+            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
+            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(f64::NAN) }
+        }
+        SolType::Date => {
+            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
+            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(NULL).cast(DataType::Float64) }
+        }
+        SolType::Logical => match t.to_ascii_lowercase().as_str() {
+            "true" | "1" => lit(true),
+            "false" | "0" => lit(false),
+            _ => lit(NULL).cast(DataType::Boolean),
+        },
+    }
+}
+
+fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str, mode: &str) -> Result<Plan, IpcError> {
+    if find.is_empty() { return Ok(plan); }
+    let target = column.trim();
+    if !target.is_empty() { require_in(&plan.names, std::slice::from_ref(&target.to_string()))?; }
+    let find_num = find.trim().parse::<f64>().ok().filter(|n| n.is_finite());
+    let find_lower = find.to_ascii_lowercase();
+    let exprs: Vec<Expr> = plan.names.iter().enumerate().map(|(i, n)| {
+        let c = col(n.as_str());
+        if !target.is_empty() && n != target { return c; }
+        let ty = plan.types[i];
+        if mode == "substring" {
+            // String columns only; case-sensitive, literal (no regex).
+            return if ty == SolType::Str { c.str().replace_all(lit(find.to_string()), lit(replace_with.to_string()), true).alias(n.as_str()) } else { c };
+        }
+        let rep = replacement_lit(ty, replace_with);
+        let hit: Option<Expr> = match ty {
+            SolType::Str => Some(c.clone().eq(lit(find.to_string()))),
+            // Numbers match numerically (so "5" hits 5); a non-numeric find text matches no number cell.
+            SolType::Number | SolType::Date => find_num.map(|v| c.clone().eq(lit(v))),
+            SolType::Logical => match find_lower.as_str() { "true" => Some(c.clone().eq(lit(true))), "false" => Some(c.clone().eq(lit(false))), _ => None },
+        };
+        match hit {
+            // A null cell never matches (null == x is null → otherwise keeps the null).
+            Some(h) => when(h).then(rep).otherwise(c).alias(n.as_str()),
+            None => c,
+        }
+    }).collect();
+    Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
+}
+
+fn lazy_slice_rows(plan: Plan, mode: &str, n: f64, to: Option<f64>) -> Result<Plan, IpcError> {
+    let count = n.trunc().max(0.0);
+    let lf = match mode {
+        "first" => plan.lf.limit(count as IdxSize),
+        "last" => plan.lf.tail(count as IdxSize),
+        "skip" => plan.lf.slice(count as i64, IdxSize::MAX),
+        _ => {
+            // Rows N–To: 1-based inclusive; an inverted or empty span is no rows.
+            let start = (n.trunc() - 1.0).max(0.0);
+            let end = to.unwrap_or(n).trunc();
+            let len = (end - start).max(0.0);
+            plan.lf.slice(start as i64, len as IdxSize)
+        }
+    };
+    Ok(Plan { lf, ..plan })
 }
 
 // Re-materialize a frame from a row-index list (the basis for distinct).
@@ -2288,6 +2384,9 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
         WireOp::Window { partition_by, order_by, order_dir, func, column, as_name, n } => {
             lazy_window(plan, partition_by, order_by.as_deref(), order_dir.as_deref(), func, column.as_deref(), as_name, *n)
         }
+        WireOp::FillBlanks { columns, dir } => lazy_fill_blanks(plan, columns, dir),
+        WireOp::ReplaceValues { column, find, replace_with, mode } => lazy_replace_values(plan, column, find, replace_with, mode),
+        WireOp::SliceRows { mode, n, to } => lazy_slice_rows(plan, mode, *n, *to),
         WireOp::Filter { column, op: fop, value, match_case } => {
             require_in(&plan.names, std::slice::from_ref(column))?;
             let ty = type_of_in(&plan.names, &plan.types, column).unwrap();
