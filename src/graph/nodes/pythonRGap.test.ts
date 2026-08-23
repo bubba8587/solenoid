@@ -22,7 +22,7 @@ import { templatePlaceholders, renderTemplate } from "./textOps";
 import { requestRecalc } from "../process";
 import { unaccent, slugify, padText, truncateText } from "./textOps";
 import { argsortList, whichPositions } from "./listOps";
-import { ArgMinMaxNode } from "./list";
+import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "./list";
 import { numListOut, numOut, listIn, logicalListIn } from "./shared";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
 import { EtsForecastNode, FitDistributionNode } from "./stats";
@@ -647,5 +647,34 @@ describe("Template — str_glue / f-string placeholders", () => {
     expect(ev('TEMPLATE("{{x}} = {0}", TRUE)')).toBe("{x} = TRUE");
     expect(ev('TEMPLATE("{0} and {1}", "a")')).toBe("a and ");
     expect((ev('TEMPLATE("Hi {name}", "Ada")') as { code?: string }).code).toBe("#NAME?");
+  });
+});
+
+describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.test.ts)", () => {
+  const X = [1, 3, 2, 5, 4, 6, 8, 7, 9, 12, 10, 11];
+  const Y = [0, 1, 0, 2, 0, 3, 2, 3, 0, 5, 4, 0, 1, 1, 1, 0];
+  it("Smooth swaps its parameter sockets with the op; the formulas agree", () => {
+    const n = new SmoothNode({ op: "savgol" });
+    expect(Object.keys(n.inputs)).toEqual(["list", "window", "order"]);
+    expect((n.data({ list: [X] }).result as number[])[0]).toBeCloseTo(1.114286, 5);
+    expect(n.setOp("gaussian")).toEqual(["window", "order"]);
+    expect(Object.keys(n.inputs)).toEqual(["list", "sigma"]);
+    expect((n.data({ list: [X] }).result as number[])[0]).toBeCloseTo(1.669012, 5);
+    expect(n.setOp("lowess")).toEqual(["sigma"]);
+    expect(Object.keys(n.inputs)).toEqual(["list", "frac"]);
+    const ev = (e: string) => compileEvaluator(e)!({ x: X, y: Y });
+    expect((ev("SAVGOL(x, 5, 2)") as number[])[11]).toBeCloseTo(10.6, 5);
+    expect((ev("GAUSSIANSMOOTH(x, 2)") as number[])[0]).toBeCloseTo(2.331121, 5);
+    expect((ev("LOWESS(x, 0.5)") as number[]).length).toBe(12);
+    expect(ev("FINDPEAKS(y)")).toEqual([2, 4, 6, 8, 10, 14]);
+    expect(ev("FINDPEAKS(y, 2.5)")).toEqual([6, 8, 10]);
+    expect(ev("FINDPEAKS(y, 0, 1, 2)")).toEqual([4, 6, 8, 10]);
+  });
+  it("Find Peaks: unwired filters mean none; positions + heights", () => {
+    const n = new FindPeaksNode();
+    expect(n.data({ list: [Y] })).toEqual({ positions: [2, 4, 6, 8, 10, 14], values: [1, 2, 3, 3, 5, 1] });
+    n.literals.prominence = 2;
+    expect(n.data({ list: [Y] }).positions).toEqual([4, 6, 8, 10]);
+    expect(n.data({ list: [Y], distance: [3] }).positions).toEqual([6, 10]);
   });
 });

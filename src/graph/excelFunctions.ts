@@ -9,6 +9,7 @@ import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecast
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
+import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -634,6 +635,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGSORT:         { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  SAVGOL:          { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
+  LOWESS:          { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  GAUSSIANSMOOTH:  { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  FINDPEAKS:       { returns: "number", rank: "list", listArgs: true, arity: [1, 4], native: true },
   LOGRETURNS:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
   CUMRETURNS:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
   DRAWDOWN:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
@@ -1622,6 +1627,12 @@ registerInternal("LENGTH",   (list) => toList(list).length);
 registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
 registerInternal("ARGSORT",  (list, desc) => argsortList(numList(list), isTrue(desc)));
 // The Returns card's ops (financeOps.returnsOp): [rf] is per period, [periods] per year.
+registerInternal("SAVGOL",      (list, window, order) => savgol(numList(list), toNum(window), toNum(order)));
+registerInternal("LOWESS",      (list, frac) => lowess(numList(list), optNum(frac, 2 / 3)));
+registerInternal("GAUSSIANSMOOTH", (list, sigma) => gaussianSmooth(numList(list), toNum(sigma)));
+registerInternal("FINDPEAKS",   (list, height, distance, prominence) => findPeaks(numList(list), {
+  height: height == null ? undefined : toNum(height), distance: distance == null ? undefined : toNum(distance), prominence: prominence == null ? undefined : toNum(prominence),
+}).map((p) => p.position));
 registerInternal("LOGRETURNS",  (list) => returnsOp("log", numList(list)));
 registerInternal("CUMRETURNS",  (list) => returnsOp("cumulative", numList(list)));
 registerInternal("DRAWDOWN",    (list) => returnsOp("drawdown", numList(list)));

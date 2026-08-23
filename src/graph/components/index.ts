@@ -359,6 +359,8 @@ export { PlaceholderComponent } from "./PlaceholderNode";
 // ─── Other (easter egg) ───────────────────────────────────────────────────────
 export { PromoComponent } from "./PromoNode";
 export { OutliersComponent } from "./OutliersNode";
+export { SmoothComponent } from "./SmoothNode";
+export { FindPeaksComponent } from "./FindPeaksNode";
 export { EpochComponent } from "./EpochNode";
 export { DateTruncComponent } from "./DateTruncNode";
 export { AmortizationComponent } from "./AmortizationNode";

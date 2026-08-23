@@ -33,7 +33,7 @@ import {
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, CorrMatrixNode, AmortizationNode, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, FindPeaksNode, CorrMatrixNode, AmortizationNode, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, ElementNode, 
   FisherNode, GroupByFrameNode,
@@ -256,6 +256,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ReturnsNode({ op: op as ReturnsOp }) },
   { type: "date-trunc", ctor: DateTruncNode, kind: "argument" },
   { type: "list-outliers", ctor: OutliersNode, kind: "argument" },
+  { type: "list-smooth", ctor: SmoothNode, kind: "operation", ops: fromMeta(SMOOTH_OP_META),
+    create: (op) => new SmoothNode({ op: op as SmoothOp }) },
+  { type: "list-peaks", ctor: FindPeaksNode, kind: "argument" },
   // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on
   // the DATEDIF leaf, which is why that leaf hosts the declaration.
   { type: "date-datedif", ctor: DateDiffNode, kind: "operation", ops: fromMeta(DATE_DIFF_OP_META),

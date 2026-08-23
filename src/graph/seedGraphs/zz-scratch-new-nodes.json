@@ -1988,6 +1988,118 @@
    "init": {
     "label": "one line per name"
    }
+  },
+  {
+   "id": "src_noisy",
+   "type": "ListInputNode",
+   "x": 5800,
+   "y": 0,
+   "init": {
+    "label": "Noisy signal",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, 3, 2, 5, 4, 6, 8, 7, 9, 12, 10, 11, 9, 6, 7, 4, 5, 2, 3, 1"
+   }
+  },
+  {
+   "id": "sm_sg",
+   "type": "SmoothNode",
+   "x": 6200,
+   "y": 0,
+   "init": {
+    "label": "Savitzky–Golay",
+    "op": "savgol"
+   },
+   "literals": {
+    "window": 5,
+    "order": 2
+   }
+  },
+  {
+   "id": "d_sm_sg",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 0,
+   "init": {
+    "label": "savgol 5/2"
+   }
+  },
+  {
+   "id": "sm_lo",
+   "type": "SmoothNode",
+   "x": 6200,
+   "y": 220,
+   "init": {
+    "label": "LOWESS",
+    "op": "lowess"
+   },
+   "literals": {
+    "frac": 0.5
+   }
+  },
+  {
+   "id": "d_sm_lo",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 220,
+   "init": {
+    "label": "lowess 0.5"
+   }
+  },
+  {
+   "id": "sm_ga",
+   "type": "SmoothNode",
+   "x": 6200,
+   "y": 440,
+   "init": {
+    "label": "Gaussian Smooth",
+    "op": "gaussian"
+   },
+   "literals": {
+    "sigma": 1.5
+   }
+  },
+  {
+   "id": "d_sm_ga",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 440,
+   "init": {
+    "label": "gaussian σ1.5"
+   }
+  },
+  {
+   "id": "pk",
+   "type": "FindPeaksNode",
+   "x": 6200,
+   "y": 660,
+   "init": {
+    "label": "Find Peaks"
+   },
+   "literals": {
+    "prominence": 1.5
+   }
+  },
+  {
+   "id": "d_pk_pos",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 660,
+   "init": {
+    "label": "peak positions"
+   }
+  },
+  {
+   "id": "d_pk_val",
+   "type": "DisplayNode",
+   "x": 6600,
+   "y": 800,
+   "init": {
+    "label": "peak heights"
+   }
   }
  ],
  "connections": [
@@ -2925,6 +3037,60 @@
    "source": "tmpl",
    "sourceOutput": "result",
    "target": "d_tmpl",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_noisy",
+   "sourceOutput": "list",
+   "target": "sm_sg",
+   "targetInput": "list"
+  },
+  {
+   "source": "sm_sg",
+   "sourceOutput": "result",
+   "target": "d_sm_sg",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_noisy",
+   "sourceOutput": "list",
+   "target": "sm_lo",
+   "targetInput": "list"
+  },
+  {
+   "source": "sm_lo",
+   "sourceOutput": "result",
+   "target": "d_sm_lo",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_noisy",
+   "sourceOutput": "list",
+   "target": "sm_ga",
+   "targetInput": "list"
+  },
+  {
+   "source": "sm_ga",
+   "sourceOutput": "result",
+   "target": "d_sm_ga",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_noisy",
+   "sourceOutput": "list",
+   "target": "pk",
+   "targetInput": "list"
+  },
+  {
+   "source": "pk",
+   "sourceOutput": "positions",
+   "target": "d_pk_pos",
+   "targetInput": "in"
+  },
+  {
+   "source": "pk",
+   "sourceOutput": "values",
+   "target": "d_pk_val",
    "targetInput": "in"
   }
  ]

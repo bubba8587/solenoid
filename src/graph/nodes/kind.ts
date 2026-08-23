@@ -21,7 +21,7 @@ import {
   UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, BinNode, OutliersNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, RepeatNode,
+  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
   FillNode,
@@ -104,7 +104,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
-    node instanceof BinNode || node instanceof OutliersNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
+    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
     node instanceof EwmaNode || node instanceof ConvolveNode || node instanceof CrossNode ||
     node instanceof PolyfitNode || node instanceof TrapzNode || node instanceof RleNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||

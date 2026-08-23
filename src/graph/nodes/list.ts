@@ -1485,6 +1485,7 @@ export class DiffNode extends ClassicPreset.Node {
 }
 
 import type { ArgMinMaxOp } from "./listOps";
+import { savgol, gaussianSmooth, lowess, findPeaks } from "./signalOps";
 export type { ArgMinMaxOp } from "./listOps";
 
 export const ARG_MIN_MAX_OP_META = {
@@ -2349,5 +2350,97 @@ export class SpectrumNode extends ClassicPreset.Node {
     const rows = spectrum(arr, rate);
     this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
     return { result: this.cachedResult };
+  }
+}
+
+// ─── SMOOTH (Savitzky–Golay / LOWESS / Gaussian) ──────────────────────────────
+export type SmoothOp = "savgol" | "lowess" | "gaussian";
+export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: { key: string; label: string; def: number }[]; description: string }> = {
+  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width) — keeps peak shape better than a moving average. scipy savgol_filter, R signal::sgolayfilt." },
+  lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels lowess, R lowess / loess." },
+  gaussian: { label: "Gaussian Smooth", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy gaussian_filter1d." },
+};
+
+export class SmoothNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Blank and error cells are skipped by the fits and stay blank in the result.",
+    window: "Odd number of neighbours, larger than the order.",
+    frac: "Share of the points in each local fit, 0–1; larger is smoother.",
+  };
+  label: string;
+  op: SmoothOp;
+  literals: Record<string, number> = {};
+  cachedList: ListCell[] = [];
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; op?: SmoothOp }) {
+    super("Smooth");
+    this.op = init?.op ?? "savgol";
+    this.label = init?.label ?? SMOOTH_OP_META[this.op].label;
+    this.addInput("list", listIn("List"));
+    for (const prm of SMOOTH_OP_META[this.op].params) { this.addInput(prm.key, numIn(prm.label)); this.literals[prm.key] = prm.def; }
+    this.addOutput("result", listOut("Smoothed"));
+  }
+
+  /** The op owns its parameter sockets; a live caller prunes the departing ones' cables first. */
+  setOp(next: SmoothOp): string[] {
+    if (next === this.op) return [];
+    const before = SMOOTH_OP_META[this.op].params.map((q) => q.key), after = SMOOTH_OP_META[next].params;
+    const removed = before.filter((k) => !after.some((q) => q.key === k));
+    this.op = next;
+    for (const k of removed) if (this.inputs[k]) this.removeInput(k);
+    for (const q of after) { if (!this.inputs[q.key]) this.addInput(q.key, numIn(q.label)); this.literals[q.key] ??= q.def; }
+    return removed;
+  }
+
+  data(inputs: { list?: ListCell[][] } & Record<string, number[] | undefined>) {
+    const arr = inputs.list?.[0] ?? null;
+    const prm = (k: string, def: number) => readInput(inputs[k] as number[] | undefined, this.literals[k] ?? def);
+    let out: ListCell[] | null;
+    if (arr === null) out = null;
+    else if (this.op === "savgol") { const w = prm("window", 5), o = prm("order", 2); out = w === null || o === null ? null : savgol(arr, w, o); }
+    else if (this.op === "lowess") { const f = prm("frac", 0.67); out = f === null ? null : lowess(arr, f); }
+    else { const sg = prm("sigma", 1); out = sg === null ? null : gaussianSmooth(arr, sg); }
+    this.cachedList = out ?? [];
+    return { result: out };
+  }
+}
+
+// ─── FIND PEAKS ───────────────────────────────────────────────────────────────
+export class FindPeaksNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    positions: "1-based positions of the local maxima that pass every filter set.",
+    height: "Leave blank for no minimum.",
+    distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
+    prominence: "Minimum rise above the higher of the two surrounding valleys — the filter that separates peaks from ripples.",
+  };
+  label: string;
+  literals: Record<string, number> = {};
+  cachedPositions: number[] = [];
+  cachedValues: number[] = [];
+  width = 190; height = 230;
+
+  constructor(init?: { label?: string }) {
+    super("FindPeaks");
+    this.label = init?.label ?? "Find Peaks";
+    this.addInput("list", listIn("List"));
+    this.addInput("height", numIn("Min height"));
+    this.addInput("distance", numIn("Min distance"));
+    this.addInput("prominence", numIn("Min prominence"));
+    this.addOutput("positions", numListOut("Positions"));
+    this.addOutput("values", numListOut("Heights"));
+  }
+
+  data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }) {
+    const arr = inputs.list?.[0] ?? null;
+    const opt = (k: "height" | "distance" | "prominence") => {
+      const v = readInput(inputs[k], this.literals[k]);
+      return v === null || v === undefined || Number.isNaN(v) ? undefined : v;
+    };
+    if (arr === null) { this.cachedPositions = []; this.cachedValues = []; return { positions: null, values: null }; }
+    const peaks = findPeaks(arr, { height: opt("height"), distance: opt("distance"), prominence: opt("prominence") });
+    this.cachedPositions = peaks.map((p) => p.position);
+    this.cachedValues = peaks.map((p) => p.value);
+    return { positions: this.cachedPositions, values: this.cachedValues };
   }
 }

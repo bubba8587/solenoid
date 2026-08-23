@@ -15,7 +15,7 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, BinNode, OutliersNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
+  AlertNode, NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -525,6 +525,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-bin",       label: "Bin",           description: "Places each value into a bin: by wired breakpoints (0 below the first — R findInterval / numpy digitize) or into n equal-count quantile buckets 1..n (dplyr ntile / pandas qcut). Pick on the node.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile qcut quartile decile percentile" },
           ]},
           { type: "list-outliers",  label: "Outliers",      description: "Flags the outliers in a list by the z-score, IQR (boxplot whisker) or MAD (modified z) rule, and hands back the list with them blanked. scipy zscore, R boxplot.stats.", create: () => new OutliersNode(), parity: false, keywords: "outlier anomaly zscore z-score iqr mad boxplot whisker robust clean remove extreme" },
+          { type: "list-smooth", label: "Smooth", description: "Smooths a series: Savitzky–Golay (polynomial window), LOWESS (robust local regression) or Gaussian — pick on the card. scipy savgol_filter / gaussian_filter1d, statsmodels lowess, R loess. No Excel equivalent beyond a moving average.", create: () => new SmoothNode(), parity: false, keywords: "smooth smoothing savgol savitzky golay lowess loess gaussian filter denoise noise trend signal" },
+          { type: "list-peaks", label: "Find Peaks", description: "Positions and heights of the local maxima, filtered by minimum height, spacing and prominence. scipy.signal.find_peaks, R pracma::findpeaks. No Excel equivalent.", create: () => new FindPeaksNode(), parity: false, keywords: "peaks find_peaks local maxima maximum prominence spikes signal detect" },
           { type: "pair", children: [
             { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
             { type: "list-ewma",      label: "EWMA",          description: "Exponentially weighted moving average: recent values weigh more, controlled by Alpha (0–1). Smoother than a flat window. pandas ewm.", create: () => new EwmaNode(), parity: false, keywords: "ewma exponential weighted moving average smoothing ema alpha decay pandas ewm smooth" },
