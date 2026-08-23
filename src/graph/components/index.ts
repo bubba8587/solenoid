@@ -359,6 +359,7 @@ export { OutliersComponent } from "./OutliersNode";
 export { EpochComponent } from "./EpochNode";
 export { DateTruncComponent } from "./DateTruncNode";
 export { AmortizationComponent } from "./AmortizationNode";
+export { ReturnsComponent } from "./ReturnsNode";
 export { SpectrumComponent } from "./SpectrumNode";
 export { TextSimilarityComponent, FuzzyMatchComponent } from "./TextSimilarityNode";
 export { EtsForecastComponent } from "./EtsForecastNode";

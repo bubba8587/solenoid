@@ -538,3 +538,119 @@ export function amortizationSchedule(rate: number, nper: number, pv: number, fv 
   }
   return rows;
 }
+
+// ─── Return-series math (pandas pct_change/cumprod, quantmod, PerformanceAnalytics) ───
+
+export type ReturnsOp = "log" | "simple" | "cumulative" | "drawdown" | "maxdrawdown" | "cagr" | "volatility" | "sharpe" | "sortino";
+export type ReturnsInput = "prices" | "returns";
+export const RETURNS_OP_META: Record<ReturnsOp, { label: string; fx: string; takes: ReturnsInput; scalar: boolean; needs: ("rf" | "periods")[]; description: string }> = {
+  log:         { label: "Log returns",       fx: "LOGRETURNS",  takes: "prices",  scalar: false, needs: [],               description: "ln(pₜ / pₜ₋₁) per period; the first is blank. numpy.diff(log(p)), quantmod dailyReturn(type = log)." },
+  simple:      { label: "Simple returns",    fx: "PCTCHANGE",   takes: "prices",  scalar: false, needs: [],               description: "pₜ / pₜ₋₁ − 1 per period; the first is blank. pandas pct_change, quantmod dailyReturn." },
+  cumulative:  { label: "Cumulative return", fx: "CUMRETURNS",  takes: "returns", scalar: false, needs: [],               description: "Compounded growth so far: Π(1 + r) − 1 per period. (1 + r).cumprod() − 1, PerformanceAnalytics Return.cumulative." },
+  drawdown:    { label: "Drawdown",          fx: "DRAWDOWN",    takes: "prices",  scalar: false, needs: [],               description: "Fall from the running peak per period: pₜ / max(p₀…pₜ) − 1, zero at a new high. PerformanceAnalytics Drawdowns." },
+  maxdrawdown: { label: "Max drawdown",      fx: "MAXDRAWDOWN", takes: "prices",  scalar: true,  needs: [],               description: "The deepest peak-to-trough fall, as a negative fraction. PerformanceAnalytics maxDrawdown." },
+  cagr:        { label: "CAGR",              fx: "CAGR",        takes: "prices",  scalar: true,  needs: ["periods"],      description: "Compound growth rate per year: (p_last / p_first)^(periods per year / periods elapsed) − 1." },
+  volatility:  { label: "Volatility",        fx: "VOLATILITY",  takes: "returns", scalar: true,  needs: ["periods"],      description: "Sample standard deviation of the returns × √(periods per year). pandas std() × sqrt(252)." },
+  sharpe:      { label: "Sharpe ratio",      fx: "SHARPE",      takes: "returns", scalar: true,  needs: ["rf", "periods"], description: "mean(r − rf) / stdev(r − rf) × √(periods per year); rf is the risk-free rate PER PERIOD. PerformanceAnalytics SharpeRatio." },
+  sortino:     { label: "Sortino ratio",     fx: "SORTINO",     takes: "returns", scalar: true,  needs: ["rf", "periods"], description: "mean(r − rf) / downside deviation × √(periods per year), penalising only the below-target returns. PerformanceAnalytics SortinoRatio." },
+};
+
+type RCell = number | null | SolError;
+const finite = (v: RCell): v is number => typeof v === "number" && Number.isFinite(v);
+
+/** Per-period log or simple return; a blank on either side yields a blank. */
+export function periodReturns(prices: readonly RCell[], log: boolean): RCell[] {
+  const out: RCell[] = [];
+  for (let i = 0; i < prices.length; i++) {
+    const a = prices[i - 1], b = prices[i];
+    if (isSolError(b)) { out.push(b); continue; }
+    if (i === 0 || !finite(a) || !finite(b) || a === 0) { out.push(null); continue; }
+    out.push(log ? Math.log(b / a) : b / a - 1);
+  }
+  return out;
+}
+
+/** Π(1 + r) − 1 so far; a blank return compounds as 0 but stays blank in place. */
+export function cumulativeReturns(returns: readonly RCell[]): RCell[] {
+  let acc = 1;
+  return returns.map((r) => {
+    if (isSolError(r)) return r;
+    if (!finite(r)) return null;
+    acc *= 1 + r;
+    return acc - 1;
+  });
+}
+
+/** pₜ / running max − 1 (≤ 0); blanks stay blank and do not move the peak. */
+export function drawdowns(prices: readonly RCell[]): RCell[] {
+  let peak = -Infinity;
+  return prices.map((p) => {
+    if (isSolError(p)) return p;
+    if (!finite(p)) return null;
+    peak = Math.max(peak, p);
+    return peak > 0 ? p / peak - 1 : 0;
+  });
+}
+
+export function maxDrawdown(prices: readonly RCell[]): number | SolError | null {
+  let worst: number | null = null;
+  for (const d of drawdowns(prices)) {
+    if (isSolError(d)) return d;
+    if (d !== null && (worst === null || d < worst)) worst = d;
+  }
+  return worst;
+}
+
+/** (p_last / p_first)^(periodsPerYear / periods elapsed) − 1 over the present prices. */
+export function cagr(prices: readonly RCell[], periodsPerYear = 1): number | SolError | null {
+  const idx: number[] = [];
+  for (let i = 0; i < prices.length; i++) { const v = prices[i]; if (isSolError(v)) return v; if (finite(v)) idx.push(i); }
+  if (idx.length < 2) return null;
+  const first = prices[idx[0]] as number, last = prices[idx[idx.length - 1]] as number;
+  const elapsed = idx[idx.length - 1] - idx[0];
+  if (first <= 0 || last <= 0) return solError("#DOMAIN!", "CAGR needs positive prices");
+  return Math.pow(last / first, periodsPerYear / elapsed) - 1;
+}
+
+function excessStats(returns: readonly RCell[], rf: number): { n: number; mean: number; sd: number; downside: number } | SolError | null {
+  const xs: number[] = [];
+  for (const r of returns) { if (isSolError(r)) return r; if (finite(r)) xs.push(r - rf); }
+  if (xs.length < 2) return null;
+  const n = xs.length;
+  const mean = xs.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1));
+  const downside = Math.sqrt(xs.reduce((a, b) => a + Math.min(b, 0) ** 2, 0) / n);
+  return { n, mean, sd, downside };
+}
+
+export function volatility(returns: readonly RCell[], periodsPerYear = 1): number | SolError | null {
+  const s = excessStats(returns, 0);
+  return s === null || isSolError(s) ? s : s.sd * Math.sqrt(periodsPerYear);
+}
+
+export function sharpeRatio(returns: readonly RCell[], rf = 0, periodsPerYear = 1): number | SolError | null {
+  const s = excessStats(returns, rf);
+  if (s === null || isSolError(s)) return s;
+  return s.sd === 0 ? solError("#DIV/0!", "Sharpe: the returns have no spread") : (s.mean / s.sd) * Math.sqrt(periodsPerYear);
+}
+
+export function sortinoRatio(returns: readonly RCell[], rf = 0, periodsPerYear = 1): number | SolError | null {
+  const s = excessStats(returns, rf);
+  if (s === null || isSolError(s)) return s;
+  return s.downside === 0 ? solError("#DIV/0!", "Sortino: no return fell below the target") : (s.mean / s.downside) * Math.sqrt(periodsPerYear);
+}
+
+/** The Returns card's dispatcher — one op, one answer (list or scalar by RETURNS_OP_META). */
+export function returnsOp(op: ReturnsOp, series: readonly RCell[], rf = 0, periodsPerYear = 1): RCell[] | number | SolError | null {
+  switch (op) {
+    case "log":         return periodReturns(series, true);
+    case "simple":      return periodReturns(series, false);
+    case "cumulative":  return cumulativeReturns(series);
+    case "drawdown":    return drawdowns(series);
+    case "maxdrawdown": return maxDrawdown(series);
+    case "cagr":        return cagr(series, periodsPerYear);
+    case "volatility":  return volatility(series, periodsPerYear);
+    case "sharpe":      return sharpeRatio(series, rf, periodsPerYear);
+    case "sortino":     return sortinoRatio(series, rf, periodsPerYear);
+  }
+}

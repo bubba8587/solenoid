@@ -1658,6 +1658,134 @@
    "init": {
     "label": "positions in [10,15]"
    }
+  },
+  {
+   "id": "src_prices",
+   "type": "ListInputNode",
+   "x": 4800,
+   "y": 1240,
+   "init": {
+    "label": "Prices",
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "100, 102, 101, 105, 103, 108, 110, 107"
+   }
+  },
+  {
+   "id": "ret_log",
+   "type": "ReturnsNode",
+   "x": 5200,
+   "y": 1240,
+   "init": {
+    "label": "Log returns",
+    "op": "log"
+   }
+  },
+  {
+   "id": "d_ret_log",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 1240,
+   "init": {
+    "label": "log returns"
+   }
+  },
+  {
+   "id": "ret_dd",
+   "type": "ReturnsNode",
+   "x": 5200,
+   "y": 1460,
+   "init": {
+    "label": "Drawdown",
+    "op": "drawdown"
+   }
+  },
+  {
+   "id": "d_ret_dd",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 1460,
+   "init": {
+    "label": "drawdown"
+   }
+  },
+  {
+   "id": "ret_mdd",
+   "type": "ReturnsNode",
+   "x": 5200,
+   "y": 1680,
+   "init": {
+    "label": "Max drawdown",
+    "op": "maxdrawdown"
+   }
+  },
+  {
+   "id": "d_ret_mdd",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 1680,
+   "init": {
+    "label": "max drawdown"
+   }
+  },
+  {
+   "id": "ret_simple",
+   "type": "ReturnsNode",
+   "x": 5200,
+   "y": 1900,
+   "init": {
+    "label": "Simple returns",
+    "op": "simple"
+   }
+  },
+  {
+   "id": "ret_sharpe",
+   "type": "ReturnsNode",
+   "x": 5600,
+   "y": 1900,
+   "init": {
+    "label": "Sharpe ratio",
+    "op": "sharpe"
+   },
+   "literals": {
+    "rf": 0,
+    "periods": 252
+   }
+  },
+  {
+   "id": "d_ret_sharpe",
+   "type": "DisplayNode",
+   "x": 6000,
+   "y": 1900,
+   "init": {
+    "label": "annualised Sharpe"
+   }
+  },
+  {
+   "id": "ret_cagr",
+   "type": "ReturnsNode",
+   "x": 5200,
+   "y": 2140,
+   "init": {
+    "label": "CAGR",
+    "op": "cagr"
+   },
+   "literals": {
+    "rf": 0,
+    "periods": 252
+   }
+  },
+  {
+   "id": "d_ret_cagr",
+   "type": "DisplayNode",
+   "x": 5600,
+   "y": 2140,
+   "init": {
+    "label": "CAGR (252/yr)"
+   }
   }
  ],
  "connections": [
@@ -2445,6 +2573,72 @@
    "source": "a_which",
    "sourceOutput": "result",
    "target": "d_which",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_prices",
+   "sourceOutput": "list",
+   "target": "ret_log",
+   "targetInput": "list"
+  },
+  {
+   "source": "ret_log",
+   "sourceOutput": "result",
+   "target": "d_ret_log",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_prices",
+   "sourceOutput": "list",
+   "target": "ret_dd",
+   "targetInput": "list"
+  },
+  {
+   "source": "ret_dd",
+   "sourceOutput": "result",
+   "target": "d_ret_dd",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_prices",
+   "sourceOutput": "list",
+   "target": "ret_mdd",
+   "targetInput": "list"
+  },
+  {
+   "source": "ret_mdd",
+   "sourceOutput": "result",
+   "target": "d_ret_mdd",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_prices",
+   "sourceOutput": "list",
+   "target": "ret_simple",
+   "targetInput": "list"
+  },
+  {
+   "source": "ret_simple",
+   "sourceOutput": "result",
+   "target": "ret_sharpe",
+   "targetInput": "list"
+  },
+  {
+   "source": "ret_sharpe",
+   "sourceOutput": "result",
+   "target": "d_ret_sharpe",
+   "targetInput": "in"
+  },
+  {
+   "source": "src_prices",
+   "sourceOutput": "list",
+   "target": "ret_cagr",
+   "targetInput": "list"
+  },
+  {
+   "source": "ret_cagr",
+   "sourceOutput": "result",
+   "target": "d_ret_cagr",
    "targetInput": "in"
   }
  ]

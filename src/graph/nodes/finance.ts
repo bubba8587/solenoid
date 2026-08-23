@@ -1,5 +1,5 @@
 ﻿import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, dateIn, dateListIn, frameOut, readInput } from "./shared";
+import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput } from "./shared";
 import type { FrameValue } from "../frame";
 import { serialToJsDate } from "./date";
 import { solError, type SolError } from "../errorValue";
@@ -11,7 +11,10 @@ import {
   coupAddMonths, days30_360, actualDays,
   couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
   bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
+  returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
+export { RETURNS_OP_META } from "./financeOps";
+export type { ReturnsOp } from "./financeOps";
 import type {
   CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
@@ -1286,5 +1289,59 @@ export class AmortizationNode extends ClassicPreset.Node {
     ] };
     this.cachedResult = frame;
     return { frame };
+  }
+}
+
+// ─── RETURNS (return-series quant one-liners) ────────────────────────────────
+export class ReturnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Prices for the price-based ops (log / simple returns, drawdown, CAGR); per-period returns for the rest.",
+    rf: "Risk-free rate PER PERIOD (an annual 4% on daily data is 0.04 / 252); 0 when unwired.",
+    periods: "Periods per year for annualising — 252 trading days, 12 months, 1 for none.",
+  };
+  label: string;
+  op: ReturnsOp;
+  literals: Record<string, number> = { rf: 0, periods: 1 };
+  cachedResult: (number | null | SolError)[] | number | SolError | null = null;
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; op?: ReturnsOp }) {
+    super("Returns");
+    this.op = init?.op ?? "log";
+    this.label = init?.label ?? RETURNS_OP_META[this.op].label;
+    this.addInput("list", listIn(ReturnsNode.inputLabel(this.op)));
+    for (const k of RETURNS_OP_META[this.op].needs) this.addInput(k, ReturnsNode.extraInput(k));
+    this.addOutput("result", ReturnsNode.outputFor(this.op));
+  }
+
+  static inputLabel(op: ReturnsOp) { return RETURNS_OP_META[op].takes === "prices" ? "Prices" : "Returns"; }
+  static extraInput(k: "rf" | "periods") { return k === "rf" ? numIn("Risk-free / period") : numIn("Periods / year"); }
+  static outputFor(op: ReturnsOp) { return RETURNS_OP_META[op].scalar ? numOut(RETURNS_OP_META[op].label) : listOut(RETURNS_OP_META[op].label); }
+
+  /** The op owns the extra sockets (rf / periods) and the output rank. In-place: callers on a
+   *  live graph prune the departing extras' cables BEFORE (onePrunePath) and
+   *  retypeOutputCables AFTER when `outputChanged`. */
+  setOp(next: ReturnsOp): { removed: string[]; outputChanged: boolean } {
+    if (next === this.op) return { removed: [], outputChanged: false };
+    const before = RETURNS_OP_META[this.op], after = RETURNS_OP_META[next];
+    const removed = before.needs.filter((k) => !after.needs.includes(k));
+    this.op = next;
+    for (const k of removed) if (this.inputs[k]) this.removeInput(k);
+    for (const k of after.needs) if (!this.inputs[k]) this.addInput(k, ReturnsNode.extraInput(k));
+    const list = this.inputs.list; if (list) list.label = ReturnsNode.inputLabel(next);
+    const outputChanged = before.scalar !== after.scalar;
+    if (outputChanged) { const spec = ReturnsNode.outputFor(next); this.outputs.result!.socket = spec.socket; }
+    this.outputs.result!.label = after.label;
+    return { removed, outputChanged };
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][]; rf?: number[]; periods?: number[] }) {
+    const arr = inputs.list?.[0] ?? null;
+    const rf = readInput(inputs.rf, this.literals.rf ?? 0);
+    const periods = readInput(inputs.periods, this.literals.periods ?? 1);
+    if (arr === null || rf === null || periods === null) { this.cachedResult = null; return { result: null }; }
+    const result = returnsOp(this.op, arr, rf, periods);
+    this.cachedResult = result;
+    return { result };
   }
 }

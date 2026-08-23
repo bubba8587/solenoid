@@ -43,6 +43,9 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   DATETRUNC: "Truncate Date node",
   LEVENSHTEIN: "Text Similarity node (edit distance)", SIMILARITY: "Text Similarity node",
   FITDIST: "Fit Distribution node", RANDDIST: "Distribution node (sample form)",
+  LOGRETURNS: "Returns node (log op)", CUMRETURNS: "Returns node (cumulative op)", DRAWDOWN: "Returns node (drawdown op)",
+  MAXDRAWDOWN: "Returns node (max drawdown op)", CAGR: "Returns node (CAGR op)", VOLATILITY: "Returns node (volatility op)",
+  SHARPE: "Returns node (Sharpe op)", SORTINO: "Returns node (Sortino op)",
   SOLVE: "Solve A·x = b node", EIGENVALUES: "Eigen (symmetric) node", EIGENVECTORS: "Eigen (symmetric) node", SPECTRUM: "Spectrum (FFT) node",
   // the Hypothesis Test card's non-Excel ops
   KRUSKAL: "Hypothesis Test (Kruskal–Wallis op)", MANNWHITNEY: "Hypothesis Test (Mann–Whitney op)",

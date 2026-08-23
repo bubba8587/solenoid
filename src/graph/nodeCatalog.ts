@@ -19,7 +19,7 @@ import {
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
-  TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode, AmortizationNode,
+  TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode, AmortizationNode, ReturnsNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
   WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
@@ -682,6 +682,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "tvm", label: "Time Value of Money", description: "The loan and annuity family as one relation over rate, nper, pmt, pv, fv. Any four wired and the fifth solves. All five → Check answers TRUE or FALSE. Payment timing (Excel's type argument) is the dropdown. Excel: PMT, PV, FV, NPER, RATE.", create: () => new TvmNode(), keywords: "pmt pv fv nper rate loan annuity payment mortgage present future value" },
           { type: "amortization", label: "Amortization Schedule", description: "The loan table Excel users build by hand: one row per period with Payment, Interest, Principal and the remaining Balance (Excel's PMT / IPMT / PPMT laid out; R amort.table, numpy_financial). Rate is per period; payment timing is the dropdown.", create: () => new AmortizationNode(), parity: false, keywords: "amortization amortisation schedule loan mortgage table payment interest principal balance ipmt ppmt pmt" },
+          { type: "returns", label: "Returns", description: "The return-series one-liners: log / simple returns, cumulative return, drawdown and max drawdown, CAGR, annualised volatility, Sharpe and Sortino — pick on the card. pandas pct_change / cumprod, PerformanceAnalytics, quantmod. No Excel equivalent beyond hand-built columns.", create: () => new ReturnsNode(), parity: false, keywords: "returns log return pct_change cumulative drawdown max drawdown cagr volatility sharpe sortino risk-free annualize annualise quant performance portfolio price series" },
           { type: "fin-compound-growth", label: "Compound Growth", description: "Lump-sum growth fv = pv·(1+rate)^nper — wire three, the fourth solves. Excel: FV or PV (pmt-less), PDURATION (solve nper), RRI (solve rate).", create: () => new EquationNode({ label: "Compound Growth", expr: "fv = pv * (1 + rate)^nper", locked: true }), keywords: "pduration rri compound interest growth doubling lump sum" },
         ],
       },

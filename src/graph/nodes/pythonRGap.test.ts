@@ -26,7 +26,8 @@ import { fitEts, etsForecast, etsInterval, detectSeason } from "./forecastOps";
 import { EtsForecastNode, FitDistributionNode } from "./stats";
 import { fitDistribution, fitAll } from "./fitOps";
 import { DescribeNode, CorrMatrixNode } from "./frame";
-import { AmortizationNode } from "./finance";
+import { AmortizationNode, ReturnsNode } from "./finance";
+import { periodReturns, cumulativeReturns, drawdowns, maxDrawdown, cagr, volatility, sharpeRatio, sortinoRatio } from "./financeOps";
 import type { FrameValue } from "../frame";
 
 // python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
@@ -500,7 +501,6 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
 });
 
 describe("positions: ARGSORT / WHICH on the ARGMAX card (numpy.argsort, R order / which)", () => {
-  const ev = (e: string) => compileEvaluator(e)!({});
   it("argsort is 1-based and stable; blanks and errors sort last either way", () => {
     expect(argsortList([30, 10, 20])).toEqual([2, 3, 1]);
     expect(argsortList([30, 10, 20], true)).toEqual([1, 3, 2]);
@@ -531,5 +531,57 @@ describe("positions: ARGSORT / WHICH on the ARGMAX card (numpy.argsort, R order 
     expect(evx("ARGSORT(x)")).toEqual([2, 3, 1]);
     expect(evx("ARGSORT(x, TRUE)")).toEqual([1, 3, 2]);
     expect(evx("WHICH(x > 15)")).toEqual([1, 3]);
+  });
+});
+
+describe("Returns card — pandas pct_change / cumprod, PerformanceAnalytics (references computed locally)", () => {
+  const P = [100, 102, 101, 105, 103, 108, 110, 107];
+  const R = [0.02, -0.0098039216, 0.0396039604, -0.019047619, 0.0485436893, 0.0185185185, -0.0272727273];
+  const close = (xs: unknown, ys: (number | null)[]) => {
+    const a = xs as (number | null)[];
+    expect(a.length).toBe(ys.length);
+    a.forEach((v, i) => (ys[i] === null ? expect(v).toBeNull() : expect(v).toBeCloseTo(ys[i] as number, 8)));
+  };
+  it("log / simple returns lead with a blank; a blank price blanks both neighbours", () => {
+    close(periodReturns(P, true), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
+    close(periodReturns(P, false), [null, ...R]);
+    close(periodReturns([100, null, 110, 121], false), [null, null, null, 0.1]);
+  });
+  it("cumulative return compounds; drawdown is ≤ 0 from the running peak; max drawdown is its minimum", () => {
+    close(cumulativeReturns(R), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
+    close(drawdowns(P), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
+    expect(maxDrawdown(P)).toBeCloseTo(-0.0272727273, 8);
+    expect(maxDrawdown([])).toBeNull();
+  });
+  it("CAGR / volatility / Sharpe / Sortino annualise by periods per year; rf is per period", () => {
+    expect(cagr(P, 252)).toBeCloseTo(10.423942188538536, 6);
+    expect(cagr(P, 1)).toBeCloseTo(Math.pow(1.07, 1 / 7) - 1, 10);
+    expect(volatility(R, 252)).toBeCloseTo(0.46552064666834575, 8);
+    expect(sharpeRatio(R, 0, 252)).toBeCloseTo(5.455200388274644, 6);
+    expect(sharpeRatio(R, 0.001, 252)).toBeCloseTo(4.913871014801045, 6);
+    expect(sortinoRatio(R, 0.001, 252)).toBeCloseTo(10.501642446871466, 6);
+    expect((sharpeRatio([0.01, 0.01, 0.01]) as { code?: string }).code).toBe("#DIV/0!");
+    expect((cagr([0, 5]) as { code?: string }).code).toBe("#DOMAIN!");
+  });
+  it("the card swaps its rf / periods sockets and output rank with the op; formulas agree", () => {
+    const n = new ReturnsNode({ op: "log" });
+    expect(Object.keys(n.inputs)).toEqual(["list"]);
+    close(n.data({ list: [P] }).result, [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
+    expect(n.setOp("sharpe")).toEqual({ removed: [], outputChanged: true });
+    expect(Object.keys(n.inputs).sort()).toEqual(["list", "periods", "rf"]);
+    n.literals.periods = 252;
+    expect(n.data({ list: [R] }).result).toBeCloseTo(5.455200388274644, 6);
+    expect(n.setOp("maxdrawdown")).toEqual({ removed: ["rf", "periods"], outputChanged: false });
+    expect(Object.keys(n.inputs)).toEqual(["list"]);
+    expect(n.data({ list: [P] }).result).toBeCloseTo(-0.0272727273, 8);
+    const ev = (e: string) => compileEvaluator(e)!({ p: P, r: R });
+    expect(ev("MAXDRAWDOWN(p)")).toBeCloseTo(-0.0272727273, 8);
+    expect(ev("CAGR(p, 252)")).toBeCloseTo(10.423942188538536, 6);
+    expect(ev("SHARPE(r, 0.001, 252)")).toBeCloseTo(4.913871014801045, 6);
+    expect(ev("SORTINO(r, 0.001, 252)")).toBeCloseTo(10.501642446871466, 6);
+    expect(ev("VOLATILITY(r, 252)")).toBeCloseTo(0.46552064666834575, 8);
+    close(ev("CUMRETURNS(r)"), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
+    close(ev("DRAWDOWN(p)"), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
+    close(ev("LOGRETURNS(p)"), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
   });
 });

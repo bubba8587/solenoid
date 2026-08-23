@@ -33,7 +33,7 @@ import {
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, CorrMatrixNode, AmortizationNode, WindowNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, CorrMatrixNode, AmortizationNode, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, ElementNode, 
   FisherNode, GroupByFrameNode,
@@ -251,6 +251,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "corr-matrix", ctor: CorrMatrixNode, kind: "argument" },
   { type: "window", ctor: WindowNode, kind: "argument" },
   { type: "amortization", ctor: AmortizationNode, kind: "argument" },
+  // Each op is the operation (Sharpe IS the card); fx rides in RETURNS_OP_META.
+  { type: "returns", ctor: ReturnsNode, kind: "operation", ops: fromMeta(RETURNS_OP_META),
+    create: (op) => new ReturnsNode({ op: op as ReturnsOp }) },
   { type: "date-trunc", ctor: DateTruncNode, kind: "argument" },
   { type: "list-outliers", ctor: OutliersNode, kind: "argument" },
   // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on

@@ -26,8 +26,7 @@ import {
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr,
-} from "./nodes/financeOps";
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, parseCx, type Cx,
@@ -634,6 +633,14 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGSORT:         { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
+  LOGRETURNS:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
+  CUMRETURNS:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
+  DRAWDOWN:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
+  MAXDRAWDOWN:     { returns: "number", listArgs: true, arity: [1, 1], family: "finance", native: true },
+  CAGR:            { returns: "number", listArgs: true, arity: [1, 2], family: "finance", native: true },
+  VOLATILITY:      { returns: "number", listArgs: true, arity: [1, 2], family: "finance", native: true },
+  SHARPE:          { returns: "number", listArgs: true, arity: [1, 3], family: "finance", native: true },
+  SORTINO:         { returns: "number", listArgs: true, arity: [1, 3], family: "finance", native: true },
   WHICH:           { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
   ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   CONTAINS:        { returns: "logical", listArgs: true, arity: [2, 2], native: true },
@@ -1608,6 +1615,15 @@ registerInternal("RUNNING", (op, list, w) => {
 registerInternal("LENGTH",   (list) => toList(list).length);
 registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
 registerInternal("ARGSORT",  (list, desc) => argsortList(numList(list), isTrue(desc)));
+// The Returns card's ops (financeOps.returnsOp): [rf] is per period, [periods] per year.
+registerInternal("LOGRETURNS",  (list) => returnsOp("log", numList(list)));
+registerInternal("CUMRETURNS",  (list) => returnsOp("cumulative", numList(list)));
+registerInternal("DRAWDOWN",    (list) => returnsOp("drawdown", numList(list)));
+registerInternal("MAXDRAWDOWN", (list) => returnsOp("maxdrawdown", numList(list)));
+registerInternal("CAGR",        (list, periods) => returnsOp("cagr", numList(list), 0, optNum(periods, 1)));
+registerInternal("VOLATILITY",  (list, periods) => returnsOp("volatility", numList(list), 0, optNum(periods, 1)));
+registerInternal("SHARPE",      (list, rf, periods) => returnsOp("sharpe", numList(list), optNum(rf, 0), optNum(periods, 1)));
+registerInternal("SORTINO",     (list, rf, periods) => returnsOp("sortino", numList(list), optNum(rf, 0), optNum(periods, 1)));
 registerInternal("WHICH",    (list) => whichPositions(toList(list)));
 registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list)));
 registerInternal("CONTAINS", (list, v) => containsValue(toList(list), v));

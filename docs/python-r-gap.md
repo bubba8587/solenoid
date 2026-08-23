@@ -40,8 +40,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 21. **Savitzky–Golay / LOWESS smoothing, peak finding** (`savgol_filter`, `lowess`,
     `find_peaks`): signal users; SG is a convolution with computed coefficients (cheap),
     LOWESS moderate, find_peaks (prominence/distance) cheap.
-22. **Drawdown / Sharpe / rolling volatility / log returns** (quant one-liners): ops on a
-    "Returns" node; all compose today from Running + LN but nobody knows the recipe. Cheap.
+22. **Drawdown / Sharpe / volatility / log returns** — LANDED 2026-08-23 (Returns card: log /
+    simple / cumulative returns, drawdown, max drawdown, CAGR, volatility, Sharpe, Sortino —
+    op swaps the rf / periods sockets and the output rank; LOGRETURNS … SORTINO formulas).
 23. **Seasonal decomposition** (`seasonal_decompose`, R `decompose`/`stl`): trend (moving
     average) / seasonal / residual frames. Moderate; pairs with Holt-Winters.
 24. **Distribution fitting** — LANDED 2026-08-23 (Fit Distribution node + FITDIST; MLE for normal / lognormal / exponential / gamma / Weibull / uniform / Poisson, moments for beta; AIC ranking + KS).
