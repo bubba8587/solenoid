@@ -394,6 +394,17 @@ export function downstreamClosure(editor: NodeEditor<Schemes>, startId: string):
 // cables; omit it for any structural change, load, or when unsure.
 // `renderOnly` — ADDITIVE bulk mode (paste): the given nodes are self-contained, so DON'T
 // reset the engine and re-render only that set. Mutually exclusive with changedNodeId.
+// Single-flight guard: exactly ONE pass runs at a time. A recompute requested WHILE a pass
+// is in flight — a node's mount/render effect calling processGraph mid-pass (the Conduit's
+// realLanes effect is the live one; ~7 component call sites do this) — must NOT re-enter: a
+// nested pass shares and corrupts this module's per-pass state (the engine reset/cache, the
+// collect memo, the loop set). Under the async DOM render this held only by luck — the effect
+// fired a task LATER, after the pass had drained; a synchronous render (a `flushSync` mount)
+// fires it mid-render, and the nested pass threw `node is not initialized`. So coalesce: flag
+// the request and run exactly one full follow-up pass once the active one settles.
+let _passActive = false;
+let _rerunQueued = false;
+
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   // Manual calculation mode: skip the pass and flag dirty (F9 passes force). A load /
   // seed / paste rebuild is exempt, via the rebuild gate, so an opened document isn't blank.
@@ -401,16 +412,22 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
     calcModeStore.markDirty();
     return;
   }
-  // The `finally` balances the compute-overlay counter on every exit path.
+  if (_passActive) { _rerunQueued = true; return; }
+  _passActive = true;
+  // The `finally` balances the compute-overlay counter and clears the in-flight flag.
   beginCompute();
   try {
-    const result = await runGraphPass(changedNodeId, renderOnly, opts?.topology === true);
+    await runGraphPass(changedNodeId, renderOnly, opts?.topology === true);
     // A completed pass clears the manual-mode dirty flag (no-op in auto mode).
     calcModeStore.clearDirty();
-    return result;
   } finally {
+    _passActive = false;
     endCompute();
   }
+  // Drain a coalesced request as ONE full pass on the now-settled graph — never re-entrant
+  // (the flag is clear), so it can't corrupt per-pass state, and a full pass supersets any
+  // targeted call that was coalesced. A stable render dep fires no effect, so it can't re-queue.
+  if (_rerunQueued) { _rerunQueued = false; await processGraph(); }
 }
 
 // The OUTERMOST composite card whose (possibly nested) internal editor holds `innerId`.

@@ -101,6 +101,19 @@ reads clipped" item is postponed with no scheduled follow-up; the full investiga
 (refuted mechanisms, the headed-on-author-hardware clear, "reproduce on THEIR document first")
 lives in the 2026-08-22 digest if it ever reopens. Removed from the active backlog.
 
+**`processGraph` is now single-flight — a mid-pass recompute coalesces instead of nesting
+(root-cause hardening 2026-08-23).** A recompute requested WHILE a pass runs (any of ~7
+component call sites: the Conduit's `useEffect(processGraph, [realLanes])`, CompositeNode ×4,
+Date/Number input commits) used to be safe only by luck — the async DOM render fired the effect a
+task LATER, after the pass drained. A synchronous render (a `flushSync` mount) fires it mid-render,
+and the nested pass corrupts the shared per-pass state (engine reset/cache, collect memo, loop
+set) → rete-engine's `node is not initialized`. Fixed at the shared entry, not per-component:
+`_passActive`/`_rerunQueued` guard — a call arriving mid-pass flags a rerun and returns; exactly
+one full follow-up pass runs after the active one settles (multiple coalesce to one; a stable
+render dep can't re-queue). Inert on the current async render (no re-entrancy there); covers every
+call site. Pinned in `processReentrancy.test.ts` (drives the real singleton with a stub area whose
+render re-enters; verified to FAIL without the guard). Full suite green (4428).
+
 **`rete-react-plugin` 2.1.2 bump REJECTED — it crashes a big-doc load (measured 2026-08-23).**
 The 2.1.2 fix wraps the plugin's `mount` in `flushSync(root.render)`. Because rete reuses the
 cached root, every `_area.update` in `runGraphPass`'s `Promise.all` commits synchronously
