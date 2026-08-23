@@ -569,12 +569,16 @@ export const NODE_CATALOG: CatalogEntry[] = [
               reduceLeaf("avedev"),
               { type: "pair", children: [reduceLeaf("skew"), reduceLeaf("skew_p")] },
               reduceLeaf("kurt"),
+              { type: "pair", children: [reduceLeaf("ptp"), reduceLeaf("iqr")] },
+              { type: "pair", children: [reduceLeaf("mad"), reduceLeaf("sem")] },
+              { type: "pair", children: [reduceLeaf("cv"), reduceLeaf("rms")] },
             ],
           },
           {
             type: "category", label: "Correlation", description: "Two parallel lists: correlation, covariance, the Fisher transform, and paired-list sums.",
             children: [
               correlLeaf("correl"),
+              { type: "pair", children: [correlLeaf("spearman"), correlLeaf("kendall")] },
               { type: "pair", children: [covLeaf("pop"), covLeaf("samp")] },
               { type: "pair", children: [fisherLeaf("fisher"), fisherLeaf("fisherinv")] },
               spLeaf("sumx2my2"),

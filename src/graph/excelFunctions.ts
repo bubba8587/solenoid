@@ -3,7 +3,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
-import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
+import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit } from "./nodes/dateOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
@@ -437,6 +437,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   STEYX:       { returns: "number", arity: [2, 2], family: "statistics" },
   FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
   FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
+  // numpy / pandas / R one-liners (python-r-gap.md) — Solenoid-native names
+  PTP:         { returns: "number", arity: [1, 255], native: true },
+  IQR:         { returns: "number", arity: [1, 255], native: true },
+  MAD:         { returns: "number", arity: [1, 255], native: true },
+  SEM:         { returns: "number", arity: [1, 255], native: true },
+  CV:          { returns: "number", arity: [1, 255], native: true },
+  RMS:         { returns: "number", arity: [1, 255], native: true },
+  SPEARMAN:    { returns: "number", arity: [2, 2], native: true },
+  KENDALL:     { returns: "number", arity: [2, 2], native: true },
   // The date family on the date nodes' dateOps kernels (A1 backing flip, 2026-08-23).
   TIME:        { returns: "number", arity: [3, 3], family: "datetime" },
   TIMEVALUE:   { returns: "number", arity: [1, 1], family: "datetime" },
@@ -896,6 +905,8 @@ const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
   ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
   ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
+  // the numpy / pandas / R one-liners (no Excel name)
+  ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
 ];
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
 // AVERAGEA: Excel counts text as 0 and logicals as 1/0 — every non-blank cell is a value.
@@ -915,6 +926,8 @@ registerInternal("MODE",      (...a) => modeSingle(numsOf(...a)));
 registerInternal("MODE.SNGL", (...a) => modeSingle(numsOf(...a)));
 registerInternal("CORREL",       (x, y) => pearson(numsOf(x), numsOf(y)));
 registerInternal("RSQ",          (y, x) => pearson(numsOf(x), numsOf(y), true));
+registerInternal("SPEARMAN",     (x, y) => spearman(numsOf(x), numsOf(y)));
+registerInternal("KENDALL",      (x, y) => kendallTau(numsOf(x), numsOf(y)));
 registerInternal("COVAR",        (x, y) => covariance(numsOf(x), numsOf(y), false));
 registerInternal("COVARIANCE.P", (x, y) => covariance(numsOf(x), numsOf(y), false));
 registerInternal("COVARIANCE.S", (x, y) => covariance(numsOf(x), numsOf(y), true));

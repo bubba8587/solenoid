@@ -31,6 +31,7 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
     ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
     ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
     ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
+    ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
   ];
   it.each(OPS)("%s(list) == Aggregate %s", (fn, op) => {
     for (const list of SAMPLES) {
@@ -40,6 +41,28 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
   });
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
+  });
+});
+
+describe("the numpy / pandas / R one-liners answer what scipy answers", () => {
+  const x = [2, 4, 4, 4, 5, 5, 7, 9];
+  it("PTP / IQR / MAD / SEM / CV / RMS", () => {
+    expect(ev("PTP(x)", { x })).toBe(7);
+    expect(ev("IQR(x)", { x })).toBeCloseTo(1.5, 12);          // numpy percentile 75 − 25 (linear) = 5.5 − 4
+    expect(ev("MAD(x)", { x })).toBe(0.5);                      // scipy median_abs_deviation: median 4.5 → |dev| sorted .5×5, 2.5, 2.5, 4.5 → 0.5
+    expect(ev("SEM(x)", { x })).toBeCloseTo(2.138089935299395 / Math.sqrt(8), 12);
+    expect(ev("CV(x)", { x })).toBeCloseTo(2.138089935299395 / 5, 12);
+    expect(ev("RMS(x)", { x })).toBeCloseTo(Math.sqrt(232 / 8), 12);
+    expect(ev("SEM(x)", { x: [1] })).toBeNull();
+    expect(isSolError(ev("CV(x)", { x: [-1, 1] }))).toBe(true); // mean 0
+  });
+  it("SPEARMAN / KENDALL == Correl node, with scipy's values", () => {
+    const a = [1, 2, 3, 4, 5], b = [5, 6, 7, 8, 7];
+    same(ev("SPEARMAN(a, b)", { a, b }), new CorrelNode({ op: "spearman" }).data({ x: [a], y: [b] }).result);
+    same(ev("KENDALL(a, b)", { a, b }), new CorrelNode({ op: "kendall" }).data({ x: [a], y: [b] }).result);
+    expect(ev("SPEARMAN(a, b)", { a, b })).toBeCloseTo(0.8207826816681233, 12); // scipy.stats.spearmanr
+    expect(ev("KENDALL(a, b)", { a, b })).toBeCloseTo(0.7378647873726218, 12);  // scipy.stats.kendalltau (tau-b)
+    expect(ev("SPEARMAN(a, c)", { a, c: [1, 4, 9, 16, 25] })).toBe(1);          // any monotone map is ρ = 1
   });
 });
 

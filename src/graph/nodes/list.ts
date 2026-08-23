@@ -1785,6 +1785,12 @@ export const REDUCE_OP_META = {
   skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: SKEW." },
   skew_p:  { label: "SKEW.P",  description: "Population skewness. Divides by n. Excel: SKEW.P." },
   kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
+  ptp:     { label: "PTP",     description: "Range of the data: max − min. numpy ptp (peak to peak), R diff(range(x)). No Excel equivalent — MAX − MIN." },
+  iqr:     { label: "IQR",     description: "Interquartile range: the 75th minus the 25th percentile (PERCENTILE.INC). scipy iqr, R IQR." },
+  mad:     { label: "MAD",     description: "Median absolute deviation from the median, unscaled (scipy median_abs_deviation; R's mad multiplies by 1.4826). The robust spread." },
+  sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ √n. scipy sem, R sd(x)/sqrt(n)." },
+  cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy variation, R sd(x)/mean(x)." },
+  rms:     { label: "RMS",     description: "Root mean square: √(Σx² ÷ n)." },
 } satisfies Record<ReduceOp, { label: string; description: string }>;
 
 // The user-facing identity is "Aggregate", a fixed-op 1-D list aggregator — NOT the
@@ -1798,12 +1804,13 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   switch (op) {
     case "sum": case "avg": case "min": case "max": case "median":
     case "geomean": case "harmean": case "stdev": case "stdev_p": case "avedev":
+    case "ptp": case "iqr": case "mad": case "sem": case "rms":
       return dim;
     case "var_s": case "var_p": case "devsq": case "sumsq":
       return dimPow(dim, 2);
     case "product":
       return dimPow(dim, n);
-    default: // count, countdistinct, skew, skew_p, kurt → a plain number
+    default: // count, countdistinct, skew, skew_p, kurt, cv → a plain number
       return DIMENSIONLESS;
   }
 }

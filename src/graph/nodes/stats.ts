@@ -4,7 +4,7 @@ import { fillBorderedGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
-import { percentile, quartile, nthExtreme, pearson, covariance, modes, fisher, regression } from "./statsOps";
+import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
@@ -163,11 +163,13 @@ export class RankPercentileNode extends ClassicPreset.Node {
   }
 }
 
-export type CorrelOp = "correl" | "rsq";
+export type CorrelOp = "correl" | "rsq" | "spearman" | "kendall";
 
 export const CORREL_OP_META = {
   correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: CORREL." },
   rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: RSQ." },
+  spearman: { label: "SPEARMAN", description: "Spearman's rank correlation ρ: Pearson over the ranks, so it follows any monotone relation and shrugs off outliers. scipy spearmanr, R cor(method=\"spearman\"). No Excel equivalent." },
+  kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy kendalltau, R cor(method=\"kendall\"). No Excel equivalent." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
 export class CorrelNode extends ClassicPreset.Node {
@@ -193,7 +195,10 @@ export class CorrelNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }): { result: number | SolError | null } {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const result = pearson(xs, ys, this.op === "rsq"); // shared with the CORREL / RSQ formulas
+    // Shared with the CORREL / RSQ / SPEARMAN / KENDALL formulas.
+    const result = this.op === "spearman" ? spearman(xs, ys)
+      : this.op === "kendall" ? kendallTau(xs, ys)
+      : pearson(xs, ys, this.op === "rsq");
     this.cachedResult = result;
     return { result };
   }

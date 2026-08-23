@@ -10,7 +10,8 @@ import { iterMin, iterMax } from "./mathUtils";
 
 export type AggregateOp =
   | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
-  | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
+  | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt"
+  | "ptp" | "iqr" | "mad" | "sem" | "cv" | "rms";
 
 const sum = (a: readonly number[]) => a.reduce((x, y) => x + y, 0);
 const mean = (a: readonly number[]) => sum(a) / a.length;
@@ -66,6 +67,23 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
       const sum4 = arr.reduce((a, b) => a + ((b - m) / s) ** 4, 0);
       return ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * sum4 - (3 * (n - 1) ** 2) / ((n - 2) * (n - 3));
     }
+    // The numpy / pandas / R one-liners (python-r-gap.md Tier 1 #5).
+    case "ptp":  return iterMax(arr) - iterMin(arr);                                   // numpy ptp, R diff(range(x))
+    case "iqr": {                                                                       // scipy iqr, R IQR — PERCENTILE.INC quartiles
+      const s = [...arr].sort((a, b) => a - b);
+      return percentileOf(s, 0.75, false) - percentileOf(s, 0.25, false);
+    }
+    case "mad": {                                                                       // median absolute deviation, UNSCALED (scipy; R's mad scales ×1.4826)
+      const med = aggregate("median", arr) as number;
+      return aggregate("median", arr.map((v) => Math.abs(v - med))) as number;
+    }
+    case "sem":  return n < 2 ? null : Math.sqrt(ssd(arr, mean(arr)) / (n - 1)) / Math.sqrt(n); // scipy sem, R sd/sqrt(n)
+    case "cv": {                                                                        // coefficient of variation sd/mean (sample sd)
+      if (n < 2) return null;
+      const m = mean(arr);
+      return m === 0 ? solError("#DIV/0!", "CV is undefined when the mean is 0") : Math.sqrt(ssd(arr, m) / (n - 1)) / m;
+    }
+    case "rms":  return Math.sqrt(arr.reduce((a, b) => a + b * b, 0) / n);             // root mean square
   }
 }
 
@@ -126,6 +144,45 @@ export function pearson(xs: readonly number[], ys: readonly number[], rsq = fals
   if (den === 0) return solError("#DIV/0!", "One of the lists has zero variance");
   const r = num / den;
   return rsq ? r * r : r;
+}
+
+/** Average ranks (ties share the mean rank) — the rank transform under Spearman. */
+export function averageRanks(arr: readonly number[]): number[] {
+  const idx = arr.map((_, i) => i).sort((a, b) => arr[a] - arr[b]);
+  const ranks = new Array<number>(arr.length);
+  for (let i = 0; i < idx.length; ) {
+    let j = i;
+    while (j + 1 < idx.length && arr[idx[j + 1]] === arr[idx[i]]) j++;
+    const r = (i + j) / 2 + 1;
+    for (let k = i; k <= j; k++) ranks[idx[k]] = r;
+    i = j + 1;
+  }
+  return ranks;
+}
+
+/** Spearman's ρ: Pearson over the average ranks (scipy spearmanr, R cor(method="spearman")). */
+export function spearman(xs: readonly number[], ys: readonly number[]): number | SolError | null {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  return pearson(averageRanks(xs.slice(0, n)), averageRanks(ys.slice(0, n)));
+}
+
+/** Kendall's τ-b (tie-corrected; scipy kendalltau, R cor(method="kendall")). O(n²) — fine
+ *  for list sizes here. All-tied in either list is #DIV/0!. */
+export function kendallTau(xs: readonly number[], ys: readonly number[]): number | SolError | null {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  let conc = 0, disc = 0, tx = 0, ty = 0;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const dx = Math.sign(xs[i] - xs[j]), dy = Math.sign(ys[i] - ys[j]);
+    if (dx === 0 && dy === 0) continue;
+    if (dx === 0) { tx++; continue; }
+    if (dy === 0) { ty++; continue; }
+    if (dx === dy) conc++; else disc++;
+  }
+  const den = Math.sqrt((conc + disc + tx) * (conc + disc + ty));
+  if (den === 0) return solError("#DIV/0!", "One of the lists has no variation");
+  return (conc - disc) / den;
 }
 
 /** COVARIANCE.P (`sample=false`) / .S over paired numbers; fewer than two pairs is `null`. */
