@@ -542,8 +542,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOW:         { returns: "date", arity: [0, 0], family: "datetime" },
   // The lookups take whole lists but deliberately NOT via `listArgs` — RANGE_POSITIONAL
   // skips the error scan, so an error at an UNREFERENCED position can't poison the pick.
-  XLOOKUP:     { returns: "any", arity: [3, 6] },
-  XMATCH:      { returns: "number", arity: [2, 4] },
+  XLOOKUP:     { returns: "any", matrixArgs: true, arity: [3, 6] },
+  XMATCH:      { returns: "number", matrixArgs: true, arity: [2, 4] },
   IF:          { returns: "any", arity: [2, 3] },
   INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
@@ -1111,13 +1111,29 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
 // which also settles the deferred 1×N matrix orientation) stays deferred. Do NOT read
 // this as other RANGE functions spilling — a matrix lookup value is still #SHAPE!
 // upstream. `keys`/`values` are lists or scalars here (a matrix arg errors before us).
+// Excel's lookup_array / return_array are 1-D but ORIENTATION-FREE: a single row or a single
+// column both work, a true grid is #VALUE!. Both registrations declare `matrixArgs` so a
+// matrix reaches them whole, and guard EACH slot themselves: the lookup VALUE may be a
+// scalar or a list (the spill) but never a matrix (#SHAPE!), the arrays flatten when one
+// of their dimensions is 1, and XLOOKUP's return array must be the lookup array's length.
+const isGrid = (v: unknown): v is unknown[][] => Array.isArray(v) && v.length > 0 && Array.isArray(v[0]);
+/** A 1×N / N×1 matrix → its N cells; a list → itself; a scalar → [scalar]; a grid → null. */
+const asOneDim = (v: unknown): unknown[] | null => {
+  if (!isGrid(v)) return Array.isArray(v) ? v : [v];
+  if (v.length === 1) return [...v[0]];
+  if (v.every((row) => row.length === 1)) return v.map((row) => row[0]);
+  return null;
+};
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, searchMode) => {
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
-  const ks = Array.isArray(keys) ? keys : [keys];
-  const vs = Array.isArray(values) ? values : [values];
+  if (isGrid(lookup)) return solError("#SHAPE!", "XLOOKUP's lookup value is one value or a list, not a matrix");
+  const ks = asOneDim(keys), vs = asOneDim(values);
+  if (!ks) return solError("#VALUE!", "XLOOKUP's lookup array must be a single row or a single column");
+  if (!vs) return solError("#VALUE!", "XLOOKUP's return array must be a single row or a single column");
+  if (isGrid(values) && vs.length !== ks.length) return solError("#VALUE!", "XLOOKUP's return array must match the lookup array's length");
   const pick = (l: unknown) => {
     const idx = xmatchIndex(l, ks, mm, sm);
     if (isSolError(idx)) return idx;
@@ -1131,7 +1147,9 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
-  const ks = Array.isArray(keys) ? keys : [keys];
+  if (isGrid(lookup)) return solError("#SHAPE!", "XMATCH's lookup value is one value or a list, not a matrix");
+  const ks = asOneDim(keys);
+  if (!ks) return solError("#VALUE!", "XMATCH's lookup array must be a single row or a single column");
   const pick = (l: unknown) => {
     const idx = xmatchIndex(l, ks, mm, sm);
     if (isSolError(idx)) return idx;

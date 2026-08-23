@@ -27,9 +27,8 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   visual order; the editable CSV view stays source-order because it parses back into the
   grid). AUTHOR EYEBALL: open a >1,000-row frame popup, sort a column, confirm the top rows
   and that Copy CSV carries all rows.
-- [ ] **A4 XLOOKUP/XMATCH formula orientation** (the open item below): a 1×N / N×1 matrix
-  lookup array flattens, a grid is #VALUE!, WITHOUT `matrixArgs` letting a matrix into the
-  lookup-value or return-array slots. Then retire the XLOOKUP `rawInputs` bypass (deferrals).
+- [ ] **A4 (remainder) — retire the XLOOKUP `rawInputs` bypass** (deferrals: with typed
+  frame→cube the bypass is unneeded; the frame + cube lookup paths could collapse to one).
 - [ ] **A5 Node-by-node sweep**, per family, value-semantics + description truth (below).
 - [ ] **A6 Editing-surface kernel, bug slice first**: `installNodeDragGuard` from
   `areaPresets.ts` into BOTH `nodecreated` pipes (the dead drill-in finger pan, below) with its
@@ -251,16 +250,11 @@ column; a true grid is `#VALUE!`. Ours takes a vertical list only, and the
 advertised surface says otherwise: the hint reads exactly like Excel's signature
 and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
 
-- [ ] **Orientation — a 1×N or N×1 matrix is `#SHAPE!`** on both `XMATCH` and
-  `XLOOKUP`. A header ROW is a matrix in our model, so the common Excel shape is
-  refused. The naive "declare `matrixArgs` + flatten a single row/column, `#VALUE!`
-  a grid" was TRIED and REVERTED (2026-08-21): `matrixArgs` is a blunt switch that
-  also lets a matrix into the LOOKUP-VALUE slot (regressing it from a loud `#SHAPE!`
-  to a quiet `#N/A` — the deferred spill item below) and past the return-array, so
-  XLOOKUP stopped validating that its return array matches the lookup array's
-  length/orientation. A scoped fix must guard the lookup value and the return array
-  itself, not just flip the gate — more Excel thought needed. NOTE: the XLOOKUP NODE
-  already accepts up to CUBE inputs; this is the FORMULA surface only.
+- [x] **Orientation — LANDED 2026-08-23 (A4).** `XLOOKUP` / `XMATCH` declare `matrixArgs`
+  and guard each slot themselves: a 1×N or N×1 matrix lookup/return array flattens (Excel's
+  orientation-free 1-D), a grid is `#VALUE!`, a length mismatch between the two arrays is
+  `#VALUE!`, and a MATRIX lookup value stays a loud `#SHAPE!` — the regressions the blunt
+  2026-08-21 `matrixArgs` flip caused are each pinned in `excelFunctions.test.ts`.
 - [x] **An ARRAY `lookup_value` SPILLS — DONE (2026-08-23, author-approved).** Excel returns
   one result per element. Both the `XLOOKUP`/`XMATCH` FORMULA registrations (`pick`,
   `excelFunctions.ts`) AND the **XMATCH NODE** now spill a LIST needle to a rank-1 result list —

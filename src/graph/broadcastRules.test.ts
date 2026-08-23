@@ -113,9 +113,10 @@ describe("the matricesInFormulas containment rule", () => {
     expect((r as { code: string }).code).toBe("#SHAPE!");
   });
 
-  it("a positional lookup refuses a matrix until its 2-D form is registered", () => {
+  it("a positional lookup takes a 1-D matrix (a row or a column) but refuses a GRID lookup array — #VALUE!, Excel's answer", () => {
     const r = ev("XMATCH(2, x)", { x: M22 });
-    expect((r as { code: string }).code).toBe("#SHAPE!");
+    expect((r as { code: string }).code).toBe("#VALUE!");
+    expect(ev("XMATCH(2, x)", { x: [[1, 2]] })).toBe(2);
   });
 
   it("anything deeper than a matrix is #SHAPE!", () => {

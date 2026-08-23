@@ -297,6 +297,20 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(ev("MIRR(c, 0.1, 0.12)", cf)).toBeCloseTo(0.13903, 4);
   });
 
+  it("XLOOKUP / XMATCH take a 1×N or N×1 MATRIX as the lookup array (Excel's orientation-free 1-D); a grid is #VALUE!; a matrix lookup VALUE stays #SHAPE!", () => {
+    const row = [["a", "b", "c"]], colm = [["a"], ["b"], ["c"]], grid = [["a", "b"], ["c", "d"]];
+    expect(ev("XMATCH(\"b\", ks)", { ks: row })).toBe(2);
+    expect(ev("XMATCH(\"c\", ks)", { ks: colm })).toBe(3);
+    expect(ev("XLOOKUP(\"b\", ks, vs)", { ks: row, vs: [[10, 20, 30]] })).toBe(20);
+    expect(ev("XLOOKUP(\"b\", ks, vs)", { ks: colm, vs: [[10], [20], [30]] })).toBe(20);
+    expect(ev("XLOOKUP(\"b\", ks, vs)", { ks: row, vs: [10, 20, 30] })).toBe(20); // mixed: a row array and a plain list
+    const code = (v: unknown) => (v as { code?: string })?.code;
+    expect(code(ev("XMATCH(\"b\", ks)", { ks: grid }))).toBe("#VALUE!");
+    expect(code(ev("XLOOKUP(\"b\", ks, vs)", { ks: row, vs: grid }))).toBe("#VALUE!");
+    expect(code(ev("XLOOKUP(\"b\", ks, vs)", { ks: row, vs: [[10, 20]] }))).toBe("#VALUE!"); // length mismatch
+    expect(code(ev("XMATCH(m, ks)", { m: grid, ks: ["a", "b"] }))).toBe("#SHAPE!");
+    expect(code(ev("XLOOKUP(m, ks, ks)", { m: grid, ks: ["a", "b"] }))).toBe("#SHAPE!");
+  });
   it("XLOOKUP / XMATCH (exact match) work in a formula — Formula.js lacks them", () => {
     const env = { k: 20, ks: [10, 20, 30], vs: [100, 200, 300] };
     expect(ev("XLOOKUP(k, ks, vs)", env)).toBe(200);
