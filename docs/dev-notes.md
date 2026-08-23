@@ -86,6 +86,43 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-23d — new data nodes, node merges, formula↔node parity)
+
+**A big batch of numpy/pandas/R data nodes (author-directed), each a node AND a formula.** New:
+DIAGONAL + OUTER + Cross Product (Matrix math); Shift, Bin, EWMA, Convolve, Run Lengths, Integrate
+(new "Lists > Transform" leaf); Combinations/Permutations (Lists > Build); Poly Fit (Regression);
+Between + Is-Close (Logic, broadcasting like Comparison). Kernels in `listOps.ts`/`matrixOps.ts`
+(incl. a Gaussian `solveLinear` for the fit); formulas registered with signatures. A throwaway
+"Scratch: new nodes" seed wires them all through Display outputs (discard later).
+
+**Node-combining (the author's real intent behind "make combinations"), not new standalone nodes:**
+Percent Change → DIFF's % mode; Gradient → DIFF's ∇ mode; Z-Score → Normalize's z mode;
+GROWTH → TREND's exponential mode; ORDINAL → Spell Number's ordinal mode; Shift's blank/wrap toggle
+(covers numpy roll); Combinations/Permutations one node. The standalone PctChange/ZScore nodes that
+slipped in first were deleted.
+
+**Formula↔node PARITY is now machine-checked (`formulaNodeCoverage.test.ts`).** The author's rule:
+both surfaces must carry the same capability. Every declared-meta function must be node-reachable —
+by name, Excel alias, or a documented `FORMULA_NODE_ALIAS` mode/op. Closed the only two curated gaps
+(GROWTH, ORDINAL) and COUNTBLANK (new Aggregate op). NOT closed — the raw Formula.js passthroughs
+with no declared meta (N/T/TYPE/ERROR.TYPE/SUBTOTAL/AGGREGATE and the CEILING/FLOOR dotted variants):
+that's the open-by-default surface. Blocking them is unsafe/lossy (the rounding dotted names are
+canonical alias targets — blocking corrupts the FX namespace walk; T/TYPE have no honest redirect),
+so the real fix is the backlog's allowlist flip, still author-gated. NB the formula surface is
+BLOCKLIST-based: even SUM/AVERAGE are Formula.js passthrough with no declared meta.
+
+**Add-menu discipline:** split the 21-entry "Lists > Shape" leaf; new nodes placed ~12/leaf with
+side-by-side pairs and search keywords. Reference Overlay + Inspector auto-derive from catalog
+entries (native rows), so a description IS the declaration — no extra wiring.
+
+**rete-react-plugin bumped to 2.1.2** (`flushSync` mount → layout-ready DOM). It surfaced a latent
+bug: `flushSync` runs a mounting node's effects mid-rebuild, and the Conduit's
+`useEffect(processGraph)` fired during `addNode` before the graph was built (`node is not
+initialized`). Two-layer guard, both kept regardless of the plugin: `processGraph` single-flight
+(`processReentrancy.test.ts`) + the Conduit effect early-returning while `isGraphRebuilding()`. Also
+this session: Frame Input's add button → "+ Add lambda" and the Form-view layout gated behind a
+"+ Add Form layout" button.
+
 ### SESSION DIGEST (2026-08-23c — IRR near-floor root fallback; Solarized ground; two parks)
 
 **Fine-print residue CLOSED — the three unpinned claims are now pinned (2026-08-23).** All three
