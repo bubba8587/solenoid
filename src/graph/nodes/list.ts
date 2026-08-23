@@ -4,7 +4,7 @@ import { parseListLiteral } from "../coerceInputs";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, numListOut, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListOut, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -15,7 +15,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, combinationsOf, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -490,48 +490,6 @@ export class ShiftNode extends ClassicPreset.Node {
   }
 }
 
-export class PctChangeNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    result: "One element shorter than the input. Each entry is the fractional change from the element before (0.1 = up 10%).",
-  };
-  label: string;
-  cachedList: ListCell[] = [];
-  width = 180; height = 120;
-
-  constructor(init?: { label?: string }) {
-    super("PctChange");
-    this.label = init?.label ?? "Percent Change";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("Change"));
-  }
-
-  data(inputs: { list?: ListCell[][] }) {
-    this.cachedList = pctChangeList(inputs.list?.[0] ?? []);
-    return { result: this.cachedList };
-  }
-}
-
-export class ZScoreNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    result: "Each value as a z-score: how many standard deviations it sits from the list's mean.",
-  };
-  label: string;
-  cachedList: ListCell[] | SolError = [];
-  width = 180; height = 120;
-
-  constructor(init?: { label?: string }) {
-    super("ZScore");
-    this.label = init?.label ?? "Z-Score";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("z-scores"));
-  }
-
-  data(inputs: { list?: ListCell[][] }) {
-    this.cachedList = zscoreList(inputs.list?.[0] ?? []);
-    return { result: this.cachedList };
-  }
-}
-
 export class BinNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     breaks: "The bin edges. A value is placed by how many edges it clears: 0 below the first edge, up to n above the last.",
@@ -551,6 +509,35 @@ export class BinNode extends ClassicPreset.Node {
   data(inputs: { list?: ListCell[][]; breaks?: ListCell[][] }) {
     this.cachedList = binIndex(inputs.list?.[0] ?? [], inputs.breaks?.[0] ?? []);
     return { result: this.cachedList };
+  }
+}
+
+export class CombinationsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "One row per combination (or permutation). Empty when k is larger than the list.",
+  };
+  label: string;
+  literals: Record<string, number> = { k: 2 };
+  /** Order-independent subsets (itertools.combinations) or ordered arrangements (permutations). */
+  mode: "combinations" | "permutations" = "combinations";
+  cachedResult: ListCell[][] | SolError | null = null;
+  width = 200; height = 210;
+
+  constructor(init?: { label?: string; mode?: "combinations" | "permutations" }) {
+    super("Combinations");
+    this.label = init?.label ?? "Combinations";
+    if (init?.mode) this.mode = init.mode;
+    this.addInput("list", listIn("List"));
+    this.addInput("k", numIn("Choose k"));
+    this.addOutput("result", tableOut("Rows"));
+  }
+
+  data(inputs: { list?: ListCell[][]; k?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const k = readInput(inputs.k, this.literals.k ?? 2);
+    if (k === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
+    this.cachedResult = combinationsOf(arr, k, this.mode);
+    return { result: this.cachedResult };
   }
 }
 
@@ -1249,26 +1236,31 @@ export class RunningNode extends ClassicPreset.Node {
   }
 }
 
+export type DiffMode = "delta" | "percent";
+
 export class DiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "The output is one element shorter than the input. Each entry is the change from the element before.",
   };
 
   label: string;
+  /** Absolute difference (Δ) or consecutive percent change (pandas pct_change). */
+  mode: DiffMode = "delta";
   cachedList: ListCell[] = [];
   width = 180;
-  height = 120;
+  height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: DiffMode }) {
     super("Diff");
     this.label = init?.label ?? "DIFF";
+    if (init?.mode) this.mode = init.mode;
     this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut("Differences"));
+    this.addOutput("result", listOut(this.mode === "percent" ? "Change" : "Differences"));
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = diffList(arr);
+    this.cachedList = this.mode === "percent" ? pctChangeList(arr) : diffList(arr);
     return { result: this.cachedList };
   }
 }
@@ -1332,21 +1324,26 @@ export class ContainsNode extends ClassicPreset.Node {
 }
 
 // ─── Normalize ────────────────────────────────────────────────────────────────
+export type NormalizeMode = "minmax" | "zscore";
+
 export class NormalizeNode extends ClassicPreset.Node {
   label: string;
+  /** Rescale to 0–1 by min/max, or standardize to z-scores (distance from the mean in stdevs). */
+  mode: NormalizeMode = "minmax";
   cachedList: ListCell[] | SolError = [];
-  width = 180; height = 120;
+  width = 180; height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: NormalizeMode }) {
     super("Normalize");
     this.label = init?.label ?? "Normalize";
+    if (init?.mode) this.mode = init.mode;
     this.addInput("list",    listIn("List"));
-    this.addOutput("result", listOut("0–1"));
+    this.addOutput("result", listOut(this.mode === "zscore" ? "z-scores" : "0–1"));
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = normalizeList(arr);
+    this.cachedList = this.mode === "zscore" ? zscoreList(arr) : normalizeList(arr);
     return { result: this.cachedList };
   }
 }

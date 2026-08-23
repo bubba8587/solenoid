@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { NormalizeNode } from "../rete-nodes";
+import type { CombinationsNode } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
-import { ResultDisplay } from "./ResultDisplay";
+import { TableDisplay } from "./TableDisplay";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
 
-export function NormalizeComponent({ data, emit }: NodeProps<NormalizeNode>) {
+export function CombinationsComponent({ data, emit }: NodeProps<CombinationsNode>) {
   const [mode, setMode] = useState(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
   return (
@@ -14,13 +14,13 @@ export function NormalizeComponent({ data, emit }: NodeProps<NormalizeNode>) {
       <SegToggle arg
         value={mode}
         options={[
-          { value: "minmax" as const, label: "0–1", title: "Rescale to 0–1: min maps to 0, max to 1" },
-          { value: "zscore" as const, label: "z", title: "Z-scores: distance from the mean in standard deviations (numpy/R scale)" },
+          { value: "combinations" as const, label: "combos", title: "Order-independent subsets (itertools.combinations)" },
+          { value: "permutations" as const, label: "perms", title: "Ordered arrangements (itertools.permutations)" },
         ]}
         onChange={(next) => { setMode(next); data.mode = next; void processGraph(data.id); }}
       />
       <InlineInputs node={data} emit={emit} />
-      <ResultDisplay value={data.cachedList} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} />
     </NodeShell>
   );
 }

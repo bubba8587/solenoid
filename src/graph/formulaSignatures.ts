@@ -314,6 +314,8 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   ZSCORE: "list",
   BIN: "list, breaks",
   SHIFT: "list, by",
+  COMBINATIONS: "list, k",
+  PERMUTATIONS: "list, k",
   RUNNING: "operation, list, [window]",
   LENGTH: "list",
   ARGMAX: "list",

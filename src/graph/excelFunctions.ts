@@ -11,7 +11,7 @@ import { matrixShape } from "./nodes/coerce";
 import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
-  shiftList, pctChangeList, zscoreList, binIndex,
+  shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
@@ -512,6 +512,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ZSCORE:          { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
   BIN:             { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
   SHIFT:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
+  COMBINATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
+  PERMUTATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
   // argument (aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
@@ -1219,6 +1221,8 @@ registerInternal("PCTCHANGE",  (list) => pctChangeList(numList(list)));
 registerInternal("ZSCORE",     (list) => zscoreList(numList(list)));
 registerInternal("BIN",        (list, breaks) => binIndex(numList(list), numList(breaks)));
 registerInternal("SHIFT",      (list, by) => shiftList(numList(list), Number(by), false));
+registerInternal("COMBINATIONS", (list, k) => combinationsOf(numList(list), Number(k), "combinations"));
+registerInternal("PERMUTATIONS", (list, k) => combinationsOf(numList(list), Number(k), "permutations"));
 // ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below

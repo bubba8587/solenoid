@@ -15,7 +15,7 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, ZScoreNode, PctChangeNode, BinNode, ShiftNode, RepeatNode,
+  AlertNode, NormalizeNode, BinNode, ShiftNode, CombinationsNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -474,6 +474,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-fibonacci", label: "Fibonacci",  description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …", create: () => new FibonacciNode() },
           ]},
           { type: "list-randarray", label: "RANDARRAY", description: "List of N random numbers between Min and Max. Excel: RANDARRAY.", create: () => new RandArrayNode(), parity: false },
+          { type: "list-combinations", label: "Combinations", description: "Every way to choose k items from the list — one row each, as combinations (order-independent) or permutations. Python itertools.", create: () => new CombinationsNode(), parity: false, keywords: "combinations permutations itertools choose subsets arrangements nCk nPk pairs tuples pick sample without replacement" },
           seriesLeaf("sequence", { parity: false }),
         ],
       },
@@ -500,26 +501,27 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-set-relation", label: "Set relation", description: "Tests two lists as sets and gives TRUE or FALSE: equal means the same set, subset means every A is in B, superset means A contains all of B, and disjoint means no overlap. Excel builds these from COUNTIF.", create: () => new SetRelationNode(), parity: false, keywords: "set relation equal same identical subset superset disjoint overlap contains all within compare two lists membership issubset issuperset predicate test boolean" },
           ]},
           { type: "pair", children: [
-            { type: "list-diff",       label: "DIFF",       description: "Consecutive differences: result[i] = list[i+1] − list[i]", create: () => new DiffNode() },
+            { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle.", create: () => new ShuffleNode() },
+            { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: A[0], B[0], A[1], B[1], …", create: () => new InterleaveNode() },
+          ]},
+          { type: "pair", children: [
+            { type: "list-nthelement", label: "Nth Element", description: "Every N-th element. Step subsampling.", create: () => new NthElementNode() },
+            { type: "list-sortby", label: "SORTBY", description: "Sorts one list by the values in a parallel numeric list. Elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
+          ]},
+        ],
+      },
+      {
+        type: "category", label: "Transform", description: "Element-wise transforms: differences, rolling aggregates, rescaling, binning, shifting.",
+        children: [
+          { type: "pair", children: [
+            { type: "list-diff",       label: "DIFF",       description: "Change between consecutive values: absolute difference (Δ) or percent change (pandas pct_change). Pick on the node.", create: () => new DiffNode(), keywords: "difference diff delta change percent pct_change growth rate return consecutive derivative" },
             { type: "list-running", label: "Running", description: "One aggregate per element over a window: SUM / AVERAGE / MIN / MAX / MEDIAN / PRODUCT / STDEV of everything so far (the running total) or of the last N (the moving average).", create: () => new RunningNode(), keywords: "running total cumulative rolling moving average sliding window prefix sum accumulate expanding cumsum min max median product stdev" },
           ]},
           { type: "pair", children: [
-            { type: "list-normalize",  label: "Normalize",  description: "Scales a list to the 0–1 range: min maps to 0, max maps to 1", create: () => new NormalizeNode() },
-            { type: "list-zscore", label: "Z-Score", description: "Z-scores: each value as its distance from the mean in standard deviations. numpy/R scale.", create: () => new ZScoreNode(), parity: false, keywords: "z-score zscore standardize scale normalize mean stdev standard deviation" },
-          ]},
-          { type: "pair", children: [
-            { type: "list-pctchange", label: "Percent Change", description: "Consecutive percent change: (list[i] − list[i−1]) / list[i−1]. pandas pct_change.", create: () => new PctChangeNode(), parity: false, keywords: "percent change pct_change growth rate return delta ratio consecutive" },
+            { type: "list-normalize",  label: "Normalize",  description: "Rescale a list: to the 0–1 range (min→0, max→1), or to z-scores (distance from the mean in stdevs). Pick on the node. numpy/R scale.", create: () => new NormalizeNode(), keywords: "normalize rescale scale 0-1 minmax z-score zscore standardize mean stdev standard deviation feature scaling" },
             { type: "list-bin",       label: "Bin",           description: "Places each value into a bin by counting how many breakpoints it clears (0 below the first). R findInterval / numpy digitize.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile" },
           ]},
-          { type: "pair", children: [
-            { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
-            { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle.", create: () => new ShuffleNode() },
-          ]},
-          { type: "pair", children: [
-            { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: A[0], B[0], A[1], B[1], …", create: () => new InterleaveNode() },
-            { type: "list-nthelement", label: "Nth Element", description: "Every N-th element. Step subsampling.", create: () => new NthElementNode() },
-          ]},
-          { type: "list-sortby", label: "SORTBY", description: "Sorts one list by the values in a parallel numeric list. Elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
+          { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
         ],
       },
       {

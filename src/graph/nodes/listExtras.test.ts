@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { shiftList, pctChangeList, zscoreList, binIndex } from "./listOps";
-import { ShiftNode, PctChangeNode, ZScoreNode, BinNode } from "./list";
+import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode } from "./list";
+import { combinationsOf } from "./listOps";
 import { compileEvaluator } from "../excelFormula";
 import { isSolError } from "../errorValue";
 
@@ -29,8 +30,9 @@ describe("pctChangeList (Percent Change)", () => {
     const z = pctChangeList([0, 5]);
     expect(isSolError(z[0]) && (z[0] as { code: string }).code).toBe("#DIV/0!");
   });
-  it("the node computes it", () => {
-    expect(new PctChangeNode().data({ list: [[10, 20]] }).result).toEqual([1]);
+  it("the DIFF node in percent mode computes it (merged, not a separate node)", () => {
+    expect(new DiffNode({ mode: "percent" }).data({ list: [[10, 20]] }).result).toEqual([1]);
+    expect(new DiffNode().data({ list: [[10, 20]] }).result).toEqual([10]); // default delta
   });
 });
 
@@ -39,8 +41,9 @@ describe("zscoreList (Z-Score / standardize)", () => {
     expect(zscoreList([1, 2, 3])).toEqual([-1.224744871391589, 0, 1.224744871391589]);
     expect(zscoreList([5, 5, 5])).toEqual([0, 0, 0]);
   });
-  it("the node computes it", () => {
-    expect((new ZScoreNode().data({ list: [[2, 4]] }).result as number[])).toEqual([-1, 1]);
+  it("the Normalize node in z-score mode computes it (merged, not a separate node)", () => {
+    expect((new NormalizeNode({ mode: "zscore" }).data({ list: [[2, 4]] }).result as number[])).toEqual([-1, 1]);
+    expect((new NormalizeNode().data({ list: [[2, 4]] }).result as number[])).toEqual([0, 1]); // default minmax
   });
 });
 
@@ -53,11 +56,26 @@ describe("binIndex (Bin / findInterval)", () => {
   });
 });
 
+describe("combinationsOf (itertools combinations / permutations)", () => {
+  it("combinations are order-independent; permutations are ordered", () => {
+    expect(combinationsOf([1, 2, 3], 2, "combinations")).toEqual([[1, 2], [1, 3], [2, 3]]);
+    expect(combinationsOf([1, 2, 3], 2, "permutations")).toEqual([[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]);
+    expect(combinationsOf([1, 2], 3, "combinations")).toEqual([]); // k > n
+  });
+  it("the node reads list + k and the mode", () => {
+    const n = new CombinationsNode({ mode: "combinations" });
+    n.literals.k = 2;
+    expect(n.data({ list: [["a", "b", "c"]] }).result).toEqual([["a", "b"], ["a", "c"], ["b", "c"]]);
+  });
+});
+
 describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
-  it("PCTCHANGE / ZSCORE / BIN / SHIFT", () => {
+  it("PCTCHANGE / ZSCORE / BIN / SHIFT / COMBINATIONS / PERMUTATIONS", () => {
     expect(ev("PCTCHANGE(x)", { x: [10, 20, 30] })).toEqual([1, 0.5]);
     expect(ev("ZSCORE(x)", { x: [2, 4] })).toEqual([-1, 1]);
     expect(ev("BIN(x, b)", { x: [3, 7, 12], b: [5, 10] })).toEqual([0, 1, 2]);
     expect(ev("SHIFT(x, 1)", { x: [1, 2, 3] })).toEqual([null, 1, 2]);
+    expect(ev("COMBINATIONS(x, 2)", { x: [1, 2, 3] })).toEqual([[1, 2], [1, 3], [2, 3]]);
+    expect(ev("PERMUTATIONS(x, 2)", { x: [1, 2] })).toEqual([[1, 2], [2, 1]]);
   });
 });

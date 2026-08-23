@@ -21,7 +21,7 @@ import {
   UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, ZScoreNode, PctChangeNode, BinNode, ShiftNode, RepeatNode,
+  NormalizeNode, BinNode, ShiftNode, CombinationsNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode, GeometricNode, FibonacciNode,
   FillNode,
@@ -103,8 +103,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SetOpNode || node instanceof TallyNode ||
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
-    node instanceof NormalizeNode || node instanceof ZScoreNode || node instanceof PctChangeNode ||
-    node instanceof BinNode || node instanceof ShiftNode || node instanceof RepeatNode ||
+    node instanceof NormalizeNode ||
+    node instanceof BinNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
     node instanceof PadNode || node instanceof GeometricNode || node instanceof FibonacciNode ||
     node instanceof FillNode

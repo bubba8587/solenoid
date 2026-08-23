@@ -132,6 +132,40 @@ export function binIndex(arr: readonly Cell[], breaks: readonly Cell[]): Cell[] 
   });
 }
 
+/** All k-length combinations (order-independent) or permutations (ordered) of a list,
+ *  each returned as one row — itertools.combinations / permutations. Capped: the count is
+ *  computed first (multiplicatively, no factorial overflow) and an explosive request is
+ *  refused with #NUM! rather than generating an enormous table. */
+const COMBO_CAP = 10_000;
+export function combinationsOf(arr: readonly Cell[], k: number, kind: "combinations" | "permutations"): Cell[][] | SolError {
+  const n = arr.length;
+  const kk = Math.round(k);
+  if (kk < 0) return solError("#VALUE!", "Choose count must be zero or more");
+  if (kk > n) return []; // can't pick more than the list holds
+  let count = 1;
+  if (kind === "combinations") for (let i = 0; i < kk; i++) count = (count * (n - i)) / (i + 1);
+  else for (let i = 0; i < kk; i++) count *= n - i;
+  count = Math.round(count);
+  if (count > COMBO_CAP) return solError("#OVERFLOW!", `That makes ${count} ${kind} — over the ${COMBO_CAP} cap. Use a shorter list or a smaller k.`);
+  const out: Cell[][] = [];
+  const cur: Cell[] = [];
+  if (kind === "combinations") {
+    const rec = (start: number): void => {
+      if (cur.length === kk) { out.push(cur.slice()); return; }
+      for (let i = start; i < n; i++) { cur.push(arr[i]); rec(i + 1); cur.pop(); }
+    };
+    rec(0);
+  } else {
+    const used = new Array<boolean>(n).fill(false);
+    const rec = (): void => {
+      if (cur.length === kk) { out.push(cur.slice()); return; }
+      for (let i = 0; i < n; i++) { if (used[i]) continue; used[i] = true; cur.push(arr[i]); rec(); cur.pop(); used[i] = false; }
+    };
+    rec();
+  }
+  return out;
+}
+
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
 
 /** One aggregate per element over the window ending there: every element so far
