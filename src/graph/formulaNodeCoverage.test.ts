@@ -39,6 +39,8 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   ZSCORE: "Normalize node (z-score mode)", PERMUTATIONS: "Combinations node (permutations mode)",
   RLE: "Run Lengths node", TRAPZ: "Integrate node",
   GROWTH: "TREND node (exponential mode)", ORDINAL: "Spell Number node (ordinal mode)",
+  NTILE: "Bin node (quantiles mode)", ISOUTLIER: "Outliers node", FROMEPOCH: "Epoch → Date node", TOEPOCH: "Date → Epoch node",
+  DATETRUNC: "Truncate Date node",
 };
 
 function nodeNames(): Set<string> {

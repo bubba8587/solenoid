@@ -15,7 +15,7 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, BinNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
+  AlertNode, NormalizeNode, BinNode, OutliersNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
@@ -30,7 +30,7 @@ import {
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
-  DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META,
+  DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META, EpochNode, DateTruncNode,
   RandArrayNode,
   SortByNode, XMatchNode,
   TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
@@ -519,8 +519,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
           { type: "pair", children: [
             { type: "list-normalize",  label: "Normalize",  description: "Rescale a list: to the 0–1 range (min→0, max→1), or to z-scores (distance from the mean in stdevs). Pick on the node. numpy/R scale.", create: () => new NormalizeNode(), keywords: "normalize rescale scale 0-1 minmax z-score zscore standardize mean stdev standard deviation feature scaling" },
-            { type: "list-bin",       label: "Bin",           description: "Places each value into a bin by counting how many breakpoints it clears (0 below the first). R findInterval / numpy digitize.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile" },
+            { type: "list-bin",       label: "Bin",           description: "Places each value into a bin: by wired breakpoints (0 below the first — R findInterval / numpy digitize) or into n equal-count quantile buckets 1..n (dplyr ntile / pandas qcut). Pick on the node.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile qcut quartile decile percentile" },
           ]},
+          { type: "list-outliers",  label: "Outliers",      description: "Flags the outliers in a list by the z-score, IQR (boxplot whisker) or MAD (modified z) rule, and hands back the list with them blanked. scipy zscore, R boxplot.stats.", create: () => new OutliersNode(), parity: false, keywords: "outlier anomaly zscore z-score iqr mad boxplot whisker robust clean remove extreme" },
           { type: "pair", children: [
             { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
             { type: "list-ewma",      label: "EWMA",          description: "Exponentially weighted moving average: recent values weigh more, controlled by Alpha (0–1). Smoother than a flat window. pandas ewm.", create: () => new EwmaNode(), parity: false, keywords: "ewma exponential weighted moving average smoothing ema alpha decay pandas ewm smooth" },
@@ -768,9 +769,13 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
       { type: "date-time",     label: "TIME",      description: "Builds a time fraction 0–1 from Hour, Minute, Second. Add it to a date serial for date+time. Excel: TIME.", create: () => new TimeConstructNode(), parity: false },
       {
-        type: "category", label: "Parse", description: "Convert text strings to date or time values.",
+        type: "category", label: "Parse", description: "Convert text strings to date or time values, and Unix time both ways.",
         children: [
           { type: "pair", children: [dateTimeValueLeaf("date"), dateTimeValueLeaf("time")] },
+          { type: "pair", children: [
+            { type: "date-epoch-from", label: "Epoch → Date", description: "Unix time (seconds or milliseconds since 1970-01-01 UTC) → a date. pandas to_datetime(unit=), R as.POSIXct(origin=). No Excel equivalent — n/86400 + 25569.", create: () => new EpochNode({ op: "from" }), parity: false, keywords: "epoch unix timestamp posix seconds milliseconds 1970 utc to_datetime" },
+            { type: "date-epoch-to",   label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas astype(int64), R as.numeric(). No Excel equivalent — (date − 25569)·86400.", create: () => new EpochNode({ op: "to" }), parity: false, keywords: "epoch unix timestamp posix seconds milliseconds 1970 utc" },
+          ]},
         ],
       },
       {
@@ -796,9 +801,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Add Months", description: "Shift a date by N months or jump to end of month.",
+        type: "category", label: "Add Months", description: "Shift a date by N months, jump to end of month, or snap to the start of a period.",
         children: [
           { type: "pair", children: [dateAddLeaf("edate"), dateAddLeaf("eomonth")] },
+          { type: "date-trunc", label: "Truncate Date", description: "Floor a date to the start of its day / week / month / quarter / year, or ceiling to the next. The period bucket for a Group By (resample). lubridate floor_date / ceiling_date, pandas to_period, SQL DATE_TRUNC. No Excel equivalent — DATE(YEAR(d), MONTH(d), 1).", create: () => new DateTruncNode(), parity: false, keywords: "truncate floor ceiling date period month week quarter year resample bucket floor_date date_trunc to_period start of month" },
         ],
       },
       { type: "pair", children: [

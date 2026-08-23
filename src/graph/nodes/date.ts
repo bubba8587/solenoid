@@ -2,8 +2,8 @@ import { ClassicPreset } from "rete";
 import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, type BroadcastResult } from "./shared";
 import { type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp } from "./dateOps";
-export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp } from "./dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
+export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 /** The whole-day key of a date serial, so a holiday matches regardless of
@@ -475,6 +475,79 @@ export class WorkdaysNode extends ClassicPreset.Node {
           }
           return count * sign;
         }, inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Epoch (Unix time ↔ date) ─────────────────────────────────────────────────
+export type EpochOp = "from" | "to";
+export const EPOCH_OP_META = {
+  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since 1970-01-01 UTC) → a date. pandas to_datetime(unit=), R as.POSIXct(origin=)." },
+  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas astype(int64), R as.numeric(POSIXct)." },
+} satisfies Record<EpochOp, { label: string; description: string }>;
+export const EPOCH_UNIT_OPTIONS: ReadonlyArray<{ value: EpochUnit; label: string; title: string }> = [
+  { value: "s",  label: "s",  title: "Seconds since 1970-01-01 UTC (the Unix convention; 10 digits today)" },
+  { value: "ms", label: "ms", title: "Milliseconds since 1970-01-01 UTC (JavaScript's Date.now(); 13 digits today)" },
+];
+
+export class EpochNode extends ClassicPreset.Node {
+  label: string;
+  op: EpochOp;
+  unit: EpochUnit = "s";
+  literals: Record<string, number> = { value: 0 };
+  cachedResult: BroadcastResult = null;
+  width = 190; height = 170;
+
+  constructor(init?: { label?: string; op?: EpochOp; unit?: EpochUnit }) {
+    super("Epoch");
+    this.op = init?.op ?? "from";
+    this.label = init?.label ?? EPOCH_OP_META[this.op].label;
+    if (init?.unit) this.unit = init.unit;
+    if (this.op === "from") { this.addInput("value", numListIn("Epoch")); this.addOutput("result", dateComboOut("Date")); }
+    else { this.addInput("value", dateComboIn("Date")); this.addOutput("result", numListOut("Epoch")); }
+  }
+
+  data(inputs: { value?: (number | number[])[] }): { result: BroadcastResult } {
+    const v = this.op === "from" ? readInput(inputs.value, this.literals.value ?? 0) : (inputs.value?.[0] ?? null);
+    const result = broadcast((x) => (this.op === "from" ? epochToSerial(x, this.unit) : serialToEpoch(x, this.unit)), v);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Truncate date (floor_date / ceiling_date) ───────────────────────────────
+export const DATE_TRUNC_UNIT_META = {
+  day:      { label: "Day",         description: "Strip the time of day." },
+  week:     { label: "Week (Mon)",  description: "The Monday that starts the week (ISO)." },
+  week_sun: { label: "Week (Sun)",  description: "The Sunday that starts the week (US)." },
+  month:    { label: "Month",       description: "The first of the month." },
+  quarter:  { label: "Quarter",     description: "The first day of the quarter." },
+  year:     { label: "Year",        description: "January 1st." },
+} satisfies Record<DateTruncUnit, { label: string; description: string }>;
+
+export class DateTruncNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Floor: the start of the period the date falls in. Ceiling: the start of the next period (a date already on the boundary stays put).",
+  };
+  label: string;
+  unit: DateTruncUnit = "month";
+  /** floor_date (start of this period) or ceiling_date (start of the next). */
+  ceiling = false;
+  cachedResult: BroadcastResult = null;
+  width = 190; height = 190;
+
+  constructor(init?: { label?: string; unit?: DateTruncUnit; ceiling?: boolean }) {
+    super("DateTrunc");
+    this.label = init?.label ?? "Truncate Date";
+    if (init?.unit) this.unit = init.unit;
+    if (init?.ceiling) this.ceiling = true;
+    this.addInput("date", dateComboIn("Date"));
+    this.addOutput("result", dateComboOut("Date"));
+  }
+
+  data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
+    const result = broadcast((s) => dateTrunc(s, this.unit, this.ceiling), inputs.date?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }

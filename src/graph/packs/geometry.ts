@@ -50,6 +50,8 @@ export const GEOMETRY_CIRCLES: FormulaPackEntry[] = [
 export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
   { type: "geo-distance-3d", label: "Distance (3D)", expr: "SQRT((x2-x1)^2+(y2-y1)^2+(z2-z1)^2)",
     description: "Straight-line distance between two points (x1,y1,z1) and (x2,y2,z2)" },
+  { type: "geo-haversine", label: "Haversine Distance (km)", expr: "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
+    description: "Great-circle distance in km between two lat/lon points in DEGREES (mean Earth radius 6371.0088 km) — geopy / R geosphere distHaversine; ×0.621371 for miles" },
   { type: "geo-cuboid-diag", label: "Box Diagonal", expr: "SQRT(a^2+b^2+c^2)",
     description: "Space diagonal of an a×b×c box   (d = √(a²+b²+c²))" },
   { type: "geo-cone-slant", label: "Cone Slant Height", expr: "SQRT(r^2+h^2)",

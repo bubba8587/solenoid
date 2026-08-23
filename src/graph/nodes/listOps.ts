@@ -2,6 +2,7 @@ import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
+import { percentileOf } from "./statsOps";
 
 // ONE implementation per list op, called by both the node's `data()` and the formula
 // registration, so the two surfaces cannot disagree. Kept out of list.ts, which pulls in rete.
@@ -835,4 +836,50 @@ export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): num
     if (!placed) counts[bins.length]++; // overflow: greater than every bin
   }
   return counts;
+}
+
+/** Quantile buckets 1..n (dplyr ntile, pandas qcut): the edges are the PERCENTILE.INC
+ *  quantiles at k/n and each value answers how many it clears, plus one. Position-
+ *  preserving: a blank stays blank, an error rides along. */
+export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
+  const k = Math.round(n);
+  if (!(k >= 1)) return solError("#VALUE!", "NTILE needs at least one bucket");
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return arr.map((v) => (isSolError(v) ? v : null));
+  const sorted = [...nums].sort((a, b) => a - b);
+  const edges: number[] = [];
+  for (let i = 1; i < k; i++) edges.push(percentileOf(sorted, i / k, false));
+  return binIndex(arr, edges).map((v) => (typeof v === "number" ? v + 1 : v));
+}
+
+export type OutlierMethod = "z" | "iqr" | "mad";
+/** The conventional cutoffs: |z| > 3, 1.5 × IQR beyond the quartiles, modified z (0.6745·dev/MAD) > 3.5. */
+export const OUTLIER_DEFAULT_THRESHOLD: Record<OutlierMethod, number> = { z: 3, iqr: 1.5, mad: 3.5 };
+
+/** Flag each value as an outlier by the chosen rule; blank → blank, error → error, and a
+ *  list too small or too flat to judge flags nothing (all FALSE). */
+export function outlierFlags(arr: readonly Cell[], method: OutlierMethod, threshold: number): (boolean | null | SolError)[] {
+  const nums = presentNumbers(arr);
+  const no = () => arr.map((v) => (isSolError(v) ? v : v == null ? null : false));
+  if (nums.length < 3) return no();
+  let test: (v: number) => boolean;
+  if (method === "z") {
+    const m = nums.reduce((a, b) => a + b, 0) / nums.length;
+    const sd = Math.sqrt(nums.reduce((a, b) => a + (b - m) ** 2, 0) / (nums.length - 1));
+    if (sd === 0) return no();
+    test = (v) => Math.abs((v - m) / sd) > threshold;
+  } else if (method === "iqr") {
+    const s = [...nums].sort((a, b) => a - b);
+    const q1 = percentileOf(s, 0.25, false), q3 = percentileOf(s, 0.75, false), iqr = q3 - q1;
+    if (iqr === 0) return no();
+    test = (v) => v < q1 - threshold * iqr || v > q3 + threshold * iqr;
+  } else {
+    const s = [...nums].sort((a, b) => a - b);
+    const med = percentileOf(s, 0.5, false);
+    const dev = nums.map((v) => Math.abs(v - med)).sort((a, b) => a - b);
+    const mad = percentileOf(dev, 0.5, false);
+    if (mad === 0) return no();
+    test = (v) => Math.abs((0.6745 * (v - med)) / mad) > threshold;
+  }
+  return arr.map((v) => (isSolError(v) ? v : typeof v === "number" && Number.isFinite(v) ? test(v) : null));
 }

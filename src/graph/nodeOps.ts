@@ -33,7 +33,7 @@ import {
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, ElementNode, 
   FisherNode, GroupByFrameNode,
@@ -245,6 +245,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "cov-pop", ctor: CovarianceNode, kind: "operation" },
   { type: "cumpmt-cumipmt", ctor: CumPmtNode, kind: "operation" },
   { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
+  { type: "date-epoch-from", ctor: EpochNode, kind: "operation" },
+  { type: "date-trunc", ctor: DateTruncNode, kind: "argument" },
+  { type: "list-outliers", ctor: OutliersNode, kind: "argument" },
   // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on
   // the DATEDIF leaf, which is why that leaf hosts the declaration.
   { type: "date-datedif", ctor: DateDiffNode, kind: "operation", ops: fromMeta(DATE_DIFF_OP_META),

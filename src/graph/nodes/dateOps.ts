@@ -156,3 +156,55 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
     }
   }
 }
+
+export type EpochUnit = "s" | "ms";
+const EXCEL_EPOCH_1970 = 25569; // serial of 1970-01-01
+
+/** Unix epoch (seconds or milliseconds since 1970-01-01 UTC) → date serial, and back. */
+export function epochToSerial(epoch: number, unit: EpochUnit): number {
+  return EXCEL_EPOCH_1970 + epoch / (unit === "ms" ? 86400000 : 86400);
+}
+export function serialToEpoch(serial: number, unit: EpochUnit): number {
+  return (serial - EXCEL_EPOCH_1970) * (unit === "ms" ? 86400000 : 86400);
+}
+
+export type DateTruncUnit = "day" | "week" | "week_sun" | "month" | "quarter" | "year";
+/** Excel's DATETRUNC-style unit strings and the pandas / lubridate spellings → the unit. */
+export function dateTruncUnitFor(text: string): DateTruncUnit | null {
+  switch (text.trim().toLowerCase()) {
+    case "d": case "day": case "days": return "day";
+    case "w": case "week": case "weeks": case "week_mon": case "monday": return "week";
+    case "week_sun": case "sunday": return "week_sun";
+    case "m": case "month": case "months": return "month";
+    case "q": case "quarter": case "quarters": return "quarter";
+    case "y": case "year": case "years": return "year";
+    default: return null;
+  }
+}
+
+/** Floor a date serial to the start of its day / week (Mon, or Sun) / month / quarter /
+ *  year (lubridate floor_date, pandas to_period, SQL DATE_TRUNC); `ceiling` answers the
+ *  start of the NEXT period instead (ceiling_date) — except a value already on the
+ *  boundary, which stays put in both directions. */
+export function dateTrunc(serial: number, unit: DateTruncUnit, ceiling = false): number {
+  const d = serialToJsDate(serial);
+  const y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate();
+  let floor: Date;
+  switch (unit) {
+    case "day":      floor = new Date(Date.UTC(y, m, day)); break;
+    case "week":     floor = new Date(Date.UTC(y, m, day - ((d.getUTCDay() + 6) % 7))); break;
+    case "week_sun": floor = new Date(Date.UTC(y, m, day - d.getUTCDay())); break;
+    case "month":    floor = new Date(Date.UTC(y, m, 1)); break;
+    case "quarter":  floor = new Date(Date.UTC(y, m - (m % 3), 1)); break;
+    case "year":     floor = new Date(Date.UTC(y, 0, 1)); break;
+  }
+  const f = jsDateToSerial(floor);
+  if (!ceiling || f === serial) return f;
+  switch (unit) {
+    case "day":      return f + 1;
+    case "week": case "week_sun": return f + 7;
+    case "month":    return jsDateToSerial(new Date(Date.UTC(floor.getUTCFullYear(), floor.getUTCMonth() + 1, 1)));
+    case "quarter":  return jsDateToSerial(new Date(Date.UTC(floor.getUTCFullYear(), floor.getUTCMonth() + 3, 1)));
+    case "year":     return jsDateToSerial(new Date(Date.UTC(floor.getUTCFullYear() + 1, 0, 1)));
+  }
+}

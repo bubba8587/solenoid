@@ -5,7 +5,7 @@ import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, type DistKey, type DistForm } from "./nodes/distributionOps";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit } from "./nodes/dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -15,7 +15,7 @@ import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, 
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
-  gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval,
+  gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
@@ -599,6 +599,11 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RLE:             { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
   POLYFIT:         { returns: "number", rank: "list", listArgs: true, arity: [3, 3] },
   ISCLOSE:         { returns: "logical", arity: [2, 3] },
+  NTILE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  ISOUTLIER:       { returns: "logical", rank: "list", listArgs: true, arity: [1, 3], native: true },
+  FROMEPOCH:       { returns: "date", arity: [1, 2], native: true },
+  TOEPOCH:         { returns: "number", arity: [1, 2], native: true },
+  DATETRUNC:       { returns: "date", arity: [2, 3], native: true },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
   // argument (aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
@@ -1168,6 +1173,15 @@ registerInternal("ISOWEEKNUM", (d) => { const n = toNum(d); return Number.isNaN(
 registerInternal("DAYS",     (end, start) => { const e = toNum(end), s = toNum(start); return badNum(e, s) ? VALUE("DAYS") : dateDiff("days", s, e); });
 registerInternal("DAYS360",  (start, end, method) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("DAYS360") : dateDiff("days360", s, e, isTrue(method) ? 1 : 0); });
 registerInternal("YEARFRAC", (start, end, basis) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("YEARFRAC") : dateDiff("yearfrac", s, e, Math.floor(optNum(basis, 0))); });
+const epochUnit = (u: unknown): EpochUnit | null => (u == null ? "s" : /^ms$/i.test(String(u).trim()) ? "ms" : /^s$/i.test(String(u).trim()) ? "s" : null);
+registerInternal("FROMEPOCH", (v, unit) => { const n = toNum(v), u = epochUnit(unit); return Number.isNaN(n) ? VALUE("FROMEPOCH") : u === null ? solError("#DOMAIN!", "FROMEPOCH unit must be s or ms") : epochToSerial(n, u); });
+registerInternal("TOEPOCH",   (d, unit) => { const n = toNum(d), u = epochUnit(unit); return Number.isNaN(n) ? VALUE("TOEPOCH") : u === null ? solError("#DOMAIN!", "TOEPOCH unit must be s or ms") : serialToEpoch(n, u); });
+registerInternal("DATETRUNC", (d, unit, ceiling) => {
+  const n = toNum(d);
+  if (Number.isNaN(n)) return VALUE("DATETRUNC");
+  const u = dateTruncUnitFor(unit == null ? "day" : String(unit));
+  return u === null ? solError("#DOMAIN!", "DATETRUNC unit must be day, week, week_sun, month, quarter or year") : dateTrunc(n, u, isTrue(ceiling));
+});
 registerInternal("DATEDIF",  (start, end, unit) => {
   const s = toNum(start), e = toNum(end);
   if (badNum(s, e)) return VALUE("DATEDIF");
@@ -1448,6 +1462,12 @@ registerInternal("CONVOLVE",   (a, b) => convolveList(numList(a), numList(b)));
 registerInternal("CROSSPRODUCT", (a, b) => crossProduct(numList(a), numList(b)));
 registerInternal("RLE",        (list) => rleEncode(numList(list)));
 registerInternal("POLYFIT",    (x, y, deg) => polyfitEval(numList(x), numList(y), Number(deg)));
+registerInternal("NTILE",      (list, n) => ntileList(numList(list), Number(n)));
+registerInternal("ISOUTLIER",  (list, method, threshold) => {
+  const m = (method == null ? "z" : String(method).trim().toLowerCase()) as OutlierMethod;
+  if (!(m in OUTLIER_DEFAULT_THRESHOLD)) return solError("#DOMAIN!", "ISOUTLIER method must be z, iqr or mad");
+  return outlierFlags(numList(list), m, threshold == null ? OUTLIER_DEFAULT_THRESHOLD[m] : Number(threshold));
+});
 registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : Math.abs(Number(a) - Number(b)) <= (tol == null ? 1e-9 : Number(tol))));
 // ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op

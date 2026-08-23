@@ -16,7 +16,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -491,25 +491,95 @@ export class ShiftNode extends ClassicPreset.Node {
   }
 }
 
+export type BinMode = "breaks" | "quantiles";
+export const BIN_MODE_OPTIONS: ReadonlyArray<{ value: BinMode; label: string; title: string }> = [
+  { value: "breaks",    label: "breaks",    title: "Bin by the wired breakpoints: 0 below the first edge, up to n above the last (numpy digitize, R findInterval)" },
+  { value: "quantiles", label: "quantiles", title: "Bin into n equal-count buckets 1..n (dplyr ntile, pandas qcut)" },
+];
+
 export class BinNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     breaks: "The bin edges. A value is placed by how many edges it clears: 0 below the first edge, up to n above the last.",
+    n: "How many equal-count buckets; the result is the bucket number, 1 to n.",
   };
   label: string;
-  cachedList: ListCell[] = [];
-  width = 180; height = 150;
+  /** Breakpoint bins (digitize) or quantile buckets (ntile) — the mode owns the second socket. */
+  mode: BinMode = "breaks";
+  literals: Record<string, number> = { n: 4 };
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 180;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: BinMode }) {
     super("Bin");
     this.label = init?.label ?? "Bin";
-    this.addInput("list",   listIn("List"));
-    this.addInput("breaks", listIn("Breaks"));
-    this.addOutput("result", listOut("Bin index"));
+    if (init?.mode) this.mode = init.mode;
+    this.addInput("list", listIn("List"));
+    if (this.mode === "quantiles") this.addInput("n", numIn("Buckets"));
+    else this.addInput("breaks", listIn("Breaks"));
+    this.addOutput("result", listOut(this.mode === "quantiles" ? "Bucket" : "Bin index"));
   }
 
-  data(inputs: { list?: ListCell[][]; breaks?: ListCell[][] }) {
-    this.cachedList = binIndex(inputs.list?.[0] ?? [], inputs.breaks?.[0] ?? []);
+  /** The mode owns the second socket (Breaks ↔ Buckets). Callers on a live graph prune
+   *  the departing socket's cables BEFORE switching (onePrunePath). */
+  setMode(next: BinMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    if (next === "quantiles") { if (this.inputs.breaks) this.removeInput("breaks"); if (!this.inputs.n) this.addInput("n", numIn("Buckets")); }
+    else { if (this.inputs.n) this.removeInput("n"); if (!this.inputs.breaks) this.addInput("breaks", listIn("Breaks")); }
+    const out = this.outputs.result;
+    if (out) out.label = next === "quantiles" ? "Bucket" : "Bin index";
+  }
+
+  data(inputs: { list?: ListCell[][]; breaks?: ListCell[][]; n?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    if (this.mode === "quantiles") {
+      const n = readInput(inputs.n, this.literals.n ?? 4);
+      this.cachedList = n === null ? [] : ntileList(arr, n);
+    } else {
+      this.cachedList = binIndex(arr, inputs.breaks?.[0] ?? []);
+    }
     return { result: this.cachedList };
+  }
+}
+
+export type { OutlierMethod } from "./listOps";
+export const OUTLIER_METHOD_META = {
+  z:   { label: "z-score", description: "|z| above the threshold (default 3): distance from the mean in sample standard deviations." },
+  iqr: { label: "IQR",     description: "Beyond Q1 − k·IQR or Q3 + k·IQR (default k = 1.5): the boxplot whisker rule. R boxplot.stats." },
+  mad: { label: "MAD",     description: "Modified z-score 0.6745·(x − median)/MAD above the threshold (default 3.5): the robust rule (Iglewicz–Hoaglin)." },
+} satisfies Record<OutlierMethod, { label: string; description: string }>;
+
+export class OutliersNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    flags: "TRUE where the value is an outlier by the chosen rule; a blank stays blank.",
+    clean: "The list with its outliers blanked, so downstream aggregates skip them and positions hold.",
+    threshold: "Leave unwired for the rule's conventional cutoff: 3 for z, 1.5 for IQR, 3.5 for MAD.",
+  };
+  label: string;
+  method: OutlierMethod = "z";
+  literals: Record<string, number> = {};
+  cachedFlags: (boolean | null | SolError)[] = [];
+  cachedClean: ListCell[] = [];
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; method?: OutlierMethod }) {
+    super("Outliers");
+    this.label = init?.label ?? "Outliers";
+    if (init?.method) this.method = init.method;
+    this.addInput("list", listIn("List"));
+    this.addInput("threshold", numIn("Threshold"));
+    this.addOutput("flags", logicalListOut("Flags"));
+    this.addOutput("clean", listOut("Cleaned"));
+  }
+
+  data(inputs: { list?: ListCell[][]; threshold?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const t = readInput(inputs.threshold, this.literals.threshold ?? OUTLIER_DEFAULT_THRESHOLD[this.method]);
+    if (t === null) { this.cachedFlags = []; this.cachedClean = []; return { flags: [], clean: [] }; }
+    const flags = outlierFlags(arr, this.method, t);
+    this.cachedFlags = flags;
+    this.cachedClean = arr.map((v, i) => (flags[i] === true ? null : v));
+    return { flags, clean: this.cachedClean };
   }
 }
 
