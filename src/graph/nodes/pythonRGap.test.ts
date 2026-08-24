@@ -34,6 +34,7 @@ import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from 
 import { AmortizationNode, ReturnsNode } from "./finance";
 import { periodReturns, cumulativeReturns, drawdowns, maxDrawdown, cagr, volatility, sharpeRatio, sortinoRatio } from "./financeOps";
 import type { FrameValue } from "../frame";
+import { isFrameValue } from "../frame";
 
 // python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
@@ -73,9 +74,12 @@ describe("ISOUTLIER / Outliers node", () => {
     expect(ev("ISOUTLIER(x, \"iqr\")", { x })).toEqual(outlierFlags(x, "iqr", 1.5));
     expect(ev("ISOUTLIER(x)", { x })).toEqual(outlierFlags(x, "z", 3)); // default z / 3
     const n = new OutliersNode({ method: "iqr" });
-    const out = n.data({ list: [x] });
-    expect(out.flags).toEqual(outlierFlags(x, "iqr", 1.5));
-    expect(out.clean).toEqual([10, 11, 9, 10, 12, 10, 11, null]);
+    const cols = n.data({ list: [x] }).result!.columns;
+    expect(cols.map((c) => c.name)).toEqual(["Value", "Outlier"]);
+    expect(cols[0].values).toEqual([10, 11, 9, 10, 12, 10, 11, null]); // Value = cleaned
+    expect(cols[1].values).toEqual(outlierFlags(x, "iqr", 1.5));        // Outlier = flags
+    // A wired blank list → null frame (propagate).
+    expect(new OutliersNode().data({ list: [null as unknown as number[]] }).result).toBeNull();
     expect(isSolError(ev("ISOUTLIER(x, \"huh\")", { x }))).toBe(true);
   });
 });
@@ -760,12 +764,16 @@ describe("Decompose — classical seasonal decomposition (statsmodels seasonal_d
     close(d.seasonal.slice(0, 3), [-1.666667, 0, 1.666667]);
     expect(seasonalDecompose([1, 2, 3], 4)).toBeNull();
   });
-  it("the card emits all three; DECOMPOSE() picks one component", () => {
+  it("the card emits one frame of trend/seasonal/residual; DECOMPOSE() picks one component", () => {
     const n = new DecomposeNode();
     n.literals.period = 4;
     const out = n.data({ values: [Y] });
-    close(out.trend, [null, null, 11.125, 11.375, 11.625, 11.875, 12.125, 12.375, 12.625, 12.875, null, null]);
-    close(out.seasonal!.slice(0, 2), [-0.625, 3.125]);
+    const frame = out.decomposition;
+    expect(isFrameValue(frame)).toBe(true);
+    if (!isFrameValue(frame)) return;
+    expect(frame.columns.map((c) => c.name)).toEqual(["trend", "seasonal", "residual"]);
+    close(frame.columns[0].values, [null, null, 11.125, 11.375, 11.625, 11.875, 12.125, 12.375, 12.625, 12.875, null, null]);
+    close(frame.columns[1].values.slice(0, 2), [-0.625, 3.125]);
     const ev = (e: string) => compileEvaluator(e)!({ y: Y });
     close(ev('DECOMPOSE(y, 4, "seasonal")'), [-0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625, -0.625, 3.125, -3.125, 0.625]);
     close((ev('DECOMPOSE(y, 4, "trend", "multiplicative")') as number[]).slice(2, 4), [11.125, 11.375]);

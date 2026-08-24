@@ -551,15 +551,13 @@ export const OUTLIER_METHOD_META = {
 
 export class OutliersNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    flags: "TRUE where the value is an outlier by the chosen rule; a blank stays blank.",
-    clean: "The list with its outliers blanked, so downstream aggregates skip them and positions hold.",
+    result: "One row per input value: Value (the list with outliers blanked, so aggregates skip them and positions hold) and Outlier (TRUE where the rule flags it; a blank stays blank).",
     threshold: "Leave unwired for the rule's conventional cutoff: 3 for z, 1.5 for IQR, 3.5 for MAD.",
   };
   label: string;
   method: OutlierMethod = "z";
   literals: Record<string, number> = {};
-  cachedFlags: (boolean | null | SolError)[] = [];
-  cachedClean: ListCell[] = [];
+  cachedResult: FrameValue | null = null;
   width = 190; height = 200;
 
   constructor(init?: { label?: string; method?: OutlierMethod }) {
@@ -568,18 +566,26 @@ export class OutliersNode extends ClassicPreset.Node {
     if (init?.method) this.method = init.method;
     this.addInput("list", listIn("List"));
     this.addInput("threshold", numIn("Threshold"));
-    this.addOutput("flags", logicalListOut("Flags"));
-    this.addOutput("clean", listOut("Cleaned"));
+    // Value + Outlier are index-aligned, so they leave as ONE frame (C5). Value keeps the
+    // input's element family (inferColumn); Outlier is logical.
+    this.addOutput("result", frameOut("Result"));
   }
 
-  data(inputs: { list?: ListCell[][]; threshold?: number[] }) {
-    const arr = inputs.list?.[0] ?? [];
+  data(inputs: { list?: ListCell[][]; threshold?: number[] }): { result: FrameValue | null } {
+    const arr = inputs.list?.[0] ?? null;
     const t = readInput(inputs.threshold, this.literals.threshold ?? OUTLIER_DEFAULT_THRESHOLD[this.method]);
-    if (t === null) { this.cachedFlags = []; this.cachedClean = []; return { flags: [], clean: [] }; }
+    if (arr === null || t === null) { this.cachedResult = null; return { result: null }; }
     const flags = outlierFlags(arr, this.method, t);
-    this.cachedFlags = flags;
-    this.cachedClean = arr.map((v, i) => (flags[i] === true ? null : v));
-    return { flags, clean: this.cachedClean };
+    const clean = arr.map((v, i) => (flags[i] === true ? null : v));
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        inferColumn("Value", clean),
+        { name: "Outlier", type: "logical", values: flags },
+      ],
+    };
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }
 
