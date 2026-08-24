@@ -234,7 +234,6 @@ function PacksSection() {
         <Row
           key={p.id}
           label={p.name}
-          help={p.description}
           on={packsStore.isActive(p.id)}
           onToggle={() => packsStore.toggle(p.id)}
         />
@@ -248,7 +247,7 @@ function PacksSection() {
         </div>
       ) : (
         custom.map((p) => (
-          <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />
+          <Row key={p.id} label={p.name} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />
         ))
       )}
 

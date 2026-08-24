@@ -437,6 +437,21 @@ change; added a corpus parity test on both sides (`frameVerbs.test.ts` "the shar
 micro-edge left as-is: JS `Number()` accepts hex/binary literals ("0x10") that Rust `f64::parse`
 rejects — absurd as a Replace target, not worth reimplementing Rust's float grammar in JS.
 
+**Settings Node Packs section — was already built; verified, copy-fixed, pinned.** The backlog line
+"Settings: Node Packs section — planned, unbuilt" was stale: `Settings.tsx` `PacksSection` already
+lists `allPacks().filter(builtin)` with a per-pack switch, wired to the live `packsStore`
+(`isActive`/`toggle`, its OWN `solenoid.packs` persistence + dependency activation), and the Add menu
+already rebuilds `buildCatalog(true)` on `packsStore.version` (Canvas.tsx) — so a toggle live-filters
+the menu and a deactivated pack's constructors stay registered (saved graphs still load). Two fixes:
+(1) copy — dropped the `help={p.description}` sentence from each pack row (the descriptions read
+"…On by default. Turn off to declutter.", Captain-Obvious under a clear pack name; §7). (2) pin — the
+Add-menu filtering had no test (only the formula-name seam in `formulaExtensions.test.ts`), so added
+`catalogSearch.test.ts` "a disabled pack's node leaves leave the tree": a fixture pack's leaf appears
+in `flattenLeaves(buildCatalog(true))` only while active. NB the pin lives with `packsStore`/the
+catalog, NOT `settingsStore` — packs have their own store, so folding them into settingsStore would
+be a second source of truth. Left the "Browse pack store…" disabled stub + custom-packs note as-is
+(loader still stubbed).
+
 **C4 — grids take a plain Z + optional Xs/Ys; bordered format retired (plan 13, 2 commits).**
 The coordinate-BORDERED grid (row 0 = X, column 0 = Y, interior = Z) is gone everywhere for one
 convention: coordinates ride BESIDE the Z matrix. New shared kernel `gridAxes(z, xs, ys)`

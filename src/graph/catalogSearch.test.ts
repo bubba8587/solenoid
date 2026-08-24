@@ -1,8 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { flattenLeaves, searchLeaves, filterByCompatibleSocket } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
 import { SolenoidSocket, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry } from "./AddNodeMenu";
+import { packsStore, BUILTIN_PACKS } from "./packs";
+import type { Pack } from "./packs/packShared";
 
 // Search against the REAL catalog tree (active entries only, as the menu does).
 const leaves = flattenLeaves(buildCatalog(true));
@@ -80,5 +82,38 @@ describe("filterByCompatibleSocket — memoized socket signatures", () => {
     const compat = filterByCompatibleSocket(all, origin, "output");
     expect(compat.length).toBeGreaterThan(0);
     expect(compat.length).toBeLessThan(all.length); // it filters, not passes-through
+  });
+});
+
+// The Node Packs settings section toggles packsStore, and buildCatalog(true) reads it —
+// a deactivated pack's node leaves must leave the Add menu (its constructors stay
+// registered so saved graphs still load; only the menu placement is gated).
+describe("Add menu — a disabled pack's node leaves leave the tree (packsStore drives buildCatalog)", () => {
+  const NODE_FIXTURE: Pack = {
+    id: "test-node-pack",
+    name: "Test Node Pack",
+    description: "Fixture.",
+    builtin: true,
+    defaultActive: false,
+    nodes: [{
+      path: ["Other"],
+      entry: { type: "__testPackLeaf", label: "Test Pack Leaf", create: () => ({}) } as NodeCatalogEntry,
+    }],
+  };
+  beforeEach(() => { BUILTIN_PACKS.push(NODE_FIXTURE); });
+  afterEach(() => {
+    packsStore.setActive(NODE_FIXTURE.id, false);
+    BUILTIN_PACKS.splice(BUILTIN_PACKS.indexOf(NODE_FIXTURE), 1);
+  });
+
+  const leafTypes = () => flattenLeaves(buildCatalog(true)).map((l) => l.leaf.type);
+
+  it("shows the pack's leaf only while the pack is active", () => {
+    packsStore.setActive(NODE_FIXTURE.id, false);
+    expect(leafTypes()).not.toContain("__testPackLeaf");
+    packsStore.setActive(NODE_FIXTURE.id, true);
+    expect(leafTypes()).toContain("__testPackLeaf");
+    packsStore.setActive(NODE_FIXTURE.id, false);
+    expect(leafTypes()).not.toContain("__testPackLeaf");
   });
 });
