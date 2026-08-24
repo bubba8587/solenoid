@@ -134,6 +134,23 @@ The main canvas and the composite drill-in are two AreaPlugin surfaces; anything
 
 **Locking is CSS, not the guard.** Both surfaces apply `.solenoid-canvas--locked` (Canvas on its container, the drill-in host mirrors it) and that rule sets `pointer-events: none` on node chrome / sockets / cable hit-paths — which the guard's lock branch does NOT do (it only blocks the node DRAG). Keep the mirror on both; deleting it would leave a locked drill-in's fields and sockets editable.
 
+### Native `<select>` popups and the pointerdown swallow (settled 2026-08-24)
+A card-body press fires rete's `nodepicked`; `simpleNodesOrder` then RE-APPENDS the node's
+element to the end of the holder (a real DOM move), and reparenting a focused `<select>`
+closes its native popup. The selection re-render is not a closer (the `<select>` element
+survives it, measured). So a control inside a node must stop pointerdown/mousedown from
+reaching rete (`stopDragStart`), which it also needs for drag prevention. `zIndexNodesOrder`
+would avoid the re-append but buys no swallow deletion and would force the whole z-ladder
+(standoffs −3 < groups −2 < conduits −1 < nodes 0) to be reconciled; not adopted. Probe:
+`scripts/dropdown-reorder-probe.mjs` (desktop model; touch unmeasured).
+
+### React enter/leave across rete roots (2026-08-24)
+Every rete node is its own React root. React's `onPointerEnter`/`onMouseEnter` defer to the
+OTHER root's `out` dispatch when the pointer arrives from a different root, which never reaches
+this root's fibers — so anything on a card EDGE (a socket, the hero box) hovered straight from
+the canvas never sees a synthetic enter. Native `pointerenter`/`pointerleave` fire; use
+`useNativeEnterLeave` (`components/nativeHover.ts`). Measured on the frame-hint socket.
+
 ## Add menu — catalog, search rows, and what a label may carry (`AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts`)
 
 **The pipeline.** `NODE_CATALOG` is a TREE of categories, pairs and leaves — that tree is

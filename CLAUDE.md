@@ -221,14 +221,8 @@ a place a spec can be contradicted. Concretely:
   stay bubble (vetoable, deliberately). Never flip either. `isPinching()`
   (`pointerGesture.ts`) — ≥2 TOUCH contacts — is the only definition; never count raw pointers
   (a mouse or a stylus in contact is not half a pinch).
-- **Native form popups inside a node need pointer/mouse-down stopPropagation** — SETTLED
-  real on desktop (measured 2026-08-24, `scripts/dropdown-reorder-probe.mjs`): a card-body
-  press fires `nodepicked`, and `simpleNodesOrder` RE-APPENDS the node's element to the DOM
-  end; reparenting a focused `<select>` closes its native popup. The selection re-render is
-  NOT a closer (the `<select>` element survives it). `zIndexNodesOrder` would avoid the
-  re-append but doesn't buy a single swallow deletion (`stopDragStart` on a control is needed
-  for drag prevention anyway) and would force the whole z-ladder to be reconciled — not
-  adopted. Mobile/touch was not measured.
+- **Native form popups inside a node need pointer/mouse-down stopPropagation** — settled real on
+  desktop 2026-08-24 (mechanism + probe in `docs/subsystem-invariants.md` § Pointer gestures).
 - **`Scope.use(child)` forwards events DOWN only** — to see a plugin's own events
   (`connectionpick`/`connectiondrop`), `plugin.addPipe(...)` on the instance directly.
 - **Don't use `useReducer` forceUpdate to refresh a controlled `<select>`** — drive the value
@@ -250,11 +244,9 @@ a place a spec can be contradicted. Concretely:
   assumes engine-driven calls).
 - **A cable drag blurs the focused field first** (Canvas `connectionpick`), so a mid-edit value
   commits before it's wired — rely on this, don't re-implement it.
-- **React `onPointerEnter`/`onMouseEnter` are SILENT when the pointer arrives from another React
-  root** — every rete node is its own root, so anything on a card EDGE (sockets, the hero box)
-  gets its hover straight from the canvas root and React never dispatches the enter. Use
-  `useNativeEnterLeave` (`components/nativeHover.ts`) for enter/leave inside node components;
-  measured 2026-08-24 (the frame-hint socket).
+- **React enter/leave props are silent across rete's per-node React roots** — use
+  `useNativeEnterLeave` (`components/nativeHover.ts`) inside node components; why in
+  `docs/subsystem-invariants.md` § Pointer gestures.
 
 ### Subsystem deep-dives → `docs/subsystem-invariants.md`
 Read the relevant section there IN FULL before touching one of these. The one-line index:
