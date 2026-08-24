@@ -10,5 +10,5 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors: claim a plan f
 
 ## Claims
 
-- C — Agent 4 (solenoid-f1)
+- B6 — Agent 4 (solenoid-f1) — edits TablePopup.tsx; A3 touches the same file, do not run A3 concurrently
 - A6 — Agent 2 (solenoid-18)

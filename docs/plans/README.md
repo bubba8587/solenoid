@@ -29,7 +29,7 @@ backlog line is deleted; git is the record.
 | # | Plan | Size | Depends on |
 |---|------|------|-----------|
 | 1 | ~~a2-formula-containment~~ | — | landed 2026-08-24 (fc34ae03) |
-| 2 | [c-archive-evictions.md](c-archive-evictions.md) | S | — |
+| 2 | ~~c-archive-evictions~~ | — | landed 2026-08-24 (0cf70611) |
 | 3 | [b6-popup-summary-footer.md](b6-popup-summary-footer.md) | M | — |
 | 4 | [b0-python-r-gap-remainder.md](b0-python-r-gap-remainder.md) | M (4 sub-items) | — |
 | 5 | [a4-xlookup-rawinputs.md](a4-xlookup-rawinputs.md) | S–M | — |
