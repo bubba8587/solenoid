@@ -86,6 +86,27 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
+
+Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
+(8 ops outgrew the SegToggle); `OpSelect` options gained an optional per-option `title`
+that rides into `<option>`. (2) **Catalog copy valence**: every "No Excel equivalent"
+dropped (the R/numpy/pandas anchor already carries the positive claim); real
+constructions became `Excel:` pointers (epoch math, DATE(YEAR,MONTH,1), MAX − MIN,
+SQRT(SUMSQ), Fuzzy Lookup add-in). (3) **KaTeX arc trig**: `\asin`/`\acos`/`\atan` are
+not KaTeX commands — `TRIG_TEX` now emits `\arcsin` etc.; pinned in
+`excelFormula.test.ts` incl. a renderToString round-trip. (4) **ValueDisplay string-list
+SolError**: inline join + clipboard printed `[object Object]` for an error cell (seen on
+Fuzzy Match Best match with a below-threshold #N/A); now renders the code. (5)
+**Aggregate optgroups**: 27 ops grouped Basics/Counts/Other means/Spread/Shape/Squares,
+`Record<ReduceOp,…>` keeps the map exhaustive; descriptions ride as option titles. (6)
+**Scratch seed regrouped**: 25 thematic expanded Groups over all 216 nodes, per-cluster
+layered relayout from browser-measured card sizes (playwright, sanctioned path); the
+3700px 200-draw display is `collapsed: true` in the save. Epoch double-card checked out
+as correct-by-design (op fixed at construction types the sockets; two catalog entries).
+Window node ruled NOT redundant vs Computed Column/Running: partition-by + order
+(per-group rank/lag/rolling) exists only there — the SQL OVER argument.
+
 ### SESSION DIGEST (2026-08-23g — the Python/R gap, Tier 2 landed; Formula.js upstream list)
 
 **Tier 2 of `docs/python-r-gap.md` built end to end (13 new cards, 4 widened, ~25 formulas),
