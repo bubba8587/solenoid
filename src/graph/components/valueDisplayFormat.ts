@@ -141,7 +141,7 @@ export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): El
   if (t === undefined) return undefined;
   if (isDateType(t)) return "date";
   const fam = elementFamilyOf(t);
-  return fam === "number" || fam === "string" || fam === "logical" ? fam : undefined;
+  return fam === "number" || fam === "string" || fam === "logical" || fam === "complex" ? fam : undefined;
 }
 
 /** Turn numeric serials into date strings when the output socket is a date; a no-op once an

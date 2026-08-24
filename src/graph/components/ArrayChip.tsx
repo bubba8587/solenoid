@@ -2,6 +2,7 @@ import { tablePopup, type Cell, type TablePopupState } from "../tablePopupStore"
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
+import { isCx } from "../cxValue";
 import { matrixUnitOf } from "../unitValue";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
@@ -18,12 +19,12 @@ function to2D(v: ArrayValue): Cell[][] {
 // The declared socket FAMILY decides this when known; the fallback reads the FIRST
 // cell only, so a leading `null` misreads a text list as numeric.
 function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
-  if (family) return family;
+  if (family) return family === "complex" ? "string" : family; // Cx cells arrive pre-stringified
   const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];
   return typeof first === "string" ? "string" : "number";
 }
 
-export type ElemFamily = "number" | "string" | "date" | "logical";
+export type ElemFamily = "number" | "string" | "date" | "logical" | "complex";
 
 /** Mirrors the `--elem-*` classes in ArrayChip.css; `undefined` (a genuine wildcard)
  *  falls back to the plain list/table color. */
@@ -33,6 +34,7 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
     case "string":  return `var(--sock-str${suffix})`;
     case "date":    return `var(--sock-date${suffix})`;
     case "logical": return `var(--sock-logical${suffix})`;
+    case "complex": return `var(--sock-complex${suffix})`;
     default:        return twoD ? "var(--sock-table)" : "var(--sock-list)";
   }
 }
@@ -47,6 +49,7 @@ function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
       typeof cell === "number" ? "number"
       : typeof cell === "string" ? "string"
       : typeof cell === "boolean" ? "logical"
+      : isCx(cell) ? "complex"
       : undefined;
     if (!f) return undefined;
     if (fam && fam !== f) return undefined; // mixed — no tint
