@@ -329,7 +329,9 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   single list socket only when elements are interchangeable (SUM). Aligned parallel columns →
   ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs). The same for
   OUTPUTS: correlated lists (t and y of a solution, the parts of a decomposition) leave as ONE
-  frame, never as parallel list sockets (author, 2026-08-24).
+  frame, never as parallel list sockets (author, 2026-08-24). A node that takes a user
+  formula takes it as a LAMBDA input (`lambdaIn` + `lambdaSig` + `resolveFn`, the λ-family
+  in `tableLambda.ts`), never as a string socket holding an expression (author, 2026-08-24).
 - **Node combining (recurring author program — Running oneRunningNode, Distribution oneDistributionNode are the models).**
   "These could be one node" means the MAXIMAL merge: one card, selectors for what varied
   (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
