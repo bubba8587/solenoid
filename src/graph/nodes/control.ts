@@ -330,9 +330,22 @@ export function pointsToText(pts: ReadonlyArray<readonly [number, number]>): str
   return pts.map(([x, y]) => `${trimNum(x)}, ${trimNum(y)}`).join("\n");
 }
 
+/** The plotted points as a two-column frame (X, Y) — the correlated-output form (C5:
+ *  index-aligned lists leave a node as ONE frame, never parallel list sockets). */
+export function pointsToFrame(pts: ReadonlyArray<readonly [number, number]>): FrameValue {
+  return {
+    __frame: true,
+    columns: [
+      { name: "X", type: "number", values: pts.map((p) => p[0]) },
+      { name: "Y", type: "number", values: pts.map((p) => p[1]) },
+    ],
+  };
+}
+
 export class PointPlotterNode extends ClassicPreset.Node {
   label: string;
   pointsText = "";
+  cachedResult: FrameValue | null = null;
   /** Axis ranges for the pad's coordinate frame. */
   literals: Record<string, number> = { xmin: 0, xmax: 10, ymin: 0, ymax: 10 };
   width = 240;
@@ -345,13 +358,13 @@ export class PointPlotterNode extends ClassicPreset.Node {
     for (const k of ["xmin", "xmax", "ymin", "ymax"] as const) {
       if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
     }
-    this.addOutput("x", numListOut("X"));
-    this.addOutput("y", numListOut("Y"));
+    this.addOutput("result", frameOut("Points"));
   }
 
-  data(): { x: number[]; y: number[] } {
-    const pts = parsePoints(this.pointsText);
-    return { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]) };
+  data(): { result: FrameValue } {
+    const frame = pointsToFrame(parsePoints(this.pointsText));
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }
 

@@ -1,7 +1,8 @@
 import { useRef, useState, type CSSProperties } from "react";
 import type { PointPlotterNode as PointPlotterNodeType } from "../rete-nodes";
-import { parsePoints, pointsToText } from "../nodes/control";
-import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { parsePoints, pointsToText, pointsToFrame } from "../nodes/control";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { FrameDisplay } from "./FrameDisplay";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
@@ -141,14 +142,7 @@ export function PointPlotterComponent({ data, emit }: NodeProps<PointPlotterNode
       <RangeRow label="X" lo={xmin} hi={xmax} onLo={setRange("xmin")} onHi={setRange("xmax")} />
       <RangeRow label="Y" lo={ymin} hi={ymax} onLo={setRange("ymin")} onHi={setRange("ymax")} />
       <div className="solenoid-node__section-divider" />
-      <InlineOutputRows
-        node={data}
-        emit={emit}
-        rows={[
-          { key: "x", label: "X", value: pts.map((p) => p[0]) },
-          { key: "y", label: "Y", value: pts.map((p) => p[1]) },
-        ]}
-      />
+      <FrameDisplay frame={pointsToFrame(pts)} label={data.label} />
     </NodeShell>
   );
 }

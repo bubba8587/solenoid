@@ -57,10 +57,16 @@ describe("monotoneCubic", () => {
 });
 
 describe("PointPlotterNode", () => {
-  it("emits parallel X / Y lists from its points text", () => {
+  it("emits a two-column X / Y frame from its points text", () => {
     const n = new PointPlotterNode({ pointsText: "1, 2\n3, 4" });
-    expect(n.data()).toEqual({ x: [1, 3], y: [2, 4] });
-    expect(new PointPlotterNode().data()).toEqual({ x: [], y: [] });
+    const frame = n.data().result;
+    expect(frame.columns.map((c) => c.name)).toEqual(["X", "Y"]);
+    expect(frame.columns[0].values).toEqual([1, 3]);
+    expect(frame.columns[1].values).toEqual([2, 4]);
+    // Empty points → an empty frame (0 rows), not null.
+    const empty = new PointPlotterNode().data().result;
+    expect(empty.columns.map((c) => c.name)).toEqual(["X", "Y"]);
+    expect(empty.columns[0].values).toEqual([]);
   });
 
   it("points + ranges round-trip through extractInit", () => {
