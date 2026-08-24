@@ -637,16 +637,7 @@
    "x": 4090,
    "y": 1274,
    "init": {
-    "label": "flags"
-   }
-  },
-  {
-   "id": "d_outl_clean",
-   "type": "DisplayNode",
-   "x": 4422,
-   "y": 58,
-   "init": {
-    "label": "cleaned"
+    "label": "Value / Outlier"
    }
   },
   {
@@ -2090,16 +2081,7 @@
    "x": 2114,
    "y": 6827,
    "init": {
-    "label": "peak positions"
-   }
-  },
-  {
-   "id": "d_pk_val",
-   "type": "DisplayNode",
-   "x": 2114,
-   "y": 6973,
-   "init": {
-    "label": "peak heights"
+    "label": "Position / Height"
    }
   },
   {
@@ -2136,25 +2118,7 @@
    "x": 3208,
    "y": 6827,
    "init": {
-    "label": "trend"
-   }
-  },
-  {
-   "id": "d_dc_s",
-   "type": "DisplayNode",
-   "x": 3208,
-   "y": 7135,
-   "init": {
-    "label": "seasonal"
-   }
-  },
-  {
-   "id": "d_dc_r",
-   "type": "DisplayNode",
-   "x": 3208,
-   "y": 7479,
-   "init": {
-    "label": "residual"
+    "label": "trend / seasonal / residual"
    }
   },
   {
@@ -2440,8 +2404,7 @@
      "d_spearman",
      "d_kendall",
      "d_binq",
-     "d_outl_flags",
-     "d_outl_clean"
+     "d_outl_flags"
     ],
     "color": "blue",
     "collapsed": false,
@@ -2845,8 +2808,7 @@
      "d_sm_sg",
      "d_sm_lo",
      "d_sm_ga",
-     "d_pk_pos",
-     "d_pk_val"
+     "d_pk_pos"
     ],
     "color": "gold",
     "collapsed": false,
@@ -2864,9 +2826,7 @@
     "members": [
      "src_season",
      "decomp",
-     "d_dc_t",
-     "d_dc_s",
-     "d_dc_r"
+     "d_dc_t"
     ],
     "color": "blue",
     "collapsed": false,
@@ -3303,14 +3263,8 @@
   },
   {
    "source": "outl",
-   "sourceOutput": "flags",
+   "sourceOutput": "result",
    "target": "d_outl_flags",
-   "targetInput": "in"
-  },
-  {
-   "source": "outl",
-   "sourceOutput": "clean",
-   "target": "d_outl_clean",
    "targetInput": "in"
   },
   {
@@ -3969,14 +3923,8 @@
   },
   {
    "source": "pk",
-   "sourceOutput": "positions",
+   "sourceOutput": "result",
    "target": "d_pk_pos",
-   "targetInput": "in"
-  },
-  {
-   "source": "pk",
-   "sourceOutput": "values",
-   "target": "d_pk_val",
    "targetInput": "in"
   },
   {
@@ -3987,20 +3935,8 @@
   },
   {
    "source": "decomp",
-   "sourceOutput": "trend",
+   "sourceOutput": "decomposition",
    "target": "d_dc_t",
-   "targetInput": "in"
-  },
-  {
-   "source": "decomp",
-   "sourceOutput": "seasonal",
-   "target": "d_dc_s",
-   "targetInput": "in"
-  },
-  {
-   "source": "decomp",
-   "sourceOutput": "residual",
-   "target": "d_dc_r",
    "targetInput": "in"
   },
   {
