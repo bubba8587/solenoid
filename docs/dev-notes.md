@@ -88,6 +88,26 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **C5 correlated outputs → one frame (plan 14, the five outside stats.ts).** Index-aligned
+  parallel list outputs now leave each node as ONE `frameOut`, per the author's "Node design" rule.
+  Point Plotter x/y → `result` Points frame (X, Y). Curve values/xs → `result` Curve frame (X first,
+  Value). Find Peaks positions/values → `result` Peaks frame (Position, Height). Outliers flags/clean
+  → `result` Result frame (Value typed by the input's element family via `inferColumn`, logical
+  Outlier). Group Lists keys/values → `result` Groups frame (Key adopts the keys' family, numeric
+  Value); its `keys` passthrough + adoptive output deleted (dropped from `trueAnyAdopt`). Each: one
+  output socket (old keys gone, pre-alpha no-alias), component swapped to `FrameDisplay`, a wired blank
+  datum → null frame, the matching FORMULA (FINDPEAKS/ISOUTLIER/GROUPBY) unchanged, catalog copy names
+  the columns. HELD for the author (change nothing, per the plan): the three scalar-broadcast nodes IM
+  Unpack, Triangle Solver, Quadratic Roots (a one-row frame for a scalar input is the wrong shape).
+  Agent 4 owns the stats.ts pair (Decompose landed a9035642, Forecast ETS in flight) + the scratch-seed
+  rewire (99d409da). The plan file deletes when all seven land.
+- **Series Range → INCLUSIVE of Stop (author 2026-08-24).** `rangeCount`/`rangeList` (`listOps.ts`)
+  end ON Stop: `n = floor((stop−start)/step + 1e-9) + 1`; step 0 → `start===stop ? 1 : Infinity` (still
+  the `#DOMAIN!` cap); values are `start + i*step` (not accumulated) with the last snapped exactly onto
+  Stop (so 0→1 by 0.1 ends on 1). The RANGE formula shares the kernel. SERIES_OP_META copy + the Range
+  tests flipped. Also a small copy fix (Lead ask): REDUCE_OP_META first/last drop the repo-retired "No
+  Excel equivalent" phrase and the §7 second-person aside (f42b42d0).
+
 - **B7 Tidy options (plan 10) — three persisted knobs, read by BOTH ELK call sites.**
   `tidyLayoutOptions({direction, density, widthCap})` maps to ELK: `elk.direction` RIGHT/DOWN,
   the spacing pair (compact 36/24 · normal 55/38 = today's · airy 80/56), and a width cap via
