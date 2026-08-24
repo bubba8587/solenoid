@@ -34,18 +34,25 @@ Reading:
   Wide frames are the problem: at 30 cols a keystroke drops ~350 ms of main-thread work
   per character (+ React on top) — clearly janky; 10 cols (~120 ms) is already noticeable.
 
-Two independent wins, if the author wants them:
+Two independent wins:
 1. **Virtualize rows** (render only the ~20-30 visible rows, not 1000). The general fix —
    helps open AND keystroke, editable and read-only, and cuts the numbers ~30× (sub-15 ms
    even at 30 cols). Biggest lever; also the most work (sort/slice/scroll interplay, the
-   sticky header, the measured column widths at ~406).
-2. **Render read-only cells as plain text**, not `<input readOnly>`. Cheap, local, no scroll
-   machinery — cuts ~60% off every read-only popup for free. Doesn't help editable popups.
+   sticky header, the measured column widths at ~406). **STILL OPEN — author's call** (Path A
+   window-it-ourselves vs Path B react-window grid; see the backlog item).
+2. **Render read-only cells as plain text**, not `<input readOnly>`. **LANDED 2026-08-24.**
+   A cell with `canEdit` false (read-only popups + computed cells) renders a plain-text
+   `<div class="table-popup__input table-popup__input--ro">` — reuses the input's font/align/
+   error/nan styling, stays keyboard-navigable (tabIndex −1 + data-vi/data-c, same arrow mover),
+   editable cells unchanged. Before/after (ro-div variant, same probe): **~50% off every
+   read-only popup** — 30-col open 260→132 ms, keystroke rebuild 290→141 ms; 10-col 91→45 ms;
+   3-col 34→17 ms. Doesn't touch editable popups (still `<input>`). Note: read-only TEXT columns
+   now auto-size to their visible content instead of clipping at 120px (numeric columns are
+   pre-sized by `colMinWidths`, so they're pixel-identical) — an eyeball item.
 
-Recommendation: (2) is a small, safe standalone patch worth doing regardless; (1) is the real
-answer for wide editable frames but is a proper build. Numbers reproduce with
-`node scripts/table-popup-probe.mjs` (dev server must be up). Cube popup shares the grid
-render path, so it inherits the same profile.
+Numbers reproduce with `node scripts/table-popup-probe.mjs` (dev server must be up; `input-ro`
+= old, `ro-div` = shipped). Cube popup shares the grid render path, so it inherits both the
+profile and win (2).
 
 ### OPEN PROBLEM (2026-07-25 — a choppy zoom BAND: interior range of scales, both extremes smooth)
 Zoom chop is **not** monotonic in graph size or zoom depth. There is a specific interior range of
@@ -129,6 +136,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **Popup read-only cells → plain text (the cheap popup-perf win).** TablePopup cells with
+  `canEdit` false (read-only popups + computed cells) render a `<div class="table-popup__input
+  table-popup__input--ro">` instead of `<input readOnly>`; editable cells unchanged. Keyboard
+  nav preserved (tabIndex −1 + data-vi/data-c; `focusGridCell` generalized off `input[...]`).
+  ~50% off every read-only popup (probe, 30-col open 260→132 ms). Read-only text columns now
+  auto-size to content (numeric pre-sized by colMinWidths — identical); eyeball item. See the
+  FINDING above; virtualization for wide editable frames stays open.
 - **HYPOT de-duplicated (no-duplicate-nodes rule).** The standalone `HypotenuseNode` (class in
   scalar.ts, component, registry, the geometry/timesavers pack leaf) duplicated TwoInputMath's
   `hypot` op (both √(A²+B²)). Deleted the node; `HYPOTENUSE_ENTRY` now `type: "twomath-hypot"`,
@@ -169,6 +183,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   is automatic; sink discipline unchanged (Run-only writes, `enabled` never persisted). One catalog leaf
   `write-file` (keywords keep csv/json findable); old `write-csv`/`write-json` saves load as Placeholder
   (pre-alpha, no alias). sink.test.ts rewired; full suite green.
+- **CSV File + Parquet File → ONE "Local File" node (no-duplicates rule).** `CsvConnectionNode` +
+  `ParquetConnectionNode` collapse into `LocalFileNode` (`nodes/connection.ts`); the file EXTENSION picks
+  the reader — no format control (author: extension-driven, no picker). `.parquet` → `engine_read_parquet`
+  lazy `FrameRef` (native-only, `#REF!` on failure); anything else → CSV (Rust `readCsvFrame` on desktop,
+  JS `csvToFrame` on web, null on failure). One `data()` branches on `endsWith(".parquet")`; owns/drops the
+  Parquet handle and drops it on a switch to CSV. Rust side untouched (both commands already existed). The
+  merged card keeps the CSV node's auto-refresh (Parquet gains it). `listLocalFiles` lists csv+parquet
+  (`listFilesByExt` now takes an ext array); one catalog leaf `local-file`. Old `csv-connection`/
+  `parquet-connection` saves → Placeholder (no seed used them). tsc + full suite green.
 - **Series Range → INCLUSIVE of Stop (author 2026-08-24).** `rangeCount`/`rangeList` (`listOps.ts`)
   end ON Stop: `n = floor((stop−start)/step + 1e-9) + 1`; step 0 → `start===stop ? 1 : Infinity` (still
   the `#DOMAIN!` cap); values are `start + i*step` (not accumulated) with the last snapped exactly onto

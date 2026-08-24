@@ -50,6 +50,12 @@ async function main() {
             td.className = "table-popup__cell";
             if (variant === "text") {
               td.textContent = "123.45";
+            } else if (variant === "rodiv") {
+              // The SHIPPED read-only cell: a plain-text <div> with the cell classes.
+              const div = document.createElement("div");
+              div.className = "table-popup__input table-popup__input--ro";
+              div.textContent = "123.45";
+              td.appendChild(div);
             } else {
               const inp = document.createElement("input");
               inp.className = "table-popup__input";
@@ -76,7 +82,7 @@ async function main() {
 
       const out = {};
       for (const cols of COLS) {
-        for (const variant of ["ro", "edit", "text"]) {
+        for (const variant of ["ro", "rodiv", "text"]) {
           const build = [], rebuild = [], retouch = [];
           for (let rep = 0; rep < REPS; rep++) {
             // BUILD: create the subtree + attach + force layout (time-to-open floor).
@@ -88,7 +94,8 @@ async function main() {
             build.push(performance.now() - t0);
 
             // RETOUCH: value-only update of every input (memoized-keystroke floor).
-            if (variant !== "text") {
+            // Only the <input> variant has inputs to touch; read-only cells never keystroke.
+            if (variant === "ro") {
               t0 = performance.now();
               const inputs = table.querySelectorAll("input");
               for (let i = 0; i < inputs.length; i++) inputs[i].value = "678.90";
@@ -106,7 +113,7 @@ async function main() {
           out[`c${cols}_${variant}`] = {
             cols, variant, cells: ROWS * cols,
             build_ms: +median(build).toFixed(1),
-            retouch_ms: variant === "text" ? null : +median(retouch).toFixed(1),
+            retouch_ms: retouch.length ? +median(retouch).toFixed(1) : null,
             rebuild_ms: +median(rebuild).toFixed(1),
           };
         }
@@ -116,12 +123,14 @@ async function main() {
     }, ROWS, COLS, REPS);
 
     // Print a compact table.
-    console.log(`\nTablePopup DOM-cost probe — ${ROWS} rows (the MAX_VISIBLE_ROWS cap), median of ${REPS}\n`);
-    console.log("cols  variant  cells    build(open)  retouch(memo-keystroke)  rebuild(current-keystroke)");
+    console.log(`\nTablePopup DOM-cost probe — ${ROWS} rows (the MAX_VISIBLE_ROWS cap), median of ${REPS}`);
+    console.log("input-ro = the OLD read-only cell (<input readOnly>); ro-div = the SHIPPED read-only");
+    console.log("cell (<div .table-popup__input--ro>); bare-text = a bare <td> floor.\n");
+    console.log("cols  variant   cells    build(open)  retouch(keystroke)  rebuild(full re-render)");
     for (const cols of COLS) {
-      for (const variant of ["ro", "edit", "text"]) {
+      for (const variant of ["ro", "rodiv", "text"]) {
         const r = results[`c${cols}_${variant}`];
-        const name = { ro: "input-ro", edit: "input-ed", text: "plaintext" }[variant];
+        const name = { ro: "input-ro", rodiv: "ro-div", text: "bare-text" }[variant];
         console.log(
           `${String(cols).padEnd(5)} ${name.padEnd(8)} ${String(r.cells).padEnd(8)} ` +
           `${String(r.build_ms).padStart(8)} ms   ${(r.retouch_ms == null ? "     — " : String(r.retouch_ms).padStart(7) + " ms").padStart(10)}            ${String(r.rebuild_ms).padStart(7)} ms`

@@ -93,8 +93,7 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   (one card, output socket swaps list↔logical per op — Split Frame precedent);
   discount securities (TBill 3 + SecurityDisc 3 + PriceDisc 2 + PriceMat 2, all
   settlement/maturity/basis-shaped); BondPrice + OddCoupon (odd variants = extra
-  date params per op); ACCRINT + ACCRINTM; CSV File +
-  Parquet File (format from extension).
+  date params per op); ACCRINT + ACCRINTM.
 
 ## Small builds & calls (still 1.3-sized)
 
@@ -105,8 +104,16 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   cap is really a DOM-node budget. **The open question is not the library, it's whether
   the popup stays an HTML `<table>` or becomes a real data grid** — that choice picks
   the tool, so answer it first. Decider: does anyone actually hit 1,000 rows in
-  practice? Needs a measurement (time a 50k-row frame at a few column counts) and the
-  author's read on how big real frames get.
+  practice? and the author's read on how big real frames get.
+
+  **Measured 2026-08-24** (`scripts/table-popup-probe.mjs`, 1000-row cap × 3/10/30 cols,
+  Edge): every cell was an `<input>` (read-only ones included) and the `<input>` is ~2.5×
+  the DOM cost of plain text. Wide frames are the cost — 30-col open ~260 ms, keystroke
+  (full re-render, cells un-memoized) ~290 ms; 10-col ~90/~98 ms; 3-col fine (~34 ms).
+  **The read-only-cell win already LANDED** (see the dev-notes FINDING): read-only + computed
+  cells now render plain-text `<div>`s, ~50% off every read-only popup (30-col open 260→132 ms).
+  What's left for THIS item is virtualization for wide EDITABLE frames — Path A vs Path B,
+  still the author's call.
 
   - **Path A — keep the `<table>`, window it ourselves (~60 lines, no dependency).**
     Render only the visible slice of `<tr>`s, preserve scroll height with one spacer
@@ -115,8 +122,8 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
     usual blocker — widths jittering as rows scroll in and out — is half-solved:
     `colMinWidths` already measures every NON-text column from the whole dataset
     (`<input>` cells have no intrinsic width), so only text columns auto-size from
-    visible content and that same pass extends to them. Cheaper still if the
-    measurement says the `<input>` is the cost: drop it on read-only cells first.
+    visible content and that same pass extends to them. (Dropping the `<input>` on
+    read-only cells — the cheap half — already landed 2026-08-24.)
   - **Path B — rebuild the grid as divs and use `react-window` as its engine**
     (v2.3.0, MIT, zero deps, React 19 peer). Buys what a `<table>` cannot: horizontal
     virtualization for wide frames, resizable/reorderable columns, frozen columns, no

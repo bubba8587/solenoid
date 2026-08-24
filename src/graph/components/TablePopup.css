@@ -134,6 +134,20 @@
   color: var(--text);
   cursor: default;
 }
+/* A read-only cell renders as a plain-text <div>, not an <input readOnly> (the <input> is
+   ~2.5× the per-cell DOM cost — the popup-virtualize Finding). It reuses .table-popup__input
+   for identical font/size/alignment/padding + the type/error/nan variants; these overrides
+   restore the input's own behaviours a <div> lacks: fill the cell (width:100% needs a block
+   box), the readonly ink, and single-line clipping so a long value never wraps and grows the
+   row. A numeric column is pre-sized by colMinWidths so the text fits; a text column has no
+   fitted width, so it auto-sizes to its visible content instead of clipping at 120px. */
+.table-popup__input--ro {
+  display: block;
+  color: var(--text);
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+}
 /* An error VALUE in a cell wears the SHARED #CODE! treatment — `.sol-error-chip`
    (errorChip.css) is the single source of truth for it, and the cell just adds the
    class. This rule defines no new colour; it exists only to win specificity, since

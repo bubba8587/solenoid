@@ -645,9 +645,32 @@ export function TablePopup() {
   // located by its data-attrs so no per-cell refs are needed.
   const focusGridCell = (target: { vi: number; c: number } | null) => {
     if (!target) return;
-    const el = gridRef.current?.querySelector<HTMLInputElement>(`input[data-vi="${target.vi}"][data-c="${target.c}"]`);
-    if (el) { el.focus(); el.select(); }
+    // Read-only cells are a focusable <div> (tabIndex -1), not an <input> — match either.
+    const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
+    if (el) { el.focus(); if (el instanceof HTMLInputElement) el.select(); }
   };
+  // A read-only grid cell renders as plain TEXT, not an <input readOnly> — the <input> is
+  // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
+  // popups paid it for nothing. Stays keyboard-navigable: tabIndex -1 + data-vi/data-c so
+  // focusGridCell lands here, and the same column-skipping arrow mover an editable cell uses.
+  const readOnlyCell = (content: string, className: string, vi: number, c: number) => (
+    <div
+      className={`${className} table-popup__input--ro`}
+      data-vi={vi}
+      data-c={c}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        const k = gridKeyOf(e);
+        if (!k) return;
+        const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
+        if (!target) return;
+        e.preventDefault();
+        focusGridCell(target);
+      }}
+    >
+      {content === "" ? " " : content}
+    </div>
+  );
   // Escape mid-edit reverts the cell being edited and keeps the popup open (the shell's
   // capture listener fires before the cell's own keydown); Escape with nothing mid-edit
   // closes. Deletes the need for a per-cell Escape branch.
@@ -909,24 +932,11 @@ export function TablePopup() {
                           className="table-popup__cell table-popup__cell--computed"
                           style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                         >
-                          <input
-                            className={`table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`}
-                            value={controlledCell((liveComputed ?? state.computedCells)?.[r]?.[c] ?? null, c)}
-                            readOnly
-                            tabIndex={-1}
-                            spellCheck={false}
-                            data-vi={vi}
-                            data-c={c}
-                            // Read-only, but arrows can LAND here — so it still moves focus off.
-                            onKeyDown={(e) => {
-                              const k = gridKeyOf(e);
-                              if (!k) return;
-                              const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
-                              if (!target) return;
-                              e.preventDefault();
-                              focusGridCell(target);
-                            }}
-                          />
+                          {readOnlyCell(
+                            controlledCell((liveComputed ?? state.computedCells)?.[r]?.[c] ?? null, c),
+                            `table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`,
+                            vi, c,
+                          )}
                         </td>
                       );
                     }
@@ -939,6 +949,11 @@ export function TablePopup() {
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
                         : undefined}
                     >
+                      {!canEdit ? readOnlyCell(
+                        row[c] ?? "",
+                        `${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`,
+                        vi, c,
+                      ) : (
                       <input
                         className={`${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`}
                         value={editingHere ? editDraft.current : row[c] ?? ""}
@@ -973,6 +988,7 @@ export function TablePopup() {
                           focusGridCell(target);
                         } : undefined}
                       />
+                      )}
                     </td>
                     );
                   })}
