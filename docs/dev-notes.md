@@ -210,6 +210,18 @@ the profile-bar tooltip lost its dynamic counts — tooltips are structural only
   cable-only row sits on the FormulaBox row (MAP layout), and OdeIntegrateNode joined FormulaPopup's
   host set so the pop-out opens (author bug report).
 
+**C5 — correlated outputs → one frame (plan 14, author rule). My two stats.ts nodes.** Decompose's
+trend/seasonal/residual are correlated per time step, so they ride ONE `decomposition` frame (columns
+Trend/Seasonal/Residual) instead of three list sockets (a9035642; component → FrameDisplay). Forecast
+(ETS) is the same: the point forecast and its ± prediction interval → one `{Forecast, Interval}` frame,
+while the detected season stays a scalar output (it's a fit diagnostic, not per-step) (dbff6936). The
+shared scratch seed was rewired for every C5 frame node — decomp, Outliers, Find Peaks (mine, 99d409da),
+then Forecast ETS (dbff6936) — each multi-output display cluster collapsed to one frame Display. Jeff
+(Agent 5) owns the other five list/control C5 nodes; the seed handoff and one HEAD-red episode (his
+fd4947d7 swept my Decompose frame-test in before my frame-node landed) are recorded in the coordination
+messages. Also folded into dbff6936: the Grid Interpolate Xs/Ys fix (InterpolateNode `stringLiterals`
+xs/ys → typeable CSV lists, using Agent 1's 494abae2 numlist-CSV opt-in).
+
 **C2 — the base Chart renders multiple series from a frame (plan 11, author ask). 3 commits.**
 `ChartValue.series` + `ChartNode.data()`: column 0 is ALWAYS the x-axis label at ≥2 columns (a
 numeric col 0 is a real axis — live-market-data feeds are `(date-or-number, value)`; the "label only
@@ -379,7 +391,16 @@ elapsed `[h]:mm` FC format first (format-model question, `pack-composite-plans.m
 new multi-output node with an output-shape call (parked); Multi-Criteria / Lookup-All reopen the
 recorded XLOOKUP-shape decline; Fiscal Quarter / Age / Nth Weekday are author calls (`deferrals.md`).
 B8.2 files green in isolation (208); the full suite has 2 PEER-owned failures in the scratch seed
-(Jeff's Find Peaks output-merge left `d_pk_val` wired), flagged to him — not from B8.2.
+(Jeff's Find Peaks output-merge left `d_pk_val` wired), flagged to him — not from B8.2. (Since
+resolved by Agent 4's 99d409da — seed now green.)
+
+**B8.3 — DEFERRED (not landed).** XLOOKUP frame+cube path collapse is a pure internal
+simplification with no user-facing change, and the whole-row frame-vs-cube shape edge makes it a
+judgment-heavy refactor that also rewires ~20 frame-arm cases in `frameLookup.test.ts`. Left for a
+focused session rather than rushed at the tail of a long multi-agent day. The plan is trimmed to the
+B8.3 remainder (`docs/plans/b8-cube-unnest-timesavers.md`) with the exact merge + the one-branch
+whole-row escape hatch spelled out; backlog carries a "B8.3 open" line. B8.1 + B8.2 (the user-facing
+B8 value) shipped.
 
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
