@@ -851,8 +851,8 @@ export class InterpolateNode extends ClassicPreset.Node {
 
   label: string;
   mode: InterpolateMode;
-  // LIST mode: scalar-or-list matching the query shape. GRID mode: the filled bordered
-  // table (cells may be null where nothing reached). A whole-input error → SolError.
+  // LIST mode: scalar-or-list matching the query shape. GRID mode: the filled Z table
+  // (cells may be null where nothing reached). A whole-input error → SolError.
   cachedResult: number | (number | null)[] | (number | null)[][] | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
   // GRID mode: also linearly EXTRAPOLATE beyond the known data (the Forecast checkbox),
