@@ -29,7 +29,7 @@ import {
 import {
   RankPercentileNode, CorrelNode,
   StandardizeNode, CovarianceNode, FisherNode,
-  RegressionNode, ForecastNode, EtsForecastNode, DecomposeNode, FitDistributionNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
+  RegressionNode, ForecastNode, EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
 } from "./stats";
 import { BitwiseNode, DepreciationNode, TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode, AmortizationNode, ReturnsNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
@@ -116,7 +116,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof CombinatoricsNode || node instanceof TwoInputMathNode || node instanceof SumProductNode ||
     node instanceof StandardizeNode || node instanceof CovarianceNode || node instanceof FisherNode ||
     node instanceof BitwiseNode || node instanceof DepreciationNode ||
-    node instanceof RegressionNode || node instanceof ForecastNode || node instanceof EtsForecastNode || node instanceof DecomposeNode || node instanceof FitDistributionNode || node instanceof ModeNode ||
+    node instanceof RegressionNode || node instanceof ForecastNode || node instanceof EtsForecastNode || node instanceof DecomposeNode || node instanceof OdeIntegrateNode || node instanceof FitDistributionNode || node instanceof ModeNode ||
     node instanceof TrimMeanNode || node instanceof FrequencyNode || node instanceof ConfidenceNode ||
     node instanceof SeriesSumNode || node instanceof MultinomialNode
   ) return "math";

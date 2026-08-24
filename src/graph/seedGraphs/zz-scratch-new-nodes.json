@@ -2958,6 +2958,33 @@
     "bins": 4,
     "ybins": 4
    }
+  },
+  {
+   "id": "n_ode",
+   "type": "OdeIntegrateNode",
+   "x": 356,
+   "y": 10120,
+   "init": {
+    "label": "ODE Integrate"
+   },
+   "stringLiterals": {
+    "expr": "y"
+   },
+   "literals": {
+    "y0": 1,
+    "t0": 0,
+    "t1": 1,
+    "steps": 20
+   }
+  },
+  {
+   "id": "d_ode",
+   "type": "DisplayNode",
+   "x": 748,
+   "y": 10120,
+   "init": {
+    "label": "y(t): dy/dt = y"
+   }
   }
  ],
  "connections": [
@@ -4070,6 +4097,12 @@
    "sourceOutput": "list",
    "target": "n_hist2d",
    "targetInput": "y"
+  },
+  {
+   "source": "n_ode",
+   "sourceOutput": "y",
+   "target": "d_ode",
+   "targetInput": "in"
   }
  ]
 }

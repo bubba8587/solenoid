@@ -1,6 +1,8 @@
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut } from "./shared";
-import { fillBorderedGrid } from "./mathUtils";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut, strIn } from "./shared";
+import { compilePositional } from "../excelFormula";
+import { rk4 } from "./odeOps";
+import { gridAxes, fillGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
@@ -821,18 +823,18 @@ export class TrendNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Interpolate (List = 1-D, Grid = fill a bordered 2-D table) ──────────────────
+// ─── Interpolate (List = 1-D, Grid = fill a 2-D Z table) ──────────────────
 // Two modes; the dropdown swaps the whole socket set:
 //  • LIST — interpolate y for a query x between known (x, y) points.
-//  • GRID — fill the blanks of a coordinate-BORDERED table (row 1 = X coords,
-//    column 1 = Y coords, top-left ignored on input and blanked on output).
+//  • GRID — fill the blanks of a Z table; optional Xs / Ys coordinate lists ride
+//    BESIDE it (unwired = the 1-based index), never in a border row/column.
 // Both CLAMP at the ends (no extrapolation past the known range).
 
 export type InterpolateMode = "list" | "grid";
 
 export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; title: string }> = {
   list: { label: "List", title: "1-D: interpolate y for a query x between known (x, y) points" },
-  grid: { label: "Grid", title: "Fill the blanks in a bordered table (row 1 = Xs, column 1 = Ys) by 2-D interpolation" },
+  grid: { label: "Grid", title: "Fill the blanks in a Z table by 2-D interpolation; optional Xs/Ys, unwired axes count 1, 2, 3…" },
 };
 
 // The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
@@ -841,9 +843,9 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 
 export class InterpolateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped.",
+    ys: "In LIST mode pairs with Known Xs by position (a pair blank on either side is dropped); in GRID mode one Y coordinate per row, unwired means 1, 2, 3…",
     new_xs: "A query outside the known range clamps to the nearest end. Nothing extrapolates.",
-    grid: "Row 1 holds the X coordinates and column 1 the Y coordinates. The top-left corner cell is ignored.",
+    xs: "LIST mode: the known x values. GRID mode: one X coordinate per column; unwired means 1, 2, 3…",
   };
 
   label: string;
@@ -871,8 +873,10 @@ export class InterpolateNode extends ClassicPreset.Node {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
     if (this.mode === "grid") {
-      this.addInput("grid", tableIn("Bordered grid"));
-      this.addOutput("result", tableOut("Filled grid"));
+      this.addInput("z",  tableIn("Table"));
+      this.addInput("xs", numListIn("Xs"));
+      this.addInput("ys", numListIn("Ys"));
+      this.addOutput("result", tableOut("Filled"));
       this.height = 215;
       return;
     }
@@ -917,17 +921,18 @@ export class InterpolateNode extends ClassicPreset.Node {
   }
 
   private dataGrid(inputs: Record<string, unknown[]>): { result: (number | null)[][] | SolError | null } {
-    const gridRaw = inputs.grid?.[0] ?? null;
-    if (isSolError(gridRaw)) { this.cachedResult = gridRaw; return { result: gridRaw }; }
-    if (!Array.isArray(gridRaw)) { this.cachedResult = null; return { result: null }; }
-    // Coerce cells to number|null: a per-cell error or a non-finite cell reads as BLANK
-    // (a hole to fill), so a stray dirty cell doesn't poison the interpolation.
-    const grid: (number | null)[][] = gridRaw.map((row) =>
-      (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
-    );
+    const zRaw = inputs.z?.[0] ?? null;
+    if (isSolError(zRaw)) { this.cachedResult = zRaw; return { result: zRaw }; }
+    // An UNWIRED axis is undefined (→ 1-based index); a WIRED blank is null (→ shape unknown,
+    // null result). gridAxes validates a wired list against the row/column count.
+    const xs = inputs.xs === undefined ? undefined : (inputs.xs[0] ?? null);
+    const ys = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
+    const axes = gridAxes(zRaw, xs, ys);
+    if (axes === null) { this.cachedResult = null; return { result: null }; }
+    if (isSolError(axes)) { this.cachedResult = axes; return { result: axes }; }
     // Carry the unitGranularity grid unit: filling blanks keeps every cell in the input's unit
     // (structural reshape, matrixUnitPolicy "carry").
-    const result = carryMatrixUnit(fillBorderedGrid(grid, this.forecast), gridRaw);
+    const result = carryMatrixUnit(fillGrid(axes.z, axes.xs, axes.ys, this.forecast), zRaw);
     this.cachedResult = result;
     return { result };
   }
@@ -1221,5 +1226,56 @@ export class DecomposeNode extends ClassicPreset.Node {
     if (!d) return blank();
     this.cachedTrend = d.trend; this.cachedSeasonal = d.seasonal; this.cachedResidual = d.residual;
     return { trend: d.trend, seasonal: d.seasonal, residual: d.residual };
+  }
+}
+
+// ─── ODE Integrate (RK4) — scipy solve_ivp / R deSolve ─────────────────────────
+
+export class OdeIntegrateNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    expr: "The derivative dy/dt as an expression in t and y, e.g. y, t*y, or -2*y.",
+    y0: "The value of y at t0.",
+    t0: "Start of the interval.",
+    t1: "End of the interval.",
+    steps: "Number of RK4 steps; the outputs carry steps + 1 points, t0 first.",
+  };
+  label: string;
+  stringLiterals: Record<string, string> = { expr: "y" };
+  literals: Record<string, number> = { y0: 1, t0: 0, t1: 1, steps: 100 };
+  cachedT: number[] | SolError | null = null;
+  cachedY: number[] | SolError | null = null;
+  width = 200; height = 250;
+
+  constructor(init?: { label?: string }) {
+    super("OdeIntegrate");
+    this.label = init?.label ?? "ODE Integrate";
+    this.addInput("expr", strIn("dy/dt"));
+    this.addInput("y0", numIn("y0"));
+    this.addInput("t0", numIn("t0"));
+    this.addInput("t1", numIn("t1"));
+    this.addInput("steps", numIn("Steps"));
+    this.addOutput("t", numListOut("t"));
+    this.addOutput("y", numListOut("y"));
+  }
+
+  data(inputs: { expr?: string[]; y0?: number[]; t0?: number[]; t1?: number[]; steps?: number[] }) {
+    const blank = (err: SolError | null) => { this.cachedT = err; this.cachedY = err; return { t: err, y: err }; };
+    const expr = readInput(inputs.expr, this.stringLiterals.expr ?? "");
+    const y0 = readInput(inputs.y0, this.literals.y0 ?? 1);
+    const t0 = readInput(inputs.t0, this.literals.t0 ?? 0);
+    const t1 = readInput(inputs.t1, this.literals.t1 ?? 1);
+    const steps = readInput(inputs.steps, this.literals.steps ?? 100);
+    if (expr === null || y0 === null || t0 === null || t1 === null || steps === null) return blank(null);
+    const fn = compilePositional(String(expr), ["t", "y"]);
+    if (!fn) return blank(solError("#NAME?", "Could not read the derivative — check the dy/dt expression in t and y"));
+    // A per-step SolError or non-number result aborts the integration (→ #NUM! below).
+    const f = (t: number, y: number): number | null => {
+      const r = fn(t, y);
+      return typeof r === "number" && Number.isFinite(r) ? r : null;
+    };
+    const sol = rk4(f, y0, t0, t1, steps);
+    if (!sol) return blank(solError("#DOMAIN!", "The integration diverged or the derivative was undefined on the interval"));
+    this.cachedT = sol.t; this.cachedY = sol.y;
+    return { t: sol.t, y: sol.y };
   }
 }
