@@ -12,5 +12,5 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 - B0.3/B0.4 — Agent 4 (solenoid-f1) — Python/R gap remainder (ODE/RK4, STL). C2 landed (179ba3a5 + 43a22615); B0.1/B0.2 landed too. visual.ts free.
 - B8 — Agent 2 (solenoid-18) — cube unnest + timesavers. C4 COMPLETE (d01f6d10, 4184d711, 56daabda; nodeCatalog copy in Agent 4's baae4eb4; grep-bordered-empty met). Also landed this session: A6, A4, A3, C3.1, C3.2.
-- C5 (list/control five) — Jeff / Agent 5 (solenoid-b2): correlated outputs → one frame. Point Plotter + Curve (control.ts, no contention) first, then Find Peaks/Outliers/Group Lists (list.ts — coordinating with A2's B8). Agent 4 keeps Decompose + Forecast ETS (stats.ts). One commit each, smallest first. (B7 COMPLETE 8bf129c7; A5 COMPLETE f3fa52c5.)
+- C5 (list/control five) — Jeff / Agent 5 (solenoid-b2): correlated outputs → one frame. DONE: Point Plotter (1480e40b), Curve (2efdc246) [control.ts]. HOLDING: Find Peaks/Outliers/Group Lists [list.ts] — waiting on A2's B8.2 list.ts to land (per-commit sequencing; both editing list.ts). nodeCatalog C5 copy BATCHED for the end (after A2's "all B8 catalog landed" signal). Agent 4 keeps Decompose + Forecast ETS (stats.ts). (B7 COMPLETE 8bf129c7; A5 COMPLETE f3fa52c5.)
 
