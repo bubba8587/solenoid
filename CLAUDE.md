@@ -221,11 +221,14 @@ a place a spec can be contradicted. Concretely:
   stay bubble (vetoable, deliberately). Never flip either. `isPinching()`
   (`pointerGesture.ts`) — ≥2 TOUCH contacts — is the only definition; never count raw pointers
   (a mouse or a stylus in contact is not half a pinch).
-- **Native form popups inside a node need pointer/mouse-down stopPropagation** — the area
-  plugin's node pointerdown triggers selection → re-render, which closes an open `<select>`
-  dropdown mid-pick. NOTE (2026-07-27): widely cited, but no originating incident is on record
-  and the mobile path suggests it may not hold. Untested — kept on precaution. Don't cite it as
-  settled; don't "clean it up" without a real-device check.
+- **Native form popups inside a node need pointer/mouse-down stopPropagation** — SETTLED
+  real on desktop (measured 2026-08-24, `scripts/dropdown-reorder-probe.mjs`): a card-body
+  press fires `nodepicked`, and `simpleNodesOrder` RE-APPENDS the node's element to the DOM
+  end; reparenting a focused `<select>` closes its native popup. The selection re-render is
+  NOT a closer (the `<select>` element survives it). `zIndexNodesOrder` would avoid the
+  re-append but doesn't buy a single swallow deletion (`stopDragStart` on a control is needed
+  for drag prevention anyway) and would force the whole z-ladder to be reconciled — not
+  adopted. Mobile/touch was not measured.
 - **`Scope.use(child)` forwards events DOWN only** — to see a plugin's own events
   (`connectionpick`/`connectiondrop`), `plugin.addPipe(...)` on the instance directly.
 - **Don't use `useReducer` forceUpdate to refresh a controlled `<select>`** — drive the value
