@@ -177,6 +177,51 @@ export function installPinchTranslateVeto(area: AreaPlugin<Schemes, AreaExtra>):
   });
 }
 
+/** The node drag-handler guard, shared by every editing surface: rete picks a node on
+ *  pointerdown because the drag depends on it, so a press that turns out to be the first
+ *  half of a pinch would otherwise grab whatever it landed on. Making an unselected node
+ *  drag-transparent to TOUCH resolves it structurally — the press falls through to a pan,
+ *  and selection lands on pointerup instead (installTapSelect). A locked canvas never
+ *  drags; a non-primary mouse/pen button never drags; a second finger mid-gesture is a
+ *  pinch. rete stopPropagations only AFTER this guard, so a false guard lets the press
+ *  bubble to the area = pan. `groupBand` is the caller's escape hatch for surface-specific
+ *  geometry (Canvas's expanded-group edge band) — areaPresets must not import GroupNode.
+ *  Returns the per-node patcher to call from a `nodecreated` pipe (next frame, once the
+ *  view exists). Full rationale: docs/subsystem-invariants.md § Pointer gestures. */
+export function installNodeDragGuard(
+  area: AreaPlugin<Schemes, AreaExtra>,
+  editor: NodeEditor<Schemes>,
+  opts: {
+    groupBand?: (
+      id: string,
+      e: PointerEvent,
+      view: { element?: HTMLElement } | undefined,
+    ) => boolean | undefined;
+  } = {},
+): (id: string) => void {
+  const isSelected = (id: string | null) =>
+    !!(id && (editor.getNode(id) as { selected?: boolean } | undefined)?.selected);
+  return (id: string) => {
+    const view = area.nodeViews.get(id) as unknown as
+      { dragHandler?: { guards?: { down?: (e: PointerEvent) => boolean } }; element?: HTMLElement } | undefined;
+    const guards = view?.dragHandler?.guards;
+    if (!guards) return;
+    guards.down = (e: PointerEvent) => {
+      if (canvasLockStore.get()) return false;
+      // Touch ONLY — a mouse or pen can't pinch and keeps select-and-drag in one motion.
+      if (e.pointerType === "touch" && !isSelected(id)) return false;
+      // A stylus reports its barrel button and eraser end as non-zero `button`; neither
+      // should grab a node, same as a non-left mouse button.
+      if ((e.pointerType === "mouse" || e.pointerType === "pen") && e.button !== 0) return false;
+      // A second finger arriving mid-gesture is a pinch, which outranks a new drag.
+      if (isPinching()) return false;
+      const band = opts.groupBand?.(id, e, view);
+      if (band !== undefined) return band;
+      return true;
+    };
+  };
+}
+
 /** The classic React preset with an IDENTITY socket-position offset — our sockets sit
  *  centered ON the node border, not pushed 12px outside it like rete's default. */
 export function solenoidClassicRenderSetup() {

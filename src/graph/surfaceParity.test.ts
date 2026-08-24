@@ -66,6 +66,8 @@ describe("editing-surface parity", () => {
     "installSurfaceSemanticZoom",
     "createSolenoidMinimap",
     "solenoidClassicRenderSetup",
+    "installNodeDragGuard",
+    "installTapSelect",
   ])("%s is installed by every editing surface", (installer) => {
     for (const file of SURFACES) {
       expect(read(file), `${file} must install ${installer}`).toContain(installer);
@@ -104,10 +106,14 @@ describe("editing-surface parity", () => {
     expect(read("src/graph/areaPresets.ts")).toMatch(/type === "zoom"[\s\S]*clampZoom/);
   });
 
-  it("vetoes node translation while pinching on every surface", () => {
-    // Canvas patches its own drag guard inline (it also handles groups and lock), so it
-    // vetoes via isPinching() in its area pipe rather than the shared installer.
-    expect(read("src/graph/Canvas.tsx")).toContain("isPinching()");
+  it("guards node drag through the shared installer on every surface", () => {
+    // The guard used to be inlined in Canvas (the drill-in had none, so a finger press
+    // grabbed a card and a pan over cards was dead). It now lives in areaPresets and both
+    // surfaces install it; the pinch veto that stops a NEW drag under a second finger is
+    // inside the guard itself.
+    expect(read("src/graph/areaPresets.ts")).toMatch(/installNodeDragGuard[\s\S]*isPinching\(\)/);
+    // The drill-in still needs the IN-FLIGHT veto too (a drag already moving when a second
+    // finger lands), which the guard's start-time check can't cover.
     expect(read("src/graph/components/CompositeEditorOverlay.tsx"))
       .toContain("installPinchTranslateVeto");
   });

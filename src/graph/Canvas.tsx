@@ -6,7 +6,9 @@ import { ReactPlugin } from "rete-react-plugin";
 import {
   solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer,
   syncSurfaceBackground, installSurfaceBackground, installSurfaceSemanticZoom,
+  installNodeDragGuard,
 } from "./areaPresets";
+import { createTapCensus, installTapSelect } from "./tapSelect";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { createRoot } from "react-dom/client";
@@ -34,7 +36,7 @@ import { resolveSocketHighlights } from "./highlightUtils";
 import { canvasLockStore } from "./canvasLock";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_COARSE, IS_MOBILE } from "./coarse";
-import { isPinching, resetPointerCensus } from "./pointerGesture";
+import { isPinching } from "./pointerGesture";
 import { installErrorGuards } from "./errorValue";
 import "./seedTune"; // console seed-tune hook (window.__solenoidTuneSeed — scripts/tune-seeds.mjs)
 import { type Pt } from "./lasso";
@@ -107,21 +109,6 @@ export function Canvas() {
   const historyRef = useRef<HistoryPlugin<Schemes> | null>(null);
   const dblClickCleanupRef = useRef<(() => void) | null>(null);
   const screenMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  // TAP bookkeeping only — whether a gesture is a PINCH is `isPinching()`'s call,
-  // which counts fingers, so a mouse or stylus is never half a zoom.
-  const activePointersRef = useRef<Set<number>>(new Set());
-  const tapNodeIdRef = useRef<string | null>(null);
-  // A touch on a form control INSIDE a node must not read as a background tap that
-  // clears the node's selection.
-  const tapControlNodeIdRef = useRef<string | null>(null);
-  const tapMovedRef = useRef(false);
-  const gestureMultiRef = useRef(false);
-  // Pointer TYPE, not IS_MOBILE: tap-to-select exists because a touch press can turn
-  // out to be a pinch, true of any touchscreen; a mouse or pen can't.
-  const tapTouchRef = useRef(false);
-  // An OFF-canvas tap would otherwise wipe the selection: selectableNodes clears on a
-  // window pointerup while its twitch counter is still armed from an earlier press.
-  const tapOnCanvasRef = useRef(false);
   const dragOriginKeyRef = useRef<string | null>(null);
   // Tracked globally so a modifier pressed MID-drag takes effect with no fresh event.
   const shiftDragRef = useRef(false);
@@ -278,69 +265,6 @@ export function Canvas() {
     return () => window.removeEventListener("pointermove", onMove);
   }, []);
 
-  // Gesture record the area pipe reads: pinch/pan freely, a clean tap selects, a drag
-  // moves only what's selected.
-  useEffect(() => {
-    const set = activePointersRef.current;
-    let startX = 0, startY = 0;
-    // `formControl` taps edit the control, not the selection — but the owning node is
-    // still returned so such a tap can PRESERVE an existing selection.
-    const nodeAndControl = (t: EventTarget | null): { id: string | null; formControl: boolean } => {
-      if (!(t instanceof Element)) return { id: null, formControl: false };
-      const formControl = !!t.closest("input, select, textarea, button, [contenteditable]");
-      const area = areaRef.current;
-      if (!area) return { id: null, formControl };
-      for (const [id, v] of area.nodeViews) if (v.element.contains(t)) return { id, formControl };
-      return { id: null, formControl };
-    };
-    const add = (e: PointerEvent) => {
-      set.add(e.pointerId);
-      if (set.size === 1) {
-        gestureMultiRef.current = false;
-        tapMovedRef.current = false;
-        startX = e.clientX; startY = e.clientY;
-        tapTouchRef.current = e.pointerType === "touch";
-        const { id, formControl } = tapTouchRef.current
-          ? nodeAndControl(e.target)
-          : { id: null, formControl: false };
-        tapNodeIdRef.current = formControl ? null : id;
-        tapControlNodeIdRef.current = formControl ? id : null;
-        const cont = containerRef.current;
-        tapOnCanvasRef.current = !!(cont && e.target instanceof Node && cont.contains(e.target));
-      } else if (set.size >= 2) {
-        gestureMultiRef.current = true;
-      }
-    };
-    const move = (e: PointerEvent) => {
-      if (set.size === 0) return;
-      if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) tapMovedRef.current = true;
-    };
-    const drop = (e: PointerEvent) => {
-      set.delete(e.pointerId);
-      if (set.size === 0) {
-        // rete drops its window pointerup on the FIRST release, stranding later pinch
-        // pointers in the zoom handler and breaking the next pinch.
-        const zh = (areaRef.current?.area as unknown as
-          { zoomHandler?: { pointers?: unknown[]; previous?: unknown } } | undefined)?.zoomHandler;
-        if (zh && Array.isArray(zh.pointers)) { zh.pointers.length = 0; zh.previous = null; }
-        // This set going empty is the authoritative "every contact is up", so anything
-        // the census still holds was stranded and would read as multi-touch.
-        resetPointerCensus();
-      }
-    };
-    window.addEventListener("pointerdown", add, true);
-    window.addEventListener("pointermove", move, true);
-    window.addEventListener("pointerup", drop, true);
-    window.addEventListener("pointercancel", drop, true);
-    return () => {
-      window.removeEventListener("pointerdown", add, true);
-      window.removeEventListener("pointermove", move, true);
-      window.removeEventListener("pointerup", drop, true);
-      window.removeEventListener("pointercancel", drop, true);
-      set.clear();
-    };
-  }, []);
-
   // SELECT mode drops rete's Drag so one finger lassoes, keeping the Zoom handler so
   // two still pinch. IS_COARSE, not IS_MOBILE — a TABLET reaches select mode too.
   useEffect(() => {
@@ -420,6 +344,10 @@ export function Canvas() {
         active: () => accumulateActive() || isSelected(pickedId),
       };
 
+      // The touch tap census (installTapSelect owns the listeners + the tap-to-select
+      // itself, below); this pipe only reads it for the sibling off-canvas / form-control
+      // branches that stay Canvas chrome concerns.
+      const census = createTapCensus();
 
       area.addPipe((ctx) => {
         if (!ctx || typeof ctx !== "object" || !("type" in ctx)) return ctx;
@@ -456,38 +384,25 @@ export function Canvas() {
         } else if (c.type === "pointerup") {
           // Swallow an OFF-CANVAS tap's pointerup: selectableNodes' twitch counter is
           // re-armed only by a CONTAINER pointerdown, so it would wipe the selection.
-          if ((IS_MOBILE || tapTouchRef.current) && !tapOnCanvasRef.current) {
+          if ((IS_MOBILE || census.tapTouch) && !census.tapOnCanvas) {
             return;
           }
           // A form-control tap on a SELECTED node must not deselect it, or every toggle
           // costs a re-tap.
           if (
-            tapTouchRef.current &&
-            tapControlNodeIdRef.current &&
-            !tapMovedRef.current &&
-            !gestureMultiRef.current &&
-            isSelected(tapControlNodeIdRef.current)
+            census.tapTouch &&
+            census.tapControlNodeId &&
+            !census.tapMoved &&
+            !census.gestureMulti &&
+            isSelected(census.tapControlNodeId)
           ) {
-            tapControlNodeIdRef.current = null;
+            census.tapControlNodeId = null;
             return;
           }
-          tapControlNodeIdRef.current = null;
-          // Tap-to-select for a drag-transparent unselected node, deferred to pointerup
-          // so the gesture is classifiable — `!gestureMultiRef` is what stops a PINCH
-          // from ever selecting.
-          if (
-            tapTouchRef.current &&
-            !canvasLockStore.get() &&
-            tapNodeIdRef.current &&
-            !tapMovedRef.current &&
-            !gestureMultiRef.current &&
-            !isSelected(tapNodeIdRef.current)
-          ) {
-            const id = tapNodeIdRef.current;
-            tapNodeIdRef.current = null;
-            void selectable.select(id, touchSelectStore.get());
-            return; // stop the background-tap deselect
-          }
+          census.tapControlNodeId = null;
+          // Tap-to-select for a drag-transparent unselected node runs in the shared
+          // installTapSelect pipe (added below, before selectableNodes), so it swallows
+          // the background deselect the same way.
           if (pendingCollapseId && moveCount < 4) {
             const keep = pendingCollapseId;
             for (const n of editor.getNodes()) {
@@ -503,6 +418,13 @@ export function Canvas() {
           pendingDeselectId = null;
         }
         return ctx;
+      });
+
+      // Added BEFORE selectableNodes so its tap-to-select swallow beats the background
+      // deselect — in select mode that ordering is what preserves an accumulating tap.
+      const disposeTapSelect = installTapSelect({
+        area, editor, container: container!, census,
+        select: (id, accumulate) => void selectable.select(id, accumulate),
       });
 
       const selectable = AreaExtensions.selectableNodes(area, nodeSelector, { accumulating });
@@ -563,59 +485,30 @@ export function Canvas() {
       };
       setStandoffSettle(settleStandoffNetwork);
 
-      // Node drag-handler guard: locked canvas never drags, and on TOUCH only a
-      // SELECTED node grabs one. rete stopPropagations only AFTER this guard, so a
-      // false guard lets the press bubble to the area = pan.
-      // The band along a group's outer border that still grabs it; the interior
-      // between header and band is pan-through.
+      // Node drag-handler guard (shared with the drill-in via areaPresets). Canvas adds
+      // the one surface-specific branch: an expanded group's body interior is NOT a drag
+      // handle — only its header bar and a thin band along the outer edges grab the group,
+      // so a press in the open body falls through to pan the canvas. (Member nodes are
+      // separate area views, not DOM children, so they stay independently draggable.)
+      // Collapsed groups are small node-like boxes, fully draggable. GroupNode stays a
+      // Canvas import — areaPresets must not know the concrete node types.
       const GROUP_EDGE_BAND = 16;
-      const patchDragGuard = (id: string) => {
-        const view = area.nodeViews.get(id) as unknown as
-          { dragHandler?: { guards?: { down?: (e: PointerEvent) => boolean } }; element?: HTMLElement } | undefined;
-        const guards = view?.dragHandler?.guards;
-        if (!guards) return;
-        guards.down = (e: PointerEvent) => {
-          if (canvasLockStore.get()) return false;
-          // A FINGER never grabs an unselected node. rete picks on pointerdown
-          // because the drag depends on it, so a press that turns out to be the first
-          // half of a pinch would otherwise select whatever it landed on — the
-          // gesture can't be classified yet at that instant. Making an unselected
-          // node drag-transparent to touch resolves it structurally: the press falls
-          // through to a pan, and selection happens on pointerup only if the gesture
-          // stayed one finger and didn't move (see the pointerup branch). Selected
-          // nodes still drag on the first touch, so moving a selection is one motion.
-          // Touch ONLY — a mouse or pen can't pinch and keeps select-and-drag.
-          if (e.pointerType === "touch" && !isSelected(id)) return false;
-          // Non-primary button never drags. Applies to the PEN as well as the
-          // mouse: a stylus reports its barrel button and its eraser end as
-          // non-zero `button`, and neither should grab and move a node.
-          if ((e.pointerType === "mouse" || e.pointerType === "pen") && e.button !== 0) return false;
-          // A second finger arriving mid-gesture is a pinch, which outranks a drag
-          // (the pipe's nodetranslate guard stops one already in flight; this stops
-          // a new one from starting under the second finger).
-          if (isPinching()) return false;
-          // An expanded group's body interior is NOT a drag handle — only its
-          // header bar and a thin band along the outer edges grab the group, so
-          // a press in the open body falls through to pan the canvas. (Member
-          // nodes are separate area views, not DOM children, so they stay
-          // independently draggable / clickable.) Collapsed groups are small,
-          // node-like boxes — fully draggable like any node.
+      const patchDragGuard = installNodeDragGuard(area, editor, {
+        groupBand: (id, e, view) => {
           const node = editor.getNode(id);
-          if (node instanceof GroupNode && !node.collapsed) {
-            const t = e.target as Element | null;
-            if (t?.closest(".solenoid-group__header")) return true;
-            const rect = view?.element?.getBoundingClientRect();
-            if (!rect) return false;
-            return (
-              e.clientX - rect.left <= GROUP_EDGE_BAND ||
-              rect.right - e.clientX <= GROUP_EDGE_BAND ||
-              e.clientY - rect.top <= GROUP_EDGE_BAND ||
-              rect.bottom - e.clientY <= GROUP_EDGE_BAND
-            );
-          }
-          return true;
-        };
-      };
+          if (!(node instanceof GroupNode) || node.collapsed) return undefined;
+          const t = e.target as Element | null;
+          if (t?.closest(".solenoid-group__header")) return true;
+          const rect = view?.element?.getBoundingClientRect();
+          if (!rect) return false;
+          return (
+            e.clientX - rect.left <= GROUP_EDGE_BAND ||
+            rect.right - e.clientX <= GROUP_EDGE_BAND ||
+            e.clientY - rect.top <= GROUP_EDGE_BAND ||
+            rect.bottom - e.clientY <= GROUP_EDGE_BAND
+          );
+        },
+      });
       editor.addPipe((ctx) => {
         if (ctx && typeof ctx === "object" && "type" in ctx &&
             (ctx as { type: string }).type === "nodecreated") {
@@ -764,6 +657,7 @@ export function Canvas() {
         window.removeEventListener("pointerup", onPanEnd);
         window.removeEventListener("pointercancel", onPanEnd);
         unsubLock();
+        disposeTapSelect();
       };
 
       // History shortcuts are wired by hand: `HistoryExtensions.keyboard` matches KeyZ

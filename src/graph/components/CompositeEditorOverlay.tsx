@@ -10,7 +10,9 @@ import { solenoidMinimapPreset, createSolenoidMinimap } from "./Minimap";
 import {
   solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer,
   installSurfaceBackground, installSurfaceSemanticZoom, installPinchTranslateVeto,
+  installNodeDragGuard,
 } from "../areaPresets";
+import { createTapCensus, installTapSelect } from "../tapSelect";
 import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
@@ -66,6 +68,16 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
 
   const selector = AreaExtensions.selector();
   const accumulating = AreaExtensions.accumulateOnCtrl();
+  // Shared with the main canvas: without the drag guard a finger press on a node grabs it
+  // (a pan over cards is dead), and without tap-to-select the drag-transparent unselected
+  // card is then untouchable. Added BEFORE selectableNodes so the tap-to-select swallow
+  // beats the background deselect. No groupBand — a subgraph holds no expanded groups.
+  const patchDragGuard = installNodeDragGuard(area, editor, {});
+  const tapCensus = createTapCensus();
+  installTapSelect({
+    area, editor, container, census: tapCensus,
+    select: (id, accumulate) => void selectable.select(id, accumulate),
+  });
   const selectable = AreaExtensions.selectableNodes(area, selector, { accumulating });
   AreaExtensions.simpleNodesOrder(area);
 
@@ -118,6 +130,8 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
       if (t === "nodecreated") {
         const node = (ctx as unknown as { data: ClassicPreset.Node }).data;
         installErrorGuards(node);
+        // Next frame: the area has rendered the view by then (same as the main canvas).
+        requestAnimationFrame(() => patchDragGuard(node.id));
       }
       if (
         !isGraphRebuilding() &&
