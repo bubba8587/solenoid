@@ -289,6 +289,30 @@ text only (`engine.rs:1168`) — a real web-vs-desktop parity gap for a wired no
 item. Catalog description left as-is (the typed sockets self-document; a "takes any type" sentence
 would be Captain-Obvious and would churn the `caseContract` pin).
 
+**C4 — grids take a plain Z + optional Xs/Ys; bordered format retired (plan 13, 2 commits).**
+The coordinate-BORDERED grid (row 0 = X, column 0 = Y, interior = Z) is gone everywhere for one
+convention: coordinates ride BESIDE the Z matrix. New shared kernel `gridAxes(z, xs, ys)`
+(`mathUtils.ts`) normalizes: z → rectangular `(number|null)[][]`; an unwired axis is the 1-based
+index; a wired-blank axis leaves the shape unknown → null; a wired list must carry exactly one
+finite number per column/row, else `#SHAPE!`/`#VALUE!` (the old parse silently dropped bad-axis
+lines — now a loud error). `fillGrid` replaces `fillBorderedGrid` (same bilinear + surface-fit
+algorithm over a plain Z). Commit 1 (d01f6d10 + Lead's 474f8724 null-arg fix): the kernel + the
+INTERPOLATE formula's grid arm `INTERPOLATE(table, xs?, ys?, forecast?)`; InterpolateNode's grid
+sockets grid→z/xs/ys landed in Agent 4's stats.ts (ce111e34, co-edited). Commit 2 (4184d711 + the
+nodeCatalog copy on Agent 4's OdeIntegrate commit): SurfaceNode/Contour on gridAxes
+(`parseBorderedGrid` deleted); HISTOGRAM2D returns the plain kx×ky count matrix (bin edges leave
+the formula surface; `histogram2dGrid` deleted); AddIndex's second "bordered grid" output +
+`borderedGridFromFrame` removed; Surface/Contour/Interpolate/Help/landing copy dropped the bordered
+wording; the landing demo feeds a plain Z with holes. `grep -rn bordered src/` is empty (the last
+ref, a stats.ts comment word, rides Agent 4's stats.ts commit). Seeds: none changed (pivot-tables'
+AddIndex never cabled the grid output; the null-and-logical Interpolate is list mode). Ports:
+stats.test.ts (a `filled` re-border helper keeps the interior assertions), formulaMatrix.test.ts,
+visual.test.ts, matrixUnitPolicy.test.ts. Coordination note: heavy 4-agent contention on stats.ts
+(Agent 4 OdeIntegrate) / nodeCatalog / frame.ts / visual.ts — resolved by pathspec commits split
+along file ownership, flagged in each message. AUTHOR EYEBALL: Table Input (3×3 with holes) → Grid
+Interpolate (nothing on Xs/Ys) fills them; wire a 3-item Xs list and the fill changes; Surface from
+the same table draws with 1,2,3 axes; `INTERPOLATE(table)` in an Expression matches the node.
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a
