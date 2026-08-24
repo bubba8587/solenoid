@@ -505,6 +505,19 @@ already pinned). Combine candidates: BuildCube (one column) is a special case of
 one "Build Cube" node with a single/multi mode. Residue: none. (Note: no Unnest node lives in cube.ts;
 the catalog's 4 Cube leaves are these four — B8.1's cube-unnest work, if it lands, is elsewhere.)
 
+**A5 Packs sweep** (10 packs, ~17 real node classes + Equation/Expression presets) → NO bugs. Pack
+entries are mostly `equation`/`expr` presets that run through the Equation/Expression nodes (already
+swept). The 17 real classes (ParallelCombine, ESeries, Awg, ResistorCode, Solar/Sunrise/MoonPhase,
+Colebrook, PipeRoughness, TriangleSolver, EmSpectrum, IsaAtmosphere, Antoine, PhysicsConstant,
+Element, MolarMass, HrZones) all read params via `readInput` and guard to null (`typeof === "number"`
+or an explicit check) → propagate; list/date operands `?? []`/`?? null`; domain errors tag
+`#DOMAIN!`/`#VALUE!`. Each shares its core with the matching pack formula (e.g. `colebrookFriction`,
+`awgWire`, `nearestESeries`) so node and formula can't drift, and those PackFormula impls null-guard
+too (`if (value == null) return null`). No forbidden `?? this.literals` idiom anywhere in the pack
+files. Pins: `wiredNull.test.ts` "Packs — domain nodes" (Colebrook representative, +1). Combine
+candidates: none strong (each pack node is single-purpose; the astro trio outputs different shapes).
+Residue: none.
+
 **A5 Other sweep** (Convert, Cast, Placeholder + structural Group/Conduit/Composite/Equation/FC) →
 NO bugs. Convert (the flagship unit control): the value is an operand, a wired blank propagates to
 null; units are dropdown config, incommensurable → `#N/A`, over-range → `#OVERFLOW!` per cell;

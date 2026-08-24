@@ -17,6 +17,7 @@ import { ExpectNode } from "./quality";
 import { CubeRollupNode, BuildCubeNode } from "./cube";
 import { CastNode } from "./cast";
 import { ConvertNode } from "./convert";
+import { ColebrookNode } from "./fluids";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
 import { DistributionNode } from "./distribution";
 import { SetCellNode } from "./matrix";
@@ -750,6 +751,16 @@ describe("Output family — wired blank by role", () => {
     node.literals.value = 50; node.literals.low = 0; node.literals.high = 100;
     expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
     expect(node.data({}).result).toBe(0);
+  });
+});
+
+describe("Packs — domain nodes propagate a wired blank operand", () => {
+  // Representative of the pack node classes: every one reads params via readInput and
+  // guards to null, sharing its core with the matching pack formula.
+  it("Colebrook: a wired blank Re blanks the result; unwired uses the seeded literals", () => {
+    const node = new ColebrookNode();
+    expect(node.data({ re: [null as unknown as number], rr: [0.0001] }).result).toBeNull();
+    expect(typeof node.data({}).result).toBe("number");
   });
 });
 

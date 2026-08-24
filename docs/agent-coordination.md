@@ -12,5 +12,5 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 - C2 — Agent 4 (solenoid-f1) — multi-series Chart (edits visual.ts). B0.1+B0.2 landed (683cf86d, 2df21a82); B0.3/B0.4 still mine, after C2
 - C4 — Agent 2 (solenoid-18) — grid axes / retire bordered-grid (Lead reassigned, C4 before B8). Touches visual.ts SurfaceNode — coordinating with Agent 4 (C2). C3 landed (af64d772, 2ebb4a65); matrix.ts + frame.ts free for Jeff.
-- A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): 19 families landed (…/Cubes/Other); LEFT: Packs (uncontended, next), + Tables▸Matrix/Lambda+Frames/verbs (waiting on A2 to free matrix.ts/frame.ts)
+- A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): 20 families landed (…/Other/Packs); LEFT: Tables▸Matrix/Lambda+Frames/verbs (A2 freed matrix.ts+frame.ts — sweeping now)
 

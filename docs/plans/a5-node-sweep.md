@@ -98,7 +98,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [ ] | Tables ▸ Lambda + Frames (`:947`, `:957`) | 12 | `nodes/tableLambda.ts`, `nodes/frame.ts`, `lambda.ts` | `wiredNull.test.ts:238` (column ref) |
 | [ ] | Tables ▸ Table verbs, all subs (`:969-1016`) | 35 | `nodes/frame.ts`, `frameVerbs.ts` (+ Rust mirror `src-tauri/src/engine.rs` for fused verbs — a semantics fix must land on both; say so if cargo can't run here) | `wiredNull.test.ts:238`, `finePrintContract.test.ts:125-133` |
 | [x] | Tables ▸ Cubes (`:1031`) | 4 | `nodes/cube.ts` | `wiredNull.test.ts:502`; skip Unnest if B8.1 is in flight |
-| [ ] | Packs (10 packs, `packs.ts:21`) | ~30 classes + presets | `nodes/electrical.ts`, `astro.ts`, `chemistry.ts`, `thermo.ts`, `fluids.ts`, `health.ts`, `triangle.ts`, `emSpectrum.ts`, `physicsConstants.ts`, `packs/*.ts` | — |
+| [x] | Packs (10 packs, `packs.ts:21`) | ~30 classes + presets | `nodes/electrical.ts`, `astro.ts`, `chemistry.ts`, `thermo.ts`, `fluids.ts`, `health.ts`, `triangle.ts`, `emSpectrum.ts`, `physicsConstants.ts`, `packs/*.ts` | — |
 | [x] | Other (`:1051`) + Group/Conduit/Equation/FC/Convert/Cast/Placeholder | ~9 | `composite.ts`, `equation.ts`, `formatController.ts`, `convert.ts`, `cast.ts`, `placeholder.ts` | `activeGraph.test.ts`, `unitFlow` tests — read-heavy, small fixes only |
 
 ## Done when
