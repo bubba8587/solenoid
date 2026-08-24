@@ -464,6 +464,16 @@ based "Fit Text" node; DOLLAR + FIXED (number→formatted string) pair. Otherwis
 (TextTransform unifies 7, TextSlice 3, TextFind 2). Residue: the mode-selector AUTHOR CALL (same as
 Date, recorded there).
 
+**A5 Tables ▸ Cubes sweep** (4 leaves: BuildCube, NestJoin, CubeColumns, CubeRollup) → NO bugs;
+exemplary. All four follow the "read raw, guard, THEN trim" rule for string column refs — a wired
+blank name/key/column is unknown → null, while an untouched empty card reads "" and takes the default
+(BuildCube's "Items", Rollup's "Total"). NestJoin: a wired parent that is neither Frame nor Cube →
+`#TYPE!`, an unwired parent stays blank; socketDocs accurate. Cell rows read wired-or-literal per row
+(no `??` swallow). Pins: `wiredNull.test.ts` "Build Cube — wired blank column name" (+1; CubeRollup
+already pinned). Combine candidates: BuildCube (one column) is a special case of CubeColumns (many) →
+one "Build Cube" node with a single/multi mode. Residue: none. (Note: no Unnest node lives in cube.ts;
+the catalog's 4 Cube leaves are these four — B8.1's cube-unnest work, if it lands, is elsewhere.)
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

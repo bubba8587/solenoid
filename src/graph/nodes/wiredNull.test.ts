@@ -14,7 +14,7 @@ import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from 
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
-import { CubeRollupNode } from "./cube";
+import { CubeRollupNode, BuildCubeNode } from "./cube";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
 import { DistributionNode } from "./distribution";
 import { SetCellNode } from "./matrix";
@@ -748,6 +748,17 @@ describe("Output family — wired blank by role", () => {
     node.literals.value = 50; node.literals.low = 0; node.literals.high = 100;
     expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
     expect(node.data({}).result).toBe(0);
+  });
+});
+
+describe("Build Cube — a wired blank column name is unknown, not the default", () => {
+  // The "read raw, guard, then trim" rule: a wired blank name blanks the cube, while an
+  // untouched empty card reads as "" and falls back to the "Items" default.
+  it("a wired blank name blanks the cube; unwired builds it with the default name", () => {
+    const node = new BuildCubeNode();
+    const [v0] = node.valueInputKeys();
+    expect(node.data({ name: [null], [v0]: [1] }).cube).toBeNull();
+    expect(node.data({ [v0]: [1] }).cube).not.toBeNull();
   });
 });
 
