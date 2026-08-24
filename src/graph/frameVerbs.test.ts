@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame } from "./frameVerbs";
+import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
 import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
 
@@ -536,10 +536,4 @@ describe("timesaver verbs", () => {
     expect(sliceRows(f, "first", 99).columns[0].values).toEqual([1, 2, 3]);
   });
 
-  it("borderedGridFromFrame builds the Surface/Grid-Interpolate coordinate border", () => {
-    const g = borderedGridFromFrame(f, 1);
-    expect(g[0]).toEqual([null, 1, 2, 3]);          // corner + column indices
-    expect(g[1]).toEqual([1, 1, null, 10]);          // row index + cells (text → null)
-    expect(g.length).toBe(4);
-  });
 });

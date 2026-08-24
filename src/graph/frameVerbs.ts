@@ -1792,23 +1792,6 @@ export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "rang
   return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: c.values.slice(start, end) })) };
 }
 
-/** A frame's numeric body as the COORDINATE-BORDERED grid Surface / Contour /
- *  Grid Interpolate read: row 0 = column indices, column 0 = row indices (both
- *  counting from `start`), corner blank, non-numeric cells blank. Add Index's
- *  two-way output. */
-export function borderedGridFromFrame(f: FrameValue, start = 1): (number | null)[][] {
-  const rows = frameRowCount(f);
-  const header: (number | null)[] = [null, ...f.columns.map((_, j) => start + j)];
-  const out: (number | null)[][] = [header];
-  for (let i = 0; i < rows; i++) {
-    out.push([start + i, ...f.columns.map((c) => {
-      const v = c.values[i];
-      return typeof v === "number" && Number.isFinite(v) ? v : null;
-    })]);
-  }
-  return out;
-}
-
 // ─── Describe (pandas describe / R summary) — one row per column ──────────────
 /** Per-column profile: the three presence counts (present = valid + error, blank),
  *  distinct (over present non-errors), and for NUMBER/DATE columns the numeric stats

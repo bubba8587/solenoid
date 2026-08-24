@@ -13,7 +13,7 @@ import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
-import { histogram2dGrid } from "./nodes/visualOps";
+import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
@@ -1902,9 +1902,10 @@ registerInternal("SOLVE", (m, b) => {
 registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
 registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
 registerInternal("SPECTRUM", (list, rate) => spectrum(numList(list), rate == null ? 1 : Number(rate)).map((r) => [r.frequency, r.magnitude, r.phase]));
-// The count grid as a bordered lookup table (bin edges on the top row / left column),
-// shared with the Histogram node's 2-D mode; null (no finite pair) → blank.
-registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => histogram2dGrid(numList(xs), numList(ys), toNum(kx), toNum(ky)) ?? null);
+// The plain kx×ky count matrix (counts[x-bin][y-bin]); the bin EDGES are dropped from the
+// formula surface (C4 moved coordinates beside the matrix) — the Histogram node's 2-D mode
+// is the figure. null (no finite pair) → blank.
+registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => histogram2d(numList(xs), numList(ys), toNum(kx), toNum(ky))?.counts ?? null);
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;

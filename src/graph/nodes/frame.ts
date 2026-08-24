@@ -23,7 +23,7 @@ import {
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
-  mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, borderedGridFromFrame,
+  mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS,
@@ -1037,20 +1037,18 @@ export class AddIndexNode extends ClassicPreset.Node {
     this.addInput("start", numIn("Start"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
-    this.addOutput("grid", tableOut("Bordered grid"));
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null, grid: null }; }
+    if (!f) { this.cachedResult = null; return { frame: null }; }
     const start = readInput(inputs.start, this.literals.start ?? 1);
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
     // A wired blank start or name is unknown (value-semantics.md, "Reading an input").
-    if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null, grid: null }; }
+    if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Index";
     this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
-    const grid = runVerb(() => borderedGridFromFrame(f, start));
-    return { frame: this.cachedResult, grid };
+    return { frame: this.cachedResult };
   }
 }
 

@@ -27,14 +27,14 @@ type Mount = {
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
 
-// Coordinate-bordered grid: first row = X, first column = Y, interior = heights.
+// A plain Z table of survey heights with holes; the coordinates ride beside it (here
+// unwired, so the axes count 1, 2, 3…). Grid Interpolate fills the blanks.
 const SURVEY_GRID = [
-  "  ,  0, 10, 20, 30, 40",
-  " 0,  2,   ,  6,   ,  2",
-  "10,   , 11,   , 11,  5",
-  "20,  6,   , 20,   ,  6",
-  "30,  5, 11,   , 11,   ",
-  "40,  2,   ,  6,  5,  2",
+  "2,   , 6,   , 2",
+  " , 11,   , 11, 5",
+  "6,   , 20,   , 6",
+  "5, 11,   , 11,  ",
+  "2,   , 6, 5, 2",
 ].join("\n");
 
 async function buildDemoGraph(editor: NodeEditor<Schemes>, area: AreaPlugin<Schemes, AreaExtra>) {
@@ -59,9 +59,9 @@ async function buildDemoGraph(editor: NodeEditor<Schemes>, area: AreaPlugin<Sche
 
   const wire = (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
     editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
-  await wire(survey, "table", interp, "grid");
-  await wire(interp, "result", surface, "grid");
-  await wire(interp, "result", contour, "grid");
+  await wire(survey, "table", interp, "z");
+  await wire(interp, "result", surface, "z");
+  await wire(interp, "result", contour, "z");
 
   await processGraph();
 }

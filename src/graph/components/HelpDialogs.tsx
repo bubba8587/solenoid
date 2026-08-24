@@ -22,7 +22,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: "Terrain and fields",
-    body: "Wire one coordinate-bordered grid through the whole family: Grid Interpolate fills the blanks with a smooth surface, Surface draws it as a shaded 3-D mesh, Contour draws the map view with iso-lines, and Vector Field draws arrow flows. Add Index's new two-way output turns any table into that grid in one hop.",
+    body: "Wire one table of heights (optional Xs and Ys ride beside it; unwired axes count 1, 2, 3…) through the whole family: Grid Interpolate fills the blanks with a smooth surface, Surface draws it as a shaded 3-D mesh, Contour draws the map view with iso-lines, and Vector Field draws arrow flows.",
   },
   {
     title: "Seven new chart types",

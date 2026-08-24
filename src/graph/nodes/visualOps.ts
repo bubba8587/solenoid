@@ -32,16 +32,3 @@ export function histogram2d(
   for (let i = 0; i < px.length; i++) counts[ax.idx(px[i])][ay.idx(py[i])]++;
   return { counts, xEdges: ax.edges, yEdges: ay.edges };
 }
-
-/** The bordered grid a Heatmap / Surface reads (row 0 = x lower edges, col 0 = y lower
- *  edges, interior[y][x] = counts[x][y]), shared by the node and the HISTOGRAM2D formula
- *  so they can't disagree. Null passes through from `histogram2d`. */
-export function histogram2dGrid(
-  xs: readonly unknown[], ys: readonly unknown[], kx: number, ky: number,
-): (number | null)[][] | null {
-  const h = histogram2d(xs, ys, kx, ky);
-  if (!h) return null;
-  const grid: (number | null)[][] = [[null, ...h.xEdges]];
-  for (let j = 0; j < h.yEdges.length; j++) grid.push([h.yEdges[j], ...h.counts.map((col) => col[j])]);
-  return grid;
-}

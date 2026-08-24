@@ -1,9 +1,9 @@
 import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
-import { clamp, iterMin, iterMax } from "./mathUtils";
+import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
-export { histogram2d, histogram2dGrid } from "./visualOps";
+export { histogram2d } from "./visualOps";
 import type {
   ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload, SevenSegPayload,
@@ -212,8 +212,8 @@ const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
 
 // One card, two modes (oneRunningNode-style combine): 1-D bins one list into columns;
 // 2-D pairs X/Y into a count grid drawn as a contour density plot. The `mode` selector
-// adds/removes the Y + Y-bins inputs; `bins` carries across as the X-bin count. The
-// bordered-grid matrix is exposed via the WRAPTEXT-style HISTOGRAM2D formula, not a socket.
+// adds/removes the Y + Y-bins inputs; `bins` carries across as the X-bin count. The plain
+// count matrix is exposed via the WRAPTEXT-style HISTOGRAM2D formula, not a socket.
 export class HistogramNode extends ClassicPreset.Node {
   label: string;
   mode: HistogramMode;
@@ -605,33 +605,21 @@ export class HeatmapCellNode extends ClassicPreset.Node {
 
 // ─── Surface (shaded 3-D plot) ──────────────────────────────────────────────────
 
-/** Split a bordered table into axes + heights. Row 0 (minus the ignored corner) is
- *  the X coordinates, column 0 the Y coordinates; a non-numeric cell is a blank. */
-export function parseBorderedGrid(
-  table: (number | null | unknown)[][] | null,
-): { xs: number[]; ys: number[]; z: (number | null)[][] } {
-  if (!Array.isArray(table) || table.length < 2) return { xs: [], ys: [], z: [] };
-  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const rawXs = (table[0] ?? []).slice(1).map(num);
-  const rawYs = table.slice(1).map((r) => num(r?.[0]));
-  const rawZ = table.slice(1).map((r) => (Array.isArray(r) ? r.slice(1) : []).map(num));
-  // Drop any column/row whose AXIS coordinate is non-finite — left as NaN it makes
-  // `Math.min(...xs)` NaN and blanks the WHOLE figure while the z-only empty-check passes.
-  const keptX: number[] = [];
-  rawXs.forEach((x, i) => { if (x !== null) keptX.push(i); });
-  const keptY: number[] = [];
-  rawYs.forEach((y, i) => { if (y !== null) keptY.push(i); });
-  const xs = keptX.map((i) => rawXs[i] as number);
-  const ys = keptY.map((i) => rawYs[i] as number);
-  const z = keptY.map((ri) => keptX.map((ci) => rawZ[ri]?.[ci] ?? null));
-  return { xs, ys, z };
+/** Normalize a Surface/Contour source to axes + heights via the shared gridAxes: a plain
+ *  Z table plus optional Xs/Ys lists (unwired = the 1-based index). A figure shows nothing
+ *  on a bad/blank axis, so a SolError or null from gridAxes collapses to an empty grid. */
+function surfaceAxes(zRaw: unknown, xsRaw: unknown, ysRaw: unknown): { xs: number[]; ys: number[]; z: (number | null)[][] } {
+  const axes = gridAxes(zRaw, xsRaw, ysRaw);
+  return axes != null && Array.isArray((axes as { z?: unknown }).z)
+    ? (axes as { xs: number[]; ys: number[]; z: (number | null)[][] })
+    : { xs: [], ys: [], z: [] };
 }
 
 export type SurfaceViewOp = "surface" | "contour";
 
 export const SURFACE_VIEW_OP_META = {
-  surface: { label: "3-D",  description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights)." },
-  contour: { label: "Flat", description: "The same bordered grid drawn flat: filled height bands with iso-lines." },
+  surface: { label: "3-D",  description: "A shaded 3-D surface plot over a table of heights, with optional Xs and Ys coordinate lists; unwired axes count 1, 2, 3…" },
+  contour: { label: "Flat", description: "The same table drawn flat: filled height bands with iso-lines." },
 } satisfies Record<SurfaceViewOp, { label: string; description: string }>;
 
 // ONE node, two views of one grid: the 3-D shaded surface and its flat
@@ -639,7 +627,8 @@ export const SURFACE_VIEW_OP_META = {
 // Surface alone the yaw/pitch literals (the component's D-pad).
 export class SurfaceNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    grid: "The first row holds the X coordinates, the first column the Y coordinates, and the interior cells the heights. The corner cell is ignored.",
+    xs: "One X coordinate per column; unwired means 1, 2, 3…",
+    ys: "One Y coordinate per row; unwired means 1, 2, 3…",
   };
 
   label: string;
@@ -657,7 +646,9 @@ export class SurfaceNode extends ClassicPreset.Node {
     if (init?.yaw != null) this.literals.yaw = init.yaw;
     if (init?.pitch != null) this.literals.pitch = init.pitch;
     if (typeof init?.levels === "number") this.literals.levels = init.levels;
-    this.addInput("grid", tableIn("Bordered grid"));
+    this.addInput("z", tableIn("Table"));
+    this.addInput("xs", numListIn("Xs"));
+    this.addInput("ys", numListIn("Ys"));
     if (this.op === "contour") {
       this.literals.levels ??= 8;
       this.addInput("levels", numIn("Levels"));
@@ -680,8 +671,10 @@ export class SurfaceNode extends ClassicPreset.Node {
     this.height = next === "contour" ? 240 : 220;
   }
 
-  data(inputs: { grid?: (number | null | unknown)[][][]; levels?: number[] }): { chart: ChartValue } {
-    const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
+  data(inputs: { z?: unknown[]; xs?: unknown[]; ys?: unknown[]; levels?: number[] }): { chart: ChartValue } {
+    const xsRaw = inputs.xs === undefined ? undefined : (inputs.xs[0] ?? null);
+    const ysRaw = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
+    const { xs, ys, z } = surfaceAxes(inputs.z?.[0] ?? null, xsRaw, ysRaw);
     if (this.op === "contour") {
       // Levels is a SHAPE, so a wired blank empties the figure rather than reusing the card's count.
       const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);

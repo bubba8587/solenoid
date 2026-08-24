@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins, histogram2d, histogram2dGrid,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
   SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
   RecordNode, parseRecordLayout, recordImageSrc,
@@ -88,50 +88,28 @@ describe("visual nodes", () => {
 });
 
 describe("Surface (3-D plot)", () => {
-  it("parses a bordered table into axes + heights (corner ignored, non-numeric → blank)", () => {
-    //   ·   0   10        row 0 = X coords
-    //   0   1   2         col 0 = Y coords, interior = Z
-    //   5   3   x         a non-numeric cell → null
-    const { xs, ys, z } = parseBorderedGrid([
-      [null, 0, 10],
-      [0, 1, 2],
-      [5, 3, "x" as unknown as number],
-    ]);
-    expect(xs).toEqual([0, 10]);
-    expect(ys).toEqual([0, 5]);
-    expect(z).toEqual([[1, 2], [3, null]]);
-  });
-
-  it("returns empty axes for a too-small table", () => {
-    expect(parseBorderedGrid([[null, 0]])).toEqual({ xs: [], ys: [], z: [] });
-    expect(parseBorderedGrid(null)).toEqual({ xs: [], ys: [], z: [] });
-  });
-
-  it("DROPS a column/row whose axis coordinate is non-finite (never leaks NaN into xs/ys)", () => {
-    //   ·   0   x   10     row 0: middle X coord is bad (text/error)
-    //   0   1   2   3
-    //   5   4   5   6
-    const { xs, ys, z } = parseBorderedGrid([
-      [null, 0, "x" as unknown as number, 10],
-      [0, 1, 2, 3],
-      [5, 4, 5, 6],
-    ]);
-    expect(xs).toEqual([0, 10]); // the bad-coord column dropped, axes finite
-    expect(xs.every(Number.isFinite)).toBe(true);
-    expect(ys).toEqual([0, 5]);
-    expect(z).toEqual([[1, 3], [4, 6]]); // the matching z column dropped too (stays aligned)
-  });
-
-  it("emits a surface ChartValue carrying the parsed grid + default view angles", () => {
+  it("emits a surface ChartValue carrying the Z table + wired axes + default view angles", () => {
     const s = new SurfaceNode({ label: "Heights" });
-    const out = s.data({ grid: [[[null, 0, 10], [0, 1, 2], [5, 3, 4]]] });
+    const out = s.data({ z: [[[1, 2], [3, 4]]], xs: [[0, 10]], ys: [[0, 5]] });
     expect(out.chart).toMatchObject({
       __chart: true,
       op: "surface",
       title: "Heights",
       payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]], yaw: 45, pitch: 45 },
     });
-    // Unwired → empty grid, still a valid (drawable-as-empty) surface value.
+  });
+
+  it("unwired axes count 1, 2, 3… beside the Z table", () => {
+    const out = new SurfaceNode().data({ z: [[[1, 2], [3, 4]]] });
+    expect(out.chart.payload).toMatchObject({ kind: "surface", xs: [1, 2], ys: [1, 2], z: [[1, 2], [3, 4]] });
+  });
+
+  it("a bad axis (wrong length / non-finite) collapses the figure to an empty grid", () => {
+    const badLen = new SurfaceNode().data({ z: [[[1, 2], [3, 4]]], xs: [[0, 10, 20]] }).chart;
+    expect(badLen.payload).toMatchObject({ xs: [], ys: [], z: [] });
+    const badNum = new SurfaceNode().data({ z: [[[1, 2]]], xs: [[NaN, 1]] }).chart;
+    expect(badNum.payload).toMatchObject({ xs: [], ys: [], z: [] });
+    // No Z at all → empty, still a valid (drawable-as-empty) surface value.
     expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
   });
 
@@ -240,15 +218,6 @@ describe("histogram2d (numpy histogram2d)", () => {
     expect(histogram2d([], [], 2, 2)).toBeNull();
   });
 
-  it("the grid helper borders the counts with lower edges", () => {
-    const g = histogram2dGrid([0, 1, 2, 0], [0, 1, 2, 2], 2, 2)!;
-    // Row 0 = [corner, x lower edges]; col 0 = y lower edges; interior[y][x] = counts[x][y].
-    expect(g).toEqual([
-      [null, 0, 1],
-      [0, 1, 0],
-      [1, 1, 2],
-    ]);
-  });
 });
 
 describe("control nodes", () => {
@@ -302,10 +271,9 @@ describe("quantileSorted / boxplotStats", () => {
 });
 
 describe("chart-wave nodes emit their payloads", () => {
-  it("Contour reads the bordered grid and clamps levels", () => {
+  it("Contour reads the Z table + axes and clamps levels", () => {
     const n = new SurfaceNode({ op: "contour" });
-    const grid = [[null, 0, 1], [0, 5, 6], [1, 7, 8]];
-    const p = n.data({ grid: [grid], levels: [99] }).chart.payload as ContourPayload;
+    const p = n.data({ z: [[[5, 6], [7, 8]]], xs: [[0, 1]], ys: [[0, 1]], levels: [99] }).chart.payload as ContourPayload;
     expect(p.kind).toBe("contour");
     expect(p.xs).toEqual([0, 1]);
     expect(p.ys).toEqual([0, 1]);
@@ -422,15 +390,15 @@ describe("SevenSeg", () => {
 describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
   it("the toggle swaps the payload kind and owns the Levels socket", () => {
     const n = new SurfaceNode();
-    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
     n.setOp("contour");
-    expect(Object.keys(n.inputs)).toEqual(["grid", "levels"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "levels"]);
     expect(n.literals.levels).toBe(8);
-    const grid = [[null, 1, 2], [1, 10, 20], [2, 30, 40]];
-    expect(n.data({ grid: [grid] }).chart).toMatchObject({ op: "contour", payload: { kind: "contour", levels: 8 } });
+    const z = [[10, 20], [30, 40]];
+    expect(n.data({ z: [z] }).chart).toMatchObject({ op: "contour", payload: { kind: "contour", levels: 8 } });
     n.setOp("surface");
-    expect(Object.keys(n.inputs)).toEqual(["grid"]);
-    expect(n.data({ grid: [grid] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
+    expect(n.data({ z: [z] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
   });
 
   it("op round-trips through extractInit with the view's literals", () => {

@@ -563,14 +563,8 @@ export function SplitColumnComponent({ data, emit }: NodeProps<SplitColumnNodeTy
 
 export function AddIndexComponent({ data, emit }: NodeProps<AddIndexNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} hideOutputSockets>
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket}>
-        <span className="solenoid-node__io-label">Frame</span>
-      </MeasuredSocketRow>
-      <MeasuredSocketRow side="output" socketKey="grid" nodeId={data.id} emit={emit} payload={data.outputs.grid!.socket}>
-        <span className="solenoid-node__io-label" title="The data indexed on BOTH axes: a coordinate-bordered matrix (row 0 = column indices, column 0 = row indices) — the grid Surface, Contour, and Grid Interpolate read.">Bordered grid</span>
-      </MeasuredSocketRow>
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );

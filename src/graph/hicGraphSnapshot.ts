@@ -158,7 +158,7 @@ function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY
     else if (tt === "capitalize") text = text.replace(/\b\w/g, (c) => c.toUpperCase());
     const ls = parseFloat(cs.letterSpacing); // "normal" → NaN
     // A run is "boxed" if it's an input/select OR its element paints a real box
-    // (a Display value is a bordered surface, not a bare run). Capture the real
+    // (a Display value is a framed surface, not a bare run). Capture the real
     // neutral fill/border — never the warm kind accent.
     const boxBw = parseFloat(cs.borderTopWidth) || 0;
     const bgC = parseColor(cs.backgroundColor);
