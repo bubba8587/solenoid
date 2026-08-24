@@ -636,32 +636,40 @@
   left: 0;
   z-index: 3;
 }
-/* One line per cell: a bare, muted stat picker and the value beside it. The select
-   is borderless and sized to its text, never to the column. */
+/* Stacked: the stat's word over its value. The visible picker is a text label sized to
+   itself; the real <select> is laid over it at zero opacity, absolutely positioned so it
+   contributes NO width — the column stays as wide as the data. */
 .table-popup__statcell {
   min-width: 0;
   white-space: nowrap;
 }
-.table-popup__statselect {
-  width: auto;
-  min-width: 0;
-  margin: 0 4px 0 -2px;
-  padding: 0 2px;
+.table-popup__statpick {
+  position: relative;
+  display: inline-block;
+  line-height: 1.2;
+}
+.table-popup__statlabel {
   font-family: var(--font-sans);
   font-size: 10px;
   color: var(--text-dim);
-  background: transparent;
-  border: none;
-  border-radius: 3px;
   cursor: pointer;
-  outline: none;
 }
-.table-popup__statselect:hover,
-.table-popup__statselect:focus-visible {
-  background: var(--surface);
+.table-popup__statpick:hover .table-popup__statlabel,
+.table-popup__statpick:focus-within .table-popup__statlabel {
   color: var(--text);
 }
+.table-popup__statselect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 .table-popup__statvalue {
+  display: block;
   font-family: var(--font-mono);
   font-size: 11px;
 }

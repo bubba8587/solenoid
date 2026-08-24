@@ -989,13 +989,19 @@ export function TablePopup() {
                     const choices = (Object.keys(FOOTER_STAT_LABEL) as FooterStat[]).filter((k) => numeric || !NUMERIC_STATS.includes(k));
                     return (
                       <td key={c} className="table-popup__statcell">
-                        <select
-                          className="table-popup__statselect"
-                          value={stat}
-                          onChange={(e) => setColStat((m) => ({ ...m, [c]: e.target.value as FooterStat }))}
-                        >
-                          {choices.map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
-                        </select>
+                        {/* The visible picker is the stat's word (sized to itself); the real
+                            select sits over it invisibly, so it never widens the column. */}
+                        <span className="table-popup__statpick">
+                          <span className="table-popup__statlabel">{FOOTER_STAT_LABEL[stat]} ▾</span>
+                          <select
+                            className="table-popup__statselect"
+                            value={stat}
+                            aria-label="Summary statistic"
+                            onChange={(e) => setColStat((m) => ({ ...m, [c]: e.target.value as FooterStat }))}
+                          >
+                            {choices.map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
+                          </select>
+                        </span>
                         <span className="table-popup__statvalue">{fmtStat(footerStatValue(stat, colSummaries[c]))}</span>
                       </td>
                     );
