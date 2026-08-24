@@ -24,6 +24,11 @@ const TreemapViewInner = lazy(() => import("./chartRender").then((m) => ({ defau
 const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.SankeyView })));
 const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
 const BubbleViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.BubbleView })));
+const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
+
+// The cartesian ops that draw one child per named series; the rest stay single-series
+// (pie/radialbar/funnel plot the first series, the payload figures ignore `series`).
+const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "scatter", "radar"]);
 
 // A blank box the chart's size so the card doesn't reflow (and sockets don't
 // re-measure) before recharts arrives; no spinner — it flashes too fast to read.
@@ -86,6 +91,18 @@ export function BubbleView(props: { matrix: (number | null)[][]; width: number; 
   );
 }
 
+export function MultiSeriesView(props: {
+  op: ChartShape; series: { name: string; values: (number | null)[] }[];
+  labels?: (string | number)[]; width: number; height: number; axes: boolean;
+  opts?: ChartOptions; fontScale?: number;
+}) {
+  return (
+    <Suspense fallback={box(props.width, props.height)}>
+      <MultiSeriesViewInner {...props} />
+    </Suspense>
+  );
+}
+
 /** The ONE place that maps a chart value to a figure (a report embed keeps its own
  *  width-measured wrapper); empty → the muted em-dash box. */
 export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav }: {
@@ -141,6 +158,10 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
 
 /** The single-series path, shared with the matrix ops' no-matrix fallback. */
 function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean, fontScale?: number) {
+  // A frame with ≥ 2 numeric columns draws one series per column (with a legend).
+  if (value.series && value.series.length >= 2 && MULTI_SERIES_OPS.has(op)) {
+    return <MultiSeriesView op={op} series={value.series} labels={value.labels} width={width} height={height} axes={axes} opts={value.options} fontScale={fontScale} />;
+  }
   const series = toSeries(value.values);
   if (series.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} fontScale={fontScale} />;

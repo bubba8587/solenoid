@@ -51,6 +51,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const hasData = isMatrix ? hasMatrix || series.length > 0 : series.length > 0;
   const cv: ChartValue = {
     __chart: true, op, values: data.cachedResult, matrix: data.cachedMatrix,
+    series: data.cachedSeries ?? undefined,
     labels: data.cachedLabels ?? undefined,
     options: opts, title: opts.title || data.label || "Chart",
   };

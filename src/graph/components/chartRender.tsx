@@ -1,6 +1,6 @@
 // Every recharts-using renderer in ONE module so recharts stays a single lazy
 // chunk — nothing here may be imported statically by the app.
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
@@ -226,6 +226,148 @@ export function ChartView({
             <Cell key={i} fill={d.v > 0 ? signColors.pos : d.v < 0 ? signColors.neg : grid} />
           ))}
         </Bar>
+      </BarChart>
+    );
+  }
+
+  if (!title) return chart;
+  return (
+    <div style={{ width }}>
+      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {title}
+      </div>
+      {chart}
+    </div>
+  );
+}
+
+// Lists every series' value at the hovered index (the multi-series counterpart of
+// ChartTooltip); the swatch color comes from each recharts payload entry.
+function MultiTooltip({ active, payload, label, tickFmt }: {
+  active?: boolean;
+  payload?: { name?: string; value?: number; color?: string }[];
+  label?: number | string;
+  tickFmt: (i: number | string) => string;
+}) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
+      <div style={{ color: "var(--text-dim)", marginBottom: 2 }}>{tickFmt(label ?? "")}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flex: "0 0 auto" }} />
+          <span style={{ color: "var(--text-dim)" }}>{p.name}</span>
+          <span style={{ marginLeft: "auto" }}>{tipValue(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const LEGEND_H = 16;
+
+/** Multi-series cartesian render (column/bar/line/area/scatter/radar) with a legend —
+ *  the C2 frame path: each numeric column after the label is one named series, colored
+ *  from the palette (Options `color` is single-series only; the palette wins here). */
+export function MultiSeriesView({
+  op, series, labels, width, height, axes, opts, fontScale,
+}: {
+  op: ChartShape;
+  series: { name: string; values: (number | null)[] }[];
+  labels?: (string | number)[];
+  width: number; height: number; axes: boolean;
+  opts?: ChartOptions; fontScale?: number;
+}) {
+  const { grid, axis } = useChartColors();
+  const colors = useSeriesColors();
+  const paint = (j: number) => colors[j % colors.length];
+  const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
+  const AXIS = { fontSize: 9 * fs, fill: axis } as const;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
+  const data = Array.from({ length: n }, (_, i) => {
+    const o: Record<string, number | null> = { i };
+    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
+    return o;
+  });
+  const tickFmt = (i: number | string) => {
+    const idx = Math.round(Number(i));
+    if (!Number.isFinite(idx)) return "";
+    if (labels) { const lab = labels[idx]; return lab == null || typeof lab === "object" ? "" : typeof lab === "number" ? axisTick(lab) : String(lab); }
+    return idx >= 0 ? String(idx + 1) : "";
+  };
+  const lw = opts?.linewidth ?? 1.5;
+  const showGrid = axes && (opts?.grid ?? true);
+  const showMarkers = opts?.marker ?? false;
+  const fillAlpha = opts?.alpha ?? 0.25;
+  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
+    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
+    : undefined;
+  const title = opts?.title;
+  const titleH = title ? Math.ceil(16 * fs) : 0;
+  const chartH = height - titleH - LEGEND_H;
+  const margin = { top: 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
+  const legend = <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fs, color: axis }} />;
+  const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
+
+  let chart;
+  if (op === "line" || op === "area") {
+    const Container = op === "area" ? AreaChart : LineChart;
+    chart = (
+      <Container width={width} height={chartH} data={data} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {tip}{legend}
+        {series.map((s, j) => op === "area"
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} fill={paint(j)} fillOpacity={fillAlpha} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />)}
+      </Container>
+    );
+  } else if (op === "bar") {
+    chart = (
+      <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
+        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={40} tickFormatter={tickFmt} />}
+        {tip}{legend}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} isAnimationActive={false} />)}
+      </BarChart>
+    );
+  } else if (op === "radar") {
+    chart = (
+      <RadarChart width={width} height={chartH} data={data} cx="50%" cy="50%" outerRadius="68%">
+        <PolarGrid stroke={grid} />
+        <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
+        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
+        {tip}{legend}
+        {series.map((s, j) => <Radar key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} fill={paint(j)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} />)}
+      </RadarChart>
+    );
+  } else if (op === "scatter") {
+    // Each series a cloud; a numeric label column places points at their real x.
+    const numericX = !!labels && data.length > 0 && data.every((d) => typeof labels![d.i as number] === "number");
+    chart = (
+      <ScatterChart width={width} height={chartH} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} />}
+        {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} />}
+        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {tip}{legend}
+        {series.map((s, j) => (
+          <Scatter key={j} name={s.name} fill={paint(j)} isAnimationActive={false}
+            data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
+        ))}
+      </ScatterChart>
+    );
+  } else {
+    // column (the default cartesian) — grouped vertical bars.
+    chart = (
+      <BarChart width={width} height={chartH} data={data} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {tip}{legend}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   }
