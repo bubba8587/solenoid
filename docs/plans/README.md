@@ -8,7 +8,9 @@ backlog line is deleted; git is the record.
 ## Protocol for the implementing agent
 
 1. Work on `develop`. Commit after each plan step that leaves `tsc` + `vitest` green;
-   never push (the author pushes). Never leave uncommitted edits.
+   never push (the author pushes). Never leave uncommitted edits. The working tree AND
+   the index are shared with other agents: commit by pathspec in one command —
+   `git commit -m "…" -- <your files>` — never `git add` then `git commit`, never `-a`/`-A`.
 2. Before editing a file, read it. Line numbers in a plan are anchors, not truth — grep
    for the symbol if the line has drifted.
 3. Read `CLAUDE.md` in full, then the docs a plan names under "Read first". Do NOT read
