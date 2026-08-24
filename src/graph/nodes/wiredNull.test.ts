@@ -10,7 +10,7 @@ import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
-import { ListIndexNode, SliceNode } from "./list";
+import { ListIndexNode, SliceNode, FilterNode, SeriesNode } from "./list";
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
@@ -550,6 +550,26 @@ describe("Input family — wired blank by role", () => {
     const [v0] = Object.keys(node.inputs);
     expect(node.data({ [v0]: [null] }).out).toBeNull();
     expect(node.data({ [v0]: [42] }).out).toBe(42);
+  });
+});
+
+describe("Lists ▸ Build/Shape — shape params and filter conditions", () => {
+  // A Series shape param (count) blanks the whole list; unwired uses the seeded default.
+  it("Series (linspace): a wired blank count blanks the list; unwired builds it", () => {
+    const node = new SeriesNode({ op: "linspace" });
+    expect(node.data({ count: [null as unknown as number] }).list).toBeNull();
+    expect(Array.isArray(node.data({}).list)).toBe(true);
+  });
+
+  // A filter condition's comparison value is unevaluable when blank, so the whole result
+  // is unknown (NOT the unfiltered list); an empty literal just skips the condition.
+  it("List Filter: a wired blank comparison value blanks the result; empty literal passes through", () => {
+    const node = new FilterNode();
+    const [valueKey] = node.valueInputKeys();
+    node.stringLiterals[valueKey] = "";
+    expect(node.data({ list: [null as unknown as unknown[]] }).result).toBeNull();
+    expect(node.data({ list: [[1, 2, 3]], [valueKey]: [null] }).result).toBeNull();
+    expect(node.data({ list: [[1, 2, 3]] }).result).toEqual([1, 2, 3]);
   });
 });
 

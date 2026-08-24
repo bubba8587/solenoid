@@ -271,6 +271,18 @@ Roots, +1). Combine candidates: none strong (Unary/Binary already op-merged; Pol
 differ in output shape and purpose — Quadratic is the Equation-companion two-labeled-root form).
 Residue: none.
 
+**A5 Lists ▸ Build/Shape sweep** (24 leaves / 21 classes) → NO bugs. Shape/scalar params read via
+`readInput` and guard null → propagate (SeriesNode is the exemplar: every range/sequence/linspace
+param guards null → blank list, degenerate range → `#DOMAIN!`/`#OVERFLOW!`, and it distinguishes
+Range's legitimately-unset Stop from a wired blank). Whole-list operands read `inputs.list?.[0] ??
+[]` for transforms (empty in → empty out) or `?? null` for length/propagate, consistently by role.
+FilterNode is the filter-condition exemplar: a wired blank comparison value blanks the whole result
+(not the unfiltered list), while an empty literal skips the condition — matches frame Filter. Pins:
+`wiredNull.test.ts` "Lists ▸ Build/Shape" (Series linspace + List Filter, +2). Combine candidates:
+the list generators SeriesNode (range/linspace/sequence) + Geometric + Fibonacci + Repeat + RandArray
+→ one "Generate List" node with a rule selector; Sort + SortBy → one Sort with an optional by-list;
+SetOp + SetRelation share two-list-set inputs but differ in output type (list vs boolean). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
