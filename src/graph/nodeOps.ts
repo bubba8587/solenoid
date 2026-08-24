@@ -222,7 +222,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
   { type: "twomath-log", ctor: TwoInputMathNode, kind: "operation", ops: fromMeta(TWO_INPUT_MATH_OP_META),
-    leafOps: ["log", "atan2", "delta", "gestep"],
+    leafOps: ["log", "atan2", "delta", "gestep", "hypot"],
     create: (op) => new TwoInputMathNode({ op: op as never }) },
   { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: fromMeta(ROUNDN_OP_META),
     leafOps: ["round", "roundup"],
