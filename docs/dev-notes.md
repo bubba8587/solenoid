@@ -247,6 +247,20 @@ green. **Findings:** (1) skipped the scratch-seed entry — that file is high-co
 convenience, not test-required; drop a Set Cell node from the Add menu to eyeball. (2) A Frame arm
 (column by name) stays out of scope, as the plan noted.
 
+**C3.2 — Replace Values: Find/Replace stop being text-only (plan 12, item 2).** The `find` and
+`replace` sockets are now `anyIn`, so a wired Number / Boolean / Date / Slider connects; `data()`
+funnels each through `readFilterValue` (a wired scalar stringifies the way a typed literal would;
+a wired blank stays unknown → null result). `column` stays `strIn`. The node gains `autoLiterals`
+(+ a `literals` map) so its card fields render as auto (number OR text) through `InlineInputs` —
+and a `findReplaceLiteral` reader stringifies either literal map for the kernel. The kernel, the
+Polars plan, and both engines' test files are byte-identical. Pins: `frameNodeBackend.test.ts`
+"Replace Values — Find/Replace take a wired value of any type" (wired number vs a number column,
+wired boolean vs a logical column, wired-blank → null). **Finding filed** (backlog, Bugs): the JS
+oracle matches a number by `String(v) === find` and a lowercased boolean where Rust takes exact
+text only (`engine.rs:1168`) — a real web-vs-desktop parity gap for a wired non-text Find, its own
+item. Catalog description left as-is (the typed sockets self-document; a "takes any type" sentence
+would be Captain-Obvious and would churn the `caseContract` pin).
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a

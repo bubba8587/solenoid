@@ -58,6 +58,14 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Bugs & verifications
 
+- [ ] **Replace Values find/replace matching diverges web vs desktop for a non-text value**
+  (found during C3.2, 2026-08-24). Now that Find/Replace accept a wired value of any type, the
+  match rule matters: the JS oracle compares `String(v) === find` for numbers and a
+  lowercased-boolean match (`frameVerbs.ts` `replaceValues`), where the Rust engine
+  (`engine.rs:1168`, `WireOp::ReplaceValues`) takes EXACT text only. So a wired Number/Boolean
+  Find can match on web but miss on the Polars desktop path. Pick the canonical rule and mirror
+  it (same class as the text-predicate number→text semantics item below). Not C3.2's scope —
+  that item only widened the sockets.
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
   5 seeds, clean). The app now has error boundaries (app + per node) — next

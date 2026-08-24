@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, frameBackend, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "./frameBackend";
 import { calcModeStore } from "./calcModeStore";
+import { ReplaceValuesNode } from "./nodes/frame";
 import {
   selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
   filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames,
@@ -196,5 +197,40 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
     if (isSolError(sorted) || sorted == null) throw new Error("expected a frame");
     expect(sorted.__approx).toBeDefined();
     calcModeStore.setMode("auto");
+  });
+});
+
+// C3.2: Replace Values' Find/Replace became `anyIn`, so a wired scalar of any type now
+// connects and stringifies through readFilterValue (the kernel + Polars plan are unchanged).
+describe("Replace Values — Find/Replace take a wired value of any type", () => {
+  const collect = async (n: ReplaceValuesNode, inputs: Parameters<ReplaceValuesNode["data"]>[0]) =>
+    readFrame((await n.data(inputs)).frame);
+
+  it("a wired NUMBER matches a number column (was impossible on a strIn socket)", async () => {
+    resetFrameBackendToJs();
+    const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [10, 20, 30] }] };
+    const n = new ReplaceValuesNode({ mode: "cell" });
+    n.stringLiterals.column = "qty";
+    const out = await collect(n, { frame: [f], find: [20], replace: [99] });
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.columns[0].values).toEqual([10, 99, 30]);
+  });
+
+  it("a wired BOOLEAN matches a logical column", async () => {
+    resetFrameBackendToJs();
+    const f: FrameValue = { __frame: true, columns: [{ name: "flag", type: "logical", values: [true, false, true] }] };
+    const n = new ReplaceValuesNode({ mode: "cell" });
+    n.stringLiterals.column = "flag";
+    const out = await collect(n, { frame: [f], find: [false], replace: [true] });
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.columns[0].values).toEqual([true, true, true]);
+  });
+
+  it("a wired-blank Find is unknown → the whole result is null", async () => {
+    resetFrameBackendToJs();
+    const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [1, 2] }] };
+    const n = new ReplaceValuesNode({ mode: "cell" });
+    n.stringLiterals.column = "qty";
+    expect((await n.data({ frame: [f], find: [null], replace: [0] })).frame).toBeNull();
   });
 });

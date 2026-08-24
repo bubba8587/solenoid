@@ -1089,7 +1089,12 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
   label: string;
   mode: ReplaceMode;
   cachedResult: FrameValue | SolError | null = null;
+  // Find / Replace are `anyIn`: a wired Number / Boolean / Date / Slider connects, and the
+  // card literal still types (autoLiterals → a number lands in `literals`, text in
+  // `stringLiterals`; readFilterValue stringifies either side).
+  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
+  autoLiterals = true;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; mode?: ReplaceMode }) {
@@ -1098,16 +1103,25 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     this.mode = init?.mode ?? "cell";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column (blank = all)"));
-    this.addInput("find", strIn("Find"));
-    this.addInput("replace", strIn("Replace"));
+    this.addInput("find", anyIn("Find"));
+    this.addInput("replace", anyIn("Replace"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: string[]; replace?: string[] }) {
+  /** The find/replace card literal, number OR text, as the string both engines compare. */
+  private findReplaceLiteral(key: string): string {
+    const s = this.stringLiterals[key];
+    if (s !== undefined && s !== "") return s;
+    const n = this.literals[key];
+    return n !== undefined ? String(n) : "";
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
     const f = inputs.frame?.[0] ?? null;
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const find = readInput(inputs.find, this.stringLiterals.find ?? "");
-    const replace = readInput(inputs.replace, this.stringLiterals.replace ?? "");
+    // A wired scalar of any type stringifies so both engines see what a typed literal would.
+    const find = readFilterValue(inputs.find, this.findReplaceLiteral("find"));
+    const replace = readFilterValue(inputs.replace, this.findReplaceLiteral("replace"));
     // A wired blank is unknown, NOT the empty literal's "all columns" / "match nothing".
     if (f == null || column === null || find === null || replace === null) return emitFrame(this, beginPass(this), null);
     // Lazy: a Polars when/then (or str.replace_all) on desktop, the oracle on web.
