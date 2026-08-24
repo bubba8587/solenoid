@@ -367,6 +367,19 @@ numeric boolean predicates → one "Test" node with a mode (compare / between / 
 special case of IFS (one pair + otherwise) but the fixed 2-branch card earns its Excel familiarity.
 Otherwise heavily op-merged (Boolean unifies 6 ops, IsTest 8, Comparison 6). Residue: none.
 
+**A5 Finance ▸ TVM/rate/payment/cash flow sweep** (14 leaves) → NO wired-blank bugs; this is the
+area the value-semantics "Where the blank check goes" section was derived from, and it holds:
+IpmtPpmt/Npv/Irr guard every operand via `readInput` → null, the active-op guard is scoped, MIRR's
+error outranks blank (pinned). NPV's cash-flow list is POSITIONAL — a blank cell counts as 0 (holds
+its period), documented in socketDocs and distinct from an aggregate's skip; the rate operand and
+dated-mode blank dates propagate. TVM/Compound Growth/Effective Rate are acausal EquationNode presets
+(the solver mechanism). Pins: `wiredNull.test.ts` "NPV — positional list blanks to zero" (+1).
+FINDING (not a change, flagged to verify): NPV claims Excel parity but its blank-cell-as-zero may
+diverge from Excel NPV over a range (which skips blanks) — the array-vs-range nuance; worth a parity
+check before trusting it, per documentExcelDeviations. Combine candidates: NPV + IRR + MIRR (+ XNPV/
+XIRR already folded as a dates mode) → one "Cash Flow Analysis" node with an op selector. Residue:
+the NPV parity finding above.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

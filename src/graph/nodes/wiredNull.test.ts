@@ -8,7 +8,7 @@ import { ComplexFromNode, QuadraticRootsNode } from "./complex";
 import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
-import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
+import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "./list";
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
@@ -232,6 +232,19 @@ describe("\"absent\" is not \"unknown\" — the optional-input trap", () => {
   it("Clamp: a WIRED min still clamps", () => {
     const node = new ClampNode();
     expect(node.data({ value: [-5], min: [0] }).result).toBe(0);
+  });
+});
+
+describe("NPV — a positional list blanks to zero, the rate operand propagates", () => {
+  // A cash-flow list is POSITIONAL: a blank cell counts as 0 (holds its period) rather
+  // than being skipped like an aggregate. The rate is an operand and propagates.
+  it("a blank cash flow counts as zero; a wired blank rate blanks the result", () => {
+    const node = new NpvNode();
+    node.literals.rate = 0.1;
+    expect(node.data({ rate: [null as unknown as number], list: [[100, 200]] }).result).toBeNull();
+    const withBlank = node.data({ list: [[100, null, 300]] }).result;
+    const withZero = node.data({ list: [[100, 0, 300]] }).result;
+    expect(withBlank).toBeCloseTo(withZero as number);
   });
 });
 
