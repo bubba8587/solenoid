@@ -39,7 +39,7 @@ backlog line is deleted; git is the record.
 | 5 | ~~a4-xlookup-rawinputs~~ | — | landed 2026-08-24 (ec15cdf2) |
 | 6 | ~~a6-drill-in-drag-guard~~ | — | landed 2026-08-24 (aea271a1 + 6acb5b1c) |
 | 7 | ~~a3-popup-grid-keyboard~~ | — | landed 2026-08-24 (f66d3281) |
-| 8 | [b8-cube-unnest-timesavers.md](b8-cube-unnest-timesavers.md) | B8.1+B8.2 landed (5a5b3ab6, 2567631d/f42b42d0) | **B8.3 open** — deferred, do fresh |
+| 8 | ~~b8-cube-unnest-timesavers~~ | — | landed 2026-08-24 (B8.1 5a5b3ab6, B8.2 2567631d/f42b42d0, B8.3 a03eeba3) |
 | 9 | ~~a5-node-sweep~~ | — | COMPLETE 2026-08-24 (all 23 families; 3 bugs fixed, ~34 pins) |
 | 10 | ~~b7-tidy-options~~ | — | COMPLETE 2026-08-24 (engine 055fd1c9/9d2aca24/96968206 + chrome; elkjs stays 0.8.2) |
 | 11 | ~~c2-chart-multi-series~~ | — | landed 2026-08-24 (68a96766 … 179ba3a5, docs 43a22615) |

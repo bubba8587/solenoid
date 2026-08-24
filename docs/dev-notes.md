@@ -414,13 +414,16 @@ B8.2 files green in isolation (208); the full suite has 2 PEER-owned failures in
 (Jeff's Find Peaks output-merge left `d_pk_val` wired), flagged to him — not from B8.2. (Since
 resolved by Agent 4's 99d409da — seed now green.)
 
-**B8.3 — DEFERRED (not landed).** XLOOKUP frame+cube path collapse is a pure internal
-simplification with no user-facing change, and the whole-row frame-vs-cube shape edge makes it a
-judgment-heavy refactor that also rewires ~20 frame-arm cases in `frameLookup.test.ts`. Left for a
-focused session rather than rushed at the tail of a long multi-agent day. The plan is trimmed to the
-B8.3 remainder (`docs/plans/b8-cube-unnest-timesavers.md`) with the exact merge + the one-branch
-whole-row escape hatch spelled out; backlog carries a "B8.3 open" line. B8.1 + B8.2 (the user-facing
-B8 value) shipped.
+**B8.3 — XLOOKUP frame+cube path collapse LANDED (a03eeba3, net −23 lines).** Frame and cube
+XLOOKUP had duplicate row-finders + cell-getters. Since a frame is a legal cube input and
+`frameToCube` carries `col.type`, they merge: `lookupRowIndex` + `lookupCell` take a CUBE, and a
+frame source reaches them via `frameToCube` (`lookupFrameRowIndex`/`lookupFrameCell` deleted). The
+orderable check now uses the shared `isOrderableKey`; one error string. `XLookupNode.matchOne` keeps
+exactly ONE fork — the whole-row (`*`) return, where a frame source must still yield a Frame row
+(`frameRowAt`) and a cube source a Cube row (`cubeRowAt`); the single-cell path is fork-free.
+`frameLookup.test.ts` + `frameVerbs.test.ts` frame arms feed `frameToCube` through a local adapter,
+every case kept. No Rust mirror (XLOOKUP is JS-only). Full suite green (4801). Plan 8 complete —
+plan file deleted.
 
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
