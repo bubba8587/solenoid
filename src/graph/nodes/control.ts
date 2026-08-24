@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
-import { frameIn, frameOut, dateOut, numOut, numListOut, tableOut } from "./shared";
+import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
@@ -431,9 +431,22 @@ export function sampleCurve(pointsText: string | undefined, xmin: number, xmax: 
   return { values, xs };
 }
 
+/** The sampled curve as a two-column frame — X (the axis) FIRST, then Value (C5:
+ *  index-aligned outputs leave as one frame). */
+export function curveToFrame(xs: number[], values: number[]): FrameValue {
+  return {
+    __frame: true,
+    columns: [
+      { name: "X", type: "number", values: xs },
+      { name: "Value", type: "number", values },
+    ],
+  };
+}
+
 export class CurveNode extends ClassicPreset.Node {
   label: string;
   pointsText = "0, 0\n1, 1";
+  cachedResult: FrameValue | null = null;
   literals: Record<string, number> = { xmin: 0, xmax: 1, ymin: 0, ymax: 1, samples: 32 };
   width = 240;
   height = 260;
@@ -445,13 +458,15 @@ export class CurveNode extends ClassicPreset.Node {
     for (const k of ["xmin", "xmax", "ymin", "ymax", "samples"] as const) {
       if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
     }
-    this.addOutput("values", numListOut("Values"));
-    this.addOutput("xs", numListOut("X positions"));
+    this.addOutput("result", frameOut("Curve"));
   }
 
-  data(): { values: number[]; xs: number[] } {
+  data(): { result: FrameValue } {
     this.literals.samples = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
-    return sampleCurve(this.pointsText, this.literals.xmin ?? 0, this.literals.xmax ?? 1, this.literals.samples);
+    const { values, xs } = sampleCurve(this.pointsText, this.literals.xmin ?? 0, this.literals.xmax ?? 1, this.literals.samples);
+    const frame = curveToFrame(xs, values);
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }
 

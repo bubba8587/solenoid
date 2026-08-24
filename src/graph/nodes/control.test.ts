@@ -80,19 +80,23 @@ describe("PointPlotterNode", () => {
 });
 
 describe("CurveNode", () => {
-  it("samples the spline across [xmin, xmax], endpoints exact", () => {
+  it("samples the spline into an X, Value frame across [xmin, xmax], endpoints exact", () => {
     const n = new CurveNode({ pointsText: "0, 0\n1, 1", samples: 5 });
-    const out = n.data();
-    expect(out.xs).toEqual([0, 0.25, 0.5, 0.75, 1]);
-    expect(out.values[0]).toBe(0);
-    expect(out.values[4]).toBe(1);
+    const cols = n.data().result.columns;
+    expect(cols.map((c) => c.name)).toEqual(["X", "Value"]); // X first — it is the axis
+    expect(cols[0].values).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(cols[1].values[0]).toBe(0);
+    expect(cols[1].values[4]).toBe(1);
     // The default diagonal through a monotone spline IS the diagonal.
-    expect(out.values[2]).toBeCloseTo(0.5, 9);
+    expect(cols[1].values[2]).toBeCloseTo(0.5, 9);
   });
 
   it("clamps samples and handles an empty curve", () => {
     const n = new CurveNode({ pointsText: "", samples: 0 });
-    expect(n.data()).toEqual({ values: [], xs: [] });
+    const cols = n.data().result.columns;
+    expect(cols.map((c) => c.name)).toEqual(["X", "Value"]);
+    expect(cols[0].values).toEqual([]);
+    expect(cols[1].values).toEqual([]);
     expect(n.literals.samples).toBe(2); // clamped
   });
 

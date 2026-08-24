@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CurveNode as CurveNodeType } from "../rete-nodes";
-import { curvePoints, pointsToText, monotoneCubic, sampleCurve } from "../nodes/control";
-import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { curvePoints, pointsToText, monotoneCubic, sampleCurve, curveToFrame } from "../nodes/control";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { FrameDisplay } from "./FrameDisplay";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
@@ -166,14 +167,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
         <InlineNumberField value={data.literals.samples ?? 32} onChange={(v) => setLit("samples")(v ?? 32)} />
       </div>
       <div className="solenoid-node__section-divider" />
-      <InlineOutputRows
-        node={data}
-        emit={emit}
-        rows={[
-          { key: "values", label: "Values", value: sampled.values },
-          { key: "xs", label: "X positions", value: sampled.xs },
-        ]}
-      />
+      <FrameDisplay frame={curveToFrame(sampled.xs, sampled.values)} label={data.label} />
     </NodeShell>
   );
 }
