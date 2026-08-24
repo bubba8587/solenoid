@@ -106,6 +106,16 @@ layered relayout from browser-measured card sizes (playwright, sanctioned path);
 as correct-by-design (op fixed at construction types the sockets; two catalog entries).
 Window node ruled NOT redundant vs Computed Column/Running: partition-by + order
 (per-group rank/lag/rolling) exists only there — the SQL OVER argument.
+Follow-ups the same day: (7) **chip audit** — every remaining family/formatting
+fall-through closed (group readouts, pins, inspector, Display matrix branch), then
+**`elem` made a REQUIRED prop** on ArrayChip/TableDisplay so socket-derivation is
+compiler-enforced (tsc found 8 more forgotten hosts); cell-sniffing survives only for
+an unresolved wildcard socket. (8) **Node DOM diet, −26% elements/card, zero visual
+change**: socket glyphs (cube excepted), chevron, resize grips and copy icons are now
+CSS-masked layers instead of inline-SVG subtrees (same vectors in mask data-URIs, same
+CSS vars; combos = hard-stop diagonal gradient under a rounded-square mask; each layer
+masked once — masking the span itself would square the rim alpha). Scratch seed
+11693 → 8706 elements. Verified via 2×-DPR legend/closeup screenshots.
 
 ### SESSION DIGEST (2026-08-23g — the Python/R gap, Tier 2 landed; Formula.js upstream list)
 
