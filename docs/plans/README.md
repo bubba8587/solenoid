@@ -37,7 +37,7 @@ backlog line is deleted; git is the record.
 | 7 | [a3-popup-grid-keyboard.md](a3-popup-grid-keyboard.md) | M | — (unblocked; read the footer cache in TablePopup.tsx first) |
 | 8 | [b8-cube-unnest-timesavers.md](b8-cube-unnest-timesavers.md) | M (3 sub-items) | B8.3 needs A4 |
 | 9 | [a5-node-sweep.md](a5-node-sweep.md) | L, claimed PER FAMILY | — (skip Cubes while B8.1 is in flight) |
+| 10 | [b7-tidy-options.md](b7-tidy-options.md) | M (engine then chrome) | — (elkjs stays 0.8.2) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
-verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, Tidy
-options (B7), lazy handles (B9).
+verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, lazy handles (B9).
