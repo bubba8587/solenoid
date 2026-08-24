@@ -2968,7 +2968,7 @@
     "label": "ODE Integrate"
    },
    "stringLiterals": {
-    "expr": "y"
+    "formula": "y"
    },
    "literals": {
     "y0": 1,
@@ -2979,11 +2979,12 @@
   },
   {
    "id": "d_ode",
-   "type": "DisplayNode",
+   "type": "ChartNode",
    "x": 748,
    "y": 10120,
    "init": {
-    "label": "y(t): dy/dt = y"
+    "label": "y(t): dy/dt = y",
+    "op": "line"
    }
   }
  ],
@@ -4100,9 +4101,9 @@
   },
   {
    "source": "n_ode",
-   "sourceOutput": "y",
+   "sourceOutput": "solution",
    "target": "d_ode",
-   "targetInput": "in"
+   "targetInput": "values"
   }
  ]
 }

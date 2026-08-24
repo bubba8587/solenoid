@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { rk4 } from "./odeOps";
+import { OdeIntegrateNode } from "./stats";
+import { isSolError } from "../errorValue";
+import { isFrameValue } from "../frame";
 
 // Classic RK4, checked against closed-form solutions (SciPy solve_ivp / R deSolve give
 // the same to well under the step error at 100 steps).
@@ -35,5 +38,42 @@ describe("rk4 (ODE integrate)", () => {
 
   it("a non-finite bound is null", () => {
     expect(rk4((_, y) => y, 1, 0, Infinity, 10)).toBeNull();
+  });
+});
+
+describe("OdeIntegrateNode — one correlated {t, y} frame output", () => {
+  it("defaults (dy/dt = y) → a two-column frame; y integrates to e^t", () => {
+    const out = new OdeIntegrateNode().data({});
+    const frame = out.solution;
+    expect(isFrameValue(frame)).toBe(true);
+    if (!isFrameValue(frame)) return;
+    expect(frame.columns.map((c) => c.name)).toEqual(["t", "y"]);
+    expect(frame.columns.every((c) => c.type === "number")).toBe(true);
+    const y = frame.columns[1].values;
+    expect(y[0]).toBe(1);
+    expect(y[y.length - 1]).toBeCloseTo(Math.E, 6);
+  });
+
+  it("a syntactically bad derivative lambda → #SYNTAX! on the solution", () => {
+    const node = new OdeIntegrateNode();
+    node.stringLiterals.formula = "y +"; // parse error
+    const out = node.data({});
+    expect(isSolError(out.solution) && out.solution.code).toBe("#SYNTAX!");
+  });
+
+  it("a derivative naming an outside variable → #NAME?", () => {
+    const node = new OdeIntegrateNode();
+    node.stringLiterals.formula = "y + k"; // k isn't t or y
+    const out = node.data({});
+    expect(isSolError(out.solution) && out.solution.code).toBe("#NAME?");
+  });
+
+  it("a divergent system → #DOMAIN!", () => {
+    const node = new OdeIntegrateNode();
+    node.stringLiterals.formula = "y*y";
+    node.literals.t1 = 5; // past the pole of y' = y², y0 = 1
+    node.literals.steps = 1000;
+    const out = node.data({});
+    expect(isSolError(out.solution) && out.solution.code).toBe("#DOMAIN!");
   });
 });

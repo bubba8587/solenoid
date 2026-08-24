@@ -1,7 +1,8 @@
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut, strIn } from "./shared";
-import { compilePositional } from "../excelFormula";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { rk4 } from "./odeOps";
+import { resolveFn } from "./tableLambda";
+import { lambdaIn } from "./shared";
 import { gridAxes, fillGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -1233,49 +1234,56 @@ export class DecomposeNode extends ClassicPreset.Node {
 
 export class OdeIntegrateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    expr: "The derivative dy/dt as an expression in t and y, e.g. y, t*y, or -2*y.",
     y0: "The value of y at t0.",
     t0: "Start of the interval.",
     t1: "End of the interval.",
-    steps: "Number of RK4 steps; the outputs carry steps + 1 points, t0 first.",
+    steps: "Number of RK4 steps; the frame carries steps + 1 rows, t0 first.",
   };
   label: string;
-  stringLiterals: Record<string, string> = { expr: "y" };
+  // The derivative is a LAMBDA of (t, y); a wired LAMBDA node supersedes the inline text.
+  stringLiterals: Record<string, string> = { formula: "y" };
   literals: Record<string, number> = { y0: 1, t0: 0, t1: 1, steps: 100 };
-  cachedT: number[] | SolError | null = null;
-  cachedY: number[] | SolError | null = null;
-  width = 200; height = 250;
+  // t and y are CORRELATED (same row = same instant), so they ride ONE frame, not two lists.
+  cachedResult: FrameValue | SolError | null = null;
+  cachedError: string | null = null;
+  readonly lambdaSig = { vars: ["t", "y"], required: 2 };
+  width = 200; height = 240;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; expr?: string }) {
     super("OdeIntegrate");
     this.label = init?.label ?? "ODE Integrate";
-    this.addInput("expr", strIn("dy/dt"));
+    if (init?.expr) this.stringLiterals.formula = init.expr;
+    this.addInput("lambda", lambdaIn("dy/dt"));
     this.addInput("y0", numIn("y0"));
     this.addInput("t0", numIn("t0"));
     this.addInput("t1", numIn("t1"));
     this.addInput("steps", numIn("Steps"));
-    this.addOutput("t", numListOut("t"));
-    this.addOutput("y", numListOut("y"));
+    this.addOutput("solution", frameOut("Solution"));
   }
 
-  data(inputs: { expr?: string[]; y0?: number[]; t0?: number[]; t1?: number[]; steps?: number[] }) {
-    const blank = (err: SolError | null) => { this.cachedT = err; this.cachedY = err; return { t: err, y: err }; };
-    const expr = readInput(inputs.expr, this.stringLiterals.expr ?? "");
+  data(inputs: { lambda?: unknown[]; y0?: number[]; t0?: number[]; t1?: number[]; steps?: number[] }): { solution: FrameValue | SolError | null } {
+    // A wired LAMBDA(t, y, …) binds by NAME; the inline text is the fallback. Same
+    // fnError/cachedError shape as the MAP family (#SYNTAX!/#NAME?/#VALUE!).
+    const { fn, err, code } = resolveFn(inputs.lambda?.[0], this.stringLiterals.formula, "y", ["t", "y"], 2, true);
+    if (!fn) { this.cachedResult = null; this.cachedError = err; return { solution: solError(code, err!) }; }
+    this.cachedError = null;
     const y0 = readInput(inputs.y0, this.literals.y0 ?? 1);
     const t0 = readInput(inputs.t0, this.literals.t0 ?? 0);
     const t1 = readInput(inputs.t1, this.literals.t1 ?? 1);
     const steps = readInput(inputs.steps, this.literals.steps ?? 100);
-    if (expr === null || y0 === null || t0 === null || t1 === null || steps === null) return blank(null);
-    const fn = compilePositional(String(expr), ["t", "y"]);
-    if (!fn) return blank(solError("#NAME?", "Could not read the derivative — check the dy/dt expression in t and y"));
-    // A per-step SolError or non-number result aborts the integration (→ #NUM! below).
+    if (y0 === null || t0 === null || t1 === null || steps === null) { this.cachedResult = null; return { solution: null }; }
+    // A per-step SolError or non-number result aborts the integration (→ #DOMAIN! below).
     const f = (t: number, y: number): number | null => {
       const r = fn(t, y);
       return typeof r === "number" && Number.isFinite(r) ? r : null;
     };
     const sol = rk4(f, y0, t0, t1, steps);
-    if (!sol) return blank(solError("#DOMAIN!", "The integration diverged or the derivative was undefined on the interval"));
-    this.cachedT = sol.t; this.cachedY = sol.y;
-    return { t: sol.t, y: sol.y };
+    if (!sol) { const e = solError("#DOMAIN!", "The integration diverged or the derivative was undefined on the interval"); this.cachedResult = e; return { solution: e }; }
+    const solution: FrameValue = { __frame: true, columns: [
+      { name: "t", type: "number", values: sol.t },
+      { name: "y", type: "number", values: sol.y },
+    ] };
+    this.cachedResult = solution;
+    return { solution };
   }
 }

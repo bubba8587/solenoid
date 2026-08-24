@@ -33,7 +33,7 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
 /** A wired LAMBDA wins over the inline text. Its params bind by POSITION (`provided` =
  *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, lambdaBindsByName).
  *  `err` is the inline node message; `code` tags the propagating SolError. */
-function resolveFn(
+export function resolveFn(
   lam: unknown, inline: string | undefined,
   fallback: string, varNames: string[], provided: number,
   byName = false,

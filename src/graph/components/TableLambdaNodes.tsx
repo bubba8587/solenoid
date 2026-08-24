@@ -22,13 +22,13 @@ import "./ExpressionNode.css";
 type ScalarVal = number | string | SolError | null;
 type ListVal = number[] | string[] | SolError | null;
 
-const FORMULA_KEYS = new Set(["lambda"]);
+export const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
 /** Formula editor bound to node.stringLiterals.formula; a wired LAMBDA value
  *  supersedes the inline text. */
-function FormulaBox({ node }: { node: FormulaNode }) {
+export function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
   // The wired lambda's signature can change without a topology change.
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
@@ -78,7 +78,7 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   );
 }
 
-function FormulaError({ msg }: { msg: string | null }) {
+export function FormulaError({ msg }: { msg: string | null }) {
   return msg ? <div className="solenoid-expr__error">{msg}</div> : null;
 }
 

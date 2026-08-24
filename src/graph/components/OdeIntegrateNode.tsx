@@ -1,20 +1,16 @@
 import type { OdeIntegrateNode as OdeIntegrateNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { FrameDisplay } from "./FrameDisplay";
+import { FormulaBox, FormulaError, FORMULA_KEYS } from "./TableLambdaNodes";
 
 export function OdeIntegrateComponent({ data, emit }: NodeProps<OdeIntegrateNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__section-divider" />
-      <InlineOutputRows
-        node={data}
-        emit={emit}
-        rows={[
-          { key: "t", label: "t", value: data.cachedT },
-          { key: "y", label: "y", value: data.cachedY },
-        ]}
-      />
+    <NodeShell node={data} emit={emit} labelPlaceholder="ODE Integrate">
+      <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
+      <FormulaBox node={data} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+      <FormulaError msg={data.cachedError} />
     </NodeShell>
   );
 }
