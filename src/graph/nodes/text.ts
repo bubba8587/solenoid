@@ -134,8 +134,8 @@ export const TEXT_TRANSFORM_OP_META = {
   trim:   { label: "TRIM",   description: "Removes leading and trailing spaces and collapses internal spaces. Excel: TRIM." },
   proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: PROPER." },
   clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: CLEAN." },
-  unaccent: { label: "UNACCENT", description: "Strips accents and diacritics: Crème Brûlée → Creme Brulee. unidecode, R stri_trans_general Latin-ASCII. No Excel equivalent." },
-  slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. python-slugify, R make_clean_names. No Excel equivalent." },
+  unaccent: { label: "UNACCENT", description: "Strips accents and diacritics: Crème Brûlée → Creme Brulee. unidecode, R stri_trans_general Latin-ASCII." },
+  slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. python-slugify, R make_clean_names." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
 // PROPER stays hand-rolled: FX capitalizes only after certain separators, not Excel's

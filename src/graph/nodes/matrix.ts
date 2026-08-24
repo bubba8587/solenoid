@@ -115,9 +115,9 @@ export type MatDetOp = "mdeterm" | "minverse" | "trace" | "rank" | "norm";
 export const MAT_DET_OP_META = {
   mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: MDETERM." },
   minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: MINVERSE." },
-  trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy trace, R sum(diag(m)). No Excel equivalent." },
-  rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy matrix_rank, R qr(m)$rank. No Excel equivalent." },
-  norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (numpy.linalg.norm default, R norm(m, \"F\")). No Excel equivalent — SQRT(SUMSQ(range))." },
+  trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy trace, R sum(diag(m))." },
+  rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy matrix_rank, R qr(m)$rank." },
+  norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (numpy.linalg.norm default, R norm(m, \"F\")). Excel: SQRT(SUMSQ(range))." },
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank", "norm"]);
 

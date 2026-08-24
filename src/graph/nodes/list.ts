@@ -1886,7 +1886,7 @@ export const REDUCE_OP_META = {
   skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: SKEW." },
   skew_p:  { label: "SKEW.P",  description: "Population skewness. Divides by n. Excel: SKEW.P." },
   kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
-  ptp:     { label: "PTP",     description: "Range of the data: max − min. numpy ptp (peak to peak), R diff(range(x)). No Excel equivalent — MAX − MIN." },
+  ptp:     { label: "PTP",     description: "Range of the data: max − min. numpy ptp (peak to peak), R diff(range(x)). Excel: MAX − MIN." },
   iqr:     { label: "IQR",     description: "Interquartile range: the 75th minus the 25th percentile (PERCENTILE.INC). scipy iqr, R IQR." },
   mad:     { label: "MAD",     description: "Median absolute deviation from the median, unscaled (scipy median_abs_deviation; R's mad multiplies by 1.4826). The robust spread." },
   sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ √n. scipy sem, R sd(x)/sqrt(n)." },
