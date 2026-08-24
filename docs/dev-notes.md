@@ -182,6 +182,17 @@ on the input cable", `obsidian.test.ts`). Descriptions + `socketDocs` verified a
 §7 clean (mid-sentence Settings glosses only, no trailing parentheticals or em dashes). No code
 change, no new pins. Residue: none.
 
+**A5 Output (direct + Data Quality) sweep** (4 leaves: Display, Alert, Expect, Tornado) → one
+wired-blank bug: Expect's `allowed` check parameter reverted to the card's allowlist on a wired
+blank instead of skipping the check, unlike its own min/max/pattern (which already skip). Now it
+reads the slot the `readInput` way: unwired → card list, wired blank → unknown → skip; `socketDocs.allowed`
+gains the blank-skip sentence for parity. Display (pure relay + SEES_ERRORS forward), Alert
+(`scalarish`→`readInput`, per-op null guards, unknown never fires), Tornado (pure relay, no
+literal) already correct. Pins: `wiredNull.test.ts` "Output family — wired blank by role" (+2).
+Note: the plan row's class-file list (`sink.ts`, `report.ts`) is stale for this row — the 4 leaves
+at catalog :232/:237 are Display/Alert/Expect/Tornado; the write sinks were swept under Connections
+and Report/Note belong to a later row. Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

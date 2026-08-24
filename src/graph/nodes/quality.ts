@@ -21,7 +21,7 @@ export class ExpectNode extends ClassicPreset.Node {
     min: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     max: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     pattern: "The pattern is a regular expression and tests text cells only. An empty or invalid pattern skips the check.",
-    allowed: "Membership compares by text form, so the number 5 matches the text 5. Blank cells pass. The not-null check covers them.",
+    allowed: "A blank on the cable skips this check instead of falling back to the card's list. Membership compares by text form, so the number 5 matches the text 5. Blank cells pass, since the not-null check covers them.",
   };
   label: string;
   checkNotNull: boolean;
@@ -131,13 +131,19 @@ export class ExpectNode extends ClassicPreset.Node {
       }
     }
     if (this.checkAllowed) {
-      // Compare by string form, so number, date-serial and text all match by their
-      // rendered token.
-      const wired = inputs.allowed?.[0];
-      const allowVals: unknown[] = Array.isArray(wired)
-        ? wired.flat(1)
-        : (this.stringLiterals.allowed ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
-      if (allowVals.length > 0) {
+      // The allowlist is a check parameter: a WIRED blank leaves it unknown and skips
+      // the check, like min/max/pattern, rather than reverting to the card's list. Only
+      // an UNWIRED slot falls back. Compare by string form so number, date-serial and
+      // text match by their rendered token.
+      const wired = inputs.allowed;
+      let allowVals: unknown[] | null;
+      if (wired === undefined || wired.length === 0) {
+        allowVals = (this.stringLiterals.allowed ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
+      } else {
+        const v = wired[0];
+        allowVals = v == null ? null : Array.isArray(v) ? v.flat(1) : [v];
+      }
+      if (allowVals && allowVals.length > 0) {
         const set = new Set(allowVals.map((v) => String(v)));
         // A null cell is the not-null check's job, not membership's — skip it here.
         const bad = values.some((v) => v !== null && v !== undefined && !isSolError(v) && !set.has(String(v)));

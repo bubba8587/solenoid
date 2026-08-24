@@ -538,6 +538,33 @@ describe("Input family — wired blank by role", () => {
   });
 });
 
+describe("Output family — wired blank by role", () => {
+  // Expect's allowlist is a check parameter: a wired blank skips the check (like
+  // min/max/pattern), it does NOT revert to the card's typed list.
+  it("Expect: a wired blank allowlist skips the check; unwired uses the card list", () => {
+    const node = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    node.stringLiterals.allowed = "a,b";
+    // Unwired: "x" is not in the card allowlist → violation.
+    node.data({ in: [["x"]] });
+    expect(node.violations).toContain("allowed");
+    // Wired blank: the allowlist is unknown → the check is skipped, no violation.
+    node.data({ in: [["x"]], allowed: [null as unknown as unknown[]] });
+    expect(node.violations).not.toContain("allowed");
+    // A wired allowlist still applies.
+    node.data({ in: [["x"]], allowed: [["a", "b"]] });
+    expect(node.violations).toContain("allowed");
+  });
+
+  // Alert: a blank on an input the active mode reads makes the status unknown, which
+  // never fires; an unwired slot still evaluates against the card's literal.
+  it("Alert: a wired blank value is unknown (null status); unwired uses the literal", () => {
+    const node = new AlertNode({ op: "range" });
+    node.literals.value = 50; node.literals.low = 0; node.literals.high = 100;
+    expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({}).result).toBe(0);
+  });
+});
+
 describe("cube column references — read raw, guard, then trim", () => {
   it("Rollup: a wired blank output name is unknown, never the \"Total\" default", () => {
     const cube = {
