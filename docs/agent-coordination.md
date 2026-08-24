@@ -10,6 +10,8 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 ## Claims
 
-- Set Cell writes by the Value's shape (scalar / row / block) — Agent 2 (solenoid-18). Landed today: A6, A4, A3, C3, C4, B8, Replace Values parity, Node Packs pin, katex 0.18.
+- rete-area-plugin 2.1.5 → 2.3.2 — Agent 4 (solenoid-f1), Lead-assigned. Bump + selection-test pass (2.3.1 Selector.add) + CappedZoom.wheel decision (keep our curve, rewrite comment) vs 2.2.x wheel norm. Files: package.json, areaPresets.ts, selection/pointer tests.
+
+- Set Cell writes by the Value's shape (scalar / row / block) — Agent 2 (solenoid-18): kernel+node+tests LANDED (83c5a339); anyIn→anyDataIn, setCells extends by rank, #REF! names the overflow axis, takesAutoLiteral gains anydata. ONE nodeCatalog description line pending — handed to Agent 4 (they own the file). Landed today: A6, A4, A3, C3, C4, B8, Replace Values parity, Node Packs pin, katex 0.18.
 - CSV File + Parquet File → Local File — Agent 4 (solenoid-f1). Landed today: B0 (4 items), C2, C5 stats pair, elkjs 0.12 + layerUnzipping cap, Write File merge.
 - Series absorbs Geometric / Fibonacci / Repeat — Jeff / Agent 5 (solenoid-b2). Landed today: A5 (23 families), B7, C5 five, Range inclusive, HYPOT dedup, popup decider + read-only cells as text.

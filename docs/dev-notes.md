@@ -487,6 +487,23 @@ patch remains. Install now requires `--legacy-peer-deps` — pre-existing elkjs 
 in-flight CSV/Parquet `connection.ts` refactor (CsvConnectionNode exports mid-rename) — re-run once
 that lands.
 
+**Set Cell extends by SHAPE — scalar cell / list row / matrix block (83c5a339; author ask).** Each
+per-row Value now extends by rank from its (Row, Column) anchor: a scalar fills one cell, a 1-D list
+a rightward row segment, a 2-D matrix a block (numpy `A[r:r+h, c:c+w] = B`). Kernel `setCells`
+(`matrixOps.ts`) takes `v: Cell | Cell[] | Cell[][]`, normalizes by toAnyMatrix-style rank detection
+(scalar/null → 1×1, list → one row, 2-D → as-is), and errors `#REF!` (`indexRefError` naming the
+OVERFLOWING axis — `r+h-1`/`c+wdt-1`) if a segment/block runs past an edge; no clipping; later writes
+win cell-by-cell on overlap; a wired-blank Value still writes one null cell. Socket: the per-row Value
+went `anyIn` → `anyDataIn` (anydata rung, rank ≤ 2), and `takesAutoLiteral` (`inlineInput.tsx`) now
+includes `anydata` so the scalar inline literal field stays (a typed literal is a scalar; a
+list/matrix only arrives by wire — a wildcard sink/relay stays wire-only by leaving `autoLiterals`
+off, so the widening can't affect it). Pins: `formulaMatrix.test.ts` kernel (row, block, overflow
+naming Row/Column, overlap order, empty-list no-op); `wiredNull.test.ts` node list-write +
+wired-blank; `matrixUnitPolicy.test.ts` grid-unit carry across list + block writes; coerceInputs
+sweep green. The one nodeCatalog description line ("a list writes a row, a table a block, from that
+cell") is handed to Agent 4 (they hold nodeCatalog.ts for the Local File merge). No Rust mirror
+(matrix ops are eager JS).
+
 **C4 — grids take a plain Z + optional Xs/Ys; bordered format retired (plan 13, 2 commits).**
 The coordinate-BORDERED grid (row 0 = X, column 0 = Y, interior = Z) is gone everywhere for one
 convention: coordinates ride BESIDE the Z matrix. New shared kernel `gridAxes(z, xs, ys)`
