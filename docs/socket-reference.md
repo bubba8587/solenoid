@@ -222,7 +222,9 @@ These apply first, at every socket:
 4. **Three variants are typeable in place** — `strlist`, `datelist` and
    `logicallist`. When such an input has no cable, text typed into its box is
    parsed as CSV and injected as the list. A part that will not parse for the type
-   becomes null, holding its position.
+   becomes null, holding its position. A `numlist` input joins them only where its
+   node declares a `stringLiterals` key for it (Surface's Xs / Ys, Grid Interpolate's);
+   otherwise its box is a single number.
 5. **A few ports opt out entirely.** A node that branches on the runtime shape
    itself declares those input keys as raw, and the value reaches it exactly as it
    flowed in. In the shipped catalog there are three: XLOOKUP's frame/cube input,

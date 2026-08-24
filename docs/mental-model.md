@@ -42,7 +42,8 @@ The compute path, in order:
    socket's declared type (widening, singleton collapse, logical↔number
    bridge, `#SHAPE!` on failure), strips `UnitCell`s to display magnitudes
    unless the node is `unitAware` or a declared passthrough, and — for the three
-   CSV-typeable list rungs only — injects the parsed `stringLiterals` text on an
+   CSV-typeable list rungs, plus a `numlist` its node opted in with a `stringLiterals`
+   key — injects the parsed `stringLiterals` text on an
    unwired input. (The GENERAL unwired-falls-back-to-literal read is `readInput`,
    inside `data()` — the next step.)
 4. **`data()` computes, pure.** It reads inputs via `readInput` (a WIRED null
