@@ -38,7 +38,7 @@ backlog line is deleted; git is the record.
 | 4 | [b0-python-r-gap-remainder.md](b0-python-r-gap-remainder.md) | M (4 sub-items) | — |
 | 5 | ~~a4-xlookup-rawinputs~~ | — | landed 2026-08-24 (ec15cdf2) |
 | 6 | ~~a6-drill-in-drag-guard~~ | — | landed 2026-08-24 (aea271a1 + 6acb5b1c) |
-| 7 | [a3-popup-grid-keyboard.md](a3-popup-grid-keyboard.md) | M | — (unblocked; read the footer cache in TablePopup.tsx first) |
+| 7 | ~~a3-popup-grid-keyboard~~ | — | landed 2026-08-24 (f66d3281) |
 | 8 | [b8-cube-unnest-timesavers.md](b8-cube-unnest-timesavers.md) | M (3 sub-items) | B8.3 needs A4 |
 | 9 | [a5-node-sweep.md](a5-node-sweep.md) | L, claimed PER FAMILY | — (skip Cubes while B8.1 is in flight) |
 | 10 | [b7-tidy-options.md](b7-tidy-options.md) | M (engine then chrome) | — (elkjs stays 0.8.2) |
