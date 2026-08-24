@@ -80,7 +80,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [x] | Input (direct + Control) (`:180`, `:197`) | 23 | `nodes/input.ts`, `nodes/control.ts`, `display.ts` (RandBetween) | `wiredNull.test.ts:146` (control bound) |
 | [x] | Input ▸ Connections (`:213`) | 10 | `nodes/connection.ts`, `obsidian.ts`, `dataFeed.ts` | `sourceInvariants.test.ts` (read only; don't loosen) |
 | [x] | Output (direct, Data Quality) (`:232`, `:237`) | 4 | `display.ts`, `quality.ts`, `tornado.ts` | `SEES_ERRORS` `errorValue.ts:129` |
-| [ ] | Output ▸ Visuals, all subs (`:245-283`) | 34 | `nodes/visual.ts`, `tornado.ts`, `chartOptions.ts` | `wiredNull.test.ts:289` (figure sinks), `:483` (figure controls) |
+| [x] | Output ▸ Visuals, all subs (`:245-283`) | 34 | `nodes/visual.ts`, `tornado.ts`, `chartOptions.ts` | `wiredNull.test.ts:289` (figure sinks), `:483` (figure controls) |
 | [ ] | Numbers ▸ Arithmetic / Functions / Rounding / Logarithms (`:337-378`) | 32 | `nodes/scalar.ts` | `wiredNull.test.ts:209` (guard placement) |
 | [ ] | Numbers ▸ Trigonometry / Combinatorics / Engineering / Bessel (`:389-425`) | 41 | `nodes/scalar.ts`, `finance.ts` (Bitwise) | — |
 | [ ] | Numbers ▸ Complex (`:434-451`) | 24 | `nodes/complex.ts` | — |

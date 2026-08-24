@@ -317,6 +317,21 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
     unwired.stringLiterals.options = "title=From the card";
     expect(unwired.data({ value: [5] }).chart.options.title).toBe("From the card");
   });
+
+  it("KPI: a wired blank prior shows NO comparison, not a compare against the card's number", () => {
+    // The "absent is not unknown" trap: prev is an optional comparison, and a wired
+    // blank leaves it unknown (no delta) rather than reusing the card's prior.
+    const node = new KpiNode();
+    node.literals.value = 5;
+    node.literals.prev = 10;
+    const blank = node.data({ value: [5], prev: [null as unknown as number] }).chart.payload as { prev: number | null };
+    expect(blank.prev).toBeNull();
+    // UNWIRED still compares against the card's prior.
+    const unwired = new KpiNode();
+    unwired.literals.prev = 10;
+    const p = unwired.data({ value: [5] }).chart.payload as { prev: number | null };
+    expect(p.prev).toBe(10);
+  });
 });
 
 describe("date operands", () => {

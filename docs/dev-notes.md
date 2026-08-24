@@ -193,6 +193,31 @@ Note: the plan row's class-file list (`sink.ts`, `report.ts`) is stale for this 
 at catalog :232/:237 are Display/Alert/Expect/Tornado; the write sinks were swept under Connections
 and Report/Note belong to a later row. Residue: none.
 
+**A5 Output ▸ Visuals sweep** (34 leaves / ~24 classes) → NO bugs; the whole figure family
+already honors the value-semantics role table (the data() comments cite the roles by name). Every
+datum reads `?? null` → empty figure, never a SolError out `chart` (SEES_ERRORS); every Options
+reads `readInput(..., stringLiterals.options ?? null)` → neutral `{}` on a wired blank, card string
+only when unwired (ChartNode/Record handle the wired-SolError/number nuance); figure SHAPES
+(Histogram/Histogram2D bins, Surface contour levels) empty the figure on blank and mirror to the
+card only when UNWIRED; figure CONTROLS that must render (Bullet `max`) keep the card bound;
+optional comparison (KPI `prev`) blanks to no-comparison; ChartBuilder omits every unset
+presentation field. Pins: `wiredNull.test.ts` extended "figure sinks" with the KPI-prev
+optional-comparison case (+1). Overlap flagged: Agent 4's B0 is mid-refactor of `visual.ts`
+(new `visualOps.ts`, `Histogram2DNode.tsx`, a HISTOGRAM2D formula) — additive, orthogonal to the
+wired-blank contract, so this sweep's conclusion stands for the existing nodes.
+Combine candidates: Gauge + Bullet → one value-on-scale figure with a style selector (they are
+already a catalog `pair`); Treemap + Waffle → one proportion figure (both take a 2-col label/value
+frame) with a layout selector; Histogram + Histogram2D → one binning figure with a 1-D/2-D
+selector (coordinate with B0, which is touching Histogram2D).
+
+**A5 combine-candidate backfill** (author directive 2026-08-24): Input — none strong (hand-drawn
+widgets Point Plotter / Curve / Grid Painter emit different shapes; scalar controls Slider / Angle
+Dial / XY Pad are distinct widgets). Connections — Write CSV + Write JSON → one "Write File" with
+a format selector (already share `WriteFileNodeBase`); CSV File + Parquet File → one "Local File"
+with a format selector; Import HTML + Import XML (+ maybe Web Source's auto CSV/JSON) → one "Web
+Import" with an extractor selector (table N / XPath / auto). Output — none strong (Display / Alert /
+Expect / Tornado are distinct roles).
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
