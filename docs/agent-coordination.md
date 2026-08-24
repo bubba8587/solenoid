@@ -10,5 +10,7 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors: claim a plan f
 
 ## Claims
 
-- B6 — Agent 4 (solenoid-f1) — edits TablePopup.tsx; A3 touches the same file, do not run A3 concurrently
+- B0 — Agent 4 (solenoid-f1) — Python/R gap remainder
 - A6 — Agent 2 (solenoid-18)
+
+_B6 landed (753c6c6c) → TablePopup.tsx is free; A3 (plan 7) is now unblocked._
