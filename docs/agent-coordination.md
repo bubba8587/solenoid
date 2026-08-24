@@ -2,16 +2,12 @@
 
 Shared scratchpad for when several agents work this repo in parallel. Dormant in a solo session — claim nothing, ignore it.
 
-**Protocol.** Check here before starting a task and claim it in one line so two agents don't pick the same thing. Update on claim and on hand-off, not on every edit. Delete an entry once it lands; prior history is in `git log`. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory; a session may post a short "This session" block here that overrides them where they conflict.
+**Protocol.** Agents message each other directly for live coordination; this board is only the durable claim list (one line per claim, delete on land) so a late-joining or restarted agent knows what's taken. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory.
 
-## This session
+## This session (2026-08-24)
 
-_(no active parallel session)_
-
-## Streams
-
-_(none claimed)_
+Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors: claim a plan from `docs/plans/README.md` below, follow its protocol.
 
 ## Claims
 
-_(none)_
+- A2 — Agent 4 (solenoid-f1)
