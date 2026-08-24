@@ -218,6 +218,21 @@ with a format selector; Import HTML + Import XML (+ maybe Web Source's auto CSV/
 Import" with an extractor selector (table N / XPath / auto). Output — none strong (Display / Alert /
 Expect / Tornado are distinct roles).
 
+**A5 Numbers ▸ Arithmetic/Functions/Rounding/Logarithms sweep** (32 leaves / 7 classes:
+Arithmetic, MathFn, MRound, RoundN, Gcd, Clamp, TwoInputMath) → NO bugs. Every operand
+propagates a wired blank: the two-operand classes guard `a !== null && b !== null` (or lean on
+`broadcast`'s null short-circuit, as Gcd/RoundN do for the second operand), MathFn guards the
+single `in`, Clamp separates unwired-absent (no bound) from wired-blank (unknown) per its
+socketDocs. Domain/÷0 errors are the node's own `#DOMAIN!`/`#DIV/0!` (per-cell in a list); a
+wired-in SolError is handled upstream by `installErrorGuards`, so the both-null guard never has to
+rank error vs blank itself. Descriptions/`socketDocs` verified (INT floors to −∞, EVEN/ODD away
+from zero, MROUND multiple-of-zero → 0, MROUND sign guard scoped to nearest). Pins:
+`wiredNull.test.ts` "Numbers ▸ Arithmetic/Functions/Rounding — operands propagate" (Arithmetic /
+MathFn / MRound, +3). Combine candidates: MRound (to a multiple) + RoundN (to N digits) + MathFn's
+trunc/int/even/odd (to integer forms) → one "Round" node with a target selector (nearest-multiple /
+N-digits / integer-form); the family is otherwise already maximally op-merged (MathFn alone unifies
+~35 single-input functions). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

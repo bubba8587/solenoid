@@ -7,7 +7,7 @@ import { RandBetweenNode } from "./display";
 import { ComplexFromNode } from "./complex";
 import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
-import { ClampNode } from "./scalar";
+import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
 import { ListIndexNode, SliceNode } from "./list";
@@ -550,6 +550,32 @@ describe("Input family — wired blank by role", () => {
     const [v0] = Object.keys(node.inputs);
     expect(node.data({ [v0]: [null] }).out).toBeNull();
     expect(node.data({ [v0]: [42] }).out).toBe(42);
+  });
+});
+
+describe("Numbers ▸ Arithmetic/Functions/Rounding — operands propagate", () => {
+  // Scalar one-op nodes: an operand's wired blank makes the answer unknown per cell,
+  // and only an unwired slot uses the typed literal.
+  it("Arithmetic: a wired blank operand propagates; unwired uses the literals", () => {
+    const node = new ArithmeticNode({ op: "add" });
+    node.literals.a = 3; node.literals.b = 4;
+    expect(node.data({ a: [null as unknown as number], b: [4] }).result).toBeNull();
+    expect(node.data({}).result).toBe(7);
+  });
+
+  it("Math function: a wired blank input propagates; unwired uses the literal", () => {
+    const node = new MathFnNode({ op: "abs" });
+    node.literals.in = -5;
+    expect(node.data({ in: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({}).result).toBe(5);
+  });
+
+  it("MROUND: a wired blank on value OR multiple propagates; unwired rounds", () => {
+    const node = new MRoundNode({ op: "nearest" });
+    node.literals.value = 7; node.literals.multiple = 5;
+    expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ multiple: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({}).result).toBe(5);
   });
 });
 
