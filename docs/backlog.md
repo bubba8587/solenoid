@@ -17,12 +17,6 @@ Promoted from `deferrals.md` where an entry was engine/logic work that was never
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 **A — correctness & parity (engine/formula, fully test-pinnable)**
-- [ ] **A3 (remainder) — the popup grid's keyboard path** (the largest "zero learning
-  curve" gap; the sort / export / `− Row` items landed 2026-08-23: sort ranks the WHOLE
-  dataset and renders its top 1,000; Copy / Export / read-only CSV view emit every row in the
-  visual order; the editable CSV view stays source-order because it parses back into the
-  grid). AUTHOR EYEBALL: open a >1,000-row frame popup, sort a column, confirm the top rows
-  and that Copy CSV carries all rows.
 - [ ] **A5 Node-by-node sweep**, per family, value-semantics + description truth (below).
 
 **B0 — the Python/R gap (author ask 2026-08-23) — Tiers 1 + 2 LANDED; what remains**

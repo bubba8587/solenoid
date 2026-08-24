@@ -179,6 +179,25 @@ node coercion — retiring the rawInputs bypass" (typed-date survives coercion; 
 driven through `wrapNodeData`). **The chart nodes (`visual.ts`) are now the only `rawInputs` users**
 — feeds B8's "collapse the frame+cube lookup paths." Full suite green (bar Agent 4's in-flight B0).
 
+**A3 — the popup grid's keyboard path (plan 7).** The Table popup grid now moves like a
+spreadsheet. Pure mover `gridKeyboard.ts` (`gridKeyOf` classifies a keydown, `nextCell` returns
+the target VISUAL position or null): Enter/Shift+Enter down/up (clamped); Tab/Shift+Tab next/prev
+cell wrapping across rows and SKIPPING computed columns, null off either end (falls through to the
+browser's default Tab); arrows clamp and can land on a computed cell (read-only, not unreachable);
+Home/End jump to the first/last column. Wired in `TablePopup.tsx`: every cell input carries
+`data-vi`/`data-c`, the mover focuses the target by `querySelector` on a single table ref (no
+per-cell refs). Excel's Enter-mode / Edit-mode split without an F2: arrows/Home/End move the CARET
+while a cell is mid-edit (draft ≠ committed), navigate otherwise; Enter/Tab always commit-then-move
+(explicit `setCell`, so blur is a no-op). A commit can re-rank the row under the caret (sort); the
+move targets the visual position from BEFORE the commit — accepted. Escape moved to the shell:
+`PopupShell` gets `onEscape` (capture, fires before the cell's keydown) — mid-edit it reverts the
+draft and stays open, otherwise it closes; the per-cell Escape branches (grid + form view) are
+deleted. Computed cells stay Tab-skipped but arrow-reachable. No new strings; `ShortcutsOverlay`
+gets no popup section (the keys are the universal spreadsheet set). Pins: `gridKeyboard.test.ts`
+(every key from every edge/corner of a 3×3, Tab-skip, wrap, clamp, modifiers→null, 1×1, zero dims).
+tsc + full vitest (4734) green. AUTHOR EYEBALL below (incl. the still-unverified >1,000-row sort /
+Copy-CSV check carried over from the old A3 backlog line).
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a

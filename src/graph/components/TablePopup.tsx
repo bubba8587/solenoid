@@ -17,6 +17,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
 import { parseRecordLayout } from "../nodes/visual";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
@@ -153,6 +154,8 @@ export function TablePopup() {
 
   const editDraft = useRef("");
   const [, bumpDraft] = useState(0);
+  // The grid table, so the keyboard mover can find a target cell by its data-vi/data-c.
+  const gridRef = useRef<HTMLTableElement | null>(null);
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
   // must keep flattening to the same list.
   const [listVertical, setListVertical] = useState(false);
@@ -614,10 +617,31 @@ export function TablePopup() {
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
 
+  // Move focus to the grid cell at a VISUAL position (index into visibleOrder) + column,
+  // located by its data-attrs so no per-cell refs are needed.
+  const focusGridCell = (target: { vi: number; c: number } | null) => {
+    if (!target) return;
+    const el = gridRef.current?.querySelector<HTMLInputElement>(`input[data-vi="${target.vi}"][data-c="${target.c}"]`);
+    if (el) { el.focus(); el.select(); }
+  };
+  // Escape mid-edit reverts the cell being edited and keeps the popup open (the shell's
+  // capture listener fires before the cell's own keydown); Escape with nothing mid-edit
+  // closes. Deletes the need for a per-cell Escape branch.
+  const onGridEscape = () => {
+    if (editCell) {
+      editDraft.current = grid[editCell.r]?.[editCell.c] ?? "";
+      setEditCell(null);
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    } else {
+      tablePopup.close();
+    }
+  };
+
   return (
     <PopupShell
       title={state.title}
       onClose={() => tablePopup.close()}
+      onEscape={onGridEscape}
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
@@ -666,7 +690,7 @@ export function TablePopup() {
       )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll">
-          <table className="table-popup__grid">
+          <table className="table-popup__grid" ref={gridRef}>
             <thead>
               <tr>
                 <th className="table-popup__corner" />
@@ -830,7 +854,7 @@ export function TablePopup() {
             <tbody>
               {/* Rows render in SORT order but carry their SOURCE index `r`, so the row
                   number and every edit below address the real row. */}
-              {visibleOrder.map((r) => { const row = viewRow(r); return (
+              {visibleOrder.map((r, vi) => { const row = viewRow(r); return (
                 <tr key={r}>
                   <th className="table-popup__rowhead">{r + 1}</th>
                   {Array.from({ length: viewCols }, (_, c) => {
@@ -866,6 +890,17 @@ export function TablePopup() {
                             readOnly
                             tabIndex={-1}
                             spellCheck={false}
+                            data-vi={vi}
+                            data-c={c}
+                            // Read-only, but arrows can LAND here — so it still moves focus off.
+                            onKeyDown={(e) => {
+                              const k = gridKeyOf(e);
+                              if (!k) return;
+                              const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
+                              if (!target) return;
+                              e.preventDefault();
+                              focusGridCell(target);
+                            }}
                           />
                         </td>
                       );
@@ -895,9 +930,22 @@ export function TablePopup() {
                           else setEditCell({ r, c });
                         }}
                         onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        data-vi={vi}
+                        data-c={c}
                         onKeyDown={canEdit ? (e) => {
-                          if (e.key === "Enter") e.currentTarget.blur();
-                          else if (e.key === "Escape") { editDraft.current = grid[r]?.[c] ?? ""; e.currentTarget.blur(); }
+                          const k = gridKeyOf(e);
+                          if (!k) return; // Escape is handled by the shell's onEscape (capture)
+                          // Mid-edit, arrows/Home/End move the CARET (Excel edit-mode); Enter/Tab
+                          // always commit-then-move.
+                          const midEdit = editingHere && editDraft.current !== (grid[r]?.[c] ?? "");
+                          if (midEdit && k !== "Enter" && k !== "ShiftEnter" && k !== "Tab" && k !== "ShiftTab") return;
+                          const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
+                          // Commit-then-move, explicit so blur is a no-op. The target is the VISUAL
+                          // position from before the commit — a commit can re-rank the row (sort); accepted.
+                          if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); }
+                          if (!target) return; // Tab/Shift+Tab off the end → the browser's default Tab
+                          e.preventDefault();
+                          focusGridCell(target);
                         } : undefined}
                       />
                     </td>
@@ -1030,8 +1078,8 @@ export function TablePopup() {
                         }}
                         onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
                         onKeyDown={(e) => {
+                          // Escape is handled by the shell's onEscape (editCell is set here too).
                           if (e.key === "Enter") e.currentTarget.blur();
-                          else if (e.key === "Escape") { editDraft.current = grid[fRow]?.[c] ?? ""; e.currentTarget.blur(); }
                         }}
                       />
                     )}
