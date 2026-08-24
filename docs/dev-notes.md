@@ -88,6 +88,29 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **B7 Tidy options (plan 10) — three persisted knobs, read by BOTH ELK call sites.**
+  `tidyLayoutOptions({direction, density, widthCap})` maps to ELK: `elk.direction` RIGHT/DOWN,
+  the spacing pair (compact 36/24 · normal 55/38 = today's · airy 80/56), and a width cap via
+  `COFFMAN_GRAHAM` + `coffmanGraham.layerBound` ("off" omits both, since `layerBound` is inert
+  without the strategy). `tidyOptionsFromSettings` reads the settings; the main canvas AND the
+  composite drill-in now pass it (the drill-in used no options before — a behaviour change).
+  `symmetricPortPreset(direction)` became a factory (RIGHT WEST/EAST down the height, DOWN
+  NORTH/SOUTH across the width); the plugin re-invokes it per layout so a setting change needs no
+  re-register; the hand-copied drill-in port preset is deleted. The post-layout anchor transposes
+  under DOWN (TOP edge + horizontal center vs LEFT + vertical center), and the within-group clamp
+  guards the left pad instead of the header, so tidy→autofit stays a fixed point either way
+  (pinned: `tidyArrangeGroups.test.ts` idempotence under DOWN and cap 3; `layoutTidyIntegration.test.ts`
+  the exact option map per combo + a 9→1 fan where cap 3 → 3 layer columns/rows, off → 1). Chrome:
+  three `segment` rows in Settings ▸ Canvas + a `.solenoid-tidy-options` popover off a chevron beside
+  the top-bar Tidy button (reuses Settings' segment-pill styles, Escape + clickaway close, z20 local
+  to the topbar — registered in `layout-chrome.md`). `tidyWidthCap` stores the string `"off"/2/3/4`
+  (segment control), mapped to the numeric cap at the call site. Backlog "B7" + the dangling elkjs→
+  `deferrals.md "Tidy options"` pointer resolved; elkjs stays 0.8.2 (layerUnzipping is the 0.12
+  follow-on). AUTHOR EYEBALL: Settings ▸ Canvas shows the three rows; the top-bar chevron opens the
+  popover, matches Settings, closes on Escape/clickaway; a 9→1 fan with Width cap 3 lays out 3×3 —
+  the open question is whether the cables through our router read as a block or spaghetti (do not
+  touch `cablePaths.ts`; report what you see).
+
 - **Frame-hint hover was dead (author report) → cross-root enter.** React's synthetic
   `onPointerEnter` never fires when the pointer arrives from a different React root, and rete
   renders each node in its own root, so a socket on the card edge (hovered straight from the
@@ -163,15 +186,19 @@ the profile-bar tooltip lost its dynamic counts — tooltips are structural only
   to 2-D.
 - **B0.3 ODE integrate — RK4 (plan 4).** Rete-free `rk4(f, y0, t0, t1, steps)` kernel in a new
   `odeOps.ts` (fixed-step classic RK4; steps clamp 1..100000; a null/non-finite derivative or a
-  blow-up aborts to null). `OdeIntegrateNode` (in `stats.ts`, by Decompose): a `dy/dt` expression
-  in t and y compiled with `compilePositional(expr, ["t","y"])`, y0/t0/t1/steps inputs, t + y list
-  outputs; bad expression → `#NAME?`, divergence → `#DOMAIN!` (the app's code for Excel's #NUM!).
-  NODE-ONLY: there is no precedent for a formula that compiles a text-expression string on the
-  formula surface, so no `ODE(...)` formula (plan allowed this). Pinned in `odeOps.test.ts`;
-  scratch seed integrates dy/dt = y → e^t. The stats.ts commit (ce111e34) also carried Agent 2's
-  C4 InterpolateNode grid-axes rewrite (shared file, coordinated split). Finding (author's call,
-  don't build): the t/y pair as two list outputs needs a Build Frame before a Chart; a single
-  `{t, y}` frame output would plot directly under C2's label rule.
+  blow-up aborts to null). `OdeIntegrateNode` (in `stats.ts`, by Decompose). Two author rulings
+  reshaped it after the first commit (ce111e34): (1) t and y are CORRELATED → ONE `{t, y}` frame
+  output, not two lists (the seed plots straight into a Chart, t as labels, under C2's label rule);
+  (2) the derivative is a LAMBDA of (t, y), not a string-expression socket — it mirrors the MAP
+  family: `lambdaIn("dy/dt")`, `lambdaSig {vars:[t,y], required:2}`, `resolveFn(byName)` so a wired
+  `LAMBDA(t, y)` binds by param name, fnError/cachedError codes (#SYNTAX!/#NAME?/#VALUE!), and the
+  card's inline field is the λ-family `FormulaBox` bound to `stringLiterals.formula` (`resolveFn` +
+  `FormulaBox`/`FormulaError`/`FORMULA_KEYS` exported for reuse). Divergence → `#DOMAIN!`. NODE-ONLY:
+  no formula compiles a text-expression string on the formula surface (this closes the
+  string-expression-socket rule — ODE was its only violation). Pinned in `odeOps.test.ts` (kernel +
+  the node's frame output + error codes); scratch seed integrates dy/dt = y → e^t into a Chart. The
+  ce111e34 stats.ts commit also carried Agent 2's C4 InterpolateNode grid-axes rewrite (shared file,
+  coordinated split); the rework landed at 46c71976 + baae4eb4.
 
 **C2 — the base Chart renders multiple series from a frame (plan 11, author ask). 3 commits.**
 `ChartValue.series` + `ChartNode.data()`: column 0 is ALWAYS the x-axis label at ≥2 columns (a
