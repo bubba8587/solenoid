@@ -24,14 +24,15 @@ oracle on web, `window.json` in the parity corpus). Reference overlay chips (num
 let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParity.test.ts`,
 `distributionFormula.test.ts`, `dateParity.test.ts`, `functionReferenceLibs.test.ts`.
 
-## Tier 2 — LANDED 2026-08-23 except the items marked open (#20's weighted pick, #27, #31, str_wrap, STL)
+## Tier 2 — LANDED 2026-08-23 except the items marked open (#20's weighted pick, #27, #31, STL)
 
 17. **Text template / glue** — LANDED 2026-08-23 (Template node: {name} / {name:spec} grow a
     socket per name, lists broadcast, date-typed inputs format as dates; TEMPLATE(text, v0, …)
     positional formula).
 18. **Text pad / truncate / unaccent / slugify** — LANDED 2026-08-23 (UNACCENT + SLUGIFY ops
     on Text Transform; Pad Text + Truncate Text nodes; PADTEXT / TRUNCATETEXT formulas).
-    `str_wrap` (text → lines) still open: its output is a list, so it is not a Transform op.
+    `str_wrap` (text → lines) — LANDED 2026-08-24 (Wrap Text node, WRAPTEXT(text, width) formula
+    returning a string list; a list output, so its own node, not a Transform op).
 19. **Positions where** — LANDED 2026-08-23 (ARGSORT / ARGSORT DESC / WHICH ops on the ARGMAX
     card, sockets retyping with the op; ARGSORT(list, [desc]) + WHICH(flags) formulas).
 20. **Weighted random choice / sample** — LANDED 2026-08-23 (Distribution node `Sample` form:

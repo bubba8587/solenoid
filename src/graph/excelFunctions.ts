@@ -11,7 +11,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose } from "./nodes/forecastOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
@@ -757,6 +757,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   SLUGIFY:     { returns: "string", arity: [1, 2], family: "text", native: true },
   PADTEXT:     { returns: "string", arity: [2, 4], family: "text", native: true },
   TRUNCATETEXT: { returns: "string", arity: [2, 3], family: "text", native: true },
+  WRAPTEXT:    { returns: "string", arity: [2, 2], family: "text", native: true },
   SPELLNUMBER: { returns: "string", arity: [1, 1], family: "text", native: true },
   DECODEURL:   { returns: "string", arity: [1, 1], family: "text", native: true },
   ENCODEBASE64: { returns: "string", arity: [1, 1], family: "text", native: true },
@@ -2158,6 +2159,8 @@ registerInternal("PADTEXT", (t, width, side, fill) => {
   return padText(toStr(t), toNum(width), sd as PadSide, fill == null ? " " : toStr(fill));
 });
 registerInternal("TRUNCATETEXT", (t, width, ellipsis) => (t == null ? null : truncateText(toStr(t), toNum(width), ellipsis == null ? "…" : toStr(ellipsis))));
+// The kernel clamps width to 1; the node surfaces #DOMAIN! for width < 1.
+registerInternal("WRAPTEXT", (t, width) => (t == null ? null : wrapText(toStr(t), toNum(width))));
 registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
 registerInternal("DECODEURL", (t) => (t == null ? null : urlEncode("decode", toStr(t))));
 registerInternal("ENCODEBASE64", (t) => (t == null ? null : urlEncode("base64", toStr(t))));

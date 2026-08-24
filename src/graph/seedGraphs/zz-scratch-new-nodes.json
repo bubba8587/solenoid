@@ -2920,6 +2920,30 @@
     "width": 1634,
     "height": 1152
    }
+  },
+  {
+   "id": "n_wrap",
+   "type": "WrapTextNode",
+   "x": 356,
+   "y": 9650,
+   "init": {
+    "label": "Wrap Text"
+   },
+   "stringLiterals": {
+    "text": "the quick brown fox jumps over the lazy dog"
+   },
+   "literals": {
+    "width": 16
+   }
+  },
+  {
+   "id": "d_wrap",
+   "type": "DisplayNode",
+   "x": 748,
+   "y": 9650,
+   "init": {
+    "label": "Wrapped lines"
+   }
   }
  ],
  "connections": [
@@ -4013,6 +4037,12 @@
    "source": "logit",
    "sourceOutput": "probabilities",
    "target": "d_logit_p",
+   "targetInput": "in"
+  },
+  {
+   "source": "n_wrap",
+   "sourceOutput": "result",
+   "target": "d_wrap",
    "targetInput": "in"
   }
  ]

@@ -123,6 +123,17 @@ computed columns read their derived cells); skipped for list/vertical popups. `d
 tests added beside the `describeFrame` corpus. Finding (per plan, not fixed): `colSummaries` recomputes
 per render, and an editable popup re-renders per keystroke — but editable popups are hand-typed (small),
 so no measured lag; memoize only if a large editable frame ever lags. AUTHOR EYEBALL below.
+(Agent-1 review 18404080-era fixes: colSummaries is now a ref-cache keyed on grid/state identity;
+the profile-bar tooltip lost its dynamic counts — tooltips are structural only.)
+
+**B0 — Python/R gap remainder (plan 4, one commit per sub-item).**
+- **B0.1 str_wrap → Wrap Text.** `wrapText(t, width) → string[]` kernel in `textOps.ts` (greedy,
+  whitespace-collapsing, a long word alone on its line unbroken, width clamps to 1, blank → []);
+  `WrapTextNode` (text + width, `strListOut`; width < 1 → `#DOMAIN!`), `WRAPTEXT(text, width)`
+  formula. Meta carries NO `rank: "list"` — like TEXTSPLIT, a scalar-in/list-out function is not a
+  list-arg op, and declaring the rank trips formulaTier3's "list-returning ⟹ takes args whole"
+  (the plan's "rank: 1" note was off for this shape). Pinned in `textOps.test.ts`; run-graph on the
+  scratch seed wraps the sample sentence at 16.
 
 **A6 — shared node drag guard + tap-select on BOTH editing surfaces (plan 6).** The composite
 drill-in had NO drag guard, so a finger press grabbed a card and a finger pan over cards was dead

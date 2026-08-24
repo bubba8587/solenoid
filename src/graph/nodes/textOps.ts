@@ -301,6 +301,25 @@ export function truncateText(t: string, width: number, ellipsis = "…"): string
   return chars.slice(0, keep).join("") + (keep === 0 ? e.slice(0, w).join("") : ellipsis);
 }
 
+/** Greedy word-wrap on whitespace to at most `width` code points per line (R
+ *  `str_wrap`, Python `textwrap.wrap`): words join with single spaces, runs of
+ *  whitespace collapse, and a single word longer than `width` sits alone on its
+ *  line unbroken. `width` clamps to 1; empty or blank text → `[]`. */
+export function wrapText(t: string, width: number): string[] {
+  const w = Math.max(1, Math.floor(width));
+  const words = t.split(/\s+/).filter((s) => s !== "");
+  if (words.length === 0) return [];
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (line === "") { line = word; continue; }
+    if ([...line].length + 1 + [...word].length <= w) line += " " + word;
+    else { lines.push(line); line = word; }
+  }
+  lines.push(line);
+  return lines;
+}
+
 // ─── Template: "Hello {name}, total {total:0.00}" (str_glue, f-strings, str.format) ───
 // `{{` / `}}` are literal braces; a placeholder is `{name}` or `{name:spec}` where
 // spec is an Excel TEXT format code (or a date format) handed to the caller's `fmt`.

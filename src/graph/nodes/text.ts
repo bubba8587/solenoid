@@ -13,7 +13,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops, shared verbatim with the formula surface; re-exported so the node
 // barrel keeps its shape.
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList, unaccent, slugify, padText, truncateText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { dropInputCables } from "../components/cablePrune";
 import { getActiveArea } from "../activeGraph";
@@ -243,6 +243,37 @@ export class TruncateTextNode extends ClassicPreset.Node {
     if (w === null || e === null) { this.cachedText = null; return { result: null }; }
     const result = broadcastCells((t: string) => truncateText(t, w, e), strVal(inputs.text, this, "text"));
     this.cachedText = result;
+    return { result };
+  }
+}
+
+// ─── Wrap Text (no Excel equivalent; R str_wrap, Python textwrap.wrap) ─────────
+
+export class WrapTextNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    width: "Maximum line length in characters; a single word longer than this still takes its own line.",
+  };
+  label: string;
+  cachedResult: string[] | SolError | null = null;
+  stringLiterals: Record<string, string> = { text: "" };
+  literals: Record<string, number> = { width: 40 };
+  width = 190; height = 175;
+
+  constructor(init?: { label?: string }) {
+    super("WrapText");
+    this.label = init?.label ?? "Wrap Text";
+    this.addInput("text",  strIn("Text"));
+    this.addInput("width", numIn("Width"));
+    this.addOutput("result", strListOut("Lines"));
+  }
+
+  data(inputs: { text?: string[]; width?: number[] }): { result: string[] | SolError | null } {
+    const text = strScalar(inputs.text, this, "text");
+    const w = readInput(inputs.width, this.literals.width ?? 40);
+    if (text === null || w === null) { this.cachedResult = null; return { result: null }; }
+    if (w < 1) { const e = solError("#DOMAIN!", "Width must be at least 1"); this.cachedResult = e; return { result: e }; }
+    const result = wrapText(text, w);
+    this.cachedResult = result;
     return { result };
   }
 }

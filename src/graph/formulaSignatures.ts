@@ -235,6 +235,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   SLUGIFY: "text, [separator]",
   PADTEXT: "text, width, [side], [fill]",
   TRUNCATETEXT: "text, width, [ellipsis]",
+  WRAPTEXT: "text, width",
   ARGSORT: "list, [descending]",
   SAVGOL: "list, window, order",
   DECOMPOSE: "list, period, component, [model]",
