@@ -12,7 +12,7 @@ import {
   InterpolateNode,
   HypothesisTestNode,
 } from "./stats";
-import { interpolateLinear, fillBorderedGrid } from "./mathUtils";
+import { interpolateLinear, gridAxes, fillGrid } from "./mathUtils";
 import { compileEvaluator } from "../excelFormula";
 import { isSolError, solError } from "../errorValue";
 import { extractInit } from "../copyPaste";
@@ -240,8 +240,22 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
   });
 });
 
-describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
-  it("fills blanks in a bordered lookup table (Z = x + y), incl. a new row×column intersection", () => {
+describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)", () => {
+  // C4 retired the bordered format for the plain (z, xs, ys) convention. These cases were
+  // written against a bordered table, so split the border into xs/ys/z and re-border the
+  // filled Z for comparison — the interior the algorithm produces is unchanged.
+  type Grid = (number | null)[][];
+  const unborder = (t: Grid) => ({
+    xs: t[0].slice(1) as number[],
+    ys: t.slice(1).map((r) => r[0]) as number[],
+    z: t.slice(1).map((r) => r.slice(1)),
+  });
+  const filled = (t: Grid, forecast = true): Grid => {
+    const { xs, ys, z } = unborder(t);
+    const out = fillGrid(z, xs, ys, forecast);
+    return [[null, ...xs], ...ys.map((y, i) => [y, ...out[i]])];
+  };
+  it("fills blanks in a Z table (Z = x + y), incl. a new row×column intersection", () => {
     // row 0 = X coords, col 0 = Y coords, corner ignored; null = blank to fill.
     //   ·   0   5   10
     //   0   0   ·   10
@@ -255,7 +269,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     ];
     // Every cell resolves to Z = x + y — the (X=5, Y=5) intersection (blank in BOTH a
     // new row and a new column) is the true bilinear blend of the four coarse corners.
-    expect(fillBorderedGrid(t)).toEqual([
+    expect(filled(t)).toEqual([
       [null, 0, 5, 10],
       [0, 0, 5, 10],
       [5, 5, 10, 15],
@@ -264,14 +278,14 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
   });
   it("blanks the top-left corner even when the input had a value there", () => {
     const t = [[999, 0, 10], [0, 0, 10], [10, 10, 20]];
-    expect(fillBorderedGrid(t)[0][0]).toBeNull();
+    expect(filled(t)[0][0]).toBeNull();
   });
   it("forecasts past the data with a linear trend by default, blank when forecast is off", () => {
     //   ·   0   10   20     ← X=20 is past the last known Z column (0,10)
     //   0   5   15   ·      ← known 5@0, 15@10 (slope 1); 2 collinear points → plane fit
     const t = [[null, 0, 10, 20], [0, 5, 15, null]];
-    expect(fillBorderedGrid(t)[1][3]).toBeCloseTo(25, 3);       // forecast ON: trend → 25
-    expect(fillBorderedGrid(t, false)[1][3]).toBeNull();        // forecast OFF: outside data → blank
+    expect(filled(t)[1][3]).toBeCloseTo(25, 3);       // forecast ON: trend → 25
+    expect(filled(t, false)[1][3]).toBeNull();        // forecast OFF: outside data → blank
   });
   it("forecasts a blank edge ROW from the trend (Ys [2,4,6,8,10], data at 4 & 8)", () => {
     //   ·   0        row 0 = X coords (one column)
@@ -281,19 +295,19 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     //   8   30       Y=8  known
     //   10  ·        Y=10 — above the data, forecast fills it
     const t = [[null, 0], [2, null], [4, 10], [6, null], [8, 30], [10, null]];
-    const on = fillBorderedGrid(t).map((r) => r[1]);      // [X header, Y2, Y4, Y6, Y8, Y10]
+    const on = filled(t).map((r) => r[1]);      // [X header, Y2, Y4, Y6, Y8, Y10]
     // line through (4,10),(8,30): slope 5 → Y2=0, Y6=20, Y10=40 (forecast).
     [0, 0, 10, 20, 30, 40].forEach((v, i) => expect(on[i]).toBeCloseTo(v, 2));
     // forecast OFF: only the bilinear-enclosed Y6 fills; the outside rows stay blank.
-    expect(fillBorderedGrid(t, false).map((r) => r[1])).toEqual([0, null, 10, 20, 30, null]);
+    expect(filled(t, false).map((r) => r[1])).toEqual([0, null, 10, 20, 30, null]);
   });
   it("leaves a cell no row or column can reach blank", () => {
     const t = [[null, 0], [0, null]]; // one interior cell, nothing known to reach it
-    expect(fillBorderedGrid(t)).toEqual([[null, 0], [0, null]]);
+    expect(filled(t)).toEqual([[null, 0], [0, null]]);
   });
   it("treats a NaN / dirty interior cell as a blank to fill", () => {
     const t = [[null, 0, 10], [0, 0, NaN]]; // single known in the row → flat fill
-    expect(fillBorderedGrid(t)).toEqual([[null, 0, 10], [0, 0, 0]]);
+    expect(filled(t)).toEqual([[null, 0, 10], [0, 0, 0]]);
   });
   it("interpolates ACROSS a hole (a missing point in a complete grid, not just inserted lines)", () => {
     // Z = x·y, complete 3×3, one INTERIOR data point missing — bilinear across it = 1.
@@ -301,7 +315,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     //   0   0   0   0
     //   1   0   ·   2      ← the (x=1,y=1) sample is a hole
     //   2   0   2   4
-    const out = fillBorderedGrid([
+    const out = filled([
       [null, 0, 1, 2],
       [0, 0, 0, 0],
       [1, 0, null, 2],
@@ -320,8 +334,8 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     //   1   1   ·   ·
     //   2   2   ·   ·
     const t = [[null, 0, 1, 2], [0, 0, 1, 2], [1, 1, null, null], [2, 2, null, null]];
-    expect(fillBorderedGrid(t, false)[2][2]).toBeNull();          // OFF: undetermined by bilinear
-    expect(Number.isFinite(fillBorderedGrid(t)[2][2] as number)).toBe(true); // ON: spline fills it
+    expect(filled(t, false)[2][2]).toBeNull();          // OFF: undetermined by bilinear
+    expect(Number.isFinite(filled(t)[2][2] as number)).toBe(true); // ON: spline fills it
   });
 
   it("a sine DIAGONAL + 0 corners interpolates through the diagonal, not flat-0 (author 2026-07-16)", () => {
@@ -340,7 +354,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
       [5,    n,       n,       n,       n,       s(60),   n],
       [6,    0,       n,       n,       n,       n,       0],
     ];
-    const out = fillBorderedGrid(t);
+    const out = filled(t);
     // Every blank fills (forecast on)…
       for (let i = 1; i < out.length; i++) for (let j = 1; j < out[i].length; j++) {
       expect(Number.isFinite(out[i][j] as number)).toBe(true);
@@ -354,41 +368,69 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     expect(b).toBeLessThan(0.75); // pulled toward the diagonal, not runaway
   });
 
-  // Node wiring — ONE table in, ONE table out.
-  it("grid mode is one bordered-table input and one table output", () => {
+  // Node wiring — a Z table + optional Xs/Ys in, ONE table out.
+  it("grid mode is a Z table + optional Xs/Ys in and one table output", () => {
     const n = new InterpolateNode({ mode: "grid" });
-    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    expect(Object.keys(n.inputs).sort()).toEqual(["xs", "ys", "z"]);
     expect(Object.keys(n.outputs)).toEqual(["result"]);
   });
   it("_rebuildSockets swaps the list↔grid socket sets", () => {
     const n = new InterpolateNode(); // list mode
     expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
     n.mode = "grid"; n._rebuildSockets();
-    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    expect(Object.keys(n.inputs).sort()).toEqual(["xs", "ys", "z"]);
     n.mode = "list"; n._rebuildSockets();
     expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
   });
-  it("fills a bordered grid through the node (a per-cell error reads as a blank)", () => {
+  it("fills a Z table through the node (a per-cell error reads as a blank)", () => {
     const err = solError("#REF!", "bad cell");
     // Z = x·y with the center cell errored → reads as blank, filled by 2-D interp to 1.
-    const t = [[null, 0, 1, 2], [0, 0, 0, 0], [1, 0, err, 2], [2, 0, 2, 4]];
-    const r = new InterpolateNode({ mode: "grid" }).data({ grid: [t] }).result as (number | null)[][];
-    expect(r[2][2]).toBeCloseTo(1, 9); // spline fill (see the contested-box rule)
+    const z = [[0, 0, 0], [0, err, 2], [0, 2, 4]];
+    const r = new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [[0, 1, 2]], ys: [[0, 1, 2]] }).result as (number | null)[][];
+    expect(r[1][1]).toBeCloseTo(1, 9); // spline fill (see the contested-box rule)
+  });
+  it("unwired Xs/Ys count 1, 2, 3…, and a wired-blank axis makes the result null", () => {
+    const z = [[1, null], [null, 4]];
+    const idx = new InterpolateNode({ mode: "grid" }).data({ z: [z] }).result as (number | null)[][];
+    expect(idx.length).toBe(2);
+    expect(Number.isFinite(idx[0][1] as number)).toBe(true); // filled from the index axes
+    // a WIRED-blank axis is unknown → the whole result is null (shape propagates).
+    expect(new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [null] }).result).toBeNull();
+  });
+  it("rejects a mismatched (#SHAPE!) or non-finite (#VALUE!) axis", () => {
+    const z = [[1, 2], [3, 4]];
+    const shape = new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [[1, 2, 3]] }).result;
+    expect(isSolError(shape) && shape.code).toBe("#SHAPE!");
+    const bad = new InterpolateNode({ mode: "grid" }).data({ z: [z], ys: [[1, NaN]] }).result;
+    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
   });
   it("propagates a whole-grid error", () => {
     const err = solError("#REF!", "bad grid");
-    const r = new InterpolateNode({ mode: "grid" }).data({ grid: [err] }).result;
+    const r = new InterpolateNode({ mode: "grid" }).data({ z: [err] }).result;
     expect(isSolError(r) && r.code).toBe("#REF!");
   });
   it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
     const n = new InterpolateNode({ mode: "grid" });
     expect(n.forecast).toBe(true);
-    const t = [[null, 0, 10, 20], [0, 5, 15, null]]; // slope 1, X=20 past the data
-    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBeCloseTo(25, 3); // forecast → trend 25
+    const z = [[5, 15, null]]; // slope 1 across xs [0,10,20]; X=20 is past the data
+    expect((n.data({ z: [z], xs: [[0, 10, 20]] }).result as (number | null)[][])[0][2]).toBeCloseTo(25, 3); // forecast → trend 25
     n.forecast = false;
-    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBeNull(); // OFF → blank
+    expect((n.data({ z: [z], xs: [[0, 10, 20]] }).result as (number | null)[][])[0][2]).toBeNull(); // OFF → blank
     const n2 = new InterpolateNode(extractInit(n));
     expect(n2.forecast).toBe(false);
+  });
+
+  // gridAxes — the axis-normalization the node and formula share.
+  it("gridAxes: unwired axes index, wired-blank propagates, mismatch/non-finite error", () => {
+    const z = [[1, 2], [3, 4]];
+    expect(gridAxes(z, undefined, undefined)).toEqual({ xs: [1, 2], ys: [1, 2], z });
+    expect(gridAxes(z, [10, 20], undefined)).toEqual({ xs: [10, 20], ys: [1, 2], z });
+    expect(gridAxes(z, null, undefined)).toBeNull();       // wired-blank axis → propagate
+    expect(gridAxes(null, undefined, undefined)).toBeNull(); // no matrix → null
+    const sh = gridAxes(z, [1, 2, 3], undefined);
+    expect(isSolError(sh) && sh.code).toBe("#SHAPE!");
+    const vl = gridAxes(z, [1, NaN], undefined);
+    expect(isSolError(vl) && vl.code).toBe("#VALUE!");
   });
 });
 

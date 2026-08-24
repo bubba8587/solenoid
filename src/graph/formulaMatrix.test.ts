@@ -251,25 +251,27 @@ describe("matricesInFormulas tranche 2 — the array-returning core, node-equals
 // the arm is chosen by the first argument's RANK, not by a second registration
 // (uniqueNameMap injectivity). Grid mode was parked behind the noFramesInFormulas cap; matricesInFormulas lifted it.
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
-  const grid = [
-    [null, 0,    10],
-    [0,    0,    10],
-    [10,   null, null],
-    [20,   20,   30],
-  ];
+  // Grid mode is now INTERPOLATE(table, xs?, ys?, forecast?) — coordinates ride beside Z.
+  const z = [[0, 10], [null, null], [20, 30]];
+  const xs = [0, 10];
+  const ys = [0, 10, 20];
 
   it("a MATRIX first argument runs the node's grid fill, cell for cell", () => {
     const node = new InterpolateNode({ mode: "grid" });
-    const nodeOut = node.data({ grid: [grid] }).result;
-    expect(ev("INTERPOLATE(t)", { t: grid })).toEqual(nodeOut);
+    const nodeOut = node.data({ z: [z], xs: [xs], ys: [ys] }).result;
+    expect(ev("INTERPOLATE(t, x, y)", { t: z, x: xs, y: ys })).toEqual(nodeOut);
   });
 
-  it("the optional second argument is grid mode's Forecast flag", () => {
+  it("the forecast flag is grid mode's LAST argument", () => {
     const off = new InterpolateNode({ mode: "grid", forecast: false });
-    expect(ev("INTERPOLATE(t, FALSE)", { t: grid })).toEqual(off.data({ grid: [grid] }).result);
-    // Omitted ⇒ on, matching the node's default.
+    expect(ev("INTERPOLATE(t, x, y, FALSE)", { t: z, x: xs, y: ys })).toEqual(off.data({ z: [z], xs: [xs], ys: [ys] }).result);
     const on = new InterpolateNode({ mode: "grid" });
-    expect(ev("INTERPOLATE(t)", { t: grid })).toEqual(on.data({ grid: [grid] }).result);
+    expect(ev("INTERPOLATE(t, x, y)", { t: z, x: xs, y: ys })).toEqual(on.data({ z: [z], xs: [xs], ys: [ys] }).result);
+  });
+
+  it("omitted axes count 1, 2, 3…, matching the node with unwired axes", () => {
+    const node = new InterpolateNode({ mode: "grid" });
+    expect(ev("INTERPOLATE(t)", { t: z })).toEqual(node.data({ z: [z] }).result);
   });
 
   it("a rank-≤1 first argument still runs LIST mode, unchanged", () => {
@@ -277,16 +279,16 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
     expect(ev("INTERPOLATE(y, x, q)", { y: [10, 20, 30], x: [1, 2, 3], q: 2 })).toBe(20);
   });
 
-  it("the wrong arity for each arm is a #VALUE!, never a silent wrong mode", () => {
-    expect(code(ev("INTERPOLATE(t, TRUE, 1)", { t: grid }))).toBe("#VALUE!"); // grid + 3 args
+  it("a wrong-length axis is #SHAPE! (grid); a missing query is #VALUE! (list)", () => {
+    expect(code(ev("INTERPOLATE(t, x)", { t: z, x: [1, 2, 3] }))).toBe("#SHAPE!"); // 3 Xs for 2 columns
     expect(code(ev("INTERPOLATE(y, x)", { y: [1, 2], x: [1, 2] }))).toBe("#VALUE!"); // list, no query
   });
 
   it("a per-cell error reads as a HOLE to fill, exactly as the node treats it", () => {
-    const dirty = grid.map((r) => [...r]);
-    dirty[2][1] = "oops" as unknown as number; // a dirty cell is a blank, not poison
+    const dirty = z.map((r) => [...r]);
+    dirty[0][0] = "oops" as unknown as number; // a dirty cell is a blank, not poison
     const node = new InterpolateNode({ mode: "grid" });
-    expect(ev("INTERPOLATE(t)", { t: dirty })).toEqual(node.data({ grid: [dirty] }).result);
+    expect(ev("INTERPOLATE(t, x, y)", { t: dirty, x: xs, y: ys })).toEqual(node.data({ z: [dirty], xs: [xs], ys: [ys] }).result);
   });
 });
 

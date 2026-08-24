@@ -12,7 +12,7 @@ import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nod
 import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
-import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
+import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2dGrid } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
@@ -1745,21 +1745,18 @@ registerInternal("COUNTDISTINCT", (list) => {
 
 // INTERPOLATE covers BOTH of the node's modes under ONE name (uniqueNameMap injectivity),
 // dispatched on the first argument's RANK:
-//   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)  — 3 args, rank ≤ 1.
-//   Grid mode:  INTERPOLATE(bordered_table [, forecast]) — a MATRIX first arg.
-registerInternal("INTERPOLATE", (ys, xs, newXs) => {
-  // GRID mode — a 2-D first argument. `xs` is then the optional forecast flag.
+//   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)          — 3 args, rank ≤ 1.
+//   Grid mode:  INTERPOLATE(table, xs?, ys?, forecast?)          — a MATRIX first arg;
+//               an omitted axis is the 1-based index, coordinates ride beside the table.
+registerInternal("INTERPOLATE", (ys, xs, newXs, forecast) => {
+  // GRID mode — a 2-D first argument. The positional args are (table, xs, ys, forecast);
+  // gridAxes handles an omitted (index) or blank (null) axis and validates a given list.
   if (Array.isArray(ys) && ys.some((r) => Array.isArray(r))) {
-    if (newXs !== undefined) {
-      return solError("#VALUE!", "INTERPOLATE: grid mode takes the table and an optional forecast flag");
-    }
-    // Per-cell errors and non-finite cells read as BLANK (a hole to fill), exactly
-    // as the node's dataGrid does.
-    const grid: (number | null)[][] = (ys as unknown[]).map((row) =>
-      (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
-    );
-    const forecast = xs === undefined ? true : coerceLogical(xs) !== false;
-    return fillBorderedGrid(grid, forecast);
+    const axes = gridAxes(ys, xs, newXs);
+    if (axes === null) return null;
+    if (isSolError(axes)) return axes;
+    const fc = forecast === undefined ? true : coerceLogical(forecast) !== false;
+    return fillGrid(axes.z, axes.xs, axes.ys, fc);
   }
   if (newXs === undefined) {
     return solError("#VALUE!", "INTERPOLATE: list mode needs known_ys, known_xs and new_xs");

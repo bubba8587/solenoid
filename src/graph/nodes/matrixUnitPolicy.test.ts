@@ -103,11 +103,9 @@ describe("matrix-unit policy — completeness (a new matrix op must declare a po
 describe("matrix-unit policy — behavior matches the declared policy", () => {
   it("carry: INTERPOLATE grid mode fills blanks in the input's unit", () => {
     const n = new InterpolateNode({ mode: "grid" });
-    const bordered = withMatrixUnit(
-      [[null, 1, 2], [10, 5, null], [20, null, 9]],
-      { dim: { length: 1 }, display: "km" },
-    );
-    const out = (n.data({ grid: [bordered] }) as { result: unknown }).result;
+    // A plain Z table (coordinates ride beside it; unwired axes = index) carrying a unit.
+    const z = withMatrixUnit([[5, null], [null, 9]], { dim: { length: 1 }, display: "km" });
+    const out = (n.data({ z: [z] }) as { result: unknown }).result;
     expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
   });
 

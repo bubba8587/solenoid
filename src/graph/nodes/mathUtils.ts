@@ -293,9 +293,9 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 // ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
 // Node and formula both call these (shareImpl): Formula.js's T.TEST ignores
 // `tails`/`type` and its F.TEST returns the variance RATIO, not the p-value.
-import { isSolError, type SolError as StatSolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 
-type StatCell = number | null | StatSolError;
+type StatCell = number | null | SolError;
 
 export function arrMean(arr: readonly number[]): number {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -351,7 +351,7 @@ export function gammaPDF(x: number, alpha: number, beta: number): number {
 export function pairPresent(
   xsRaw: readonly StatCell[] | null,
   ysRaw: readonly StatCell[] | null,
-): { error?: StatSolError; xs: number[]; ys: number[] } {
+): { error?: SolError; xs: number[]; ys: number[] } {
   const xs = xsRaw ?? [], ys = ysRaw ?? [];
   for (const v of xs) if (isSolError(v)) return { error: v, xs: [], ys: [] };
   for (const v of ys) if (isSolError(v)) return { error: v, xs: [], ys: [] };
@@ -419,7 +419,7 @@ export function probBetween(
   probs: readonly StatCell[] | null,
   lo: number,
   hi: number,
-): number | StatSolError | null {
+): number | SolError | null {
   const { error, xs, ys } = pairPresent(range, probs);
   if (error) return error;
   if (xs.length === 0) return null;
@@ -435,29 +435,64 @@ export function probBetween(
 // Lives here, not nodes/stats.ts, because the formula path must stay rete-free (implReteFree).
 import { fitSurface, type FitPoint } from "./surfaceFit";
 
-// Fill a coordinate-BORDERED grid's blank interior by bilinear interpolation over
-// the closest all-known-corner box, then (unless `forecast` is off) fill whatever
-// is left from a surface fitted through ALL known points.
-export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
-  const R = table.length;
-  const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
+/** Normalize a grid's inputs to the ONE convention (coordinates ride beside the Z matrix,
+ *  never inside it): `z` → a rectangular `(number|null)[][]` (a per-cell error / non-finite
+ *  cell → null); an UNWIRED axis (`undefined`) is the 1-based index; a WIRED-blank axis
+ *  (`null`) leaves the shape unknown → the whole result is null; a wired list must carry
+ *  exactly one FINITE number per column (Xs) / row (Ys), else `#SHAPE!` on a count mismatch
+ *  or `#VALUE!` on a non-finite entry. */
+export function gridAxes(z: unknown, xs: unknown, ys: unknown):
+  { xs: number[]; ys: number[]; z: (number | null)[][] } | SolError | null {
+  if (!Array.isArray(z) || z.length === 0) return null;
+  const rows = z.length;
+  const cols = Math.max(...z.map((r) => (Array.isArray(r) ? r.length : 0)));
+  if (cols === 0) return null;
+  const zg: (number | null)[][] = Array.from({ length: rows }, (_, i) =>
+    Array.from({ length: cols }, (_, j) => {
+      const v = Array.isArray(z[i]) ? (z[i] as unknown[])[j] : undefined;
+      return typeof v === "number" && Number.isFinite(v) ? v : null;
+    }),
+  );
+  const axis = (raw: unknown, n: number, name: "Xs" | "Ys"): number[] | SolError | null => {
+    if (raw === undefined) return Array.from({ length: n }, (_, i) => i + 1); // unwired → index
+    if (raw === null) return null; // wired blank → shape unknown, propagate
+    const list = Array.isArray(raw) ? raw : [raw];
+    const unit = name === "Xs" ? "columns" : "rows";
+    if (list.length !== n) return solError("#SHAPE!", `${name} has ${list.length} values for ${n} ${unit}`);
+    const out: number[] = [];
+    for (const v of list) {
+      if (typeof v !== "number" || !Number.isFinite(v)) return solError("#VALUE!", `${name} must be finite numbers`);
+      out.push(v);
+    }
+    return out;
+  };
+  const X = axis(xs, cols, "Xs");
+  if (X === null || isSolError(X)) return X;
+  const Y = axis(ys, rows, "Ys");
+  if (Y === null || isSolError(Y)) return Y;
+  return { xs: X, ys: Y, z: zg };
+}
+
+// Fill a grid's blank cells by bilinear interpolation over the closest all-known-corner
+// box, then (unless `forecast` is off) fill whatever is left from a surface fitted through
+// ALL known points. `xs`/`ys` are the coordinate of each column / row (see gridAxes) — the
+// coordinates ride BESIDE the matrix, never in a border row/column.
+export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], forecast = true): (number | null)[][] {
+  const R = z.length;
+  const C = R > 0 ? Math.max(...z.map((r) => r.length)) : 0;
   const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
   // Rectangular working copy; a blank (null / non-finite) cell becomes `null`.
-  const g: (number | null)[][] = Array.from({ length: R }, (_, i) =>
-    Array.from({ length: C }, (_, j) => { const v = table[i]?.[j]; return isKnown(v) ? v : null; }),
+  const Z: (number | null)[][] = Array.from({ length: R }, (_, i) =>
+    Array.from({ length: C }, (_, j) => { const v = z[i]?.[j]; return isKnown(v) ? v : null; }),
   );
-  if (R < 2 || C < 2) { if (g[0]) g[0][0] = null; return g; } // no interior to fill
+  const out: (number | null)[][] = Z.map((r) => [...r]);
+  if (R < 1 || C < 1) return out; // nothing to fill
 
-  const colXs = g[0].slice(1).map((v) => (v == null ? NaN : v));    // X of each interior column
-  const rowYs = g.slice(1).map((r) => (r[0] == null ? NaN : r[0])); // Y of each interior row
-  const Ri = R - 1, Ci = C - 1;
-  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior values
+  const colXs = xs.map((v) => (v == null ? NaN : v)); // X of each column
+  const rowYs = ys.map((v) => (v == null ? NaN : v)); // Y of each row
+  const Ri = R, Ci = C;
 
-  const out: (number | null)[][] = g.map((r) => [...r]);
-  out[0][0] = null; // corner always blank on output
-
-  // The coarse grid: interior columns/rows that carry ≥1 known value (a blank INSERTED
-  // line has none).
+  // The coarse grid: columns/rows that carry ≥1 known value.
   const coarseCols: number[] = [];
   for (let j = 0; j < Ci; j++) if (!Number.isNaN(colXs[j]) && Z.some((row) => row[j] != null)) coarseCols.push(j);
   const coarseRows: number[] = [];
@@ -483,7 +518,7 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
 
   // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
   for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; } // known passes through
+    if (Z[i][j] != null) { out[i][j] = Z[i][j]; continue; } // known passes through
     const qx = colXs[j], qy = rowYs[i];
     if (Number.isNaN(qx) || Number.isNaN(qy)) continue; // unlabelled line → stays blank
     const rs = sides(coarseRows, (k) => rowYs[k], qy);
@@ -520,7 +555,7 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
       const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
       const top = z00 + tx * (z01 - z00);
       const bot = z10 + tx * (z11 - z10);
-      out[i + 1][j + 1] = top + ty * (bot - top);
+      out[i][j] = top + ty * (bot - top);
       break search;
     }
   }
@@ -529,9 +564,9 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
   if (forecast) {
     const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
     if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-      if (out[i + 1][j + 1] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
+      if (out[i][j] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
       const v = f(colXs[j], rowYs[i]);
-      if (Number.isFinite(v)) out[i + 1][j + 1] = v;
+      if (Number.isFinite(v)) out[i][j] = v;
     }
   }
   return out;
