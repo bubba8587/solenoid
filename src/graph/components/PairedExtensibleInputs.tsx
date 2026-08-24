@@ -21,19 +21,20 @@ import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
-/** A node with a variable number of input PAIRS: two sockets sharing one remove
- *  button, with optional fixed leading/trailing rows around them. */
+/** A node with a variable number of input TUPLES: N sockets sharing one remove
+ *  button, with optional fixed leading/trailing rows around them. A pair is the
+ *  two-element case (Filter, SUMIFS, IFS…); Set Cell uses triplets. */
 export interface PairedExtensibleNode {
   id: string;
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
   literals?: Record<string, number>;
-  /** Ordered (aKey, bKey) pairs currently present, in row order. */
-  valuePairKeys: () => Array<[string, string]>;
+  /** Ordered tuples of socket keys currently present, in row order. */
+  valuePairKeys: () => string[][];
   addValuePair: () => void;
-  /** Remove the pair identified by its first (a) key. */
+  /** Remove the tuple identified by its FIRST key. */
   removeValuePair: (aKey: string) => void;
-  /** Row labels for the two halves of a pair, e.g. ["If", "Then"]. */
-  pairLabels: [string, string];
+  /** One label per socket in a tuple, e.g. ["If", "Then"] or ["Value", "Row", "Column"]. */
+  pairLabels: string[];
   /** Inline TEXT literals for a string-socket half; numeric slots use `literals`. */
   stringLiterals?: Record<string, string>;
   /** See `takesAutoLiteral` — a wildcard half takes a number OR text. */
@@ -43,12 +44,14 @@ export interface PairedExtensibleNode {
 /** `leadingKeys`/`trailingKeys` are fixed inputs before/after the pairs; each
  *  socket dot centers on its OWN row, so rows can sit anywhere in the body. */
 export function PairedExtensibleInputs({
-  node, emit, leadingKeys, trailingKeys,
+  node, emit, leadingKeys, trailingKeys, rowNoun = "pair",
 }: {
   node: PairedExtensibleNode;
   emit: RenderEmit<ClassicScheme>;
   leadingKeys?: string[];
   trailingKeys?: string[];
+  /** The user-facing noun for a tuple in the add/remove controls ("pair", "row"). */
+  rowNoun?: string;
 }) {
   const connected = useConnectedInputs(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
@@ -91,11 +94,11 @@ export function PairedExtensibleInputs({
     await processGraph();
   }
 
-  async function removePair(aKey: string, bKey: string) {
-    await dropInputCables(node.id, [aKey, bKey]);
+  async function removePair(keys: string[]) {
+    await dropInputCables(node.id, keys);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
-    pushRowRemovalUndo(node, [aKey, bKey], () => node.removeValuePair(aKey));
-    node.removeValuePair(aKey);
+    pushRowRemovalUndo(node, keys, () => node.removeValuePair(keys[0]));
+    node.removeValuePair(keys[0]);
     await getActiveArea()?.update("node", node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
@@ -137,7 +140,7 @@ export function PairedExtensibleInputs({
           <button
             type="button"
             className="solenoid-node__row-remove"
-            title="Remove this pair"
+            title={`Remove this ${rowNoun}`}
             onClick={(e) => { e.stopPropagation(); void remove(); }}
           >
             ×
@@ -150,11 +153,14 @@ export function PairedExtensibleInputs({
   return (
     <>
       {leading.length > 0 && <InlineInputs node={node} emit={emit} keys={leading} />}
-      {pairs.map(([a, b], i) => (
-        // The remove button rides the pair's first row, and only above one pair.
-        <div key={a} className="solenoid-node__pair-group">
-          {field(a, `${node.pairLabels[0]} ${i + 1}`, pairs.length > 1 ? () => removePair(a, b) : undefined)}
-          {field(b, `${node.pairLabels[1]} ${i + 1}`)}
+      {pairs.map((keys, i) => (
+        // The remove button rides the tuple's first row, and only when >1 tuple.
+        <div key={keys[0]} className="solenoid-node__pair-group">
+          {keys.map((k, j) => field(
+            k,
+            `${node.pairLabels[j] ?? ""} ${i + 1}`,
+            j === 0 && pairs.length > 1 ? () => removePair(keys) : undefined,
+          ))}
         </div>
       ))}
       <button
@@ -162,7 +168,7 @@ export function PairedExtensibleInputs({
         className="solenoid-node__add-input"
         onClick={(e) => { e.stopPropagation(); void addPair(); }}
       >
-        + Add pair
+        + Add {rowNoun}
       </button>
       {/* The fallback's "N/A" is a state cue, not a typed value: no match with an
           unset fallback yields #N/A. */}

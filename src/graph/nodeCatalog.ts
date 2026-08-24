@@ -43,7 +43,7 @@ import {
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
   TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
-  HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
+  HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
@@ -935,6 +935,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "hstack-table", label: "HSTACK", description: "Concatenate tables side by side, in row order — add rows for more tables. A list counts as one row, so two lists make one long row. A shorter table pads down with #N/A. Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
           { type: "vstack-table", label: "VSTACK", description: "Stacks tables top-to-bottom, in row order — add rows for more tables. A list counts as one row, so two lists make a 2-row table. A narrower table pads right with #N/A. Excel: VSTACK.", create: () => new VStackNode(), parity: false, keywords: "stack rows lists to table matrix" },
           { type: "table-expand", label: "EXPAND", description: "Grow a table to a target row or column count. New cells take the wired Fill value, or stay empty (null) without one — wire NA into Fill for Excel's #N/A pad. Shrinking is #VALUE! — that's TAKE's job. Excel: EXPAND.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
+          { type: "table-set-cell", label: "Set Cell", description: "Writes values into a table by address. Each row names a value and its 1-based row and column; later rows win on the same cell. An address outside the table errors the result. Excel has no equivalent.", create: () => new SetCellNode(), keywords: "set cell overwrite poke write address table matrix" },
         ],
       },
       {

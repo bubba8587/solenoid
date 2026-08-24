@@ -269,6 +269,8 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Cubes (nested tables)
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",
+  // Shape (a matrix writer with no clean formula signature — recognized, wrong surface)
+  SETCELL: "Set Cell",
 };
 
 // currentExcelParity on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and

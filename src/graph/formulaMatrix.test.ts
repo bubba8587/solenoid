@@ -7,6 +7,7 @@ import {
 } from "./nodes/matrix";
 import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
+import { setCells } from "./nodes/matrixOps";
 import { isSolError, type SolError } from "./errorValue";
 
 // ─── matricesInFormulas tranche 1: the matrix core, node-equals-formula (shareImpl) ───────────────
@@ -286,5 +287,37 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
     dirty[2][1] = "oops" as unknown as number; // a dirty cell is a blank, not poison
     const node = new InterpolateNode({ mode: "grid" });
     expect(ev("INTERPOLATE(t)", { t: dirty })).toEqual(node.data({ grid: [dirty] }).result);
+  });
+});
+
+// Set Cell has no formula (a variadic matrix writer has no clean signature) — the kernel
+// is exercised directly. Node-level unit carry + wired-blank roles live in the node test.
+describe("setCells kernel (Set Cell)", () => {
+  const m = (): (number | null)[][] => [[1, 2], [3, 4]];
+
+  it("writes a single cell by 1-based address", () => {
+    expect(setCells(m(), [{ r: 1, c: 2, v: 9 }])).toEqual([[1, 9], [3, 4]]);
+  });
+
+  it("applies writes in row order — a later write wins on the same address", () => {
+    expect(setCells(m(), [{ r: 2, c: 1, v: 7 }, { r: 2, c: 1, v: 8 }])).toEqual([[1, 2], [8, 4]]);
+  });
+
+  it("errors the whole result #REF! on an out-of-range row or column (shared wording)", () => {
+    const badRow = setCells(m(), [{ r: 3, c: 1, v: 0 }]);
+    expect(isSolError(badRow)).toBe(true);
+    expect((badRow as SolError).code).toBe("#REF!");
+    expect((badRow as SolError).message).toContain("Row 3 is outside 1");
+    const badCol = setCells(m(), [{ r: 1, c: 5, v: 0 }]);
+    expect((badCol as SolError).code).toBe("#REF!");
+    expect((badCol as SolError).message).toContain("Column 5 is outside 1");
+  });
+
+  it("normalizes a ragged input to a full grid (missing cells blank) before writing", () => {
+    expect(setCells([[1, 2], [3]], [{ r: 2, c: 2, v: 9 }])).toEqual([[1, 2], [3, 9]]);
+  });
+
+  it("a blank write value writes null — a Value is an operand, not an address", () => {
+    expect(setCells(m(), [{ r: 1, c: 1, v: null }])).toEqual([[null, 2], [3, 4]]);
   });
 });

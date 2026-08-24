@@ -214,6 +214,28 @@ gets no popup section (the keys are the universal spreadsheet set). Pins: `gridK
 tsc + full vitest (4734) green. AUTHOR EYEBALL below (incl. the still-unverified >1,000-row sort /
 Copy-CSV check carried over from the old A3 backlog line).
 
+**C3.1 — Set Cell node (plan 12, item 1).** A matrix node that overwrites cells by 1-based
+address: input Table, then an extensible list of (Value, Row, Column) rows, output the same table
+with those cells written. `PairedExtensibleInputs` GENERALIZED from pairs to N-tuples in place
+(`valuePairKeys: () => string[][]`, `pairLabels: string[]`, `removePair(keys[])`, a `rowNoun` prop
+for the add/remove copy) — the five existing pair nodes needed ZERO changes (their `[a,b]` tuple
+types already satisfy the widened interface; the plan expected type-only touches). Kernel
+`setCells(m, writes)` in `matrixOps.ts`: normalizes a ragged grid (blank pad, like EXPAND), applies
+writes in row order (later wins on a repeated address), 1-based, `#REF!` (shared `indexRefError`
+wording) on any out-of-range address = whole result errors. `SetCellNode` (`matrix.ts`,
+`adoptiveTableIn`→`adoptiveTableOut`, passthrough single, `carryMatrixUnit`) reads Row/Column as
+ADDRESSES (wired-blank or unset → whole result null) and Value as an OPERAND via `pickSlot`
+(wired-blank → null cell; unwired → the number/text card literal, `autoLiterals`). No formula
+registration (a variadic writer has no clean signature) — added to `FRAME_SURFACE_NAMES`
+(`SETCELL` → recognized-but-refused, since it sits under Tables & Frames) and the matrix-unit
+policy table (`carry`). Pins: `setCells` kernel cases in `formulaMatrix.test.ts`; the triplet
+undo case in `extensibleRowUndo.test.ts`; the unit-carry assertion in `matrixUnitPolicy.test.ts`;
+"Set Cell — wired blank by role" in `wiredNull.test.ts` (landed in Jeff's Finance commit — we
+co-edited that file). Sweeps (catalogRegistry / socketReference / coerceInputs / frameSurfaceNames)
+green. **Findings:** (1) skipped the scratch-seed entry — that file is high-contention and a QA
+convenience, not test-required; drop a Set Cell node from the Add menu to eyeball. (2) A Frame arm
+(column by name) stays out of scope, as the plan noted.
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a

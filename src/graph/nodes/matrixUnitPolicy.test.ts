@@ -33,6 +33,7 @@ const POLICY: Record<string, Policy> = {
   TableSelectNode: "carry",       // CHOOSEROWS / CHOOSECOLS
   TableTakeDropNode: "carry",     // TAKE / DROP (table)
   ExpandNode: "carry",
+  SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
                                   // socket, so the sweep can't see it — kept manually)
   HStackTableNode: "carry-if-uniform",
@@ -115,6 +116,7 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     expect(matrixUnitOf(new M.TableSelectNode({ op: "chooserows" }).data({ matrix: [kmGrid()], indices: [[1]] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.TableTakeDropNode({ op: "take" }).data({ matrix: [kmGrid()], rows: [1], cols: [0] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.ExpandNode().data({ matrix: [kmGrid()], rows: [3], cols: [2], fill: [0] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [9], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
   });
 
   it("carry-if-uniform: a stack keeps the unit only when every part shares it", () => {

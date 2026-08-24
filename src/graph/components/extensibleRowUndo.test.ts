@@ -3,6 +3,7 @@ import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import { setPushHistory } from "../process";
 import { FillNode } from "../nodes/list";
 import { SwitchNode } from "../nodes/logic";
+import { SetCellNode } from "../nodes/matrix";
 
 // Undo/redo for extensible-row add/remove (the audit-found hole: the classic
 // history preset recorded the CABLE removal but nothing recorded the ROW, so
@@ -58,6 +59,26 @@ describe("pushRowRemovalUndo", () => {
     entries[0].undo();
     expect(n.inputs[aKey]).toBe(a);
     expect(n.inputs[bKey]).toBe(b);
+    expect(Object.keys(n.inputs)).toEqual(orderBefore);
+  });
+
+  it("restores a TRIPLET as one entry (all three sockets, original order)", () => {
+    const n = new SetCellNode();
+    n.addValuePair(); // a second row, so the first can be removed
+    const [v, r, c] = n.valuePairKeys()[0];
+    const vi = n.inputs[v], ri = n.inputs[r], ci = n.inputs[c];
+    const orderBefore = Object.keys(n.inputs);
+
+    pushRowRemovalUndo(n, [v, r, c], () => n.removeValuePair(v));
+    n.removeValuePair(v);
+    expect(n.inputs[v]).toBeUndefined();
+    expect(n.inputs[r]).toBeUndefined();
+    expect(n.inputs[c]).toBeUndefined();
+
+    entries[0].undo();
+    expect(n.inputs[v]).toBe(vi);
+    expect(n.inputs[r]).toBe(ri);
+    expect(n.inputs[c]).toBe(ci);
     expect(Object.keys(n.inputs)).toEqual(orderBefore);
   });
 

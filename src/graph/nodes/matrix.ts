@@ -1,7 +1,8 @@
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
+import { pickSlot, pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
@@ -658,6 +659,85 @@ export class ExpandNode extends ClassicPreset.Node {
     // the author's deliberate override (value-semantics.md).
     const fill = (inputs.fill?.[0] ?? null) as Cell;
     const result = expandMat(m, Math.round(reqRRaw), Math.round(reqCRaw), fill);
+    this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
+    return { result: this.cachedResult };
+  }
+}
+
+// ─── SET CELL (overwrite cells of a table by address) ─────────────────────────
+
+export class SetCellNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    row: "1-based.",
+    col: "1-based.",
+  };
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
+  label: string;
+  cachedResult: CellMat | SolError | null = null;
+  // Row/Column are numeric addresses; the Value slot's literal is a number OR text, so it
+  // needs both maps (autoLiterals). One row on a fresh card.
+  literals: Record<string, number> = {};
+  stringLiterals: Record<string, string> = {};
+  autoLiterals = true;
+  nextPairId = 0;
+  readonly pairLabels: string[] = ["Value", "Row", "Column"];
+  width = 210; height = 300;
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("SetCell");
+    this.label = init?.label ?? "Set Cell";
+    this.addInput("matrix", adoptiveTableIn("Table"));
+    const ids = pairIdsFromKeys(init?.valueKeys, "value");
+    if (ids.length) {
+      for (const id of ids) this.addTupleWithId(id);
+    } else {
+      this.addValuePair();
+      this.literals = { row0: 1, col0: 1 };
+    }
+    this.addOutput("result", adoptiveTableOut("Result"));
+  }
+
+  private addTupleWithId(id: number): void {
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
+    this.addInput(`row${id}`, numIn(`Row ${id + 1}`));
+    this.addInput(`col${id}`, numIn(`Column ${id + 1}`));
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  /** Ordered (valueKey, rowKey, colKey) triplets currently present, in insertion order. */
+  valuePairKeys(): string[][] {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("value"))
+      .map((k) => { const id = k.slice(5); return [`value${id}`, `row${id}`, `col${id}`]; });
+  }
+
+  addValuePair(): void {
+    this.addTupleWithId(this.nextPairId);
+  }
+
+  removeValuePair(valueKey: string): void {
+    const id = valueKey.slice(5);
+    for (const k of [`value${id}`, `row${id}`, `col${id}`]) {
+      this.removeInput(k);
+      delete this.literals[k];
+      delete this.stringLiterals[k];
+    }
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    const m = toAnyMatrix(inputs.matrix?.[0]);
+    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
+    const writes: { r: number; c: number; v: Cell }[] = [];
+    for (const [valueKey, rowKey, colKey] of this.valuePairKeys()) {
+      // Row / Column are ADDRESSES: a wired-blank or unset one makes the whole result null.
+      const r = readInput(inputs[rowKey], this.literals[rowKey] ?? null);
+      const c = readInput(inputs[colKey], this.literals[colKey] ?? null);
+      if (r === null || c === null) { this.cachedResult = null; return { result: null }; }
+      // Value is an OPERAND: a wired-blank one writes null; an unwired one uses the literal.
+      const v = pickSlot(this, inputs, valueKey) as Cell;
+      writes.push({ r: r as number, c: c as number, v });
+    }
+    const result = setCells(m, writes);
     this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
     return { result: this.cachedResult };
   }

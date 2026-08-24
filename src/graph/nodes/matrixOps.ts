@@ -1,4 +1,6 @@
 import { solError, type SolError } from "../errorValue";
+import { indexRefError } from "./indexAccess";
+import type { Cell } from "./coerce";
 
 // ONE implementation per matrix op, called by both the nodes' `data()` and the formula
 // registrations (shareImpl); RETE-FREE per implReteFree, so the formula path never loads the editor.
@@ -188,6 +190,27 @@ export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[]
     const row: T[] = [];
     for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
     out.push(row);
+  }
+  return out;
+}
+
+/** SET CELL: overwrite cells of a 2-D table by 1-based address. The input is normalized
+ *  to a full rows×cols grid first (ragged rows pad with blank, like EXPAND), then writes
+ *  apply in ROW ORDER so a later row wins on a repeated address. Any address outside the
+ *  table errors the WHOLE result (`#REF!`, the shared indexRefError wording — matching
+ *  Table Select's out-of-range rule). */
+export function setCells(
+  m: Cell[][],
+  writes: ReadonlyArray<{ r: number; c: number; v: Cell }>,
+): Cell[][] | SolError {
+  const rows = matRows(m), cols = matCols(m);
+  const out: Cell[][] = Array.from({ length: rows }, (_, i) =>
+    Array.from({ length: cols }, (_, j) => (j < (m[i]?.length ?? 0) ? m[i][j] : null)));
+  for (const w of writes) {
+    const r = Math.round(w.r), c = Math.round(w.c);
+    if (r < 1 || r > rows) return indexRefError(r, rows, "Row");
+    if (c < 1 || c > cols) return indexRefError(c, cols, "Column");
+    out[r - 1][c - 1] = w.v;
   }
   return out;
 }

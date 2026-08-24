@@ -141,6 +141,7 @@ export {
   TableTransposeComponent, HStackTableComponent,
   TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
+export { SetCellComponent } from "./SetCellNode";
 export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent } from "./TableLambdaNodes";
 export { LambdaComponent } from "./LambdaNode";
 
