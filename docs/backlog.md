@@ -260,8 +260,12 @@ is blocked here for out-of-scope repos).
   NOT blockers (checked): vitest 4.1.8 already allows `vite ^6 || ^7 || ^8`; node
   engines are identical across 7 and 8; every new peer on both packages is optional.
   Downstream: this is the build tool, so the Tauri desktop release rides on it.
-- [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
-  `katex` 0.17→0.18. Plus ~16 in-range patches. Core `rete` 2.0.6 is already current.
+- [ ] **The rest of the outdated set, still unwalked** — both majors now DONE: `marked` 14→18
+  landed earlier; `katex` 0.17→0.18.4 landed 2026-08-24 (9d9c220d — 0.18 prefixed generic internal
+  CSS classes but kept the public `.katex`/`.katex-display` we override, so no selector changes).
+  Remaining: ~16 in-range patches (incl. `marked` 18.0.9→18.0.11). Core `rete` 2.0.6 is already current.
+  NOTE: installs now need `--legacy-peer-deps` (pre-existing elkjs 0.12 vs `rete-auto-arrange-plugin`
+  peer `^0.8.2`, from the elkjs bump — not katex).
   (`@formulajs/formulajs` 4.6.0→4.6.1 LANDED 2026-08-23: the diff is exactly a new `TAKE`
   — which we already own via `registerInternal`, so upstream's buggy one never runs — and a
   real `SUMIFS` fix that coerces text-formatted sum-range numbers, correct-and-inert against

@@ -452,6 +452,18 @@ catalog, NOT `settingsStore` — packs have their own store, so folding them int
 be a second source of truth. Left the "Browse pack store…" disabled stub + custom-packs note as-is
 (loader still stubbed).
 
+**katex 0.17 → 0.18.4 (9d9c220d).** The 0.18 breaking change ("prefix css classes", #4229) prefixed
+GENERIC internal classes (`.base` → `.katex-base`, `.strut`/`.sizing`/`.html` likewise) but kept the
+public `.katex` wrapper and `.katex-display` — the only two we override (`FormulaPopup.css`,
+`LambdaView.css`, `SetOpNode.css`), verified by rendering under 0.18.4 — so no selector changes. The
+bundled `katex.min.css` and rendered HTML are both 0.18 (self-consistent); `renderToString` API
+unchanged (`katexRender.ts`). marked's major (14→18) was already done; only an in-range 18.0.9→18.0.11
+patch remains. Install now requires `--legacy-peer-deps` — pre-existing elkjs 0.12 vs
+`rete-auto-arrange-plugin` peer `^0.8.2` (the elkjs bump), NOT katex. Verified: tsc katex-clean,
+`obsidianMarkdown`/`noteFcPropagation` green; a clean FULL-suite confirmation was blocked by a peer's
+in-flight CSV/Parquet `connection.ts` refactor (CsvConnectionNode exports mid-rename) — re-run once
+that lands.
+
 **C4 — grids take a plain Z + optional Xs/Ys; bordered format retired (plan 13, 2 commits).**
 The coordinate-BORDERED grid (row 0 = X, column 0 = Y, interior = Z) is gone everywhere for one
 convention: coordinates ride BESIDE the Z matrix. New shared kernel `gridAxes(z, xs, ys)`
