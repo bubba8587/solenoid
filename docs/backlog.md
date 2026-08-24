@@ -51,13 +51,13 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-- [ ] **Settle the OS-dropdown rule** (needs a device/emulated CDP) — the "native
-  `<select>` needs a pointerdown swallow" claim has no recorded incident and the
-  mobile path suggests it may not hold; 21 sites held on precaution. If false, they
-  join the `stopDragStart` sweep; if true, record the repro. LEAD:
-  `simpleNodesOrder` MOVES the picked node in the DOM tree (their own docstring),
-  and re-parenting a subtree is a mechanism that WOULD kill an open `<select>` —
-  see the `zIndexNodesOrder` item under Dependency updates.
+- [ ] **OS-dropdown rule — DESKTOP settled 2026-08-24 (precaution REAL), MOBILE still open.**
+  Measured (`scripts/dropdown-reorder-probe.mjs`): on desktop a card-body pick re-appends the
+  node to the DOM end (`simpleNodesOrder`), reparenting an open `<select>`; the selection
+  re-render PRESERVES the element, so the re-append is the sole reparent → the swallow is
+  load-bearing (see dev-notes digest). Open: the mobile/touch path (tapSelect, `is-mobile`
+  model) was NOT probed — the "may not hold on mobile" question stands; settle it the same way
+  under the mobile viewport.
 - [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
   the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
   gate the rest — build nothing before those.
@@ -227,14 +227,13 @@ is blocked here for out-of-scope repos).
   Clean re-measure: crash gone, cascade collapsed to one pass + a cheap rerun. Costs ~100ms more
   on the first 171-node render (the `flushSync` synchronous-commit tax) — a one-time load cost the
   author accepted for being on latest.
-- [ ] **Evaluate `zIndexNodesOrder` (new in area 2.3.0)** — "relies only on
-  z-index. Use this extension when click handlers inside nodes must stay stable",
-  vs `simpleNodesOrder` which moves the picked node in the DOM tree. Candidate
-  answer to the OS-dropdown rule above. NOT a drop-in: `groupLogic.ts` pins a group
-  behind its members BECAUSE stacking follows DOM order, `Canvas.tsx` reasons about
-  the picked node landing at the DOM end, and the extension's own ladder (nodes ≥1,
-  connections 0) has to be reconciled with ours (standoffs −3 < groups −2 <
-  conduits −1 < nodes 0). Its own investigation.
+- [ ] **Evaluate `zIndexNodesOrder` (area 2.3.0) for click-handler stability only** — it
+  keeps a picked node's DOM position (z-index instead of `simpleNodesOrder`'s DOM move).
+  NOT pursued for the OS-dropdown rule (settled above without it, and it would delete no
+  swallows). A real cost if ever taken: NOT a drop-in — `Canvas.tsx`'s docked-FC re-append
+  (relies on the pick moving the host to the DOM end), `groupLogic.ts`'s z=−2 "group behind
+  members", and the standoff/group/conduit ladder (−3 < −2 < −1 < nodes) all need reconciling
+  with its nodes-≥1 / connections-0 scheme, with "no overlaps ever" regression risk.
 - [x] **`rete-history-plugin` 2.1.1 → 2.2.0 — DON'T bump (checked 2026-08-23).** The
   `dist/` is byte-identical to 2.1.1; the only delta is a new REQUIRED peerDependency on
   `rete-comment-plugin@^2.2.0` (all 2.2.0 features are comment-plugin undo presets, which

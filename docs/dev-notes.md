@@ -215,6 +215,24 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   replaces the handler wholesale and the per-px slope and cap move together (not a one-`intensity` swap).
   Per-100px notch: ours ≈+0.24, upstream ≈+0.10. Rewrote the stale "stock fixed ±intensity" comment (it now
   overrides a WORKING impl). pointerGesture + surfaceParity green.
+- **OS-dropdown precaution SETTLED (desktop): the `<select>`-swallow is REAL, and `zIndexNodesOrder` is
+  NOT adopted.** The "native `<select>` inside a node needs a pointerdown swallow" claim was untested. A
+  native popup is OS chrome (not DOM) so it can't be observed by CDP; instead `scripts/dropdown-reorder-probe.mjs`
+  measures the two DOM-observable CAUSES a close would have. Finding (desktop, `table-verbs`): (a) a
+  card-body mousedown re-appends the picked node to the DOM END (`simpleNodesOrder`; node jumped doc-index
+  5→22) — independently confirmed by `Canvas.tsx:1022-1027`, which re-appends docked FCs BECAUSE the pick
+  moves the host to the end; (b) the pick's selection re-render PRESERVES the `<select>` element (an expando
+  set before the pick survived it — same DOM node). So the re-append is the SOLE thing that reparents an
+  open `<select>`, and reparenting a focused element closes a native popup in Chrome → the precaution is
+  real, the swallow is load-bearing. `zIndexNodesOrder` (no re-append) would avoid it, but it's NOT worth
+  adopting for this: a big refactor (Canvas drag-layers + the 1022-1027 docked-FC re-append, `groupLogic`
+  z=−2, the standoff/group/conduit −3/−2/−1 ladder all assume DOM order/hybrid; it puts nodes at z≥1) with
+  "no overlaps ever" risk, and it deletes ZERO swallows anyway (`stopDragStart` on a control is needed for
+  DRAG-prevention regardless). So: keep `simpleNodesOrder` + the swallows; backlog trimmed to the still-open
+  MOBILE case (touch/tapSelect path not probed) and a standalone click-stability `zIndexNodesOrder` line.
+  **Author eyeball to confirm the one unobservable link:** open a node's `how`/Chart-type dropdown, then
+  mousedown the card body — today the open list should close (precaution real); it would stay open only if
+  we ever switch to `zIndexNodesOrder`.
 - **Series Range → INCLUSIVE of Stop (author 2026-08-24).** `rangeCount`/`rangeList` (`listOps.ts`)
   end ON Stop: `n = floor((stop−start)/step + 1e-9) + 1`; step 0 → `start===stop ? 1 : Infinity` (still
   the `#DOMAIN!` cap); values are `start + i*step` (not accumulated) with the last snapped exactly onto
