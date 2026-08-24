@@ -2,7 +2,7 @@
 // Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { HypotenuseNode, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
 const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
@@ -84,12 +84,15 @@ function toDMS(n: number): string {
 }
 
 // Defined once and claimed by BOTH packs — the catalog builder dedupes by `type` and
-// records both owners.
+// records both owners. HYPOT IS TwoInputMath's `hypot` op (the standalone HypotenuseNode
+// was deleted in the no-duplicate-nodes sweep, 2026-08-24); an old "hypotenuse" save loads
+// as a Placeholder.
 export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
-  type: "hypotenuse",
-  label: "HYPOTENUSE",
-  description: "Leg lengths → hypotenuse √(x²+y²)   (in Excel you'd write =SQRT(x^2+y^2))",
-  create: () => new HypotenuseNode(),
+  type: "twomath-hypot",
+  label: TWO_INPUT_MATH_OP_META.hypot.label,
+  description: TWO_INPUT_MATH_OP_META.hypot.description,
+  keywords: "hypotenuse pythagoras leg triangle right sqrt distance",
+  create: () => new TwoInputMathNode({ op: "hypot" }),
 };
 
 // Which formulas file under which Add-menu subcategory.

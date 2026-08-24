@@ -969,29 +969,6 @@ export class BesselNode extends ClassicPreset.Node {
   }
 }
 
-// ─── HYPOTENUSE (example pack node) ─────────────────────────────────────────────
-// Leg lengths → hypotenuse. Lives here, not in the pack file, because it is
-// element-wise like the other math nodes.
-export class HypotenuseNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: BroadcastResult = null;
-  literals: Record<string, number> = {};
-  width = 180;
-  height = 168;
-
-  constructor(init?: { label?: string }) {
-    super("Hypotenuse");
-    this.label = init?.label ?? "HYPOTENUSE";
-    this.addInput("x", numListIn("X"));
-    this.addInput("y", numListIn("Y"));
-    this.addOutput("result", numListOut("Result"));
-  }
-
-  data(inputs: { x?: (number | number[])[]; y?: (number | number[])[] }) {
-    const x = readInput(inputs.x, this.literals.x);
-    const y = readInput(inputs.y, this.literals.y);
-    const result = broadcast((a, b) => Math.hypot(a, b), x, y);
-    this.cachedResult = result;
-    return { result };
-  }
-}
+// HYPOTENUSE was a separate node; deleted in the no-duplicate-nodes sweep (2026-08-24) —
+// it duplicated TwoInputMath's `hypot` op (√(A²+B²)). The catalog HYPOT leaf now creates
+// TwoInputMathNode({ op: "hypot" }); old saves of "Hypotenuse" load as a Placeholder.

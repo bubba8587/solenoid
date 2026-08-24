@@ -66,7 +66,6 @@ import {
   EquationNode,
   RegexNode,
   GroupByNode,
-  HypotenuseNode,
   ParallelCombineNode, ESeriesNode, AwgNode,
   PhysicsConstantNode,
   ColebrookNode,
@@ -147,7 +146,6 @@ import {
   EquationComponent,
   RegexComponent,
   GroupByComponent,
-  HypotenuseComponent,
   ParallelCombineComponent, ESeriesComponent, AwgComponent,
   PhysicsConstantComponent,
   ColebrookComponent,
@@ -473,7 +471,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [RegexNode,             comp(RegexComponent)],
   [GroupByNode,           comp(GroupByComponent)],
   // Packs: registered ALWAYS, so a saved graph renders with the pack deactivated.
-  [HypotenuseNode,        comp(HypotenuseComponent)],
   [ParallelCombineNode,   comp(ParallelCombineComponent)],
   [ESeriesNode,           comp(ESeriesComponent)],
   [AwgNode,               comp(AwgComponent)],

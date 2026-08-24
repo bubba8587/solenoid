@@ -88,6 +88,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **HYPOT de-duplicated (no-duplicate-nodes rule).** The standalone `HypotenuseNode` (class in
+  scalar.ts, component, registry, the geometry/timesavers pack leaf) duplicated TwoInputMath's
+  `hypot` op (both √(A²+B²)). Deleted the node; `HYPOTENUSE_ENTRY` now `type: "twomath-hypot"`,
+  `create: () => new TwoInputMathNode({ op: "hypot" })`, label/description from `TWO_INPUT_MATH_OP_META`
+  (keywords keep "hypotenuse/pythagoras" discoverable). No alias — an old "Hypotenuse" save loads as a
+  Placeholder. No seed used it (the "Hypotenuse c" matches were labels). formulaNodeParity +
+  catalogRegistry + seeds + uiCopy green.
 - **C5 correlated outputs → one frame (plan 14, the five outside stats.ts).** Index-aligned
   parallel list outputs now leave each node as ONE `frameOut`, per the author's "Node design" rule.
   Point Plotter x/y → `result` Points frame (X, Y). Curve values/xs → `result` Curve frame (X first,

@@ -323,9 +323,6 @@ export { NodeContextMenu } from "./NodeContextMenu";
 export type { NodeContextTarget } from "./NodeContextMenu";
 export { StandoffLayer } from "./StandoffLayer";
 
-// ─── Packs (example built-in pack node) ───────────────────────────────────────
-export { HypotenuseComponent } from "./HypotenuseNode";
-
 // ─── Electricity & Circuits pack ───────────────────────────────────────────────
 export { ParallelCombineComponent, ESeriesComponent, AwgComponent, ResistorCodeComponent } from "./ElectricalNodes";
 
