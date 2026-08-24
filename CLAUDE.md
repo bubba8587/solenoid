@@ -327,7 +327,9 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   with op selectors. Variadic inputs use individually-labeled, individually-wireable rows
   (`ExtensibleInputs` / `PairedExtensibleInputs`) when each input plays a distinct role; a
   single list socket only when elements are interchangeable (SUM). Aligned parallel columns →
-  ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs).
+  ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs). The same for
+  OUTPUTS: correlated lists (t and y of a solution, the parts of a decomposition) leave as ONE
+  frame, never as parallel list sockets (author, 2026-08-24).
 - **Node combining (recurring author program — Running oneRunningNode, Distribution oneDistributionNode are the models).**
   "These could be one node" means the MAXIMAL merge: one card, selectors for what varied
   (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
