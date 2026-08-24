@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
+import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import { pickSlot, pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
@@ -698,7 +698,8 @@ export class SetCellNode extends ClassicPreset.Node {
   }
 
   private addTupleWithId(id: number): void {
-    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
+    // anydata (rank ≤ 2): a scalar fills the anchor cell, a list writes a row, a matrix a block.
+    this.addInput(`value${id}`, anyDataIn(`Value ${id + 1}`));
     this.addInput(`row${id}`, numIn(`Row ${id + 1}`));
     this.addInput(`col${id}`, numIn(`Column ${id + 1}`));
     this.nextPairId = Math.max(this.nextPairId, id + 1);
@@ -727,14 +728,15 @@ export class SetCellNode extends ClassicPreset.Node {
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const writes: { r: number; c: number; v: Cell }[] = [];
+    const writes: { r: number; c: number; v: Cell | Cell[] | Cell[][] }[] = [];
     for (const [valueKey, rowKey, colKey] of this.valuePairKeys()) {
       // Row / Column are ADDRESSES: a wired-blank or unset one makes the whole result null.
       const r = readInput(inputs[rowKey], this.literals[rowKey] ?? null);
       const c = readInput(inputs[colKey], this.literals[colKey] ?? null);
       if (r === null || c === null) { this.cachedResult = null; return { result: null }; }
-      // Value is an OPERAND: a wired-blank one writes null; an unwired one uses the literal.
-      const v = pickSlot(this, inputs, valueKey) as Cell;
+      // Value is an OPERAND, extended by shape in setCells: a wired scalar/list/matrix keeps
+      // its rank; a wired-blank writes one null cell; an unwired one uses the typed literal.
+      const v = pickSlot(this, inputs, valueKey) as Cell | Cell[] | Cell[][];
       writes.push({ r: r as number, c: c as number, v });
     }
     const result = setCells(m, writes);

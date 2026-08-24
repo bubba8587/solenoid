@@ -396,7 +396,10 @@ export interface AutoLiteralHost {
 }
 
 export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.autoLiterals && (dt === "any" || dt === "trueany");
+  // `anydata` earns the scalar literal field too (Set Cell's Value rung): a typed literal is
+  // a scalar, and a list/matrix only arrives by wire. A wildcard SINK/relay stays wire-only
+  // by leaving `autoLiterals` off, so widening the rung here can't affect it.
+  return !!node.autoLiterals && (dt === "any" || dt === "anydata" || dt === "trueany");
 }
 
 /** Split a `"Foo (default X)"` socket label into label + placeholder, so the default

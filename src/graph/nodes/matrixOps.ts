@@ -194,23 +194,36 @@ export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[]
   return out;
 }
 
-/** SET CELL: overwrite cells of a 2-D table by 1-based address. The input is normalized
- *  to a full rows×cols grid first (ragged rows pad with blank, like EXPAND), then writes
- *  apply in ROW ORDER so a later row wins on a repeated address. Any address outside the
- *  table errors the WHOLE result (`#REF!`, the shared indexRefError wording — matching
- *  Table Select's out-of-range rule). */
+/** SET CELL: overwrite cells of a 2-D table by 1-based (Row, Column) anchor. The input is
+ *  normalized to a full rows×cols grid first (ragged rows pad with blank, like EXPAND).
+ *  Each write extends by SHAPE from its anchor (toAnyMatrix rank detection): a scalar fills
+ *  one cell, a 1-D list a row segment (rightward), a 2-D matrix a block — numpy
+ *  `A[r:r+h, c:c+w] = B`. A `null`/blank scalar writes one null cell. A segment or block that
+ *  runs past the table edge errors the WHOLE result (`#REF!`, the shared `indexRefError`
+ *  wording, naming the OVERFLOWING axis — no clipping). Writes apply in ORDER, so a later
+ *  write wins on any cell an earlier one also touched. */
 export function setCells(
   m: Cell[][],
-  writes: ReadonlyArray<{ r: number; c: number; v: Cell }>,
+  writes: ReadonlyArray<{ r: number; c: number; v: Cell | Cell[] | Cell[][] }>,
 ): Cell[][] | SolError {
   const rows = matRows(m), cols = matCols(m);
   const out: Cell[][] = Array.from({ length: rows }, (_, i) =>
     Array.from({ length: cols }, (_, j) => (j < (m[i]?.length ?? 0) ? m[i][j] : null)));
   for (const w of writes) {
     const r = Math.round(w.r), c = Math.round(w.c);
+    // Rank → block: scalar (incl. null/error) → 1×1; 1-D list → one row; 2-D → as-is.
+    const block: Cell[][] = Array.isArray(w.v)
+      ? (w.v.length === 0 ? [] : Array.isArray(w.v[0]) ? (w.v as Cell[][]) : [w.v as Cell[]])
+      : [[w.v]];
+    const h = block.length;
+    const wdt = h ? Math.max(...block.map((row) => row.length)) : 0;
     if (r < 1 || r > rows) return indexRefError(r, rows, "Row");
     if (c < 1 || c > cols) return indexRefError(c, cols, "Column");
-    out[r - 1][c - 1] = w.v;
+    if (r + h - 1 > rows) return indexRefError(r + h - 1, rows, "Row");     // block runs off the bottom
+    if (c + wdt - 1 > cols) return indexRefError(c + wdt - 1, cols, "Column"); // ...or the right edge
+    for (let i = 0; i < h; i++)
+      for (let j = 0; j < block[i].length; j++)
+        out[r - 1 + i][c - 1 + j] = block[i][j];
   }
   return out;
 }

@@ -326,4 +326,39 @@ describe("setCells kernel (Set Cell)", () => {
   it("a blank write value writes null — a Value is an operand, not an address", () => {
     expect(setCells(m(), [{ r: 1, c: 1, v: null }])).toEqual([[null, 2], [3, 4]]);
   });
+
+  // Extends by SHAPE from the anchor: scalar → cell, list → row segment, matrix → block.
+  const m3 = (): (number | null)[][] => [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+
+  it("a 1-D list writes a rightward row segment from the anchor", () => {
+    expect(setCells(m3(), [{ r: 2, c: 2, v: [10, 20] }])).toEqual([[1, 2, 3], [4, 10, 20], [7, 8, 9]]);
+  });
+
+  it("a 2-D matrix writes a block (numpy A[r:r+h, c:c+w] = B)", () => {
+    expect(setCells(m3(), [{ r: 1, c: 1, v: [[10, 20], [30, 40]] }]))
+      .toEqual([[10, 20, 3], [30, 40, 6], [7, 8, 9]]);
+  });
+
+  it("a block that runs off the bottom errors #REF! naming the Row axis (no clipping)", () => {
+    const e = setCells(m3(), [{ r: 3, c: 1, v: [[1], [2]] }]); // 2 tall from row 3 → row 4
+    expect(isSolError(e)).toBe(true);
+    expect((e as SolError).code).toBe("#REF!");
+    expect((e as SolError).message).toContain("Row 4 is outside 1");
+  });
+
+  it("a segment that runs off the right edge errors #REF! naming the Column axis", () => {
+    const e = setCells(m3(), [{ r: 1, c: 2, v: [10, 20, 30] }]); // 3 wide from col 2 → col 4
+    expect((e as SolError).code).toBe("#REF!");
+    expect((e as SolError).message).toContain("Column 4 is outside 1");
+  });
+
+  it("later writes win cell-by-cell on an overlapping block", () => {
+    // a 2×2 block, then a scalar over its top-left — only that one cell changes.
+    expect(setCells(m3(), [{ r: 1, c: 1, v: [[10, 20], [30, 40]] }, { r: 1, c: 1, v: 99 }]))
+      .toEqual([[99, 20, 3], [30, 40, 6], [7, 8, 9]]);
+  });
+
+  it("an empty list is a no-op after a valid anchor", () => {
+    expect(setCells(m3(), [{ r: 2, c: 2, v: [] }])).toEqual(m3());
+  });
 });

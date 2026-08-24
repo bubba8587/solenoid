@@ -115,6 +115,9 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     expect(matrixUnitOf(new M.TableTakeDropNode({ op: "take" }).data({ matrix: [kmGrid()], rows: [1], cols: [0] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.ExpandNode().data({ matrix: [kmGrid()], rows: [3], cols: [2], fill: [0] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [9], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
+    // The grid unit rides a shaped write too — a list (row segment) or a matrix (block).
+    expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [[10, 20]], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [[[10, 20], [30, 40]]], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
   });
 
   it("carry-if-uniform: a stack keeps the unit only when every part shares it", () => {

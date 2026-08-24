@@ -868,6 +868,12 @@ describe("Set Cell — wired blank by role", () => {
       .toEqual([[null, 2], [3, 4]]);
   });
 
+  it("a wired LIST value extends by shape — a row segment from the anchor", () => {
+    const node = new SetCellNode();
+    expect(node.data({ matrix: [M()], value0: [[10, 20]], row0: [1], col0: [1] }).result)
+      .toEqual([[10, 20], [3, 4]]);
+  });
+
   it("an UNWIRED row/col/value uses the card literals", () => {
     const node = new SetCellNode();
     node.literals = { row0: 2, col0: 2, value0: 99 };
