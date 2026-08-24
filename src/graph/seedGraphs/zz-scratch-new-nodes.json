@@ -1291,16 +1291,7 @@
    "x": 1782,
    "y": 4329,
    "init": {
-    "label": "forecast"
-   }
-  },
-  {
-   "id": "d_ets_i",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 4529,
-   "init": {
-    "label": "± 95%"
+    "label": "Forecast / Interval"
    }
   },
   {
@@ -2118,7 +2109,7 @@
    "x": 3208,
    "y": 6827,
    "init": {
-    "label": "trend / seasonal / residual"
+    "label": "Trend / Seasonal / Residual"
    }
   },
   {
@@ -2625,7 +2616,6 @@
      "src_series",
      "ets",
      "d_ets_f",
-     "d_ets_i",
      "d_ets_s"
     ],
     "color": "blue",
@@ -3565,12 +3555,6 @@
    "source": "ets",
    "sourceOutput": "forecast",
    "target": "d_ets_f",
-   "targetInput": "in"
-  },
-  {
-   "source": "ets",
-   "sourceOutput": "interval",
-   "target": "d_ets_i",
    "targetInput": "in"
   },
   {

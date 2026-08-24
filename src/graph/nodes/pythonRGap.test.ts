@@ -421,10 +421,14 @@ describe("Forecast (ETS) — Holt–Winters", () => {
     const node = new EtsForecastNode(); node.literals = { horizon: 3, season: 1 };
     const out = node.data({ values: [y] });
     expect(out.detected).toBe(12);
+    const fc = out.forecast; // one frame: Forecast + ± 95% columns, correlated per step
+    expect(isFrameValue(fc)).toBe(true);
+    if (!isFrameValue(fc)) return;
+    expect(fc.columns.map((c) => c.name)).toEqual(["Forecast", "Interval"]);
     const timeline = y.map((_, i) => 45000 + i); // daily serials, equally spaced
-    expect(ev("FORECAST.ETS(t, v, tl)", { t: 45000 + 36 + 2, v: y, tl: timeline })).toBeCloseTo((out.forecast as number[])[2], 10);
+    expect(ev("FORECAST.ETS(t, v, tl)", { t: 45000 + 36 + 2, v: y, tl: timeline })).toBeCloseTo((fc.columns[0].values as number[])[2], 10);
     expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: y })).toBe(12);
-    expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: 45000 + 36, v: y, tl: timeline })).toBeCloseTo(out.interval![0], 10);
+    expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: 45000 + 36, v: y, tl: timeline })).toBeCloseTo((fc.columns[1].values as number[])[0], 10);
     expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: [3, 5, 7, 9, 11, 13, 15, 17] })).toBe(0);
     expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: 45000, v: y, tl: timeline }))).toBe(true); // target not past the end
   });
@@ -771,7 +775,7 @@ describe("Decompose — classical seasonal decomposition (statsmodels seasonal_d
     const frame = out.decomposition;
     expect(isFrameValue(frame)).toBe(true);
     if (!isFrameValue(frame)) return;
-    expect(frame.columns.map((c) => c.name)).toEqual(["trend", "seasonal", "residual"]);
+    expect(frame.columns.map((c) => c.name)).toEqual(["Trend", "Seasonal", "Residual"]);
     close(frame.columns[0].values, [null, null, 11.125, 11.375, 11.625, 11.875, 12.125, 12.375, 12.625, 12.875, null, null]);
     close(frame.columns[1].values.slice(0, 2), [-0.625, 3.125]);
     const ev = (e: string) => compileEvaluator(e)!({ y: Y });

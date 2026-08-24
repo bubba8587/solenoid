@@ -855,6 +855,9 @@ export class InterpolateNode extends ClassicPreset.Node {
   // (cells may be null where nothing reached). A whole-input error → SolError.
   cachedResult: number | (number | null)[] | (number | null)[][] | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
+  // GRID mode: the Xs / Ys axis lists are typeable CSV lists (parseListLiteral inject),
+  // so they need string-literal slots like a List Input, not just the scalar `x`.
+  stringLiterals: Record<string, string> = { xs: "", ys: "" };
   // GRID mode: also linearly EXTRAPOLATE beyond the known data (the Forecast checkbox),
   // not just interpolate the interior. On by default.
   forecast = true;
@@ -1089,16 +1092,16 @@ export class EtsForecastNode extends ClassicPreset.Node {
     values: "An equally spaced series, oldest first — monthly sales, daily visits. Blanks are dropped.",
     horizon: "How many steps ahead to forecast.",
     season: "Season length in steps: 1 = detect it, 0 = none, 12 = yearly on monthly data. Needs two full seasons of history.",
-    forecast: "One value per step ahead.",
-    interval: "The 95% prediction half-width per step (forecast ± this), growing with √h.",
+    forecast: "A frame per step ahead: Forecast (the point forecast) and Interval (the 95% prediction half-width, forecast ± this, growing with √h).",
     detected: "The season length used — what detection found, or what you set.",
   };
   label: string;
   literals: Record<string, number> = { horizon: 6, season: 1 };
-  cachedForecast: number[] | SolError | null = null;
-  cachedInterval: number[] | null = null;
+  // Forecast and its ± interval are correlated per step → one frame; the detected
+  // season is a scalar diagnostic, not per-step, so it stays its own output.
+  cachedResult: FrameValue | SolError | null = null;
   cachedSeason: number | null = null;
-  width = 200; height = 225;
+  width = 200; height = 205;
 
   constructor(init?: { label?: string }) {
     super("EtsForecast");
@@ -1106,15 +1109,14 @@ export class EtsForecastNode extends ClassicPreset.Node {
     this.addInput("values",  listIn("Values"));
     this.addInput("horizon", numIn("Steps ahead"));
     this.addInput("season",  numIn("Season length"));
-    this.addOutput("forecast", numListOut("Forecast"));
-    this.addOutput("interval", numListOut("± 95%"));
+    this.addOutput("forecast", frameOut("Forecast"));
     this.addOutput("detected", numOut("Season used"));
   }
 
-  data(inputs: { values?: (number | null | SolError)[][]; horizon?: number[]; season?: number[] }) {
-    const blank = () => { this.cachedForecast = null; this.cachedInterval = null; this.cachedSeason = null; return { forecast: null, interval: null, detected: null }; };
+  data(inputs: { values?: (number | null | SolError)[][]; horizon?: number[]; season?: number[] }): { forecast: FrameValue | SolError | null; detected: number | null } {
+    const blank = () => { this.cachedResult = null; this.cachedSeason = null; return { forecast: null, detected: null }; };
     const prep = forAggregate(inputs.values?.[0] ?? []);
-    if (prep.error) { this.cachedForecast = prep.error; this.cachedInterval = null; this.cachedSeason = null; return { forecast: prep.error, interval: null, detected: null }; }
+    if (prep.error) { this.cachedResult = prep.error; this.cachedSeason = null; return { forecast: prep.error, detected: null }; }
     const y = prep.nums;
     const horizon = readInput(inputs.horizon, this.literals.horizon ?? 6);
     const seasonArg = readInput(inputs.season, this.literals.season ?? 1);
@@ -1123,10 +1125,15 @@ export class EtsForecastNode extends ClassicPreset.Node {
     const m = seasonArg === 1 ? detectSeason(y) : Math.max(1, Math.round(seasonArg));
     const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null); // too short for the season → trend-only
     if (!fit) return blank();
-    this.cachedForecast = etsForecast(fit, h);
-    this.cachedInterval = Array.from({ length: h }, (_, i) => etsInterval(fit, i + 1));
+    const forecast = etsForecast(fit, h);
+    const interval = Array.from({ length: h }, (_, i) => etsInterval(fit, i + 1));
     this.cachedSeason = fit.season > 1 ? fit.season : 0;
-    return { forecast: this.cachedForecast, interval: this.cachedInterval, detected: this.cachedSeason };
+    const frame: FrameValue = { __frame: true, columns: [
+      { name: "Forecast", type: "number", values: forecast },
+      { name: "Interval", type: "number", values: interval },
+    ] };
+    this.cachedResult = frame;
+    return { forecast: frame, detected: this.cachedSeason };
   }
 }
 
@@ -1194,7 +1201,7 @@ export class DecomposeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first; needs at least two full periods.",
     period: "Season length in steps — 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
-    decomposition: "A frame of three aligned columns — trend (centered MA, blank half a period at each end for the classical filter; a loess with no blank ends for STL), seasonal (one repeating pattern, centered), and residual (what's left).",
+    decomposition: "A frame of three aligned columns — Trend (centered MA, blank half a period at each end for the classical filter; a loess with no blank ends for STL), Seasonal (one repeating pattern, centered), and Residual (what's left).",
   };
   label: string;
   model: DecomposeModel = "additive";
@@ -1223,9 +1230,9 @@ export class DecomposeNode extends ClassicPreset.Node {
     const d = this.model === "stl" ? stlDecompose(nums, period) : seasonalDecompose(nums, period, this.model);
     if (!d) return blank();
     const frame: FrameValue = { __frame: true, columns: [
-      { name: "trend", type: "number", values: d.trend },
-      { name: "seasonal", type: "number", values: d.seasonal },
-      { name: "residual", type: "number", values: d.residual },
+      { name: "Trend", type: "number", values: d.trend },
+      { name: "Seasonal", type: "number", values: d.seasonal },
+      { name: "Residual", type: "number", values: d.residual },
     ] };
     this.cachedResult = frame;
     return { decomposition: frame };
