@@ -41,6 +41,7 @@
     "papaparse": "^5.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-is": "^19.2.8",
     "recharts": "^3.8.1",
     "rete": "^2.0.6",
     "rete-area-plugin": "^2.3.2",
