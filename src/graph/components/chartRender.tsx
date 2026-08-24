@@ -1,7 +1,7 @@
 // Every recharts-using renderer in ONE module so recharts stays a single lazy
 // chunk — nothing here may be imported statically by the app.
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
-import { useState } from "react";
+import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
@@ -383,14 +383,23 @@ export function MultiSeriesView({
     );
   }
 
-  if (!title) return chart;
-  return (
-    <div style={{ width }}>
+  // Inside a card, rete's drag handler takes pointer capture on mousedown, which would
+  // deliver the click to the node instead of the legend item — so a press that starts on
+  // the legend never reaches rete (the same swallow every in-card control uses).
+  const legendPress = (e: SyntheticEvent) => {
+    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+  };
+  const withLegendGuard = (el: ReactElement) => (
+    <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>
+  );
+  if (!title) return withLegendGuard(chart);
+  return withLegendGuard(
+    <>
       <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {title}
       </div>
       {chart}
-    </div>
+    </>,
   );
 }
 
