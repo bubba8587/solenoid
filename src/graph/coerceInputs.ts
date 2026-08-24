@@ -265,7 +265,8 @@ export function wrapNodeData(node: NodeLike) {
         if ((coerced[key]?.length ?? 0) > 0) continue;
         const socket = node.inputs[key]?.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
-        if (!dt || !TYPEABLE_LIST.has(dt)) continue;
+        // A numlist is typeable only where the node opted in with a stringLiterals key.
+        if (!dt || !(TYPEABLE_LIST.has(dt) || (dt === "numlist" && key in lits))) continue;
         const csv = lits[key];
         if (csv != null && csv.trim() !== "") coerced[key] = [parseListLiteral(csv, dt)];
       }

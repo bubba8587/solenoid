@@ -550,11 +550,13 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
       {entries.map(([key, input], i) => {
         const socket = input.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        // A numeric list keeps its single-number field unless the node OPTS IN by declaring
+        // a stringLiterals key for it — then it types as a CSV list (Surface's Xs / Ys).
+        const numlistCsv = dt === "numlist" && key in strLiterals;
         // A combo only becomes a list when a cable brings one in, so both edit in place.
-        const isNumber = dt === "number" || dt === "numlist";
+        const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
         const isStr    = dt === "string" || dt === "strcombo";
-        // Numeric lists keep their single-number field; other 1-D lists type as CSV.
-        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist";
+        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist" || numlistCsv;
         const { label, placeholder } = splitDefaultLabel(labelFor ? labelFor(key, i) : (input.label || key));
         const isConn = connected.has(key);
         return (
