@@ -177,13 +177,14 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
 
 describe("matricesInFormulas tranche 2 — the array-returning core, node-equals-formula", () => {
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
-    const { UniqueNode, SortNode, SortByNode } = await import("./nodes/list");
+    const { UniqueNode, SortNode } = await import("./nodes/list");
     const x = [3, 1, 3, null, 2];
     expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode().data({ list: [[3, 1, 3, 2]] }).result);
     expect(ev("SORT(x)", { x })).toEqual(new SortNode({ op: "asc" }).data({ list: [x] }).result);
     expect(ev("SORT(x,,-1)", { x })).toEqual(new SortNode({ op: "desc" }).data({ list: [x] }).result);
+    // SORTBY is the Sort node's optional `by` input (equal-length ⇒ same as the formula's pad).
     const a = ["x", "y", "z"], by = [3, 1, 2];
-    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortByNode().data({ array: [a], by_array: [by] }).list);
+    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortNode().data({ list: [a], by: [by] }).result);
   });
 
   it("INDEX is the node's accessor — whole-axis and rank 2, not a 1-D pick", async () => {

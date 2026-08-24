@@ -5,7 +5,7 @@ import { extractInit } from "./copyPaste";
 import { DisplayNode } from "./nodes/display";
 import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode, SortByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, SelectColumnsNode } from "./rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, SelectColumnsNode } from "./rete-nodes";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -296,11 +296,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     };
     const s1 = strList(), s2 = strList();
 
-    const sort = new SortByNode();
+    const sort = new SortNode();
     reconcileTrueAnyTypes(makeEditor([s1, sort], [
-      { source: s1.id, sourceOutput: "out", target: sort.id, targetInput: "array" },
+      { source: s1.id, sourceOutput: "out", target: sort.id, targetInput: "list" },
     ]));
-    expect(dt(sort.outputs.list?.socket)).toBe("strlist");
+    expect(dt(sort.outputs.result?.socket)).toBe("strlist");
 
     // (Group Lists no longer has an adoptive `keys` output — it emits one frame now (C5);
     // its Key column carries the type internally, not a trueany output socket.)

@@ -236,8 +236,10 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "Row or Column blank/0 = the whole axis, like Excel's INDEX(range, 0, col) whole-column / INDEX(range, row, 0) whole-row form" }],
   "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY(count,[min],[max],[integer])", parity: false, note: "1D list (Excel's rows×cols become a single Count); the Integer flag is supported; re-rolls on recalc (F9)" }],
   "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Solenoid's Range is 1D only; SEQUENCE can produce 2D arrays" }],
-  "list-sort": [{ excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" }],
-  "list-sortby": [{ excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Sorts a 1-D array of ANY element type (text/date/… — the reorder is position-only) by a parallel NUMERIC key list; text sort keys aren't supported yet" }],
+  "list-sort": [
+    { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
+    { excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Wire the Sort node's `by` input: reorders a 1-D array of ANY element type (position-only) by a parallel NUMERIC key list; text sort keys aren't supported yet" },
+  ],
   "list-take": [{ excel: "TAKE", syntax: "=TAKE(list, count)", parity: false, note: "The 1-D list spelling; TAKE (table) is the 2-D rows+cols one" }],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],

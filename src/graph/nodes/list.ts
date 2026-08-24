@@ -438,28 +438,47 @@ export type SortDir = "asc" | "desc";
 
 export class SortNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
+    by: "Optional. Unwired, the list sorts by its own values. Wired, it sorts by this parallel numeric key list (sort names by their scores) — position-only, so any element type reorders. A blank or error key sends its element to the end; a length mismatch errors the result.",
     result: "Blank and error cells sort to the end in either direction.",
   };
 
+  /** The output adopts the sorted list's type; the `by` keys are a side input and stay
+   *  unit-blind (like SORTBY, which this node absorbed). */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   op: SortDir;
-  cachedList: number[] = [];
+  cachedList: (number | string | boolean | null | SolError)[] | SolError | null = [];
   width = 180;
-  height = 150;
+  height = 175;
 
   constructor(init?: { label?: string; op?: SortDir }) {
     super("Sort");
     this.label = init?.label ?? "List Sort";
     this.op = init?.op ?? "asc";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("Sorted"));
+    // Widened to anylist so a wired `by` can reorder ANY element family, not just numbers.
+    this.addInput("list", anyListIn("List"));
+    this.addInput("by",   listIn("Sort by"));
+    this.addOutput("result", adoptiveListOut("Sorted"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }) {
+  data(inputs: { list?: unknown[][]; by?: ((number | null | SolError)[] | null)[] }): { result: (number | string | boolean | null | SolError)[] | SolError | null } {
     const arr = inputs.list?.[0] ?? [];
-    const sorted = sortNumericList(arr, this.op === "desc") as number[];
-    this.cachedList = sorted;
-    return { result: sorted };
+    const desc = this.op === "desc";
+    const by = inputs.by?.[0];
+    if (Array.isArray(by)) {
+      // Wired parallel keys (SORTBY): reorder `arr` by them. Same length required.
+      if (by.length !== arr.length) {
+        this.cachedList = solError("#SHAPE!", `The sort-by list has ${by.length} values but the list has ${arr.length}`);
+        return { result: this.cachedList };
+      }
+      this.cachedList = sortByKeys(arr, by, desc) as (number | string | boolean | null | SolError)[];
+      return { result: this.cachedList };
+    }
+    // A wired-blank `by` leaves the result unknown (value-semantics.md, role table);
+    // an UNWIRED `by` self-sorts the list by its own (numeric) values — the classic Sort.
+    if ("by" in inputs) { this.cachedList = null; return { result: null }; }
+    this.cachedList = sortNumericList(arr as ListCell[], desc) as (number | null | SolError)[];
+    return { result: this.cachedList };
   }
 }
 
@@ -1979,43 +1998,6 @@ export class RandArrayNode extends ClassicPreset.Node {
     // integer rounds the rescaled draw (Excel's 5th arg), applied live like min/max, so
     // both surfaces agree (the formula's RANDARRAY rounds the same lo + r*range).
     const list = this.rolls.map((r) => { const x = lo + r * range; return this.integer ? Math.round(x) : x; });
-    this.cachedList = list;
-    return { list };
-  }
-}
-
-// ─── SEQUENCE ─────────────────────────────────────────────────────────────────
-
-// ─── SORTBY ───────────────────────────────────────────────────────────────────
-
-export class SortByNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    by_array: "Pairs with the array by position, and a shorter side pads with blanks. A blank or error key sends its element to the end.",
-  };
-
-  /** The output adopts the sorted array's type; by_array keys are a side input and
-   *  stay unit-blind. */
-  passthrough = (): PassthroughSpec[] => [{ output: "list", inputs: ["array"], combine: "single" }];
-  label: string;
-  cachedList: unknown[] = [];
-  width = 180; height = 175;
-
-  constructor(init?: { label?: string }) {
-    super("SortBy");
-    this.label = init?.label ?? "SORTBY";
-    // The reordered array is POSITION-ONLY (anylist), so any element family sorts by
-    // a parallel key; only the by_array keys drive comparison, so they stay numeric.
-    this.addInput("array",    anyListIn("Array to sort"));
-    this.addInput("by_array", listIn("Sort by (parallel list)"));
-    this.addOutput("list", adoptiveListOut("Sorted list"));
-  }
-
-  data(inputs: { array?: unknown[][]; by_array?: (number | null | SolError)[][] }): { list: unknown[] } {
-    const arr = inputs.array?.[0] ?? [];
-    const by  = inputs.by_array?.[0] ?? [];
-    // Ragged inputs pad to the LONGEST with null (never drop a value); a null/error
-    // KEY sorts stably to the tail, matching the frame sort's blanks-last policy.
-    const list = sortByKeys(arr, by);
     this.cachedList = list;
     return { list };
   }

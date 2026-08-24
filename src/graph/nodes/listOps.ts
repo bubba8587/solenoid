@@ -796,17 +796,17 @@ export function sortNumericList(arr: readonly Cell[], desc = false): Cell[] {
 }
 
 /** SORTBY: reorder `arr` by parallel numeric keys; ragged pads to the LONGEST with
- *  null; a null/error KEY sends its row to the tail, stably. */
-export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[]): (T | null)[] {
+ *  null; a null/error KEY sends its row to the tail, stably (in either direction). */
+export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[], desc = false): (T | null)[] {
   const n = Math.max(arr.length, by.length);
   const isTail = (v: unknown) => isMissing(v) || isSolError(v);
   const idx = Array.from({ length: n }, (_, i) => i);
   idx.sort((i, j) => {
     const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
     const ti = isTail(ki), tj = isTail(kj);
-    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last in both directions
     const c = (ki as number) - (kj as number);
-    return c !== 0 ? c : i - j;
+    return c !== 0 ? (desc ? -c : c) : i - j; // stable on ties
   });
   return idx.map((i) => (i < arr.length ? arr[i] : null));
 }

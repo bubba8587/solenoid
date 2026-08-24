@@ -12,7 +12,6 @@ import {
   SumIfsNode,
   FillNode,
   SortNode,
-  SortByNode,
   InterleaveNode,
   ListInputNode,
   SetOpNode,
@@ -815,26 +814,30 @@ describe("Sort — nulls and per-cell errors last in both directions (frame blan
   });
 });
 
-describe("SortBy — ragged pad-to-longest; null/error keys sort last (audit finding 25)", () => {
-  it("a value beyond the key list gets a null key and lands last", () => {
-    expect(new SortByNode().data({ array: [[10, 20, 30]], by_array: [[2, 1]] }).list)
-      .toEqual([20, 10, 30]);
+describe("Sort by a parallel key list (the absorbed SORTBY); length mismatch → #SHAPE!", () => {
+  it("an unwired `by` self-sorts the list by its own values", () => {
+    expect(new SortNode().data({ list: [[3, 1, 2]] }).result).toEqual([1, 2, 3]);
   });
-  it("a null key mid-list sends its row to the tail, stably", () => {
-    expect(new SortByNode().data({ array: [[10, 20, 30]], by_array: [[2, null, 1]] }).list)
-      .toEqual([30, 10, 20]);
+  it("a wired-blank `by` propagates — result unknown (role table)", () => {
+    expect(new SortNode().data({ list: [[3, 1, 2]], by: [null] }).result).toBeNull();
   });
-  it("keys beyond the value list emit null values in key order", () => {
-    expect(new SortByNode().data({ array: [[10]], by_array: [[3, 1]] }).list)
-      .toEqual([null, 10]);
-  });
-  it("sorts a TEXT array by a parallel numeric key (the reorder is element-agnostic)", () => {
+  it("sorts a TEXT array by a parallel numeric key (element-agnostic reorder)", () => {
     // "names by scores": the array is any element type, only the keys are numeric.
-    expect(new SortByNode().data({ array: [["Ann", "Bob", "Cy"]], by_array: [[3, 1, 2]] }).list)
+    expect(new SortNode().data({ list: [["Ann", "Bob", "Cy"]], by: [[3, 1, 2]] }).result)
       .toEqual(["Bob", "Cy", "Ann"]);
     // A date-serial array reorders the same way.
-    expect(new SortByNode().data({ array: [[46000, 45000, 45500]], by_array: [[2, 3, 1]] }).list)
+    expect(new SortNode().data({ list: [[46000, 45000, 45500]], by: [[2, 3, 1]] }).result)
       .toEqual([45500, 46000, 45000]);
+  });
+  it("descending by key flips the value order, null/error keys stay last", () => {
+    expect(new SortNode({ op: "desc" }).data({ list: [["Ann", "Bob", "Cy"]], by: [[3, 1, 2]] }).result)
+      .toEqual(["Ann", "Cy", "Bob"]);
+    expect(new SortNode().data({ list: [[10, 20, 30]], by: [[2, null, 1]] }).result)
+      .toEqual([30, 10, 20]);
+  });
+  it("a length mismatch between list and `by` is a loud #SHAPE!, never a silent pad", () => {
+    const r = new SortNode().data({ list: [[10, 20, 30]], by: [[2, 1]] }).result;
+    expect((r as { code?: string })?.code).toBe("#SHAPE!");
   });
 });
 
