@@ -166,6 +166,15 @@ propagation, and the pure sources (Number/Text/Boolean/Date/Table/Frame/Constant
 No false description claims. Pins: `wiredNull.test.ts` "Input family — wired blank by role" (+4).
 Residue: none. Collapsed-card eyeball list in the final message.
 
+**A5 Input ▸ Connections sweep** (10 leaves) → all pure sources (Web Source, Data Feed, CSV,
+Parquet, Import HTML/XML/Obsidian) + sinks (Write CSV/JSON/Obsidian). No operand inputs, so no
+wired-blank exposure: sources return `idle`/null on an empty ref/URL; the three sinks cache a
+blank frame/document as null and refuse to write ("Nothing to write. Connect a…"), which is the
+figure/sink-datum disposition and already pinned (`sink.test.ts` "refuses to write with nothing
+on the input cable", `obsidian.test.ts`). Descriptions + `socketDocs` verified against `data()`;
+§7 clean (mid-sentence Settings glosses only, no trailing parentheticals or em dashes). No code
+change, no new pins. Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

@@ -12,6 +12,6 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 - B0 — Agent 4 (solenoid-f1) — Python/R gap remainder
 - A6 — Agent 2 (solenoid-18)
-- A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): Input landed; Connections next
+- A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): Input + Connections landed; Output next
 
 _B6 landed (753c6c6c) → TablePopup.tsx is free; A3 (plan 7) is now unblocked._

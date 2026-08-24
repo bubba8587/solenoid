@@ -78,7 +78,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | ✓ | Family (catalog line) | Leaves | Class file(s) | Existing pins to extend |
 |---|---|---|---|---|
 | [x] | Input (direct + Control) (`:180`, `:197`) | 23 | `nodes/input.ts`, `nodes/control.ts`, `display.ts` (RandBetween) | `wiredNull.test.ts:146` (control bound) |
-| [ ] | Input ▸ Connections (`:213`) | 10 | `nodes/connection.ts`, `obsidian.ts`, `dataFeed.ts` | `sourceInvariants.test.ts` (read only; don't loosen) |
+| [x] | Input ▸ Connections (`:213`) | 10 | `nodes/connection.ts`, `obsidian.ts`, `dataFeed.ts` | `sourceInvariants.test.ts` (read only; don't loosen) |
 | [ ] | Output (direct, Data Quality) (`:232`, `:237`) | 4 | `display.ts`, `quality.ts`, `sink.ts`, `report.ts` | `SEES_ERRORS` `errorValue.ts:129` |
 | [ ] | Output ▸ Visuals, all subs (`:245-283`) | 34 | `nodes/visual.ts`, `tornado.ts`, `chartOptions.ts` | `wiredNull.test.ts:289` (figure sinks), `:483` (figure controls) |
 | [ ] | Numbers ▸ Arithmetic / Functions / Rounding / Logarithms (`:337-378`) | 32 | `nodes/scalar.ts` | `wiredNull.test.ts:209` (guard placement) |
