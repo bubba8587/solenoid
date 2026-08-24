@@ -1072,9 +1072,11 @@ body.solenoid-scrubbing * {
 .solenoid-node__input-pill {
   position: absolute;
   left: -6px;
-  /* Center the 28px-tall pill on the display box (same --out-socket-top
-     the stacked sockets use), falling back to 46px. */
-  top: calc(var(--out-socket-top, 46px) - 14px);
+  /* Center the 28px-tall pill exactly where the stacked sockets sit: on the display box
+     (--out-socket-top) or, on a card with no display box, at 50% of the content — the
+     same fallback NodeSocket uses, so pill and sockets never separate (a 46px fallback
+     hung off the bottom of a collapsed Chart Builder). */
+  top: calc(var(--out-socket-top, 50%) - 14px);
   width: 12px;
   height: 28px;
   overflow: visible;
