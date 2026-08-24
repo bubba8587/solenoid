@@ -98,6 +98,8 @@ export class ChartNode extends ClassicPreset.Node {
   op: ChartOp;
   cachedResult: number | number[] | null = null;
   cachedMatrix: (number | null)[][] | null = null;
+  // Named series from a frame's numeric columns; null unless ≥ 2 survive the label column.
+  cachedSeries: { name: string; values: (number | null)[] }[] | null = null;
   // X-axis category labels from a wired Frame's FIRST column (dates as dates, etc.).
   cachedLabels: (string | number)[] | null = null;
   // The data feed arrives UNCOERCED so a list stays a list; data() branches on raw shape.
@@ -133,17 +135,24 @@ export class ChartNode extends ClassicPreset.Node {
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw = inputs.values?.[0] ?? null;
     this.cachedLabels = null;
+    this.cachedSeries = null;
     let v: number | number[] | null = null;
     if (isFrameValue(raw) && raw.columns.length > 0) {
       const cols = raw.columns;
       const asNums = (col: FrameColumn) => col.values.map(num);
-      if (cols.length >= 2) {
+      // Column 0 is the x-axis label column ONLY when it isn't numeric; a number-first frame
+      // has no labels and plots every numeric column by position. Non-number columns after
+      // the first are skipped, not errors.
+      const hasLabelCol = cols[0].type !== "number";
+      if (hasLabelCol) {
         // formatFrameCell already renders errors and date serials as label text.
         this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
-        v = asNums(cols[1]) as unknown as number[];
-      } else {
-        v = asNums(cols[0]) as unknown as number[];
       }
+      const numCols = (hasLabelCol ? cols.slice(1) : cols).filter((c) => c.type === "number");
+      const series = numCols.map((c) => ({ name: c.name, values: asNums(c) }));
+      v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
+      // A legend/multi-series render only when 2+ numeric columns survive.
+      this.cachedSeries = series.length >= 2 ? series : null;
     } else if (Array.isArray(raw)) {
       v = raw.map(num) as unknown as number[];
     } else if (typeof raw === "number") {
@@ -165,6 +174,7 @@ export class ChartNode extends ClassicPreset.Node {
       op: this.op,
       values: this.cachedResult,
       matrix: this.cachedMatrix,
+      series: this.cachedSeries ?? undefined,
       labels: this.cachedLabels ?? undefined,
       options: this.chartOptions,
       title: this.chartOptions.title || this.label || "Chart",

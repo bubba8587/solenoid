@@ -70,6 +70,56 @@ describe("chart value", () => {
     const out = ch.data({ values: [frame] });
     expect(out.chart.values).toEqual([10, null, 30]);
     expect(out.chart.labels).toEqual(["Jan", "Feb", "Mar"]);
+    expect(out.chart.series).toBeUndefined(); // one numeric column → no legend
+  });
+
+  it("a Frame with a label column + 2 numeric columns → values = first series, series = both named", () => {
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Month", type: "string", values: ["Jan", "Feb"] },
+        { name: "Sales", type: "number", values: [10, 20] },
+        { name: "Target", type: "number", values: [12, 18] },
+      ],
+    };
+    const out = new ChartNode({ op: "column" }).data({ values: [frame] });
+    expect(out.chart.labels).toEqual(["Jan", "Feb"]);
+    expect(out.chart.values).toEqual([10, 20]); // first series mirrors values
+    expect(out.chart.series).toEqual([
+      { name: "Sales", values: [10, 20] },
+      { name: "Target", values: [12, 18] },
+    ]);
+  });
+
+  it("a number-first Frame has no label column — every numeric column is a series (positional x)", () => {
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "A", type: "number", values: [1, 2, 3] },
+        { name: "B", type: "number", values: [4, 5, 6] },
+      ],
+    };
+    const out = new ChartNode({ op: "line" }).data({ values: [frame] });
+    expect(out.chart.labels).toBeUndefined();
+    expect(out.chart.values).toEqual([1, 2, 3]);
+    expect(out.chart.series).toEqual([
+      { name: "A", values: [1, 2, 3] },
+      { name: "B", values: [4, 5, 6] },
+    ]);
+  });
+
+  it("non-number columns after the label are skipped, not errors", () => {
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Month", type: "string", values: ["Jan", "Feb"] },
+        { name: "Sales", type: "number", values: [10, 20] },
+        { name: "Note", type: "string", values: ["ok", "hi"] },
+        { name: "Target", type: "number", values: [12, 18] },
+      ],
+    };
+    const out = new ChartNode({ op: "column" }).data({ values: [frame] });
+    expect(out.chart.series?.map((s) => s.name)).toEqual(["Sales", "Target"]);
   });
 
   it("a SolError wired into the Options socket is ignored (not parsed as text)", () => {
