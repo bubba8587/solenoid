@@ -55,9 +55,10 @@ function strVal(
   return readInput(input, node.stringLiterals?.[key] ?? def);
 }
 
-/** The read for a scalar `string` socket (a delimiter, separator, pattern), which
- *  the lattice can never deliver a list to. DELIBERATELY still `?? literal`, unlike
- *  `strVal`: these select a MODE, where a wired blank is genuinely ambiguous. */
+/** The read for a scalar `string` socket (a delimiter, separator, pattern) the lattice
+ *  can never deliver a list to. Like `strVal` it uses `readInput`, so a WIRED blank
+ *  propagates (an unknown mode gives an unknown answer, e.g. TEXTSPLIT(x, blank) → blank);
+ *  only the return type differs (never a list). */
 function strScalar(
   input: string[] | undefined,
   node: { stringLiterals?: Record<string, string> },

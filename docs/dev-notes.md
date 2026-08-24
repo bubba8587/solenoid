@@ -440,6 +440,19 @@ candidates: DATE (Build) + TIME → one "DATE/TIME build" node with a mode; Epoc
 TIMEVALUE (parse text) are both to-date parsers. Otherwise well op-merged (DatePart unifies 6,
 DateDiff ~8, WeekInfo 3). Residue: none.
 
+**A5 Text sweep** (42 leaves) → NO behavior bugs; one misleading COMMENT fixed. String operands read
+through `strVal`/`strScalar` (both `readInput`, so a wired blank propagates and only an unwired slot
+takes the card literal — the raw-then-trim rule); numeric params via `readInput`. The fix: `strScalar`'s
+docblock claimed it "DELIBERATELY still `?? literal`" and treated a wired blank as ambiguous/defaulting,
+but the body is `readInput` — it PROPAGATES, same as `strVal` and the pinned TEXTSPLIT-delimiter
+behavior. Corrected the comment so no one "restores" the swallow-wired-blank bug. Heavily pinned
+already (UPPER/LEFT/REPT/TEXTSPLIT/TextFilter + caseContract); SUBSTITUTE's wired-blank instance
+propagates while an unwired 0 replaces all (socketDocs holds). Combine candidates: SUBSTITUTE + REPLACE
+→ one "Replace" node (by-match vs by-position mode); PadText + TruncateText + WrapText → one width-
+based "Fit Text" node; DOLLAR + FIXED (number→formatted string) pair. Otherwise well op-merged
+(TextTransform unifies 7, TextSlice 3, TextFind 2). Residue: the mode-selector AUTHOR CALL (same as
+Date, recorded there).
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
