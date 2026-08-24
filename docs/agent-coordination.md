@@ -12,5 +12,5 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 - B0.3/B0.4 — Agent 4 (solenoid-f1) — Python/R gap remainder (ODE/RK4, STL). C2 landed (179ba3a5 + 43a22615); B0.1/B0.2 landed too. visual.ts free.
 - C4 — Agent 2 (solenoid-18) — grid axes / retire bordered-grid (Lead reassigned, C4 before B8). Touches visual.ts SurfaceNode — coordinating with Agent 4 (C2). C3 landed (af64d772, 2ebb4a65); matrix.ts + frame.ts free for Jeff.
-- A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): 20 families landed (…/Other/Packs); LEFT: Tables▸Matrix/Lambda+Frames/verbs (A2 freed matrix.ts+frame.ts — sweeping now)
+- A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): 21 families landed (…/Packs/Tables-Matrix); LEFT: Tables▸Lambda+Frames, Tables▸verbs (frame.ts/frameVerbs.ts — sweeping now)
 

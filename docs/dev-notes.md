@@ -518,6 +518,16 @@ files. Pins: `wiredNull.test.ts` "Packs — domain nodes" (Colebrook representat
 candidates: none strong (each pack node is single-purpose; the astro trio outputs different shapes).
 Residue: none.
 
+**A5 Tables ▸ Matrix/Shape/Select sweep** (24 leaves) → NO bugs (matrix.ts stable after A2's C3).
+Matrix operands read `inputs.x?.[0] ?? null` → a wired blank blanks the result (MMULT: `#SHAPE!` on
+non-conformable, not a silent blank; non-numeric → error); scalar params (n, wrapCount, rows, cols)
+via `readInput` guarded to null; EXPAND's Fill pads with null on a blank, the author's documented
+override (wire NA for `#N/A`). SetCellNode (A2's C3.1) reads value/row/col via `readInput`/`pickSlot`
+and is already pinned (its wired-blank block rode my Finance commit). Pins: `wiredNull.test.ts` "Tables
+▸ Matrix" (MMULT representative, +1). Combine candidates: HSTACK + VSTACK → one "Stack" node with a
+direction (the table analog of the already-merged list stack). Otherwise heavily op-merged (matDet
+unifies 5, reshape 4). Residue: none.
+
 **A5 Other sweep** (Convert, Cast, Placeholder + structural Group/Conduit/Composite/Equation/FC) →
 NO bugs. Convert (the flagship unit control): the value is an operand, a wired blank propagates to
 null; units are dropdown config, incommensurable → `#N/A`, over-range → `#OVERFLOW!` per cell;

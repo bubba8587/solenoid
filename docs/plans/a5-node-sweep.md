@@ -94,7 +94,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [x] | Distributions (`:765`) | 6 | `nodes/distribution.ts`, `distributionOps.ts` | — |
 | [x] | Date & Time (`:782-821`) | 27 | `nodes/date.ts`, `dateOps.ts`, `dateSerial.ts` | `wiredNull.test.ts:319` (date operands); the AUTHOR CALL on selector inputs (`backlog.md` "mode-selector inputs on a wired blank") — record, don't decide |
 | [x] | Text (`:837-880`) | 42 | `nodes/text.ts`, `textOps.ts`, `hashOps.ts` | `wiredNull.test.ts:34`, `:70`; `caseContract.test.ts`; same AUTHOR CALL as Date |
-| [ ] | Tables ▸ Matrix math / Shape / Select (`:912-940`) | 24 | `nodes/matrix.ts`, `matrixOps.ts` | — |
+| [x] | Tables ▸ Matrix math / Shape / Select (`:912-940`) | 24 | `nodes/matrix.ts`, `matrixOps.ts` | — |
 | [ ] | Tables ▸ Lambda + Frames (`:947`, `:957`) | 12 | `nodes/tableLambda.ts`, `nodes/frame.ts`, `lambda.ts` | `wiredNull.test.ts:238` (column ref) |
 | [ ] | Tables ▸ Table verbs, all subs (`:969-1016`) | 35 | `nodes/frame.ts`, `frameVerbs.ts` (+ Rust mirror `src-tauri/src/engine.rs` for fused verbs — a semantics fix must land on both; say so if cargo can't run here) | `wiredNull.test.ts:238`, `finePrintContract.test.ts:125-133` |
 | [x] | Tables ▸ Cubes (`:1031`) | 4 | `nodes/cube.ts` | `wiredNull.test.ts:502`; skip Unnest if B8.1 is in flight |

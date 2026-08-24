@@ -20,7 +20,7 @@ import { ConvertNode } from "./convert";
 import { ColebrookNode } from "./fluids";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
 import { DistributionNode } from "./distribution";
-import { SetCellNode } from "./matrix";
+import { SetCellNode, TableMultNode } from "./matrix";
 import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
@@ -802,6 +802,17 @@ describe("cube column references — read raw, guard, then trim", () => {
     node.stringLiterals.nested = "items";
     node.stringLiterals.column = "v";
     expect(node.data({ cube: [cube as never], as: [null as unknown as string] }).frame).toBeNull();
+  });
+});
+
+describe("Tables ▸ Matrix — a blank matrix operand propagates", () => {
+  // MMULT is the representative: a wired blank operand blanks the result, a valid pair
+  // multiplies, and a non-conformable pair is #SHAPE! (not a silent blank).
+  it("MMULT: blank operand -> null; valid -> product; mismatch -> #SHAPE!", () => {
+    const node = new TableMultNode();
+    expect(node.data({ a: [null as unknown as number[][]], b: [[[1], [2]]] }).result).toBeNull();
+    expect(node.data({ a: [[[1, 2]]], b: [[[3], [4]]] }).result).toEqual([[11]]);
+    expect(isSolError(node.data({ a: [[[1, 2]]], b: [[[3, 4]]] }).result)).toBe(true);
   });
 });
 
