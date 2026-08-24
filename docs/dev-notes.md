@@ -370,11 +370,22 @@ a wired blank stays unknown → null result). `column` stays `strIn`. The node g
 and a `findReplaceLiteral` reader stringifies either literal map for the kernel. The kernel, the
 Polars plan, and both engines' test files are byte-identical. Pins: `frameNodeBackend.test.ts`
 "Replace Values — Find/Replace take a wired value of any type" (wired number vs a number column,
-wired boolean vs a logical column, wired-blank → null). **Finding filed** (backlog, Bugs): the JS
-oracle matches a number by `String(v) === find` and a lowercased boolean where Rust takes exact
-text only (`engine.rs:1168`) — a real web-vs-desktop parity gap for a wired non-text Find, its own
-item. Catalog description left as-is (the typed sockets self-document; a "takes any type" sentence
-would be Captain-Obvious and would churn the `caseContract` pin).
+wired boolean vs a logical column, wired-blank → null). Catalog description left as-is (the typed
+sockets self-document; a "takes any type" sentence would be Captain-Obvious and would churn the
+`caseContract` pin).
+
+**Replace Values match rule unified + parity-pinned (601e864c).** The C3.2 Finding claimed a
+web-vs-desktop gap, but the Rust (`lazy_replace_values`) has matched numbers numerically and
+booleans case-insensitively since B5 (7805985f) — it was never exact-text-only. The real residue was
+on the JS side: `replaceValues` carried a redundant `String(v) === find` on numbers (it would match a
+`NaN` cell against find `"NaN"`, which Rust never does) and a doubled boolean form, both of which
+merely *read* as divergence. Simplified the JS to the one rule Rust already follows — number →
+numeric equality against the parsed find (non-numeric find hits no number cell), boolean → TRUE/FALSE
+case-insensitive (never 1/0), string → exact text; dates are serials → number arm. No Rust production
+change; added a corpus parity test on both sides (`frameVerbs.test.ts` "the shared match rule",
+`engine/tests.rs` `replace_values_match_rule_parity`). cargo green (30), tsc + vitest green. Residual
+micro-edge left as-is: JS `Number()` accepts hex/binary literals ("0x10") that Rust `f64::parse`
+rejects — absurd as a Replace target, not worth reimplementing Rust's float grammar in JS.
 
 **C4 — grids take a plain Z + optional Xs/Ys; bordered format retired (plan 13, 2 commits).**
 The coordinate-BORDERED grid (row 0 = X, column 0 = Y, interior = Z) is gone everywhere for one
