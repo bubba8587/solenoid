@@ -48,7 +48,7 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={(o) => void pickOp(o)} options={MAT_DET_OPS} />
       {op === "minverse"
-        ? <TableDisplay table={data.cachedMatrix} label={data.label} />
+        ? <TableDisplay table={data.cachedMatrix} label={data.label} elem="number" />
         : <ValueDisplay value={data.cachedScalar} />}
     </NodeShell>
   );
@@ -75,7 +75,7 @@ export function MatEigenComponent({ data, emit }: NodeProps<MatEigenNodeType>) {
       )}
       {vectorsOut && (
         <MeasuredSocketRow hero side="output" socketKey="vectors" nodeId={data.id} emit={emit} payload={vectorsOut.socket}>
-          <div style={{ width: "100%" }}><TableDisplay table={data.cachedVectors} label={data.label} /></div>
+          <div style={{ width: "100%" }}><TableDisplay table={data.cachedVectors} label={data.label} elem="number" /></div>
         </MeasuredSocketRow>
       )}
     </NodeShell>
@@ -86,7 +86,7 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }
@@ -112,7 +112,7 @@ export function TableOuterComponent({ data, emit }: NodeProps<TableOuterNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }
@@ -121,7 +121,7 @@ export function TableTransposeComponent({ data, emit }: NodeProps<TableTranspose
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }
@@ -130,7 +130,7 @@ export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeTy
   return (
     <NodeShell node={data} emit={emit}>
       <ExtensibleInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }
@@ -147,7 +147,7 @@ export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNode
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={RESHAPE_OPS} />
       {isWrap
-        ? <TableDisplay table={data.cachedMatrix} label={data.label} />
+        ? <TableDisplay table={data.cachedMatrix} label={data.label} elem="number" />
         : /* flattened list is homogeneous at runtime (matches the input's element
              type); ValueDisplay branches number-vs-text on the first cell. */
           <ValueDisplay value={data.cachedList as number[] | string[] | null} />}
@@ -165,7 +165,7 @@ export function TableSelectComponent({ data, emit }: NodeProps<TableSelectNodeTy
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={SELECT_OPS} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }
@@ -180,7 +180,7 @@ export function TableTakeDropComponent({ data, emit }: NodeProps<TableTakeDropNo
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={TAKEDROP_OPS} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }
@@ -189,7 +189,7 @@ export function ExpandTableComponent({ data, emit }: NodeProps<ExpandNodeType>) 
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} />
+      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
     </NodeShell>
   );
 }

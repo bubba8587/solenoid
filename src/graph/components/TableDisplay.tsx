@@ -40,8 +40,9 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
   label?: string;
   /** When set, the chip opens the grid editable and Save writes back through this. */
   onSave?: (next: (number | null)[][]) => void;
-  /** Element-family chip tint when the caller knows the socket family. */
-  elem?: ElemFamily;
+  /** The SOCKET-declared element family (see ArrayChip.elem) — REQUIRED; pass
+   *  `"number"` for a concretely numeric matrix, the derived value otherwise. */
+  elem: ElemFamily | undefined;
   /** Forwarded to the chip's popup open(): the grid edits source text, never derived. */
   popupOverrides?: Partial<TablePopupState>;
   /** Render the full matrix, no 4×4 cap and no chip; default is the compact preview. */

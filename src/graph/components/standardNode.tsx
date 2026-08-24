@@ -3,6 +3,7 @@ import { NodeShell, type NodeProps, type ShellNode } from "./nodeKit";
 import { InlineInputs, type InlineNode } from "./inlineInput";
 import { ExtensibleInputs, type ExtensibleNode } from "./ExtensibleInputs";
 import { ResultDisplay } from "./ResultDisplay";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { TableDisplay } from "./TableDisplay";
 import { RecalcButton } from "./RecalcButton";
 import { SegToggle } from "./SegToggle";
@@ -69,7 +70,7 @@ export function makeToggleNodeComponent<N extends ShellNode & InlineNode, V exte
         />
         <InlineInputs node={data} emit={emit} />
         {opts.table
-          ? <TableDisplay table={value(data) as Parameters<typeof TableDisplay>[0]["table"]} label={data.label} />
+          ? <TableDisplay table={value(data) as Parameters<typeof TableDisplay>[0]["table"]} label={data.label} elem={nodeOutputElemFamily(data.id)} />
           : <ResultDisplay value={value(data)} label={data.label} />}
       </NodeShell>
     );

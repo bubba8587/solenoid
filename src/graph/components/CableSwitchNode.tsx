@@ -1,3 +1,4 @@
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a drill-in Input Switch
@@ -31,7 +32,7 @@ const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 // The selected value is `any`, so render BY KIND like Display — never stringified;
 // figures/cubes that would overflow the narrow card show as a chip.
-function SwitchValue({ value, label }: { value: unknown; label?: string }) {
+function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
   // A display-value box so NodeCard measures it (--out-socket-top centers the
   // output socket on it).
@@ -41,7 +42,7 @@ function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isSvgValue(value)) return <SvgFigure value={value} height={120} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   if (Array.isArray(value) && Array.isArray((value as unknown[])[0])) {
-    return <TableDisplay table={value as number[][]} label={label} />;
+    return <TableDisplay table={value as number[][]} label={label} elem={nodeOutputElemFamily(nodeId)} />;
   }
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
@@ -202,7 +203,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
             ) : null;
           })
         )}
-        <SwitchValue value={data.cachedValue} label={data.label} />
+        <SwitchValue value={data.cachedValue} label={data.label} nodeId={data.id} />
       </NodeShell>
     );
   }
@@ -247,7 +248,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           </button>
         )}
       </div>
-      <SwitchValue value={data.cachedValue} label={data.label} />
+      <SwitchValue value={data.cachedValue} label={data.label} nodeId={data.id} />
     </NodeShell>
   );
 }

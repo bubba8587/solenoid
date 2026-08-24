@@ -13,6 +13,7 @@ import { cableValueStore } from "../cableValueStore";
 import { InlineInputs, useIncomingSources } from "./inlineInput";
 import { FormulaField } from "./FormulaField";
 import { TableDisplay } from "./TableDisplay";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ResultTypeToggle } from "./ResultTypeToggle";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 import type { SolError } from "../errorValue";
@@ -87,7 +88,7 @@ export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
+      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );
@@ -130,7 +131,7 @@ export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
+      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );
@@ -142,7 +143,7 @@ export function MakeArrayComponent({ data, emit }: NodeProps<MakeArrayNodeType>)
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
+      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );

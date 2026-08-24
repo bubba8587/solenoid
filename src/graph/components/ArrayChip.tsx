@@ -72,9 +72,12 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   onSave?: (next: (number | null)[][]) => void;
   /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
-  /** Tint override for when the caller KNOWS the socket family; otherwise derived
-   *  from homogeneous cells. */
-  elem?: ElemFamily;
+  /** The SOCKET-declared element family — every chip sits on a known output
+   *  socket, so derive it there (`nodeOutputElemFamily`); REQUIRED so a new host
+   *  can't silently fall back to cell-guessing (the recurring untinted-chip bug).
+   *  Pass the derived value even when it's `undefined` — that means the socket is
+   *  a genuinely unresolved wildcard rung, the one case cells are sniffed. */
+  elem: ElemFamily | undefined;
   /** Merged into the popup open() — Table Input passes raw literal cells + onSaveRaw
    *  so the grid edits source text, never derived values. */
   popupOverrides?: Partial<TablePopupState>;
