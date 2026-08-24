@@ -35,7 +35,7 @@ backlog line is deleted; git is the record.
 | 1 | ~~a2-formula-containment~~ | — | landed 2026-08-24 (fc34ae03) |
 | 2 | ~~c-archive-evictions~~ | — | landed 2026-08-24 (0cf70611) |
 | 3 | ~~b6-popup-summary-footer~~ | — | landed 2026-08-24 (753c6c6c) |
-| 4 | [b0-python-r-gap-remainder.md](b0-python-r-gap-remainder.md) | M (4 sub-items) | — |
+| 4 | ~~b0-python-r-gap-remainder~~ | — | landed 2026-08-24 (683cf86d, 2df21a82, 46c71976, 88c8a724; docs a69a487f) |
 | 5 | ~~a4-xlookup-rawinputs~~ | — | landed 2026-08-24 (ec15cdf2) |
 | 6 | ~~a6-drill-in-drag-guard~~ | — | landed 2026-08-24 (aea271a1 + 6acb5b1c) |
 | 7 | ~~a3-popup-grid-keyboard~~ | — | landed 2026-08-24 (f66d3281) |
