@@ -10,7 +10,9 @@ backlog line is deleted; git is the record.
 1. Work on `develop`. Commit after each plan step that leaves `tsc` + `vitest` green;
    never push (the author pushes). Never leave uncommitted edits. The working tree AND
    the index are shared with other agents: commit by pathspec in one command —
-   `git commit -m "…" -- <your files>` — never `git add` then `git commit`, never `-a`/`-A`.
+   `git commit -m "…" -- <your files>` — never a bare `git commit` after `git add`, never `-a`/`-A`.
+   A NEW file must be `git add <file>`ed first (pathspec can't see untracked files); the
+   `-- <paths>` on the commit still limits it to exactly those paths.
 2. Before editing a file, read it. Line numbers in a plan are anchors, not truth — grep
    for the symbol if the line has drifted.
 3. Read `CLAUDE.md` in full, then the docs a plan names under "Read first". Do NOT read
@@ -40,6 +42,7 @@ backlog line is deleted; git is the record.
 | 8 | [b8-cube-unnest-timesavers.md](b8-cube-unnest-timesavers.md) | M (3 sub-items) | B8.3 needs A4 |
 | 9 | [a5-node-sweep.md](a5-node-sweep.md) | L, claimed PER FAMILY | — (skip Cubes while B8.1 is in flight) |
 | 10 | [b7-tidy-options.md](b7-tidy-options.md) | M (engine then chrome) | — (elkjs stays 0.8.2) |
+| 11 | [c2-chart-multi-series.md](c2-chart-multi-series.md) | M | — (author ask 2026-08-24; edits visual.ts — coordinate with B0.2 and the A5 Visuals row, both done) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, lazy handles (B9).
