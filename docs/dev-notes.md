@@ -199,6 +199,16 @@ the profile-bar tooltip lost its dynamic counts — tooltips are structural only
   the node's frame output + error codes); scratch seed integrates dy/dt = y → e^t into a Chart. The
   ce111e34 stats.ts commit also carried Agent 2's C4 InterpolateNode grid-axes rewrite (shared file,
   coordinated split); the rework landed at 46c71976 + baae4eb4.
+- **B0.4 STL decomposition (plan 4, last B0 item) — 88c8a724.** STL is a third `model` on the
+  Decompose card (not a new node): rete-free `stlDecompose` in `forecastOps.ts` implements R
+  `stl(s.window="periodic")` — the seasonal is EXACTLY periodic (per-phase mean, centred) and the
+  trend is a LOWESS fit of the deseasonalised series with NO blank ends (unlike the classical 2×MA),
+  reached by a periodic-mean ↔ loess fixed-point iteration (~15 passes; a clean trend+season drives
+  the residual < 1e-4). The node's `model` selector + the `DECOMPOSE` formula's third model string
+  both route to it (multiplicative-STL-via-log left for later). Pinned in a new `forecastOps.test.ts`.
+  Landed with the ODE card fixes (same stats.ts): the ODE dy/dt λ socket moved to LAST so its
+  cable-only row sits on the FormulaBox row (MAP layout), and OdeIntegrateNode joined FormulaPopup's
+  host set so the pop-out opens (author bug report).
 
 **C2 — the base Chart renders multiple series from a frame (plan 11, author ask). 3 commits.**
 `ChartValue.series` + `ChartNode.data()`: column 0 is ALWAYS the x-axis label at ≥2 columns (a

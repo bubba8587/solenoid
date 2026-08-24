@@ -24,7 +24,7 @@ oracle on web, `window.json` in the parity corpus). Reference overlay chips (num
 let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParity.test.ts`,
 `distributionFormula.test.ts`, `dateParity.test.ts`, `functionReferenceLibs.test.ts`.
 
-## Tier 2 — LANDED 2026-08-23 except the items marked open (#20's weighted pick, #27, #31, STL)
+## Tier 2 — LANDED 2026-08-23 except the items marked open (#20's weighted pick, #27, #31)
 
 17. **Text template / glue** — LANDED 2026-08-23 (Template node: {name} / {name:spec} grow a
     socket per name, lists broadcast, date-typed inputs format as dates; TEMPLATE(text, v0, …)
@@ -46,7 +46,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
     op swaps the rf / periods sockets and the output rank; LOGRETURNS … SORTINO formulas).
 23. **Seasonal decomposition** — LANDED 2026-08-23 (Decompose card: trend / seasonal /
     residual, additive or multiplicative, the classical 2×MA filter; DECOMPOSE(list, period,
-    component, [model]) formula). STL (loess-based) stays open.
+    component, [model]) formula). STL (loess) — LANDED 2026-08-24 as the `stl` model (R
+    stl s.window="periodic": exactly-periodic seasonal + a loess trend with no blank ends;
+    `stlDecompose` in forecastOps.ts, node selector + the DECOMPOSE formula's stl model).
 24. **Distribution fitting** — LANDED 2026-08-23 (Fit Distribution node + FITDIST; MLE for normal / lognormal / exponential / gamma / Weibull / uniform / Poisson, moments for beta; AIC ranking + KS).
 25. **Logistic regression** — LANDED 2026-08-23 (Logistic Regression card: 0/1 or logical
     target + the other number columns → coefficient frame with Wald SE / z / p and fitted

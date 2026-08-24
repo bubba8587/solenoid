@@ -16,11 +16,6 @@ needs the author watching browser devtools / a device (those items stay below, u
 Promoted from `deferrals.md` where an entry was engine/logic work that was never really
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
-**B0 — the Python/R gap (author ask 2026-08-23) — Tiers 1 + 2 LANDED; what remains**
-- [ ] `python-r-gap.md` open items: ODE integrate (RK4 over an Expression), 2-D histogram for
-  the Heatmap, `str_wrap` (text → lines), STL (loess decomposition). Tier 3 stays recorded as
-  out of character.
-
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
 - [ ] **B8 Cube-aware Unnest (peel one level)**; **Timesavers remainder** (Split Name,
   duration trio, list reducers); **XLOOKUP frame+cube path collapse** once A4 lands.
