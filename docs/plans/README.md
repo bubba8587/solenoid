@@ -44,7 +44,7 @@ backlog line is deleted; git is the record.
 | 10 | ~~b7-tidy-options~~ | — | COMPLETE 2026-08-24 (engine 055fd1c9/9d2aca24/96968206 + chrome; elkjs stays 0.8.2) |
 | 11 | [c2-chart-multi-series.md](c2-chart-multi-series.md) | M | — (author ask 2026-08-24; edits visual.ts — coordinate with B0.2 and the A5 Visuals row, both done) |
 | 12 | ~~c3-set-cell~~ | — | landed 2026-08-24 (af64d772 + 2ebb4a65) |
-| 13 | [c4-grid-axes.md](c4-grid-axes.md) | M (2 commits) | — (author ask; touches stats.ts, mathUtils.ts, visual.ts SurfaceNode, INTERPOLATE/HISTOGRAM2D formulas; coordinate with C2 on visual.ts) |
+| 13 | ~~c4-grid-axes~~ | — | landed 2026-08-24 (d01f6d10 + 4184d711; nodeCatalog copy in baae4eb4; grep-bordered-empty met) |
 | 14 | [c5-correlated-outputs.md](c5-correlated-outputs.md) | M (7 small commits) | Decompose after B0.4 (author rule; stats.ts, list.ts, control.ts) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &

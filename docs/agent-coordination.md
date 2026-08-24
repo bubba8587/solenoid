@@ -11,6 +11,6 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 ## Claims
 
 - B0.3/B0.4 — Agent 4 (solenoid-f1) — Python/R gap remainder (ODE/RK4, STL). C2 landed (179ba3a5 + 43a22615); B0.1/B0.2 landed too. visual.ts free.
-- C4 — Agent 2 (solenoid-18) — grid axes / retire bordered-grid (Lead reassigned, C4 before B8). Touches visual.ts SurfaceNode — coordinating with Agent 4 (C2). C3 landed (af64d772, 2ebb4a65); matrix.ts + frame.ts free for Jeff.
+- B8 — Agent 2 (solenoid-18) — cube unnest + timesavers. C4 COMPLETE (d01f6d10, 4184d711, 56daabda; nodeCatalog copy in Agent 4's baae4eb4; grep-bordered-empty met). Also landed this session: A6, A4, A3, C3.1, C3.2.
 - B7 (plan 10, Tidy options) — COMPLETE (Jeff / Agent 5, solenoid-b2). Engine (055fd1c9/9d2aca24/96968206) + chrome popover + docs; full suite 4788 green, plan file + backlog lines deleted. AUTHOR EYEBALL pending (Settings rows, top-bar popover, 9→1 fan cap-3 cable readability — digest has the list). (A5 node sweep COMPLETE f3fa52c5.)
 
