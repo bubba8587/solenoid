@@ -86,7 +86,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [x] | Numbers ▸ Complex (`:434-451`) | 24 | `nodes/complex.ts` | — |
 | [x] | Lists ▸ Build / Shape (`:470`, `:486`) | 24 | `nodes/list.ts` | `wiredNull.test.ts:429` (column-list ref) |
 | [x] | Lists ▸ Transform / Find (`:518`, `:544`) | 23 | `nodes/list.ts`, `indexAccess.ts` | `finePrintContract.test.ts:30` (DROP), `:119` (Slice) | (XLOOKUP deferred to Tables verbs — frame.ts, A4 area) |
-| [ ] | Lists ▸ Aggregate + Spread & Shape + Correlation (`:561-587`) | 41 | `nodes/list.ts` (ReduceOp `:1865`), `stats.ts` | `wiredNull.test.ts:99` (reducers skip) |
+| [x] | Lists ▸ Aggregate + Spread & Shape + Correlation (`:561-587`) | 41 | `nodes/list.ts` (ReduceOp `:1865`), `stats.ts` | `wiredNull.test.ts:99` (reducers skip) |
 | [ ] | Lists ▸ Rank / Regression / Tests / Stats (`:600-637`) | 36 | `nodes/stats.ts`, `fitOps.ts`, `forecastOps.ts`, `mlOps.ts` | `wiredNull.test.ts:492` (Z.TEST) |
 | [ ] | Logic + Boolean (`:654`, `:669`) | 17 | `nodes/logic.ts` | `wiredNull.test.ts:114`, `:345` (Kleene) |
 | [ ] | Finance: TVM / rate / payment / cash flow (`:685-707`) | 14 | `nodes/finance.ts`, `financeOps.ts` | `financeInvariants.test.ts` |

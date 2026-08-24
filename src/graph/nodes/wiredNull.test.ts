@@ -10,7 +10,7 @@ import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
-import { ListIndexNode, SliceNode, FilterNode, SeriesNode } from "./list";
+import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "./list";
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
@@ -111,6 +111,15 @@ describe("reducers SKIP a missing rather than propagating it", () => {
     inputs[keys[0]] = [null as unknown as string];
     inputs[keys[1]] = ["b"];
     expect(node.data(inputs).result).toBe("b");
+  });
+
+  it("Aggregate: SUM skips a null cell, one error propagates, COUNTBLANK counts the blanks", () => {
+    const sum = new AggregateNode({ op: "sum" });
+    expect(sum.data({ list: [[1, null, 3]] }).result).toBe(4); // skipped, not zeroed
+    const err = solError("#DIV/0!", "divide by zero");
+    expect(isSolError(sum.data({ list: [[1, err, 3]] }).result)).toBe(true);
+    const blanks = new AggregateNode({ op: "countblank" });
+    expect(blanks.data({ list: [[1, null, 3, null]] }).result).toBe(2);
   });
 });
 
