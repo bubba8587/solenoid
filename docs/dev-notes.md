@@ -283,6 +283,19 @@ the list generators SeriesNode (range/linspace/sequence) + Geometric + Fibonacci
 → one "Generate List" node with a rule selector; Sort + SortBy → one Sort with an optional by-list;
 SetOp + SetRelation share two-list-set inputs but differ in output type (list vs boolean). Residue: none.
 
+**A5 Lists ▸ Transform/Find sweep** (23 leaves) → NO bugs. Transform nodes (Diff, Running, Normalize,
+Bin, Outliers, Smooth, FindPeaks, Shift, Ewma, Convolve, Rle, Trapz, Spectrum) read list operands
+`?? []` and scalar params via `readInput` with a null-guard → propagate; mode-scoped (Bin guards `n`
+only in quantiles). Find: ListIndexNode is the canonical three-state read (unwired-untyped → whole
+axis, wired blank → null, number → that 1-based position) — the reference for "absent is not
+unknown"; ArgMinMax/Contains/XMatch all blank a wired-blank operand/needle (Contains: "a blank needle
+can't be looked for"; XMatch: `pickSlot` + `val === null → null`, #N/A only when the array is wired).
+Pins: `wiredNull.test.ts` "Lists ▸ Find — INDEX three-state" (+1). XLOOKUP (frame.ts) deferred to the
+Tables ▸ Table verbs sweep to avoid overlapping Agent 2's fresh A4 refactor. Combine candidates: DIFF
+(gradient) + Integrate (trapz) are inverse ops → one "Calculus" node with a differentiate/integrate
+mode; the family is otherwise well op-merged (ArgMinMax unifies argmax/argmin/argsort/which; Smooth
+unifies savgol/lowess/gaussian). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

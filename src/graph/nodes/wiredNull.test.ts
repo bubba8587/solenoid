@@ -553,6 +553,18 @@ describe("Input family — wired blank by role", () => {
   });
 });
 
+describe("Lists ▸ Find — INDEX three-state read", () => {
+  // INDEX reads an OMITTED axis (unwired, nothing typed) as the whole axis, a wired
+  // blank as unknown (null), and a number as that 1-based position.
+  it("INDEX: a wired blank index is null; a typed literal still indexes", () => {
+    const node = new ListIndexNode();
+    node.literals.index = 2;
+    expect(node.data({ list: [[10, 20, 30]], index: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ list: [[10, 20, 30]] }).result).toBe(20);
+    expect(node.data({ list: [[10, 20, 30]], index: [3] }).result).toBe(30);
+  });
+});
+
 describe("Lists ▸ Build/Shape — shape params and filter conditions", () => {
   // A Series shape param (count) blanks the whole list; unwired uses the seeded default.
   it("Series (linspace): a wired blank count blanks the list; unwired builds it", () => {
