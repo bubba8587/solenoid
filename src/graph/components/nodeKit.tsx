@@ -471,6 +471,10 @@ export function ValueDisplay({
   // hook after the return changes the hook count → React #300 unmounts the node.
   const ctxNodeId = useContext(NodeFormatContext);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+  // Native enter/leave (nativeHover.ts): the pointer arrives from the canvas root. Above
+  // every early return, like the hooks before it.
+  const boxRef = useRef<HTMLDivElement>(null);
+  useNativeEnterLeave(boxRef, () => setHovered(true), () => setHovered(false));
 
   // Safety net: an object-valued kind can slip in through an `any`/cast, and must
   // NOT reach the number/string path below (→ "[object Object]" or a .toFixed crash).
@@ -586,10 +590,6 @@ export function ValueDisplay({
     ).join(", ");
     return toClipboard && !ann ? toClipboard(value as number) : fmtScalar(value as number);
   }
-
-  // Native enter/leave: the pointer arrives from the canvas root (nativeHover.ts).
-  const boxRef = useRef<HTMLDivElement>(null);
-  useNativeEnterLeave(boxRef, () => setHovered(true), () => setHovered(false));
 
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
