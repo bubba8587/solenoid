@@ -275,7 +275,7 @@ export function FormulaPopup() {
           </div>
         ) : (
         <div className="formula-popup__engine-note">
-          ƒ Works on <strong>single values, 1-D lists, and 2-D matrices</strong>: element-wise broadcast, list aggregates (SUM, AVERAGE…), the matrix core (TRANSPOSE, MMULT, SEQUENCE…), and complex numbers. <strong>MAP / BYROW / BYCOL / REDUCE</strong> apply a λ over an array. Data tables stay out — the frame verbs are nodes (a verb name typed here names its node), and in a computed column <code>@name</code> is this row's cell, a bare column name the whole column.
+          The Formula surface does not support Frame-related nodes, such as JOIN.
         </div>
         )}
 
