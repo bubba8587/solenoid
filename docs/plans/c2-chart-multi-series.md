@@ -75,8 +75,8 @@ the `dataviz` skill is NOT loaded here — the palette is the app's own (`chartC
   `components/`); `chartValue.test.ts:55-59` goes with it.
 - `chart-showcase.json`: replace the `TableInputNode matrix` feeding Composed/Bubble with a
   `FrameInputNode` (`frameText`) carrying named columns; `seeds.test.ts` must stay green.
-- Copy: `socketDocs.values` → "A list plots by position. A frame's first non-number column
-  supplies the labels; every number column is a series." `CHART_OP_META` composed/bubble
+- Copy: `socketDocs.values` → "A list plots by position. A frame's first column supplies
+  the labels; every number column after it is a series." `CHART_OP_META` composed/bubble
   descriptions drop the "2-D Series" wording; catalog description `nodeCatalog.ts:247`
   likewise; `frameHints` example gains a third column (`Label / Sales / Target`). Run
   `uiCopy.test.ts`.
