@@ -854,6 +854,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // naming the node, short-circuited for the same reason as the block above.
       const frameNode = FRAME_SURFACE_NAMES[name];
       if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
+      // A genuinely unknown NAME(...) is a clean #NAME? here, not a per-cell throw
+      // that leaks as #ERROR! from broadcastCall's dispatch (A2 containment).
+      if (!resolveExcelFunction(name)) return solError("#NAME?", `Unknown function ${name}`);
       // In a lambda HOST's argument a bare dispatchable name is an eta LambdaValue,
       // not an undefined variable (see etaOrEval).
       let argv = ETA_HOSTS.has(name)
@@ -874,6 +877,10 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         if (RANGE_FUNCTIONS.has(name)) {
           argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
         } else if (takesWholeArgs(name)) {
+          return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
+        } else if (EXCEL_IMPL_META[name] === undefined && !internalFunctionNames().includes(name)) {
+          // An undeclared FX name would otherwise broadcast a matrix into an array of
+          // per-cell #VALUE!s; one clean #SHAPE! instead (hideMatrixFromVendor).
           return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
         }
       }
@@ -910,7 +917,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
 export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 
 /** Compile a formula into an array-aware evaluator over a name→value environment;
- *  null on a parse error, throws at eval time on an unknown function. */
+ *  null on a parse error, a `#NAME?` SolError at eval time on an unknown function. */
 export function compileEvaluator(expr: string): ExprEvaluator | null {
   const ast = parseExpr(expr);
   if (!ast) return null;

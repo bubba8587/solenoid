@@ -105,10 +105,12 @@ describe("compilePositional (the one evaluation core — scalar semantics pinned
     expect(compilePositional("", [])).toBeNull();
   });
 
-  it("throws at call time on unknown function", () => {
+  it("returns a #NAME? SolError at call time on an unknown function (A2 containment)", () => {
     const fn = compilePositional("NOTAREALFN(a)", ["a"]);
     expect(fn).not.toBeNull();
-    expect(() => fn!(1)).toThrow(/Unknown function/);
+    const r = fn!(1);
+    expect(isSolError(r)).toBe(true);
+    expect((r as { code: string }).code).toBe("#NAME?");
   });
 
   it("supports string concatenation with &", () => {

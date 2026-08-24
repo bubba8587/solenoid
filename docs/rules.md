@@ -827,7 +827,10 @@ for ten million elements with nothing visible to stop it.
 **MUST:** a rank-2 value reaches a dispatch WHOLE only through a registration
 declaring `matrixArgs`. Otherwise: a range aggregate FLATTENS row-major before its
 1-D prep; a positional lookup or 1-D whole-list native answers `#SHAPE!`; an
-element-wise function broadcasts cell-wise, so the fallthrough only ever receives
+internally-registered element-wise function broadcasts cell-wise, while an
+undeclared Formula.js name refuses a matrix with one clean `#SHAPE!` (never a
+broadcast array of per-cell `#VALUE!`s — `broadcastRules.test.ts` "an undeclared
+FX name refuses a matrix"), so the fallthrough only ever receives 1-D lists or
 scalars. The Formula.js fallthrough stays 1-D permanently.
 **MUST (the same principle, per element):** a tagged `Cx` reaches a dispatch only
 through a registration declaring `cxArgs` (the IM* family, owned over Cx);

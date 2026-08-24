@@ -17,10 +17,6 @@ Promoted from `deferrals.md` where an entry was engine/logic work that was never
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 **A — correctness & parity (engine/formula, fully test-pinnable)**
-- [ ] **A2 Formula-surface containment, safe slice.** An FX-backed name with NO declared meta
-  that receives an array arg → one clean `SolError` (never broadcast into a #VALUE! array,
-  never throw). The allowlist FLIP itself (a name exists iff declared; delete the fallthrough)
-  is the follow-on — do it right after A2 unless the author objects (it was "raise first").
 - [ ] **A3 (remainder) — the popup grid's keyboard path** (the largest "zero learning
   curve" gap; the sort / export / `− Row` items landed 2026-08-23: sort ranks the WHOLE
   dataset and renders its top 1,000; Copy / Export / read-only CSV view emit every row in the
@@ -215,7 +211,7 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   set is resolved (COLUMNS/ROWS + HSTACK/VSTACK/CHOOSECOLS/CHOOSEROWS owned sharing their
   node kernels; the D* family eliminated like VLOOKUP). What remains is the ROOT cause: the
   formula surface is defined by SUBTRACTION from Formula.js's full export (~445 names
-  advertised via `FX_FUNCTION_NAMES`, ~232 with declared meta), so any undeclared FX name
+  advertised via `FX_FUNCTION_NAMES`, 377 with declared meta), so any undeclared FX name
   that takes an array still broadcasts into a #VALUE! array or throws — correctness is a
   treadmill of discovering breakage. The fix: an FX-backed name reaching the matrix gate
   with an array arg and no declared handling should short-circuit to a clean SolError, never

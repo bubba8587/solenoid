@@ -86,6 +86,19 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
+
+**A2 — formula-surface containment, safe slice (plan 1).** An undeclared Formula.js name
+(no `EXCEL_IMPL_META`, not internally registered) that receives a rank-2 matrix now returns
+one clean `#SHAPE!` instead of broadcasting into an array of per-cell `#VALUE!`s: a fourth arm
+in the matrix gate (`excelFormula.ts` `case "call"`). A genuinely unknown `NAME(...)` returns
+`#NAME?` via an early `resolveExcelFunction` short-circuit rather than a `dispatch` throw
+leaking as `#ERROR!`. Rank-1 list broadcast of undeclared scalar names is unchanged.
+Pinned in `broadcastRules.test.ts` "the matricesInFormulas containment rule" (+3); `rules.md`
+`hideMatrixFromVendor` amended. Findings (on scope, not touched): backlog's "~232 declared
+meta" was stale → fixed to 377 (actual `EXCEL_IMPL_META` size); its "~445 advertised" is also
+off (`FX_FUNCTION_NAMES` is 880 incl. dotted names) — left for the allowlist-flip follow-on.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

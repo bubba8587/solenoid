@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "./excelFormula";
+import { EXCEL_IMPL_META } from "./excelFunctions";
+import { isSolError } from "./errorValue";
 
 // ─── matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
 // v2.0/17-matrix-formulas.md Part 2, row by row. The table IS this test (oneMetricImpl):
@@ -122,5 +124,25 @@ describe("the matricesInFormulas containment rule", () => {
   it("anything deeper than a matrix is #SHAPE!", () => {
     const r = ev("x + 1", { x: [[[1]]] });
     expect((r as { code: string }).code).toBe("#SHAPE!");
+  });
+
+  it("an undeclared FX name refuses a matrix with ONE clean #SHAPE!, never a broadcast array of #VALUE!s", () => {
+    expect(EXCEL_IMPL_META["ROMAN"]).toBeUndefined();
+    const r = ev("ROMAN(x)", { x: M22 });
+    expect(isSolError(r)).toBe(true);
+    expect((r as { code: string }).code).toBe("#SHAPE!");
+    expect(Array.isArray(r)).toBe(false);
+  });
+
+  it("the same undeclared FX name still broadcasts over a rank-1 list", () => {
+    const r = ev("ROMAN(x)", { x: [1, 2, 3] });
+    expect(Array.isArray(r)).toBe(true);
+    expect((r as unknown[]).length).toBe(3);
+  });
+
+  it("a genuinely unknown name is #NAME?, not a thrown #ERROR!", () => {
+    const r = ev("NOTAFUNCTION(1)");
+    expect(isSolError(r)).toBe(true);
+    expect((r as { code: string }).code).toBe("#NAME?");
   });
 });
