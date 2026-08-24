@@ -21,6 +21,7 @@ import { ColebrookNode } from "./fluids";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
 import { DistributionNode } from "./distribution";
 import { SetCellNode, TableMultNode } from "./matrix";
+import { MakeArrayNode } from "./tableLambda";
 import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
@@ -802,6 +803,18 @@ describe("cube column references — read raw, guard, then trim", () => {
     node.stringLiterals.nested = "items";
     node.stringLiterals.column = "v";
     expect(node.data({ cube: [cube as never], as: [null as unknown as string] }).frame).toBeNull();
+  });
+});
+
+describe("Tables ▸ Lambda — a blank shape dimension blanks the array", () => {
+  // MAKEARRAY's rows/cols are the result SHAPE: a wired blank leaves it unknown -> null,
+  // while unwired dimensions build the array from the card's formula.
+  it("MAKEARRAY: a wired blank rows blanks the result; unwired builds it", () => {
+    const node = new MakeArrayNode();
+    node.literals.rows = 2; node.literals.cols = 3;
+    expect(node.data({ rows: [null as unknown as number], cols: [3] }).result).toBeNull();
+    const out = node.data({}).result;
+    expect(Array.isArray(out) && out.length).toBe(2);
   });
 });
 

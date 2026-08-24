@@ -528,6 +528,17 @@ and is already pinned (its wired-blank block rode my Finance commit). Pins: `wir
 direction (the table analog of the already-merged list stack). Otherwise heavily op-merged (matDet
 unifies 5, reshape 4). Residue: none.
 
+**A5 Tables ▸ Lambda + Frames sweep** (12 leaves) → NO bugs. The lambda-apply nodes (MapTable,
+ByAxis, MakeArray, Reduce, Scan) read the table/lambda operands `?? null` and shape/initial params
+via `readInput`: MakeArray's blank rows/cols leave the SHAPE unknown → null ("the `<1` guard answers
+it"). The frame builders/accessors (BuildFrame, FrameFromLists, SplitFrame, GetColumn, GetRow,
+AddColumn, ComputedColumn): a blank frame or a blank column-reference → null (GetColumn cites
+value-semantics, already pinned at :238; GetColumn also fetches ONE column lazily off a FrameRef).
+Pins: `wiredNull.test.ts` "Tables ▸ Lambda" (MakeArray shape, +1). Combine candidates: REDUCE + SCAN
+→ one fold node with a "keep running values" toggle (SCAN is REDUCE that emits each step); BuildFrame
++ FrameFromLists both assemble a frame (matrix+headers vs named lists); GetColumn + GetRow (pull a
+column vs a row). Residue: none.
+
 **A5 Other sweep** (Convert, Cast, Placeholder + structural Group/Conduit/Composite/Equation/FC) →
 NO bugs. Convert (the flagship unit control): the value is an operand, a wired blank propagates to
 null; units are dropdown config, incommensurable → `#N/A`, over-range → `#OVERFLOW!` per cell;
