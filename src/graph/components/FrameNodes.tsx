@@ -68,7 +68,7 @@ import { ResultDisplay } from "./ResultDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
-import { NodeShell, ValueDisplay, OpSelect, useNodeField, renderTextMarkdownHtml, type NodeProps } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
@@ -371,7 +371,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
 
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
 
-const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
+const JOIN_HOW_OPTIONS: OpOption<JoinHow>[] = [
   { value: "inner", label: "Inner", title: "Only rows that match in both" },
   { value: "left", label: "Left", title: "All left rows. Unmatched right side is blank." },
   { value: "right", label: "Right", title: "All right rows. Unmatched left side is blank." },
@@ -394,7 +394,7 @@ export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
+      <OpSelect arg value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
       {how === "asof" && <SegToggle arg value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>

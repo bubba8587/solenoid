@@ -378,7 +378,7 @@ export function NodeShell({
   );
 }
 
-export type OpOption<T extends string> = { value: T; label: string; group?: string };
+export type OpOption<T extends string> = { value: T; label: string; group?: string; title?: string };
 
 function opGrouped<T extends string>(options: ReadonlyArray<OpOption<T>>) {
   const order: string[] = [];
@@ -390,7 +390,7 @@ function opGrouped<T extends string>(options: ReadonlyArray<OpOption<T>>) {
   }
   return order.flatMap((g) => {
     const items = byGroup.get(g)!.map((o) => (
-      <option key={o.value} value={o.value}>{o.label}</option>
+      <option key={o.value} value={o.value} title={o.title}>{o.label}</option>
     ));
     return g === "" ? items : [<optgroup key={g} label={g}>{items}</optgroup>];
   });
@@ -429,7 +429,7 @@ export function OpSelect<T extends string>({
     >
       {hasGroups
         ? opGrouped(options)
-        : options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)
+        : options.map((o) => <option key={o.value} value={o.value} title={o.title}>{o.label}</option>)
       }
     </LazySelect>
   );
