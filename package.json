@@ -35,7 +35,7 @@
     "colord": "^2.9.3",
     "dompurify": "^3.4.11",
     "elkjs": "^0.12.0",
-    "katex": "^0.17.0",
+    "katex": "^0.18.0",
     "marked": "^18.0.9",
     "mermaid": "^11.16.0",
     "papaparse": "^5.5.3",
