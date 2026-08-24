@@ -52,11 +52,12 @@ no "No Excel equivalent", no affordance narration.
   `histogram2d` (row i = x-bin, col j = y-bin; last edge inclusive).
 - Tests in `src/graph/nodes/visual.test.ts` (or the file that tests `histogramBins`;
   grep for it): 4 cases incl. an inclusive-max point and an all-null input.
-- Node `Histogram2DNode`: inputs `numlist` X, `numlist` Y, `numIn` X bins (10), `numIn` Y
-  bins (10); output a bordered grid matrix (first row = x bin lower edges, first col =
-  y bin lower edges — the shape `parseBorderedGrid` at `visual.ts:547` reads) so it
-  feeds `HeatmapCellNode` (`visual.ts:522-542`) directly. Mirror the "Bins is a SHAPE"
-  literal handling from `HistogramNode` `:195-233`.
+- NOT a new node (author, 2026-08-24): a `mode: "1d" | "2d"` selector on the existing
+  `HistogramNode` (`visual.ts:231`; `kind: "operation"`). 2-D adds Y `numlist` + Y bins
+  `numIn` via a selector-driven socket swap (`dropInputCables` BEFORE `removeInput`), X bins
+  carried across the switch; the card renders the count grid as its own figure. If a matrix
+  output is kept for Heatmap Cell, use the bordered-grid shape `parseBorderedGrid`
+  (`visual.ts:547`) reads. One catalog leaf.
 - Formula `HISTOGRAM2D(xs, ys, kx, ky)` → matrix (`matrixArgs` not needed; declare
   `listArgs` for xs/ys, `rank: 2`).
 - Scratch seed: wire X/Y from two existing list sources → Histogram2D → Heatmap Cell.
