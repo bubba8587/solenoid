@@ -90,10 +90,14 @@ describe("each host computes what its node computes (shareImpl)", () => {
   it("GROUPBY — first-seen groups, VALUE-keyed, lambda per group's value list", () => {
     const k = ["a", "b", "a", "b"], v = [1, 2, 3, 4];
     const node = new GroupByNode({ op: "sum" });
-    const nodeOut = node.data({ keys: [k], values: [v] });
+    // The node emits one Key/Value frame now (C5); the GROUPBY formula still spills [key, value] rows.
+    const cols = node.data({ keys: [k], values: [v] }).result!.columns;
     const fx = ev("GROUPBY(k, v, LAMBDA(g, SUM(g)))", { k, v }) as unknown[][];
-    expect(fx.map((r) => r[0])).toEqual(nodeOut.keys);
-    expect(fx.map((r) => r[1])).toEqual(nodeOut.values);
+    expect(fx.map((r) => r[0])).toEqual(cols[0].values); // Key
+    expect(fx.map((r) => r[1])).toEqual(cols[1].values); // aggregated Value
+    expect(cols.map((c) => c.name)).toEqual(["Key", "Value"]);
+    // A wired blank keys list → null frame (propagate).
+    expect(new GroupByNode().data({ keys: [null as unknown as unknown[]], values: [v] }).result).toBeNull();
   });
 });
 

@@ -2175,14 +2175,12 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
 export class GroupByNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "Pairs with Keys by position. Rows beyond the shorter list are ignored.",
+    result: "One row per unique key: Key (adopting the keys input's element type) and the aggregated Value.",
   };
 
-  /** The unique keys adopt the keys input's element type; the values stay numeric. */
-  passthrough = (): PassthroughSpec[] => [{ output: "keys", inputs: ["keys"], combine: "single" }];
   label: string;
   op: GroupByOp;
-  cachedKeys: (string | number)[] | null = null;
-  cachedValues: number[] | null = null;
+  cachedResult: FrameValue | null = null;
   width = 180; height = 220;
 
   constructor(init?: { label?: string; op?: GroupByOp }) {
@@ -2191,24 +2189,23 @@ export class GroupByNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "sum";
     this.addInput("keys",   anyListIn("Keys"));
     this.addInput("values", listIn("Values"));
-    this.addOutput("keys",   adoptiveListOut("Unique keys"));
-    this.addOutput("values", listOut("Aggregated"));
+    // Unique keys + aggregated values are index-aligned, so they leave as ONE frame (C5):
+    // Key adopts the keys input's element family (inferColumn), Value stays numeric.
+    this.addOutput("result", frameOut("Groups"));
   }
 
   data(inputs: {
     keys?:   unknown[][];
     values?: number[][];
-  }): { keys: (string | number)[]; values: number[] } {
-    // Grouping keys by String(cell), so tags must be stripped first or a tagged key
-    // list buckets by object identity.
-    const rawKeys = stripUnitCells(inputs.keys?.[0]) as unknown[] | undefined;
+  }): { result: FrameValue | null } {
+    // A wired blank keys list is unknown → blank frame; grouping keys by String(cell), so
+    // tags are stripped first or a tagged key list buckets by object identity.
+    const keysCell = inputs.keys?.[0] ?? null;
+    if (keysCell === null) { this.cachedResult = null; return { result: null }; }
+    const rawKeys = stripUnitCells(keysCell) as unknown[] | undefined;
     const rawVals = inputs.values?.[0] ?? [];
 
-    if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
-      this.cachedKeys = null;
-      this.cachedValues = null;
-      return { keys: [], values: [] };
-    }
+    if (!Array.isArray(rawKeys)) { this.cachedResult = null; return { result: null }; }
 
     const len = Math.min(rawKeys.length, rawVals.length);
     const order: (string | number)[] = [];
@@ -2226,9 +2223,15 @@ export class GroupByNode extends ClassicPreset.Node {
     }
 
     const aggValues = order.map((k) => groupByAggregate(buckets.get(String(k))!, this.op));
-    this.cachedKeys   = order;
-    this.cachedValues = aggValues;
-    return { keys: order, values: aggValues };
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        inferColumn("Key", order),
+        { name: "Value", type: "number", values: aggValues },
+      ],
+    };
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }
 
