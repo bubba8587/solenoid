@@ -1194,17 +1194,14 @@ export class DecomposeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first; needs at least two full periods.",
     period: "Season length in steps — 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
-    trend: "Centered moving average; blank for half a period at each end (the classical filter).",
-    seasonal: "One repeating pattern per period, centered to 0 (additive) or 1 (multiplicative).",
-    residual: "What the trend and season leave unexplained.",
+    decomposition: "A frame of three aligned columns — trend (centered MA, blank half a period at each end for the classical filter; a loess with no blank ends for STL), seasonal (one repeating pattern, centered), and residual (what's left).",
   };
   label: string;
   model: DecomposeModel = "additive";
   literals: Record<string, number> = { period: 12 };
-  cachedTrend: (number | null)[] | SolError | null = null;
-  cachedSeasonal: (number | null)[] | null = null;
-  cachedResidual: (number | null)[] | null = null;
-  width = 200; height = 225;
+  // trend / seasonal / residual are correlated (same row = same time step) → ONE frame.
+  cachedResult: FrameValue | SolError | null = null;
+  width = 200; height = 205;
 
   constructor(init?: { label?: string; model?: DecomposeModel }) {
     super("Decompose");
@@ -1212,13 +1209,11 @@ export class DecomposeNode extends ClassicPreset.Node {
     if (init?.model) this.model = init.model;
     this.addInput("values", listIn("Values"));
     this.addInput("period", numIn("Period"));
-    this.addOutput("trend", numListOut("Trend"));
-    this.addOutput("seasonal", numListOut("Seasonal"));
-    this.addOutput("residual", numListOut("Residual"));
+    this.addOutput("decomposition", frameOut("Decomposition"));
   }
 
-  data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }) {
-    const blank = (err: SolError | null = null) => { this.cachedTrend = err; this.cachedSeasonal = null; this.cachedResidual = null; return { trend: err, seasonal: null, residual: null }; };
+  data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }): { decomposition: FrameValue | SolError | null } {
+    const blank = (err: SolError | null = null) => { this.cachedResult = err; return { decomposition: err }; };
     const raw = inputs.values?.[0] ?? null;
     const period = readInput(inputs.period, this.literals.period ?? 12);
     if (raw === null || period === null) return blank();
@@ -1227,8 +1222,13 @@ export class DecomposeNode extends ClassicPreset.Node {
     const nums = raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
     const d = this.model === "stl" ? stlDecompose(nums, period) : seasonalDecompose(nums, period, this.model);
     if (!d) return blank();
-    this.cachedTrend = d.trend; this.cachedSeasonal = d.seasonal; this.cachedResidual = d.residual;
-    return { trend: d.trend, seasonal: d.seasonal, residual: d.residual };
+    const frame: FrameValue = { __frame: true, columns: [
+      { name: "trend", type: "number", values: d.trend },
+      { name: "seasonal", type: "number", values: d.seasonal },
+      { name: "residual", type: "number", values: d.residual },
+    ] };
+    this.cachedResult = frame;
+    return { decomposition: frame };
   }
 }
 
