@@ -17,8 +17,11 @@ Promoted from `deferrals.md` where an entry was engine/logic work that was never
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
-- [ ] **B8 Cube-aware Unnest (peel one level)**; **Timesavers remainder** (Split Name,
-  duration trio, list reducers); **XLOOKUP frame+cube path collapse** once A4 lands.
+- [ ] **B8.3 XLOOKUP frame+cube path collapse** (B8.1 Unnest peel + B8.2 timesavers landed).
+  Delicate internal simplification: merge the duplicated frame/cube row-finder + cell-getter in
+  `frameVerbs.ts` into one cube-based pair (`frameToCube` for a frame source), keep exactly ONE
+  whole-row shape branch in `XLookupNode.matchOne` (frame source → `frameRowAt`, cube → `cubeRowAt`).
+  Rewires the frame arms of `frameLookup.test.ts`. No user-facing change — do fresh, not rushed.
 - [ ] **B9 Lazy-handle-on-cable** (retire the `collect()` bridge) — last, biggest.
 
 **C — hygiene**: evict the three archived docs still cited by code (below); deferral review.
