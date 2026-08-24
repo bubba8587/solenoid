@@ -43,7 +43,7 @@
     "react-dom": "^19.1.0",
     "recharts": "^3.8.1",
     "rete": "^2.0.6",
-    "rete-area-plugin": "^2.1.5",
+    "rete-area-plugin": "^2.3.2",
     "rete-auto-arrange-plugin": "^2.0.2",
     "rete-connection-plugin": "^2.0.5",
     "rete-engine": "^2.1.1",

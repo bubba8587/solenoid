@@ -17,8 +17,15 @@ import { syncSemanticZoomFor } from "./semanticZoomStore";
 // The rete render + connection config that MUST be identical across every editing surface,
 // so a socket-render or connection-rule change can't apply to the canvas but not a subgraph.
 
-// Proportional + clamped wheel: rete's stock fixed ±intensity races on a trackpad pinch and
-// crawls on a mouse notch.
+// Our own proportional + clamped wheel curve. As of area 2.2.x the stock handler ALSO
+// normalizes deltas (deltaMode → px → clamped step, the same shape) — but tuned for a
+// mouse: 8px/line, 24px/page, intensity/8 per px, cap `intensity` (≈0.1/notch as we
+// construct it). We keep ours because the tuning differs across the whole range, not just
+// at the cap: a much gentler per-px slope (0.0028 vs 0.0125) so a trackpad two-finger
+// scroll glides instead of lurching, against a higher cap (0.24 vs 0.1) so a mouse notch
+// still moves. Deleting this override and matching would take more than tuning one
+// `intensity` (their per-px slope and cap move together). `CappedZoom.wheel` replaces the
+// handler wholesale, so this is unaffected by the plugin bump.
 const ZOOM_SCALE = 0.0028;
 const ZOOM_STEP_CAP = 0.24;
 const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px

@@ -220,16 +220,6 @@ is blocked here for out-of-scope repos).
   Clean re-measure: crash gone, cascade collapsed to one pass + a cheap rerun. Costs ~100ms more
   on the first 171-node render (the `flushSync` synchronous-commit tax) — a one-time load cost the
   author accepted for being on latest.
-- [ ] **`rete-area-plugin` 2.1.5 → 2.3.2** — own change, needs a selection-test
-  pass. Two behaviour changes reach us: 2.3.1 makes
-  `Selector.add` unselect everything EXCEPT the re-picked entity instead of
-  `unselectAll()`-then-add (less selection churn → fewer re-renders, interacts
-  with selection-on-pointerup); 2.2.x normalizes wheel deltas — the same algorithm
-  `CappedZoom.wheel` implements, differently tuned (theirs 8px/line, 24px/page,
-  `intensity/8` per px, cap `intensity`; ours 16/400, ×0.0028, cap 0.24). **Rewrite
-  the `CappedZoom.wheel` comment on contact** — it now overrides a WORKING
-  implementation, not a broken one. `CappedZoom.down` (capture-phase finger count)
-  is unaffected.
 - [ ] **Evaluate `zIndexNodesOrder` (new in area 2.3.0)** — "relies only on
   z-index. Use this extension when click handlers inside nodes must stay stable",
   vs `simpleNodesOrder` which moves the picked node in the DOM tree. Candidate

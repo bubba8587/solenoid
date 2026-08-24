@@ -192,6 +192,19 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   merged card keeps the CSV node's auto-refresh (Parquet gains it). `listLocalFiles` lists csv+parquet
   (`listFilesByExt` now takes an ext array); one catalog leaf `local-file`. Old `csv-connection`/
   `parquet-connection` saves → Placeholder (no seed used them). tsc + full suite green.
+- **`rete-area-plugin` 2.1.5 → 2.3.2.** Bump verified against `CappedZoom` (`areaPresets.ts`): the base
+  `Zoom` internals our subclass relies on are all intact in 2.3.2 — `pointers`, instance-field `wheel`/`down`
+  (ours override the base's), `element`/`onzoom`/`intensity`, and `initialize(container,element,onzoom)` /
+  `destroy` with the same listener set (stock `destroy` still removes `pointerdown` WITHOUT the capture flag,
+  so our capture-flag removal is still needed). The 2.3.1 `Selector.add` change (unselect all except the
+  re-picked) does NOT reach us: we never use the plugin's `Selector`/`selectableNodes` — selection is fully
+  custom (`selected` flag + `selectNode`/`unselectAllNodes`; touch via `tapSelect.ts`'s own `select`
+  callback). 2.2.x now normalizes wheel deltas (deltaMode→px→clamped, the same shape as ours) but tuned for
+  a mouse (8/24px, `intensity/8` per px ≈0.0125, cap `intensity`≈0.1/notch); we KEEP our curve (0.0028/px,
+  cap 0.24) — gentler trackpad slope + higher notch cap, tuned during the smooth-zoom work — since `wheel`
+  replaces the handler wholesale and the per-px slope and cap move together (not a one-`intensity` swap).
+  Per-100px notch: ours ≈+0.24, upstream ≈+0.10. Rewrote the stale "stock fixed ±intensity" comment (it now
+  overrides a WORKING impl). pointerGesture + surfaceParity green.
 - **Series Range → INCLUSIVE of Stop (author 2026-08-24).** `rangeCount`/`rangeList` (`listOps.ts`)
   end ON Stop: `n = floor((stop−start)/step + 1e-9) + 1`; step 0 → `start===stop ? 1 : Infinity` (still
   the `#DOMAIN!` cap); values are `start + i*step` (not accumulated) with the last snapped exactly onto
