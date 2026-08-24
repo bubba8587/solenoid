@@ -92,7 +92,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [x] | Finance: TVM / rate / payment / cash flow (`:685-707`) | 14 | `nodes/finance.ts`, `financeOps.ts` | `financeInvariants.test.ts` |
 | [x] | Finance: bonds / depreciation / other / coupon (`:717-751`) | 35 | `nodes/finance.ts` | `financeInvariants.test.ts`, `wiredNull.test.ts:397` (active-op guard) |
 | [x] | Distributions (`:765`) | 6 | `nodes/distribution.ts`, `distributionOps.ts` | — |
-| [ ] | Date & Time (`:782-821`) | 27 | `nodes/date.ts`, `dateOps.ts`, `dateSerial.ts` | `wiredNull.test.ts:319` (date operands); the AUTHOR CALL on selector inputs (`backlog.md` "mode-selector inputs on a wired blank") — record, don't decide |
+| [x] | Date & Time (`:782-821`) | 27 | `nodes/date.ts`, `dateOps.ts`, `dateSerial.ts` | `wiredNull.test.ts:319` (date operands); the AUTHOR CALL on selector inputs (`backlog.md` "mode-selector inputs on a wired blank") — record, don't decide |
 | [ ] | Text (`:837-880`) | 42 | `nodes/text.ts`, `textOps.ts`, `hashOps.ts` | `wiredNull.test.ts:34`, `:70`; `caseContract.test.ts`; same AUTHOR CALL as Date |
 | [ ] | Tables ▸ Matrix math / Shape / Select (`:912-940`) | 24 | `nodes/matrix.ts`, `matrixOps.ts` | — |
 | [ ] | Tables ▸ Lambda + Frames (`:947`, `:957`) | 12 | `nodes/tableLambda.ts`, `nodes/frame.ts`, `lambda.ts` | `wiredNull.test.ts:238` (column ref) |

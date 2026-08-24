@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode, RegexNode } from "./text";
-import { DateConstructNode, DateAddNode, WorkdaysNode } from "./date";
+import { DateConstructNode, DateAddNode, WorkdaysNode, DateDiffNode } from "./date";
 import { BooleanOpNode, NotNode, IfsNode, SwitchNode, IfNode, IsTestNode } from "./logic";
 import { SliderInputNode, ColorBlendNode } from "./input";
 import { RandBetweenNode } from "./display";
@@ -383,6 +383,18 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
     unwired.literals.prev = 10;
     const p = unwired.data({ value: [5] }).chart.payload as { prev: number | null };
     expect(p.prev).toBe(10);
+  });
+});
+
+describe("Date mode-selector + active-op guard", () => {
+  // A basis is a MODE selector: a wired blank propagates (unknown basis -> unknown
+  // answer) on the ops that read it, but DAYS never reads basis so a blank there is
+  // ignored. (The propagate-vs-default disposition is the recorded author call.)
+  it("DAYS ignores a wired blank basis; YEARFRAC blanks on it", () => {
+    const days = new DateDiffNode({ op: "days" });
+    expect(days.data({ start: [46000], end: [46010], basis: [null as unknown as number] }).result).toBe(10);
+    const yf = new DateDiffNode({ op: "yearfrac" });
+    expect(yf.data({ start: [46000], end: [46010], basis: [null as unknown as number] }).result).toBeNull();
   });
 });
 

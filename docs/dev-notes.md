@@ -426,6 +426,20 @@ stats). Pins: `wiredNull.test.ts` "Distribution — wired blank parameter" (+1).
 none strong (DistributionNode is already the model merge; BinomDistRange could fold in as a binomial
 "range" form, minor). Residue: none.
 
+**A5 Date & Time sweep** (27 leaves) → NO bugs. Date operands propagate a wired blank through
+`broadcast` (DatePart/WeekInfo/DateDiff/DateAdd), and the construct params (DATE's Y/M/D, pinned)
+propagate too. Mode-selector inputs — DateDiff `basis`, WeekInfo `return_type`, Workdays
+`weekend_code` — read via `readInput` and PROPAGATE a wired blank to null, scoped to the ops that
+read them (DAYS never reads basis, so a blank basis there is ignored; pinned). AUTHOR CALL (recorded,
+not decided, per backlog "mode-selector inputs on a wired blank"): these selectors currently
+PROPAGATE a wired blank rather than falling back to the card default — consistent across Date, Text,
+and the earlier families (TEXTSPLIT delimiter, NETWORKDAYS weekend). The whole app is uniform on
+this; if the author wants "blank selector → card default" it is a cross-cutting change, not a
+per-node one. Pins: `wiredNull.test.ts` "Date mode-selector + active-op guard" (+1). Combine
+candidates: DATE (Build) + TIME → one "DATE/TIME build" node with a mode; Epoch (parse) + DATEVALUE/
+TIMEVALUE (parse text) are both to-date parsers. Otherwise well op-merged (DatePart unifies 6,
+DateDiff ~8, WeekInfo 3). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
